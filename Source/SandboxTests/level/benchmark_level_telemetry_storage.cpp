@@ -16,6 +16,7 @@
 #include "Windows/HideWindowsPlatformTypes.h"
 
 #include <bit>
+#include <type_traits>
 
 namespace level_telemetry_benchmark {
 inline constexpr int32 int32_series_count{43};
@@ -452,9 +453,10 @@ void populate_new(ml::level_telemetry::FSingleAllocationHistoryRows& history,
     }
 }
 
-template <typename T>
-void zero_column(std::byte* const data, SIZE_T const offset, int32 const first, int32 const count) {
-    FMemory::Memzero(data + offset + static_cast<SIZE_T>(first) * sizeof(T),
+template <auto const& Column>
+void zero_column(std::byte* const data, SIZE_T const blocks, int32 const first, int32 const count) {
+    using T = typename std::remove_cvref_t<decltype(Column)>::value_type;
+    FMemory::Memzero(data + Column.offset(blocks) + static_cast<SIZE_T>(first) * sizeof(T),
                      static_cast<SIZE_T>(count) * sizeof(T));
 }
 
@@ -463,25 +465,23 @@ void zero_row_range(std::byte* const data,
                     int32 const first,
                     int32 const count) {
     using Layout = ml::level_telemetry::FHistoryRowsSingleLayout;
-    zero_column<uint64>(data, Layout::completed_ticks_offset(blocks), first, count);
-    zero_column<uint64>(data, Layout::validity_masks_offset(blocks), first, count);
-    zero_column<int32>(data, Layout::active_entities_offset(blocks), first, count);
-    zero_column<FTestEntityRegistry::EntityTypeCounts>(
-        data, Layout::active_entities_by_type_offset(blocks), first, count);
-    zero_column<FTestEntityRegistry::EntityCounts>(
-        data, Layout::active_entities_by_team_and_type_offset(blocks), first, count);
-    zero_column<int32>(data, Layout::spawned_entities_offset(blocks), first, count);
-    zero_column<int32>(data, Layout::destroyed_entities_offset(blocks), first, count);
-    zero_column<int32>(data, Layout::kills_offset(blocks), first, count);
-    zero_column<int32>(data, Layout::registry_slot_count_offset(blocks), first, count);
-    zero_column<int32>(data, Layout::active_lasers_offset(blocks), first, count);
-    zero_column<int32>(data, Layout::lasers_fired_offset(blocks), first, count);
-    zero_column<int32>(data, Layout::occupied_spatial_cell_count_offset(blocks), first, count);
-    zero_column<uint64>(data, Layout::grid_rebuild_count_offset(blocks), first, count);
-    zero_column<uint64>(data, Layout::range_query_count_offset(blocks), first, count);
-    zero_column<uint64>(data, Layout::line_trace_count_offset(blocks), first, count);
-    zero_column<uint64>(data, Layout::sweep_trace_count_offset(blocks), first, count);
-    zero_column<double>(data, Layout::requested_time_scale_offset(blocks), first, count);
+    zero_column<Layout::CompletedTicks>(data, blocks, first, count);
+    zero_column<Layout::ValidityMasks>(data, blocks, first, count);
+    zero_column<Layout::ActiveEntities>(data, blocks, first, count);
+    zero_column<Layout::ActiveEntitiesByType>(data, blocks, first, count);
+    zero_column<Layout::ActiveEntitiesByTeamAndType>(data, blocks, first, count);
+    zero_column<Layout::SpawnedEntities>(data, blocks, first, count);
+    zero_column<Layout::DestroyedEntities>(data, blocks, first, count);
+    zero_column<Layout::Kills>(data, blocks, first, count);
+    zero_column<Layout::RegistrySlotCount>(data, blocks, first, count);
+    zero_column<Layout::ActiveLasers>(data, blocks, first, count);
+    zero_column<Layout::LasersFired>(data, blocks, first, count);
+    zero_column<Layout::OccupiedSpatialCellCount>(data, blocks, first, count);
+    zero_column<Layout::GridRebuildCount>(data, blocks, first, count);
+    zero_column<Layout::RangeQueryCount>(data, blocks, first, count);
+    zero_column<Layout::LineTraceCount>(data, blocks, first, count);
+    zero_column<Layout::SweepTraceCount>(data, blocks, first, count);
+    zero_column<Layout::RequestedTimeScale>(data, blocks, first, count);
 }
 
 void run_chunk_zero_probe(FAutomationTestBase& token,

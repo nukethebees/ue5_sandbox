@@ -1272,736 +1272,134 @@ struct EntityDataSingleLayout {
     inline static constexpr size_type capacity_granularity{64};
     inline static constexpr byte_size_type column_gap{192};
 
-    inline static constexpr byte_size_type entity_handles_alignment{
-        alignof(Handle) > 64 ? alignof(Handle) : 64};
+    template <typename T>
+    using ColLayout = ml::soa_storage::ColumnLayout<T>;
+    inline static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{
+        capacity_granularity, column_gap, 64};
 
-    inline static constexpr byte_size_type integral_biases_alignment{
-        alignof(uint32) > 64 ? alignof(uint32) : 64};
-
-    inline static constexpr byte_size_type float_biases_alignment{
-        alignof(float) > 64 ? alignof(float) : 64};
-
-    inline static constexpr byte_size_type tasks_alignment{alignof(Task) > 64 ? alignof(Task) : 64};
-
-    inline static constexpr byte_size_type teams_alignment{alignof(Team) > 64 ? alignof(Team) : 64};
-
-    inline static constexpr byte_size_type healths_alignment{alignof(int32) > 64 ? alignof(int32)
-                                                                                 : 64};
-
-    inline static constexpr byte_size_type awareness_scan_countdowns_counters_alignment{
-        alignof(int8) > 64 ? alignof(int8) : 64};
-
-    inline static constexpr byte_size_type navigation_update_countdowns_remaining_ticks_alignment{
-        alignof(int16) > 64 ? alignof(int16) : 64};
-
-    inline static constexpr byte_size_type navigation_risk_tiers_alignment{
-        alignof(uint8) > 64 ? alignof(uint8) : 64};
+    inline static constexpr ColLayout<Handle> EntityHandles{LayoutStart};
+    inline static constexpr ColLayout<uint32> IntegralBiases{EntityHandles};
+    inline static constexpr ColLayout<float> FloatBiases{IntegralBiases};
+    inline static constexpr ColLayout<Task> Tasks{FloatBiases};
+    inline static constexpr ColLayout<float> LocationsXs{Tasks};
+    inline static constexpr ColLayout<float> LocationsYs{LocationsXs};
+    inline static constexpr ColLayout<float> LocationsZs{LocationsYs};
+    inline static constexpr ColLayout<float> DesiredMoveLocationsXs{LocationsZs};
+    inline static constexpr ColLayout<float> DesiredMoveLocationsYs{DesiredMoveLocationsXs};
+    inline static constexpr ColLayout<float> DesiredMoveLocationsZs{DesiredMoveLocationsYs};
+    inline static constexpr ColLayout<float> AimDirectionsXs{DesiredMoveLocationsZs};
+    inline static constexpr ColLayout<float> AimDirectionsYs{AimDirectionsXs};
+    inline static constexpr ColLayout<float> AimDirectionsZs{AimDirectionsYs};
+    inline static constexpr ColLayout<float> DesiredAimingDirectionsXs{AimDirectionsZs};
+    inline static constexpr ColLayout<float> DesiredAimingDirectionsYs{DesiredAimingDirectionsXs};
+    inline static constexpr ColLayout<float> DesiredAimingDirectionsZs{DesiredAimingDirectionsYs};
+    inline static constexpr ColLayout<float> MovementDirectionsXs{DesiredAimingDirectionsZs};
+    inline static constexpr ColLayout<float> MovementDirectionsYs{MovementDirectionsXs};
+    inline static constexpr ColLayout<float> MovementDirectionsZs{MovementDirectionsYs};
+    inline static constexpr ColLayout<float> VelocitiesXs{MovementDirectionsZs};
+    inline static constexpr ColLayout<float> VelocitiesYs{VelocitiesXs};
+    inline static constexpr ColLayout<float> VelocitiesZs{VelocitiesYs};
+    inline static constexpr ColLayout<float> MoveDistances{VelocitiesZs};
+    inline static constexpr ColLayout<float> Speeds{MoveDistances};
+    inline static constexpr ColLayout<Team> Teams{Speeds};
+    inline static constexpr ColLayout<int32> Healths{Teams};
+    inline static constexpr ColLayout<Handle> ParentHandles{Healths};
+    inline static constexpr ColLayout<int8> AwarenessScanCountdownsCounters{ParentHandles};
+    inline static constexpr ColLayout<int16> NavigationUpdateCountdownsRemainingTicks{
+        AwarenessScanCountdownsCounters};
+    inline static constexpr ColLayout<int16> NavigationUpdateCountdownsPeriods{
+        NavigationUpdateCountdownsRemainingTicks};
+    inline static constexpr ColLayout<float> SeparationSteeringXs{
+        NavigationUpdateCountdownsPeriods};
+    inline static constexpr ColLayout<float> SeparationSteeringYs{SeparationSteeringXs};
+    inline static constexpr ColLayout<float> SeparationSteeringZs{SeparationSteeringYs};
+    inline static constexpr ColLayout<uint8> NavigationRiskTiers{SeparationSteeringZs};
+    inline static constexpr ColLayout<uint8> NavigationLowerRiskScanCounts{NavigationRiskTiers};
+    inline static constexpr ColLayout<int8> AvoidanceChoiceIndices{NavigationLowerRiskScanCounts};
+    inline static constexpr ColLayout<uint8> AvoidanceClearScanCounts{AvoidanceChoiceIndices};
+    inline static constexpr ColLayout<int16> AttackRepositionCountdownsCounters{
+        AvoidanceClearScanCounts};
+    inline static constexpr ColLayout<int16> AttackCooldownsCounters{
+        AttackRepositionCountdownsCounters};
+    inline static constexpr ColLayout<Handle> TargetHandles{AttackCooldownsCounters};
+    inline static constexpr ColLayout<float> TargetLocationsXs{TargetHandles};
+    inline static constexpr ColLayout<float> TargetLocationsYs{TargetLocationsXs};
+    inline static constexpr ColLayout<float> TargetLocationsZs{TargetLocationsYs};
+    inline static constexpr ColLayout<float> TargetVelocitiesXs{TargetLocationsZs};
+    inline static constexpr ColLayout<float> TargetVelocitiesYs{TargetVelocitiesXs};
+    inline static constexpr ColLayout<float> TargetVelocitiesZs{TargetVelocitiesYs};
+    inline static constexpr ColLayout<float> TargetDirectionsXs{TargetVelocitiesZs};
+    inline static constexpr ColLayout<float> TargetDirectionsYs{TargetDirectionsXs};
+    inline static constexpr ColLayout<float> TargetDirectionsZs{TargetDirectionsYs};
+    inline static constexpr ColLayout<float> InterceptTimes{TargetDirectionsZs};
+    inline static constexpr ColLayout<float> TargetDistanceSq{InterceptTimes};
+    inline static constexpr ColLayout<float> TargetDistances{TargetDistanceSq};
+    inline static constexpr ColLayout<float> TargetRadii{TargetDistances};
 
     inline static constexpr byte_size_type allocation_alignment{
-        std::max({entity_handles_alignment,
-                  integral_biases_alignment,
-                  float_biases_alignment,
-                  tasks_alignment,
-                  teams_alignment,
-                  healths_alignment,
-                  awareness_scan_countdowns_counters_alignment,
-                  navigation_update_countdowns_remaining_ticks_alignment,
-                  navigation_risk_tiers_alignment})};
-
-    inline static constexpr byte_size_type entity_handles_block_offset{
-        ml::soa_storage::layout_align(0, entity_handles_alignment)};
-    inline static constexpr byte_size_type entity_handles_block_end{
-        entity_handles_block_offset + capacity_granularity * sizeof(Handle)};
-
-    static constexpr auto entity_handles_offset(byte_size_type) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(0, entity_handles_alignment);
-    }
-
-    inline static constexpr byte_size_type integral_biases_block_offset{
-        ml::soa_storage::layout_align(entity_handles_block_end, integral_biases_alignment)};
-    inline static constexpr byte_size_type integral_biases_block_end{
-        integral_biases_block_offset + capacity_granularity * sizeof(uint32)};
-
-    static constexpr auto integral_biases_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(entity_handles_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(Handle) +
-                                                 column_gap,
-                                             integral_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type float_biases_block_offset{
-        ml::soa_storage::layout_align(integral_biases_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type float_biases_block_end{
-        float_biases_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto float_biases_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(integral_biases_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint32) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type tasks_block_offset{
-        ml::soa_storage::layout_align(float_biases_block_end, tasks_alignment)};
-    inline static constexpr byte_size_type tasks_block_end{tasks_block_offset +
-                                                           capacity_granularity * sizeof(Task)};
-
-    static constexpr auto tasks_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(float_biases_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             tasks_alignment);
-    }
-
-    inline static constexpr byte_size_type locations_xs_block_offset{
-        ml::soa_storage::layout_align(tasks_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type locations_xs_block_end{
-        locations_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto locations_xs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(
-            tasks_offset(blocks) + blocks * capacity_granularity * sizeof(Task) + column_gap,
-            float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type locations_ys_block_offset{
-        ml::soa_storage::layout_align(locations_xs_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type locations_ys_block_end{
-        locations_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto locations_ys_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(locations_xs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type locations_zs_block_offset{
-        ml::soa_storage::layout_align(locations_ys_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type locations_zs_block_end{
-        locations_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto locations_zs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(locations_ys_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type desired_move_locations_xs_block_offset{
-        ml::soa_storage::layout_align(locations_zs_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type desired_move_locations_xs_block_end{
-        desired_move_locations_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto desired_move_locations_xs_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(locations_zs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type desired_move_locations_ys_block_offset{
-        ml::soa_storage::layout_align(desired_move_locations_xs_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type desired_move_locations_ys_block_end{
-        desired_move_locations_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto desired_move_locations_ys_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(desired_move_locations_xs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type desired_move_locations_zs_block_offset{
-        ml::soa_storage::layout_align(desired_move_locations_ys_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type desired_move_locations_zs_block_end{
-        desired_move_locations_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto desired_move_locations_zs_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(desired_move_locations_ys_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type aim_directions_xs_block_offset{
-        ml::soa_storage::layout_align(desired_move_locations_zs_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type aim_directions_xs_block_end{
-        aim_directions_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto aim_directions_xs_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(desired_move_locations_zs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type aim_directions_ys_block_offset{
-        ml::soa_storage::layout_align(aim_directions_xs_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type aim_directions_ys_block_end{
-        aim_directions_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto aim_directions_ys_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(aim_directions_xs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type aim_directions_zs_block_offset{
-        ml::soa_storage::layout_align(aim_directions_ys_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type aim_directions_zs_block_end{
-        aim_directions_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto aim_directions_zs_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(aim_directions_ys_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type desired_aiming_directions_xs_block_offset{
-        ml::soa_storage::layout_align(aim_directions_zs_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type desired_aiming_directions_xs_block_end{
-        desired_aiming_directions_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto desired_aiming_directions_xs_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(aim_directions_zs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type desired_aiming_directions_ys_block_offset{
-        ml::soa_storage::layout_align(desired_aiming_directions_xs_block_end,
-                                      float_biases_alignment)};
-    inline static constexpr byte_size_type desired_aiming_directions_ys_block_end{
-        desired_aiming_directions_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto desired_aiming_directions_ys_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(desired_aiming_directions_xs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type desired_aiming_directions_zs_block_offset{
-        ml::soa_storage::layout_align(desired_aiming_directions_ys_block_end,
-                                      float_biases_alignment)};
-    inline static constexpr byte_size_type desired_aiming_directions_zs_block_end{
-        desired_aiming_directions_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto desired_aiming_directions_zs_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(desired_aiming_directions_ys_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type movement_directions_xs_block_offset{
-        ml::soa_storage::layout_align(desired_aiming_directions_zs_block_end,
-                                      float_biases_alignment)};
-    inline static constexpr byte_size_type movement_directions_xs_block_end{
-        movement_directions_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto movement_directions_xs_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(desired_aiming_directions_zs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type movement_directions_ys_block_offset{
-        ml::soa_storage::layout_align(movement_directions_xs_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type movement_directions_ys_block_end{
-        movement_directions_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto movement_directions_ys_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(movement_directions_xs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type movement_directions_zs_block_offset{
-        ml::soa_storage::layout_align(movement_directions_ys_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type movement_directions_zs_block_end{
-        movement_directions_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto movement_directions_zs_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(movement_directions_ys_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type velocities_xs_block_offset{
-        ml::soa_storage::layout_align(movement_directions_zs_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type velocities_xs_block_end{
-        velocities_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto velocities_xs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(movement_directions_zs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type velocities_ys_block_offset{
-        ml::soa_storage::layout_align(velocities_xs_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type velocities_ys_block_end{
-        velocities_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto velocities_ys_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(velocities_xs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type velocities_zs_block_offset{
-        ml::soa_storage::layout_align(velocities_ys_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type velocities_zs_block_end{
-        velocities_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto velocities_zs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(velocities_ys_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type move_distances_block_offset{
-        ml::soa_storage::layout_align(velocities_zs_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type move_distances_block_end{
-        move_distances_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto move_distances_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(velocities_zs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type speeds_block_offset{
-        ml::soa_storage::layout_align(move_distances_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type speeds_block_end{speeds_block_offset +
-                                                            capacity_granularity * sizeof(float)};
-
-    static constexpr auto speeds_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(move_distances_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type teams_block_offset{
-        ml::soa_storage::layout_align(speeds_block_end, teams_alignment)};
-    inline static constexpr byte_size_type teams_block_end{teams_block_offset +
-                                                           capacity_granularity * sizeof(Team)};
-
-    static constexpr auto teams_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(
-            speeds_offset(blocks) + blocks * capacity_granularity * sizeof(float) + column_gap,
-            teams_alignment);
-    }
-
-    inline static constexpr byte_size_type healths_block_offset{
-        ml::soa_storage::layout_align(teams_block_end, healths_alignment)};
-    inline static constexpr byte_size_type healths_block_end{healths_block_offset +
-                                                             capacity_granularity * sizeof(int32)};
-
-    static constexpr auto healths_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(
-            teams_offset(blocks) + blocks * capacity_granularity * sizeof(Team) + column_gap,
-            healths_alignment);
-    }
-
-    inline static constexpr byte_size_type parent_handles_block_offset{
-        ml::soa_storage::layout_align(healths_block_end, entity_handles_alignment)};
-    inline static constexpr byte_size_type parent_handles_block_end{
-        parent_handles_block_offset + capacity_granularity * sizeof(Handle)};
-
-    static constexpr auto parent_handles_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(
-            healths_offset(blocks) + blocks * capacity_granularity * sizeof(int32) + column_gap,
-            entity_handles_alignment);
-    }
-
-    inline static constexpr byte_size_type awareness_scan_countdowns_counters_block_offset{
-        ml::soa_storage::layout_align(parent_handles_block_end,
-                                      awareness_scan_countdowns_counters_alignment)};
-    inline static constexpr byte_size_type awareness_scan_countdowns_counters_block_end{
-        awareness_scan_countdowns_counters_block_offset + capacity_granularity * sizeof(int8)};
-
-    static constexpr auto awareness_scan_countdowns_counters_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(parent_handles_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(Handle) +
-                                                 column_gap,
-                                             awareness_scan_countdowns_counters_alignment);
-    }
-
-    inline static constexpr byte_size_type
-        navigation_update_countdowns_remaining_ticks_block_offset{
-            ml::soa_storage::layout_align(awareness_scan_countdowns_counters_block_end,
-                                          navigation_update_countdowns_remaining_ticks_alignment)};
-    inline static constexpr byte_size_type navigation_update_countdowns_remaining_ticks_block_end{
-        navigation_update_countdowns_remaining_ticks_block_offset +
-        capacity_granularity * sizeof(int16)};
-
-    static constexpr auto
-        navigation_update_countdowns_remaining_ticks_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(
-            awareness_scan_countdowns_counters_offset(blocks) +
-                blocks * capacity_granularity * sizeof(int8) + column_gap,
-            navigation_update_countdowns_remaining_ticks_alignment);
-    }
-
-    inline static constexpr byte_size_type navigation_update_countdowns_periods_block_offset{
-        ml::soa_storage::layout_align(navigation_update_countdowns_remaining_ticks_block_end,
-                                      navigation_update_countdowns_remaining_ticks_alignment)};
-    inline static constexpr byte_size_type navigation_update_countdowns_periods_block_end{
-        navigation_update_countdowns_periods_block_offset + capacity_granularity * sizeof(int16)};
-
-    static constexpr auto
-        navigation_update_countdowns_periods_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(
-            navigation_update_countdowns_remaining_ticks_offset(blocks) +
-                blocks * capacity_granularity * sizeof(int16) + column_gap,
-            navigation_update_countdowns_remaining_ticks_alignment);
-    }
-
-    inline static constexpr byte_size_type separation_steering_xs_block_offset{
-        ml::soa_storage::layout_align(navigation_update_countdowns_periods_block_end,
-                                      float_biases_alignment)};
-    inline static constexpr byte_size_type separation_steering_xs_block_end{
-        separation_steering_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto separation_steering_xs_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(navigation_update_countdowns_periods_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(int16) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type separation_steering_ys_block_offset{
-        ml::soa_storage::layout_align(separation_steering_xs_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type separation_steering_ys_block_end{
-        separation_steering_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto separation_steering_ys_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(separation_steering_xs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type separation_steering_zs_block_offset{
-        ml::soa_storage::layout_align(separation_steering_ys_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type separation_steering_zs_block_end{
-        separation_steering_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto separation_steering_zs_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(separation_steering_ys_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type navigation_risk_tiers_block_offset{
-        ml::soa_storage::layout_align(separation_steering_zs_block_end,
-                                      navigation_risk_tiers_alignment)};
-    inline static constexpr byte_size_type navigation_risk_tiers_block_end{
-        navigation_risk_tiers_block_offset + capacity_granularity * sizeof(uint8)};
-
-    static constexpr auto navigation_risk_tiers_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(separation_steering_zs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             navigation_risk_tiers_alignment);
-    }
-
-    inline static constexpr byte_size_type navigation_lower_risk_scan_counts_block_offset{
-        ml::soa_storage::layout_align(navigation_risk_tiers_block_end,
-                                      navigation_risk_tiers_alignment)};
-    inline static constexpr byte_size_type navigation_lower_risk_scan_counts_block_end{
-        navigation_lower_risk_scan_counts_block_offset + capacity_granularity * sizeof(uint8)};
-
-    static constexpr auto navigation_lower_risk_scan_counts_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(navigation_risk_tiers_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint8) +
-                                                 column_gap,
-                                             navigation_risk_tiers_alignment);
-    }
-
-    inline static constexpr byte_size_type avoidance_choice_indices_block_offset{
-        ml::soa_storage::layout_align(navigation_lower_risk_scan_counts_block_end,
-                                      awareness_scan_countdowns_counters_alignment)};
-    inline static constexpr byte_size_type avoidance_choice_indices_block_end{
-        avoidance_choice_indices_block_offset + capacity_granularity * sizeof(int8)};
-
-    static constexpr auto avoidance_choice_indices_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(navigation_lower_risk_scan_counts_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint8) +
-                                                 column_gap,
-                                             awareness_scan_countdowns_counters_alignment);
-    }
-
-    inline static constexpr byte_size_type avoidance_clear_scan_counts_block_offset{
-        ml::soa_storage::layout_align(avoidance_choice_indices_block_end,
-                                      navigation_risk_tiers_alignment)};
-    inline static constexpr byte_size_type avoidance_clear_scan_counts_block_end{
-        avoidance_clear_scan_counts_block_offset + capacity_granularity * sizeof(uint8)};
-
-    static constexpr auto avoidance_clear_scan_counts_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(avoidance_choice_indices_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(int8) +
-                                                 column_gap,
-                                             navigation_risk_tiers_alignment);
-    }
-
-    inline static constexpr byte_size_type attack_reposition_countdowns_counters_block_offset{
-        ml::soa_storage::layout_align(avoidance_clear_scan_counts_block_end,
-                                      navigation_update_countdowns_remaining_ticks_alignment)};
-    inline static constexpr byte_size_type attack_reposition_countdowns_counters_block_end{
-        attack_reposition_countdowns_counters_block_offset + capacity_granularity * sizeof(int16)};
-
-    static constexpr auto
-        attack_reposition_countdowns_counters_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(
-            avoidance_clear_scan_counts_offset(blocks) +
-                blocks * capacity_granularity * sizeof(uint8) + column_gap,
-            navigation_update_countdowns_remaining_ticks_alignment);
-    }
-
-    inline static constexpr byte_size_type attack_cooldowns_counters_block_offset{
-        ml::soa_storage::layout_align(attack_reposition_countdowns_counters_block_end,
-                                      navigation_update_countdowns_remaining_ticks_alignment)};
-    inline static constexpr byte_size_type attack_cooldowns_counters_block_end{
-        attack_cooldowns_counters_block_offset + capacity_granularity * sizeof(int16)};
-
-    static constexpr auto attack_cooldowns_counters_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(
-            attack_reposition_countdowns_counters_offset(blocks) +
-                blocks * capacity_granularity * sizeof(int16) + column_gap,
-            navigation_update_countdowns_remaining_ticks_alignment);
-    }
-
-    inline static constexpr byte_size_type target_handles_block_offset{
-        ml::soa_storage::layout_align(attack_cooldowns_counters_block_end,
-                                      entity_handles_alignment)};
-    inline static constexpr byte_size_type target_handles_block_end{
-        target_handles_block_offset + capacity_granularity * sizeof(Handle)};
-
-    static constexpr auto target_handles_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(attack_cooldowns_counters_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(int16) +
-                                                 column_gap,
-                                             entity_handles_alignment);
-    }
-
-    inline static constexpr byte_size_type target_locations_xs_block_offset{
-        ml::soa_storage::layout_align(target_handles_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type target_locations_xs_block_end{
-        target_locations_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto target_locations_xs_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(target_handles_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(Handle) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type target_locations_ys_block_offset{
-        ml::soa_storage::layout_align(target_locations_xs_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type target_locations_ys_block_end{
-        target_locations_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto target_locations_ys_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(target_locations_xs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type target_locations_zs_block_offset{
-        ml::soa_storage::layout_align(target_locations_ys_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type target_locations_zs_block_end{
-        target_locations_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto target_locations_zs_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(target_locations_ys_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type target_velocities_xs_block_offset{
-        ml::soa_storage::layout_align(target_locations_zs_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type target_velocities_xs_block_end{
-        target_velocities_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto target_velocities_xs_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(target_locations_zs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type target_velocities_ys_block_offset{
-        ml::soa_storage::layout_align(target_velocities_xs_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type target_velocities_ys_block_end{
-        target_velocities_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto target_velocities_ys_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(target_velocities_xs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type target_velocities_zs_block_offset{
-        ml::soa_storage::layout_align(target_velocities_ys_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type target_velocities_zs_block_end{
-        target_velocities_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto target_velocities_zs_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(target_velocities_ys_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type target_directions_xs_block_offset{
-        ml::soa_storage::layout_align(target_velocities_zs_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type target_directions_xs_block_end{
-        target_directions_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto target_directions_xs_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(target_velocities_zs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type target_directions_ys_block_offset{
-        ml::soa_storage::layout_align(target_directions_xs_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type target_directions_ys_block_end{
-        target_directions_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto target_directions_ys_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(target_directions_xs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type target_directions_zs_block_offset{
-        ml::soa_storage::layout_align(target_directions_ys_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type target_directions_zs_block_end{
-        target_directions_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto target_directions_zs_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(target_directions_ys_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type intercept_times_block_offset{
-        ml::soa_storage::layout_align(target_directions_zs_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type intercept_times_block_end{
-        intercept_times_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto intercept_times_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(target_directions_zs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type target_distance_sq_block_offset{
-        ml::soa_storage::layout_align(intercept_times_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type target_distance_sq_block_end{
-        target_distance_sq_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto target_distance_sq_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(intercept_times_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type target_distances_block_offset{
-        ml::soa_storage::layout_align(target_distance_sq_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type target_distances_block_end{
-        target_distances_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto target_distances_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(target_distance_sq_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
-
-    inline static constexpr byte_size_type target_radii_block_offset{
-        ml::soa_storage::layout_align(target_distances_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type target_radii_block_end{
-        target_radii_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto target_radii_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(target_distances_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             float_biases_alignment);
-    }
+        ml::soa_storage::maximum_alignment(EntityHandles,
+                                           IntegralBiases,
+                                           FloatBiases,
+                                           Tasks,
+                                           LocationsXs,
+                                           LocationsYs,
+                                           LocationsZs,
+                                           DesiredMoveLocationsXs,
+                                           DesiredMoveLocationsYs,
+                                           DesiredMoveLocationsZs,
+                                           AimDirectionsXs,
+                                           AimDirectionsYs,
+                                           AimDirectionsZs,
+                                           DesiredAimingDirectionsXs,
+                                           DesiredAimingDirectionsYs,
+                                           DesiredAimingDirectionsZs,
+                                           MovementDirectionsXs,
+                                           MovementDirectionsYs,
+                                           MovementDirectionsZs,
+                                           VelocitiesXs,
+                                           VelocitiesYs,
+                                           VelocitiesZs,
+                                           MoveDistances,
+                                           Speeds,
+                                           Teams,
+                                           Healths,
+                                           ParentHandles,
+                                           AwarenessScanCountdownsCounters,
+                                           NavigationUpdateCountdownsRemainingTicks,
+                                           NavigationUpdateCountdownsPeriods,
+                                           SeparationSteeringXs,
+                                           SeparationSteeringYs,
+                                           SeparationSteeringZs,
+                                           NavigationRiskTiers,
+                                           NavigationLowerRiskScanCounts,
+                                           AvoidanceChoiceIndices,
+                                           AvoidanceClearScanCounts,
+                                           AttackRepositionCountdownsCounters,
+                                           AttackCooldownsCounters,
+                                           TargetHandles,
+                                           TargetLocationsXs,
+                                           TargetLocationsYs,
+                                           TargetLocationsZs,
+                                           TargetVelocitiesXs,
+                                           TargetVelocitiesYs,
+                                           TargetVelocitiesZs,
+                                           TargetDirectionsXs,
+                                           TargetDirectionsYs,
+                                           TargetDirectionsZs,
+                                           InterceptTimes,
+                                           TargetDistanceSq,
+                                           TargetDistances,
+                                           TargetRadii)};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
-        ml::soa_storage::layout_align(target_radii_block_end, allocation_alignment) +
+        ml::soa_storage::layout_align(TargetRadii.block_end, allocation_alignment) +
         52 * (column_gap + allocation_alignment - 1)};
     inline static constexpr size_type max_capacity{
         ml::soa_storage::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0
-                 ? 0
-                 : target_radii_offset(blocks) + blocks * capacity_granularity * sizeof(float);
+        return blocks == 0 ? 0 : TargetRadii.data_end(blocks);
     }
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
@@ -2046,128 +1444,124 @@ struct EntityDataSingleLayout {
             allocation_alignment <= std::numeric_limits<uint32>::max(),
             "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
         static_assert(sizeof(Handle) <=
-                      (max_allocation_size - entity_handles_block_offset) / capacity_granularity);
+                      (max_allocation_size - EntityHandles.block_offset) / capacity_granularity);
         static_assert(sizeof(uint32) <=
-                      (max_allocation_size - integral_biases_block_offset) / capacity_granularity);
+                      (max_allocation_size - IntegralBiases.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - float_biases_block_offset) / capacity_granularity);
+                      (max_allocation_size - FloatBiases.block_offset) / capacity_granularity);
         static_assert(sizeof(Task) <=
-                      (max_allocation_size - tasks_block_offset) / capacity_granularity);
+                      (max_allocation_size - Tasks.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - locations_xs_block_offset) / capacity_granularity);
+                      (max_allocation_size - LocationsXs.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - locations_ys_block_offset) / capacity_granularity);
+                      (max_allocation_size - LocationsYs.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - locations_zs_block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - desired_move_locations_xs_block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - desired_move_locations_ys_block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - desired_move_locations_zs_block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - aim_directions_xs_block_offset) /
+                      (max_allocation_size - LocationsZs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - DesiredMoveLocationsXs.block_offset) /
                                            capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - aim_directions_ys_block_offset) /
+        static_assert(sizeof(float) <= (max_allocation_size - DesiredMoveLocationsYs.block_offset) /
                                            capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - aim_directions_zs_block_offset) /
+        static_assert(sizeof(float) <= (max_allocation_size - DesiredMoveLocationsZs.block_offset) /
                                            capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - desired_aiming_directions_xs_block_offset) /
+                      (max_allocation_size - AimDirectionsXs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - AimDirectionsYs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - AimDirectionsZs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - DesiredAimingDirectionsXs.block_offset) /
                           capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - desired_aiming_directions_ys_block_offset) /
+                      (max_allocation_size - DesiredAimingDirectionsYs.block_offset) /
                           capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - desired_aiming_directions_zs_block_offset) /
+                      (max_allocation_size - DesiredAimingDirectionsZs.block_offset) /
                           capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - movement_directions_xs_block_offset) /
+        static_assert(sizeof(float) <= (max_allocation_size - MovementDirectionsXs.block_offset) /
                                            capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - movement_directions_ys_block_offset) /
+        static_assert(sizeof(float) <= (max_allocation_size - MovementDirectionsYs.block_offset) /
                                            capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - movement_directions_zs_block_offset) /
+        static_assert(sizeof(float) <= (max_allocation_size - MovementDirectionsZs.block_offset) /
                                            capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - velocities_xs_block_offset) / capacity_granularity);
+                      (max_allocation_size - VelocitiesXs.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - velocities_ys_block_offset) / capacity_granularity);
+                      (max_allocation_size - VelocitiesYs.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - velocities_zs_block_offset) / capacity_granularity);
+                      (max_allocation_size - VelocitiesZs.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - move_distances_block_offset) / capacity_granularity);
+                      (max_allocation_size - MoveDistances.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - speeds_block_offset) / capacity_granularity);
+                      (max_allocation_size - Speeds.block_offset) / capacity_granularity);
         static_assert(sizeof(Team) <=
-                      (max_allocation_size - teams_block_offset) / capacity_granularity);
+                      (max_allocation_size - Teams.block_offset) / capacity_granularity);
         static_assert(sizeof(int32) <=
-                      (max_allocation_size - healths_block_offset) / capacity_granularity);
+                      (max_allocation_size - Healths.block_offset) / capacity_granularity);
         static_assert(sizeof(Handle) <=
-                      (max_allocation_size - parent_handles_block_offset) / capacity_granularity);
+                      (max_allocation_size - ParentHandles.block_offset) / capacity_granularity);
         static_assert(sizeof(int8) <=
-                      (max_allocation_size - awareness_scan_countdowns_counters_block_offset) /
+                      (max_allocation_size - AwarenessScanCountdownsCounters.block_offset) /
                           capacity_granularity);
         static_assert(sizeof(int16) <= (max_allocation_size -
-                                        navigation_update_countdowns_remaining_ticks_block_offset) /
+                                        NavigationUpdateCountdownsRemainingTicks.block_offset) /
                                            capacity_granularity);
         static_assert(sizeof(int16) <=
-                      (max_allocation_size - navigation_update_countdowns_periods_block_offset) /
+                      (max_allocation_size - NavigationUpdateCountdownsPeriods.block_offset) /
                           capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - separation_steering_xs_block_offset) /
+        static_assert(sizeof(float) <= (max_allocation_size - SeparationSteeringXs.block_offset) /
                                            capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - separation_steering_ys_block_offset) /
+        static_assert(sizeof(float) <= (max_allocation_size - SeparationSteeringYs.block_offset) /
                                            capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - separation_steering_zs_block_offset) /
+        static_assert(sizeof(float) <= (max_allocation_size - SeparationSteeringZs.block_offset) /
                                            capacity_granularity);
-        static_assert(sizeof(uint8) <= (max_allocation_size - navigation_risk_tiers_block_offset) /
+        static_assert(sizeof(uint8) <= (max_allocation_size - NavigationRiskTiers.block_offset) /
                                            capacity_granularity);
         static_assert(sizeof(uint8) <=
-                      (max_allocation_size - navigation_lower_risk_scan_counts_block_offset) /
+                      (max_allocation_size - NavigationLowerRiskScanCounts.block_offset) /
                           capacity_granularity);
-        static_assert(sizeof(int8) <=
-                      (max_allocation_size - avoidance_choice_indices_block_offset) /
-                          capacity_granularity);
+        static_assert(sizeof(int8) <= (max_allocation_size - AvoidanceChoiceIndices.block_offset) /
+                                          capacity_granularity);
         static_assert(sizeof(uint8) <=
-                      (max_allocation_size - avoidance_clear_scan_counts_block_offset) /
+                      (max_allocation_size - AvoidanceClearScanCounts.block_offset) /
                           capacity_granularity);
         static_assert(sizeof(int16) <=
-                      (max_allocation_size - attack_reposition_countdowns_counters_block_offset) /
+                      (max_allocation_size - AttackRepositionCountdownsCounters.block_offset) /
                           capacity_granularity);
         static_assert(sizeof(int16) <=
-                      (max_allocation_size - attack_cooldowns_counters_block_offset) /
+                      (max_allocation_size - AttackCooldownsCounters.block_offset) /
                           capacity_granularity);
         static_assert(sizeof(Handle) <=
-                      (max_allocation_size - target_handles_block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - target_locations_xs_block_offset) /
+                      (max_allocation_size - TargetHandles.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - TargetLocationsXs.block_offset) /
                                            capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - target_locations_ys_block_offset) /
+        static_assert(sizeof(float) <= (max_allocation_size - TargetLocationsYs.block_offset) /
                                            capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - target_locations_zs_block_offset) /
+        static_assert(sizeof(float) <= (max_allocation_size - TargetLocationsZs.block_offset) /
                                            capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - target_velocities_xs_block_offset) /
+        static_assert(sizeof(float) <= (max_allocation_size - TargetVelocitiesXs.block_offset) /
                                            capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - target_velocities_ys_block_offset) /
+        static_assert(sizeof(float) <= (max_allocation_size - TargetVelocitiesYs.block_offset) /
                                            capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - target_velocities_zs_block_offset) /
+        static_assert(sizeof(float) <= (max_allocation_size - TargetVelocitiesZs.block_offset) /
                                            capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - target_directions_xs_block_offset) /
+        static_assert(sizeof(float) <= (max_allocation_size - TargetDirectionsXs.block_offset) /
                                            capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - target_directions_ys_block_offset) /
+        static_assert(sizeof(float) <= (max_allocation_size - TargetDirectionsYs.block_offset) /
                                            capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - target_directions_zs_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - intercept_times_block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - target_distance_sq_block_offset) /
+        static_assert(sizeof(float) <= (max_allocation_size - TargetDirectionsZs.block_offset) /
                                            capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - target_distances_block_offset) / capacity_granularity);
+                      (max_allocation_size - InterceptTimes.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - target_radii_block_offset) / capacity_granularity);
+                      (max_allocation_size - TargetDistanceSq.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - TargetDistances.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - TargetRadii.block_offset) / capacity_granularity);
         static_assert(52 <=
-                      (max_allocation_size - ml::soa_storage::layout_align(target_radii_block_end,
-                                                                           allocation_alignment)) /
+                      (max_allocation_size -
+                       ml::soa_storage::layout_align(TargetRadii.block_end, allocation_alignment)) /
                           (column_gap + allocation_alignment - 1));
         static_assert(max_capacity >= capacity_granularity);
         return true;
@@ -2342,68 +1736,67 @@ struct SingleAllocationEntityDataStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        using Pointers = DataPointers<Byte>;
-        auto const pointer_at = [data]<typename T>(byte_size_type const offset) noexcept {
-            return std::launder(
-                reinterpret_cast<typename Pointers::template Element<T>*>(data + offset));
+        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+            using Column = std::remove_cvref_t<decltype(column)>;
+            using Pointer = std::conditional_t<std::is_const_v<Byte>,
+                                               typename Column::const_pointer,
+                                               typename Column::pointer>;
+            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
         };
         return {
-            pointer_at.template operator()<Handle>(entity_handles_offset(blocks)),
-            pointer_at.template operator()<uint32>(integral_biases_offset(blocks)),
-            pointer_at.template operator()<float>(float_biases_offset(blocks)),
-            pointer_at.template operator()<Task>(tasks_offset(blocks)),
-            pointer_at.template operator()<float>(locations_xs_offset(blocks)),
-            pointer_at.template operator()<float>(locations_ys_offset(blocks)),
-            pointer_at.template operator()<float>(locations_zs_offset(blocks)),
-            pointer_at.template operator()<float>(desired_move_locations_xs_offset(blocks)),
-            pointer_at.template operator()<float>(desired_move_locations_ys_offset(blocks)),
-            pointer_at.template operator()<float>(desired_move_locations_zs_offset(blocks)),
-            pointer_at.template operator()<float>(aim_directions_xs_offset(blocks)),
-            pointer_at.template operator()<float>(aim_directions_ys_offset(blocks)),
-            pointer_at.template operator()<float>(aim_directions_zs_offset(blocks)),
-            pointer_at.template operator()<float>(desired_aiming_directions_xs_offset(blocks)),
-            pointer_at.template operator()<float>(desired_aiming_directions_ys_offset(blocks)),
-            pointer_at.template operator()<float>(desired_aiming_directions_zs_offset(blocks)),
-            pointer_at.template operator()<float>(movement_directions_xs_offset(blocks)),
-            pointer_at.template operator()<float>(movement_directions_ys_offset(blocks)),
-            pointer_at.template operator()<float>(movement_directions_zs_offset(blocks)),
-            pointer_at.template operator()<float>(velocities_xs_offset(blocks)),
-            pointer_at.template operator()<float>(velocities_ys_offset(blocks)),
-            pointer_at.template operator()<float>(velocities_zs_offset(blocks)),
-            pointer_at.template operator()<float>(move_distances_offset(blocks)),
-            pointer_at.template operator()<float>(speeds_offset(blocks)),
-            pointer_at.template operator()<Team>(teams_offset(blocks)),
-            pointer_at.template operator()<int32>(healths_offset(blocks)),
-            pointer_at.template operator()<Handle>(parent_handles_offset(blocks)),
-            pointer_at.template operator()<int8>(awareness_scan_countdowns_counters_offset(blocks)),
-            pointer_at.template operator()<int16>(
-                navigation_update_countdowns_remaining_ticks_offset(blocks)),
-            pointer_at.template operator()<int16>(
-                navigation_update_countdowns_periods_offset(blocks)),
-            pointer_at.template operator()<float>(separation_steering_xs_offset(blocks)),
-            pointer_at.template operator()<float>(separation_steering_ys_offset(blocks)),
-            pointer_at.template operator()<float>(separation_steering_zs_offset(blocks)),
-            pointer_at.template operator()<uint8>(navigation_risk_tiers_offset(blocks)),
-            pointer_at.template operator()<uint8>(navigation_lower_risk_scan_counts_offset(blocks)),
-            pointer_at.template operator()<int8>(avoidance_choice_indices_offset(blocks)),
-            pointer_at.template operator()<uint8>(avoidance_clear_scan_counts_offset(blocks)),
-            pointer_at.template operator()<int16>(
-                attack_reposition_countdowns_counters_offset(blocks)),
-            pointer_at.template operator()<int16>(attack_cooldowns_counters_offset(blocks)),
-            pointer_at.template operator()<Handle>(target_handles_offset(blocks)),
-            pointer_at.template operator()<float>(target_locations_xs_offset(blocks)),
-            pointer_at.template operator()<float>(target_locations_ys_offset(blocks)),
-            pointer_at.template operator()<float>(target_locations_zs_offset(blocks)),
-            pointer_at.template operator()<float>(target_velocities_xs_offset(blocks)),
-            pointer_at.template operator()<float>(target_velocities_ys_offset(blocks)),
-            pointer_at.template operator()<float>(target_velocities_zs_offset(blocks)),
-            pointer_at.template operator()<float>(target_directions_xs_offset(blocks)),
-            pointer_at.template operator()<float>(target_directions_ys_offset(blocks)),
-            pointer_at.template operator()<float>(target_directions_zs_offset(blocks)),
-            pointer_at.template operator()<float>(intercept_times_offset(blocks)),
-            pointer_at.template operator()<float>(target_distance_sq_offset(blocks)),
-            pointer_at.template operator()<float>(target_distances_offset(blocks)),
-            pointer_at.template operator()<float>(target_radii_offset(blocks)),
+            pointer_at(EntityHandles),
+            pointer_at(IntegralBiases),
+            pointer_at(FloatBiases),
+            pointer_at(Tasks),
+            pointer_at(LocationsXs),
+            pointer_at(LocationsYs),
+            pointer_at(LocationsZs),
+            pointer_at(DesiredMoveLocationsXs),
+            pointer_at(DesiredMoveLocationsYs),
+            pointer_at(DesiredMoveLocationsZs),
+            pointer_at(AimDirectionsXs),
+            pointer_at(AimDirectionsYs),
+            pointer_at(AimDirectionsZs),
+            pointer_at(DesiredAimingDirectionsXs),
+            pointer_at(DesiredAimingDirectionsYs),
+            pointer_at(DesiredAimingDirectionsZs),
+            pointer_at(MovementDirectionsXs),
+            pointer_at(MovementDirectionsYs),
+            pointer_at(MovementDirectionsZs),
+            pointer_at(VelocitiesXs),
+            pointer_at(VelocitiesYs),
+            pointer_at(VelocitiesZs),
+            pointer_at(MoveDistances),
+            pointer_at(Speeds),
+            pointer_at(Teams),
+            pointer_at(Healths),
+            pointer_at(ParentHandles),
+            pointer_at(AwarenessScanCountdownsCounters),
+            pointer_at(NavigationUpdateCountdownsRemainingTicks),
+            pointer_at(NavigationUpdateCountdownsPeriods),
+            pointer_at(SeparationSteeringXs),
+            pointer_at(SeparationSteeringYs),
+            pointer_at(SeparationSteeringZs),
+            pointer_at(NavigationRiskTiers),
+            pointer_at(NavigationLowerRiskScanCounts),
+            pointer_at(AvoidanceChoiceIndices),
+            pointer_at(AvoidanceClearScanCounts),
+            pointer_at(AttackRepositionCountdownsCounters),
+            pointer_at(AttackCooldownsCounters),
+            pointer_at(TargetHandles),
+            pointer_at(TargetLocationsXs),
+            pointer_at(TargetLocationsYs),
+            pointer_at(TargetLocationsZs),
+            pointer_at(TargetVelocitiesXs),
+            pointer_at(TargetVelocitiesYs),
+            pointer_at(TargetVelocitiesZs),
+            pointer_at(TargetDirectionsXs),
+            pointer_at(TargetDirectionsYs),
+            pointer_at(TargetDirectionsZs),
+            pointer_at(InterceptTimes),
+            pointer_at(TargetDistanceSq),
+            pointer_at(TargetDistances),
+            pointer_at(TargetRadii),
         };
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
@@ -2941,20 +2334,20 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
     }
     auto entity_handles() const -> TArrayView<Handle const> {
         return {
-            column_data<Handle>(EntityDataSingleLayout::entity_handles_offset(capacity_blocks())),
+            column_data<Handle>(EntityDataSingleLayout::EntityHandles.offset(capacity_blocks())),
             count_};
     }
     auto integral_biases() const -> TArrayView<uint32 const> {
         return {
-            column_data<uint32>(EntityDataSingleLayout::integral_biases_offset(capacity_blocks())),
+            column_data<uint32>(EntityDataSingleLayout::IntegralBiases.offset(capacity_blocks())),
             count_};
     }
     auto float_biases() const -> TArrayView<float const> {
-        return {column_data<float>(EntityDataSingleLayout::float_biases_offset(capacity_blocks())),
+        return {column_data<float>(EntityDataSingleLayout::FloatBiases.offset(capacity_blocks())),
                 count_};
     }
     auto tasks() const -> TArrayView<Task const> {
-        return {column_data<Task>(EntityDataSingleLayout::tasks_offset(capacity_blocks())), count_};
+        return {column_data<Task>(EntityDataSingleLayout::Tasks.offset(capacity_blocks())), count_};
     }
     auto view_locations() const -> ml::soa::Vector3ConstView<float> {
         validate();
@@ -2962,8 +2355,8 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{EntityDataSingleLayout::locations_xs_offset(blocks)};
-        auto const stride{EntityDataSingleLayout::locations_ys_offset(blocks) - first};
+        auto const first{EntityDataSingleLayout::LocationsXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::LocationsYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto view_desired_move_locations() const -> ml::soa::Vector3ConstView<float> {
@@ -2972,8 +2365,8 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{EntityDataSingleLayout::desired_move_locations_xs_offset(blocks)};
-        auto const stride{EntityDataSingleLayout::desired_move_locations_ys_offset(blocks) - first};
+        auto const first{EntityDataSingleLayout::DesiredMoveLocationsXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::DesiredMoveLocationsYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto view_aim_directions() const -> ml::soa::Vector3ConstView<float> {
@@ -2982,8 +2375,8 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{EntityDataSingleLayout::aim_directions_xs_offset(blocks)};
-        auto const stride{EntityDataSingleLayout::aim_directions_ys_offset(blocks) - first};
+        auto const first{EntityDataSingleLayout::AimDirectionsXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::AimDirectionsYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto view_desired_aiming_directions() const -> ml::soa::Vector3ConstView<float> {
@@ -2992,9 +2385,8 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{EntityDataSingleLayout::desired_aiming_directions_xs_offset(blocks)};
-        auto const stride{EntityDataSingleLayout::desired_aiming_directions_ys_offset(blocks) -
-                          first};
+        auto const first{EntityDataSingleLayout::DesiredAimingDirectionsXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::DesiredAimingDirectionsYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto view_movement_directions() const -> ml::soa::Vector3ConstView<float> {
@@ -3003,8 +2395,8 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{EntityDataSingleLayout::movement_directions_xs_offset(blocks)};
-        auto const stride{EntityDataSingleLayout::movement_directions_ys_offset(blocks) - first};
+        auto const first{EntityDataSingleLayout::MovementDirectionsXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::MovementDirectionsYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto view_velocities() const -> ml::soa::Vector3ConstView<float> {
@@ -3013,29 +2405,28 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{EntityDataSingleLayout::velocities_xs_offset(blocks)};
-        auto const stride{EntityDataSingleLayout::velocities_ys_offset(blocks) - first};
+        auto const first{EntityDataSingleLayout::VelocitiesXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::VelocitiesYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto move_distances() const -> TArrayView<float const> {
-        return {
-            column_data<float>(EntityDataSingleLayout::move_distances_offset(capacity_blocks())),
-            count_};
+        return {column_data<float>(EntityDataSingleLayout::MoveDistances.offset(capacity_blocks())),
+                count_};
     }
     auto speeds() const -> TArrayView<float const> {
-        return {column_data<float>(EntityDataSingleLayout::speeds_offset(capacity_blocks())),
+        return {column_data<float>(EntityDataSingleLayout::Speeds.offset(capacity_blocks())),
                 count_};
     }
     auto teams() const -> TArrayView<Team const> {
-        return {column_data<Team>(EntityDataSingleLayout::teams_offset(capacity_blocks())), count_};
+        return {column_data<Team>(EntityDataSingleLayout::Teams.offset(capacity_blocks())), count_};
     }
     auto healths() const -> TArrayView<int32 const> {
-        return {column_data<int32>(EntityDataSingleLayout::healths_offset(capacity_blocks())),
+        return {column_data<int32>(EntityDataSingleLayout::Healths.offset(capacity_blocks())),
                 count_};
     }
     auto parent_handles() const -> TArrayView<Handle const> {
         return {
-            column_data<Handle>(EntityDataSingleLayout::parent_handles_offset(capacity_blocks())),
+            column_data<Handle>(EntityDataSingleLayout::ParentHandles.offset(capacity_blocks())),
             count_};
     }
     auto view_awareness_scan_countdowns() const -> Countdown8ConstView {
@@ -3046,7 +2437,7 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
         auto const blocks{capacity_blocks()};
         return Countdown8ConstView{
             {column_data_unchecked<int8>(
-                 EntityDataSingleLayout::awareness_scan_countdowns_counters_offset(blocks)),
+                 EntityDataSingleLayout::AwarenessScanCountdownsCounters.offset(blocks)),
              count_}};
     }
     auto view_navigation_update_countdowns() const -> PeriodicCountdown16ConstView {
@@ -3057,11 +2448,10 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
         auto const blocks{capacity_blocks()};
         return PeriodicCountdown16ConstView{
             {column_data_unchecked<int16>(
-                 EntityDataSingleLayout::navigation_update_countdowns_remaining_ticks_offset(
-                     blocks)),
+                 EntityDataSingleLayout::NavigationUpdateCountdownsRemainingTicks.offset(blocks)),
              count_},
             {column_data_unchecked<int16>(
-                 EntityDataSingleLayout::navigation_update_countdowns_periods_offset(blocks)),
+                 EntityDataSingleLayout::NavigationUpdateCountdownsPeriods.offset(blocks)),
              count_}};
     }
     auto view_separation_steering() const -> ml::soa::Vector3ConstView<float> {
@@ -3070,28 +2460,28 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{EntityDataSingleLayout::separation_steering_xs_offset(blocks)};
-        auto const stride{EntityDataSingleLayout::separation_steering_ys_offset(blocks) - first};
+        auto const first{EntityDataSingleLayout::SeparationSteeringXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::SeparationSteeringYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto navigation_risk_tiers() const -> TArrayView<uint8 const> {
         return {column_data<uint8>(
-                    EntityDataSingleLayout::navigation_risk_tiers_offset(capacity_blocks())),
+                    EntityDataSingleLayout::NavigationRiskTiers.offset(capacity_blocks())),
                 count_};
     }
     auto navigation_lower_risk_scan_counts() const -> TArrayView<uint8 const> {
-        return {column_data<uint8>(EntityDataSingleLayout::navigation_lower_risk_scan_counts_offset(
+        return {column_data<uint8>(EntityDataSingleLayout::NavigationLowerRiskScanCounts.offset(
                     capacity_blocks())),
                 count_};
     }
     auto avoidance_choice_indices() const -> TArrayView<int8 const> {
         return {column_data<int8>(
-                    EntityDataSingleLayout::avoidance_choice_indices_offset(capacity_blocks())),
+                    EntityDataSingleLayout::AvoidanceChoiceIndices.offset(capacity_blocks())),
                 count_};
     }
     auto avoidance_clear_scan_counts() const -> TArrayView<uint8 const> {
         return {column_data<uint8>(
-                    EntityDataSingleLayout::avoidance_clear_scan_counts_offset(capacity_blocks())),
+                    EntityDataSingleLayout::AvoidanceClearScanCounts.offset(capacity_blocks())),
                 count_};
     }
     auto view_attack_reposition_countdowns() const -> Countdown16ConstView {
@@ -3102,7 +2492,7 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
         auto const blocks{capacity_blocks()};
         return Countdown16ConstView{
             {column_data_unchecked<int16>(
-                 EntityDataSingleLayout::attack_reposition_countdowns_counters_offset(blocks)),
+                 EntityDataSingleLayout::AttackRepositionCountdownsCounters.offset(blocks)),
              count_}};
     }
     auto view_attack_cooldowns() const -> Countdown16ConstView {
@@ -3113,12 +2503,12 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
         auto const blocks{capacity_blocks()};
         return Countdown16ConstView{
             {column_data_unchecked<int16>(
-                 EntityDataSingleLayout::attack_cooldowns_counters_offset(blocks)),
+                 EntityDataSingleLayout::AttackCooldownsCounters.offset(blocks)),
              count_}};
     }
     auto target_handles() const -> TArrayView<Handle const> {
         return {
-            column_data<Handle>(EntityDataSingleLayout::target_handles_offset(capacity_blocks())),
+            column_data<Handle>(EntityDataSingleLayout::TargetHandles.offset(capacity_blocks())),
             count_};
     }
     auto view_target_locations() const -> ml::soa::Vector3ConstView<float> {
@@ -3127,8 +2517,8 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{EntityDataSingleLayout::target_locations_xs_offset(blocks)};
-        auto const stride{EntityDataSingleLayout::target_locations_ys_offset(blocks) - first};
+        auto const first{EntityDataSingleLayout::TargetLocationsXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::TargetLocationsYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto view_target_velocities() const -> ml::soa::Vector3ConstView<float> {
@@ -3137,8 +2527,8 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{EntityDataSingleLayout::target_velocities_xs_offset(blocks)};
-        auto const stride{EntityDataSingleLayout::target_velocities_ys_offset(blocks) - first};
+        auto const first{EntityDataSingleLayout::TargetVelocitiesXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::TargetVelocitiesYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto view_target_directions() const -> ml::soa::Vector3ConstView<float> {
@@ -3147,27 +2537,27 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{EntityDataSingleLayout::target_directions_xs_offset(blocks)};
-        auto const stride{EntityDataSingleLayout::target_directions_ys_offset(blocks) - first};
+        auto const first{EntityDataSingleLayout::TargetDirectionsXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::TargetDirectionsYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto intercept_times() const -> TArrayView<float const> {
         return {
-            column_data<float>(EntityDataSingleLayout::intercept_times_offset(capacity_blocks())),
+            column_data<float>(EntityDataSingleLayout::InterceptTimes.offset(capacity_blocks())),
             count_};
     }
     auto target_distance_sq() const -> TArrayView<float const> {
-        return {column_data<float>(
-                    EntityDataSingleLayout::target_distance_sq_offset(capacity_blocks())),
-                count_};
+        return {
+            column_data<float>(EntityDataSingleLayout::TargetDistanceSq.offset(capacity_blocks())),
+            count_};
     }
     auto target_distances() const -> TArrayView<float const> {
         return {
-            column_data<float>(EntityDataSingleLayout::target_distances_offset(capacity_blocks())),
+            column_data<float>(EntityDataSingleLayout::TargetDistances.offset(capacity_blocks())),
             count_};
     }
     auto target_radii() const -> TArrayView<float const> {
-        return {column_data<float>(EntityDataSingleLayout::target_radii_offset(capacity_blocks())),
+        return {column_data<float>(EntityDataSingleLayout::TargetRadii.offset(capacity_blocks())),
                 count_};
     }
     auto columns() const -> EntityDataConstView {
@@ -3177,149 +2567,147 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
         }
         auto const blocks{capacity_blocks()};
         return EntityDataConstView{
-            {column_data_unchecked<Handle>(EntityDataSingleLayout::entity_handles_offset(blocks)),
+            {column_data_unchecked<Handle>(EntityDataSingleLayout::EntityHandles.offset(blocks)),
              count_},
-            {column_data_unchecked<uint32>(EntityDataSingleLayout::integral_biases_offset(blocks)),
+            {column_data_unchecked<uint32>(EntityDataSingleLayout::IntegralBiases.offset(blocks)),
              count_},
-            {column_data_unchecked<float>(EntityDataSingleLayout::float_biases_offset(blocks)),
+            {column_data_unchecked<float>(EntityDataSingleLayout::FloatBiases.offset(blocks)),
              count_},
-            {column_data_unchecked<Task>(EntityDataSingleLayout::tasks_offset(blocks)), count_},
+            {column_data_unchecked<Task>(EntityDataSingleLayout::Tasks.offset(blocks)), count_},
             VectorsConstView{
-                {column_data_unchecked<float>(EntityDataSingleLayout::locations_xs_offset(blocks)),
+                {column_data_unchecked<float>(EntityDataSingleLayout::LocationsXs.offset(blocks)),
                  count_},
-                {column_data_unchecked<float>(EntityDataSingleLayout::locations_ys_offset(blocks)),
+                {column_data_unchecked<float>(EntityDataSingleLayout::LocationsYs.offset(blocks)),
                  count_},
-                {column_data_unchecked<float>(EntityDataSingleLayout::locations_zs_offset(blocks)),
+                {column_data_unchecked<float>(EntityDataSingleLayout::LocationsZs.offset(blocks)),
                  count_}},
             VectorsConstView{{column_data_unchecked<float>(
-                                  EntityDataSingleLayout::desired_move_locations_xs_offset(blocks)),
+                                  EntityDataSingleLayout::DesiredMoveLocationsXs.offset(blocks)),
                               count_},
                              {column_data_unchecked<float>(
-                                  EntityDataSingleLayout::desired_move_locations_ys_offset(blocks)),
+                                  EntityDataSingleLayout::DesiredMoveLocationsYs.offset(blocks)),
                               count_},
                              {column_data_unchecked<float>(
-                                  EntityDataSingleLayout::desired_move_locations_zs_offset(blocks)),
+                                  EntityDataSingleLayout::DesiredMoveLocationsZs.offset(blocks)),
                               count_}},
             VectorsConstView{{column_data_unchecked<float>(
-                                  EntityDataSingleLayout::aim_directions_xs_offset(blocks)),
+                                  EntityDataSingleLayout::AimDirectionsXs.offset(blocks)),
                               count_},
                              {column_data_unchecked<float>(
-                                  EntityDataSingleLayout::aim_directions_ys_offset(blocks)),
+                                  EntityDataSingleLayout::AimDirectionsYs.offset(blocks)),
                               count_},
                              {column_data_unchecked<float>(
-                                  EntityDataSingleLayout::aim_directions_zs_offset(blocks)),
+                                  EntityDataSingleLayout::AimDirectionsZs.offset(blocks)),
                               count_}},
-            VectorsConstView{
-                {column_data_unchecked<float>(
-                     EntityDataSingleLayout::desired_aiming_directions_xs_offset(blocks)),
-                 count_},
-                {column_data_unchecked<float>(
-                     EntityDataSingleLayout::desired_aiming_directions_ys_offset(blocks)),
-                 count_},
-                {column_data_unchecked<float>(
-                     EntityDataSingleLayout::desired_aiming_directions_zs_offset(blocks)),
-                 count_}},
             VectorsConstView{{column_data_unchecked<float>(
-                                  EntityDataSingleLayout::movement_directions_xs_offset(blocks)),
+                                  EntityDataSingleLayout::DesiredAimingDirectionsXs.offset(blocks)),
                               count_},
                              {column_data_unchecked<float>(
-                                  EntityDataSingleLayout::movement_directions_ys_offset(blocks)),
+                                  EntityDataSingleLayout::DesiredAimingDirectionsYs.offset(blocks)),
                               count_},
                              {column_data_unchecked<float>(
-                                  EntityDataSingleLayout::movement_directions_zs_offset(blocks)),
+                                  EntityDataSingleLayout::DesiredAimingDirectionsZs.offset(blocks)),
+                              count_}},
+            VectorsConstView{{column_data_unchecked<float>(
+                                  EntityDataSingleLayout::MovementDirectionsXs.offset(blocks)),
+                              count_},
+                             {column_data_unchecked<float>(
+                                  EntityDataSingleLayout::MovementDirectionsYs.offset(blocks)),
+                              count_},
+                             {column_data_unchecked<float>(
+                                  EntityDataSingleLayout::MovementDirectionsZs.offset(blocks)),
                               count_}},
             VectorsConstView{
-                {column_data_unchecked<float>(EntityDataSingleLayout::velocities_xs_offset(blocks)),
+                {column_data_unchecked<float>(EntityDataSingleLayout::VelocitiesXs.offset(blocks)),
                  count_},
-                {column_data_unchecked<float>(EntityDataSingleLayout::velocities_ys_offset(blocks)),
+                {column_data_unchecked<float>(EntityDataSingleLayout::VelocitiesYs.offset(blocks)),
                  count_},
-                {column_data_unchecked<float>(EntityDataSingleLayout::velocities_zs_offset(blocks)),
+                {column_data_unchecked<float>(EntityDataSingleLayout::VelocitiesZs.offset(blocks)),
                  count_}},
-            {column_data_unchecked<float>(EntityDataSingleLayout::move_distances_offset(blocks)),
+            {column_data_unchecked<float>(EntityDataSingleLayout::MoveDistances.offset(blocks)),
              count_},
-            {column_data_unchecked<float>(EntityDataSingleLayout::speeds_offset(blocks)), count_},
-            {column_data_unchecked<Team>(EntityDataSingleLayout::teams_offset(blocks)), count_},
-            {column_data_unchecked<int32>(EntityDataSingleLayout::healths_offset(blocks)), count_},
-            {column_data_unchecked<Handle>(EntityDataSingleLayout::parent_handles_offset(blocks)),
+            {column_data_unchecked<float>(EntityDataSingleLayout::Speeds.offset(blocks)), count_},
+            {column_data_unchecked<Team>(EntityDataSingleLayout::Teams.offset(blocks)), count_},
+            {column_data_unchecked<int32>(EntityDataSingleLayout::Healths.offset(blocks)), count_},
+            {column_data_unchecked<Handle>(EntityDataSingleLayout::ParentHandles.offset(blocks)),
              count_},
             Countdown8ConstView{
                 {column_data_unchecked<int8>(
-                     EntityDataSingleLayout::awareness_scan_countdowns_counters_offset(blocks)),
+                     EntityDataSingleLayout::AwarenessScanCountdownsCounters.offset(blocks)),
                  count_}},
             PeriodicCountdown16ConstView{
                 {column_data_unchecked<int16>(
-                     EntityDataSingleLayout::navigation_update_countdowns_remaining_ticks_offset(
+                     EntityDataSingleLayout::NavigationUpdateCountdownsRemainingTicks.offset(
                          blocks)),
                  count_},
                 {column_data_unchecked<int16>(
-                     EntityDataSingleLayout::navigation_update_countdowns_periods_offset(blocks)),
+                     EntityDataSingleLayout::NavigationUpdateCountdownsPeriods.offset(blocks)),
                  count_}},
             VectorsConstView{{column_data_unchecked<float>(
-                                  EntityDataSingleLayout::separation_steering_xs_offset(blocks)),
+                                  EntityDataSingleLayout::SeparationSteeringXs.offset(blocks)),
                               count_},
                              {column_data_unchecked<float>(
-                                  EntityDataSingleLayout::separation_steering_ys_offset(blocks)),
+                                  EntityDataSingleLayout::SeparationSteeringYs.offset(blocks)),
                               count_},
                              {column_data_unchecked<float>(
-                                  EntityDataSingleLayout::separation_steering_zs_offset(blocks)),
+                                  EntityDataSingleLayout::SeparationSteeringZs.offset(blocks)),
                               count_}},
             {column_data_unchecked<uint8>(
-                 EntityDataSingleLayout::navigation_risk_tiers_offset(blocks)),
+                 EntityDataSingleLayout::NavigationRiskTiers.offset(blocks)),
              count_},
             {column_data_unchecked<uint8>(
-                 EntityDataSingleLayout::navigation_lower_risk_scan_counts_offset(blocks)),
+                 EntityDataSingleLayout::NavigationLowerRiskScanCounts.offset(blocks)),
              count_},
             {column_data_unchecked<int8>(
-                 EntityDataSingleLayout::avoidance_choice_indices_offset(blocks)),
+                 EntityDataSingleLayout::AvoidanceChoiceIndices.offset(blocks)),
              count_},
             {column_data_unchecked<uint8>(
-                 EntityDataSingleLayout::avoidance_clear_scan_counts_offset(blocks)),
+                 EntityDataSingleLayout::AvoidanceClearScanCounts.offset(blocks)),
              count_},
             Countdown16ConstView{
                 {column_data_unchecked<int16>(
-                     EntityDataSingleLayout::attack_reposition_countdowns_counters_offset(blocks)),
+                     EntityDataSingleLayout::AttackRepositionCountdownsCounters.offset(blocks)),
                  count_}},
             Countdown16ConstView{
                 {column_data_unchecked<int16>(
-                     EntityDataSingleLayout::attack_cooldowns_counters_offset(blocks)),
+                     EntityDataSingleLayout::AttackCooldownsCounters.offset(blocks)),
                  count_}},
-            {column_data_unchecked<Handle>(EntityDataSingleLayout::target_handles_offset(blocks)),
+            {column_data_unchecked<Handle>(EntityDataSingleLayout::TargetHandles.offset(blocks)),
              count_},
             VectorsConstView{{column_data_unchecked<float>(
-                                  EntityDataSingleLayout::target_locations_xs_offset(blocks)),
+                                  EntityDataSingleLayout::TargetLocationsXs.offset(blocks)),
                               count_},
                              {column_data_unchecked<float>(
-                                  EntityDataSingleLayout::target_locations_ys_offset(blocks)),
+                                  EntityDataSingleLayout::TargetLocationsYs.offset(blocks)),
                               count_},
                              {column_data_unchecked<float>(
-                                  EntityDataSingleLayout::target_locations_zs_offset(blocks)),
+                                  EntityDataSingleLayout::TargetLocationsZs.offset(blocks)),
                               count_}},
             VectorsConstView{{column_data_unchecked<float>(
-                                  EntityDataSingleLayout::target_velocities_xs_offset(blocks)),
+                                  EntityDataSingleLayout::TargetVelocitiesXs.offset(blocks)),
                               count_},
                              {column_data_unchecked<float>(
-                                  EntityDataSingleLayout::target_velocities_ys_offset(blocks)),
+                                  EntityDataSingleLayout::TargetVelocitiesYs.offset(blocks)),
                               count_},
                              {column_data_unchecked<float>(
-                                  EntityDataSingleLayout::target_velocities_zs_offset(blocks)),
+                                  EntityDataSingleLayout::TargetVelocitiesZs.offset(blocks)),
                               count_}},
             VectorsConstView{{column_data_unchecked<float>(
-                                  EntityDataSingleLayout::target_directions_xs_offset(blocks)),
+                                  EntityDataSingleLayout::TargetDirectionsXs.offset(blocks)),
                               count_},
                              {column_data_unchecked<float>(
-                                  EntityDataSingleLayout::target_directions_ys_offset(blocks)),
+                                  EntityDataSingleLayout::TargetDirectionsYs.offset(blocks)),
                               count_},
                              {column_data_unchecked<float>(
-                                  EntityDataSingleLayout::target_directions_zs_offset(blocks)),
+                                  EntityDataSingleLayout::TargetDirectionsZs.offset(blocks)),
                               count_}},
-            {column_data_unchecked<float>(EntityDataSingleLayout::intercept_times_offset(blocks)),
+            {column_data_unchecked<float>(EntityDataSingleLayout::InterceptTimes.offset(blocks)),
              count_},
-            {column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_distance_sq_offset(blocks)),
+            {column_data_unchecked<float>(EntityDataSingleLayout::TargetDistanceSq.offset(blocks)),
              count_},
-            {column_data_unchecked<float>(EntityDataSingleLayout::target_distances_offset(blocks)),
+            {column_data_unchecked<float>(EntityDataSingleLayout::TargetDistances.offset(blocks)),
              count_},
-            {column_data_unchecked<float>(EntityDataSingleLayout::target_radii_offset(blocks)),
+            {column_data_unchecked<float>(EntityDataSingleLayout::TargetRadii.offset(blocks)),
              count_}};
     }
     template <typename Func>
@@ -3342,20 +2730,20 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
     }
     auto entity_handles() const -> TArrayView<Handle> {
         return {
-            column_data<Handle>(EntityDataSingleLayout::entity_handles_offset(capacity_blocks())),
+            column_data<Handle>(EntityDataSingleLayout::EntityHandles.offset(capacity_blocks())),
             count_};
     }
     auto integral_biases() const -> TArrayView<uint32> {
         return {
-            column_data<uint32>(EntityDataSingleLayout::integral_biases_offset(capacity_blocks())),
+            column_data<uint32>(EntityDataSingleLayout::IntegralBiases.offset(capacity_blocks())),
             count_};
     }
     auto float_biases() const -> TArrayView<float> {
-        return {column_data<float>(EntityDataSingleLayout::float_biases_offset(capacity_blocks())),
+        return {column_data<float>(EntityDataSingleLayout::FloatBiases.offset(capacity_blocks())),
                 count_};
     }
     auto tasks() const -> TArrayView<Task> {
-        return {column_data<Task>(EntityDataSingleLayout::tasks_offset(capacity_blocks())), count_};
+        return {column_data<Task>(EntityDataSingleLayout::Tasks.offset(capacity_blocks())), count_};
     }
     auto view_locations() const -> ml::soa::Vector3View<float> {
         validate();
@@ -3363,8 +2751,8 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{EntityDataSingleLayout::locations_xs_offset(blocks)};
-        auto const stride{EntityDataSingleLayout::locations_ys_offset(blocks) - first};
+        auto const first{EntityDataSingleLayout::LocationsXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::LocationsYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto view_desired_move_locations() const -> ml::soa::Vector3View<float> {
@@ -3373,8 +2761,8 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{EntityDataSingleLayout::desired_move_locations_xs_offset(blocks)};
-        auto const stride{EntityDataSingleLayout::desired_move_locations_ys_offset(blocks) - first};
+        auto const first{EntityDataSingleLayout::DesiredMoveLocationsXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::DesiredMoveLocationsYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto view_aim_directions() const -> ml::soa::Vector3View<float> {
@@ -3383,8 +2771,8 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{EntityDataSingleLayout::aim_directions_xs_offset(blocks)};
-        auto const stride{EntityDataSingleLayout::aim_directions_ys_offset(blocks) - first};
+        auto const first{EntityDataSingleLayout::AimDirectionsXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::AimDirectionsYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto view_desired_aiming_directions() const -> ml::soa::Vector3View<float> {
@@ -3393,9 +2781,8 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{EntityDataSingleLayout::desired_aiming_directions_xs_offset(blocks)};
-        auto const stride{EntityDataSingleLayout::desired_aiming_directions_ys_offset(blocks) -
-                          first};
+        auto const first{EntityDataSingleLayout::DesiredAimingDirectionsXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::DesiredAimingDirectionsYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto view_movement_directions() const -> ml::soa::Vector3View<float> {
@@ -3404,8 +2791,8 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{EntityDataSingleLayout::movement_directions_xs_offset(blocks)};
-        auto const stride{EntityDataSingleLayout::movement_directions_ys_offset(blocks) - first};
+        auto const first{EntityDataSingleLayout::MovementDirectionsXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::MovementDirectionsYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto view_velocities() const -> ml::soa::Vector3View<float> {
@@ -3414,29 +2801,28 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{EntityDataSingleLayout::velocities_xs_offset(blocks)};
-        auto const stride{EntityDataSingleLayout::velocities_ys_offset(blocks) - first};
+        auto const first{EntityDataSingleLayout::VelocitiesXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::VelocitiesYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto move_distances() const -> TArrayView<float> {
-        return {
-            column_data<float>(EntityDataSingleLayout::move_distances_offset(capacity_blocks())),
-            count_};
+        return {column_data<float>(EntityDataSingleLayout::MoveDistances.offset(capacity_blocks())),
+                count_};
     }
     auto speeds() const -> TArrayView<float> {
-        return {column_data<float>(EntityDataSingleLayout::speeds_offset(capacity_blocks())),
+        return {column_data<float>(EntityDataSingleLayout::Speeds.offset(capacity_blocks())),
                 count_};
     }
     auto teams() const -> TArrayView<Team> {
-        return {column_data<Team>(EntityDataSingleLayout::teams_offset(capacity_blocks())), count_};
+        return {column_data<Team>(EntityDataSingleLayout::Teams.offset(capacity_blocks())), count_};
     }
     auto healths() const -> TArrayView<int32> {
-        return {column_data<int32>(EntityDataSingleLayout::healths_offset(capacity_blocks())),
+        return {column_data<int32>(EntityDataSingleLayout::Healths.offset(capacity_blocks())),
                 count_};
     }
     auto parent_handles() const -> TArrayView<Handle> {
         return {
-            column_data<Handle>(EntityDataSingleLayout::parent_handles_offset(capacity_blocks())),
+            column_data<Handle>(EntityDataSingleLayout::ParentHandles.offset(capacity_blocks())),
             count_};
     }
     auto view_awareness_scan_countdowns() const -> Countdown8View {
@@ -3447,7 +2833,7 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
         auto const blocks{capacity_blocks()};
         return Countdown8View{
             {column_data_unchecked<int8>(
-                 EntityDataSingleLayout::awareness_scan_countdowns_counters_offset(blocks)),
+                 EntityDataSingleLayout::AwarenessScanCountdownsCounters.offset(blocks)),
              count_}};
     }
     auto view_navigation_update_countdowns() const -> PeriodicCountdown16View {
@@ -3458,11 +2844,10 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
         auto const blocks{capacity_blocks()};
         return PeriodicCountdown16View{
             {column_data_unchecked<int16>(
-                 EntityDataSingleLayout::navigation_update_countdowns_remaining_ticks_offset(
-                     blocks)),
+                 EntityDataSingleLayout::NavigationUpdateCountdownsRemainingTicks.offset(blocks)),
              count_},
             {column_data_unchecked<int16>(
-                 EntityDataSingleLayout::navigation_update_countdowns_periods_offset(blocks)),
+                 EntityDataSingleLayout::NavigationUpdateCountdownsPeriods.offset(blocks)),
              count_}};
     }
     auto view_separation_steering() const -> ml::soa::Vector3View<float> {
@@ -3471,28 +2856,28 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{EntityDataSingleLayout::separation_steering_xs_offset(blocks)};
-        auto const stride{EntityDataSingleLayout::separation_steering_ys_offset(blocks) - first};
+        auto const first{EntityDataSingleLayout::SeparationSteeringXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::SeparationSteeringYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto navigation_risk_tiers() const -> TArrayView<uint8> {
         return {column_data<uint8>(
-                    EntityDataSingleLayout::navigation_risk_tiers_offset(capacity_blocks())),
+                    EntityDataSingleLayout::NavigationRiskTiers.offset(capacity_blocks())),
                 count_};
     }
     auto navigation_lower_risk_scan_counts() const -> TArrayView<uint8> {
-        return {column_data<uint8>(EntityDataSingleLayout::navigation_lower_risk_scan_counts_offset(
+        return {column_data<uint8>(EntityDataSingleLayout::NavigationLowerRiskScanCounts.offset(
                     capacity_blocks())),
                 count_};
     }
     auto avoidance_choice_indices() const -> TArrayView<int8> {
         return {column_data<int8>(
-                    EntityDataSingleLayout::avoidance_choice_indices_offset(capacity_blocks())),
+                    EntityDataSingleLayout::AvoidanceChoiceIndices.offset(capacity_blocks())),
                 count_};
     }
     auto avoidance_clear_scan_counts() const -> TArrayView<uint8> {
         return {column_data<uint8>(
-                    EntityDataSingleLayout::avoidance_clear_scan_counts_offset(capacity_blocks())),
+                    EntityDataSingleLayout::AvoidanceClearScanCounts.offset(capacity_blocks())),
                 count_};
     }
     auto view_attack_reposition_countdowns() const -> Countdown16View {
@@ -3503,7 +2888,7 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
         auto const blocks{capacity_blocks()};
         return Countdown16View{
             {column_data_unchecked<int16>(
-                 EntityDataSingleLayout::attack_reposition_countdowns_counters_offset(blocks)),
+                 EntityDataSingleLayout::AttackRepositionCountdownsCounters.offset(blocks)),
              count_}};
     }
     auto view_attack_cooldowns() const -> Countdown16View {
@@ -3512,14 +2897,13 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        return Countdown16View{
-            {column_data_unchecked<int16>(
-                 EntityDataSingleLayout::attack_cooldowns_counters_offset(blocks)),
-             count_}};
+        return Countdown16View{{column_data_unchecked<int16>(
+                                    EntityDataSingleLayout::AttackCooldownsCounters.offset(blocks)),
+                                count_}};
     }
     auto target_handles() const -> TArrayView<Handle> {
         return {
-            column_data<Handle>(EntityDataSingleLayout::target_handles_offset(capacity_blocks())),
+            column_data<Handle>(EntityDataSingleLayout::TargetHandles.offset(capacity_blocks())),
             count_};
     }
     auto view_target_locations() const -> ml::soa::Vector3View<float> {
@@ -3528,8 +2912,8 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{EntityDataSingleLayout::target_locations_xs_offset(blocks)};
-        auto const stride{EntityDataSingleLayout::target_locations_ys_offset(blocks) - first};
+        auto const first{EntityDataSingleLayout::TargetLocationsXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::TargetLocationsYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto view_target_velocities() const -> ml::soa::Vector3View<float> {
@@ -3538,8 +2922,8 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{EntityDataSingleLayout::target_velocities_xs_offset(blocks)};
-        auto const stride{EntityDataSingleLayout::target_velocities_ys_offset(blocks) - first};
+        auto const first{EntityDataSingleLayout::TargetVelocitiesXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::TargetVelocitiesYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto view_target_directions() const -> ml::soa::Vector3View<float> {
@@ -3548,27 +2932,27 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{EntityDataSingleLayout::target_directions_xs_offset(blocks)};
-        auto const stride{EntityDataSingleLayout::target_directions_ys_offset(blocks) - first};
+        auto const first{EntityDataSingleLayout::TargetDirectionsXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::TargetDirectionsYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto intercept_times() const -> TArrayView<float> {
         return {
-            column_data<float>(EntityDataSingleLayout::intercept_times_offset(capacity_blocks())),
+            column_data<float>(EntityDataSingleLayout::InterceptTimes.offset(capacity_blocks())),
             count_};
     }
     auto target_distance_sq() const -> TArrayView<float> {
-        return {column_data<float>(
-                    EntityDataSingleLayout::target_distance_sq_offset(capacity_blocks())),
-                count_};
+        return {
+            column_data<float>(EntityDataSingleLayout::TargetDistanceSq.offset(capacity_blocks())),
+            count_};
     }
     auto target_distances() const -> TArrayView<float> {
         return {
-            column_data<float>(EntityDataSingleLayout::target_distances_offset(capacity_blocks())),
+            column_data<float>(EntityDataSingleLayout::TargetDistances.offset(capacity_blocks())),
             count_};
     }
     auto target_radii() const -> TArrayView<float> {
-        return {column_data<float>(EntityDataSingleLayout::target_radii_offset(capacity_blocks())),
+        return {column_data<float>(EntityDataSingleLayout::TargetRadii.offset(capacity_blocks())),
                 count_};
     }
     auto columns() const -> EntityDataView {
@@ -3578,147 +2962,146 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
         }
         auto const blocks{capacity_blocks()};
         return EntityDataView{
-            {column_data_unchecked<Handle>(EntityDataSingleLayout::entity_handles_offset(blocks)),
+            {column_data_unchecked<Handle>(EntityDataSingleLayout::EntityHandles.offset(blocks)),
              count_},
-            {column_data_unchecked<uint32>(EntityDataSingleLayout::integral_biases_offset(blocks)),
+            {column_data_unchecked<uint32>(EntityDataSingleLayout::IntegralBiases.offset(blocks)),
              count_},
-            {column_data_unchecked<float>(EntityDataSingleLayout::float_biases_offset(blocks)),
+            {column_data_unchecked<float>(EntityDataSingleLayout::FloatBiases.offset(blocks)),
              count_},
-            {column_data_unchecked<Task>(EntityDataSingleLayout::tasks_offset(blocks)), count_},
+            {column_data_unchecked<Task>(EntityDataSingleLayout::Tasks.offset(blocks)), count_},
             VectorsView{
-                {column_data_unchecked<float>(EntityDataSingleLayout::locations_xs_offset(blocks)),
+                {column_data_unchecked<float>(EntityDataSingleLayout::LocationsXs.offset(blocks)),
                  count_},
-                {column_data_unchecked<float>(EntityDataSingleLayout::locations_ys_offset(blocks)),
+                {column_data_unchecked<float>(EntityDataSingleLayout::LocationsYs.offset(blocks)),
                  count_},
-                {column_data_unchecked<float>(EntityDataSingleLayout::locations_zs_offset(blocks)),
+                {column_data_unchecked<float>(EntityDataSingleLayout::LocationsZs.offset(blocks)),
                  count_}},
             VectorsView{{column_data_unchecked<float>(
-                             EntityDataSingleLayout::desired_move_locations_xs_offset(blocks)),
+                             EntityDataSingleLayout::DesiredMoveLocationsXs.offset(blocks)),
                          count_},
                         {column_data_unchecked<float>(
-                             EntityDataSingleLayout::desired_move_locations_ys_offset(blocks)),
+                             EntityDataSingleLayout::DesiredMoveLocationsYs.offset(blocks)),
                          count_},
                         {column_data_unchecked<float>(
-                             EntityDataSingleLayout::desired_move_locations_zs_offset(blocks)),
+                             EntityDataSingleLayout::DesiredMoveLocationsZs.offset(blocks)),
                          count_}},
             VectorsView{{column_data_unchecked<float>(
-                             EntityDataSingleLayout::aim_directions_xs_offset(blocks)),
+                             EntityDataSingleLayout::AimDirectionsXs.offset(blocks)),
                          count_},
                         {column_data_unchecked<float>(
-                             EntityDataSingleLayout::aim_directions_ys_offset(blocks)),
+                             EntityDataSingleLayout::AimDirectionsYs.offset(blocks)),
                          count_},
                         {column_data_unchecked<float>(
-                             EntityDataSingleLayout::aim_directions_zs_offset(blocks)),
+                             EntityDataSingleLayout::AimDirectionsZs.offset(blocks)),
                          count_}},
             VectorsView{{column_data_unchecked<float>(
-                             EntityDataSingleLayout::desired_aiming_directions_xs_offset(blocks)),
+                             EntityDataSingleLayout::DesiredAimingDirectionsXs.offset(blocks)),
                          count_},
                         {column_data_unchecked<float>(
-                             EntityDataSingleLayout::desired_aiming_directions_ys_offset(blocks)),
+                             EntityDataSingleLayout::DesiredAimingDirectionsYs.offset(blocks)),
                          count_},
                         {column_data_unchecked<float>(
-                             EntityDataSingleLayout::desired_aiming_directions_zs_offset(blocks)),
+                             EntityDataSingleLayout::DesiredAimingDirectionsZs.offset(blocks)),
                          count_}},
             VectorsView{{column_data_unchecked<float>(
-                             EntityDataSingleLayout::movement_directions_xs_offset(blocks)),
+                             EntityDataSingleLayout::MovementDirectionsXs.offset(blocks)),
                          count_},
                         {column_data_unchecked<float>(
-                             EntityDataSingleLayout::movement_directions_ys_offset(blocks)),
+                             EntityDataSingleLayout::MovementDirectionsYs.offset(blocks)),
                          count_},
                         {column_data_unchecked<float>(
-                             EntityDataSingleLayout::movement_directions_zs_offset(blocks)),
+                             EntityDataSingleLayout::MovementDirectionsZs.offset(blocks)),
                          count_}},
             VectorsView{
-                {column_data_unchecked<float>(EntityDataSingleLayout::velocities_xs_offset(blocks)),
+                {column_data_unchecked<float>(EntityDataSingleLayout::VelocitiesXs.offset(blocks)),
                  count_},
-                {column_data_unchecked<float>(EntityDataSingleLayout::velocities_ys_offset(blocks)),
+                {column_data_unchecked<float>(EntityDataSingleLayout::VelocitiesYs.offset(blocks)),
                  count_},
-                {column_data_unchecked<float>(EntityDataSingleLayout::velocities_zs_offset(blocks)),
+                {column_data_unchecked<float>(EntityDataSingleLayout::VelocitiesZs.offset(blocks)),
                  count_}},
-            {column_data_unchecked<float>(EntityDataSingleLayout::move_distances_offset(blocks)),
+            {column_data_unchecked<float>(EntityDataSingleLayout::MoveDistances.offset(blocks)),
              count_},
-            {column_data_unchecked<float>(EntityDataSingleLayout::speeds_offset(blocks)), count_},
-            {column_data_unchecked<Team>(EntityDataSingleLayout::teams_offset(blocks)), count_},
-            {column_data_unchecked<int32>(EntityDataSingleLayout::healths_offset(blocks)), count_},
-            {column_data_unchecked<Handle>(EntityDataSingleLayout::parent_handles_offset(blocks)),
+            {column_data_unchecked<float>(EntityDataSingleLayout::Speeds.offset(blocks)), count_},
+            {column_data_unchecked<Team>(EntityDataSingleLayout::Teams.offset(blocks)), count_},
+            {column_data_unchecked<int32>(EntityDataSingleLayout::Healths.offset(blocks)), count_},
+            {column_data_unchecked<Handle>(EntityDataSingleLayout::ParentHandles.offset(blocks)),
              count_},
             Countdown8View{
                 {column_data_unchecked<int8>(
-                     EntityDataSingleLayout::awareness_scan_countdowns_counters_offset(blocks)),
+                     EntityDataSingleLayout::AwarenessScanCountdownsCounters.offset(blocks)),
                  count_}},
             PeriodicCountdown16View{
                 {column_data_unchecked<int16>(
-                     EntityDataSingleLayout::navigation_update_countdowns_remaining_ticks_offset(
+                     EntityDataSingleLayout::NavigationUpdateCountdownsRemainingTicks.offset(
                          blocks)),
                  count_},
                 {column_data_unchecked<int16>(
-                     EntityDataSingleLayout::navigation_update_countdowns_periods_offset(blocks)),
+                     EntityDataSingleLayout::NavigationUpdateCountdownsPeriods.offset(blocks)),
                  count_}},
             VectorsView{{column_data_unchecked<float>(
-                             EntityDataSingleLayout::separation_steering_xs_offset(blocks)),
+                             EntityDataSingleLayout::SeparationSteeringXs.offset(blocks)),
                          count_},
                         {column_data_unchecked<float>(
-                             EntityDataSingleLayout::separation_steering_ys_offset(blocks)),
+                             EntityDataSingleLayout::SeparationSteeringYs.offset(blocks)),
                          count_},
                         {column_data_unchecked<float>(
-                             EntityDataSingleLayout::separation_steering_zs_offset(blocks)),
+                             EntityDataSingleLayout::SeparationSteeringZs.offset(blocks)),
                          count_}},
             {column_data_unchecked<uint8>(
-                 EntityDataSingleLayout::navigation_risk_tiers_offset(blocks)),
+                 EntityDataSingleLayout::NavigationRiskTiers.offset(blocks)),
              count_},
             {column_data_unchecked<uint8>(
-                 EntityDataSingleLayout::navigation_lower_risk_scan_counts_offset(blocks)),
+                 EntityDataSingleLayout::NavigationLowerRiskScanCounts.offset(blocks)),
              count_},
             {column_data_unchecked<int8>(
-                 EntityDataSingleLayout::avoidance_choice_indices_offset(blocks)),
+                 EntityDataSingleLayout::AvoidanceChoiceIndices.offset(blocks)),
              count_},
             {column_data_unchecked<uint8>(
-                 EntityDataSingleLayout::avoidance_clear_scan_counts_offset(blocks)),
+                 EntityDataSingleLayout::AvoidanceClearScanCounts.offset(blocks)),
              count_},
             Countdown16View{
                 {column_data_unchecked<int16>(
-                     EntityDataSingleLayout::attack_reposition_countdowns_counters_offset(blocks)),
+                     EntityDataSingleLayout::AttackRepositionCountdownsCounters.offset(blocks)),
                  count_}},
             Countdown16View{{column_data_unchecked<int16>(
-                                 EntityDataSingleLayout::attack_cooldowns_counters_offset(blocks)),
+                                 EntityDataSingleLayout::AttackCooldownsCounters.offset(blocks)),
                              count_}},
-            {column_data_unchecked<Handle>(EntityDataSingleLayout::target_handles_offset(blocks)),
+            {column_data_unchecked<Handle>(EntityDataSingleLayout::TargetHandles.offset(blocks)),
              count_},
             VectorsView{{column_data_unchecked<float>(
-                             EntityDataSingleLayout::target_locations_xs_offset(blocks)),
+                             EntityDataSingleLayout::TargetLocationsXs.offset(blocks)),
                          count_},
                         {column_data_unchecked<float>(
-                             EntityDataSingleLayout::target_locations_ys_offset(blocks)),
+                             EntityDataSingleLayout::TargetLocationsYs.offset(blocks)),
                          count_},
                         {column_data_unchecked<float>(
-                             EntityDataSingleLayout::target_locations_zs_offset(blocks)),
+                             EntityDataSingleLayout::TargetLocationsZs.offset(blocks)),
                          count_}},
             VectorsView{{column_data_unchecked<float>(
-                             EntityDataSingleLayout::target_velocities_xs_offset(blocks)),
+                             EntityDataSingleLayout::TargetVelocitiesXs.offset(blocks)),
                          count_},
                         {column_data_unchecked<float>(
-                             EntityDataSingleLayout::target_velocities_ys_offset(blocks)),
+                             EntityDataSingleLayout::TargetVelocitiesYs.offset(blocks)),
                          count_},
                         {column_data_unchecked<float>(
-                             EntityDataSingleLayout::target_velocities_zs_offset(blocks)),
+                             EntityDataSingleLayout::TargetVelocitiesZs.offset(blocks)),
                          count_}},
             VectorsView{{column_data_unchecked<float>(
-                             EntityDataSingleLayout::target_directions_xs_offset(blocks)),
+                             EntityDataSingleLayout::TargetDirectionsXs.offset(blocks)),
                          count_},
                         {column_data_unchecked<float>(
-                             EntityDataSingleLayout::target_directions_ys_offset(blocks)),
+                             EntityDataSingleLayout::TargetDirectionsYs.offset(blocks)),
                          count_},
                         {column_data_unchecked<float>(
-                             EntityDataSingleLayout::target_directions_zs_offset(blocks)),
+                             EntityDataSingleLayout::TargetDirectionsZs.offset(blocks)),
                          count_}},
-            {column_data_unchecked<float>(EntityDataSingleLayout::intercept_times_offset(blocks)),
+            {column_data_unchecked<float>(EntityDataSingleLayout::InterceptTimes.offset(blocks)),
              count_},
-            {column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_distance_sq_offset(blocks)),
+            {column_data_unchecked<float>(EntityDataSingleLayout::TargetDistanceSq.offset(blocks)),
              count_},
-            {column_data_unchecked<float>(EntityDataSingleLayout::target_distances_offset(blocks)),
+            {column_data_unchecked<float>(EntityDataSingleLayout::TargetDistances.offset(blocks)),
              count_},
-            {column_data_unchecked<float>(EntityDataSingleLayout::target_radii_offset(blocks)),
+            {column_data_unchecked<float>(EntityDataSingleLayout::TargetRadii.offset(blocks)),
              count_}};
     }
     template <typename Func>
@@ -3936,68 +3319,67 @@ struct FMemorySingleEntityDataStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        using Pointers = DataPointers<Byte>;
-        auto const pointer_at = [data]<typename T>(byte_size_type const offset) noexcept {
-            return std::launder(
-                reinterpret_cast<typename Pointers::template Element<T>*>(data + offset));
+        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+            using Column = std::remove_cvref_t<decltype(column)>;
+            using Pointer = std::conditional_t<std::is_const_v<Byte>,
+                                               typename Column::const_pointer,
+                                               typename Column::pointer>;
+            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
         };
         return {
-            pointer_at.template operator()<Handle>(entity_handles_offset(blocks)),
-            pointer_at.template operator()<uint32>(integral_biases_offset(blocks)),
-            pointer_at.template operator()<float>(float_biases_offset(blocks)),
-            pointer_at.template operator()<Task>(tasks_offset(blocks)),
-            pointer_at.template operator()<float>(locations_xs_offset(blocks)),
-            pointer_at.template operator()<float>(locations_ys_offset(blocks)),
-            pointer_at.template operator()<float>(locations_zs_offset(blocks)),
-            pointer_at.template operator()<float>(desired_move_locations_xs_offset(blocks)),
-            pointer_at.template operator()<float>(desired_move_locations_ys_offset(blocks)),
-            pointer_at.template operator()<float>(desired_move_locations_zs_offset(blocks)),
-            pointer_at.template operator()<float>(aim_directions_xs_offset(blocks)),
-            pointer_at.template operator()<float>(aim_directions_ys_offset(blocks)),
-            pointer_at.template operator()<float>(aim_directions_zs_offset(blocks)),
-            pointer_at.template operator()<float>(desired_aiming_directions_xs_offset(blocks)),
-            pointer_at.template operator()<float>(desired_aiming_directions_ys_offset(blocks)),
-            pointer_at.template operator()<float>(desired_aiming_directions_zs_offset(blocks)),
-            pointer_at.template operator()<float>(movement_directions_xs_offset(blocks)),
-            pointer_at.template operator()<float>(movement_directions_ys_offset(blocks)),
-            pointer_at.template operator()<float>(movement_directions_zs_offset(blocks)),
-            pointer_at.template operator()<float>(velocities_xs_offset(blocks)),
-            pointer_at.template operator()<float>(velocities_ys_offset(blocks)),
-            pointer_at.template operator()<float>(velocities_zs_offset(blocks)),
-            pointer_at.template operator()<float>(move_distances_offset(blocks)),
-            pointer_at.template operator()<float>(speeds_offset(blocks)),
-            pointer_at.template operator()<Team>(teams_offset(blocks)),
-            pointer_at.template operator()<int32>(healths_offset(blocks)),
-            pointer_at.template operator()<Handle>(parent_handles_offset(blocks)),
-            pointer_at.template operator()<int8>(awareness_scan_countdowns_counters_offset(blocks)),
-            pointer_at.template operator()<int16>(
-                navigation_update_countdowns_remaining_ticks_offset(blocks)),
-            pointer_at.template operator()<int16>(
-                navigation_update_countdowns_periods_offset(blocks)),
-            pointer_at.template operator()<float>(separation_steering_xs_offset(blocks)),
-            pointer_at.template operator()<float>(separation_steering_ys_offset(blocks)),
-            pointer_at.template operator()<float>(separation_steering_zs_offset(blocks)),
-            pointer_at.template operator()<uint8>(navigation_risk_tiers_offset(blocks)),
-            pointer_at.template operator()<uint8>(navigation_lower_risk_scan_counts_offset(blocks)),
-            pointer_at.template operator()<int8>(avoidance_choice_indices_offset(blocks)),
-            pointer_at.template operator()<uint8>(avoidance_clear_scan_counts_offset(blocks)),
-            pointer_at.template operator()<int16>(
-                attack_reposition_countdowns_counters_offset(blocks)),
-            pointer_at.template operator()<int16>(attack_cooldowns_counters_offset(blocks)),
-            pointer_at.template operator()<Handle>(target_handles_offset(blocks)),
-            pointer_at.template operator()<float>(target_locations_xs_offset(blocks)),
-            pointer_at.template operator()<float>(target_locations_ys_offset(blocks)),
-            pointer_at.template operator()<float>(target_locations_zs_offset(blocks)),
-            pointer_at.template operator()<float>(target_velocities_xs_offset(blocks)),
-            pointer_at.template operator()<float>(target_velocities_ys_offset(blocks)),
-            pointer_at.template operator()<float>(target_velocities_zs_offset(blocks)),
-            pointer_at.template operator()<float>(target_directions_xs_offset(blocks)),
-            pointer_at.template operator()<float>(target_directions_ys_offset(blocks)),
-            pointer_at.template operator()<float>(target_directions_zs_offset(blocks)),
-            pointer_at.template operator()<float>(intercept_times_offset(blocks)),
-            pointer_at.template operator()<float>(target_distance_sq_offset(blocks)),
-            pointer_at.template operator()<float>(target_distances_offset(blocks)),
-            pointer_at.template operator()<float>(target_radii_offset(blocks)),
+            pointer_at(EntityHandles),
+            pointer_at(IntegralBiases),
+            pointer_at(FloatBiases),
+            pointer_at(Tasks),
+            pointer_at(LocationsXs),
+            pointer_at(LocationsYs),
+            pointer_at(LocationsZs),
+            pointer_at(DesiredMoveLocationsXs),
+            pointer_at(DesiredMoveLocationsYs),
+            pointer_at(DesiredMoveLocationsZs),
+            pointer_at(AimDirectionsXs),
+            pointer_at(AimDirectionsYs),
+            pointer_at(AimDirectionsZs),
+            pointer_at(DesiredAimingDirectionsXs),
+            pointer_at(DesiredAimingDirectionsYs),
+            pointer_at(DesiredAimingDirectionsZs),
+            pointer_at(MovementDirectionsXs),
+            pointer_at(MovementDirectionsYs),
+            pointer_at(MovementDirectionsZs),
+            pointer_at(VelocitiesXs),
+            pointer_at(VelocitiesYs),
+            pointer_at(VelocitiesZs),
+            pointer_at(MoveDistances),
+            pointer_at(Speeds),
+            pointer_at(Teams),
+            pointer_at(Healths),
+            pointer_at(ParentHandles),
+            pointer_at(AwarenessScanCountdownsCounters),
+            pointer_at(NavigationUpdateCountdownsRemainingTicks),
+            pointer_at(NavigationUpdateCountdownsPeriods),
+            pointer_at(SeparationSteeringXs),
+            pointer_at(SeparationSteeringYs),
+            pointer_at(SeparationSteeringZs),
+            pointer_at(NavigationRiskTiers),
+            pointer_at(NavigationLowerRiskScanCounts),
+            pointer_at(AvoidanceChoiceIndices),
+            pointer_at(AvoidanceClearScanCounts),
+            pointer_at(AttackRepositionCountdownsCounters),
+            pointer_at(AttackCooldownsCounters),
+            pointer_at(TargetHandles),
+            pointer_at(TargetLocationsXs),
+            pointer_at(TargetLocationsYs),
+            pointer_at(TargetLocationsZs),
+            pointer_at(TargetVelocitiesXs),
+            pointer_at(TargetVelocitiesYs),
+            pointer_at(TargetVelocitiesZs),
+            pointer_at(TargetDirectionsXs),
+            pointer_at(TargetDirectionsYs),
+            pointer_at(TargetDirectionsZs),
+            pointer_at(InterceptTimes),
+            pointer_at(TargetDistanceSq),
+            pointer_at(TargetDistances),
+            pointer_at(TargetRadii),
         };
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
@@ -4811,160 +4193,43 @@ struct AlignmentDataSingleLayout {
     inline static constexpr size_type capacity_granularity{64};
     inline static constexpr byte_size_type column_gap{192};
 
-    inline static constexpr byte_size_type bytes_alignment{alignof(uint8) > 64 ? alignof(uint8)
-                                                                               : 64};
+    template <typename T>
+    using ColLayout = ml::soa_storage::ColumnLayout<T>;
+    inline static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{
+        capacity_granularity, column_gap, 64};
 
-    inline static constexpr byte_size_type odd_alignment{alignof(OddBytes) > 64 ? alignof(OddBytes)
-                                                                                : 64};
+    inline static constexpr ColLayout<uint8> Bytes{LayoutStart};
+    inline static constexpr ColLayout<OddBytes> Odd{Bytes};
+    inline static constexpr ColLayout<Aligned32> Aligned32Column{Odd};
+    inline static constexpr ColLayout<float> NestedXs{Aligned32Column};
+    inline static constexpr ColLayout<float> NestedYs{NestedXs};
+    inline static constexpr ColLayout<float> NestedZs{NestedYs};
+    inline static constexpr ColLayout<Aligned64> Aligned64Column{NestedZs};
+    inline static constexpr ColLayout<int8> Small{Aligned64Column};
+    inline static constexpr ColLayout<Aligned256> Aligned256Column{Small};
+    inline static constexpr ColLayout<Handle> Handles{Aligned256Column};
 
-    inline static constexpr byte_size_type aligned32_alignment{
-        alignof(Aligned32) > 64 ? alignof(Aligned32) : 64};
-
-    inline static constexpr byte_size_type nested_xs_alignment{alignof(float) > 64 ? alignof(float)
-                                                                                   : 64};
-
-    inline static constexpr byte_size_type aligned64_alignment{
-        alignof(Aligned64) > 64 ? alignof(Aligned64) : 64};
-
-    inline static constexpr byte_size_type small_alignment{alignof(int8) > 64 ? alignof(int8) : 64};
-
-    inline static constexpr byte_size_type aligned256_alignment{
-        alignof(Aligned256) > 64 ? alignof(Aligned256) : 64};
-
-    inline static constexpr byte_size_type handles_alignment{alignof(Handle) > 64 ? alignof(Handle)
-                                                                                  : 64};
-
-    inline static constexpr byte_size_type allocation_alignment{std::max({bytes_alignment,
-                                                                          odd_alignment,
-                                                                          aligned32_alignment,
-                                                                          nested_xs_alignment,
-                                                                          aligned64_alignment,
-                                                                          small_alignment,
-                                                                          aligned256_alignment,
-                                                                          handles_alignment})};
-
-    inline static constexpr byte_size_type bytes_block_offset{
-        ml::soa_storage::layout_align(0, bytes_alignment)};
-    inline static constexpr byte_size_type bytes_block_end{bytes_block_offset +
-                                                           capacity_granularity * sizeof(uint8)};
-
-    static constexpr auto bytes_offset(byte_size_type) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(0, bytes_alignment);
-    }
-
-    inline static constexpr byte_size_type odd_block_offset{
-        ml::soa_storage::layout_align(bytes_block_end, odd_alignment)};
-    inline static constexpr byte_size_type odd_block_end{odd_block_offset +
-                                                         capacity_granularity * sizeof(OddBytes)};
-
-    static constexpr auto odd_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(
-            bytes_offset(blocks) + blocks * capacity_granularity * sizeof(uint8) + column_gap,
-            odd_alignment);
-    }
-
-    inline static constexpr byte_size_type aligned32_block_offset{
-        ml::soa_storage::layout_align(odd_block_end, aligned32_alignment)};
-    inline static constexpr byte_size_type aligned32_block_end{
-        aligned32_block_offset + capacity_granularity * sizeof(Aligned32)};
-
-    static constexpr auto aligned32_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(
-            odd_offset(blocks) + blocks * capacity_granularity * sizeof(OddBytes) + column_gap,
-            aligned32_alignment);
-    }
-
-    inline static constexpr byte_size_type nested_xs_block_offset{
-        ml::soa_storage::layout_align(aligned32_block_end, nested_xs_alignment)};
-    inline static constexpr byte_size_type nested_xs_block_end{
-        nested_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto nested_xs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(aligned32_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(Aligned32) +
-                                                 column_gap,
-                                             nested_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type nested_ys_block_offset{
-        ml::soa_storage::layout_align(nested_xs_block_end, nested_xs_alignment)};
-    inline static constexpr byte_size_type nested_ys_block_end{
-        nested_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto nested_ys_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(
-            nested_xs_offset(blocks) + blocks * capacity_granularity * sizeof(float) + column_gap,
-            nested_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type nested_zs_block_offset{
-        ml::soa_storage::layout_align(nested_ys_block_end, nested_xs_alignment)};
-    inline static constexpr byte_size_type nested_zs_block_end{
-        nested_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto nested_zs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(
-            nested_ys_offset(blocks) + blocks * capacity_granularity * sizeof(float) + column_gap,
-            nested_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type aligned64_block_offset{
-        ml::soa_storage::layout_align(nested_zs_block_end, aligned64_alignment)};
-    inline static constexpr byte_size_type aligned64_block_end{
-        aligned64_block_offset + capacity_granularity * sizeof(Aligned64)};
-
-    static constexpr auto aligned64_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(
-            nested_zs_offset(blocks) + blocks * capacity_granularity * sizeof(float) + column_gap,
-            aligned64_alignment);
-    }
-
-    inline static constexpr byte_size_type small_block_offset{
-        ml::soa_storage::layout_align(aligned64_block_end, small_alignment)};
-    inline static constexpr byte_size_type small_block_end{small_block_offset +
-                                                           capacity_granularity * sizeof(int8)};
-
-    static constexpr auto small_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(aligned64_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(Aligned64) +
-                                                 column_gap,
-                                             small_alignment);
-    }
-
-    inline static constexpr byte_size_type aligned256_block_offset{
-        ml::soa_storage::layout_align(small_block_end, aligned256_alignment)};
-    inline static constexpr byte_size_type aligned256_block_end{
-        aligned256_block_offset + capacity_granularity * sizeof(Aligned256)};
-
-    static constexpr auto aligned256_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(
-            small_offset(blocks) + blocks * capacity_granularity * sizeof(int8) + column_gap,
-            aligned256_alignment);
-    }
-
-    inline static constexpr byte_size_type handles_block_offset{
-        ml::soa_storage::layout_align(aligned256_block_end, handles_alignment)};
-    inline static constexpr byte_size_type handles_block_end{handles_block_offset +
-                                                             capacity_granularity * sizeof(Handle)};
-
-    static constexpr auto handles_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(
-            aligned256_offset(blocks) + blocks * capacity_granularity * sizeof(Aligned256) +
-                column_gap,
-            handles_alignment);
-    }
+    inline static constexpr byte_size_type allocation_alignment{
+        ml::soa_storage::maximum_alignment(Bytes,
+                                           Odd,
+                                           Aligned32Column,
+                                           NestedXs,
+                                           NestedYs,
+                                           NestedZs,
+                                           Aligned64Column,
+                                           Small,
+                                           Aligned256Column,
+                                           Handles)};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
-        ml::soa_storage::layout_align(handles_block_end, allocation_alignment) +
+        ml::soa_storage::layout_align(Handles.block_end, allocation_alignment) +
         9 * (column_gap + allocation_alignment - 1)};
     inline static constexpr size_type max_capacity{
         ml::soa_storage::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0
-                 ? 0
-                 : handles_offset(blocks) + blocks * capacity_granularity * sizeof(Handle);
+        return blocks == 0 ? 0 : Handles.data_end(blocks);
     }
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
@@ -5005,27 +4270,27 @@ struct AlignmentDataSingleLayout {
             allocation_alignment <= std::numeric_limits<uint32>::max(),
             "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
         static_assert(sizeof(uint8) <=
-                      (max_allocation_size - bytes_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bytes.block_offset) / capacity_granularity);
         static_assert(sizeof(OddBytes) <=
-                      (max_allocation_size - odd_block_offset) / capacity_granularity);
+                      (max_allocation_size - Odd.block_offset) / capacity_granularity);
         static_assert(sizeof(Aligned32) <=
-                      (max_allocation_size - aligned32_block_offset) / capacity_granularity);
+                      (max_allocation_size - Aligned32Column.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - nested_xs_block_offset) / capacity_granularity);
+                      (max_allocation_size - NestedXs.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - nested_ys_block_offset) / capacity_granularity);
+                      (max_allocation_size - NestedYs.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - nested_zs_block_offset) / capacity_granularity);
+                      (max_allocation_size - NestedZs.block_offset) / capacity_granularity);
         static_assert(sizeof(Aligned64) <=
-                      (max_allocation_size - aligned64_block_offset) / capacity_granularity);
+                      (max_allocation_size - Aligned64Column.block_offset) / capacity_granularity);
         static_assert(sizeof(int8) <=
-                      (max_allocation_size - small_block_offset) / capacity_granularity);
+                      (max_allocation_size - Small.block_offset) / capacity_granularity);
         static_assert(sizeof(Aligned256) <=
-                      (max_allocation_size - aligned256_block_offset) / capacity_granularity);
+                      (max_allocation_size - Aligned256Column.block_offset) / capacity_granularity);
         static_assert(sizeof(Handle) <=
-                      (max_allocation_size - handles_block_offset) / capacity_granularity);
+                      (max_allocation_size - Handles.block_offset) / capacity_granularity);
         static_assert(9 <= (max_allocation_size - ml::soa_storage::layout_align(
-                                                      handles_block_end, allocation_alignment)) /
+                                                      Handles.block_end, allocation_alignment)) /
                                (column_gap + allocation_alignment - 1));
         static_assert(max_capacity >= capacity_granularity);
         return true;
@@ -5116,22 +4381,24 @@ struct SingleAllocationAlignmentDataStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        using Pointers = DataPointers<Byte>;
-        auto const pointer_at = [data]<typename T>(byte_size_type const offset) noexcept {
-            return std::launder(
-                reinterpret_cast<typename Pointers::template Element<T>*>(data + offset));
+        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+            using Column = std::remove_cvref_t<decltype(column)>;
+            using Pointer = std::conditional_t<std::is_const_v<Byte>,
+                                               typename Column::const_pointer,
+                                               typename Column::pointer>;
+            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
         };
         return {
-            pointer_at.template operator()<uint8>(bytes_offset(blocks)),
-            pointer_at.template operator()<OddBytes>(odd_offset(blocks)),
-            pointer_at.template operator()<Aligned32>(aligned32_offset(blocks)),
-            pointer_at.template operator()<float>(nested_xs_offset(blocks)),
-            pointer_at.template operator()<float>(nested_ys_offset(blocks)),
-            pointer_at.template operator()<float>(nested_zs_offset(blocks)),
-            pointer_at.template operator()<Aligned64>(aligned64_offset(blocks)),
-            pointer_at.template operator()<int8>(small_offset(blocks)),
-            pointer_at.template operator()<Aligned256>(aligned256_offset(blocks)),
-            pointer_at.template operator()<Handle>(handles_offset(blocks)),
+            pointer_at(Bytes),
+            pointer_at(Odd),
+            pointer_at(Aligned32Column),
+            pointer_at(NestedXs),
+            pointer_at(NestedYs),
+            pointer_at(NestedZs),
+            pointer_at(Aligned64Column),
+            pointer_at(Small),
+            pointer_at(Aligned256Column),
+            pointer_at(Handles),
         };
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
@@ -5264,17 +4531,17 @@ struct AlignmentDataSingleConstView : ml::soa_storage::CompactViewState<true> {
         return slice(offset, count);
     }
     auto bytes() const -> TArrayView<uint8 const> {
-        return {column_data<uint8>(AlignmentDataSingleLayout::bytes_offset(capacity_blocks())),
+        return {column_data<uint8>(AlignmentDataSingleLayout::Bytes.offset(capacity_blocks())),
                 count_};
     }
     auto odd() const -> TArrayView<OddBytes const> {
-        return {column_data<OddBytes>(AlignmentDataSingleLayout::odd_offset(capacity_blocks())),
+        return {column_data<OddBytes>(AlignmentDataSingleLayout::Odd.offset(capacity_blocks())),
                 count_};
     }
     auto aligned32() const -> TArrayView<Aligned32 const> {
-        return {
-            column_data<Aligned32>(AlignmentDataSingleLayout::aligned32_offset(capacity_blocks())),
-            count_};
+        return {column_data<Aligned32>(
+                    AlignmentDataSingleLayout::Aligned32Column.offset(capacity_blocks())),
+                count_};
     }
     auto view_nested() const -> ml::soa::Vector3ConstView<float> {
         validate();
@@ -5282,26 +4549,26 @@ struct AlignmentDataSingleConstView : ml::soa_storage::CompactViewState<true> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{AlignmentDataSingleLayout::nested_xs_offset(blocks)};
-        auto const stride{AlignmentDataSingleLayout::nested_ys_offset(blocks) - first};
+        auto const first{AlignmentDataSingleLayout::NestedXs.offset(blocks)};
+        auto const stride{AlignmentDataSingleLayout::NestedYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto aligned64() const -> TArrayView<Aligned64 const> {
-        return {
-            column_data<Aligned64>(AlignmentDataSingleLayout::aligned64_offset(capacity_blocks())),
-            count_};
+        return {column_data<Aligned64>(
+                    AlignmentDataSingleLayout::Aligned64Column.offset(capacity_blocks())),
+                count_};
     }
     auto small() const -> TArrayView<int8 const> {
-        return {column_data<int8>(AlignmentDataSingleLayout::small_offset(capacity_blocks())),
+        return {column_data<int8>(AlignmentDataSingleLayout::Small.offset(capacity_blocks())),
                 count_};
     }
     auto aligned256() const -> TArrayView<Aligned256 const> {
         return {column_data<Aligned256>(
-                    AlignmentDataSingleLayout::aligned256_offset(capacity_blocks())),
+                    AlignmentDataSingleLayout::Aligned256Column.offset(capacity_blocks())),
                 count_};
     }
     auto handles() const -> TArrayView<Handle const> {
-        return {column_data<Handle>(AlignmentDataSingleLayout::handles_offset(capacity_blocks())),
+        return {column_data<Handle>(AlignmentDataSingleLayout::Handles.offset(capacity_blocks())),
                 count_};
     }
     auto columns() const -> AlignmentDataConstView {
@@ -5311,25 +4578,27 @@ struct AlignmentDataSingleConstView : ml::soa_storage::CompactViewState<true> {
         }
         auto const blocks{capacity_blocks()};
         return AlignmentDataConstView{
-            {column_data_unchecked<uint8>(AlignmentDataSingleLayout::bytes_offset(blocks)), count_},
-            {column_data_unchecked<OddBytes>(AlignmentDataSingleLayout::odd_offset(blocks)),
+            {column_data_unchecked<uint8>(AlignmentDataSingleLayout::Bytes.offset(blocks)), count_},
+            {column_data_unchecked<OddBytes>(AlignmentDataSingleLayout::Odd.offset(blocks)),
              count_},
-            {column_data_unchecked<Aligned32>(AlignmentDataSingleLayout::aligned32_offset(blocks)),
+            {column_data_unchecked<Aligned32>(
+                 AlignmentDataSingleLayout::Aligned32Column.offset(blocks)),
              count_},
             VectorsConstView{
-                {column_data_unchecked<float>(AlignmentDataSingleLayout::nested_xs_offset(blocks)),
+                {column_data_unchecked<float>(AlignmentDataSingleLayout::NestedXs.offset(blocks)),
                  count_},
-                {column_data_unchecked<float>(AlignmentDataSingleLayout::nested_ys_offset(blocks)),
+                {column_data_unchecked<float>(AlignmentDataSingleLayout::NestedYs.offset(blocks)),
                  count_},
-                {column_data_unchecked<float>(AlignmentDataSingleLayout::nested_zs_offset(blocks)),
+                {column_data_unchecked<float>(AlignmentDataSingleLayout::NestedZs.offset(blocks)),
                  count_}},
-            {column_data_unchecked<Aligned64>(AlignmentDataSingleLayout::aligned64_offset(blocks)),
+            {column_data_unchecked<Aligned64>(
+                 AlignmentDataSingleLayout::Aligned64Column.offset(blocks)),
              count_},
-            {column_data_unchecked<int8>(AlignmentDataSingleLayout::small_offset(blocks)), count_},
+            {column_data_unchecked<int8>(AlignmentDataSingleLayout::Small.offset(blocks)), count_},
             {column_data_unchecked<Aligned256>(
-                 AlignmentDataSingleLayout::aligned256_offset(blocks)),
+                 AlignmentDataSingleLayout::Aligned256Column.offset(blocks)),
              count_},
-            {column_data_unchecked<Handle>(AlignmentDataSingleLayout::handles_offset(blocks)),
+            {column_data_unchecked<Handle>(AlignmentDataSingleLayout::Handles.offset(blocks)),
              count_}};
     }
     template <typename Func>
@@ -5351,17 +4620,17 @@ struct AlignmentDataSingleView : ml::soa_storage::CompactViewState<false> {
         return slice(offset, count);
     }
     auto bytes() const -> TArrayView<uint8> {
-        return {column_data<uint8>(AlignmentDataSingleLayout::bytes_offset(capacity_blocks())),
+        return {column_data<uint8>(AlignmentDataSingleLayout::Bytes.offset(capacity_blocks())),
                 count_};
     }
     auto odd() const -> TArrayView<OddBytes> {
-        return {column_data<OddBytes>(AlignmentDataSingleLayout::odd_offset(capacity_blocks())),
+        return {column_data<OddBytes>(AlignmentDataSingleLayout::Odd.offset(capacity_blocks())),
                 count_};
     }
     auto aligned32() const -> TArrayView<Aligned32> {
-        return {
-            column_data<Aligned32>(AlignmentDataSingleLayout::aligned32_offset(capacity_blocks())),
-            count_};
+        return {column_data<Aligned32>(
+                    AlignmentDataSingleLayout::Aligned32Column.offset(capacity_blocks())),
+                count_};
     }
     auto view_nested() const -> ml::soa::Vector3View<float> {
         validate();
@@ -5369,26 +4638,26 @@ struct AlignmentDataSingleView : ml::soa_storage::CompactViewState<false> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{AlignmentDataSingleLayout::nested_xs_offset(blocks)};
-        auto const stride{AlignmentDataSingleLayout::nested_ys_offset(blocks) - first};
+        auto const first{AlignmentDataSingleLayout::NestedXs.offset(blocks)};
+        auto const stride{AlignmentDataSingleLayout::NestedYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto aligned64() const -> TArrayView<Aligned64> {
-        return {
-            column_data<Aligned64>(AlignmentDataSingleLayout::aligned64_offset(capacity_blocks())),
-            count_};
+        return {column_data<Aligned64>(
+                    AlignmentDataSingleLayout::Aligned64Column.offset(capacity_blocks())),
+                count_};
     }
     auto small() const -> TArrayView<int8> {
-        return {column_data<int8>(AlignmentDataSingleLayout::small_offset(capacity_blocks())),
+        return {column_data<int8>(AlignmentDataSingleLayout::Small.offset(capacity_blocks())),
                 count_};
     }
     auto aligned256() const -> TArrayView<Aligned256> {
         return {column_data<Aligned256>(
-                    AlignmentDataSingleLayout::aligned256_offset(capacity_blocks())),
+                    AlignmentDataSingleLayout::Aligned256Column.offset(capacity_blocks())),
                 count_};
     }
     auto handles() const -> TArrayView<Handle> {
-        return {column_data<Handle>(AlignmentDataSingleLayout::handles_offset(capacity_blocks())),
+        return {column_data<Handle>(AlignmentDataSingleLayout::Handles.offset(capacity_blocks())),
                 count_};
     }
     auto columns() const -> AlignmentDataView {
@@ -5398,25 +4667,27 @@ struct AlignmentDataSingleView : ml::soa_storage::CompactViewState<false> {
         }
         auto const blocks{capacity_blocks()};
         return AlignmentDataView{
-            {column_data_unchecked<uint8>(AlignmentDataSingleLayout::bytes_offset(blocks)), count_},
-            {column_data_unchecked<OddBytes>(AlignmentDataSingleLayout::odd_offset(blocks)),
+            {column_data_unchecked<uint8>(AlignmentDataSingleLayout::Bytes.offset(blocks)), count_},
+            {column_data_unchecked<OddBytes>(AlignmentDataSingleLayout::Odd.offset(blocks)),
              count_},
-            {column_data_unchecked<Aligned32>(AlignmentDataSingleLayout::aligned32_offset(blocks)),
+            {column_data_unchecked<Aligned32>(
+                 AlignmentDataSingleLayout::Aligned32Column.offset(blocks)),
              count_},
             VectorsView{
-                {column_data_unchecked<float>(AlignmentDataSingleLayout::nested_xs_offset(blocks)),
+                {column_data_unchecked<float>(AlignmentDataSingleLayout::NestedXs.offset(blocks)),
                  count_},
-                {column_data_unchecked<float>(AlignmentDataSingleLayout::nested_ys_offset(blocks)),
+                {column_data_unchecked<float>(AlignmentDataSingleLayout::NestedYs.offset(blocks)),
                  count_},
-                {column_data_unchecked<float>(AlignmentDataSingleLayout::nested_zs_offset(blocks)),
+                {column_data_unchecked<float>(AlignmentDataSingleLayout::NestedZs.offset(blocks)),
                  count_}},
-            {column_data_unchecked<Aligned64>(AlignmentDataSingleLayout::aligned64_offset(blocks)),
+            {column_data_unchecked<Aligned64>(
+                 AlignmentDataSingleLayout::Aligned64Column.offset(blocks)),
              count_},
-            {column_data_unchecked<int8>(AlignmentDataSingleLayout::small_offset(blocks)), count_},
+            {column_data_unchecked<int8>(AlignmentDataSingleLayout::Small.offset(blocks)), count_},
             {column_data_unchecked<Aligned256>(
-                 AlignmentDataSingleLayout::aligned256_offset(blocks)),
+                 AlignmentDataSingleLayout::Aligned256Column.offset(blocks)),
              count_},
-            {column_data_unchecked<Handle>(AlignmentDataSingleLayout::handles_offset(blocks)),
+            {column_data_unchecked<Handle>(AlignmentDataSingleLayout::Handles.offset(blocks)),
              count_}};
     }
     template <typename Func>
@@ -5550,22 +4821,24 @@ struct FMemorySingleAlignmentDataStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        using Pointers = DataPointers<Byte>;
-        auto const pointer_at = [data]<typename T>(byte_size_type const offset) noexcept {
-            return std::launder(
-                reinterpret_cast<typename Pointers::template Element<T>*>(data + offset));
+        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+            using Column = std::remove_cvref_t<decltype(column)>;
+            using Pointer = std::conditional_t<std::is_const_v<Byte>,
+                                               typename Column::const_pointer,
+                                               typename Column::pointer>;
+            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
         };
         return {
-            pointer_at.template operator()<uint8>(bytes_offset(blocks)),
-            pointer_at.template operator()<OddBytes>(odd_offset(blocks)),
-            pointer_at.template operator()<Aligned32>(aligned32_offset(blocks)),
-            pointer_at.template operator()<float>(nested_xs_offset(blocks)),
-            pointer_at.template operator()<float>(nested_ys_offset(blocks)),
-            pointer_at.template operator()<float>(nested_zs_offset(blocks)),
-            pointer_at.template operator()<Aligned64>(aligned64_offset(blocks)),
-            pointer_at.template operator()<int8>(small_offset(blocks)),
-            pointer_at.template operator()<Aligned256>(aligned256_offset(blocks)),
-            pointer_at.template operator()<Handle>(handles_offset(blocks)),
+            pointer_at(Bytes),
+            pointer_at(Odd),
+            pointer_at(Aligned32Column),
+            pointer_at(NestedXs),
+            pointer_at(NestedYs),
+            pointer_at(NestedZs),
+            pointer_at(Aligned64Column),
+            pointer_at(Small),
+            pointer_at(Aligned256Column),
+            pointer_at(Handles),
         };
     }
     auto capacity_blocks() const noexcept -> byte_size_type {

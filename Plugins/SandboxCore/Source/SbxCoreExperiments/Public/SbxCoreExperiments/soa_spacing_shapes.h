@@ -459,308 +459,71 @@ struct SpacingDoublesSingleLayout {
     inline static constexpr size_type capacity_granularity{64};
     inline static constexpr byte_size_type column_gap{192};
 
-    inline static constexpr byte_size_type positions0_xs_alignment{
-        alignof(double) > 64 ? alignof(double) : 64};
+    template <typename T>
+    using ColLayout = ml::soa_storage::ColumnLayout<T>;
+    inline static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{
+        capacity_granularity, column_gap, 64};
+
+    inline static constexpr ColLayout<double> Positions0Xs{LayoutStart};
+    inline static constexpr ColLayout<double> Positions0Ys{Positions0Xs};
+    inline static constexpr ColLayout<double> Positions0Zs{Positions0Ys};
+    inline static constexpr ColLayout<double> Velocities0Xs{Positions0Zs};
+    inline static constexpr ColLayout<double> Velocities0Ys{Velocities0Xs};
+    inline static constexpr ColLayout<double> Velocities0Zs{Velocities0Ys};
+    inline static constexpr ColLayout<double> Positions1Xs{Velocities0Zs};
+    inline static constexpr ColLayout<double> Positions1Ys{Positions1Xs};
+    inline static constexpr ColLayout<double> Positions1Zs{Positions1Ys};
+    inline static constexpr ColLayout<double> Velocities1Xs{Positions1Zs};
+    inline static constexpr ColLayout<double> Velocities1Ys{Velocities1Xs};
+    inline static constexpr ColLayout<double> Velocities1Zs{Velocities1Ys};
+    inline static constexpr ColLayout<double> Positions2Xs{Velocities1Zs};
+    inline static constexpr ColLayout<double> Positions2Ys{Positions2Xs};
+    inline static constexpr ColLayout<double> Positions2Zs{Positions2Ys};
+    inline static constexpr ColLayout<double> Velocities2Xs{Positions2Zs};
+    inline static constexpr ColLayout<double> Velocities2Ys{Velocities2Xs};
+    inline static constexpr ColLayout<double> Velocities2Zs{Velocities2Ys};
+    inline static constexpr ColLayout<double> Positions3Xs{Velocities2Zs};
+    inline static constexpr ColLayout<double> Positions3Ys{Positions3Xs};
+    inline static constexpr ColLayout<double> Positions3Zs{Positions3Ys};
+    inline static constexpr ColLayout<double> Velocities3Xs{Positions3Zs};
+    inline static constexpr ColLayout<double> Velocities3Ys{Velocities3Xs};
+    inline static constexpr ColLayout<double> Velocities3Zs{Velocities3Ys};
 
     inline static constexpr byte_size_type allocation_alignment{
-        std::max({positions0_xs_alignment})};
-
-    inline static constexpr byte_size_type positions0_xs_block_offset{
-        ml::soa_storage::layout_align(0, positions0_xs_alignment)};
-    inline static constexpr byte_size_type positions0_xs_block_end{
-        positions0_xs_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto positions0_xs_offset(byte_size_type) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(0, positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type positions0_ys_block_offset{
-        ml::soa_storage::layout_align(positions0_xs_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type positions0_ys_block_end{
-        positions0_ys_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto positions0_ys_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(positions0_xs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type positions0_zs_block_offset{
-        ml::soa_storage::layout_align(positions0_ys_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type positions0_zs_block_end{
-        positions0_zs_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto positions0_zs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(positions0_ys_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type velocities0_xs_block_offset{
-        ml::soa_storage::layout_align(positions0_zs_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type velocities0_xs_block_end{
-        velocities0_xs_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto velocities0_xs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(positions0_zs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type velocities0_ys_block_offset{
-        ml::soa_storage::layout_align(velocities0_xs_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type velocities0_ys_block_end{
-        velocities0_ys_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto velocities0_ys_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(velocities0_xs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type velocities0_zs_block_offset{
-        ml::soa_storage::layout_align(velocities0_ys_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type velocities0_zs_block_end{
-        velocities0_zs_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto velocities0_zs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(velocities0_ys_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type positions1_xs_block_offset{
-        ml::soa_storage::layout_align(velocities0_zs_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type positions1_xs_block_end{
-        positions1_xs_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto positions1_xs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(velocities0_zs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type positions1_ys_block_offset{
-        ml::soa_storage::layout_align(positions1_xs_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type positions1_ys_block_end{
-        positions1_ys_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto positions1_ys_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(positions1_xs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type positions1_zs_block_offset{
-        ml::soa_storage::layout_align(positions1_ys_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type positions1_zs_block_end{
-        positions1_zs_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto positions1_zs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(positions1_ys_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type velocities1_xs_block_offset{
-        ml::soa_storage::layout_align(positions1_zs_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type velocities1_xs_block_end{
-        velocities1_xs_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto velocities1_xs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(positions1_zs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type velocities1_ys_block_offset{
-        ml::soa_storage::layout_align(velocities1_xs_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type velocities1_ys_block_end{
-        velocities1_ys_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto velocities1_ys_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(velocities1_xs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type velocities1_zs_block_offset{
-        ml::soa_storage::layout_align(velocities1_ys_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type velocities1_zs_block_end{
-        velocities1_zs_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto velocities1_zs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(velocities1_ys_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type positions2_xs_block_offset{
-        ml::soa_storage::layout_align(velocities1_zs_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type positions2_xs_block_end{
-        positions2_xs_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto positions2_xs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(velocities1_zs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type positions2_ys_block_offset{
-        ml::soa_storage::layout_align(positions2_xs_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type positions2_ys_block_end{
-        positions2_ys_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto positions2_ys_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(positions2_xs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type positions2_zs_block_offset{
-        ml::soa_storage::layout_align(positions2_ys_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type positions2_zs_block_end{
-        positions2_zs_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto positions2_zs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(positions2_ys_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type velocities2_xs_block_offset{
-        ml::soa_storage::layout_align(positions2_zs_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type velocities2_xs_block_end{
-        velocities2_xs_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto velocities2_xs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(positions2_zs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type velocities2_ys_block_offset{
-        ml::soa_storage::layout_align(velocities2_xs_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type velocities2_ys_block_end{
-        velocities2_ys_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto velocities2_ys_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(velocities2_xs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type velocities2_zs_block_offset{
-        ml::soa_storage::layout_align(velocities2_ys_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type velocities2_zs_block_end{
-        velocities2_zs_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto velocities2_zs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(velocities2_ys_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type positions3_xs_block_offset{
-        ml::soa_storage::layout_align(velocities2_zs_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type positions3_xs_block_end{
-        positions3_xs_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto positions3_xs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(velocities2_zs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type positions3_ys_block_offset{
-        ml::soa_storage::layout_align(positions3_xs_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type positions3_ys_block_end{
-        positions3_ys_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto positions3_ys_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(positions3_xs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type positions3_zs_block_offset{
-        ml::soa_storage::layout_align(positions3_ys_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type positions3_zs_block_end{
-        positions3_zs_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto positions3_zs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(positions3_ys_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type velocities3_xs_block_offset{
-        ml::soa_storage::layout_align(positions3_zs_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type velocities3_xs_block_end{
-        velocities3_xs_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto velocities3_xs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(positions3_zs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type velocities3_ys_block_offset{
-        ml::soa_storage::layout_align(velocities3_xs_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type velocities3_ys_block_end{
-        velocities3_ys_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto velocities3_ys_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(velocities3_xs_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
-
-    inline static constexpr byte_size_type velocities3_zs_block_offset{
-        ml::soa_storage::layout_align(velocities3_ys_block_end, positions0_xs_alignment)};
-    inline static constexpr byte_size_type velocities3_zs_block_end{
-        velocities3_zs_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto velocities3_zs_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(velocities3_ys_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             positions0_xs_alignment);
-    }
+        ml::soa_storage::maximum_alignment(Positions0Xs,
+                                           Positions0Ys,
+                                           Positions0Zs,
+                                           Velocities0Xs,
+                                           Velocities0Ys,
+                                           Velocities0Zs,
+                                           Positions1Xs,
+                                           Positions1Ys,
+                                           Positions1Zs,
+                                           Velocities1Xs,
+                                           Velocities1Ys,
+                                           Velocities1Zs,
+                                           Positions2Xs,
+                                           Positions2Ys,
+                                           Positions2Zs,
+                                           Velocities2Xs,
+                                           Velocities2Ys,
+                                           Velocities2Zs,
+                                           Positions3Xs,
+                                           Positions3Ys,
+                                           Positions3Zs,
+                                           Velocities3Xs,
+                                           Velocities3Ys,
+                                           Velocities3Zs)};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
-        ml::soa_storage::layout_align(velocities3_zs_block_end, allocation_alignment) +
+        ml::soa_storage::layout_align(Velocities3Zs.block_end, allocation_alignment) +
         23 * (column_gap + allocation_alignment - 1)};
     inline static constexpr size_type max_capacity{
         ml::soa_storage::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0
-                 ? 0
-                 : velocities3_zs_offset(blocks) + blocks * capacity_granularity * sizeof(double);
+        return blocks == 0 ? 0 : Velocities3Zs.data_end(blocks);
     }
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
@@ -773,55 +536,55 @@ struct SpacingDoublesSingleLayout {
             allocation_alignment <= std::numeric_limits<uint32>::max(),
             "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
         static_assert(sizeof(double) <=
-                      (max_allocation_size - positions0_xs_block_offset) / capacity_granularity);
+                      (max_allocation_size - Positions0Xs.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - positions0_ys_block_offset) / capacity_granularity);
+                      (max_allocation_size - Positions0Ys.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - positions0_zs_block_offset) / capacity_granularity);
+                      (max_allocation_size - Positions0Zs.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - velocities0_xs_block_offset) / capacity_granularity);
+                      (max_allocation_size - Velocities0Xs.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - velocities0_ys_block_offset) / capacity_granularity);
+                      (max_allocation_size - Velocities0Ys.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - velocities0_zs_block_offset) / capacity_granularity);
+                      (max_allocation_size - Velocities0Zs.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - positions1_xs_block_offset) / capacity_granularity);
+                      (max_allocation_size - Positions1Xs.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - positions1_ys_block_offset) / capacity_granularity);
+                      (max_allocation_size - Positions1Ys.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - positions1_zs_block_offset) / capacity_granularity);
+                      (max_allocation_size - Positions1Zs.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - velocities1_xs_block_offset) / capacity_granularity);
+                      (max_allocation_size - Velocities1Xs.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - velocities1_ys_block_offset) / capacity_granularity);
+                      (max_allocation_size - Velocities1Ys.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - velocities1_zs_block_offset) / capacity_granularity);
+                      (max_allocation_size - Velocities1Zs.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - positions2_xs_block_offset) / capacity_granularity);
+                      (max_allocation_size - Positions2Xs.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - positions2_ys_block_offset) / capacity_granularity);
+                      (max_allocation_size - Positions2Ys.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - positions2_zs_block_offset) / capacity_granularity);
+                      (max_allocation_size - Positions2Zs.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - velocities2_xs_block_offset) / capacity_granularity);
+                      (max_allocation_size - Velocities2Xs.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - velocities2_ys_block_offset) / capacity_granularity);
+                      (max_allocation_size - Velocities2Ys.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - velocities2_zs_block_offset) / capacity_granularity);
+                      (max_allocation_size - Velocities2Zs.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - positions3_xs_block_offset) / capacity_granularity);
+                      (max_allocation_size - Positions3Xs.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - positions3_ys_block_offset) / capacity_granularity);
+                      (max_allocation_size - Positions3Ys.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - positions3_zs_block_offset) / capacity_granularity);
+                      (max_allocation_size - Positions3Zs.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - velocities3_xs_block_offset) / capacity_granularity);
+                      (max_allocation_size - Velocities3Xs.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - velocities3_ys_block_offset) / capacity_granularity);
+                      (max_allocation_size - Velocities3Ys.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - velocities3_zs_block_offset) / capacity_granularity);
+                      (max_allocation_size - Velocities3Zs.block_offset) / capacity_granularity);
         static_assert(23 <=
-                      (max_allocation_size - ml::soa_storage::layout_align(velocities3_zs_block_end,
+                      (max_allocation_size - ml::soa_storage::layout_align(Velocities3Zs.block_end,
                                                                            allocation_alignment)) /
                           (column_gap + allocation_alignment - 1));
         static_assert(max_capacity >= capacity_granularity);
@@ -921,36 +684,22 @@ struct SingleSpacingDoublesStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        using Pointers = DataPointers<Byte>;
-        auto const pointer_at = [data]<typename T>(byte_size_type const offset) noexcept {
-            return std::launder(
-                reinterpret_cast<typename Pointers::template Element<T>*>(data + offset));
+        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+            using Column = std::remove_cvref_t<decltype(column)>;
+            using Pointer = std::conditional_t<std::is_const_v<Byte>,
+                                               typename Column::const_pointer,
+                                               typename Column::pointer>;
+            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
         };
         return {
-            pointer_at.template operator()<double>(positions0_xs_offset(blocks)),
-            pointer_at.template operator()<double>(positions0_ys_offset(blocks)),
-            pointer_at.template operator()<double>(positions0_zs_offset(blocks)),
-            pointer_at.template operator()<double>(velocities0_xs_offset(blocks)),
-            pointer_at.template operator()<double>(velocities0_ys_offset(blocks)),
-            pointer_at.template operator()<double>(velocities0_zs_offset(blocks)),
-            pointer_at.template operator()<double>(positions1_xs_offset(blocks)),
-            pointer_at.template operator()<double>(positions1_ys_offset(blocks)),
-            pointer_at.template operator()<double>(positions1_zs_offset(blocks)),
-            pointer_at.template operator()<double>(velocities1_xs_offset(blocks)),
-            pointer_at.template operator()<double>(velocities1_ys_offset(blocks)),
-            pointer_at.template operator()<double>(velocities1_zs_offset(blocks)),
-            pointer_at.template operator()<double>(positions2_xs_offset(blocks)),
-            pointer_at.template operator()<double>(positions2_ys_offset(blocks)),
-            pointer_at.template operator()<double>(positions2_zs_offset(blocks)),
-            pointer_at.template operator()<double>(velocities2_xs_offset(blocks)),
-            pointer_at.template operator()<double>(velocities2_ys_offset(blocks)),
-            pointer_at.template operator()<double>(velocities2_zs_offset(blocks)),
-            pointer_at.template operator()<double>(positions3_xs_offset(blocks)),
-            pointer_at.template operator()<double>(positions3_ys_offset(blocks)),
-            pointer_at.template operator()<double>(positions3_zs_offset(blocks)),
-            pointer_at.template operator()<double>(velocities3_xs_offset(blocks)),
-            pointer_at.template operator()<double>(velocities3_ys_offset(blocks)),
-            pointer_at.template operator()<double>(velocities3_zs_offset(blocks)),
+            pointer_at(Positions0Xs),  pointer_at(Positions0Ys),  pointer_at(Positions0Zs),
+            pointer_at(Velocities0Xs), pointer_at(Velocities0Ys), pointer_at(Velocities0Zs),
+            pointer_at(Positions1Xs),  pointer_at(Positions1Ys),  pointer_at(Positions1Zs),
+            pointer_at(Velocities1Xs), pointer_at(Velocities1Ys), pointer_at(Velocities1Zs),
+            pointer_at(Positions2Xs),  pointer_at(Positions2Ys),  pointer_at(Positions2Zs),
+            pointer_at(Velocities2Xs), pointer_at(Velocities2Ys), pointer_at(Velocities2Zs),
+            pointer_at(Positions3Xs),  pointer_at(Positions3Ys),  pointer_at(Positions3Zs),
+            pointer_at(Velocities3Xs), pointer_at(Velocities3Ys), pointer_at(Velocities3Zs),
         };
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
@@ -1171,8 +920,8 @@ struct SpacingDoublesSingleConstView : ml::soa_storage::CompactViewState<true> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{SpacingDoublesSingleLayout::positions0_xs_offset(blocks)};
-        auto const stride{SpacingDoublesSingleLayout::positions0_ys_offset(blocks) - first};
+        auto const first{SpacingDoublesSingleLayout::Positions0Xs.offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::Positions0Ys.offset(blocks) - first};
         return {column_data_unchecked<double>(first), stride, count_};
     }
     auto view_velocities0() const -> ml::soa::Vector3ConstView<double> {
@@ -1181,8 +930,8 @@ struct SpacingDoublesSingleConstView : ml::soa_storage::CompactViewState<true> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{SpacingDoublesSingleLayout::velocities0_xs_offset(blocks)};
-        auto const stride{SpacingDoublesSingleLayout::velocities0_ys_offset(blocks) - first};
+        auto const first{SpacingDoublesSingleLayout::Velocities0Xs.offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::Velocities0Ys.offset(blocks) - first};
         return {column_data_unchecked<double>(first), stride, count_};
     }
     auto view_positions1() const -> ml::soa::Vector3ConstView<double> {
@@ -1191,8 +940,8 @@ struct SpacingDoublesSingleConstView : ml::soa_storage::CompactViewState<true> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{SpacingDoublesSingleLayout::positions1_xs_offset(blocks)};
-        auto const stride{SpacingDoublesSingleLayout::positions1_ys_offset(blocks) - first};
+        auto const first{SpacingDoublesSingleLayout::Positions1Xs.offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::Positions1Ys.offset(blocks) - first};
         return {column_data_unchecked<double>(first), stride, count_};
     }
     auto view_velocities1() const -> ml::soa::Vector3ConstView<double> {
@@ -1201,8 +950,8 @@ struct SpacingDoublesSingleConstView : ml::soa_storage::CompactViewState<true> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{SpacingDoublesSingleLayout::velocities1_xs_offset(blocks)};
-        auto const stride{SpacingDoublesSingleLayout::velocities1_ys_offset(blocks) - first};
+        auto const first{SpacingDoublesSingleLayout::Velocities1Xs.offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::Velocities1Ys.offset(blocks) - first};
         return {column_data_unchecked<double>(first), stride, count_};
     }
     auto view_positions2() const -> ml::soa::Vector3ConstView<double> {
@@ -1211,8 +960,8 @@ struct SpacingDoublesSingleConstView : ml::soa_storage::CompactViewState<true> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{SpacingDoublesSingleLayout::positions2_xs_offset(blocks)};
-        auto const stride{SpacingDoublesSingleLayout::positions2_ys_offset(blocks) - first};
+        auto const first{SpacingDoublesSingleLayout::Positions2Xs.offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::Positions2Ys.offset(blocks) - first};
         return {column_data_unchecked<double>(first), stride, count_};
     }
     auto view_velocities2() const -> ml::soa::Vector3ConstView<double> {
@@ -1221,8 +970,8 @@ struct SpacingDoublesSingleConstView : ml::soa_storage::CompactViewState<true> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{SpacingDoublesSingleLayout::velocities2_xs_offset(blocks)};
-        auto const stride{SpacingDoublesSingleLayout::velocities2_ys_offset(blocks) - first};
+        auto const first{SpacingDoublesSingleLayout::Velocities2Xs.offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::Velocities2Ys.offset(blocks) - first};
         return {column_data_unchecked<double>(first), stride, count_};
     }
     auto view_positions3() const -> ml::soa::Vector3ConstView<double> {
@@ -1231,8 +980,8 @@ struct SpacingDoublesSingleConstView : ml::soa_storage::CompactViewState<true> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{SpacingDoublesSingleLayout::positions3_xs_offset(blocks)};
-        auto const stride{SpacingDoublesSingleLayout::positions3_ys_offset(blocks) - first};
+        auto const first{SpacingDoublesSingleLayout::Positions3Xs.offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::Positions3Ys.offset(blocks) - first};
         return {column_data_unchecked<double>(first), stride, count_};
     }
     auto view_velocities3() const -> ml::soa::Vector3ConstView<double> {
@@ -1241,8 +990,8 @@ struct SpacingDoublesSingleConstView : ml::soa_storage::CompactViewState<true> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{SpacingDoublesSingleLayout::velocities3_xs_offset(blocks)};
-        auto const stride{SpacingDoublesSingleLayout::velocities3_ys_offset(blocks) - first};
+        auto const first{SpacingDoublesSingleLayout::Velocities3Xs.offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::Velocities3Ys.offset(blocks) - first};
         return {column_data_unchecked<double>(first), stride, count_};
     }
     auto columns() const -> SpacingDoublesConstView {
@@ -1254,83 +1003,83 @@ struct SpacingDoublesSingleConstView : ml::soa_storage::CompactViewState<true> {
         return SpacingDoublesConstView{
             SpacingDoubleVectorConstView{
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::positions0_xs_offset(blocks)),
+                     SpacingDoublesSingleLayout::Positions0Xs.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::positions0_ys_offset(blocks)),
+                     SpacingDoublesSingleLayout::Positions0Ys.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::positions0_zs_offset(blocks)),
+                     SpacingDoublesSingleLayout::Positions0Zs.offset(blocks)),
                  count_}},
             SpacingDoubleVectorConstView{
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::velocities0_xs_offset(blocks)),
+                     SpacingDoublesSingleLayout::Velocities0Xs.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::velocities0_ys_offset(blocks)),
+                     SpacingDoublesSingleLayout::Velocities0Ys.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::velocities0_zs_offset(blocks)),
+                     SpacingDoublesSingleLayout::Velocities0Zs.offset(blocks)),
                  count_}},
             SpacingDoubleVectorConstView{
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::positions1_xs_offset(blocks)),
+                     SpacingDoublesSingleLayout::Positions1Xs.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::positions1_ys_offset(blocks)),
+                     SpacingDoublesSingleLayout::Positions1Ys.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::positions1_zs_offset(blocks)),
+                     SpacingDoublesSingleLayout::Positions1Zs.offset(blocks)),
                  count_}},
             SpacingDoubleVectorConstView{
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::velocities1_xs_offset(blocks)),
+                     SpacingDoublesSingleLayout::Velocities1Xs.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::velocities1_ys_offset(blocks)),
+                     SpacingDoublesSingleLayout::Velocities1Ys.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::velocities1_zs_offset(blocks)),
+                     SpacingDoublesSingleLayout::Velocities1Zs.offset(blocks)),
                  count_}},
             SpacingDoubleVectorConstView{
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::positions2_xs_offset(blocks)),
+                     SpacingDoublesSingleLayout::Positions2Xs.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::positions2_ys_offset(blocks)),
+                     SpacingDoublesSingleLayout::Positions2Ys.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::positions2_zs_offset(blocks)),
+                     SpacingDoublesSingleLayout::Positions2Zs.offset(blocks)),
                  count_}},
             SpacingDoubleVectorConstView{
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::velocities2_xs_offset(blocks)),
+                     SpacingDoublesSingleLayout::Velocities2Xs.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::velocities2_ys_offset(blocks)),
+                     SpacingDoublesSingleLayout::Velocities2Ys.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::velocities2_zs_offset(blocks)),
+                     SpacingDoublesSingleLayout::Velocities2Zs.offset(blocks)),
                  count_}},
             SpacingDoubleVectorConstView{
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::positions3_xs_offset(blocks)),
+                     SpacingDoublesSingleLayout::Positions3Xs.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::positions3_ys_offset(blocks)),
+                     SpacingDoublesSingleLayout::Positions3Ys.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::positions3_zs_offset(blocks)),
+                     SpacingDoublesSingleLayout::Positions3Zs.offset(blocks)),
                  count_}},
             SpacingDoubleVectorConstView{
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::velocities3_xs_offset(blocks)),
+                     SpacingDoublesSingleLayout::Velocities3Xs.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::velocities3_ys_offset(blocks)),
+                     SpacingDoublesSingleLayout::Velocities3Ys.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingDoublesSingleLayout::velocities3_zs_offset(blocks)),
+                     SpacingDoublesSingleLayout::Velocities3Zs.offset(blocks)),
                  count_}}};
     }
     template <typename Func>
@@ -1357,8 +1106,8 @@ struct SpacingDoublesSingleView : ml::soa_storage::CompactViewState<false> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{SpacingDoublesSingleLayout::positions0_xs_offset(blocks)};
-        auto const stride{SpacingDoublesSingleLayout::positions0_ys_offset(blocks) - first};
+        auto const first{SpacingDoublesSingleLayout::Positions0Xs.offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::Positions0Ys.offset(blocks) - first};
         return {column_data_unchecked<double>(first), stride, count_};
     }
     auto view_velocities0() const -> ml::soa::Vector3View<double> {
@@ -1367,8 +1116,8 @@ struct SpacingDoublesSingleView : ml::soa_storage::CompactViewState<false> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{SpacingDoublesSingleLayout::velocities0_xs_offset(blocks)};
-        auto const stride{SpacingDoublesSingleLayout::velocities0_ys_offset(blocks) - first};
+        auto const first{SpacingDoublesSingleLayout::Velocities0Xs.offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::Velocities0Ys.offset(blocks) - first};
         return {column_data_unchecked<double>(first), stride, count_};
     }
     auto view_positions1() const -> ml::soa::Vector3View<double> {
@@ -1377,8 +1126,8 @@ struct SpacingDoublesSingleView : ml::soa_storage::CompactViewState<false> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{SpacingDoublesSingleLayout::positions1_xs_offset(blocks)};
-        auto const stride{SpacingDoublesSingleLayout::positions1_ys_offset(blocks) - first};
+        auto const first{SpacingDoublesSingleLayout::Positions1Xs.offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::Positions1Ys.offset(blocks) - first};
         return {column_data_unchecked<double>(first), stride, count_};
     }
     auto view_velocities1() const -> ml::soa::Vector3View<double> {
@@ -1387,8 +1136,8 @@ struct SpacingDoublesSingleView : ml::soa_storage::CompactViewState<false> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{SpacingDoublesSingleLayout::velocities1_xs_offset(blocks)};
-        auto const stride{SpacingDoublesSingleLayout::velocities1_ys_offset(blocks) - first};
+        auto const first{SpacingDoublesSingleLayout::Velocities1Xs.offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::Velocities1Ys.offset(blocks) - first};
         return {column_data_unchecked<double>(first), stride, count_};
     }
     auto view_positions2() const -> ml::soa::Vector3View<double> {
@@ -1397,8 +1146,8 @@ struct SpacingDoublesSingleView : ml::soa_storage::CompactViewState<false> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{SpacingDoublesSingleLayout::positions2_xs_offset(blocks)};
-        auto const stride{SpacingDoublesSingleLayout::positions2_ys_offset(blocks) - first};
+        auto const first{SpacingDoublesSingleLayout::Positions2Xs.offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::Positions2Ys.offset(blocks) - first};
         return {column_data_unchecked<double>(first), stride, count_};
     }
     auto view_velocities2() const -> ml::soa::Vector3View<double> {
@@ -1407,8 +1156,8 @@ struct SpacingDoublesSingleView : ml::soa_storage::CompactViewState<false> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{SpacingDoublesSingleLayout::velocities2_xs_offset(blocks)};
-        auto const stride{SpacingDoublesSingleLayout::velocities2_ys_offset(blocks) - first};
+        auto const first{SpacingDoublesSingleLayout::Velocities2Xs.offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::Velocities2Ys.offset(blocks) - first};
         return {column_data_unchecked<double>(first), stride, count_};
     }
     auto view_positions3() const -> ml::soa::Vector3View<double> {
@@ -1417,8 +1166,8 @@ struct SpacingDoublesSingleView : ml::soa_storage::CompactViewState<false> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{SpacingDoublesSingleLayout::positions3_xs_offset(blocks)};
-        auto const stride{SpacingDoublesSingleLayout::positions3_ys_offset(blocks) - first};
+        auto const first{SpacingDoublesSingleLayout::Positions3Xs.offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::Positions3Ys.offset(blocks) - first};
         return {column_data_unchecked<double>(first), stride, count_};
     }
     auto view_velocities3() const -> ml::soa::Vector3View<double> {
@@ -1427,8 +1176,8 @@ struct SpacingDoublesSingleView : ml::soa_storage::CompactViewState<false> {
             return {};
         }
         auto const blocks{capacity_blocks()};
-        auto const first{SpacingDoublesSingleLayout::velocities3_xs_offset(blocks)};
-        auto const stride{SpacingDoublesSingleLayout::velocities3_ys_offset(blocks) - first};
+        auto const first{SpacingDoublesSingleLayout::Velocities3Xs.offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::Velocities3Ys.offset(blocks) - first};
         return {column_data_unchecked<double>(first), stride, count_};
     }
     auto columns() const -> SpacingDoublesView {
@@ -1439,76 +1188,76 @@ struct SpacingDoublesSingleView : ml::soa_storage::CompactViewState<false> {
         auto const blocks{capacity_blocks()};
         return SpacingDoublesView{
             SpacingDoubleVectorView{{column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::positions0_xs_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Positions0Xs.offset(blocks)),
                                      count_},
                                     {column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::positions0_ys_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Positions0Ys.offset(blocks)),
                                      count_},
                                     {column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::positions0_zs_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Positions0Zs.offset(blocks)),
                                      count_}},
             SpacingDoubleVectorView{{column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::velocities0_xs_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Velocities0Xs.offset(blocks)),
                                      count_},
                                     {column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::velocities0_ys_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Velocities0Ys.offset(blocks)),
                                      count_},
                                     {column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::velocities0_zs_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Velocities0Zs.offset(blocks)),
                                      count_}},
             SpacingDoubleVectorView{{column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::positions1_xs_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Positions1Xs.offset(blocks)),
                                      count_},
                                     {column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::positions1_ys_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Positions1Ys.offset(blocks)),
                                      count_},
                                     {column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::positions1_zs_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Positions1Zs.offset(blocks)),
                                      count_}},
             SpacingDoubleVectorView{{column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::velocities1_xs_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Velocities1Xs.offset(blocks)),
                                      count_},
                                     {column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::velocities1_ys_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Velocities1Ys.offset(blocks)),
                                      count_},
                                     {column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::velocities1_zs_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Velocities1Zs.offset(blocks)),
                                      count_}},
             SpacingDoubleVectorView{{column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::positions2_xs_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Positions2Xs.offset(blocks)),
                                      count_},
                                     {column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::positions2_ys_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Positions2Ys.offset(blocks)),
                                      count_},
                                     {column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::positions2_zs_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Positions2Zs.offset(blocks)),
                                      count_}},
             SpacingDoubleVectorView{{column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::velocities2_xs_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Velocities2Xs.offset(blocks)),
                                      count_},
                                     {column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::velocities2_ys_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Velocities2Ys.offset(blocks)),
                                      count_},
                                     {column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::velocities2_zs_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Velocities2Zs.offset(blocks)),
                                      count_}},
             SpacingDoubleVectorView{{column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::positions3_xs_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Positions3Xs.offset(blocks)),
                                      count_},
                                     {column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::positions3_ys_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Positions3Ys.offset(blocks)),
                                      count_},
                                     {column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::positions3_zs_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Positions3Zs.offset(blocks)),
                                      count_}},
             SpacingDoubleVectorView{{column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::velocities3_xs_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Velocities3Xs.offset(blocks)),
                                      count_},
                                     {column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::velocities3_ys_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Velocities3Ys.offset(blocks)),
                                      count_},
                                     {column_data_unchecked<double>(
-                                         SpacingDoublesSingleLayout::velocities3_zs_offset(blocks)),
+                                         SpacingDoublesSingleLayout::Velocities3Zs.offset(blocks)),
                                      count_}}};
     }
     template <typename Func>
@@ -2055,560 +1804,107 @@ struct SpacingMixedWidthsSingleLayout {
     inline static constexpr size_type capacity_granularity{64};
     inline static constexpr byte_size_type column_gap{192};
 
-    inline static constexpr byte_size_type bundle0_flags_alignment{
-        alignof(uint8) > 64 ? alignof(uint8) : 64};
+    template <typename T>
+    using ColLayout = ml::soa_storage::ColumnLayout<T>;
+    inline static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{
+        capacity_granularity, column_gap, 64};
 
-    inline static constexpr byte_size_type bundle0_counters_alignment{
-        alignof(uint16) > 64 ? alignof(uint16) : 64};
-
-    inline static constexpr byte_size_type bundle0_counts_alignment{
-        alignof(uint32) > 64 ? alignof(uint32) : 64};
-
-    inline static constexpr byte_size_type bundle0_totals_alignment{
-        alignof(uint64) > 64 ? alignof(uint64) : 64};
-
-    inline static constexpr byte_size_type bundle0_payloads_alignment{
-        alignof(OddBytes) > 64 ? alignof(OddBytes) : 64};
-
-    inline static constexpr byte_size_type bundle0_values_alignment{
-        alignof(float) > 64 ? alignof(float) : 64};
-
-    inline static constexpr byte_size_type bundle0_rates_alignment{
-        alignof(double) > 64 ? alignof(double) : 64};
+    inline static constexpr ColLayout<uint8> Bundle0Flags{LayoutStart};
+    inline static constexpr ColLayout<uint16> Bundle0Counters{Bundle0Flags};
+    inline static constexpr ColLayout<uint32> Bundle0Counts{Bundle0Counters};
+    inline static constexpr ColLayout<uint64> Bundle0Totals{Bundle0Counts};
+    inline static constexpr ColLayout<OddBytes> Bundle0Payloads{Bundle0Totals};
+    inline static constexpr ColLayout<float> Bundle0Values{Bundle0Payloads};
+    inline static constexpr ColLayout<double> Bundle0Rates{Bundle0Values};
+    inline static constexpr ColLayout<uint8> Bundle1Flags{Bundle0Rates};
+    inline static constexpr ColLayout<uint16> Bundle1Counters{Bundle1Flags};
+    inline static constexpr ColLayout<uint32> Bundle1Counts{Bundle1Counters};
+    inline static constexpr ColLayout<uint64> Bundle1Totals{Bundle1Counts};
+    inline static constexpr ColLayout<OddBytes> Bundle1Payloads{Bundle1Totals};
+    inline static constexpr ColLayout<float> Bundle1Values{Bundle1Payloads};
+    inline static constexpr ColLayout<double> Bundle1Rates{Bundle1Values};
+    inline static constexpr ColLayout<uint8> Bundle2Flags{Bundle1Rates};
+    inline static constexpr ColLayout<uint16> Bundle2Counters{Bundle2Flags};
+    inline static constexpr ColLayout<uint32> Bundle2Counts{Bundle2Counters};
+    inline static constexpr ColLayout<uint64> Bundle2Totals{Bundle2Counts};
+    inline static constexpr ColLayout<OddBytes> Bundle2Payloads{Bundle2Totals};
+    inline static constexpr ColLayout<float> Bundle2Values{Bundle2Payloads};
+    inline static constexpr ColLayout<double> Bundle2Rates{Bundle2Values};
+    inline static constexpr ColLayout<uint8> Bundle3Flags{Bundle2Rates};
+    inline static constexpr ColLayout<uint16> Bundle3Counters{Bundle3Flags};
+    inline static constexpr ColLayout<uint32> Bundle3Counts{Bundle3Counters};
+    inline static constexpr ColLayout<uint64> Bundle3Totals{Bundle3Counts};
+    inline static constexpr ColLayout<OddBytes> Bundle3Payloads{Bundle3Totals};
+    inline static constexpr ColLayout<float> Bundle3Values{Bundle3Payloads};
+    inline static constexpr ColLayout<double> Bundle3Rates{Bundle3Values};
+    inline static constexpr ColLayout<uint8> Bundle4Flags{Bundle3Rates};
+    inline static constexpr ColLayout<uint16> Bundle4Counters{Bundle4Flags};
+    inline static constexpr ColLayout<uint32> Bundle4Counts{Bundle4Counters};
+    inline static constexpr ColLayout<uint64> Bundle4Totals{Bundle4Counts};
+    inline static constexpr ColLayout<OddBytes> Bundle4Payloads{Bundle4Totals};
+    inline static constexpr ColLayout<float> Bundle4Values{Bundle4Payloads};
+    inline static constexpr ColLayout<double> Bundle4Rates{Bundle4Values};
+    inline static constexpr ColLayout<uint8> Bundle5Flags{Bundle4Rates};
+    inline static constexpr ColLayout<uint16> Bundle5Counters{Bundle5Flags};
+    inline static constexpr ColLayout<uint32> Bundle5Counts{Bundle5Counters};
+    inline static constexpr ColLayout<uint64> Bundle5Totals{Bundle5Counts};
+    inline static constexpr ColLayout<OddBytes> Bundle5Payloads{Bundle5Totals};
+    inline static constexpr ColLayout<float> Bundle5Values{Bundle5Payloads};
+    inline static constexpr ColLayout<double> Bundle5Rates{Bundle5Values};
 
     inline static constexpr byte_size_type allocation_alignment{
-        std::max({bundle0_flags_alignment,
-                  bundle0_counters_alignment,
-                  bundle0_counts_alignment,
-                  bundle0_totals_alignment,
-                  bundle0_payloads_alignment,
-                  bundle0_values_alignment,
-                  bundle0_rates_alignment})};
-
-    inline static constexpr byte_size_type bundle0_flags_block_offset{
-        ml::soa_storage::layout_align(0, bundle0_flags_alignment)};
-    inline static constexpr byte_size_type bundle0_flags_block_end{
-        bundle0_flags_block_offset + capacity_granularity * sizeof(uint8)};
-
-    static constexpr auto bundle0_flags_offset(byte_size_type) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(0, bundle0_flags_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle0_counters_block_offset{
-        ml::soa_storage::layout_align(bundle0_flags_block_end, bundle0_counters_alignment)};
-    inline static constexpr byte_size_type bundle0_counters_block_end{
-        bundle0_counters_block_offset + capacity_granularity * sizeof(uint16)};
-
-    static constexpr auto bundle0_counters_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle0_flags_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint8) +
-                                                 column_gap,
-                                             bundle0_counters_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle0_counts_block_offset{
-        ml::soa_storage::layout_align(bundle0_counters_block_end, bundle0_counts_alignment)};
-    inline static constexpr byte_size_type bundle0_counts_block_end{
-        bundle0_counts_block_offset + capacity_granularity * sizeof(uint32)};
-
-    static constexpr auto bundle0_counts_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle0_counters_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint16) +
-                                                 column_gap,
-                                             bundle0_counts_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle0_totals_block_offset{
-        ml::soa_storage::layout_align(bundle0_counts_block_end, bundle0_totals_alignment)};
-    inline static constexpr byte_size_type bundle0_totals_block_end{
-        bundle0_totals_block_offset + capacity_granularity * sizeof(uint64)};
-
-    static constexpr auto bundle0_totals_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle0_counts_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint32) +
-                                                 column_gap,
-                                             bundle0_totals_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle0_payloads_block_offset{
-        ml::soa_storage::layout_align(bundle0_totals_block_end, bundle0_payloads_alignment)};
-    inline static constexpr byte_size_type bundle0_payloads_block_end{
-        bundle0_payloads_block_offset + capacity_granularity * sizeof(OddBytes)};
-
-    static constexpr auto bundle0_payloads_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle0_totals_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint64) +
-                                                 column_gap,
-                                             bundle0_payloads_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle0_values_block_offset{
-        ml::soa_storage::layout_align(bundle0_payloads_block_end, bundle0_values_alignment)};
-    inline static constexpr byte_size_type bundle0_values_block_end{
-        bundle0_values_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto bundle0_values_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle0_payloads_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(OddBytes) +
-                                                 column_gap,
-                                             bundle0_values_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle0_rates_block_offset{
-        ml::soa_storage::layout_align(bundle0_values_block_end, bundle0_rates_alignment)};
-    inline static constexpr byte_size_type bundle0_rates_block_end{
-        bundle0_rates_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto bundle0_rates_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle0_values_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             bundle0_rates_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle1_flags_block_offset{
-        ml::soa_storage::layout_align(bundle0_rates_block_end, bundle0_flags_alignment)};
-    inline static constexpr byte_size_type bundle1_flags_block_end{
-        bundle1_flags_block_offset + capacity_granularity * sizeof(uint8)};
-
-    static constexpr auto bundle1_flags_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle0_rates_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             bundle0_flags_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle1_counters_block_offset{
-        ml::soa_storage::layout_align(bundle1_flags_block_end, bundle0_counters_alignment)};
-    inline static constexpr byte_size_type bundle1_counters_block_end{
-        bundle1_counters_block_offset + capacity_granularity * sizeof(uint16)};
-
-    static constexpr auto bundle1_counters_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle1_flags_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint8) +
-                                                 column_gap,
-                                             bundle0_counters_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle1_counts_block_offset{
-        ml::soa_storage::layout_align(bundle1_counters_block_end, bundle0_counts_alignment)};
-    inline static constexpr byte_size_type bundle1_counts_block_end{
-        bundle1_counts_block_offset + capacity_granularity * sizeof(uint32)};
-
-    static constexpr auto bundle1_counts_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle1_counters_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint16) +
-                                                 column_gap,
-                                             bundle0_counts_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle1_totals_block_offset{
-        ml::soa_storage::layout_align(bundle1_counts_block_end, bundle0_totals_alignment)};
-    inline static constexpr byte_size_type bundle1_totals_block_end{
-        bundle1_totals_block_offset + capacity_granularity * sizeof(uint64)};
-
-    static constexpr auto bundle1_totals_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle1_counts_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint32) +
-                                                 column_gap,
-                                             bundle0_totals_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle1_payloads_block_offset{
-        ml::soa_storage::layout_align(bundle1_totals_block_end, bundle0_payloads_alignment)};
-    inline static constexpr byte_size_type bundle1_payloads_block_end{
-        bundle1_payloads_block_offset + capacity_granularity * sizeof(OddBytes)};
-
-    static constexpr auto bundle1_payloads_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle1_totals_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint64) +
-                                                 column_gap,
-                                             bundle0_payloads_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle1_values_block_offset{
-        ml::soa_storage::layout_align(bundle1_payloads_block_end, bundle0_values_alignment)};
-    inline static constexpr byte_size_type bundle1_values_block_end{
-        bundle1_values_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto bundle1_values_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle1_payloads_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(OddBytes) +
-                                                 column_gap,
-                                             bundle0_values_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle1_rates_block_offset{
-        ml::soa_storage::layout_align(bundle1_values_block_end, bundle0_rates_alignment)};
-    inline static constexpr byte_size_type bundle1_rates_block_end{
-        bundle1_rates_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto bundle1_rates_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle1_values_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             bundle0_rates_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle2_flags_block_offset{
-        ml::soa_storage::layout_align(bundle1_rates_block_end, bundle0_flags_alignment)};
-    inline static constexpr byte_size_type bundle2_flags_block_end{
-        bundle2_flags_block_offset + capacity_granularity * sizeof(uint8)};
-
-    static constexpr auto bundle2_flags_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle1_rates_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             bundle0_flags_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle2_counters_block_offset{
-        ml::soa_storage::layout_align(bundle2_flags_block_end, bundle0_counters_alignment)};
-    inline static constexpr byte_size_type bundle2_counters_block_end{
-        bundle2_counters_block_offset + capacity_granularity * sizeof(uint16)};
-
-    static constexpr auto bundle2_counters_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle2_flags_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint8) +
-                                                 column_gap,
-                                             bundle0_counters_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle2_counts_block_offset{
-        ml::soa_storage::layout_align(bundle2_counters_block_end, bundle0_counts_alignment)};
-    inline static constexpr byte_size_type bundle2_counts_block_end{
-        bundle2_counts_block_offset + capacity_granularity * sizeof(uint32)};
-
-    static constexpr auto bundle2_counts_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle2_counters_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint16) +
-                                                 column_gap,
-                                             bundle0_counts_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle2_totals_block_offset{
-        ml::soa_storage::layout_align(bundle2_counts_block_end, bundle0_totals_alignment)};
-    inline static constexpr byte_size_type bundle2_totals_block_end{
-        bundle2_totals_block_offset + capacity_granularity * sizeof(uint64)};
-
-    static constexpr auto bundle2_totals_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle2_counts_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint32) +
-                                                 column_gap,
-                                             bundle0_totals_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle2_payloads_block_offset{
-        ml::soa_storage::layout_align(bundle2_totals_block_end, bundle0_payloads_alignment)};
-    inline static constexpr byte_size_type bundle2_payloads_block_end{
-        bundle2_payloads_block_offset + capacity_granularity * sizeof(OddBytes)};
-
-    static constexpr auto bundle2_payloads_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle2_totals_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint64) +
-                                                 column_gap,
-                                             bundle0_payloads_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle2_values_block_offset{
-        ml::soa_storage::layout_align(bundle2_payloads_block_end, bundle0_values_alignment)};
-    inline static constexpr byte_size_type bundle2_values_block_end{
-        bundle2_values_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto bundle2_values_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle2_payloads_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(OddBytes) +
-                                                 column_gap,
-                                             bundle0_values_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle2_rates_block_offset{
-        ml::soa_storage::layout_align(bundle2_values_block_end, bundle0_rates_alignment)};
-    inline static constexpr byte_size_type bundle2_rates_block_end{
-        bundle2_rates_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto bundle2_rates_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle2_values_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             bundle0_rates_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle3_flags_block_offset{
-        ml::soa_storage::layout_align(bundle2_rates_block_end, bundle0_flags_alignment)};
-    inline static constexpr byte_size_type bundle3_flags_block_end{
-        bundle3_flags_block_offset + capacity_granularity * sizeof(uint8)};
-
-    static constexpr auto bundle3_flags_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle2_rates_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             bundle0_flags_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle3_counters_block_offset{
-        ml::soa_storage::layout_align(bundle3_flags_block_end, bundle0_counters_alignment)};
-    inline static constexpr byte_size_type bundle3_counters_block_end{
-        bundle3_counters_block_offset + capacity_granularity * sizeof(uint16)};
-
-    static constexpr auto bundle3_counters_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle3_flags_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint8) +
-                                                 column_gap,
-                                             bundle0_counters_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle3_counts_block_offset{
-        ml::soa_storage::layout_align(bundle3_counters_block_end, bundle0_counts_alignment)};
-    inline static constexpr byte_size_type bundle3_counts_block_end{
-        bundle3_counts_block_offset + capacity_granularity * sizeof(uint32)};
-
-    static constexpr auto bundle3_counts_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle3_counters_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint16) +
-                                                 column_gap,
-                                             bundle0_counts_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle3_totals_block_offset{
-        ml::soa_storage::layout_align(bundle3_counts_block_end, bundle0_totals_alignment)};
-    inline static constexpr byte_size_type bundle3_totals_block_end{
-        bundle3_totals_block_offset + capacity_granularity * sizeof(uint64)};
-
-    static constexpr auto bundle3_totals_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle3_counts_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint32) +
-                                                 column_gap,
-                                             bundle0_totals_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle3_payloads_block_offset{
-        ml::soa_storage::layout_align(bundle3_totals_block_end, bundle0_payloads_alignment)};
-    inline static constexpr byte_size_type bundle3_payloads_block_end{
-        bundle3_payloads_block_offset + capacity_granularity * sizeof(OddBytes)};
-
-    static constexpr auto bundle3_payloads_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle3_totals_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint64) +
-                                                 column_gap,
-                                             bundle0_payloads_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle3_values_block_offset{
-        ml::soa_storage::layout_align(bundle3_payloads_block_end, bundle0_values_alignment)};
-    inline static constexpr byte_size_type bundle3_values_block_end{
-        bundle3_values_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto bundle3_values_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle3_payloads_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(OddBytes) +
-                                                 column_gap,
-                                             bundle0_values_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle3_rates_block_offset{
-        ml::soa_storage::layout_align(bundle3_values_block_end, bundle0_rates_alignment)};
-    inline static constexpr byte_size_type bundle3_rates_block_end{
-        bundle3_rates_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto bundle3_rates_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle3_values_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             bundle0_rates_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle4_flags_block_offset{
-        ml::soa_storage::layout_align(bundle3_rates_block_end, bundle0_flags_alignment)};
-    inline static constexpr byte_size_type bundle4_flags_block_end{
-        bundle4_flags_block_offset + capacity_granularity * sizeof(uint8)};
-
-    static constexpr auto bundle4_flags_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle3_rates_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             bundle0_flags_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle4_counters_block_offset{
-        ml::soa_storage::layout_align(bundle4_flags_block_end, bundle0_counters_alignment)};
-    inline static constexpr byte_size_type bundle4_counters_block_end{
-        bundle4_counters_block_offset + capacity_granularity * sizeof(uint16)};
-
-    static constexpr auto bundle4_counters_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle4_flags_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint8) +
-                                                 column_gap,
-                                             bundle0_counters_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle4_counts_block_offset{
-        ml::soa_storage::layout_align(bundle4_counters_block_end, bundle0_counts_alignment)};
-    inline static constexpr byte_size_type bundle4_counts_block_end{
-        bundle4_counts_block_offset + capacity_granularity * sizeof(uint32)};
-
-    static constexpr auto bundle4_counts_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle4_counters_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint16) +
-                                                 column_gap,
-                                             bundle0_counts_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle4_totals_block_offset{
-        ml::soa_storage::layout_align(bundle4_counts_block_end, bundle0_totals_alignment)};
-    inline static constexpr byte_size_type bundle4_totals_block_end{
-        bundle4_totals_block_offset + capacity_granularity * sizeof(uint64)};
-
-    static constexpr auto bundle4_totals_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle4_counts_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint32) +
-                                                 column_gap,
-                                             bundle0_totals_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle4_payloads_block_offset{
-        ml::soa_storage::layout_align(bundle4_totals_block_end, bundle0_payloads_alignment)};
-    inline static constexpr byte_size_type bundle4_payloads_block_end{
-        bundle4_payloads_block_offset + capacity_granularity * sizeof(OddBytes)};
-
-    static constexpr auto bundle4_payloads_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle4_totals_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint64) +
-                                                 column_gap,
-                                             bundle0_payloads_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle4_values_block_offset{
-        ml::soa_storage::layout_align(bundle4_payloads_block_end, bundle0_values_alignment)};
-    inline static constexpr byte_size_type bundle4_values_block_end{
-        bundle4_values_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto bundle4_values_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle4_payloads_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(OddBytes) +
-                                                 column_gap,
-                                             bundle0_values_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle4_rates_block_offset{
-        ml::soa_storage::layout_align(bundle4_values_block_end, bundle0_rates_alignment)};
-    inline static constexpr byte_size_type bundle4_rates_block_end{
-        bundle4_rates_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto bundle4_rates_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle4_values_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             bundle0_rates_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle5_flags_block_offset{
-        ml::soa_storage::layout_align(bundle4_rates_block_end, bundle0_flags_alignment)};
-    inline static constexpr byte_size_type bundle5_flags_block_end{
-        bundle5_flags_block_offset + capacity_granularity * sizeof(uint8)};
-
-    static constexpr auto bundle5_flags_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle4_rates_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(double) +
-                                                 column_gap,
-                                             bundle0_flags_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle5_counters_block_offset{
-        ml::soa_storage::layout_align(bundle5_flags_block_end, bundle0_counters_alignment)};
-    inline static constexpr byte_size_type bundle5_counters_block_end{
-        bundle5_counters_block_offset + capacity_granularity * sizeof(uint16)};
-
-    static constexpr auto bundle5_counters_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle5_flags_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint8) +
-                                                 column_gap,
-                                             bundle0_counters_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle5_counts_block_offset{
-        ml::soa_storage::layout_align(bundle5_counters_block_end, bundle0_counts_alignment)};
-    inline static constexpr byte_size_type bundle5_counts_block_end{
-        bundle5_counts_block_offset + capacity_granularity * sizeof(uint32)};
-
-    static constexpr auto bundle5_counts_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle5_counters_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint16) +
-                                                 column_gap,
-                                             bundle0_counts_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle5_totals_block_offset{
-        ml::soa_storage::layout_align(bundle5_counts_block_end, bundle0_totals_alignment)};
-    inline static constexpr byte_size_type bundle5_totals_block_end{
-        bundle5_totals_block_offset + capacity_granularity * sizeof(uint64)};
-
-    static constexpr auto bundle5_totals_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle5_counts_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint32) +
-                                                 column_gap,
-                                             bundle0_totals_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle5_payloads_block_offset{
-        ml::soa_storage::layout_align(bundle5_totals_block_end, bundle0_payloads_alignment)};
-    inline static constexpr byte_size_type bundle5_payloads_block_end{
-        bundle5_payloads_block_offset + capacity_granularity * sizeof(OddBytes)};
-
-    static constexpr auto bundle5_payloads_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle5_totals_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint64) +
-                                                 column_gap,
-                                             bundle0_payloads_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle5_values_block_offset{
-        ml::soa_storage::layout_align(bundle5_payloads_block_end, bundle0_values_alignment)};
-    inline static constexpr byte_size_type bundle5_values_block_end{
-        bundle5_values_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto bundle5_values_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle5_payloads_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(OddBytes) +
-                                                 column_gap,
-                                             bundle0_values_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle5_rates_block_offset{
-        ml::soa_storage::layout_align(bundle5_values_block_end, bundle0_rates_alignment)};
-    inline static constexpr byte_size_type bundle5_rates_block_end{
-        bundle5_rates_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto bundle5_rates_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle5_values_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             bundle0_rates_alignment);
-    }
+        ml::soa_storage::maximum_alignment(Bundle0Flags,
+                                           Bundle0Counters,
+                                           Bundle0Counts,
+                                           Bundle0Totals,
+                                           Bundle0Payloads,
+                                           Bundle0Values,
+                                           Bundle0Rates,
+                                           Bundle1Flags,
+                                           Bundle1Counters,
+                                           Bundle1Counts,
+                                           Bundle1Totals,
+                                           Bundle1Payloads,
+                                           Bundle1Values,
+                                           Bundle1Rates,
+                                           Bundle2Flags,
+                                           Bundle2Counters,
+                                           Bundle2Counts,
+                                           Bundle2Totals,
+                                           Bundle2Payloads,
+                                           Bundle2Values,
+                                           Bundle2Rates,
+                                           Bundle3Flags,
+                                           Bundle3Counters,
+                                           Bundle3Counts,
+                                           Bundle3Totals,
+                                           Bundle3Payloads,
+                                           Bundle3Values,
+                                           Bundle3Rates,
+                                           Bundle4Flags,
+                                           Bundle4Counters,
+                                           Bundle4Counts,
+                                           Bundle4Totals,
+                                           Bundle4Payloads,
+                                           Bundle4Values,
+                                           Bundle4Rates,
+                                           Bundle5Flags,
+                                           Bundle5Counters,
+                                           Bundle5Counts,
+                                           Bundle5Totals,
+                                           Bundle5Payloads,
+                                           Bundle5Values,
+                                           Bundle5Rates)};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
-        ml::soa_storage::layout_align(bundle5_rates_block_end, allocation_alignment) +
+        ml::soa_storage::layout_align(Bundle5Rates.block_end, allocation_alignment) +
         41 * (column_gap + allocation_alignment - 1)};
     inline static constexpr size_type max_capacity{
         ml::soa_storage::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0
-                 ? 0
-                 : bundle5_rates_offset(blocks) + blocks * capacity_granularity * sizeof(double);
+        return blocks == 0 ? 0 : Bundle5Rates.data_end(blocks);
     }
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
@@ -2645,91 +1941,91 @@ struct SpacingMixedWidthsSingleLayout {
             allocation_alignment <= std::numeric_limits<uint32>::max(),
             "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
         static_assert(sizeof(uint8) <=
-                      (max_allocation_size - bundle0_flags_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle0Flags.block_offset) / capacity_granularity);
         static_assert(sizeof(uint16) <=
-                      (max_allocation_size - bundle0_counters_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle0Counters.block_offset) / capacity_granularity);
         static_assert(sizeof(uint32) <=
-                      (max_allocation_size - bundle0_counts_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle0Counts.block_offset) / capacity_granularity);
         static_assert(sizeof(uint64) <=
-                      (max_allocation_size - bundle0_totals_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle0Totals.block_offset) / capacity_granularity);
         static_assert(sizeof(OddBytes) <=
-                      (max_allocation_size - bundle0_payloads_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle0Payloads.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - bundle0_values_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle0Values.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - bundle0_rates_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle0Rates.block_offset) / capacity_granularity);
         static_assert(sizeof(uint8) <=
-                      (max_allocation_size - bundle1_flags_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle1Flags.block_offset) / capacity_granularity);
         static_assert(sizeof(uint16) <=
-                      (max_allocation_size - bundle1_counters_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle1Counters.block_offset) / capacity_granularity);
         static_assert(sizeof(uint32) <=
-                      (max_allocation_size - bundle1_counts_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle1Counts.block_offset) / capacity_granularity);
         static_assert(sizeof(uint64) <=
-                      (max_allocation_size - bundle1_totals_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle1Totals.block_offset) / capacity_granularity);
         static_assert(sizeof(OddBytes) <=
-                      (max_allocation_size - bundle1_payloads_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle1Payloads.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - bundle1_values_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle1Values.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - bundle1_rates_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle1Rates.block_offset) / capacity_granularity);
         static_assert(sizeof(uint8) <=
-                      (max_allocation_size - bundle2_flags_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle2Flags.block_offset) / capacity_granularity);
         static_assert(sizeof(uint16) <=
-                      (max_allocation_size - bundle2_counters_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle2Counters.block_offset) / capacity_granularity);
         static_assert(sizeof(uint32) <=
-                      (max_allocation_size - bundle2_counts_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle2Counts.block_offset) / capacity_granularity);
         static_assert(sizeof(uint64) <=
-                      (max_allocation_size - bundle2_totals_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle2Totals.block_offset) / capacity_granularity);
         static_assert(sizeof(OddBytes) <=
-                      (max_allocation_size - bundle2_payloads_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle2Payloads.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - bundle2_values_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle2Values.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - bundle2_rates_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle2Rates.block_offset) / capacity_granularity);
         static_assert(sizeof(uint8) <=
-                      (max_allocation_size - bundle3_flags_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle3Flags.block_offset) / capacity_granularity);
         static_assert(sizeof(uint16) <=
-                      (max_allocation_size - bundle3_counters_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle3Counters.block_offset) / capacity_granularity);
         static_assert(sizeof(uint32) <=
-                      (max_allocation_size - bundle3_counts_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle3Counts.block_offset) / capacity_granularity);
         static_assert(sizeof(uint64) <=
-                      (max_allocation_size - bundle3_totals_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle3Totals.block_offset) / capacity_granularity);
         static_assert(sizeof(OddBytes) <=
-                      (max_allocation_size - bundle3_payloads_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle3Payloads.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - bundle3_values_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle3Values.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - bundle3_rates_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle3Rates.block_offset) / capacity_granularity);
         static_assert(sizeof(uint8) <=
-                      (max_allocation_size - bundle4_flags_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle4Flags.block_offset) / capacity_granularity);
         static_assert(sizeof(uint16) <=
-                      (max_allocation_size - bundle4_counters_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle4Counters.block_offset) / capacity_granularity);
         static_assert(sizeof(uint32) <=
-                      (max_allocation_size - bundle4_counts_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle4Counts.block_offset) / capacity_granularity);
         static_assert(sizeof(uint64) <=
-                      (max_allocation_size - bundle4_totals_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle4Totals.block_offset) / capacity_granularity);
         static_assert(sizeof(OddBytes) <=
-                      (max_allocation_size - bundle4_payloads_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle4Payloads.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - bundle4_values_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle4Values.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - bundle4_rates_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle4Rates.block_offset) / capacity_granularity);
         static_assert(sizeof(uint8) <=
-                      (max_allocation_size - bundle5_flags_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle5Flags.block_offset) / capacity_granularity);
         static_assert(sizeof(uint16) <=
-                      (max_allocation_size - bundle5_counters_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle5Counters.block_offset) / capacity_granularity);
         static_assert(sizeof(uint32) <=
-                      (max_allocation_size - bundle5_counts_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle5Counts.block_offset) / capacity_granularity);
         static_assert(sizeof(uint64) <=
-                      (max_allocation_size - bundle5_totals_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle5Totals.block_offset) / capacity_granularity);
         static_assert(sizeof(OddBytes) <=
-                      (max_allocation_size - bundle5_payloads_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle5Payloads.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
-                      (max_allocation_size - bundle5_values_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle5Values.block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
-                      (max_allocation_size - bundle5_rates_block_offset) / capacity_granularity);
+                      (max_allocation_size - Bundle5Rates.block_offset) / capacity_granularity);
         static_assert(41 <=
-                      (max_allocation_size - ml::soa_storage::layout_align(bundle5_rates_block_end,
+                      (max_allocation_size - ml::soa_storage::layout_align(Bundle5Rates.block_end,
                                                                            allocation_alignment)) /
                           (column_gap + allocation_alignment - 1));
         static_assert(max_capacity >= capacity_granularity);
@@ -2855,54 +2151,28 @@ struct SingleSpacingMixedWidthsStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        using Pointers = DataPointers<Byte>;
-        auto const pointer_at = [data]<typename T>(byte_size_type const offset) noexcept {
-            return std::launder(
-                reinterpret_cast<typename Pointers::template Element<T>*>(data + offset));
+        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+            using Column = std::remove_cvref_t<decltype(column)>;
+            using Pointer = std::conditional_t<std::is_const_v<Byte>,
+                                               typename Column::const_pointer,
+                                               typename Column::pointer>;
+            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
         };
         return {
-            pointer_at.template operator()<uint8>(bundle0_flags_offset(blocks)),
-            pointer_at.template operator()<uint16>(bundle0_counters_offset(blocks)),
-            pointer_at.template operator()<uint32>(bundle0_counts_offset(blocks)),
-            pointer_at.template operator()<uint64>(bundle0_totals_offset(blocks)),
-            pointer_at.template operator()<OddBytes>(bundle0_payloads_offset(blocks)),
-            pointer_at.template operator()<float>(bundle0_values_offset(blocks)),
-            pointer_at.template operator()<double>(bundle0_rates_offset(blocks)),
-            pointer_at.template operator()<uint8>(bundle1_flags_offset(blocks)),
-            pointer_at.template operator()<uint16>(bundle1_counters_offset(blocks)),
-            pointer_at.template operator()<uint32>(bundle1_counts_offset(blocks)),
-            pointer_at.template operator()<uint64>(bundle1_totals_offset(blocks)),
-            pointer_at.template operator()<OddBytes>(bundle1_payloads_offset(blocks)),
-            pointer_at.template operator()<float>(bundle1_values_offset(blocks)),
-            pointer_at.template operator()<double>(bundle1_rates_offset(blocks)),
-            pointer_at.template operator()<uint8>(bundle2_flags_offset(blocks)),
-            pointer_at.template operator()<uint16>(bundle2_counters_offset(blocks)),
-            pointer_at.template operator()<uint32>(bundle2_counts_offset(blocks)),
-            pointer_at.template operator()<uint64>(bundle2_totals_offset(blocks)),
-            pointer_at.template operator()<OddBytes>(bundle2_payloads_offset(blocks)),
-            pointer_at.template operator()<float>(bundle2_values_offset(blocks)),
-            pointer_at.template operator()<double>(bundle2_rates_offset(blocks)),
-            pointer_at.template operator()<uint8>(bundle3_flags_offset(blocks)),
-            pointer_at.template operator()<uint16>(bundle3_counters_offset(blocks)),
-            pointer_at.template operator()<uint32>(bundle3_counts_offset(blocks)),
-            pointer_at.template operator()<uint64>(bundle3_totals_offset(blocks)),
-            pointer_at.template operator()<OddBytes>(bundle3_payloads_offset(blocks)),
-            pointer_at.template operator()<float>(bundle3_values_offset(blocks)),
-            pointer_at.template operator()<double>(bundle3_rates_offset(blocks)),
-            pointer_at.template operator()<uint8>(bundle4_flags_offset(blocks)),
-            pointer_at.template operator()<uint16>(bundle4_counters_offset(blocks)),
-            pointer_at.template operator()<uint32>(bundle4_counts_offset(blocks)),
-            pointer_at.template operator()<uint64>(bundle4_totals_offset(blocks)),
-            pointer_at.template operator()<OddBytes>(bundle4_payloads_offset(blocks)),
-            pointer_at.template operator()<float>(bundle4_values_offset(blocks)),
-            pointer_at.template operator()<double>(bundle4_rates_offset(blocks)),
-            pointer_at.template operator()<uint8>(bundle5_flags_offset(blocks)),
-            pointer_at.template operator()<uint16>(bundle5_counters_offset(blocks)),
-            pointer_at.template operator()<uint32>(bundle5_counts_offset(blocks)),
-            pointer_at.template operator()<uint64>(bundle5_totals_offset(blocks)),
-            pointer_at.template operator()<OddBytes>(bundle5_payloads_offset(blocks)),
-            pointer_at.template operator()<float>(bundle5_values_offset(blocks)),
-            pointer_at.template operator()<double>(bundle5_rates_offset(blocks)),
+            pointer_at(Bundle0Flags),    pointer_at(Bundle0Counters), pointer_at(Bundle0Counts),
+            pointer_at(Bundle0Totals),   pointer_at(Bundle0Payloads), pointer_at(Bundle0Values),
+            pointer_at(Bundle0Rates),    pointer_at(Bundle1Flags),    pointer_at(Bundle1Counters),
+            pointer_at(Bundle1Counts),   pointer_at(Bundle1Totals),   pointer_at(Bundle1Payloads),
+            pointer_at(Bundle1Values),   pointer_at(Bundle1Rates),    pointer_at(Bundle2Flags),
+            pointer_at(Bundle2Counters), pointer_at(Bundle2Counts),   pointer_at(Bundle2Totals),
+            pointer_at(Bundle2Payloads), pointer_at(Bundle2Values),   pointer_at(Bundle2Rates),
+            pointer_at(Bundle3Flags),    pointer_at(Bundle3Counters), pointer_at(Bundle3Counts),
+            pointer_at(Bundle3Totals),   pointer_at(Bundle3Payloads), pointer_at(Bundle3Values),
+            pointer_at(Bundle3Rates),    pointer_at(Bundle4Flags),    pointer_at(Bundle4Counters),
+            pointer_at(Bundle4Counts),   pointer_at(Bundle4Totals),   pointer_at(Bundle4Payloads),
+            pointer_at(Bundle4Values),   pointer_at(Bundle4Rates),    pointer_at(Bundle5Flags),
+            pointer_at(Bundle5Counters), pointer_at(Bundle5Counts),   pointer_at(Bundle5Totals),
+            pointer_at(Bundle5Payloads), pointer_at(Bundle5Values),   pointer_at(Bundle5Rates),
         };
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
@@ -3305,25 +2575,25 @@ struct SpacingMixedWidthsSingleConstView : ml::soa_storage::CompactViewState<tru
         auto const blocks{capacity_blocks()};
         return SpacingMixedBundleConstView{
             {column_data_unchecked<uint8>(
-                 SpacingMixedWidthsSingleLayout::bundle0_flags_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle0Flags.offset(blocks)),
              count_},
             {column_data_unchecked<uint16>(
-                 SpacingMixedWidthsSingleLayout::bundle0_counters_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle0Counters.offset(blocks)),
              count_},
             {column_data_unchecked<uint32>(
-                 SpacingMixedWidthsSingleLayout::bundle0_counts_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle0Counts.offset(blocks)),
              count_},
             {column_data_unchecked<uint64>(
-                 SpacingMixedWidthsSingleLayout::bundle0_totals_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle0Totals.offset(blocks)),
              count_},
             {column_data_unchecked<OddBytes>(
-                 SpacingMixedWidthsSingleLayout::bundle0_payloads_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle0Payloads.offset(blocks)),
              count_},
             {column_data_unchecked<float>(
-                 SpacingMixedWidthsSingleLayout::bundle0_values_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle0Values.offset(blocks)),
              count_},
             {column_data_unchecked<double>(
-                 SpacingMixedWidthsSingleLayout::bundle0_rates_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle0Rates.offset(blocks)),
              count_}};
     }
     auto view_bundle1() const -> SpacingMixedBundleConstView {
@@ -3334,25 +2604,25 @@ struct SpacingMixedWidthsSingleConstView : ml::soa_storage::CompactViewState<tru
         auto const blocks{capacity_blocks()};
         return SpacingMixedBundleConstView{
             {column_data_unchecked<uint8>(
-                 SpacingMixedWidthsSingleLayout::bundle1_flags_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle1Flags.offset(blocks)),
              count_},
             {column_data_unchecked<uint16>(
-                 SpacingMixedWidthsSingleLayout::bundle1_counters_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle1Counters.offset(blocks)),
              count_},
             {column_data_unchecked<uint32>(
-                 SpacingMixedWidthsSingleLayout::bundle1_counts_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle1Counts.offset(blocks)),
              count_},
             {column_data_unchecked<uint64>(
-                 SpacingMixedWidthsSingleLayout::bundle1_totals_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle1Totals.offset(blocks)),
              count_},
             {column_data_unchecked<OddBytes>(
-                 SpacingMixedWidthsSingleLayout::bundle1_payloads_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle1Payloads.offset(blocks)),
              count_},
             {column_data_unchecked<float>(
-                 SpacingMixedWidthsSingleLayout::bundle1_values_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle1Values.offset(blocks)),
              count_},
             {column_data_unchecked<double>(
-                 SpacingMixedWidthsSingleLayout::bundle1_rates_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle1Rates.offset(blocks)),
              count_}};
     }
     auto view_bundle2() const -> SpacingMixedBundleConstView {
@@ -3363,25 +2633,25 @@ struct SpacingMixedWidthsSingleConstView : ml::soa_storage::CompactViewState<tru
         auto const blocks{capacity_blocks()};
         return SpacingMixedBundleConstView{
             {column_data_unchecked<uint8>(
-                 SpacingMixedWidthsSingleLayout::bundle2_flags_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle2Flags.offset(blocks)),
              count_},
             {column_data_unchecked<uint16>(
-                 SpacingMixedWidthsSingleLayout::bundle2_counters_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle2Counters.offset(blocks)),
              count_},
             {column_data_unchecked<uint32>(
-                 SpacingMixedWidthsSingleLayout::bundle2_counts_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle2Counts.offset(blocks)),
              count_},
             {column_data_unchecked<uint64>(
-                 SpacingMixedWidthsSingleLayout::bundle2_totals_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle2Totals.offset(blocks)),
              count_},
             {column_data_unchecked<OddBytes>(
-                 SpacingMixedWidthsSingleLayout::bundle2_payloads_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle2Payloads.offset(blocks)),
              count_},
             {column_data_unchecked<float>(
-                 SpacingMixedWidthsSingleLayout::bundle2_values_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle2Values.offset(blocks)),
              count_},
             {column_data_unchecked<double>(
-                 SpacingMixedWidthsSingleLayout::bundle2_rates_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle2Rates.offset(blocks)),
              count_}};
     }
     auto view_bundle3() const -> SpacingMixedBundleConstView {
@@ -3392,25 +2662,25 @@ struct SpacingMixedWidthsSingleConstView : ml::soa_storage::CompactViewState<tru
         auto const blocks{capacity_blocks()};
         return SpacingMixedBundleConstView{
             {column_data_unchecked<uint8>(
-                 SpacingMixedWidthsSingleLayout::bundle3_flags_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle3Flags.offset(blocks)),
              count_},
             {column_data_unchecked<uint16>(
-                 SpacingMixedWidthsSingleLayout::bundle3_counters_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle3Counters.offset(blocks)),
              count_},
             {column_data_unchecked<uint32>(
-                 SpacingMixedWidthsSingleLayout::bundle3_counts_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle3Counts.offset(blocks)),
              count_},
             {column_data_unchecked<uint64>(
-                 SpacingMixedWidthsSingleLayout::bundle3_totals_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle3Totals.offset(blocks)),
              count_},
             {column_data_unchecked<OddBytes>(
-                 SpacingMixedWidthsSingleLayout::bundle3_payloads_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle3Payloads.offset(blocks)),
              count_},
             {column_data_unchecked<float>(
-                 SpacingMixedWidthsSingleLayout::bundle3_values_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle3Values.offset(blocks)),
              count_},
             {column_data_unchecked<double>(
-                 SpacingMixedWidthsSingleLayout::bundle3_rates_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle3Rates.offset(blocks)),
              count_}};
     }
     auto view_bundle4() const -> SpacingMixedBundleConstView {
@@ -3421,25 +2691,25 @@ struct SpacingMixedWidthsSingleConstView : ml::soa_storage::CompactViewState<tru
         auto const blocks{capacity_blocks()};
         return SpacingMixedBundleConstView{
             {column_data_unchecked<uint8>(
-                 SpacingMixedWidthsSingleLayout::bundle4_flags_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle4Flags.offset(blocks)),
              count_},
             {column_data_unchecked<uint16>(
-                 SpacingMixedWidthsSingleLayout::bundle4_counters_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle4Counters.offset(blocks)),
              count_},
             {column_data_unchecked<uint32>(
-                 SpacingMixedWidthsSingleLayout::bundle4_counts_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle4Counts.offset(blocks)),
              count_},
             {column_data_unchecked<uint64>(
-                 SpacingMixedWidthsSingleLayout::bundle4_totals_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle4Totals.offset(blocks)),
              count_},
             {column_data_unchecked<OddBytes>(
-                 SpacingMixedWidthsSingleLayout::bundle4_payloads_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle4Payloads.offset(blocks)),
              count_},
             {column_data_unchecked<float>(
-                 SpacingMixedWidthsSingleLayout::bundle4_values_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle4Values.offset(blocks)),
              count_},
             {column_data_unchecked<double>(
-                 SpacingMixedWidthsSingleLayout::bundle4_rates_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle4Rates.offset(blocks)),
              count_}};
     }
     auto view_bundle5() const -> SpacingMixedBundleConstView {
@@ -3450,25 +2720,25 @@ struct SpacingMixedWidthsSingleConstView : ml::soa_storage::CompactViewState<tru
         auto const blocks{capacity_blocks()};
         return SpacingMixedBundleConstView{
             {column_data_unchecked<uint8>(
-                 SpacingMixedWidthsSingleLayout::bundle5_flags_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle5Flags.offset(blocks)),
              count_},
             {column_data_unchecked<uint16>(
-                 SpacingMixedWidthsSingleLayout::bundle5_counters_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle5Counters.offset(blocks)),
              count_},
             {column_data_unchecked<uint32>(
-                 SpacingMixedWidthsSingleLayout::bundle5_counts_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle5Counts.offset(blocks)),
              count_},
             {column_data_unchecked<uint64>(
-                 SpacingMixedWidthsSingleLayout::bundle5_totals_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle5Totals.offset(blocks)),
              count_},
             {column_data_unchecked<OddBytes>(
-                 SpacingMixedWidthsSingleLayout::bundle5_payloads_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle5Payloads.offset(blocks)),
              count_},
             {column_data_unchecked<float>(
-                 SpacingMixedWidthsSingleLayout::bundle5_values_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle5Values.offset(blocks)),
              count_},
             {column_data_unchecked<double>(
-                 SpacingMixedWidthsSingleLayout::bundle5_rates_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle5Rates.offset(blocks)),
              count_}};
     }
     auto columns() const -> SpacingMixedWidthsConstView {
@@ -3480,135 +2750,135 @@ struct SpacingMixedWidthsSingleConstView : ml::soa_storage::CompactViewState<tru
         return SpacingMixedWidthsConstView{
             SpacingMixedBundleConstView{
                 {column_data_unchecked<uint8>(
-                     SpacingMixedWidthsSingleLayout::bundle0_flags_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle0Flags.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint16>(
-                     SpacingMixedWidthsSingleLayout::bundle0_counters_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle0Counters.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint32>(
-                     SpacingMixedWidthsSingleLayout::bundle0_counts_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle0Counts.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint64>(
-                     SpacingMixedWidthsSingleLayout::bundle0_totals_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle0Totals.offset(blocks)),
                  count_},
                 {column_data_unchecked<OddBytes>(
-                     SpacingMixedWidthsSingleLayout::bundle0_payloads_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle0Payloads.offset(blocks)),
                  count_},
                 {column_data_unchecked<float>(
-                     SpacingMixedWidthsSingleLayout::bundle0_values_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle0Values.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingMixedWidthsSingleLayout::bundle0_rates_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle0Rates.offset(blocks)),
                  count_}},
             SpacingMixedBundleConstView{
                 {column_data_unchecked<uint8>(
-                     SpacingMixedWidthsSingleLayout::bundle1_flags_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle1Flags.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint16>(
-                     SpacingMixedWidthsSingleLayout::bundle1_counters_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle1Counters.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint32>(
-                     SpacingMixedWidthsSingleLayout::bundle1_counts_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle1Counts.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint64>(
-                     SpacingMixedWidthsSingleLayout::bundle1_totals_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle1Totals.offset(blocks)),
                  count_},
                 {column_data_unchecked<OddBytes>(
-                     SpacingMixedWidthsSingleLayout::bundle1_payloads_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle1Payloads.offset(blocks)),
                  count_},
                 {column_data_unchecked<float>(
-                     SpacingMixedWidthsSingleLayout::bundle1_values_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle1Values.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingMixedWidthsSingleLayout::bundle1_rates_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle1Rates.offset(blocks)),
                  count_}},
             SpacingMixedBundleConstView{
                 {column_data_unchecked<uint8>(
-                     SpacingMixedWidthsSingleLayout::bundle2_flags_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle2Flags.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint16>(
-                     SpacingMixedWidthsSingleLayout::bundle2_counters_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle2Counters.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint32>(
-                     SpacingMixedWidthsSingleLayout::bundle2_counts_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle2Counts.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint64>(
-                     SpacingMixedWidthsSingleLayout::bundle2_totals_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle2Totals.offset(blocks)),
                  count_},
                 {column_data_unchecked<OddBytes>(
-                     SpacingMixedWidthsSingleLayout::bundle2_payloads_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle2Payloads.offset(blocks)),
                  count_},
                 {column_data_unchecked<float>(
-                     SpacingMixedWidthsSingleLayout::bundle2_values_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle2Values.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingMixedWidthsSingleLayout::bundle2_rates_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle2Rates.offset(blocks)),
                  count_}},
             SpacingMixedBundleConstView{
                 {column_data_unchecked<uint8>(
-                     SpacingMixedWidthsSingleLayout::bundle3_flags_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle3Flags.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint16>(
-                     SpacingMixedWidthsSingleLayout::bundle3_counters_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle3Counters.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint32>(
-                     SpacingMixedWidthsSingleLayout::bundle3_counts_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle3Counts.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint64>(
-                     SpacingMixedWidthsSingleLayout::bundle3_totals_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle3Totals.offset(blocks)),
                  count_},
                 {column_data_unchecked<OddBytes>(
-                     SpacingMixedWidthsSingleLayout::bundle3_payloads_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle3Payloads.offset(blocks)),
                  count_},
                 {column_data_unchecked<float>(
-                     SpacingMixedWidthsSingleLayout::bundle3_values_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle3Values.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingMixedWidthsSingleLayout::bundle3_rates_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle3Rates.offset(blocks)),
                  count_}},
             SpacingMixedBundleConstView{
                 {column_data_unchecked<uint8>(
-                     SpacingMixedWidthsSingleLayout::bundle4_flags_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle4Flags.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint16>(
-                     SpacingMixedWidthsSingleLayout::bundle4_counters_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle4Counters.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint32>(
-                     SpacingMixedWidthsSingleLayout::bundle4_counts_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle4Counts.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint64>(
-                     SpacingMixedWidthsSingleLayout::bundle4_totals_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle4Totals.offset(blocks)),
                  count_},
                 {column_data_unchecked<OddBytes>(
-                     SpacingMixedWidthsSingleLayout::bundle4_payloads_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle4Payloads.offset(blocks)),
                  count_},
                 {column_data_unchecked<float>(
-                     SpacingMixedWidthsSingleLayout::bundle4_values_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle4Values.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingMixedWidthsSingleLayout::bundle4_rates_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle4Rates.offset(blocks)),
                  count_}},
             SpacingMixedBundleConstView{
                 {column_data_unchecked<uint8>(
-                     SpacingMixedWidthsSingleLayout::bundle5_flags_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle5Flags.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint16>(
-                     SpacingMixedWidthsSingleLayout::bundle5_counters_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle5Counters.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint32>(
-                     SpacingMixedWidthsSingleLayout::bundle5_counts_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle5Counts.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint64>(
-                     SpacingMixedWidthsSingleLayout::bundle5_totals_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle5Totals.offset(blocks)),
                  count_},
                 {column_data_unchecked<OddBytes>(
-                     SpacingMixedWidthsSingleLayout::bundle5_payloads_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle5Payloads.offset(blocks)),
                  count_},
                 {column_data_unchecked<float>(
-                     SpacingMixedWidthsSingleLayout::bundle5_values_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle5Values.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingMixedWidthsSingleLayout::bundle5_rates_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle5Rates.offset(blocks)),
                  count_}}};
     }
     template <typename Func>
@@ -3637,25 +2907,25 @@ struct SpacingMixedWidthsSingleView : ml::soa_storage::CompactViewState<false> {
         auto const blocks{capacity_blocks()};
         return SpacingMixedBundleView{
             {column_data_unchecked<uint8>(
-                 SpacingMixedWidthsSingleLayout::bundle0_flags_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle0Flags.offset(blocks)),
              count_},
             {column_data_unchecked<uint16>(
-                 SpacingMixedWidthsSingleLayout::bundle0_counters_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle0Counters.offset(blocks)),
              count_},
             {column_data_unchecked<uint32>(
-                 SpacingMixedWidthsSingleLayout::bundle0_counts_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle0Counts.offset(blocks)),
              count_},
             {column_data_unchecked<uint64>(
-                 SpacingMixedWidthsSingleLayout::bundle0_totals_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle0Totals.offset(blocks)),
              count_},
             {column_data_unchecked<OddBytes>(
-                 SpacingMixedWidthsSingleLayout::bundle0_payloads_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle0Payloads.offset(blocks)),
              count_},
             {column_data_unchecked<float>(
-                 SpacingMixedWidthsSingleLayout::bundle0_values_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle0Values.offset(blocks)),
              count_},
             {column_data_unchecked<double>(
-                 SpacingMixedWidthsSingleLayout::bundle0_rates_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle0Rates.offset(blocks)),
              count_}};
     }
     auto view_bundle1() const -> SpacingMixedBundleView {
@@ -3666,25 +2936,25 @@ struct SpacingMixedWidthsSingleView : ml::soa_storage::CompactViewState<false> {
         auto const blocks{capacity_blocks()};
         return SpacingMixedBundleView{
             {column_data_unchecked<uint8>(
-                 SpacingMixedWidthsSingleLayout::bundle1_flags_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle1Flags.offset(blocks)),
              count_},
             {column_data_unchecked<uint16>(
-                 SpacingMixedWidthsSingleLayout::bundle1_counters_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle1Counters.offset(blocks)),
              count_},
             {column_data_unchecked<uint32>(
-                 SpacingMixedWidthsSingleLayout::bundle1_counts_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle1Counts.offset(blocks)),
              count_},
             {column_data_unchecked<uint64>(
-                 SpacingMixedWidthsSingleLayout::bundle1_totals_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle1Totals.offset(blocks)),
              count_},
             {column_data_unchecked<OddBytes>(
-                 SpacingMixedWidthsSingleLayout::bundle1_payloads_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle1Payloads.offset(blocks)),
              count_},
             {column_data_unchecked<float>(
-                 SpacingMixedWidthsSingleLayout::bundle1_values_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle1Values.offset(blocks)),
              count_},
             {column_data_unchecked<double>(
-                 SpacingMixedWidthsSingleLayout::bundle1_rates_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle1Rates.offset(blocks)),
              count_}};
     }
     auto view_bundle2() const -> SpacingMixedBundleView {
@@ -3695,25 +2965,25 @@ struct SpacingMixedWidthsSingleView : ml::soa_storage::CompactViewState<false> {
         auto const blocks{capacity_blocks()};
         return SpacingMixedBundleView{
             {column_data_unchecked<uint8>(
-                 SpacingMixedWidthsSingleLayout::bundle2_flags_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle2Flags.offset(blocks)),
              count_},
             {column_data_unchecked<uint16>(
-                 SpacingMixedWidthsSingleLayout::bundle2_counters_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle2Counters.offset(blocks)),
              count_},
             {column_data_unchecked<uint32>(
-                 SpacingMixedWidthsSingleLayout::bundle2_counts_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle2Counts.offset(blocks)),
              count_},
             {column_data_unchecked<uint64>(
-                 SpacingMixedWidthsSingleLayout::bundle2_totals_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle2Totals.offset(blocks)),
              count_},
             {column_data_unchecked<OddBytes>(
-                 SpacingMixedWidthsSingleLayout::bundle2_payloads_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle2Payloads.offset(blocks)),
              count_},
             {column_data_unchecked<float>(
-                 SpacingMixedWidthsSingleLayout::bundle2_values_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle2Values.offset(blocks)),
              count_},
             {column_data_unchecked<double>(
-                 SpacingMixedWidthsSingleLayout::bundle2_rates_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle2Rates.offset(blocks)),
              count_}};
     }
     auto view_bundle3() const -> SpacingMixedBundleView {
@@ -3724,25 +2994,25 @@ struct SpacingMixedWidthsSingleView : ml::soa_storage::CompactViewState<false> {
         auto const blocks{capacity_blocks()};
         return SpacingMixedBundleView{
             {column_data_unchecked<uint8>(
-                 SpacingMixedWidthsSingleLayout::bundle3_flags_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle3Flags.offset(blocks)),
              count_},
             {column_data_unchecked<uint16>(
-                 SpacingMixedWidthsSingleLayout::bundle3_counters_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle3Counters.offset(blocks)),
              count_},
             {column_data_unchecked<uint32>(
-                 SpacingMixedWidthsSingleLayout::bundle3_counts_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle3Counts.offset(blocks)),
              count_},
             {column_data_unchecked<uint64>(
-                 SpacingMixedWidthsSingleLayout::bundle3_totals_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle3Totals.offset(blocks)),
              count_},
             {column_data_unchecked<OddBytes>(
-                 SpacingMixedWidthsSingleLayout::bundle3_payloads_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle3Payloads.offset(blocks)),
              count_},
             {column_data_unchecked<float>(
-                 SpacingMixedWidthsSingleLayout::bundle3_values_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle3Values.offset(blocks)),
              count_},
             {column_data_unchecked<double>(
-                 SpacingMixedWidthsSingleLayout::bundle3_rates_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle3Rates.offset(blocks)),
              count_}};
     }
     auto view_bundle4() const -> SpacingMixedBundleView {
@@ -3753,25 +3023,25 @@ struct SpacingMixedWidthsSingleView : ml::soa_storage::CompactViewState<false> {
         auto const blocks{capacity_blocks()};
         return SpacingMixedBundleView{
             {column_data_unchecked<uint8>(
-                 SpacingMixedWidthsSingleLayout::bundle4_flags_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle4Flags.offset(blocks)),
              count_},
             {column_data_unchecked<uint16>(
-                 SpacingMixedWidthsSingleLayout::bundle4_counters_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle4Counters.offset(blocks)),
              count_},
             {column_data_unchecked<uint32>(
-                 SpacingMixedWidthsSingleLayout::bundle4_counts_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle4Counts.offset(blocks)),
              count_},
             {column_data_unchecked<uint64>(
-                 SpacingMixedWidthsSingleLayout::bundle4_totals_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle4Totals.offset(blocks)),
              count_},
             {column_data_unchecked<OddBytes>(
-                 SpacingMixedWidthsSingleLayout::bundle4_payloads_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle4Payloads.offset(blocks)),
              count_},
             {column_data_unchecked<float>(
-                 SpacingMixedWidthsSingleLayout::bundle4_values_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle4Values.offset(blocks)),
              count_},
             {column_data_unchecked<double>(
-                 SpacingMixedWidthsSingleLayout::bundle4_rates_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle4Rates.offset(blocks)),
              count_}};
     }
     auto view_bundle5() const -> SpacingMixedBundleView {
@@ -3782,25 +3052,25 @@ struct SpacingMixedWidthsSingleView : ml::soa_storage::CompactViewState<false> {
         auto const blocks{capacity_blocks()};
         return SpacingMixedBundleView{
             {column_data_unchecked<uint8>(
-                 SpacingMixedWidthsSingleLayout::bundle5_flags_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle5Flags.offset(blocks)),
              count_},
             {column_data_unchecked<uint16>(
-                 SpacingMixedWidthsSingleLayout::bundle5_counters_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle5Counters.offset(blocks)),
              count_},
             {column_data_unchecked<uint32>(
-                 SpacingMixedWidthsSingleLayout::bundle5_counts_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle5Counts.offset(blocks)),
              count_},
             {column_data_unchecked<uint64>(
-                 SpacingMixedWidthsSingleLayout::bundle5_totals_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle5Totals.offset(blocks)),
              count_},
             {column_data_unchecked<OddBytes>(
-                 SpacingMixedWidthsSingleLayout::bundle5_payloads_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle5Payloads.offset(blocks)),
              count_},
             {column_data_unchecked<float>(
-                 SpacingMixedWidthsSingleLayout::bundle5_values_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle5Values.offset(blocks)),
              count_},
             {column_data_unchecked<double>(
-                 SpacingMixedWidthsSingleLayout::bundle5_rates_offset(blocks)),
+                 SpacingMixedWidthsSingleLayout::Bundle5Rates.offset(blocks)),
              count_}};
     }
     auto columns() const -> SpacingMixedWidthsView {
@@ -3812,135 +3082,135 @@ struct SpacingMixedWidthsSingleView : ml::soa_storage::CompactViewState<false> {
         return SpacingMixedWidthsView{
             SpacingMixedBundleView{
                 {column_data_unchecked<uint8>(
-                     SpacingMixedWidthsSingleLayout::bundle0_flags_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle0Flags.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint16>(
-                     SpacingMixedWidthsSingleLayout::bundle0_counters_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle0Counters.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint32>(
-                     SpacingMixedWidthsSingleLayout::bundle0_counts_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle0Counts.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint64>(
-                     SpacingMixedWidthsSingleLayout::bundle0_totals_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle0Totals.offset(blocks)),
                  count_},
                 {column_data_unchecked<OddBytes>(
-                     SpacingMixedWidthsSingleLayout::bundle0_payloads_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle0Payloads.offset(blocks)),
                  count_},
                 {column_data_unchecked<float>(
-                     SpacingMixedWidthsSingleLayout::bundle0_values_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle0Values.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingMixedWidthsSingleLayout::bundle0_rates_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle0Rates.offset(blocks)),
                  count_}},
             SpacingMixedBundleView{
                 {column_data_unchecked<uint8>(
-                     SpacingMixedWidthsSingleLayout::bundle1_flags_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle1Flags.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint16>(
-                     SpacingMixedWidthsSingleLayout::bundle1_counters_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle1Counters.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint32>(
-                     SpacingMixedWidthsSingleLayout::bundle1_counts_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle1Counts.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint64>(
-                     SpacingMixedWidthsSingleLayout::bundle1_totals_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle1Totals.offset(blocks)),
                  count_},
                 {column_data_unchecked<OddBytes>(
-                     SpacingMixedWidthsSingleLayout::bundle1_payloads_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle1Payloads.offset(blocks)),
                  count_},
                 {column_data_unchecked<float>(
-                     SpacingMixedWidthsSingleLayout::bundle1_values_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle1Values.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingMixedWidthsSingleLayout::bundle1_rates_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle1Rates.offset(blocks)),
                  count_}},
             SpacingMixedBundleView{
                 {column_data_unchecked<uint8>(
-                     SpacingMixedWidthsSingleLayout::bundle2_flags_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle2Flags.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint16>(
-                     SpacingMixedWidthsSingleLayout::bundle2_counters_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle2Counters.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint32>(
-                     SpacingMixedWidthsSingleLayout::bundle2_counts_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle2Counts.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint64>(
-                     SpacingMixedWidthsSingleLayout::bundle2_totals_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle2Totals.offset(blocks)),
                  count_},
                 {column_data_unchecked<OddBytes>(
-                     SpacingMixedWidthsSingleLayout::bundle2_payloads_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle2Payloads.offset(blocks)),
                  count_},
                 {column_data_unchecked<float>(
-                     SpacingMixedWidthsSingleLayout::bundle2_values_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle2Values.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingMixedWidthsSingleLayout::bundle2_rates_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle2Rates.offset(blocks)),
                  count_}},
             SpacingMixedBundleView{
                 {column_data_unchecked<uint8>(
-                     SpacingMixedWidthsSingleLayout::bundle3_flags_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle3Flags.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint16>(
-                     SpacingMixedWidthsSingleLayout::bundle3_counters_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle3Counters.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint32>(
-                     SpacingMixedWidthsSingleLayout::bundle3_counts_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle3Counts.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint64>(
-                     SpacingMixedWidthsSingleLayout::bundle3_totals_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle3Totals.offset(blocks)),
                  count_},
                 {column_data_unchecked<OddBytes>(
-                     SpacingMixedWidthsSingleLayout::bundle3_payloads_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle3Payloads.offset(blocks)),
                  count_},
                 {column_data_unchecked<float>(
-                     SpacingMixedWidthsSingleLayout::bundle3_values_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle3Values.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingMixedWidthsSingleLayout::bundle3_rates_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle3Rates.offset(blocks)),
                  count_}},
             SpacingMixedBundleView{
                 {column_data_unchecked<uint8>(
-                     SpacingMixedWidthsSingleLayout::bundle4_flags_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle4Flags.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint16>(
-                     SpacingMixedWidthsSingleLayout::bundle4_counters_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle4Counters.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint32>(
-                     SpacingMixedWidthsSingleLayout::bundle4_counts_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle4Counts.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint64>(
-                     SpacingMixedWidthsSingleLayout::bundle4_totals_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle4Totals.offset(blocks)),
                  count_},
                 {column_data_unchecked<OddBytes>(
-                     SpacingMixedWidthsSingleLayout::bundle4_payloads_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle4Payloads.offset(blocks)),
                  count_},
                 {column_data_unchecked<float>(
-                     SpacingMixedWidthsSingleLayout::bundle4_values_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle4Values.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingMixedWidthsSingleLayout::bundle4_rates_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle4Rates.offset(blocks)),
                  count_}},
             SpacingMixedBundleView{
                 {column_data_unchecked<uint8>(
-                     SpacingMixedWidthsSingleLayout::bundle5_flags_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle5Flags.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint16>(
-                     SpacingMixedWidthsSingleLayout::bundle5_counters_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle5Counters.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint32>(
-                     SpacingMixedWidthsSingleLayout::bundle5_counts_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle5Counts.offset(blocks)),
                  count_},
                 {column_data_unchecked<uint64>(
-                     SpacingMixedWidthsSingleLayout::bundle5_totals_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle5Totals.offset(blocks)),
                  count_},
                 {column_data_unchecked<OddBytes>(
-                     SpacingMixedWidthsSingleLayout::bundle5_payloads_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle5Payloads.offset(blocks)),
                  count_},
                 {column_data_unchecked<float>(
-                     SpacingMixedWidthsSingleLayout::bundle5_values_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle5Values.offset(blocks)),
                  count_},
                 {column_data_unchecked<double>(
-                     SpacingMixedWidthsSingleLayout::bundle5_rates_offset(blocks)),
+                     SpacingMixedWidthsSingleLayout::Bundle5Rates.offset(blocks)),
                  count_}}};
     }
     template <typename Func>
@@ -4408,226 +3678,53 @@ struct SpacingAlignedSingleLayout {
     inline static constexpr size_type capacity_granularity{64};
     inline static constexpr byte_size_type column_gap{192};
 
-    inline static constexpr byte_size_type bundle0_positions_alignment{
-        alignof(float) > 64 ? alignof(float) : 64};
+    template <typename T>
+    using ColLayout = ml::soa_storage::ColumnLayout<T>;
+    inline static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{
+        capacity_granularity, column_gap, 64};
 
-    inline static constexpr byte_size_type bundle0_aligned32_alignment{
-        alignof(Aligned32) > 64 ? alignof(Aligned32) : 64};
-
-    inline static constexpr byte_size_type bundle0_aligned64_alignment{
-        alignof(Aligned64) > 64 ? alignof(Aligned64) : 64};
-
-    inline static constexpr byte_size_type bundle0_aligned256_alignment{
-        alignof(Aligned256) > 64 ? alignof(Aligned256) : 64};
+    inline static constexpr ColLayout<float> Bundle0Positions{LayoutStart};
+    inline static constexpr ColLayout<float> Bundle0Velocities{Bundle0Positions};
+    inline static constexpr ColLayout<Aligned32> Bundle0Aligned32{Bundle0Velocities};
+    inline static constexpr ColLayout<Aligned64> Bundle0Aligned64{Bundle0Aligned32};
+    inline static constexpr ColLayout<Aligned256> Bundle0Aligned256{Bundle0Aligned64};
+    inline static constexpr ColLayout<float> Bundle1Positions{Bundle0Aligned256};
+    inline static constexpr ColLayout<float> Bundle1Velocities{Bundle1Positions};
+    inline static constexpr ColLayout<Aligned32> Bundle1Aligned32{Bundle1Velocities};
+    inline static constexpr ColLayout<Aligned64> Bundle1Aligned64{Bundle1Aligned32};
+    inline static constexpr ColLayout<Aligned256> Bundle1Aligned256{Bundle1Aligned64};
+    inline static constexpr ColLayout<float> Bundle2Positions{Bundle1Aligned256};
+    inline static constexpr ColLayout<float> Bundle2Velocities{Bundle2Positions};
+    inline static constexpr ColLayout<Aligned32> Bundle2Aligned32{Bundle2Velocities};
+    inline static constexpr ColLayout<Aligned64> Bundle2Aligned64{Bundle2Aligned32};
+    inline static constexpr ColLayout<Aligned256> Bundle2Aligned256{Bundle2Aligned64};
 
     inline static constexpr byte_size_type allocation_alignment{
-        std::max({bundle0_positions_alignment,
-                  bundle0_aligned32_alignment,
-                  bundle0_aligned64_alignment,
-                  bundle0_aligned256_alignment})};
-
-    inline static constexpr byte_size_type bundle0_positions_block_offset{
-        ml::soa_storage::layout_align(0, bundle0_positions_alignment)};
-    inline static constexpr byte_size_type bundle0_positions_block_end{
-        bundle0_positions_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto bundle0_positions_offset(byte_size_type) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(0, bundle0_positions_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle0_velocities_block_offset{
-        ml::soa_storage::layout_align(bundle0_positions_block_end, bundle0_positions_alignment)};
-    inline static constexpr byte_size_type bundle0_velocities_block_end{
-        bundle0_velocities_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto bundle0_velocities_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle0_positions_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             bundle0_positions_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle0_aligned32_block_offset{
-        ml::soa_storage::layout_align(bundle0_velocities_block_end, bundle0_aligned32_alignment)};
-    inline static constexpr byte_size_type bundle0_aligned32_block_end{
-        bundle0_aligned32_block_offset + capacity_granularity * sizeof(Aligned32)};
-
-    static constexpr auto bundle0_aligned32_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle0_velocities_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             bundle0_aligned32_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle0_aligned64_block_offset{
-        ml::soa_storage::layout_align(bundle0_aligned32_block_end, bundle0_aligned64_alignment)};
-    inline static constexpr byte_size_type bundle0_aligned64_block_end{
-        bundle0_aligned64_block_offset + capacity_granularity * sizeof(Aligned64)};
-
-    static constexpr auto bundle0_aligned64_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle0_aligned32_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(Aligned32) +
-                                                 column_gap,
-                                             bundle0_aligned64_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle0_aligned256_block_offset{
-        ml::soa_storage::layout_align(bundle0_aligned64_block_end, bundle0_aligned256_alignment)};
-    inline static constexpr byte_size_type bundle0_aligned256_block_end{
-        bundle0_aligned256_block_offset + capacity_granularity * sizeof(Aligned256)};
-
-    static constexpr auto bundle0_aligned256_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle0_aligned64_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(Aligned64) +
-                                                 column_gap,
-                                             bundle0_aligned256_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle1_positions_block_offset{
-        ml::soa_storage::layout_align(bundle0_aligned256_block_end, bundle0_positions_alignment)};
-    inline static constexpr byte_size_type bundle1_positions_block_end{
-        bundle1_positions_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto bundle1_positions_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(
-            bundle0_aligned256_offset(blocks) + blocks * capacity_granularity * sizeof(Aligned256) +
-                column_gap,
-            bundle0_positions_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle1_velocities_block_offset{
-        ml::soa_storage::layout_align(bundle1_positions_block_end, bundle0_positions_alignment)};
-    inline static constexpr byte_size_type bundle1_velocities_block_end{
-        bundle1_velocities_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto bundle1_velocities_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle1_positions_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             bundle0_positions_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle1_aligned32_block_offset{
-        ml::soa_storage::layout_align(bundle1_velocities_block_end, bundle0_aligned32_alignment)};
-    inline static constexpr byte_size_type bundle1_aligned32_block_end{
-        bundle1_aligned32_block_offset + capacity_granularity * sizeof(Aligned32)};
-
-    static constexpr auto bundle1_aligned32_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle1_velocities_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             bundle0_aligned32_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle1_aligned64_block_offset{
-        ml::soa_storage::layout_align(bundle1_aligned32_block_end, bundle0_aligned64_alignment)};
-    inline static constexpr byte_size_type bundle1_aligned64_block_end{
-        bundle1_aligned64_block_offset + capacity_granularity * sizeof(Aligned64)};
-
-    static constexpr auto bundle1_aligned64_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle1_aligned32_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(Aligned32) +
-                                                 column_gap,
-                                             bundle0_aligned64_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle1_aligned256_block_offset{
-        ml::soa_storage::layout_align(bundle1_aligned64_block_end, bundle0_aligned256_alignment)};
-    inline static constexpr byte_size_type bundle1_aligned256_block_end{
-        bundle1_aligned256_block_offset + capacity_granularity * sizeof(Aligned256)};
-
-    static constexpr auto bundle1_aligned256_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle1_aligned64_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(Aligned64) +
-                                                 column_gap,
-                                             bundle0_aligned256_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle2_positions_block_offset{
-        ml::soa_storage::layout_align(bundle1_aligned256_block_end, bundle0_positions_alignment)};
-    inline static constexpr byte_size_type bundle2_positions_block_end{
-        bundle2_positions_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto bundle2_positions_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(
-            bundle1_aligned256_offset(blocks) + blocks * capacity_granularity * sizeof(Aligned256) +
-                column_gap,
-            bundle0_positions_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle2_velocities_block_offset{
-        ml::soa_storage::layout_align(bundle2_positions_block_end, bundle0_positions_alignment)};
-    inline static constexpr byte_size_type bundle2_velocities_block_end{
-        bundle2_velocities_block_offset + capacity_granularity * sizeof(float)};
-
-    static constexpr auto bundle2_velocities_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle2_positions_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             bundle0_positions_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle2_aligned32_block_offset{
-        ml::soa_storage::layout_align(bundle2_velocities_block_end, bundle0_aligned32_alignment)};
-    inline static constexpr byte_size_type bundle2_aligned32_block_end{
-        bundle2_aligned32_block_offset + capacity_granularity * sizeof(Aligned32)};
-
-    static constexpr auto bundle2_aligned32_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle2_velocities_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(float) +
-                                                 column_gap,
-                                             bundle0_aligned32_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle2_aligned64_block_offset{
-        ml::soa_storage::layout_align(bundle2_aligned32_block_end, bundle0_aligned64_alignment)};
-    inline static constexpr byte_size_type bundle2_aligned64_block_end{
-        bundle2_aligned64_block_offset + capacity_granularity * sizeof(Aligned64)};
-
-    static constexpr auto bundle2_aligned64_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle2_aligned32_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(Aligned32) +
-                                                 column_gap,
-                                             bundle0_aligned64_alignment);
-    }
-
-    inline static constexpr byte_size_type bundle2_aligned256_block_offset{
-        ml::soa_storage::layout_align(bundle2_aligned64_block_end, bundle0_aligned256_alignment)};
-    inline static constexpr byte_size_type bundle2_aligned256_block_end{
-        bundle2_aligned256_block_offset + capacity_granularity * sizeof(Aligned256)};
-
-    static constexpr auto bundle2_aligned256_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(bundle2_aligned64_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(Aligned64) +
-                                                 column_gap,
-                                             bundle0_aligned256_alignment);
-    }
+        ml::soa_storage::maximum_alignment(Bundle0Positions,
+                                           Bundle0Velocities,
+                                           Bundle0Aligned32,
+                                           Bundle0Aligned64,
+                                           Bundle0Aligned256,
+                                           Bundle1Positions,
+                                           Bundle1Velocities,
+                                           Bundle1Aligned32,
+                                           Bundle1Aligned64,
+                                           Bundle1Aligned256,
+                                           Bundle2Positions,
+                                           Bundle2Velocities,
+                                           Bundle2Aligned32,
+                                           Bundle2Aligned64,
+                                           Bundle2Aligned256)};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
-        ml::soa_storage::layout_align(bundle2_aligned256_block_end, allocation_alignment) +
+        ml::soa_storage::layout_align(Bundle2Aligned256.block_end, allocation_alignment) +
         14 * (column_gap + allocation_alignment - 1)};
     inline static constexpr size_type max_capacity{
         ml::soa_storage::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0
-                           : bundle2_aligned256_offset(blocks) +
-                                 blocks * capacity_granularity * sizeof(Aligned256);
+        return blocks == 0 ? 0 : Bundle2Aligned256.data_end(blocks);
     }
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
@@ -4651,41 +3748,38 @@ struct SpacingAlignedSingleLayout {
         static_assert(
             allocation_alignment <= std::numeric_limits<uint32>::max(),
             "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
-        static_assert(sizeof(float) <= (max_allocation_size - bundle0_positions_block_offset) /
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - Bundle0Positions.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - Bundle0Velocities.block_offset) /
                                            capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - bundle0_velocities_block_offset) /
+        static_assert(sizeof(Aligned32) <=
+                      (max_allocation_size - Bundle0Aligned32.block_offset) / capacity_granularity);
+        static_assert(sizeof(Aligned64) <=
+                      (max_allocation_size - Bundle0Aligned64.block_offset) / capacity_granularity);
+        static_assert(sizeof(Aligned256) <= (max_allocation_size - Bundle0Aligned256.block_offset) /
+                                                capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - Bundle1Positions.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - Bundle1Velocities.block_offset) /
                                            capacity_granularity);
-        static_assert(sizeof(Aligned32) <= (max_allocation_size - bundle0_aligned32_block_offset) /
-                                               capacity_granularity);
-        static_assert(sizeof(Aligned64) <= (max_allocation_size - bundle0_aligned64_block_offset) /
-                                               capacity_granularity);
-        static_assert(sizeof(Aligned256) <=
-                      (max_allocation_size - bundle0_aligned256_block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - bundle1_positions_block_offset) /
+        static_assert(sizeof(Aligned32) <=
+                      (max_allocation_size - Bundle1Aligned32.block_offset) / capacity_granularity);
+        static_assert(sizeof(Aligned64) <=
+                      (max_allocation_size - Bundle1Aligned64.block_offset) / capacity_granularity);
+        static_assert(sizeof(Aligned256) <= (max_allocation_size - Bundle1Aligned256.block_offset) /
+                                                capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - Bundle2Positions.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - Bundle2Velocities.block_offset) /
                                            capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - bundle1_velocities_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(Aligned32) <= (max_allocation_size - bundle1_aligned32_block_offset) /
-                                               capacity_granularity);
-        static_assert(sizeof(Aligned64) <= (max_allocation_size - bundle1_aligned64_block_offset) /
-                                               capacity_granularity);
-        static_assert(sizeof(Aligned256) <=
-                      (max_allocation_size - bundle1_aligned256_block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - bundle2_positions_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - bundle2_velocities_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(Aligned32) <= (max_allocation_size - bundle2_aligned32_block_offset) /
-                                               capacity_granularity);
-        static_assert(sizeof(Aligned64) <= (max_allocation_size - bundle2_aligned64_block_offset) /
-                                               capacity_granularity);
-        static_assert(sizeof(Aligned256) <=
-                      (max_allocation_size - bundle2_aligned256_block_offset) /
-                          capacity_granularity);
+        static_assert(sizeof(Aligned32) <=
+                      (max_allocation_size - Bundle2Aligned32.block_offset) / capacity_granularity);
+        static_assert(sizeof(Aligned64) <=
+                      (max_allocation_size - Bundle2Aligned64.block_offset) / capacity_granularity);
+        static_assert(sizeof(Aligned256) <= (max_allocation_size - Bundle2Aligned256.block_offset) /
+                                                capacity_granularity);
         static_assert(
-            14 <= (max_allocation_size - ml::soa_storage::layout_align(bundle2_aligned256_block_end,
+            14 <= (max_allocation_size - ml::soa_storage::layout_align(Bundle2Aligned256.block_end,
                                                                        allocation_alignment)) /
                       (column_gap + allocation_alignment - 1));
         static_assert(max_capacity >= capacity_granularity);
@@ -4783,27 +3877,29 @@ struct SingleSpacingAlignedStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        using Pointers = DataPointers<Byte>;
-        auto const pointer_at = [data]<typename T>(byte_size_type const offset) noexcept {
-            return std::launder(
-                reinterpret_cast<typename Pointers::template Element<T>*>(data + offset));
+        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+            using Column = std::remove_cvref_t<decltype(column)>;
+            using Pointer = std::conditional_t<std::is_const_v<Byte>,
+                                               typename Column::const_pointer,
+                                               typename Column::pointer>;
+            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
         };
         return {
-            pointer_at.template operator()<float>(bundle0_positions_offset(blocks)),
-            pointer_at.template operator()<float>(bundle0_velocities_offset(blocks)),
-            pointer_at.template operator()<Aligned32>(bundle0_aligned32_offset(blocks)),
-            pointer_at.template operator()<Aligned64>(bundle0_aligned64_offset(blocks)),
-            pointer_at.template operator()<Aligned256>(bundle0_aligned256_offset(blocks)),
-            pointer_at.template operator()<float>(bundle1_positions_offset(blocks)),
-            pointer_at.template operator()<float>(bundle1_velocities_offset(blocks)),
-            pointer_at.template operator()<Aligned32>(bundle1_aligned32_offset(blocks)),
-            pointer_at.template operator()<Aligned64>(bundle1_aligned64_offset(blocks)),
-            pointer_at.template operator()<Aligned256>(bundle1_aligned256_offset(blocks)),
-            pointer_at.template operator()<float>(bundle2_positions_offset(blocks)),
-            pointer_at.template operator()<float>(bundle2_velocities_offset(blocks)),
-            pointer_at.template operator()<Aligned32>(bundle2_aligned32_offset(blocks)),
-            pointer_at.template operator()<Aligned64>(bundle2_aligned64_offset(blocks)),
-            pointer_at.template operator()<Aligned256>(bundle2_aligned256_offset(blocks)),
+            pointer_at(Bundle0Positions),
+            pointer_at(Bundle0Velocities),
+            pointer_at(Bundle0Aligned32),
+            pointer_at(Bundle0Aligned64),
+            pointer_at(Bundle0Aligned256),
+            pointer_at(Bundle1Positions),
+            pointer_at(Bundle1Velocities),
+            pointer_at(Bundle1Aligned32),
+            pointer_at(Bundle1Aligned64),
+            pointer_at(Bundle1Aligned256),
+            pointer_at(Bundle2Positions),
+            pointer_at(Bundle2Velocities),
+            pointer_at(Bundle2Aligned32),
+            pointer_at(Bundle2Aligned64),
+            pointer_at(Bundle2Aligned256),
         };
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
@@ -5029,19 +4125,19 @@ struct SpacingAlignedSingleConstView : ml::soa_storage::CompactViewState<true> {
         auto const blocks{capacity_blocks()};
         return SpacingAlignedBundleConstView{
             {column_data_unchecked<float>(
-                 SpacingAlignedSingleLayout::bundle0_positions_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle0Positions.offset(blocks)),
              count_},
             {column_data_unchecked<float>(
-                 SpacingAlignedSingleLayout::bundle0_velocities_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle0Velocities.offset(blocks)),
              count_},
             {column_data_unchecked<Aligned32>(
-                 SpacingAlignedSingleLayout::bundle0_aligned32_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle0Aligned32.offset(blocks)),
              count_},
             {column_data_unchecked<Aligned64>(
-                 SpacingAlignedSingleLayout::bundle0_aligned64_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle0Aligned64.offset(blocks)),
              count_},
             {column_data_unchecked<Aligned256>(
-                 SpacingAlignedSingleLayout::bundle0_aligned256_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle0Aligned256.offset(blocks)),
              count_}};
     }
     auto view_bundle1() const -> SpacingAlignedBundleConstView {
@@ -5052,19 +4148,19 @@ struct SpacingAlignedSingleConstView : ml::soa_storage::CompactViewState<true> {
         auto const blocks{capacity_blocks()};
         return SpacingAlignedBundleConstView{
             {column_data_unchecked<float>(
-                 SpacingAlignedSingleLayout::bundle1_positions_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle1Positions.offset(blocks)),
              count_},
             {column_data_unchecked<float>(
-                 SpacingAlignedSingleLayout::bundle1_velocities_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle1Velocities.offset(blocks)),
              count_},
             {column_data_unchecked<Aligned32>(
-                 SpacingAlignedSingleLayout::bundle1_aligned32_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle1Aligned32.offset(blocks)),
              count_},
             {column_data_unchecked<Aligned64>(
-                 SpacingAlignedSingleLayout::bundle1_aligned64_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle1Aligned64.offset(blocks)),
              count_},
             {column_data_unchecked<Aligned256>(
-                 SpacingAlignedSingleLayout::bundle1_aligned256_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle1Aligned256.offset(blocks)),
              count_}};
     }
     auto view_bundle2() const -> SpacingAlignedBundleConstView {
@@ -5075,19 +4171,19 @@ struct SpacingAlignedSingleConstView : ml::soa_storage::CompactViewState<true> {
         auto const blocks{capacity_blocks()};
         return SpacingAlignedBundleConstView{
             {column_data_unchecked<float>(
-                 SpacingAlignedSingleLayout::bundle2_positions_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle2Positions.offset(blocks)),
              count_},
             {column_data_unchecked<float>(
-                 SpacingAlignedSingleLayout::bundle2_velocities_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle2Velocities.offset(blocks)),
              count_},
             {column_data_unchecked<Aligned32>(
-                 SpacingAlignedSingleLayout::bundle2_aligned32_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle2Aligned32.offset(blocks)),
              count_},
             {column_data_unchecked<Aligned64>(
-                 SpacingAlignedSingleLayout::bundle2_aligned64_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle2Aligned64.offset(blocks)),
              count_},
             {column_data_unchecked<Aligned256>(
-                 SpacingAlignedSingleLayout::bundle2_aligned256_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle2Aligned256.offset(blocks)),
              count_}};
     }
     auto columns() const -> SpacingAlignedConstView {
@@ -5099,51 +4195,51 @@ struct SpacingAlignedSingleConstView : ml::soa_storage::CompactViewState<true> {
         return SpacingAlignedConstView{
             SpacingAlignedBundleConstView{
                 {column_data_unchecked<float>(
-                     SpacingAlignedSingleLayout::bundle0_positions_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle0Positions.offset(blocks)),
                  count_},
                 {column_data_unchecked<float>(
-                     SpacingAlignedSingleLayout::bundle0_velocities_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle0Velocities.offset(blocks)),
                  count_},
                 {column_data_unchecked<Aligned32>(
-                     SpacingAlignedSingleLayout::bundle0_aligned32_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle0Aligned32.offset(blocks)),
                  count_},
                 {column_data_unchecked<Aligned64>(
-                     SpacingAlignedSingleLayout::bundle0_aligned64_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle0Aligned64.offset(blocks)),
                  count_},
                 {column_data_unchecked<Aligned256>(
-                     SpacingAlignedSingleLayout::bundle0_aligned256_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle0Aligned256.offset(blocks)),
                  count_}},
             SpacingAlignedBundleConstView{
                 {column_data_unchecked<float>(
-                     SpacingAlignedSingleLayout::bundle1_positions_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle1Positions.offset(blocks)),
                  count_},
                 {column_data_unchecked<float>(
-                     SpacingAlignedSingleLayout::bundle1_velocities_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle1Velocities.offset(blocks)),
                  count_},
                 {column_data_unchecked<Aligned32>(
-                     SpacingAlignedSingleLayout::bundle1_aligned32_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle1Aligned32.offset(blocks)),
                  count_},
                 {column_data_unchecked<Aligned64>(
-                     SpacingAlignedSingleLayout::bundle1_aligned64_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle1Aligned64.offset(blocks)),
                  count_},
                 {column_data_unchecked<Aligned256>(
-                     SpacingAlignedSingleLayout::bundle1_aligned256_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle1Aligned256.offset(blocks)),
                  count_}},
             SpacingAlignedBundleConstView{
                 {column_data_unchecked<float>(
-                     SpacingAlignedSingleLayout::bundle2_positions_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle2Positions.offset(blocks)),
                  count_},
                 {column_data_unchecked<float>(
-                     SpacingAlignedSingleLayout::bundle2_velocities_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle2Velocities.offset(blocks)),
                  count_},
                 {column_data_unchecked<Aligned32>(
-                     SpacingAlignedSingleLayout::bundle2_aligned32_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle2Aligned32.offset(blocks)),
                  count_},
                 {column_data_unchecked<Aligned64>(
-                     SpacingAlignedSingleLayout::bundle2_aligned64_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle2Aligned64.offset(blocks)),
                  count_},
                 {column_data_unchecked<Aligned256>(
-                     SpacingAlignedSingleLayout::bundle2_aligned256_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle2Aligned256.offset(blocks)),
                  count_}}};
     }
     template <typename Func>
@@ -5172,19 +4268,19 @@ struct SpacingAlignedSingleView : ml::soa_storage::CompactViewState<false> {
         auto const blocks{capacity_blocks()};
         return SpacingAlignedBundleView{
             {column_data_unchecked<float>(
-                 SpacingAlignedSingleLayout::bundle0_positions_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle0Positions.offset(blocks)),
              count_},
             {column_data_unchecked<float>(
-                 SpacingAlignedSingleLayout::bundle0_velocities_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle0Velocities.offset(blocks)),
              count_},
             {column_data_unchecked<Aligned32>(
-                 SpacingAlignedSingleLayout::bundle0_aligned32_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle0Aligned32.offset(blocks)),
              count_},
             {column_data_unchecked<Aligned64>(
-                 SpacingAlignedSingleLayout::bundle0_aligned64_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle0Aligned64.offset(blocks)),
              count_},
             {column_data_unchecked<Aligned256>(
-                 SpacingAlignedSingleLayout::bundle0_aligned256_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle0Aligned256.offset(blocks)),
              count_}};
     }
     auto view_bundle1() const -> SpacingAlignedBundleView {
@@ -5195,19 +4291,19 @@ struct SpacingAlignedSingleView : ml::soa_storage::CompactViewState<false> {
         auto const blocks{capacity_blocks()};
         return SpacingAlignedBundleView{
             {column_data_unchecked<float>(
-                 SpacingAlignedSingleLayout::bundle1_positions_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle1Positions.offset(blocks)),
              count_},
             {column_data_unchecked<float>(
-                 SpacingAlignedSingleLayout::bundle1_velocities_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle1Velocities.offset(blocks)),
              count_},
             {column_data_unchecked<Aligned32>(
-                 SpacingAlignedSingleLayout::bundle1_aligned32_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle1Aligned32.offset(blocks)),
              count_},
             {column_data_unchecked<Aligned64>(
-                 SpacingAlignedSingleLayout::bundle1_aligned64_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle1Aligned64.offset(blocks)),
              count_},
             {column_data_unchecked<Aligned256>(
-                 SpacingAlignedSingleLayout::bundle1_aligned256_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle1Aligned256.offset(blocks)),
              count_}};
     }
     auto view_bundle2() const -> SpacingAlignedBundleView {
@@ -5218,19 +4314,19 @@ struct SpacingAlignedSingleView : ml::soa_storage::CompactViewState<false> {
         auto const blocks{capacity_blocks()};
         return SpacingAlignedBundleView{
             {column_data_unchecked<float>(
-                 SpacingAlignedSingleLayout::bundle2_positions_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle2Positions.offset(blocks)),
              count_},
             {column_data_unchecked<float>(
-                 SpacingAlignedSingleLayout::bundle2_velocities_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle2Velocities.offset(blocks)),
              count_},
             {column_data_unchecked<Aligned32>(
-                 SpacingAlignedSingleLayout::bundle2_aligned32_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle2Aligned32.offset(blocks)),
              count_},
             {column_data_unchecked<Aligned64>(
-                 SpacingAlignedSingleLayout::bundle2_aligned64_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle2Aligned64.offset(blocks)),
              count_},
             {column_data_unchecked<Aligned256>(
-                 SpacingAlignedSingleLayout::bundle2_aligned256_offset(blocks)),
+                 SpacingAlignedSingleLayout::Bundle2Aligned256.offset(blocks)),
              count_}};
     }
     auto columns() const -> SpacingAlignedView {
@@ -5242,51 +4338,51 @@ struct SpacingAlignedSingleView : ml::soa_storage::CompactViewState<false> {
         return SpacingAlignedView{
             SpacingAlignedBundleView{
                 {column_data_unchecked<float>(
-                     SpacingAlignedSingleLayout::bundle0_positions_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle0Positions.offset(blocks)),
                  count_},
                 {column_data_unchecked<float>(
-                     SpacingAlignedSingleLayout::bundle0_velocities_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle0Velocities.offset(blocks)),
                  count_},
                 {column_data_unchecked<Aligned32>(
-                     SpacingAlignedSingleLayout::bundle0_aligned32_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle0Aligned32.offset(blocks)),
                  count_},
                 {column_data_unchecked<Aligned64>(
-                     SpacingAlignedSingleLayout::bundle0_aligned64_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle0Aligned64.offset(blocks)),
                  count_},
                 {column_data_unchecked<Aligned256>(
-                     SpacingAlignedSingleLayout::bundle0_aligned256_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle0Aligned256.offset(blocks)),
                  count_}},
             SpacingAlignedBundleView{
                 {column_data_unchecked<float>(
-                     SpacingAlignedSingleLayout::bundle1_positions_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle1Positions.offset(blocks)),
                  count_},
                 {column_data_unchecked<float>(
-                     SpacingAlignedSingleLayout::bundle1_velocities_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle1Velocities.offset(blocks)),
                  count_},
                 {column_data_unchecked<Aligned32>(
-                     SpacingAlignedSingleLayout::bundle1_aligned32_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle1Aligned32.offset(blocks)),
                  count_},
                 {column_data_unchecked<Aligned64>(
-                     SpacingAlignedSingleLayout::bundle1_aligned64_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle1Aligned64.offset(blocks)),
                  count_},
                 {column_data_unchecked<Aligned256>(
-                     SpacingAlignedSingleLayout::bundle1_aligned256_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle1Aligned256.offset(blocks)),
                  count_}},
             SpacingAlignedBundleView{
                 {column_data_unchecked<float>(
-                     SpacingAlignedSingleLayout::bundle2_positions_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle2Positions.offset(blocks)),
                  count_},
                 {column_data_unchecked<float>(
-                     SpacingAlignedSingleLayout::bundle2_velocities_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle2Velocities.offset(blocks)),
                  count_},
                 {column_data_unchecked<Aligned32>(
-                     SpacingAlignedSingleLayout::bundle2_aligned32_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle2Aligned32.offset(blocks)),
                  count_},
                 {column_data_unchecked<Aligned64>(
-                     SpacingAlignedSingleLayout::bundle2_aligned64_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle2Aligned64.offset(blocks)),
                  count_},
                 {column_data_unchecked<Aligned256>(
-                     SpacingAlignedSingleLayout::bundle2_aligned256_offset(blocks)),
+                     SpacingAlignedSingleLayout::Bundle2Aligned256.offset(blocks)),
                  count_}}};
     }
     template <typename Func>

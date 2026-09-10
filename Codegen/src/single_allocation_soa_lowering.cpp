@@ -1,11 +1,39 @@
 #include "fixed_soa_internal.h"
 #include "lowering_utils.h"
 
+#include <cctype>
 #include <set>
 #include <sstream>
 #include <stdexcept>
+#include <string_view>
 
 namespace codegen::detail {
+
+static auto column_name(std::string_view const id) -> std::string {
+    std::string result;
+    result.reserve(id.size());
+    bool capitalize{true};
+    for (auto const character : id) {
+        if (character == '_') {
+            capitalize = true;
+            continue;
+        }
+        result.push_back(
+            capitalize ? static_cast<char>(std::toupper(static_cast<unsigned char>(character)))
+                       : character);
+        capitalize = false;
+    }
+    return result;
+}
+
+static auto layout_column_name(std::string_view const id,
+                               std::set<std::string> const& type_identifiers) -> std::string {
+    auto result{column_name(id)};
+    if (type_identifiers.contains(result)) {
+        result += "Column";
+    }
+    return result;
+}
 
 static auto vector_element(SoaSchema const& schema,
                            std::map<std::string, CppType> const& leaves,
@@ -52,6 +80,7 @@ static auto vector_element(SoaSchema const& schema,
 static auto compact_columns_expression(SoaSchema const& schema,
                                        std::map<std::string, SoaSchema const*> const& schemas,
                                        std::map<std::string, CppType> const& leaves,
+                                       std::set<std::string> const& type_identifiers,
                                        std::vector<std::string> const& prefix,
                                        std::string const& layout,
                                        bool native,
@@ -66,6 +95,7 @@ static auto compact_columns_expression(SoaSchema const& schema,
             values.push_back(compact_columns_expression(*schemas.at(*member.nested_schema),
                                                         schemas,
                                                         leaves,
+                                                        type_identifiers,
                                                         path,
                                                         layout,
                                                         native,
@@ -73,7 +103,8 @@ static auto compact_columns_expression(SoaSchema const& schema,
         } else {
             auto const id{join(path, "_")};
             values.push_back("{column_data_unchecked<" + leaves.at(id).spelling + ">(" + layout +
-                             "::" + id + "_offset(blocks)), " +
+                             "::" + layout_column_name(id, type_identifiers) +
+                             ".offset(blocks)), " +
                              (native ? "static_cast<std::size_t>(count_)" : "count_") + "}");
         }
     }
@@ -84,6 +115,7 @@ static void emit_compact_views(std::ostringstream& out,
                                SoaSchema const& schema,
                                std::map<std::string, SoaSchema const*> const& schemas,
                                std::map<std::string, CppType> const& leaves,
+                               std::set<std::string> const& type_identifiers,
                                std::string const& layout,
                                std::string const& runtime,
                                bool native) {
@@ -111,7 +143,7 @@ static void emit_compact_views(std::ostringstream& out,
                 << "if (!state_ || !state_->data_) { return {}; }\n"
                 << "auto const blocks{capacity_blocks()};\nreturn "
                 << compact_columns_expression(
-                       target, schemas, leaves, prefix, layout, native, is_const)
+                       target, schemas, leaves, type_identifiers, prefix, layout, native, is_const)
                 << ";\n}\n";
         };
         for (auto const& member : schema.members) {
@@ -129,18 +161,21 @@ static void emit_compact_views(std::ostringstream& out,
                     << " {\nvalidate();\n"
                     << "if (!state_ || !state_->data_) { return {}; }\n"
                     << "auto const blocks{capacity_blocks()};\n"
-                    << "auto const first{" << layout << "::" << member.name
-                    << "_xs_offset(blocks)};\n"
-                    << "auto const stride{" << layout << "::" << member.name
-                    << "_ys_offset(blocks) - first};\n"
+                    << "auto const first{" << layout
+                    << "::" << layout_column_name(member.name + "_xs", type_identifiers)
+                    << ".offset(blocks)};\n"
+                    << "auto const stride{" << layout
+                    << "::" << layout_column_name(member.name + "_ys", type_identifiers)
+                    << ".offset(blocks) - first};\n"
                     << "return {column_data_unchecked<" << element
                     << ">(first), stride, count_};\n}\n";
             } else {
                 auto const type{leaves.at(member.name).spelling};
                 out << "auto " << member.name << "() const -> "
                     << (native ? "std::span<" : "TArrayView<") << type << (is_const ? " const" : "")
-                    << "> { return {column_data<" << type << ">(" << layout << "::" << member.name
-                    << "_offset(capacity_blocks())), "
+                    << "> { return {column_data<" << type << ">(" << layout
+                    << "::" << layout_column_name(member.name, type_identifiers)
+                    << ".offset(capacity_blocks())), "
                     << (native ? "static_cast<std::size_t>(count_)" : "count_") << "}; }\n";
             }
         }
@@ -185,9 +220,27 @@ auto lower_single_allocation_node(SoaSchema const& schema,
     std::set<std::string> names;
     std::map<std::string, std::string> type_ids;
     std::vector<FixedLeaf const*> unique_types;
+    std::set<std::string> type_identifiers;
     for (auto const& leaf : layout.leaves) {
         if (type_ids.emplace(leaf.type.spelling, fixed_leaf_argument(leaf)).second) {
             unique_types.push_back(&leaf);
+        }
+        for (std::size_t start{}; start < leaf.type.spelling.size();) {
+            if (auto const character{static_cast<unsigned char>(leaf.type.spelling[start])};
+                !std::isalpha(character) && character != '_') {
+                ++start;
+                continue;
+            }
+            auto end{start + 1};
+            while (end < leaf.type.spelling.size()) {
+                auto const character{static_cast<unsigned char>(leaf.type.spelling[end])};
+                if (!std::isalnum(character) && character != '_') {
+                    break;
+                }
+                ++end;
+            }
+            type_identifiers.emplace(leaf.type.spelling.substr(start, end - start));
+            start = end;
         }
     }
     auto emit_copy_sizes = [&](std::ostringstream& output, std::string const& count) {
@@ -205,28 +258,14 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         << "inline static constexpr byte_size_type "
            "max_allocation_size{std::numeric_limits<byte_size_type>::max()};\n"
         << "inline static constexpr size_type capacity_granularity{64};\n"
-        << "inline static constexpr byte_size_type column_gap{192};\n\n";
-    std::vector<std::string> alignments;
-    for (auto const* leaf : unique_types) {
-        auto const id{fixed_leaf_argument(*leaf)};
-        auto const& type{leaf->type.spelling};
-        assertions
-            << "static_assert(" << runtime << "supported_leaf<" << type
-            << ">, \"Single-allocation leaf " << join(leaf->path, ".")
-            << " requires a non-cv, trivially copyable/copy-constructible/destructible, nothrow "
-               "default-constructible object type.\");\n";
-        out << "inline static constexpr byte_size_type " << id << "_alignment{alignof(" << type
-            << ") > 64 ? alignof(" << type << ") : 64};\n\n";
-        alignments.push_back(id + "_alignment");
-    }
-    out << "inline static constexpr byte_size_type allocation_alignment{std::max({"
-        << join(alignments, ", ") << "})};\n\n";
-    assertions << "\nstatic_assert(allocation_alignment <= std::numeric_limits<"
-               << (native ? "std::uint32_t" : "uint32")
-               << ">::max(), \"Single-allocation alignment must fit the allocator's 32-bit "
-                  "alignment argument.\");\n";
-    std::string previous{"0"};
-    std::string previous_end{"0"};
+        << "inline static constexpr byte_size_type column_gap{192};\n\n"
+        << "template <typename T>\nusing ColLayout = " << runtime << "ColumnLayout<T>;\n"
+        << "inline static constexpr " << runtime
+        << "ColumnLayoutStart LayoutStart{capacity_granularity, column_gap, 64};\n\n";
+
+    std::set<std::string> column_names{"ColLayout", "LayoutStart", layout_name};
+    std::vector<std::string> columns;
+    std::string previous_column{"LayoutStart"};
     for (auto const& leaf : layout.leaves) {
         auto const id{fixed_leaf_argument(leaf)};
         if (id.find("__") != std::string::npos || id.back() == '_') {
@@ -236,42 +275,53 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         if (!names.insert(id).second) {
             throw std::invalid_argument{"Single-allocation flattened leaf name collision: " + id};
         }
-        auto const& type{leaf.type.spelling};
+        auto const column{layout_column_name(id, type_identifiers)};
+        if (!column_names.insert(column).second) {
+            throw std::invalid_argument{"Single-allocation column name collision: " + column};
+        }
+
         dependencies.insert(
             dependencies.end(), leaf.type.dependencies.begin(), leaf.type.dependencies.end());
-        out << "inline static constexpr byte_size_type " << id << "_block_offset{" << runtime
-            << "layout_align(" << previous << ", " << type_ids.at(type) << "_alignment)};\n"
-            << "inline static constexpr byte_size_type " << id << "_block_end{" << id
-            << "_block_offset + capacity_granularity * sizeof(" << type << ")};\n\n";
-        assertions << "static_assert(sizeof(" << type << ") <= (max_allocation_size - " << id
-                   << "_block_offset) / capacity_granularity);\n";
-        previous = id + "_block_end";
-        out << "static constexpr auto " << id << "_offset(byte_size_type"
-            << (previous_end == "0" ? "" : " blocks") << ") noexcept -> byte_size_type { return "
-            << runtime << "layout_align(" << previous_end << ", " << type_ids.at(type)
-            << "_alignment); }\n\n";
-        previous_end = id + "_offset(blocks) + blocks * capacity_granularity * sizeof(" + type +
-                       ") + column_gap";
+        out << "inline static constexpr ColLayout<" << leaf.type.spelling << "> " << column << "{"
+            << previous_column << "};\n";
+        columns.push_back(column);
+        previous_column = column;
     }
-    auto const& last{layout.leaves.back()};
-    auto const last_id{fixed_leaf_argument(last)};
+    out << "\ninline static constexpr byte_size_type allocation_alignment{" << runtime
+        << "maximum_alignment(" << join(columns, ", ") << ")};\n\n";
+
+    for (auto const* leaf : unique_types) {
+        auto const& type{leaf->type.spelling};
+        assertions
+            << "static_assert(" << runtime << "supported_leaf<" << type
+            << ">, \"Single-allocation leaf " << join(leaf->path, ".")
+            << " requires a non-cv, trivially copyable/copy-constructible/destructible, nothrow "
+               "default-constructible object type.\");\n";
+    }
+    assertions << "\nstatic_assert(allocation_alignment <= std::numeric_limits<"
+               << (native ? "std::uint32_t" : "uint32")
+               << ">::max(), \"Single-allocation alignment must fit the allocator's 32-bit "
+                  "alignment argument.\");\n";
+    for (std::size_t index{}; index < layout.leaves.size(); ++index) {
+        auto const& type{layout.leaves[index].type.spelling};
+        assertions << "static_assert(sizeof(" << type << ") <= (max_allocation_size - "
+                   << columns[index] << ".block_offset) / capacity_granularity);\n";
+    }
     assertions << "static_assert(" << (layout.leaves.size() - 1) << " <= (max_allocation_size - "
-               << runtime << "layout_align(" << previous
+               << runtime << "layout_align(" << columns.back() << ".block_end"
                << ", allocation_alignment)) / (column_gap + allocation_alignment - 1));\n";
     out << "// Conservative per-block bound for checked capacity arithmetic; gaps do not scale "
            "with capacity.\n";
     out << "inline static constexpr byte_size_type "
            "capacity_block_bound{"
-        << runtime << "layout_align(" << previous << ", allocation_alignment) + "
+        << runtime << "layout_align(" << columns.back() << ".block_end, allocation_alignment) + "
         << (layout.leaves.size() - 1) << " * (column_gap + allocation_alignment - 1)};\n"
         << "inline static constexpr size_type "
            "max_capacity{"
         << runtime << "maximum_capacity(capacity_block_bound)};\n"
         << "static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type "
            "{\n"
-        << "return blocks == 0 ? 0 : " << last_id
-        << "_offset(blocks) + blocks * capacity_granularity * sizeof(" << last.type.spelling
-        << ");\n}\n"
+        << "return blocks == 0 ? 0 : " << columns.back() << ".data_end(blocks);\n}\n"
         << "\nprivate:\ninline static constexpr auto validate_layout = []() consteval -> bool {\n"
         << assertions.str()
         << "static_assert(max_capacity >= capacity_granularity);\nreturn true;\n};\n"
@@ -305,8 +355,8 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         << "    template <typename T> using Element = std::conditional_t<std::is_const_v<Byte>, T "
            "const, T>;\n";
     for (auto const& leaf : layout.leaves) {
-        out << "    Element<" << leaf.type.spelling << ">* " << fixed_leaf_argument(leaf)
-            << "{};\n";
+        auto const id{fixed_leaf_argument(leaf)};
+        out << "    Element<" << leaf.type.spelling << ">* " << id << "{};\n";
     }
     out << "    auto operator+(size_type const offset) const noexcept -> DataPointers {\n"
         << "        if (" << fixed_leaf_argument(layout.leaves.front())
@@ -330,18 +380,18 @@ auto lower_single_allocation_node(SoaSchema const& schema,
            "**************************************** */\n"
         << "template <typename Byte> static auto make_data_unchecked(Byte* const data, "
            "byte_size_type const blocks) noexcept -> DataPointers<Byte> {\n"
-        << "    using Pointers = DataPointers<Byte>;\n"
-        << "    auto const pointer_at = [data]<typename T>(byte_size_type const offset) noexcept "
-           "{\n"
+        << "    auto const pointer_at = [data, blocks](auto const& column) noexcept {\n"
+        << "        using Column = std::remove_cvref_t<decltype(column)>;\n"
+        << "        using Pointer = std::conditional_t<std::is_const_v<Byte>,\n"
+        << "                                           typename Column::const_pointer,\n"
+        << "                                           typename Column::pointer>;\n"
         << "        return std::launder(\n"
-        << "            reinterpret_cast<typename Pointers::template Element<T>*>(data + "
-           "offset));\n"
+        << "            reinterpret_cast<Pointer>(data + column.offset(blocks)));\n"
         << "    };\n"
         << "    return {\n";
     for (auto const& leaf : layout.leaves) {
         auto const id{fixed_leaf_argument(leaf)};
-        out << "        pointer_at.template operator()<" << leaf.type.spelling << ">(" << id
-            << "_offset(blocks)),\n";
+        out << "        pointer_at(" << layout_column_name(id, type_identifiers) << "),\n";
     }
     out << "    };\n}\n"
         << "auto capacity_blocks() const noexcept -> byte_size_type { return "
@@ -416,7 +466,8 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         for (auto const& leaf : layout.leaves) {
             leaf_types.emplace(fixed_leaf_argument(leaf), leaf.type);
         }
-        emit_compact_views(out, schema, schemas, leaf_types, layout_name, runtime, native);
+        emit_compact_views(
+            out, schema, schemas, leaf_types, type_identifiers, layout_name, runtime, native);
     }
     out << "struct " << name << " : " << storage_name << " {\n"
         << name << "() noexcept = default;\n"

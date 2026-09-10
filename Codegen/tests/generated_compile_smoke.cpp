@@ -379,8 +379,13 @@ auto main() -> int {
         using SingleParents = codegen_compile_fixture::SingleParents;
         static_assert(sizeof(SingleParents::View) == 16);
         static_assert(!std::is_copy_constructible_v<SingleParents>);
-        static_assert(SingleParents::keys_offset(1) == 0);
-        static_assert(SingleParents::children_values_offset(1) == 64 * sizeof(int32) + 192);
+        using KeysColumn = std::remove_cvref_t<decltype(SingleParents::Keys)>;
+        static_assert(std::is_same_v<KeysColumn::pointer, int32*>);
+        static_assert(std::is_same_v<KeysColumn::const_pointer, int32 const*>);
+        static_assert(SingleParents::Keys.offset(1) == 0);
+        static_assert(SingleParents::ChildrenValues.offset(1) == 64 * sizeof(int32) + 192);
+        static_assert(SingleParents::ChildrenValues.capacity_granularity == 64);
+        static_assert(SingleParents::ChildrenValues.column_gap == 192);
         static_assert(SingleParents::layout_bytes(1) == 128 * sizeof(int32) + 192);
         SingleParents parents;
         check(parents.get_view().columns().keys.GetData() == nullptr);

@@ -26,7 +26,7 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
     EXPECT_NE(output.find("ml::native_soa::Vector<std::int32_t> ids"), std::string::npos);
     EXPECT_NE(output.find("std::span<std::int32_t const> ids"), std::string::npos);
     EXPECT_NE(output.find("std::span<float> xs"), std::string::npos);
-    EXPECT_NE(output.find("layout_align(ids_block_end, nested_xs_alignment)"), std::string::npos);
+    EXPECT_NE(output.find("ColLayout<float> NestedXs{Ids}"), std::string::npos);
     EXPECT_NE(output.find("std::memcpy(destination.nested_xs"), std::string::npos);
     EXPECT_EQ(output.find("TArray"), std::string::npos);
     EXPECT_EQ(output.find("FMemory"), std::string::npos);
@@ -163,18 +163,14 @@ TEST(SingleAllocationSoa, EmitsOrderedAlignedBlocksAndExplicitBulkRelocation) {
     auto const output{render(schemas())};
     EXPECT_NE(output.find("capacity_granularity{64}"), std::string::npos);
     EXPECT_NE(output.find("column_gap{192}"), std::string::npos);
-    EXPECT_NE(output.find("layout_align(ids_offset(blocks) + blocks * capacity_granularity * "
-                          "sizeof(int32) + column_gap, nested_small_alignment)"),
-              std::string::npos);
+    EXPECT_NE(output.find("ColLayout<int32> Ids{LayoutStart}"), std::string::npos);
+    EXPECT_NE(output.find("ColLayout<uint8> NestedSmall{Ids}"), std::string::npos);
     EXPECT_NE(output.find("layout_bytes(byte_size_type blocks)"), std::string::npos);
-    EXPECT_NE(output.find("layout_align(ids_block_end, nested_small_alignment)"),
-              std::string::npos);
-    EXPECT_NE(output.find("layout_align(nested_small_block_end, nested_wide_alignment)"),
-              std::string::npos);
-    EXPECT_NE(output.find("alignof(Aligned256) > 64 ? alignof(Aligned256) : 64"),
+    EXPECT_NE(output.find("ColLayout<Aligned256> NestedWide{NestedSmall}"), std::string::npos);
+    EXPECT_NE(output.find("ColumnLayoutStart LayoutStart{capacity_granularity, column_gap, 64}"),
               std::string::npos);
     EXPECT_NE(output.find("sizeof(Aligned256) <= (max_allocation_size - "
-                          "nested_wide_block_offset) / capacity_granularity"),
+                          "NestedWide.block_offset) / capacity_granularity"),
               std::string::npos);
     EXPECT_NE(output.find("FMemory::Memcpy(destination.nested_wide, "
                           "source.nested_wide, nested_wide_bytes)"),
@@ -182,7 +178,7 @@ TEST(SingleAllocationSoa, EmitsOrderedAlignedBlocksAndExplicitBulkRelocation) {
     EXPECT_NE(output.find("auto const elements_to_move{static_cast<byte_size_type>(move_count)};"),
               std::string::npos);
     EXPECT_NE(output.find(" + source, nested_wide_bytes"), std::string::npos);
-    EXPECT_NE(output.find("ids_block_end"), std::string::npos);
+    EXPECT_NE(output.find("NestedWide.data_end(blocks)"), std::string::npos);
     EXPECT_NE(output.find("Single-allocation leaf nested.wide requires"), std::string::npos);
 }
 
@@ -226,10 +222,8 @@ TEST(SingleAllocationSoa, SharesTypeChecksAlignmentAndCopySizesAcrossNestedLeave
     EXPECT_EQ(occurrences("source.ys, nested_xs_bytes"), 1);
     EXPECT_EQ(occurrences("_maximum_alignment"), 0);
     EXPECT_EQ(occurrences("static_cast<byte_size_type>(capacity_ / capacity_granularity)"), 1);
-    EXPECT_NE(owner.find("layout_align(nested_xs_block_end, nested_xs_alignment)"),
-              std::string::npos);
-    EXPECT_NE(owner.find("std::max({ids_alignment, nested_small_alignment, nested_wide_alignment, "
-                         "nested_xs_alignment})"),
+    EXPECT_NE(owner.find("ColLayout<float> Ys{NestedXs}"), std::string::npos);
+    EXPECT_NE(owner.find("maximum_alignment(Ids, NestedSmall, NestedWide, NestedXs, Ys)"),
               std::string::npos);
 }
 
@@ -256,6 +250,12 @@ TEST(SingleAllocationSoa, RejectsInvalidFlatteningAndOwnerNames) {
     input.back().members.push_back({"nested_small", SoaMemberKind::array, TypeRef{"int32"}});
     EXPECT_THROW(render(input), std::invalid_argument);
     input = schemas();
+    input.back().members.push_back({"layout_start", SoaMemberKind::array, TypeRef{"int32"}});
+    EXPECT_THROW(render(input), std::invalid_argument);
+    input = schemas();
+    input.back().members.push_back({"col_layout", SoaMemberKind::array, TypeRef{"int32"}});
+    EXPECT_THROW(render(input), std::invalid_argument);
+    input = schemas();
     input.back().members.front().nested_schema = "Child";
     EXPECT_THROW(render(input), std::invalid_argument);
     input = schemas();
@@ -272,11 +272,10 @@ TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
         .single_allocation = "SingleGrandparent",
     });
     auto const output{render(input)};
-    EXPECT_NE(output.find("layout_align(first_nested_wide_block_end, first_ids_alignment)"),
-              std::string::npos);
+    EXPECT_NE(output.find("ColLayout<int32> SecondIds{FirstNestedWide}"), std::string::npos);
     EXPECT_NE(output.find("auto view_first() const -> RowsView"), std::string::npos);
     EXPECT_NE(output.find("auto view_second() const -> RowsConstView"), std::string::npos);
-    EXPECT_NE(output.find("GrandparentSingleLayout::second_nested_wide_offset(blocks)"),
+    EXPECT_NE(output.find("GrandparentSingleLayout::SecondNestedWide.offset(blocks)"),
               std::string::npos);
 }
 

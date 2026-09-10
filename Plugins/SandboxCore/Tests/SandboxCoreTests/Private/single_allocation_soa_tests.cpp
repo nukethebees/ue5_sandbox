@@ -118,10 +118,10 @@ TEST_CASE("SandboxCore.SingleAllocation.Empty boundaries and alignment") {
             CHECK(end <= base + values.allocated_bytes());
         });
         auto const blocks{static_cast<SIZE_T>(values.capacity() / 64)};
-        CHECK(reinterpret_cast<UPTRINT>(view.aligned32.GetData()) - base == values.aligned32_offset(blocks));
-        CHECK(reinterpret_cast<UPTRINT>(view.nested.xs.GetData()) - base == values.nested_xs_offset(blocks));
-        CHECK(reinterpret_cast<UPTRINT>(view.aligned64.GetData()) - base == values.aligned64_offset(blocks));
-        CHECK(reinterpret_cast<UPTRINT>(view.aligned256.GetData()) - base == values.aligned256_offset(blocks));
+        CHECK(reinterpret_cast<UPTRINT>(view.aligned32.GetData()) - base == decltype(values)::Aligned32Column.offset(blocks));
+        CHECK(reinterpret_cast<UPTRINT>(view.nested.xs.GetData()) - base == decltype(values)::NestedXs.offset(blocks));
+        CHECK(reinterpret_cast<UPTRINT>(view.aligned64.GetData()) - base == decltype(values)::Aligned64Column.offset(blocks));
+        CHECK(reinterpret_cast<UPTRINT>(view.aligned256.GetData()) - base == decltype(values)::Aligned256Column.offset(blocks));
         CHECK(values.allocated_bytes() == values.layout_bytes(blocks));
         CHECK(view.aligned32[0].value == 32);
         CHECK(view.aligned64[0].value == 64);

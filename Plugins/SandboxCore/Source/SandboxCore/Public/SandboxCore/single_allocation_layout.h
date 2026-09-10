@@ -24,6 +24,79 @@ constexpr auto layout_align(std::size_t const bytes, std::size_t const alignment
     return (bytes + alignment - 1) & ~(alignment - 1);
 }
 
+struct ColumnLayoutBase {
+  protected:
+    constexpr ColumnLayoutBase(std::size_t const capacity_granularity,
+                               std::size_t const column_gap,
+                               std::size_t const minimum_alignment) noexcept
+        : capacity_granularity{capacity_granularity}
+        , column_gap{column_gap}
+        , minimum_alignment{minimum_alignment} {}
+
+    constexpr ColumnLayoutBase(ColumnLayoutBase const& previous,
+                               std::size_t const element_size,
+                               std::size_t const element_alignment) noexcept
+        : capacity_granularity{previous.capacity_granularity}
+        , column_gap{previous.column_gap}
+        , minimum_alignment{previous.minimum_alignment}
+        , alignment{element_alignment > minimum_alignment ? element_alignment : minimum_alignment}
+        , block_offset{layout_align(previous.block_end, alignment)}
+        , block_end{block_offset + capacity_granularity * element_size}
+        , element_size_{element_size}
+        , previous_{&previous} {}
+  public:
+    std::size_t capacity_granularity{};
+    std::size_t column_gap{};
+    std::size_t minimum_alignment{};
+    std::size_t alignment{1};
+    std::size_t block_offset{};
+    std::size_t block_end{};
+
+    constexpr auto offset(std::size_t const blocks) const noexcept -> std::size_t {
+        return previous_ == nullptr ? 0 : layout_align(previous_->next_offset(blocks), alignment);
+    }
+    constexpr auto data_end(std::size_t const blocks) const noexcept -> std::size_t {
+        return offset(blocks) + blocks * capacity_granularity * element_size_;
+    }
+    constexpr auto next_offset(std::size_t const blocks) const noexcept -> std::size_t {
+        return previous_ == nullptr ? 0 : data_end(blocks) + column_gap;
+    }
+  private:
+    std::size_t element_size_{};
+    ColumnLayoutBase const* previous_{};
+};
+
+struct ColumnLayoutStart : ColumnLayoutBase {
+    constexpr ColumnLayoutStart(std::size_t const capacity_granularity,
+                                std::size_t const column_gap,
+                                std::size_t const minimum_alignment) noexcept
+        : ColumnLayoutBase{capacity_granularity, column_gap, minimum_alignment} {}
+};
+
+template <typename T>
+struct ColumnLayout : ColumnLayoutBase {
+    using value_type = T;
+    using pointer = T*;
+    using const_pointer = T const*;
+
+    constexpr explicit ColumnLayout(ColumnLayout const& previous) noexcept
+        : ColumnLayoutBase{previous, sizeof(T), alignof(T)} {}
+
+    template <typename Previous>
+        requires (!std::is_same_v<std::remove_cvref_t<Previous>, ColumnLayout>)
+    constexpr explicit ColumnLayout(Previous& previous) noexcept
+        : ColumnLayoutBase{previous, sizeof(T), alignof(T)} {}
+
+    auto operator=(ColumnLayout const&) -> ColumnLayout& = delete;
+};
+
+template <typename... Columns>
+constexpr auto maximum_alignment(Columns const&... columns) noexcept -> std::size_t {
+    std::size_t result{1};
+    ((result = result < columns.alignment ? columns.alignment : result), ...);
+    return result;
+}
+
 constexpr auto maximum_capacity(std::size_t const block_bytes) noexcept -> std::int32_t {
     if (block_bytes == 0) {
         return 0;

@@ -497,261 +497,59 @@ struct FHistoryRowsSingleLayout {
     inline static constexpr size_type capacity_granularity{64};
     inline static constexpr byte_size_type column_gap{192};
 
-    inline static constexpr byte_size_type completed_ticks_alignment{
-        alignof(uint64) > 64 ? alignof(uint64) : 64};
+    template <typename T>
+    using ColLayout = ml::soa_storage::ColumnLayout<T>;
+    inline static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{
+        capacity_granularity, column_gap, 64};
 
-    inline static constexpr byte_size_type active_entities_alignment{
-        alignof(int32) > 64 ? alignof(int32) : 64};
-
-    inline static constexpr byte_size_type active_entities_by_type_alignment{
-        alignof(FTestEntityRegistry::EntityTypeCounts) > 64
-            ? alignof(FTestEntityRegistry::EntityTypeCounts)
-            : 64};
-
-    inline static constexpr byte_size_type active_entities_by_team_and_type_alignment{
-        alignof(FTestEntityRegistry::EntityCounts) > 64 ? alignof(FTestEntityRegistry::EntityCounts)
-                                                        : 64};
-
-    inline static constexpr byte_size_type requested_time_scale_alignment{
-        alignof(double) > 64 ? alignof(double) : 64};
+    inline static constexpr ColLayout<uint64> CompletedTicks{LayoutStart};
+    inline static constexpr ColLayout<uint64> ValidityMasks{CompletedTicks};
+    inline static constexpr ColLayout<int32> ActiveEntities{ValidityMasks};
+    inline static constexpr ColLayout<FTestEntityRegistry::EntityTypeCounts> ActiveEntitiesByType{
+        ActiveEntities};
+    inline static constexpr ColLayout<FTestEntityRegistry::EntityCounts>
+        ActiveEntitiesByTeamAndType{ActiveEntitiesByType};
+    inline static constexpr ColLayout<int32> SpawnedEntities{ActiveEntitiesByTeamAndType};
+    inline static constexpr ColLayout<int32> DestroyedEntities{SpawnedEntities};
+    inline static constexpr ColLayout<int32> Kills{DestroyedEntities};
+    inline static constexpr ColLayout<int32> RegistrySlotCount{Kills};
+    inline static constexpr ColLayout<int32> ActiveLasers{RegistrySlotCount};
+    inline static constexpr ColLayout<int32> LasersFired{ActiveLasers};
+    inline static constexpr ColLayout<int32> OccupiedSpatialCellCount{LasersFired};
+    inline static constexpr ColLayout<uint64> GridRebuildCount{OccupiedSpatialCellCount};
+    inline static constexpr ColLayout<uint64> RangeQueryCount{GridRebuildCount};
+    inline static constexpr ColLayout<uint64> LineTraceCount{RangeQueryCount};
+    inline static constexpr ColLayout<uint64> SweepTraceCount{LineTraceCount};
+    inline static constexpr ColLayout<double> RequestedTimeScale{SweepTraceCount};
 
     inline static constexpr byte_size_type allocation_alignment{
-        std::max({completed_ticks_alignment,
-                  active_entities_alignment,
-                  active_entities_by_type_alignment,
-                  active_entities_by_team_and_type_alignment,
-                  requested_time_scale_alignment})};
-
-    inline static constexpr byte_size_type completed_ticks_block_offset{
-        ml::soa_storage::layout_align(0, completed_ticks_alignment)};
-    inline static constexpr byte_size_type completed_ticks_block_end{
-        completed_ticks_block_offset + capacity_granularity * sizeof(uint64)};
-
-    static constexpr auto completed_ticks_offset(byte_size_type) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(0, completed_ticks_alignment);
-    }
-
-    inline static constexpr byte_size_type validity_masks_block_offset{
-        ml::soa_storage::layout_align(completed_ticks_block_end, completed_ticks_alignment)};
-    inline static constexpr byte_size_type validity_masks_block_end{
-        validity_masks_block_offset + capacity_granularity * sizeof(uint64)};
-
-    static constexpr auto validity_masks_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(completed_ticks_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint64) +
-                                                 column_gap,
-                                             completed_ticks_alignment);
-    }
-
-    inline static constexpr byte_size_type active_entities_block_offset{
-        ml::soa_storage::layout_align(validity_masks_block_end, active_entities_alignment)};
-    inline static constexpr byte_size_type active_entities_block_end{
-        active_entities_block_offset + capacity_granularity * sizeof(int32)};
-
-    static constexpr auto active_entities_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(validity_masks_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint64) +
-                                                 column_gap,
-                                             active_entities_alignment);
-    }
-
-    inline static constexpr byte_size_type active_entities_by_type_block_offset{
-        ml::soa_storage::layout_align(active_entities_block_end,
-                                      active_entities_by_type_alignment)};
-    inline static constexpr byte_size_type active_entities_by_type_block_end{
-        active_entities_by_type_block_offset +
-        capacity_granularity * sizeof(FTestEntityRegistry::EntityTypeCounts)};
-
-    static constexpr auto active_entities_by_type_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(active_entities_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(int32) +
-                                                 column_gap,
-                                             active_entities_by_type_alignment);
-    }
-
-    inline static constexpr byte_size_type active_entities_by_team_and_type_block_offset{
-        ml::soa_storage::layout_align(active_entities_by_type_block_end,
-                                      active_entities_by_team_and_type_alignment)};
-    inline static constexpr byte_size_type active_entities_by_team_and_type_block_end{
-        active_entities_by_team_and_type_block_offset +
-        capacity_granularity * sizeof(FTestEntityRegistry::EntityCounts)};
-
-    static constexpr auto active_entities_by_team_and_type_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(active_entities_by_type_offset(blocks) +
-                                                 blocks * capacity_granularity *
-                                                     sizeof(FTestEntityRegistry::EntityTypeCounts) +
-                                                 column_gap,
-                                             active_entities_by_team_and_type_alignment);
-    }
-
-    inline static constexpr byte_size_type spawned_entities_block_offset{
-        ml::soa_storage::layout_align(active_entities_by_team_and_type_block_end,
-                                      active_entities_alignment)};
-    inline static constexpr byte_size_type spawned_entities_block_end{
-        spawned_entities_block_offset + capacity_granularity * sizeof(int32)};
-
-    static constexpr auto spawned_entities_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(active_entities_by_team_and_type_offset(blocks) +
-                                                 blocks * capacity_granularity *
-                                                     sizeof(FTestEntityRegistry::EntityCounts) +
-                                                 column_gap,
-                                             active_entities_alignment);
-    }
-
-    inline static constexpr byte_size_type destroyed_entities_block_offset{
-        ml::soa_storage::layout_align(spawned_entities_block_end, active_entities_alignment)};
-    inline static constexpr byte_size_type destroyed_entities_block_end{
-        destroyed_entities_block_offset + capacity_granularity * sizeof(int32)};
-
-    static constexpr auto destroyed_entities_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(spawned_entities_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(int32) +
-                                                 column_gap,
-                                             active_entities_alignment);
-    }
-
-    inline static constexpr byte_size_type kills_block_offset{
-        ml::soa_storage::layout_align(destroyed_entities_block_end, active_entities_alignment)};
-    inline static constexpr byte_size_type kills_block_end{kills_block_offset +
-                                                           capacity_granularity * sizeof(int32)};
-
-    static constexpr auto kills_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(destroyed_entities_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(int32) +
-                                                 column_gap,
-                                             active_entities_alignment);
-    }
-
-    inline static constexpr byte_size_type registry_slot_count_block_offset{
-        ml::soa_storage::layout_align(kills_block_end, active_entities_alignment)};
-    inline static constexpr byte_size_type registry_slot_count_block_end{
-        registry_slot_count_block_offset + capacity_granularity * sizeof(int32)};
-
-    static constexpr auto registry_slot_count_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(
-            kills_offset(blocks) + blocks * capacity_granularity * sizeof(int32) + column_gap,
-            active_entities_alignment);
-    }
-
-    inline static constexpr byte_size_type active_lasers_block_offset{
-        ml::soa_storage::layout_align(registry_slot_count_block_end, active_entities_alignment)};
-    inline static constexpr byte_size_type active_lasers_block_end{
-        active_lasers_block_offset + capacity_granularity * sizeof(int32)};
-
-    static constexpr auto active_lasers_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(registry_slot_count_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(int32) +
-                                                 column_gap,
-                                             active_entities_alignment);
-    }
-
-    inline static constexpr byte_size_type lasers_fired_block_offset{
-        ml::soa_storage::layout_align(active_lasers_block_end, active_entities_alignment)};
-    inline static constexpr byte_size_type lasers_fired_block_end{
-        lasers_fired_block_offset + capacity_granularity * sizeof(int32)};
-
-    static constexpr auto lasers_fired_offset(byte_size_type blocks) noexcept -> byte_size_type {
-        return ml::soa_storage::layout_align(active_lasers_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(int32) +
-                                                 column_gap,
-                                             active_entities_alignment);
-    }
-
-    inline static constexpr byte_size_type occupied_spatial_cell_count_block_offset{
-        ml::soa_storage::layout_align(lasers_fired_block_end, active_entities_alignment)};
-    inline static constexpr byte_size_type occupied_spatial_cell_count_block_end{
-        occupied_spatial_cell_count_block_offset + capacity_granularity * sizeof(int32)};
-
-    static constexpr auto occupied_spatial_cell_count_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(lasers_fired_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(int32) +
-                                                 column_gap,
-                                             active_entities_alignment);
-    }
-
-    inline static constexpr byte_size_type grid_rebuild_count_block_offset{
-        ml::soa_storage::layout_align(occupied_spatial_cell_count_block_end,
-                                      completed_ticks_alignment)};
-    inline static constexpr byte_size_type grid_rebuild_count_block_end{
-        grid_rebuild_count_block_offset + capacity_granularity * sizeof(uint64)};
-
-    static constexpr auto grid_rebuild_count_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(occupied_spatial_cell_count_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(int32) +
-                                                 column_gap,
-                                             completed_ticks_alignment);
-    }
-
-    inline static constexpr byte_size_type range_query_count_block_offset{
-        ml::soa_storage::layout_align(grid_rebuild_count_block_end, completed_ticks_alignment)};
-    inline static constexpr byte_size_type range_query_count_block_end{
-        range_query_count_block_offset + capacity_granularity * sizeof(uint64)};
-
-    static constexpr auto range_query_count_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(grid_rebuild_count_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint64) +
-                                                 column_gap,
-                                             completed_ticks_alignment);
-    }
-
-    inline static constexpr byte_size_type line_trace_count_block_offset{
-        ml::soa_storage::layout_align(range_query_count_block_end, completed_ticks_alignment)};
-    inline static constexpr byte_size_type line_trace_count_block_end{
-        line_trace_count_block_offset + capacity_granularity * sizeof(uint64)};
-
-    static constexpr auto line_trace_count_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(range_query_count_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint64) +
-                                                 column_gap,
-                                             completed_ticks_alignment);
-    }
-
-    inline static constexpr byte_size_type sweep_trace_count_block_offset{
-        ml::soa_storage::layout_align(line_trace_count_block_end, completed_ticks_alignment)};
-    inline static constexpr byte_size_type sweep_trace_count_block_end{
-        sweep_trace_count_block_offset + capacity_granularity * sizeof(uint64)};
-
-    static constexpr auto sweep_trace_count_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(line_trace_count_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint64) +
-                                                 column_gap,
-                                             completed_ticks_alignment);
-    }
-
-    inline static constexpr byte_size_type requested_time_scale_block_offset{
-        ml::soa_storage::layout_align(sweep_trace_count_block_end, requested_time_scale_alignment)};
-    inline static constexpr byte_size_type requested_time_scale_block_end{
-        requested_time_scale_block_offset + capacity_granularity * sizeof(double)};
-
-    static constexpr auto requested_time_scale_offset(byte_size_type blocks) noexcept
-        -> byte_size_type {
-        return ml::soa_storage::layout_align(sweep_trace_count_offset(blocks) +
-                                                 blocks * capacity_granularity * sizeof(uint64) +
-                                                 column_gap,
-                                             requested_time_scale_alignment);
-    }
+        ml::soa_storage::maximum_alignment(CompletedTicks,
+                                           ValidityMasks,
+                                           ActiveEntities,
+                                           ActiveEntitiesByType,
+                                           ActiveEntitiesByTeamAndType,
+                                           SpawnedEntities,
+                                           DestroyedEntities,
+                                           Kills,
+                                           RegistrySlotCount,
+                                           ActiveLasers,
+                                           LasersFired,
+                                           OccupiedSpatialCellCount,
+                                           GridRebuildCount,
+                                           RangeQueryCount,
+                                           LineTraceCount,
+                                           SweepTraceCount,
+                                           RequestedTimeScale)};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
-        ml::soa_storage::layout_align(requested_time_scale_block_end, allocation_alignment) +
+        ml::soa_storage::layout_align(RequestedTimeScale.block_end, allocation_alignment) +
         16 * (column_gap + allocation_alignment - 1)};
     inline static constexpr size_type max_capacity{
         ml::soa_storage::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0
-                           : requested_time_scale_offset(blocks) +
-                                 blocks * capacity_granularity * sizeof(double);
+        return blocks == 0 ? 0 : RequestedTimeScale.data_end(blocks);
     }
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
@@ -780,46 +578,46 @@ struct FHistoryRowsSingleLayout {
             allocation_alignment <= std::numeric_limits<uint32>::max(),
             "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
         static_assert(sizeof(uint64) <=
-                      (max_allocation_size - completed_ticks_block_offset) / capacity_granularity);
+                      (max_allocation_size - CompletedTicks.block_offset) / capacity_granularity);
         static_assert(sizeof(uint64) <=
-                      (max_allocation_size - validity_masks_block_offset) / capacity_granularity);
+                      (max_allocation_size - ValidityMasks.block_offset) / capacity_granularity);
         static_assert(sizeof(int32) <=
-                      (max_allocation_size - active_entities_block_offset) / capacity_granularity);
+                      (max_allocation_size - ActiveEntities.block_offset) / capacity_granularity);
         static_assert(sizeof(FTestEntityRegistry::EntityTypeCounts) <=
-                      (max_allocation_size - active_entities_by_type_block_offset) /
+                      (max_allocation_size - ActiveEntitiesByType.block_offset) /
                           capacity_granularity);
         static_assert(sizeof(FTestEntityRegistry::EntityCounts) <=
-                      (max_allocation_size - active_entities_by_team_and_type_block_offset) /
+                      (max_allocation_size - ActiveEntitiesByTeamAndType.block_offset) /
                           capacity_granularity);
         static_assert(sizeof(int32) <=
-                      (max_allocation_size - spawned_entities_block_offset) / capacity_granularity);
-        static_assert(sizeof(int32) <= (max_allocation_size - destroyed_entities_block_offset) /
+                      (max_allocation_size - SpawnedEntities.block_offset) / capacity_granularity);
+        static_assert(sizeof(int32) <= (max_allocation_size - DestroyedEntities.block_offset) /
                                            capacity_granularity);
         static_assert(sizeof(int32) <=
-                      (max_allocation_size - kills_block_offset) / capacity_granularity);
-        static_assert(sizeof(int32) <= (max_allocation_size - registry_slot_count_block_offset) /
+                      (max_allocation_size - Kills.block_offset) / capacity_granularity);
+        static_assert(sizeof(int32) <= (max_allocation_size - RegistrySlotCount.block_offset) /
                                            capacity_granularity);
         static_assert(sizeof(int32) <=
-                      (max_allocation_size - active_lasers_block_offset) / capacity_granularity);
+                      (max_allocation_size - ActiveLasers.block_offset) / capacity_granularity);
         static_assert(sizeof(int32) <=
-                      (max_allocation_size - lasers_fired_block_offset) / capacity_granularity);
+                      (max_allocation_size - LasersFired.block_offset) / capacity_granularity);
         static_assert(sizeof(int32) <=
-                      (max_allocation_size - occupied_spatial_cell_count_block_offset) /
+                      (max_allocation_size - OccupiedSpatialCellCount.block_offset) /
                           capacity_granularity);
-        static_assert(sizeof(uint64) <= (max_allocation_size - grid_rebuild_count_block_offset) /
-                                            capacity_granularity);
-        static_assert(sizeof(uint64) <= (max_allocation_size - range_query_count_block_offset) /
-                                            capacity_granularity);
         static_assert(sizeof(uint64) <=
-                      (max_allocation_size - line_trace_count_block_offset) / capacity_granularity);
-        static_assert(sizeof(uint64) <= (max_allocation_size - sweep_trace_count_block_offset) /
+                      (max_allocation_size - GridRebuildCount.block_offset) / capacity_granularity);
+        static_assert(sizeof(uint64) <=
+                      (max_allocation_size - RangeQueryCount.block_offset) / capacity_granularity);
+        static_assert(sizeof(uint64) <=
+                      (max_allocation_size - LineTraceCount.block_offset) / capacity_granularity);
+        static_assert(sizeof(uint64) <=
+                      (max_allocation_size - SweepTraceCount.block_offset) / capacity_granularity);
+        static_assert(sizeof(double) <= (max_allocation_size - RequestedTimeScale.block_offset) /
                                             capacity_granularity);
-        static_assert(sizeof(double) <= (max_allocation_size - requested_time_scale_block_offset) /
-                                            capacity_granularity);
-        static_assert(16 <= (max_allocation_size -
-                             ml::soa_storage::layout_align(requested_time_scale_block_end,
-                                                           allocation_alignment)) /
-                                (column_gap + allocation_alignment - 1));
+        static_assert(
+            16 <= (max_allocation_size - ml::soa_storage::layout_align(RequestedTimeScale.block_end,
+                                                                       allocation_alignment)) /
+                      (column_gap + allocation_alignment - 1));
         static_assert(max_capacity >= capacity_granularity);
         return true;
     };
@@ -923,31 +721,31 @@ struct FSingleAllocationHistoryRowsStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        using Pointers = DataPointers<Byte>;
-        auto const pointer_at = [data]<typename T>(byte_size_type const offset) noexcept {
-            return std::launder(
-                reinterpret_cast<typename Pointers::template Element<T>*>(data + offset));
+        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+            using Column = std::remove_cvref_t<decltype(column)>;
+            using Pointer = std::conditional_t<std::is_const_v<Byte>,
+                                               typename Column::const_pointer,
+                                               typename Column::pointer>;
+            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
         };
         return {
-            pointer_at.template operator()<uint64>(completed_ticks_offset(blocks)),
-            pointer_at.template operator()<uint64>(validity_masks_offset(blocks)),
-            pointer_at.template operator()<int32>(active_entities_offset(blocks)),
-            pointer_at.template operator()<FTestEntityRegistry::EntityTypeCounts>(
-                active_entities_by_type_offset(blocks)),
-            pointer_at.template operator()<FTestEntityRegistry::EntityCounts>(
-                active_entities_by_team_and_type_offset(blocks)),
-            pointer_at.template operator()<int32>(spawned_entities_offset(blocks)),
-            pointer_at.template operator()<int32>(destroyed_entities_offset(blocks)),
-            pointer_at.template operator()<int32>(kills_offset(blocks)),
-            pointer_at.template operator()<int32>(registry_slot_count_offset(blocks)),
-            pointer_at.template operator()<int32>(active_lasers_offset(blocks)),
-            pointer_at.template operator()<int32>(lasers_fired_offset(blocks)),
-            pointer_at.template operator()<int32>(occupied_spatial_cell_count_offset(blocks)),
-            pointer_at.template operator()<uint64>(grid_rebuild_count_offset(blocks)),
-            pointer_at.template operator()<uint64>(range_query_count_offset(blocks)),
-            pointer_at.template operator()<uint64>(line_trace_count_offset(blocks)),
-            pointer_at.template operator()<uint64>(sweep_trace_count_offset(blocks)),
-            pointer_at.template operator()<double>(requested_time_scale_offset(blocks)),
+            pointer_at(CompletedTicks),
+            pointer_at(ValidityMasks),
+            pointer_at(ActiveEntities),
+            pointer_at(ActiveEntitiesByType),
+            pointer_at(ActiveEntitiesByTeamAndType),
+            pointer_at(SpawnedEntities),
+            pointer_at(DestroyedEntities),
+            pointer_at(Kills),
+            pointer_at(RegistrySlotCount),
+            pointer_at(ActiveLasers),
+            pointer_at(LasersFired),
+            pointer_at(OccupiedSpatialCellCount),
+            pointer_at(GridRebuildCount),
+            pointer_at(RangeQueryCount),
+            pointer_at(LineTraceCount),
+            pointer_at(SweepTraceCount),
+            pointer_at(RequestedTimeScale),
         };
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
@@ -1179,90 +977,89 @@ struct FHistoryRowsSingleConstView : ml::soa_storage::CompactViewState<true> {
         return slice(offset, count);
     }
     auto completed_ticks() const -> TArrayView<uint64 const> {
-        return {column_data<uint64>(
-                    FHistoryRowsSingleLayout::completed_ticks_offset(capacity_blocks())),
-                count_};
+        return {
+            column_data<uint64>(FHistoryRowsSingleLayout::CompletedTicks.offset(capacity_blocks())),
+            count_};
     }
     auto validity_masks() const -> TArrayView<uint64 const> {
         return {
-            column_data<uint64>(FHistoryRowsSingleLayout::validity_masks_offset(capacity_blocks())),
+            column_data<uint64>(FHistoryRowsSingleLayout::ValidityMasks.offset(capacity_blocks())),
             count_};
     }
     auto active_entities() const -> TArrayView<int32 const> {
         return {
-            column_data<int32>(FHistoryRowsSingleLayout::active_entities_offset(capacity_blocks())),
+            column_data<int32>(FHistoryRowsSingleLayout::ActiveEntities.offset(capacity_blocks())),
             count_};
     }
     auto active_entities_by_type() const
         -> TArrayView<FTestEntityRegistry::EntityTypeCounts const> {
         return {column_data<FTestEntityRegistry::EntityTypeCounts>(
-                    FHistoryRowsSingleLayout::active_entities_by_type_offset(capacity_blocks())),
+                    FHistoryRowsSingleLayout::ActiveEntitiesByType.offset(capacity_blocks())),
                 count_};
     }
     auto active_entities_by_team_and_type() const
         -> TArrayView<FTestEntityRegistry::EntityCounts const> {
-        return {column_data<FTestEntityRegistry::EntityCounts>(
-                    FHistoryRowsSingleLayout::active_entities_by_team_and_type_offset(
-                        capacity_blocks())),
-                count_};
+        return {
+            column_data<FTestEntityRegistry::EntityCounts>(
+                FHistoryRowsSingleLayout::ActiveEntitiesByTeamAndType.offset(capacity_blocks())),
+            count_};
     }
     auto spawned_entities() const -> TArrayView<int32 const> {
-        return {column_data<int32>(
-                    FHistoryRowsSingleLayout::spawned_entities_offset(capacity_blocks())),
-                count_};
+        return {
+            column_data<int32>(FHistoryRowsSingleLayout::SpawnedEntities.offset(capacity_blocks())),
+            count_};
     }
     auto destroyed_entities() const -> TArrayView<int32 const> {
         return {column_data<int32>(
-                    FHistoryRowsSingleLayout::destroyed_entities_offset(capacity_blocks())),
+                    FHistoryRowsSingleLayout::DestroyedEntities.offset(capacity_blocks())),
                 count_};
     }
     auto kills() const -> TArrayView<int32 const> {
-        return {column_data<int32>(FHistoryRowsSingleLayout::kills_offset(capacity_blocks())),
+        return {column_data<int32>(FHistoryRowsSingleLayout::Kills.offset(capacity_blocks())),
                 count_};
     }
     auto registry_slot_count() const -> TArrayView<int32 const> {
         return {column_data<int32>(
-                    FHistoryRowsSingleLayout::registry_slot_count_offset(capacity_blocks())),
+                    FHistoryRowsSingleLayout::RegistrySlotCount.offset(capacity_blocks())),
                 count_};
     }
     auto active_lasers() const -> TArrayView<int32 const> {
         return {
-            column_data<int32>(FHistoryRowsSingleLayout::active_lasers_offset(capacity_blocks())),
+            column_data<int32>(FHistoryRowsSingleLayout::ActiveLasers.offset(capacity_blocks())),
             count_};
     }
     auto lasers_fired() const -> TArrayView<int32 const> {
-        return {
-            column_data<int32>(FHistoryRowsSingleLayout::lasers_fired_offset(capacity_blocks())),
-            count_};
+        return {column_data<int32>(FHistoryRowsSingleLayout::LasersFired.offset(capacity_blocks())),
+                count_};
     }
     auto occupied_spatial_cell_count() const -> TArrayView<int32 const> {
-        return {column_data<int32>(FHistoryRowsSingleLayout::occupied_spatial_cell_count_offset(
-                    capacity_blocks())),
+        return {column_data<int32>(
+                    FHistoryRowsSingleLayout::OccupiedSpatialCellCount.offset(capacity_blocks())),
                 count_};
     }
     auto grid_rebuild_count() const -> TArrayView<uint64 const> {
         return {column_data<uint64>(
-                    FHistoryRowsSingleLayout::grid_rebuild_count_offset(capacity_blocks())),
+                    FHistoryRowsSingleLayout::GridRebuildCount.offset(capacity_blocks())),
                 count_};
     }
     auto range_query_count() const -> TArrayView<uint64 const> {
         return {column_data<uint64>(
-                    FHistoryRowsSingleLayout::range_query_count_offset(capacity_blocks())),
+                    FHistoryRowsSingleLayout::RangeQueryCount.offset(capacity_blocks())),
                 count_};
     }
     auto line_trace_count() const -> TArrayView<uint64 const> {
-        return {column_data<uint64>(
-                    FHistoryRowsSingleLayout::line_trace_count_offset(capacity_blocks())),
-                count_};
+        return {
+            column_data<uint64>(FHistoryRowsSingleLayout::LineTraceCount.offset(capacity_blocks())),
+            count_};
     }
     auto sweep_trace_count() const -> TArrayView<uint64 const> {
         return {column_data<uint64>(
-                    FHistoryRowsSingleLayout::sweep_trace_count_offset(capacity_blocks())),
+                    FHistoryRowsSingleLayout::SweepTraceCount.offset(capacity_blocks())),
                 count_};
     }
     auto requested_time_scale() const -> TArrayView<double const> {
         return {column_data<double>(
-                    FHistoryRowsSingleLayout::requested_time_scale_offset(capacity_blocks())),
+                    FHistoryRowsSingleLayout::RequestedTimeScale.offset(capacity_blocks())),
                 count_};
     }
     auto columns() const -> FHistoryRowsConstView {
@@ -1272,50 +1069,47 @@ struct FHistoryRowsSingleConstView : ml::soa_storage::CompactViewState<true> {
         }
         auto const blocks{capacity_blocks()};
         return FHistoryRowsConstView{
-            {column_data_unchecked<uint64>(
-                 FHistoryRowsSingleLayout::completed_ticks_offset(blocks)),
+            {column_data_unchecked<uint64>(FHistoryRowsSingleLayout::CompletedTicks.offset(blocks)),
              count_},
-            {column_data_unchecked<uint64>(FHistoryRowsSingleLayout::validity_masks_offset(blocks)),
+            {column_data_unchecked<uint64>(FHistoryRowsSingleLayout::ValidityMasks.offset(blocks)),
              count_},
-            {column_data_unchecked<int32>(FHistoryRowsSingleLayout::active_entities_offset(blocks)),
+            {column_data_unchecked<int32>(FHistoryRowsSingleLayout::ActiveEntities.offset(blocks)),
              count_},
             {column_data_unchecked<FTestEntityRegistry::EntityTypeCounts>(
-                 FHistoryRowsSingleLayout::active_entities_by_type_offset(blocks)),
+                 FHistoryRowsSingleLayout::ActiveEntitiesByType.offset(blocks)),
              count_},
             {column_data_unchecked<FTestEntityRegistry::EntityCounts>(
-                 FHistoryRowsSingleLayout::active_entities_by_team_and_type_offset(blocks)),
+                 FHistoryRowsSingleLayout::ActiveEntitiesByTeamAndType.offset(blocks)),
+             count_},
+            {column_data_unchecked<int32>(FHistoryRowsSingleLayout::SpawnedEntities.offset(blocks)),
              count_},
             {column_data_unchecked<int32>(
-                 FHistoryRowsSingleLayout::spawned_entities_offset(blocks)),
+                 FHistoryRowsSingleLayout::DestroyedEntities.offset(blocks)),
+             count_},
+            {column_data_unchecked<int32>(FHistoryRowsSingleLayout::Kills.offset(blocks)), count_},
+            {column_data_unchecked<int32>(
+                 FHistoryRowsSingleLayout::RegistrySlotCount.offset(blocks)),
+             count_},
+            {column_data_unchecked<int32>(FHistoryRowsSingleLayout::ActiveLasers.offset(blocks)),
+             count_},
+            {column_data_unchecked<int32>(FHistoryRowsSingleLayout::LasersFired.offset(blocks)),
              count_},
             {column_data_unchecked<int32>(
-                 FHistoryRowsSingleLayout::destroyed_entities_offset(blocks)),
-             count_},
-            {column_data_unchecked<int32>(FHistoryRowsSingleLayout::kills_offset(blocks)), count_},
-            {column_data_unchecked<int32>(
-                 FHistoryRowsSingleLayout::registry_slot_count_offset(blocks)),
-             count_},
-            {column_data_unchecked<int32>(FHistoryRowsSingleLayout::active_lasers_offset(blocks)),
-             count_},
-            {column_data_unchecked<int32>(FHistoryRowsSingleLayout::lasers_fired_offset(blocks)),
-             count_},
-            {column_data_unchecked<int32>(
-                 FHistoryRowsSingleLayout::occupied_spatial_cell_count_offset(blocks)),
+                 FHistoryRowsSingleLayout::OccupiedSpatialCellCount.offset(blocks)),
              count_},
             {column_data_unchecked<uint64>(
-                 FHistoryRowsSingleLayout::grid_rebuild_count_offset(blocks)),
+                 FHistoryRowsSingleLayout::GridRebuildCount.offset(blocks)),
              count_},
             {column_data_unchecked<uint64>(
-                 FHistoryRowsSingleLayout::range_query_count_offset(blocks)),
+                 FHistoryRowsSingleLayout::RangeQueryCount.offset(blocks)),
+             count_},
+            {column_data_unchecked<uint64>(FHistoryRowsSingleLayout::LineTraceCount.offset(blocks)),
              count_},
             {column_data_unchecked<uint64>(
-                 FHistoryRowsSingleLayout::line_trace_count_offset(blocks)),
-             count_},
-            {column_data_unchecked<uint64>(
-                 FHistoryRowsSingleLayout::sweep_trace_count_offset(blocks)),
+                 FHistoryRowsSingleLayout::SweepTraceCount.offset(blocks)),
              count_},
             {column_data_unchecked<double>(
-                 FHistoryRowsSingleLayout::requested_time_scale_offset(blocks)),
+                 FHistoryRowsSingleLayout::RequestedTimeScale.offset(blocks)),
              count_}};
     }
     template <typename Func>
@@ -1337,88 +1131,87 @@ struct FHistoryRowsSingleView : ml::soa_storage::CompactViewState<false> {
         return slice(offset, count);
     }
     auto completed_ticks() const -> TArrayView<uint64> {
-        return {column_data<uint64>(
-                    FHistoryRowsSingleLayout::completed_ticks_offset(capacity_blocks())),
-                count_};
+        return {
+            column_data<uint64>(FHistoryRowsSingleLayout::CompletedTicks.offset(capacity_blocks())),
+            count_};
     }
     auto validity_masks() const -> TArrayView<uint64> {
         return {
-            column_data<uint64>(FHistoryRowsSingleLayout::validity_masks_offset(capacity_blocks())),
+            column_data<uint64>(FHistoryRowsSingleLayout::ValidityMasks.offset(capacity_blocks())),
             count_};
     }
     auto active_entities() const -> TArrayView<int32> {
         return {
-            column_data<int32>(FHistoryRowsSingleLayout::active_entities_offset(capacity_blocks())),
+            column_data<int32>(FHistoryRowsSingleLayout::ActiveEntities.offset(capacity_blocks())),
             count_};
     }
     auto active_entities_by_type() const -> TArrayView<FTestEntityRegistry::EntityTypeCounts> {
         return {column_data<FTestEntityRegistry::EntityTypeCounts>(
-                    FHistoryRowsSingleLayout::active_entities_by_type_offset(capacity_blocks())),
+                    FHistoryRowsSingleLayout::ActiveEntitiesByType.offset(capacity_blocks())),
                 count_};
     }
     auto active_entities_by_team_and_type() const -> TArrayView<FTestEntityRegistry::EntityCounts> {
-        return {column_data<FTestEntityRegistry::EntityCounts>(
-                    FHistoryRowsSingleLayout::active_entities_by_team_and_type_offset(
-                        capacity_blocks())),
-                count_};
+        return {
+            column_data<FTestEntityRegistry::EntityCounts>(
+                FHistoryRowsSingleLayout::ActiveEntitiesByTeamAndType.offset(capacity_blocks())),
+            count_};
     }
     auto spawned_entities() const -> TArrayView<int32> {
-        return {column_data<int32>(
-                    FHistoryRowsSingleLayout::spawned_entities_offset(capacity_blocks())),
-                count_};
+        return {
+            column_data<int32>(FHistoryRowsSingleLayout::SpawnedEntities.offset(capacity_blocks())),
+            count_};
     }
     auto destroyed_entities() const -> TArrayView<int32> {
         return {column_data<int32>(
-                    FHistoryRowsSingleLayout::destroyed_entities_offset(capacity_blocks())),
+                    FHistoryRowsSingleLayout::DestroyedEntities.offset(capacity_blocks())),
                 count_};
     }
     auto kills() const -> TArrayView<int32> {
-        return {column_data<int32>(FHistoryRowsSingleLayout::kills_offset(capacity_blocks())),
+        return {column_data<int32>(FHistoryRowsSingleLayout::Kills.offset(capacity_blocks())),
                 count_};
     }
     auto registry_slot_count() const -> TArrayView<int32> {
         return {column_data<int32>(
-                    FHistoryRowsSingleLayout::registry_slot_count_offset(capacity_blocks())),
+                    FHistoryRowsSingleLayout::RegistrySlotCount.offset(capacity_blocks())),
                 count_};
     }
     auto active_lasers() const -> TArrayView<int32> {
         return {
-            column_data<int32>(FHistoryRowsSingleLayout::active_lasers_offset(capacity_blocks())),
+            column_data<int32>(FHistoryRowsSingleLayout::ActiveLasers.offset(capacity_blocks())),
             count_};
     }
     auto lasers_fired() const -> TArrayView<int32> {
-        return {
-            column_data<int32>(FHistoryRowsSingleLayout::lasers_fired_offset(capacity_blocks())),
-            count_};
+        return {column_data<int32>(FHistoryRowsSingleLayout::LasersFired.offset(capacity_blocks())),
+                count_};
     }
     auto occupied_spatial_cell_count() const -> TArrayView<int32> {
-        return {column_data<int32>(FHistoryRowsSingleLayout::occupied_spatial_cell_count_offset(
-                    capacity_blocks())),
+        return {column_data<int32>(
+                    FHistoryRowsSingleLayout::OccupiedSpatialCellCount.offset(capacity_blocks())),
                 count_};
     }
     auto grid_rebuild_count() const -> TArrayView<uint64> {
         return {column_data<uint64>(
-                    FHistoryRowsSingleLayout::grid_rebuild_count_offset(capacity_blocks())),
+                    FHistoryRowsSingleLayout::GridRebuildCount.offset(capacity_blocks())),
                 count_};
     }
     auto range_query_count() const -> TArrayView<uint64> {
         return {column_data<uint64>(
-                    FHistoryRowsSingleLayout::range_query_count_offset(capacity_blocks())),
+                    FHistoryRowsSingleLayout::RangeQueryCount.offset(capacity_blocks())),
                 count_};
     }
     auto line_trace_count() const -> TArrayView<uint64> {
-        return {column_data<uint64>(
-                    FHistoryRowsSingleLayout::line_trace_count_offset(capacity_blocks())),
-                count_};
+        return {
+            column_data<uint64>(FHistoryRowsSingleLayout::LineTraceCount.offset(capacity_blocks())),
+            count_};
     }
     auto sweep_trace_count() const -> TArrayView<uint64> {
         return {column_data<uint64>(
-                    FHistoryRowsSingleLayout::sweep_trace_count_offset(capacity_blocks())),
+                    FHistoryRowsSingleLayout::SweepTraceCount.offset(capacity_blocks())),
                 count_};
     }
     auto requested_time_scale() const -> TArrayView<double> {
         return {column_data<double>(
-                    FHistoryRowsSingleLayout::requested_time_scale_offset(capacity_blocks())),
+                    FHistoryRowsSingleLayout::RequestedTimeScale.offset(capacity_blocks())),
                 count_};
     }
     auto columns() const -> FHistoryRowsView {
@@ -1428,50 +1221,47 @@ struct FHistoryRowsSingleView : ml::soa_storage::CompactViewState<false> {
         }
         auto const blocks{capacity_blocks()};
         return FHistoryRowsView{
-            {column_data_unchecked<uint64>(
-                 FHistoryRowsSingleLayout::completed_ticks_offset(blocks)),
+            {column_data_unchecked<uint64>(FHistoryRowsSingleLayout::CompletedTicks.offset(blocks)),
              count_},
-            {column_data_unchecked<uint64>(FHistoryRowsSingleLayout::validity_masks_offset(blocks)),
+            {column_data_unchecked<uint64>(FHistoryRowsSingleLayout::ValidityMasks.offset(blocks)),
              count_},
-            {column_data_unchecked<int32>(FHistoryRowsSingleLayout::active_entities_offset(blocks)),
+            {column_data_unchecked<int32>(FHistoryRowsSingleLayout::ActiveEntities.offset(blocks)),
              count_},
             {column_data_unchecked<FTestEntityRegistry::EntityTypeCounts>(
-                 FHistoryRowsSingleLayout::active_entities_by_type_offset(blocks)),
+                 FHistoryRowsSingleLayout::ActiveEntitiesByType.offset(blocks)),
              count_},
             {column_data_unchecked<FTestEntityRegistry::EntityCounts>(
-                 FHistoryRowsSingleLayout::active_entities_by_team_and_type_offset(blocks)),
+                 FHistoryRowsSingleLayout::ActiveEntitiesByTeamAndType.offset(blocks)),
+             count_},
+            {column_data_unchecked<int32>(FHistoryRowsSingleLayout::SpawnedEntities.offset(blocks)),
              count_},
             {column_data_unchecked<int32>(
-                 FHistoryRowsSingleLayout::spawned_entities_offset(blocks)),
+                 FHistoryRowsSingleLayout::DestroyedEntities.offset(blocks)),
+             count_},
+            {column_data_unchecked<int32>(FHistoryRowsSingleLayout::Kills.offset(blocks)), count_},
+            {column_data_unchecked<int32>(
+                 FHistoryRowsSingleLayout::RegistrySlotCount.offset(blocks)),
+             count_},
+            {column_data_unchecked<int32>(FHistoryRowsSingleLayout::ActiveLasers.offset(blocks)),
+             count_},
+            {column_data_unchecked<int32>(FHistoryRowsSingleLayout::LasersFired.offset(blocks)),
              count_},
             {column_data_unchecked<int32>(
-                 FHistoryRowsSingleLayout::destroyed_entities_offset(blocks)),
-             count_},
-            {column_data_unchecked<int32>(FHistoryRowsSingleLayout::kills_offset(blocks)), count_},
-            {column_data_unchecked<int32>(
-                 FHistoryRowsSingleLayout::registry_slot_count_offset(blocks)),
-             count_},
-            {column_data_unchecked<int32>(FHistoryRowsSingleLayout::active_lasers_offset(blocks)),
-             count_},
-            {column_data_unchecked<int32>(FHistoryRowsSingleLayout::lasers_fired_offset(blocks)),
-             count_},
-            {column_data_unchecked<int32>(
-                 FHistoryRowsSingleLayout::occupied_spatial_cell_count_offset(blocks)),
+                 FHistoryRowsSingleLayout::OccupiedSpatialCellCount.offset(blocks)),
              count_},
             {column_data_unchecked<uint64>(
-                 FHistoryRowsSingleLayout::grid_rebuild_count_offset(blocks)),
+                 FHistoryRowsSingleLayout::GridRebuildCount.offset(blocks)),
              count_},
             {column_data_unchecked<uint64>(
-                 FHistoryRowsSingleLayout::range_query_count_offset(blocks)),
+                 FHistoryRowsSingleLayout::RangeQueryCount.offset(blocks)),
+             count_},
+            {column_data_unchecked<uint64>(FHistoryRowsSingleLayout::LineTraceCount.offset(blocks)),
              count_},
             {column_data_unchecked<uint64>(
-                 FHistoryRowsSingleLayout::line_trace_count_offset(blocks)),
-             count_},
-            {column_data_unchecked<uint64>(
-                 FHistoryRowsSingleLayout::sweep_trace_count_offset(blocks)),
+                 FHistoryRowsSingleLayout::SweepTraceCount.offset(blocks)),
              count_},
             {column_data_unchecked<double>(
-                 FHistoryRowsSingleLayout::requested_time_scale_offset(blocks)),
+                 FHistoryRowsSingleLayout::RequestedTimeScale.offset(blocks)),
              count_}};
     }
     template <typename Func>
