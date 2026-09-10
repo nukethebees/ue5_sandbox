@@ -1,6 +1,6 @@
 #include "Editor/SbxMeshGenLabEditorModeToolkit.h"
 
-#include "SbxMeshGenLab/SbxMeshGenLabEditorMode.h"
+#include "Editor/SbxMeshGenLabEditorMode.h"
 #include "SbxMeshGenLab/SbxMeshGenLabSettings.h"
 
 #include "DragAndDrop/DecoratedDragDropOp.h"

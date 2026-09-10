@@ -22,19 +22,46 @@ namespace SandboxMesh {
 namespace {
 FString const generated_package_path{TEXT("/SandboxMesh/MeshGenLab/Generated")};
 
-auto get_generated_asset_package_name(FName const asset_name) -> FString {
-    return FString::Printf(TEXT("%s/%s"), *generated_package_path, *asset_name.ToString());
+auto get_generated_package_path(FString const& relative_directory) -> FString {
+    return relative_directory.IsEmpty()
+             ? generated_package_path
+             : FString::Printf(TEXT("%s/%s"), *generated_package_path, *relative_directory);
 }
 
-auto ensure_generated_content_directory() -> bool {
+auto get_generated_asset_package_name(FName const asset_name, FString const& relative_directory)
+    -> FString {
+    return FString::Printf(
+        TEXT("%s/%s"), *get_generated_package_path(relative_directory), *asset_name.ToString());
+}
+
+auto is_valid_relative_directory(FString const& relative_directory) -> bool {
+    if (relative_directory.IsEmpty()) {
+        return true;
+    }
+
+    return FPaths::IsRelative(relative_directory) && !relative_directory.Contains(TEXT("..")) &&
+           !relative_directory.StartsWith(TEXT("/")) &&
+           !relative_directory.StartsWith(TEXT("\\")) &&
+           FPackageName::IsValidLongPackageName(get_generated_package_path(relative_directory));
+}
+
+auto ensure_generated_content_directory(FString const& relative_directory) -> bool {
+    if (!is_valid_relative_directory(relative_directory)) {
+        UE_LOG(LogSbxMeshGenLab,
+               Error,
+               TEXT("Invalid generated mesh subdirectory: %s"),
+               *relative_directory);
+        return false;
+    }
+
     auto const plugin{IPluginManager::Get().FindPlugin(TEXT("SandboxMesh"))};
     if (!plugin.IsValid()) {
         UE_LOG(LogSbxMeshGenLab, Error, TEXT("SandboxMesh plugin was not found."));
         return false;
     }
 
-    auto const output_directory{
-        FPaths::Combine(plugin->GetContentDir(), TEXT("MeshGenLab"), TEXT("Generated"))};
+    auto const output_directory{FPaths::Combine(
+        plugin->GetContentDir(), TEXT("MeshGenLab"), TEXT("Generated"), relative_directory)};
     auto& file_manager{IFileManager::Get()};
     if (!file_manager.MakeDirectory(*output_directory, true) &&
         !file_manager.DirectoryExists(*output_directory)) {
@@ -48,8 +75,12 @@ auto ensure_generated_content_directory() -> bool {
     return true;
 }
 
-auto get_role_material_asset_name(ESbxMeshMaterialRole const role) -> FName {
-    return FName{FString::Printf(TEXT("MI_Sbx%s"), *get_mesh_material_slot_name(role).ToString())};
+auto get_role_material_asset_name(ESbxMeshMaterialRole const role, FName const unique_suffix)
+    -> FName {
+    auto const role_name{get_mesh_material_slot_name(role).ToString()};
+    return unique_suffix.IsNone()
+             ? FName{FString::Printf(TEXT("MI_Sbx%s"), *role_name)}
+             : FName{FString::Printf(TEXT("MI_Sbx%s_%s"), *role_name, *unique_suffix.ToString())};
 }
 
 auto get_basic_shape_material() -> UMaterialInterface* {
@@ -73,14 +104,16 @@ auto create_transient_role_material(UObject& outer, ESbxMeshMaterialRole const r
     return material;
 }
 
-auto load_or_create_role_material(ESbxMeshMaterialRole const role) -> UMaterialInterface* {
+auto load_or_create_role_material(ESbxMeshMaterialRole const role,
+                                  FString const& package_path,
+                                  FName const unique_suffix) -> UMaterialInterface* {
     auto* const parent{get_basic_shape_material()};
     if (parent == nullptr) {
         return nullptr;
     }
 
-    auto const asset_name{get_role_material_asset_name(role)};
-    auto const package_name{get_generated_asset_package_name(asset_name)};
+    auto const asset_name{get_role_material_asset_name(role, unique_suffix)};
+    auto const package_name{FString::Printf(TEXT("%s/%s"), *package_path, *asset_name.ToString())};
     auto const object_path{FString::Printf(TEXT("%s.%s"), *package_name, *asset_name.ToString())};
     auto* material{
         LoadObject<UMaterialInstanceConstant>(nullptr, *object_path, nullptr, LOAD_NoWarn)};
@@ -204,7 +237,9 @@ auto has_valid_mesh_data(FSbxMeshData const& mesh_data) -> bool {
 auto build_static_mesh(UStaticMesh& static_mesh,
                        FSbxMeshData const& mesh_data,
                        bool const fast_build,
-                       bool const persistent_materials) -> bool {
+                       bool const persistent_materials,
+                       FString const& material_package_path = {},
+                       FName const material_unique_suffix = NAME_None) -> bool {
     if (!has_valid_mesh_data(mesh_data)) {
         UE_LOG(LogSbxMeshGenLab, Error, TEXT("Generated mesh buffers are invalid."));
         return false;
@@ -224,9 +259,10 @@ auto build_static_mesh(UStaticMesh& static_mesh,
     static_mesh.GetStaticMaterials().Reset();
     for (int32 role_index{}; role_index < mesh_material_role_count; ++role_index) {
         auto const role{static_cast<ESbxMeshMaterialRole>(role_index)};
-        auto* const material{persistent_materials
-                                 ? load_or_create_role_material(role)
-                                 : create_transient_role_material(static_mesh, role)};
+        auto* const material{
+            persistent_materials
+                ? load_or_create_role_material(role, material_package_path, material_unique_suffix)
+                : create_transient_role_material(static_mesh, role)};
         auto const slot_name{get_mesh_material_slot_name(role)};
         static_mesh.GetStaticMaterials().Add(FStaticMaterial{material, slot_name, slot_name});
     }
@@ -245,13 +281,16 @@ auto build_static_mesh(UStaticMesh& static_mesh,
 }
 }
 
-auto get_generated_asset_filename(FName const asset_name) -> FString {
-    return FPackageName::LongPackageNameToFilename(get_generated_asset_package_name(asset_name),
-                                                   FPackageName::GetAssetPackageExtension());
+auto get_generated_asset_filename(FName const asset_name, FString const& relative_directory)
+    -> FString {
+    return FPackageName::LongPackageNameToFilename(
+        get_generated_asset_package_name(asset_name, relative_directory),
+        FPackageName::GetAssetPackageExtension());
 }
 
-auto get_generated_asset_object_path(FName const asset_name) -> FString {
-    auto const package_name{get_generated_asset_package_name(asset_name)};
+auto get_generated_asset_object_path(FName const asset_name, FString const& relative_directory)
+    -> FString {
+    auto const package_name{get_generated_asset_package_name(asset_name, relative_directory)};
     return FString::Printf(TEXT("%s.%s"), *package_name, *asset_name.ToString());
 }
 
@@ -265,13 +304,25 @@ auto create_transient_static_mesh(FSbxMeshData const& mesh_data) -> UStaticMesh*
 
 auto write_generated_static_mesh_asset(FSbxMeshData const& mesh_data,
                                        FName const asset_name,
-                                       FString const& generation_description) -> UStaticMesh* {
-    if (!ensure_generated_content_directory()) {
+                                       FString const& generation_description,
+                                       FString const& relative_directory) -> UStaticMesh* {
+    if (!ensure_generated_content_directory(relative_directory)) {
         return nullptr;
     }
 
-    auto const package_name{get_generated_asset_package_name(asset_name)};
-    auto const object_path{get_generated_asset_object_path(asset_name)};
+    auto const package_path{get_generated_package_path(relative_directory)};
+    auto const package_name{get_generated_asset_package_name(asset_name, relative_directory)};
+    auto const object_path{get_generated_asset_object_path(asset_name, relative_directory)};
+    FText invalid_name_reason;
+    if (asset_name.IsNone() ||
+        !FPackageName::IsValidObjectPath(object_path, &invalid_name_reason)) {
+        UE_LOG(LogSbxMeshGenLab,
+               Error,
+               TEXT("Invalid generated mesh asset name '%s': %s"),
+               *asset_name.ToString(),
+               *invalid_name_reason.ToString());
+        return nullptr;
+    }
     auto* static_mesh{LoadObject<UStaticMesh>(nullptr, *object_path, nullptr, LOAD_NoWarn)};
     auto const is_new_asset{static_mesh == nullptr};
     auto* const package{is_new_asset ? CreatePackage(*package_name) : static_mesh->GetOutermost()};
@@ -292,7 +343,9 @@ auto write_generated_static_mesh_asset(FSbxMeshData const& mesh_data,
         return nullptr;
     }
 
-    if (!build_static_mesh(*static_mesh, mesh_data, false, true)) {
+    auto const material_unique_suffix{relative_directory.IsEmpty() ? NAME_None : asset_name};
+    if (!build_static_mesh(
+            *static_mesh, mesh_data, false, true, package_path, material_unique_suffix)) {
         UE_LOG(
             LogSbxMeshGenLab, Error, TEXT("Generated mesh could not be built: %s"), *object_path);
         return nullptr;
@@ -310,7 +363,7 @@ auto write_generated_static_mesh_asset(FSbxMeshData const& mesh_data,
 
     FSavePackageArgs save_arguments{};
     save_arguments.TopLevelFlags = RF_Public | RF_Standalone;
-    auto const package_filename{get_generated_asset_filename(asset_name)};
+    auto const package_filename{get_generated_asset_filename(asset_name, relative_directory)};
     if (!UPackage::SavePackage(package, static_mesh, *package_filename, save_arguments)) {
         UE_LOG(LogSbxMeshGenLab,
                Error,

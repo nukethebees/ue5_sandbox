@@ -1,7 +1,8 @@
+#include "Editor/SbxMeshGenLabEditorMode.h"
 #include "SbxMeshGenLab/BoxGenerator.h"
 
-#include "Framework/Docking/TabManager.h"
-#include "Widgets/Docking/SDockTab.h"
+#include "Editor.h"
+#include "EditorModeManager.h"
 
 #include <CQTest.h>
 
@@ -117,14 +118,17 @@ TEST_CLASS(BoxGenerator, "SandboxMesh.UnitTests")
 
 TEST_CLASS(MeshGenLabUi, "SandboxMesh.UnitTests")
 {
-    TEST_METHOD(OpensAndClosesTheLabTab)
+    TEST_METHOD(ActivatesAndDeactivatesTheLabEditorMode)
     {
-        auto const tab{FGlobalTabmanager::Get()->TryInvokeTab(FName{TEXT("SandboxMesh.GenLab")})};
+        auto& mode_tools{GLevelEditorModeTools()};
+        mode_tools.ActivateMode(USbxMeshGenLabEditorMode::mode_id);
 
-        TestRunner->TestTrue(TEXT("Mesh Gen Lab tab opens"), tab.IsValid());
-        if (tab.IsValid()) {
-            tab->RequestCloseTab();
-        }
+        TestRunner->TestTrue(TEXT("Sandbox Mesh editor mode activates"),
+                             mode_tools.IsModeActive(USbxMeshGenLabEditorMode::mode_id));
+
+        mode_tools.DeactivateMode(USbxMeshGenLabEditorMode::mode_id);
+        TestRunner->TestFalse(TEXT("Sandbox Mesh editor mode deactivates"),
+                              mode_tools.IsModeActive(USbxMeshGenLabEditorMode::mode_id));
     }
 };
 

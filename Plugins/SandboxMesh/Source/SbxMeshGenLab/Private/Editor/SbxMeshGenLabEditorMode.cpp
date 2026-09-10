@@ -1,4 +1,4 @@
-#include "SbxMeshGenLab/SbxMeshGenLabEditorMode.h"
+#include "Editor/SbxMeshGenLabEditorMode.h"
 
 #include "Editor/SbxMeshGenLabEditorModeToolkit.h"
 #include "Generation/MeshAssemblyRecipeAsset.h"

@@ -9,7 +9,7 @@ enum class ESbxMeshMaterialRole : uint8 {
     Structure UMETA(DisplayName = "Structure (Dark)"),
     Armor UMETA(DisplayName = "Armor (Yellow)"),
     Glass UMETA(DisplayName = "Glass (Blue)"),
-    Emissive UMETA(DisplayName = "Emissive (Orange)"),
+    Emissive UMETA(DisplayName = "Emissive Slot (Orange Preview)"),
 };
 
 namespace SandboxMesh {

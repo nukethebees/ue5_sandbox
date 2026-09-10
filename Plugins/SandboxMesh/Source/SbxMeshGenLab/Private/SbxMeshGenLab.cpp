@@ -1,5 +1,5 @@
-#include "SbxMeshGenLab/SbxMeshGenLabEditorMode.h"
-#include "SbxMeshGenLab/SbxMeshGenLabWidget.h"
+#include "Editor/SbxMeshGenLabEditorMode.h"
+#include "SbxMeshGenLabWidget.h"
 
 #include "Editor.h"
 #include "EditorModeManager.h"
