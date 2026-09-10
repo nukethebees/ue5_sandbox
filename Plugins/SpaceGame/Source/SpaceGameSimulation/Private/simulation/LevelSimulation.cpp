@@ -148,8 +148,8 @@ void FLevelSimulation::finish_initialisation() {
     check(state_ == EOrchestratorState::Uninitialised);
 
     entity_registry_.commit_updates();
-    entity_registry_.end_tick();
     query_manager_.update();
+    entity_registry_.end_tick();
 
     // Initialization rebuilds must not contribute to runtime telemetry.
     query_manager_.reset_runtime_telemetry();
@@ -355,6 +355,7 @@ void FLevelSimulation::advance(time_type const dt) {
             // Assume registry data is stable here
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLevelSimulation::advance::begin_tick);
 
+            entity_registry_.begin_tick();
             capital_ships_phase_.begin_tick();
             capital_ship_fighters_phase_.begin_tick();
             turrets_phase_.begin_tick();
@@ -520,10 +521,10 @@ void FLevelSimulation::advance(time_type const dt) {
             spinners_phase_.end_tick();
             lasers_phase_.end_tick();
 
-            measure(ESimulationTelemetryTimingSystem::Registry,
-                    [&] { entity_registry_.end_tick(); });
             measure(ESimulationTelemetryTimingSystem::SpatialQueries,
                     [&] { query_manager_.update(); });
+            measure(ESimulationTelemetryTimingSystem::Registry,
+                    [&] { entity_registry_.end_tick(); });
         }
         finish_phase(ELevelTelemetryTimingPhase::End);
 

@@ -78,7 +78,9 @@ struct SPACEGAMESIMULATION_API FTestEntityRegistry {
     /* **************************************** */
     // Starts a new identity lifetime; callers must discard pre-reset handles and IDs.
     void reset();
-    // Applies queued rows in order, then deaths. Queues are retained until end_tick().
+    // Clears the movement list published by the previous tick.
+    void begin_tick();
+    // Applies one queued final row per entity, then deaths. Queues are retained until end_tick().
     void commit_updates();
     // Publishes dead slots for reuse and clears this tick's queues and death list.
     void end_tick();
@@ -92,7 +94,8 @@ struct SPACEGAMESIMULATION_API FTestEntityRegistry {
     /* **************************************** */
     // Queued updates
     /* **************************************** */
-    // Radius and entity type are spawn-only. Alive/team changes also update history and counts.
+    // Each handle may occur once between end_tick() calls. Radius and entity type are spawn-only.
+    // Alive/team changes also update history and counts.
     void queue_entity_updates(ConstView const view, EntityDeathInfo const& death_info);
 
     /* **************************************** */
@@ -140,6 +143,8 @@ struct SPACEGAMESIMULATION_API FTestEntityRegistry {
     /* **************************************** */
     // Entity collection queries
     /* **************************************** */
+    // First-change order; populated by commit_updates() and cleared by begin_tick().
+    auto get_moved_entities_this_tick() const -> TConstArrayView<FRegistryEntityHandle>;
     auto get_dead_entities_this_frame() const -> TConstArrayView<FRegistryEntityHandle>;
     auto get_handles_not_in_team(ETestTeam const team) const -> TArray<FRegistryEntityHandle>;
     void get_handles_not_in_team(ETestTeam const team, TArray<FRegistryEntityHandle>& out) const;
@@ -219,6 +224,7 @@ struct SPACEGAMESIMULATION_API FTestEntityRegistry {
     /* **************************************** */
     // Validation
     /* **************************************** */
+    void validate_unique_queued_entity_update_handles() const;
     void validate_unique_ids() const;
     void validate_unique_entity_data() const;
 
@@ -239,8 +245,9 @@ struct SPACEGAMESIMULATION_API FTestEntityRegistry {
     // Queued damage events
     DirectDamageEvents queued_direct_damage_events;
 
-    // Dead entities
+    // Per-tick entity changes
     TArray<FRegistryEntityHandle> dead_entities_this_frame;
+    TArray<FRegistryEntityHandle> moved_entities_this_tick_;
     // Ascending dead-slot snapshot from end_tick(), consumed from the tail by add_entities().
     TArray<int32> free_indices;
 

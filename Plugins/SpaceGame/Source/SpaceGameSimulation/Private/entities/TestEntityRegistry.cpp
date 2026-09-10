@@ -41,6 +41,7 @@ void FTestEntityRegistry::reset() {
               queued_entity_update_handles,
               queued_direct_damage_events,
               dead_entities_this_frame,
+              moved_entities_this_tick_,
               free_indices);
 
     alive_counts_ = {};
@@ -48,9 +49,13 @@ void FTestEntityRegistry::reset() {
     cumulative_kill_count_ = 0;
     combat_telemetry_ = {};
 }
+void FTestEntityRegistry::begin_tick() {
+    moved_entities_this_tick_.Reset();
+}
 void FTestEntityRegistry::commit_updates() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::commit_updates);
 
+    validate_unique_queued_entity_update_handles();
     commit_entity_updates();
     commit_death_updates();
 
@@ -172,6 +177,21 @@ void FTestEntityRegistry::commit_entity_updates() {
         auto const handle{queued_entity_update_handles[update_index]};
         check(is_valid_handle(handle));
         auto const slot_index{handle.index};
+
+        auto const position_changed{
+            entity_data.locations.xs[slot_index] != queued_entity_data.locations.xs[update_index] ||
+            entity_data.locations.ys[slot_index] != queued_entity_data.locations.ys[update_index] ||
+            entity_data.locations.zs[slot_index] != queued_entity_data.locations.zs[update_index]};
+        auto const rotation_changed{entity_data.rotations.pitches[slot_index] !=
+                                        queued_entity_data.rotations.pitches[update_index] ||
+                                    entity_data.rotations.yaws[slot_index] !=
+                                        queued_entity_data.rotations.yaws[update_index] ||
+                                    entity_data.rotations.rolls[slot_index] !=
+                                        queued_entity_data.rotations.rolls[update_index]};
+
+        if (position_changed || rotation_changed) {
+            moved_entities_this_tick_.Add(handle);
+        }
 
         apply_live_state_transition(slot_index,
                                     queued_entity_data.teams[update_index],
@@ -471,6 +491,10 @@ auto FTestEntityRegistry::get_alive(FRegistryEntityHandle const handle) const ->
 /* **************************************** */
 // Entity collection queries
 /* **************************************** */
+auto FTestEntityRegistry::get_moved_entities_this_tick() const
+    -> TConstArrayView<FRegistryEntityHandle> {
+    return moved_entities_this_tick_;
+}
 auto FTestEntityRegistry::get_dead_entities_this_frame() const
     -> TConstArrayView<FRegistryEntityHandle> {
     return dead_entities_this_frame;
@@ -627,6 +651,18 @@ auto FTestEntityRegistry::collect_entities_in_range(
 /* **************************************** */
 // Validation
 /* **************************************** */
+void FTestEntityRegistry::validate_unique_queued_entity_update_handles() const {
+#if DO_CHECK
+    TBitArray<> seen_handles{false, entity_data.num()};
+    for (auto const handle : queued_entity_update_handles) {
+        check(is_valid_handle(handle));
+        checkf(!seen_handles[handle.index],
+               TEXT("Entity update handle %s was queued more than once in one tick"),
+               *handle.to_string());
+        seen_handles[handle.index] = true;
+    }
+#endif
+}
 void FTestEntityRegistry::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(entity_data),

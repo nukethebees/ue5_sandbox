@@ -178,42 +178,42 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
         registry_.end_tick();
     }
 
-    TEST_METHOD(QueuedUpdatesAreOrderedAndOnlyChangeMutableFields)
+    TEST_METHOD(QueuedUpdateBatchesConsolidateEachEntityAndOnlyChangeMutableFields)
     {
         auto initial{ml::registry_tests::make_entities(3)};
         initial.alive[2] = 0;
         auto const handles{registry_.add_entities(view_of(initial)).registry_handles.to_array()};
         check_counts();
         auto first{ml::registry_tests::make_entities(2, 30)};
-        first.alive[0] = 0;
         first.teams[1] = ETestTeam::Green;
         TArray const first_handles{handles[0], handles[2]};
         registry_.queue_entity_updates({first_handles, view_of(first)}, {});
-        auto second{ml::registry_tests::make_entities(2, 50)};
+        auto second{ml::registry_tests::make_entities(1, 50)};
         second.teams[0] = ETestTeam::Yellow;
-        TArray const second_handles{handles[0], handles[1]};
+        TArray const second_handles{handles[1]};
         registry_.queue_entity_updates({second_handles, view_of(second)}, {});
         TestRunner->TestEqual(TEXT("Queue does not mutate live health"),
                               registry_.get_health(handles[0]),
                               initial.healths[0]);
         registry_.commit_updates();
-        TestRunner->TestEqual(
-            TEXT("Last update wins"), registry_.get_health(handles[0]), second.healths[0]);
+        TestRunner->TestEqual(TEXT("First batch updates first entity"),
+                              registry_.get_health(handles[0]),
+                              first.healths[0]);
         TestRunner->TestEqual(TEXT("Second batch updates other entity"),
                               registry_.get_health(handles[1]),
-                              second.healths[1]);
+                              second.healths[0]);
         TestRunner->TestEqual(TEXT("Earlier batch updates third entity"),
                               registry_.get_health(handles[2]),
                               first.healths[1]);
-        TestRunner->TestEqual(TEXT("Location uses last update"),
+        TestRunner->TestEqual(TEXT("Location uses consolidated update"),
                               registry_.get_location(handles[0]),
-                              second.locations[0]);
+                              first.locations[0]);
         TestRunner->TestEqual(TEXT("Velocity uses last update"),
                               registry_.get_velocity(handles[2]),
                               first.velocities[1]);
         TestRunner->TestEqual(TEXT("Rotation uses last update"),
                               registry_.get_entity_data().rotations.yaws[0],
-                              second.rotations.yaws[0]);
+                              first.rotations.yaws[0]);
         for (int32 index{}; index < 3; ++index) {
             TestRunner->TestEqual(TEXT("Radius is spawn data"),
                                   registry_.get_entity_data().radii[index],
@@ -231,6 +231,146 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
                               registry_.get_dead_entities_this_frame().Num(),
                               0);
         check_counts();
+    }
+
+    TEST_METHOD(MovementReportsOnlyTransformChanges)
+    {
+        auto initial{ml::registry_tests::make_entities(4)};
+        auto const handles{registry_.add_entities(view_of(initial)).registry_handles.to_array()};
+        TestRunner->TestEqual(
+            TEXT("Spawn is not movement"), registry_.get_moved_entities_this_tick().Num(), 0);
+
+        registry_.queue_entity_updates({handles, view_of(initial)}, {});
+        registry_.commit_updates();
+        TestRunner->TestEqual(TEXT("Identical transforms do not move"),
+                              registry_.get_moved_entities_this_tick().Num(),
+                              0);
+        registry_.end_tick();
+        registry_.begin_tick();
+
+        auto updates{initial};
+        updates.locations.xs[0] += 10.f;
+        updates.rotations.yaws[1] += 15.f;
+        updates.healths[2] -= 10;
+        updates.locations.zs[3] -= 5.f;
+        updates.rotations.rolls[3] += 20.f;
+        registry_.queue_entity_updates({handles, view_of(updates)}, {});
+        registry_.commit_updates();
+
+        auto const moved{registry_.get_moved_entities_this_tick()};
+        TestRunner->TestEqual(TEXT("Only transformed entities move"), moved.Num(), 3);
+        TestRunner->TestTrue(TEXT("Position-only turret moves"), moved[0] == handles[0]);
+        TestRunner->TestTrue(TEXT("Rotation-only capital moves"), moved[1] == handles[1]);
+        TestRunner->TestTrue(TEXT("Combined transform moves"), moved[2] == handles[3]);
+        TestRunner->TestFalse(TEXT("Health-only change is not movement"),
+                              moved.Contains(handles[2]));
+
+        registry_.end_tick();
+        TestRunner->TestEqual(TEXT("Movement remains available after end tick"),
+                              registry_.get_moved_entities_this_tick().Num(),
+                              3);
+        registry_.begin_tick();
+        TestRunner->TestEqual(
+            TEXT("Begin tick clears movement"), registry_.get_moved_entities_this_tick().Num(), 0);
+    }
+
+    TEST_METHOD(RepeatedLocalMovementProducesOneConsolidatedRegistryUpdate)
+    {
+        auto const initial{ml::registry_tests::make_entities(2)};
+        auto const handles{registry_.add_entities(view_of(initial)).registry_handles.to_array()};
+
+        auto first{initial};
+        first.locations.xs[0] += 20.f;
+        first.locations.xs[0] += 20.f;
+        first.rotations.yaws[0] += 40.f;
+        registry_.queue_entity_updates({TArray{handles[0]}, view_of(first, 0, 1)}, {});
+        registry_.commit_updates();
+
+        auto moved{registry_.get_moved_entities_this_tick()};
+        TestRunner->TestEqual(TEXT("Consolidated update reports one movement"), moved.Num(), 1);
+        TestRunner->TestTrue(TEXT("Consolidated movement reports the handle"),
+                             moved[0] == handles[0]);
+
+        registry_.commit_updates();
+        TestRunner->TestEqual(TEXT("Replaying an unchanged final row does not duplicate movement"),
+                              registry_.get_moved_entities_this_tick().Num(),
+                              1);
+        registry_.end_tick();
+        registry_.begin_tick();
+    }
+
+    TEST_METHOD(MovementIsPerTickAndGenerationSafeAcrossSlotReuse)
+    {
+        auto data{ml::registry_tests::make_entities(1)};
+        auto const old_handle{registry_.add_entities(view_of(data)).registry_handles.to_array()[0]};
+
+        data.locations.ys[0] += 10.f;
+        registry_.queue_entity_updates({TArray{old_handle}, view_of(data)}, {});
+        registry_.commit_updates();
+        auto moved{registry_.get_moved_entities_this_tick()};
+        TestRunner->TestTrue(TEXT("First tick reports movement"),
+                             moved.Num() == 1 && moved[0] == old_handle);
+        registry_.end_tick();
+        registry_.begin_tick();
+
+        data.alive[0] = 0;
+        EntityDeathInfo deaths;
+        deaths.add(ETestDeathReason::Unknown, old_handle);
+        registry_.queue_entity_updates({TArray{old_handle}, view_of(data)}, deaths);
+        registry_.commit_updates();
+        TestRunner->TestEqual(TEXT("Destruction without transform change is not movement"),
+                              registry_.get_moved_entities_this_tick().Num(),
+                              0);
+        registry_.end_tick();
+        registry_.begin_tick();
+
+        auto replacement_data{ml::registry_tests::make_entities(1, 20)};
+        auto const replacement{
+            registry_.add_entities(view_of(replacement_data)).registry_handles.to_array()[0]};
+        TestRunner->TestTrue(TEXT("Replacement reuses the slot with a new generation"),
+                             replacement.index == old_handle.index &&
+                                 replacement.generation != old_handle.generation);
+        TestRunner->TestTrue(TEXT("Old moved handle is stale"), registry_.is_stale(old_handle));
+        TestRunner->TestEqual(TEXT("Replacement spawn is not stale movement"),
+                              registry_.get_moved_entities_this_tick().Num(),
+                              0);
+
+        replacement_data.locations.zs[0] += 5.f;
+        registry_.queue_entity_updates({TArray{replacement}, view_of(replacement_data)}, {});
+        registry_.commit_updates();
+        moved = registry_.get_moved_entities_this_tick();
+        TestRunner->TestTrue(TEXT("Replacement movement uses its current handle"),
+                             moved.Num() == 1 && moved[0] == replacement);
+        registry_.end_tick();
+        registry_.begin_tick();
+
+        replacement_data.rotations.pitches[0] += 30.f;
+        registry_.queue_entity_updates({TArray{replacement}, view_of(replacement_data)}, {});
+        registry_.commit_updates();
+        moved = registry_.get_moved_entities_this_tick();
+        TestRunner->TestTrue(TEXT("Successive tick reports movement again"),
+                             moved.Num() == 1 && moved[0] == replacement);
+        registry_.end_tick();
+        registry_.begin_tick();
+
+        registry_.queue_entity_updates({TArray{replacement}, view_of(replacement_data)}, {});
+        registry_.commit_updates();
+        TestRunner->TestEqual(TEXT("Previous movement does not leak into a quiet tick"),
+                              registry_.get_moved_entities_this_tick().Num(),
+                              0);
+        registry_.end_tick();
+        registry_.begin_tick();
+
+        replacement_data.locations.xs[0] += 1.f;
+        registry_.queue_entity_updates({TArray{replacement}, view_of(replacement_data)}, {});
+        registry_.commit_updates();
+        TestRunner->TestEqual(TEXT("Movement exists before reset"),
+                              registry_.get_moved_entities_this_tick().Num(),
+                              1);
+        registry_.reset();
+        TestRunner->TestEqual(TEXT("Registry reset clears movement"),
+                              registry_.get_moved_entities_this_tick().Num(),
+                              0);
     }
 
     TEST_METHOD(FreeSlotsBecomeReusableAtEndTickAndGenerationsAdvanceEachReuse)
