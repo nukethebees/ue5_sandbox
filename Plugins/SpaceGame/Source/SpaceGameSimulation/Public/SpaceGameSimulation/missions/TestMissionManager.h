@@ -42,6 +42,9 @@ struct FLevelMissionResult {
 
 struct SPACEGAMESIMULATION_API FTestMissionManager {
   public:
+    /* **************************************** */
+    // Construction and lifecycle
+    /* **************************************** */
     FTestMissionManager(FSimulationClock const& clock, FTestEntityRegistry& entity_registry);
     FTestMissionManager(FTestMissionManager const&) = delete;
     FTestMissionManager(FTestMissionManager&&) = delete;
@@ -53,12 +56,18 @@ struct SPACEGAMESIMULATION_API FTestMissionManager {
     void mission_tick();
     auto complete_mission() -> bool;
 
+    /* **************************************** */
+    // Level mission setup
+    /* **************************************** */
     void initialise_level_mission(ml::FLevelMissionInitialisationData const& data,
                                   TConstArrayView<FRegistryEntityHandle> level_entity_handles);
     void bind_level_event_data(TConstArrayView<int32> values,
                                TConstArrayView<FRegistryEntityHandle> level_entity_handles);
     void consume_level_events(ml::FLevelMissionEventGroupsConstView groups);
 
+    /* **************************************** */
+    // Mission configuration and objectives
+    /* **************************************** */
     void set_mission_mode(ETestMissionMode new_mode);
     void set_target_time(float new_target_time);
     void set_kill_target(int32 new_kill_target);
@@ -71,9 +80,14 @@ struct SPACEGAMESIMULATION_API FTestMissionManager {
     void set_pending_objective_events(int32 count);
     void objective_event_dispatched();
 
+    /* **************************************** */
+    // Results
+    /* **************************************** */
     auto take_result() -> TOptional<FLevelMissionResult>;
 
-    // Accessors
+    /* **************************************** */
+    // Queries
+    /* **************************************** */
     auto get_mission_mode() const noexcept -> ETestMissionMode { return mission_mode; }
     auto get_mission_state() const noexcept -> ETestMissionState { return mission_state; }
 
@@ -135,6 +149,9 @@ struct SPACEGAMESIMULATION_API FTestMissionManager {
     auto get_entity_registry() const -> FTestEntityRegistry const& { return entity_registry; }
     auto get_entity_registry() -> FTestEntityRegistry& { return entity_registry; }
   private:
+    /* **************************************** */
+    // State transitions and mission modes
+    /* **************************************** */
     void set_mission_state(ETestMissionState const new_state,
                            ETestMissionFailReason const fail_reason = ETestMissionFailReason::None);
 
@@ -142,6 +159,10 @@ struct SPACEGAMESIMULATION_API FTestMissionManager {
     void mission_tick_kill_enemies();
     void mission_tick_kill_enemies_within_time();
     void update_mission_kills();
+
+    /* **************************************** */
+    // Objective health tracking
+    /* **************************************** */
     void initialise_entity_health_that_must_survive();
     void update_entity_health_that_must_survive();
     auto entities_that_must_survive_are_alive() const -> bool;
@@ -149,10 +170,17 @@ struct SPACEGAMESIMULATION_API FTestMissionManager {
     void update_entity_health_required_to_kill();
     auto entities_required_to_kill_are_dead() const -> bool;
 
+    /* **************************************** */
+    // Completion and results
+    /* **************************************** */
     void handle_mission_success();
     void handle_mission_failure(ETestMissionFailReason fail_reason);
 
     void queue_result();
+
+    /* **************************************** */
+    // State
+    /* **************************************** */
     TOptional<FLevelMissionResult> pending_result_;
     FTestEntityRegistry& entity_registry;
 

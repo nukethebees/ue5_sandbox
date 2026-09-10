@@ -30,6 +30,9 @@ auto format_date(FDateTime const& date) -> FText {
 }
 } // namespace save_game_viewer_widget
 
+/* **************************************** */
+// Widget lifecycle
+/* **************************************** */
 USaveGameViewerWidget::USaveGameViewerWidget(FObjectInitializer const& object_initializer)
     : Super(object_initializer) {
     SetIsFocusable(true);
@@ -86,6 +89,9 @@ auto USaveGameViewerWidget::NativeOnFocusReceived(FGeometry const& geometry,
     return FReply::Handled();
 }
 
+/* **************************************** */
+// Navigation and profile actions
+/* **************************************** */
 void USaveGameViewerWidget::set_browser(FSaveGameBrowser& browser) {
     browser_override_ = &browser;
     rebuild_profiles();
@@ -206,6 +212,9 @@ void USaveGameViewerWidget::handle_reset_test_profile() {
 #endif
 }
 
+/* **************************************** */
+// Data sources and selection
+/* **************************************** */
 auto USaveGameViewerWidget::resolve_browser() -> FSaveGameBrowser* {
     if (browser_override_) {
         return browser_override_;
@@ -435,6 +444,9 @@ void USaveGameViewerWidget::show_empty_profiles() {
     view_state_.outcome_name = NSLOCTEXT("SaveGameViewer", "NoReport", "NO REPORT SELECTED");
 }
 
+/* **************************************** */
+// State publication
+/* **************************************** */
 void USaveGameViewerWidget::publish_all() {
     if (view_.IsValid()) {
         view_->replace_state(view_state_);

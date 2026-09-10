@@ -47,12 +47,19 @@ Unreal Engine 5.8 project.
 * Prefer SOA layouts for related performance-sensitive collections.
 * Save loop bounds as const locals.
 * Log warnings/errors when null checks fail rather than returning silently.
+* Use whitespace deliberately to separate logical phases within functions and related
+  declaration or data groups. Arrange long functions so their main control flow is easy to scan,
+  while keeping tightly coupled statements together.
+* In non-trivial functions, use blank lines around guard/validation blocks, setup, major state
+  transitions, loops, and final publication or return steps when those phases are distinct.
 * In large classes with many member functions, group declarations and definitions by category using this banner style:
   ```cpp
   /* **************************************** */
   // Category
   /* **************************************** */
   ```
+* Order member-function categories to reflect lifecycle and control flow, and keep the category
+  order aligned between headers and `.cpp` files where practical.
 * In `.cpp` category groups, do not put blank lines between adjacent member-function definitions. Separate categories with blank lines around their banners.
 * When returning `std::expected`, prefer `std::in_place` / `std::unexpect` when they avoid unnecessary copies or moves.
 * For UObject types in a dedicated plugin and namespace, prefer concise names.

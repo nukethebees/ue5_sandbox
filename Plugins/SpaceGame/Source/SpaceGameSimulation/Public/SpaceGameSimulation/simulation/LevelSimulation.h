@@ -26,29 +26,35 @@ struct FLevelSimulationInitData {
     static constexpr int32 player_target_spawn_index{-2};
 
     FFixedTickLoop clock_settings{};
+
     FLaserSimulationConfig lasers;
     FCapitalSimulationConfig capital_ships;
     FFighterSimulationConfig fighters;
     FTurretSimulationConfig turrets;
     FSpinnerSimulationConfig spinners;
+
     TOptional<ml::test_space_ship::FPlayerSpawnData> player;
     ml::test_capital_ships::SpawnData capital_spawns;
     TArray<int32> capital_target_spawn_indices;
     ml::test_static_turrets::SpawnData turret_spawns;
     ml::FCompiledLevelEvents level_events;
+
     FVectors3f spinner_locations;
     TArray<float> spinner_yaws;
     TArray<int32> spinner_fire_points;
     TArray<FTransform> turret_transforms;
+
     ml::ioj::FEntityAABBs entity_bounds{};
     ml::WorldAABBs static_bounds{};
     FIntVector3 grid_dimensions{400, 400, 5};
     FVector3f cell_size{5000.f, 5000.f, 20000.f};
+
     float capital_radius{1.f};
     float fighter_radius{1.f};
     float turret_radius{1.f};
     float spinner_radius{1.f};
     float fighter_fire_point_distance{};
+
     TOptional<FLevelTelemetryRunMetadata> telemetry_metadata{};
 };
 
@@ -163,22 +169,31 @@ struct SPACEGAMESIMULATION_API FLevelSimulation {
 
     FSimulationClock clock_;
     EOrchestratorState state_{EOrchestratorState::Uninitialised};
+
     FTestEntityRegistry entity_registry_;
     ml::FSpatialQueryManager query_manager_;
+
     ml::test_lasers::Simulation lasers_simulation_;
     ml::test_lasers::PhaseInterface lasers_phase_;
+
     TOptional<ml::test_space_ship::Simulation> player_ship_simulation_;
     TOptional<ml::test_space_ship::PhaseInterface> player_ship_phase_;
+
     ml::test_capital_ship_fighters::Simulation capital_ship_fighters_simulation_;
     ml::test_capital_ship_fighters::PhaseInterface capital_ship_fighters_phase_;
+
     ml::test_capital_ships::Simulation capital_ships_simulation_;
     ml::test_capital_ships::PhaseInterface capital_ships_phase_;
+
     ml::test_static_turrets::Simulation turrets_simulation_;
     ml::test_static_turrets::PhaseInterface turrets_phase_;
+
     ml::test_tube_spinners::Simulation spinners_simulation_;
     ml::test_tube_spinners::PhaseInterface spinners_phase_;
+
     FTestMissionManager mission_manager_;
     ml::FLevelEventManager event_manager_;
+
     FLevelTelemetryManager level_telemetry_manager_;
     FFixedTickLoop telemetry_tick_loop_{};
     TOptional<FLevelTelemetryRunMetadata> telemetry_metadata_{};

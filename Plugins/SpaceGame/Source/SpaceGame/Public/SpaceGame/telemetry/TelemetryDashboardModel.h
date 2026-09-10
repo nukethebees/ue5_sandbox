@@ -74,6 +74,9 @@ struct SPACEGAME_API FTelemetryRunSummary {
 
 class SPACEGAME_API FTelemetryRunCatalog {
   public:
+    /* **************************************** */
+    // Loading and selection
+    /* **************************************** */
     explicit FTelemetryRunCatalog(FString directory = {});
 
     void refresh();
@@ -81,6 +84,9 @@ class SPACEGAME_API FTelemetryRunCatalog {
     bool select_run(FString const& run_id);
     bool select_baseline(FString const& run_id);
 
+    /* **************************************** */
+    // Catalog queries
+    /* **************************************** */
     [[nodiscard]] auto get_runs() const -> TConstArrayView<FTelemetryRunSummary> {
         return filtered_;
     }
@@ -103,6 +109,9 @@ class SPACEGAME_API FTelemetryRunCatalog {
     [[nodiscard]] auto directory_exists() const noexcept -> bool { return directory_exists_; }
     [[nodiscard]] auto get_level_filter() const -> FString const& { return level_filter_; }
   private:
+    /* **************************************** */
+    // Filtering and state
+    /* **************************************** */
     void rebuild_filter();
     void load_selection();
 

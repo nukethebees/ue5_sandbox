@@ -65,6 +65,9 @@ struct FLineTraceResult {
 
 struct SPACEGAMESIMULATION_API FSpatialQueryManager {
   public:
+    /* **************************************** */
+    // Construction and setup
+    /* **************************************** */
     explicit FSpatialQueryManager(FTestEntityRegistry const& entity_registry);
     FSpatialQueryManager(FSpatialQueryManager const&) = delete;
     FSpatialQueryManager(FSpatialQueryManager&&) = delete;
@@ -77,6 +80,9 @@ struct SPACEGAMESIMULATION_API FSpatialQueryManager {
 
     void reserve_thread_buffers(int32 count);
 
+    /* **************************************** */
+    // Batched line queries
+    /* **************************************** */
     void trace_line_of_sight(FVectors3f::ConstView start_locations,
                              FVectors3f::ConstView end_locations,
                              TArrayView<FRegistryEntityHandle> out_entity_handles) const;
@@ -99,6 +105,10 @@ struct SPACEGAMESIMULATION_API FSpatialQueryManager {
         FTraceHitsView out_hits,
         TConstArrayView<FRegistryEntityHandle> ignored_entities = {},
         ioj::ETraceEntityFilter entity_filter = ioj::ETraceEntityFilter::None) const;
+
+    /* **************************************** */
+    // Scalar and entity queries
+    /* **************************************** */
     auto has_clear_line(FVector3f start_location,
                         FVector3f end_location,
                         FRegistryEntityHandle ignored_entity = {}) const -> bool;
@@ -124,6 +134,9 @@ struct SPACEGAMESIMULATION_API FSpatialQueryManager {
                                float radius,
                                TArrayView<uint8> out_results) const;
 
+    /* **************************************** */
+    // Collision state and telemetry
+    /* **************************************** */
     auto get_collision_system() noexcept -> ioj::FCollisionSystem& { return collision; }
     auto get_collision_system() const noexcept -> ioj::FCollisionSystem const& { return collision; }
 
@@ -131,6 +144,9 @@ struct SPACEGAMESIMULATION_API FSpatialQueryManager {
     void reset_runtime_telemetry() noexcept;
     auto get_runtime_telemetry() const noexcept -> FSpatialQueryTelemetrySnapshot;
   private:
+    /* **************************************** */
+    // Thread buffer leasing
+    /* **************************************** */
     friend class query_manager::FThreadBufferLease;
 
     using FThreadBuffers = query_manager::FThreadBuffers;
@@ -138,6 +154,9 @@ struct SPACEGAMESIMULATION_API FSpatialQueryManager {
     auto acquire_thread_buffer() const -> int32;
     void release_thread_buffer(int32 index) const;
 
+    /* **************************************** */
+    // State
+    /* **************************************** */
     FTestEntityRegistry const& entity_registry;
 
     mutable std::mutex thread_buffers_mutex;

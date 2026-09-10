@@ -59,6 +59,9 @@ UCLASS()
 class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     GENERATED_BODY()
   public:
+    /* **************************************** */
+    // Lifecycle and navigation
+    /* **************************************** */
     USaveGameViewerWidget(FObjectInitializer const& object_initializer);
 
     void set_browser(FSaveGameBrowser& browser);
@@ -72,6 +75,9 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     void cancel_create_profile();
     void request_back();
 
+    /* **************************************** */
+    // Selection queries
+    /* **************************************** */
     [[nodiscard]] auto get_profile_count() const noexcept -> int32 {
         return view_state_.profiles.Num();
     }
@@ -96,12 +102,27 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
 
     FSaveGameModalStateChanged modal_state_changed;
   protected:
+    /* **************************************** */
+    // Widget lifecycle
+    /* **************************************** */
     void NativeOnInitialized() override;
     auto RebuildWidget() -> TSharedRef<SWidget> override;
     void ReleaseSlateResources(bool release_children) override;
     auto NativeOnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
   private:
+    /* **************************************** */
+    // Profile actions
+    /* **************************************** */
+    void handle_create_profile(FString const& display_name);
+    void handle_activate_profile();
+    void handle_reset_test_profile();
+    void refresh_and_select(FString const& profile_id);
+    void show_create_profile_error(FText const& error);
+
+    /* **************************************** */
+    // Data sources and selection
+    /* **************************************** */
     auto resolve_browser() -> FSaveGameBrowser*;
     auto resolve_save_subsystem() const -> USpaceSaveSubsystem*;
     void rebuild_profiles();
@@ -111,16 +132,17 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     void show_profile(FSaveProfileSummary const& profile);
     void show_outcome(FLevelOutcomeSummary const& outcome);
     void show_empty_profiles();
+
+    /* **************************************** */
+    // State publication
+    /* **************************************** */
     void publish_all();
     void publish_profile();
     void publish_outcome();
 
-    void handle_create_profile(FString const& display_name);
-    void handle_activate_profile();
-    void handle_reset_test_profile();
-    void refresh_and_select(FString const& profile_id);
-    void show_create_profile_error(FText const& error);
-
+    /* **************************************** */
+    // State
+    /* **************************************** */
     FString selected_profile_id_{};
     FString selected_outcome_id_{};
     FSaveGameViewState view_state_{};

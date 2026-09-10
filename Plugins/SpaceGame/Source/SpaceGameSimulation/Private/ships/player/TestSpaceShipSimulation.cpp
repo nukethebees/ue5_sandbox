@@ -16,6 +16,9 @@
 #include <utility>
 
 namespace ml::test_space_ship {
+/* **************************************** */
+// Construction and configuration
+/* **************************************** */
 void Simulation::set_config(FPlayerSimulationConfig const& new_config) noexcept {
     config = new_config;
 }
@@ -29,15 +32,21 @@ Simulation::Simulation(FSimulationClock const& clock,
     , lasers{in_lasers}
     , simulation_clock{clock} {}
 
+/* **************************************** */
+// Tick phases
+/* **************************************** */
 void Simulation::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::PlayerShipSimulation::begin_play);
 
     velocity = FVector::ZeroVector;
     thrust_energy = config.thrust_energy_max;
+
     set_laser_mode(ELaserFiringState::idle);
     set_laser_fire_rate(laser_fire_rate);
+
     configure_speed_sampling();
     set_boost_brake_state(EBoostBrakeState::None);
+
     register_with_entity_registry();
     health.clamp_to_max();
 }
@@ -106,6 +115,9 @@ void Simulation::update_entity_registry() {
     queue_entity_update(EntityDeathInfo{});
 }
 
+/* **************************************** */
+// Registry integration
+/* **************************************** */
 void Simulation::register_with_entity_registry() {
     auto const new_entities{
         entity_registry.add_entities(get_entity_update_data().get_const_view())};
@@ -126,6 +138,7 @@ auto Simulation::get_entity_update_data() const -> RegistryEntityData {
     entity_data.teams.Add(team);
     entity_data.alive.Add(static_cast<uint8>(health.is_alive()));
     entity_data.entity_types.Add(ETestEntityType::PlayerShip);
+
     return entity_data;
 }
 
@@ -138,6 +151,9 @@ void Simulation::queue_entity_update(EntityDeathInfo const& death_info) {
         death_info);
 }
 
+/* **************************************** */
+// Movement
+/* **************************************** */
 void Simulation::integrate_velocity(float const dt) {
     switch (flight_mode) {
         case ETestSpaceShipFlightMode::ForwardSpeed: {
@@ -179,8 +195,10 @@ void Simulation::update_body_orientation(float const dt) {
     auto const target_pitch{rotation_input.Y * config.pitch_angle_max};
     auto const new_pitch{
         FMath::FInterpTo(current_rotation.Pitch, target_pitch, dt, config.pitch_speed)};
+
     auto const target_yaw{rotation_input.X * config.yaw_angle_max};
     auto const new_yaw{FMath::FInterpTo(current_rotation.Yaw, target_yaw, dt, config.yaw_speed)};
+
     auto const turn_target{rotation_input.X * config.turn_bank_angle_max};
     auto const turn_speed{rotation_input.X * config.turn_bank_speed};
     auto const roll_speed{FMath::Max(config.turn_bank_speed, FMath::Abs(turn_speed))};
@@ -192,6 +210,7 @@ void Simulation::set_boost_brake_state(EBoostBrakeState const state) {
     if (state == EBoostBrakeState::Boost && boost_brake_state != state) {
         ++boost_start_sequence_;
     }
+
     auto const current_speed{get_speed()};
     auto const& speed_responses{config.speed_responses};
     FSpeedResponse response{speed_responses.accelerating_to_cruise};
@@ -237,6 +256,9 @@ void Simulation::update_boost_brake(float const dt) {
     thrust_energy = FMath::Clamp(thrust_energy, 0.f, config.thrust_energy_max);
 }
 
+/* **************************************** */
+// Flight controls
+/* **************************************** */
 void Simulation::set_move_input(FVector2D const input) noexcept {
     planar_movement_direction = input;
 }
@@ -338,6 +360,9 @@ void Simulation::set_flight_mode(ETestSpaceShipFlightMode const new_flight_mode)
     flight_mode = new_flight_mode;
 }
 
+/* **************************************** */
+// Weapons
+/* **************************************** */
 void Simulation::set_lock_on_target(FRegistryEntityHandle const target) noexcept {
     lock_on_target = target;
 }
@@ -356,6 +381,7 @@ void Simulation::update_laser_firing() {
             if (cooldown_finished) {
                 fire_laser();
                 laser_shot_cooldown = config.laser.fire_cooldown;
+
                 if (lasers_fired_this_burst >= lasers_per_burst) {
                     laser_shot_cooldown = config.laser_lock_on_transition_delay;
                     set_laser_mode(ELaserFiringState::lock_on_transition);
@@ -375,6 +401,7 @@ void Simulation::update_laser_firing() {
             auto const end{start + middle.GetUnitAxis(EAxis::X) * config.laser_lock_on_distance};
             auto const hit{spatial_query_manager.trace_closest(
                 FVector3f{start}, FVector3f{end}, registry_handle)};
+
             if (hit.hit && hit.entity.is_valid()) {
                 set_lock_on_target(hit.entity);
                 set_laser_mode(ELaserFiringState::lock_on_acquired);
@@ -479,6 +506,9 @@ void Simulation::set_laser_fire_rate(ETestShipFireRate const value) noexcept {
     }
 }
 
+/* **************************************** */
+// Health and status
+/* **************************************** */
 void Simulation::add_health(int32 const added_health) {
     set_health(health.health + added_health);
 }
@@ -490,6 +520,7 @@ void Simulation::set_health(int32 const new_health, FRegistryEntityHandle const 
 
     auto const was_alive{health.is_alive()};
     health.health = FMath::Min(new_health, health.max_health);
+
     if (was_alive && !health.is_alive()) {
         die(killer);
     }
@@ -532,6 +563,9 @@ auto Simulation::get_laser_effective_range() const noexcept -> float {
     return FMath::Max(config.laser.max_distance, 0.0f);
 }
 
+/* **************************************** */
+// Diagnostics
+/* **************************************** */
 #if WITH_EDITOR
 void Simulation::sample_speed() {
     speed_samples[speed_sample_index] = {
@@ -552,6 +586,7 @@ void Simulation::configure_speed_sampling() {
     auto const sample_window_ticks{simulation_clock.duration_to_tick_period(sample_window_seconds)};
     check(std::in_range<int32>(sample_tick_period));
     check(sample_tick_period > 0);
+
     auto const sample_count{(sample_window_ticks + sample_tick_period - 1) / sample_tick_period};
     check(std::in_range<int32>(sample_count));
 

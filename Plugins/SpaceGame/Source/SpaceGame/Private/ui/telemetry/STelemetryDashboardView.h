@@ -31,20 +31,33 @@ class STelemetryDashboardView final : public SCompoundWidget {
     SLATE_EVENT(FOnTelemetryBaselineSelected, OnBaselineSelected)
     SLATE_END_ARGS()
 
+    /* **************************************** */
+    // Lifecycle and state
+    /* **************************************** */
     void Construct(FArguments const& args);
     void replace_state(FTelemetryDashboardViewState const& state);
     void focus_primary_action();
     auto SupportsKeyboardFocus() const -> bool override { return true; }
   private:
+    /* **************************************** */
+    // Layout construction
+    /* **************************************** */
     auto build() -> TSharedRef<SWidget>;
     auto build_sidebar() -> TSharedRef<SWidget>;
     auto build_detail() -> TSharedRef<SWidget>;
+
+    /* **************************************** */
+    // Actions
+    /* **************************************** */
     auto handle_refresh() -> FReply;
     auto handle_filter() -> FReply;
     auto handle_baseline() -> FReply;
     auto handle_run(FString run_id) -> FReply;
     auto handle_section(ETelemetryDashboardSection section) -> FReply;
 
+    /* **************************************** */
+    // State
+    /* **************************************** */
     FGameUiStyle const* style_{};
     FTelemetryDashboardViewState state_{};
     FSimpleDelegate on_refresh_{};

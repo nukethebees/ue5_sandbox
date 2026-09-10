@@ -17,9 +17,12 @@ struct FLevelTelemetryCurrentState {
     int32 spawned_entities{};
     int32 destroyed_entities{};
     int32 kills{};
+
     int32 registry_slot_count{};
+
     int32 active_lasers{};
     int32 lasers_fired{};
+
     int32 occupied_spatial_cell_count{};
     uint64 grid_rebuild_count{};
     uint64 range_query_count{};
@@ -40,6 +43,9 @@ class SPACEGAMESIMULATION_API FLevelTelemetryManager {
     using ActiveEntityCountData = FLevelTelemetrySnapshot::ActiveEntityCountData;
     using CumulativeKillCountData = FLevelTelemetrySnapshot::CumulativeKillCountData;
 
+    /* **************************************** */
+    // Construction and lifecycle
+    /* **************************************** */
     FLevelTelemetryManager(FSimulationClock const& clock,
                            FTestEntityRegistry const& entity_registry,
                            ml::test_lasers::Simulation const& lasers,
@@ -53,6 +59,9 @@ class SPACEGAMESIMULATION_API FLevelTelemetryManager {
     void reset();
     void tick();
 
+    /* **************************************** */
+    // Run capture and completion
+    /* **************************************** */
     void begin_run(FLevelTelemetryRunMetadata metadata);
     void observe_frame(double frame_seconds);
     void capture_realtime_sample();
@@ -73,6 +82,9 @@ class SPACEGAMESIMULATION_API FLevelTelemetryManager {
     }
     auto take_finalized_run() -> TOptional<FLevelTelemetryRunRecord>;
 
+    /* **************************************** */
+    // Snapshots and queries
+    /* **************************************** */
     auto make_snapshot() const -> FLevelTelemetrySnapshot;
 
     auto get_active_entity_count_data() const noexcept -> ActiveEntityCountData const& {
@@ -91,10 +103,17 @@ class SPACEGAMESIMULATION_API FLevelTelemetryManager {
         return current_state_;
     }
   private:
+    /* **************************************** */
+    // Sampling
+    /* **************************************** */
     void update_current_state();
     void sample_live_series();
     void sample_series(bool force = false);
     void sample_battle_state(bool force = false);
+
+    /* **************************************** */
+    // Performance windows and finalization
+    /* **************************************** */
     void close_performance_window(double monotonic_time);
     auto wall_elapsed(double monotonic_time) const -> double;
     void add_realtime_sample(tick_type completed_tick, double monotonic_time);
@@ -104,17 +123,22 @@ class SPACEGAMESIMULATION_API FLevelTelemetryManager {
                       FLevelMissionResult const* mission_result,
                       double monotonic_time);
 
+    /* **************************************** */
+    // State
+    /* **************************************** */
     FSimulationClock const& clock_;
     FTestEntityRegistry const& entity_registry_;
     ml::test_lasers::Simulation const& lasers_;
     ml::FSpatialQueryManager const& spatial_queries_;
     FLevelTelemetryCurrentState current_state_{};
     FLevelTelemetryRunRecord run_record_{};
+
     double run_started_at_{};
     bool run_recording_{};
     bool run_finalized_{};
     bool run_record_taken_{};
     bool initialized_{};
+
     double next_battle_sample_seconds_{};
     TArray<double> frame_samples_{};
     TArray<double> simulation_tick_samples_{};

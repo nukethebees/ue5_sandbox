@@ -62,6 +62,9 @@ auto aggregate_timings(TArray<double> samples) -> FLevelTelemetryTimingAggregate
 
 }
 
+/* **************************************** */
+// Construction and lifecycle
+/* **************************************** */
 FLevelTelemetryManager::FLevelTelemetryManager(
     FSimulationClock const& clock,
     FTestEntityRegistry const& entity_registry,
@@ -88,6 +91,7 @@ void FLevelTelemetryManager::reset() {
     run_record_taken_ = false;
     initialized_ = false;
     next_battle_sample_seconds_ = 0.0;
+
     frame_samples_.Reset();
     simulation_tick_samples_.Reset();
     for (auto& samples : system_samples_) {
@@ -98,10 +102,14 @@ void FLevelTelemetryManager::reset() {
     }
 }
 
+/* **************************************** */
+// Tick sampling
+/* **************************************** */
 void FLevelTelemetryManager::tick() {
     check(initialized_);
     update_current_state();
     sample_live_series();
+
     auto const simulated_seconds{clock_.get_simulation_time()};
     if (simulated_seconds + UE_DOUBLE_SMALL_NUMBER >= next_battle_sample_seconds_) {
         sample_series();
@@ -123,12 +131,14 @@ void FLevelTelemetryManager::record_simulation_tick_timing(
     if (!run_recording_ || !run_record_.metadata.detailed_timing) {
         return;
     }
+
     simulation_tick_samples_.Add(elapsed_seconds);
     for (int32 index{}; index < FSimulationTelemetryPerformanceWindow::system_count; ++index) {
         if (systems[index] >= 0.0) {
             system_samples_[index].Add(systems[index]);
         }
     }
+
     for (int32 index{}; index < FSimulationTelemetryPerformanceWindow::phase_count; ++index) {
         if (phases[index] >= 0.0) {
             phase_samples_[index].Add(phases[index]);
@@ -136,10 +146,14 @@ void FLevelTelemetryManager::record_simulation_tick_timing(
     }
 }
 
+/* **************************************** */
+// Snapshots
+/* **************************************** */
 auto FLevelTelemetryManager::make_snapshot() const -> FLevelTelemetrySnapshot {
     check(initialized_);
     auto const completed_tick{clock_.get_completed_ticks()};
     auto const tick_period{clock_.get_tick_period()};
+
     checkf(FMath::IsFinite(tick_period) && tick_period > 0.0,
            TEXT("Level telemetry snapshots require a finite, positive tick period."));
     auto const& active_entity_count_data{run_record_.tick_series.active_entities};
@@ -160,6 +174,7 @@ auto FLevelTelemetryManager::make_snapshot() const -> FLevelTelemetrySnapshot {
     snapshot.tick_period = tick_period;
     snapshot.active_entities = current_state_.active_entities;
     snapshot.spawned_entities = current_state_.spawned_entities;
+
     checkf(snapshot.spawned_entities >= snapshot.active_entities,
            TEXT("Spawned entity count cannot be lower than active entity count."));
     snapshot.destroyed_entities = current_state_.destroyed_entities;
@@ -173,6 +188,9 @@ auto FLevelTelemetryManager::make_snapshot() const -> FLevelTelemetrySnapshot {
     return snapshot;
 }
 
+/* **************************************** */
+// State and series sampling
+/* **************************************** */
 void FLevelTelemetryManager::update_current_state() {
     auto const spatial{spatial_queries_.get_runtime_telemetry()};
     current_state_.active_entities_by_team_and_type =
@@ -266,9 +284,11 @@ void FLevelTelemetryManager::sample_battle_state(bool const force) {
     if (!force && !samples.IsEmpty() && samples.Last().completed_tick == tick) {
         return;
     }
+
     if (force && !samples.IsEmpty() && samples.Last().completed_tick == tick) {
         samples.Pop(EAllowShrinking::No);
     }
+
     samples.Add(FLevelTelemetryBattleSample{
         .completed_tick = tick,
         .simulated_elapsed_seconds = clock_.get_simulation_time(),
@@ -285,6 +305,9 @@ void FLevelTelemetryManager::sample_battle_state(bool const force) {
     });
 }
 
+/* **************************************** */
+// Run capture
+/* **************************************** */
 void FLevelTelemetryManager::begin_run(FLevelTelemetryRunMetadata metadata) {
     check(initialized_);
     check(clock_.get_tick_rate() > 0.0);
@@ -296,6 +319,7 @@ void FLevelTelemetryManager::begin_run(FLevelTelemetryRunMetadata metadata) {
     metadata.tick_rate_hz = clock_.get_tick_rate();
     metadata.tick_period_seconds = clock_.get_tick_period();
     metadata.initial_requested_time_scale = clock_.get_time_scale();
+
     run_record_.metadata = MoveTemp(metadata);
     run_record_.completion = {};
     run_record_.completed_ticks_by_real_time.reset();
@@ -303,6 +327,7 @@ void FLevelTelemetryManager::begin_run(FLevelTelemetryRunMetadata metadata) {
     run_recording_ = true;
     run_finalized_ = false;
     run_record_taken_ = false;
+
     add_realtime_sample(clock_.get_completed_ticks(), run_started_at_);
     sample_battle_state(true);
     next_battle_sample_seconds_ = 1.0;
@@ -325,26 +350,33 @@ void FLevelTelemetryManager::close_performance_window(double const monotonic_tim
     window.frame = aggregate_timings(MoveTemp(frame_samples_));
     window.game_thread = window.frame;
     window.simulation_tick = aggregate_timings(MoveTemp(simulation_tick_samples_));
+
     for (int32 index{}; index < FSimulationTelemetryPerformanceWindow::system_count; ++index) {
         window.systems[index] = aggregate_timings(MoveTemp(system_samples_[index]));
         system_samples_[index].Reset();
     }
+
     double phase_total_ms{};
     for (int32 index{}; index < FSimulationTelemetryPerformanceWindow::phase_count; ++index) {
         window.phases[index] = aggregate_timings(MoveTemp(phase_samples_[index]));
         phase_total_ms += window.phases[index].mean_ms;
         phase_samples_[index].Reset();
     }
+
     if (phase_total_ms > 0.0) {
         for (int32 index{}; index < FSimulationTelemetryPerformanceWindow::phase_count; ++index) {
             window.phase_cpu_share[index] = window.phases[index].mean_ms / phase_total_ms;
         }
     }
+
     run_record_.performance_windows.Add(MoveTemp(window));
     frame_samples_.Reset();
     simulation_tick_samples_.Reset();
 }
 
+/* **************************************** */
+// Completion and finalization
+/* **************************************** */
 void FLevelTelemetryManager::mark_mission_terminal(FLevelMissionResult const& result) {
     auto const reason{result.state == ETestMissionState::Succeeded
                           ? ELevelTelemetryRunEndReason::MissionSucceeded
@@ -395,6 +427,7 @@ void FLevelTelemetryManager::finalize_run(ELevelTelemetryRunEndReason const reas
     }
 
     auto const completed_ticks{clock_.get_completed_ticks()};
+
     update_current_state();
     sample_series();
     sample_battle_state(true);
@@ -410,6 +443,7 @@ void FLevelTelemetryManager::finalize_run(ELevelTelemetryRunEndReason const reas
     run_record_.completion.completed_ticks = completed_ticks;
     run_record_.completion.simulated_elapsed_seconds = clock_.get_simulation_time();
     run_record_.completion.wall_elapsed_seconds = wall_elapsed(monotonic_time);
+
     if (mission_result != nullptr) {
         run_record_.completion.mission_mode = mission_result->mode;
         run_record_.completion.mission_state = mission_result->state;

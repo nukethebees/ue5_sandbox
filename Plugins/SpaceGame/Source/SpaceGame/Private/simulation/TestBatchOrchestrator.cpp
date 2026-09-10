@@ -136,6 +136,9 @@ void destroy_proxy_actors(UWorld& world) {
 
 FOnProxyEntitiesBound ATestBatchOrchestrator::on_proxy_entities_bound;
 
+/* **************************************** */
+// Lifecycle and simulation control
+/* **************************************** */
 ATestBatchOrchestrator::ATestBatchOrchestrator() {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
@@ -235,17 +238,21 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     SetActorTickEnabled(false);
     stop_visual_logging();
     clear_end_tick_test_hook();
+
     hud_manager.deactivate();
     if (IsValid(player_ship)) {
         player_ship->unbind_simulation();
     }
+
     persist_finalized_telemetry_run();
     level_presentation_.Reset();
     level_simulation_.Reset();
     level_definition_.Reset();
+
     launched_paused_ = false;
     launch_options_ = {};
     level_source_sha256_.Reset();
+
     world_collision_.restore_collision();
     collision_grid_visualization->clear_collision_bounds();
     laser_instances_->clear_instances();
@@ -349,6 +356,9 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     on_reset.Broadcast(*this);
 }
 
+/* **************************************** */
+// Level configuration
+/* **************************************** */
 void ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) {
     if (level_simulation_.IsSet()) {
         UE_LOG(LogSandbox,
@@ -399,6 +409,9 @@ void ATestBatchOrchestrator::set_presentation_enabled(bool const enabled) {
     refresh_collision_grid_visualization();
 }
 
+/* **************************************** */
+// Player and combat simulations
+/* **************************************** */
 auto ATestBatchOrchestrator::get_player_ship() const -> ATestSpaceShip const* {
     return player_ship.Get();
 }
@@ -427,13 +440,18 @@ void ATestBatchOrchestrator::clear_player_ship() {
     player_ship = nullptr;
 }
 
+/* **************************************** */
+// Level initialization
+/* **************************************** */
 auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors) -> bool {
     auto& world{*GetWorld()};
     auto const& config{*level_config};
+
     TOptional<ml::test_space_ship::FPlayerSpawnData> player;
     if (IsValid(player_ship)) {
         player.Emplace(player_ship->make_spawn_data());
     }
+
     auto const* const player_collision_mesh{IsValid(player_ship) ? player_ship->get_collision_mesh()
                                                                  : nullptr};
 
@@ -448,11 +466,13 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
             errors = MoveTemp(result.error());
             return false;
         }
+
         auto const presentation{make_presentation_resources()};
         if (presentation_enabled && !presentation.is_valid()) {
             errors.add(TEXT("Level presentation resources are incomplete"));
             return false;
         }
+
         result->telemetry_metadata = make_level_telemetry_run_metadata(world, mission_definition);
         result->telemetry_metadata->level_id = level_definition_->metadata.id.value;
         result->telemetry_metadata->level_display_name = level_definition_->metadata.title;
@@ -462,6 +482,7 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
         result->telemetry_metadata->detailed_timing = launch_options_.detailed_timing;
         result->telemetry_metadata->stop_when_battle_resolved =
             launch_options_.stop_when_battle_resolved;
+
         initial_turret_transforms_ = result->turret_transforms;
         level_simulation_.Emplace(MoveTemp(result.value()));
         validate_entity_handles();
@@ -474,6 +495,7 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
         errors = MoveTemp(result.error());
         return false;
     }
+
     auto& data{result.value()};
 
     auto const capital_proxies{ml::get_actors<ATestCapitalShipProxy>(world)};
@@ -542,34 +564,40 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
         data.spinner_yaws = MoveTemp(new_yaws);
         data.spinner_fire_points = MoveTemp(new_fire_point_indices);
     }
+
     auto const presentation{make_presentation_resources()};
     if (presentation_enabled && !presentation.is_valid()) {
         errors.add(TEXT("Level presentation resources are incomplete"));
         return false;
     }
+
     data.telemetry_metadata = make_level_telemetry_run_metadata(world, mission_definition);
     ml::validate_world_fighter_spawn_slots(data, errors);
     if (errors.has_errors()) {
         return false;
     }
+
     initial_turret_transforms_ = data.turret_transforms;
     level_simulation_.Emplace(MoveTemp(data));
+
     auto const capital_count{capital_proxies.Num()};
     for (int32 i{}; i < capital_count; ++i) {
         capital_proxies[i]->set_entity_handle(get_capital_ships()->get_handle(i));
     }
+
     auto const turret_count{turret_proxies.Num()};
     for (int32 i{}; i < turret_count; ++i) {
         turret_proxies[i]->set_entity_handle(get_turrets()->get_read_view().entities.handles[i]);
     }
+
     auto const spinner_count{spinner_proxies.Num()};
     for (int32 i{}; i < spinner_count; ++i) {
         spinner_proxies[i]->set_entity_handle(get_spinners()->get_read_view().entities.handles[i]);
     }
+
     validate_entity_handles();
     return true;
 }
-
 void
     ATestBatchOrchestrator::bind_capital_ship_proxy_targets(FProxyEntityMap const& proxy_entities) {
     auto* const world{GetWorld()};
@@ -599,7 +627,6 @@ void
         get_capital_ships()->set_target_handle(identifiers->handle, target_handle);
     }
 }
-
 void ATestBatchOrchestrator::bind_and_destroy_proxies() {
     if (level_definition_.IsSet()) {
         return;
@@ -617,6 +644,7 @@ void ATestBatchOrchestrator::bind_and_destroy_proxies() {
     if (mission_definition.level_display_name.IsEmpty()) {
         mission_definition.level_display_name = mission_definition.level_id.ToString();
     }
+
     mission_definition.apply(get_mission_manager(), proxy_entities, get_entity_registry());
     bind_capital_ship_proxy_targets(proxy_entities);
     on_proxy_entities_bound.Broadcast(proxy_entities);
@@ -625,17 +653,18 @@ void ATestBatchOrchestrator::bind_and_destroy_proxies() {
     destroy_proxy_actors<ATestStaticTurretsProxy>(world);
     destroy_proxy_actors<ATestTubeSpinnerProxy>(world);
 }
-
 auto ATestBatchOrchestrator::begin_play() -> bool {
     if (level_simulation_.IsSet()) {
         handle_level_start_failure(TEXT("Level simulation is already initialized"));
         return false;
     }
+
     auto* const world{GetWorld()};
     if (!IsValid(world)) {
         handle_level_start_failure(TEXT("Cannot start level: world is invalid"));
         return false;
     }
+
     if (!IsValid(level_config)) {
         handle_level_start_failure(TEXT("Cannot start level: level configuration is invalid"));
         return false;
@@ -645,6 +674,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     TArray<FString> config_error_messages;
     level_config->get_validation_errors(config_error_messages, presentation_enabled);
     config_errors.append(MoveTemp(config_error_messages));
+
     if (presentation_enabled && IsValid(player_ship) &&
         !level_config->player_ship.team_visual_data) {
         config_errors.add(TEXT("player_ship.team_visual_data is null"));
@@ -656,46 +686,56 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         simulation_tick_loop.time_scale <= 0.0) {
         config_errors.add(TEXT("simulation time scale must be finite and positive"));
     }
+
     if (config_errors.has_errors()) {
         handle_level_start_failure(
             FString::Printf(TEXT("Cannot start level: level configuration failed validation:\n%s"),
                             *config_errors.format()));
         return false;
     }
+
     if (!presentation_enabled &&
         (IsValid(player_ship) || ml::get_first_actor<ATestSpaceShip>(*world))) {
         handle_level_start_failure(TEXT("Presentation-disabled levels must be playerless"));
         return false;
     }
+
     set_level_config(*level_config);
     hud_tick_loop.initialise();
+
     ml::FLevelStartErrors simulation_errors;
     if (!initialise_simulation(simulation_errors)) {
         handle_level_start_failure(
             FString::Printf(TEXT("Cannot start level:\n%s"), *simulation_errors.format()));
         return false;
     }
+
     if (IsValid(player_ship) && get_player_ship_simulation()) {
         player_ship->bind_simulation(*get_player_ship_simulation());
     }
+
     bind_and_destroy_proxies();
     world_collision_.initialise_static_geometry(
         *world, level_config->collision_grid, get_spatial_query_manager().get_collision_system());
+
     external_timings_.Reset();
     telemetry_environment_ = make_level_telemetry_environment(*world);
     level_simulation_->finish_initialisation();
+
     if (presentation_enabled) {
         level_presentation_.Emplace(make_presentation_resources(),
                                     level_simulation_->get_read_view(),
                                     MoveTemp(initial_turret_transforms_));
     }
     update_collision_bounds_visualization();
+
     level_simulation_->on_mission_evaluated = [this] { process_mission_result(); };
     level_simulation_->on_end_tick = [this](FLevelSimulation&) {
         end_tick_test_hook.ExecuteIfBound(*this);
         process_mission_result();
         process_battle_run_end();
     };
+
     if (presentation_enabled) {
         hud_manager.initialise(hud_update_frequencies,
                                get_mission_manager(),
@@ -713,6 +753,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
             }
         }
     }
+
     bool const automatic{
         start_mode == EOrchestratorStartMode::Automatic ||
         start_mode == EOrchestratorStartMode::AuthoredLevel ||
@@ -721,10 +762,10 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         level_simulation_->start();
         start_visual_logging();
     }
+
     SetActorTickEnabled(automatic);
     return true;
 }
-
 void ATestBatchOrchestrator::handle_level_start_failure(FString message) {
     SetActorTickEnabled(false);
     stop_visual_logging();
@@ -754,7 +795,6 @@ void ATestBatchOrchestrator::handle_level_start_failure(FString message) {
         UGameplayStatics::OpenLevel(world, ml::ioj::UGameSubsystem::get_main_menu_level_name());
     }
 }
-
 void ATestBatchOrchestrator::load_authored_level() {
     launched_paused_ = false;
 
@@ -773,6 +813,7 @@ void ATestBatchOrchestrator::load_authored_level() {
         handle_level_start_failure(error);
         return;
     }
+
     auto const& options{pending->options};
     if (!ml::ioj::level_launch::is_valid_time_scale(options.requested_time_scale)) {
         handle_level_start_failure(
@@ -824,16 +865,19 @@ void ATestBatchOrchestrator::load_authored_level() {
     if (!begin_play()) {
         return;
     }
+
     if (launched_paused_) {
         pause_simulation();
     }
 }
-
 auto ATestBatchOrchestrator::should_initialise_in_begin_play() const noexcept -> bool {
     return start_mode == EOrchestratorStartMode::Automatic ||
            (start_mode == EOrchestratorStartMode::PausedInTest && !GIsAutomationTesting);
 }
 
+/* **************************************** */
+// Presentation and diagnostics
+/* **************************************** */
 void ATestBatchOrchestrator::start_visual_logging() {
 #if ENABLE_VISUAL_LOG
     if (!presentation_enabled || !enable_visual_logging) {
@@ -858,7 +902,6 @@ void ATestBatchOrchestrator::stop_visual_logging() {
     visual_logger.SetGetTimeStampFunc(TFunction<double(UObject const*)>{});
 #endif
 }
-
 void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
     if (!IsValid(collision_grid_visualization)) {
         UE_LOG(LogSandbox,
@@ -881,7 +924,6 @@ void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
     collision_grid_visualization->configure_collision_bounds(show_collision_bounds,
                                                              collision_bounds_max_draw_distance);
 }
-
 void ATestBatchOrchestrator::update_collision_bounds_visualization() {
     if (!IsValid(collision_grid_visualization)) {
         UE_LOG(LogSandbox,
@@ -902,6 +944,9 @@ void ATestBatchOrchestrator::update_collision_bounds_visualization() {
         get_spatial_query_manager().get_collision_system());
 }
 
+/* **************************************** */
+// Simulation state and timing
+/* **************************************** */
 void ATestBatchOrchestrator::validate_entity_handles() {
     if (auto const* player{get_player_ship_simulation()}) {
         check(get_entity_registry().is_valid_handle(player->registry_handle));
@@ -909,7 +954,6 @@ void ATestBatchOrchestrator::validate_entity_handles() {
     get_capital_ships()->validate_entity_handles();
     get_turrets()->validate_entity_handles();
 }
-
 void ATestBatchOrchestrator::Tick(float dt) {
     Super::Tick(dt);
 
@@ -919,40 +963,48 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
     if (get_state() != EOrchestratorState::Running) {
         return;
     }
+
     auto const detailed_timing{get_level_telemetry_manager().detailed_timing_enabled()};
     auto const timing_window{get_level_telemetry_manager().get_performance_window_count()};
+
     level_simulation_->advance(dt);
     update_collision_bounds_visualization();
+
     if (presentation_enabled) {
         auto const hud_started_at{detailed_timing ? FPlatformTime::Seconds() : 0.0};
+
         hud_tick_loop.add_time(dt);
         while (hud_tick_loop.try_tick()) {
             hud_manager.tick(1);
         }
+
         if (detailed_timing) {
             record_external_timing(timing_window,
                                    ELevelTelemetryTimingSystem::Hud,
                                    FPlatformTime::Seconds() - hud_started_at);
         }
     }
+
     auto const presentation_started_at{detailed_timing ? FPlatformTime::Seconds() : 0.0};
     if (level_presentation_.IsSet()) {
         level_presentation_->tick(dt, level_simulation_->get_read_view());
     }
+
     if (auto* player{get_player_ship_simulation()};
         player && player->consume_death_notification()) {
         if (IsValid(player_ship)) {
             player_ship->handle_simulation_death();
         }
     }
+
     if (detailed_timing) {
         record_external_timing(timing_window,
                                ELevelTelemetryTimingSystem::Presentation,
                                FPlatformTime::Seconds() - presentation_started_at);
     }
+
     persist_finalized_telemetry_run();
 }
-
 void ATestBatchOrchestrator::set_time_scale(time_type const scale) noexcept {
     check(scale > time_type{0});
     simulation_tick_loop.time_scale = scale;
@@ -973,13 +1025,15 @@ auto ATestBatchOrchestrator::duration_to_tick_period(time_type const duration) c
     return static_cast<tick_type>(FMath::CeilToInt64(duration * simulation_tick_loop.tick_rate));
 }
 
+/* **************************************** */
+// Testing and level preparation
+/* **************************************** */
 void ATestBatchOrchestrator::set_end_tick_test_hook(FOrchestratorEndTickTestHook hook) {
     end_tick_test_hook = MoveTemp(hook);
 }
 void ATestBatchOrchestrator::clear_end_tick_test_hook() {
     end_tick_test_hook.Unbind();
 }
-
 void ATestBatchOrchestrator::prepare_level() {
     if (get_state() != EOrchestratorState::Uninitialised) {
         UE_LOG(LogSandbox, Error, TEXT("Cannot prepare an already initialized level"));
@@ -1008,6 +1062,9 @@ void ATestBatchOrchestrator::prepare_level_button() {
 }
 #endif
 
+/* **************************************** */
+// Presentation and collision
+/* **************************************** */
 auto ATestBatchOrchestrator::make_presentation_resources() const -> FLevelPresentationResources {
     return {
         .lasers = laser_instances_,
@@ -1031,6 +1088,10 @@ auto ATestBatchOrchestrator::add_static_geometry(UPrimitiveComponent& component)
     }
     return added;
 }
+
+/* **************************************** */
+// Mission and telemetry
+/* **************************************** */
 void ATestBatchOrchestrator::process_mission_result() {
     auto result{level_simulation_->take_mission_result()};
     if (!result.IsSet()) {
@@ -1065,7 +1126,6 @@ void ATestBatchOrchestrator::process_mission_result() {
                                     .state = result->state,
                                     .persisted = persisted});
 }
-
 void ATestBatchOrchestrator::process_battle_run_end() {
     if (!level_simulation_.IsSet() ||
         !level_simulation_->get_level_telemetry_manager().is_run_recording()) {
@@ -1097,7 +1157,6 @@ void ATestBatchOrchestrator::process_battle_run_end() {
         level_simulation_->complete_telemetry_run(ELevelTelemetryRunEndReason::DurationReached);
     }
 }
-
 void ATestBatchOrchestrator::handle_telemetry_persisted(FString run_id, FString error) {
     if (launch_options_.results_navigation != ml::ioj::ELevelResultsNavigation::Telemetry) {
         return;
@@ -1113,7 +1172,6 @@ void ATestBatchOrchestrator::handle_telemetry_persisted(FString run_id, FString 
         UE_LOG(LogSandbox, Error, TEXT("Cannot navigate to completed telemetry run"));
     }
 }
-
 auto ATestBatchOrchestrator::take_finalized_telemetry_report() -> TOptional<FLevelTelemetryReport> {
     if (!level_simulation_.IsSet()) {
         return {};
@@ -1157,7 +1215,6 @@ void ATestBatchOrchestrator::persist_finalized_telemetry_run() {
         handle_telemetry_persisted(run_id, path.error());
     }
 }
-
 void ATestBatchOrchestrator::record_external_timing(int32 const window_index,
                                                     ELevelTelemetryTimingSystem const system,
                                                     double const seconds) {

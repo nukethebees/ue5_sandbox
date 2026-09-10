@@ -144,6 +144,9 @@ void add_rate(FMetricBuilder& builder,
 }
 } // namespace telemetry_dashboard
 
+/* **************************************** */
+// Metric analysis
+/* **************************************** */
 auto telemetry_metric_title(ETelemetryDashboardMetric const metric) -> FString {
     switch (metric) {
         case ETelemetryDashboardMetric::RequestedTimeScaleRatio:
@@ -233,6 +236,7 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
     for (uint8 value{}; value < static_cast<uint8>(ETelemetryDashboardMetric::COUNT); ++value) {
         builders.Emplace(static_cast<ETelemetryDashboardMetric>(value));
     }
+
     auto builder = [&builders](ETelemetryDashboardMetric metric) -> FMetricBuilder& {
         return builders[static_cast<uint8>(metric)];
     };
@@ -256,6 +260,7 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
         if (!FMath::IsFinite(real_delta) || real_delta <= 0.0 || end_tick < begin_tick) {
             continue;
         }
+
         auto const tick_delta{end_tick - begin_tick};
         auto const ticks_per_second{static_cast<double>(tick_delta) / real_delta};
         auto const observed{ticks_per_second * record.metadata.tick_period_seconds};
@@ -265,12 +270,14 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
             auto const* requested{as_of(record.tick_series.requested_time_scale, end_tick)};
             result.requested_time_scale.Add(static_cast<float>(
                 requested ? *requested : record.metadata.initial_requested_time_scale));
+
             builder(ETelemetryDashboardMetric::ObservedTimeScale)
                 .add(end_time, observed, real_delta);
             builder(ETelemetryDashboardMetric::TicksPerRealSecond)
                 .add(end_time, ticks_per_second, real_delta);
             builder(ETelemetryDashboardMetric::RealSampleInterval)
                 .add(end_time, real_delta, real_delta);
+
             double stable_requested{};
             if (requested_unchanged(record.tick_series.requested_time_scale,
                                     begin_tick,
@@ -289,6 +296,7 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
                   end_tick,
                   end_time,
                   real_delta);
+
         constexpr ETelemetryDashboardMetric type_metrics[]{
             ETelemetryDashboardMetric::PlayerShips,
             ETelemetryDashboardMetric::Turrets,
@@ -302,6 +310,7 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
                       end_time,
                       real_delta);
         }
+
         add_gauge(builder(ETelemetryDashboardMetric::ActiveLasers),
                   record.tick_series.active_lasers,
                   end_tick,
@@ -317,6 +326,7 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
                   end_tick,
                   end_time,
                   real_delta);
+
         add_rate(builder(ETelemetryDashboardMetric::SpawnRate),
                  record.tick_series.spawned_entities,
                  begin_tick,
@@ -366,6 +376,7 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
                  end_time,
                  real_delta);
     }
+
     auto sum_counts = [](auto const& counts) {
         double total{};
         for (auto const& row : counts) {
@@ -375,6 +386,7 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
         }
         return static_cast<float>(total);
     };
+
     ml::reserve(record.battle_samples.Num(),
                 result.battle_simulated_seconds,
                 result.battle_alive_entities,
@@ -390,6 +402,7 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
         result.battle_damage_dealt.Add(sum_counts(sample.combat.damage_dealt));
         result.battle_kills.Add(sum_counts(sample.combat.kills));
     }
+
     if (use_battle_metrics) {
         constexpr ETelemetryDashboardMetric simulated_metrics[]{
             ETelemetryDashboardMetric::ActiveEntities,
@@ -413,6 +426,7 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
         for (auto const metric : simulated_metrics) {
             builder(metric).series.uses_simulated_time = true;
         }
+
         constexpr ETelemetryDashboardMetric type_metrics[]{
             ETelemetryDashboardMetric::PlayerShips,
             ETelemetryDashboardMetric::Turrets,
@@ -420,6 +434,7 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
             ETelemetryDashboardMetric::CapitalShipFighters,
             ETelemetryDashboardMetric::TubeSpinners,
         };
+
         auto add_rate = [&builder](ETelemetryDashboardMetric const metric,
                                    double const begin,
                                    double const end,
@@ -429,6 +444,7 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
                 builder(metric).add(time, (end - begin) / duration, duration);
             }
         };
+
         auto type_total = [](FTestEntityRegistry::EntityCounts const& counts, int32 const type) {
             int32 total{};
             for (auto const& team : counts) {
@@ -436,6 +452,7 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
             }
             return total;
         };
+
         auto const sample_count{record.battle_samples.Num()};
         for (int32 index{1}; index < sample_count; ++index) {
             auto const& begin{record.battle_samples[index - 1]};
@@ -444,12 +461,14 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
             if (!FMath::IsFinite(duration) || duration <= 0.0) {
                 continue;
             }
+
             auto const time{end.simulated_elapsed_seconds};
             builder(ETelemetryDashboardMetric::ActiveEntities)
                 .add(time, sum_counts(end.alive), duration);
             for (int32 type{}; type < FLevelTelemetryTickSeries::entity_type_count; ++type) {
                 builder(type_metrics[type]).add(time, type_total(end.alive, type), duration);
             }
+
             builder(ETelemetryDashboardMetric::ActiveLasers).add(time, end.active_lasers, duration);
             builder(ETelemetryDashboardMetric::RegistrySlots)
                 .add(time, end.registry_slot_count, duration);
@@ -497,13 +516,18 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
                      duration);
         }
     }
+
     result.metrics.Reserve(builders.Num());
     for (auto& value : builders) {
         result.metrics.Add(value.finish());
     }
+
     return result;
 }
 
+/* **************************************** */
+// Run catalog
+/* **************************************** */
 auto FTelemetryRunSummary::level_label() const -> FString {
     if (!level_display_name.IsEmpty()) {
         return level_display_name;

@@ -32,6 +32,9 @@ UCLASS()
 class SPACEGAME_API UTelemetryDashboardWidget : public UUserWidget {
     GENERATED_BODY()
   public:
+    /* **************************************** */
+    // Lifecycle and actions
+    /* **************************************** */
     UTelemetryDashboardWidget(FObjectInitializer const& object_initializer);
 
     void refresh();
@@ -46,18 +49,27 @@ class SPACEGAME_API UTelemetryDashboardWidget : public UUserWidget {
         return state_;
     }
   protected:
+    /* **************************************** */
+    // Widget lifecycle
+    /* **************************************** */
     void NativeOnInitialized() override;
     auto RebuildWidget() -> TSharedRef<SWidget> override;
     void ReleaseSlateResources(bool release_children) override;
     auto NativeOnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
   private:
+    /* **************************************** */
+    // Selection callbacks and publication
+    /* **************************************** */
     void handle_run_selected(FString run_id);
     void handle_level_filter_selected(FString level_label);
     void handle_baseline_selected(FString run_id);
     void rebuild_state();
     void publish();
 
+    /* **************************************** */
+    // State
+    /* **************************************** */
     FTelemetryRunCatalog catalog_{};
     FTelemetryDashboardViewState state_{};
     TSharedPtr<STelemetryDashboardView> view_{};

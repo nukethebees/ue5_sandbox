@@ -23,6 +23,9 @@
 #include <Widgets/DeclarativeSyntaxSupport.h>
 
 namespace ml::ioj {
+/* **************************************** */
+// Widget lifecycle
+/* **************************************** */
 void UPauseMenuWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
@@ -125,6 +128,9 @@ void UPauseMenuWidget::ReleaseSlateResources(bool const release_children) {
     telemetry_graph_.Reset();
 }
 
+/* **************************************** */
+// Navigation callbacks
+/* **************************************** */
 void UPauseMenuWidget::handle_resume() {
     if (!terminal_action_requested_) {
         DeactivateWidget();
@@ -173,6 +179,9 @@ void UPauseMenuWidget::handle_toggle_action() {
     }
 }
 
+/* **************************************** */
+// View state and presentation
+/* **************************************** */
 void UPauseMenuWidget::set_active_tab(EPauseMenuTab const tab) {
     if (!IsValid(page_heading) || !IsValid(page_switcher) || !IsValid(overview_button) ||
         !IsValid(forces_button) || !IsValid(combat_button) || !IsValid(telemetry_button) ||

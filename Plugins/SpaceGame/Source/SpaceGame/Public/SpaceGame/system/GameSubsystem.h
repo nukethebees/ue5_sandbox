@@ -123,14 +123,23 @@ UCLASS()
 class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     GENERATED_BODY()
   public:
+    /* **************************************** */
+    // Lifecycle and services
+    /* **************************************** */
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
 
     auto get_platform_capabilities() const -> FGameCapabilities const&;
     auto get_save_game_browser() -> FSaveGameBrowser&;
 
+    /* **************************************** */
+    // UI configuration
+    /* **************************************** */
     auto get_ui_style() const -> FGameUiStyle const&;
     auto set_ui_theme(USpaceGameUiTheme* theme) -> bool;
 
+    /* **************************************** */
+    // Level launch and navigation
+    /* **************************************** */
     void set_pending_level(FLevelDefinition definition,
                            FString source_path,
                            FString source_sha256,
@@ -142,10 +151,16 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     auto take_level_select_request() -> TOptional<FLevelSelectRequest>;
     static auto get_main_menu_level_name() -> FName;
 
+    /* **************************************** */
+    // Launch errors
+    /* **************************************** */
     void set_level_launch_error(FString error);
     auto has_level_launch_error() const noexcept -> bool;
     auto take_level_launch_error() -> FString;
   private:
+    /* **************************************** */
+    // State
+    /* **************************************** */
     FGameCapabilities platform_capabilities_;
     FSaveGameBrowser save_game_browser_;
     TOptional<FPendingLevelDefinition> pending_level_{NullOpt};

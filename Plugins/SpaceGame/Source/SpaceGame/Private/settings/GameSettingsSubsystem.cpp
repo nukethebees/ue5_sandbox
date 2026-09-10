@@ -11,6 +11,9 @@
 namespace ml::ioj {
 constexpr double display_confirmation_duration_seconds{15.0};
 
+/* **************************************** */
+// Lifecycle
+/* **************************************** */
 void UGameSettingsSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
     edit_state_.begin(backend_.read(), backend_.defaults());
@@ -24,6 +27,9 @@ void UGameSettingsSubsystem::Deinitialize() {
     Super::Deinitialize();
 }
 
+/* **************************************** */
+// Edit sessions and display confirmation
+/* **************************************** */
 void UGameSettingsSubsystem::begin_edit(ULocalPlayer* const local_player) {
     if (awaiting_display_confirmation_) {
         return;
@@ -132,6 +138,9 @@ void UGameSettingsSubsystem::revert_display_changes() {
     settings_changed.Broadcast();
 }
 
+/* **************************************** */
+// Settings state
+/* **************************************** */
 auto UGameSettingsSubsystem::settings_state() const -> FGameSettingsState const& {
     return edit_state_.pending();
 }
@@ -224,6 +233,9 @@ auto UGameSettingsSubsystem::display_confirmation_seconds_remaining() const -> i
         0, FMath::CeilToInt32(display_confirmation_deadline_ - FPlatformTime::Seconds()));
 }
 
+/* **************************************** */
+// Settings and display helpers
+/* **************************************** */
 auto UGameSettingsSubsystem::tick_display_confirmation(float const delta_seconds) -> bool {
     static_cast<void>(delta_seconds);
     if (!awaiting_display_confirmation_) {
@@ -289,8 +301,12 @@ auto UGameSettingsSubsystem::input_user_settings() const -> USpaceGameInputUserS
                                 : nullptr;
 }
 
+/* **************************************** */
+// Control profiles and bindings
+/* **************************************** */
 auto UGameSettingsSubsystem::control_profiles() const -> TArray<FControlProfileView> {
     TArray<FControlProfileView> result;
+
     auto const* const settings{input_user_settings()};
     if (settings == nullptr) {
         return result;
@@ -311,6 +327,7 @@ auto UGameSettingsSubsystem::control_profiles() const -> TArray<FControlProfileV
                 break;
             }
         }
+
         auto const mapping_profile_id{custom ? settings->custom_key_profile_source_id(id)
                                              : profile.GetProfileIdString()};
         auto const display_name{custom ? settings->custom_key_profile_display_name(id)
@@ -341,16 +358,19 @@ auto UGameSettingsSubsystem::control_profiles() const -> TArray<FControlProfileV
             custom_profiles.Add(make_view(profile_pair.Key, *profile, true));
         }
     }
+
     custom_profiles.Sort([](auto const& left, auto const& right) {
         auto const name_order{left.display_name.ToString().Compare(right.display_name.ToString())};
         return name_order == 0 ? left.id < right.id : name_order < 0;
     });
     result.Append(MoveTemp(custom_profiles));
+
     return result;
 }
 
 auto UGameSettingsSubsystem::all_control_bindings() const -> TArray<FControlBindingView> {
     TArray<FControlBindingView> result;
+
     auto const* const settings{input_user_settings()};
     if (settings == nullptr) {
         return result;
@@ -379,6 +399,7 @@ auto UGameSettingsSubsystem::all_control_bindings() const -> TArray<FControlBind
                         .default_key = chord_mapping->GetDefaultKey(),
                     };
                 }
+
                 result.Add(FControlBindingView{
                     .address =
                         {
@@ -400,6 +421,7 @@ auto UGameSettingsSubsystem::all_control_bindings() const -> TArray<FControlBind
             }
         }
     }
+
     result.Sort([](auto const& left, auto const& right) {
         if (left.address.profile_id != right.address.profile_id) {
             return left.address.profile_id < right.address.profile_id;
@@ -415,6 +437,7 @@ auto UGameSettingsSubsystem::all_control_bindings() const -> TArray<FControlBind
         }
         return static_cast<uint8>(left.address.slot) < static_cast<uint8>(right.address.slot);
     });
+
     return result;
 }
 
@@ -424,6 +447,7 @@ auto UGameSettingsSubsystem::control_bindings(EHardwareDevicePrimaryType const d
     if (settings == nullptr) {
         return {};
     }
+
     auto bindings{all_control_bindings().FilterByPredicate([settings](auto const& binding) {
         return binding.address.profile_id == settings->GetActiveKeyProfileId();
     })};
@@ -462,10 +486,13 @@ auto UGameSettingsSubsystem::control_bindings(EHardwareDevicePrimaryType const d
                                FHardwareDeviceIdentifier::DefaultGamepad);
         }
     }
+
     bindings.Append(MoveTemp(missing_device_bindings));
+
     if (device_type == EHardwareDevicePrimaryType::Unspecified) {
         return bindings;
     }
+
     return bindings.FilterByPredicate(
         [device_type](auto const& binding) { return binding.device_type == device_type; });
 }
@@ -476,12 +503,14 @@ auto UGameSettingsSubsystem::binding_conflicts(FControlBindingAddress const& add
     if (!key.IsValid()) {
         return {};
     }
+
     auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
     auto const* const target{bindings.FindByPredicate(
         [&address](auto const& binding) { return binding.address == address; })};
     if (target == nullptr) {
         return {};
     }
+
     return bindings.FilterByPredicate([&address, key, target](auto const& binding) {
         auto const same_chord_scope{(!target->chord.IsSet() && !binding.chord.IsSet()) ||
                                     (target->chord.IsSet() && binding.chord.IsSet() &&
@@ -536,6 +565,7 @@ auto UGameSettingsSubsystem::map_control_binding(USpaceGameInputUserSettings& se
     arguments.HardwareDeviceId = address.hardware_device_id;
     arguments.ProfileIdString = address.profile_id;
     arguments.bDeferOnSettingsChangedBroadcast = defer_change_broadcast;
+
     FGameplayTagContainer failure_reason;
     settings.MapPlayerKey(arguments, failure_reason);
     if (!failure_reason.IsEmpty()) {
@@ -546,6 +576,7 @@ auto UGameSettingsSubsystem::map_control_binding(USpaceGameInputUserSettings& se
                *failure_reason.ToStringSimple());
         return false;
     }
+
     return true;
 }
 
@@ -568,6 +599,7 @@ auto UGameSettingsSubsystem::create_custom_control_profile() -> bool {
     if (source_bindings.IsEmpty()) {
         return false;
     }
+
     auto const profiles{control_profiles()};
     auto custom_number{1};
     FText display_name;
@@ -615,10 +647,12 @@ auto UGameSettingsSubsystem::create_custom_control_profile() -> bool {
             return false;
         }
     }
+
     if (!settings->SetActiveKeyProfile(arguments.ProfileStringIdentifier)) {
         settings->delete_custom_key_profile(arguments.ProfileStringIdentifier);
         return false;
     }
+
     settings_changed.Broadcast();
     return true;
 }
@@ -686,6 +720,7 @@ auto UGameSettingsSubsystem::set_control_binding(FControlBindingAddress const& a
         (target->device_type == EHardwareDevicePrimaryType::Gamepad) != key.IsGamepadKey()) {
         return false;
     }
+
     auto const conflicts{binding_conflicts(address, key)};
     if (!conflicts.IsEmpty() && !replace_conflicts) {
         return false;
@@ -703,6 +738,7 @@ auto UGameSettingsSubsystem::set_control_binding(FControlBindingAddress const& a
         }
         unmapped_conflicts.Add(conflict);
     }
+
     if (!map_control_binding(*settings, address, key, false)) {
         for (auto const& unmapped : unmapped_conflicts) {
             static_cast<void>(
@@ -710,6 +746,7 @@ auto UGameSettingsSubsystem::set_control_binding(FControlBindingAddress const& a
         }
         return false;
     }
+
     settings_changed.Broadcast();
     return true;
 }
@@ -855,6 +892,9 @@ auto UGameSettingsSubsystem::reset_active_control_profile() -> bool {
     return true;
 }
 
+/* **************************************** */
+// Input edit state
+/* **************************************** */
 void UGameSettingsSubsystem::capture_input_edit_state() {
     auto const* const settings{input_user_settings()};
     if (settings == nullptr) {
@@ -904,6 +944,7 @@ void UGameSettingsSubsystem::restore_input_edit_state() {
         FGameplayTagContainer failure_reason;
         settings->ResetKeyProfileIdToDefault(profile_pair.Key, failure_reason);
     }
+
     for (auto const& binding : applied_control_bindings_) {
         if (binding.current_key == binding.default_key) {
             continue;
@@ -917,6 +958,7 @@ void UGameSettingsSubsystem::restore_input_edit_state() {
         FGameplayTagContainer failure_reason;
         settings->MapPlayerKey(arguments, failure_reason);
     }
+
     settings->SetActiveKeyProfile(applied_control_profile_id_);
     settings->ApplySettings();
 }

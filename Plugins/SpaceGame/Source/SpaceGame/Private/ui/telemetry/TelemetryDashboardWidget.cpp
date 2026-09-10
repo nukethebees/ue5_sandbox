@@ -14,6 +14,9 @@ UTelemetryDashboardWidget::UTelemetryDashboardWidget(FObjectInitializer const& o
     SetIsFocusable(true);
 }
 
+/* **************************************** */
+// Widget lifecycle
+/* **************************************** */
 void UTelemetryDashboardWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
     auto* const game_instance{GetGameInstance()};
@@ -53,6 +56,9 @@ auto UTelemetryDashboardWidget::NativeOnFocusReceived(FGeometry const&, FFocusEv
     return FReply::Handled();
 }
 
+/* **************************************** */
+// Actions and selection callbacks
+/* **************************************** */
 void UTelemetryDashboardWidget::refresh() {
     catalog_.refresh();
     rebuild_state();
@@ -102,6 +108,9 @@ void UTelemetryDashboardWidget::focus_primary_action() {
     }
 }
 
+/* **************************************** */
+// State publication
+/* **************************************** */
 void UTelemetryDashboardWidget::rebuild_state() {
     state_ = FTelemetryDashboardViewState{};
     state_.runs = catalog_.get_runs();

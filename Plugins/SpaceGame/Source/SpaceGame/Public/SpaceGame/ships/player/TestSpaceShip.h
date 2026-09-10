@@ -32,13 +32,18 @@ class SPACEGAME_API ATestSpaceShip
         inline static FName const middle{"Middle"};
     };
 
+    /* **************************************** */
+    // Lifecycle and simulation binding
+    /* **************************************** */
     ATestSpaceShip();
     auto make_spawn_data() const -> ml::test_space_ship::FPlayerSpawnData;
-    auto get_presentation_resources() const -> FPlayerPresentationResources;
     void bind_simulation(ml::test_space_ship::Simulation& new_simulation);
     void unbind_simulation();
     auto has_simulation() const noexcept -> bool { return bound_simulation != nullptr; }
 
+    /* **************************************** */
+    // Entity identity and configuration
+    /* **************************************** */
     auto get_entity_handle() const noexcept -> FRegistryEntityHandle override;
     auto get_test_name() const noexcept -> FName { return TEXT("PlayerShip"); }
     auto get_unique_id() const -> TestEntityUniqueId;
@@ -48,6 +53,9 @@ class SPACEGAME_API ATestSpaceShip
     void set_actor_config(FPlayerShipConfig const* new_config) noexcept;
     auto get_kills() const -> int32;
 
+    /* **************************************** */
+    // Flight controls
+    /* **************************************** */
     void set_move_input(FVector2D input);
     void set_lateral_move_input(float input);
     void set_vertical_move_input(float input);
@@ -76,6 +84,9 @@ class SPACEGAME_API ATestSpaceShip
     auto get_target_local_planar_velocity() const -> FVector;
     auto get_turn_input() const -> FVector2D;
 
+    /* **************************************** */
+    // Energy and weapons
+    /* **************************************** */
     auto energy_is_full() const -> bool;
     auto get_energy() const -> float;
 
@@ -89,6 +100,9 @@ class SPACEGAME_API ATestSpaceShip
     void select_previous_laser_fire_rate() noexcept;
     void set_laser_fire_rate(ETestShipFireRate value) noexcept;
 
+    /* **************************************** */
+    // Health and collision
+    /* **************************************** */
     void add_health(int32 added_health);
     auto get_health_info() const -> FShipHealth;
     auto is_alive() const noexcept -> bool;
@@ -99,10 +113,21 @@ class SPACEGAME_API ATestSpaceShip
     FOnPlayerShipDied on_player_ship_died;
 
 #if WITH_EDITOR
+    /* **************************************** */
+    // Diagnostics
+    /* **************************************** */
     auto get_speed_samples() const noexcept -> TConstArrayView<FVector2d>;
     auto get_speed_sample_index() const noexcept -> int32;
 #endif
+
+    /* **************************************** */
+    // Presentation
+    /* **************************************** */
+    auto get_presentation_resources() const -> FPlayerPresentationResources;
   private:
+    /* **************************************** */
+    // Simulation access and presentation
+    /* **************************************** */
     auto GetVelocity() const -> FVector override;
 
     auto simulation() -> ml::test_space_ship::Simulation&;
@@ -111,6 +136,9 @@ class SPACEGAME_API ATestSpaceShip
     void handle_simulation_death();
     void configure_ship_mesh();
 
+    /* **************************************** */
+    // State
+    /* **************************************** */
     FPlayerShipConfig const* actor_config{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))

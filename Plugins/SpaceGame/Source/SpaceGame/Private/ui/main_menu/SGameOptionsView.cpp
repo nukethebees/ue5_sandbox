@@ -120,6 +120,9 @@ auto large_page_access_text(ELargePageAccessStatus const status) -> FText {
 #endif
 }
 
+/* **************************************** */
+// Lifecycle and state
+/* **************************************** */
 void SGameOptionsView::Construct(FArguments const& args) {
     settings_ = args._Settings;
     capabilities_ = args._Capabilities;
@@ -245,6 +248,9 @@ auto SGameOptionsView::is_dirty_prompt_visible() const -> bool {
     return dirty_prompt_visible_;
 }
 
+/* **************************************** */
+// Input handling
+/* **************************************** */
 auto SGameOptionsView::OnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
     -> FReply {
     static_cast<void>(geometry);
@@ -362,6 +368,9 @@ auto SGameOptionsView::OnMouseWheel(FGeometry const& geometry, FPointerEvent con
     return SCompoundWidget::OnMouseWheel(geometry, mouse_event);
 }
 
+/* **************************************** */
+// Layout construction
+/* **************************************** */
 auto SGameOptionsView::build_header() -> TSharedRef<SWidget> {
     return SNew(SVerticalBox) +
            SVerticalBox::Slot()
@@ -479,6 +488,9 @@ auto SGameOptionsView::build_controls_page() -> TSharedRef<SWidget> {
            SScrollBox::Slot()[controls_content_.ToSharedRef()];
 }
 
+/* **************************************** */
+// Control bindings
+/* **************************************** */
 void SGameOptionsView::rebuild_controls_page() {
     auto* const settings{settings_.Get()};
     if (!controls_content_.IsValid() || settings == nullptr) {
@@ -966,6 +978,9 @@ void SGameOptionsView::close_binding_prompt() {
     restore_focus();
 }
 
+/* **************************************** */
+// Settings and prompts
+/* **************************************** */
 auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descriptor,
                                          TFunction<void()>& focus_action) -> TSharedRef<SWidget> {
     auto const weak_settings{settings_};
@@ -986,6 +1001,7 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
                 auto const* const typed{std::get_if<bool>(&value)};
                 return typed != nullptr && *typed;
             })};
+
             auto row{SAssignNew(control, SSettingsToggle)
                          .Style(&style_->settings())
                          .Label(descriptor.label)
@@ -999,6 +1015,7 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
                                      setting, FGameSettingValue{state == ECheckBoxState::Checked});
                              }
                          })};
+
             focus_action = [control] { control->focus(); };
             return row;
         }
@@ -1011,6 +1028,7 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
             for (auto const& option : options) {
                 labels.Add(option.label);
             }
+
             auto selected{
                 TAttribute<int32>::CreateLambda([weak_settings, setting = descriptor.id, options] {
                     auto const* const settings{weak_settings.Get()};
@@ -1022,6 +1040,7 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
                         return option.value == value;
                     });
                 })};
+
             auto row{SAssignNew(control, SSettingsChoice)
                          .Style(&style_->settings())
                          .Label(descriptor.label)
@@ -1036,6 +1055,7 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
                                      settings->set_setting(setting, options[index].value);
                                  }
                              })};
+
             focus_action = [control] { control->focus(); };
             return row;
         }
@@ -1050,8 +1070,10 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
                 auto const* const typed{std::get_if<float>(&current)};
                 return typed != nullptr ? *typed : 0.0f;
             })};
+
             auto value_text{TAttribute<FText>::CreateLambda(
                 [this, descriptor] { return format_range_value(descriptor); })};
+
             auto row{SAssignNew(control, SSettingsSlider)
                          .Style(&style_->settings())
                          .Label(descriptor.label)
@@ -1068,6 +1090,7 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
                                      settings->set_setting(setting, FGameSettingValue{next});
                                  }
                              })};
+
             focus_action = [control] { control->focus(); };
             return row;
         }
@@ -1082,6 +1105,7 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
                 auto const* const typed{std::get_if<int32>(&current)};
                 return typed != nullptr ? static_cast<float>(*typed) : 0.0f;
             })};
+
             auto value_text{
                 TAttribute<FText>::CreateLambda([weak_settings, setting = descriptor.id] {
                     auto const* const settings{weak_settings.Get()};
@@ -1092,6 +1116,7 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
                     auto const* const typed{std::get_if<int32>(&current)};
                     return typed != nullptr ? FText::AsNumber(*typed) : FText::GetEmpty();
                 })};
+
             auto row{SAssignNew(control, SSettingsSlider)
                          .Style(&style_->settings())
                          .Label(descriptor.label)
@@ -1109,6 +1134,7 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
                                          setting, FGameSettingValue{FMath::RoundToInt32(next)});
                                  }
                              })};
+
             focus_action = [control] { control->focus(); };
             return row;
         }
@@ -1166,6 +1192,7 @@ auto SGameOptionsView::build_system_page() -> TSharedRef<SWidget> {
         }
         operating_system += capabilities_->operating_system_subversion;
     }
+
     add_section(NSLOCTEXT("OptionsMenu", "PlatformSection", "Platform"),
                 {{NSLOCTEXT("OptionsMenu", "PlatformLabel", "Platform"),
                   friendly_platform_name(capabilities_->platform_name)},
@@ -1182,6 +1209,7 @@ auto SGameOptionsView::build_system_page() -> TSharedRef<SWidget> {
           FText::AsNumber(capabilities_->physical_core_count)},
          {NSLOCTEXT("OptionsMenu", "LogicalCoresLabel", "Logical Cores"),
           FText::AsNumber(capabilities_->logical_core_count)}});
+
     auto const& simd{capabilities_->cpu_simd};
     if (simd.available) {
         add_section(NSLOCTEXT("OptionsMenu", "SimdSection", "SIMD Features"),
@@ -1213,12 +1241,14 @@ auto SGameOptionsView::build_system_page() -> TSharedRef<SWidget> {
                     {{NSLOCTEXT("OptionsMenu", "SimdDetectionLabel", "Detection"),
                       NSLOCTEXT("OptionsMenu", "SimdDetectionUnavailable", "Unavailable")}});
     }
+
     add_section(NSLOCTEXT("OptionsMenu", "GraphicsSection", "Graphics"),
                 {{NSLOCTEXT("OptionsMenu", "GpuLabel", "GPU"),
                   capability_text(capabilities_->primary_gpu_brand)}});
     add_section(NSLOCTEXT("OptionsMenu", "MemorySection", "Memory"),
                 {{NSLOCTEXT("OptionsMenu", "PhysicalMemoryLabel", "Physical Memory"),
                   FText::AsMemory(capabilities_->total_physical_memory_bytes)}});
+
 #if PLATFORM_WINDOWS
     auto const large_page_minimum{
         capabilities_->windows.large_page_minimum_bytes == 0
@@ -1457,6 +1487,9 @@ auto SGameOptionsView::build_modal(TAttribute<FText> title,
                                           FMargin{0.0f, 24.0f, 0.0f, 0.0f})[actions]]]]];
 }
 
+/* **************************************** */
+// Formatting and focus helpers
+/* **************************************** */
 auto SGameOptionsView::tab_text(EOptionsTab const tab) const -> FText {
     switch (tab) {
         case EOptionsTab::Video:

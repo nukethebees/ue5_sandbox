@@ -38,22 +38,29 @@ class PhaseInterface;
 struct FPlayerSpawnData {
     FPlayerSimulationConfig config;
     ETestTeam team{ETestTeam::White};
+
     FTransform transform{FTransform::Identity};
     FTransform body_transform{FTransform::Identity};
     FTransform left_socket{FTransform::Identity};
     FTransform right_socket{FTransform::Identity};
     FTransform middle_socket{FTransform::Identity};
     float collision_radius{};
+
     ETestSpaceShipFlightMode flight_mode{ETestSpaceShipFlightMode::ForwardSpeed};
     ETestSpaceShipControlMode control_mode{ETestSpaceShipControlMode::Velocity};
+
     EShipLaserMode laser_mode{EShipLaserMode::Single};
     ETestShipFireRate laser_fire_rate{ETestShipFireRate::Burst3};
+
     FShipHealth health{1000};
 };
 
 struct SPACEGAMESIMULATION_API Simulation {
     using RegistryEntityData = ml::entity_registry::EntityData;
 
+    /* **************************************** */
+    // Construction and configuration
+    /* **************************************** */
     Simulation(FSimulationClock const& clock,
                FTestEntityRegistry& entity_registry,
                FSpatialQueryManager const& spatial_query_manager,
@@ -74,6 +81,9 @@ struct SPACEGAMESIMULATION_API Simulation {
     }
     void set_config(FPlayerSimulationConfig const& new_config) noexcept;
 
+    /* **************************************** */
+    // Flight controls
+    /* **************************************** */
     void set_move_input(FVector2D input) noexcept;
     void set_lateral_move_input(float input) noexcept;
     void set_vertical_move_input(float input) noexcept;
@@ -92,6 +102,9 @@ struct SPACEGAMESIMULATION_API Simulation {
     void roll(float direction) noexcept;
     void set_flight_mode(ETestSpaceShipFlightMode new_flight_mode) noexcept;
 
+    /* **************************************** */
+    // Weapons
+    /* **************************************** */
     void start_fire_laser();
     void stop_fire_laser();
     void upgrade_laser() noexcept;
@@ -99,6 +112,9 @@ struct SPACEGAMESIMULATION_API Simulation {
     void select_previous_laser_fire_rate() noexcept;
     void set_laser_fire_rate(ETestShipFireRate value) noexcept;
 
+    /* **************************************** */
+    // Health and status
+    /* **************************************** */
     void add_health(int32 added_health);
     auto consume_death_notification() noexcept -> bool;
 
@@ -109,6 +125,9 @@ struct SPACEGAMESIMULATION_API Simulation {
     auto get_middle_socket() const -> FTransform;
     auto get_laser_effective_range() const noexcept -> float;
 
+    /* **************************************** */
+    // Simulation state
+    /* **************************************** */
     TestEntityUniqueId unique_entity_id;
     FRegistryEntityHandle registry_handle{};
     ETestTeam team{ETestTeam::White};
@@ -157,6 +176,9 @@ struct SPACEGAMESIMULATION_API Simulation {
     TArray<FVector2d> speed_samples;
 #endif
   private:
+    /* **************************************** */
+    // Tick phases
+    /* **************************************** */
     void begin_play();
     void update_timers(float dt);
     void move(float dt);
@@ -164,10 +186,16 @@ struct SPACEGAMESIMULATION_API Simulation {
     void resolve_damage_events();
     void update_entity_registry();
 
+    /* **************************************** */
+    // Registry integration
+    /* **************************************** */
     void register_with_entity_registry();
     auto get_entity_update_data() const -> RegistryEntityData;
     void queue_entity_update(EntityDeathInfo const& death_info);
 
+    /* **************************************** */
+    // Movement
+    /* **************************************** */
     void integrate_velocity(float dt);
     void update_rotation(float dt);
     void update_body_orientation(float dt);
@@ -175,20 +203,32 @@ struct SPACEGAMESIMULATION_API Simulation {
     void set_boost_brake_state(EBoostBrakeState state);
     void update_boost_brake(float dt);
 
+    /* **************************************** */
+    // Weapons
+    /* **************************************** */
     void set_lock_on_target(FRegistryEntityHandle target) noexcept;
     void set_laser_mode(ELaserFiringState mode) noexcept;
     void update_laser_firing();
     void fire_laser();
     void fire_lasers_from(TConstArrayView<FTransform> fire_points);
 
+    /* **************************************** */
+    // Health
+    /* **************************************** */
     void set_health(int32 new_health, FRegistryEntityHandle killer = {});
     void die(FRegistryEntityHandle killer);
 
+    /* **************************************** */
+    // Diagnostics
+    /* **************************************** */
 #if WITH_EDITOR
     void sample_speed();
 #endif
     void configure_speed_sampling();
 
+    /* **************************************** */
+    // Dependencies and internal state
+    /* **************************************** */
     friend class PhaseInterface;
 
     FPlayerSimulationConfig config{};

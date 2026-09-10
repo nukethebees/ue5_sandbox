@@ -219,6 +219,9 @@ auto collect_grid_entities_in_range(ml::ioj::CollisionUniformGrid const& grid,
 }
 
 namespace ml::query_manager {
+/* **************************************** */
+// Thread buffer lease
+/* **************************************** */
 FThreadBufferLease::FThreadBufferLease(FSpatialQueryManager const& in_manager)
     : manager{in_manager}
     , index{manager.acquire_thread_buffer()} {}
@@ -233,6 +236,9 @@ auto FThreadBufferLease::get() const -> FThreadBuffers& {
 }
 
 namespace ml {
+/* **************************************** */
+// Thread buffer management
+/* **************************************** */
 void FSpatialQueryManager::reserve_thread_buffers(int32 const count) {
     auto const hardware_thread_count{
         FMath::Max(1, FPlatformMisc::NumberOfCoresIncludingHyperthreads())};
@@ -281,6 +287,9 @@ void FSpatialQueryManager::release_thread_buffer(int32 const index) const {
     --active_thread_buffer_count;
 }
 
+/* **************************************** */
+// Construction and setup
+/* **************************************** */
 FSpatialQueryManager::FSpatialQueryManager(FTestEntityRegistry const& in_entity_registry)
     : entity_registry{in_entity_registry}
     , collision{in_entity_registry} {}
@@ -297,6 +306,9 @@ void FSpatialQueryManager::initialise(FIntVector3 const grid_dimensions,
     collision.initialise(entity_bounds);
 }
 
+/* **************************************** */
+// Batched line queries
+/* **************************************** */
 void FSpatialQueryManager::trace_line_of_sight(
     FVectors3f::ConstView const start_locations,
     FVectors3f::ConstView const end_locations,
@@ -376,6 +388,9 @@ void FSpatialQueryManager::sweep_closest_aabbs(
                                              entity_filter);
 }
 
+/* **************************************** */
+// Scalar and entity queries
+/* **************************************** */
 auto FSpatialQueryManager::has_clear_line(FVector3f const start_location,
                                           FVector3f const end_location,
                                           FRegistryEntityHandle const ignored_entity) const
@@ -491,6 +506,9 @@ void FSpatialQueryManager::are_spheres_in_bounds(FVectors3f::ConstView const cen
     collision.get_uniform_grid().are_spheres_in_bounds(centres, radius, out_results);
 }
 
+/* **************************************** */
+// Collision state and telemetry
+/* **************************************** */
 void FSpatialQueryManager::update() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpatialQueryManager::update);
 

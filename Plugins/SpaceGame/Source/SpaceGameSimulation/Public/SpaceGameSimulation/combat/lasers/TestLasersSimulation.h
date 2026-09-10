@@ -34,6 +34,9 @@ struct SPACEGAMESIMULATION_API Simulation {
     using Entities = ml::test_lasers::Entities;
     using HitDetails = ml::test_lasers::HitDetails;
 
+    /* **************************************** */
+    // Construction and access
+    /* **************************************** */
     Simulation(FSimulationClock const& clock,
                FTestEntityRegistry& entity_registry,
                FSpatialQueryManager& query_manager) noexcept;
@@ -56,21 +59,33 @@ struct SPACEGAMESIMULATION_API Simulation {
     }
     auto get_number_spawned() const noexcept -> int32 { return number_spawned; }
 
+    /* **************************************** */
+    // Spawning and configuration
+    /* **************************************** */
     void queue_laser_spawns(SpawnRequests const& spawn_data);
     void validate_array_sizes() const;
 
     int32 n_preallocated_instances{5000};
     int32 collision_jobs{8};
   private:
+    /* **************************************** */
+    // Tick phases
+    /* **************************************** */
     void begin_play();
     void begin_tick();
     void commit_spawns();
     void simulate(float dt);
     void end_tick();
 
+    /* **************************************** */
+    // Spawn preparation
+    /* **************************************** */
     void preallocate_instances();
     void process_pending_spawns();
 
+    /* **************************************** */
+    // Movement and collision
+    /* **************************************** */
     void update_locations(float dt);
     void handle_collisions(float dt);
     static void check_collision_thread(int32 job_index,
@@ -80,13 +95,22 @@ struct SPACEGAMESIMULATION_API Simulation {
                                        Simulation const& simulation);
     void merge_collision_data();
 
+    /* **************************************** */
+    // Lifetime and removal
+    /* **************************************** */
     void tick_lifetimes(float dt);
     void collect_old_instance_indices();
     void remove_instances(TConstArrayView<int32> indices);
 
+    /* **************************************** */
+    // Buffer cleanup
+    /* **************************************** */
     void clear_spawn_buffers();
     void clear_hit_buffers();
 
+    /* **************************************** */
+    // Dependencies and state
+    /* **************************************** */
     friend class PhaseInterface;
 
     FTestEntityRegistry& entity_registry;

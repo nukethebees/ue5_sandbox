@@ -24,6 +24,9 @@ class SPACEGAME_API UGameSettingsSubsystem final
     , public TGameSettingsAccess<UGameSettingsSubsystem> {
     GENERATED_BODY()
   public:
+    /* **************************************** */
+    // Lifecycle and edit sessions
+    /* **************************************** */
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
     virtual void Deinitialize() override;
 
@@ -34,6 +37,9 @@ class SPACEGAME_API UGameSettingsSubsystem final
     void confirm_display_changes();
     void revert_display_changes();
 
+    /* **************************************** */
+    // Settings state
+    /* **************************************** */
     auto settings_state() const -> FGameSettingsState const&;
     auto applied_state() const -> FGameSettingsState const&;
     auto default_state() const -> FGameSettingsState const&;
@@ -48,6 +54,9 @@ class SPACEGAME_API UGameSettingsSubsystem final
     auto is_awaiting_display_confirmation() const -> bool;
     auto display_confirmation_seconds_remaining() const -> int32;
 
+    /* **************************************** */
+    // Control profiles and bindings
+    /* **************************************** */
     auto control_profiles() const -> TArray<FControlProfileView>;
     auto control_bindings(EHardwareDevicePrimaryType device_type) const
         -> TArray<FControlBindingView>;
@@ -74,11 +83,18 @@ class SPACEGAME_API UGameSettingsSubsystem final
     FGameSettingsChanged settings_changed;
     FDisplayConfirmationChanged display_confirmation_changed;
   private:
+    /* **************************************** */
+    // Settings and display helpers
+    /* **************************************** */
     auto tick_display_confirmation(float delta_seconds) -> bool;
     void preview_immediate_settings(FGameSettingsState const& state);
     auto normalize_value(FGameSettingDescriptor const& descriptor,
                          FGameSettingValue const& value) const -> TOptional<FGameSettingValue>;
     auto input_user_settings() const -> USpaceGameInputUserSettings*;
+
+    /* **************************************** */
+    // Control binding helpers
+    /* **************************************** */
     auto all_control_bindings() const -> TArray<FControlBindingView>;
     auto map_control_binding(USpaceGameInputUserSettings& settings,
                              FControlBindingAddress const& address,
@@ -88,6 +104,9 @@ class SPACEGAME_API UGameSettingsSubsystem final
     void restore_input_edit_state();
     auto input_is_dirty() const -> bool;
 
+    /* **************************************** */
+    // State
+    /* **************************************** */
     FGameSettingsBackend backend_;
     TWeakObjectPtr<ULocalPlayer> editing_local_player_{};
     FGameSettingsEditState edit_state_{};

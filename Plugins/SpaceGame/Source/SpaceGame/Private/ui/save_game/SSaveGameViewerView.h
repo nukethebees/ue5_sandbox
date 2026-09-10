@@ -31,6 +31,9 @@ class SSaveGameViewerView final : public SCompoundWidget {
     SLATE_EVENT(FSimpleDelegate, OnResetTestProfile)
     SLATE_END_ARGS()
 
+    /* **************************************** */
+    // Lifecycle and state
+    /* **************************************** */
     void Construct(FArguments const& args);
     void replace_state(FSaveGameViewState const& state);
     void replace_profile(FSaveGameViewState const& state);
@@ -45,12 +48,19 @@ class SSaveGameViewerView final : public SCompoundWidget {
         -> FReply override;
     auto OnKeyDown(FGeometry const& geometry, FKeyEvent const& key_event) -> FReply override;
   private:
+    /* **************************************** */
+    // Layout construction
+    /* **************************************** */
     auto build_header() const -> TSharedRef<SWidget>;
     auto build_profiles() -> TSharedRef<SWidget>;
     auto build_outcomes() -> TSharedRef<SWidget>;
     auto build_report() -> TSharedRef<SWidget>;
     auto build_footer() -> TSharedRef<SWidget>;
     auto build_create_prompt() -> TSharedRef<SWidget>;
+
+    /* **************************************** */
+    // Actions and view updates
+    /* **************************************** */
     auto handle_profile(FString profile_id) -> FReply;
     auto handle_outcome(FString outcome_id) -> FReply;
     auto handle_action(FSimpleDelegate delegate) -> FReply;
@@ -63,6 +73,9 @@ class SSaveGameViewerView final : public SCompoundWidget {
     void update_outcome_selection();
     void update_details();
 
+    /* **************************************** */
+    // State
+    /* **************************************** */
     FGameUiStyle const* style_{};
     FSaveGameViewState state_{};
     FOnSaveProfileSelected on_profile_selected_{};

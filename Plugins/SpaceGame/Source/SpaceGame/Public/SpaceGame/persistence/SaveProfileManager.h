@@ -38,6 +38,9 @@ class SPACEGAME_API FSaveProfileManager {
   public:
     static constexpr int32 max_profile_name_length{32};
 
+    /* **************************************** */
+    // Lifecycle and queries
+    /* **************************************** */
     FSaveProfileManager() = default;
     explicit FSaveProfileManager(FSaveProfileStorage storage);
 
@@ -50,6 +53,9 @@ class SPACEGAME_API FSaveProfileManager {
     [[nodiscard]] auto unlock_all_missions() const -> bool;
     [[nodiscard]] auto start_levels_paused() const -> bool;
 
+    /* **************************************** */
+    // Profile and result mutation
+    /* **************************************** */
     auto create_profile(FString display_name) -> FCreateSaveProfileResponse;
     bool activate_profile(FString const& profile_id);
     bool load_profile_records(FString const& profile_id, TArray<FScoreRecord>& records) const;
@@ -58,10 +64,16 @@ class SPACEGAME_API FSaveProfileManager {
     bool set_start_levels_paused(bool enabled);
     bool reset_test_profile(TConstArrayView<FScoreRecord> records);
 
+    /* **************************************** */
+    // Validation
+    /* **************************************** */
     [[nodiscard]] static auto validate_profile_name(FString display_name,
                                                     TConstArrayView<FSaveProfileMetadata> profiles)
         -> ECreateSaveProfileResult;
   private:
+    /* **************************************** */
+    // Persistence and migration
+    /* **************************************** */
     static auto make_metadata(FString profile_id,
                               FString display_name,
                               FDateTime created_at,
@@ -78,6 +90,9 @@ class SPACEGAME_API FSaveProfileManager {
     auto find_profile(FString const& profile_id) -> FSaveProfileMetadata*;
     auto find_profile(FString const& profile_id) const -> FSaveProfileMetadata const*;
 
+    /* **************************************** */
+    // State
+    /* **************************************** */
     FSaveProfileStorage storage_{};
     FSaveProfileIndexData index_{};
     FSaveProfileResultsData active_results_{};

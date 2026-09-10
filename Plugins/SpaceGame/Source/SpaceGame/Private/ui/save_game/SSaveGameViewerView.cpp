@@ -37,6 +37,9 @@ auto metadata_text(FText const& first, FText const& second, FText const& third, 
 }
 } // namespace
 
+/* **************************************** */
+// Lifecycle and state
+/* **************************************** */
 void SSaveGameViewerView::Construct(FArguments const& args) {
     style_ = args._Style;
     check(style_ != nullptr);
@@ -205,6 +208,9 @@ auto SSaveGameViewerView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& 
     return FReply::Handled();
 }
 
+/* **************************************** */
+// Layout construction
+/* **************************************** */
 auto SSaveGameViewerView::build_header() const -> TSharedRef<SWidget> {
     return SNew(SVerticalBox) +
            SVerticalBox::Slot()
@@ -451,6 +457,9 @@ auto SSaveGameViewerView::build_create_prompt() -> TSharedRef<SWidget> {
         .VAlign(VAlign_Center)[prompt];
 }
 
+/* **************************************** */
+// Actions and view updates
+/* **************************************** */
 auto SSaveGameViewerView::handle_profile(FString profile_id) -> FReply {
     on_profile_selected_.ExecuteIfBound(profile_id);
     return FReply::Handled();

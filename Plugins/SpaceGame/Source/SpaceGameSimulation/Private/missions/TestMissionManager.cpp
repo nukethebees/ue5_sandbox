@@ -16,8 +16,10 @@ auto get_level_entity_handle(TConstArrayView<FRegistryEntityHandle> const level_
 }
 }
 
+/* **************************************** */
+// Construction and lifecycle
+/* **************************************** */
 void FTestMissionManager::begin_play() {
-
     initialise_entity_health_that_must_survive();
     initialise_entity_health_required_to_kill();
 
@@ -71,6 +73,9 @@ FTestMissionManager::FTestMissionManager(FSimulationClock const& clock,
     : entity_registry{in_entity_registry}
     , simulation_clock{clock} {}
 
+/* **************************************** */
+// Level mission setup
+/* **************************************** */
 void FTestMissionManager::initialise_level_mission(
     ml::FLevelMissionInitialisationData const& data,
     TConstArrayView<FRegistryEntityHandle> const level_entity_handles) {
@@ -99,10 +104,12 @@ void FTestMissionManager::initialise_level_mission(
     if (data.time_limit_seconds.IsSet()) {
         set_target_time(data.time_limit_seconds.GetValue());
     }
+
     if (data.mode == ml::ELevelMissionMode::KillEnemies ||
         data.mode == ml::ELevelMissionMode::KillEnemiesWithinTime) {
         set_kill_target(data.kill_count.Get(0) + kill_target_increase_before_level_initialisation_);
     }
+
     for (auto const entity_index : data.hero_entity_indices) {
         add_hero_entity(get_level_entity_handle(level_entity_handles, entity_index));
     }
@@ -166,6 +173,9 @@ void FTestMissionManager::consume_level_events(ml::FLevelMissionEventGroupsConst
     }
 }
 
+/* **************************************** */
+// Mission configuration and objectives
+/* **************************************** */
 void FTestMissionManager::reset_runtime_state() {
     pending_result_.Reset();
     ml::reset(hero_entity_handles,
@@ -178,6 +188,7 @@ void FTestMissionManager::reset_runtime_state() {
               entity_ids_required_to_kill,
               entity_types_required_to_kill,
               entity_health_required_to_kill);
+
     mission_state = ETestMissionState::NotStarted;
     mission_fail_reason = ETestMissionFailReason::None;
     mission_kills = 0;
@@ -276,6 +287,9 @@ void FTestMissionManager::objective_event_dispatched() {
     --pending_objective_events_;
 }
 
+/* **************************************** */
+// Tick and state transitions
+/* **************************************** */
 void FTestMissionManager::mission_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestMissionManager::mission_tick);
 
@@ -305,6 +319,7 @@ void FTestMissionManager::mission_tick() {
     mission_elapsed_seconds = static_cast<float>(simulation_clock.get_simulation_time());
     update_entity_health_that_must_survive();
     update_entity_health_required_to_kill();
+
     if (!entity_handles_that_must_survive.IsEmpty() && !entities_that_must_survive_are_alive()) {
         set_mission_state(ETestMissionState::Failed,
                           ETestMissionFailReason::DefenceObjectiveFailed);
@@ -423,6 +438,9 @@ void FTestMissionManager::update_mission_kills() {
     }
 }
 
+/* **************************************** */
+// Objective health tracking
+/* **************************************** */
 void FTestMissionManager::initialise_entity_health_that_must_survive() {
     entity_health_that_must_survive.Reset(entity_handles_that_must_survive.Num());
     check(entity_ids_that_must_survive.Num() == entity_handles_that_must_survive.Num());
@@ -489,6 +507,9 @@ auto FTestMissionManager::entities_required_to_kill_are_dead() const -> bool {
     return true;
 }
 
+/* **************************************** */
+// Results
+/* **************************************** */
 void FTestMissionManager::queue_result() {
     pending_result_.Emplace(FLevelMissionResult{
         .level_id = level_id,

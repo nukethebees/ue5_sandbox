@@ -85,22 +85,28 @@ FLevelSimulation::FLevelSimulation(FLevelSimulationInitData data)
     , level_telemetry_manager_{clock_, entity_registry_, lasers_simulation_, query_manager_} {
     clock_.initialise(data.clock_settings);
     telemetry_metadata_ = MoveTemp(data.telemetry_metadata);
+
     configure_subsystems(data);
     initialise_spatial_queries(data);
     begin_subsystems(data);
+
     initialise_events(data);
     event_manager_.dispatch_tick(0);
 }
 void FLevelSimulation::finish_initialisation() {
     check(state_ == EOrchestratorState::Uninitialised);
+
     entity_registry_.commit_updates();
     entity_registry_.end_tick();
     query_manager_.update();
+
     // Initialization rebuilds must not contribute to runtime telemetry.
     query_manager_.reset_runtime_telemetry();
     initialise_telemetry();
+
     event_manager_.configure_mission();
     mission_manager_.begin_play();
+
     state_ = EOrchestratorState::Paused;
 }
 void FLevelSimulation::start() {
@@ -125,18 +131,23 @@ void FLevelSimulation::configure_subsystems(FLevelSimulationInitData const& data
     if (data.player.IsSet()) {
         configure_player(data.player.GetValue());
     }
+
     lasers_simulation_.n_preallocated_instances = data.lasers.n_preallocated_instances;
     lasers_simulation_.collision_jobs = data.lasers.collision_jobs;
+
     capital_ships_simulation_.set_config(data.capital_ships);
     capital_ships_simulation_.entity_radius = data.capital_radius;
+
     capital_ship_fighters_simulation_.set_config(data.fighters);
     capital_ship_fighters_simulation_.fire_dot_product_threshold =
         data.fighters.fire_dot_product_threshold;
     capital_ship_fighters_simulation_.collision_radius = data.fighter_radius;
     capital_ship_fighters_simulation_.fire_point_distance = data.fighter_fire_point_distance;
+
     turrets_simulation_.set_config(data.turrets);
     turrets_simulation_.search_slice_size = data.turrets.search_slice_size;
     turrets_simulation_.entity_radius = data.turret_radius;
+
     spinners_simulation_.set_config(data.spinners);
     spinners_simulation_.entity_radius = data.spinner_radius;
 }
@@ -144,14 +155,17 @@ void FLevelSimulation::configure_player(ml::test_space_ship::FPlayerSpawnData co
     auto& player{player_ship_simulation_.Emplace(
         clock_, entity_registry_, query_manager_, lasers_simulation_)};
     player_ship_phase_.Emplace(player);
+
     player.set_config(spawn.config);
     player.team = spawn.team;
+
     player.transform = spawn.transform;
     player.body_transform = spawn.body_transform;
     player.left_socket = spawn.left_socket;
     player.right_socket = spawn.right_socket;
     player.middle_socket = spawn.middle_socket;
     player.collision_radius = spawn.collision_radius;
+
     player.flight_mode = spawn.flight_mode;
     player.control_mode = spawn.control_mode;
     player.laser_mode = spawn.laser_mode;
@@ -168,9 +182,11 @@ void FLevelSimulation::begin_subsystems(FLevelSimulationInitData const& data) {
     if (player_ship_simulation_.IsSet()) {
         player_ship_phase_->begin_play();
     }
+
     capital_ships_phase_.begin_play();
     capital_ship_fighters_phase_.begin_play();
     turrets_phase_.begin_play();
+
     spinners_simulation_.spawn_instances(
         data.spinner_locations.get_const_view(), data.spinner_yaws, data.spinner_fire_points);
     spinners_phase_.begin_play();
@@ -182,6 +198,7 @@ void FLevelSimulation::initialise_events(FLevelSimulationInitData& data) {
         (!data.capital_spawns.is_empty() || !data.turret_spawns.is_empty())) {
         data.level_events = ml::level_simulation::make_legacy_level_initialisation(data);
     }
+
     auto const player_handle{player_ship_simulation_.IsSet()
                                  ? player_ship_simulation_->registry_handle
                                  : FRegistryEntityHandle{}};
@@ -196,6 +213,7 @@ void FLevelSimulation::initialise_telemetry() {
     telemetry_tick_loop_.tick_rate = 4.0;
     telemetry_tick_loop_.time_scale = 1.0;
     telemetry_tick_loop_.initialise();
+
     if (telemetry_metadata_.IsSet()) {
         level_telemetry_manager_.begin_run(MoveTemp(telemetry_metadata_.GetValue()));
         telemetry_metadata_.Reset();
@@ -245,10 +263,12 @@ void FLevelSimulation::advance(time_type const dt) {
         for (auto& timing : system_timings) {
             timing = -1.0;
         }
+
         TStaticArray<double, FSimulationTelemetryPerformanceWindow::phase_count> phase_timings;
         for (auto& timing : phase_timings) {
             timing = -1.0;
         }
+
         auto phase_started_at{tick_started_at};
         auto finish_phase = [capture_detailed_timing, &phase_timings, &phase_started_at](
                                 ELevelTelemetryTimingPhase const phase) {
@@ -259,6 +279,7 @@ void FLevelSimulation::advance(time_type const dt) {
             phase_timings[static_cast<int32>(phase)] = now - phase_started_at;
             phase_started_at = now;
         };
+
         auto measure = [capture_detailed_timing, &system_timings](
                            ESimulationTelemetryTimingSystem const system, auto&& function) {
             if (!capture_detailed_timing) {
@@ -270,6 +291,7 @@ void FLevelSimulation::advance(time_type const dt) {
             auto& elapsed{system_timings[static_cast<int32>(system)]};
             elapsed = FMath::Max(0.0, elapsed) + FPlatformTime::Seconds() - started_at;
         };
+
         auto const player_simulation_is_active{[this] {
             return player_ship_simulation_.IsSet() && player_ship_simulation_->health.is_alive();
         }};
@@ -446,6 +468,7 @@ void FLevelSimulation::advance(time_type const dt) {
             turrets_phase_.end_tick();
             spinners_phase_.end_tick();
             lasers_phase_.end_tick();
+
             measure(ESimulationTelemetryTimingSystem::Registry,
                     [&] { entity_registry_.end_tick(); });
             measure(ESimulationTelemetryTimingSystem::SpatialQueries,
@@ -454,26 +477,32 @@ void FLevelSimulation::advance(time_type const dt) {
         finish_phase(ELevelTelemetryTimingPhase::End);
 
         ++clock_.completed_ticks;
+
         auto const telemetry_started_at{capture_detailed_timing ? FPlatformTime::Seconds() : 0.0};
         level_telemetry_manager_.tick();
         if (capture_detailed_timing) {
             system_timings[static_cast<int32>(ESimulationTelemetryTimingSystem::Telemetry)] =
                 FPlatformTime::Seconds() - telemetry_started_at;
         }
+
         if (on_mission_evaluated) {
             on_mission_evaluated();
         }
+
         if (on_end_tick) {
             on_end_tick(*this);
         }
+
         if (capture_detailed_timing) {
             level_telemetry_manager_.record_simulation_tick_timing(
                 FPlatformTime::Seconds() - tick_started_at, system_timings, phase_timings);
         }
+
         if (state_ != EOrchestratorState::Running) {
             break;
         }
     }
+
     sample_realtime_telemetry(dt);
 }
 

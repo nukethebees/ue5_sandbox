@@ -40,6 +40,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     using tick_type = uint64;
     using time_type = double;
 
+    /* **************************************** */
+    // Lifecycle and simulation control
+    /* **************************************** */
     ATestBatchOrchestrator();
 
     void Tick(float dt) override;
@@ -49,6 +52,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void pause_simulation();
     void reset_for_new_level();
 
+    /* **************************************** */
+    // Level configuration
+    /* **************************************** */
     void set_level_config(USpaceGameLevelConfig& config);
     auto get_level_config() noexcept -> USpaceGameLevelConfig* { return level_config.Get(); }
     auto get_level_config() const noexcept -> USpaceGameLevelConfig const* {
@@ -62,6 +68,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto is_presentation_enabled() const noexcept -> bool { return presentation_enabled; }
     void set_time_scale(time_type scale) noexcept;
 
+    /* **************************************** */
+    // Simulation state and timing
+    /* **************************************** */
     auto frequency_to_tick_period(time_type const frequency) const noexcept -> tick_type;
     auto duration_to_tick_period(time_type const duration) const noexcept -> tick_type;
 
@@ -91,6 +100,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         return completed_ticks >= end_tick ? 0 : end_tick - completed_ticks;
     }
 
+    /* **************************************** */
+    // Player and combat simulations
+    /* **************************************** */
     auto get_player_ship() const -> ATestSpaceShip const*;
     auto get_player_ship_simulation() noexcept -> ml::test_space_ship::Simulation*;
     auto get_player_ship_simulation() const noexcept -> ml::test_space_ship::Simulation const*;
@@ -130,6 +142,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         return level_simulation_.IsSet() ? &level_simulation_->get_spinners() : nullptr;
     }
 
+    /* **************************************** */
+    // Simulation services
+    /* **************************************** */
     auto get_entity_registry() noexcept -> FTestEntityRegistry& {
         check(level_simulation_.IsSet());
         return level_simulation_->get_entity_registry();
@@ -172,11 +187,17 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     }
     auto get_hud_tick_loop() const noexcept { return hud_tick_loop; }
 
+    /* **************************************** */
+    // Testing and level preparation
+    /* **************************************** */
     void set_end_tick_test_hook(FOrchestratorEndTickTestHook hook);
     void clear_end_tick_test_hook();
 
     void prepare_level();
 
+    /* **************************************** */
+    // Events, results, and presentation
+    /* **************************************** */
     static FOnProxyEntitiesBound on_proxy_entities_bound;
     FOnOrchestratorReset on_reset;
     FOnTestMissionCompleted on_mission_completed;
@@ -200,6 +221,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         return make_presentation_resources();
     }
   protected:
+    /* **************************************** */
+    // Actor lifecycle
+    /* **************************************** */
     void BeginPlay() override;
     void EndPlay(EEndPlayReason::Type end_play_reason) override;
 
@@ -211,15 +235,30 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void prepare_level_button();
 #endif
   private:
+    /* **************************************** */
+    // Level initialization
+    /* **************************************** */
     auto begin_play() -> bool;
     void load_authored_level();
     auto should_initialise_in_begin_play() const noexcept -> bool;
     void validate_entity_handles();
     auto initialise_simulation(ml::FLevelStartErrors& errors) -> bool;
     void handle_level_start_failure(FString message);
+
+    /* **************************************** */
+    // Mission and telemetry
+    /* **************************************** */
     void process_mission_result();
     void process_battle_run_end();
     void handle_telemetry_persisted(FString run_id, FString error);
+    void persist_finalized_telemetry_run();
+    void record_external_timing(int32 window_index,
+                                ELevelTelemetryTimingSystem system,
+                                double seconds);
+
+    /* **************************************** */
+    // Presentation and proxies
+    /* **************************************** */
     auto make_presentation_resources() const -> FLevelPresentationResources;
     void bind_capital_ship_proxy_targets(FProxyEntityMap const& proxy_entities);
     void bind_and_destroy_proxies();
@@ -228,6 +267,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void refresh_collision_grid_visualization();
     void update_collision_bounds_visualization();
 
+    /* **************************************** */
+    // State
+    /* **************************************** */
     FOrchestratorEndTickTestHook end_tick_test_hook;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (ShowOnlyInnerProperties))
@@ -258,10 +300,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     TOptional<FLevelSimulation> level_simulation_;
     TOptional<FLevelPresentation> level_presentation_;
     TArray<FTransform> initial_turret_transforms_;
-    void persist_finalized_telemetry_run();
-    void record_external_timing(int32 window_index,
-                                ELevelTelemetryTimingSystem system,
-                                double seconds);
     TArray<FLevelExternalTimingSample> external_timings_;
     FLevelTelemetryEnvironment telemetry_environment_;
     TOptional<ml::FLevelDefinition> level_definition_;

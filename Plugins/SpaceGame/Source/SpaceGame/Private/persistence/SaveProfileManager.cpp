@@ -10,6 +10,9 @@ FString const test_profile_id{TEXT("test_profile")};
 FString const test_profile_name{TEXT("Test Profile")};
 }
 
+/* **************************************** */
+// Lifecycle and queries
+/* **************************************** */
 FSaveProfileManager::FSaveProfileManager(FSaveProfileStorage storage)
     : storage_{MoveTemp(storage)} {}
 
@@ -97,6 +100,9 @@ auto FSaveProfileManager::start_levels_paused() const -> bool {
     return has_active_profile() && profile->debug_settings.start_levels_paused;
 }
 
+/* **************************************** */
+// Profile and result mutation
+/* **************************************** */
 auto FSaveProfileManager::create_profile(FString display_name) -> FCreateSaveProfileResponse {
     display_name.TrimStartAndEndInline();
     auto const validation{validate_profile_name(display_name, index_.profiles)};
@@ -237,6 +243,9 @@ bool FSaveProfileManager::reset_test_profile(TConstArrayView<FScoreRecord> const
     return save_new_profile(MoveTemp(metadata), MoveTemp(results), true);
 }
 
+/* **************************************** */
+// Validation
+/* **************************************** */
 auto
     FSaveProfileManager::validate_profile_name(FString display_name,
                                                TConstArrayView<FSaveProfileMetadata> const profiles)
@@ -256,6 +265,9 @@ auto
     return ECreateSaveProfileResult::succeeded;
 }
 
+/* **************************************** */
+// Persistence and migration
+/* **************************************** */
 auto FSaveProfileManager::make_metadata(FString profile_id,
                                         FString display_name,
                                         FDateTime const created_at,

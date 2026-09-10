@@ -124,6 +124,9 @@ auto metric_section(FGameUiStyle const& style,
 }
 } // namespace telemetry_dashboard_view
 
+/* **************************************** */
+// Lifecycle and state
+/* **************************************** */
 void STelemetryDashboardView::Construct(FArguments const& args) {
     style_ = args._Style;
     check(style_ != nullptr);
@@ -146,6 +149,9 @@ void STelemetryDashboardView::focus_primary_action() {
     }
 }
 
+/* **************************************** */
+// Layout construction
+/* **************************************** */
 auto STelemetryDashboardView::build() -> TSharedRef<SWidget> {
     return SNew(SBorder)
         .BorderImage(&style_->chrome().body_background)
@@ -432,6 +438,9 @@ auto STelemetryDashboardView::build_detail() -> TSharedRef<SWidget> {
                                                  SScrollBox::Slot()[content]];
 }
 
+/* **************************************** */
+// Actions
+/* **************************************** */
 auto STelemetryDashboardView::handle_refresh() -> FReply {
     on_refresh_.ExecuteIfBound();
     return FReply::Handled();

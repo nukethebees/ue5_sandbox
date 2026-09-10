@@ -46,12 +46,18 @@ UCLASS()
 class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     GENERATED_BODY()
   public:
+    /* **************************************** */
+    // State and opening
+    /* **************************************** */
     [[nodiscard]] auto get_active_tab() const noexcept -> EPauseMenuTab { return active_tab; }
     void prepare_for_open(UInputAction& toggle_action, FPauseMenuData data);
 
     FPauseReturnToLevelSelectRequested return_to_level_select_requested;
     FPauseQuitRequested quit_requested;
   protected:
+    /* **************************************** */
+    // Widget lifecycle
+    /* **************************************** */
     void NativeOnInitialized() override;
     void NativeConstruct() override;
     void NativeOnActivated() override;
@@ -59,6 +65,9 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     auto NativeGetDesiredFocusTarget() const -> UWidget* override;
     void ReleaseSlateResources(bool release_children) override;
 
+    /* **************************************** */
+    // Bound widgets
+    /* **************************************** */
     UPROPERTY(meta = (BindWidget, GeneratorRoot))
     UOverlay* root_widget{nullptr};
 
@@ -146,6 +155,9 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     UPROPERTY(meta = (BindWidget))
     UNativeWidgetHost* telemetry_graph_host{nullptr};
   private:
+    /* **************************************** */
+    // Navigation callbacks
+    /* **************************************** */
     void handle_resume();
     void handle_overview();
     void handle_forces();
@@ -156,11 +168,17 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     void handle_quit();
     void handle_toggle_action();
 
+    /* **************************************** */
+    // View state and presentation
+    /* **************************************** */
     void set_active_tab(EPauseMenuTab tab);
     void apply_ui_style();
     void update_views();
     void update_telemetry_graph();
 
+    /* **************************************** */
+    // State
+    /* **************************************** */
     EPauseMenuTab active_tab{EPauseMenuTab::Overview};
     FPauseMenuData data_;
     TSharedPtr<SGraphPlot> telemetry_graph_;

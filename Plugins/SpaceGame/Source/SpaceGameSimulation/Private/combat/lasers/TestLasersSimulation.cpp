@@ -16,6 +16,9 @@
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserCount, TEXT("Sandbox/TestLaserCount"));
 
 namespace ml::test_lasers {
+/* **************************************** */
+// Spawn request configuration
+/* **************************************** */
 void SpawnRequests::set_damages(int32 const value) {
     ml::fill(damages, value);
 }
@@ -32,6 +35,9 @@ void SpawnRequests::set_sources(FLaserSource const value) {
     ml::fill(sources, value);
 }
 
+/* **************************************** */
+// Construction and tick phases
+/* **************************************** */
 Simulation::Simulation(FSimulationClock const& clock,
                        FTestEntityRegistry& in_entity_registry,
                        FSpatialQueryManager& in_query_manager) noexcept
@@ -80,6 +86,9 @@ auto Simulation::get_num_instances() const noexcept -> int32 {
     return entities.lifetimes_remaining.Num();
 }
 
+/* **************************************** */
+// Spawning
+/* **************************************** */
 void Simulation::queue_laser_spawns(SpawnRequests const& spawn_data) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_lasers::Simulation::queue_laser_spawns);
 
@@ -97,13 +106,13 @@ void Simulation::process_pending_spawns() {
     pending_spawns.validate_array_sizes();
     auto const n_to_add{ml::num(pending_spawns)};
     entity_registry.record_shots(pending_spawns.instigator_handles);
+
     if (n_to_add <= 0) {
         return;
     }
 
     auto const tick_period{static_cast<float>(simulation_clock.get_tick_period())};
     constexpr float fixed_spawn_offset{10.f};
-
     auto const offset{get_num_instances()};
 
     ml::append_from(entities.sources, pending_spawns.sources);
@@ -145,6 +154,9 @@ void Simulation::process_pending_spawns() {
     validate_array_sizes();
 }
 
+/* **************************************** */
+// Movement and collision
+/* **************************************** */
 void Simulation::update_locations(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_lasers::Simulation::update_locations);
     ml::add_scaled_in_place(entities.locations, entities.velocities, dt);
@@ -174,8 +186,10 @@ void Simulation::handle_collisions(float const dt) {
 
     to_remove.Sort(TGreater<int32>{});
     remove_instances(to_remove);
+
     hit_details.validate_array_sizes();
     frame_hits_.append_from(hit_details);
+
     auto const hit_count{hit_details.num()};
     for (int32 i{}; i < hit_count; ++i) {
         hit_ticks_.Add(simulation_clock.get_completed_ticks());
@@ -262,6 +276,9 @@ void Simulation::merge_collision_data() {
     }
 }
 
+/* **************************************** */
+// Lifetime and removal
+/* **************************************** */
 void Simulation::tick_lifetimes(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_lasers::Simulation::tick_lifetimes);
     ml::subtract_in_place(TArrayView<float>{entities.lifetimes_remaining}, dt);
@@ -295,6 +312,9 @@ void Simulation::remove_instances(TConstArrayView<int32> const indices) {
     validate_array_sizes();
 }
 
+/* **************************************** */
+// Buffer cleanup and validation
+/* **************************************** */
 void Simulation::clear_spawn_buffers() {
     ml::reset(pending_spawns, to_remove);
 }

@@ -77,6 +77,9 @@ auto query_platform_capabilities() -> FGameCapabilities {
 }
 }
 
+/* **************************************** */
+// Lifecycle and services
+/* **************************************** */
 void UGameSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
 
@@ -110,6 +113,9 @@ auto UGameSubsystem::get_save_game_browser() -> FSaveGameBrowser& {
     return save_game_browser_;
 }
 
+/* **************************************** */
+// UI configuration
+/* **************************************** */
 auto UGameSubsystem::get_ui_style() const -> FGameUiStyle const& {
     return GetGameInstance()->GetSubsystem<UGameUiStyleSubsystem>()->get_ui_style();
 }
@@ -118,6 +124,9 @@ auto UGameSubsystem::set_ui_theme(USpaceGameUiTheme* const theme) -> bool {
     return GetGameInstance()->GetSubsystem<UGameUiStyleSubsystem>()->set_ui_theme(theme);
 }
 
+/* **************************************** */
+// Level launch and navigation
+/* **************************************** */
 void UGameSubsystem::set_pending_level(FLevelDefinition definition,
                                        FString source_path,
                                        FString source_sha256,
@@ -191,6 +200,9 @@ auto UGameSubsystem::get_main_menu_level_name() -> FName {
     return level_name;
 }
 
+/* **************************************** */
+// Launch errors
+/* **************************************** */
 void UGameSubsystem::set_level_launch_error(FString error) {
     pending_level_.Reset();
     level_launch_error_ = MoveTemp(error);

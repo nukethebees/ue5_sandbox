@@ -17,6 +17,9 @@
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
+/* **************************************** */
+// Lifecycle and simulation binding
+/* **************************************** */
 ATestSpaceShip::ATestSpaceShip()
     : camera(CreateDefaultSubobject<UCameraComponent>(TEXT("camera")))
     , ship_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ship_mesh")))
@@ -92,6 +95,9 @@ void ATestSpaceShip::configure_ship_mesh() {
     ship_mesh->SetGenerateOverlapEvents(false);
 }
 
+/* **************************************** */
+// Entity identity and configuration
+/* **************************************** */
 auto ATestSpaceShip::get_entity_handle() const noexcept -> FRegistryEntityHandle {
     return bound_simulation ? bound_simulation->registry_handle : FRegistryEntityHandle{};
 }
@@ -122,6 +128,9 @@ auto ATestSpaceShip::get_kills() const -> int32 {
     return simulation().get_kills();
 }
 
+/* **************************************** */
+// Flight controls
+/* **************************************** */
 void ATestSpaceShip::set_move_input(FVector2D const input) {
     simulation().set_move_input(input);
 }
@@ -242,6 +251,9 @@ auto ATestSpaceShip::get_turn_input() const -> FVector2D {
     return simulation().rotation_input;
 }
 
+/* **************************************** */
+// Energy and weapons
+/* **************************************** */
 auto ATestSpaceShip::energy_is_full() const -> bool {
     return simulation().energy_is_full();
 }
@@ -289,6 +301,9 @@ void ATestSpaceShip::set_laser_fire_rate(ETestShipFireRate const value) noexcept
     }
 }
 
+/* **************************************** */
+// Health and collision
+/* **************************************** */
 void ATestSpaceShip::add_health(int32 const added_health) {
     simulation().add_health(added_health);
     if (simulation().consume_death_notification()) {
@@ -313,6 +328,9 @@ auto ATestSpaceShip::get_middle_socket() const -> FTransform {
 }
 
 #if WITH_EDITOR
+/* **************************************** */
+// Diagnostics
+/* **************************************** */
 auto ATestSpaceShip::get_speed_samples() const noexcept -> TConstArrayView<FVector2d> {
     return simulation().speed_samples;
 }
@@ -322,6 +340,9 @@ auto ATestSpaceShip::get_speed_sample_index() const noexcept -> int32 {
 }
 #endif
 
+/* **************************************** */
+// Presentation
+/* **************************************** */
 auto ATestSpaceShip::get_presentation_resources() const -> FPlayerPresentationResources {
     FPlayerPresentationResources resources{
         RootComponent, ship_mesh, boost_pulse, boost_engine_effect};

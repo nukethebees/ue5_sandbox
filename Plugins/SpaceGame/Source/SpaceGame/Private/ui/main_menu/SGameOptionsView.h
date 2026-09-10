@@ -44,6 +44,9 @@ class SGameOptionsView final : public SCompoundWidget {
     SLATE_EVENT(FSimpleDelegate, OnRevertDisplay)
     SLATE_END_ARGS()
 
+    /* **************************************** */
+    // Lifecycle and state
+    /* **************************************** */
     void Construct(FArguments const& args);
     void set_active_tab(EOptionsTab tab);
     void refresh();
@@ -53,6 +56,9 @@ class SGameOptionsView final : public SCompoundWidget {
     void hide_dirty_prompt();
     auto is_dirty_prompt_visible() const -> bool;
 
+    /* **************************************** */
+    // Input handling
+    /* **************************************** */
     auto SupportsKeyboardFocus() const -> bool override { return true; }
     auto OnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
@@ -67,11 +73,18 @@ class SGameOptionsView final : public SCompoundWidget {
     auto OnMouseWheel(FGeometry const& geometry, FPointerEvent const& mouse_event)
         -> FReply override;
   private:
+    /* **************************************** */
+    // Layout construction
+    /* **************************************** */
     auto build_header() -> TSharedRef<SWidget>;
     auto build_body() -> TSharedRef<SWidget>;
     auto build_footer() -> TSharedRef<SWidget>;
     auto build_category_page(EGameSettingCategory category) -> TSharedRef<SWidget>;
     auto build_controls_page() -> TSharedRef<SWidget>;
+
+    /* **************************************** */
+    // Control bindings
+    /* **************************************** */
     void rebuild_controls_page();
     auto handle_deferred_controls_rebuild(double current_time, float delta_time)
         -> EActiveTimerReturnType;
@@ -84,6 +97,10 @@ class SGameOptionsView final : public SCompoundWidget {
     void clear_chord_capture();
     auto confirm_chord_capture() -> FReply;
     void close_binding_prompt();
+
+    /* **************************************** */
+    // Settings and prompts
+    /* **************************************** */
     auto build_setting_row(FGameSettingDescriptor const& descriptor,
                            TFunction<void()>& focus_action) -> TSharedRef<SWidget>;
     auto build_system_page() -> TSharedRef<SWidget>;
@@ -93,6 +110,10 @@ class SGameOptionsView final : public SCompoundWidget {
     auto build_conflict_prompt() -> TSharedRef<SWidget>;
     auto build_modal(TAttribute<FText> title, TArray<TSharedRef<SGameButton>> const& buttons)
         -> TSharedRef<SWidget>;
+
+    /* **************************************** */
+    // Formatting and focus helpers
+    /* **************************************** */
     auto tab_text(EOptionsTab tab) const -> FText;
     auto setting_float(EGameSetting setting) const -> float;
     auto format_range_value(FGameSettingDescriptor const& descriptor) const -> FText;
@@ -100,6 +121,9 @@ class SGameOptionsView final : public SCompoundWidget {
     void remember_focus();
     void restore_focus();
 
+    /* **************************************** */
+    // State
+    /* **************************************** */
     TWeakObjectPtr<UGameSettingsSubsystem> settings_{};
     FGameCapabilities const* capabilities_{};
     FGameUiStyle const* style_{};
