@@ -16,6 +16,15 @@ struct SBXMESHGENLAB_API FSbxMeshAssemblyRecipePart {
     FGuid parent_id;
 
     UPROPERTY(EditAnywhere, Category = "Part")
+    FName name{TEXT("Part")};
+
+    UPROPERTY(EditAnywhere, Category = "Part")
+    bool visible{true};
+
+    UPROPERTY(EditAnywhere, Category = "Part")
+    bool locked{};
+
+    UPROPERTY(EditAnywhere, Category = "Part")
     ESbxMeshShape shape{ESbxMeshShape::Box};
 
     UPROPERTY(EditAnywhere, Category = "Part")
@@ -151,6 +160,12 @@ struct SBXMESHGENLAB_API FSbxMeshAssemblyRecipeGroup {
 
     UPROPERTY(EditAnywhere, Category = "Group")
     FName name{TEXT("Group")};
+
+    UPROPERTY(EditAnywhere, Category = "Group")
+    bool visible{true};
+
+    UPROPERTY(EditAnywhere, Category = "Group")
+    bool locked{};
 
     UPROPERTY(EditAnywhere, Category = "Transform")
     FVector translation{FVector::ZeroVector};

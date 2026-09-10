@@ -47,6 +47,8 @@ class FSbxMeshGenLabEditorModeToolkit final : public FModeToolkit {
     auto accept_tree_drop(FDragDropEvent const& event, EItemDropZone drop_zone, FTreeItem target)
         -> FReply;
     void rename_tree_item(FText const& text, ETextCommit::Type commit_type, FTreeItem item);
+    [[nodiscard]] auto tree_item_name(FTreeItem item) const -> FText;
+    [[nodiscard]] auto tree_item_detail(FTreeItem item) const -> FText;
     [[nodiscard]] auto tree_item_text(FTreeItem item) const -> FText;
     auto add_part() -> FReply;
     auto select_all_parts() -> FReply;

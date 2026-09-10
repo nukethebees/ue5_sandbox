@@ -68,6 +68,9 @@ auto generate_mesh_assembly(TArray<FSbxMeshAssemblyPart> const& parts) -> FSbxMe
 
     FSbxMeshData assembly;
     for (auto const& part : parts) {
+        if (!part.visible) {
+            continue;
+        }
         append_transformed_mesh(assembly, generate_mesh(part.mesh), part.transform);
     }
     return assembly;
@@ -78,12 +81,14 @@ auto describe_mesh_assembly(TArray<FSbxMeshAssemblyPart> const& parts) -> FStrin
     auto const part_count{parts.Num()};
     for (int32 part_index{0}; part_index < part_count; ++part_index) {
         auto const& part{parts[part_index]};
-        description += FString::Printf(TEXT(";part%d={%s;translation=%s;rotation=%s;scale=%s}"),
+        description += FString::Printf(TEXT(";part%d={%s;translation=%s;rotation=%s;scale=%s;"
+                                            "visible=%s}"),
                                        part_index,
                                        *describe_mesh_request(part.mesh),
                                        *part.transform.translation.ToString(),
                                        *part.transform.rotation.ToString(),
-                                       *part.transform.scale.ToString());
+                                       *part.transform.scale.ToString(),
+                                       part.visible ? TEXT("true") : TEXT("false"));
     }
     return description;
 }

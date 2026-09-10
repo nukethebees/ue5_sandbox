@@ -136,6 +136,32 @@ void FSbxMeshGenLabEditorModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolk
                      [SNew(STextBlock)
                           .Text(LOCTEXT("Hierarchy", "Assembly Hierarchy"))
                           .Font(FAppStyle::Get().GetFontStyle("HeadingExtraSmall"))] +
+                 SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
+                     [SNew(SHorizontalBox) +
+                      SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
+                          [SNew(SButton)
+                               .Text(LOCTEXT("AddPart", "Add"))
+                               .OnClicked(this, &FSbxMeshGenLabEditorModeToolkit::add_part)] +
+                      SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
+                          [SNew(SButton)
+                               .Text(LOCTEXT("SelectAllParts", "Select All"))
+                               .OnClicked(this,
+                                          &FSbxMeshGenLabEditorModeToolkit::select_all_parts)] +
+                      SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
+                          [SNew(SButton)
+                               .Text(LOCTEXT("DuplicatePart", "Duplicate / Repeat"))
+                               .ToolTipText(LOCTEXT(
+                                   "DuplicatePartTooltip",
+                                   "Duplicate the selection using the translation, rotation, and "
+                                   "repeat settings below."))
+                               .OnClicked(this, &FSbxMeshGenLabEditorModeToolkit::duplicate_part)] +
+                      SHorizontalBox::Slot().AutoWidth()
+                          [SNew(SButton)
+                               .Text(LOCTEXT("RemovePart", "Remove"))
+                               .IsEnabled_Lambda([this]() {
+                                   return mode_.IsValid() && mode_->can_remove_selected_parts();
+                               })
+                               .OnClicked(this, &FSbxMeshGenLabEditorModeToolkit::remove_part)]] +
                  SVerticalBox::Slot().AutoHeight().MaxHeight(280.0f).Padding(0.0f, 0.0f, 0.0f, 6.0f)
                      [SAssignNew(hierarchy_tree_, STreeView<FTreeItem>)
                           .TreeItemsSource(&root_items_)
@@ -202,32 +228,6 @@ void FSbxMeshGenLabEditorModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolk
                                })
                                .OnClicked(this,
                                           &FSbxMeshGenLabEditorModeToolkit::snap_and_parent)]] +
-                 SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
-                     [SNew(SHorizontalBox) +
-                      SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
-                          [SNew(SButton)
-                               .Text(LOCTEXT("AddPart", "Add"))
-                               .OnClicked(this, &FSbxMeshGenLabEditorModeToolkit::add_part)] +
-                      SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
-                          [SNew(SButton)
-                               .Text(LOCTEXT("SelectAllParts", "Select All"))
-                               .OnClicked(this,
-                                          &FSbxMeshGenLabEditorModeToolkit::select_all_parts)] +
-                      SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
-                          [SNew(SButton)
-                               .Text(LOCTEXT("DuplicatePart", "Duplicate / Repeat"))
-                               .ToolTipText(LOCTEXT(
-                                   "DuplicatePartTooltip",
-                                   "Duplicate the selection using the translation, rotation, and "
-                                   "repeat settings below."))
-                               .OnClicked(this, &FSbxMeshGenLabEditorModeToolkit::duplicate_part)] +
-                      SHorizontalBox::Slot().AutoWidth()
-                          [SNew(SButton)
-                               .Text(LOCTEXT("RemovePart", "Remove"))
-                               .IsEnabled_Lambda([this]() {
-                                   return mode_.IsValid() && mode_->can_remove_selected_parts();
-                               })
-                               .OnClicked(this, &FSbxMeshGenLabEditorModeToolkit::remove_part)]] +
                  SVerticalBox::Slot().FillHeight(1.0f)[DetailsView.ToSharedRef()] +
                  SVerticalBox::Slot().AutoHeight().Padding(0.0f, 8.0f, 0.0f, 0.0f)
                      [SNew(SButton)
@@ -423,19 +423,64 @@ void FSbxMeshGenLabEditorModeToolkit::refresh_tree_items() {
 auto FSbxMeshGenLabEditorModeToolkit::generate_tree_row(FTreeItem const item,
                                                         TSharedRef<STableViewBase> const& owner)
     -> TSharedRef<ITableRow> {
-    TSharedRef<SWidget> content{
-        SNew(STextBlock).Text_Lambda([this, item]() { return tree_item_text(item); })};
-    if (item->kind == ESbxMeshTreeItemKind::Group) {
-        content =
-            SNew(SInlineEditableTextBlock)
-                .Text_Lambda([this, item]() { return tree_item_text(item); })
-                .OnTextCommitted(this, &FSbxMeshGenLabEditorModeToolkit::rename_tree_item, item);
+    if (item->kind == ESbxMeshTreeItemKind::Root) {
+        return SNew(STableRow<FTreeItem>, owner)
+            .OnCanAcceptDrop(this, &FSbxMeshGenLabEditorModeToolkit::can_accept_tree_drop)
+            .OnAcceptDrop(this, &FSbxMeshGenLabEditorModeToolkit::accept_tree_drop)
+                [SNew(STextBlock).Text(LOCTEXT("AssemblyRoot", "Assembly"))];
     }
 
     return SNew(STableRow<FTreeItem>, owner)
         .OnDragDetected(this, &FSbxMeshGenLabEditorModeToolkit::begin_tree_drag, item)
         .OnCanAcceptDrop(this, &FSbxMeshGenLabEditorModeToolkit::can_accept_tree_drop)
-        .OnAcceptDrop(this, &FSbxMeshGenLabEditorModeToolkit::accept_tree_drop)[content];
+        .OnAcceptDrop(this, &FSbxMeshGenLabEditorModeToolkit::accept_tree_drop)
+            [SNew(SHorizontalBox) +
+             SHorizontalBox::Slot().FillWidth(
+                 1.0f)[SNew(SInlineEditableTextBlock)
+                           .Text_Lambda([this, item]() { return tree_item_name(item); })
+                           .OnTextCommitted(
+                               this, &FSbxMeshGenLabEditorModeToolkit::rename_tree_item, item)] +
+             SHorizontalBox::Slot()
+                 .AutoWidth()
+                 .VAlign(VAlign_Center)
+                 .Padding(4.0f,
+                          0.0f)[SNew(STextBlock)
+                                    .Text_Lambda([this, item]() { return tree_item_detail(item); })
+                                    .ColorAndOpacity(FSlateColor::UseSubduedForeground())] +
+             SHorizontalBox::Slot().AutoWidth().Padding(3.0f, 0.0f)
+                 [SNew(SButton)
+                      .ContentPadding(FMargin{4.0f, 0.0f})
+                      .Text_Lambda([this, item]() {
+                          return mode_.IsValid() && mode_->is_node_locally_visible(item->id)
+                                   ? LOCTEXT("HideNode", "Hide")
+                                   : LOCTEXT("ShowNode", "Show");
+                      })
+                      .ToolTipText(LOCTEXT(
+                          "ToggleVisibilityTooltip",
+                          "Show or hide this node and its descendants in the preview and output."))
+                      .OnClicked_Lambda([this, item]() {
+                          if (mode_.IsValid()) {
+                              mode_->toggle_node_visibility(item->id);
+                          }
+                          return FReply::Handled();
+                      })] +
+             SHorizontalBox::Slot().AutoWidth()
+                 [SNew(SButton)
+                      .ContentPadding(FMargin{4.0f, 0.0f})
+                      .Text_Lambda([this, item]() {
+                          return mode_.IsValid() && mode_->is_node_locally_locked(item->id)
+                                   ? LOCTEXT("UnlockNode", "Unlock")
+                                   : LOCTEXT("LockNode", "Lock");
+                      })
+                      .ToolTipText(
+                          LOCTEXT("ToggleLockTooltip",
+                                  "Lock or unlock this node and its descendants against editing."))
+                      .OnClicked_Lambda([this, item]() {
+                          if (mode_.IsValid()) {
+                              mode_->toggle_node_lock(item->id);
+                          }
+                          return FReply::Handled();
+                      })]];
 }
 
 void FSbxMeshGenLabEditorModeToolkit::get_tree_children(FTreeItem const item,
@@ -536,12 +581,12 @@ auto FSbxMeshGenLabEditorModeToolkit::accept_tree_drop(FDragDropEvent const& eve
 void FSbxMeshGenLabEditorModeToolkit::rename_tree_item(FText const& text,
                                                        ETextCommit::Type,
                                                        FTreeItem const item) {
-    if (mode_.IsValid() && item.IsValid() && item->kind == ESbxMeshTreeItemKind::Group) {
-        mode_->rename_group(item->id, FName{text.ToString().TrimStartAndEnd()});
+    if (mode_.IsValid() && item.IsValid() && item->kind != ESbxMeshTreeItemKind::Root) {
+        mode_->rename_node(item->id, FName{text.ToString().TrimStartAndEnd()});
     }
 }
 
-auto FSbxMeshGenLabEditorModeToolkit::tree_item_text(FTreeItem const item) const -> FText {
+auto FSbxMeshGenLabEditorModeToolkit::tree_item_name(FTreeItem const item) const -> FText {
     if (!mode_.IsValid() || !item.IsValid()) {
         return FText::GetEmpty();
     }
@@ -555,17 +600,44 @@ auto FSbxMeshGenLabEditorModeToolkit::tree_item_text(FTreeItem const item) const
                  : FText::GetEmpty();
     }
 
+    auto const& parts{mode_->get_recipe_parts()};
+    return parts.IsValidIndex(item->data_index) ? FText::FromName(parts[item->data_index].name)
+                                                : FText::GetEmpty();
+}
+
+auto FSbxMeshGenLabEditorModeToolkit::tree_item_detail(FTreeItem const item) const -> FText {
+    if (!mode_.IsValid() || !item.IsValid() || item->kind != ESbxMeshTreeItemKind::Part) {
+        return FText::GetEmpty();
+    }
     auto const& parts{mode_->get_parts()};
     if (!parts.IsValidIndex(item->data_index)) {
         return FText::GetEmpty();
     }
     auto const* const shape_enum{StaticEnum<ESbxMeshShape>()};
-    auto const shape_text{shape_enum == nullptr
-                              ? FText::GetEmpty()
-                              : shape_enum->GetDisplayNameTextByValue(
-                                    static_cast<int64>(parts[item->data_index].mesh.shape))};
+    return shape_enum == nullptr
+             ? FText::GetEmpty()
+             : FText::Format(LOCTEXT("PartShapeDetail", "({0})"),
+                             shape_enum->GetDisplayNameTextByValue(
+                                 static_cast<int64>(parts[item->data_index].mesh.shape)));
+}
+
+auto FSbxMeshGenLabEditorModeToolkit::tree_item_text(FTreeItem const item) const -> FText {
+    if (!mode_.IsValid() || !item.IsValid()) {
+        return FText::GetEmpty();
+    }
+    if (item->kind == ESbxMeshTreeItemKind::Root) {
+        return tree_item_name(item);
+    }
+    if (item->kind == ESbxMeshTreeItemKind::Group) {
+        return tree_item_name(item);
+    }
+
+    auto const& recipe_parts{mode_->get_recipe_parts()};
+    if (!recipe_parts.IsValidIndex(item->data_index)) {
+        return FText::GetEmpty();
+    }
     return FText::Format(
-        LOCTEXT("PartEntry", "Part {0} — {1}"), FText::AsNumber(item->data_index + 1), shape_text);
+        LOCTEXT("PartEntry", "{0} {1}"), tree_item_name(item), tree_item_detail(item));
 }
 
 auto FSbxMeshGenLabEditorModeToolkit::add_part() -> FReply {
@@ -664,7 +736,9 @@ auto FSbxMeshGenLabEditorModeToolkit::show_help() -> FReply {
             "Drag selected parts or groups onto any hierarchy node to parent them. Their world "
             "transforms are preserved, so parenting does not move or snap geometry. Drag onto "
             "Assembly to unparent. A parent part or group carries its descendants when moved. "
-            "Invalid cyclic drops are rejected.\n\n"
+            "Invalid cyclic drops are rejected. Double-click a node name to rename it. Hide "
+            "removes a node and its descendants from both preview and generated output. Lock "
+            "protects a node and its descendants from direct editing.\n\n"
             "GROUPS\n"
             "Create Group adds an explicit transform/pivot node around the selection. Groups are "
             "useful when several parts should be manipulated as one assembly.\n\n"

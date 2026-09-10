@@ -124,7 +124,11 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final
     void remove_part();
     void create_group();
     void ungroup();
-    auto rename_group(FGuid id, FName name) -> bool;
+    auto rename_node(FGuid id, FName name) -> bool;
+    void toggle_node_visibility(FGuid id);
+    void toggle_node_lock(FGuid id);
+    [[nodiscard]] auto is_node_locally_visible(FGuid id) const -> bool;
+    [[nodiscard]] auto is_node_locally_locked(FGuid id) const -> bool;
     [[nodiscard]] auto can_reparent_nodes(TArray<FGuid> const& ids, FGuid parent_id) const -> bool;
     auto reparent_node(FGuid id, FGuid parent_id) -> bool;
     auto reparent_nodes(TArray<FGuid> const& ids, FGuid parent_id) -> bool;
@@ -157,6 +161,7 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final
     [[nodiscard]] auto get_node_world_transform(FGuid id) const -> FTransform;
     [[nodiscard]] auto get_node_parent_id(FGuid id) const -> FGuid;
     [[nodiscard]] auto is_node_descendant(FGuid id, FGuid ancestor_id) const -> bool;
+    [[nodiscard]] auto is_node_locked(FGuid id) const -> bool;
     [[nodiscard]] auto get_connector_world_transform(int32 group_index, int32 connector_index) const
         -> FTransform;
     [[nodiscard]] auto get_parent_world_transform(FGuid parent_id) const -> FTransform;

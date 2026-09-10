@@ -258,7 +258,14 @@ void USbxMeshGenLabEditorMode::DrawHUD(FEditorViewportClient* const viewport_cli
 }
 
 auto USbxMeshGenLabEditorMode::UsesTransformWidget() const -> bool {
-    return !selected_part_indices_.IsEmpty() && parts_.IsValidIndex(selected_part_index_);
+    if (selected_part_indices_.IsEmpty() || !parts_.IsValidIndex(selected_part_index_)) {
+        return false;
+    }
+    if (selected_group_index_ != INDEX_NONE) {
+        return !is_node_locked(session_state_->groups[selected_group_index_].id);
+    }
+    return !selected_part_indices_.ContainsByPredicate(
+        [this](int32 const part_index) { return parts_[part_index].locked; });
 }
 
 auto USbxMeshGenLabEditorMode::ShouldDrawWidget() const -> bool {
@@ -505,15 +512,22 @@ auto USbxMeshGenLabEditorMode::get_selected_group_index() const -> int32 {
 }
 
 auto USbxMeshGenLabEditorMode::can_remove_selected_parts() const -> bool {
-    return !selected_part_indices_.IsEmpty() && selected_part_indices_.Num() < parts_.Num();
+    return !selected_part_indices_.IsEmpty() && selected_part_indices_.Num() < parts_.Num() &&
+           !selected_part_indices_.ContainsByPredicate(
+               [this](int32 const part_index) { return parts_[part_index].locked; });
 }
 
 auto USbxMeshGenLabEditorMode::can_create_group() const -> bool {
-    return selected_group_index_ != INDEX_NONE || !selected_part_indices_.IsEmpty();
+    return (selected_group_index_ != INDEX_NONE || !selected_part_indices_.IsEmpty()) &&
+           !selected_part_indices_.ContainsByPredicate(
+               [this](int32 const part_index) { return parts_[part_index].locked; });
 }
 
 auto USbxMeshGenLabEditorMode::can_ungroup() const -> bool {
-    return session_state_ != nullptr && session_state_->groups.IsValidIndex(selected_group_index_);
+    return session_state_ != nullptr &&
+           session_state_->groups.IsValidIndex(selected_group_index_) &&
+           !selected_part_indices_.ContainsByPredicate(
+               [this](int32 const part_index) { return parts_[part_index].locked; });
 }
 
 auto USbxMeshGenLabEditorMode::can_set_snap_target() const -> bool {
@@ -534,6 +548,7 @@ auto USbxMeshGenLabEditorMode::can_snap_selected_group() const -> bool {
         })};
     if (!session_state_->groups.IsValidIndex(target_group_index) ||
         target_group_index == selected_group_index_ ||
+        is_node_locked(session_state_->groups[selected_group_index_].id) ||
         !session_state_->groups[target_group_index].connectors.IsValidIndex(
             snap_target_connector_index_)) {
         return false;
@@ -725,7 +740,9 @@ void USbxMeshGenLabEditorMode::add_part() {
     FSbxMeshAssemblyPart part;
     part.mesh = SandboxMesh::make_default_mesh_request(ESbxMeshShape::Box);
     auto const part_id{FGuid::NewGuid()};
-    session_state_->parts.Add(FSbxMeshAssemblyRecipePart::from_part(part, part_id));
+    auto recipe_part{FSbxMeshAssemblyRecipePart::from_part(part, part_id)};
+    recipe_part.name = FName{FString::Printf(TEXT("Part %d"), session_state_->parts.Num() + 1)};
+    session_state_->parts.Add(MoveTemp(recipe_part));
     parts_.Add(part);
     part_ids_.Add(part_id);
     rebuild_part_index_map();
@@ -736,6 +753,12 @@ void USbxMeshGenLabEditorMode::add_part() {
 
 void USbxMeshGenLabEditorMode::duplicate_part() {
     if (selected_part_indices_.IsEmpty()) {
+        return;
+    }
+    if (selected_part_indices_.ContainsByPredicate(
+            [this](int32 const part_index) { return parts_[part_index].locked; })) {
+        status_ = LOCTEXT("LockedDuplicateRejected", "Unlock the selection before duplicating it.");
+        notify_session_changed(false);
         return;
     }
 
@@ -804,8 +827,14 @@ void USbxMeshGenLabEditorMode::duplicate_part() {
             if (part_index == selected_part_index_ && repeat_index == repeat_count) {
                 duplicate_primary_offset = duplicate_parts.Num();
             }
-            duplicate_parts.Add(
-                FSbxMeshAssemblyRecipePart::from_part(part, FGuid::NewGuid(), parent_id));
+            auto duplicate_part{
+                FSbxMeshAssemblyRecipePart::from_part(part, FGuid::NewGuid(), parent_id)};
+            auto const& source_part{session_state_->parts[part_index]};
+            duplicate_part.name =
+                FName{FString::Printf(TEXT("%s Copy"), *source_part.name.ToString())};
+            duplicate_part.visible = source_part.visible;
+            duplicate_part.locked = source_part.locked;
+            duplicate_parts.Add(MoveTemp(duplicate_part));
         }
     }
 
@@ -1121,25 +1150,96 @@ void USbxMeshGenLabEditorMode::apply_connector_snap(bool const parent_to_target)
     notify_session_changed();
 }
 
-auto USbxMeshGenLabEditorMode::rename_group(FGuid const id, FName const name) -> bool {
-    auto const group_index{session_state_->groups.IndexOfByPredicate(
-        [id](FSbxMeshAssemblyRecipeGroup const& group) { return group.id == id; })};
-    if (!session_state_->groups.IsValidIndex(group_index) || name.IsNone()) {
+auto USbxMeshGenLabEditorMode::rename_node(FGuid const id, FName const name) -> bool {
+    if (name.IsNone() || is_node_locked(id)) {
         return false;
     }
-    if (session_state_->groups[group_index].name == name) {
-        return true;
+    auto const group_index{session_state_->groups.IndexOfByPredicate(
+        [id](FSbxMeshAssemblyRecipeGroup const& group) { return group.id == id; })};
+    auto const* const part_index{part_index_by_id_.Find(id)};
+    if (!session_state_->groups.IsValidIndex(group_index) && part_index == nullptr) {
+        return false;
     }
 
     FScopedTransaction const transaction{
-        LOCTEXT("RenameAssemblyGroupTransaction", "Rename Mesh Group")};
+        LOCTEXT("RenameAssemblyNodeTransaction", "Rename Mesh Node")};
     session_state_->Modify();
-    session_state_->groups[group_index].name = name;
+    if (session_state_->groups.IsValidIndex(group_index)) {
+        session_state_->groups[group_index].name = name;
+    } else {
+        session_state_->parts[*part_index].name = name;
+    }
     mark_recipe_dirty();
     status_ =
-        FText::Format(LOCTEXT("GroupRenamed", "Renamed group to '{0}'."), FText::FromName(name));
+        FText::Format(LOCTEXT("NodeRenamed", "Renamed node to '{0}'."), FText::FromName(name));
     notify_session_changed();
     return true;
+}
+
+void USbxMeshGenLabEditorMode::toggle_node_visibility(FGuid const id) {
+    FScopedTransaction const transaction{
+        LOCTEXT("ToggleAssemblyNodeVisibilityTransaction", "Toggle Mesh Node Visibility")};
+    session_state_->Modify();
+
+    auto const group_index{session_state_->groups.IndexOfByPredicate(
+        [id](FSbxMeshAssemblyRecipeGroup const& group) { return group.id == id; })};
+    if (session_state_->groups.IsValidIndex(group_index)) {
+        session_state_->groups[group_index].visible = !session_state_->groups[group_index].visible;
+    } else if (auto const* const part_index{part_index_by_id_.Find(id)}; part_index != nullptr) {
+        session_state_->parts[*part_index].visible = !session_state_->parts[*part_index].visible;
+    } else {
+        return;
+    }
+
+    rebuild_resolved_parts(true);
+    mark_recipe_dirty();
+    select_node(id);
+    status_ = is_node_locally_visible(id) ? LOCTEXT("NodeShown", "Node is visible.")
+                                          : LOCTEXT("NodeHidden", "Node is hidden.");
+    notify_session_changed();
+}
+
+void USbxMeshGenLabEditorMode::toggle_node_lock(FGuid const id) {
+    FScopedTransaction const transaction{
+        LOCTEXT("ToggleAssemblyNodeLockTransaction", "Toggle Mesh Node Lock")};
+    session_state_->Modify();
+
+    auto const group_index{session_state_->groups.IndexOfByPredicate(
+        [id](FSbxMeshAssemblyRecipeGroup const& group) { return group.id == id; })};
+    if (session_state_->groups.IsValidIndex(group_index)) {
+        session_state_->groups[group_index].locked = !session_state_->groups[group_index].locked;
+    } else if (auto const* const part_index{part_index_by_id_.Find(id)}; part_index != nullptr) {
+        session_state_->parts[*part_index].locked = !session_state_->parts[*part_index].locked;
+    } else {
+        return;
+    }
+
+    rebuild_resolved_parts();
+    mark_recipe_dirty();
+    select_node(id);
+    status_ = is_node_locally_locked(id) ? LOCTEXT("NodeLocked", "Node is locked.")
+                                         : LOCTEXT("NodeUnlocked", "Node is unlocked.");
+    notify_session_changed();
+}
+
+auto USbxMeshGenLabEditorMode::is_node_locally_visible(FGuid const id) const -> bool {
+    auto const group_index{session_state_->groups.IndexOfByPredicate(
+        [id](FSbxMeshAssemblyRecipeGroup const& group) { return group.id == id; })};
+    if (session_state_->groups.IsValidIndex(group_index)) {
+        return session_state_->groups[group_index].visible;
+    }
+    auto const* const part_index{part_index_by_id_.Find(id)};
+    return part_index != nullptr && session_state_->parts[*part_index].visible;
+}
+
+auto USbxMeshGenLabEditorMode::is_node_locally_locked(FGuid const id) const -> bool {
+    auto const group_index{session_state_->groups.IndexOfByPredicate(
+        [id](FSbxMeshAssemblyRecipeGroup const& group) { return group.id == id; })};
+    if (session_state_->groups.IsValidIndex(group_index)) {
+        return session_state_->groups[group_index].locked;
+    }
+    auto const* const part_index{part_index_by_id_.Find(id)};
+    return part_index != nullptr && session_state_->parts[*part_index].locked;
 }
 
 auto USbxMeshGenLabEditorMode::can_reparent_nodes(TArray<FGuid> const& ids,
@@ -1160,9 +1260,13 @@ auto USbxMeshGenLabEditorMode::can_reparent_nodes(TArray<FGuid> const& ids,
             part_index_by_id_.Contains(id) ||
             session_state_->groups.ContainsByPredicate(
                 [id](FSbxMeshAssemblyRecipeGroup const& group) { return group.id == id; })};
-        if (!node_exists || id == parent_id || is_node_descendant(parent_id, id)) {
+        if (!node_exists || is_node_locked(id) || id == parent_id ||
+            is_node_descendant(parent_id, id)) {
             return false;
         }
+    }
+    if (parent_id.IsValid() && is_node_locked(parent_id)) {
+        return false;
     }
     return true;
 }
@@ -1255,7 +1359,9 @@ void USbxMeshGenLabEditorMode::new_assembly() {
     session_state_->on_undo().AddUObject(this,
                                          &USbxMeshGenLabEditorMode::restore_session_after_undo);
     auto const part{FSbxMeshAssemblyPart{settings->to_request(), settings->to_transform()}};
-    session_state_->parts = {FSbxMeshAssemblyRecipePart::from_part(part)};
+    auto recipe_part{FSbxMeshAssemblyRecipePart::from_part(part)};
+    recipe_part.name = TEXT("Part 1");
+    session_state_->parts = {MoveTemp(recipe_part)};
     session_state_->groups.Reset();
     parts_ = {part};
     part_ids_ = {session_state_->parts[0].id};
@@ -1520,6 +1626,15 @@ void USbxMeshGenLabEditorMode::apply_settings(bool const mark_dirty) {
     if (!parts_.IsValidIndex(selected_part_index_)) {
         return;
     }
+    auto const selected_id{selected_group_index_ != INDEX_NONE
+                               ? session_state_->groups[selected_group_index_].id
+                               : session_state_->parts[selected_part_index_].id};
+    if (is_node_locked(selected_id)) {
+        status_ = LOCTEXT("LockedEditRejected", "Unlock the node before editing it.");
+        select_node(selected_id);
+        notify_session_changed();
+        return;
+    }
 
     auto* const settings{get_settings()};
     if (settings->part_scale.GetMin() < 0.001) {
@@ -1546,8 +1661,14 @@ void USbxMeshGenLabEditorMode::apply_settings(bool const mark_dirty) {
         auto& recipe_part{session_state_->parts[selected_part_index_]};
         auto const part_id{recipe_part.id};
         auto const parent_id{recipe_part.parent_id};
+        auto const name{recipe_part.name};
+        auto const visible{recipe_part.visible};
+        auto const locked{recipe_part.locked};
         recipe_part = FSbxMeshAssemblyRecipePart::from_part(
             {settings->to_request(), settings->to_transform()}, part_id, parent_id);
+        recipe_part.name = name;
+        recipe_part.visible = visible;
+        recipe_part.locked = locked;
         rebuild_resolved_parts();
         refresh_preview_instance(selected_part_index_, true);
     }
@@ -1705,6 +1826,9 @@ auto USbxMeshGenLabEditorMode::find_or_create_preview_bucket(
 
 void USbxMeshGenLabEditorMode::add_preview_instance(int32 const part_index) {
     if (!parts_.IsValidIndex(part_index) || !part_ids_.IsValidIndex(part_index)) {
+        return;
+    }
+    if (!parts_[part_index].visible) {
         return;
     }
 
@@ -2028,6 +2152,19 @@ auto USbxMeshGenLabEditorMode::is_node_descendant(FGuid const id, FGuid const an
             return true;
         }
         visited_ids.Add(node_id);
+        node_id = get_node_parent_id(node_id);
+    }
+    return false;
+}
+
+auto USbxMeshGenLabEditorMode::is_node_locked(FGuid const id) const -> bool {
+    auto node_id{id};
+    TSet<FGuid> visited_ids;
+    while (node_id.IsValid() && !visited_ids.Contains(node_id)) {
+        visited_ids.Add(node_id);
+        if (is_node_locally_locked(node_id)) {
+            return true;
+        }
         node_id = get_node_parent_id(node_id);
     }
     return false;

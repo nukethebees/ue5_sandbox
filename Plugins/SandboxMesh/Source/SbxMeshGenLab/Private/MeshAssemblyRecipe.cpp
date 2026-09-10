@@ -6,6 +6,8 @@ auto FSbxMeshAssemblyRecipePart::from_part(FSbxMeshAssemblyPart const& part,
     FSbxMeshAssemblyRecipePart recipe_part;
     recipe_part.id = id;
     recipe_part.parent_id = parent_id;
+    recipe_part.visible = part.visible;
+    recipe_part.locked = part.locked;
     recipe_part.shape = part.mesh.shape;
     recipe_part.material_role = part.mesh.material_role;
     recipe_part.translation = FVector{part.transform.translation};
@@ -65,7 +67,8 @@ auto FSbxMeshAssemblyRecipePart::to_part(FName const output_asset_name) const
                                honeycomb_depth,
                                honeycomb_pointy_top};
 
-    return {request, {FVector3f{translation}, FRotator3f{rotation}, FVector3f{scale}}};
+    return {
+        request, {FVector3f{translation}, FRotator3f{rotation}, FVector3f{scale}}, visible, locked};
 }
 
 auto FSbxMeshAssemblyRecipeGroup::to_transform() const -> FTransform {
@@ -90,11 +93,15 @@ auto get_node_local_transform(FGuid const id,
                               TMap<FGuid, int32> const& part_indices,
                               TMap<FGuid, int32> const& group_indices,
                               FTransform& transform,
-                              FGuid& parent_id) -> bool {
+                              FGuid& parent_id,
+                              bool& visible,
+                              bool& locked) -> bool {
     if (auto const* const group_index{group_indices.Find(id)}; group_index != nullptr) {
         auto const& group{groups[*group_index]};
         transform = group.to_transform();
         parent_id = group.parent_id;
+        visible = group.visible;
+        locked = group.locked;
         return true;
     }
 
@@ -108,6 +115,8 @@ auto get_node_local_transform(FGuid const id,
                            FVector{part.transform.translation},
                            FVector{part.transform.scale}};
     parent_id = parts[*part_index].parent_id;
+    visible = parts[*part_index].visible;
+    locked = parts[*part_index].locked;
     return true;
 }
 
@@ -117,7 +126,9 @@ auto resolve_node_transform(FGuid const id,
                             TMap<FGuid, int32> const& part_indices,
                             TMap<FGuid, int32> const& group_indices,
                             TMap<FGuid, uint8>& states,
-                            TMap<FGuid, FTransform>& transforms) -> bool {
+                            TMap<FGuid, FTransform>& transforms,
+                            TMap<FGuid, bool>& visibilities,
+                            TMap<FGuid, bool>& locks) -> bool {
     auto& state{states.FindOrAdd(id)};
     if (state == 2) {
         return true;
@@ -129,19 +140,39 @@ auto resolve_node_transform(FGuid const id,
     state = 1;
     FTransform transform;
     FGuid parent_id;
-    if (!get_node_local_transform(
-            id, parts, groups, part_indices, group_indices, transform, parent_id)) {
+    bool visible{};
+    bool locked{};
+    if (!get_node_local_transform(id,
+                                  parts,
+                                  groups,
+                                  part_indices,
+                                  group_indices,
+                                  transform,
+                                  parent_id,
+                                  visible,
+                                  locked)) {
         return false;
     }
 
     if (parent_id.IsValid()) {
-        if (!resolve_node_transform(
-                parent_id, parts, groups, part_indices, group_indices, states, transforms)) {
+        if (!resolve_node_transform(parent_id,
+                                    parts,
+                                    groups,
+                                    part_indices,
+                                    group_indices,
+                                    states,
+                                    transforms,
+                                    visibilities,
+                                    locks)) {
             return false;
         }
         transform *= transforms.FindChecked(parent_id);
+        visible = visible && visibilities.FindChecked(parent_id);
+        locked = locked || locks.FindChecked(parent_id);
     }
     transforms.Add(id, transform);
+    visibilities.Add(id, visible);
+    locks.Add(id, locked);
     state = 2;
     return true;
 }
@@ -227,9 +258,18 @@ auto validate_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& 
 
     TMap<FGuid, uint8> states;
     TMap<FGuid, FTransform> transforms;
+    TMap<FGuid, bool> visibilities;
+    TMap<FGuid, bool> locks;
     for (FGuid const id : node_ids) {
-        if (!resolve_node_transform(
-                id, parts, groups, part_indices, group_indices, states, transforms)) {
+        if (!resolve_node_transform(id,
+                                    parts,
+                                    groups,
+                                    part_indices,
+                                    group_indices,
+                                    states,
+                                    transforms,
+                                    visibilities,
+                                    locks)) {
             return TEXT("Assembly hierarchy contains a parenting cycle.");
         }
     }
@@ -254,13 +294,29 @@ auto resolve_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& p
     }
     TMap<FGuid, uint8> states;
     TMap<FGuid, FTransform> transforms;
+    TMap<FGuid, bool> visibilities;
+    TMap<FGuid, bool> locks;
     for (auto const& group : groups) {
-        check(resolve_node_transform(
-            group.id, parts, groups, part_indices, group_indices, states, transforms));
+        check(resolve_node_transform(group.id,
+                                     parts,
+                                     groups,
+                                     part_indices,
+                                     group_indices,
+                                     states,
+                                     transforms,
+                                     visibilities,
+                                     locks));
     }
     for (auto const& part : parts) {
-        check(resolve_node_transform(
-            part.id, parts, groups, part_indices, group_indices, states, transforms));
+        check(resolve_node_transform(part.id,
+                                     parts,
+                                     groups,
+                                     part_indices,
+                                     group_indices,
+                                     states,
+                                     transforms,
+                                     visibilities,
+                                     locks));
     }
 
     TArray<FSbxMeshAssemblyPart> resolved_parts;
@@ -271,6 +327,8 @@ auto resolve_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& p
         part.transform = {FVector3f{transform.GetLocation()},
                           FRotator3f{transform.Rotator()},
                           FVector3f{transform.GetScale3D()}};
+        part.visible = visibilities.FindChecked(recipe_part.id);
+        part.locked = locks.FindChecked(recipe_part.id);
         resolved_parts.Add(MoveTemp(part));
     }
     return resolved_parts;

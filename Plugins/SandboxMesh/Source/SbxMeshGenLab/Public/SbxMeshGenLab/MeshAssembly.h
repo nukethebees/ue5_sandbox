@@ -11,6 +11,8 @@ struct FSbxMeshTransform {
 struct FSbxMeshAssemblyPart {
     FSbxMeshGenerationRequest mesh;
     FSbxMeshTransform transform;
+    bool visible{true};
+    bool locked{};
 };
 
 namespace SandboxMesh {
