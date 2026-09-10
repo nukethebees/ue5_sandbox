@@ -99,6 +99,30 @@ TEST_CASE("SandboxCore.FFrameMemoryResource reclaims only on explicit reset") {
     resource.deallocate(reused, 128, 16);
 }
 
+TEST_CASE("SandboxCore.FFrameMemoryResource reclaims phases while preserving frame totals") {
+    ml::FFrameMemoryResource resource{512};
+
+    auto* first{resource.allocate(128, 16)};
+    resource.deallocate(first, 128, 16);
+    resource.reclaim();
+
+    auto* second{resource.allocate(64, 16)};
+    resource.deallocate(second, 64, 16);
+    auto const current{resource.get_stats()};
+    CHECK(current.current_claimed_bytes == 64);
+    CHECK(current.current_frame_peak_claimed_bytes == 128);
+    CHECK(current.current_payload_bytes == 192);
+    CHECK(current.current_root_claim_count == 2);
+
+    resource.reset();
+    auto const reset{resource.get_stats()};
+    CHECK(reset.last_frame_claimed_bytes == 128);
+    CHECK(reset.last_frame_payload_bytes == 192);
+    CHECK(reset.last_frame_root_claim_count == 2);
+    CHECK(reset.current_claimed_bytes == 0);
+    CHECK(reset.current_frame_peak_claimed_bytes == 0);
+}
+
 TEST_CASE("SandboxCore.FFrameMemoryResource makes concurrent non-overlapping claims") {
     constexpr int32 thread_count{16};
     constexpr int32 allocations_per_thread{128};

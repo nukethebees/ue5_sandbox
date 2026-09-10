@@ -34,7 +34,16 @@ class TFrameArray {
     auto is_empty() const noexcept -> bool { return values_.empty(); }
 
     void reserve(int32 const count) { values_.reserve(to_storage_size(count)); }
+    void set_num(int32 const count) { values_.resize(to_storage_size(count)); }
     void clear() noexcept { values_.clear(); }
+
+    void remove_at_swap(int32 const index) {
+        auto const storage_index{checked_index(index)};
+        if (storage_index + 1 != values_.size()) {
+            values_[storage_index] = std::move(values_.back());
+        }
+        values_.pop_back();
+    }
 
     auto add(T const& value) -> T& {
         check_can_add();

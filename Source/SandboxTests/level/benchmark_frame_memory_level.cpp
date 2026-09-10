@@ -105,7 +105,7 @@ TEST_CLASS(FrameMemoryLevelBenchmark, "SandboxBenchmarks.FrameMemoryLevel")
         auto const stats{simulation->get_frame_memory_stats()};
         samples_.add(orchestrator.get_simulation_time(),
                      ml::frame_memory_level_benchmark::FSample{
-                         .claimed_bytes = stats.current_claimed_bytes,
+                         .claimed_bytes = stats.current_frame_peak_claimed_bytes,
                          .payload_bytes = stats.current_payload_bytes,
                          .padding_bytes = stats.current_padding_bytes,
                          .root_claim_count = stats.current_root_claim_count,
@@ -228,12 +228,8 @@ TEST_CLASS(FrameMemoryLevelBenchmark, "SandboxBenchmarks.FrameMemoryLevel")
         if (allocation_mode == ml::test_static_turrets::EScratchAllocationMode::Persistent) {
             checks_.is_true(persistent_scratch_bytes > 0,
                             TEXT("Persistent baseline provisions reusable scratch"));
-            checks_.are_equal(SIZE_T{0},
-                              peak_claimed_bytes,
-                              TEXT("Persistent baseline does not use frame memory"));
-        } else {
-            checks_.is_true(peak_claimed_bytes > 0, TEXT("Turret scratch uses frame memory"));
         }
+        checks_.is_true(peak_claimed_bytes > 0, TEXT("Simulation scratch uses frame memory"));
         checks_.is_true(peak_fighters > 0, TEXT("Capitals launch fighters"));
         checks_.is_true(peak_turrets_targeting_fighters > 0,
                         TEXT("Turrets engage fighters during the benchmark"));

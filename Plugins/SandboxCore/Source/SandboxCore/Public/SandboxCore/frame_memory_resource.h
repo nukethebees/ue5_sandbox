@@ -17,6 +17,7 @@ struct FFrameMemoryStats {
     SIZE_T capacity_bytes{};
 
     SIZE_T current_claimed_bytes{};
+    SIZE_T current_frame_peak_claimed_bytes{};
     SIZE_T current_payload_bytes{};
     SIZE_T current_padding_bytes{};
     uint64 current_root_claim_count{};
@@ -46,6 +47,8 @@ class SANDBOXCORE_API FFrameMemoryResource final : public std::pmr::memory_resou
     // allocation uses the same claim path but terminates on failure.
     auto try_allocate(SIZE_T bytes, SIZE_T alignment) noexcept -> void*;
 
+    // Rewinds storage after a synchronous phase while retaining this frame's aggregate stats.
+    void reclaim();
     void reset();
     auto get_stats() const noexcept -> FFrameMemoryStats;
     auto owns(void const* pointer) const noexcept -> bool;
@@ -65,6 +68,8 @@ class SANDBOXCORE_API FFrameMemoryResource final : public std::pmr::memory_resou
     std::atomic<SIZE_T> padding_bytes_{};
     std::atomic<uint64> root_claim_count_{};
     std::atomic<uint64> outstanding_allocation_count_{};
+
+    std::atomic<SIZE_T> frame_peak_claimed_bytes_{};
 
     SIZE_T last_frame_claimed_bytes_{};
     SIZE_T last_frame_payload_bytes_{};

@@ -27,6 +27,7 @@
 #include <CoreMinimal.h>
 
 #include <array>
+#include <memory_resource>
 
 struct FLevelSimulation;
 struct FFighterSimulationConfig;
@@ -70,7 +71,8 @@ struct SPACEGAMESIMULATION_API Simulation {
     Simulation(FSimulationClock const& clock,
                FTestEntityRegistry& entity_registry,
                FSpatialQueryManager const& spatial_query_manager,
-               ml::test_lasers::Simulation& laser_simulation) noexcept;
+               ml::test_lasers::Simulation& laser_simulation,
+               std::pmr::memory_resource& frame_memory_resource) noexcept;
     Simulation(Simulation const&) = delete;
     Simulation(Simulation&&) = delete;
     auto operator=(Simulation const&) -> Simulation& = delete;
@@ -144,6 +146,7 @@ struct SPACEGAMESIMULATION_API Simulation {
         FVector3f trace_start;
         FVector3f trace_end;
     };
+    struct NavigationScratch;
     enum class NavigationRiskTier : uint8 {
         Clear,
         Nearby,
@@ -244,14 +247,20 @@ struct SPACEGAMESIMULATION_API Simulation {
     /* **************************************** */
     void move(float dt, TaskView const& task_span);
     void update_navigation_steering();
-    void collect_navigation_updates();
-    void update_separation_observations();
+    void collect_navigation_updates(NavigationScratch& scratch);
+    void update_separation_observations(NavigationScratch& scratch);
     void apply_separation_steering();
-    void scan_preferred_navigation(float clearance, float lookahead_time, float minimum_distance);
-    void scan_alternative_navigation(float clearance, float lookahead_time, float minimum_distance);
-    void execute_navigation_sweeps(float clearance);
-    void select_navigation_alternatives(float safe_progress_time);
-    void apply_navigation_choices();
+    void scan_preferred_navigation(NavigationScratch& scratch,
+                                   float clearance,
+                                   float lookahead_time,
+                                   float minimum_distance);
+    void scan_alternative_navigation(NavigationScratch& scratch,
+                                     float clearance,
+                                     float lookahead_time,
+                                     float minimum_distance);
+    void execute_navigation_sweeps(NavigationScratch& scratch, float clearance);
+    void select_navigation_alternatives(NavigationScratch& scratch, float safe_progress_time);
+    void apply_navigation_choices(NavigationScratch const& scratch);
     void publish_navigation_telemetry() const;
 
     /* **************************************** */
@@ -322,6 +331,7 @@ struct SPACEGAMESIMULATION_API Simulation {
     EntityBuffers entity_buffers{};
     FTestEntityRegistry& entity_registry;
     FSpatialQueryManager const& spatial_query_manager;
+    std::pmr::memory_resource& frame_memory_resource;
     RegistryEntityData registry_update_data;
 
     TestCapitalShipFighterSpawnQueue spawn_queue;
@@ -337,21 +347,6 @@ struct SPACEGAMESIMULATION_API Simulation {
     TestCapitalShipFighterOrderQueue order_queue{};
 
     ml::test_lasers::Simulation& laser_simulation;
-    ml::test_lasers::SpawnRequests new_lasers;
-    TArray<float> aiming_dot_product_buffer;
-
-    TArray<int32> scratch_int_buffer;
-    FVectors3f line_of_sight_starts;
-    FVectors3f line_of_sight_ends;
-    TArray<uint8> line_of_sight_results;
-    TArray<FRegistryEntityHandle> firing_ignored_entities;
-    TArray<int32> firing_position_fighter_indices;
-    FVectors3f firing_position_candidates;
-    FTraceHits navigation_trace_hits;
-    TArray<int32> navigation_blocked_fighter_indices;
-    TArray<int32> navigation_trace_fighter_indices;
-    TArray<int8> navigation_trace_choice_indices;
-    TArray<uint8> navigation_observed_risk_tiers;
 
     FNavigationTelemetrySnapshot navigation_telemetry;
     int32 diagnostic_stop_reports{};

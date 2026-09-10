@@ -123,9 +123,13 @@ FLevelSimulation::FLevelSimulation(FLevelSimulationInitData data)
     , capital_ship_fighters_simulation_{clock_,
                                         entity_registry_,
                                         query_manager_,
-                                        lasers_simulation_}
+                                        lasers_simulation_,
+                                        frame_memory_}
     , capital_ship_fighters_phase_{capital_ship_fighters_simulation_}
-    , capital_ships_simulation_{entity_registry_, query_manager_, capital_ship_fighters_simulation_}
+    , capital_ships_simulation_{entity_registry_,
+                                query_manager_,
+                                capital_ship_fighters_simulation_,
+                                frame_memory_}
     , capital_ships_phase_{capital_ships_simulation_}
     , turrets_simulation_{clock_,
                           entity_registry_,
@@ -376,6 +380,7 @@ void FLevelSimulation::advance(time_type const dt) {
             }
         }
         finish_phase(ELevelTelemetryTimingPhase::Setup);
+        frame_memory_.reclaim();
 
         /* -------------------------------------------------------------------------------- */
         // Actor decision phase
@@ -411,6 +416,7 @@ void FLevelSimulation::advance(time_type const dt) {
                     [&] { capital_ship_fighters_phase_.make_decisions(); });
         }
         finish_phase(ELevelTelemetryTimingPhase::Decision);
+        frame_memory_.reclaim();
 
         /* -------------------------------------------------------------------------------- */
         // Simulation phase
@@ -429,6 +435,7 @@ void FLevelSimulation::advance(time_type const dt) {
             measure(ESimulationTelemetryTimingSystem::Spinners,
                     [&] { spinners_phase_.move(clock_.tick_loop.tick_period); });
         }
+        frame_memory_.reclaim();
 
         {
             // Queue commands
@@ -447,6 +454,7 @@ void FLevelSimulation::advance(time_type const dt) {
             measure(ESimulationTelemetryTimingSystem::Spinners,
                     [&] { spinners_phase_.queue_commands(); });
         }
+        frame_memory_.reclaim();
 
         {
             // Projectile simulation
@@ -459,6 +467,7 @@ void FLevelSimulation::advance(time_type const dt) {
             });
         }
         finish_phase(ELevelTelemetryTimingPhase::Simulation);
+        frame_memory_.reclaim();
 
         /* -------------------------------------------------------------------------------- */
         // Resolution phase
@@ -514,6 +523,7 @@ void FLevelSimulation::advance(time_type const dt) {
                 [&] { mission_manager_.mission_tick(); });
 
         finish_phase(ELevelTelemetryTimingPhase::Resolution);
+        frame_memory_.reclaim();
 
         /* -------------------------------------------------------------------------------- */
         // End phase

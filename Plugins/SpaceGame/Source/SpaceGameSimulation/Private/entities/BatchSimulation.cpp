@@ -4,8 +4,6 @@
 #include <SpaceGameSimulation/entities/DirectDamageEvents.h>
 #include <SpaceGameSimulation/entities/EntityDeathInfo.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
-#include <SpaceGameSimulation/entities/TestEntityType.h>
-#include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
 
 #include <Containers/Array.h>
 #include <HAL/Platform.h>
@@ -81,26 +79,4 @@ void resolve_damage_events(FTestEntityRegistry const& registry,
     }
 }
 
-void refresh_targets(FTestEntityRegistry const& registry,
-                     FSpatialQueryManager const& spatial_query_manager,
-                     TArray<FRegistryEntityHandle>& target_handles,
-                     TArray<int32>& indices_without_targets,
-                     TConstArrayView<ETestTeam> const teams,
-                     ETestEntityType const target_type) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(ml::batch::refresh_targets);
-
-    indices_without_targets.Reset();
-    registry.refresh_handles(target_handles);
-
-    auto const n{target_handles.Num()};
-    for (int32 i{0}; i < n; ++i) {
-        if (target_handles[i].is_null()) {
-            indices_without_targets.Add(i);
-        }
-    }
-
-    for (int32 const i : indices_without_targets) {
-        target_handles[i] = spatial_query_manager.get_any_non_team_entity(teams[i], target_type);
-    }
-}
 }

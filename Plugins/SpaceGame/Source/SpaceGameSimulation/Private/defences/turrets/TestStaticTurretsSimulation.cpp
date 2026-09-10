@@ -1,5 +1,6 @@
 #include "SpaceGameSimulation/defences/turrets/TestStaticTurretsSimulation.h"
 
+#include <SpaceGameSimulation/combat/lasers/TestLasersFrameScratch.h>
 #include <SpaceGameSimulation/entities/BatchSimulation.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>
@@ -26,67 +27,6 @@ TRACE_DECLARE_INT_COUNTER(SandboxTestStaticTurretCount, TEXT("Sandbox/TestStatic
 namespace ml::test_static_turrets {
 namespace scratch {
 inline constexpr SIZE_T local_chunk_bytes{16 * 1024};
-
-struct FFrameLaserSpawnRequests {
-    explicit FFrameLaserSpawnRequests(std::pmr::memory_resource* const resource)
-        : locations{resource}
-        , rotations{resource}
-        , base_velocities{resource}
-        , damages{resource}
-        , speeds{resource}
-        , max_distances{resource}
-        , instigator_handles{resource}
-        , sources{resource} {}
-
-    void reserve(int32 const count) {
-        locations.reserve(count);
-        rotations.reserve(count);
-        base_velocities.reserve(count);
-        damages.reserve(count);
-        speeds.reserve(count);
-        max_distances.reserve(count);
-        instigator_handles.reserve(count);
-        sources.reserve(count);
-    }
-    void add(FVector3f const location,
-             FRotator3f const rotation,
-             FVector3f const base_velocity,
-             int32 const damage,
-             float const speed,
-             float const max_distance,
-             FRegistryEntityHandle const instigator_handle,
-             FLaserSource const source) {
-        locations.add(location);
-        rotations.add(rotation);
-        base_velocities.add(base_velocity);
-        damages.add(damage);
-        speeds.add(speed);
-        max_distances.add(max_distance);
-        instigator_handles.add(instigator_handle);
-        sources.add(source);
-    }
-    auto get_const_view() const -> ml::test_lasers::SpawnRequestsConstView {
-        return {
-            locations.get_const_view(),
-            rotations.get_const_view(),
-            base_velocities.get_const_view(),
-            damages,
-            speeds,
-            max_distances,
-            instigator_handles,
-            sources,
-        };
-    }
-
-    ::FFrameVectors3f locations;
-    ::FFrameRotatorsf rotations;
-    ::FFrameVectors3f base_velocities;
-    TFrameArray<int32> damages;
-    TFrameArray<float> speeds;
-    TFrameArray<float> max_distances;
-    TFrameArray<FRegistryEntityHandle> instigator_handles;
-    TFrameArray<FLaserSource> sources;
-};
 
 template <typename T>
 void reserve(TArray<T>& values, int32 const count) {
@@ -498,7 +438,7 @@ void Simulation::fire_at_enemies() {
         TFrameArray<FRegistryEntityHandle> hit_entity_handles{&local_resource};
         FFrameVectors3f start_locations{&local_resource};
         FFrameVectors3f end_locations{&local_resource};
-        scratch::FFrameLaserSpawnRequests new_lasers{&local_resource};
+        ml::test_lasers::FrameSpawnRequests new_lasers{&local_resource};
         fire_at_enemies_with_scratch(
             candidate_indices, hit_entity_handles, start_locations, end_locations, new_lasers);
         return;
@@ -509,7 +449,7 @@ void Simulation::fire_at_enemies() {
     TFrameArray<FRegistryEntityHandle> hit_entity_handles{&frame_memory_resource};
     FFrameVectors3f start_locations{&frame_memory_resource};
     FFrameVectors3f end_locations{&frame_memory_resource};
-    scratch::FFrameLaserSpawnRequests new_lasers{&frame_memory_resource};
+    ml::test_lasers::FrameSpawnRequests new_lasers{&frame_memory_resource};
     fire_at_enemies_with_scratch(
         candidate_indices, hit_entity_handles, start_locations, end_locations, new_lasers);
 }

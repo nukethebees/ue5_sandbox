@@ -28,6 +28,11 @@ struct FFrameRotatorsf {
         yaws.reserve(count);
         rolls.reserve(count);
     }
+    void set_num(int32 const count) {
+        pitches.set_num(count);
+        yaws.set_num(count);
+        rolls.set_num(count);
+    }
     void clear() {
         pitches.clear();
         yaws.clear();
@@ -39,6 +44,11 @@ struct FFrameRotatorsf {
         rolls.add(roll);
     }
     void add(FRotator3f const value) { add(value.Pitch, value.Yaw, value.Roll); }
+    void set(int32 const index, FRotator3f const value) {
+        pitches[index] = value.Pitch;
+        yaws[index] = value.Yaw;
+        rolls[index] = value.Roll;
+    }
 
     auto get_view() -> View { return {pitches, yaws, rolls}; }
     auto get_view() const -> ConstView { return {pitches, yaws, rolls}; }

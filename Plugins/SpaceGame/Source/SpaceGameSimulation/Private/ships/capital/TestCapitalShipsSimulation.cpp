@@ -12,6 +12,7 @@
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/container_ops.h>
+#include <SandboxCore/frame_array.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 
@@ -31,9 +32,11 @@ void Simulation::set_config(FCapitalSimulationConfig const& new_config) noexcept
 }
 Simulation::Simulation(FTestEntityRegistry& in_entity_registry,
                        FSpatialQueryManager const& in_spatial_query_manager,
-                       ml::test_capital_ship_fighters::Simulation& fighters)
+                       ml::test_capital_ship_fighters::Simulation& fighters,
+                       std::pmr::memory_resource& in_frame_memory_resource)
     : entity_registry{in_entity_registry}
     , spatial_query_manager{in_spatial_query_manager}
+    , frame_memory_resource{in_frame_memory_resource}
     , fighters_interface{fighters} {}
 
 /* **************************************** */
@@ -62,12 +65,19 @@ void Simulation::make_decisions() {
     queue_fighter_spawns();
     refresh_fighter_handles();
     fighter_reassignment_queue.reset();
-    ml::batch::refresh_targets(entity_registry,
-                               spatial_query_manager,
-                               entities.target_handles,
-                               indices_without_targets_buffer,
-                               entities.teams,
-                               ETestEntityType::CapitalShip);
+    entity_registry.refresh_handles(entities.target_handles);
+    TFrameArray<int32> indices_without_targets{&frame_memory_resource};
+    auto const n_capitals{entities.target_handles.Num()};
+    indices_without_targets.reserve(n_capitals);
+    for (int32 i{}; i < n_capitals; ++i) {
+        if (entities.target_handles[i].is_null()) {
+            indices_without_targets.add(i);
+        }
+    }
+    for (auto const index : indices_without_targets) {
+        entities.target_handles[index] = spatial_query_manager.get_any_non_team_entity(
+            entities.teams[index], ETestEntityType::CapitalShip);
+    }
     queue_fighter_orders();
 }
 void Simulation::resolve_damage_events() {

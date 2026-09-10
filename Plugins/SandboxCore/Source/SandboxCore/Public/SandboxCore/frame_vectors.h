@@ -28,6 +28,11 @@ struct FFrameVectors3f {
         ys.reserve(count);
         zs.reserve(count);
     }
+    void set_num(int32 const count) {
+        xs.set_num(count);
+        ys.set_num(count);
+        zs.set_num(count);
+    }
     void clear() {
         xs.clear();
         ys.clear();
@@ -39,6 +44,11 @@ struct FFrameVectors3f {
         zs.add(z);
     }
     void add(FVector3f const value) { add(value.X, value.Y, value.Z); }
+    void set(int32 const index, FVector3f const value) {
+        xs[index] = value.X;
+        ys[index] = value.Y;
+        zs[index] = value.Z;
+    }
 
     auto get_view() -> View { return {xs, ys, zs}; }
     auto get_view() const -> ConstView { return {xs, ys, zs}; }

@@ -16,6 +16,7 @@
 
 #include <CoreMinimal.h>
 
+#include <memory_resource>
 #include <optional>
 
 struct FLevelSimulation;
@@ -44,7 +45,8 @@ struct SPACEGAMESIMULATION_API Simulation {
 
     Simulation(FTestEntityRegistry& entity_registry,
                FSpatialQueryManager const& spatial_query_manager,
-               ml::test_capital_ship_fighters::Simulation& fighters);
+               ml::test_capital_ship_fighters::Simulation& fighters,
+               std::pmr::memory_resource& frame_memory_resource);
     Simulation(Simulation const&) = delete;
     Simulation(Simulation&&) = delete;
     auto operator=(Simulation const&) -> Simulation& = delete;
@@ -165,6 +167,7 @@ struct SPACEGAMESIMULATION_API Simulation {
     FCapitalSimulationConfig config{};
     FTestEntityRegistry& entity_registry;
     FSpatialQueryManager const& spatial_query_manager;
+    std::pmr::memory_resource& frame_memory_resource;
 
     EntityData entities{};
     EntityBuffers tick_buffers{};
@@ -182,7 +185,6 @@ struct SPACEGAMESIMULATION_API Simulation {
     int32 fighters_spawned{0};
     int32 diagnostic_spawn_reports{};
 
-    TArray<int32> indices_without_targets_buffer;
     TestCapitalShipFighterOrderQueue fighter_order_queue{};
 };
 } // namespace ml::test_capital_ships

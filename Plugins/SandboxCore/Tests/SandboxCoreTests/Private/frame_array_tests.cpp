@@ -312,6 +312,23 @@ TEST_CASE("SandboxCore.TFrameArray supports move-only element types") {
     CHECK(values.num() == 2);
 }
 
+TEST_CASE("SandboxCore.TFrameArray resizes and removes without changing identity") {
+    ml::TFrameArray<int32> values{};
+    values.set_num(3);
+    values[0] = 10;
+    values[1] = 20;
+    values[2] = 30;
+
+    values.remove_at_swap(1);
+    CHECK(values.num() == 2);
+    CHECK(values[0] == 10);
+    CHECK(values[1] == 30);
+
+    values.set_num(1);
+    CHECK(values.num() == 1);
+    CHECK(values[0] == 10);
+}
+
 TEST_CASE("SandboxCore.TFrameArray preserves values through repeated growth") {
     static constexpr int32 element_count{4096};
     FTrackedValue::reset_counts();

@@ -1,7 +1,9 @@
 #include "SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h"
 
+#include <SpaceGameSimulation/combat/lasers/TestLasersFrameScratch.h>
 #include <SpaceGameSimulation/entities/BatchSimulation.h>
 #include <SpaceGameSimulation/simulation/FighterDiagnostics.h>
+#include <SpaceGameSimulation/simulation/FrameTraceHits.h>
 #include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>
 #include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
@@ -9,6 +11,8 @@
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
+#include <SandboxCore/frame_array.h>
+#include <SandboxCore/frame_vectors.h>
 #include <SandboxCore/projectile_intercept.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
@@ -35,6 +39,53 @@ TRACE_DECLARE_INT_COUNTER(SandboxFighterNavigationImmediate,
                           TEXT("Sandbox/FighterNavigationImmediate"));
 
 namespace ml::test_capital_ship_fighters {
+struct Simulation::NavigationScratch {
+    explicit NavigationScratch(std::pmr::memory_resource* const resource)
+        : ready_fighter_indices{resource}
+        , line_of_sight_starts{resource}
+        , line_of_sight_ends{resource}
+        , line_of_sight_results{resource}
+        , trace_hits{resource}
+        , blocked_fighter_indices{resource}
+        , trace_fighter_indices{resource}
+        , trace_choice_indices{resource}
+        , observed_risk_tiers{resource} {}
+
+    TFrameArray<int32> ready_fighter_indices;
+    FFrameVectors3f line_of_sight_starts;
+    FFrameVectors3f line_of_sight_ends;
+    TFrameArray<uint8> line_of_sight_results;
+    FFrameTraceHits trace_hits;
+    TFrameArray<int32> blocked_fighter_indices;
+    TFrameArray<int32> trace_fighter_indices;
+    TFrameArray<int8> trace_choice_indices;
+    TFrameArray<uint8> observed_risk_tiers;
+};
+
+namespace fighter_scratch {
+struct FFiringScratch {
+    explicit FFiringScratch(std::pmr::memory_resource* const resource)
+        : new_lasers{resource}
+        , aiming_dot_products{resource}
+        , can_fire{resource}
+        , line_of_sight_starts{resource}
+        , line_of_sight_ends{resource}
+        , line_of_sight_results{resource}
+        , ignored_entities{resource}
+        , position_fighter_indices{resource}
+        , position_candidates{resource} {}
+
+    test_lasers::FrameSpawnRequests new_lasers;
+    TFrameArray<float> aiming_dot_products;
+    TFrameArray<int32> can_fire;
+    FFrameVectors3f line_of_sight_starts;
+    FFrameVectors3f line_of_sight_ends;
+    TFrameArray<uint8> line_of_sight_results;
+    TFrameArray<FRegistryEntityHandle> ignored_entities;
+    TFrameArray<int32> position_fighter_indices;
+    FFrameVectors3f position_candidates;
+};
+} // namespace fighter_scratch
 
 /* **************************************** */
 // Navigation helpers
@@ -251,10 +302,12 @@ void Simulation::set_config(FFighterSimulationConfig const& new_config,
 Simulation::Simulation(FSimulationClock const& clock,
                        FTestEntityRegistry& in_entity_registry,
                        FSpatialQueryManager const& in_spatial_query_manager,
-                       ml::test_lasers::Simulation& in_laser_simulation) noexcept
+                       ml::test_lasers::Simulation& in_laser_simulation,
+                       std::pmr::memory_resource& in_frame_memory_resource) noexcept
     : simulation_clock{clock}
     , entity_registry{in_entity_registry}
     , spatial_query_manager{in_spatial_query_manager}
+    , frame_memory_resource{in_frame_memory_resource}
     , laser_simulation{in_laser_simulation} {}
 
 /* **************************************** */
@@ -560,40 +613,34 @@ void Simulation::update_navigation_steering() {
         simulation_clock.get_tick_period()};
     auto const safe_progress_time{active_update_interval * 1.25f};
     navigation_telemetry = {};
+    NavigationScratch scratch{&frame_memory_resource};
 
     // Only expired countdowns observe the world. Held steering is applied to every mover.
-    collect_navigation_updates();
-    update_separation_observations();
+    collect_navigation_updates(scratch);
+    update_separation_observations(scratch);
     apply_separation_steering();
 
     // Hard sweeps have final authority over the traffic-biased preferred direction.
-    scan_preferred_navigation(clearance, avoidance_lookahead_time, minimum_lookahead_distance);
-    scan_alternative_navigation(clearance, avoidance_lookahead_time, minimum_lookahead_distance);
-    select_navigation_alternatives(safe_progress_time);
-    apply_navigation_choices();
+    scan_preferred_navigation(
+        scratch, clearance, avoidance_lookahead_time, minimum_lookahead_distance);
+    scan_alternative_navigation(
+        scratch, clearance, avoidance_lookahead_time, minimum_lookahead_distance);
+    select_navigation_alternatives(scratch, safe_progress_time);
+    apply_navigation_choices(scratch);
     publish_navigation_telemetry();
 }
-void Simulation::collect_navigation_updates() {
+void Simulation::collect_navigation_updates(NavigationScratch& scratch) {
     auto& data{entity_buffers.current()};
-    // Borrowed until apply_navigation_choices completes; trace batches use separate indices.
-    auto& ready_fighter_indices{scratch_int_buffer};
-    ml::reset(ready_fighter_indices,
-              navigation_blocked_fighter_indices,
-              navigation_trace_fighter_indices,
-              navigation_trace_choice_indices,
-              line_of_sight_starts,
-              line_of_sight_ends,
-              line_of_sight_results,
-              navigation_trace_hits);
-    navigation_observed_risk_tiers.SetNumUninitialized(data.num(), EAllowShrinking::No);
+    scratch.ready_fighter_indices.reserve(data.num());
+    scratch.observed_risk_tiers.set_num(data.num());
 
     auto const collect_ready_fighters{[&](Task const task) {
         auto const span{get_task_span(task)};
         for (int32 local_index{}; local_index < span.count; ++local_index) {
             auto const fighter_index{span.offset + local_index};
             if (data.navigation_update_countdowns.try_consume(fighter_index)) {
-                ready_fighter_indices.Add(fighter_index);
-                navigation_observed_risk_tiers[fighter_index] =
+                scratch.ready_fighter_indices.add(fighter_index);
+                scratch.observed_risk_tiers[fighter_index] =
                     static_cast<uint8>(NavigationRiskTier::Clear);
             }
         }
@@ -601,9 +648,8 @@ void Simulation::collect_navigation_updates() {
     collect_ready_fighters(Task::MoveToDestination);
     collect_ready_fighters(Task::Attack);
 }
-void Simulation::update_separation_observations() {
+void Simulation::update_separation_observations(NavigationScratch& scratch) {
     auto& data{entity_buffers.current()};
-    auto const& ready_fighter_indices{scratch_int_buffer};
     // Fixed capacity bounds scoring work and keeps neighbour storage off the heap.
     TStaticArray<FRegistryEntityHandle, max_separation_neighbours> nearby_fighters;
     auto const separation_radius{config.separation_radius};
@@ -612,7 +658,7 @@ void Simulation::update_separation_observations() {
     auto const immediate_distance_sq{immediate_distance * immediate_distance};
     auto const close_distance_sq{close_distance * close_distance};
 
-    for (auto const fighter_index : ready_fighter_indices) {
+    for (auto const fighter_index : scratch.ready_fighter_indices) {
         auto const goal_direction{ml::get_vector3f(data.movement_directions, fighter_index)};
         auto const move_distance{data.move_distances[fighter_index]};
         if (goal_direction.IsNearlyZero() || move_distance <= 0.f) {
@@ -726,7 +772,7 @@ void Simulation::update_separation_observations() {
         } else if (n_nearby > 0) {
             observed_tier = NavigationRiskTier::Nearby;
         }
-        navigation_observed_risk_tiers[fighter_index] = static_cast<uint8>(observed_tier);
+        scratch.observed_risk_tiers[fighter_index] = static_cast<uint8>(observed_tier);
     }
 }
 void Simulation::apply_separation_steering() {
@@ -754,12 +800,18 @@ void Simulation::apply_separation_steering() {
     apply_separation(Task::MoveToDestination);
     apply_separation(Task::Attack);
 }
-void Simulation::scan_preferred_navigation(float const clearance,
+void Simulation::scan_preferred_navigation(NavigationScratch& scratch,
+                                           float const clearance,
                                            float const avoidance_lookahead_time,
                                            float const minimum_lookahead_distance) {
     auto& data{entity_buffers.current()};
-    auto const& ready_fighter_indices{scratch_int_buffer};
-    for (auto const fighter_index : ready_fighter_indices) {
+    auto const n_ready_fighters{scratch.ready_fighter_indices.num()};
+    scratch.line_of_sight_starts.reserve(n_ready_fighters);
+    scratch.line_of_sight_ends.reserve(n_ready_fighters);
+    scratch.trace_fighter_indices.reserve(n_ready_fighters);
+    scratch.blocked_fighter_indices.reserve(n_ready_fighters);
+
+    for (auto const fighter_index : scratch.ready_fighter_indices) {
         auto const preferred_direction{ml::get_vector3f(data.movement_directions, fighter_index)};
         auto const move_distance{data.move_distances[fighter_index]};
         if (preferred_direction.IsNearlyZero() || move_distance <= 0.f) {
@@ -772,20 +824,20 @@ void Simulation::scan_preferred_navigation(float const clearance,
                                   minimum_lookahead_distance))};
         auto const start{ml::get_vector3f(data.locations, fighter_index)};
         auto const end{start + preferred_direction * lookahead_distance};
-        line_of_sight_starts.add(start);
-        line_of_sight_ends.add(end);
-        navigation_trace_fighter_indices.Add(fighter_index);
+        scratch.line_of_sight_starts.add(start);
+        scratch.line_of_sight_ends.add(end);
+        scratch.trace_fighter_indices.add(fighter_index);
     }
 
-    auto const n_direct_traces{navigation_trace_fighter_indices.Num()};
+    auto const n_direct_traces{scratch.trace_fighter_indices.num()};
     if (n_direct_traces > 0) {
-        execute_navigation_sweeps(clearance);
+        execute_navigation_sweeps(scratch, clearance);
 
         for (int32 trace_index{}; trace_index < n_direct_traces; ++trace_index) {
-            auto const fighter_index{navigation_trace_fighter_indices[trace_index]};
-            if (line_of_sight_results[trace_index] == 0 ||
-                navigation_trace_hits.hits[trace_index] != 0) {
-                navigation_blocked_fighter_indices.Add(fighter_index);
+            auto const fighter_index{scratch.trace_fighter_indices[trace_index]};
+            if (scratch.line_of_sight_results[trace_index] == 0 ||
+                scratch.trace_hits.hits[trace_index] != 0) {
+                scratch.blocked_fighter_indices.add(fighter_index);
                 data.avoidance_clear_scan_counts[fighter_index] = 0;
                 continue;
             }
@@ -806,19 +858,25 @@ void Simulation::scan_preferred_navigation(float const clearance,
         }
     }
 }
-void Simulation::scan_alternative_navigation(float const clearance,
+void Simulation::scan_alternative_navigation(NavigationScratch& scratch,
+                                             float const clearance,
                                              float const avoidance_lookahead_time,
                                              float const minimum_lookahead_distance) {
     auto const& data{entity_buffers.current()};
     // Direct results have been consumed. Reuse their storage for eight traces per blocked fighter.
-    ml::reset(navigation_trace_fighter_indices,
-              navigation_trace_choice_indices,
-              line_of_sight_starts,
-              line_of_sight_ends,
-              line_of_sight_results,
-              navigation_trace_hits);
+    scratch.trace_fighter_indices.clear();
+    scratch.trace_choice_indices.clear();
+    scratch.line_of_sight_starts.clear();
+    scratch.line_of_sight_ends.clear();
+    scratch.line_of_sight_results.clear();
+    scratch.trace_hits.clear();
 
-    for (auto const fighter_index : navigation_blocked_fighter_indices) {
+    auto const n_candidate_traces{scratch.blocked_fighter_indices.num() * n_avoidance_choices};
+    scratch.line_of_sight_starts.reserve(n_candidate_traces);
+    scratch.line_of_sight_ends.reserve(n_candidate_traces);
+    scratch.trace_choice_indices.reserve(n_candidate_traces);
+
+    for (auto const fighter_index : scratch.blocked_fighter_indices) {
         auto const preferred_direction{ml::get_vector3f(data.movement_directions, fighter_index)};
         auto const lookahead_distance{
             FMath::Min(data.move_distances[fighter_index],
@@ -834,43 +892,43 @@ void Simulation::scan_alternative_navigation(float const clearance,
         for (auto const choice : choice_order) {
             auto const direction{avoidance_directions[choice]};
             auto const end{start + direction * lookahead_distance};
-            line_of_sight_starts.add(start);
-            line_of_sight_ends.add(end);
-            navigation_trace_choice_indices.Add(choice);
+            scratch.line_of_sight_starts.add(start);
+            scratch.line_of_sight_ends.add(end);
+            scratch.trace_choice_indices.add(choice);
         }
     }
 
-    auto const n_candidate_traces{line_of_sight_ends.num()};
-    check(n_candidate_traces == navigation_blocked_fighter_indices.Num() * n_avoidance_choices);
-    execute_navigation_sweeps(clearance);
+    check(scratch.line_of_sight_ends.num() == n_candidate_traces);
+    execute_navigation_sweeps(scratch, clearance);
 }
-void Simulation::execute_navigation_sweeps(float const clearance) {
-    auto const trace_count{line_of_sight_ends.num()};
+void Simulation::execute_navigation_sweeps(NavigationScratch& scratch, float const clearance) {
+    auto const trace_count{scratch.line_of_sight_ends.num()};
     if (trace_count == 0) {
         return;
     }
     FVector3f const moving_half_extent{clearance, clearance, clearance};
-    line_of_sight_results.SetNumUninitialized(trace_count, EAllowShrinking::No);
+    scratch.line_of_sight_results.set_num(trace_count);
     spatial_query_manager.are_spheres_in_bounds(
-        line_of_sight_ends.get_const_view(), clearance, line_of_sight_results);
-    navigation_trace_hits.set_num(trace_count, EAllowShrinking::No);
+        scratch.line_of_sight_ends.get_const_view(), clearance, scratch.line_of_sight_results);
+    scratch.trace_hits.set_num(trace_count);
     // Fighters contribute soft steering; solid entities (including the parent capital) block.
-    spatial_query_manager.sweep_closest_aabbs(line_of_sight_starts.get_const_view(),
-                                              line_of_sight_ends.get_const_view(),
+    spatial_query_manager.sweep_closest_aabbs(scratch.line_of_sight_starts.get_const_view(),
+                                              scratch.line_of_sight_ends.get_const_view(),
                                               moving_half_extent,
-                                              navigation_trace_hits.get_view(),
+                                              scratch.trace_hits.get_view(),
                                               {},
                                               ioj::ETraceEntityFilter::ExcludeCapitalShipFighters);
     navigation_telemetry.hard_trace_count += trace_count;
 }
-void Simulation::select_navigation_alternatives(float const safe_progress_time) {
+void Simulation::select_navigation_alternatives(NavigationScratch& scratch,
+                                                float const safe_progress_time) {
     auto& data{entity_buffers.current()};
     if (fighter_diagnostics::enabled.GetValueOnGameThread() == 0) {
         diagnostic_stop_reports = 0;
     }
-    auto const n_blocked_fighters{navigation_blocked_fighter_indices.Num()};
+    auto const n_blocked_fighters{scratch.blocked_fighter_indices.num()};
     for (int32 blocked_index{}; blocked_index < n_blocked_fighters; ++blocked_index) {
-        auto const fighter_index{navigation_blocked_fighter_indices[blocked_index]};
+        auto const fighter_index{scratch.blocked_fighter_indices[blocked_index]};
         auto const fighter_location{ml::get_vector3f(data.locations, fighter_index)};
         auto chosen_choice{stop_movement_choice};
         // Partial progress must leave room until the next active scan, including its margin.
@@ -881,17 +939,17 @@ void Simulation::select_navigation_alternatives(float const safe_progress_time) 
         auto const candidate_end{candidate_begin + n_avoidance_choices};
         for (int32 candidate_trace_index{candidate_begin}; candidate_trace_index < candidate_end;
              ++candidate_trace_index) {
-            auto const choice{navigation_trace_choice_indices[candidate_trace_index]};
-            if (line_of_sight_results[candidate_trace_index] == 0) {
+            auto const choice{scratch.trace_choice_indices[candidate_trace_index]};
+            if (scratch.line_of_sight_results[candidate_trace_index] == 0) {
                 continue;
             }
             // Traces are already in held-choice/bias order. The first clear one wins outright.
-            if (navigation_trace_hits.hits[candidate_trace_index] == 0) {
+            if (scratch.trace_hits.hits[candidate_trace_index] == 0) {
                 chosen_choice = choice;
                 break;
             }
-            auto const hit_location{
-                ml::get_vector3f(navigation_trace_hits.locations, candidate_trace_index)};
+            auto const hit_location{ml::get_vector3f(scratch.trace_hits.locations.get_const_view(),
+                                                     candidate_trace_index)};
             auto const distance_sq{FVector3f::DistSquared(fighter_location, hit_location)};
             if (distance_sq > best_distance_sq) {
                 best_distance_sq = distance_sq;
@@ -919,27 +977,28 @@ void Simulation::select_navigation_alternatives(float const safe_progress_time) 
                        Display,
                        TEXT("[FighterStop] choice=%d end=%s inWorld=%d hit=%d "
                             "blockerRegistryIndex=%d staticIndex=%d hitDistance=%.2f"),
-                       navigation_trace_choice_indices[trace_index],
-                       *ml::get_vector3f(line_of_sight_ends, trace_index).ToString(),
-                       line_of_sight_results[trace_index],
-                       navigation_trace_hits.hits[trace_index],
-                       navigation_trace_hits.entities[trace_index].index,
-                       navigation_trace_hits.static_geometry_indices[trace_index],
-                       navigation_trace_hits.hits[trace_index]
+                       scratch.trace_choice_indices[trace_index],
+                       *ml::get_vector3f(scratch.line_of_sight_ends.get_const_view(), trace_index)
+                            .ToString(),
+                       scratch.line_of_sight_results[trace_index],
+                       scratch.trace_hits.hits[trace_index],
+                       scratch.trace_hits.entities[trace_index].index,
+                       scratch.trace_hits.static_geometry_indices[trace_index],
+                       scratch.trace_hits.hits[trace_index]
                            ? FVector3f::Dist(
                                  fighter_location,
-                                 ml::get_vector3f(navigation_trace_hits.locations, trace_index))
+                                 ml::get_vector3f(scratch.trace_hits.locations.get_const_view(),
+                                                  trace_index))
                            : -1.f);
             }
         }
     }
 }
-void Simulation::apply_navigation_choices() {
+void Simulation::apply_navigation_choices(NavigationScratch const& scratch) {
     auto& data{entity_buffers.current()};
-    auto const& ready_fighter_indices{scratch_int_buffer};
-    for (auto const fighter_index : ready_fighter_indices) {
+    for (auto const fighter_index : scratch.ready_fighter_indices) {
         auto observed_tier{
-            static_cast<NavigationRiskTier>(navigation_observed_risk_tiers[fighter_index])};
+            static_cast<NavigationRiskTier>(scratch.observed_risk_tiers[fighter_index])};
         if (data.avoidance_choice_indices[fighter_index] != direct_movement_choice) {
             observed_tier = FMath::Max(observed_tier, NavigationRiskTier::Active);
         }
@@ -1380,15 +1439,24 @@ void Simulation::handle_firing(TaskView const& data) {
                                        config.attack_distance_band.desired_ratio};
     auto const arrival_distance{config.arrival_distance};
     auto const attack_position_arrival_distance_sq{arrival_distance * arrival_distance};
-    auto& can_fire{scratch_int_buffer};
+    fighter_scratch::FFiringScratch scratch{&frame_memory_resource};
+    auto& new_lasers{scratch.new_lasers};
+    auto& aiming_dot_products{scratch.aiming_dot_products};
+    auto& can_fire{scratch.can_fire};
+    auto& line_of_sight_starts{scratch.line_of_sight_starts};
+    auto& line_of_sight_ends{scratch.line_of_sight_ends};
+    auto& line_of_sight_results{scratch.line_of_sight_results};
+    auto& firing_ignored_entities{scratch.ignored_entities};
+    auto& firing_position_fighter_indices{scratch.position_fighter_indices};
+    auto& firing_position_candidates{scratch.position_candidates};
 
-    ml::reset(new_lasers,
-              aiming_dot_product_buffer,
-              can_fire,
-              firing_position_fighter_indices,
-              firing_position_candidates);
-    ml::add_uninitialised(n_ships, new_lasers, aiming_dot_product_buffer);
-    ml::dot_product(aiming_dot_product_buffer, data.aim_directions, data.desired_aiming_directions);
+    new_lasers.set_num(n_ships);
+    aiming_dot_products.set_num(n_ships);
+    can_fire.reserve(n_ships);
+    firing_position_fighter_indices.reserve(n_ships);
+    firing_position_candidates.reserve(n_ships);
+    ml::dot_product(
+        aiming_dot_products.view(), data.aim_directions, data.desired_aiming_directions);
 
     for (int32 ship_index{0}; ship_index < n_ships; ++ship_index) {
         if (!data.attack_cooldowns.is_ready(ship_index)) {
@@ -1396,23 +1464,23 @@ void Simulation::handle_firing(TaskView const& data) {
         }
         if (data.target_distance_sq[ship_index] > laser_max_distance_sq ||
             !data.target_handles[ship_index].is_valid() ||
-            aiming_dot_product_buffer[ship_index] < aim_threshold) {
+            aiming_dot_products[ship_index] < aim_threshold) {
             data.attack_cooldowns.set_counter(ship_index, attack_retry_cooldown_tick_value);
             continue;
         }
-        can_fire.Add(ship_index);
+        can_fire.add(ship_index);
     }
 
-    if (can_fire.IsEmpty()) {
+    if (can_fire.is_empty()) {
         return;
     }
 
-    auto const n_can_fire_before_los{can_fire.Num()};
+    auto const n_can_fire_before_los{can_fire.num()};
     auto const los_check_buffer{config.los_check_buffer};
-    line_of_sight_starts.set_num(n_can_fire_before_los, EAllowShrinking::No);
-    line_of_sight_ends.set_num(n_can_fire_before_los, EAllowShrinking::No);
-    line_of_sight_results.SetNumUninitialized(n_can_fire_before_los, EAllowShrinking::No);
-    firing_ignored_entities.SetNumUninitialized(n_can_fire_before_los, EAllowShrinking::No);
+    line_of_sight_starts.set_num(n_can_fire_before_los);
+    line_of_sight_ends.set_num(n_can_fire_before_los);
+    line_of_sight_results.set_num(n_can_fire_before_los);
+    firing_ignored_entities.set_num(n_can_fire_before_los);
     for (int32 i{}; i < n_can_fire_before_los; ++i) {
         auto const ship_index{can_fire[i]};
         firing_ignored_entities[i] = data.entity_handles[ship_index];
@@ -1437,7 +1505,7 @@ void Simulation::handle_firing(TaskView const& data) {
             continue;
         }
 
-        can_fire.RemoveAtSwap(i, EAllowShrinking::No);
+        can_fire.remove_at_swap(i);
         data.attack_cooldowns.set_counter(ship_index, attack_retry_cooldown_tick_value);
         auto const fighter_location{ml::get_vector3f(data.locations, ship_index)};
         auto const desired_move_location{ml::get_vector3f(data.desired_move_locations, ship_index)};
@@ -1447,19 +1515,19 @@ void Simulation::handle_firing(TaskView const& data) {
             continue;
         }
 
-        firing_position_fighter_indices.Add(ship_index);
+        firing_position_fighter_indices.add(ship_index);
     }
 
     auto const n_fire_point_candidates{static_cast<uint32>(fire_point_angle_offsets.size())};
     for (uint32 candidate_order{};
-         candidate_order < n_fire_point_candidates && !firing_position_fighter_indices.IsEmpty();
+         candidate_order < n_fire_point_candidates && !firing_position_fighter_indices.is_empty();
          ++candidate_order) {
-        auto const n_fighters{firing_position_fighter_indices.Num()};
-        line_of_sight_starts.set_num(n_fighters, EAllowShrinking::No);
-        line_of_sight_ends.set_num(n_fighters, EAllowShrinking::No);
-        line_of_sight_results.SetNumUninitialized(n_fighters, EAllowShrinking::No);
-        firing_ignored_entities.SetNumUninitialized(n_fighters, EAllowShrinking::No);
-        firing_position_candidates.set_num(n_fighters, EAllowShrinking::No);
+        auto const n_fighters{firing_position_fighter_indices.num()};
+        line_of_sight_starts.set_num(n_fighters);
+        line_of_sight_ends.set_num(n_fighters);
+        line_of_sight_results.set_num(n_fighters);
+        firing_ignored_entities.set_num(n_fighters);
+        firing_position_candidates.set_num(n_fighters);
 
         for (int32 i{}; i < n_fighters; ++i) {
             auto const ship_index{firing_position_fighter_indices[i]};
@@ -1489,14 +1557,14 @@ void Simulation::handle_firing(TaskView const& data) {
             }
 
             auto const ship_index{firing_position_fighter_indices[i]};
-            data.desired_move_locations.set(ship_index,
-                                            ml::get_vector3f(firing_position_candidates, i));
-            firing_position_fighter_indices.RemoveAtSwap(i, EAllowShrinking::No);
+            data.desired_move_locations.set(
+                ship_index, ml::get_vector3f(firing_position_candidates.get_const_view(), i));
+            firing_position_fighter_indices.remove_at_swap(i);
         }
     }
 
-    auto const n_can_fire{can_fire.Num()};
-    ml::set_num(new_lasers, n_can_fire, EAllowShrinking::No);
+    auto const n_can_fire{can_fire.num()};
+    new_lasers.set_num(n_can_fire);
     for (int32 i{0}; i < n_can_fire; ++i) {
         auto const ship_index{can_fire[i]};
         auto const ship_location{ml::get_vector3f(data.locations, ship_index)};
@@ -1512,7 +1580,7 @@ void Simulation::handle_firing(TaskView const& data) {
     new_lasers.set_damages(laser_damage);
     new_lasers.set_speeds(laser_speed);
     new_lasers.set_max_distances(laser_max_distance);
-    laser_simulation.queue_laser_spawns(new_lasers);
+    laser_simulation.queue_laser_spawns(new_lasers.get_const_view());
 }
 
 /* **************************************** */
@@ -1531,8 +1599,8 @@ void Simulation::commit_orders() {
         return;
     }
 
-    auto& index_buffer{scratch_int_buffer};
-    index_buffer.SetNumUninitialized(n_orders, EAllowShrinking::No);
+    TFrameArray<int32> index_buffer{&frame_memory_resource};
+    index_buffer.set_num(n_orders);
     for (int32 i{0}; i < n_orders; ++i) {
         index_buffer[i] = data.entity_handles.Find(order_queue.handles[i]);
     }
@@ -1566,7 +1634,7 @@ void Simulation::commit_orders() {
 // Misc
 /* **************************************** */
 void Simulation::clear_tick_buffers() {
-    ml::reset(local_indices_to_remove, new_lasers, entity_death_info, spawn_queue, order_queue);
+    ml::reset(local_indices_to_remove, entity_death_info, spawn_queue, order_queue);
 }
 
 /* **************************************** */

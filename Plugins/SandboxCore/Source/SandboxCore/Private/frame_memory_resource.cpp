@@ -61,22 +61,32 @@ auto FFrameMemoryResource::try_allocate(SIZE_T const bytes, SIZE_T const alignme
             padding_bytes_.fetch_add(aligned_offset - current, std::memory_order_relaxed);
             root_claim_count_.fetch_add(1, std::memory_order_relaxed);
             outstanding_allocation_count_.fetch_add(1, std::memory_order_relaxed);
+            auto frame_peak{frame_peak_claimed_bytes_.load(std::memory_order_relaxed)};
+            while (frame_peak < next &&
+                   !frame_peak_claimed_bytes_.compare_exchange_weak(
+                       frame_peak, next, std::memory_order_relaxed, std::memory_order_relaxed)) {}
             update_peak(next);
             return aligned_pointer;
         }
     }
 }
 
-void FFrameMemoryResource::reset() {
+void FFrameMemoryResource::reclaim() {
     auto const outstanding{outstanding_allocation_count_.load(std::memory_order_relaxed)};
     if (outstanding != 0) {
         UE_LOG(LogSandboxCore,
                Fatal,
-               TEXT("Frame memory cannot be reset with %llu outstanding allocations."),
+               TEXT("Frame memory cannot be reclaimed with %llu outstanding allocations."),
                outstanding);
     }
 
-    last_frame_claimed_bytes_ = claimed_bytes_.load(std::memory_order_relaxed);
+    claimed_bytes_.store(0, std::memory_order_relaxed);
+}
+
+void FFrameMemoryResource::reset() {
+    reclaim();
+
+    last_frame_claimed_bytes_ = frame_peak_claimed_bytes_.load(std::memory_order_relaxed);
     last_frame_payload_bytes_ = payload_bytes_.load(std::memory_order_relaxed);
     last_frame_padding_bytes_ = padding_bytes_.load(std::memory_order_relaxed);
     last_frame_root_claim_count_ = root_claim_count_.load(std::memory_order_relaxed);
@@ -84,13 +94,15 @@ void FFrameMemoryResource::reset() {
     payload_bytes_.store(0, std::memory_order_relaxed);
     padding_bytes_.store(0, std::memory_order_relaxed);
     root_claim_count_.store(0, std::memory_order_relaxed);
-    claimed_bytes_.store(0, std::memory_order_relaxed);
+    frame_peak_claimed_bytes_.store(0, std::memory_order_relaxed);
 }
 
 auto FFrameMemoryResource::get_stats() const noexcept -> FFrameMemoryStats {
     return {
         .capacity_bytes = capacity_bytes_,
         .current_claimed_bytes = claimed_bytes_.load(std::memory_order_relaxed),
+        .current_frame_peak_claimed_bytes =
+            frame_peak_claimed_bytes_.load(std::memory_order_relaxed),
         .current_payload_bytes = payload_bytes_.load(std::memory_order_relaxed),
         .current_padding_bytes = padding_bytes_.load(std::memory_order_relaxed),
         .current_root_claim_count = root_claim_count_.load(std::memory_order_relaxed),
