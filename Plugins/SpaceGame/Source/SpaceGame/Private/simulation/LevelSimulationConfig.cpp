@@ -33,6 +33,8 @@ auto make_simulation_config(FPlayerShipConfig const& source) -> FPlayerSimulatio
     result.auto_level_roll_delay = source.auto_level_roll_delay;
     result.lateral_adjustment_speed = source.lateral_adjustment_speed;
     result.vertical_adjustment_speed = source.vertical_adjustment_speed;
+    result.planar_lateral_trim_speed = source.planar_lateral_trim_speed;
+    result.planar_vertical_trim_speed = source.planar_vertical_trim_speed;
     result.laser = make_simulation_config(source.laser);
     result.laser_lock_on_transition_delay = source.laser_lock_on_transition_delay;
     result.laser_lock_on_distance = source.laser_lock_on_distance;

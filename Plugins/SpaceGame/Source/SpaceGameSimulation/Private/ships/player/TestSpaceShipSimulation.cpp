@@ -74,8 +74,18 @@ void Simulation::move(float const dt) {
     update_body_orientation(dt);
     integrate_velocity(dt);
 
-    auto const lateral_speed{planar_movement_direction.X * config.lateral_adjustment_speed};
-    auto const vertical_speed{planar_movement_direction.Y * config.vertical_adjustment_speed};
+    auto adjustment_input{planar_movement_direction};
+    auto lateral_adjustment_speed{config.lateral_adjustment_speed};
+    auto vertical_adjustment_speed{config.vertical_adjustment_speed};
+    if (flight_mode == ETestSpaceShipFlightMode::PlanarVelocity) {
+        adjustment_input =
+            sampling ? FVector2D::ZeroVector : adjustment_input.GetClampedToMaxSize(1.f);
+        lateral_adjustment_speed = config.planar_lateral_trim_speed;
+        vertical_adjustment_speed = config.planar_vertical_trim_speed;
+    }
+
+    auto const lateral_speed{adjustment_input.X * lateral_adjustment_speed};
+    auto const vertical_speed{adjustment_input.Y * vertical_adjustment_speed};
     auto const local_adjustment{FVector{0.f, lateral_speed, vertical_speed}};
     velocity += transform.TransformVectorNoScale(local_adjustment);
     transform.AddToTranslation(velocity * dt);
@@ -305,6 +315,7 @@ void Simulation::start_sampling() noexcept {
     if (sampling) {
         return;
     }
+    planar_movement_direction = FVector2D::ZeroVector;
     target_local_planar_velocity_scale = FVector2D::ZeroVector;
     sampling = true;
 }
