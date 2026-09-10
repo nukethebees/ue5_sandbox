@@ -55,6 +55,7 @@ struct SPACEGAMESIMULATION_API FCapitalSimulationConfig {
 };
 
 struct SPACEGAMESIMULATION_API FFighterSimulationConfig {
+    int32 max_live_fighters{2000};
     float fire_dot_product_threshold{0.95f};
     float speed{2000.f};
     float turn_speed_unitless{1.f};

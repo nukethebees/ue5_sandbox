@@ -11,6 +11,10 @@ class SANDBOXGAMESHARED_API USandboxDeveloperSettings : public UDeveloperSetting
   public:
     USandboxDeveloperSettings();
 
+    auto get_effective_max_live_fighters() const noexcept -> int32;
+
+    inline static constexpr int32 minimum_max_live_fighters{1000};
+
     UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "AI")
     bool visualise_ai_vision_cones{false};
     UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "AI")
@@ -32,4 +36,10 @@ class SANDBOXGAMESHARED_API USandboxDeveloperSettings : public UDeveloperSetting
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     bool export_test_results{false};
+
+    UPROPERTY(Config,
+              EditAnywhere,
+              Category = "Space Game|Simulation",
+              meta = (ClampMin = "100", UIMin = "100"))
+    int32 max_live_fighters{2000};
 };

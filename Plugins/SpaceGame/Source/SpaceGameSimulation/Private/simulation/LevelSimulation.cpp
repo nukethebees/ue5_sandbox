@@ -8,6 +8,56 @@
 
 namespace ml::level_simulation {
 /* **************************************** */
+// Participating teams
+/* **************************************** */
+static void finalise_participating_teams(FLevelSimulationInitData& data) {
+    TStaticArray<uint8, static_cast<int32>(ETestTeam::COUNT)> included{};
+    auto const included_count{included.Num()};
+    auto include = [&included, included_count](ETestTeam const team) {
+        auto const team_index{static_cast<int32>(team)};
+        if (team_index >= 0 && team_index < included_count) {
+            included[team_index] = 1;
+        } else {
+            ensureAlwaysMsgf(false, TEXT("Ignoring invalid participating team %d"), team_index);
+        }
+    };
+
+    for (auto const team : data.participating_teams) {
+        include(team);
+    }
+    if (data.participating_teams.is_empty()) {
+        if (data.player.IsSet()) {
+            include(data.player->team);
+        }
+        for (auto const team : data.capital_spawns.teams) {
+            include(team);
+        }
+        for (auto const team : data.turret_spawns.teams) {
+            include(team);
+        }
+        for (auto const team : data.level_events.initial_spawns.capital_spawns.teams) {
+            include(team);
+        }
+        for (auto const team : data.level_events.initial_spawns.turret_spawns.teams) {
+            include(team);
+        }
+        for (auto const team : data.level_events.schedule.capital_spawns.teams) {
+            include(team);
+        }
+        for (auto const team : data.level_events.schedule.turret_spawns.teams) {
+            include(team);
+        }
+    }
+
+    data.participating_teams.reset();
+    for (int32 team_index{}; team_index < included_count; ++team_index) {
+        if (included[team_index] != 0) {
+            data.participating_teams.add(static_cast<ETestTeam>(team_index));
+        }
+    }
+}
+
+/* **************************************** */
 // Legacy initialization
 /* **************************************** */
 // Legacy initialization supplies spawn arrays instead of compiled level events.
@@ -85,6 +135,7 @@ FLevelSimulation::FLevelSimulation(FLevelSimulationInitData data)
     , level_telemetry_manager_{clock_, entity_registry_, lasers_simulation_, query_manager_} {
     clock_.initialise(data.clock_settings);
     telemetry_metadata_ = MoveTemp(data.telemetry_metadata);
+    ml::level_simulation::finalise_participating_teams(data);
 
     configure_subsystems(data);
     initialise_spatial_queries(data);
@@ -138,7 +189,7 @@ void FLevelSimulation::configure_subsystems(FLevelSimulationInitData const& data
     capital_ships_simulation_.set_config(data.capital_ships);
     capital_ships_simulation_.entity_radius = data.capital_radius;
 
-    capital_ship_fighters_simulation_.set_config(data.fighters);
+    capital_ship_fighters_simulation_.set_config(data.fighters, data.participating_teams);
     capital_ship_fighters_simulation_.fire_dot_product_threshold =
         data.fighters.fire_dot_product_threshold;
     capital_ship_fighters_simulation_.collision_radius = data.fighter_radius;

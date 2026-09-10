@@ -177,6 +177,7 @@ struct SPACEGAMESIMULATION_API Simulation {
     ml::test_capital_ship_fighters::CommandInterface fighters_interface;
     TArray<FRegistryEntityHandle> fighter_handles;
     TArray<FRegistryEntityHandle> fighter_handles_scratch;
+    TestCapitalShipFighterSpawnQueue fighter_spawn_wave;
     FighterReassignment fighter_reassignment_queue;
     int32 fighters_spawned{0};
     int32 diagnostic_spawn_reports{};

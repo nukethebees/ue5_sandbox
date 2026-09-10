@@ -82,7 +82,8 @@ struct SPACEGAMESIMULATION_API Simulation {
     auto get_read_view() const -> FFighterReadView {
         return {entity_buffers.current().get_const_view(), &entity_registry};
     }
-    void set_config(FFighterSimulationConfig const& new_config) noexcept;
+    void set_config(FFighterSimulationConfig const& new_config,
+                    TConstArrayView<ETestTeam> participating_teams) noexcept;
 
     /* **************************************** */
     // Accessors
@@ -261,7 +262,7 @@ struct SPACEGAMESIMULATION_API Simulation {
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    void queue_spawns(TestCapitalShipFighterSpawnQueue const& queue);
+    auto queue_spawns(TestCapitalShipFighterSpawnQueue const& queue) -> int32;
     void commit_spawns();
 
     /* **************************************** */
@@ -308,6 +309,9 @@ struct SPACEGAMESIMULATION_API Simulation {
     friend class PhaseInterface;
 
     FFighterSimulationConfig config{};
+    TStaticArray<uint8, static_cast<int32>(ETestTeam::COUNT)> participant_mask{};
+    TStaticArray<int32, static_cast<int32>(ETestTeam::COUNT)> remaining_team_capacity{};
+    int32 per_team_limit{};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
     FTickCountdown16::counter_type attack_retry_cooldown_tick_value{0};
     TStaticArray<FPeriodicTickCountdown16::counter_type,

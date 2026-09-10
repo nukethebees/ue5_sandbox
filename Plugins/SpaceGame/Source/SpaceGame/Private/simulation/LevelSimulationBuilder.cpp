@@ -1,4 +1,7 @@
 #include "SpaceGame/simulation/LevelSimulationBuilder.h"
+#include "../levels/LevelTeamResolution.h"
+
+#include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 #include <SpaceGame/levels/CompileLevelEvents.h>
 #include <SpaceGame/simulation/SimulationConfigConversion.h>
 
@@ -133,6 +136,8 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     data.capital_ships.fighter_spawn_slots_relative_transforms.SetNum(
         data.capital_ships.fighter_spawn_slots);
     data.fighters = make_simulation_config(config.fighters);
+    data.fighters.max_live_fighters =
+        GetDefault<USandboxDeveloperSettings>()->get_effective_max_live_fighters();
     data.turrets = make_simulation_config(config.turrets);
     data.spinners = make_simulation_config(config.tube_spinners);
     data.player = MoveTemp(player);
@@ -188,6 +193,12 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     }
     auto& data{result.value()};
     data.static_bounds = MoveTemp(static_bounds);
+    data.participating_teams.reserve(definition.teams.Num());
+    for (auto const team_id : definition.teams) {
+        auto const team{level_team_detail::resolve(team_id)};
+        check(team.IsSet());
+        data.participating_teams.add(team.GetValue());
+    }
 
     FSimulationClock clock;
     clock.initialise(clock_settings);

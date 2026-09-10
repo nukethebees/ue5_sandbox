@@ -18,8 +18,8 @@ class SPACEGAMESIMULATION_API CommandInterface {
 
     }
 
-    void queue_spawns(TestCapitalShipFighterSpawnQueue const& queue) {
-        fighters.queue_spawns(queue);
+    int32 queue_spawns(TestCapitalShipFighterSpawnQueue const& queue) {
+        return fighters.queue_spawns(queue);
     }
 
     void queue_orders(TestCapitalShipFighterOrderQueue const& queue) {

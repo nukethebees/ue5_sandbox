@@ -231,8 +231,22 @@ auto Simulation::make_fire_point_candidate(FVector3f const target_location,
 /* **************************************** */
 // Configuration
 /* **************************************** */
-void Simulation::set_config(FFighterSimulationConfig const& new_config) noexcept {
+void Simulation::set_config(FFighterSimulationConfig const& new_config,
+                            TConstArrayView<ETestTeam> const participating_teams) noexcept {
     config = new_config;
+    for (auto& is_participant : participant_mask) {
+        is_participant = 0;
+    }
+    for (auto const team : participating_teams) {
+        auto const team_index{static_cast<int32>(team)};
+        if (team_index >= 0 && team_index < participant_mask.Num()) {
+            participant_mask[team_index] = 1;
+        }
+    }
+
+    per_team_limit = participating_teams.IsEmpty()
+                       ? 0
+                       : FMath::Max(0, config.max_live_fighters) / participating_teams.Num();
 }
 Simulation::Simulation(FSimulationClock const& clock,
                        FTestEntityRegistry& in_entity_registry,
@@ -313,6 +327,21 @@ void Simulation::begin_tick() {
     data.navigation_update_countdowns.tick();
     ml::fill(data.velocities, 0.f);
     clear_tick_buffers();
+
+    for (auto& capacity : remaining_team_capacity) {
+        capacity = per_team_limit;
+    }
+    for (auto const team : data.teams) {
+        auto const team_index{static_cast<int32>(team)};
+        if (team_index >= 0 && team_index < participant_mask.Num() &&
+            participant_mask[team_index] != 0) {
+            remaining_team_capacity[team_index] =
+                FMath::Max(0, remaining_team_capacity[team_index] - 1);
+        } else {
+            ensureAlwaysMsgf(
+                false, TEXT("Live fighter has invalid or non-participating team %d"), team_index);
+        }
+    }
 }
 void Simulation::update_timers(float const) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::update_timers);
@@ -1177,9 +1206,37 @@ void Simulation::refresh_layout() {
 /* **************************************** */
 // Spawning
 /* **************************************** */
-void Simulation::queue_spawns(TestCapitalShipFighterSpawnQueue const& new_spawns) {
+auto Simulation::queue_spawns(TestCapitalShipFighterSpawnQueue const& new_spawns) -> int32 {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::queue_spawns);
-    spawn_queue.append_from(new_spawns);
+    new_spawns.validate_array_sizes();
+    auto const requested_count{new_spawns.num()};
+    if (requested_count == 0) {
+        return 0;
+    }
+
+    auto const team{new_spawns.teams[0]};
+    auto const team_index{static_cast<int32>(team)};
+    if (team_index < 0 || team_index >= participant_mask.Num() ||
+        participant_mask[team_index] == 0) {
+        UE_LOG(LogSandbox,
+               Error,
+               TEXT("Rejected fighter spawn request for invalid or non-participating team %d"),
+               team_index);
+        return 0;
+    }
+
+    for (auto const queued_team : new_spawns.teams) {
+        if (queued_team != team) {
+            UE_LOG(
+                LogSandbox, Error, TEXT("Rejected fighter spawn wave containing multiple teams"));
+            return 0;
+        }
+    }
+
+    auto const accepted_count{FMath::Min(requested_count, remaining_team_capacity[team_index])};
+    spawn_queue.append_from(new_spawns.left(accepted_count));
+    remaining_team_capacity[team_index] -= accepted_count;
+    return accepted_count;
 }
 void Simulation::commit_spawns() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::commit_spawns);

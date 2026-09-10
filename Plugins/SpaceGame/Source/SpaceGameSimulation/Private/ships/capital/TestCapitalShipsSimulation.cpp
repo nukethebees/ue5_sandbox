@@ -268,6 +268,7 @@ void Simulation::queue_fighter_spawns() {
 
     auto const& relative_transforms{config.fighter_spawn_slots_relative_transforms};
     for (auto const capital_index : ships_ready_to_spawn_fighters_indices) {
+        fighter_spawn_wave.reset();
         auto const base_location{ml::get_vector3f(entities.locations, capital_index)};
         auto const base_rotation{ml::get_rotator3f(entities.rotations, capital_index)};
         FTransform const base_transform{
@@ -289,17 +290,18 @@ void Simulation::queue_fighter_spawns() {
                        *relative_transform.ToHumanReadableString(),
                        *new_transform.ToHumanReadableString());
             }
-            fighter_queue.add(FVector3f{new_transform.GetLocation()},
-                              FRotator3f{new_transform.Rotator()},
-                              entities.teams[capital_index],
-                              entities.handles[capital_index],
-                              entities.target_handles[capital_index]);
+            fighter_spawn_wave.add(FVector3f{new_transform.GetLocation()},
+                                   FRotator3f{new_transform.Rotator()},
+                                   entities.teams[capital_index],
+                                   entities.handles[capital_index],
+                                   entities.target_handles[capital_index]);
         }
+        auto const accepted_count{fighters_interface.queue_spawns(fighter_spawn_wave)};
+        auto const& completed_wave{fighter_spawn_wave};
+        fighter_queue.append_from(completed_wave.left(accepted_count));
         entities.fighter_spawn_timers.remaining_times[capital_index] =
             entities.fighter_spawn_cooldowns[capital_index];
     }
-
-    fighters_interface.queue_spawns(fighter_queue);
 }
 void Simulation::refresh_fighter_handles() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ships::Simulation::refresh_fighter_handles);
@@ -310,12 +312,29 @@ void Simulation::refresh_fighter_handles() {
 
     auto const& spawn_data{fighters_interface.get_new_spawn_entity_data()};
     spawn_data.validate_array_sizes();
-    auto const n_spawned_per_capital{get_fighter_spawn_slots()};
     ensure(previous.fighter_queue.num() == spawn_data.num());
 
-    int32 spawning_capital_index{0};
-    int32 spawned_fighter_index{0};
     auto const& spawn_handles{fighters_interface.get_new_spawn_entity_handles()};
+    ensure(spawn_handles.registry_handles.num() == previous.fighter_queue.num());
+    auto const spawned_count{
+        FMath::Min(spawn_handles.registry_handles.num(), previous.fighter_queue.num())};
+    for (int32 spawn_index{}; spawn_index < spawned_count; ++spawn_index) {
+        auto const parent_handle{previous.fighter_queue.parents[spawn_index]};
+        auto destination_handle{parent_handle};
+        if (entities.handles.Find(parent_handle) == INDEX_NONE) {
+            auto const replacement{
+                find_first_handle_on_team(previous.fighter_queue.teams[spawn_index])};
+            if (!replacement) {
+                fighters_interface.self_destruct_fighter(
+                    spawn_handles.registry_handles[spawn_index]);
+                continue;
+            }
+            destination_handle = *replacement;
+        }
+        fighter_reassignment_queue.add(destination_handle,
+                                       spawn_handles.registry_handles[spawn_index]);
+    }
+
     auto const n_capitals{get_num_instances()};
     for (int32 capital_index{0}; capital_index < n_capitals; ++capital_index) {
         FIndexSpan new_span{.offset = fighter_handles_scratch.Num(), .count = 0};
@@ -328,16 +347,6 @@ void Simulation::refresh_fighter_handles() {
                 fighter_handles_scratch.Add(fighter_handle);
                 ++new_span.count;
             }
-        }
-
-        if (previous.ships_ready_to_spawn_fighters_buffer.IsValidIndex(spawning_capital_index) &&
-            previous.ships_ready_to_spawn_fighters_buffer[spawning_capital_index] ==
-                capital_index) {
-            auto const end{spawned_fighter_index + n_spawned_per_capital};
-            for (; spawned_fighter_index < end; ++spawned_fighter_index, ++new_span.count) {
-                fighter_handles_scratch.Add(spawn_handles.registry_handles[spawned_fighter_index]);
-            }
-            ++spawning_capital_index;
         }
 
         auto const n_reassigned{fighter_reassignment_queue.num()};
