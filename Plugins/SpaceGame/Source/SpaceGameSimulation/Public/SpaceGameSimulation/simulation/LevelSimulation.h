@@ -20,6 +20,7 @@
 #include <SpaceGameSimulation/support/FixedTickLoop.h>
 
 #include <SandboxCore/fixed_array.h>
+#include <SandboxCore/frame_memory_resource.h>
 #include <SpaceGameSimulation/simulation/LevelReadView.h>
 #include <SpaceGameSimulation/simulation/LevelSimulationState.h>
 
@@ -51,6 +52,8 @@ struct FLevelSimulationInitData {
     ml::WorldAABBs static_bounds{};
     FIntVector3 grid_dimensions{400, 400, 5};
     FVector3f cell_size{5000.f, 5000.f, 20000.f};
+
+    SIZE_T frame_memory_capacity_bytes{16 * 1024 * 1024};
 
     float capital_radius{1.f};
     float fighter_radius{1.f};
@@ -152,6 +155,9 @@ struct SPACEGAMESIMULATION_API FLevelSimulation {
     auto get_level_telemetry_manager() const -> FLevelTelemetryManager const& {
         return level_telemetry_manager_;
     }
+    auto get_frame_memory_stats() const noexcept -> ml::FFrameMemoryStats {
+        return frame_memory_.get_stats();
+    }
 
     TFunction<void()> on_mission_evaluated;
     TFunction<void(FLevelSimulation&)> on_end_tick;
@@ -174,6 +180,7 @@ struct SPACEGAMESIMULATION_API FLevelSimulation {
     FSimulationClock clock_;
     EOrchestratorState state_{EOrchestratorState::Uninitialised};
 
+    ml::FFrameMemoryResource frame_memory_;
     FTestEntityRegistry entity_registry_;
     ml::FSpatialQueryManager query_manager_;
 

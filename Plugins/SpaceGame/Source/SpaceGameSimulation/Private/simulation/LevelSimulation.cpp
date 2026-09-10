@@ -116,7 +116,8 @@ static auto make_legacy_level_initialisation(FLevelSimulationInitData const& dat
 // Construction and lifecycle
 /* **************************************** */
 FLevelSimulation::FLevelSimulation(FLevelSimulationInitData data)
-    : query_manager_{entity_registry_}
+    : frame_memory_{data.frame_memory_capacity_bytes}
+    , query_manager_{entity_registry_}
     , lasers_simulation_{clock_, entity_registry_, query_manager_}
     , lasers_phase_{lasers_simulation_}
     , capital_ship_fighters_simulation_{clock_,
@@ -126,7 +127,11 @@ FLevelSimulation::FLevelSimulation(FLevelSimulationInitData data)
     , capital_ship_fighters_phase_{capital_ship_fighters_simulation_}
     , capital_ships_simulation_{entity_registry_, query_manager_, capital_ship_fighters_simulation_}
     , capital_ships_phase_{capital_ships_simulation_}
-    , turrets_simulation_{clock_, entity_registry_, query_manager_, lasers_simulation_}
+    , turrets_simulation_{clock_,
+                          entity_registry_,
+                          query_manager_,
+                          lasers_simulation_,
+                          frame_memory_}
     , turrets_phase_{turrets_simulation_}
     , spinners_simulation_{clock_, entity_registry_, lasers_simulation_}
     , spinners_phase_{spinners_simulation_}
@@ -550,6 +555,8 @@ void FLevelSimulation::advance(time_type const dt) {
             level_telemetry_manager_.record_simulation_tick_timing(
                 FPlatformTime::Seconds() - tick_started_at, system_timings, phase_timings);
         }
+
+        frame_memory_.reset();
 
         if (state_ != EOrchestratorState::Running) {
             break;

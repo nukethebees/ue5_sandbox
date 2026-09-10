@@ -7,6 +7,8 @@
 
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/fixed_array.h>
+#include <SandboxCore/frame_array.h>
+#include <SandboxCore/frame_memory_resource.h>
 #include <SandboxCore/loop_bounds.h>
 #include <SandboxCore/projectile_intercept.h>
 #include <SandboxCore/soa_rotator_utils.h>
@@ -20,6 +22,45 @@
 TRACE_DECLARE_INT_COUNTER(SandboxTestStaticTurretCount, TEXT("Sandbox/TestStaticTurretCount"));
 
 namespace ml::test_static_turrets {
+namespace scratch {
+inline constexpr SIZE_T local_chunk_bytes{16 * 1024};
+
+template <typename T>
+void reserve(TArray<T>& values, int32 const count) {
+    values.Reserve(count);
+}
+template <typename T>
+void reserve(TFrameArray<T>& values, int32 const count) {
+    values.reserve(count);
+}
+template <typename T>
+void add(TArray<T>& values, T const& value) {
+    values.Add(value);
+}
+template <typename T>
+void add(TFrameArray<T>& values, T const& value) {
+    values.add(value);
+}
+template <typename T>
+auto num(TArray<T> const& values) -> int32 {
+    return values.Num();
+}
+template <typename T>
+auto num(TFrameArray<T> const& values) -> int32 {
+    return values.num();
+}
+template <typename T>
+void set_num_uninitialized(TArray<T>& values, int32 const count) {
+    values.SetNumUninitialized(count, EAllowShrinking::No);
+}
+template <typename T>
+void set_num_uninitialized(TFrameArray<T>& values, int32 const count) {
+    values.reserve(count);
+    for (int32 i{}; i < count; ++i) {
+        values.emplace();
+    }
+}
+}
 
 /* **************************************** */
 // Configuration
@@ -30,11 +71,13 @@ void Simulation::set_config(FTurretSimulationConfig const& new_config) noexcept 
 Simulation::Simulation(FSimulationClock const& clock,
                        FTestEntityRegistry& in_entity_registry,
                        FSpatialQueryManager const& in_spatial_query_manager,
-                       ml::test_lasers::Simulation& in_laser_simulation) noexcept
+                       ml::test_lasers::Simulation& in_laser_simulation,
+                       std::pmr::memory_resource& in_frame_memory_resource) noexcept
     : simulation_clock{clock}
     , entity_registry{in_entity_registry}
     , spatial_query_manager{in_spatial_query_manager}
-    , laser_simulation{in_laser_simulation} {}
+    , laser_simulation{in_laser_simulation}
+    , frame_memory_resource{in_frame_memory_resource} {}
 
 /* **************************************** */
 // Spawning
@@ -348,6 +391,31 @@ void Simulation::perform_search_on_slice(int32 const job_index,
 void Simulation::fire_at_enemies() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::fire_at_enemies);
 
+#if WITH_DEV_AUTOMATION_TESTS
+    if (scratch_allocation_mode_ == EScratchAllocationMode::Persistent) {
+        scratch_int_buffer_.Reset();
+        line_of_sight_hit_entity_handles_.Reset();
+        fire_at_enemies_with_scratch(scratch_int_buffer_, line_of_sight_hit_entity_handles_);
+        return;
+    }
+    if (scratch_allocation_mode_ == EScratchAllocationMode::LocalMonotonic) {
+        FLocalFrameMemoryResource local_resource{&frame_memory_resource,
+                                                 scratch::local_chunk_bytes};
+        TFrameArray<int32> candidate_indices{&local_resource};
+        TFrameArray<FRegistryEntityHandle> hit_entity_handles{&local_resource};
+        fire_at_enemies_with_scratch(candidate_indices, hit_entity_handles);
+        return;
+    }
+#endif
+
+    TFrameArray<int32> candidate_indices{&frame_memory_resource};
+    TFrameArray<FRegistryEntityHandle> hit_entity_handles{&frame_memory_resource};
+    fire_at_enemies_with_scratch(candidate_indices, hit_entity_handles);
+}
+
+template <typename CandidateIndices, typename HitEntityHandles>
+void Simulation::fire_at_enemies_with_scratch(CandidateIndices& candidate_indices,
+                                              HitEntityHandles& hit_entity_handles) {
     auto const n{get_num_instances()};
     auto const laser_speed{config.laser.projectile_speed};
     auto const laser_max_distance{config.laser.max_distance};
@@ -355,10 +423,10 @@ void Simulation::fire_at_enemies() {
     auto const disengage_radius{get_disengage_radius()};
     auto const disengage_radius_sq{disengage_radius * disengage_radius};
 
-    auto& candidate_indices{scratch_int_buffer};
+    scratch::reserve(candidate_indices, n);
+
     auto& start_locations{line_of_sight_start_locations};
     auto& end_locations{line_of_sight_end_locations};
-    auto& hit_entity_handles{line_of_sight_hit_entity_handles};
 
     for (int32 i{0}; i < n; ++i) {
         auto const target_handle{entities.target_handles[i]};
@@ -385,7 +453,7 @@ void Simulation::fire_at_enemies() {
             continue;
         }
 
-        candidate_indices.Add(i);
+        scratch::add(candidate_indices, i);
         ml::append(start_locations,
                    entities.fire_point_locations.xs[i],
                    entities.fire_point_locations.ys[i],
@@ -395,12 +463,12 @@ void Simulation::fire_at_enemies() {
         entities.laser_cooldowns.restart_counter(i);
     }
 
-    auto const n_candidates{candidate_indices.Num()};
+    auto const n_candidates{scratch::num(candidate_indices)};
     if (n_candidates == 0) {
         return;
     }
 
-    hit_entity_handles.SetNumUninitialized(n_candidates, EAllowShrinking::No);
+    scratch::set_num_uninitialized(hit_entity_handles, n_candidates);
     spatial_query_manager.trace_line_of_sight(
         start_locations.get_const_view(), end_locations.get_const_view(), hit_entity_handles);
 
@@ -450,10 +518,8 @@ void Simulation::clear_tick_buffers() {
     ml::reset(entity_death_info,
               entity_update_data,
               local_indices_to_remove,
-              scratch_int_buffer,
               line_of_sight_start_locations,
               line_of_sight_end_locations,
-              line_of_sight_hit_entity_handles,
               new_lasers);
 }
 

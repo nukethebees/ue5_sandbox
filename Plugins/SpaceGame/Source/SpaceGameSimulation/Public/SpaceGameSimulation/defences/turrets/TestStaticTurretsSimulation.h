@@ -11,6 +11,8 @@
 
 #include <CoreMinimal.h>
 
+#include <memory_resource>
+
 struct FLevelSimulation;
 struct FTurretSimulationConfig;
 struct FTestEntityRegistry;
@@ -23,6 +25,10 @@ struct FSpatialQueryManager;
 namespace ml::test_static_turrets {
 class PhaseInterface;
 
+#if WITH_DEV_AUTOMATION_TESTS
+enum class EScratchAllocationMode : uint8 { Persistent, DirectRoot, LocalMonotonic };
+#endif
+
 struct SPACEGAMESIMULATION_API Simulation {
     using RegistryEntityData = ml::entity_registry::EntityData;
     using EntityData = ml::test_static_turrets::EntityData;
@@ -31,7 +37,8 @@ struct SPACEGAMESIMULATION_API Simulation {
     Simulation(FSimulationClock const& clock,
                FTestEntityRegistry& entity_registry,
                FSpatialQueryManager const& spatial_query_manager,
-               ml::test_lasers::Simulation& laser_simulation) noexcept;
+               ml::test_lasers::Simulation& laser_simulation,
+               std::pmr::memory_resource& frame_memory_resource) noexcept;
     Simulation(Simulation const&) = delete;
     Simulation(Simulation&&) = delete;
     auto operator=(Simulation const&) -> Simulation& = delete;
@@ -48,6 +55,15 @@ struct SPACEGAMESIMULATION_API Simulation {
         death_locations_.Reset();
     }
     void set_config(FTurretSimulationConfig const& new_config) noexcept;
+#if WITH_DEV_AUTOMATION_TESTS
+    void set_scratch_allocation_mode(EScratchAllocationMode const mode) noexcept {
+        scratch_allocation_mode_ = mode;
+    }
+    auto get_persistent_scratch_allocated_bytes() const noexcept -> SIZE_T {
+        return scratch_int_buffer_.GetAllocatedSize() +
+               line_of_sight_hit_entity_handles_.GetAllocatedSize();
+    }
+#endif
 
     /* **************************************** */
     // Accessors
@@ -105,6 +121,9 @@ struct SPACEGAMESIMULATION_API Simulation {
     // Attacking
     /* **************************************** */
     void fire_at_enemies();
+    template <typename CandidateIndices, typename HitEntityHandles>
+    void fire_at_enemies_with_scratch(CandidateIndices& candidate_indices,
+                                      HitEntityHandles& hit_entity_handles);
     auto get_disengage_radius() const -> float;
 
     /* **************************************** */
@@ -127,6 +146,7 @@ struct SPACEGAMESIMULATION_API Simulation {
     FTestEntityRegistry& entity_registry;
     FSpatialQueryManager const& spatial_query_manager;
     ml::test_lasers::Simulation& laser_simulation;
+    std::pmr::memory_resource& frame_memory_resource;
     EntityData entities{};
     EntityDeathInfo entity_death_info;
     TArray<FEntityFrameChange> frame_changes_;
@@ -134,10 +154,13 @@ struct SPACEGAMESIMULATION_API Simulation {
     RegistryEntityData entity_update_data;
     int32 target_refresh_next_offset{0};
 
-    TArray<int32> scratch_int_buffer;
     FVectors3f line_of_sight_start_locations;
     FVectors3f line_of_sight_end_locations;
-    TArray<FRegistryEntityHandle> line_of_sight_hit_entity_handles;
+#if WITH_DEV_AUTOMATION_TESTS
+    EScratchAllocationMode scratch_allocation_mode_{EScratchAllocationMode::DirectRoot};
+    TArray<int32> scratch_int_buffer_;
+    TArray<FRegistryEntityHandle> line_of_sight_hit_entity_handles_;
+#endif
     ml::test_lasers::SpawnRequests new_lasers;
     TArray<int32> local_indices_to_remove;
 };

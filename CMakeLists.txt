@@ -139,6 +139,12 @@ set(CACHE{SANDBOX_TELEMETRY_BENCHMARK_SAMPLES}
   VALUE 7
 )
 
+set(CACHE{SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK_SECONDS}
+  TYPE STRING
+  HELP "Simulation duration of the frame-memory authored-level benchmark"
+  VALUE 20
+)
+
 set(CACHE{SANDBOX_SPACE_GAME_TEST_TIME_SCALE}
   TYPE STRING
   HELP "Optional positive time scale for level-backed SpaceGame automation"
@@ -624,6 +630,27 @@ add_test(
 )
 set_tests_properties(SandboxBenchmarks.LevelTelemetryIntegration PROPERTIES
   LABELS telemetry-benchmark
+  TIMEOUT 1200
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+add_test(
+  NAME SandboxBenchmarks.FrameMemoryLevel
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    "-ExecCmds=Automation RunTests SandboxBenchmarks.FrameMemoryLevel; Quit"
+    "-SandboxFrameMemoryLevelBenchmarkSeconds=${SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK_SECONDS}"
+    -unattended
+    -nop4
+    -nosplash
+    -nullrhi
+    -nosound
+    -stdout
+    -FullStdOutLogOutput
+    -ddc=NoZenLocalFallback
+    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
+)
+set_tests_properties(SandboxBenchmarks.FrameMemoryLevel PROPERTIES
+  LABELS frame-memory-level-benchmark
   TIMEOUT 1200
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )

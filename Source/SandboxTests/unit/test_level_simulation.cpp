@@ -393,6 +393,18 @@ auto FLevelSimulationSpawnQueriesTest::RunTest(FString const&) -> bool {
     simulation.start();
     auto const dt{simulation.get_clock().get_tick_period()};
     simulation.advance(dt);
+    auto const first_tick_frame_memory{simulation.get_frame_memory_stats()};
+    TestEqual(TEXT("Frame memory uses the configured per-simulation capacity"),
+              first_tick_frame_memory.capacity_bytes,
+              SIZE_T{16 * 1024 * 1024});
+    TestEqual(TEXT("Frame memory is reset after the completed tick"),
+              first_tick_frame_memory.current_claimed_bytes,
+              SIZE_T{0});
+    TestTrue(TEXT("Turret scratch claimed frame memory during the tick"),
+             first_tick_frame_memory.last_frame_root_claim_count > 0);
+    TestEqual(TEXT("No turret scratch allocation survives the reset"),
+              first_tick_frame_memory.outstanding_allocation_count,
+              uint64{0});
     simulation.advance(dt);
     TestTrue(TEXT("Turret has no enemy before the scheduled spawn"),
              simulation.get_turrets().get_target_handles()[0].is_null());
