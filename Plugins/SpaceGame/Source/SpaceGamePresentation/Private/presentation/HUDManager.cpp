@@ -133,21 +133,21 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
         .turret = level_config.turrets.max_health,
     };
     soft_target_selection_settings_ = {
-        .acquisition_radius_pixels = entity_overlay_settings.soft_target_acquisition_radius_pixels,
-        .retention_radius_pixels = entity_overlay_settings.soft_target_retention_radius_pixels,
-        .centre_tie_radius_pixels = entity_overlay_settings.soft_target_centre_tie_radius_pixels,
-        .switch_improvement_ratio = entity_overlay_settings.soft_target_switch_improvement_ratio,
-        .approach_range_multiplier = entity_overlay_settings.soft_target_approach_range_multiplier,
+        .acquisition_radius_pixels = entity_overlay_settings.soft_target.acquisition_radius_pixels,
+        .retention_radius_pixels = entity_overlay_settings.soft_target.retention_radius_pixels,
+        .centre_tie_radius_pixels = entity_overlay_settings.soft_target.centre_tie_radius_pixels,
+        .switch_improvement_ratio = entity_overlay_settings.soft_target.switch_improvement_ratio,
+        .approach_range_multiplier = entity_overlay_settings.soft_target.approach_range_multiplier,
         .minimum_indicator_radius_pixels =
-            entity_overlay_settings.soft_target_minimum_radius_pixels,
+            entity_overlay_settings.soft_target.minimum_radius_pixels,
         .maximum_indicator_radius_pixels =
-            entity_overlay_settings.soft_target_maximum_radius_pixels,
-        .bounds_padding_pixels = entity_overlay_settings.soft_target_bounds_padding_pixels,
+            entity_overlay_settings.soft_target.maximum_radius_pixels,
+        .bounds_padding_pixels = entity_overlay_settings.soft_target.bounds_padding_pixels,
     };
     soft_target_pulse_duration_ =
-        FMath::Max(entity_overlay_settings.soft_target_pulse_duration, 0.0f);
+        FMath::Max(entity_overlay_settings.soft_target.pulse_duration, 0.0f);
     soft_target_fade_out_duration_ =
-        FMath::Max(entity_overlay_settings.soft_target_fade_out_duration, 0.0f);
+        FMath::Max(entity_overlay_settings.soft_target.fade_out_duration, 0.0f);
     top_killer_ids_buffer.Reset();
     entity_overlay_objective_roles_.Reset();
     top_killer_ids_buffer.Reserve(entity_registry->get_num_unique_ids_issued());
@@ -622,8 +622,8 @@ void FHUDManager::configure_world_soft_target_renderer() {
     instances->ClearInstances();
     instances->SetVisibility(false);
     soft_target_mesh_vertical_radius_ = 0.0f;
-    if (!IsValid(entity_overlay_settings_.soft_target_world_mesh) ||
-        !IsValid(entity_overlay_settings_.soft_target_world_material)) {
+    if (!IsValid(entity_overlay_settings_.soft_target.mesh) ||
+        !IsValid(entity_overlay_settings_.soft_target.material)) {
         UE_LOG(LogSandboxUI,
                Error,
                TEXT("FHUDManager: World soft-target mesh or material is invalid."));
@@ -631,10 +631,10 @@ void FHUDManager::configure_world_soft_target_renderer() {
     }
 
     instances->SetMobility(EComponentMobility::Movable);
-    instances->SetStaticMesh(entity_overlay_settings_.soft_target_world_mesh);
+    instances->SetStaticMesh(entity_overlay_settings_.soft_target.mesh);
     auto const material_count{instances->GetNumMaterials()};
     for (int32 material_index{0}; material_index < material_count; ++material_index) {
-        instances->SetMaterial(material_index, entity_overlay_settings_.soft_target_world_material);
+        instances->SetMaterial(material_index, entity_overlay_settings_.soft_target.material);
     }
     instances->SetNumCustomDataFloats(ml::soft_target_world::custom_data_count);
     instances->SetCanEverAffectNavigation(false);
@@ -645,8 +645,8 @@ void FHUDManager::configure_world_soft_target_renderer() {
     instances->SetReceivesDecals(false);
     instances->SetRemoveSwap();
 
-    soft_target_mesh_vertical_radius_ = static_cast<float>(
-        entity_overlay_settings_.soft_target_world_mesh->GetBounds().BoxExtent.Y);
+    soft_target_mesh_vertical_radius_ =
+        static_cast<float>(entity_overlay_settings_.soft_target.mesh->GetBounds().BoxExtent.Y);
     if (soft_target_mesh_vertical_radius_ <= UE_SMALL_NUMBER) {
         UE_LOG(LogSandboxUI,
                Error,
@@ -684,7 +684,7 @@ void FHUDManager::add_world_soft_target(FRegistryEntityHandle const handle,
     auto const entities{entity_registry->get_entity_data().get_const_view()};
     auto const target_fit_radius{indicator_radius_pixels * world_units_per_pixel};
     auto const closing_scale{FMath::Lerp(
-        FMath::Max(entity_overlay_settings_.soft_target_bracket_start_radius_multiplier, 1.0f),
+        FMath::Max(entity_overlay_settings_.soft_target.bracket_start_radius_multiplier, 1.0f),
         1.0f,
         FMath::Clamp(range_progress, 0.0f, 1.0f))};
     auto const uniform_scale{target_fit_radius * closing_scale / soft_target_mesh_vertical_radius_};
@@ -708,8 +708,8 @@ void FHUDManager::add_world_soft_target(FRegistryEntityHandle const handle,
 
     auto const color{in_range ? in_range_color : neutral_color};
     auto const opacity{
-        FMath::Clamp((entity_overlay_settings_.soft_target_opacity +
-                      pulse * entity_overlay_settings_.soft_target_pulse_opacity_boost) *
+        FMath::Clamp((entity_overlay_settings_.soft_target.opacity +
+                      pulse * entity_overlay_settings_.soft_target.pulse_opacity_boost) *
                          visibility * color.A,
                      0.0f,
                      1.0f)};

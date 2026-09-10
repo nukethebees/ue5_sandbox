@@ -115,8 +115,8 @@ auto configure_level_config(TCHAR const* const object_path,
         return false;
     }
     config->Modify();
-    config->entity_overlay.soft_target_world_mesh = &mesh;
-    config->entity_overlay.soft_target_world_material = &material;
+    config->entity_overlay.soft_target.mesh = &mesh;
+    config->entity_overlay.soft_target.material = &material;
     return save_asset(*config);
 }
 }
