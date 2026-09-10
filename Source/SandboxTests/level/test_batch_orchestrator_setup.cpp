@@ -18,6 +18,7 @@
 #include <SpaceGameSimulation/simulation/SimulationClock.h>
 #include <SpaceGameSimulation/simulation/SimulationClockInterface.h>
 
+#include <SandboxCore/frame_memory_resource.h>
 #include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxISMCComponent.h>
 
@@ -440,7 +441,8 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     clock.initialise({});
     FTestEntityRegistry entity_registry;
     ml::FSpatialQueryManager spatial_queries{entity_registry};
-    ml::test_lasers::Simulation lasers{clock, entity_registry, spatial_queries};
+    ml::FFrameMemoryResource frame_memory{1024 * 1024};
+    ml::test_lasers::Simulation lasers{clock, entity_registry, spatial_queries, frame_memory};
     FLevelTelemetryManager telemetry_manager{
         clock,
         entity_registry,

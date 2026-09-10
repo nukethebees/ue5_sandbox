@@ -271,7 +271,7 @@ struct SPACEGAMESIMULATION_API Simulation {
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    auto queue_spawns(TestCapitalShipFighterSpawnQueue const& queue) -> int32;
+    auto queue_spawns(TestCapitalShipFighterSpawnQueueConstView queue) -> int32;
     void commit_spawns();
 
     /* **************************************** */

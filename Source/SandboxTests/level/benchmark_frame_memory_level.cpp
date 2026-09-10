@@ -76,14 +76,6 @@ TEST_CLASS(FrameMemoryLevelBenchmark, "SandboxBenchmarks.FrameMemoryLevel")
                           TEXT("direct_root"));
         });
     }
-
-    TEST_METHOD(TwentySimulationSecondsLocalMonotonic)
-    {
-        TestCommandBuilder.Do([this] {
-            run_benchmark(ml::test_static_turrets::EScratchAllocationMode::LocalMonotonic,
-                          TEXT("local_monotonic"));
-        });
-    }
   private:
     void sample_tick(ATestBatchOrchestrator & orchestrator) {
         auto const* const simulation{orchestrator.get_level_simulation()};

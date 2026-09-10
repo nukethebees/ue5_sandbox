@@ -1,5 +1,6 @@
 #include "SpaceGameSimulation/defences/spinners/TestTubeSpinnersSimulation.h"
 
+#include <SpaceGameSimulation/combat/lasers/TestLasersFrameScratch.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>
 
@@ -19,10 +20,12 @@ void Simulation::set_config(FSpinnerSimulationConfig const& new_config) noexcept
 }
 Simulation::Simulation(FSimulationClock const& clock,
                        FTestEntityRegistry& in_entity_registry,
-                       ml::test_lasers::Simulation& in_laser_simulation) noexcept
+                       ml::test_lasers::Simulation& in_laser_simulation,
+                       std::pmr::memory_resource& in_frame_memory_resource) noexcept
     : simulation_clock{clock}
     , entity_registry{in_entity_registry}
-    , laser_simulation{in_laser_simulation} {}
+    , laser_simulation{in_laser_simulation}
+    , frame_memory_resource{in_frame_memory_resource} {}
 
 /* **************************************** */
 // Simulation phases
@@ -53,8 +56,6 @@ void Simulation::queue_commands() {
 }
 void Simulation::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_tube_spinners::Simulation::end_tick);
-
-    ml::reset(indices_ready_to_fire, new_lasers);
 }
 
 /* **************************************** */
@@ -141,20 +142,21 @@ void Simulation::fire_lasers() {
         return;
     }
 
-    ml::reset(indices_ready_to_fire, new_lasers);
+    TFrameArray<int32> indices_ready_to_fire{&frame_memory_resource};
+    indices_ready_to_fire.reserve(n);
 
     for (int32 i{0}; i < n; ++i) {
         if (!entities.laser_cooldowns.is_ready(i)) {
             continue;
         }
 
-        indices_ready_to_fire.Add(i);
+        indices_ready_to_fire.add(i);
         entities.laser_cooldowns.restart_counter(i);
     }
 
-    auto const n_ready_to_fire{indices_ready_to_fire.Num()};
-    ml::reserve(n_ready_to_fire, new_lasers);
-    ml::add_uninitialised(n_ready_to_fire, new_lasers);
+    auto const n_ready_to_fire{indices_ready_to_fire.num()};
+    ml::test_lasers::FrameSpawnRequests new_lasers{&frame_memory_resource};
+    new_lasers.set_num(n_ready_to_fire);
 
     for (int32 i{0}; i < n_ready_to_fire; ++i) {
         auto const index{indices_ready_to_fire[i]};
@@ -163,16 +165,22 @@ void Simulation::fire_lasers() {
         auto const& offset{firing_point_offsets[fire_point_index]};
 
         auto const fire_point_location{offset.GetLocation()};
-        new_lasers.locations.set(i,
-                                 entities.locations.xs[index] + fire_point_location.X,
-                                 entities.locations.ys[index] + fire_point_location.Y,
-                                 entities.locations.zs[index] + fire_point_location.Z);
+        new_lasers.locations.set(
+            i,
+            FVector3f{
+                entities.locations.xs[index] + static_cast<float>(fire_point_location.X),
+                entities.locations.ys[index] + static_cast<float>(fire_point_location.Y),
+                entities.locations.zs[index] + static_cast<float>(fire_point_location.Z),
+            });
 
         auto const fire_point_rotation{offset.Rotator()};
-        new_lasers.rotations.set(i,
-                                 fire_point_rotation.Pitch,
-                                 fire_point_rotation.Yaw + entities.yaws[index],
-                                 fire_point_rotation.Roll);
+        new_lasers.rotations.set(
+            i,
+            FRotator3f{
+                static_cast<float>(fire_point_rotation.Pitch),
+                static_cast<float>(fire_point_rotation.Yaw) + entities.yaws[index],
+                static_cast<float>(fire_point_rotation.Roll),
+            });
         new_lasers.base_velocities.set(i, FVector3f::ZeroVector);
 
         new_lasers.damages[i] = laser_damage;
@@ -184,7 +192,7 @@ void Simulation::fire_lasers() {
         entities.next_fire_point_indices[index] = (fire_point_index + 1) % n_firing_points;
     }
 
-    laser_simulation.queue_laser_spawns(new_lasers);
+    laser_simulation.queue_laser_spawns(new_lasers.get_const_view());
 }
 
 /* **************************************** */

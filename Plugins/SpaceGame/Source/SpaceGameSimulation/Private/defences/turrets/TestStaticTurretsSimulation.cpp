@@ -26,8 +26,6 @@ TRACE_DECLARE_INT_COUNTER(SandboxTestStaticTurretCount, TEXT("Sandbox/TestStatic
 
 namespace ml::test_static_turrets {
 namespace scratch {
-inline constexpr SIZE_T local_chunk_bytes{16 * 1024};
-
 template <typename T>
 void reserve(TArray<T>& values, int32 const count) {
     values.Reserve(count);
@@ -429,18 +427,6 @@ void Simulation::fire_at_enemies() {
                                      line_of_sight_start_locations_,
                                      line_of_sight_end_locations_,
                                      new_lasers_);
-        return;
-    }
-    if (scratch_allocation_mode_ == EScratchAllocationMode::LocalMonotonic) {
-        FLocalFrameMemoryResource local_resource{&frame_memory_resource,
-                                                 scratch::local_chunk_bytes};
-        TFrameArray<int32> candidate_indices{&local_resource};
-        TFrameArray<FRegistryEntityHandle> hit_entity_handles{&local_resource};
-        FFrameVectors3f start_locations{&local_resource};
-        FFrameVectors3f end_locations{&local_resource};
-        ml::test_lasers::FrameSpawnRequests new_lasers{&local_resource};
-        fire_at_enemies_with_scratch(
-            candidate_indices, hit_entity_handles, start_locations, end_locations, new_lasers);
         return;
     }
 #endif

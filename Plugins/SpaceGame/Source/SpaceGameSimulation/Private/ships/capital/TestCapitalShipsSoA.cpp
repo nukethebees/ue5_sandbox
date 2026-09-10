@@ -329,7 +329,6 @@ auto EntityTickDataConstView::get_view() const -> ConstView {
 
 auto EntityTickDataConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<int32>{ships_ready_to_spawn_fighters_buffer}.Slice(offset, count),
         fighter_queue.get_const_view(offset, count),
     };
 }
@@ -340,13 +339,12 @@ auto EntityTickDataConstView::get_const_view() const -> ConstView {
 
 auto EntityTickDataConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<int32>{ships_ready_to_spawn_fighters_buffer}.Slice(offset, count),
         fighter_queue.get_const_view(offset, count),
     };
 }
 
 auto EntityTickDataConstView::num() const noexcept -> int32 {
-    return ml::num(ships_ready_to_spawn_fighters_buffer);
+    return ml::num(fighter_queue);
 }
 
 auto EntityTickDataConstView::is_empty() const noexcept -> bool {
@@ -355,7 +353,6 @@ auto EntityTickDataConstView::is_empty() const noexcept -> bool {
 
 void EntityTickDataConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(ships_ready_to_spawn_fighters_buffer),
         ml::num(fighter_queue),
     });
 }
@@ -378,7 +375,6 @@ auto EntityTickDataView::get_view() -> View {
 
 auto EntityTickDataView::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        TArrayView<int32>{ships_ready_to_spawn_fighters_buffer}.Slice(offset, count),
         fighter_queue.get_view(offset, count),
     };
 }
@@ -389,7 +385,6 @@ auto EntityTickDataView::get_view() const -> ConstView {
 
 auto EntityTickDataView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<int32>{ships_ready_to_spawn_fighters_buffer}.Slice(offset, count),
         fighter_queue.get_const_view(offset, count),
     };
 }
@@ -400,13 +395,12 @@ auto EntityTickDataView::get_const_view() const -> ConstView {
 
 auto EntityTickDataView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<int32>{ships_ready_to_spawn_fighters_buffer}.Slice(offset, count),
         fighter_queue.get_const_view(offset, count),
     };
 }
 
 auto EntityTickDataView::num() const noexcept -> int32 {
-    return ml::num(ships_ready_to_spawn_fighters_buffer);
+    return ml::num(fighter_queue);
 }
 
 auto EntityTickDataView::is_empty() const noexcept -> bool {
@@ -415,7 +409,6 @@ auto EntityTickDataView::is_empty() const noexcept -> bool {
 
 void EntityTickDataView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(ships_ready_to_spawn_fighters_buffer),
         ml::num(fighter_queue),
     });
 }
@@ -445,34 +438,28 @@ auto EntityTickDataView::right(int32 const count) const -> ConstView {
 }
 
 void EntityTickData::reset() {
-    ml::reset(ships_ready_to_spawn_fighters_buffer);
     ml::reset(fighter_queue);
 }
 
 void EntityTickData::reserve(int32 const count) {
-    ml::reserve(ships_ready_to_spawn_fighters_buffer, count);
     ml::reserve(fighter_queue, count);
 }
 
 void EntityTickData::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(ships_ready_to_spawn_fighters_buffer, count);
     ml::add_uninitialised(fighter_queue, count);
 }
 
 void EntityTickData::add_defaulted(int32 const count) {
-    ml::add_defaulted(ships_ready_to_spawn_fighters_buffer, count);
     ml::add_defaulted(fighter_queue, count);
 }
 
 void EntityTickData::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(ships_ready_to_spawn_fighters_buffer, count, allow_shrinking);
     ml::set_num(fighter_queue, count, allow_shrinking);
 }
 
 void EntityTickData::apply_permutation(TArrayView<int32> indices) {
     validate_array_sizes();
     check(indices.Num() == num());
-    ml::apply_permutation(ships_ready_to_spawn_fighters_buffer, indices);
     ml::apply_permutation(fighter_queue, indices);
 }
 
@@ -482,7 +469,6 @@ auto EntityTickData::get_view() -> View {
 
 auto EntityTickData::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        TArrayView<int32>{ships_ready_to_spawn_fighters_buffer}.Slice(offset, count),
         fighter_queue.get_view(offset, count),
     };
 }
@@ -493,7 +479,6 @@ auto EntityTickData::get_view() const -> ConstView {
 
 auto EntityTickData::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<int32>{ships_ready_to_spawn_fighters_buffer}.Slice(offset, count),
         fighter_queue.get_const_view(offset, count),
     };
 }
@@ -504,13 +489,12 @@ auto EntityTickData::get_const_view() const -> ConstView {
 
 auto EntityTickData::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<int32>{ships_ready_to_spawn_fighters_buffer}.Slice(offset, count),
         fighter_queue.get_const_view(offset, count),
     };
 }
 
 auto EntityTickData::num() const noexcept -> int32 {
-    return ml::num(ships_ready_to_spawn_fighters_buffer);
+    return ml::num(fighter_queue);
 }
 
 auto EntityTickData::is_empty() const noexcept -> bool {
@@ -519,7 +503,6 @@ auto EntityTickData::is_empty() const noexcept -> bool {
 
 void EntityTickData::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(ships_ready_to_spawn_fighters_buffer),
         ml::num(fighter_queue),
     });
 }

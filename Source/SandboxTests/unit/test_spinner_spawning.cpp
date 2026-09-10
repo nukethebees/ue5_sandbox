@@ -4,6 +4,7 @@
 #include <SpaceGameSimulation/simulation/SimulationClock.h>
 #include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
 
+#include <SandboxCore/frame_memory_resource.h>
 #include <SandboxCore/soa_vector_utils.h>
 
 #include <CQTest.h>
@@ -28,8 +29,9 @@ TEST_CLASS(SpinnerSpawning, "Sandbox.UnitTests")
         FSimulationClock clock;
         FTestEntityRegistry registry;
         ml::FSpatialQueryManager queries{registry};
-        ml::test_lasers::Simulation lasers{clock, registry, queries};
-        ml::test_tube_spinners::Simulation simulation{clock, registry, lasers};
+        ml::FFrameMemoryResource frame_memory{1024 * 1024};
+        ml::test_lasers::Simulation lasers{clock, registry, queries, frame_memory};
+        ml::test_tube_spinners::Simulation simulation{clock, registry, lasers, frame_memory};
         simulation.entity_radius = 17.f;
         auto& entities{Access::entities(simulation)};
         entities.laser_cooldowns.set_tick_value(23);

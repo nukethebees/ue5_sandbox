@@ -9,6 +9,8 @@
 
 #include <CoreMinimal.h>
 
+#include <memory_resource>
+
 struct FLevelSimulation;
 struct FSpinnerSimulationConfig;
 struct FTestEntityRegistry;
@@ -21,7 +23,8 @@ struct SPACEGAMESIMULATION_API Simulation {
 
     Simulation(FSimulationClock const& clock,
                FTestEntityRegistry& entity_registry,
-               ml::test_lasers::Simulation& laser_simulation) noexcept;
+               ml::test_lasers::Simulation& laser_simulation,
+               std::pmr::memory_resource& frame_memory_resource) noexcept;
     Simulation(Simulation const&) = delete;
     Simulation(Simulation&&) = delete;
     auto operator=(Simulation const&) -> Simulation& = delete;
@@ -86,8 +89,7 @@ struct SPACEGAMESIMULATION_API Simulation {
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
     FTestEntityRegistry& entity_registry;
     ml::test_lasers::Simulation& laser_simulation;
+    std::pmr::memory_resource& frame_memory_resource;
     EntityData entities{};
-    TArray<int32> indices_ready_to_fire;
-    ml::test_lasers::SpawnRequests new_lasers;
 };
 } // namespace ml::test_tube_spinners

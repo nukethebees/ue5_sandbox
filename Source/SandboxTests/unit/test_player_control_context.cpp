@@ -20,6 +20,8 @@
 #include <SpaceGameSimulation/simulation/SimulationClock.h>
 #include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
 
+#include <SandboxCore/frame_memory_resource.h>
+
 #include <Camera/CameraActor.h>
 #include <CQTest.h>
 #include <Engine/Engine.h>
@@ -681,7 +683,8 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         FSimulationClock clock;
         FTestEntityRegistry registry;
         ml::FSpatialQueryManager queries{registry};
-        ml::test_lasers::Simulation lasers{clock, registry, queries};
+        ml::FFrameMemoryResource frame_memory{1024 * 1024};
+        ml::test_lasers::Simulation lasers{clock, registry, queries, frame_memory};
         ml::test_space_ship::Simulation simulation{clock, registry, queries, lasers};
         simulation.start_sampling();
         simulation.set_ship_1d_control_y(1.0f);
@@ -902,7 +905,8 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         FSimulationClock clock;
         FTestEntityRegistry registry;
         ml::FSpatialQueryManager queries{registry};
-        ml::test_lasers::Simulation lasers{clock, registry, queries};
+        ml::FFrameMemoryResource frame_memory{1024 * 1024};
+        ml::test_lasers::Simulation lasers{clock, registry, queries, frame_memory};
         ml::test_space_ship::Simulation simulation{clock, registry, queries, lasers};
         ship->bind_simulation(simulation);
         TestRunner->TestTrue(TEXT("Ship context binds"), context.bind());

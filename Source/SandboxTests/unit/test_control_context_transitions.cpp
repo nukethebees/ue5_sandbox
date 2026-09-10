@@ -12,6 +12,8 @@
 #include <SpaceGameSimulation/simulation/SimulationClock.h>
 #include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
 
+#include <SandboxCore/frame_memory_resource.h>
+
 #include <Camera/CameraActor.h>
 #include <CQTest.h>
 #include <EnhancedInputComponent.h>
@@ -40,7 +42,8 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
     FSimulationClock clock_;
     FTestEntityRegistry registry_;
     ml::FSpatialQueryManager queries_{registry_};
-    ml::test_lasers::Simulation lasers_{clock_, registry_, queries_};
+    ml::FFrameMemoryResource frame_memory_{1024 * 1024};
+    ml::test_lasers::Simulation lasers_{clock_, registry_, queries_, frame_memory_};
     ml::test_space_ship::Simulation ship_simulation_{clock_, registry_, queries_, lasers_};
 
     BEFORE_EACH()

@@ -85,6 +85,11 @@
         "remove_at_swap": "remove_at_swap"
       }
     },
+    "fighter_spawn_queue_const_view": {
+      "spelling": "TestCapitalShipFighterSpawnQueueConstView",
+      "header": "SpaceGameSimulation/ships/fighters/TestCapitalShipFighterSpawnQueue.h",
+      "pass_by": "value"
+    },
     "fighter_task": {
       "spelling": "ETestCapitalShipFightersTask",
       "header": "SpaceGameSimulation/ships/fighters/TestCapitalShipFightersTask.h",

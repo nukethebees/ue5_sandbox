@@ -101,7 +101,10 @@ struct SPACEGAMESIMULATION_API FTestEntityRegistry {
     /* **************************************** */
     // Damage events
     /* **************************************** */
-    void queue_direct_damage_events(DirectDamageEvents const& damage_events);
+    void queue_direct_damage_events(DirectDamageEventsConstView damage_events);
+    void queue_direct_damage_events(DirectDamageEvents const& damage_events) {
+        queue_direct_damage_events(damage_events.get_const_view());
+    }
     void record_shots(TConstArrayView<FRegistryEntityHandle> instigators);
     auto get_direct_damage_queue_view() const -> DirectDamageEvents const&;
 

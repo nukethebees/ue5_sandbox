@@ -3,13 +3,13 @@
 
 #include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>
 
+#include <SpaceGameSimulation/combat/lasers/TestLasersFrameScratch.h>
 #include <SpaceGameSimulation/combat/lasers/TestLasersSoA.h>
-#include <SpaceGameSimulation/entities/DirectDamageEvents.h>
-#include <SpaceGameSimulation/simulation/LineTraces.h>
 #include <SpaceGameSimulation/simulation/SimulationClockInterface.h>
-#include <SpaceGameSimulation/simulation/TraceHits.h>
 
 #include <CoreMinimal.h>
+
+#include <memory_resource>
 
 struct FLevelSimulation;
 struct FTestEntityRegistry;
@@ -21,14 +21,6 @@ struct FSpatialQueryManager;
 namespace ml::test_lasers {
 class PhaseInterface;
 
-struct ThreadLocalCollisionData {
-    FLineTraces traces;
-    FTraceHits trace_hits;
-    DirectDamageEvents damage_events;
-    TArray<int32> to_remove;
-    HitDetails hit_details;
-};
-
 struct SPACEGAMESIMULATION_API Simulation {
     using SpawnRequests = ml::test_lasers::SpawnRequests;
     using Entities = ml::test_lasers::Entities;
@@ -39,7 +31,8 @@ struct SPACEGAMESIMULATION_API Simulation {
     /* **************************************** */
     Simulation(FSimulationClock const& clock,
                FTestEntityRegistry& entity_registry,
-               FSpatialQueryManager& query_manager) noexcept;
+               FSpatialQueryManager& query_manager,
+               std::pmr::memory_resource& frame_memory_resource) noexcept;
     Simulation(Simulation const&) = delete;
     Simulation(Simulation&&) = delete;
     auto operator=(Simulation const&) -> Simulation& = delete;
@@ -91,42 +84,30 @@ struct SPACEGAMESIMULATION_API Simulation {
     /* **************************************** */
     void update_locations(float dt);
     void handle_collisions(float dt);
-    static void check_collision_thread(int32 job_index,
-                                       int32 updates_per_slice,
-                                       float dt,
-                                       ThreadLocalCollisionData& data,
-                                       Simulation const& simulation);
-    void merge_collision_data();
 
     /* **************************************** */
     // Lifetime and removal
     /* **************************************** */
     void tick_lifetimes(float dt);
-    void collect_old_instance_indices();
+    void collect_old_instance_indices(TFrameArray<int32>& indices);
     void remove_instances(TConstArrayView<int32> indices);
 
     /* **************************************** */
     // Buffer cleanup
     /* **************************************** */
     void clear_spawn_buffers();
-    void clear_hit_buffers();
-
-    /* **************************************** */
     // Dependencies and state
     /* **************************************** */
     friend class PhaseInterface;
 
     FTestEntityRegistry& entity_registry;
     FSpatialQueryManager& query_manager;
+    std::pmr::memory_resource& frame_memory_resource;
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
 
     Entities entities;
     SpawnRequests pending_spawns;
-    TArray<int32> to_remove;
 
-    TArray<ThreadLocalCollisionData> thread_local_collision_data;
-    DirectDamageEvents collision_damage_events;
-    HitDetails hit_details;
     HitDetails frame_hits_;
     TArray<uint64> hit_ticks_;
     TArray<int32> hit_ordinals_;

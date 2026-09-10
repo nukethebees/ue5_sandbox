@@ -118,7 +118,7 @@ static auto make_legacy_level_initialisation(FLevelSimulationInitData const& dat
 FLevelSimulation::FLevelSimulation(FLevelSimulationInitData data)
     : frame_memory_{data.frame_memory_capacity_bytes}
     , query_manager_{entity_registry_}
-    , lasers_simulation_{clock_, entity_registry_, query_manager_}
+    , lasers_simulation_{clock_, entity_registry_, query_manager_, frame_memory_}
     , lasers_phase_{lasers_simulation_}
     , capital_ship_fighters_simulation_{clock_,
                                         entity_registry_,
@@ -137,7 +137,7 @@ FLevelSimulation::FLevelSimulation(FLevelSimulationInitData data)
                           lasers_simulation_,
                           frame_memory_}
     , turrets_phase_{turrets_simulation_}
-    , spinners_simulation_{clock_, entity_registry_, lasers_simulation_}
+    , spinners_simulation_{clock_, entity_registry_, lasers_simulation_, frame_memory_}
     , spinners_phase_{spinners_simulation_}
     , mission_manager_{clock_, entity_registry_}
     , event_manager_{capital_ships_simulation_, turrets_simulation_, mission_manager_}

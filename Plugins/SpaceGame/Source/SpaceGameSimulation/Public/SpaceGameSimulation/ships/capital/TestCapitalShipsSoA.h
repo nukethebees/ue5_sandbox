@@ -292,7 +292,6 @@ struct SPACEGAMESIMULATION_API EntityTickDataConstView {
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
-            self.ships_ready_to_spawn_fighters_buffer,
             self.fighter_queue
         );
     }
@@ -308,7 +307,6 @@ struct SPACEGAMESIMULATION_API EntityTickDataConstView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TConstArrayView<int32> ships_ready_to_spawn_fighters_buffer;
     TestCapitalShipFighterSpawnQueue::ConstView fighter_queue;
 };
 
@@ -319,7 +317,6 @@ struct SPACEGAMESIMULATION_API EntityTickDataView {
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
-            self.ships_ready_to_spawn_fighters_buffer,
             self.fighter_queue
         );
     }
@@ -340,7 +337,6 @@ struct SPACEGAMESIMULATION_API EntityTickDataView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArrayView<int32> ships_ready_to_spawn_fighters_buffer;
     TestCapitalShipFighterSpawnQueue::View fighter_queue;
 };
 
@@ -357,7 +353,6 @@ struct SPACEGAMESIMULATION_API EntityTickData {
     void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
-        ships_ready_to_spawn_fighters_buffer.RemoveAtSwap(index, count, allow_shrinking);
         fighter_queue.remove_at_swap(index, count, allow_shrinking);
     }
 
@@ -365,13 +360,11 @@ struct SPACEGAMESIMULATION_API EntityTickData {
 
     template <typename Other>
     void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
-        ml::copy_element(ships_ready_to_spawn_fighters_buffer, dst_i, other.ships_ready_to_spawn_fighters_buffer, src_i);
         ml::copy_element(fighter_queue, dst_i, other.fighter_queue, src_i);
     }
 
     template <typename Other>
     void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
-        ml::copy_elements(ships_ready_to_spawn_fighters_buffer, dst_i, other.ships_ready_to_spawn_fighters_buffer, src_i, count);
         ml::copy_elements(fighter_queue, dst_i, other.fighter_queue, src_i, count);
     }
 
@@ -385,7 +378,6 @@ struct SPACEGAMESIMULATION_API EntityTickData {
     template <typename Other>
     void append_from(Other const& other)
         requires ml::SupportsApplyArrayPairsWith<EntityTickData, Other> {
-        ml::append_from(ships_ready_to_spawn_fighters_buffer, other.ships_ready_to_spawn_fighters_buffer);
         ml::append_from(fighter_queue, other.fighter_queue);
     }
 
@@ -420,7 +412,6 @@ struct SPACEGAMESIMULATION_API EntityTickData {
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
-            self.ships_ready_to_spawn_fighters_buffer,
             self.fighter_queue
         );
     }
@@ -429,7 +420,6 @@ struct SPACEGAMESIMULATION_API EntityTickData {
     auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)
         -> decltype(auto) {
         return std::forward<TFunc>(func)(
-            self.ships_ready_to_spawn_fighters_buffer, other.ships_ready_to_spawn_fighters_buffer,
             self.fighter_queue, other.fighter_queue
         );
     }
@@ -450,7 +440,6 @@ struct SPACEGAMESIMULATION_API EntityTickData {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArray<int32> ships_ready_to_spawn_fighters_buffer;
     TestCapitalShipFighterSpawnQueue fighter_queue;
 };
 

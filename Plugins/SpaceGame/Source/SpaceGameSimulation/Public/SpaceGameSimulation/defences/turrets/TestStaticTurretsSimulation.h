@@ -26,7 +26,7 @@ namespace ml::test_static_turrets {
 class PhaseInterface;
 
 #if WITH_DEV_AUTOMATION_TESTS
-enum class EScratchAllocationMode : uint8 { Persistent, DirectRoot, LocalMonotonic };
+enum class EScratchAllocationMode : uint8 { Persistent, DirectRoot };
 #endif
 
 struct SPACEGAMESIMULATION_API Simulation {

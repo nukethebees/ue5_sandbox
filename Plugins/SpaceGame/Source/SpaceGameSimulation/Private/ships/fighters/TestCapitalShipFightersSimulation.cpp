@@ -1265,7 +1265,7 @@ void Simulation::refresh_layout() {
 /* **************************************** */
 // Spawning
 /* **************************************** */
-auto Simulation::queue_spawns(TestCapitalShipFighterSpawnQueue const& new_spawns) -> int32 {
+auto Simulation::queue_spawns(TestCapitalShipFighterSpawnQueueConstView const new_spawns) -> int32 {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::queue_spawns);
     new_spawns.validate_array_sizes();
     auto const requested_count{new_spawns.num()};

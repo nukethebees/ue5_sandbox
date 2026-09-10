@@ -295,7 +295,8 @@ FORCEINLINE void FTestEntityRegistry::apply_live_state_transition(int32 const sl
 /* **************************************** */
 // Damage events
 /* **************************************** */
-void FTestEntityRegistry::queue_direct_damage_events(DirectDamageEvents const& damage_events) {
+void FTestEntityRegistry::queue_direct_damage_events(
+    DirectDamageEventsConstView const damage_events) {
     damage_events.validate_array_sizes();
 
     auto const count{damage_events.num()};

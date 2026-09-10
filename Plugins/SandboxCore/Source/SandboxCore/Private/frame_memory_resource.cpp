@@ -13,13 +13,6 @@
 namespace ml {
 namespace frame_memory_resource {
 inline constexpr uint32 backing_alignment{64};
-
-auto validate_local_chunk_bytes(SIZE_T const bytes) -> SIZE_T {
-    if (bytes == 0) {
-        UE_LOG(LogSandboxCore, Fatal, TEXT("Local frame memory chunk size must be positive."));
-    }
-    return bytes;
-}
 }
 
 FFrameMemoryResource::FFrameMemoryResource(SIZE_T const capacity_bytes)
@@ -170,70 +163,5 @@ void FFrameMemoryResource::record_overflow(SIZE_T const bytes,
     last_failure_requested_bytes_.store(bytes, std::memory_order_relaxed);
     last_failure_alignment_.store(alignment, std::memory_order_relaxed);
     last_failure_claimed_bytes_.store(claimed_bytes, std::memory_order_relaxed);
-}
-
-FLocalFrameMemoryResource::FTrackingUpstreamResource::FTrackingUpstreamResource(
-    std::pmr::memory_resource* const upstream)
-    : upstream_{upstream} {
-    check(upstream_ != nullptr);
-}
-
-auto FLocalFrameMemoryResource::FTrackingUpstreamResource::do_allocate(SIZE_T const bytes,
-                                                                       SIZE_T const alignment)
-    -> void* {
-    auto* const allocation{upstream_->allocate(bytes, alignment)};
-    claimed_bytes += bytes;
-    ++claim_count;
-    return allocation;
-}
-
-void FLocalFrameMemoryResource::FTrackingUpstreamResource::do_deallocate(void* const pointer,
-                                                                         SIZE_T const bytes,
-                                                                         SIZE_T const alignment) {
-    upstream_->deallocate(pointer, bytes, alignment);
-}
-
-auto FLocalFrameMemoryResource::FTrackingUpstreamResource::do_is_equal(
-    std::pmr::memory_resource const& other) const noexcept -> bool {
-    return this == &other;
-}
-
-FLocalFrameMemoryResource::FLocalFrameMemoryResource(std::pmr::memory_resource* const upstream,
-                                                     SIZE_T const initial_chunk_bytes)
-    : tracking_upstream_{upstream}
-    , initial_buffer_bytes_{frame_memory_resource::validate_local_chunk_bytes(initial_chunk_bytes)}
-    , initial_buffer_{tracking_upstream_.allocate(initial_buffer_bytes_, alignof(std::max_align_t))}
-    , monotonic_{initial_buffer_, initial_buffer_bytes_, &tracking_upstream_} {}
-FLocalFrameMemoryResource::~FLocalFrameMemoryResource() {
-    monotonic_.release();
-    tracking_upstream_.deallocate(
-        initial_buffer_, initial_buffer_bytes_, alignof(std::max_align_t));
-}
-
-auto FLocalFrameMemoryResource::get_stats() const noexcept -> FLocalFrameMemoryStats {
-    return {
-        .requested_bytes = requested_bytes_,
-        .allocation_count = allocation_count_,
-        .upstream_claimed_bytes = tracking_upstream_.claimed_bytes,
-        .upstream_claim_count = tracking_upstream_.claim_count,
-    };
-}
-
-auto FLocalFrameMemoryResource::do_allocate(SIZE_T const bytes, SIZE_T const alignment) -> void* {
-    auto* const allocation{monotonic_.allocate(bytes, alignment)};
-    requested_bytes_ += bytes;
-    ++allocation_count_;
-    return allocation;
-}
-
-void FLocalFrameMemoryResource::do_deallocate(void* const pointer,
-                                              SIZE_T const bytes,
-                                              SIZE_T const alignment) {
-    monotonic_.deallocate(pointer, bytes, alignment);
-}
-
-auto FLocalFrameMemoryResource::do_is_equal(std::pmr::memory_resource const& other) const noexcept
-    -> bool {
-    return this == &other;
 }
 }

@@ -2,6 +2,7 @@
 
 #include <SpaceGameSimulation/entities/BatchSimulation.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/ships/fighters/TestCapitalShipFighterFrameSpawnQueue.h>
 #include <SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGameSimulation/simulation/FighterDiagnostics.h>
 #include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>
@@ -255,30 +256,31 @@ void Simulation::queue_fighter_spawns() {
     fighter_queue.reset();
 
     auto const n_capital_ships{get_num_instances()};
-    data.ships_ready_to_spawn_fighters_buffer.SetNumUninitialized(n_capital_ships,
-                                                                  EAllowShrinking::No);
+    TFrameArray<int32> ships_ready_to_spawn_fighters_buffer{&frame_memory_resource};
+    ships_ready_to_spawn_fighters_buffer.set_num(n_capital_ships);
     auto ships_ready_to_spawn_fighters_indices{ml::collect_indices_less_equal(
         entities.fighter_spawn_timers.get_const_view().remaining_times,
         0.f,
-        TArrayView<int32>{data.ships_ready_to_spawn_fighters_buffer})};
-    data.ships_ready_to_spawn_fighters_buffer.SetNumUninitialized(
-        ships_ready_to_spawn_fighters_indices.Num(), EAllowShrinking::No);
+        ships_ready_to_spawn_fighters_buffer.view())};
+    ships_ready_to_spawn_fighters_buffer.set_num(ships_ready_to_spawn_fighters_indices.Num());
 
     auto const n_ready_to_spawn{ships_ready_to_spawn_fighters_indices.Num()};
     for (int32 i{n_ready_to_spawn - 1}; i >= 0; --i) {
         auto const capital_index{ships_ready_to_spawn_fighters_indices[i]};
         if (entities.target_handles[capital_index].is_null()) {
-            data.ships_ready_to_spawn_fighters_buffer.RemoveAtSwap(i, EAllowShrinking::No);
+            ships_ready_to_spawn_fighters_buffer.remove_at_swap(i);
         }
     }
-    ships_ready_to_spawn_fighters_indices = data.ships_ready_to_spawn_fighters_buffer;
+    ships_ready_to_spawn_fighters_indices = ships_ready_to_spawn_fighters_buffer.view();
     if (ships_ready_to_spawn_fighters_indices.IsEmpty()) {
         return;
     }
 
     auto const& relative_transforms{config.fighter_spawn_slots_relative_transforms};
+    ml::test_capital_ship_fighters::FrameSpawnQueue fighter_spawn_wave{&frame_memory_resource};
+    fighter_spawn_wave.reserve(relative_transforms.Num());
     for (auto const capital_index : ships_ready_to_spawn_fighters_indices) {
-        fighter_spawn_wave.reset();
+        fighter_spawn_wave.clear();
         auto const base_location{ml::get_vector3f(entities.locations, capital_index)};
         auto const base_rotation{ml::get_rotator3f(entities.rotations, capital_index)};
         FTransform const base_transform{
@@ -306,9 +308,9 @@ void Simulation::queue_fighter_spawns() {
                                    entities.handles[capital_index],
                                    entities.target_handles[capital_index]);
         }
-        auto const accepted_count{fighters_interface.queue_spawns(fighter_spawn_wave)};
-        auto const& completed_wave{fighter_spawn_wave};
-        fighter_queue.append_from(completed_wave.left(accepted_count));
+        auto const spawn_wave{fighter_spawn_wave.get_const_view()};
+        auto const accepted_count{fighters_interface.queue_spawns(spawn_wave)};
+        fighter_queue.append_from(spawn_wave.left(accepted_count));
         entities.fighter_spawn_timers.remaining_times[capital_index] =
             entities.fighter_spawn_cooldowns[capital_index];
     }

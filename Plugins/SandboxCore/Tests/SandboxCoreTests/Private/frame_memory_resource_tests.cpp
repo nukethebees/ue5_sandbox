@@ -180,29 +180,6 @@ TEST_CASE("SandboxCore.FFrameMemoryResource makes concurrent non-overlapping cla
     CHECK(resource.get_stats().outstanding_allocation_count == 0);
 }
 
-TEST_CASE("SandboxCore frame resources compose through nested local resources") {
-    ml::FFrameMemoryResource root{64 * 1024};
-    {
-        ml::FLocalFrameMemoryResource invocation{&root, 4096};
-        ml::FLocalFrameMemoryResource task{&invocation, 1024};
-        ml::TFrameArray<FOverAlignedValue> values{&task};
-        values.reserve(8);
-        for (uint64 i{}; i < 8; ++i) {
-            values.emplace(FOverAlignedValue{.value = i});
-        }
-
-        CHECK(reinterpret_cast<uintptr_t>(values.data()) % alignof(FOverAlignedValue) == 0);
-        CHECK(values[7].value == 7);
-        CHECK(task.get_stats().allocation_count == 1);
-        CHECK(task.get_stats().upstream_claim_count >= 1);
-        CHECK(invocation.get_stats().upstream_claim_count >= 1);
-        CHECK(root.get_stats().current_root_claim_count >= 1);
-    }
-
-    CHECK(root.get_stats().outstanding_allocation_count == 0);
-    root.reset();
-}
-
 TEST_CASE("SandboxCore frame-backed arrays destroy non-trivial elements before reset") {
     CHECK(FTrackedValue::live_count == 0);
     ml::FFrameMemoryResource root{4096};
@@ -219,14 +196,13 @@ TEST_CASE("SandboxCore frame-backed arrays destroy non-trivial elements before r
     root.reset();
 }
 
-TEST_CASE("SandboxCore explicit frame hierarchy never consults the default PMR resource") {
+TEST_CASE("SandboxCore explicit frame resource never consults the default PMR resource") {
     FCountingResource fallback;
     auto* const previous_default{std::pmr::set_default_resource(&fallback)};
     {
         ml::FFrameMemoryResource root{4096};
         {
-            ml::FLocalFrameMemoryResource local{&root, 1024};
-            ml::TFrameArray<int32> values{&local};
+            ml::TFrameArray<int32> values{&root};
             values.reserve(64);
             for (int32 i{}; i < 64; ++i) {
                 values.add(i);

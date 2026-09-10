@@ -55,7 +55,6 @@
           {"name":"spawn_cooldowns","kind":"array","type":"float"}
         ]},
         {"name":"EntityTickData","export_specifier":"SPACEGAMESIMULATION_API","operations":["all"],"members":[
-          {"name":"ships_ready_to_spawn_fighters_buffer","kind":"array","type":"int32"},
           {"name":"fighter_queue","kind":"nested","type":"@fighter_spawn_queue"}
         ]},
         {"name":"EntityData","export_specifier":"SPACEGAMESIMULATION_API","operations":["all"],"members":[

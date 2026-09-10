@@ -8,7 +8,7 @@
         "name":"CommandInterface", "target_type":"@test_fighters", "target_member_name":"fighters", "target_storage":"reference",
         "export_specifier":"SPACEGAMESIMULATION_API",
         "methods":[
-          {"name":"queue_spawns","return_type":"int32","parameters":[{"type":{"name":"@fighter_spawn_queue","suffix":" const&"},"name":"queue"}]},
+          {"name":"queue_spawns","return_type":"int32","parameters":[{"type":"@fighter_spawn_queue_const_view","name":"queue"}]},
           {"name":"queue_orders","return_type":"void","parameters":[{"type":{"name":"@fighter_order_queue","suffix":" const&"},"name":"queue"}]},
           {"name":"self_destruct_fighter","return_type":"void","parameters":[{"type":{"name":"@registry_handle","suffix":" const"},"name":"handle"}]},
           {"name":"get_new_spawn_entity_data","return_type":{"name":"@test_fighters","nested":"RegistryEntityData","suffix":" const&"},"const":true},

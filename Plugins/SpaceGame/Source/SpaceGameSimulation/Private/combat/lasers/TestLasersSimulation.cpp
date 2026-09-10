@@ -1,6 +1,7 @@
 #include "SpaceGameSimulation/combat/lasers/TestLasersSimulation.h"
 
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/simulation/LineTraces.h>
 #include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
 
 #include <SandboxCore/array_checks.h>
@@ -40,9 +41,11 @@ void SpawnRequests::set_sources(FLaserSource const value) {
 /* **************************************** */
 Simulation::Simulation(FSimulationClock const& clock,
                        FTestEntityRegistry& in_entity_registry,
-                       FSpatialQueryManager& in_query_manager) noexcept
+                       FSpatialQueryManager& in_query_manager,
+                       std::pmr::memory_resource& in_frame_memory_resource) noexcept
     : entity_registry{in_entity_registry}
     , query_manager{in_query_manager}
+    , frame_memory_resource{in_frame_memory_resource}
     , simulation_clock{clock} {}
 
 void Simulation::begin_play() {
@@ -56,7 +59,6 @@ void Simulation::begin_play() {
 
 void Simulation::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_lasers::Simulation::begin_tick);
-    clear_hit_buffers();
 }
 
 void Simulation::commit_spawns() {
@@ -68,9 +70,10 @@ void Simulation::commit_spawns() {
 void Simulation::simulate(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_lasers::Simulation::simulate);
 
+    TFrameArray<int32> expired_indices{&frame_memory_resource};
     tick_lifetimes(dt);
-    collect_old_instance_indices();
-    remove_instances(to_remove);
+    collect_old_instance_indices(expired_indices);
+    remove_instances(expired_indices);
 
     handle_collisions(dt);
     update_locations(dt);
@@ -170,109 +173,79 @@ void Simulation::handle_collisions(float const dt) {
         return;
     }
 
-    auto& data{thread_local_collision_data};
-    if (data.Num() < collision_jobs) {
-        data.SetNum(collision_jobs);
-    }
-
+    FrameCollisionScratch collision_scratch{&frame_memory_resource};
+    collision_scratch.set_num(n);
     auto const updates_per_slice{FMath::DivideAndRoundUp(n, collision_jobs)};
-    ParallelFor(collision_jobs, [=, this](int32 const job_index) {
-        check_collision_thread(
-            job_index, updates_per_slice, dt, thread_local_collision_data[job_index], *this);
+    ParallelFor(collision_jobs, [=, this, &collision_scratch](int32 const job_index) {
+        auto const i_start{job_index * updates_per_slice};
+        auto const i_end{FMath::Min(i_start + updates_per_slice, n)};
+        auto const trace_count{i_end - i_start};
+        if (trace_count <= 0) {
+            return;
+        }
+
+        for (int32 trace_index{i_start}; trace_index < i_end; ++trace_index) {
+            auto const start{ml::get_vector3f(entities.locations, trace_index)};
+            auto const velocity{ml::get_vector3f(entities.velocities, trace_index)};
+            collision_scratch.trace_starts.set(trace_index, start);
+            collision_scratch.trace_ends.set(trace_index, start + dt * velocity);
+        }
+
+        auto const traces{FLineTracesConstView{
+            collision_scratch.trace_starts.get_const_view().slice(i_start, trace_count),
+            collision_scratch.trace_ends.get_const_view().slice(i_start, trace_count),
+        }};
+        auto const hits{collision_scratch.trace_hits.get_view().slice(i_start, trace_count)};
+        auto const ignored_entities{
+            TConstArrayView<FRegistryEntityHandle>{entities.instigator_handles}.Slice(i_start,
+                                                                                      trace_count)};
+        query_manager.get_collision_system().get_uniform_grid().trace_aabbs(
+            traces, hits, ignored_entities);
     });
 
-    merge_collision_data();
-    entity_registry.queue_direct_damage_events(collision_damage_events);
+    TFrameArray<int32> to_remove{&frame_memory_resource};
+    FrameHitDetails hit_details{&frame_memory_resource};
+    FrameDirectDamageEvents collision_damage_events{&frame_memory_resource};
 
-    to_remove.Sort(TGreater<int32>{});
+    int32 detected_hit_count{};
+    for (auto const hit : collision_scratch.trace_hits.hits) {
+        detected_hit_count += hit != 0 ? 1 : 0;
+    }
+    to_remove.reserve(detected_hit_count);
+    hit_details.reserve(detected_hit_count);
+    collision_damage_events.reserve(detected_hit_count);
+
+    for (int32 entity_index{}; entity_index < n; ++entity_index) {
+        if (collision_scratch.trace_hits.hits[entity_index] == 0) {
+            continue;
+        }
+
+        to_remove.add(entity_index);
+
+        auto const damaged_entity{collision_scratch.trace_hits.entities[entity_index]};
+        if (damaged_entity.is_valid()) {
+            collision_damage_events.add(damaged_entity,
+                                        entities.damages[entity_index],
+                                        entities.instigator_handles[entity_index]);
+        }
+
+        auto const velocity{ml::get_vector3f(entities.velocities, entity_index)};
+        hit_details.add(ml::get_vector3f(
+                            collision_scratch.trace_hits.locations.get_const_view(), entity_index),
+                        -velocity.GetSafeNormal(UE_SMALL_NUMBER, FVector3f::UpVector),
+                        entities.sources[entity_index]);
+    }
+    entity_registry.queue_direct_damage_events(collision_damage_events.get_const_view());
+
+    to_remove.view().Sort(TGreater<int32>{});
     remove_instances(to_remove);
 
-    hit_details.validate_array_sizes();
-    frame_hits_.append_from(hit_details);
+    frame_hits_.append_from(hit_details.get_const_view());
 
     auto const hit_count{hit_details.num()};
     for (int32 i{}; i < hit_count; ++i) {
         hit_ticks_.Add(simulation_clock.get_completed_ticks());
         hit_ordinals_.Add(i);
-    }
-}
-
-void Simulation::check_collision_thread(int32 const job_index,
-                                        int32 const updates_per_slice,
-                                        float const dt,
-                                        ThreadLocalCollisionData& data,
-                                        Simulation const& simulation) {
-    auto const n{simulation.get_num_instances()};
-    ml::reset(data.traces, data.trace_hits, data.damage_events, data.to_remove, data.hit_details);
-
-    auto const i_start{job_index * updates_per_slice};
-    auto const i_end{FMath::Min(i_start + updates_per_slice, n)};
-    auto const trace_count{i_end - i_start};
-    if (trace_count <= 0) {
-        return;
-    }
-
-    data.traces.add_uninitialised(trace_count);
-    data.trace_hits.add_defaulted(trace_count);
-
-    for (int32 trace_index{}; trace_index < trace_count; ++trace_index) {
-        auto const entity_index{i_start + trace_index};
-        auto const start{ml::get_vector3f(simulation.entities.locations, entity_index)};
-        auto const velocity{ml::get_vector3f(simulation.entities.velocities, entity_index)};
-        data.traces.set(trace_index, start, start + dt * velocity);
-    }
-
-    auto const ignored_entities{
-        TConstArrayView<FRegistryEntityHandle>{simulation.entities.instigator_handles}.Slice(
-            i_start, trace_count)};
-    simulation.query_manager.get_collision_system().get_uniform_grid().trace_aabbs(
-        data.traces.get_const_view(), data.trace_hits.get_view(), ignored_entities);
-
-    for (int32 trace_index{}; trace_index < trace_count; ++trace_index) {
-        if (data.trace_hits.hits[trace_index] == 0) {
-            continue;
-        }
-
-        auto const entity_index{i_start + trace_index};
-        data.to_remove.Add(entity_index);
-
-        auto const damaged_entity{data.trace_hits.entities[trace_index]};
-        if (damaged_entity.is_valid()) {
-            data.damage_events.add(damaged_entity,
-                                   simulation.entities.damages[entity_index],
-                                   simulation.entities.instigator_handles[entity_index]);
-        }
-
-        auto const velocity{ml::get_vector3f(simulation.entities.velocities, entity_index)};
-        data.hit_details.add(data.trace_hits.locations[trace_index],
-                             -velocity.GetSafeNormal(UE_SMALL_NUMBER, FVector3f::UpVector),
-                             simulation.entities.sources[entity_index]);
-    }
-}
-
-void Simulation::merge_collision_data() {
-    auto& data{thread_local_collision_data};
-    ml::reset(to_remove, hit_details, collision_damage_events);
-
-    for (int32 i{}; i < collision_jobs; ++i) {
-        auto const& thread_data{data[i]};
-        auto const n_hits{thread_data.to_remove.Num()};
-        check(n_hits == ml::num(thread_data.hit_details));
-
-        for (int32 j{}; j < n_hits; ++j) {
-            auto const entity_index{thread_data.to_remove[j]};
-            to_remove.Add(entity_index);
-            hit_details.add(thread_data.hit_details.locations[j],
-                            thread_data.hit_details.emission_directions[j],
-                            thread_data.hit_details.sources[j]);
-        }
-
-        auto const damage_count{thread_data.damage_events.num()};
-        for (int32 j{}; j < damage_count; ++j) {
-            collision_damage_events.add(thread_data.damage_events.damaged_entities[j],
-                                        thread_data.damage_events.damage_amounts[j],
-                                        thread_data.damage_events.instigators[j]);
-        }
     }
 }
 
@@ -284,7 +257,7 @@ void Simulation::tick_lifetimes(float const dt) {
     ml::subtract_in_place(TArrayView<float>{entities.lifetimes_remaining}, dt);
 }
 
-void Simulation::collect_old_instance_indices() {
+void Simulation::collect_old_instance_indices(TFrameArray<int32>& indices) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_lasers::Simulation::collect_old_instance_indices);
 
     auto const n{get_num_instances()};
@@ -292,10 +265,10 @@ void Simulation::collect_old_instance_indices() {
         return;
     }
 
-    to_remove.Reset();
+    indices.reserve(n);
     for (int32 i{n - 1}; i >= 0; --i) {
         if (entities.lifetimes_remaining[i] <= 0.f) {
-            to_remove.Add(i);
+            indices.add(i);
         }
     }
 }
@@ -316,11 +289,7 @@ void Simulation::remove_instances(TConstArrayView<int32> const indices) {
 // Buffer cleanup and validation
 /* **************************************** */
 void Simulation::clear_spawn_buffers() {
-    ml::reset(pending_spawns, to_remove);
-}
-
-void Simulation::clear_hit_buffers() {
-    ml::reset(hit_details, collision_damage_events);
+    pending_spawns.reset();
 }
 
 void Simulation::validate_array_sizes() const {
