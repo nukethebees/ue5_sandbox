@@ -62,7 +62,10 @@ struct SPACEGAMESIMULATION_API Simulation {
     /* **************************************** */
     // Spawning and configuration
     /* **************************************** */
-    void queue_laser_spawns(SpawnRequests const& spawn_data);
+    void queue_laser_spawns(SpawnRequestsConstView spawn_data);
+    void queue_laser_spawns(SpawnRequests const& spawn_data) {
+        queue_laser_spawns(spawn_data.get_const_view());
+    }
     void validate_array_sizes() const;
 
     int32 n_preallocated_instances{5000};

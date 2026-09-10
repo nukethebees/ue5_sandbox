@@ -89,7 +89,7 @@ auto Simulation::get_num_instances() const noexcept -> int32 {
 /* **************************************** */
 // Spawning
 /* **************************************** */
-void Simulation::queue_laser_spawns(SpawnRequests const& spawn_data) {
+void Simulation::queue_laser_spawns(SpawnRequestsConstView const spawn_data) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_lasers::Simulation::queue_laser_spawns);
 
     spawn_data.validate_array_sizes();

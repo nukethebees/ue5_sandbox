@@ -25,6 +25,114 @@ namespace ml::test_static_turrets {
 namespace scratch {
 inline constexpr SIZE_T local_chunk_bytes{16 * 1024};
 
+struct FFrameVectors3f {
+    explicit FFrameVectors3f(std::pmr::memory_resource* const resource)
+        : xs{resource}
+        , ys{resource}
+        , zs{resource} {}
+
+    void reserve(int32 const count) {
+        xs.reserve(count);
+        ys.reserve(count);
+        zs.reserve(count);
+    }
+    void add(float const x, float const y, float const z) {
+        xs.add(x);
+        ys.add(y);
+        zs.add(z);
+    }
+    void add(FVector3f const value) { add(value.X, value.Y, value.Z); }
+    auto get_const_view() const -> FVectors3f::ConstView { return {xs, ys, zs}; }
+
+    TFrameArray<float> xs;
+    TFrameArray<float> ys;
+    TFrameArray<float> zs;
+};
+
+struct FFrameRotatorsf {
+    explicit FFrameRotatorsf(std::pmr::memory_resource* const resource)
+        : pitches{resource}
+        , yaws{resource}
+        , rolls{resource} {}
+
+    void reserve(int32 const count) {
+        pitches.reserve(count);
+        yaws.reserve(count);
+        rolls.reserve(count);
+    }
+    void add(FRotator3f const value) {
+        pitches.add(value.Pitch);
+        yaws.add(value.Yaw);
+        rolls.add(value.Roll);
+    }
+    auto get_const_view() const -> FRotatorsf::ConstView { return {pitches, yaws, rolls}; }
+
+    TFrameArray<float> pitches;
+    TFrameArray<float> yaws;
+    TFrameArray<float> rolls;
+};
+
+struct FFrameLaserSpawnRequests {
+    explicit FFrameLaserSpawnRequests(std::pmr::memory_resource* const resource)
+        : locations{resource}
+        , rotations{resource}
+        , base_velocities{resource}
+        , damages{resource}
+        , speeds{resource}
+        , max_distances{resource}
+        , instigator_handles{resource}
+        , sources{resource} {}
+
+    void reserve(int32 const count) {
+        locations.reserve(count);
+        rotations.reserve(count);
+        base_velocities.reserve(count);
+        damages.reserve(count);
+        speeds.reserve(count);
+        max_distances.reserve(count);
+        instigator_handles.reserve(count);
+        sources.reserve(count);
+    }
+    void add(FVector3f const location,
+             FRotator3f const rotation,
+             FVector3f const base_velocity,
+             int32 const damage,
+             float const speed,
+             float const max_distance,
+             FRegistryEntityHandle const instigator_handle,
+             FLaserSource const source) {
+        locations.add(location);
+        rotations.add(rotation);
+        base_velocities.add(base_velocity);
+        damages.add(damage);
+        speeds.add(speed);
+        max_distances.add(max_distance);
+        instigator_handles.add(instigator_handle);
+        sources.add(source);
+    }
+    auto get_const_view() const -> ml::test_lasers::SpawnRequestsConstView {
+        return {
+            locations.get_const_view(),
+            rotations.get_const_view(),
+            base_velocities.get_const_view(),
+            damages,
+            speeds,
+            max_distances,
+            instigator_handles,
+            sources,
+        };
+    }
+
+    FFrameVectors3f locations;
+    FFrameRotatorsf rotations;
+    FFrameVectors3f base_velocities;
+    TFrameArray<int32> damages;
+    TFrameArray<float> speeds;
+    TFrameArray<float> max_distances;
+    TFrameArray<FRegistryEntityHandle> instigator_handles;
+    TFrameArray<FLaserSource> sources;
+};
+
 template <typename T>
 void reserve(TArray<T>& values, int32 const count) {
     values.Reserve(count);
@@ -60,6 +168,20 @@ void set_num_uninitialized(TFrameArray<T>& values, int32 const count) {
         values.emplace();
     }
 }
+
+#if WITH_DEV_AUTOMATION_TESTS
+auto allocated_size(FVectors3f const& values) -> SIZE_T {
+    return values.xs.GetAllocatedSize() + values.ys.GetAllocatedSize() +
+           values.zs.GetAllocatedSize();
+}
+auto allocated_size(ml::test_lasers::SpawnRequests const& values) -> SIZE_T {
+    return allocated_size(values.locations) + values.rotations.pitches.GetAllocatedSize() +
+           values.rotations.yaws.GetAllocatedSize() + values.rotations.rolls.GetAllocatedSize() +
+           allocated_size(values.base_velocities) + values.damages.GetAllocatedSize() +
+           values.speeds.GetAllocatedSize() + values.max_distances.GetAllocatedSize() +
+           values.instigator_handles.GetAllocatedSize() + values.sources.GetAllocatedSize();
+}
+#endif
 }
 
 /* **************************************** */
@@ -296,6 +418,15 @@ auto Simulation::get_num_instances() const noexcept -> int32 {
 auto Simulation::get_target_handles() const -> TConstArrayView<FRegistryEntityHandle> {
     return entities.target_handles;
 }
+#if WITH_DEV_AUTOMATION_TESTS
+auto Simulation::get_persistent_scratch_allocated_bytes() const noexcept -> SIZE_T {
+    return scratch_int_buffer_.GetAllocatedSize() +
+           line_of_sight_hit_entity_handles_.GetAllocatedSize() +
+           scratch::allocated_size(line_of_sight_start_locations_) +
+           scratch::allocated_size(line_of_sight_end_locations_) +
+           scratch::allocated_size(new_lasers_);
+}
+#endif
 
 /* **************************************** */
 // Searching
@@ -395,7 +526,14 @@ void Simulation::fire_at_enemies() {
     if (scratch_allocation_mode_ == EScratchAllocationMode::Persistent) {
         scratch_int_buffer_.Reset();
         line_of_sight_hit_entity_handles_.Reset();
-        fire_at_enemies_with_scratch(scratch_int_buffer_, line_of_sight_hit_entity_handles_);
+        line_of_sight_start_locations_.reset();
+        line_of_sight_end_locations_.reset();
+        new_lasers_.reset();
+        fire_at_enemies_with_scratch(scratch_int_buffer_,
+                                     line_of_sight_hit_entity_handles_,
+                                     line_of_sight_start_locations_,
+                                     line_of_sight_end_locations_,
+                                     new_lasers_);
         return;
     }
     if (scratch_allocation_mode_ == EScratchAllocationMode::LocalMonotonic) {
@@ -403,19 +541,34 @@ void Simulation::fire_at_enemies() {
                                                  scratch::local_chunk_bytes};
         TFrameArray<int32> candidate_indices{&local_resource};
         TFrameArray<FRegistryEntityHandle> hit_entity_handles{&local_resource};
-        fire_at_enemies_with_scratch(candidate_indices, hit_entity_handles);
+        scratch::FFrameVectors3f start_locations{&local_resource};
+        scratch::FFrameVectors3f end_locations{&local_resource};
+        scratch::FFrameLaserSpawnRequests new_lasers{&local_resource};
+        fire_at_enemies_with_scratch(
+            candidate_indices, hit_entity_handles, start_locations, end_locations, new_lasers);
         return;
     }
 #endif
 
     TFrameArray<int32> candidate_indices{&frame_memory_resource};
     TFrameArray<FRegistryEntityHandle> hit_entity_handles{&frame_memory_resource};
-    fire_at_enemies_with_scratch(candidate_indices, hit_entity_handles);
+    scratch::FFrameVectors3f start_locations{&frame_memory_resource};
+    scratch::FFrameVectors3f end_locations{&frame_memory_resource};
+    scratch::FFrameLaserSpawnRequests new_lasers{&frame_memory_resource};
+    fire_at_enemies_with_scratch(
+        candidate_indices, hit_entity_handles, start_locations, end_locations, new_lasers);
 }
 
-template <typename CandidateIndices, typename HitEntityHandles>
+template <typename CandidateIndices,
+          typename HitEntityHandles,
+          typename StartLocations,
+          typename EndLocations,
+          typename LaserSpawns>
 void Simulation::fire_at_enemies_with_scratch(CandidateIndices& candidate_indices,
-                                              HitEntityHandles& hit_entity_handles) {
+                                              HitEntityHandles& hit_entity_handles,
+                                              StartLocations& start_locations,
+                                              EndLocations& end_locations,
+                                              LaserSpawns& new_lasers) {
     auto const n{get_num_instances()};
     auto const laser_speed{config.laser.projectile_speed};
     auto const laser_max_distance{config.laser.max_distance};
@@ -424,9 +577,8 @@ void Simulation::fire_at_enemies_with_scratch(CandidateIndices& candidate_indice
     auto const disengage_radius_sq{disengage_radius * disengage_radius};
 
     scratch::reserve(candidate_indices, n);
-
-    auto& start_locations{line_of_sight_start_locations};
-    auto& end_locations{line_of_sight_end_locations};
+    start_locations.reserve(n);
+    end_locations.reserve(n);
 
     for (int32 i{0}; i < n; ++i) {
         auto const target_handle{entities.target_handles[i]};
@@ -454,11 +606,10 @@ void Simulation::fire_at_enemies_with_scratch(CandidateIndices& candidate_indice
         }
 
         scratch::add(candidate_indices, i);
-        ml::append(start_locations,
-                   entities.fire_point_locations.xs[i],
-                   entities.fire_point_locations.ys[i],
-                   entities.fire_point_locations.zs[i]);
-        ml::append(end_locations, target_location);
+        start_locations.add(entities.fire_point_locations.xs[i],
+                            entities.fire_point_locations.ys[i],
+                            entities.fire_point_locations.zs[i]);
+        end_locations.add(target_location);
 
         entities.laser_cooldowns.restart_counter(i);
     }
@@ -469,6 +620,7 @@ void Simulation::fire_at_enemies_with_scratch(CandidateIndices& candidate_indice
     }
 
     scratch::set_num_uninitialized(hit_entity_handles, n_candidates);
+    new_lasers.reserve(n_candidates);
     spatial_query_manager.trace_line_of_sight(
         start_locations.get_const_view(), end_locations.get_const_view(), hit_entity_handles);
 
@@ -505,7 +657,7 @@ void Simulation::fire_at_enemies_with_scratch(CandidateIndices& candidate_indice
                        FLaserSource{entities.teams[i], ETestEntityType::Turret});
     }
 
-    laser_simulation.queue_laser_spawns(new_lasers);
+    laser_simulation.queue_laser_spawns(new_lasers.get_const_view());
 }
 auto Simulation::get_disengage_radius() const -> float {
     return config.detection_radius * 1.2f;
@@ -515,12 +667,7 @@ auto Simulation::get_disengage_radius() const -> float {
 // Misc
 /* **************************************** */
 void Simulation::clear_tick_buffers() {
-    ml::reset(entity_death_info,
-              entity_update_data,
-              local_indices_to_remove,
-              line_of_sight_start_locations,
-              line_of_sight_end_locations,
-              new_lasers);
+    ml::reset(entity_death_info, entity_update_data, local_indices_to_remove);
 }
 
 /* **************************************** */
