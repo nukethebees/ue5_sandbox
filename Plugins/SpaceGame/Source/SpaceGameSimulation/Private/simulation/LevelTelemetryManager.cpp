@@ -7,7 +7,51 @@
 #include <HAL/PlatformTime.h>
 #include <Misc/DateTime.h>
 
-namespace {
+#include <bit>
+
+namespace level_telemetry_detail {
+inline constexpr int32 active_entities_bit{};
+inline constexpr int32 active_entities_by_type_begin{1};
+inline constexpr int32 active_entities_by_team_and_type_begin{
+    active_entities_by_type_begin + FLevelTelemetryTickSeries::entity_type_count};
+inline constexpr int32 spawned_entities_bit{active_entities_by_team_and_type_begin +
+                                            FLevelTelemetryTickSeries::team_count *
+                                                FLevelTelemetryTickSeries::entity_type_count};
+inline constexpr int32 destroyed_entities_bit{spawned_entities_bit + 1};
+inline constexpr int32 kills_bit{destroyed_entities_bit + 1};
+inline constexpr int32 registry_slot_count_bit{kills_bit + 1};
+inline constexpr int32 active_lasers_bit{registry_slot_count_bit + 1};
+inline constexpr int32 lasers_fired_bit{active_lasers_bit + 1};
+inline constexpr int32 occupied_spatial_cell_count_bit{lasers_fired_bit + 1};
+inline constexpr int32 grid_rebuild_count_bit{occupied_spatial_cell_count_bit + 1};
+inline constexpr int32 range_query_count_bit{grid_rebuild_count_bit + 1};
+inline constexpr int32 line_trace_count_bit{range_query_count_bit + 1};
+inline constexpr int32 sweep_trace_count_bit{line_trace_count_bit + 1};
+inline constexpr int32 requested_time_scale_bit{sweep_trace_count_bit + 1};
+inline constexpr int32 series_count{requested_time_scale_bit + 1};
+
+static_assert(series_count == 48);
+static_assert(series_count <= 64);
+
+constexpr auto bit(int32 const index) -> uint64 {
+    return uint64{1} << index;
+}
+
+auto capacity_for_bytes(SIZE_T const bytes) -> int32 {
+    using Layout = ml::level_telemetry::FHistoryRowsSingleLayout;
+    auto low{SIZE_T{0}};
+    auto high{static_cast<SIZE_T>(Layout::max_capacity / Layout::capacity_granularity)};
+    while (low < high) {
+        auto const middle{low + (high - low + 1) / 2};
+        if (Layout::layout_bytes(middle) <= bytes) {
+            low = middle;
+        } else {
+            high = middle - 1;
+        }
+    }
+    return static_cast<int32>(low * Layout::capacity_granularity);
+}
+
 auto sum(FTestEntityRegistry::EntityCounts const& entity_counts) -> int32 {
     int32 total{};
     for (auto const& team_counts : entity_counts) {
@@ -62,21 +106,33 @@ auto aggregate_timings(TArray<double> samples) -> FLevelTelemetryTimingAggregate
 
 }
 
+using level_telemetry_detail::aggregate_timings;
+using level_telemetry_detail::contains_only_nonnegative_values;
+using level_telemetry_detail::snapshot_with_terminal_sample;
+using level_telemetry_detail::sum;
+
 /* **************************************** */
 // Construction and lifecycle
 /* **************************************** */
-FLevelTelemetryManager::FLevelTelemetryManager(
-    FSimulationClock const& clock,
-    FTestEntityRegistry const& entity_registry,
-    ml::test_lasers::Simulation const& lasers,
-    ml::FSpatialQueryManager const& spatial_queries) noexcept
+FLevelTelemetryManager::FLevelTelemetryManager(FSimulationClock const& clock,
+                                               FTestEntityRegistry const& entity_registry,
+                                               ml::test_lasers::Simulation const& lasers,
+                                               ml::FSpatialQueryManager const& spatial_queries,
+                                               FLevelTelemetryHistoryConfig history_config) noexcept
     : clock_{clock}
     , entity_registry_{entity_registry}
     , lasers_{lasers}
-    , spatial_queries_{spatial_queries} {}
+    , spatial_queries_{spatial_queries}
+    , history_config_{history_config} {}
 
 void FLevelTelemetryManager::initialise() {
     reset();
+    auto const initial_capacity{
+        level_telemetry_detail::capacity_for_bytes(history_config_.initial_allocation_bytes)};
+    if (initial_capacity > history_.capacity()) {
+        history_.reserve(initial_capacity);
+        allocation_count_ = 1;
+    }
     initialized_ = true;
     update_current_state();
     sample_series();
@@ -84,12 +140,25 @@ void FLevelTelemetryManager::initialise() {
 
 void FLevelTelemetryManager::reset() {
     current_state_ = {};
-    run_record_ = {};
+    last_sampled_state_ = {};
+    history_.reset();
+    metadata_ = {};
+    completion_ = {};
+    completed_ticks_by_real_time_.reset();
+    battle_samples_.Reset();
+    performance_windows_.Reset();
+    active_entity_count_data_.reset();
+    cumulative_kill_count_data_.reset();
     run_started_at_ = 0.0;
+    last_sampled_time_scale_ = 0.0;
+    payload_write_count_ = 0;
+    allocation_count_ = history_.capacity() > 0 ? 1 : 0;
+    growth_count_ = 0;
     run_recording_ = false;
     run_finalized_ = false;
     run_record_taken_ = false;
     initialized_ = false;
+    has_sampled_state_ = false;
     next_battle_sample_seconds_ = 0.0;
 
     frame_samples_.Reset();
@@ -128,7 +197,7 @@ void FLevelTelemetryManager::record_simulation_tick_timing(
     double const elapsed_seconds,
     TStaticArray<double, FSimulationTelemetryPerformanceWindow::system_count> const& systems,
     TStaticArray<double, FSimulationTelemetryPerformanceWindow::phase_count> const& phases) {
-    if (!run_recording_ || !run_record_.metadata.detailed_timing) {
+    if (!run_recording_ || !metadata_.detailed_timing) {
         return;
     }
 
@@ -156,8 +225,8 @@ auto FLevelTelemetryManager::make_snapshot() const -> FLevelTelemetrySnapshot {
 
     checkf(FMath::IsFinite(tick_period) && tick_period > 0.0,
            TEXT("Level telemetry snapshots require a finite, positive tick period."));
-    auto const& active_entity_count_data{run_record_.tick_series.active_entities};
-    auto const& cumulative_kill_count_data{run_record_.tick_series.kills};
+    auto const& active_entity_count_data{active_entity_count_data_};
+    auto const& cumulative_kill_count_data{cumulative_kill_count_data_};
     checkf(!active_entity_count_data.is_empty() && !cumulative_kill_count_data.is_empty(),
            TEXT("Level telemetry must be initialised before creating a snapshot."));
     checkf(active_entity_count_data.last_time() <= completed_tick &&
@@ -213,74 +282,321 @@ void FLevelTelemetryManager::update_current_state() {
 }
 
 void FLevelTelemetryManager::sample_live_series() {
-    auto const tick{clock_.get_completed_ticks()};
-    auto const add_if_changed{[tick](auto& data, auto const value) {
-        if (data.is_empty() || data.last_value() != value) {
-            data.add(tick, value);
-        }
-    }};
-    auto& series{run_record_.tick_series};
-    add_if_changed(series.active_entities, current_state_.active_entities);
-
+    using namespace level_telemetry_detail;
     constexpr auto team_count{FLevelTelemetryTickSeries::team_count};
     constexpr auto entity_type_count{FLevelTelemetryTickSeries::entity_type_count};
-    for (int32 entity_type_index{}; entity_type_index < entity_type_count; ++entity_type_index) {
-        int32 type_total{};
-        for (int32 team_index{}; team_index < team_count; ++team_index) {
-            auto const count{
-                current_state_.active_entities_by_team_and_type[team_index][entity_type_index]};
-            type_total += count;
-            add_if_changed(series.active_entities_by_team_and_type[team_index][entity_type_index],
-                           count);
-        }
-        add_if_changed(series.active_entities_by_type[entity_type_index], type_total);
+    FTestEntityRegistry::EntityTypeCounts active_entities_by_type{};
+    FTestEntityRegistry::EntityTypeCounts last_active_entities_by_type{};
+    uint64 mask{};
+
+    if (!has_sampled_state_ ||
+        current_state_.active_entities != last_sampled_state_.active_entities) {
+        mask |= bit(active_entities_bit);
     }
 
-    add_if_changed(series.kills, current_state_.kills);
-    add_if_changed(series.requested_time_scale, clock_.get_time_scale());
+    for (int32 entity_type_index{}; entity_type_index < entity_type_count; ++entity_type_index) {
+        for (int32 team_index{}; team_index < team_count; ++team_index) {
+            auto const value{
+                current_state_.active_entities_by_team_and_type[team_index][entity_type_index]};
+            auto const last_value{
+                last_sampled_state_
+                    .active_entities_by_team_and_type[team_index][entity_type_index]};
+            active_entities_by_type[entity_type_index] += value;
+            last_active_entities_by_type[entity_type_index] += last_value;
+            if (!has_sampled_state_ || value != last_value) {
+                auto const field_index{active_entities_by_team_and_type_begin +
+                                       team_index * entity_type_count + entity_type_index};
+                mask |= bit(field_index);
+            }
+        }
+        if (!has_sampled_state_ || active_entities_by_type[entity_type_index] !=
+                                       last_active_entities_by_type[entity_type_index]) {
+            mask |= bit(active_entities_by_type_begin + entity_type_index);
+        }
+    }
+
+    if (!has_sampled_state_ || current_state_.kills != last_sampled_state_.kills) {
+        mask |= bit(kills_bit);
+    }
+    auto const time_scale{clock_.get_time_scale()};
+    if (!has_sampled_state_ || time_scale != last_sampled_time_scale_) {
+        mask |= bit(requested_time_scale_bit);
+    }
+    if (mask == 0) {
+        return;
+    }
+
+    auto const tick{clock_.get_completed_ticks()};
+    auto const row{append_history_row(tick)};
+    auto columns{history_.get_view().columns()};
+    columns.validity_masks[row] |= mask;
+
+    if ((mask & bit(active_entities_bit)) != 0) {
+        columns.active_entities[row] = current_state_.active_entities;
+        active_entity_count_data_.add(tick, current_state_.active_entities);
+    }
+    for (int32 entity_type_index{}; entity_type_index < entity_type_count; ++entity_type_index) {
+        if ((mask & bit(active_entities_by_type_begin + entity_type_index)) != 0) {
+            columns.active_entities_by_type[row][entity_type_index] =
+                active_entities_by_type[entity_type_index];
+        }
+        for (int32 team_index{}; team_index < team_count; ++team_index) {
+            auto const field_index{active_entities_by_team_and_type_begin +
+                                   team_index * entity_type_count + entity_type_index};
+            if ((mask & bit(field_index)) != 0) {
+                columns.active_entities_by_team_and_type[row][team_index][entity_type_index] =
+                    current_state_.active_entities_by_team_and_type[team_index][entity_type_index];
+            }
+        }
+    }
+    if ((mask & bit(kills_bit)) != 0) {
+        columns.kills[row] = current_state_.kills;
+        cumulative_kill_count_data_.add(tick, current_state_.kills);
+    }
+    if ((mask & bit(requested_time_scale_bit)) != 0) {
+        columns.requested_time_scale[row] = time_scale;
+    }
+
+    payload_write_count_ += std::popcount(mask);
+    last_sampled_state_.active_entities = current_state_.active_entities;
+    last_sampled_state_.active_entities_by_team_and_type =
+        current_state_.active_entities_by_team_and_type;
+    last_sampled_state_.kills = current_state_.kills;
+    last_sampled_time_scale_ = time_scale;
 }
 
-void FLevelTelemetryManager::sample_series(bool const force) {
-    auto const tick{clock_.get_completed_ticks()};
-    auto const add_if_changed{[tick, force](auto& data, auto const value) {
-        if (data.is_empty() || data.last_value() != value || (force && data.last_time() != tick)) {
-            data.add(tick, value);
-        }
-    }};
-    auto& series{run_record_.tick_series};
-    add_if_changed(series.active_entities, current_state_.active_entities);
+void FLevelTelemetryManager::sample_series() {
+    using namespace level_telemetry_detail;
+    sample_live_series();
 
+    uint64 mask{};
+    auto const mark_changed{
+        [this, &mask](int32 const field, auto const value, auto const previous) {
+            if (!has_sampled_state_ || value != previous) {
+                mask |= bit(field);
+            }
+        }};
+    mark_changed(spawned_entities_bit,
+                 current_state_.spawned_entities,
+                 last_sampled_state_.spawned_entities);
+    mark_changed(destroyed_entities_bit,
+                 current_state_.destroyed_entities,
+                 last_sampled_state_.destroyed_entities);
+    mark_changed(registry_slot_count_bit,
+                 current_state_.registry_slot_count,
+                 last_sampled_state_.registry_slot_count);
+    mark_changed(
+        active_lasers_bit, current_state_.active_lasers, last_sampled_state_.active_lasers);
+    mark_changed(lasers_fired_bit, current_state_.lasers_fired, last_sampled_state_.lasers_fired);
+    mark_changed(occupied_spatial_cell_count_bit,
+                 current_state_.occupied_spatial_cell_count,
+                 last_sampled_state_.occupied_spatial_cell_count);
+    mark_changed(grid_rebuild_count_bit,
+                 current_state_.grid_rebuild_count,
+                 last_sampled_state_.grid_rebuild_count);
+    mark_changed(range_query_count_bit,
+                 current_state_.range_query_count,
+                 last_sampled_state_.range_query_count);
+    mark_changed(line_trace_count_bit,
+                 current_state_.line_trace_count,
+                 last_sampled_state_.line_trace_count);
+    mark_changed(sweep_trace_count_bit,
+                 current_state_.sweep_trace_count,
+                 last_sampled_state_.sweep_trace_count);
+
+    if (mask != 0) {
+        auto const row{append_history_row(clock_.get_completed_ticks())};
+        auto columns{history_.get_view().columns()};
+        columns.validity_masks[row] |= mask;
+
+        if ((mask & bit(spawned_entities_bit)) != 0) {
+            columns.spawned_entities[row] = current_state_.spawned_entities;
+        }
+        if ((mask & bit(destroyed_entities_bit)) != 0) {
+            columns.destroyed_entities[row] = current_state_.destroyed_entities;
+        }
+        if ((mask & bit(registry_slot_count_bit)) != 0) {
+            columns.registry_slot_count[row] = current_state_.registry_slot_count;
+        }
+        if ((mask & bit(active_lasers_bit)) != 0) {
+            columns.active_lasers[row] = current_state_.active_lasers;
+        }
+        if ((mask & bit(lasers_fired_bit)) != 0) {
+            columns.lasers_fired[row] = current_state_.lasers_fired;
+        }
+        if ((mask & bit(occupied_spatial_cell_count_bit)) != 0) {
+            columns.occupied_spatial_cell_count[row] = current_state_.occupied_spatial_cell_count;
+        }
+        if ((mask & bit(grid_rebuild_count_bit)) != 0) {
+            columns.grid_rebuild_count[row] = current_state_.grid_rebuild_count;
+        }
+        if ((mask & bit(range_query_count_bit)) != 0) {
+            columns.range_query_count[row] = current_state_.range_query_count;
+        }
+        if ((mask & bit(line_trace_count_bit)) != 0) {
+            columns.line_trace_count[row] = current_state_.line_trace_count;
+        }
+        if ((mask & bit(sweep_trace_count_bit)) != 0) {
+            columns.sweep_trace_count[row] = current_state_.sweep_trace_count;
+        }
+        payload_write_count_ += std::popcount(mask);
+    }
+
+    last_sampled_state_.spawned_entities = current_state_.spawned_entities;
+    last_sampled_state_.destroyed_entities = current_state_.destroyed_entities;
+    last_sampled_state_.registry_slot_count = current_state_.registry_slot_count;
+    last_sampled_state_.active_lasers = current_state_.active_lasers;
+    last_sampled_state_.lasers_fired = current_state_.lasers_fired;
+    last_sampled_state_.occupied_spatial_cell_count = current_state_.occupied_spatial_cell_count;
+    last_sampled_state_.grid_rebuild_count = current_state_.grid_rebuild_count;
+    last_sampled_state_.range_query_count = current_state_.range_query_count;
+    last_sampled_state_.line_trace_count = current_state_.line_trace_count;
+    last_sampled_state_.sweep_trace_count = current_state_.sweep_trace_count;
+    has_sampled_state_ = true;
+}
+
+auto FLevelTelemetryManager::append_history_row(tick_type const completed_tick) -> int32 {
+    auto const row_count{history_.num()};
+    if (row_count > 0) {
+        auto const completed_ticks{history_.get_const_view().completed_ticks()};
+        if (completed_ticks.Last() == completed_tick) {
+            return row_count - 1;
+        }
+        check(completed_ticks.Last() < completed_tick);
+    }
+
+    auto const previous_capacity{history_.capacity()};
+    history_.add_uninitialised(1);
+    if (history_.capacity() != previous_capacity) {
+        allocation_count_ += 1;
+        growth_count_ += previous_capacity > 0 ? 1 : 0;
+    }
+
+    auto const row{history_.num() - 1};
+    auto columns{history_.get_view().columns()};
+    columns.completed_ticks[row] = completed_tick;
+    columns.validity_masks[row] = 0;
+    return row;
+}
+
+auto FLevelTelemetryManager::get_history_stats() const noexcept -> FLevelTelemetryHistoryStats {
+    return {
+        .row_count = history_.num(),
+        .capacity = history_.capacity(),
+        .allocation_count = allocation_count_,
+        .growth_count = growth_count_,
+        .payload_write_count = payload_write_count_,
+        .allocated_bytes = history_.allocated_bytes(),
+    };
+}
+
+auto FLevelTelemetryManager::materialize_tick_series() const -> FLevelTelemetryTickSeries {
+    using namespace level_telemetry_detail;
+    auto const rows{history_.get_const_view().columns()};
+    TStaticArray<int32, series_count> sample_counts{};
+    for (auto const mask : rows.validity_masks) {
+        auto remaining{mask};
+        while (remaining != 0) {
+            auto const field{static_cast<int32>(std::countr_zero(remaining))};
+            ++sample_counts[field];
+            remaining &= remaining - 1;
+        }
+    }
+
+    FLevelTelemetryTickSeries result;
+    result.active_entities.reserve(sample_counts[active_entities_bit]);
     constexpr auto team_count{FLevelTelemetryTickSeries::team_count};
     constexpr auto entity_type_count{FLevelTelemetryTickSeries::entity_type_count};
     for (int32 entity_type_index{}; entity_type_index < entity_type_count; ++entity_type_index) {
-        int32 type_total{};
+        result.active_entities_by_type[entity_type_index].reserve(
+            sample_counts[active_entities_by_type_begin + entity_type_index]);
         for (int32 team_index{}; team_index < team_count; ++team_index) {
-            auto const count{
-                current_state_.active_entities_by_team_and_type[team_index][entity_type_index]};
-            type_total += count;
-            add_if_changed(series.active_entities_by_team_and_type[team_index][entity_type_index],
-                           count);
+            auto const field{active_entities_by_team_and_type_begin +
+                             team_index * entity_type_count + entity_type_index};
+            result.active_entities_by_team_and_type[team_index][entity_type_index].reserve(
+                sample_counts[field]);
         }
-        add_if_changed(series.active_entities_by_type[entity_type_index], type_total);
     }
+    result.spawned_entities.reserve(sample_counts[spawned_entities_bit]);
+    result.destroyed_entities.reserve(sample_counts[destroyed_entities_bit]);
+    result.kills.reserve(sample_counts[kills_bit]);
+    result.registry_slot_count.reserve(sample_counts[registry_slot_count_bit]);
+    result.active_lasers.reserve(sample_counts[active_lasers_bit]);
+    result.lasers_fired.reserve(sample_counts[lasers_fired_bit]);
+    result.occupied_spatial_cell_count.reserve(sample_counts[occupied_spatial_cell_count_bit]);
+    result.grid_rebuild_count.reserve(sample_counts[grid_rebuild_count_bit]);
+    result.range_query_count.reserve(sample_counts[range_query_count_bit]);
+    result.line_trace_count.reserve(sample_counts[line_trace_count_bit]);
+    result.sweep_trace_count.reserve(sample_counts[sweep_trace_count_bit]);
+    result.requested_time_scale.reserve(sample_counts[requested_time_scale_bit]);
 
-    add_if_changed(series.spawned_entities, current_state_.spawned_entities);
-    add_if_changed(series.destroyed_entities, current_state_.destroyed_entities);
-    add_if_changed(series.kills, current_state_.kills);
-    add_if_changed(series.registry_slot_count, current_state_.registry_slot_count);
-    add_if_changed(series.active_lasers, current_state_.active_lasers);
-    add_if_changed(series.lasers_fired, current_state_.lasers_fired);
-    add_if_changed(series.occupied_spatial_cell_count, current_state_.occupied_spatial_cell_count);
-    add_if_changed(series.grid_rebuild_count, current_state_.grid_rebuild_count);
-    add_if_changed(series.range_query_count, current_state_.range_query_count);
-    add_if_changed(series.line_trace_count, current_state_.line_trace_count);
-    add_if_changed(series.sweep_trace_count, current_state_.sweep_trace_count);
-    add_if_changed(series.requested_time_scale, clock_.get_time_scale());
+    auto const row_count{history_.num()};
+    for (int32 row{}; row < row_count; ++row) {
+        auto const tick{rows.completed_ticks[row]};
+        auto const mask{rows.validity_masks[row]};
+        if ((mask & bit(active_entities_bit)) != 0) {
+            result.active_entities.add(tick, rows.active_entities[row]);
+        }
+        for (int32 entity_type_index{}; entity_type_index < entity_type_count;
+             ++entity_type_index) {
+            auto const type_field{active_entities_by_type_begin + entity_type_index};
+            if ((mask & bit(type_field)) != 0) {
+                result.active_entities_by_type[entity_type_index].add(
+                    tick, rows.active_entities_by_type[row][entity_type_index]);
+            }
+            for (int32 team_index{}; team_index < team_count; ++team_index) {
+                auto const field{active_entities_by_team_and_type_begin +
+                                 team_index * entity_type_count + entity_type_index};
+                if ((mask & bit(field)) != 0) {
+                    result.active_entities_by_team_and_type[team_index][entity_type_index].add(
+                        tick,
+                        rows.active_entities_by_team_and_type[row][team_index][entity_type_index]);
+                }
+            }
+        }
+        if ((mask & bit(spawned_entities_bit)) != 0) {
+            result.spawned_entities.add(tick, rows.spawned_entities[row]);
+        }
+        if ((mask & bit(destroyed_entities_bit)) != 0) {
+            result.destroyed_entities.add(tick, rows.destroyed_entities[row]);
+        }
+        if ((mask & bit(kills_bit)) != 0) {
+            result.kills.add(tick, rows.kills[row]);
+        }
+        if ((mask & bit(registry_slot_count_bit)) != 0) {
+            result.registry_slot_count.add(tick, rows.registry_slot_count[row]);
+        }
+        if ((mask & bit(active_lasers_bit)) != 0) {
+            result.active_lasers.add(tick, rows.active_lasers[row]);
+        }
+        if ((mask & bit(lasers_fired_bit)) != 0) {
+            result.lasers_fired.add(tick, rows.lasers_fired[row]);
+        }
+        if ((mask & bit(occupied_spatial_cell_count_bit)) != 0) {
+            result.occupied_spatial_cell_count.add(tick, rows.occupied_spatial_cell_count[row]);
+        }
+        if ((mask & bit(grid_rebuild_count_bit)) != 0) {
+            result.grid_rebuild_count.add(tick, rows.grid_rebuild_count[row]);
+        }
+        if ((mask & bit(range_query_count_bit)) != 0) {
+            result.range_query_count.add(tick, rows.range_query_count[row]);
+        }
+        if ((mask & bit(line_trace_count_bit)) != 0) {
+            result.line_trace_count.add(tick, rows.line_trace_count[row]);
+        }
+        if ((mask & bit(sweep_trace_count_bit)) != 0) {
+            result.sweep_trace_count.add(tick, rows.sweep_trace_count[row]);
+        }
+        if ((mask & bit(requested_time_scale_bit)) != 0) {
+            result.requested_time_scale.add(tick, rows.requested_time_scale[row]);
+        }
+    }
+    return result;
 }
 
 void FLevelTelemetryManager::sample_battle_state(bool const force) {
     auto const tick{clock_.get_completed_ticks()};
-    auto& samples{run_record_.battle_samples};
+    auto& samples{battle_samples_};
     if (!force && !samples.IsEmpty() && samples.Last().completed_tick == tick) {
         return;
     }
@@ -313,16 +629,16 @@ void FLevelTelemetryManager::begin_run(FLevelTelemetryRunMetadata metadata) {
     check(clock_.get_tick_rate() > 0.0);
     check(clock_.get_tick_period() > 0.0);
     check(clock_.get_time_scale() > 0.0);
-    check(!run_record_.tick_series.active_entities.is_empty());
-    check(!run_record_.tick_series.requested_time_scale.is_empty());
+    check(!active_entity_count_data_.is_empty());
+    check(has_sampled_state_);
 
     metadata.tick_rate_hz = clock_.get_tick_rate();
     metadata.tick_period_seconds = clock_.get_tick_period();
     metadata.initial_requested_time_scale = clock_.get_time_scale();
 
-    run_record_.metadata = MoveTemp(metadata);
-    run_record_.completion = {};
-    run_record_.completed_ticks_by_real_time.reset();
+    metadata_ = MoveTemp(metadata);
+    completion_ = {};
+    completed_ticks_by_real_time_.reset();
     run_started_at_ = FPlatformTime::Seconds();
     run_recording_ = true;
     run_finalized_ = false;
@@ -369,7 +685,7 @@ void FLevelTelemetryManager::close_performance_window(double const monotonic_tim
         }
     }
 
-    run_record_.performance_windows.Add(MoveTemp(window));
+    performance_windows_.Add(MoveTemp(window));
     frame_samples_.Reset();
     simulation_tick_samples_.Reset();
 }
@@ -392,7 +708,7 @@ void FLevelTelemetryManager::finalize_interrupted(ELevelTelemetryRunEndReason co
 void FLevelTelemetryManager::finalize_completed(ELevelTelemetryRunEndReason const reason,
                                                 TOptional<ETestTeam> winning_team) {
     finalize_run(reason, false, {}, nullptr, FPlatformTime::Seconds());
-    run_record_.completion.winning_team = winning_team;
+    completion_.winning_team = winning_team;
 }
 
 auto FLevelTelemetryManager::take_finalized_run() -> TOptional<FLevelTelemetryRunRecord> {
@@ -401,7 +717,15 @@ auto FLevelTelemetryManager::take_finalized_run() -> TOptional<FLevelTelemetryRu
     }
 
     run_record_taken_ = true;
-    return MoveTemp(run_record_);
+
+    FLevelTelemetryRunRecord result;
+    result.metadata = MoveTemp(metadata_);
+    result.completion = MoveTemp(completion_);
+    result.tick_series = materialize_tick_series();
+    result.completed_ticks_by_real_time = MoveTemp(completed_ticks_by_real_time_);
+    result.battle_samples = MoveTemp(battle_samples_);
+    result.performance_windows = MoveTemp(performance_windows_);
+    return result;
 }
 
 auto FLevelTelemetryManager::wall_elapsed(double const monotonic_time) const -> double {
@@ -410,7 +734,7 @@ auto FLevelTelemetryManager::wall_elapsed(double const monotonic_time) const -> 
 
 void FLevelTelemetryManager::add_realtime_sample(tick_type const completed_tick,
                                                  double const monotonic_time) {
-    auto& data{run_record_.completed_ticks_by_real_time};
+    auto& data{completed_ticks_by_real_time_};
     auto const elapsed{wall_elapsed(monotonic_time)};
     if (data.is_empty() || data.last_time() < elapsed) {
         data.add(elapsed, completed_tick);
@@ -436,19 +760,19 @@ void FLevelTelemetryManager::finalize_run(ELevelTelemetryRunEndReason const reas
         close_performance_window(monotonic_time);
     }
 
-    run_record_.completion.reason = reason;
-    run_record_.completion.interrupted = interrupted;
-    run_record_.completion.completed_utc = FDateTime::UtcNow().ToIso8601();
-    run_record_.completion.world_end_reason = MoveTemp(world_end_reason);
-    run_record_.completion.completed_ticks = completed_ticks;
-    run_record_.completion.simulated_elapsed_seconds = clock_.get_simulation_time();
-    run_record_.completion.wall_elapsed_seconds = wall_elapsed(monotonic_time);
+    completion_.reason = reason;
+    completion_.interrupted = interrupted;
+    completion_.completed_utc = FDateTime::UtcNow().ToIso8601();
+    completion_.world_end_reason = MoveTemp(world_end_reason);
+    completion_.completed_ticks = completed_ticks;
+    completion_.simulated_elapsed_seconds = clock_.get_simulation_time();
+    completion_.wall_elapsed_seconds = wall_elapsed(monotonic_time);
 
     if (mission_result != nullptr) {
-        run_record_.completion.mission_mode = mission_result->mode;
-        run_record_.completion.mission_state = mission_result->state;
-        run_record_.completion.mission_fail_reason = mission_result->fail_reason;
-        run_record_.completion.mission_elapsed_seconds = mission_result->elapsed_seconds;
+        completion_.mission_mode = mission_result->mode;
+        completion_.mission_state = mission_result->state;
+        completion_.mission_fail_reason = mission_result->fail_reason;
+        completion_.mission_elapsed_seconds = mission_result->elapsed_seconds;
     }
 
     run_recording_ = false;

@@ -558,6 +558,38 @@ TEST_CLASS(TelemetryBenchmark, "SandboxBenchmarks.TelemetryBenchmark")
                     orchestrator->tick(frame_seconds);
                 }
                 auto const elapsed_seconds{FPlatformTime::Seconds() - started_at};
+                telemetry.finalize_completed(ELevelTelemetryRunEndReason::DurationReached);
+                auto const history_stats{telemetry.get_history_stats()};
+                auto const run_record{telemetry.take_finalized_run()};
+                double telemetry_cpu_ms{};
+                double simulation_cpu_ms{};
+                if (run_record.IsSet()) {
+                    for (auto const& window : run_record->performance_windows) {
+                        auto const& telemetry_timing{window.systems[static_cast<int32>(
+                            ESimulationTelemetryTimingSystem::Telemetry)]};
+                        telemetry_cpu_ms +=
+                            telemetry_timing.mean_ms * telemetry_timing.sample_count;
+                        simulation_cpu_ms +=
+                            window.simulation_tick.mean_ms * window.simulation_tick.sample_count;
+                    }
+                }
+                auto const telemetry_cpu_percent{
+                    simulation_cpu_ms > 0.0 ? telemetry_cpu_ms / simulation_cpu_ms * 100.0 : 0.0};
+                TestRunner->AddInfo(FString::Printf(
+                    TEXT("Telemetry integration: detailed=%d telemetry_cpu_ms=%.6f "
+                         "simulation_cpu_ms=%.6f telemetry_cpu_percent=%.6f rows=%d "
+                         "payload_writes=%llu allocations=%d growths=%d allocated_bytes=%llu "
+                         "manager_size=%llu"),
+                    detailed_timing ? 1 : 0,
+                    telemetry_cpu_ms,
+                    simulation_cpu_ms,
+                    telemetry_cpu_percent,
+                    history_stats.row_count,
+                    history_stats.payload_write_count,
+                    history_stats.allocation_count,
+                    history_stats.growth_count,
+                    history_stats.allocated_bytes,
+                    sizeof(FLevelTelemetryManager)));
                 return static_cast<double>(orchestrator->get_completed_ticks()) / elapsed_seconds;
             };
 

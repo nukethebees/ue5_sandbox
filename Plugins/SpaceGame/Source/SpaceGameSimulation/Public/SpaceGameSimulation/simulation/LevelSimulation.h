@@ -59,6 +59,7 @@ struct FLevelSimulationInitData {
     float fighter_fire_point_distance{};
 
     TOptional<FLevelTelemetryRunMetadata> telemetry_metadata{};
+    FLevelTelemetryHistoryConfig telemetry_history{};
 };
 
 struct SPACEGAMESIMULATION_API FLevelSimulation {

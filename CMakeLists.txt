@@ -133,6 +133,12 @@ set(CACHE{SANDBOX_SPARK_BENCHMARK_WARMUP_FRAMES}
   VALUE 60
 )
 
+set(CACHE{SANDBOX_TELEMETRY_BENCHMARK_SAMPLES}
+  TYPE STRING
+  HELP "Measured samples for the level telemetry storage benchmark"
+  VALUE 7
+)
+
 set(CACHE{SANDBOX_SPACE_GAME_TEST_TIME_SCALE}
   TYPE STRING
   HELP "Optional positive time scale for level-backed SpaceGame automation"
@@ -579,6 +585,45 @@ add_test(
 )
 set_tests_properties(SandboxBenchmarks.SparkBenchmark PROPERTIES
   LABELS spark-benchmark
+  TIMEOUT 1200
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+add_test(
+  NAME SandboxBenchmarks.LevelTelemetryStorage
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    "-ExecCmds=Automation RunTests SandboxBenchmarks.LevelTelemetryStorage; Quit"
+    "-SandboxTelemetryBenchmarkSamples=${SANDBOX_TELEMETRY_BENCHMARK_SAMPLES}"
+    -unattended
+    -nop4
+    -nosplash
+    -nosound
+    -stdout
+    -FullStdOutLogOutput
+    -ddc=NoZenLocalFallback
+    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
+)
+set_tests_properties(SandboxBenchmarks.LevelTelemetryStorage PROPERTIES
+  LABELS telemetry-benchmark
+  TIMEOUT 1200
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+add_test(
+  NAME SandboxBenchmarks.LevelTelemetryIntegration
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    "-ExecCmds=Automation RunTests SandboxBenchmarks.TelemetryBenchmark; Quit"
+    -unattended
+    -nop4
+    -nosplash
+    -nosound
+    -stdout
+    -FullStdOutLogOutput
+    -ddc=NoZenLocalFallback
+    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
+)
+set_tests_properties(SandboxBenchmarks.LevelTelemetryIntegration PROPERTIES
+  LABELS telemetry-benchmark
   TIMEOUT 1200
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )

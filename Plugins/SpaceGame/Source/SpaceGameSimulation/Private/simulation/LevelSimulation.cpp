@@ -132,7 +132,8 @@ FLevelSimulation::FLevelSimulation(FLevelSimulationInitData data)
     , spinners_phase_{spinners_simulation_}
     , mission_manager_{clock_, entity_registry_}
     , event_manager_{capital_ships_simulation_, turrets_simulation_, mission_manager_}
-    , level_telemetry_manager_{clock_, entity_registry_, lasers_simulation_, query_manager_} {
+    , level_telemetry_manager_{
+          clock_, entity_registry_, lasers_simulation_, query_manager_, data.telemetry_history} {
     clock_.initialise(data.clock_settings);
     telemetry_metadata_ = MoveTemp(data.telemetry_metadata);
     ml::level_simulation::finalise_participating_teams(data);

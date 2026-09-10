@@ -31,6 +31,12 @@ Plugins/SandboxISMC/Source/SandboxISMC/Private/SandboxISMCInstanceData.cpp
 Plugins/SandboxISMC/Source/SandboxISMC/Public/SandboxISMCInstanceData.h
 Plugins/SpaceGame/Source/SGCollision/Private/world_aabbs.cpp
 Plugins/SpaceGame/Source/SGCollision/Public/SGCollision/world_aabbs.h
+Plugins/SpaceGame/Source/SpaceGame/Private/settings/GameSettings.generated.cpp
+Plugins/SpaceGame/Source/SpaceGame/Private/simulation/StaticCollisionSources.cpp
+Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/settings/GameSettings.generated.h
+Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/StaticCollisionSources.h
+Plugins/SpaceGame/Source/SpaceGamePresentation/Private/ui/style/GameUiStyleTypes.cpp
+Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/ui/style/GameUiStyleTypes.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/combat/lasers/TestLasersPhaseInterface.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/combat/lasers/TestLasersSoA.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/defences/spinners/TestTubeSpinnersPhaseInterface.cpp
@@ -49,7 +55,6 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Private/levels/LevelDefinitionSoA.c
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/missions/TestMissionFailReason.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/missions/TestMissionMode.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/missions/TestMissionState.cpp
-Plugins/SpaceGame/Source/SpaceGame/Private/settings/GameSettings.generated.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/capital/TestCapitalShipsPhaseInterface.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/capital/TestCapitalShipsSoA.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFighterOrderQueue.cpp
@@ -59,10 +64,9 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalS
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/player/TestSpaceShipPhaseInterface.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/simulation/EntityCellData.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/simulation/LineTraces.cpp
-Plugins/SpaceGame/Source/SpaceGame/Private/simulation/StaticCollisionSources.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/simulation/TraceHits.cpp
+Plugins/SpaceGame/Source/SpaceGameSimulation/Private/telemetry/LevelTelemetryHistory.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/telemetry/LevelTelemetryRunEndReason.cpp
-Plugins/SpaceGame/Source/SpaceGamePresentation/Private/ui/style/GameUiStyleTypes.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/combat/lasers/TestLasersPhaseInterface.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/combat/lasers/TestLasersSoA.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/defences/spinners/TestTubeSpinnersPhaseInterface.h
@@ -81,7 +85,6 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/levels/L
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionFailReason.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionMode.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionState.h
-Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/settings/GameSettings.generated.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/capital/TestCapitalShipsPhaseInterface.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/capital/TestCapitalShipsSoA.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFighterOrderQueue.h
@@ -93,7 +96,6 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/pl
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/EntityAABBs.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/EntityCellData.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/LineTraces.h
-Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/StaticCollisionSources.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/TraceHits.h
+Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/telemetry/LevelTelemetryHistory.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/telemetry/LevelTelemetryRunEndReason.h
-Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/ui/style/GameUiStyleTypes.h

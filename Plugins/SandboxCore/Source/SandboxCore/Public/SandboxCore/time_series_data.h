@@ -35,6 +35,11 @@ class XYSeriesData {
 
     auto times() const -> TConstArrayView<time_type> { return times_; }
     auto values() const -> TConstArrayView<value_type> { return values_; }
+    auto time_capacity() const -> size_type { return times_.Max(); }
+    auto value_capacity() const -> size_type { return values_.Max(); }
+    auto allocated_bytes() const -> SIZE_T {
+        return times_.GetAllocatedSize() + values_.GetAllocatedSize();
+    }
 
     template <typename AddType>
         requires std::is_same_v<value_type, std::remove_cvref_t<AddType>>

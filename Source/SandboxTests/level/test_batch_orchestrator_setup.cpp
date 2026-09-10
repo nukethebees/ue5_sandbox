@@ -23,6 +23,8 @@
 
 #include <Misc/AutomationTest.h>
 
+#include <bit>
+
 namespace ml {
 FTestBatchOrchestratorSetupScenario::FTestBatchOrchestratorSetupScenario(
     FSimulationTestContext& context, EOrchestratorSetupScenario const scenario)
@@ -426,18 +428,31 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FLevelTelemetryManagerTest,
                                  EAutomationTestFlags::EditorContext |
                                      EAutomationTestFlags::EngineFilter)
 
+struct FLevelTelemetryManagerTestAccess {
+    static auto history(FLevelTelemetryManager const& manager)
+        -> ml::level_telemetry::FSingleAllocationHistoryRows const& {
+        return manager.history_;
+    }
+};
+
 auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     FSimulationClock clock;
     clock.initialise({});
     FTestEntityRegistry entity_registry;
     ml::FSpatialQueryManager spatial_queries{entity_registry};
     ml::test_lasers::Simulation lasers{clock, entity_registry, spatial_queries};
-    FLevelTelemetryManager telemetry_manager{clock, entity_registry, lasers, spatial_queries};
+    FLevelTelemetryManager telemetry_manager{
+        clock,
+        entity_registry,
+        lasers,
+        spatial_queries,
+        {.initial_allocation_bytes = 100u * 1024u},
+    };
 
     telemetry_manager.initialise();
     auto const& active_count_data{telemetry_manager.get_active_entity_count_data()};
     auto const& kill_count_data{telemetry_manager.get_cumulative_kill_count_data()};
-    auto const& tick_series{telemetry_manager.get_tick_series()};
+    auto tick_series{telemetry_manager.materialize_tick_series()};
     auto const& initial_state{telemetry_manager.get_current_state()};
     TestEqual(
         TEXT("Initialisation records one active-count sample"), active_count_data.num(), int32{1});
@@ -456,9 +471,36 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("Initialisation records one sample for each workload series"),
               tick_series.active_lasers.num(),
               int32{1});
+    auto const& initial_history{FLevelTelemetryManagerTestAccess::history(telemetry_manager)};
+    auto const initial_history_columns{initial_history.get_const_view().columns()};
+    TestEqual(TEXT("Initialisation merges all telemetry fields into one row"),
+              initial_history.num(),
+              int32{1});
+    TestEqual(TEXT("Initial row marks all 48 telemetry fields valid"),
+              initial_history_columns.validity_masks[0],
+              (uint64{1} << 48) - 1);
+    TestEqual(TEXT("Initial row performs one payload write per logical series"),
+              telemetry_manager.get_history_stats().payload_write_count,
+              uint64{48});
+    TestEqual(TEXT("A legitimate zero-valued field is stored in a valid cell"),
+              initial_history_columns.kills[0],
+              int32{0});
+    TestEqual(TEXT("A legitimate zero-valued field survives reconstruction"),
+              tick_series.kills.last_value(),
+              int32{0});
+    TestTrue(TEXT("Telemetry manager is substantially smaller than its 2384-byte baseline"),
+             sizeof(FLevelTelemetryManager) < 1200);
+    bool columns_aligned{true};
+    initial_history_columns.apply_arrays([&columns_aligned](auto const&... arrays) {
+        ((columns_aligned =
+              columns_aligned && reinterpret_cast<UPTRINT>(arrays.GetData()) % 64 == 0),
+         ...);
+    });
+    TestTrue(TEXT("Every generated telemetry column is at least 64-byte aligned"), columns_aligned);
 
     clock.completed_ticks = 1;
     telemetry_manager.tick();
+    tick_series = telemetry_manager.materialize_tick_series();
     TestEqual(
         TEXT("Unchanged active count does not add a sample"), active_count_data.num(), int32{1});
     TestEqual(TEXT("Unchanged kills do not add a sample"), kill_count_data.num(), int32{1});
@@ -468,16 +510,28 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("Unchanged range-query count does not add a sample"),
               tick_series.range_query_count.num(),
               int32{1});
+    TestEqual(TEXT("An unchanged tick emits no history row"),
+              telemetry_manager.get_history_stats().row_count,
+              int32{1});
 
     clock.completed_ticks = 2;
     clock.tick_loop.time_scale = 4.0;
     telemetry_manager.tick();
+    tick_series = telemetry_manager.materialize_tick_series();
     TestEqual(TEXT("Changed time scale adds one tick-indexed sample"),
               tick_series.requested_time_scale.num(),
               int32{2});
     TestEqual(TEXT("Changed time scale records its simulation tick"),
               tick_series.requested_time_scale.last_time(),
               uint64{2});
+    auto const time_scale_columns{
+        FLevelTelemetryManagerTestAccess::history(telemetry_manager).get_const_view().columns()};
+    TestEqual(TEXT("A single changed field emits one additional row"),
+              time_scale_columns.num(),
+              int32{2});
+    TestEqual(TEXT("Single-field row marks only requested time scale valid"),
+              time_scale_columns.validity_masks[1],
+              uint64{1} << 47);
 
     clock.completed_ticks = 5;
     clock.tick_loop.tick_period = 0.25;
@@ -544,6 +598,7 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
 
     clock.completed_ticks = 2;
     telemetry_manager.tick();
+    tick_series = telemetry_manager.materialize_tick_series();
     TestEqual(TEXT("Entity additions update active-count telemetry"),
               active_count_data.last_value(),
               int32{3});
@@ -578,6 +633,14 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("Entity additions update current spawned count"),
               entity_state.spawned_entities,
               int32{3});
+    auto const entity_change_columns{
+        FLevelTelemetryManagerTestAccess::history(telemetry_manager).get_const_view().columns()};
+    TestEqual(TEXT("Several entity fields changing together emit one row"),
+              entity_change_columns.num(),
+              int32{2});
+    TestEqual(TEXT("Entity change row marks all nine changed fields valid"),
+              std::popcount(entity_change_columns.validity_masks[1]),
+              int32{9});
 
     clock.completed_ticks = 3;
     telemetry_manager.tick();
@@ -609,6 +672,42 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     for (auto const value : entity_snapshot.cumulative_kill_count_data.values()) {
         TestTrue(TEXT("Entity snapshot kill counts are nonnegative"), value >= 0);
     }
+
+    FLevelTelemetryManager boundary_manager{
+        clock,
+        entity_registry,
+        lasers,
+        spatial_queries,
+        {.initial_allocation_bytes =
+             ml::level_telemetry::FHistoryRowsSingleLayout::layout_bytes(1)},
+    };
+    clock.initialise({});
+    boundary_manager.initialise();
+    TestEqual(TEXT("Exact one-block budget reserves 64 rows"),
+              boundary_manager.get_history_stats().capacity,
+              int32{64});
+    for (uint64 tick{1}; tick <= 64; ++tick) {
+        clock.completed_ticks = tick;
+        clock.tick_loop.time_scale = static_cast<double>(tick + 1);
+        boundary_manager.tick();
+    }
+    TestEqual(TEXT("Appending beyond initial capacity preserves all emitted rows"),
+              boundary_manager.get_history_stats().row_count,
+              int32{65});
+    TestEqual(TEXT("Appending beyond initial capacity performs one growth"),
+              boundary_manager.get_history_stats().growth_count,
+              int32{1});
+    TestEqual(TEXT("Growth preserves reconstruction through the boundary"),
+              boundary_manager.materialize_tick_series().requested_time_scale.num(),
+              int32{65});
+    auto const grown_capacity{boundary_manager.get_history_stats().capacity};
+    boundary_manager.reset();
+    TestEqual(TEXT("Reset clears emitted rows"),
+              boundary_manager.get_history_stats().row_count,
+              int32{0});
+    TestEqual(TEXT("Reset retains the grown allocation for reuse"),
+              boundary_manager.get_history_stats().capacity,
+              grown_capacity);
 
     return true;
 }
