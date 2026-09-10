@@ -7,13 +7,10 @@
 #include "UObject/StrongObjectPtr.h"
 #include "Widgets/SCompoundWidget.h"
 
-class UMaterialInstanceDynamic;
 class SImage;
 
 class SANDBOXUI_API SEntityOverlayWidget final : public SCompoundWidget {
   public:
-    inline static constexpr TCHAR const* glow_material_path{
-        TEXT("/SandboxUI/Generated/Materials/M_UiGlowComposite.M_UiGlowComposite")};
     SLATE_BEGIN_ARGS(SEntityOverlayWidget) {}
     SLATE_END_ARGS()
 
@@ -33,10 +30,6 @@ class SANDBOXUI_API SEntityOverlayWidget final : public SCompoundWidget {
     FEntityOverlayFrameStoreConstPtr frame_store_;
     FEntityOverlayStyle style_;
     TStrongObjectPtr<UTextureRenderTarget2D> output_texture_;
-    TStrongObjectPtr<UTextureRenderTarget2D> glow_texture_;
-    TStrongObjectPtr<UMaterialInstanceDynamic> glow_material_;
     FSlateBrush brush_;
-    FSlateBrush glow_brush_;
     TSharedPtr<SImage> core_image_;
-    TSharedPtr<SImage> glow_image_;
 };

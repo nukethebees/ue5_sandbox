@@ -240,7 +240,8 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
                                bool in_range,
                                FVector camera_location,
                                FRotator camera_rotation,
-                               FEntityOverlayStyle const& style);
+                               FLinearColor neutral_color,
+                               FLinearColor in_range_color);
     void update_radars();
     void update_radar(FRegisteredHud& registration);
 #if WITH_EDITOR

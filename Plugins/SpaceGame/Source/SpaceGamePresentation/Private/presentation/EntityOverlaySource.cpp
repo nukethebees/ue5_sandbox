@@ -293,9 +293,7 @@ auto collect_entity_overlay_instances(
     FVector3f const origin,
     float const maximum_range,
     TArray<FEntityOverlayInstance>& output_instances,
-    FEntityOverlayCollector& collector,
-    int32 const soft_target_entity_index,
-    int32 const fading_soft_target_entity_index) -> FEntityOverlayCollectionResult {
+    FEntityOverlayCollector& collector) -> FEntityOverlayCollectionResult {
     TRACE_CPUPROFILER_EVENT_SCOPE(EntityOverlay::CollectRegistrySource);
     entities.validate_array_sizes();
     check(objective_roles.Num() == entities.num());
@@ -315,18 +313,13 @@ auto collect_entity_overlay_instances(
         }
 
         auto const objective_role{objective_roles[index]};
-        auto const soft_target_role =
-            index == soft_target_entity_index          ? EEntityOverlaySoftTargetRole::Active
-            : index == fading_soft_target_entity_index ? EEntityOverlaySoftTargetRole::Fading
-                                                       : EEntityOverlaySoftTargetRole::None;
         static_cast<void>(collector.try_add_colored(
             entities.locations[index],
             static_cast<float>(entities.healths[index]) * inverse_health,
             entities.radii[index],
             team_colour(entities.entity_types[index], entities.teams[index], team_colours),
             objective_role,
-            objective_role != EEntityOverlayObjectiveRole::None,
-            soft_target_role));
+            objective_role != EEntityOverlayObjectiveRole::None));
     }
 
     return {.candidate_count = output_instances.Num(),

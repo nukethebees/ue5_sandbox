@@ -104,13 +104,10 @@ void USpaceGameLevelConfig::get_validation_errors(TArray<FString>& errors,
                        "player_ship.laser.projectile_speed must be positive");
         REQUIRE_CONFIG(player_ship.laser.max_distance > 0.f,
                        "player_ship.laser.max_distance must be positive");
-        auto const uses_world_soft_target{
-            entity_overlay.soft_target_render_mode == ESoftTargetRenderMode::World3D ||
-            entity_overlay.soft_target_render_mode == ESoftTargetRenderMode::Both};
-        REQUIRE_CONFIG(!uses_world_soft_target || entity_overlay.soft_target_world_mesh,
-                       "entity_overlay.soft_target_world_mesh is null in a world render mode");
-        REQUIRE_CONFIG(!uses_world_soft_target || entity_overlay.soft_target_world_material,
-                       "entity_overlay.soft_target_world_material is null in a world render mode");
+        REQUIRE_CONFIG(!entity_overlay.enabled || entity_overlay.soft_target_world_mesh,
+                       "entity_overlay.soft_target_world_mesh is null");
+        REQUIRE_CONFIG(!entity_overlay.enabled || entity_overlay.soft_target_world_material,
+                       "entity_overlay.soft_target_world_material is null");
     }
     REQUIRE_CONFIG(laser_projectiles.max_cull_distance >= laser_projectiles.min_cull_distance,
                    "laser_projectiles cull distance range is invalid");

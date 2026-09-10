@@ -37,17 +37,6 @@ class FEntityOverlayVS final : public FGlobalShader {
     SHADER_PARAMETER(float, ObjectiveBarHeightScale)
     SHADER_PARAMETER(float, ObjectiveFramePixels)
     SHADER_PARAMETER(float, ScreenEdgePaddingPixels)
-    SHADER_PARAMETER(float, SoftTargetRadiusPixels)
-    SHADER_PARAMETER(float, SoftTargetBracketStartRadiusMultiplier)
-    SHADER_PARAMETER(float, SoftTargetRangeProgress)
-    SHADER_PARAMETER(float, SoftTargetPulse)
-    SHADER_PARAMETER(float, SoftTargetVisibility)
-    SHADER_PARAMETER(float, SoftTargetInRange)
-    SHADER_PARAMETER(float, FadingSoftTargetRadiusPixels)
-    SHADER_PARAMETER(float, FadingSoftTargetRangeProgress)
-    SHADER_PARAMETER(float, FadingSoftTargetVisibility)
-    SHADER_PARAMETER(float, FadingSoftTargetInRange)
-    SHADER_PARAMETER(float, GlowPaddingPixels)
     SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FEntityOverlayInstance>, Instances)
     END_SHADER_PARAMETER_STRUCT()
 
@@ -67,16 +56,10 @@ class FEntityOverlayPS final : public FGlobalShader {
     SHADER_PARAMETER(float, MaximumInsetHeightRatio)
     SHADER_PARAMETER(float, ObjectiveFramePixels)
     SHADER_PARAMETER(float, TimeSeconds)
-    SHADER_PARAMETER(float, SoftTargetBracketStartRadiusMultiplier)
-    SHADER_PARAMETER(float, SoftTargetOpacity)
-    SHADER_PARAMETER(float, SoftTargetGlowOpacity)
-    SHADER_PARAMETER(float, SoftTargetPulseOpacityBoost)
     SHADER_PARAMETER(FVector4f, BackgroundColor)
     SHADER_PARAMETER(FVector4f, FillColor)
     SHADER_PARAMETER(FVector4f, DefendObjectiveColor)
     SHADER_PARAMETER(FVector4f, DestroyObjectiveColor)
-    SHADER_PARAMETER(FVector4f, SoftTargetNeutralColor)
-    SHADER_PARAMETER(FVector4f, SoftTargetInRangeColor)
     END_SHADER_PARAMETER_STRUCT()
 
     static auto ShouldCompilePermutation(FGlobalShaderPermutationParameters const& parameters)
@@ -85,31 +68,6 @@ class FEntityOverlayPS final : public FGlobalShader {
     }
 };
 
-class FEntityOverlayGlowPS final : public FGlobalShader {
-  public:
-    DECLARE_GLOBAL_SHADER(FEntityOverlayGlowPS);
-    SHADER_USE_PARAMETER_STRUCT(FEntityOverlayGlowPS, FGlobalShader);
-
-    BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-    SHADER_PARAMETER(FIntVector4, ViewRect)
-    SHADER_PARAMETER(float, SoftTargetBracketStartRadiusMultiplier)
-    SHADER_PARAMETER(float, GlowPaddingPixels)
-    SHADER_PARAMETER(FVector4f, GlowFalloff)
-    SHADER_PARAMETER(float, GlowIntensity)
-    SHADER_PARAMETER(float, PreserveCorePixels)
-    SHADER_PARAMETER_RDG_TEXTURE(Texture2D, GlowCoreTexture)
-    END_SHADER_PARAMETER_STRUCT()
-
-    static auto ShouldCompilePermutation(FGlobalShaderPermutationParameters const& parameters)
-        -> bool {
-        return IsFeatureLevelSupported(parameters.Platform, ERHIFeatureLevel::SM5);
-    }
-};
-
-IMPLEMENT_GLOBAL_SHADER(FEntityOverlayGlowPS,
-                        "/Plugin/SandboxUI/Private/EntityOverlay/EntityOverlay.usf",
-                        "entity_overlay_glow_ps",
-                        SF_Pixel);
 IMPLEMENT_GLOBAL_SHADER(FEntityOverlayVS,
                         "/Plugin/SandboxUI/Private/EntityOverlay/EntityOverlay.usf",
                         "entity_overlay_vs",
@@ -125,30 +83,14 @@ SHADER_PARAMETER_STRUCT_INCLUDE(FEntityOverlayPS::FParameters, PS)
 RENDER_TARGET_BINDING_SLOTS()
 END_SHADER_PARAMETER_STRUCT()
 
-BEGIN_SHADER_PARAMETER_STRUCT(FEntityOverlayGlowPassParameters, )
-SHADER_PARAMETER_STRUCT_INCLUDE(FEntityOverlayVS::FParameters, VS)
-SHADER_PARAMETER_STRUCT_INCLUDE(FEntityOverlayGlowPS::FParameters, PS)
-RENDER_TARGET_BINDING_SLOTS()
-END_SHADER_PARAMETER_STRUCT()
-
 void execute_graph(FRHICommandListImmediate& rhi_command_list,
                    FEntityOverlayFrame const& frame,
                    FEntityOverlayView const& view,
                    FEntityOverlayStyle const& style,
-                   FTextureRHIRef const& output_texture_rhi,
-                   FTextureRHIRef const& glow_texture_rhi = {}) {
+                   FTextureRHIRef const& output_texture_rhi) {
     FRDGBuilder graph_builder{rhi_command_list};
     auto const output_texture{graph_builder.RegisterExternalTexture(
         CreateRenderTarget(output_texture_rhi, TEXT("EntityOverlay.Output")))};
-    auto const glow_texture{glow_texture_rhi.IsValid()
-                                ? graph_builder.RegisterExternalTexture(CreateRenderTarget(
-                                      glow_texture_rhi, TEXT("EntityOverlay.Glow")))
-                                : nullptr};
-    if (glow_texture != nullptr) {
-        AddClearRenderTargetPass(graph_builder, glow_texture, FLinearColor::Transparent);
-        graph_builder.SetTextureAccessFinal(glow_texture, ERHIAccess::SRVMask);
-    }
-
     if (frame.instances.IsEmpty()) {
         AddClearRenderTargetPass(graph_builder, output_texture, FLinearColor::Transparent);
         graph_builder.SetTextureAccessFinal(output_texture, ERHIAccess::SRVMask);
@@ -165,7 +107,6 @@ void execute_graph(FRHICommandListImmediate& rhi_command_list,
                                frame.instances.Num() * sizeof(FEntityOverlayInstance),
                                ERDGInitialDataFlags::NoCopy)};
     auto* const parameters{graph_builder.AllocParameters<FEntityOverlayPassParameters>()};
-    parameters->VS.GlowPaddingPixels = 0.0f;
     parameters->VS.ViewProjection = view.view_projection;
     parameters->VS.CameraOrigin = view.camera_origin;
     parameters->VS.OutputSize = view.output_size;
@@ -183,38 +124,15 @@ void execute_graph(FRHICommandListImmediate& rhi_command_list,
         FMath::Clamp(style.objective_bar_height_scale, 1.0f, 2.0f);
     parameters->VS.ObjectiveFramePixels = FMath::Max(style.objective_frame_pixels, 0.0f);
     parameters->VS.ScreenEdgePaddingPixels = FMath::Max(style.screen_edge_padding_pixels, 0.0f);
-    parameters->VS.SoftTargetRadiusPixels = FMath::Max(frame.soft_target_radius_pixels, 1.0f);
-    parameters->VS.SoftTargetBracketStartRadiusMultiplier =
-        FMath::Max(style.soft_target_bracket_start_radius_multiplier, 1.0f);
-    parameters->VS.SoftTargetRangeProgress =
-        FMath::Clamp(frame.soft_target_range_progress, 0.0f, 1.0f);
-    parameters->VS.SoftTargetPulse = FMath::Clamp(frame.soft_target_pulse, 0.0f, 1.0f);
-    parameters->VS.SoftTargetVisibility = FMath::Clamp(frame.soft_target_visibility, 0.0f, 1.0f);
-    parameters->VS.SoftTargetInRange = frame.soft_target_in_range ? 1.0f : 0.0f;
-    parameters->VS.FadingSoftTargetRadiusPixels =
-        FMath::Max(frame.fading_soft_target_radius_pixels, 1.0f);
-    parameters->VS.FadingSoftTargetRangeProgress =
-        FMath::Clamp(frame.fading_soft_target_range_progress, 0.0f, 1.0f);
-    parameters->VS.FadingSoftTargetVisibility =
-        FMath::Clamp(frame.fading_soft_target_visibility, 0.0f, 1.0f);
-    parameters->VS.FadingSoftTargetInRange = frame.fading_soft_target_in_range ? 1.0f : 0.0f;
     parameters->VS.Instances = graph_builder.CreateSRV(instance_buffer);
     parameters->PS.InsetPixels = style.inset_pixels;
     parameters->PS.MaximumInsetHeightRatio = FMath::Max(style.maximum_inset_height_ratio, 0.0f);
     parameters->PS.ObjectiveFramePixels = FMath::Max(style.objective_frame_pixels, 0.0f);
     parameters->PS.TimeSeconds = FMath::Fmod(static_cast<float>(FPlatformTime::Seconds()), 1024.0f);
-    parameters->PS.SoftTargetBracketStartRadiusMultiplier =
-        FMath::Max(style.soft_target_bracket_start_radius_multiplier, 1.0f);
-    parameters->PS.SoftTargetOpacity = FMath::Clamp(style.soft_target_opacity, 0.0f, 1.0f);
-    parameters->PS.SoftTargetGlowOpacity = FMath::Clamp(style.soft_target_glow_opacity, 0.0f, 1.0f);
-    parameters->PS.SoftTargetPulseOpacityBoost =
-        FMath::Clamp(style.soft_target_pulse_opacity_boost, 0.0f, 1.0f);
     parameters->PS.BackgroundColor = FVector4f{style.background_color};
     parameters->PS.FillColor = FVector4f{style.fill_color};
     parameters->PS.DefendObjectiveColor = FVector4f{style.defend_objective_color};
     parameters->PS.DestroyObjectiveColor = FVector4f{style.destroy_objective_color};
-    parameters->PS.SoftTargetNeutralColor = FVector4f{style.soft_target_neutral_color};
-    parameters->PS.SoftTargetInRangeColor = FVector4f{style.soft_target_in_range_color};
     parameters->RenderTargets[0] =
         FRenderTargetBinding{output_texture, ERenderTargetLoadAction::EClear};
 
@@ -249,68 +167,6 @@ void execute_graph(FRHICommandListImmediate& rhi_command_list,
             command_list.DrawPrimitive(0, 2, instance_count);
         });
 
-    auto const& glow{style.soft_target_glow};
-    bool const has_glow{
-        glow.intensity > 0.0f &&
-        ((frame.soft_target_in_range && frame.soft_target_visibility > 0.0f) ||
-         (frame.fading_soft_target_in_range && frame.fading_soft_target_visibility > 0.0f))};
-    if (glow_texture != nullptr && has_glow) {
-        auto* const glow_parameters{
-            graph_builder.AllocParameters<FEntityOverlayGlowPassParameters>()};
-        glow_parameters->VS = parameters->VS;
-        auto const near_sigma{FMath::Clamp(glow.near_sigma_pixels, 0.5f, 16.0f)};
-        auto const halo_sigma{FMath::Clamp(glow.halo_sigma_pixels, 0.5f, 32.0f)};
-        auto const padding{FMath::Max(32.0f, 4.0f * FMath::Max(near_sigma, halo_sigma))};
-        glow_parameters->VS.GlowPaddingPixels = padding;
-        glow_parameters->PS.ViewRect = parameters->VS.ViewRect;
-        glow_parameters->PS.SoftTargetBracketStartRadiusMultiplier =
-            parameters->VS.SoftTargetBracketStartRadiusMultiplier;
-        glow_parameters->PS.GlowPaddingPixels = padding;
-        glow_parameters->PS.GlowFalloff = FVector4f{near_sigma,
-                                                    halo_sigma,
-                                                    FMath::Max(glow.near_weight, 0.0f),
-                                                    FMath::Max(glow.halo_weight, 0.0f)};
-        glow_parameters->PS.GlowIntensity = glow.intensity;
-        glow_parameters->PS.PreserveCorePixels = glow.preserve_core_pixels ? 1.0f : 0.0f;
-        glow_parameters->PS.GlowCoreTexture = output_texture;
-        glow_parameters->RenderTargets[0] =
-            FRenderTargetBinding{glow_texture, ERenderTargetLoadAction::ELoad};
-        auto const glow_shader{
-            TShaderMapRef<FEntityOverlayGlowPS>{GetGlobalShaderMap(GMaxRHIFeatureLevel)}};
-        graph_builder.AddPass(
-            RDG_EVENT_NAME("EntityOverlay.Glow"),
-            glow_parameters,
-            ERDGPassFlags::Raster,
-            [glow_parameters,
-             vertex_shader,
-             glow_shader,
-             instance_count,
-             output_size = view.output_size](FRDGAsyncTask, FRHICommandList& command_list) {
-                FGraphicsPipelineStateInitializer pipeline_state;
-                command_list.ApplyCachedRenderTargets(pipeline_state);
-                pipeline_state.BlendState =
-                    TStaticBlendState<CW_RED, BO_Add, BF_One, BF_One>::GetRHI();
-                pipeline_state.RasterizerState =
-                    TStaticRasterizerState<FM_Solid, CM_None>::GetRHI();
-                pipeline_state.DepthStencilState =
-                    TStaticDepthStencilState<false, CF_Always>::GetRHI();
-                pipeline_state.BoundShaderState.VertexDeclarationRHI =
-                    GEmptyVertexDeclaration.VertexDeclarationRHI;
-                pipeline_state.BoundShaderState.VertexShaderRHI = vertex_shader.GetVertexShader();
-                pipeline_state.BoundShaderState.PixelShaderRHI = glow_shader.GetPixelShader();
-                pipeline_state.PrimitiveType = PT_TriangleList;
-                SetGraphicsPipelineState(command_list, pipeline_state, 0);
-                command_list.SetViewport(0.0f, 0.0f, 0.0f, output_size.X, output_size.Y, 1.0f);
-                command_list.SetStreamSource(0, nullptr, 0);
-                SetShaderParameters(command_list,
-                                    vertex_shader,
-                                    vertex_shader.GetVertexShader(),
-                                    glow_parameters->VS);
-                SetShaderParameters(
-                    command_list, glow_shader, glow_shader.GetPixelShader(), glow_parameters->PS);
-                command_list.DrawPrimitive(0, 2, instance_count);
-            });
-    }
     graph_builder.SetTextureAccessFinal(output_texture, ERHIAccess::SRVMask);
     graph_builder.Execute();
 }
@@ -319,8 +175,7 @@ void execute_graph(FRHICommandListImmediate& rhi_command_list,
 void FEntityOverlayRenderer::render(FEntityOverlayFrameStoreConstPtr frame_store,
                                     FEntityOverlayView const& view,
                                     FEntityOverlayStyle const& style,
-                                    FTextureRenderTargetResource* const output_resource,
-                                    FTextureRenderTargetResource* const glow_resource) const {
+                                    FTextureRenderTargetResource* const output_resource) const {
     check(IsInGameThread());
     TRACE_CPUPROFILER_EVENT_SCOPE(EntityOverlay::PrepareUpload);
     if (!frame_store.IsValid() || !view.is_valid() || output_resource == nullptr) {
@@ -330,7 +185,7 @@ void FEntityOverlayRenderer::render(FEntityOverlayFrameStoreConstPtr frame_store
 
     auto const* const frame{&frame_store->current()};
     ENQUEUE_RENDER_COMMAND(RenderEntityOverlay)
-    ([frame_store = MoveTemp(frame_store), frame, view, style, output_resource, glow_resource](
+    ([frame_store = MoveTemp(frame_store), frame, view, style, output_resource](
          FRHICommandListImmediate& rhi_command_list) {
         static_cast<void>(frame_store);
         auto const output_texture_rhi{output_resource->GetRenderTargetTexture()};
@@ -341,12 +196,7 @@ void FEntityOverlayRenderer::render(FEntityOverlayFrameStoreConstPtr frame_store
             return;
         }
         ml::ui::entity_overlay::execute_graph(
-            rhi_command_list,
-            *frame,
-            view,
-            style,
-            output_texture_rhi,
-            glow_resource != nullptr ? glow_resource->GetRenderTargetTexture() : FTextureRHIRef{});
+            rhi_command_list, *frame, view, style, output_texture_rhi);
     });
 }
 

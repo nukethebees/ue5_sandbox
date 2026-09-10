@@ -305,36 +305,4 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("World units per pixel shrink as the target approaches"),
                              nearer.world_units_per_pixel < distant.world_units_per_pixel);
     }
-
-    TEST_METHOD(MarksActiveAndFadingOverlayInstances)
-    {
-        ml::entity_registry::EntityData entities;
-        add_entity(entities, {10.0f, 0.0f, 0.0f}, 20, ETestEntityType::Turret);
-        add_entity(entities, {20.0f, 0.0f, 0.0f}, 20, ETestEntityType::Turret);
-        add_entity(entities, {30.0f, 0.0f, 0.0f}, 20, ETestEntityType::Turret);
-
-        FEntityOverlayCollector collector;
-        TArray<FEntityOverlayInstance> output;
-        TArray<EEntityOverlayObjectiveRole> objective_roles;
-        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.alive.Num());
-        static_cast<void>(collect_entity_overlay_instances(make_view(entities),
-                                                           objective_roles,
-                                                           {},
-                                                           {5000, 50, 20},
-                                                           FVector3f::ZeroVector,
-                                                           100.0f,
-                                                           output,
-                                                           collector,
-                                                           1,
-                                                           2));
-
-        TestRunner->TestFalse(TEXT("Unselected instance is unmarked"), output[0].is_soft_target());
-        TestRunner->TestTrue(TEXT("Selected instance is marked"), output[1].is_soft_target());
-        TestRunner->TestEqual(TEXT("Selected instance is active"),
-                              output[1].soft_target_role(),
-                              EEntityOverlaySoftTargetRole::Active);
-        TestRunner->TestEqual(TEXT("Previous instance is fading"),
-                              output[2].soft_target_role(),
-                              EEntityOverlaySoftTargetRole::Fading);
-    }
 };

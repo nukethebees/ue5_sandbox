@@ -32,8 +32,11 @@ class SPACEGAMEPRESENTATION_API USimulationHudWidget : public UUserWidget {
 
     void set_entity_overlay_frame_store(FEntityOverlayFrameStoreConstPtr frame_store);
     void set_entity_overlay_style(FEntityOverlayStyle const& style);
-    [[nodiscard]] auto get_entity_overlay_style() const -> FEntityOverlayStyle const& {
-        return entity_overlay_style_;
+    [[nodiscard]] auto get_soft_target_neutral_colour() const -> FLinearColor {
+        return entity_overlay_soft_target_neutral_colour_;
+    }
+    [[nodiscard]] auto get_soft_target_in_range_colour() const -> FLinearColor {
+        return entity_overlay_soft_target_in_range_colour_;
     }
     [[nodiscard]] auto try_get_entity_overlay_view(FEntityOverlayView& view) const -> bool;
   protected:

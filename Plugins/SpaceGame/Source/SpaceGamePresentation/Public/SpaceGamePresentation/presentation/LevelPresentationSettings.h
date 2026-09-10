@@ -5,13 +5,6 @@
 class UMaterialInterface;
 class UStaticMesh;
 
-UENUM(BlueprintType)
-enum class ESoftTargetRenderMode : uint8 {
-    Slate,
-    World3D,
-    Both,
-};
-
 USTRUCT(BlueprintType)
 struct FEntityOverlaySettings {
     GENERATED_BODY()
@@ -88,11 +81,6 @@ struct FEntityOverlaySettings {
     UPROPERTY(EditAnywhere,
               Category = "Entity Overlay|Soft Target",
               meta = (ClampMin = "0.0", ClampMax = "1.0"))
-    float soft_target_glow_opacity{0.045f};
-
-    UPROPERTY(EditAnywhere,
-              Category = "Entity Overlay|Soft Target",
-              meta = (ClampMin = "0.0", ClampMax = "1.0"))
     float soft_target_pulse_opacity_boost{0.08f};
 
     UPROPERTY(EditAnywhere,
@@ -105,13 +93,10 @@ struct FEntityOverlaySettings {
               meta = (ClampMin = "0.0", Units = "s"))
     float soft_target_fade_out_duration{0.15f};
 
-    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target|World")
-    ESoftTargetRenderMode soft_target_render_mode{ESoftTargetRenderMode::Slate};
-
-    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target|World")
+    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target")
     TObjectPtr<UStaticMesh> soft_target_world_mesh{nullptr};
 
-    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target|World")
+    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target")
     TObjectPtr<UMaterialInterface> soft_target_world_material{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Entity Overlay")

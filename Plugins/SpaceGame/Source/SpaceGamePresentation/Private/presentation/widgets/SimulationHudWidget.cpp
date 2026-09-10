@@ -128,8 +128,6 @@ void USimulationHudWidget::apply_entity_overlay_colours() {
     entity_overlay_style_.fill_color = entity_overlay_fill_colour_;
     entity_overlay_style_.defend_objective_color = entity_overlay_defend_colour_;
     entity_overlay_style_.destroy_objective_color = entity_overlay_destroy_colour_;
-    entity_overlay_style_.soft_target_neutral_color = entity_overlay_soft_target_neutral_colour_;
-    entity_overlay_style_.soft_target_in_range_color = entity_overlay_soft_target_in_range_colour_;
     if (entity_overlay_widget_.IsValid()) {
         entity_overlay_widget_->set_style(entity_overlay_style_);
     }

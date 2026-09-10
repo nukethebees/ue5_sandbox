@@ -12,8 +12,7 @@ class FEntityOverlayRenderer {
     void render(FEntityOverlayFrameStoreConstPtr frame_store,
                 FEntityOverlayView const& view,
                 FEntityOverlayStyle const& style,
-                FTextureRenderTargetResource* output_resource,
-                FTextureRenderTargetResource* glow_resource = nullptr) const;
+                FTextureRenderTargetResource* output_resource) const;
 };
 
 [[nodiscard]] auto measure_entity_overlay_gpu(FRHICommandListImmediate& rhi_command_list,

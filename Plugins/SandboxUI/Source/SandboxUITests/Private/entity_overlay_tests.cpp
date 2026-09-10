@@ -114,30 +114,4 @@ TEST_CLASS(EntityOverlayCollector, "SandboxUI.UnitTests")
         TestRunner->TestEqual(TEXT("Source ordering is retained"), output[2].health, 0.75f);
         TestRunner->TestEqual(TEXT("Source radius is retained"), output[2].world_radius, 30.0f);
     }
-
-    TEST_METHOD(PacksSoftTargetWithoutChangingOtherInstances)
-    {
-        FEntityOverlayCollector collector;
-        TArray<FEntityOverlayInstance> output;
-        collector.begin(FVector3f::ZeroVector, 100.0f, output);
-
-        static_cast<void>(collector.try_add({1.0f, 0.0f, 0.0f}, 1.0f, 10.0f));
-        static_cast<void>(collector.try_add({2.0f, 0.0f, 0.0f},
-                                            1.0f,
-                                            10.0f,
-                                            EEntityOverlayObjectiveRole::Destroy,
-                                            false,
-                                            EEntityOverlaySoftTargetRole::Active));
-
-        TestRunner->TestFalse(TEXT("Ordinary instance is not a soft target"),
-                              output[0].is_soft_target());
-        TestRunner->TestTrue(TEXT("Selected instance is a soft target"),
-                             output[1].is_soft_target());
-        TestRunner->TestEqual(TEXT("Selected instance retains its active role"),
-                              output[1].soft_target_role(),
-                              EEntityOverlaySoftTargetRole::Active);
-        TestRunner->TestEqual(TEXT("Objective role remains packed"),
-                              output[1].display_data & 0x3u,
-                              static_cast<uint32>(EEntityOverlayObjectiveRole::Destroy));
-    }
 };
