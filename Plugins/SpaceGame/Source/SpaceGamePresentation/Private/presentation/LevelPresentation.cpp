@@ -39,6 +39,11 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     capital_ship_fighters.set_actor_config(&config.fighters);
     turrets.set_actor_config(&config.turrets);
     spinners.set_actor_config(&config.tube_spinners);
+
+    auto const ValidateOptionalAssets{
+        [](auto const&... systems) { (systems.ValidateOptionalAssets(), ...); }};
+    ValidateOptionalAssets(capital_ships, turrets);
+
     update_views(view, false);
     last_frame_sequence_ = view.frame_sequence;
     lasers.player_colours_ =

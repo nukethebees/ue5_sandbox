@@ -19,6 +19,7 @@ struct SPACEGAMEPRESENTATION_API FTurretPresentation {
     void set_actor_config(FTurretConfig const* new_config) noexcept;
   private:
     auto view() const -> FTurretReadView const& { return view_; }
+    void ValidateOptionalAssets() const;
     void clear_runtime_state_presentation();
     void begin_play_presentation(TArray<FTransform> initial_transforms);
     void update_visual_data();

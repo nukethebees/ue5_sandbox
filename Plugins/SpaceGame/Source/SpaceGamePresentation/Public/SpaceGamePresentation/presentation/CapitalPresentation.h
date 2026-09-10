@@ -22,6 +22,7 @@ struct SPACEGAMEPRESENTATION_API FCapitalPresentation {
   private:
     auto view() const -> FCapitalReadView const& { return view_; }
     void set_niagara_spawner(FDelayedNiagaraSpawns& spawner);
+    void ValidateOptionalAssets() const;
 
     void clear_runtime_state_presentation();
     void begin_play_presentation();

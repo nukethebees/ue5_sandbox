@@ -25,6 +25,16 @@ void FTurretPresentation::set_actor_config(FTurretConfig const* const new_config
     actor_config = new_config;
 }
 
+void FTurretPresentation::ValidateOptionalAssets() const {
+    check(actor_config);
+
+    if (!IsValid(actor_config->death_effect)) {
+        UE_LOG(LogSandbox,
+               Warning,
+               TEXT("FTurretPresentation optional asset is missing: death_effect"));
+    }
+}
+
 void FTurretPresentation::clear_runtime_state_presentation() {
     instances->ClearInstances();
     ismc_transforms.Reset();
@@ -136,9 +146,6 @@ void FTurretPresentation::trigger_death_effects() {
     auto* explosion_system{actor_config->death_effect.Get()};
 
     if (!IsValid(explosion_system)) {
-        UE_LOG(LogSandbox,
-               Warning,
-               TEXT("FTurretPresentation::trigger_death_effects: death_effect is nullptr"));
         return;
     }
 

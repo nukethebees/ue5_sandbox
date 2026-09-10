@@ -32,6 +32,21 @@ void FCapitalPresentation::set_niagara_spawner(FDelayedNiagaraSpawns& spawner) {
     niagara_spawner = &spawner;
 }
 
+void FCapitalPresentation::ValidateOptionalAssets() const {
+    check(actor_config);
+
+    if (actor_config->n_small_explosions > 0 && !IsValid(actor_config->small_death_explosion)) {
+        UE_LOG(LogSandbox,
+               Warning,
+               TEXT("FCapitalPresentation optional asset is missing: small_death_explosion"));
+    }
+    if (!IsValid(actor_config->main_death_explosion)) {
+        UE_LOG(LogSandbox,
+               Warning,
+               TEXT("FCapitalPresentation optional asset is missing: main_death_explosion"));
+    }
+}
+
 void FCapitalPresentation::clear_runtime_state_presentation() {
     instances->ClearInstances();
 }
@@ -138,19 +153,11 @@ void FCapitalPresentation::trigger_death_effects() {
     auto const n{deaths.Num()};
     auto* const small_death_explosion{actor_config->small_death_explosion.Get()};
     auto* const main_death_explosion{actor_config->main_death_explosion.Get()};
+    auto const has_small_death_explosion{IsValid(small_death_explosion)};
+    auto const has_main_death_explosion{IsValid(main_death_explosion)};
 
-    if (!IsValid(small_death_explosion)) {
-        UE_LOG(
-            LogSandbox,
-            Warning,
-            TEXT("FCapitalPresentation::trigger_death_effects: small_death_explosion is nullptr"));
-        return;
-    }
-    if (!IsValid(main_death_explosion)) {
-        UE_LOG(
-            LogSandbox,
-            Warning,
-            TEXT("FCapitalPresentation::trigger_death_effects: main_death_explosion is nullptr"));
+    if ((!has_small_death_explosion || actor_config->n_small_explosions <= 0) &&
+        !has_main_death_explosion) {
         return;
     }
     if (!niagara_spawner) {
@@ -167,7 +174,7 @@ void FCapitalPresentation::trigger_death_effects() {
     auto main_explosion_delay{actor_config->large_explosion_delay};
     if (actor_config->main_explosion_delay_mode ==
             ECapitalShipMainExplosionDelayMode::AfterSmallExplosions &&
-        n_small_explosions > 1) {
+        has_small_death_explosion && n_small_explosions > 1) {
         main_explosion_delay += n_small_explosions * (n_small_explosions - 1);
     }
 
@@ -184,23 +191,28 @@ void FCapitalPresentation::trigger_death_effects() {
             previous_batch = death.batch_index;
         }
         FVector const base_location{death.location};
-        for (int32 explosion_index{0}; explosion_index < n_small_explosions; ++explosion_index) {
-            if (explosion_index > 0) {
-                current_delay += time_between_explosions;
+        if (has_small_death_explosion) {
+            for (int32 explosion_index{0}; explosion_index < n_small_explosions;
+                 ++explosion_index) {
+                if (explosion_index > 0) {
+                    current_delay += time_between_explosions;
+                }
+                auto const offset{FVector{
+                    FMath::FRandRange(min_range.X, max_range.X),
+                    FMath::FRandRange(min_range.Y, max_range.Y),
+                    FMath::FRandRange(min_range.Z, max_range.Z),
+                }};
+                spawn_systems.Add(small_death_explosion);
+                spawn_locations.Add(base_location + offset);
+                spawn_delays.Add(current_delay);
             }
-            auto const offset{FVector{
-                FMath::FRandRange(min_range.X, max_range.X),
-                FMath::FRandRange(min_range.Y, max_range.Y),
-                FMath::FRandRange(min_range.Z, max_range.Z),
-            }};
-            spawn_systems.Add(small_death_explosion);
-            spawn_locations.Add(base_location + offset);
-            spawn_delays.Add(current_delay);
         }
 
-        spawn_systems.Add(main_death_explosion);
-        spawn_locations.Add(base_location);
-        spawn_delays.Add(main_explosion_delay);
+        if (has_main_death_explosion) {
+            spawn_systems.Add(main_death_explosion);
+            spawn_locations.Add(base_location);
+            spawn_delays.Add(main_explosion_delay);
+        }
     }
 
     niagara_spawner->add_spawns(spawn_systems, spawn_locations, spawn_delays);
