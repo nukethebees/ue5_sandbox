@@ -3,6 +3,7 @@
 #include <codegen/ast/access_specifier.h>
 #include <codegen/ast/assignment_stmt.h>
 #include <codegen/ast/block.h>
+#include <codegen/ast/block_comment.h>
 #include <codegen/ast/break_stmt.h>
 #include <codegen/ast/cpp_file.h>
 #include <codegen/ast/cpp_type.h>
@@ -19,6 +20,7 @@
 #include <codegen/ast/if_stmt.h>
 #include <codegen/ast/include.h>
 #include <codegen/ast/include_dependencies.h>
+#include <codegen/ast/line_comment.h>
 #include <codegen/ast/member.h>
 #include <codegen/ast/module.h>
 #include <codegen/ast/namespace.h>
@@ -28,6 +30,7 @@
 #include <codegen/ast/raw.h>
 #include <codegen/ast/render_context.h>
 #include <codegen/ast/return_stmt.h>
+#include <codegen/ast/static_assert.h>
 #include <codegen/ast/struct.h>
 #include <codegen/ast/switch_stmt.h>
 #include <codegen/ast/type_dependency.h>

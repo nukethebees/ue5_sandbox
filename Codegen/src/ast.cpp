@@ -33,6 +33,34 @@ auto trim_newlines(std::string value) -> std::string {
     return value;
 }
 
+auto cpp_string_literal(std::string_view const value) -> std::string {
+    std::string result{"\""};
+    for (auto const character : value) {
+        switch (character) {
+            case '\\':
+                result += "\\\\";
+                break;
+            case '"':
+                result += "\\\"";
+                break;
+            case '\n':
+                result += "\\n";
+                break;
+            case '\r':
+                result += "\\r";
+                break;
+            case '\t':
+                result += "\\t";
+                break;
+            default:
+                result += character;
+                break;
+        }
+    }
+    result += '"';
+    return result;
+}
+
 auto default_parameter_passing(std::string_view const spelling) -> ParameterPassing {
     static std::set<std::string_view> const value_types{
         "bool",
@@ -549,6 +577,10 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                 return result + "\n" + context.apply_indent("}");
             } else if constexpr (std::is_same_v<T, BreakStmt>) {
                 return context.apply_indent("break;");
+            } else if constexpr (std::is_same_v<T, LineComment>) {
+                return context.apply_indent("// " + value.text);
+            } else if constexpr (std::is_same_v<T, BlockComment>) {
+                return context.apply_indent("/* " + value.text + " */");
             } else if constexpr (std::is_same_v<T, ExpressionStmt>) {
                 return context.apply_indent(render(value.expression) + ";");
             } else if constexpr (std::is_same_v<T, ReturnStmt>) {
@@ -561,6 +593,10 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
             } else if constexpr (std::is_same_v<T, VariableDeclarationStmt>) {
                 return context.apply_indent(value.type.spelling + " " + value.name + "{" +
                                             render(value.initializer) + "};");
+            } else if constexpr (std::is_same_v<T, StaticAssert>) {
+                auto const message{
+                    value.message.empty() ? "" : ", " + cpp_string_literal(value.message)};
+                return context.apply_indent("static_assert(" + value.condition + message + ");");
             } else if constexpr (std::is_same_v<T, NewLines>) {
                 return std::string(static_cast<std::size_t>(value.count), '\n');
             } else if constexpr (std::is_same_v<T, AccessSpecifier>) {

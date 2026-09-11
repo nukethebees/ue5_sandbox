@@ -48,7 +48,9 @@ add_library(codegen-lib
   src/soa_lowering.cpp
   src/soa_member_resolution.cpp
   src/soa_storage_lowering.cpp
+  src/single_allocation_soa_emission.cpp
   src/single_allocation_soa_lowering.cpp
+  src/single_allocation_soa_model.cpp
   src/native_soa_lowering.cpp
   src/soa_view_lowering.cpp
   src/static_table_lowering.cpp

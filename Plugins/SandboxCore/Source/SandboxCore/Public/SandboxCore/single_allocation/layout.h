@@ -79,13 +79,15 @@ struct ColumnLayout : ColumnLayoutBase {
     using pointer = T*;
     using const_pointer = T const*;
 
-    constexpr explicit ColumnLayout(ColumnLayout const& previous) noexcept
-        : ColumnLayoutBase{previous, sizeof(T), alignof(T)} {}
+    // This intentionally chains same-type columns instead of copying their offsets. A constructor
+    // template alone would lose to an implicitly generated copy constructor.
+    constexpr explicit ColumnLayout(ColumnLayout const& previous_column) noexcept
+        : ColumnLayoutBase{previous_column, sizeof(T), alignof(T)} {}
 
-    template <typename Previous>
-        requires (!std::is_same_v<std::remove_cvref_t<Previous>, ColumnLayout>)
-    constexpr explicit ColumnLayout(Previous& previous) noexcept
-        : ColumnLayoutBase{previous, sizeof(T), alignof(T)} {}
+    template <typename PreviousColumn>
+        requires (!std::is_same_v<std::remove_cvref_t<PreviousColumn>, ColumnLayout>)
+    constexpr explicit ColumnLayout(PreviousColumn& previous_column) noexcept
+        : ColumnLayoutBase{previous_column, sizeof(T), alignof(T)} {}
 
     auto operator=(ColumnLayout const&) -> ColumnLayout& = delete;
 };

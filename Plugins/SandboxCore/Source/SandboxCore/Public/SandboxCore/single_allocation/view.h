@@ -1,5 +1,7 @@
 #pragma once
 
+#include <SandboxCore/single_allocation/layout.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -62,7 +64,9 @@ struct CompactViewState {
     template <bool, auto>
     friend struct CompactViewState;
     auto capacity_blocks() const -> std::size_t {
-        return state_ ? static_cast<std::size_t>(state_->capacity_ / 64) : 0;
+        return state_ ? static_cast<std::size_t>(state_->capacity_ /
+                                                 single_allocation_layout::capacity_granularity)
+                      : 0;
     }
     template <typename T>
     auto column_data(std::size_t byte_offset) const -> Element<T>* {
