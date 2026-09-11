@@ -34,7 +34,7 @@ void FSandboxEditorModule::StartupModule() {
         register_menu_extensions();
     } else {
         // Delay registration until ToolMenus is ready
-        FCoreDelegates::OnPostEngineInit.AddLambda([this]() {
+        FCoreDelegates::GetOnPostEngineInit().AddLambda([this]() {
             if (UToolMenus::IsToolMenuUIEnabled()) {
                 register_menu_extensions();
             }

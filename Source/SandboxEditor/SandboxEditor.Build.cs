@@ -20,17 +20,27 @@ public class SandboxEditor : ModuleRules
                 "MaterialGen requires Win64 x64 with the dynamic release CRT.");
         }
 
-        string materialGenLibrary = System.Environment.GetEnvironmentVariable("MATERIAL_GEN_LIBRARY");
-        if (string.IsNullOrEmpty(materialGenLibrary) || !File.Exists(materialGenLibrary))
+        string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", ".."));
+        string nativeMaterialGenRoot = Path.Combine(repositoryRoot, "native", "material_gen");
+        string nativeMaterialGenLibrary = Path.Combine(
+            repositoryRoot,
+            "Binaries",
+            "Native",
+            "MaterialGen",
+            Target.Platform.ToString(),
+            Target.Configuration.ToString(),
+            "sandbox_material_gen.lib");
+        PublicSystemIncludePaths.Add(Path.Combine(nativeMaterialGenRoot, "include"));
+        PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "Codegen", "sexpr", "include"));
+        if (File.Exists(nativeMaterialGenLibrary))
         {
-            throw new BuildException(
-                "MaterialGen expected a CMake-built library through MATERIAL_GEN_LIBRARY. " +
-                "Build SandboxEditor through the repository CMake presets.");
+            PublicAdditionalLibraries.Add(nativeMaterialGenLibrary);
         }
-
-        PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "../../native/material_gen/include"));
-        PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "../../Codegen/sexpr/include"));
-        PublicAdditionalLibraries.Add(materialGenLibrary);
+        else
+        {
+            PublicSystemLibraryPaths.Add(Path.GetDirectoryName(nativeMaterialGenLibrary)!);
+            PublicSystemLibraries.Add(Path.GetFileName(nativeMaterialGenLibrary));
+        }
 
         // Core dependencies
         PublicDependencyModuleNames.AddRange(new string[]

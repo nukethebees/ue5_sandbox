@@ -21,25 +21,44 @@ target_link_libraries(material-gen-tests PRIVATE sandbox::codegen_warnings)
 add_test(NAME MaterialGenTests COMMAND material-gen-tests)
 set_tests_properties(MaterialGenTests PROPERTIES LABELS "unit;all;codegen")
 
-if(WIN32 AND NOT SANDBOX_CODEGEN_ONLY)
-  add_library(material-gen-unreal STATIC
+if(NOT SANDBOX_CODEGEN_ONLY)
+  foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
+    file(MAKE_DIRECTORY
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/MaterialGen/${UE_PLATFORM}/${configuration}"
+    )
+  endforeach()
+
+  add_library(sandbox-material-gen STATIC
     ${MATERIAL_GEN_SOURCES}
     "${PROJECT_SOURCE_DIR}/Codegen/sexpr/src/lexer.cpp"
     "${PROJECT_SOURCE_DIR}/Codegen/sexpr/src/reader.cpp"
   )
-  target_compile_features(material-gen-unreal PUBLIC cxx_std_23)
-  target_include_directories(material-gen-unreal PUBLIC
+  target_compile_features(sandbox-material-gen PUBLIC cxx_std_23)
+  target_include_directories(sandbox-material-gen PUBLIC
     include
     "${PROJECT_SOURCE_DIR}/Codegen/sexpr/include"
   )
-  set_property(TARGET material-gen-unreal PROPERTY
-    MSVC_RUNTIME_LIBRARY MultiThreadedDLL
+  target_link_libraries(sandbox-material-gen PRIVATE sandbox::codegen_warnings)
+  set_target_properties(sandbox-material-gen PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/MaterialGen/${UE_PLATFORM}/${UE_CONFIGURATION}"
+    OUTPUT_NAME sandbox_material_gen
   )
-  target_compile_definitions(material-gen-unreal PRIVATE NDEBUG _ITERATOR_DEBUG_LEVEL=0)
-  if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
-    target_compile_options(material-gen-unreal PRIVATE /U_DEBUG)
-  else()
-    target_compile_options(material-gen-unreal PRIVATE -U_DEBUG)
+
+  if(WIN32)
+    if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" AND
+       NOT CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC")
+      message(FATAL_ERROR "sandbox-material-gen requires an MSVC-compatible ABI on Windows.")
+    endif()
+
+    set_target_properties(sandbox-material-gen PROPERTIES
+      MSVC_RUNTIME_LIBRARY MultiThreadedDLL
+    )
+    target_compile_definitions(sandbox-material-gen PRIVATE NDEBUG _ITERATOR_DEBUG_LEVEL=0)
+    if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+      target_compile_options(sandbox-material-gen PRIVATE /U_DEBUG)
+    else()
+      target_compile_options(sandbox-material-gen PRIVATE -U_DEBUG)
+    endif()
   endif()
-  target_link_libraries(material-gen-unreal PRIVATE sandbox::codegen_warnings)
 endif()
