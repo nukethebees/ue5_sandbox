@@ -1,5 +1,7 @@
 #include "SpaceGame/system/GameSubsystem.h"
+
 #include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
+#include "SpaceGameSimulation/memory/GameMemoryBootstrap.h"
 
 #include "persistence/ExistingSaveGameBrowserSource.h"
 
@@ -81,8 +83,13 @@ auto query_platform_capabilities() -> FGameCapabilities {
 /* **************************************** */
 // Lifecycle and services
 /* **************************************** */
+auto UGameSubsystem::get(UGameInstance const* const game_instance) -> UGameSubsystem* {
+    return IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>() : nullptr;
+}
 void UGameSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
+
+    game_memory_ = FGameMemoryBootstrap::create_game_memory();
 
     audio_.initialize(*GetGameInstance());
 
@@ -97,11 +104,10 @@ void UGameSubsystem::Initialize(FSubsystemCollectionBase& collection) {
                TEXT("UGameSubsystem::Initialize: Game settings subsystem is invalid; audio "
                     "will use its default volume."));
     }
-
     collection.InitializeDependency(UGameUiStyleSubsystem::StaticClass());
 
     collection.InitializeDependency(USpaceSaveSubsystem::StaticClass());
-    auto* const save_subsystem{GetGameInstance()->GetSubsystem<USpaceSaveSubsystem>()};
+    auto* const save_subsystem{USpaceSaveSubsystem::get(GetGameInstance())};
     if (!IsValid(save_subsystem)) {
         UE_LOG(LogSandboxSubsystem,
                Error,
@@ -131,7 +137,13 @@ void UGameSubsystem::Deinitialize() {
     audio_.stop_player_ship_ambience();
     audio_.stop_button_audio();
 
+    game_memory_.Reset();
     Super::Deinitialize();
+}
+
+auto UGameSubsystem::get_game_memory() noexcept -> FGameMemory& {
+    check(game_memory_.IsValid());
+    return *game_memory_;
 }
 
 auto UGameSubsystem::get_platform_capabilities() const -> FGameCapabilities const& {

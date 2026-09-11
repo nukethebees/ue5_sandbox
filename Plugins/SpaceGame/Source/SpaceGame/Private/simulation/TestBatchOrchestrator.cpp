@@ -482,6 +482,10 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
         result->telemetry_metadata->detailed_timing = launch_options_.detailed_timing;
         result->telemetry_metadata->stop_when_battle_resolved =
             launch_options_.stop_when_battle_resolved;
+        if (auto* const game_subsystem{ml::ioj::UGameSubsystem::get(GetGameInstance())};
+            IsValid(game_subsystem)) {
+            result->game_memory = &game_subsystem->get_game_memory();
+        }
 
         initial_turret_transforms_ = result->turret_transforms;
         level_simulation_.Emplace(MoveTemp(result.value()));
@@ -572,6 +576,10 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
     }
 
     data.telemetry_metadata = make_level_telemetry_run_metadata(world, mission_definition);
+    if (auto* const game_subsystem{ml::ioj::UGameSubsystem::get(GetGameInstance())};
+        IsValid(game_subsystem)) {
+        data.game_memory = &game_subsystem->get_game_memory();
+    }
     ml::validate_world_fighter_spawn_slots(data, errors);
     if (errors.has_errors()) {
         return false;
@@ -782,8 +790,7 @@ void ATestBatchOrchestrator::handle_level_start_failure(FString message) {
     }
 
     auto* const game_instance{IsValid(world) ? world->GetGameInstance() : nullptr};
-    auto* const subsystem{
-        IsValid(game_instance) ? game_instance->GetSubsystem<ml::ioj::UGameSubsystem>() : nullptr};
+    auto* const subsystem{ml::ioj::UGameSubsystem::get(game_instance)};
     if (IsValid(subsystem)) {
         subsystem->set_level_launch_error(MoveTemp(message));
         if (subsystem->return_to_level_select()) {
@@ -800,8 +807,7 @@ void ATestBatchOrchestrator::load_authored_level() {
 
     auto* const world{GetWorld()};
     auto* const game_instance{IsValid(world) ? world->GetGameInstance() : nullptr};
-    auto* const subsystem{
-        IsValid(game_instance) ? game_instance->GetSubsystem<ml::ioj::UGameSubsystem>() : nullptr};
+    auto* const subsystem{ml::ioj::UGameSubsystem::get(game_instance)};
     if (!IsValid(subsystem)) {
         handle_level_start_failure(TEXT("Cannot load authored level: game subsystem is invalid"));
         return;
@@ -1100,8 +1106,7 @@ void ATestBatchOrchestrator::process_mission_result() {
     bool persisted{};
     if (result->save_results) {
         auto* game_instance{GetGameInstance()};
-        auto* saves{IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>()
-                                           : nullptr};
+        auto* saves{USpaceSaveSubsystem::get(game_instance)};
         if (IsValid(saves)) {
             FScoreRecord const record{
                 .date = FDateTime::Now(),
@@ -1162,8 +1167,7 @@ void ATestBatchOrchestrator::handle_telemetry_persisted(FString run_id, FString 
         return;
     }
     auto* const game_instance{GetGameInstance()};
-    auto* const subsystem{
-        IsValid(game_instance) ? game_instance->GetSubsystem<ml::ioj::UGameSubsystem>() : nullptr};
+    auto* const subsystem{ml::ioj::UGameSubsystem::get(game_instance)};
     if (!IsValid(subsystem)) {
         UE_LOG(LogSandbox, Error, TEXT("Cannot navigate to telemetry: subsystem is unavailable"));
         return;

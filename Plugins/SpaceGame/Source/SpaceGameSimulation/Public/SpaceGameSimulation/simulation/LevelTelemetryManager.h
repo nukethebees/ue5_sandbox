@@ -5,7 +5,7 @@
 #include <SandboxCore/time_series_data.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
-#include <SpaceGameSimulation/telemetry/LevelTelemetryHistory.h>
+#include <SpaceGameSimulation/telemetry/LevelTelemetryBlockHistory.h>
 #include <SpaceGameSimulation/telemetry/LevelTelemetryRunRecord.h>
 
 #include <HAL/Platform.h>
@@ -31,20 +31,21 @@ struct FLevelTelemetryCurrentState {
     uint64 sweep_trace_count{};
 };
 
-struct FLevelTelemetryHistoryConfig {
-    inline static constexpr SIZE_T default_initial_allocation_bytes{10u * 1024u * 1024u};
-    inline static constexpr SIZE_T large_reserve_candidate_bytes{50u * 1024u * 1024u};
-
-    SIZE_T initial_allocation_bytes{default_initial_allocation_bytes};
-};
-
 struct FLevelTelemetryHistoryStats {
-    int32 row_count{};
-    int32 capacity{};
-    int32 allocation_count{};
-    int32 growth_count{};
+    SIZE_T configured_block_bytes{};
+    SIZE_T layout_bytes_per_block{};
+    int32 rows_per_block{};
+    int32 acquired_block_count{};
+    int32 retained_block_count{};
+    int32 peak_block_count{};
+    int32 total_sample_capacity{};
+    SIZE_T total_byte_capacity{};
+    int32 used_sample_count{};
+    SIZE_T used_payload_bytes{};
+    int32 unused_samples_in_final_block{};
+    SIZE_T unused_payload_bytes_in_final_block{};
+    SIZE_T fixed_layout_overhead_bytes{};
     uint64 payload_write_count{};
-    SIZE_T allocated_bytes{};
 };
 
 struct FLevelMissionResult;
@@ -68,6 +69,7 @@ class SPACEGAMESIMULATION_API FLevelTelemetryManager {
                            FTestEntityRegistry const& entity_registry,
                            ml::test_lasers::Simulation const& lasers,
                            ml::FSpatialQueryManager const& spatial_queries,
+                           FGameMemory& game_memory,
                            FLevelTelemetryHistoryConfig history_config = {}) noexcept;
     FLevelTelemetryManager(FLevelTelemetryManager const&) = delete;
     FLevelTelemetryManager(FLevelTelemetryManager&&) = delete;
@@ -128,7 +130,7 @@ class SPACEGAMESIMULATION_API FLevelTelemetryManager {
     void sample_live_series();
     void sample_series();
     void sample_battle_state(bool force = false);
-    auto append_history_row(tick_type completed_tick) -> int32;
+    auto append_history_row(tick_type completed_tick) -> ml::level_telemetry::FHistoryRowsView;
 
     /* **************************************** */
     // Performance windows and finalization
@@ -149,10 +151,9 @@ class SPACEGAMESIMULATION_API FLevelTelemetryManager {
     FTestEntityRegistry const& entity_registry_;
     ml::test_lasers::Simulation const& lasers_;
     ml::FSpatialQueryManager const& spatial_queries_;
-    FLevelTelemetryHistoryConfig history_config_{};
     FLevelTelemetryCurrentState current_state_{};
     FLevelTelemetryCurrentState last_sampled_state_{};
-    ml::level_telemetry::FSingleAllocationHistoryRows history_{};
+    FLevelTelemetryBlockHistory history_;
 
     FLevelTelemetryRunMetadata metadata_{};
     FLevelTelemetryRunCompletion completion_{};
@@ -165,8 +166,6 @@ class SPACEGAMESIMULATION_API FLevelTelemetryManager {
     double run_started_at_{};
     double last_sampled_time_scale_{};
     uint64 payload_write_count_{};
-    int32 allocation_count_{};
-    int32 growth_count_{};
     bool run_recording_{};
     bool run_finalized_{};
     bool run_record_taken_{};

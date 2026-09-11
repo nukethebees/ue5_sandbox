@@ -11,6 +11,7 @@ public class SandboxEditorTests : ModuleRules
         PrivateDependencyModuleNames.AddRange(new string[]
         {
             "SandboxEditor",
+            "SpaceGameSimulation",
             "Core",
             "CoreUObject",
             "Engine",

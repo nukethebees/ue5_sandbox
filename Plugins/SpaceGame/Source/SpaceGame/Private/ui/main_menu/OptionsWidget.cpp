@@ -27,7 +27,7 @@ void UOptionsWidget::NativeOnInitialized() {
         return;
     }
     settings_ = game_instance->GetSubsystem<UGameSettingsSubsystem>();
-    game_ = game_instance->GetSubsystem<UGameSubsystem>();
+    game_ = UGameSubsystem::get(game_instance);
     if (!IsValid(settings_) || !IsValid(game_)) {
         UE_LOG(LogSandboxUI,
                Error,

@@ -89,7 +89,7 @@ auto FPlayerHudLifecycle::initialise(ASpaceGamePlayerController& owner,
     }
 
     hud_widget_ = created_widget;
-    auto* const game_subsystem{owner.GetGameInstance()->GetSubsystem<ml::ioj::UGameSubsystem>()};
+    auto* const game_subsystem{ml::ioj::UGameSubsystem::get(owner.GetGameInstance())};
     if (IsValid(game_subsystem)) {
         created_widget->apply_ui_style(game_subsystem->get_ui_style());
     } else {
@@ -168,8 +168,7 @@ auto FPlayerHudLifecycle::initialise_benchmark(ASpaceGamePlayerController& owner
     }
 
     benchmark_hud_widget_ = created_widget;
-    if (auto* const game_subsystem{
-            owner.GetGameInstance()->GetSubsystem<ml::ioj::UGameSubsystem>()};
+    if (auto* const game_subsystem{ml::ioj::UGameSubsystem::get(owner.GetGameInstance())};
         IsValid(game_subsystem)) {
         created_widget->apply_ui_style(game_subsystem->get_ui_style());
     }

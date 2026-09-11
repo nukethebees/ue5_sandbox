@@ -251,8 +251,7 @@ void UPauseMenuWidget::set_active_tab(EPauseMenuTab const tab) {
 void UPauseMenuWidget::apply_ui_style() {
     FGameUiStyle style;
     auto const* const game_instance{GetGameInstance()};
-    auto const* const subsystem{
-        IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>() : nullptr};
+    auto const* const subsystem{UGameSubsystem::get(game_instance)};
     if (IsValid(subsystem)) {
         style = subsystem->get_ui_style();
     } else {

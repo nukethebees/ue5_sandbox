@@ -24,7 +24,7 @@ void UMainMenuWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
     auto* const game_instance{GetGameInstance()};
-    game_ = IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>() : nullptr;
+    game_ = UGameSubsystem::get(game_instance);
     if (!IsValid(game_)) {
         UE_LOG(LogSandboxUI,
                Warning,

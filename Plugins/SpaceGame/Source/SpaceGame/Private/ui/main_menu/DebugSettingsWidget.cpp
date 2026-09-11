@@ -121,8 +121,8 @@ void UDebugSettingsWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
     auto* const game_instance{GetGameInstance()};
-    game_ = IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>() : nullptr;
-    save_ = IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr;
+    game_ = UGameSubsystem::get(game_instance);
+    save_ = USpaceSaveSubsystem::get(game_instance);
     if (!IsValid(game_)) {
         auto const* const default_theme{GetDefault<USpaceGameUiTheme>()};
         check(IsValid(default_theme));

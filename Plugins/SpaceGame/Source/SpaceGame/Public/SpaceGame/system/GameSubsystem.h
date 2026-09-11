@@ -10,6 +10,8 @@
 
 #include "GameSubsystem.generated.h"
 
+class FGameMemory;
+
 namespace ml::ioj {
 class USpaceGameUiTheme;
 
@@ -130,6 +132,8 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
     virtual void Deinitialize() override;
 
+    static auto get(UGameInstance const* game_instance) -> UGameSubsystem*;
+    auto get_game_memory() noexcept -> FGameMemory&;
     auto get_platform_capabilities() const -> FGameCapabilities const&;
     auto get_save_game_browser() -> FSaveGameBrowser&;
     auto get_audio() -> FGameAudioFacade;
@@ -172,6 +176,7 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     /* **************************************** */
     FGameAudio audio_;
     FGameCapabilities platform_capabilities_;
+    TUniquePtr<FGameMemory> game_memory_{};
     FSaveGameBrowser save_game_browser_;
     TOptional<FPendingLevelDefinition> pending_level_{NullOpt};
     TOptional<FLevelSelectRequest> level_select_request_{NullOpt};

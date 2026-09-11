@@ -431,7 +431,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FLevelTelemetryManagerTest,
 
 struct FLevelTelemetryManagerTestAccess {
     static auto history(FLevelTelemetryManager const& manager)
-        -> ml::level_telemetry::FSingleAllocationHistoryRows const& {
+        -> FLevelTelemetryBlockHistory const& {
         return manager.history_;
     }
 };
@@ -443,12 +443,14 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     ml::FSpatialQueryManager spatial_queries{entity_registry};
     ml::FFrameMemoryResource frame_memory{1024 * 1024};
     ml::test_lasers::Simulation lasers{clock, entity_registry, spatial_queries, frame_memory};
+    FGameMemory game_memory{{.root_capacity_bytes = 2u * 1024u * 1024u}};
     FLevelTelemetryManager telemetry_manager{
         clock,
         entity_registry,
         lasers,
         spatial_queries,
-        {.initial_allocation_bytes = 100u * 1024u},
+        game_memory,
+        {.block_bytes = 100u * 1024u},
     };
 
     telemetry_manager.initialise();
@@ -474,7 +476,7 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               tick_series.active_lasers.num(),
               int32{1});
     auto const& initial_history{FLevelTelemetryManagerTestAccess::history(telemetry_manager)};
-    auto const initial_history_columns{initial_history.get_const_view().columns()};
+    auto const initial_history_columns{initial_history.block_view(0).columns()};
     TestEqual(TEXT("Initialisation merges all telemetry fields into one row"),
               initial_history.num(),
               int32{1});
@@ -513,7 +515,7 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               tick_series.range_query_count.num(),
               int32{1});
     TestEqual(TEXT("An unchanged tick emits no history row"),
-              telemetry_manager.get_history_stats().row_count,
+              telemetry_manager.get_history_stats().used_sample_count,
               int32{1});
 
     clock.completed_ticks = 2;
@@ -527,7 +529,7 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               tick_series.requested_time_scale.last_time(),
               uint64{2});
     auto const time_scale_columns{
-        FLevelTelemetryManagerTestAccess::history(telemetry_manager).get_const_view().columns()};
+        FLevelTelemetryManagerTestAccess::history(telemetry_manager).block_view(0).columns()};
     TestEqual(TEXT("A single changed field emits one additional row"),
               time_scale_columns.num(),
               int32{2});
@@ -636,7 +638,7 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               entity_state.spawned_entities,
               int32{3});
     auto const entity_change_columns{
-        FLevelTelemetryManagerTestAccess::history(telemetry_manager).get_const_view().columns()};
+        FLevelTelemetryManagerTestAccess::history(telemetry_manager).block_view(0).columns()};
     TestEqual(TEXT("Several entity fields changing together emit one row"),
               entity_change_columns.num(),
               int32{2});
@@ -680,13 +682,13 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
         entity_registry,
         lasers,
         spatial_queries,
-        {.initial_allocation_bytes =
-             ml::level_telemetry::FHistoryRowsSingleLayout::layout_bytes(1)},
+        game_memory,
+        {.block_bytes = ml::level_telemetry::FHistoryRowsSingleLayout::layout_bytes(1)},
     };
     clock.initialise({});
     boundary_manager.initialise();
     TestEqual(TEXT("Exact one-block budget reserves 64 rows"),
-              boundary_manager.get_history_stats().capacity,
+              boundary_manager.get_history_stats().total_sample_capacity,
               int32{64});
     for (uint64 tick{1}; tick <= 64; ++tick) {
         clock.completed_ticks = tick;
@@ -694,21 +696,21 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
         boundary_manager.tick();
     }
     TestEqual(TEXT("Appending beyond initial capacity preserves all emitted rows"),
-              boundary_manager.get_history_stats().row_count,
+              boundary_manager.get_history_stats().used_sample_count,
               int32{65});
-    TestEqual(TEXT("Appending beyond initial capacity performs one growth"),
-              boundary_manager.get_history_stats().growth_count,
-              int32{1});
+    TestEqual(TEXT("Appending beyond initial capacity retains two fixed blocks"),
+              boundary_manager.get_history_stats().acquired_block_count,
+              int32{2});
     TestEqual(TEXT("Growth preserves reconstruction through the boundary"),
               boundary_manager.materialize_tick_series().requested_time_scale.num(),
               int32{65});
-    auto const grown_capacity{boundary_manager.get_history_stats().capacity};
+    auto const grown_capacity{boundary_manager.get_history_stats().total_sample_capacity};
     boundary_manager.reset();
     TestEqual(TEXT("Reset clears emitted rows"),
-              boundary_manager.get_history_stats().row_count,
+              boundary_manager.get_history_stats().used_sample_count,
               int32{0});
     TestEqual(TEXT("Reset retains the grown allocation for reuse"),
-              boundary_manager.get_history_stats().capacity,
+              boundary_manager.get_history_stats().total_sample_capacity,
               grown_capacity);
 
     return true;

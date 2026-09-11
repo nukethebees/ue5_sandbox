@@ -6,6 +6,8 @@
 #include "SandboxEditor/slate/TestVolumeDetailsCustomisation.h"
 #include "SandboxEditor/slate/UiGlowLab.h"
 
+#include "Editor.h"
+#include "Editor/EditorEngine.h"
 #include "Framework/Docking/TabManager.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "LevelEditor.h"
@@ -51,6 +53,10 @@ void FSandboxEditorModule::StartupModule() {
     }
 }
 void FSandboxEditorModule::ShutdownModule() {
+    if (IsValid(GEditor) && GEditor->PlayWorld != nullptr) {
+        GEditor->EndPlayMap();
+    }
+
     if (!IsRunningCommandlet()) {
         FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(TEXT("UiGlowLab"));
     }

@@ -21,8 +21,7 @@ void reset_test_profile_command(TArray<FString> const&, UWorld* const world) {
     }
 
     auto* const game_instance{world->GetGameInstance()};
-    auto* const subsystem{
-        IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr};
+    auto* const subsystem{USpaceSaveSubsystem::get(game_instance)};
     if (!IsValid(subsystem)) {
         UE_LOG(LogSandboxSubsystem,
                Warning,
@@ -43,6 +42,10 @@ FAutoConsoleCommandWithWorldAndArgs reset_test_profile_console_command{
     TEXT("Replaces the dedicated Test Profile with deterministic outcomes and activates it."),
     FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&reset_test_profile_command)};
 #endif
+}
+
+auto USpaceSaveSubsystem::get(UGameInstance const* const game_instance) -> USpaceSaveSubsystem* {
+    return IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr;
 }
 
 auto ml::ioj::summarize_level_progress(ml::FLevelId const level_id,

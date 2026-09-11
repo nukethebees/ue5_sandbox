@@ -578,17 +578,18 @@ TEST_CLASS(TelemetryBenchmark, "SandboxBenchmarks.TelemetryBenchmark")
                 TestRunner->AddInfo(FString::Printf(
                     TEXT("Telemetry integration: detailed=%d telemetry_cpu_ms=%.6f "
                          "simulation_cpu_ms=%.6f telemetry_cpu_percent=%.6f rows=%d "
-                         "payload_writes=%llu allocations=%d growths=%d allocated_bytes=%llu "
+                         "payload_writes=%llu acquired_blocks=%d retained_blocks=%d "
+                         "allocated_bytes=%llu "
                          "manager_size=%llu"),
                     detailed_timing ? 1 : 0,
                     telemetry_cpu_ms,
                     simulation_cpu_ms,
                     telemetry_cpu_percent,
-                    history_stats.row_count,
+                    history_stats.used_sample_count,
                     history_stats.payload_write_count,
-                    history_stats.allocation_count,
-                    history_stats.growth_count,
-                    history_stats.allocated_bytes,
+                    history_stats.acquired_block_count,
+                    history_stats.retained_block_count,
+                    history_stats.total_byte_capacity,
                     sizeof(FLevelTelemetryManager)));
                 return static_cast<double>(orchestrator->get_completed_ticks()) / elapsed_seconds;
             };

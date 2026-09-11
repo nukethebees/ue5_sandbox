@@ -8,6 +8,7 @@
 #include <SpaceGameSimulation/defences/turrets/TestStaticTurretsSimulation.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/levels/LevelEventManager.h>
+#include <SpaceGameSimulation/memory/GameMemory.h>
 #include <SpaceGameSimulation/missions/TestMissionManager.h>
 #include <SpaceGameSimulation/ships/capital/TestCapitalShipsPhaseInterface.h>
 #include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
@@ -63,6 +64,7 @@ struct FLevelSimulationInitData {
 
     TOptional<FLevelTelemetryRunMetadata> telemetry_metadata{};
     FLevelTelemetryHistoryConfig telemetry_history{};
+    FGameMemory* game_memory{};
 };
 
 struct SPACEGAMESIMULATION_API FLevelSimulation {
@@ -179,6 +181,9 @@ struct SPACEGAMESIMULATION_API FLevelSimulation {
 
     FSimulationClock clock_;
     EOrchestratorState state_{EOrchestratorState::Uninitialised};
+
+    TUniquePtr<FGameMemory> local_game_memory_{};
+    FGameMemory* game_memory_{};
 
     ml::FFrameMemoryResource frame_memory_;
     FTestEntityRegistry entity_registry_;

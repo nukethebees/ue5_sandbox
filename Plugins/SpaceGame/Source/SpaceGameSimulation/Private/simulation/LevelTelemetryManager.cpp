@@ -37,21 +37,6 @@ constexpr auto bit(int32 const index) -> uint64 {
     return uint64{1} << index;
 }
 
-auto capacity_for_bytes(SIZE_T const bytes) -> int32 {
-    using Layout = ml::level_telemetry::FHistoryRowsSingleLayout;
-    auto low{SIZE_T{0}};
-    auto high{static_cast<SIZE_T>(Layout::max_capacity / Layout::capacity_granularity)};
-    while (low < high) {
-        auto const middle{low + (high - low + 1) / 2};
-        if (Layout::layout_bytes(middle) <= bytes) {
-            low = middle;
-        } else {
-            high = middle - 1;
-        }
-    }
-    return static_cast<int32>(low * Layout::capacity_granularity);
-}
-
 auto sum(FTestEntityRegistry::EntityCounts const& entity_counts) -> int32 {
     int32 total{};
     for (auto const& team_counts : entity_counts) {
@@ -118,21 +103,16 @@ FLevelTelemetryManager::FLevelTelemetryManager(FSimulationClock const& clock,
                                                FTestEntityRegistry const& entity_registry,
                                                ml::test_lasers::Simulation const& lasers,
                                                ml::FSpatialQueryManager const& spatial_queries,
+                                               FGameMemory& game_memory,
                                                FLevelTelemetryHistoryConfig history_config) noexcept
     : clock_{clock}
     , entity_registry_{entity_registry}
     , lasers_{lasers}
     , spatial_queries_{spatial_queries}
-    , history_config_{history_config} {}
+    , history_{game_memory, history_config} {}
 
 void FLevelTelemetryManager::initialise() {
     reset();
-    auto const initial_capacity{
-        level_telemetry_detail::capacity_for_bytes(history_config_.initial_allocation_bytes)};
-    if (initial_capacity > history_.capacity()) {
-        history_.reserve(initial_capacity);
-        allocation_count_ = 1;
-    }
     initialized_ = true;
     update_current_state();
     sample_series();
@@ -152,8 +132,6 @@ void FLevelTelemetryManager::reset() {
     run_started_at_ = 0.0;
     last_sampled_time_scale_ = 0.0;
     payload_write_count_ = 0;
-    allocation_count_ = history_.capacity() > 0 ? 1 : 0;
-    growth_count_ = 0;
     run_recording_ = false;
     run_finalized_ = false;
     run_record_taken_ = false;
@@ -327,8 +305,8 @@ void FLevelTelemetryManager::sample_live_series() {
     }
 
     auto const tick{clock_.get_completed_ticks()};
-    auto const row{append_history_row(tick)};
-    auto columns{history_.get_view().columns()};
+    auto columns{append_history_row(tick)};
+    constexpr int32 row{};
     columns.validity_masks[row] |= mask;
 
     if ((mask & bit(active_entities_bit)) != 0) {
@@ -405,8 +383,8 @@ void FLevelTelemetryManager::sample_series() {
                  last_sampled_state_.sweep_trace_count);
 
     if (mask != 0) {
-        auto const row{append_history_row(clock_.get_completed_ticks())};
-        auto columns{history_.get_view().columns()};
+        auto columns{append_history_row(clock_.get_completed_ticks())};
+        constexpr int32 row{};
         columns.validity_masks[row] |= mask;
 
         if ((mask & bit(spawned_entities_bit)) != 0) {
@@ -455,53 +433,57 @@ void FLevelTelemetryManager::sample_series() {
     has_sampled_state_ = true;
 }
 
-auto FLevelTelemetryManager::append_history_row(tick_type const completed_tick) -> int32 {
+auto FLevelTelemetryManager::append_history_row(tick_type const completed_tick)
+    -> ml::level_telemetry::FHistoryRowsView {
     auto const row_count{history_.num()};
     if (row_count > 0) {
-        auto const completed_ticks{history_.get_const_view().completed_ticks()};
-        if (completed_ticks.Last() == completed_tick) {
-            return row_count - 1;
+        auto const completed_ticks{history_.last_const_view().completed_ticks()};
+        if (completed_ticks[0] == completed_tick) {
+            return history_.last_view().columns();
         }
-        check(completed_ticks.Last() < completed_tick);
+        check(completed_ticks[0] < completed_tick);
     }
 
-    auto const previous_capacity{history_.capacity()};
-    history_.add_uninitialised(1);
-    if (history_.capacity() != previous_capacity) {
-        allocation_count_ += 1;
-        growth_count_ += previous_capacity > 0 ? 1 : 0;
-    }
-
-    auto const row{history_.num() - 1};
-    auto columns{history_.get_view().columns()};
-    columns.completed_ticks[row] = completed_tick;
-    columns.validity_masks[row] = 0;
-    return row;
+    auto columns{history_.append_uninitialized().columns()};
+    columns.completed_ticks[0] = completed_tick;
+    columns.validity_masks[0] = 0;
+    return columns;
 }
 
 auto FLevelTelemetryManager::get_history_stats() const noexcept -> FLevelTelemetryHistoryStats {
+    auto const block_stats{history_.get_stats()};
     return {
-        .row_count = history_.num(),
-        .capacity = history_.capacity(),
-        .allocation_count = allocation_count_,
-        .growth_count = growth_count_,
+        .configured_block_bytes = block_stats.configured_block_bytes,
+        .layout_bytes_per_block = block_stats.layout_bytes_per_block,
+        .rows_per_block = block_stats.rows_per_block,
+        .acquired_block_count = block_stats.acquired_block_count,
+        .retained_block_count = block_stats.retained_block_count,
+        .peak_block_count = block_stats.peak_block_count,
+        .total_sample_capacity = block_stats.total_sample_capacity,
+        .total_byte_capacity = block_stats.total_byte_capacity,
+        .used_sample_count = block_stats.used_sample_count,
+        .used_payload_bytes = block_stats.used_payload_bytes,
+        .unused_samples_in_final_block = block_stats.unused_samples_in_final_block,
+        .unused_payload_bytes_in_final_block = block_stats.unused_payload_bytes_in_final_block,
+        .fixed_layout_overhead_bytes = block_stats.fixed_layout_overhead_bytes,
         .payload_write_count = payload_write_count_,
-        .allocated_bytes = history_.allocated_bytes(),
     };
 }
 
 auto FLevelTelemetryManager::materialize_tick_series() const -> FLevelTelemetryTickSeries {
     using namespace level_telemetry_detail;
-    auto const rows{history_.get_const_view().columns()};
     TStaticArray<int32, series_count> sample_counts{};
-    for (auto const mask : rows.validity_masks) {
-        auto remaining{mask};
-        while (remaining != 0) {
-            auto const field{static_cast<int32>(std::countr_zero(remaining))};
-            ++sample_counts[field];
-            remaining &= remaining - 1;
+    history_.for_each_block([&sample_counts](auto const block) {
+        auto const rows{block.columns()};
+        for (auto const mask : rows.validity_masks) {
+            auto remaining{mask};
+            while (remaining != 0) {
+                auto const field{static_cast<int32>(std::countr_zero(remaining))};
+                ++sample_counts[field];
+                remaining &= remaining - 1;
+            }
         }
-    }
+    });
 
     FLevelTelemetryTickSeries result;
     result.active_entities.reserve(sample_counts[active_entities_bit]);
@@ -530,67 +512,71 @@ auto FLevelTelemetryManager::materialize_tick_series() const -> FLevelTelemetryT
     result.sweep_trace_count.reserve(sample_counts[sweep_trace_count_bit]);
     result.requested_time_scale.reserve(sample_counts[requested_time_scale_bit]);
 
-    auto const row_count{history_.num()};
-    for (int32 row{}; row < row_count; ++row) {
-        auto const tick{rows.completed_ticks[row]};
-        auto const mask{rows.validity_masks[row]};
-        if ((mask & bit(active_entities_bit)) != 0) {
-            result.active_entities.add(tick, rows.active_entities[row]);
-        }
-        for (int32 entity_type_index{}; entity_type_index < entity_type_count;
-             ++entity_type_index) {
-            auto const type_field{active_entities_by_type_begin + entity_type_index};
-            if ((mask & bit(type_field)) != 0) {
-                result.active_entities_by_type[entity_type_index].add(
-                    tick, rows.active_entities_by_type[row][entity_type_index]);
+    history_.for_each_block([&result](auto const block) {
+        auto const rows{block.columns()};
+        auto const row_count{rows.num()};
+        for (int32 row{}; row < row_count; ++row) {
+            auto const tick{rows.completed_ticks[row]};
+            auto const mask{rows.validity_masks[row]};
+            if ((mask & bit(active_entities_bit)) != 0) {
+                result.active_entities.add(tick, rows.active_entities[row]);
             }
-            for (int32 team_index{}; team_index < team_count; ++team_index) {
-                auto const field{active_entities_by_team_and_type_begin +
-                                 team_index * entity_type_count + entity_type_index};
-                if ((mask & bit(field)) != 0) {
-                    result.active_entities_by_team_and_type[team_index][entity_type_index].add(
-                        tick,
-                        rows.active_entities_by_team_and_type[row][team_index][entity_type_index]);
+            for (int32 entity_type_index{}; entity_type_index < entity_type_count;
+                 ++entity_type_index) {
+                auto const type_field{active_entities_by_type_begin + entity_type_index};
+                if ((mask & bit(type_field)) != 0) {
+                    result.active_entities_by_type[entity_type_index].add(
+                        tick, rows.active_entities_by_type[row][entity_type_index]);
+                }
+                for (int32 team_index{}; team_index < team_count; ++team_index) {
+                    auto const field{active_entities_by_team_and_type_begin +
+                                     team_index * entity_type_count + entity_type_index};
+                    if ((mask & bit(field)) != 0) {
+                        result.active_entities_by_team_and_type[team_index][entity_type_index].add(
+                            tick,
+                            rows.active_entities_by_team_and_type[row][team_index]
+                                                                 [entity_type_index]);
+                    }
                 }
             }
+            if ((mask & bit(spawned_entities_bit)) != 0) {
+                result.spawned_entities.add(tick, rows.spawned_entities[row]);
+            }
+            if ((mask & bit(destroyed_entities_bit)) != 0) {
+                result.destroyed_entities.add(tick, rows.destroyed_entities[row]);
+            }
+            if ((mask & bit(kills_bit)) != 0) {
+                result.kills.add(tick, rows.kills[row]);
+            }
+            if ((mask & bit(registry_slot_count_bit)) != 0) {
+                result.registry_slot_count.add(tick, rows.registry_slot_count[row]);
+            }
+            if ((mask & bit(active_lasers_bit)) != 0) {
+                result.active_lasers.add(tick, rows.active_lasers[row]);
+            }
+            if ((mask & bit(lasers_fired_bit)) != 0) {
+                result.lasers_fired.add(tick, rows.lasers_fired[row]);
+            }
+            if ((mask & bit(occupied_spatial_cell_count_bit)) != 0) {
+                result.occupied_spatial_cell_count.add(tick, rows.occupied_spatial_cell_count[row]);
+            }
+            if ((mask & bit(grid_rebuild_count_bit)) != 0) {
+                result.grid_rebuild_count.add(tick, rows.grid_rebuild_count[row]);
+            }
+            if ((mask & bit(range_query_count_bit)) != 0) {
+                result.range_query_count.add(tick, rows.range_query_count[row]);
+            }
+            if ((mask & bit(line_trace_count_bit)) != 0) {
+                result.line_trace_count.add(tick, rows.line_trace_count[row]);
+            }
+            if ((mask & bit(sweep_trace_count_bit)) != 0) {
+                result.sweep_trace_count.add(tick, rows.sweep_trace_count[row]);
+            }
+            if ((mask & bit(requested_time_scale_bit)) != 0) {
+                result.requested_time_scale.add(tick, rows.requested_time_scale[row]);
+            }
         }
-        if ((mask & bit(spawned_entities_bit)) != 0) {
-            result.spawned_entities.add(tick, rows.spawned_entities[row]);
-        }
-        if ((mask & bit(destroyed_entities_bit)) != 0) {
-            result.destroyed_entities.add(tick, rows.destroyed_entities[row]);
-        }
-        if ((mask & bit(kills_bit)) != 0) {
-            result.kills.add(tick, rows.kills[row]);
-        }
-        if ((mask & bit(registry_slot_count_bit)) != 0) {
-            result.registry_slot_count.add(tick, rows.registry_slot_count[row]);
-        }
-        if ((mask & bit(active_lasers_bit)) != 0) {
-            result.active_lasers.add(tick, rows.active_lasers[row]);
-        }
-        if ((mask & bit(lasers_fired_bit)) != 0) {
-            result.lasers_fired.add(tick, rows.lasers_fired[row]);
-        }
-        if ((mask & bit(occupied_spatial_cell_count_bit)) != 0) {
-            result.occupied_spatial_cell_count.add(tick, rows.occupied_spatial_cell_count[row]);
-        }
-        if ((mask & bit(grid_rebuild_count_bit)) != 0) {
-            result.grid_rebuild_count.add(tick, rows.grid_rebuild_count[row]);
-        }
-        if ((mask & bit(range_query_count_bit)) != 0) {
-            result.range_query_count.add(tick, rows.range_query_count[row]);
-        }
-        if ((mask & bit(line_trace_count_bit)) != 0) {
-            result.line_trace_count.add(tick, rows.line_trace_count[row]);
-        }
-        if ((mask & bit(sweep_trace_count_bit)) != 0) {
-            result.sweep_trace_count.add(tick, rows.sweep_trace_count[row]);
-        }
-        if ((mask & bit(requested_time_scale_bit)) != 0) {
-            result.requested_time_scale.add(tick, rows.requested_time_scale[row]);
-        }
-    }
+    });
     return result;
 }
 

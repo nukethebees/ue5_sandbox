@@ -67,8 +67,7 @@ auto FPlayerModalUi::show_main_menu(ASpaceGamePlayerController& owner) -> bool {
         return false;
     }
     auto* const game_instance{owner.GetGameInstance()};
-    auto* const subsystem{
-        IsValid(game_instance) ? game_instance->GetSubsystem<ml::ioj::UGameSubsystem>() : nullptr};
+    auto* const subsystem{ml::ioj::UGameSubsystem::get(game_instance)};
     auto level_select_request{IsValid(subsystem) ? subsystem->take_level_select_request()
                                                  : TOptional<ml::ioj::FLevelSelectRequest>{}};
     auto const show_level_select{IsValid(subsystem) && (level_select_request.IsSet() ||

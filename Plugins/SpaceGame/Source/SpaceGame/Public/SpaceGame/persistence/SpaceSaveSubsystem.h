@@ -38,6 +38,7 @@ class SPACEGAME_API USpaceSaveSubsystem : public UGameInstanceSubsystem {
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
     virtual void Deinitialize() override;
 
+    static auto get(UGameInstance const* game_instance) -> USpaceSaveSubsystem*;
     [[nodiscard]] auto get_profiles() const -> TConstArrayView<FSaveProfileMetadata>;
     [[nodiscard]] auto get_active_profile_id() const -> FString const&;
     [[nodiscard]] auto get_level_progress(ml::FLevelId level_id) const

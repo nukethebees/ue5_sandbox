@@ -42,7 +42,7 @@ void USaveGameViewerWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
     auto* const game_instance{GetGameInstance()};
-    game_ = IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>() : nullptr;
+    game_ = UGameSubsystem::get(game_instance);
     if (!IsValid(game_)) {
         UE_LOG(LogSandboxUI,
                Warning,
@@ -232,7 +232,7 @@ auto USaveGameViewerWidget::resolve_browser() -> FSaveGameBrowser* {
 
 auto USaveGameViewerWidget::resolve_save_subsystem() const -> USpaceSaveSubsystem* {
     auto* const game_instance{GetGameInstance()};
-    return IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr;
+    return USpaceSaveSubsystem::get(game_instance);
 }
 
 void USaveGameViewerWidget::refresh_and_select(FString const& profile_id) {

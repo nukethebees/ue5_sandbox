@@ -1,4 +1,5 @@
 #include <SpaceGameSimulation/simulation/LevelTelemetryManager.h>
+#include <SpaceGameSimulation/telemetry/LevelTelemetryBlockHistory.h>
 
 #include <SandboxCore/mimalloc_storage_allocator.h>
 #include <SandboxCore/time_series_data.h>
@@ -49,6 +50,9 @@ struct FResult {
     uint64 payload_writes{};
     int32 allocations{};
     int32 growths{};
+    int32 retained_blocks{};
+    int32 unused_final_samples{};
+    bool stable_payload_addresses{true};
     uint64 checksum{};
 };
 
@@ -208,10 +212,9 @@ void write_new_payload(ml::level_telemetry::FHistoryRowsView const& rows,
     }
 }
 
-auto new_checksum(ml::level_telemetry::FSingleAllocationHistoryRows const& history) -> uint64 {
-    auto const rows{history.get_const_view().columns()};
+auto checksum_rows(ml::level_telemetry::FHistoryRowsConstView const& rows) -> uint64 {
     uint64 result{};
-    for (int32 row{}; row < history.num(); ++row) {
+    for (int32 row{}; row < rows.num(); ++row) {
         auto mask{rows.validity_masks[row]};
         while (mask != 0) {
             auto const field{static_cast<int32>(std::countr_zero(mask))};
@@ -250,6 +253,17 @@ auto new_checksum(ml::level_telemetry::FSingleAllocationHistoryRows const& histo
             mask &= mask - 1;
         }
     }
+    return result;
+}
+
+auto new_checksum(ml::level_telemetry::FSingleAllocationHistoryRows const& history) -> uint64 {
+    return checksum_rows(history.get_const_view().columns());
+}
+
+auto block_checksum(FLevelTelemetryBlockHistory const& history) -> uint64 {
+    uint64 result{};
+    history.for_each_block(
+        [&result](auto const block) { result += checksum_rows(block.columns()); });
     return result;
 }
 
@@ -335,6 +349,62 @@ auto benchmark_new(FWorkload const& workload, SIZE_T const reserve_bytes) -> FRe
 
     auto const export_started{FPlatformTime::Seconds()};
     result.checksum = new_checksum(history);
+    result.export_ms = (FPlatformTime::Seconds() - export_started) * 1000.0;
+    auto const reset_started{FPlatformTime::Seconds()};
+    history.reset();
+    result.reset_ms = (FPlatformTime::Seconds() - reset_started) * 1000.0;
+    return result;
+}
+
+auto benchmark_blocks(FWorkload const& workload, SIZE_T const block_bytes) -> FResult {
+    FGameMemory memory{{.root_capacity_bytes = SIZE_T{256} << 20}};
+    FLevelTelemetryBlockHistory history{memory, {.block_bytes = block_bytes}};
+    FResult result;
+    std::byte const* first_payload_address{};
+
+    auto const started{FPlatformTime::Seconds()};
+    for (int32 tick{1}; tick <= workload.tick_count; ++tick) {
+        auto const mask{workload.mask_for_tick(tick)};
+        if (mask == 0) {
+            continue;
+        }
+        auto const append_started{FPlatformTime::Seconds()};
+        auto rows{history.append_uninitialized().columns()};
+        rows.completed_ticks[0] = static_cast<uint64>(tick);
+        rows.validity_masks[0] = mask;
+        auto remaining{mask};
+        while (remaining != 0) {
+            auto const field{static_cast<int32>(std::countr_zero(remaining))};
+            write_new_payload(rows, 0, field, static_cast<uint64>(tick + field));
+            remaining &= remaining - 1;
+        }
+        if (first_payload_address == nullptr) {
+            first_payload_address = history.block_data(0);
+        }
+        result.stable_payload_addresses =
+            result.stable_payload_addresses && history.block_data(0) == first_payload_address;
+        ++result.rows;
+        result.payload_writes += std::popcount(mask);
+        result.max_append_us = FMath::Max(
+            result.max_append_us, (FPlatformTime::Seconds() - append_started) * 1'000'000.0);
+        auto const int32_writes{std::popcount(mask & ((uint64{1} << int32_series_count) - 1))};
+        auto const wide_writes{std::popcount(mask) - int32_writes};
+        result.semantic_write_bytes += sizeof(uint64) * 2;
+        result.semantic_write_bytes += int32_writes * sizeof(int32);
+        result.semantic_write_bytes += wide_writes * sizeof(uint64);
+    }
+    result.append_ms = (FPlatformTime::Seconds() - started) * 1000.0;
+    auto const stats{history.get_stats()};
+    result.allocations = stats.retained_block_count;
+    result.growths = FMath::Max(0, stats.retained_block_count - 1);
+    result.retained_blocks = stats.retained_block_count;
+    result.unused_final_samples = stats.unused_samples_in_final_block;
+    result.allocated_bytes = stats.total_byte_capacity;
+    result.peak_allocated_bytes = stats.total_byte_capacity;
+    result.growth_copy_bytes = 0;
+
+    auto const export_started{FPlatformTime::Seconds()};
+    result.checksum = block_checksum(history);
     result.export_ms = (FPlatformTime::Seconds() - export_started) * 1000.0;
     auto const reset_started{FPlatformTime::Seconds()};
     history.reset();
@@ -584,7 +654,8 @@ void log_result(FAutomationTestBase& test,
              "export_ms=%.6f reset_ms=%.6f "
              "allocations=%d growths=%d initial_allocated_bytes=%llu peak_allocated_bytes=%llu "
              "allocated_bytes=%llu semantic_write_bytes=%llu "
-             "growth_copy_bytes=%llu checksum=%llu manager_size=%llu"),
+             "growth_copy_bytes=%llu retained_blocks=%d unused_final_samples=%d "
+             "stable_payload_addresses=%d checksum=%llu manager_size=%llu"),
         implementation,
         workload.name,
         reserve_bytes,
@@ -602,6 +673,9 @@ void log_result(FAutomationTestBase& test,
         result.allocated_bytes,
         result.semantic_write_bytes,
         result.growth_copy_bytes,
+        result.retained_blocks,
+        result.unused_final_samples,
+        result.stable_payload_addresses ? 1 : 0,
         result.checksum,
         sizeof(FLevelTelemetryManager)));
 }
@@ -658,6 +732,16 @@ auto FLevelTelemetryStorageBenchmark::RunTest(FString const&) -> bool {
                            workload,
                            reserve_bytes,
                            single);
+                auto const blocks{benchmark_blocks(workload, reserve_bytes)};
+                TestEqual(TEXT("Legacy and fixed-block payload checksums agree"),
+                          blocks.checksum,
+                          legacy.checksum);
+                TestTrue(TEXT("Fixed-block history keeps old payload addresses stable"),
+                         blocks.stable_payload_addresses);
+                TestEqual(TEXT("Fixed-block history performs no growth copies"),
+                          blocks.growth_copy_bytes,
+                          SIZE_T{0});
+                log_result(*this, TEXT("fixed_blocks"), workload, reserve_bytes, blocks);
             }
         }
     }

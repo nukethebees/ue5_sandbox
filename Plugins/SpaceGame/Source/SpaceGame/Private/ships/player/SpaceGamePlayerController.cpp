@@ -601,8 +601,7 @@ void ASpaceGamePlayerController::return_to_level_select() {
     }
 
     auto* const game_instance{GetGameInstance()};
-    auto* const subsystem{
-        IsValid(game_instance) ? game_instance->GetSubsystem<ml::ioj::UGameSubsystem>() : nullptr};
+    auto* const subsystem{ml::ioj::UGameSubsystem::get(game_instance)};
     auto* const orchestrator{orchestrator_.Get()};
     if (!IsValid(subsystem) || !IsValid(orchestrator)) {
         UE_LOG(LogSandboxController,
