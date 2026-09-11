@@ -512,7 +512,7 @@ void FSpatialQueryManager::are_spheres_in_bounds(FVectors3f::ConstView const cen
 void FSpatialQueryManager::update() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpatialQueryManager::update);
 
-    collision.update();
+    collision.update(entity_registry.get_moved_entities_this_tick());
 }
 
 void FSpatialQueryManager::reset_runtime_telemetry() noexcept {

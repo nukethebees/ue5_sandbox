@@ -435,6 +435,54 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
     }
 }
 
+void CollisionUniformGrid::append_overlapping_entities(
+    FBox3f const& query_bounds,
+    FRegistryEntityHandle const ignored_entity,
+    TArray<FRegistryEntityHandle>& out_entities) const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::append_overlapping_entities);
+
+    auto const [min_coord, max_coord]{to_cell_coord_bounds(query_bounds.Min, query_bounds.Max)};
+    checkf(is_cell_coord_in_bounds(min_coord, max_coord),
+           TEXT("AABB query (%s) through (%s) is outside collision grid dimensions %s"),
+           *query_bounds.Min.ToString(),
+           *query_bounds.Max.ToString(),
+           *to_string(grid_dims_));
+
+    for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
+        for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
+            for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
+                auto const cell_index{to_index(x, y, z)};
+                auto const entity_count{cell_entity_counts_[cell_index]};
+                if (entity_count == 0) {
+                    continue;
+                }
+
+                auto const entity_offset{cell_entity_offsets_[cell_index]};
+                auto const entities{TConstArrayView<FRegistryEntityHandle>{entities_}.Slice(
+                    entity_offset, entity_count)};
+                auto const aabbs{aabbs_.get_const_view(entity_offset, entity_count)};
+
+                for (int32 entity_index{}; entity_index < entity_count; ++entity_index) {
+                    auto const entity{entities[entity_index]};
+                    if (entity == ignored_entity || !entity_registry_.is_valid_alive(entity)) {
+                        continue;
+                    }
+
+                    auto const entity_min{aabbs.mins[entity_index]};
+                    auto const entity_max{aabbs.maxes[entity_index]};
+                    auto const overlaps{
+                        query_bounds.Min.X <= entity_max.X && query_bounds.Max.X >= entity_min.X &&
+                        query_bounds.Min.Y <= entity_max.Y && query_bounds.Max.Y >= entity_min.Y &&
+                        query_bounds.Min.Z <= entity_max.Z && query_bounds.Max.Z >= entity_min.Z};
+                    if (overlaps) {
+                        out_entities.Add(entity);
+                    }
+                }
+            }
+        }
+    }
+}
+
 template <CollisionUniformGrid::ETraceKind TraceKind>
 auto CollisionUniformGrid::trace_aabb(WorldAABBs::ConstView const& aabbs,
                                       int32 const aabb_index,

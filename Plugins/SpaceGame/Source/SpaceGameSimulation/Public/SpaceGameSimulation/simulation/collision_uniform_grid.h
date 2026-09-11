@@ -96,6 +96,10 @@ struct SPACEGAMESIMULATION_API CollisionUniformGrid {
                 entities_buffer_.max_points.get_const_view()};
     }
 
+    // Appends exact dynamic-entity overlaps. Multi-cell entities may be appended more than once.
+    void append_overlapping_entities(FBox3f const& query_bounds,
+                                     FRegistryEntityHandle ignored_entity,
+                                     TArray<FRegistryEntityHandle>& out_entities) const;
     void trace_aabbs(FLineTracesConstView const& traces, FTraceHitsView const& hits) const;
     void trace_aabbs(FLineTracesConstView const& traces,
                      FTraceHitsView const& hits,
