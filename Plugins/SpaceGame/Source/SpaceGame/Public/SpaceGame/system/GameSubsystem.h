@@ -135,6 +135,8 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     auto get_audio() -> FGameAudioFacade;
     void start_menu_ambience();
     void stop_menu_ambience();
+    void start_player_ship_ambience();
+    void stop_player_ship_ambience();
 
     /* **************************************** */
     // UI configuration

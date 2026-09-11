@@ -32,6 +32,7 @@ struct SPACEGAMEPRESENTATION_API FExternalAudioLibraryResolution {
     TArray<FAudioSourceDirectory> directories;
     FAudioSourceFile menu_ambience_source;
     FAudioSourceFile menu_button_pressed_source;
+    FAudioSourceFile player_ship_ambience_source;
 };
 
 struct FGameAudio;
@@ -50,6 +51,8 @@ struct SPACEGAMEPRESENTATION_API FGameAudio {
     void initialize(UGameInstance& game_instance);
     void start_menu_ambience();
     void stop_menu_ambience();
+    void start_player_ship_ambience();
+    void stop_player_ship_ambience();
     void stop_button_audio();
     void set_music_volume(float volume);
     void set_sfx_volume(float volume);
@@ -68,9 +71,12 @@ struct SPACEGAMEPRESENTATION_API FGameAudio {
     TStrongObjectPtr<UAudioComponent> menu_ambience_component_;
     TStrongObjectPtr<USoundWave> menu_button_pressed_sound_;
     TStrongObjectPtr<UAudioComponent> menu_button_pressed_component_;
+    TStrongObjectPtr<USoundWave> player_ship_ambience_sound_;
+    TStrongObjectPtr<UAudioComponent> player_ship_ambience_component_;
     float music_volume_{1.0f};
     float sfx_volume_{1.0f};
     bool ambience_playback_warning_logged_{};
     bool button_playback_warning_logged_{};
+    bool player_ship_ambience_playback_warning_logged_{};
 };
 }

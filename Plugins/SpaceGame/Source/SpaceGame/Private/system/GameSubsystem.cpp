@@ -128,6 +128,7 @@ void UGameSubsystem::Deinitialize() {
         settings_subsystem->settings_changed.RemoveAll(this);
     }
     audio_.stop_menu_ambience();
+    audio_.stop_player_ship_ambience();
     audio_.stop_button_audio();
 
     Super::Deinitialize();
@@ -151,6 +152,14 @@ void UGameSubsystem::start_menu_ambience() {
 
 void UGameSubsystem::stop_menu_ambience() {
     audio_.stop_menu_ambience();
+}
+
+void UGameSubsystem::start_player_ship_ambience() {
+    audio_.start_player_ship_ambience();
+}
+
+void UGameSubsystem::stop_player_ship_ambience() {
+    audio_.stop_player_ship_ambience();
 }
 
 void UGameSubsystem::update_audio_settings() {

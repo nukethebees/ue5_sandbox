@@ -156,6 +156,18 @@ void ASpaceGamePlayerController::attach_ship(Pawn& ship) {
     ship.on_player_ship_died.BindUObject(this, &ThisClass::on_player_ship_died);
     control_contexts_.set_ship(&ship);
     modal_ui_.on_ship_changed(true);
+
+    auto* const game_instance{GetGameInstance()};
+    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<ml::ioj::UGameSubsystem>()
+                                            : nullptr};
+    if (IsValid(game)) {
+        game->start_player_ship_ambience();
+    } else {
+        UE_LOG(LogSandboxController,
+               Warning,
+               TEXT("ASpaceGamePlayerController::attach_ship: Game subsystem is unavailable; "
+                    "player ship ambience will not play."));
+    }
 }
 void ASpaceGamePlayerController::activate_ship_control() {
     if (!begin_play_finished_ || !can_activate_gameplay_control() ||
@@ -178,6 +190,13 @@ void ASpaceGamePlayerController::OnUnPossess() {
     Super::OnUnPossess();
 }
 void ASpaceGamePlayerController::detach_ship() {
+    auto* const game_instance{GetGameInstance()};
+    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<ml::ioj::UGameSubsystem>()
+                                            : nullptr};
+    if (IsValid(game)) {
+        game->stop_player_ship_ambience();
+    }
+
     if (auto* const ship{Cast<Pawn>(GetPawn())}; IsValid(ship)) {
         ship->on_player_ship_died.Unbind();
     }

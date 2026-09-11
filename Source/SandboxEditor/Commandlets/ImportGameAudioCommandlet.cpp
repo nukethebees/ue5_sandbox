@@ -16,8 +16,11 @@ namespace import_game_audio {
 inline constexpr TCHAR destination_path[]{TEXT("/SpaceGame/Audio/Generated")};
 inline constexpr TCHAR ambience_asset_name[]{TEXT("A_MenuAmbience_ComputerRoomLow02")};
 inline constexpr TCHAR button_asset_name[]{TEXT("A_MenuButtonPressed")};
+inline constexpr TCHAR player_ship_ambience_asset_name[]{
+    TEXT("A_PlayerShipAmbience_SpaceshipHigh02")};
 inline constexpr float ambience_volume{0.2f};
 inline constexpr float button_volume{0.25f};
+inline constexpr float player_ship_ambience_volume{0.2f};
 
 auto import_sound_wave(FString const& source_path, TCHAR const* const asset_name) -> USoundWave* {
     TStrongObjectPtr<USoundFactory> factory{NewObject<USoundFactory>()};
@@ -130,5 +133,11 @@ int32 UImportGameAudioCommandlet::Main(FString const&) {
                                                  import_game_audio::button_asset_name,
                                                  false,
                                                  import_game_audio::button_volume)};
-    return ambience_imported && button_imported ? 0 : 1;
+    auto const player_ship_ambience_imported{
+        import_game_audio::import_optional_sound(resolution.player_ship_ambience_source,
+                                                 TEXT("player ship ambience"),
+                                                 import_game_audio::player_ship_ambience_asset_name,
+                                                 true,
+                                                 import_game_audio::player_ship_ambience_volume)};
+    return ambience_imported && button_imported && player_ship_ambience_imported ? 0 : 1;
 }

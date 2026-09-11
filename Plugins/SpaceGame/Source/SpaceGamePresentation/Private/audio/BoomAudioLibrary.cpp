@@ -12,6 +12,8 @@ inline constexpr TCHAR menu_ambience_filename[]{
     TEXT("AMBDsgn_Ambience Computer Room Low 02_B00M_SFDS.wav")};
 inline constexpr TCHAR menu_button_pressed_filename[]{
     TEXT("SCICmpt_Computer Beep High 01_B00M_SFDS.wav")};
+inline constexpr TCHAR player_ship_ambience_filename[]{
+    TEXT("AMBDsgn_Ambience Spaceship High 02_B00M_SFDS.wav")};
 
 inline constexpr TCHAR const* pack_directories[]{
     sci_fi_designed_directory,
@@ -64,6 +66,17 @@ auto ml::ioj::resolve_boom_audio_library(FStringView const configured_root)
         button_relative_path,
         button_source_path,
         file_manager.FileExists(*button_source_path),
+    };
+
+    auto const player_ship_ambience_relative_path{
+        FPaths::Combine(boom_audio_library::sci_fi_designed_directory,
+                        boom_audio_library::player_ship_ambience_filename)};
+    auto const player_ship_ambience_source_path{
+        FPaths::Combine(resolution.root.path, player_ship_ambience_relative_path)};
+    resolution.player_ship_ambience_source = FAudioSourceFile{
+        player_ship_ambience_relative_path,
+        player_ship_ambience_source_path,
+        file_manager.FileExists(*player_ship_ambience_source_path),
     };
 
     return resolution;

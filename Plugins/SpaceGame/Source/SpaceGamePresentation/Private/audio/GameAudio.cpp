@@ -15,6 +15,9 @@ inline constexpr TCHAR menu_ambience_object_path[]{
          "A_MenuAmbience_ComputerRoomLow02")};
 inline constexpr TCHAR menu_button_pressed_object_path[]{
     TEXT("/SpaceGame/Audio/Generated/A_MenuButtonPressed.A_MenuButtonPressed")};
+inline constexpr TCHAR player_ship_ambience_object_path[]{
+    TEXT("/SpaceGame/Audio/Generated/A_PlayerShipAmbience_SpaceshipHigh02."
+         "A_PlayerShipAmbience_SpaceshipHigh02")};
 inline constexpr float menu_button_playback_seconds{0.5f};
 }
 
@@ -74,6 +77,14 @@ void FGameAudio::initialize(UGameInstance& game_instance) {
                    *external_audio_.menu_button_pressed_source.path,
                    *external_audio_.menu_button_pressed_source.relative_path);
         }
+        if (all_directories_valid && !external_audio_.player_ship_ambience_source.valid) {
+            UE_LOG(LogSandboxAudio,
+                   Warning,
+                   TEXT("Expected player ship ambience source file is missing: \"%s\" (relative "
+                        "path \"%s\")."),
+                   *external_audio_.player_ship_ambience_source.path,
+                   *external_audio_.player_ship_ambience_source.relative_path);
+        }
     }
 
     auto* const menu_ambience{
@@ -96,6 +107,17 @@ void FGameAudio::initialize(UGameInstance& game_instance) {
                TEXT("Optional menu button asset is unavailable: \"%s\". Run `cmake --workflow "
                     "--preset import-game-audio` to import it locally."),
                game_audio::menu_button_pressed_object_path);
+    }
+
+    auto* const player_ship_ambience{LoadObject<USoundWave>(
+        nullptr, game_audio::player_ship_ambience_object_path, {}, LOAD_NoWarn)};
+    player_ship_ambience_sound_.Reset(player_ship_ambience);
+    if (!player_ship_ambience_sound_.IsValid()) {
+        UE_LOG(LogSandboxAudio,
+               Warning,
+               TEXT("Optional player ship ambience asset is unavailable: \"%s\". Run `cmake "
+                    "--workflow --preset import-game-audio` to import it locally."),
+               game_audio::player_ship_ambience_object_path);
     }
 }
 
@@ -171,6 +193,45 @@ void FGameAudio::play_button_pressed() {
     component->StopDelayed(game_audio::menu_button_playback_seconds);
 }
 
+void FGameAudio::start_player_ship_ambience() {
+    auto* const active_component{player_ship_ambience_component_.Get()};
+    if (IsValid(active_component) && active_component->IsPlaying()) {
+        return;
+    }
+
+    stop_player_ship_ambience();
+    auto* const ambience{player_ship_ambience_sound_.Get()};
+    if (!IsValid(ambience)) {
+        return;
+    }
+    auto* const game_instance{game_instance_.Get()};
+    if (!IsValid(game_instance)) {
+        return;
+    }
+
+    constexpr bool persist_across_level_transition{false};
+    constexpr bool auto_destroy{false};
+    auto* const component{UGameplayStatics::SpawnSound2D(game_instance,
+                                                         ambience,
+                                                         sfx_volume_,
+                                                         1.0f,
+                                                         0.0f,
+                                                         nullptr,
+                                                         persist_across_level_transition,
+                                                         auto_destroy)};
+    if (!IsValid(component)) {
+        if (!player_ship_ambience_playback_warning_logged_) {
+            UE_LOG(LogSandboxAudio,
+                   Warning,
+                   TEXT("Could not start optional player ship ambience audio."));
+            player_ship_ambience_playback_warning_logged_ = true;
+        }
+        return;
+    }
+
+    player_ship_ambience_component_.Reset(component);
+}
+
 void FGameAudio::stop_menu_ambience() {
     auto* const component{menu_ambience_component_.Get()};
     if (IsValid(component)) {
@@ -178,6 +239,15 @@ void FGameAudio::stop_menu_ambience() {
         component->DestroyComponent();
     }
     menu_ambience_component_.Reset();
+}
+
+void FGameAudio::stop_player_ship_ambience() {
+    auto* const component{player_ship_ambience_component_.Get()};
+    if (IsValid(component)) {
+        component->Stop();
+        component->DestroyComponent();
+    }
+    player_ship_ambience_component_.Reset();
 }
 
 void FGameAudio::stop_button_audio() {
@@ -203,6 +273,10 @@ void FGameAudio::set_sfx_volume(float const volume) {
     if (IsValid(component)) {
         component->SetVolumeMultiplier(sfx_volume_);
     }
+    auto* const player_ship_ambience_component{player_ship_ambience_component_.Get()};
+    if (IsValid(player_ship_ambience_component)) {
+        player_ship_ambience_component->SetVolumeMultiplier(sfx_volume_);
+    }
 }
 
 auto FGameAudio::facade() -> FGameAudioFacade {
@@ -211,7 +285,8 @@ auto FGameAudio::facade() -> FGameAudioFacade {
 
 auto FGameAudio::external_audio_available() const noexcept -> bool {
     if (!external_audio_.root.valid || !external_audio_.menu_ambience_source.valid ||
-        !external_audio_.menu_button_pressed_source.valid) {
+        !external_audio_.menu_button_pressed_source.valid ||
+        !external_audio_.player_ship_ambience_source.valid) {
         return false;
     }
 
