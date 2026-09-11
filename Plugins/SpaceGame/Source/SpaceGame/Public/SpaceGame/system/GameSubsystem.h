@@ -3,6 +3,7 @@
 #include "SpaceGame/levels/LevelDefinition.h"
 #include "SpaceGame/persistence/SaveGameBrowser.h"
 #include "SpaceGame/ships/player/PlayerControlContext.h"
+#include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
 #include "Subsystems/GameInstanceSubsystem.h"
@@ -161,6 +162,7 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     /* **************************************** */
     // State
     /* **************************************** */
+    FGameAudio audio_;
     FGameCapabilities platform_capabilities_;
     FSaveGameBrowser save_game_browser_;
     TOptional<FPendingLevelDefinition> pending_level_{NullOpt};

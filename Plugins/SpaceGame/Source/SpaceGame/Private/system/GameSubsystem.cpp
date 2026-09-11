@@ -83,6 +83,8 @@ auto query_platform_capabilities() -> FGameCapabilities {
 void UGameSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
 
+    audio_.initialize();
+
     collection.InitializeDependency(UGameUiStyleSubsystem::StaticClass());
 
     collection.InitializeDependency(USpaceSaveSubsystem::StaticClass());
