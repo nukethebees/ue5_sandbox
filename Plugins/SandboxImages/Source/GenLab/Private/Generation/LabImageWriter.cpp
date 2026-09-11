@@ -15,6 +15,8 @@
 DEFINE_LOG_CATEGORY_STATIC(LogSandboxImagesGenLab, Log, All);
 
 namespace SandboxImages::GenLab {
+using namespace sandbox::image;
+
 namespace {
 struct FTextureImportSettings {
     bool srgb{false};
@@ -26,38 +28,38 @@ struct FTextureImportSettings {
     TextureAddress address_y{TA_Clamp};
 };
 
-auto import_settings_for(FGenerationRequest const& request) -> FTextureImportSettings {
+auto import_settings_for(GenerationRequest const& request) -> FTextureImportSettings {
     auto settings{FTextureImportSettings{}};
-    if (request.generator == EGeneratorType::CurlNoiseFlow) {
+    if (request.generator == GeneratorType::CurlNoiseFlow) {
         settings.compression = TC_VectorDisplacementmap;
         if (request.curl_noise_flow.tileable) {
             settings.address_x = TA_Wrap;
             settings.address_y = TA_Wrap;
         }
-    } else if (request.post_process.output == FImagePostProcessParameters::EOutput::NormalMap) {
+    } else if (request.post_process.output == ImagePostProcessParameters::Output::NormalMap) {
         settings.compression = TC_Normalmap;
         if (request.post_process.normal_wrap) {
             settings.address_x = TA_Wrap;
             settings.address_y = TA_Wrap;
         }
     } else if (request.post_process.output ==
-               FImagePostProcessParameters::EOutput::SignedDistance) {
+               ImagePostProcessParameters::Output::SignedDistance) {
         settings.compression = TC_Grayscale;
         if (request.post_process.distance_wrap) {
             settings.address_x = TA_Wrap;
             settings.address_y = TA_Wrap;
         }
-    } else if (request.generator == EGeneratorType::Noise ||
-               request.generator == EGeneratorType::DomainWarpedNoise) {
+    } else if (request.generator == GeneratorType::Noise ||
+               request.generator == GeneratorType::DomainWarpedNoise) {
         settings.compression = TC_Grayscale;
-        auto const tileable{request.generator == EGeneratorType::Noise
+        auto const tileable{request.generator == GeneratorType::Noise
                                 ? request.noise.tileable
                                 : request.domain_warped_noise.tileable};
         if (tileable) {
             settings.address_x = TA_Wrap;
             settings.address_y = TA_Wrap;
         }
-    } else if (request.generator == EGeneratorType::CellularNoise) {
+    } else if (request.generator == GeneratorType::CellularNoise) {
         settings.compression = TC_Grayscale;
         if (request.cellular_noise.tileable) {
             settings.address_x = TA_Wrap;
@@ -102,17 +104,28 @@ auto validate_output_name(FString const& output_name) -> bool {
     return true;
 }
 
-auto write_png(FString const& output_path, FGeneratedImage const& image) -> bool {
+auto to_unreal_pixels(GeneratedImage const& image) -> TArray<FColor> {
+    TArray<FColor> pixels;
+    pixels.Reserve(static_cast<int32>(image.pixels.size()));
+    for (auto const pixel : image.pixels) {
+        pixels.Emplace(pixel.red, pixel.green, pixel.blue, pixel.alpha);
+    }
+    return pixels;
+}
+
+auto write_png(FString const& output_path, GeneratedImage const& image) -> bool {
     if (!image.is_valid()) {
         UE_LOG(LogSandboxImagesGenLab,
                Error,
                TEXT("Cannot write %s: %s"),
                *output_path,
-               image.error.IsEmpty() ? TEXT("generated image buffer is invalid.") : *image.error);
+               image.error.empty() ? TEXT("generated image buffer is invalid.")
+                                   : UTF8_TO_TCHAR(image.error.c_str()));
         return false;
     }
 
-    FImageView const image_view{image.pixels.GetData(), image.width, image.height};
+    auto const pixels{to_unreal_pixels(image)};
+    FImageView const image_view{pixels.GetData(), image.width, image.height};
     if (!FImageUtils::SaveImageByExtension(*output_path, image_view)) {
         UE_LOG(LogSandboxImagesGenLab, Error, TEXT("Failed to write PNG: %s"), *output_path);
         return false;
@@ -125,13 +138,13 @@ auto write_png(FString const& output_path, FGeneratedImage const& image) -> bool
 }
 
 auto import_texture(FString const& source_path,
-                    FGenerationRequest const& request,
+                    GenerationRequest const& request,
                     FTextureImportSettings const& settings) -> bool {
     auto* task{NewObject<UAssetImportTask>()};
     task->AddToRoot();
     task->Filename = source_path;
     task->DestinationPath = TEXT("/SandboxImages/Lab/Images");
-    task->DestinationName = request.output_name;
+    task->DestinationName = UTF8_TO_TCHAR(request.output_name.c_str());
     task->bAutomated = true;
     task->bReplaceExisting = true;
     task->bReplaceExistingSettings = true;
@@ -159,8 +172,9 @@ auto import_texture(FString const& source_path,
         texture->PostEditChange();
 
         auto* const package{texture->GetOutermost()};
+        auto const description{FString{UTF8_TO_TCHAR(describe_request(request).c_str())}};
         package->GetMetaData().SetValue(
-            texture, TEXT("SandboxImages.GenLab.Generation"), *describe_request(request));
+            texture, TEXT("SandboxImages.GenLab.Generation"), *description);
         package->MarkPackageDirty();
         auto const package_path{FPackageName::LongPackageNameToFilename(
             package->GetName(), FPackageName::GetAssetPackageExtension())};
@@ -201,14 +215,15 @@ auto get_output_directory() -> FString {
     return FPaths::Combine(plugin->GetContentDir(), TEXT("Lab"), TEXT("Images"));
 }
 
-auto generate_and_import(FGenerationRequest const& request) -> bool {
+auto generate_and_import(GenerationRequest const& request) -> bool {
     auto const output_directory{get_output_directory()};
-    if (!ensure_output_directory(output_directory) || !validate_output_name(request.output_name)) {
+    auto const output_name{FString{UTF8_TO_TCHAR(request.output_name.c_str())}};
+    if (!ensure_output_directory(output_directory) || !validate_output_name(output_name)) {
         return false;
     }
 
-    auto const image{generate_image(request)};
-    auto const output_path{FPaths::Combine(output_directory, request.output_name + TEXT(".png"))};
+    auto const image{sandbox::image::generate_image(request)};
+    auto const output_path{FPaths::Combine(output_directory, output_name + TEXT(".png"))};
     if (!write_png(output_path, image)) {
         return false;
     }
@@ -217,7 +232,7 @@ auto generate_and_import(FGenerationRequest const& request) -> bool {
 
 auto regenerate_all() -> bool {
     bool success{true};
-    for (auto const& request : default_generation_requests()) {
+    for (auto const& request : sandbox::image::default_generation_requests()) {
         success &= generate_and_import(request);
     }
 

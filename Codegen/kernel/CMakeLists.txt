@@ -16,11 +16,12 @@ target_link_libraries(kernel-codegen-lib PRIVATE
   codegen-lib
   codegen-sexpr
   nlohmann_json::nlohmann_json
+  sandbox::codegen_warnings
 )
 
 add_executable(sandbox-kernelc src/main.cpp)
 set_target_properties(sandbox-kernelc PROPERTIES OUTPUT_NAME kernelc)
-target_link_libraries(sandbox-kernelc PRIVATE kernel-codegen-lib)
+target_link_libraries(sandbox-kernelc PRIVATE kernel-codegen-lib sandbox::codegen_warnings)
 
 add_executable(kernel-codegen-tests
   tests/compiler_io_tests.cpp
@@ -32,17 +33,8 @@ target_link_libraries(kernel-codegen-tests PRIVATE
   kernel-codegen-lib
   codegen-sexpr
   GTest::gtest_main
+  sandbox::codegen_warnings
 )
-
-if(MSVC)
-  target_compile_options(kernel-codegen-lib PRIVATE /W4 /WX)
-  target_compile_options(sandbox-kernelc PRIVATE /W4 /WX)
-  target_compile_options(kernel-codegen-tests PRIVATE /W4 /WX)
-else()
-  target_compile_options(kernel-codegen-lib PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
-  target_compile_options(sandbox-kernelc PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
-  target_compile_options(kernel-codegen-tests PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
-endif()
 
 gtest_discover_tests(kernel-codegen-tests PROPERTIES LABELS "unit;all;codegen")
 
@@ -74,11 +66,7 @@ target_include_directories(kernel-generated-compile-tests PRIVATE
   "${KERNEL_COMPILE_OUTPUT}"
   "${CMAKE_SOURCE_DIR}/Codegen/tests/compile_fixture/stubs"
 )
-if(MSVC)
-  target_compile_options(kernel-generated-compile-tests PRIVATE /W4 /WX)
-else()
-  target_compile_options(kernel-generated-compile-tests PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
-endif()
+target_link_libraries(kernel-generated-compile-tests PRIVATE sandbox::codegen_warnings)
 add_dependencies(kernel-codegen-tests kernel-generated-compile-tests)
 add_test(NAME KernelGeneratedCompileSmoke COMMAND kernel-generated-compile-tests)
 set_tests_properties(KernelGeneratedCompileSmoke PROPERTIES LABELS "unit;all;codegen")
@@ -131,12 +119,10 @@ add_executable(kernel-generated-standard-tests
 )
 target_compile_features(kernel-generated-standard-tests PRIVATE cxx_std_23)
 target_include_directories(kernel-generated-standard-tests PRIVATE "${KERNEL_STANDARD_OUTPUT}")
-target_link_libraries(kernel-generated-standard-tests PRIVATE GTest::gtest_main)
-if(MSVC)
-  target_compile_options(kernel-generated-standard-tests PRIVATE /W4 /WX)
-else()
-  target_compile_options(kernel-generated-standard-tests PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
-endif()
+target_link_libraries(kernel-generated-standard-tests PRIVATE
+  GTest::gtest_main
+  sandbox::codegen_warnings
+)
 gtest_discover_tests(kernel-generated-standard-tests PROPERTIES LABELS "unit;all;codegen")
 add_dependencies(kernel-codegen-tests kernel-generated-standard-tests)
 
@@ -219,12 +205,14 @@ target_include_directories(kernel-generated-avx2-lab-tests PRIVATE
   "${KERNEL_AVX2_LAB_ROOT}"
   "${CMAKE_SOURCE_DIR}/Codegen/tests/compile_fixture/stubs"
 )
-target_link_libraries(kernel-generated-avx2-lab-tests PRIVATE GTest::gtest_main)
-if(MSVC)
-  target_compile_options(kernel-generated-avx2-lab-tests PRIVATE /W4 /WX /arch:AVX2 /fp:precise)
+target_link_libraries(kernel-generated-avx2-lab-tests PRIVATE
+  GTest::gtest_main
+  sandbox::codegen_warnings
+)
+if(SANDBOX_MSVC_FRONTEND)
+  target_compile_options(kernel-generated-avx2-lab-tests PRIVATE /arch:AVX2 /fp:precise)
 else()
   target_compile_options(kernel-generated-avx2-lab-tests PRIVATE
-    ${SANDBOX_CODEGEN_WARNINGS}
     -mavx2
     -ffp-contract=off
   )
@@ -331,24 +319,23 @@ if(SANDBOX_KERNEL_BENCHMARKS)
       kernel-native-dot-relaxed-avx512)
     target_compile_features(${TARGET} PRIVATE cxx_std_23)
     target_include_directories(${TARGET} PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
+    target_link_libraries(${TARGET} PRIVATE sandbox::codegen_warnings)
   endforeach()
-  if(MSVC)
-    target_compile_options(kernel-native-simd-avx2 PRIVATE /W4 /WX /arch:AVX2 /fp:strict)
-    target_compile_options(kernel-native-simd-avx512 PRIVATE /W4 /WX /arch:AVX512 /fp:strict)
+  if(SANDBOX_MSVC_FRONTEND)
+    target_compile_options(kernel-native-simd-avx2 PRIVATE /arch:AVX2 /fp:strict)
+    target_compile_options(kernel-native-simd-avx512 PRIVATE /arch:AVX512 /fp:strict)
     target_compile_options(kernel-native-dot-relaxed-avx2 PRIVATE
-      /W4 /WX /arch:AVX2 /fp:fast
+      /arch:AVX2 /fp:fast
     )
     target_compile_options(kernel-native-dot-relaxed-avx512 PRIVATE
-      /W4 /WX /arch:AVX512 /fp:fast
+      /arch:AVX512 /fp:fast
     )
   else()
     target_compile_options(kernel-native-simd-avx2 PRIVATE
-      ${SANDBOX_CODEGEN_WARNINGS}
       -mavx2
       -ffp-contract=off
     )
     target_compile_options(kernel-native-simd-avx512 PRIVATE
-      ${SANDBOX_CODEGEN_WARNINGS}
       -mavx2
       -mavx512f
       -mavx512cd
@@ -358,7 +345,6 @@ if(SANDBOX_KERNEL_BENCHMARKS)
       -ffp-contract=off
     )
     target_compile_options(kernel-native-dot-relaxed-avx2 PRIVATE
-      ${SANDBOX_CODEGEN_WARNINGS}
       -mavx2
       -fno-signed-zeros
       -fno-trapping-math
@@ -366,7 +352,6 @@ if(SANDBOX_KERNEL_BENCHMARKS)
       -ffp-contract=off
     )
     target_compile_options(kernel-native-dot-relaxed-avx512 PRIVATE
-      ${SANDBOX_CODEGEN_WARNINGS}
       -mavx2
       -mavx512f
       -mavx512cd
@@ -396,12 +381,12 @@ if(SANDBOX_KERNEL_BENCHMARKS)
   target_link_libraries(kernel-native-simd-tests PRIVATE
     CpuFeatures::cpu_features
     GTest::gtest_main
+    sandbox::codegen_warnings
   )
-  if(MSVC)
-    target_compile_options(kernel-native-simd-tests PRIVATE /W4 /WX /arch:AVX2 /fp:strict)
+  if(SANDBOX_MSVC_FRONTEND)
+    target_compile_options(kernel-native-simd-tests PRIVATE /arch:AVX2 /fp:strict)
   else()
     target_compile_options(kernel-native-simd-tests PRIVATE
-      ${SANDBOX_CODEGEN_WARNINGS}
       -mavx2
       -ffp-contract=off
     )
@@ -423,12 +408,12 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     benchmark::benchmark
     benchmark::benchmark_main
     CpuFeatures::cpu_features
+    sandbox::codegen_warnings
   )
-  if(MSVC)
-    target_compile_options(kernel-native-benchmarks PRIVATE /W4 /WX /arch:AVX2 /fp:strict)
+  if(SANDBOX_MSVC_FRONTEND)
+    target_compile_options(kernel-native-benchmarks PRIVATE /arch:AVX2 /fp:strict)
   else()
     target_compile_options(kernel-native-benchmarks PRIVATE
-      ${SANDBOX_CODEGEN_WARNINGS}
       -mavx2
       -ffp-contract=off
     )

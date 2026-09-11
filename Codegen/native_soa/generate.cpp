@@ -25,7 +25,11 @@ auto main(int argc, char** argv) -> int {
         native.experimental_array_allocators.clear();
         native.settings = {.name = "native_soa",
                            .header = "native_soa_types.h",
-                           .namespace_name = "ml::native_experiment"};
+                           .source = {},
+                           .header_include = {},
+                           .namespace_name = "ml::native_experiment",
+                           .include_order = {},
+                           .prelude_lines = {}};
         for (auto& schema : native.structs) {
             schema.single_allocation_variants.clear();
             schema.export_specifier.reset();

@@ -8,6 +8,9 @@ Unreal Engine 5.8 project.
 * Entity data is largely stored in cache-friendly arrays / SOA structures rather than represented entirely by Actors.
 * UI is a presentation layer over simulation state and must not own gameplay logic.
 * Determinism, debuggability, simple control flow, and performance are important.
+* For new code that does not require Unreal Engine, prefer designing it as a standalone component
+  under `native/` and integrate it with Unreal through a thin adapter.
+* External standalone developer tools may live under `tools/`.
 
 # Builds
 
@@ -16,6 +19,12 @@ Unreal Engine 5.8 project.
 * CMake serializes Unreal builds that share an engine checkout. Do not overlap a CMake Unreal build with Visual Studio, Live Coding, or another Unreal build launched outside CMake because those paths do not participate in the CMake lock.
 * Preferred build: `cmake --workflow --preset debug-game`.
 * Targets: `editor`, `game`, `core-tests`, `native-tests`, `dev-core`, `resave-assets`, and `generate-project-files`.
+* Link every first-party native CMake target to `sandbox::warnings_as_errors` or a stricter
+  project-specific warning interface. The underlying
+  `sandbox::warnings` interface requires at least `-Wall -Wextra -Wpedantic` for GNU-style GNU,
+  Clang, and AppleClang frontends, and `/W4`; the errors interface adds `-Werror` or `/WX`.
+  Treat clang-cl as an MSVC-style frontend and use `/W4 /WX`; do not use `/Wall` or Clang
+  `-Wall`, because clang-cl treats that level as `-Weverything`.
 * Regenerate project files after changes to modules/plugins, `.Build.cs`, `.Target.cs`, or project/module definitions. For larger tasks, do this once after the full change rather than after intermediate edits.
 * Tests:
   * all suites: `cmake --workflow --preset debug-game-tests`

@@ -165,6 +165,7 @@ def main() -> None:
     project_root = script_dir.parent
     directories = [
         project_root / "Codegen",
+        project_root / "native",
         project_root / "Source",
         project_root / "Plugins" / "USFLoader",
         project_root / "Plugins" / "SandboxCore",

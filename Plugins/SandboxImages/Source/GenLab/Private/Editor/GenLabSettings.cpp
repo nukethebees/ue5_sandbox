@@ -1,8 +1,8 @@
 #include "Editor/GenLabSettings.h"
 
 namespace {
-auto to_generator_type(EGenLabGenerator const generator) -> SandboxImages::GenLab::EGeneratorType {
-    using enum SandboxImages::GenLab::EGeneratorType;
+auto to_generator_type(EGenLabGenerator const generator) -> sandbox::image::GeneratorType {
+    using enum sandbox::image::GeneratorType;
     switch (generator) {
         case EGenLabGenerator::RadialGradient:
             return RadialGradient;
@@ -26,9 +26,9 @@ auto to_generator_type(EGenLabGenerator const generator) -> SandboxImages::GenLa
     return RadialGradient;
 }
 
-auto to_editor_generator(SandboxImages::GenLab::EGeneratorType const generator)
+auto to_editor_generator(sandbox::image::GeneratorType const generator)
     -> EGenLabGenerator {
-    using enum SandboxImages::GenLab::EGeneratorType;
+    using enum sandbox::image::GeneratorType;
     switch (generator) {
         case RadialGradient:
             return EGenLabGenerator::RadialGradient;
@@ -52,44 +52,43 @@ auto to_editor_generator(SandboxImages::GenLab::EGeneratorType const generator)
     return EGenLabGenerator::RadialGradient;
 }
 
-auto to_cellular_mode(EGenLabCellularMode const mode) -> SandboxImages::GenLab::ECellularMode {
-    return mode == EGenLabCellularMode::Distance ? SandboxImages::GenLab::ECellularMode::Distance
-                                                 : SandboxImages::GenLab::ECellularMode::Borders;
+auto to_cellular_mode(EGenLabCellularMode const mode) -> sandbox::image::CellularMode {
+    return mode == EGenLabCellularMode::Distance ? sandbox::image::CellularMode::Distance
+                                                 : sandbox::image::CellularMode::Borders;
 }
 
-auto to_output(EGenLabOutput const output)
-    -> SandboxImages::GenLab::FImagePostProcessParameters::EOutput {
-    using EOutput = SandboxImages::GenLab::FImagePostProcessParameters::EOutput;
+auto to_output(EGenLabOutput const output) -> sandbox::image::ImagePostProcessParameters::Output {
+    using Output = sandbox::image::ImagePostProcessParameters::Output;
     switch (output) {
         case EGenLabOutput::Scalar:
-            return EOutput::Scalar;
+            return Output::Scalar;
         case EGenLabOutput::NormalMap:
-            return EOutput::NormalMap;
+            return Output::NormalMap;
         case EGenLabOutput::SignedDistance:
-            return EOutput::SignedDistance;
+            return Output::SignedDistance;
     }
-    return EOutput::Scalar;
+    return Output::Scalar;
 }
 
-auto to_editor_output(SandboxImages::GenLab::FImagePostProcessParameters::EOutput const output)
+auto to_editor_output(sandbox::image::ImagePostProcessParameters::Output const output)
     -> EGenLabOutput {
-    using EOutput = SandboxImages::GenLab::FImagePostProcessParameters::EOutput;
+    using Output = sandbox::image::ImagePostProcessParameters::Output;
     switch (output) {
-        case EOutput::Scalar:
+        case Output::Scalar:
             return EGenLabOutput::Scalar;
-        case EOutput::NormalMap:
+        case Output::NormalMap:
             return EGenLabOutput::NormalMap;
-        case EOutput::SignedDistance:
+        case Output::SignedDistance:
             return EGenLabOutput::SignedDistance;
     }
     return EGenLabOutput::Scalar;
 }
 }
 
-auto UGenLabSettings::to_request() const -> SandboxImages::GenLab::FGenerationRequest {
-    using namespace SandboxImages::GenLab;
+auto UGenLabSettings::to_request() const -> sandbox::image::GenerationRequest {
+    using namespace sandbox::image;
     auto request{make_default_request(to_generator_type(generator))};
-    request.output_name = output_name;
+    request.output_name = TCHAR_TO_UTF8(*output_name);
     request.radial_gradient = {.width = width,
                                .height = height,
                                .inner_radius = inner_radius,
@@ -173,10 +172,10 @@ auto UGenLabSettings::to_request() const -> SandboxImages::GenLab::FGenerationRe
     return request;
 }
 
-void UGenLabSettings::load_request(SandboxImages::GenLab::FGenerationRequest const& request) {
-    using namespace SandboxImages::GenLab;
+void UGenLabSettings::load_request(sandbox::image::GenerationRequest const& request) {
+    using namespace sandbox::image;
     generator = to_editor_generator(request.generator);
-    output_name = request.output_name;
+    output_name = UTF8_TO_TCHAR(request.output_name.c_str());
     invert = request.post_process.invert;
     contrast = request.post_process.contrast;
     threshold_enabled = request.post_process.threshold_enabled;
@@ -264,7 +263,7 @@ void UGenLabSettings::load_request(SandboxImages::GenLab::FGenerationRequest con
             cellular_seed = request.cellular_noise.seed;
             cellular_cell_size = request.cellular_noise.cell_size;
             cellular_jitter = request.cellular_noise.jitter;
-            cellular_mode = request.cellular_noise.mode == ECellularMode::Distance
+            cellular_mode = request.cellular_noise.mode == CellularMode::Distance
                               ? EGenLabCellularMode::Distance
                               : EGenLabCellularMode::Borders;
             cellular_edge_width = request.cellular_noise.edge_width;
@@ -282,8 +281,8 @@ void UGenLabSettings::load_request(SandboxImages::GenLab::FGenerationRequest con
 }
 
 void UGenLabSettings::load_generator_defaults() {
-    using namespace SandboxImages::GenLab;
-    auto request{SandboxImages::GenLab::make_default_request(to_generator_type(generator))};
+    using namespace sandbox::image;
+    auto request{sandbox::image::make_default_request(to_generator_type(generator))};
     request.post_process = {.invert = invert,
                             .contrast = contrast,
                             .threshold_enabled = threshold_enabled,
@@ -297,7 +296,7 @@ void UGenLabSettings::load_generator_defaults() {
                             .distance_wrap = distance_wrap};
     if (generator == EGenLabGenerator::CurlNoiseFlow) {
         request.post_process.output =
-            SandboxImages::GenLab::FImagePostProcessParameters::EOutput::Scalar;
+            sandbox::image::ImagePostProcessParameters::Output::Scalar;
     }
     load_request(request);
 }

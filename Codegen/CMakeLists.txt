@@ -14,8 +14,12 @@ if(SANDBOX_KERNEL_BENCHMARK_PLOTS)
   find_program(UV_EXECUTABLE NAMES uv REQUIRED)
 endif()
 
-if(NOT MSVC)
-  set(SANDBOX_CODEGEN_WARNINGS
+add_library(sandbox_codegen_warnings INTERFACE)
+add_library(sandbox::codegen_warnings ALIAS sandbox_codegen_warnings)
+if(SANDBOX_MSVC_FRONTEND)
+  target_compile_options(sandbox_codegen_warnings INTERFACE /W4 /WX)
+else()
+  target_compile_options(sandbox_codegen_warnings INTERFACE
     -Wall
     -Wextra
     -Wpedantic
@@ -60,11 +64,14 @@ add_library(codegen-lib
 target_compile_features(codegen-lib PUBLIC cxx_std_23)
 target_compile_definitions(codegen-lib PRIVATE SANDBOX_CLANG_FORMAT_EXECUTABLE="${SANDBOX_CLANG_FORMAT_EXECUTABLE}")
 target_include_directories(codegen-lib PUBLIC include)
-target_link_libraries(codegen-lib PUBLIC nlohmann_json::nlohmann_json)
+target_link_libraries(codegen-lib
+  PUBLIC nlohmann_json::nlohmann_json
+  PRIVATE sandbox::codegen_warnings
+)
 
 add_executable(sandbox-codegen src/main.cpp)
 set_target_properties(sandbox-codegen PROPERTIES OUTPUT_NAME codegen)
-target_link_libraries(sandbox-codegen PRIVATE codegen-lib)
+target_link_libraries(sandbox-codegen PRIVATE codegen-lib sandbox::codegen_warnings)
 
 set(CODEGEN_COMPILE_FIXTURE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tests/compile_fixture")
 set(CODEGEN_COMPILE_FIXTURE_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated_compile_fixture")
@@ -118,6 +125,7 @@ target_include_directories(codegen-generated-compile-tests PRIVATE
   "${CODEGEN_COMPILE_FIXTURE_SOURCE}/stubs"
   "${PROJECT_SOURCE_DIR}/Plugins/SandboxCore/Source/SandboxCore/Public"
 )
+target_link_libraries(codegen-generated-compile-tests PRIVATE sandbox::codegen_warnings)
 
 add_executable(codegen-tests
   tests/ast_tests.cpp
@@ -135,22 +143,11 @@ add_dependencies(codegen-tests codegen-generated-compile-tests)
 target_link_libraries(codegen-tests PRIVATE
   codegen-lib
   GTest::gtest_main
+  sandbox::codegen_warnings
 )
 target_compile_definitions(codegen-tests PRIVATE
   SANDBOX_CODEGEN_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
 )
-
-if(MSVC)
-  target_compile_options(codegen-lib PRIVATE /W4 /WX)
-  target_compile_options(sandbox-codegen PRIVATE /W4 /WX)
-  target_compile_options(codegen-tests PRIVATE /W4 /WX)
-  target_compile_options(codegen-generated-compile-tests PRIVATE /W4 /WX)
-else()
-  target_compile_options(codegen-lib PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
-  target_compile_options(sandbox-codegen PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
-  target_compile_options(codegen-tests PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
-  target_compile_options(codegen-generated-compile-tests PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
-endif()
 
 include(GoogleTest)
 gtest_discover_tests(codegen-tests PROPERTIES LABELS "unit;all;codegen")
@@ -167,6 +164,7 @@ foreach(restriction IN ITEMS COPY DESTRUCTOR DEFAULT)
     "${CODEGEN_COMPILE_FIXTURE_SOURCE}/stubs"
     "${PROJECT_SOURCE_DIR}/Plugins/SandboxCore/Source/SandboxCore/Public"
   )
+  target_link_libraries(${reject_target} PRIVATE sandbox::codegen_warnings)
   add_test(NAME "SingleAllocationRejects${restriction}"
     COMMAND "${CMAKE_COMMAND}" "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
       "-DREJECT_TARGET=${reject_target}"

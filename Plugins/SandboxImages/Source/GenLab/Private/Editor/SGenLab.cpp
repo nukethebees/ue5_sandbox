@@ -23,174 +23,42 @@
 namespace {
 constexpr int32 maximum_preview_dimension{512};
 
-auto scale_request_for_preview(SandboxImages::GenLab::FGenerationRequest request,
-                               bool const tiled_preview)
-    -> SandboxImages::GenLab::FGenerationRequest {
-    auto const maximum_source_dimension{tiled_preview ? maximum_preview_dimension / 2
-                                                      : maximum_preview_dimension};
-    int32 width{};
-    int32 height{};
-    switch (request.generator) {
-        case SandboxImages::GenLab::EGeneratorType::RadialGradient:
-            width = request.radial_gradient.width;
-            height = request.radial_gradient.height;
-            break;
-        case SandboxImages::GenLab::EGeneratorType::RingMask:
-            width = request.ring_mask.width;
-            height = request.ring_mask.height;
-            break;
-        case SandboxImages::GenLab::EGeneratorType::Starfield:
-            width = request.starfield.width;
-            height = request.starfield.height;
-            break;
-        case SandboxImages::GenLab::EGeneratorType::Noise:
-            width = request.noise.width;
-            height = request.noise.height;
-            break;
-        case SandboxImages::GenLab::EGeneratorType::DomainWarpedNoise:
-            width = request.domain_warped_noise.width;
-            height = request.domain_warped_noise.height;
-            break;
-        case SandboxImages::GenLab::EGeneratorType::CurlNoiseFlow:
-            width = request.curl_noise_flow.width;
-            height = request.curl_noise_flow.height;
-            break;
-        case SandboxImages::GenLab::EGeneratorType::CellularNoise:
-            width = request.cellular_noise.width;
-            height = request.cellular_noise.height;
-            break;
-        case SandboxImages::GenLab::EGeneratorType::HexGrid:
-            width = request.hex_grid.width;
-            height = request.hex_grid.height;
-            break;
-    }
-
-    if (width <= 0 || height <= 0) {
-        return request;
-    }
-
-    auto const scale{FMath::Min(1.0f,
-                                static_cast<float>(maximum_source_dimension) /
-                                    static_cast<float>(FMath::Max(width, height)))};
-    auto const preview_width{FMath::Max(1, FMath::RoundToInt(static_cast<float>(width) * scale))};
-    auto const preview_height{FMath::Max(1, FMath::RoundToInt(static_cast<float>(height) * scale))};
-    switch (request.generator) {
-        case SandboxImages::GenLab::EGeneratorType::RadialGradient:
-            request.radial_gradient.width = preview_width;
-            request.radial_gradient.height = preview_height;
-            break;
-        case SandboxImages::GenLab::EGeneratorType::RingMask:
-            request.ring_mask.width = preview_width;
-            request.ring_mask.height = preview_height;
-            break;
-        case SandboxImages::GenLab::EGeneratorType::Starfield:
-            request.starfield.width = preview_width;
-            request.starfield.height = preview_height;
-            request.starfield.star_count =
-                FMath::RoundToInt(static_cast<float>(request.starfield.star_count) * scale * scale);
-            request.starfield.minimum_radius *= scale;
-            request.starfield.maximum_radius *= scale;
-            break;
-        case SandboxImages::GenLab::EGeneratorType::Noise:
-            request.noise.width = preview_width;
-            request.noise.height = preview_height;
-            request.noise.base_scale *= scale;
-            break;
-        case SandboxImages::GenLab::EGeneratorType::DomainWarpedNoise:
-            request.domain_warped_noise.width = preview_width;
-            request.domain_warped_noise.height = preview_height;
-            request.domain_warped_noise.base_scale *= scale;
-            request.domain_warped_noise.warp_scale *= scale;
-            request.domain_warped_noise.warp_strength *= scale;
-            break;
-        case SandboxImages::GenLab::EGeneratorType::CurlNoiseFlow:
-            request.curl_noise_flow.width = preview_width;
-            request.curl_noise_flow.height = preview_height;
-            request.curl_noise_flow.base_scale *= scale;
-            request.curl_noise_flow.derivative_step *= scale;
-            break;
-        case SandboxImages::GenLab::EGeneratorType::CellularNoise:
-            request.cellular_noise.width = preview_width;
-            request.cellular_noise.height = preview_height;
-            request.cellular_noise.cell_size *= scale;
-            request.cellular_noise.edge_width *= scale;
-            request.cellular_noise.falloff *= scale;
-            break;
-        case SandboxImages::GenLab::EGeneratorType::HexGrid:
-            request.hex_grid.width = preview_width;
-            request.hex_grid.height = preview_height;
-            request.hex_grid.cell_radius *= scale;
-            request.hex_grid.line_thickness *= scale;
-            request.hex_grid.falloff *= scale;
-            break;
-    }
-    return request;
-}
-
-auto preview_channel_value(FColor const pixel, EGenLabPreviewChannel const channel) -> uint8 {
+auto to_native_preview_channel(EGenLabPreviewChannel const channel)
+    -> sandbox::image::PreviewChannel {
     switch (channel) {
         case EGenLabPreviewChannel::Red:
-            return pixel.R;
+            return sandbox::image::PreviewChannel::Red;
         case EGenLabPreviewChannel::Green:
-            return pixel.G;
+            return sandbox::image::PreviewChannel::Green;
         case EGenLabPreviewChannel::Blue:
-            return pixel.B;
+            return sandbox::image::PreviewChannel::Blue;
         case EGenLabPreviewChannel::Alpha:
-            return pixel.A;
+            return sandbox::image::PreviewChannel::Alpha;
         case EGenLabPreviewChannel::Color:
+            return sandbox::image::PreviewChannel::Color;
         case EGenLabPreviewChannel::RGB:
-            break;
+            return sandbox::image::PreviewChannel::RGB;
     }
-    return 0;
+    return sandbox::image::PreviewChannel::Color;
 }
 
-auto make_display_image(SandboxImages::GenLab::FGeneratedImage const& source,
-                        EGenLabPreviewChannel const channel,
-                        bool const tiled) -> SandboxImages::GenLab::FGeneratedImage {
-    auto const tile_count{tiled ? 2 : 1};
-    SandboxImages::GenLab::FGeneratedImage display{.width = source.width * tile_count,
-                                                   .height = source.height * tile_count};
-    display.pixels.SetNumUninitialized(display.width * display.height);
-    for (int32 y{0}; y < display.height; ++y) {
-        for (int32 x{0}; x < display.width; ++x) {
-            auto const source_pixel{
-                source.pixels[(y % source.height) * source.width + x % source.width]};
-            auto& display_pixel{display.pixels[y * display.width + x]};
-            if (channel == EGenLabPreviewChannel::Color) {
-                auto const checker_value{((x / 16 + y / 16) & 1) == 0 ? uint8{48} : uint8{80}};
-                auto const alpha{static_cast<float>(source_pixel.A) / 255.0f};
-                display_pixel = {static_cast<uint8>(FMath::RoundToInt(
-                                     FMath::Lerp(static_cast<float>(checker_value),
-                                                 static_cast<float>(source_pixel.R),
-                                                 alpha))),
-                                 static_cast<uint8>(FMath::RoundToInt(
-                                     FMath::Lerp(static_cast<float>(checker_value),
-                                                 static_cast<float>(source_pixel.G),
-                                                 alpha))),
-                                 static_cast<uint8>(FMath::RoundToInt(
-                                     FMath::Lerp(static_cast<float>(checker_value),
-                                                 static_cast<float>(source_pixel.B),
-                                                 alpha))),
-                                 255};
-            } else if (channel == EGenLabPreviewChannel::RGB) {
-                display_pixel = {source_pixel.R, source_pixel.G, source_pixel.B, 255};
-            } else {
-                auto const value{preview_channel_value(source_pixel, channel)};
-                display_pixel = {value, value, value, 255};
-            }
-        }
+auto to_unreal_pixels(sandbox::image::GeneratedImage const& image) -> TArray<FColor> {
+    TArray<FColor> pixels;
+    pixels.Reserve(static_cast<int32>(image.pixels.size()));
+    for (auto const pixel : image.pixels) {
+        pixels.Emplace(pixel.red, pixel.green, pixel.blue, pixel.alpha);
     }
-    return display;
+    return pixels;
 }
 }
 
 void SGenLab::Construct(FArguments const&) {
     settings_.Reset(NewObject<UGenLabSettings>());
     last_generator_ = settings_->generator;
-    auto requests{SandboxImages::GenLab::default_generation_requests()};
-    presets_.Reserve(requests.Num());
+    auto requests{sandbox::image::default_generation_requests()};
+    presets_.Reserve(static_cast<int32>(requests.size()));
     for (auto& request : requests) {
-        presets_.Add(MakeShared<SandboxImages::GenLab::FGenerationRequest>(MoveTemp(request)));
+        presets_.Add(MakeShared<sandbox::image::GenerationRequest>(MoveTemp(request)));
     }
     if (!presets_.IsEmpty()) {
         selected_preset_ = presets_[0];
@@ -227,7 +95,7 @@ void SGenLab::Construct(FArguments const&) {
                         SHorizontalBox::Slot().FillWidth(1.0f)
                             [SAssignNew(
                                  preset_combo_,
-                                 SComboBox<TSharedPtr<SandboxImages::GenLab::FGenerationRequest>>)
+                                 SComboBox<TSharedPtr<sandbox::image::GenerationRequest>>)
                                  .OptionsSource(&presets_)
                                  .InitiallySelectedItem(selected_preset_)
                                  .OnGenerateWidget(this, &SGenLab::make_preset_widget)
@@ -282,7 +150,7 @@ void SGenLab::on_property_changed(FPropertyChangedEvent const&) {
     update_preview();
 }
 
-void SGenLab::on_preset_selected(TSharedPtr<SandboxImages::GenLab::FGenerationRequest> const preset,
+void SGenLab::on_preset_selected(TSharedPtr<sandbox::image::GenerationRequest> const preset,
                                  ESelectInfo::Type const) {
     if (!preset.IsValid()) {
         return;
@@ -295,23 +163,27 @@ void SGenLab::on_preset_selected(TSharedPtr<SandboxImages::GenLab::FGenerationRe
     update_preview();
 }
 
-auto SGenLab::make_preset_widget(TSharedPtr<SandboxImages::GenLab::FGenerationRequest> const preset)
+auto SGenLab::make_preset_widget(TSharedPtr<sandbox::image::GenerationRequest> const preset)
     const -> TSharedRef<SWidget> {
     return SNew(STextBlock)
-        .Text(preset.IsValid() ? FText::FromString(preset->output_name) : FText::GetEmpty());
+        .Text(preset.IsValid()
+                  ? FText::FromString(UTF8_TO_TCHAR(preset->output_name.c_str()))
+                  : FText::GetEmpty());
 }
 
 auto SGenLab::preset_text() const -> FText {
-    return selected_preset_.IsValid() ? FText::FromString(selected_preset_->output_name)
+    return selected_preset_.IsValid()
+               ? FText::FromString(UTF8_TO_TCHAR(selected_preset_->output_name.c_str()))
                                       : LOCTEXT("CustomPreset", "Custom");
 }
 
 void SGenLab::update_preview() {
     auto const request{settings_->to_request()};
-    auto const preview_request{scale_request_for_preview(request, settings_->tiled_preview)};
-    auto const image{SandboxImages::GenLab::generate_image(preview_request)};
+    auto const preview_request{sandbox::image::scale_request_for_preview(
+        request, maximum_preview_dimension, settings_->tiled_preview)};
+    auto const image{sandbox::image::generate_image(preview_request)};
     if (!image.is_valid()) {
-        status_ = FText::FromString(image.error);
+        status_ = FText::FromString(UTF8_TO_TCHAR(image.error.c_str()));
         preview_brush_.SetResourceObject(nullptr);
         preview_texture_.Reset();
         Invalidate(EInvalidateWidgetReason::Paint);
@@ -325,11 +197,12 @@ void SGenLab::update_preview() {
     static uint64 preview_index{0};
     auto const texture_name{
         FString::Printf(TEXT("SandboxImagesGenLabPreview_%llu"), ++preview_index)};
-    auto const display_image{
-        make_display_image(image, settings_->preview_channel, settings_->tiled_preview)};
+    auto const display_image{sandbox::image::make_preview_image(
+        image, to_native_preview_channel(settings_->preview_channel), settings_->tiled_preview)};
+    auto const display_pixels{to_unreal_pixels(display_image)};
     auto* const texture{FImageUtils::CreateTexture2D(display_image.width,
                                                      display_image.height,
-                                                     display_image.pixels,
+                                                     display_pixels,
                                                      GetTransientPackage(),
                                                      texture_name,
                                                      RF_Transient,
@@ -356,7 +229,7 @@ auto SGenLab::generate_selected() -> FReply {
     auto const success{SandboxImages::GenLab::generate_and_import(request)};
     status_ = success
                 ? FText::Format(LOCTEXT("SelectedSucceeded", "Generated and imported {0}."),
-                                FText::FromString(request.output_name))
+                                FText::FromString(UTF8_TO_TCHAR(request.output_name.c_str())))
                 : LOCTEXT("SelectedFailed", "Generation failed. See the Output Log for details.");
     return FReply::Handled();
 }

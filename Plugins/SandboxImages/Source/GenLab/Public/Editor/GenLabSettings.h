@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Generation/ImageGenerators.h"
+#include "sandbox/image/image_generation.h"
 #include "UObject/Object.h"
 
 #include "GenLabSettings.generated.h"
@@ -510,7 +510,7 @@ class GENLAB_API UGenLabSettings final : public UObject {
                       ClampMin = "0.0"))
     float hex_falloff{1.0f};
 
-    [[nodiscard]] auto to_request() const -> SandboxImages::GenLab::FGenerationRequest;
-    void load_request(SandboxImages::GenLab::FGenerationRequest const& request);
+    [[nodiscard]] auto to_request() const -> sandbox::image::GenerationRequest;
+    void load_request(sandbox::image::GenerationRequest const& request);
     void load_generator_defaults();
 };

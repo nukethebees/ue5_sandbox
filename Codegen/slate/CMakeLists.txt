@@ -12,11 +12,12 @@ target_link_libraries(slate-codegen-lib PRIVATE
   codegen-lib
   codegen-sexpr
   nlohmann_json::nlohmann_json
+  sandbox::codegen_warnings
 )
 
 add_executable(sandbox-slatec src/main.cpp)
 set_target_properties(sandbox-slatec PROPERTIES OUTPUT_NAME slatec)
-target_link_libraries(sandbox-slatec PRIVATE slate-codegen-lib)
+target_link_libraries(sandbox-slatec PRIVATE slate-codegen-lib sandbox::codegen_warnings)
 
 add_executable(slate-codegen-tests
   tests/compiler_io_tests.cpp
@@ -27,17 +28,8 @@ target_link_libraries(slate-codegen-tests PRIVATE
   slate-codegen-lib
   codegen-sexpr
   GTest::gtest_main
+  sandbox::codegen_warnings
 )
-
-if(MSVC)
-  target_compile_options(slate-codegen-lib PRIVATE /W4 /WX)
-  target_compile_options(sandbox-slatec PRIVATE /W4 /WX)
-  target_compile_options(slate-codegen-tests PRIVATE /W4 /WX)
-else()
-  target_compile_options(slate-codegen-lib PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
-  target_compile_options(sandbox-slatec PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
-  target_compile_options(slate-codegen-tests PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
-endif()
 
 gtest_discover_tests(slate-codegen-tests PROPERTIES LABELS "unit;all;codegen")
 
@@ -65,11 +57,7 @@ add_executable(slate-generated-compile-tests
 set_target_properties(slate-generated-compile-tests PROPERTIES UNITY_BUILD OFF)
 target_compile_features(slate-generated-compile-tests PRIVATE cxx_std_23)
 target_include_directories(slate-generated-compile-tests PRIVATE "${SLATE_COMPILE_OUTPUT}")
-if(MSVC)
-  target_compile_options(slate-generated-compile-tests PRIVATE /W4 /WX)
-else()
-  target_compile_options(slate-generated-compile-tests PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
-endif()
+target_link_libraries(slate-generated-compile-tests PRIVATE sandbox::codegen_warnings)
 add_dependencies(slate-codegen-tests slate-generated-compile-tests)
 add_test(NAME SlateGeneratedCompileSmoke COMMAND slate-generated-compile-tests)
 set_tests_properties(SlateGeneratedCompileSmoke PROPERTIES LABELS "unit;all;codegen")

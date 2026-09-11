@@ -50,9 +50,10 @@ logs every written file and reports failures in the Output Log or process exit c
 
 ## Current outputs
 
-The reproducible parameters and default output table live in
-`GenLab/Private/Generation/ImageGenerators.h` and `ImageGenerators.cpp`. The editor UI creates the
-same generation requests used by batch regeneration; it does not define a separate preset format.
+The reproducible parameters, default output table, and platform-independent generators live in
+`native/image`. CMake builds them as `sandbox-image`, and `GenLab` links that library for editor and
+batch regeneration. The editor UI creates the same generation requests used by batch regeneration;
+it does not define a separate preset format.
 Change the output name and seed to create a deterministic variant without changing the canonical
 default set. Shared invert and contrast controls shape the final intensity after generation. Noise
 can optionally use periodic sampling so opposite edges match exactly; imported tileable noise uses

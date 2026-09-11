@@ -4,6 +4,8 @@ project(SandboxUnrealBuild LANGUAGES CXX)
 
 enable_testing()
 
+include(cmake/compiler_warnings.cmake)
+
 option(SANDBOX_CODEGEN_ONLY "Configure only the standalone code generator" OFF)
 option(SANDBOX_KERNEL_BENCHMARKS "Build native generated-kernel benchmarks" OFF)
 option(SANDBOX_NATIVE_SOA_BENCHMARKS "Build standalone experimental SoA benchmarks" OFF)
@@ -255,6 +257,9 @@ add_custom_target(generate-project-files
 include(cmake/unreal.cmake)
 include(cmake/catch2.cmake)
 
+add_subdirectory(native/image)
+add_dependencies(generate-project-files sandbox-image)
+
 add_unreal_target(editor SandboxEditor)
 add_unreal_target(game Sandbox)
 add_custom_target(check-space-game-layers
@@ -270,7 +275,12 @@ set_tests_properties(SpaceGame.Architecture SpaceGame.ArchitectureChecker PROPER
   LABELS "unit;all"
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
-add_dependencies(editor check-space-game-layers check-generated-code check-generated-slate-code)
+add_dependencies(editor
+  sandbox-image
+  check-space-game-layers
+  check-generated-code
+  check-generated-slate-code
+)
 add_dependencies(game check-space-game-layers)
 add_dependencies(game check-generated-code)
 
@@ -729,6 +739,7 @@ set_tests_properties(SandboxISMC.RemoteBenchmark PROPERTIES
 
 add_custom_target(dev-core
   DEPENDS
+    sandbox-image-tests
     editor
     codegen-tests
     kernel-codegen-tests
