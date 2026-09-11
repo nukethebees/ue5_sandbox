@@ -72,6 +72,7 @@ struct SubscriptExpr {
 enum class BinaryOperator {
     equal,
     greater_equal,
+    greater,
     subtract,
     add,
     multiply,

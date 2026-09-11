@@ -26,6 +26,7 @@ auto binary_precedence(BinaryOperator const operation) -> ExprPrecedence {
         case BinaryOperator::not_equal:
             return ExprPrecedence::equality;
         case BinaryOperator::greater_equal:
+        case BinaryOperator::greater:
             return ExprPrecedence::relational;
         case BinaryOperator::subtract:
         case BinaryOperator::add:
@@ -90,6 +91,8 @@ auto binary_spelling(BinaryOperator const operation) -> std::string_view {
             return " / ";
         case BinaryOperator::greater_equal:
             return " >= ";
+        case BinaryOperator::greater:
+            return " > ";
         case BinaryOperator::subtract:
             return " - ";
         case BinaryOperator::add:

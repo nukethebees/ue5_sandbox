@@ -16,7 +16,8 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
         {.name = "Rows",
          .members = {{"ids", SoaMemberKind::array, TypeRef{"std::int32_t"}},
                      {"nested", SoaMemberKind::nested, TypeRef{"Child"}, {}, "Child"}},
-         .single_allocation = "SingleRows"}};
+         .single_allocation = "SingleRows",
+         .single_allocation_variants = {{"CustomSingleRows", TypeRef{"CustomAllocator"}}}}};
     auto const files{render_modules(lower_modules(
         Manifest{.schema_version = manifest_schema_version,
                  .modules = {SoaModuleSchema{.settings = {.name = "native", .header = "Native.h"},
@@ -38,6 +39,11 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
         std::string::npos);
     EXPECT_NE(output.find(
                   "std::memcpy(destination.nested_xs, source.nested.xs.data(), nested_xs_bytes);"),
+              std::string::npos);
+    EXPECT_NE(output.find("ml::native_soa::free(data_, allocation_alignment);"), std::string::npos);
+    EXPECT_NE(output.find("CustomAllocator::free(data_);"), std::string::npos);
+    EXPECT_EQ(output.find("CustomAllocator::free(data_, allocation_alignment)"), std::string::npos);
+    EXPECT_NE(output.find("std::memcpy(destination.nested_xs, source.nested_xs, nested_xs_bytes);"),
               std::string::npos);
 }
 
@@ -81,6 +87,24 @@ TEST(SingleAllocationSoa, TypedColumnOperationsReuseByteCountsAndPreserveNestedP
     EXPECT_NE(output.find("destination.nested_values, source.nested.values.GetData(), ids_bytes"),
               std::string::npos);
     EXPECT_EQ(output.find("auto const nested_values_bytes"), std::string::npos);
+    auto const start{output.find("void reallocate(size_type const new_capacity)")};
+    ASSERT_NE(start, std::string::npos);
+    auto const body{output.substr(start)};
+    auto const guard{body.find("if (num_ > 0)")};
+    auto const bytes{body.find("auto const ids_bytes{live_count * sizeof(int32)};")};
+    auto const copy{
+        body.find("FMemory::Memcpy(destination.nested_values, source.nested_values, ids_bytes);")};
+    auto const release{body.find("MimallocStorageAllocator::free(data_);")};
+    auto const publish{body.find("data_ = new_data;")};
+    ASSERT_NE(guard, std::string::npos);
+    ASSERT_NE(bytes, std::string::npos);
+    ASSERT_NE(copy, std::string::npos);
+    ASSERT_NE(release, std::string::npos);
+    ASSERT_NE(publish, std::string::npos);
+    EXPECT_LT(guard, bytes);
+    EXPECT_LT(bytes, copy);
+    EXPECT_LT(copy, release);
+    EXPECT_LT(release, publish);
 }
 
 TEST(SingleAllocationSoa, AllocatorVariantsApplyToNestedColumns) {

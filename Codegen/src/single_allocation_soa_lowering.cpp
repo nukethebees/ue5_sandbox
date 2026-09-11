@@ -285,8 +285,6 @@ auto lower_single_allocation_nodes(SoaSchema const& schema,
                                    std::map<std::string, CppType> const& types,
                                    bool const native) -> Nodes {
     auto const* runtime{native ? "ml::native_soa::" : "ml::soa_storage::"};
-    std::string free_data{native ? "ml::native_soa::free(data_, allocation_alignment)"
-                                 : "ml::soa_storage::MimallocStorageAllocator::free(data_)"};
     auto const* copy{native ? "std::memcpy" : "FMemory::Memcpy"};
     auto const layout{build_soa_layout(schema, schemas, types, false)};
     auto const& name{*schema.single_allocation};
@@ -304,19 +302,24 @@ auto lower_single_allocation_nodes(SoaSchema const& schema,
         dependencies.push_back(
             {"single_allocation_vector_views", "SandboxCore/single_allocation/vector_views.h", {}});
     }
-    std::string allocate{std::string{runtime} +
-                         (native ? "allocate" : "MimallocStorageAllocator::allocate")};
+    auto allocator_scope{std::string{runtime} + (native ? "" : "MimallocStorageAllocator::")};
+    std::vector<TypeDependency> allocator_dependencies{
+        {"single_allocation_allocator",
+         native ? "native_soa/storage.h" : "SandboxCore/mimalloc_storage_allocator.h",
+         {}}};
+    std::vector<Expr> free_arguments{named("data_")};
+    if (native) {
+        free_arguments.push_back(named("allocation_alignment"));
+    }
     if (schema.single_allocation_allocator) {
         auto const allocator{resolve_type(*schema.single_allocation_allocator, types)};
-        dependencies.insert(
-            dependencies.end(), allocator.dependencies.begin(), allocator.dependencies.end());
-        allocate = allocator.spelling + "::allocate";
-        free_data = allocator.spelling + "::free(data_)";
-    } else if (!native) {
-        dependencies.push_back({"single_allocation_mimalloc_allocator",
-                                "SandboxCore/mimalloc_storage_allocator.h",
-                                {}});
+        allocator_scope = allocator.spelling + "::";
+        allocator_dependencies = allocator.dependencies;
+        free_arguments = {named("data_")};
     }
+    auto const allocate{named(allocator_scope + "allocate", allocator_dependencies)};
+    auto const free_data{
+        call(named(allocator_scope + "free", allocator_dependencies), std::move(free_arguments))};
     std::set<std::string> names;
     std::map<std::string, std::string> type_ids;
     std::vector<FixedLeaf const*> unique_types;
@@ -343,12 +346,6 @@ auto lower_single_allocation_nodes(SoaSchema const& schema,
             start = end;
         }
     }
-    auto emit_copy_sizes = [&](std::ostringstream& output, std::string const& count) {
-        for (auto const* leaf : unique_types) {
-            output << "        auto const " << fixed_leaf_argument(*leaf) << "_bytes{" << count
-                   << " * sizeof(" << leaf->type.spelling << ")};\n";
-        }
-    };
     std::ostringstream assertions;
     std::ostringstream out;
     std::ostringstream layout_output;
@@ -448,7 +445,7 @@ auto lower_single_allocation_nodes(SoaSchema const& schema,
         1);
     storage.add(Function{FunctionSpec{
                     .name = "~" + storage_name,
-                    .body = {ExpressionStmt{RawExpr{free_data}}},
+                    .body = {ExpressionStmt{free_data}},
                     .formatting = {.body_layout = FunctionFormatting::BodyLayout::compact}}},
                 1);
     storage.add(Function{FunctionSpec{.name = storage_name,
@@ -483,7 +480,7 @@ auto lower_single_allocation_nodes(SoaSchema const& schema,
             .body = {IfStmt{binary(BinaryOperator::not_equal,
                                    named("this"),
                                    unary(UnaryOperator::address_of, named("other"))),
-                            Block{{ExpressionStmt{RawExpr{free_data}},
+                            Block{{ExpressionStmt{free_data},
                                    AssignmentStmt{named("data_"),
                                                   exchange("data_", literal("nullptr"))},
                                    AssignmentStmt{named("num_"), exchange("num_", literal("0"))},
@@ -714,36 +711,56 @@ auto lower_single_allocation_nodes(SoaSchema const& schema,
                     .formatting = {.template_placement =
                                        FunctionFormatting::TemplatePlacement::same_line}}},
                 1);
-    out << "    auto* const "
-           "new_data{"
-        << allocate
-        << "(layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)), "
-           "static_cast<"
-        << (native ? "std::uint32_t" : "uint32") << ">(allocation_alignment))};\n"
-        << "    if (num_ > 0) {\n"
-        << "        auto const old_blocks{capacity_blocks()};\n"
-        << "        auto const new_blocks{static_cast<byte_size_type>(new_capacity / "
-           "capacity_granularity)};\n"
-        << "        auto const source{make_data_unchecked(static_cast<std::byte "
-           "const*>(data_), "
-           "old_blocks)};\n"
-        << "        auto const destination{make_data_unchecked(new_data, new_blocks)};\n"
-        << "        auto const live_count{static_cast<byte_size_type>(num_)};\n";
-    emit_copy_sizes(out, "live_count");
+    NodeListBuilder reallocate_body;
+    reallocate_body.add(VariableDeclarationStmt{
+        "auto* const",
+        "new_data",
+        call(allocate,
+             {call(named("layout_bytes"),
+                   {static_cast_expr("byte_size_type",
+                                     binary(BinaryOperator::divide,
+                                            named("new_capacity"),
+                                            named("capacity_granularity")))}),
+              static_cast_expr(native ? "std::uint32_t" : "uint32",
+                               named("allocation_alignment"))})});
+    NodeListBuilder copy_live;
+    copy_live.add(
+        VariableDeclarationStmt{"auto const", "old_blocks", call(named("capacity_blocks"))});
+    copy_live.add(VariableDeclarationStmt{
+        "auto const",
+        "new_blocks",
+        static_cast_expr(
+            "byte_size_type",
+            binary(BinaryOperator::divide, named("new_capacity"), named("capacity_granularity")))});
+    copy_live.add(VariableDeclarationStmt{
+        "auto const",
+        "source",
+        call(named("make_data_unchecked"),
+             {static_cast_expr("std::byte const*", named("data_")), named("old_blocks")})});
+    copy_live.add(VariableDeclarationStmt{
+        "auto const",
+        "destination",
+        call(named("make_data_unchecked"), {named("new_data"), named("new_blocks")})});
+    copy_live.add(VariableDeclarationStmt{
+        "auto const", "live_count", static_cast_expr("byte_size_type", named("num_"))});
+    copy_sizes(copy_live, "live_count");
     for (auto const& leaf : layout.leaves) {
         auto const id{fixed_leaf_argument(leaf)};
-        out << "        " << copy << "(destination." << id << ", source." << id << ", "
-            << type_ids.at(leaf.type.spelling) << "_bytes);\n";
+        copy_live.add(ExpressionStmt{call(copy_function(),
+                                          {member_access(named("destination"), id),
+                                           member_access(named("source"), id),
+                                           named(type_ids.at(leaf.type.spelling) + "_bytes")})});
     }
-    out << "    }\n    " << free_data
-        << ";\n    data_ = new_data;\n    capacity_ = "
-           "new_capacity;\n";
+    reallocate_body.add(IfStmt{binary(BinaryOperator::greater, named("num_"), literal("0")),
+                               Block{copy_live.build()}});
+    reallocate_body.add(ExpressionStmt{free_data});
+    reallocate_body.add(AssignmentStmt{named("data_"), named("new_data")});
+    reallocate_body.add(AssignmentStmt{named("capacity_"), named("new_capacity")});
     storage.add(Function{FunctionSpec{.name = "reallocate",
                                       .return_type = "void",
                                       .parameters = {{"size_type const", "new_capacity"}},
-                                      .body = {raw(out.str())}}},
+                                      .body = reallocate_body.build()}},
                 1);
-    out.str({});
     result.add(Struct{.name = storage_name,
                       .children = storage.build(),
                       .bases = {layout_name,

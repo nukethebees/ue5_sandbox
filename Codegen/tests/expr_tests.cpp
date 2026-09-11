@@ -175,6 +175,10 @@ TEST(Expr, PreservesSubtractionAndComparisonPrecedence) {
     EXPECT_EQ(render(binary(BinaryOperator::equal, comparison, c)), "a >= b == c");
     EXPECT_EQ(render(binary(BinaryOperator::greater_equal, equality, c)), "(a == b) >= c");
     EXPECT_EQ(render(binary(BinaryOperator::greater_equal, c, comparison)), "c >= (a >= b)");
+    EXPECT_EQ(render(binary(BinaryOperator::greater, subtraction, c)), "a - b > c");
+    EXPECT_EQ(render(binary(BinaryOperator::greater, equality, c)), "(a == b) > c");
+    EXPECT_EQ(render(binary(BinaryOperator::greater, a, binary(BinaryOperator::greater, b, c))),
+              "a > (b > c)");
     EXPECT_EQ(render(binary(BinaryOperator::subtract, c, RawExpr{"a - b"})), "c - (a - b)");
 }
 
