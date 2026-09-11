@@ -1,6 +1,7 @@
 #include "SandboxEditor/material/MaterialEmitter.h"
-#include "SandboxEditor/material/MaterialFrontend.h"
-#include "SandboxEditor/material/MaterialSourceHash.h"
+
+#include <material_gen/MaterialFrontend.h>
+#include <material_gen/SourceHash.h>
 
 #include "CQTest.h"
 #include "Engine/Texture.h"
@@ -60,10 +61,11 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
     TEST_METHOD(ComputesSha256)
     {
         constexpr ANSICHAR input[]{"abc"};
+        auto const hash{material_synth::sha256(
+            std::span{reinterpret_cast<std::uint8_t const*>(input), UE_ARRAY_COUNT(input) - 1})};
         TestRunner->TestEqual(
             TEXT("SHA-256 matches the standard abc vector"),
-            material_synth::sha256(
-                MakeArrayView(reinterpret_cast<uint8 const*>(input), UE_ARRAY_COUNT(input) - 1)),
+            FString{UTF8_TO_TCHAR(hash.c_str())},
             FString{TEXT("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")});
     }
 

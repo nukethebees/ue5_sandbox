@@ -1,8 +1,9 @@
 #include "SandboxEditor/Commandlets/MaterialSynthCommandlet.h"
 
 #include "SandboxEditor/material/MaterialEmitter.h"
-#include "SandboxEditor/material/MaterialFrontend.h"
-#include "SandboxEditor/material/MaterialSourceHash.h"
+
+#include <material_gen/MaterialFrontend.h>
+#include <material_gen/SourceHash.h>
 
 #include "Engine/Texture.h"
 #include "Misc/FileHelper.h"
@@ -115,7 +116,10 @@ int32 UMaterialSynthCommandlet::Main(FString const& parameters) {
         return 1;
     }
 
-    auto const source_hash{material_synth::sha256(source_bytes)};
+    auto const source_hash_utf8{material_synth::sha256(
+        std::span{reinterpret_cast<std::uint8_t const*>(source_bytes.GetData()),
+                  static_cast<std::size_t>(source_bytes.Num())})};
+    auto const source_hash{FString{UTF8_TO_TCHAR(source_hash_utf8.c_str())}};
     auto relative_input{absolute_input};
     FPaths::MakePathRelativeTo(relative_input, *FPaths::ProjectDir());
 

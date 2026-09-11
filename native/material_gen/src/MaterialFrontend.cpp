@@ -1,4 +1,4 @@
-#include "SandboxEditor/material/MaterialFrontend.h"
+#include <material_gen/MaterialFrontend.h>
 
 #include <codegen/sexpr/reader.h>
 
@@ -77,7 +77,7 @@ auto promote(ValueType const left, ValueType const right) -> ValueType {
 
 class Analyzer {
   public:
-    Analyzer(std::string_view const path, TextureResolver const& resolver)
+    Analyzer(std::string_view const path, TextureResolver const resolver)
         : path_{path}
         , resolver_{resolver} {}
 
@@ -585,7 +585,7 @@ class Analyzer {
     }
 
     std::string_view path_;
-    TextureResolver const& resolver_;
+    TextureResolver resolver_;
     MaterialIR material_;
     std::map<std::string, NodeHandle> symbols_;
     std::vector<Diagnostic> diagnostics_;
@@ -595,7 +595,7 @@ class Analyzer {
 
 auto analyze(std::string_view const path,
              std::string_view const source,
-             TextureResolver const& texture_resolver) -> AnalysisResult {
+             TextureResolver const texture_resolver) -> AnalysisResult {
     return Analyzer{path, texture_resolver}.run(source);
 }
 

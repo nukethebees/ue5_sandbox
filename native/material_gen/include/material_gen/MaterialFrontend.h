@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SandboxEditor/material/MaterialIR.h"
+#include <material_gen/MaterialIR.h>
 
 #include <optional>
 #include <string_view>
@@ -14,8 +14,7 @@ struct AnalysisResult {
     std::vector<Diagnostic> diagnostics;
 };
 
-SANDBOXEDITOR_API auto analyze(std::string_view path,
-                               std::string_view source,
-                               TextureResolver const& texture_resolver) -> AnalysisResult;
+auto analyze(std::string_view path, std::string_view source, TextureResolver texture_resolver)
+    -> AnalysisResult;
 
 }

@@ -2,19 +2,11 @@
 
 #include <codegen/sexpr/syntax.h>
 
-#if __has_include("CoreTypes.h")
-#include "CoreTypes.h"
-#endif
-
 #include <array>
 #include <cstddef>
 #include <limits>
 #include <string>
 #include <vector>
-
-#ifndef SANDBOXEDITOR_API
-#define SANDBOXEDITOR_API
-#endif
 
 namespace material_synth {
 
@@ -99,8 +91,8 @@ struct MaterialIR {
     std::vector<std::string> texture_dependencies;
 };
 
-SANDBOXEDITOR_API auto is_numeric(ValueType type) -> bool;
-SANDBOXEDITOR_API auto component_count(ValueType type) -> std::size_t;
-SANDBOXEDITOR_API auto validate(MaterialIR const& material) -> std::vector<Diagnostic>;
+auto is_numeric(ValueType type) -> bool;
+auto component_count(ValueType type) -> std::size_t;
+auto validate(MaterialIR const& material) -> std::vector<Diagnostic>;
 
 }

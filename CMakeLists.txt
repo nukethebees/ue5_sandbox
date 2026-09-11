@@ -189,6 +189,9 @@ cmake_path(SET UE_BUILD_LOCK_PATH NORMALIZE
 
 set(UE_LOCKED_COMMAND_PREFIX
   "${CMAKE_COMMAND}"
+  -E env
+  "MATERIAL_GEN_LIBRARY=$<TARGET_FILE:material-gen-unreal>"
+  "${CMAKE_COMMAND}"
   "-DUNREAL_LOCK_PATH=${UE_BUILD_LOCK_PATH}"
   "-DUNREAL_ENGINE_ROOT=${UE_ROOT_CANONICAL}"
   "-DUNREAL_WORKING_DIRECTORY=${CMAKE_CURRENT_SOURCE_DIR}"
@@ -261,6 +264,7 @@ add_custom_target(generate-project-files
   USES_TERMINAL
   VERBATIM
 )
+add_dependencies(generate-project-files material-gen-unreal)
 
 include(cmake/unreal.cmake)
 include(cmake/catch2.cmake)
@@ -288,6 +292,7 @@ add_dependencies(editor
   check-space-game-layers
   check-generated-code
   check-generated-slate-code
+  material-gen-unreal
 )
 add_dependencies(game check-space-game-layers)
 add_dependencies(game check-generated-code)

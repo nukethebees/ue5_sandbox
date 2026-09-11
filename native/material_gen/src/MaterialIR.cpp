@@ -1,4 +1,4 @@
-#include "SandboxEditor/material/MaterialIR.h"
+#include <material_gen/MaterialIR.h>
 
 #include <algorithm>
 #include <cmath>

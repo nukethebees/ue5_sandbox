@@ -10,7 +10,27 @@ public class SandboxEditor : ModuleRules
         MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
         PublicIncludePaths.Add(ModuleDirectory);
 
+        if (Target.Platform != UnrealTargetPlatform.Win64 ||
+            Target.Architecture != UnrealArch.X64 ||
+            Target.bUseStaticCRT ||
+            (Target.Configuration == UnrealTargetConfiguration.Debug &&
+             Target.bDebugBuildsActuallyUseDebugCRT))
+        {
+            throw new BuildException(
+                "MaterialGen requires Win64 x64 with the dynamic release CRT.");
+        }
+
+        string materialGenLibrary = System.Environment.GetEnvironmentVariable("MATERIAL_GEN_LIBRARY");
+        if (string.IsNullOrEmpty(materialGenLibrary) || !File.Exists(materialGenLibrary))
+        {
+            throw new BuildException(
+                "MaterialGen expected a CMake-built library through MATERIAL_GEN_LIBRARY. " +
+                "Build SandboxEditor through the repository CMake presets.");
+        }
+
+        PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "../../native/material_gen/include"));
         PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "../../Codegen/sexpr/include"));
+        PublicAdditionalLibraries.Add(materialGenLibrary);
 
         // Core dependencies
         PublicDependencyModuleNames.AddRange(new string[]

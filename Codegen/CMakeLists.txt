@@ -30,7 +30,10 @@ else()
 endif()
 
 add_subdirectory(sexpr)
-add_subdirectory(material)
+add_subdirectory(
+  "${PROJECT_SOURCE_DIR}/native/material_gen"
+  "${PROJECT_BINARY_DIR}/native/material_gen"
+)
 
 add_library(codegen-lib
   src/ast.cpp
@@ -143,7 +146,7 @@ add_executable(codegen-tests
 add_dependencies(codegen-tests
   codegen-generated-compile-tests
   codegen-sexpr-tests
-  material-synth-tests
+  material-gen-tests
 )
 target_link_libraries(codegen-tests PRIVATE
   codegen-lib

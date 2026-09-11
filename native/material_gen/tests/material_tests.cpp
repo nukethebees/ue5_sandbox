@@ -1,4 +1,5 @@
-#include "SandboxEditor/material/MaterialFrontend.h"
+#include <material_gen/MaterialFrontend.h>
+#include <material_gen/SourceHash.h>
 
 #include <gtest/gtest.h>
 
@@ -8,6 +9,12 @@
 
 namespace material_synth {
 namespace {
+
+TEST(MaterialGen, ComputesSha256) {
+    constexpr std::string_view input{"abc"};
+    auto const bytes{std::span{reinterpret_cast<std::uint8_t const*>(input.data()), input.size()}};
+    EXPECT_EQ(sha256(bytes), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+}
 
 auto resolve(std::string_view const path) -> std::optional<std::string> {
     auto const slash{path.rfind('/')};
