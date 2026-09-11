@@ -107,8 +107,7 @@ Unreal Engine 5.8 project.
 # Plan files
 
 When producing a non-trivial implementation plan, write the complete plan to: `.local/plans/<descriptive-plan-name>.md`
-Treat that file as the canonical copy of the plan.
-In the chat response, do not duplicate the full plan. Instead, give only a very short summary and a clickable terminal/file hyperlink to the plan, for example:
-`Plan written to: .local/plans/unreal-build-locking.md`
-Use a short, descriptive, kebab-case filename. Update the same plan file if the plan changes during the session rather than creating multiple near-duplicates.
+Treat that file as the canonical copy of the plan. It should be self-contained and suitable for external review without requiring the surrounding chat transcript.
+In the chat response, do not duplicate the full plan. Give only a very short summary and the path to the plan, ideally as a clickable terminal/file hyperlink.
+Use a short, descriptive, kebab-case filename. If the plan changes after review, update the same file rather than creating another copy.
 Do not create a plan file for trivial changes where a plan would not otherwise be useful.
