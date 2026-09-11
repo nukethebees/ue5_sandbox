@@ -128,6 +128,16 @@
         "CMAKE_BUILD_TYPE": "Release",
         "SANDBOX_NATIVE_SOA_BENCHMARKS": true
       }
+    },
+    {
+      "name": "native-memory",
+      "displayName": "Native memory",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "SANDBOX_NATIVE_MEMORY_ONLY": true,
+        "UE_CONFIGURATION": "DebugGame"
+      }
     }
   ],
   "buildPresets": [
@@ -265,6 +275,11 @@
       "name": "native-soa-reserve-matrix",
       "configurePreset": "native-soa",
       "targets": ["native-soa-reserve-matrix-report"]
+    },
+    {
+      "name": "native-memory",
+      "configurePreset": "native-memory",
+      "targets": ["native-memory-tests"]
     }
   ],
   "testPresets": [
@@ -507,6 +522,18 @@
       "filter": {
         "include": {
           "name": "^(native-soa|SingleAllocationSoa\\.|Json\\.LoadsExperimentalStdlibSoa)"
+        }
+      }
+    },
+    {
+      "name": "native-memory",
+      "configurePreset": "native-memory",
+      "output": {
+        "outputOnFailure": true
+      },
+      "filter": {
+        "include": {
+          "name": "^native-memory-tests$"
         }
       }
     }
@@ -754,6 +781,14 @@
         { "type": "build", "name": "native-soa" },
         { "type": "test", "name": "native-soa" },
         { "type": "build", "name": "native-soa-reserve-matrix" }
+      ]
+    },
+    {
+      "name": "native-memory",
+      "steps": [
+        { "type": "configure", "name": "native-memory" },
+        { "type": "build", "name": "native-memory" },
+        { "type": "test", "name": "native-memory" }
       ]
     }
   ]

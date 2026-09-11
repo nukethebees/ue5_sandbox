@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 
-#include <cstddef>
+#include <native/memory/block.h>
 
 class FGameMemory;
 
@@ -15,21 +15,14 @@ class SPACEGAMESIMULATION_API FGameMemoryBlock {
     FGameMemoryBlock(FGameMemoryBlock&& other) noexcept;
     auto operator=(FGameMemoryBlock&& other) noexcept -> FGameMemoryBlock&;
 
-    auto data() const noexcept -> std::byte* { return data_; }
-    auto size_bytes() const noexcept -> SIZE_T { return size_bytes_; }
-    auto alignment() const noexcept -> SIZE_T { return alignment_; }
-    explicit operator bool() const noexcept { return data_ != nullptr; }
+    auto data() const noexcept -> std::byte* { return block_.data(); }
+    auto size_bytes() const noexcept -> SIZE_T { return block_.size_bytes(); }
+    auto alignment() const noexcept -> SIZE_T { return block_.alignment(); }
+    explicit operator bool() const noexcept { return static_cast<bool>(block_); }
   private:
     friend class FGameMemory;
 
-    FGameMemoryBlock(FGameMemory& owner,
-                     std::byte* data,
-                     SIZE_T size_bytes,
-                     SIZE_T alignment) noexcept;
-    void reset();
+    explicit FGameMemoryBlock(ml::memory::Block block) noexcept;
 
-    FGameMemory* owner_{};
-    std::byte* data_{};
-    SIZE_T size_bytes_{};
-    SIZE_T alignment_{};
+    ml::memory::Block block_{};
 };

@@ -7,9 +7,34 @@ enable_testing()
 include(cmake/compiler_warnings.cmake)
 
 option(SANDBOX_CODEGEN_ONLY "Configure only the standalone code generator" OFF)
+option(SANDBOX_NATIVE_MEMORY_ONLY "Configure only the standalone native memory library" OFF)
 option(SANDBOX_KERNEL_BENCHMARKS "Build native generated-kernel benchmarks" OFF)
 option(SANDBOX_NATIVE_SOA_BENCHMARKS "Build standalone experimental SoA benchmarks" OFF)
 option(SANDBOX_KERNEL_BENCHMARK_PLOTS "Generate native kernel benchmark plots" OFF)
+
+set(CACHE{UE_PLATFORM}
+  TYPE STRING
+  HELP "Unreal target platform passed to UnrealBuildTool"
+  VALUE Win64
+)
+
+set(CACHE{UE_CONFIGURATION}
+  TYPE STRING
+  HELP "Unreal target configuration and native-memory artifact configuration"
+  VALUE Development
+)
+set_property(CACHE UE_CONFIGURATION PROPERTY STRINGS
+  Debug
+  DebugGame
+  Development
+  Shipping
+  Test
+)
+
+if(SANDBOX_NATIVE_MEMORY_ONLY)
+  add_subdirectory(native/memory)
+  return()
+endif()
 
 add_subdirectory(Codegen)
 
@@ -23,24 +48,7 @@ set(CACHE{UE_ROOT}
   VALUE "$ENV{UE_ROOT}"
 )
 
-set(CACHE{UE_PLATFORM}
-  TYPE STRING
-  HELP "Unreal target platform passed to UnrealBuildTool"
-  VALUE Win64
-)
-
-set(CACHE{UE_CONFIGURATION}
-  TYPE STRING
-  HELP "Unreal build configuration passed to UnrealBuildTool"
-  VALUE Development
-)
-set_property(CACHE UE_CONFIGURATION PROPERTY STRINGS
-  Debug
-  DebugGame
-  Development
-  Shipping
-  Test
-)
+add_subdirectory(native/memory)
 
 set(CACHE{SANDBOX_TEST_SUITE}
   TYPE STRING
@@ -743,6 +751,7 @@ add_custom_target(dev-core
     editor
     codegen-tests
     kernel-codegen-tests
+    native-memory-tests
     slate-codegen-tests
 )
 

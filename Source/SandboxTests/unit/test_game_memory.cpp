@@ -24,9 +24,9 @@ auto FGameMemoryTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("A returned exact block is reused"), reused.data(), first_address);
 
     auto exhaustion{memory.try_acquire_block(1024, 32)};
-    TestFalse(TEXT("Root exhaustion is nonfatal through the try API"), exhaustion.IsSet());
+    TestFalse(TEXT("Root exhaustion is nonfatal through the try API"), exhaustion.has_value());
     auto const failure{memory.get_last_allocation_failure()};
-    TestTrue(TEXT("Root exhaustion records a diagnostic"), failure.IsSet());
+    TestTrue(TEXT("Root exhaustion records a diagnostic"), failure.has_value());
     TestEqual(TEXT("Diagnostic records requested bytes"), failure->requested_bytes, SIZE_T{1024});
     TestEqual(TEXT("Diagnostic records alignment"), failure->alignment, SIZE_T{32});
     TestEqual(

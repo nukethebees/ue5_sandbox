@@ -8,6 +8,10 @@ function(add_unreal_target target_name unreal_target)
     USES_TERMINAL
     VERBATIM
   )
+
+  if(TARGET native-memory)
+    add_dependencies(${target_name} native-memory)
+  endif()
 endfunction()
 
 function(add_unreal_automation_test test_name)
