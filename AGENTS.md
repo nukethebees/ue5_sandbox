@@ -11,8 +11,9 @@ Unreal Engine 5.8 project.
 
 # Builds
 
-* A Windows-only CMake 4.3+/Ninja layer at the repository root invokes UnrealBuildTool. `.Target.cs`, `.Build.cs`, and UBT remain authoritative.
-* Use the CMake layer for builds; do not invoke UBT or `Build.bat` directly.
+* A Windows-only CMake 4.3+/Ninja layer at the repository root invokes UnrealBuildTool through `RunUBT.bat`. `.Target.cs`, `.Build.cs`, and UBT remain authoritative.
+* Use the CMake layer for builds; do not invoke UBT, `RunUBT.bat`, or `Build.bat` directly.
+* CMake serializes Unreal builds that share an engine checkout. Do not overlap a CMake Unreal build with Visual Studio, Live Coding, or another Unreal build launched outside CMake because those paths do not participate in the CMake lock.
 * Preferred build: `cmake --workflow --preset debug-game`.
 * Targets: `editor`, `game`, `core-tests`, `native-tests`, `dev-core`, `resave-assets`, and `generate-project-files`.
 * Regenerate project files after changes to modules/plugins, `.Build.cs`, `.Target.cs`, or project/module definitions. For larger tasks, do this once after the full change rather than after intermediate edits.

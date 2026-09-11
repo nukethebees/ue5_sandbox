@@ -154,7 +154,7 @@ set(CACHE{SANDBOX_SPACE_GAME_TEST_TIME_SCALE}
 if(NOT CMAKE_HOST_WIN32)
   message(FATAL_ERROR
     "This initial CMake build layer supports Windows hosts only. "
-    "It invokes Unreal's Engine/Build/BatchFiles/Build.bat script.")
+    "It invokes Unreal's Engine/Build/BatchFiles/RunUBT.bat script.")
 endif()
 
 if(NOT UE_ROOT)
@@ -186,7 +186,7 @@ set(UE_LOCKED_COMMAND_PREFIX
   --
 )
 
-cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Build BatchFiles Build.bat
+cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Build BatchFiles RunUBT.bat
   OUTPUT_VARIABLE UE_BUILD_SCRIPT
 )
 if(NOT EXISTS "${UE_BUILD_SCRIPT}")

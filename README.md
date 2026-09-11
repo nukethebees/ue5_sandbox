@@ -66,6 +66,10 @@ and their worktree directories.
 CMake 4.3 or newer and Ninja on `PATH` provide a small command-line wrapper around UnrealBuildTool (UBT). It does not
 compile Unreal modules itself; `.Target.cs`, `.Build.cs`, and UBT remain authoritative.
 
+CMake invokes the source engine's `RunUBT.bat` and serializes Unreal builds that share the same engine checkout. Manual
+Visual Studio builds, Live Coding, and other Unreal builds launched outside CMake do not participate in that lock. Do
+not run one of those external builds at the same time as a CMake Unreal build.
+
 ### vcpkg dependencies
 
 The CMake presets use the root `vcpkg.json` manifest for native dependencies. Install a standalone
