@@ -1,6 +1,6 @@
 #pragma once
 
-#include <codegen/ast/type_dependency.h>
+#include <codegen/ast/expr.h>
 
 #include <string>
 #include <vector>
@@ -8,7 +8,7 @@
 namespace codegen {
 
 struct ExpressionStatement {
-    std::string expression;
+    Expr expression;
     std::vector<TypeDependency> dependencies;
 };
 

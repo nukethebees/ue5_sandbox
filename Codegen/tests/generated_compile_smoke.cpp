@@ -312,6 +312,8 @@ void test_enums() {
     check(parsed == EPlainFixture::ReadableName);
     check(!try_parse_serialized(TEXT("missing"), parsed));
     check(parsed == EPlainFixture::ReadableName);
+    check(std::string_view{LexToSerializedString(static_cast<EPlainFixture>(99))} ==
+          "<invalid EPlainFixture>");
 
     check(std::string_view{LexToString(EReflectedFixture::Visible)} == "Visible");
     check(to_display_string_view(EReflectedFixture::Visible) == "Visible Value");

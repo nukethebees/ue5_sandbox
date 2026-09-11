@@ -16,14 +16,16 @@ auto lower_facade_module_impl(FacadeModuleSchema const& module,
         .name = facade.reference_target ? facade.name : "bind",
         .return_type = facade.reference_target ? "" : "void",
         .parameters = {FunctionParameter{qualify(target_type, "&"), "new_target"}},
-        .body = facade.reference_target ? Nodes{raw("")}
-                                        : Nodes{AssignmentStatement{facade.target_member_name,
-                                                                    "&new_target"}},
+        .body = facade.reference_target
+                  ? Nodes{raw("")}
+                  : Nodes{AssignmentStatement{RawExpr{facade.target_member_name},
+                                              RawExpr{"&new_target"}}},
         .is_inline = !definitions_in_source,
-        .member_initializers = facade.reference_target
-                                   ? std::vector<std::pair<std::string, std::string>>{
-                                         {facade.target_member_name, "new_target"}}
-                                   : std::vector<std::pair<std::string, std::string>>{},
+        .member_initializers =
+            facade.reference_target
+                ? std::vector<std::pair<std::string, std::string>>{{facade.target_member_name,
+                                                                    "new_target"}}
+                : std::vector<std::pair<std::string, std::string>>{},
     }};
     std::vector<FunctionSpec> methods;
     for (auto const& method : facade.methods) {
@@ -47,13 +49,13 @@ auto lower_facade_module_impl(FacadeModuleSchema const& module,
             body.add(raw(join_lines(facade.validation_lines)));
         }
         auto call{facade.target_member_name + (facade.reference_target ? "." : "->") +
-                  method.target_name.value_or(method.name) +
-                  "(" + join(arguments, ", ") + ")"};
+                  method.target_name.value_or(method.name) + "(" + join(arguments, ", ") + ")"};
         auto const return_type{resolve_type(method.return_type, types)};
         if (return_type.spelling == "void") {
-            body.add(ExpressionStatement{std::move(call), std::move(validation_dependencies)});
+            body.add(
+                ExpressionStatement{RawExpr{std::move(call)}, std::move(validation_dependencies)});
         } else {
-            body.add(ReturnStatement{std::move(call), std::move(validation_dependencies)});
+            body.add(ReturnStatement{RawExpr{std::move(call)}, std::move(validation_dependencies)});
         }
         methods.push_back(FunctionSpec{
             .name = method.name,
@@ -80,9 +82,10 @@ auto lower_facade_module_impl(FacadeModuleSchema const& module,
     for (auto const& friend_name : facade.friends) {
         private_nodes.add(FriendDeclaration{friend_name, facade.friend_kind}, 1);
     }
-    private_nodes.add(facade.reference_target
-                          ? Member{qualify(target_type, "&"), facade.target_member_name}
-                          : Member{qualify(target_type, "*"), facade.target_member_name, "nullptr"});
+    private_nodes.add(
+        facade.reference_target
+            ? Member{qualify(target_type, "&"), facade.target_member_name}
+            : Member{qualify(target_type, "*"), facade.target_member_name, RawExpr{"nullptr"}});
 
     NodeListBuilder class_nodes;
     if (has_public_nodes) {

@@ -84,7 +84,8 @@ auto component_statements(HomogeneousLayoutSchema const& layout,
                           std::string const& expression_template) -> Nodes {
     NodeListBuilder result;
     for (auto const& component : layout.components) {
-        result.add(ExpressionStatement{substitute_component(expression_template, component)});
+        result.add(
+            ExpressionStatement{RawExpr{substitute_component(expression_template, component)}});
     }
     return result.build();
 }
@@ -94,8 +95,8 @@ auto component_assignments(HomogeneousLayoutSchema const& layout,
                            std::string const& value_template) -> Nodes {
     NodeListBuilder result;
     for (auto const& component : layout.components) {
-        result.add(AssignmentStatement{substitute_component(target_template, component),
-                                       substitute_component(value_template, component)});
+        result.add(AssignmentStatement{RawExpr{substitute_component(target_template, component)},
+                                       RawExpr{substitute_component(value_template, component)}});
     }
     return result.build();
 }
@@ -278,19 +279,19 @@ auto homogeneous_storage_copy_nodes(HomogeneousLayoutSchema const& layout) -> No
                    "typename Other",
                    same_line_template_formatting()),
                1);
-    result.add(
-        homogeneous_function("copy_to_tail",
-                             "auto",
-                             {FunctionParameter{"Other const&", "src"}},
-                             Nodes{
-                                 VariableDeclarationStatement{"auto const", "count", "src.num()"},
-                                 ExpressionStatement{"check(num() >= count)", {check_dependency}},
-                                 ExpressionStatement{"copy_elements(num() - count, src, 0, count)"},
-                             },
-                             {.trailing_return_type = CppType{"void"}},
-                             "typename Other",
-                             same_line_template_formatting()),
-        1);
+    result.add(homogeneous_function(
+                   "copy_to_tail",
+                   "auto",
+                   {FunctionParameter{"Other const&", "src"}},
+                   Nodes{
+                       VariableDeclarationStatement{"auto const", "count", RawExpr{"src.num()"}},
+                       ExpressionStatement{RawExpr{"check(num() >= count)"}, {check_dependency}},
+                       ExpressionStatement{RawExpr{"copy_elements(num() - count, src, 0, count)"}},
+                   },
+                   {.trailing_return_type = CppType{"void"}},
+                   "typename Other",
+                   same_line_template_formatting()),
+               1);
     result.add(homogeneous_function("append_from",
                                     "void",
                                     {FunctionParameter{"Other const&", "other"}},
@@ -311,12 +312,13 @@ auto homogeneous_storage_sort_nodes() -> Nodes {
                1);
     auto sort_body = [](std::string sort_expression) {
         NodeListBuilder body;
-        return body.add(ExpressionStatement{"validate_array_sizes()"})
-            .add(VariableDeclarationStatement{"auto const", "n", "num()"})
-            .add(ExpressionStatement{"check(scratch_indices.Num() == n)", {check_dependency}})
-            .add(ExpressionStatement{"ml::fill_indices(scratch_indices)", {fill_indices}})
+        return body.add(ExpressionStatement{RawExpr{"validate_array_sizes()"}})
+            .add(VariableDeclarationStatement{"auto const", "n", RawExpr{"num()"}})
+            .add(ExpressionStatement{RawExpr{"check(scratch_indices.Num() == n)"},
+                                     {check_dependency}})
+            .add(ExpressionStatement{RawExpr{"ml::fill_indices(scratch_indices)"}, {fill_indices}})
             .add(raw(std::move(sort_expression)))
-            .add(ExpressionStatement{"apply_permutation(scratch_indices)"})
+            .add(ExpressionStatement{RawExpr{"apply_permutation(scratch_indices)"}})
             .build();
     };
     result.add(
@@ -405,10 +407,10 @@ auto homogeneous_storage_value_nodes(HomogeneousLayoutSchema const& layout,
                      "auto",
                      {FunctionParameter{"size_type const", "index"}},
                      Nodes{
-                         ExpressionStatement{"validate_array_sizes()"},
-                         ExpressionStatement{"check(index >= 0)", {check_dependency}},
-                         ExpressionStatement{"check(index < num())", {check_dependency}},
-                         ReturnStatement{"(*this)[index]"},
+                         ExpressionStatement{RawExpr{"validate_array_sizes()"}},
+                         ExpressionStatement{RawExpr{"check(index >= 0)"}, {check_dependency}},
+                         ExpressionStatement{RawExpr{"check(index < num())"}, {check_dependency}},
+                         ReturnStatement{RawExpr{"(*this)[index]"}},
                      },
                      {.trailing_return_type = CppType{"equivalent_type"}, .is_const = true}),
                  1);
@@ -419,27 +421,23 @@ auto homogeneous_storage_value_nodes(HomogeneousLayoutSchema const& layout,
     }
     NodeListBuilder set_body;
     for (auto const& component : layout.components) {
-        set_body.add(
-            AssignmentStatement{component + "[index]", std::string{component.front()}});
+        set_body.add(AssignmentStatement{RawExpr{component + "[index]"},
+                                         RawExpr{std::string{component.front()}}});
     }
     auto set_parameters{component_parameters};
     set_parameters.insert(set_parameters.begin(), FunctionParameter{"size_type const", "index"});
-    result.add(homogeneous_function(
-                   "set",
-                   "void",
-                   std::move(set_parameters),
-                   set_body.build(),
-                   {}),
+    result.add(homogeneous_function("set", "void", std::move(set_parameters), set_body.build(), {}),
                1);
     NodeListBuilder component_body;
     auto const& first_component{layout.components.front()};
     component_body.add(VariableDeclarationStatement{
-        "auto const", "index", first_component + ".Add(" + first_component.front() + ")"});
+        "auto const", "index", RawExpr{first_component + ".Add(" + first_component.front() + ")"}});
     for (std::size_t index{1}; index < layout.components.size(); ++index) {
         auto const& component{layout.components[index]};
-        component_body.add(ExpressionStatement{component + ".Add(" + component.front() + ")"});
+        component_body.add(
+            ExpressionStatement{RawExpr{component + ".Add(" + component.front() + ")"}});
     }
-    component_body.add(ReturnStatement{"index"});
+    component_body.add(ReturnStatement{RawExpr{"index"}});
     result.add(homogeneous_function("add",
                                     "auto",
                                     std::move(component_parameters),
@@ -461,18 +459,19 @@ auto homogeneous_storage_value_nodes(HomogeneousLayoutSchema const& layout,
     for (auto const& input_reference : value.input_types) {
         auto input_type{qualify(resolve_type(input_reference, types), " const&")};
         result
-            .add(homogeneous_function(
-                     "set",
-                     "void",
-                     {FunctionParameter{"size_type const", "index"},
-                      FunctionParameter{input_type, "value"}},
-                     Nodes{ExpressionStatement{"set(index, " + join(arguments, ", ") + ")"}}),
+            .add(homogeneous_function("set",
+                                      "void",
+                                      {FunctionParameter{"size_type const", "index"},
+                                       FunctionParameter{input_type, "value"}},
+                                      Nodes{ExpressionStatement{
+                                          RawExpr{"set(index, " + join(arguments, ", ") + ")"}}}),
                  1)
-            .add(homogeneous_function("add",
-                                      "auto",
-                                      {FunctionParameter{std::move(input_type), "value"}},
-                                      Nodes{ReturnStatement{"add(" + join(arguments, ", ") + ")"}},
-                                      {.trailing_return_type = CppType{"size_type"}}),
+            .add(homogeneous_function(
+                     "add",
+                     "auto",
+                     {FunctionParameter{std::move(input_type), "value"}},
+                     Nodes{ReturnStatement{RawExpr{"add(" + join(arguments, ", ") + ")"}}},
+                     {.trailing_return_type = CppType{"size_type"}}),
                  1);
     }
     return result.build();

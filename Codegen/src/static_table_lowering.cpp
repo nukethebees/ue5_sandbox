@@ -7,15 +7,16 @@ namespace codegen::detail {
 namespace {
 
 auto static_array_type(CppType const& element_type) -> CppType {
-    TypeDependency dependency{"TStaticArray", "Containers/StaticArray.h", element_type.dependencies};
+    TypeDependency dependency{
+        "TStaticArray", "Containers/StaticArray.h", element_type.dependencies};
     return CppType{
         "TStaticArray<" + element_type.spelling + ", num_rows>",
         std::vector<TypeDependency>{std::move(dependency)},
     };
 }
 
-auto group_getter(StaticTableGroupSchema const& group,
-                  std::map<std::string, CppType> const& types) -> Node {
+auto group_getter(StaticTableGroupSchema const& group, std::map<std::string, CppType> const& types)
+    -> Node {
     auto const result_type{resolve_type(group.type, types)};
     std::vector<std::string> arguments;
     arguments.reserve(group.columns.size());
@@ -27,26 +28,27 @@ auto group_getter(StaticTableGroupSchema const& group,
         .name = "get_" + group.name,
         .return_type = "auto",
         .parameters = {FunctionParameter{CppType{"int32 const", "CoreMinimal.h"}, "index"}},
-        .body = {ReturnStatement{result_type.spelling + "{" + join(arguments, ", ") + "}"}},
+        .body = {ReturnStatement{
+            RawExpr{result_type.spelling + "{" + join(arguments, ", ") + "}"}}},
         .qualifiers = {.trailing_return_type = result_type, .is_const = true},
         .is_inline = true,
     });
 }
 
-auto table_node(StaticTableSchema const& table,
-                std::map<std::string, CppType> const& types) -> Node {
+auto table_node(StaticTableSchema const& table, std::map<std::string, CppType> const& types)
+    -> Node {
     CppType const int32_type{"int32", "CoreMinimal.h"};
     NodeListBuilder children;
     children.add(Member{int32_type,
                         "num_rows",
-                        std::to_string(table.rows.size()),
+                        RawExpr{std::to_string(table.rows.size())},
                         {.is_static = true, .is_constexpr = true}},
                  2);
 
     for (std::size_t index{0}; index < table.rows.size(); ++index) {
         children.add(Member{int32_type,
                             table.rows[index].name + "_index",
-                            std::to_string(index),
+                            RawExpr{std::to_string(index)},
                             {.is_static = true, .is_constexpr = true}},
                      index + 1 < table.rows.size() ? 1 : 2);
     }
@@ -54,7 +56,7 @@ auto table_node(StaticTableSchema const& table,
     children.add(header_function(FunctionSpec{
                      .name = "num",
                      .return_type = "auto",
-                     .body = {ReturnStatement{"num_rows"}},
+                     .body = {ReturnStatement{RawExpr{"num_rows"}}},
                      .qualifiers =
                          {
                              .trailing_return_type = int32_type,
@@ -79,8 +81,9 @@ auto table_node(StaticTableSchema const& table,
     }
 
     for (auto const& column : table.columns) {
-        children.add(Member{static_array_type(resolve_type(column.type, types)), column.name, ""},
-                     1);
+        children.add(
+            Member{static_array_type(resolve_type(column.type, types)), column.name, RawExpr{""}},
+            1);
     }
 
     return Struct{
@@ -102,7 +105,8 @@ auto lower_static_table_module(StaticTableModuleSchema const& module,
 
     auto definition_nodes{definitions.build()};
     if (module.settings.namespace_name.has_value()) {
-        definition_nodes = {Namespace{*module.settings.namespace_name, std::move(definition_nodes)}};
+        definition_nodes = {
+            Namespace{*module.settings.namespace_name, std::move(definition_nodes)}};
     }
 
     NodeListBuilder header_nodes;
@@ -114,12 +118,13 @@ auto lower_static_table_module(StaticTableModuleSchema const& module,
 
     return Module{
         .name = module.settings.name,
-        .header = CppFile{
-            .path = module.settings.header,
-            .nodes = header_nodes.build(),
-            .clang_format_off = true,
-            .include_order = module.settings.include_order,
-        },
+        .header =
+            CppFile{
+                .path = module.settings.header,
+                .nodes = header_nodes.build(),
+                .clang_format_off = true,
+                .include_order = module.settings.include_order,
+            },
     };
 }
 

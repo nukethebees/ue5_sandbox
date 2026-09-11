@@ -51,7 +51,7 @@ auto capability_member(std::string name,
                        std::optional<std::string> template_parameters = std::nullopt) -> Member {
     return Member{CppType{"bool"},
                   std::move(name),
-                  capability_initializer(std::move(expression)),
+                  RawExpr{capability_initializer(std::move(expression))},
                   {.is_inline = true, .is_static = true, .is_constexpr = true},
                   std::move(template_parameters)};
 }
@@ -156,7 +156,7 @@ auto fixed_container_prelude_nodes(SoaSchema const& schema,
     }
     result.new_lines(2).add(Member{CppType{"size_type"},
                                    "capacity_value",
-                                   "Capacity",
+                                   RawExpr{"Capacity"},
                                    {.is_static = true, .is_constexpr = true}},
                             2);
     return result.build();
@@ -450,8 +450,8 @@ auto fixed_container_access_nodes(SoaSchema const& schema) -> Nodes {
     return result.build();
 }
 
-auto fixed_container_set_nodes(SoaSchema const& schema,
-                               std::map<std::string, CppType> const& types) -> Nodes {
+auto fixed_container_set_nodes(SoaSchema const& schema, std::map<std::string, CppType> const& types)
+    -> Nodes {
     auto const members{resolve_members(schema, types)};
     std::vector<FunctionSpec> setters;
     if (auto set{soa_set_spec(schema, members, false)}; set.has_value()) {
@@ -471,7 +471,8 @@ auto fixed_container_set_nodes(SoaSchema const& schema,
         for (auto const& parameter : setter.parameters) {
             arguments.push_back(parameter.name);
         }
-        setter.body = {ExpressionStatement{"get_view().set(" + join(arguments, ", ") + ")"}};
+        setter.body = {
+            ExpressionStatement{RawExpr{"get_view().set(" + join(arguments, ", ") + ")"}}};
         setter.qualifiers.is_const = false;
         setter.formatting = compact_function_formatting();
         result.add(header_function(setter), 1);
@@ -679,7 +680,7 @@ auto fixed_container_private_nodes(SoaSchema const& schema) -> Nodes {
                          std::nullopt,
                          2);
     result.add(Member{CppType{schema.fixed->storage_name + "<Capacity>"}, "storage_"}, 1)
-        .add(Member{CppType{"size_type"}, "size_", {}});
+        .add(Member{CppType{"size_type"}, "size_", RawExpr{""}});
     return result.build();
 }
 

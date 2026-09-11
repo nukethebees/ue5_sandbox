@@ -53,25 +53,28 @@ TEST(Ast, RendersFriendDeclarations) {
 }
 
 TEST(Ast, RendersTypedStatements) {
-    EXPECT_EQ(render(Node{ExpressionStatement{"apply(value)"}}), "apply(value);");
-    EXPECT_EQ(render(Node{ReturnStatement{"value"}}), "return value;");
+    EXPECT_EQ(render(Node{ExpressionStatement{RawExpr{"apply(value)"}}}), "apply(value);");
+    EXPECT_EQ(render(Node{ReturnStatement{RawExpr{"value"}}}), "return value;");
     EXPECT_EQ(render(Node{ReturnStatement{}}), "return;");
-    EXPECT_EQ(render(Node{AssignmentStatement{"target", "value"}}), "target = value;");
-    EXPECT_EQ(render(Node{VariableDeclarationStatement{"auto const", "count", "values.Num()"}}),
-              "auto const count{values.Num()};");
+    EXPECT_EQ(render(Node{AssignmentStatement{RawExpr{"target"}, RawExpr{"value"}}}),
+              "target = value;");
+    EXPECT_EQ(
+        render(Node{VariableDeclarationStatement{"auto const", "count", RawExpr{"values.Num()"}}}),
+        "auto const count{values.Num()};");
 }
 
 TEST(Ast, TypedStatementsReportDependencies) {
     TypeDependency const dependency{"FValue", "Project/Value.h", {}};
 
-    EXPECT_EQ(dependencies(Node{ExpressionStatement{"use_value()", {dependency}}}),
+    EXPECT_EQ(dependencies(Node{ExpressionStatement{RawExpr{"use_value()"}, {dependency}}}),
               std::vector<TypeDependency>{dependency});
-    EXPECT_EQ(dependencies(Node{ReturnStatement{"FValue{}", {dependency}}}),
+    EXPECT_EQ(dependencies(Node{ReturnStatement{RawExpr{"FValue{}"}, {dependency}}}),
               std::vector<TypeDependency>{dependency});
-    EXPECT_EQ(dependencies(Node{AssignmentStatement{"target", "FValue{}", {dependency}}}),
+    EXPECT_EQ(dependencies(
+                  Node{AssignmentStatement{RawExpr{"target"}, RawExpr{"FValue{}"}, {dependency}}}),
               std::vector<TypeDependency>{dependency});
     EXPECT_EQ(dependencies(Node{VariableDeclarationStatement{
-                  CppType{"FValue", {dependency}}, "value", "make_value()"}}),
+                  CppType{"FValue", {dependency}}, "value", RawExpr{"make_value()"}}}),
               std::vector<TypeDependency>{dependency});
 }
 
@@ -204,21 +207,23 @@ TEST(Ast, InfersSystemIncludesFromExtensionlessPaths) {
     EXPECT_TRUE(include_is_system(Include{"Project/Value.h", true}));
 }
 
-TEST(Ast, ExposesChildrenForNestedAndDefinedNodes) {
+TEST(Ast, VisitsChildrenForNestedAndDefinedNodes) {
     Node const structure{Struct{.name = "FData", .children = {raw("int value;")}}};
     Node const name_space{Namespace{"example", {raw("int value;")}}};
     Node const function{Function{.spec = FunctionSpec{.name = "f", .body = {raw("return;")}}}};
     Node const declaration_node{Function{.spec = FunctionSpec{.name = "f"}, .declaration = true}};
     Node const leaf{raw("int value;")};
 
-    ASSERT_NE(children(structure), nullptr);
-    EXPECT_EQ(children(structure)->size(), 1);
-    ASSERT_NE(children(name_space), nullptr);
-    EXPECT_EQ(children(name_space)->size(), 1);
-    ASSERT_NE(children(function), nullptr);
-    EXPECT_EQ(children(function)->size(), 1);
-    EXPECT_EQ(children(declaration_node), nullptr);
-    EXPECT_EQ(children(leaf), nullptr);
+    auto child_count = [](Node const& node) {
+        std::size_t count{};
+        for_each_child(node, [&](Node const&) { ++count; });
+        return count;
+    };
+    EXPECT_EQ(child_count(structure), 1);
+    EXPECT_EQ(child_count(name_space), 1);
+    EXPECT_EQ(child_count(function), 1);
+    EXPECT_EQ(child_count(declaration_node), 0);
+    EXPECT_EQ(child_count(leaf), 0);
 }
 
 TEST(Ast, RendersClassInheritanceAndMemberInitializers) {
@@ -226,11 +231,11 @@ TEST(Ast, RendersClassInheritanceAndMemberInitializers) {
         .name = "FDerived",
         .children =
             {
-                Member{"int", "value", "42"},
-                Member{"int", "answer", "42", {.is_static = true, .is_constexpr = true}},
+                Member{"int", "value", RawExpr{"42"}},
+                Member{"int", "answer", RawExpr{"42"}, {.is_static = true, .is_constexpr = true}},
                 Member{"bool",
                        "supports_value",
-                       "std::is_constructible_v<int, TArg>",
+                       RawExpr{"std::is_constructible_v<int, TArg>"},
                        {.is_inline = true, .is_static = true, .is_constexpr = true},
                        "typename TArg"},
             },
@@ -252,12 +257,12 @@ TEST(Ast, RendersClassInheritanceAndMemberInitializers) {
 }
 
 TEST(Ast, RejectsInvalidMemberQualifierCombinations) {
-    EXPECT_THROW(render(Node{Member{"int", "value", "42", {.is_constexpr = true}}}),
+    EXPECT_THROW(render(Node{Member{"int", "value", RawExpr{"42"}, {.is_constexpr = true}}}),
                  std::invalid_argument);
     EXPECT_THROW(render(Node{Member{
                      "int", "value", std::nullopt, {.is_static = true, .is_constexpr = true}}}),
                  std::invalid_argument);
-    EXPECT_THROW(render(Node{Member{"int", "value", "42", {.is_inline = true}}}),
+    EXPECT_THROW(render(Node{Member{"int", "value", RawExpr{"42"}, {.is_inline = true}}}),
                  std::invalid_argument);
 }
 
@@ -511,7 +516,7 @@ TEST(Ast, AppliesStaticAndDefaultArgumentRulesToFunctionForms) {
         .name = "make",
         .return_type = "int32",
         .parameters = {FunctionParameter{"int32 const", "value", "7"}},
-        .body = {ReturnStatement{"value"}},
+        .body = {ReturnStatement{RawExpr{"value"}}},
         .is_static = true,
         .is_inline = true,
     };
@@ -549,8 +554,7 @@ TEST(Ast, RendersEnumsAndExportedFreeFunctions) {
         .qualifiers = {.trailing_return_type = CppType{"FStringView"}},
         .export_specifier = "PROJECT_API",
     }};
-    EXPECT_EQ(render(declaration(spec)),
-              "PROJECT_API auto to_string_view() -> FStringView;");
+    EXPECT_EQ(render(declaration(spec)), "PROJECT_API auto to_string_view() -> FStringView;");
     EXPECT_EQ(render(Function{spec, std::nullopt, false, false}),
               "auto to_string_view() -> FStringView {\n\n}");
     EXPECT_EQ(render(Namespace{"", {raw("int value;")}}),

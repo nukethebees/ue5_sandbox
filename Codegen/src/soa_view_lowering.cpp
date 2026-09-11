@@ -101,7 +101,7 @@ auto soa_equivalent_nodes(TypeRef const& equivalent_reference,
                  .name = "operator[]",
                  .return_type = "auto",
                  .parameters = {FunctionParameter{"int32 const", "index"}},
-                 .body = {ReturnStatement{"{" + join(values, ", ") + "}"}},
+                 .body = {ReturnStatement{RawExpr{"{" + join(values, ", ") + "}"}}},
                  .qualifiers = {.trailing_return_type = equivalent, .is_const = true},
                  .is_inline = true,
              }),
@@ -112,10 +112,10 @@ auto soa_equivalent_nodes(TypeRef const& equivalent_reference,
             .parameters = {FunctionParameter{"int32 const", "index"}},
             .body =
                 {
-                    ExpressionStatement{"validate_array_sizes()"},
-                    ExpressionStatement{"check(index >= 0)", {check_dependency}},
-                    ExpressionStatement{"check(index < num())"},
-                    ReturnStatement{"(*this)[index]"},
+                    ExpressionStatement{RawExpr{"validate_array_sizes()"}},
+                    ExpressionStatement{RawExpr{"check(index >= 0)"}, {check_dependency}},
+                    ExpressionStatement{RawExpr{"check(index < num())"}},
+                    ReturnStatement{RawExpr{"(*this)[index]"}},
                 },
             .qualifiers = {.trailing_return_type = equivalent, .is_const = true},
             .is_inline = true,
@@ -249,22 +249,9 @@ auto soa_view_struct_nodes(SoaSchema const& schema,
     NodeListBuilder result;
     return result.add(ForwardDeclaration{view_name}, 1)
         .add(ForwardDeclaration{const_view_name}, 2)
-        .add(view_struct(const_view_name,
-                         view_name,
-                         const_view_name,
-                         members,
-                         schema,
-                         types,
-                         true),
+        .add(view_struct(const_view_name, view_name, const_view_name, members, schema, types, true),
              2)
-        .add(view_struct(view_name,
-                         view_name,
-                         const_view_name,
-                         members,
-                         schema,
-                         types,
-                         false),
-             2)
+        .add(view_struct(view_name, view_name, const_view_name, members, schema, types, false), 2)
         .build();
 }
 

@@ -4,26 +4,25 @@
 namespace codegen::detail {
 namespace {
 
-TypeDependency const soa_permutation{
-    "ml::apply_permutation", "SandboxCore/soa_permutation.h", {}};
+TypeDependency const soa_permutation{"ml::apply_permutation", "SandboxCore/soa_permutation.h", {}};
 TypeDependency const tarray_view{"TArrayView", "Containers/ArrayView.h", {}};
 TypeDependency const check_dependency{"check", "CoreMinimal.h", {}};
 
 auto homogeneous_permutation_definition(HomogeneousLayoutSchema const& layout,
                                         HomogeneousValueSchema const& value) -> Node {
     NodeListBuilder body;
-    body.add(ExpressionStatement{"validate_array_sizes()"})
-        .add(ExpressionStatement{"check(indices.Num() == num())", {check_dependency}});
+    body.add(ExpressionStatement{RawExpr{"validate_array_sizes()"}})
+        .add(ExpressionStatement{RawExpr{"check(indices.Num() == num())"}, {check_dependency}});
     for (auto const& component : layout.components) {
-        body.add(ExpressionStatement{"ml::apply_permutation(" + component + ", indices)",
+        body.add(ExpressionStatement{RawExpr{"ml::apply_permutation(" + component + ", indices)"},
                                      {soa_permutation}});
     }
     return definition(
         FunctionSpec{
             .name = "apply_permutation",
             .return_type = "void",
-            .parameters = {
-                FunctionParameter{CppType{"TArrayView<int32>", {tarray_view}}, "indices"}},
+            .parameters = {FunctionParameter{CppType{"TArrayView<int32>", {tarray_view}},
+                                             "indices"}},
             .body = body.build(),
         },
         "F" + layout.name + value.suffix);
@@ -76,21 +75,22 @@ auto lower_homogeneous_module_impl(HomogeneousModuleSchema const& module,
         .append(std::move(source_definition_nodes));
     return Module{
         .name = module.settings.name,
-        .header = CppFile{
-            .path = module.settings.header,
-            .nodes = header_nodes.build(),
-            .clang_format_off = true,
-            .include_order = module.settings.include_order,
-        },
+        .header =
+            CppFile{
+                .path = module.settings.header,
+                .nodes = header_nodes.build(),
+                .clang_format_off = true,
+                .include_order = module.settings.include_order,
+            },
         .source = module.settings.source.has_value()
-                      ? std::optional<CppFile>{CppFile{
-                            .path = *module.settings.source,
-                            .nodes = source_nodes.build(),
-                            .pragma_once = false,
-                            .clang_format_off = true,
-                            .include_order = module.settings.include_order,
-                        }}
-                      : std::nullopt,
+                    ? std::optional<CppFile>{CppFile{
+                          .path = *module.settings.source,
+                          .nodes = source_nodes.build(),
+                          .pragma_once = false,
+                          .clang_format_off = true,
+                          .include_order = module.settings.include_order,
+                      }}
+                    : std::nullopt,
     };
 }
 

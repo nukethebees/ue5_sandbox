@@ -1,6 +1,6 @@
 #pragma once
 
-#include <codegen/ast/type_dependency.h>
+#include <codegen/ast/expr.h>
 
 #include <optional>
 #include <string>
@@ -9,7 +9,7 @@
 namespace codegen {
 
 struct ReturnStatement {
-    std::optional<std::string> expression;
+    std::optional<Expr> expression;
     std::vector<TypeDependency> dependencies;
 };
 

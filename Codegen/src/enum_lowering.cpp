@@ -9,36 +9,9 @@
 namespace codegen::detail {
 namespace {
 
-auto escaped_string(std::string_view const value) -> std::string {
-    std::string result;
-    result.reserve(value.size());
-    for (auto const character : value) {
-        switch (character) {
-            case '\\':
-                result += "\\\\";
-                break;
-            case '"':
-                result += "\\\"";
-                break;
-            case '\n':
-                result += "\\n";
-                break;
-            case '\r':
-                result += "\\r";
-                break;
-            case '\t':
-                result += "\\t";
-                break;
-            default:
-                result += character;
-                break;
-        }
-    }
-    return result;
-}
-
-auto text_literal(std::string_view const value) -> std::string {
-    return "TEXT(\"" + escaped_string(value) + "\")";
+auto text_literal(std::string_view const value) -> Expr {
+    return call(named("TEXT", {TypeDependency{"TEXT", "CoreMinimal.h", {}}}),
+                {string_literal(value)});
 }
 
 auto qualified_enum_name(EnumModuleSchema const& module, EnumSchema const& schema) -> std::string {
@@ -74,28 +47,31 @@ auto internal_name(EnumSchema const& schema, std::string_view const suffix) -> s
 }
 
 auto enum_traits(EnumModuleSchema const& module, EnumSchema const& schema) -> Node {
-    auto const count{schema.count.has_value()
-                         ? "static_cast<int32>(" + qualified_enum_name(module, schema) + "::" +
-                               *schema.count + ")"
-                         : std::to_string(schema.values.size())};
-    return raw("template <>\n"
-               "struct TEnumTraits<" + qualified_enum_name(module, schema) + "> {\n"
-               "    static constexpr int32 count{" + count + "};\n"
-               "};");
+    auto const count{
+        schema.count.has_value()
+            ? static_cast_expr("int32",
+                               named(qualified_enum_name(module, schema) + "::" + *schema.count))
+            : literal(std::to_string(schema.values.size()))};
+    return Struct{
+        .name = "TEnumTraits<" + qualified_enum_name(module, schema) + ">",
+        .children = {Member{"int32", "count", count, {.is_static = true, .is_constexpr = true}}},
+        .template_parameters = "",
+    };
 }
 
 auto exact_lookup(EnumModuleSchema const& module, EnumSchema const& schema) -> FunctionSpec {
     auto const enum_name{qualified_enum_name(module, schema)};
     NodeListBuilder body;
-    std::vector<std::string> cases;
+    std::vector<SwitchCase> cases;
     for (auto const& value : schema.values) {
-        cases.push_back("case " + enum_name + "::" + value.name + ": {\n"
-                        "    return " + text_literal(value.name) + ";\n"
-                        "}");
+        cases.push_back({named(enum_name + "::" + value.name),
+                         Block{{ReturnStatement{text_literal(value.name)}}}});
     }
-    body.add(raw("switch (value) {\n" + join(cases, "\n") + "\n}"), 2)
+    body.add(SwitchStatement{named("value"), std::move(cases)}, 2)
         .add(raw("ensureMsgf(false,\n"
-                 "           TEXT(\"Unhandled " + schema.name + " value: %lld\"),\n"
+                 "           TEXT(\"Unhandled " +
+                 schema.name +
+                 " value: %lld\"),\n"
                  "           static_cast<int64>(value));"),
              1)
         .add(ReturnStatement{text_literal("<invalid " + schema.name + ">")});
@@ -110,22 +86,20 @@ auto exact_lookup(EnumModuleSchema const& module, EnumSchema const& schema) -> F
 
 auto display_lookup(EnumModuleSchema const& module, EnumSchema const& schema) -> FunctionSpec {
     auto const enum_name{qualified_enum_name(module, schema)};
-    std::vector<std::string> cases;
+    std::vector<SwitchCase> cases;
     for (auto const& value : schema.values) {
         if (!value.display_name.has_value()) {
             continue;
         }
-        cases.push_back("case " + enum_name + "::" + value.name + ": {\n"
-                        "    return " + text_literal(*value.display_name) + ";\n"
-                        "}");
+        cases.push_back({named(enum_name + "::" + value.name),
+                         Block{{ReturnStatement{text_literal(*value.display_name)}}}});
     }
     NodeListBuilder body;
     if (!cases.empty()) {
-        body.add(raw("switch (value) {\n" + join(cases, "\n") +
-                     "\ndefault: {\n    break;\n}\n}"),
-                 2);
+        cases.push_back({std::nullopt, Block{{BreakStatement{}}}});
+        body.add(SwitchStatement{named("value"), std::move(cases)}, 2);
     }
-    body.add(ReturnStatement{internal_name(schema, "name") + "(value)"});
+    body.add(ReturnStatement{call(named(internal_name(schema, "name")), {named("value")})});
     return FunctionSpec{
         .name = internal_name(schema, "display_name"),
         .return_type = "auto",
@@ -138,18 +112,19 @@ auto display_lookup(EnumModuleSchema const& module, EnumSchema const& schema) ->
 auto serialized_lookup(EnumModuleSchema const& module, EnumSchema const& schema) -> FunctionSpec {
     auto const enum_name{qualified_enum_name(module, schema)};
     NodeListBuilder body;
-    std::vector<std::string> cases;
+    std::vector<SwitchCase> cases;
     for (auto const& value : schema.values) {
         if (!value.serialized_name.has_value()) {
             continue;
         }
-        cases.push_back("case " + enum_name + "::" + value.name + ": {\n"
-                        "    return " + text_literal(*value.serialized_name) + ";\n"
-                        "}");
+        cases.push_back({named(enum_name + "::" + value.name),
+                         Block{{ReturnStatement{text_literal(*value.serialized_name)}}}});
     }
-    body.add(raw("switch (value) {\n" + join(cases, "\n") + "\n}"), 2)
+    body.add(SwitchStatement{named("value"), std::move(cases)}, 2)
         .add(raw("ensureMsgf(false,\n"
-                 "           TEXT(\"Unhandled serialized " + schema.name + " value: %lld\"),\n"
+                 "           TEXT(\"Unhandled serialized " +
+                 schema.name +
+                 " value: %lld\"),\n"
                  "           static_cast<int64>(value));"),
              1)
         .add(ReturnStatement{text_literal("<invalid " + schema.name + ">")});
@@ -169,13 +144,14 @@ auto serialized_parser(EnumModuleSchema const& module, EnumSchema const& schema)
         if (!value.serialized_name.has_value()) {
             continue;
         }
-        body.add(raw("if (value == " + text_literal(*value.serialized_name) + ") {\n"
-                     "    result = " + enum_name + "::" + value.name + ";\n"
-                     "    return true;\n"
-                     "}"),
-                 1);
+        body.add(
+            IfStatement{
+                binary(BinaryOperator::equal, named("value"), text_literal(*value.serialized_name)),
+                Block{{AssignmentStatement{named("result"), named(enum_name + "::" + value.name)},
+                       ReturnStatement{literal("true")}}}},
+            1);
     }
-    body.add(ReturnStatement{"false"});
+    body.add(ReturnStatement{literal("false")});
     return FunctionSpec{
         .name = "try_parse_serialized",
         .return_type = "auto",
@@ -207,9 +183,10 @@ auto conversion_spec(EnumModuleSchema const& module,
         module.helper_namespace.value_or(module.settings.namespace_name.value_or("")) ==
         module.settings.namespace_name.value_or("")};
     auto const parameter_type{lexical || helper_in_type_namespace ? schema.name : enum_name};
-    auto const lookup{internal_name(
-                          schema, serialized ? "serialized_name" : (display ? "display_name" : "name")) +
-                      "(value)"};
+    auto const lookup{
+        call(named(internal_name(
+                 schema, serialized ? "serialized_name" : (display ? "display_name" : "name"))),
+             {named("value")})};
     FunctionSpec result{
         .return_type = "auto",
         .parameters = {FunctionParameter{CppType{parameter_type + " const"}, "value"}},
@@ -224,12 +201,14 @@ auto conversion_spec(EnumModuleSchema const& module,
         case EnumConversion::string_view:
             result.name = "to_string_view";
             result.qualifiers.trailing_return_type = CppType{"FStringView", "CoreMinimal.h"};
-            result.body = {ReturnStatement{"FStringView{" + lookup + "}"}};
+            result.body = {
+                ReturnStatement{init_list({lookup}, CppType{"FStringView", "CoreMinimal.h"})}};
             break;
         case EnumConversion::string:
             result.name = "to_string";
             result.qualifiers.trailing_return_type = CppType{"FString", "CoreMinimal.h"};
-            result.body = {ReturnStatement{"FString{" + lookup + "}"}};
+            result.body = {
+                ReturnStatement{init_list({lookup}, CppType{"FString", "CoreMinimal.h"})}};
             break;
         case EnumConversion::lex_to_display_string:
             result.name = "LexToDisplayString";
@@ -238,12 +217,14 @@ auto conversion_spec(EnumModuleSchema const& module,
         case EnumConversion::display_string_view:
             result.name = "to_display_string_view";
             result.qualifiers.trailing_return_type = CppType{"FStringView", "CoreMinimal.h"};
-            result.body = {ReturnStatement{"FStringView{" + lookup + "}"}};
+            result.body = {
+                ReturnStatement{init_list({lookup}, CppType{"FStringView", "CoreMinimal.h"})}};
             break;
         case EnumConversion::display_string:
             result.name = "to_display_string";
             result.qualifiers.trailing_return_type = CppType{"FString", "CoreMinimal.h"};
-            result.body = {ReturnStatement{"FString{" + lookup + "}"}};
+            result.body = {
+                ReturnStatement{init_list({lookup}, CppType{"FString", "CoreMinimal.h"})}};
             break;
         case EnumConversion::lex_to_serialized_string:
             result.name = "LexToSerializedString";
@@ -255,14 +236,13 @@ auto conversion_spec(EnumModuleSchema const& module,
     return result;
 }
 
-auto annotation(EnumeratorSchema const& value, bool const reflected)
-    -> std::optional<std::string> {
+auto annotation(EnumeratorSchema const& value, bool const reflected) -> std::optional<std::string> {
     if (!reflected || (!value.display_name.has_value() && !value.hidden)) {
         return std::nullopt;
     }
     std::vector<std::string> metadata;
     if (value.display_name.has_value()) {
-        metadata.push_back("DisplayName = \"" + escaped_string(*value.display_name) + "\"");
+        metadata.push_back("DisplayName = " + render(string_literal(*value.display_name)));
     }
     if (value.hidden) {
         metadata.emplace_back("Hidden");
@@ -279,8 +259,8 @@ auto wrapped(std::optional<std::string> const& namespace_name, Nodes nodes) -> N
 
 } // namespace
 
-auto lower_enum_module(EnumModuleSchema const& module,
-                       std::map<std::string, CppType> const& types) -> Module {
+auto lower_enum_module(EnumModuleSchema const& module, std::map<std::string, CppType> const& types)
+    -> Module {
     NodeListBuilder declarations;
     NodeListBuilder traits;
     bool has_reflected{};
@@ -304,12 +284,13 @@ auto lower_enum_module(EnumModuleSchema const& module,
                 .annotation = annotation(value, reflected),
             });
         }
-        declarations.add(Enum{
-                             .name = schema.name,
-                             .underlying_type = resolve_type(schema.underlying_type, types),
-                             .values = std::move(values),
-                         },
-                         2);
+        declarations.add(
+            Enum{
+                .name = schema.name,
+                .underlying_type = resolve_type(schema.underlying_type, types),
+                .values = std::move(values),
+            },
+            2);
         if (schema.enum_array) {
             traits.add(enum_traits(module, schema), 2);
         }
@@ -333,7 +314,8 @@ auto lower_enum_module(EnumModuleSchema const& module,
         header_nodes.add(Include{"SandboxCore/enum_array.h", false}, 2);
     }
     if (has_reflected) {
-        header_nodes.add(Include{module.settings.header.stem().string() + ".generated.h", false}, 2);
+        header_nodes.add(Include{module.settings.header.stem().string() + ".generated.h", false},
+                         2);
     }
     if (!module.settings.prelude_lines.empty()) {
         header_nodes.add(raw(join_lines(module.settings.prelude_lines)), 2);
@@ -347,12 +329,13 @@ auto lower_enum_module(EnumModuleSchema const& module,
 
     Module result{
         .name = module.settings.name,
-        .header = CppFile{
-            .path = module.settings.header,
-            .nodes = header_nodes.build(),
-            .clang_format_off = true,
-            .include_order = module.settings.include_order,
-        },
+        .header =
+            CppFile{
+                .path = module.settings.header,
+                .nodes = header_nodes.build(),
+                .clang_format_off = true,
+                .include_order = module.settings.include_order,
+            },
     };
     if (!module.settings.source.has_value()) {
         return result;

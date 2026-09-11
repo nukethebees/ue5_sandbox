@@ -35,22 +35,45 @@ auto trim_newlines(std::string value) -> std::string {
 
 auto default_parameter_passing(std::string_view const spelling) -> ParameterPassing {
     static std::set<std::string_view> const value_types{
-        "bool",               "char",               "char8_t",
-        "char16_t",           "char32_t",            "double",
-        "float",              "int",                "int8",
-        "int16",              "int32",              "int64",
-        "long",               "long double",        "long int",
-        "long long",          "short",              "short int",
-        "signed char",        "size_t",             "std::ptrdiff_t",
-        "std::size_t",        "uint8",              "uint16",
-        "uint32",             "uint64",             "unsigned",
-        "unsigned char",      "unsigned int",       "unsigned long",
-        "unsigned long int",  "unsigned long long", "unsigned short",
-        "unsigned short int", "wchar_t",
+        "bool",
+        "char",
+        "char8_t",
+        "char16_t",
+        "char32_t",
+        "double",
+        "float",
+        "int",
+        "int8",
+        "int16",
+        "int32",
+        "int64",
+        "long",
+        "long double",
+        "long int",
+        "long long",
+        "short",
+        "short int",
+        "signed char",
+        "size_t",
+        "std::ptrdiff_t",
+        "std::size_t",
+        "uint8",
+        "uint16",
+        "uint32",
+        "uint64",
+        "unsigned",
+        "unsigned char",
+        "unsigned int",
+        "unsigned long",
+        "unsigned long int",
+        "unsigned long long",
+        "unsigned short",
+        "unsigned short int",
+        "wchar_t",
     };
     return value_types.contains(spelling) || spelling.ends_with('*')
-               ? ParameterPassing::value
-               : ParameterPassing::const_reference;
+             ? ParameterPassing::value
+             : ParameterPassing::const_reference;
 }
 
 auto render_parameter(FunctionParameter const& parameter, bool include_default) -> std::string {
@@ -203,11 +226,7 @@ auto render_signature(Function const& function) -> std::string {
 void collect_dependencies(Node const& node, std::vector<TypeDependency>& result) {
     auto direct{dependencies(node)};
     result.insert(result.end(), direct.begin(), direct.end());
-    if (auto const* nested{children(node)}; nested != nullptr) {
-        for (auto const& child : *nested) {
-            collect_dependencies(child, result);
-        }
-    }
+    for_each_child(node, [&](Node const& child) { collect_dependencies(child, result); });
 }
 
 void collect_dependency_includes(TypeDependency const& dependency, std::set<std::string>& paths) {
@@ -288,19 +307,19 @@ auto CppType::operation_parameter_passing(TypeOperation const operation_name) co
     -> ParameterPassing {
     auto const found{member_operation_parameter_passing.find(operation_name)};
     return found == member_operation_parameter_passing.end() ? ParameterPassing::const_reference
-                                                              : found->second;
+                                                             : found->second;
 }
 
 Member::Member(CppType value_type, std::string value_name)
     : type{std::move(value_type)}
     , name{std::move(value_name)} {}
-Member::Member(CppType value_type, std::string value_name, std::string value_initializer)
+Member::Member(CppType value_type, std::string value_name, Expr value_initializer)
     : type{std::move(value_type)}
     , name{std::move(value_name)}
     , initializer{std::move(value_initializer)} {}
 Member::Member(CppType value_type,
                std::string value_name,
-               std::optional<std::string> value_initializer,
+               std::optional<Expr> value_initializer,
                MemberQualifiers value_qualifiers,
                std::optional<std::string> value_template_parameters)
     : type{std::move(value_type)}
@@ -358,16 +377,31 @@ auto include_is_system(Include const& include) -> bool {
     return filename.find('.') == std::string::npos;
 }
 
-auto children(Node const& node) -> Nodes const* {
-    return std::visit(
-        [](auto const& value) -> Nodes const* {
+void for_each_child(Node const& node, std::function<void(Node const&)> const& visit) {
+    auto visit_nodes = [&](Nodes const& nodes) {
+        for (auto const& child : nodes) {
+            visit(child);
+        }
+    };
+    std::visit(
+        [&](auto const& value) {
             using T = std::decay_t<decltype(value)>;
-            if constexpr (std::is_same_v<T, Struct> || std::is_same_v<T, Namespace>) {
-                return &value.children;
+            if constexpr (std::is_same_v<T, Struct> || std::is_same_v<T, Namespace> ||
+                          std::is_same_v<T, Block>) {
+                visit_nodes(value.children);
             } else if constexpr (std::is_same_v<T, Function>) {
-                return value.declaration ? nullptr : &value.spec.body;
-            } else {
-                return nullptr;
+                if (!value.declaration) {
+                    visit_nodes(value.spec.body);
+                }
+            } else if constexpr (std::is_same_v<T, IfStatement>) {
+                visit_nodes(value.then_block.children);
+                if (value.else_block.has_value()) {
+                    visit_nodes(value.else_block->children);
+                }
+            } else if constexpr (std::is_same_v<T, SwitchStatement>) {
+                for (auto const& branch : value.cases) {
+                    visit_nodes(branch.body.children);
+                }
             }
         },
         node);
@@ -377,13 +411,50 @@ auto dependencies(Node const& node) -> std::vector<TypeDependency> {
     return std::visit(
         [](auto const& value) -> std::vector<TypeDependency> {
             using T = std::decay_t<decltype(value)>;
-            if constexpr (std::is_same_v<T, Raw> || std::is_same_v<T, ExpressionStatement> ||
-                          std::is_same_v<T, ReturnStatement> ||
-                          std::is_same_v<T, AssignmentStatement>) {
+            auto append_expression = [](std::vector<TypeDependency>& result,
+                                        Expr const& expression) {
+                auto const nested{dependencies(expression)};
+                result.insert(result.end(), nested.begin(), nested.end());
+            };
+            if constexpr (std::is_same_v<T, Raw>) {
                 return value.dependencies;
-            } else if constexpr (std::is_same_v<T, UsingDeclaration> || std::is_same_v<T, Member> ||
-                                 std::is_same_v<T, VariableDeclarationStatement>) {
+            } else if constexpr (std::is_same_v<T, ExpressionStatement>) {
+                auto result{value.dependencies};
+                append_expression(result, value.expression);
+                return result;
+            } else if constexpr (std::is_same_v<T, ReturnStatement>) {
+                auto result{value.dependencies};
+                if (value.expression.has_value()) {
+                    append_expression(result, *value.expression);
+                }
+                return result;
+            } else if constexpr (std::is_same_v<T, AssignmentStatement>) {
+                auto result{value.dependencies};
+                append_expression(result, value.target);
+                append_expression(result, value.value);
+                return result;
+            } else if constexpr (std::is_same_v<T, UsingDeclaration>) {
                 return value.type.dependencies;
+            } else if constexpr (std::is_same_v<T, Member>) {
+                auto result{value.type.dependencies};
+                if (value.initializer.has_value()) {
+                    append_expression(result, *value.initializer);
+                }
+                return result;
+            } else if constexpr (std::is_same_v<T, VariableDeclarationStatement>) {
+                auto result{value.type.dependencies};
+                append_expression(result, value.initializer);
+                return result;
+            } else if constexpr (std::is_same_v<T, IfStatement>) {
+                return dependencies(value.condition);
+            } else if constexpr (std::is_same_v<T, SwitchStatement>) {
+                auto result{dependencies(value.condition)};
+                for (auto const& branch : value.cases) {
+                    if (branch.label.has_value()) {
+                        append_expression(result, *branch.label);
+                    }
+                }
+                return result;
             } else if constexpr (std::is_same_v<T, Function>) {
                 auto result{value.spec.return_type.dependencies};
                 if (value.spec.qualifiers.trailing_return_type.has_value()) {
@@ -439,16 +510,44 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
             using T = std::decay_t<decltype(value)>;
             if constexpr (std::is_same_v<T, Raw>) {
                 return context.apply_indent(value.text);
+            } else if constexpr (std::is_same_v<T, Block>) {
+                return context.apply_indent("{") + "\n" +
+                       render_nodes(value.children, context.indent(), 1) + "\n" +
+                       context.apply_indent("}");
+            } else if constexpr (std::is_same_v<T, IfStatement>) {
+                auto result{context.apply_indent("if (" + render(value.condition) + ") {") + "\n" +
+                            render_nodes(value.then_block.children, context.indent(), 1) + "\n" +
+                            context.apply_indent("}")};
+                if (value.else_block.has_value()) {
+                    result += " else {\n" +
+                              render_nodes(value.else_block->children, context.indent(), 1) + "\n" +
+                              context.apply_indent("}");
+                }
+                return result;
+            } else if constexpr (std::is_same_v<T, SwitchStatement>) {
+                auto result{context.apply_indent("switch (" + render(value.condition) + ") {")};
+                for (auto const& branch : value.cases) {
+                    auto const label{branch.label.has_value() ? "case " + render(*branch.label)
+                                                              : "default"};
+                    result += "\n" + context.apply_indent(label + ": {") + "\n" +
+                              render_nodes(branch.body.children, context.indent(), 1) + "\n" +
+                              context.apply_indent("}");
+                }
+                return result + "\n" + context.apply_indent("}");
+            } else if constexpr (std::is_same_v<T, BreakStatement>) {
+                return context.apply_indent("break;");
             } else if constexpr (std::is_same_v<T, ExpressionStatement>) {
-                return context.apply_indent(value.expression + ";");
+                return context.apply_indent(render(value.expression) + ";");
             } else if constexpr (std::is_same_v<T, ReturnStatement>) {
-                return context.apply_indent(
-                    value.expression.has_value() ? "return " + *value.expression + ";" : "return;");
+                return context.apply_indent(value.expression.has_value()
+                                                ? "return " + render(*value.expression) + ";"
+                                                : "return;");
             } else if constexpr (std::is_same_v<T, AssignmentStatement>) {
-                return context.apply_indent(value.target + " = " + value.value + ";");
+                return context.apply_indent(render(value.target) + " = " + render(value.value) +
+                                            ";");
             } else if constexpr (std::is_same_v<T, VariableDeclarationStatement>) {
                 return context.apply_indent(value.type.spelling + " " + value.name + "{" +
-                                            value.initializer + "};");
+                                            render(value.initializer) + "};");
             } else if constexpr (std::is_same_v<T, NewLines>) {
                 return std::string(static_cast<std::size_t>(value.count), '\n');
             } else if constexpr (std::is_same_v<T, AccessSpecifier>) {
@@ -482,8 +581,8 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                                             ";");
             } else if constexpr (std::is_same_v<T, Member>) {
                 validate_member(value);
-                auto initializer{value.initializer.has_value() ? "{" + *value.initializer + "}"
-                                                               : ""};
+                auto initializer{
+                    value.initializer.has_value() ? "{" + render(*value.initializer) + "}" : ""};
                 auto declaration{std::string{value.qualifiers.is_inline ? "inline " : ""} +
                                  declaration_specifier_prefix(value.qualifiers.is_static,
                                                               value.qualifiers.is_constexpr) +
@@ -536,8 +635,7 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                 }
                 auto const body{join(values, ",\n")};
                 return context.apply_indent(header + " {") + "\n" +
-                       context.indent().apply_indent(body) + ",\n" +
-                       context.apply_indent("};");
+                       context.indent().apply_indent(body) + ",\n" + context.apply_indent("};");
             } else if constexpr (std::is_same_v<T, Struct>) {
                 std::vector<std::string> bases;
                 for (auto const& base : value.bases) {
@@ -562,9 +660,10 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                        render_nodes(value.children, context.indent(), 2) + "\n" +
                        context.apply_indent("};");
             } else if constexpr (std::is_same_v<T, Namespace>) {
-                auto const opening{value.name.empty() ? "namespace {" : "namespace " + value.name + " {"};
+                auto const opening{value.name.empty() ? "namespace {"
+                                                      : "namespace " + value.name + " {"};
                 auto const closing{value.name.empty() ? "} // namespace"
-                                                       : "} // namespace " + value.name};
+                                                      : "} // namespace " + value.name};
                 return context.apply_indent(opening) + "\n" +
                        render_nodes(value.children, context, 2) + "\n" +
                        context.apply_indent(closing);

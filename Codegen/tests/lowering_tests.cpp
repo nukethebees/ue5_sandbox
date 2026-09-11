@@ -102,12 +102,13 @@ TEST(Lowering, EmitsOnlyRequestedStorageOperations) {
 
 TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
     auto const output{render_enum(EnumModuleSchema{
-        .settings = ModuleSettings{
-            .name = "modes",
-            .header = "Modes.h",
-            .source = "Modes.cpp",
-            .header_include = "Project/Modes.h",
-        },
+        .settings =
+            ModuleSettings{
+                .name = "modes",
+                .header = "Modes.h",
+                .source = "Modes.cpp",
+                .header_include = "Project/Modes.h",
+            },
         .helper_namespace = "project",
         .enums = {EnumSchema{
             .name = "EMode",
@@ -137,17 +138,19 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
     EXPECT_NE(output.header.find("Readable = 7 UMETA(DisplayName = \"Readable Value\")"),
               std::string::npos);
     EXPECT_NE(output.header.find("COUNT UMETA(Hidden)"), std::string::npos);
-    EXPECT_NE(output.header.find("PROJECT_API auto LexToString(EMode const value) -> TCHAR const*;"),
-              std::string::npos);
+    EXPECT_NE(
+        output.header.find("PROJECT_API auto LexToString(EMode const value) -> TCHAR const*;"),
+        std::string::npos);
     EXPECT_NE(output.header.find("namespace project {\nPROJECT_API auto to_string_view"),
               std::string::npos);
     EXPECT_NE(output.header.find(
                   "PROJECT_API auto LexToSerializedString(EMode const value) -> TCHAR const*;"),
               std::string::npos);
-    EXPECT_NE(output.header.find(
-                  "PROJECT_API auto try_parse_serialized(FStringView const value, EMode& result) -> "
-                  "bool;"),
-              std::string::npos);
+    EXPECT_NE(
+        output.header.find(
+            "PROJECT_API auto try_parse_serialized(FStringView const value, EMode& result) -> "
+            "bool;"),
+        std::string::npos);
     EXPECT_EQ(output.header.find("auto to_string(EMode"), std::string::npos);
 
     EXPECT_NE(output.source.find("#include \"Project/Modes.h\""), std::string::npos);
@@ -162,12 +165,13 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
 
 TEST(Lowering, EmitsPlainEnumsInTheirNamespace) {
     auto const output{render_enum(EnumModuleSchema{
-        .settings = ModuleSettings{
-            .name = "states",
-            .header = "States.h",
-            .source = "States.cpp",
-            .namespace_name = "project::states",
-        },
+        .settings =
+            ModuleSettings{
+                .name = "states",
+                .header = "States.h",
+                .source = "States.cpp",
+                .namespace_name = "project::states",
+            },
         .enums = {EnumSchema{
             .name = "EState",
             .underlying_type = TypeRef{"int"},
@@ -186,11 +190,12 @@ TEST(Lowering, EmitsPlainEnumsInTheirNamespace) {
 
 TEST(Lowering, EmitsTraitsForEnumArrayEnums) {
     auto const output{render_enum(EnumModuleSchema{
-        .settings = ModuleSettings{
-            .name = "modes",
-            .header = "Modes.h",
-            .source = "Modes.cpp",
-        },
+        .settings =
+            ModuleSettings{
+                .name = "modes",
+                .header = "Modes.h",
+                .source = "Modes.cpp",
+            },
         .enums = {EnumSchema{
             .name = "EMode",
             .underlying_type = TypeRef{"uint8"},
@@ -199,20 +204,21 @@ TEST(Lowering, EmitsTraitsForEnumArrayEnums) {
         }},
     })};
 
-    EXPECT_NE(output.header.find("#include \"SandboxCore/enum_array.h\""),
-              std::string::npos);
-    EXPECT_NE(output.header.find("struct TEnumTraits<EMode> {\n    static constexpr int32 count{2};\n};"),
-              std::string::npos);
+    EXPECT_NE(output.header.find("#include \"SandboxCore/enum_array.h\""), std::string::npos);
+    EXPECT_NE(
+        output.header.find("struct TEnumTraits<EMode> {\n    static constexpr int32 count{2};\n};"),
+        std::string::npos);
     EXPECT_EQ(output.header.find("COUNT"), std::string::npos);
 }
 
 TEST(Lowering, EmitsTraitsForEnumArrayEnumsWithCountSentinels) {
     auto const output{render_enum(EnumModuleSchema{
-        .settings = ModuleSettings{
-            .name = "modes",
-            .header = "Modes.h",
-            .source = "Modes.cpp",
-        },
+        .settings =
+            ModuleSettings{
+                .name = "modes",
+                .header = "Modes.h",
+                .source = "Modes.cpp",
+            },
         .enums = {EnumSchema{
             .name = "EMode",
             .underlying_type = TypeRef{"uint8"},
@@ -228,10 +234,96 @@ TEST(Lowering, EmitsTraitsForEnumArrayEnumsWithCountSentinels) {
         }},
     })};
 
-    EXPECT_NE(output.header.find("#include \"SandboxCore/enum_array.h\""),
+    EXPECT_NE(output.header.find("#include \"SandboxCore/enum_array.h\""), std::string::npos);
+    EXPECT_NE(output.header.find("struct TEnumTraits<EMode> {\n    static constexpr int32 "
+                                 "count{static_cast<int32>(EMode::COUNT)};\n};"),
               std::string::npos);
-    EXPECT_NE(output.header.find("struct TEnumTraits<EMode> {\n    static constexpr int32 count{static_cast<int32>(EMode::COUNT)};\n};"),
+}
+
+TEST(Lowering, EnumDisplayLookupWithoutOverridesFallsBackDirectly) {
+    auto const output{render_enum(EnumModuleSchema{
+        .settings = {.name = "states", .header = "States.h", .source = "States.cpp"},
+        .enums = {EnumSchema{
+            .name = "EState",
+            .underlying_type = TypeRef{"int"},
+            .values = {EnumeratorSchema{"Ready"}},
+            .conversions = {EnumConversion::display_string},
+        }},
+    })};
+
+    EXPECT_NE(
+        output.source.find("auto get_state_display_name(EState const value) -> TCHAR const* {\n"
+                           "    return get_state_name(value);\n"
+                           "}"),
+        std::string::npos);
+    EXPECT_EQ(occurrences(output.source, "switch (value)"), 1);
+    EXPECT_NE(output.source.find("return FString{get_state_display_name(value)};"),
               std::string::npos);
+}
+
+TEST(Lowering, EnumEscapingAndSparseDisplayCasesPreserveFallbacks) {
+    auto const output{render_enum(EnumModuleSchema{
+        .settings = {.name = "states", .header = "States.h", .source = "States.cpp"},
+        .enums = {EnumSchema{
+            .name = "EState",
+            .underlying_type = TypeRef{"int"},
+            .reflection = EnumReflection::uenum,
+            .values = {EnumeratorSchema{"Ready", std::nullopt, std::nullopt, false, "ready"},
+                       EnumeratorSchema{
+                           "Special", std::nullopt, "Quote\" Slash\\\n\t", false, "a\"b\\c\n"}},
+            .conversions = {EnumConversion::display_string,
+                            EnumConversion::lex_to_serialized_string,
+                            EnumConversion::try_parse_serialized},
+        }},
+    })};
+
+    EXPECT_NE(output.header.find("UMETA(DisplayName = \"Quote\\\" Slash\\\\\\n\\t\")"),
+              std::string::npos);
+    EXPECT_NE(
+        output.source.find("auto get_state_display_name(EState const value) -> TCHAR const* {\n"
+                           "    switch (value) {\n"
+                           "    case EState::Special: {\n"
+                           "        return TEXT(\"Quote\\\" Slash\\\\\\n\\t\");\n"
+                           "    }\n"
+                           "    default: {\n"
+                           "        break;\n"
+                           "    }\n"
+                           "    }\n\n"
+                           "    return get_state_name(value);\n"
+                           "}"),
+        std::string::npos);
+    EXPECT_NE(output.source.find("if (value == TEXT(\"a\\\"b\\\\c\\n\")) {\n"
+                                 "        result = EState::Special;\n"
+                                 "        return true;\n"
+                                 "    }\n"
+                                 "    return false;"),
+              std::string::npos);
+}
+
+TEST(Lowering, EnumTraitsRemainGlobalForQualifiedHeaderOnlyEnums) {
+    auto const files{render_modules(lower_modules(Manifest{
+        .schema_version = manifest_schema_version,
+        .modules = {EnumModuleSchema{
+            .settings =
+                {.name = "states", .header = "States.h", .namespace_name = "project::states"},
+            .enums = {EnumSchema{
+                .name = "EState",
+                .underlying_type = TypeRef{"int"},
+                .values = {EnumeratorSchema{"Ready"}, EnumeratorSchema{"COUNT"}},
+                .enum_array = true,
+                .count = "COUNT",
+            }},
+        }},
+    }))};
+    ASSERT_EQ(files.size(), 1);
+    EXPECT_NE(
+        files.front().content.find("} // namespace project::states\n"
+                                   "template <>\n"
+                                   "struct TEnumTraits<project::states::EState> {\n"
+                                   "    static constexpr int32 "
+                                   "count{static_cast<int32>(project::states::EState::COUNT)};\n"
+                                   "};"),
+        std::string::npos);
 }
 
 TEST(Lowering, AppliesEveryStorageOperationToEveryMember) {
@@ -332,9 +424,10 @@ TEST(Lowering, EmitsLogicalElementSettersAndAddForArraysAndSupportedNestedMember
 TEST(Lowering, OmitsLogicalElementSetterAndAddForUnsupportedNestedMembers) {
     auto schema{SoaSchema{
         .name = "FData",
-        .members = {
-            SoaMemberSchema{"values", SoaMemberKind::nested, TypeRef{"@nested"}},
-        },
+        .members =
+            {
+                SoaMemberSchema{"values", SoaMemberKind::nested, TypeRef{"@nested"}},
+            },
     }};
 
     auto const output{render_soa(std::move(schema), {{"nested", CppType{"FNested"}}})};
@@ -453,10 +546,11 @@ TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
                     .value_type = TypeRef{"float"},
                     .backend = "engine",
                     .apply_mode = SettingApplyMode::immediate,
-                    .control = SettingControlSchema{
-                        .kind = SettingControlKind::choice,
-                        .options_provider = "frame_limits",
-                    },
+                    .control =
+                        SettingControlSchema{
+                            .kind = SettingControlKind::choice,
+                            .options_provider = "frame_limits",
+                        },
                 },
             },
     })};
@@ -468,8 +562,7 @@ TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
     EXPECT_NE(output.header.find("auto operator==(FSettingsState const&) const -> bool = default"),
               std::string::npos);
     EXPECT_NE(output.source.find("ESettingApplyMode::Deferred"), std::string::npos);
-    EXPECT_NE(output.source.find("EGameSettingOptionProvider::FrameLimits"),
-              std::string::npos);
+    EXPECT_NE(output.source.find("EGameSettingOptionProvider::FrameLimits"), std::string::npos);
     EXPECT_NE(output.source.find("std::get_if<float>"), std::string::npos);
 }
 

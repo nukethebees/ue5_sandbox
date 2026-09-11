@@ -29,6 +29,7 @@ add_subdirectory(sexpr)
 
 add_library(codegen-lib
   src/ast.cpp
+  src/expr.cpp
   src/enum_lowering.cpp
   src/facade_lowering.cpp
   src/fixed_soa_lowering.cpp
@@ -118,6 +119,7 @@ target_include_directories(codegen-generated-compile-tests PRIVATE
 
 add_executable(codegen-tests
   tests/ast_tests.cpp
+  tests/expr_tests.cpp
   tests/fixed_soa_lowering_tests.cpp
   tests/single_allocation_soa_tests.cpp
   tests/generator_tests.cpp
