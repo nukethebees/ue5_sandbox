@@ -3,6 +3,7 @@
 #include <codegen/ast/access_specifier.h>
 #include <codegen/ast/assignment_stmt.h>
 #include <codegen/ast/block.h>
+#include <codegen/ast/block_comment.h>
 #include <codegen/ast/break_stmt.h>
 #include <codegen/ast/enum.h>
 #include <codegen/ast/expression_stmt.h>
@@ -12,6 +13,7 @@
 #include <codegen/ast/if_stmt.h>
 #include <codegen/ast/include.h>
 #include <codegen/ast/include_dependencies.h>
+#include <codegen/ast/line_comment.h>
 #include <codegen/ast/member.h>
 #include <codegen/ast/namespace.h>
 #include <codegen/ast/new_lines.h>
@@ -27,6 +29,8 @@
 namespace codegen {
 
 using NodeValue = std::variant<Raw,
+                               LineComment,
+                               BlockComment,
                                Block,
                                IfStmt,
                                SwitchStmt,

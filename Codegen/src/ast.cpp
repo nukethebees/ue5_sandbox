@@ -549,6 +549,10 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                 return result + "\n" + context.apply_indent("}");
             } else if constexpr (std::is_same_v<T, BreakStmt>) {
                 return context.apply_indent("break;");
+            } else if constexpr (std::is_same_v<T, LineComment>) {
+                return context.apply_indent("// " + value.text);
+            } else if constexpr (std::is_same_v<T, BlockComment>) {
+                return context.apply_indent("/* " + value.text + " */");
             } else if constexpr (std::is_same_v<T, ExpressionStmt>) {
                 return context.apply_indent(render(value.expression) + ";");
             } else if constexpr (std::is_same_v<T, ReturnStmt>) {

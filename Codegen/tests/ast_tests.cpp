@@ -52,6 +52,12 @@ TEST(Ast, RendersFriendDeclarations) {
     EXPECT_EQ(render(Node{FriendDeclaration{"FValue", "struct"}}), "friend struct FValue;");
 }
 
+TEST(Ast, RendersComments) {
+    EXPECT_EQ(render(Node{LineComment{"Lifetime"}}), "// Lifetime");
+    EXPECT_EQ(render(Node{BlockComment{"****************************************"}}),
+              "/* **************************************** */");
+}
+
 TEST(Ast, RendersTypedStmts) {
     EXPECT_EQ(render(Node{ExpressionStmt{RawExpr{"apply(value)"}}}), "apply(value);");
     EXPECT_EQ(render(Node{ReturnStmt{RawExpr{"value"}}}), "return value;");
