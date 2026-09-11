@@ -30,6 +30,7 @@
 #include <codegen/ast/raw.h>
 #include <codegen/ast/render_context.h>
 #include <codegen/ast/return_stmt.h>
+#include <codegen/ast/static_assert.h>
 #include <codegen/ast/struct.h>
 #include <codegen/ast/switch_stmt.h>
 #include <codegen/ast/type_dependency.h>

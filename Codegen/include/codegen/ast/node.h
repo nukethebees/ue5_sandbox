@@ -19,6 +19,7 @@
 #include <codegen/ast/new_lines.h>
 #include <codegen/ast/raw.h>
 #include <codegen/ast/return_stmt.h>
+#include <codegen/ast/static_assert.h>
 #include <codegen/ast/struct.h>
 #include <codegen/ast/switch_stmt.h>
 #include <codegen/ast/using_declaration.h>
@@ -39,6 +40,7 @@ using NodeValue = std::variant<Raw,
                                ReturnStmt,
                                AssignmentStmt,
                                VariableDeclarationStmt,
+                               StaticAssert,
                                NewLines,
                                AccessSpecifier,
                                Include,

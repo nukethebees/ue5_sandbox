@@ -58,6 +58,15 @@ TEST(Ast, RendersComments) {
               "/* **************************************** */");
 }
 
+TEST(Ast, RendersStaticAssertionsWithOptionalMessages) {
+    Node const without_message{StaticAssert{"sizeof(Value) == 16", {}}};
+    Node const with_message{StaticAssert{"valid<Value>", "Value must be \"valid\"."}};
+
+    EXPECT_EQ(render(without_message), "static_assert(sizeof(Value) == 16);");
+    EXPECT_EQ(render(with_message),
+              "static_assert(valid<Value>, \"Value must be \\\"valid\\\".\");");
+}
+
 TEST(Ast, RendersTypedStmts) {
     EXPECT_EQ(render(Node{ExpressionStmt{RawExpr{"apply(value)"}}}), "apply(value);");
     EXPECT_EQ(render(Node{ReturnStmt{RawExpr{"value"}}}), "return value;");

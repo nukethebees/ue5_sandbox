@@ -264,11 +264,8 @@ static auto compact_view_nodes(SoaSchema const& schema,
                                    FunctionFormatting::TemplatePlacement::same_line}}},
             1);
         result.add(Struct{.name = name, .children = members.build(), .bases = {base}}, 1);
-        result.add(raw("static_assert(sizeof(" + name +
-                       ") == 16);\n"
-                       "static_assert(std::is_trivially_copyable_v<" +
-                       name + ">);"),
-                   1);
+        result.add(StaticAssert{"sizeof(" + name + ") == 16", {}}, 1)
+            .add(StaticAssert{"std::is_trivially_copyable_v<" + name + ">", {}}, 1);
     }
     result.add(Function{FunctionSpec{.name = const_view,
                                      .parameters = {{view + " const&", "other"}},
@@ -347,6 +344,9 @@ auto lower_single_allocation_nodes(SoaSchema const& schema,
         }
     }
     std::ostringstream assertions;
+    auto append_assertion = [&](std::string condition, std::string message = {}) {
+        assertions << render(Node{StaticAssert{std::move(condition), std::move(message)}}) << '\n';
+    };
     std::ostringstream out;
     std::ostringstream layout_output;
     out << "struct " << layout_name << " {\n"
@@ -389,24 +389,25 @@ auto lower_single_allocation_nodes(SoaSchema const& schema,
 
     for (auto const* leaf : unique_types) {
         auto const& type{leaf->type.spelling};
-        assertions
-            << "static_assert(" << runtime << "supported_leaf<" << type
-            << ">, \"Single-allocation leaf " << join(leaf->path, ".")
-            << " requires a non-cv, trivially copyable/copy-constructible/destructible, nothrow "
-               "default-constructible object type.\");\n";
+        append_assertion(std::string{runtime} + "supported_leaf<" + type + ">",
+                         "Single-allocation leaf " + join(leaf->path, ".") +
+                             " requires a non-cv, trivially copyable/copy-constructible/"
+                             "destructible, nothrow default-constructible object type.");
     }
-    assertions << "\nstatic_assert(allocation_alignment <= std::numeric_limits<"
-               << (native ? "std::uint32_t" : "uint32")
-               << ">::max(), \"Single-allocation alignment must fit the allocator's 32-bit "
-                  "alignment argument.\");\n";
+    assertions << '\n';
+    append_assertion("allocation_alignment <= std::numeric_limits<" +
+                         std::string{native ? "std::uint32_t" : "uint32"} + ">::max()",
+                     "Single-allocation alignment must fit the allocator's 32-bit alignment "
+                     "argument.");
     for (std::size_t index{}; index < layout.leaves.size(); ++index) {
         auto const& type{layout.leaves[index].type.spelling};
-        assertions << "static_assert(sizeof(" << type << ") <= (max_allocation_size - "
-                   << columns[index] << ".block_offset) / capacity_granularity);\n";
+        append_assertion("sizeof(" + type + ") <= (max_allocation_size - " + columns[index] +
+                         ".block_offset) / capacity_granularity");
     }
-    assertions << "static_assert(" << (layout.leaves.size() - 1) << " <= (max_allocation_size - "
-               << runtime << "layout_align(" << columns.back() << ".block_end"
-               << ", allocation_alignment)) / (column_gap + allocation_alignment - 1));\n";
+    append_assertion(std::to_string(layout.leaves.size() - 1) +
+                     " <= (max_allocation_size - " + runtime + "layout_align(" + columns.back() +
+                     ".block_end, allocation_alignment)) / (column_gap + allocation_alignment - "
+                     "1)");
     out << "// Conservative per-block bound for checked capacity arithmetic; gaps do not scale "
            "with capacity.\n";
     out << "inline static constexpr byte_size_type "
@@ -421,8 +422,9 @@ auto lower_single_allocation_nodes(SoaSchema const& schema,
         << "return blocks == 0 ? 0 : " << columns.back() << ".data_end(blocks);\n}\n"
         << "\nprivate:\ninline static constexpr auto validate_layout = []() consteval -> bool {\n"
         << assertions.str()
-        << "static_assert(max_capacity >= capacity_granularity);\nreturn true;\n};\n"
-        << "static_assert(validate_layout());\n};\n\n";
+        << render(Node{StaticAssert{"max_capacity >= capacity_granularity", {}}})
+        << "\nreturn true;\n};\n"
+        << render(Node{StaticAssert{"validate_layout()", {}}}) << "\n};\n\n";
     layout_output << out.str();
     out.str({});
     if (!schema.single_allocation_allocator) {
