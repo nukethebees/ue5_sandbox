@@ -25,6 +25,11 @@ Unreal Engine 5.8 project.
   Clang, and AppleClang frontends, and `/W4`; the errors interface adds `-Werror` or `/WX`.
   Treat clang-cl as an MSVC-style frontend and use `/W4 /WX`; do not use `/Wall` or Clang
   `-Wall`, because clang-cl treats that level as `-Weverything`.
+* Prefer hierarchical CMake configuration. A subdirectory that owns a library, executable, or
+  test suite should define that target in an adjacent `CMakeLists.txt`; parent files should limit
+  themselves to `add_subdirectory` calls and shared orchestration where practical.
+* Declare CMake targets before their source lists and attach implementation files with
+  `target_sources`; do not list sources directly in `add_library` or `add_executable`.
 * Regenerate project files after changes to modules/plugins, `.Build.cs`, `.Target.cs`, or project/module definitions. For larger tasks, do this once after the full change rather than after intermediate edits.
 * Tests:
   * all suites: `cmake --workflow --preset debug-game-tests`

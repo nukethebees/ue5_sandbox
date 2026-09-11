@@ -845,12 +845,10 @@ add_custom_target(generate-ui-glow-material
 )
 
 add_custom_target(validate-ui-glow-material
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
-    -run=MaterialSynth
-    "-Input=${CMAKE_CURRENT_SOURCE_DIR}/Plugins/SandboxUI/Source/SandboxUI/Private/materials/UiGlowComposite.material.scm"
-    -Validate -nullrhi
-    -unattended -nop4 -nosplash -nosound -stdout
-  DEPENDS editor
+  COMMAND $<TARGET_FILE:materialc> validate
+    --input
+    "${CMAKE_CURRENT_SOURCE_DIR}/Plugins/SandboxUI/Source/SandboxUI/Private/materials/UiGlowComposite.material.scm"
+  DEPENDS materialc
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   USES_TERMINAL
   VERBATIM

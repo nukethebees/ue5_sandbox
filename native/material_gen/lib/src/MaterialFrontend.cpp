@@ -251,7 +251,10 @@ class Analyzer {
                 fail(form.children[3].token.span, "texture default must be a quoted asset path");
                 return;
             }
-            auto const resolved{resolver_(form.children[3].token.text)};
+            auto const resolved{
+                resolver_.resolve == nullptr
+                    ? std::nullopt
+                    : resolver_.resolve(resolver_.context, form.children[3].token.text)};
             if (!resolved) {
                 fail(form.children[3].token.span,
                      "unresolved texture asset '" + form.children[3].token.text + "'");

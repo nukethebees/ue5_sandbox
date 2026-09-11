@@ -16,7 +16,7 @@ TEST(MaterialGen, ComputesSha256) {
     EXPECT_EQ(sha256(bytes), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
 }
 
-auto resolve(std::string_view const path) -> std::optional<std::string> {
+auto resolve(void const*, std::string_view const path) -> std::optional<std::string> {
     auto const slash{path.rfind('/')};
     if (path.starts_with("/Missing/") || slash == std::string_view::npos) {
         return std::nullopt;
@@ -35,7 +35,8 @@ TEST(MaterialFrontend, LowersUiGlowGoldenSourceWithStableHandles) {
     auto const source_path{std::filesystem::path{SANDBOX_PROJECT_SOURCE_DIR} /
                            "Plugins/SandboxUI/Source/SandboxUI/Private/materials/"
                            "UiGlowComposite.material.scm"};
-    auto const result{analyze(source_path.generic_string(), read(source_path), resolve)};
+    auto const result{analyze(
+        source_path.generic_string(), read(source_path), TextureResolver{nullptr, resolve})};
     ASSERT_TRUE(result.material.has_value())
         << (result.diagnostics.empty() ? "" : result.diagnostics.front().message);
     auto const& material{*result.material};
@@ -73,7 +74,7 @@ TEST(MaterialFrontend, SupportsEveryNumericExpressionAndPropagatesTypes) {
   (let sampled (sample Tex uv))
   (emissive (custom float3 ((Value float3 clipped) (Pixels float4 sampled))
               "return Value + Pixels.rgb * 0;"))))"};
-    auto const result{analyze("forms.scm", source, resolve)};
+    auto const result{analyze("forms.scm", source, TextureResolver{nullptr, resolve})};
     ASSERT_TRUE(result.material.has_value())
         << (result.diagnostics.empty() ? "" : result.diagnostics.front().message);
     auto const& material{*result.material};
@@ -100,7 +101,7 @@ TEST(MaterialIR, RejectsForgedForwardHandlesAndMalformedNodes) {
 class MaterialFrontendFailure : public testing::TestWithParam<std::string_view> {};
 
 TEST_P(MaterialFrontendFailure, RejectsInvalidSource) {
-    auto const result{analyze("invalid.scm", GetParam(), resolve)};
+    auto const result{analyze("invalid.scm", GetParam(), TextureResolver{nullptr, resolve})};
     EXPECT_FALSE(result.material.has_value());
     EXPECT_FALSE(result.diagnostics.empty());
     if (!result.diagnostics.empty()) {

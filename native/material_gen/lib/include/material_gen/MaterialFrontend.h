@@ -7,7 +7,13 @@
 
 namespace material_synth {
 
-using TextureResolver = std::optional<std::string> (*)(std::string_view texture_asset_path);
+using TextureResolveFunction = std::optional<std::string> (*)(void const* context,
+                                                              std::string_view texture_asset_path);
+
+struct TextureResolver {
+    void const* context{};
+    TextureResolveFunction resolve{};
+};
 
 struct AnalysisResult {
     std::optional<MaterialIR> material;

@@ -32,18 +32,18 @@ auto load_golden() -> material_synth::AnalysisResult {
         reinterpret_cast<char const*>(utf8_path.Get()),
         std::string_view{reinterpret_cast<char const*>(utf8_source.Get()),
                          static_cast<std::size_t>(utf8_source.Length())},
-        [](std::string_view const requested) -> std::optional<std::string> {
-            auto package_path{FString{UTF8_TO_TCHAR(requested.data())}};
-            auto leaf{package_path};
-            int32 slash{};
-            leaf.FindLastChar(TEXT('/'), slash);
-            leaf.RightChopInline(slash + 1);
-            auto const object_path{package_path + TEXT(".") + leaf};
-            auto* const texture{LoadObject<UTexture>(nullptr, *object_path, nullptr, LOAD_NoWarn)};
-            return texture != nullptr
-                     ? std::optional<std::string>{TCHAR_TO_UTF8(*texture->GetPathName())}
-                     : std::nullopt;
-        });
+        {nullptr, [](void const*, std::string_view const requested) -> std::optional<std::string> {
+             auto package_path{FString{UTF8_TO_TCHAR(requested.data())}};
+             auto leaf{package_path};
+             int32 slash{};
+             leaf.FindLastChar(TEXT('/'), slash);
+             leaf.RightChopInline(slash + 1);
+             auto const object_path{package_path + TEXT(".") + leaf};
+             auto* const texture{LoadObject<UTexture>(nullptr, *object_path, nullptr, LOAD_NoWarn)};
+             return texture != nullptr
+                      ? std::optional<std::string>{TCHAR_TO_UTF8(*texture->GetPathName())}
+                      : std::nullopt;
+         }});
 }
 
 auto topology(UMaterial const& material) -> TArray<FString> {

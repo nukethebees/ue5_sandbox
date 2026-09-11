@@ -77,16 +77,16 @@ int32 UMaterialSynthCommandlet::Main(FString const& parameters) {
         reinterpret_cast<char const*>(utf8_path.Get()),
         std::string_view{reinterpret_cast<char const*>(utf8_source.Get()),
                          static_cast<std::size_t>(utf8_source.Length())},
-        [](std::string_view const requested) -> std::optional<std::string> {
-            auto const path{texture_object_path(requested)};
-            auto* const texture{LoadObject<UTexture>(nullptr, *path, nullptr, LOAD_NoWarn)};
-            if (texture == nullptr) {
-                return std::nullopt;
-            }
-            auto const resolved{StringCast<UTF8CHAR>(*texture->GetPathName())};
-            return std::string{reinterpret_cast<char const*>(resolved.Get()),
-                               static_cast<std::size_t>(resolved.Length())};
-        })};
+        {nullptr, [](void const*, std::string_view const requested) -> std::optional<std::string> {
+             auto const path{texture_object_path(requested)};
+             auto* const texture{LoadObject<UTexture>(nullptr, *path, nullptr, LOAD_NoWarn)};
+             if (texture == nullptr) {
+                 return std::nullopt;
+             }
+             auto const resolved{StringCast<UTF8CHAR>(*texture->GetPathName())};
+             return std::string{reinterpret_cast<char const*>(resolved.Get()),
+                                static_cast<std::size_t>(resolved.Length())};
+         }})};
 
     FString asset;
     if (analysis.material) {
