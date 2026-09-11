@@ -164,6 +164,27 @@ if(NOT UE_ROOT)
 endif()
 
 cmake_path(ABSOLUTE_PATH UE_ROOT NORMALIZE OUTPUT_VARIABLE UE_ROOT_ABSOLUTE)
+file(REAL_PATH "${UE_ROOT_ABSOLUTE}" UE_ROOT_CANONICAL)
+
+if(NOT DEFINED ENV{TEMP} OR "$ENV{TEMP}" STREQUAL "")
+  message(FATAL_ERROR
+    "The TEMP environment variable is required for the cross-worktree Unreal build lock.")
+endif()
+
+string(TOLOWER "${UE_ROOT_CANONICAL}" UE_BUILD_LOCK_IDENTITY)
+string(SHA256 UE_BUILD_LOCK_HASH "${UE_BUILD_LOCK_IDENTITY}")
+cmake_path(SET UE_BUILD_LOCK_PATH NORMALIZE
+  "$ENV{TEMP}/SandboxUnrealBuild/locks/ue-${UE_BUILD_LOCK_HASH}.lock"
+)
+
+set(UE_LOCKED_COMMAND_PREFIX
+  "${CMAKE_COMMAND}"
+  "-DUNREAL_LOCK_PATH=${UE_BUILD_LOCK_PATH}"
+  "-DUNREAL_ENGINE_ROOT=${UE_ROOT_CANONICAL}"
+  "-DUNREAL_WORKING_DIRECTORY=${CMAKE_CURRENT_SOURCE_DIR}"
+  -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/run_unreal_locked.cmake"
+  --
+)
 
 cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Build BatchFiles Build.bat
   OUTPUT_VARIABLE UE_BUILD_SCRIPT
@@ -221,7 +242,7 @@ add_custom_target(format-all-code
 )
 
 add_custom_target(generate-project-files
-  COMMAND "${UE_GENERATE_PROJECT_FILES_SCRIPT}"
+  COMMAND ${UE_LOCKED_COMMAND_PREFIX} "${UE_GENERATE_PROJECT_FILES_SCRIPT}"
     "-Project=${SANDBOX_UPROJECT}"
     -Game
     -WaitMutex
