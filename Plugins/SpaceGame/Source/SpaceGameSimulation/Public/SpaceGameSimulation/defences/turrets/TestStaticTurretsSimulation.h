@@ -25,10 +25,6 @@ struct FSpatialQueryManager;
 namespace ml::test_static_turrets {
 class PhaseInterface;
 
-#if WITH_DEV_AUTOMATION_TESTS
-enum class EScratchAllocationMode : uint8 { Persistent, DirectRoot };
-#endif
-
 struct SPACEGAMESIMULATION_API Simulation {
     using RegistryEntityData = ml::entity_registry::EntityData;
     using EntityData = ml::test_static_turrets::EntityData;
@@ -55,12 +51,6 @@ struct SPACEGAMESIMULATION_API Simulation {
         death_locations_.Reset();
     }
     void set_config(FTurretSimulationConfig const& new_config) noexcept;
-#if WITH_DEV_AUTOMATION_TESTS
-    void set_scratch_allocation_mode(EScratchAllocationMode const mode) noexcept {
-        scratch_allocation_mode_ = mode;
-    }
-    auto get_persistent_scratch_allocated_bytes() const noexcept -> SIZE_T;
-#endif
 
     /* **************************************** */
     // Accessors
@@ -118,16 +108,6 @@ struct SPACEGAMESIMULATION_API Simulation {
     // Attacking
     /* **************************************** */
     void fire_at_enemies();
-    template <typename CandidateIndices,
-              typename HitEntityHandles,
-              typename StartLocations,
-              typename EndLocations,
-              typename LaserSpawns>
-    void fire_at_enemies_with_scratch(CandidateIndices& candidate_indices,
-                                      HitEntityHandles& hit_entity_handles,
-                                      StartLocations& start_locations,
-                                      EndLocations& end_locations,
-                                      LaserSpawns& new_lasers);
     auto get_disengage_radius() const -> float;
 
     /* **************************************** */
@@ -158,14 +138,6 @@ struct SPACEGAMESIMULATION_API Simulation {
     RegistryEntityData entity_update_data;
     int32 target_refresh_next_offset{0};
 
-#if WITH_DEV_AUTOMATION_TESTS
-    EScratchAllocationMode scratch_allocation_mode_{EScratchAllocationMode::DirectRoot};
-    TArray<int32> scratch_int_buffer_;
-    TArray<FRegistryEntityHandle> line_of_sight_hit_entity_handles_;
-    FVectors3f line_of_sight_start_locations_;
-    FVectors3f line_of_sight_end_locations_;
-    ml::test_lasers::SpawnRequests new_lasers_;
-#endif
     TArray<int32> local_indices_to_remove;
 };
 } // namespace ml::test_static_turrets

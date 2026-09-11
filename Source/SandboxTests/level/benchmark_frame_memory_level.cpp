@@ -63,18 +63,7 @@ TEST_CLASS(FrameMemoryLevelBenchmark, "SandboxBenchmarks.FrameMemoryLevel")
 
     TEST_METHOD(TwentySimulationSeconds)
     {
-        TestCommandBuilder.Do([this] {
-            run_benchmark(ml::test_static_turrets::EScratchAllocationMode::Persistent,
-                          TEXT("persistent_tarray"));
-        });
-    }
-
-    TEST_METHOD(TwentySimulationSecondsDirectRoot)
-    {
-        TestCommandBuilder.Do([this] {
-            run_benchmark(ml::test_static_turrets::EScratchAllocationMode::DirectRoot,
-                          TEXT("direct_root"));
-        });
+        TestCommandBuilder.Do([this] { run_benchmark(); });
     }
   private:
     void sample_tick(ATestBatchOrchestrator & orchestrator) {
@@ -107,8 +96,7 @@ TEST_CLASS(FrameMemoryLevelBenchmark, "SandboxBenchmarks.FrameMemoryLevel")
                      });
     }
 
-    void run_benchmark(ml::test_static_turrets::EScratchAllocationMode const allocation_mode,
-                       TCHAR const* const variant_name) {
+    void run_benchmark() {
         auto& world{spawner_->GetWorld()};
         auto driver{ml::TestSimulationDriver::from_world(world)};
         auto& orchestrator{driver.orchestrator};
@@ -119,7 +107,6 @@ TEST_CLASS(FrameMemoryLevelBenchmark, "SandboxBenchmarks.FrameMemoryLevel")
         if (orchestrator.get_state() == EOrchestratorState::Running) {
             orchestrator.pause_simulation();
         }
-        orchestrator.get_turrets()->set_scratch_allocation_mode(allocation_mode);
         driver.set_time_scale(ml::frame_memory_level_benchmark::benchmark_time_scale);
         orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &FrameMemoryLevelBenchmark::sample_tick));
@@ -175,22 +162,19 @@ TEST_CLASS(FrameMemoryLevelBenchmark, "SandboxBenchmarks.FrameMemoryLevel")
         }
 
         auto const completed_ticks{orchestrator.get_completed_ticks() - start_tick};
-        auto const persistent_scratch_bytes{
-            orchestrator.get_turrets()->get_persistent_scratch_allocated_bytes()};
         auto const ticks_per_second{static_cast<double>(completed_ticks) / elapsed_seconds};
         auto const mean_tick_microseconds{elapsed_seconds * 1'000'000.0 /
                                           static_cast<double>(completed_ticks)};
         TestRunner->AddInfo(FString::Printf(
-            TEXT("Frame memory level benchmark: variant=%s, map=/Game/%s/%s.%s, "
+            TEXT("Frame memory level benchmark: map=/Game/%s/%s.%s, "
                  "time_scale=%.1f, "
                  "initial_capitals=%d, final_capitals=%d, initial_turrets=%d, final_turrets=%d, "
                  "simulated_seconds=%.3f, ticks=%llu, "
                  "elapsed_seconds=%.6f, ticks_per_second=%.3f, "
-                 "mean_tick_us=%.3f, persistent_scratch_bytes=%llu, "
+                 "mean_tick_us=%.3f, "
                  "peak_claimed_bytes=%llu, peak_payload_bytes=%llu, "
                  "total_padding_bytes=%llu, total_root_claims=%llu, peak_fighters=%d, "
                  "peak_turrets_targeting_fighters=%d, lasers_spawned=%d"),
-            variant_name,
             ml::frame_memory_level_benchmark::map_directory,
             ml::frame_memory_level_benchmark::map_name,
             ml::frame_memory_level_benchmark::map_name,
@@ -204,7 +188,6 @@ TEST_CLASS(FrameMemoryLevelBenchmark, "SandboxBenchmarks.FrameMemoryLevel")
             elapsed_seconds,
             ticks_per_second,
             mean_tick_microseconds,
-            static_cast<uint64>(persistent_scratch_bytes),
             static_cast<uint64>(peak_claimed_bytes),
             static_cast<uint64>(peak_payload_bytes),
             static_cast<uint64>(total_padding_bytes),
@@ -217,10 +200,6 @@ TEST_CLASS(FrameMemoryLevelBenchmark, "SandboxBenchmarks.FrameMemoryLevel")
                           completed_ticks,
                           TEXT("Benchmark completes the requested simulation duration"));
         checks_.are_equal(uint64{0}, overflow_count, TEXT("Frame memory never overflows"));
-        if (allocation_mode == ml::test_static_turrets::EScratchAllocationMode::Persistent) {
-            checks_.is_true(persistent_scratch_bytes > 0,
-                            TEXT("Persistent baseline provisions reusable scratch"));
-        }
         checks_.is_true(peak_claimed_bytes > 0, TEXT("Simulation scratch uses frame memory"));
         checks_.is_true(peak_fighters > 0, TEXT("Capitals launch fighters"));
         checks_.is_true(peak_turrets_targeting_fighters > 0,

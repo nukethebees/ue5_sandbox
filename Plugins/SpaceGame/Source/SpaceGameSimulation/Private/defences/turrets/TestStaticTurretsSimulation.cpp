@@ -25,58 +25,6 @@
 TRACE_DECLARE_INT_COUNTER(SandboxTestStaticTurretCount, TEXT("Sandbox/TestStaticTurretCount"));
 
 namespace ml::test_static_turrets {
-namespace scratch {
-template <typename T>
-void reserve(TArray<T>& values, int32 const count) {
-    values.Reserve(count);
-}
-template <typename T>
-void reserve(TFrameArray<T>& values, int32 const count) {
-    values.reserve(count);
-}
-template <typename T>
-void add(TArray<T>& values, T const& value) {
-    values.Add(value);
-}
-template <typename T>
-void add(TFrameArray<T>& values, T const& value) {
-    values.add(value);
-}
-template <typename T>
-auto num(TArray<T> const& values) -> int32 {
-    return values.Num();
-}
-template <typename T>
-auto num(TFrameArray<T> const& values) -> int32 {
-    return values.num();
-}
-template <typename T>
-void set_num_uninitialized(TArray<T>& values, int32 const count) {
-    values.SetNumUninitialized(count, EAllowShrinking::No);
-}
-template <typename T>
-void set_num_uninitialized(TFrameArray<T>& values, int32 const count) {
-    values.reserve(count);
-    for (int32 i{}; i < count; ++i) {
-        values.emplace();
-    }
-}
-
-#if WITH_DEV_AUTOMATION_TESTS
-auto allocated_size(FVectors3f const& values) -> SIZE_T {
-    return values.xs.GetAllocatedSize() + values.ys.GetAllocatedSize() +
-           values.zs.GetAllocatedSize();
-}
-auto allocated_size(ml::test_lasers::SpawnRequests const& values) -> SIZE_T {
-    return allocated_size(values.locations) + values.rotations.pitches.GetAllocatedSize() +
-           values.rotations.yaws.GetAllocatedSize() + values.rotations.rolls.GetAllocatedSize() +
-           allocated_size(values.base_velocities) + values.damages.GetAllocatedSize() +
-           values.speeds.GetAllocatedSize() + values.max_distances.GetAllocatedSize() +
-           values.instigator_handles.GetAllocatedSize() + values.sources.GetAllocatedSize();
-}
-#endif
-}
-
 /* **************************************** */
 // Configuration
 /* **************************************** */
@@ -311,15 +259,6 @@ auto Simulation::get_num_instances() const noexcept -> int32 {
 auto Simulation::get_target_handles() const -> TConstArrayView<FRegistryEntityHandle> {
     return entities.target_handles;
 }
-#if WITH_DEV_AUTOMATION_TESTS
-auto Simulation::get_persistent_scratch_allocated_bytes() const noexcept -> SIZE_T {
-    return scratch_int_buffer_.GetAllocatedSize() +
-           line_of_sight_hit_entity_handles_.GetAllocatedSize() +
-           scratch::allocated_size(line_of_sight_start_locations_) +
-           scratch::allocated_size(line_of_sight_end_locations_) +
-           scratch::allocated_size(new_lasers_);
-}
-#endif
 
 /* **************************************** */
 // Searching
@@ -415,41 +354,11 @@ void Simulation::perform_search_on_slice(int32 const job_index,
 void Simulation::fire_at_enemies() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::fire_at_enemies);
 
-#if WITH_DEV_AUTOMATION_TESTS
-    if (scratch_allocation_mode_ == EScratchAllocationMode::Persistent) {
-        scratch_int_buffer_.Reset();
-        line_of_sight_hit_entity_handles_.Reset();
-        line_of_sight_start_locations_.reset();
-        line_of_sight_end_locations_.reset();
-        new_lasers_.reset();
-        fire_at_enemies_with_scratch(scratch_int_buffer_,
-                                     line_of_sight_hit_entity_handles_,
-                                     line_of_sight_start_locations_,
-                                     line_of_sight_end_locations_,
-                                     new_lasers_);
-        return;
-    }
-#endif
-
     TFrameArray<int32> candidate_indices{&frame_memory_resource};
     TFrameArray<FRegistryEntityHandle> hit_entity_handles{&frame_memory_resource};
     FFrameVectors3f start_locations{&frame_memory_resource};
     FFrameVectors3f end_locations{&frame_memory_resource};
     ml::test_lasers::FrameSpawnRequests new_lasers{&frame_memory_resource};
-    fire_at_enemies_with_scratch(
-        candidate_indices, hit_entity_handles, start_locations, end_locations, new_lasers);
-}
-
-template <typename CandidateIndices,
-          typename HitEntityHandles,
-          typename StartLocations,
-          typename EndLocations,
-          typename LaserSpawns>
-void Simulation::fire_at_enemies_with_scratch(CandidateIndices& candidate_indices,
-                                              HitEntityHandles& hit_entity_handles,
-                                              StartLocations& start_locations,
-                                              EndLocations& end_locations,
-                                              LaserSpawns& new_lasers) {
     auto const n{get_num_instances()};
     auto const laser_speed{config.laser.projectile_speed};
     auto const laser_max_distance{config.laser.max_distance};
@@ -457,7 +366,7 @@ void Simulation::fire_at_enemies_with_scratch(CandidateIndices& candidate_indice
     auto const disengage_radius{get_disengage_radius()};
     auto const disengage_radius_sq{disengage_radius * disengage_radius};
 
-    scratch::reserve(candidate_indices, n);
+    candidate_indices.reserve(n);
     start_locations.reserve(n);
     end_locations.reserve(n);
 
@@ -486,7 +395,7 @@ void Simulation::fire_at_enemies_with_scratch(CandidateIndices& candidate_indice
             continue;
         }
 
-        scratch::add(candidate_indices, i);
+        candidate_indices.add(i);
         start_locations.add(entities.fire_point_locations.xs[i],
                             entities.fire_point_locations.ys[i],
                             entities.fire_point_locations.zs[i]);
@@ -495,12 +404,12 @@ void Simulation::fire_at_enemies_with_scratch(CandidateIndices& candidate_indice
         entities.laser_cooldowns.restart_counter(i);
     }
 
-    auto const n_candidates{scratch::num(candidate_indices)};
+    auto const n_candidates{candidate_indices.num()};
     if (n_candidates == 0) {
         return;
     }
 
-    scratch::set_num_uninitialized(hit_entity_handles, n_candidates);
+    hit_entity_handles.set_num(n_candidates);
     new_lasers.reserve(n_candidates);
     spatial_query_manager.trace_line_of_sight(
         start_locations.get_const_view(), end_locations.get_const_view(), hit_entity_handles);
