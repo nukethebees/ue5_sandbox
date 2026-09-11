@@ -17,7 +17,9 @@ struct CallExpr;
 struct MemberAccessExpr;
 struct SubscriptExpr;
 struct BinaryExpr;
+struct UnaryExpr;
 struct StaticCastExpr;
+struct SizeofTypeExpr;
 struct InitializerListExpr;
 struct RawExpr;
 struct ExprData;
@@ -30,7 +32,9 @@ class Expr {
     Expr(MemberAccessExpr value);
     Expr(SubscriptExpr value);
     Expr(BinaryExpr value);
+    Expr(UnaryExpr value);
     Expr(StaticCastExpr value);
+    Expr(SizeofTypeExpr value);
     Expr(InitializerListExpr value);
     Expr(RawExpr value);
 
@@ -57,6 +61,7 @@ struct CallExpr {
 struct MemberAccessExpr {
     Expr object;
     std::string member;
+    bool through_pointer{false};
 };
 
 struct SubscriptExpr {
@@ -68,6 +73,18 @@ enum class BinaryOperator {
     equal,
     greater_equal,
     subtract,
+    add,
+    multiply,
+    logical_or,
+    not_equal,
+    divide,
+};
+
+enum class UnaryOperator { logical_not, dereference, address_of };
+
+struct UnaryExpr {
+    UnaryOperator operation;
+    Expr operand;
 };
 
 struct BinaryExpr {
@@ -79,6 +96,10 @@ struct BinaryExpr {
 struct StaticCastExpr {
     CppType type;
     Expr operand;
+};
+
+struct SizeofTypeExpr {
+    CppType type;
 };
 
 struct InitializerListExpr {
@@ -97,7 +118,9 @@ using ExprValue = std::variant<NamedExpr,
                                MemberAccessExpr,
                                SubscriptExpr,
                                BinaryExpr,
+                               UnaryExpr,
                                StaticCastExpr,
+                               SizeofTypeExpr,
                                InitializerListExpr,
                                RawExpr>;
 
@@ -110,9 +133,12 @@ auto literal(std::string spelling) -> Expr;
 auto string_literal(std::string_view value) -> Expr;
 auto call(Expr callee, std::vector<Expr> arguments = {}) -> Expr;
 auto member_access(Expr object, std::string member) -> Expr;
+auto pointer_member_access(Expr object, std::string member) -> Expr;
+auto unary(UnaryOperator operation, Expr operand) -> Expr;
 auto subscript(Expr object, Expr index) -> Expr;
 auto binary(BinaryOperator operation, Expr left, Expr right) -> Expr;
 auto static_cast_expr(CppType type, Expr operand) -> Expr;
+auto sizeof_type(CppType type) -> Expr;
 auto init_list(std::vector<Expr> elements, std::optional<CppType> type = std::nullopt) -> Expr;
 
 auto render(Expr const& expression) -> std::string;

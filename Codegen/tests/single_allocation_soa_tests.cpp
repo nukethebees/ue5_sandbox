@@ -31,6 +31,14 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
     EXPECT_EQ(output.find("TArray"), std::string::npos);
     EXPECT_EQ(output.find("FMemory"), std::string::npos);
     EXPECT_EQ(output.find("CoreMinimal"), std::string::npos);
+    EXPECT_NE(output.find("#include <memory>"), std::string::npos);
+    EXPECT_NE(output.find("#include <cstring>"), std::string::npos);
+    EXPECT_NE(
+        output.find("std::uninitialized_value_construct_n<float*>(columns.nested_xs, count);"),
+        std::string::npos);
+    EXPECT_NE(output.find(
+                  "std::memcpy(destination.nested_xs, source.nested.xs.data(), nested_xs_bytes);"),
+              std::string::npos);
 }
 
 auto schemas() -> std::vector<SoaSchema> {
@@ -52,6 +60,27 @@ auto render(std::vector<SoaSchema> structs) -> std::string {
                      .settings = {.name = "test", .header = "Test.h", .source = "Test.cpp"},
                      .structs = std::move(structs)}}}))};
     return files.front().content;
+}
+
+TEST(SingleAllocationSoa, TypedColumnOperationsReuseByteCountsAndPreserveNestedPaths) {
+    auto input{schemas()};
+    input.front().members = {{"values", SoaMemberKind::array, TypeRef{"int32"}}};
+    auto const output{render(input)};
+    EXPECT_NE(output.find("#include \"HAL/UnrealMemory.h\""), std::string::npos);
+    EXPECT_NE(output.find("#include \"Templates/MemoryOps.h\""), std::string::npos);
+    EXPECT_NE(output.find("DefaultConstructItems<int32>(columns.ids, count);"), std::string::npos);
+    EXPECT_NE(output.find("DefaultConstructItems<int32>(columns.nested_values, count);"),
+              std::string::npos);
+    EXPECT_NE(output.find("auto const ids_bytes{elements_to_move * sizeof(int32)};"),
+              std::string::npos);
+    EXPECT_NE(
+        output.find("columns.nested_values + index, columns.nested_values + source, ids_bytes"),
+        std::string::npos);
+    EXPECT_NE(output.find("auto const ids_bytes{elements_to_copy * sizeof(int32)};"),
+              std::string::npos);
+    EXPECT_NE(output.find("destination.nested_values, source.nested.values.GetData(), ids_bytes"),
+              std::string::npos);
+    EXPECT_EQ(output.find("auto const nested_values_bytes"), std::string::npos);
 }
 
 TEST(SingleAllocationSoa, AllocatorVariantsApplyToNestedColumns) {
@@ -126,6 +155,12 @@ TEST(SingleAllocationSoa, EmitsCompactViewsAndSharedOwnerState) {
 
 TEST(SingleAllocationSoa, OwnerBorrowingRequiresLvalues) {
     auto const output{render(schemas())};
+    EXPECT_NE(output.find("auto operator=(SingleRows&&) noexcept -> SingleRows& = default;"),
+              std::string::npos);
+    EXPECT_NE(
+        output.find("inline RowsSingleConstView::RowsSingleConstView(RowsSingleView const& other)"),
+        std::string::npos);
+    EXPECT_NE(output.find("if (!state_ || !state_->data_)"), std::string::npos);
     EXPECT_NE(output.find("auto get_view() & -> View"), std::string::npos);
     EXPECT_NE(output.find("auto get_view() const & -> ConstView"), std::string::npos);
     EXPECT_NE(output.find("auto get_view() && -> View = delete"), std::string::npos);

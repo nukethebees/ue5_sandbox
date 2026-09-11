@@ -43,10 +43,10 @@ auto lower_fixed_nodes(SoaSchema const& schema,
                        std::map<std::string, SoaSchema const*> const& schemas,
                        std::map<std::string, CppType> const& types) -> Nodes;
 
-auto lower_single_allocation_node(SoaSchema const& schema,
-                                  std::map<std::string, SoaSchema const*> const& schemas,
-                                  std::map<std::string, CppType> const& types,
-                                  bool native = false) -> Node;
+auto lower_single_allocation_nodes(SoaSchema const& schema,
+                                   std::map<std::string, SoaSchema const*> const& schemas,
+                                   std::map<std::string, CppType> const& types,
+                                   bool native = false) -> Nodes;
 
 auto lower_native_soa(SoaSchema const& schema,
                       std::map<std::string, SoaSchema const*> const& schemas,

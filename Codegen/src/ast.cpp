@@ -114,6 +114,9 @@ void validate_function(Function const& function) {
     if (spec.is_static && qualifiers.is_const) {
         throw std::invalid_argument{context + " static function cannot be const"};
     }
+    if (spec.is_static && qualifiers.ref_qualifier != RefQualifier::none) {
+        throw std::invalid_argument{context + " static function cannot be ref-qualified"};
+    }
     if (qualifiers.disposition != FunctionDisposition::normal) {
         if (!spec.body.empty()) {
             throw std::invalid_argument{context +
@@ -153,6 +156,9 @@ auto render_signature(Function const& function) -> std::string {
                                                          : spec.name};
     auto signature{declaration_specifier_prefix(spec.is_static && !function.owner.has_value(),
                                                 spec.is_constexpr)};
+    if (spec.is_inline && function.owner.has_value() && function.is_header) {
+        signature = "inline " + signature;
+    }
     if (spec.export_specifier.has_value() && (function.declaration || function.is_header)) {
         signature += *spec.export_specifier + " ";
     }
@@ -162,6 +168,11 @@ auto render_signature(Function const& function) -> std::string {
     signature += qualified_name + "(" + join(parameters, ", ") + ")";
     if (spec.qualifiers.is_const) {
         signature += " const";
+    }
+    if (spec.qualifiers.ref_qualifier == RefQualifier::lvalue) {
+        signature += " &";
+    } else if (spec.qualifiers.ref_qualifier == RefQualifier::rvalue) {
+        signature += " &&";
     }
     if (spec.qualifiers.noexcept_condition.has_value()) {
         signature += " noexcept(" + *spec.qualifiers.noexcept_condition + ")";

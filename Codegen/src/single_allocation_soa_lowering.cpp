@@ -84,10 +84,10 @@ static auto compact_columns_expression(SoaSchema const& schema,
                                        std::vector<std::string> const& prefix,
                                        std::string const& layout,
                                        bool native,
-                                       bool is_const) -> std::string {
+                                       bool is_const) -> Expr {
     auto const mutable_view{schema.view_name.value_or(schema.name + "View")};
     auto const const_view{schema.const_view_name.value_or(schema.name + "ConstView")};
-    std::vector<std::string> values;
+    std::vector<Expr> values;
     for (auto const& member : schema.members) {
         auto path{prefix};
         path.push_back(member.name);
@@ -102,99 +102,188 @@ static auto compact_columns_expression(SoaSchema const& schema,
                                                         is_const));
         } else {
             auto const id{join(path, "_")};
-            values.push_back("{column_data_unchecked<" + leaves.at(id).spelling + ">(" + layout +
-                             "::" + layout_column_name(id, type_identifiers) +
-                             ".offset(blocks)), " +
-                             (native ? "static_cast<std::size_t>(count_)" : "count_") + "}");
+            auto const& type{leaves.at(id)};
+            auto const offset{
+                call(member_access(named(layout + "::" + layout_column_name(id, type_identifiers)),
+                                   "offset"),
+                     {named("blocks")})};
+            values.push_back(init_list(
+                {call(named("column_data_unchecked<" + type.spelling + ">", type.dependencies),
+                      {offset}),
+                 native ? static_cast_expr("std::size_t", named("count_")) : named("count_")}));
         }
     }
-    return (is_const ? const_view : mutable_view) + "{" + join(values, ", ") + "}";
+    return init_list(std::move(values), CppType{is_const ? const_view : mutable_view});
 }
 
-static void emit_compact_views(std::ostringstream& out,
-                               SoaSchema const& schema,
+static auto compact_view_nodes(SoaSchema const& schema,
                                std::map<std::string, SoaSchema const*> const& schemas,
                                std::map<std::string, CppType> const& leaves,
                                std::set<std::string> const& type_identifiers,
                                std::string const& layout,
                                std::string const& runtime,
-                               bool native) {
+                               bool native) -> Nodes {
     auto const view{schema.name + "SingleView"};
     auto const const_view{schema.name + "SingleConstView"};
+    NodeListBuilder result;
     for (bool const is_const : {true, false}) {
         auto const name{is_const ? const_view : view};
         auto const base{runtime + "CompactViewState<" + (is_const ? "true" : "false") + ">"};
-        out << "struct " << name << " : " << base << " {\n"
-            << "using Base = " << base << ";\nusing Base::Base;\n"
-            << "using View = " << view << ";\nusing ConstView = " << const_view << ";\n"
-            << name << "() = default;\n";
+        NodeListBuilder members;
+        members.add(UsingDeclaration{"Base", base}, 1)
+            .add(raw("using Base::Base;"), 1)
+            .add(UsingDeclaration{"View", view}, 1)
+            .add(UsingDeclaration{"ConstView", const_view}, 1)
+            .add(Function{FunctionSpec{
+                     .name = name, .qualifiers = {.disposition = FunctionDisposition::defaulted}}},
+                 1);
         if (is_const) {
-            out << name << "(" << view << " const& other);\n";
+            members.add(declaration(FunctionSpec{.name = name,
+                                                 .parameters = {{view + " const&", "other"}}}),
+                        1);
         }
-        out << "auto get_const_view() const -> ConstView { return *this; }\n"
-            << "auto get_const_view(size_type offset, size_type count) const -> ConstView { return "
-               "slice(offset, count); }\n";
-        auto emit_columns = [&](SoaSchema const& target,
-                                std::vector<std::string> const& prefix,
-                                std::string const& function) {
+        auto add_function = [&](std::string function,
+                                CppType type,
+                                std::vector<FunctionParameter> parameters,
+                                Nodes body,
+                                bool compact = false) {
+            members.add(
+                Function{FunctionSpec{
+                    .name = std::move(function),
+                    .return_type = "auto",
+                    .parameters = std::move(parameters),
+                    .body = std::move(body),
+                    .qualifiers = {.trailing_return_type = std::move(type), .is_const = true},
+                    .formatting = {.body_layout = compact
+                                                    ? FunctionFormatting::BodyLayout::compact
+                                                    : FunctionFormatting::BodyLayout::expanded}}},
+                1);
+        };
+        add_function("get_const_view",
+                     "ConstView",
+                     {},
+                     {ReturnStmt{unary(UnaryOperator::dereference, named("this"))}},
+                     true);
+        add_function("get_const_view",
+                     "ConstView",
+                     {{"size_type", "offset"}, {"size_type", "count"}},
+                     {ReturnStmt{call(named("slice"), {named("offset"), named("count")})}},
+                     true);
+        auto columns_body = [&] {
+            return Nodes{
+                ExpressionStmt{call(named("validate"))},
+                IfStmt{binary(BinaryOperator::logical_or,
+                              unary(UnaryOperator::logical_not, named("state_")),
+                              unary(UnaryOperator::logical_not,
+                                    pointer_member_access(named("state_"), "data_"))),
+                       Block{{ReturnStmt{init_list({})}}}},
+                VariableDeclarationStmt{"auto const", "blocks", call(named("capacity_blocks"))}};
+        };
+        auto offset = [&](std::string const& id, Expr blocks) {
+            return call(
+                member_access(named(layout + "::" + layout_column_name(id, type_identifiers)),
+                              "offset"),
+                {std::move(blocks)});
+        };
+        auto add_columns = [&](SoaSchema const& target,
+                               std::vector<std::string> const& prefix,
+                               std::string function) {
             auto const type{is_const ? target.const_view_name.value_or(target.name + "ConstView")
                                      : target.view_name.value_or(target.name + "View")};
-            out << "auto " << function << "() const -> " << type << " {\nvalidate();\n"
-                << "if (!state_ || !state_->data_) { return {}; }\n"
-                << "auto const blocks{capacity_blocks()};\nreturn "
-                << compact_columns_expression(
-                       target, schemas, leaves, type_identifiers, prefix, layout, native, is_const)
-                << ";\n}\n";
+            auto body{columns_body()};
+            body.push_back(ReturnStmt{compact_columns_expression(
+                target, schemas, leaves, type_identifiers, prefix, layout, native, is_const)});
+            add_function(std::move(function), type, {}, std::move(body));
         };
         for (auto const& member : schema.members) {
             if (member.kind == SoaMemberKind::nested) {
                 auto const& nested{*schemas.at(*member.nested_schema)};
                 auto const element{vector_element(nested, leaves, member.name)};
                 if (element.empty()) {
-                    emit_columns(nested, {member.name}, "view_" + member.name);
+                    add_columns(nested, {member.name}, "view_" + member.name);
                     continue;
                 }
                 auto const vector_type{std::string{native ? "ml::native_soa::" : "ml::soa::"} +
                                        "Vector" + std::to_string(nested.members.size()) +
                                        (is_const ? "ConstView<" : "View<") + element + ">"};
-                out << "auto view_" << member.name << "() const -> " << vector_type
-                    << " {\nvalidate();\n"
-                    << "if (!state_ || !state_->data_) { return {}; }\n"
-                    << "auto const blocks{capacity_blocks()};\n"
-                    << "auto const first{" << layout
-                    << "::" << layout_column_name(member.name + "_xs", type_identifiers)
-                    << ".offset(blocks)};\n"
-                    << "auto const stride{" << layout
-                    << "::" << layout_column_name(member.name + "_ys", type_identifiers)
-                    << ".offset(blocks) - first};\n"
-                    << "return {column_data_unchecked<" << element
-                    << ">(first), stride, count_};\n}\n";
+                auto body{columns_body()};
+                body.push_back(VariableDeclarationStmt{
+                    "auto const", "first", offset(member.name + "_xs", named("blocks"))});
+                body.push_back(
+                    VariableDeclarationStmt{"auto const",
+                                            "stride",
+                                            binary(BinaryOperator::subtract,
+                                                   offset(member.name + "_ys", named("blocks")),
+                                                   named("first"))});
+                body.push_back(ReturnStmt{init_list(
+                    {call(named("column_data_unchecked<" + element + ">"), {named("first")}),
+                     named("stride"),
+                     named("count_")})});
+                add_function("view_" + member.name, vector_type, {}, std::move(body));
             } else {
-                auto const type{leaves.at(member.name).spelling};
-                out << "auto " << member.name << "() const -> "
-                    << (native ? "std::span<" : "TArrayView<") << type << (is_const ? " const" : "")
-                    << "> { return {column_data<" << type << ">(" << layout
-                    << "::" << layout_column_name(member.name, type_identifiers)
-                    << ".offset(capacity_blocks())), "
-                    << (native ? "static_cast<std::size_t>(count_)" : "count_") << "}; }\n";
+                auto const& type{leaves.at(member.name)};
+                CppType view_type{std::string{native ? "std::span<" : "TArrayView<"} +
+                                      type.spelling + (is_const ? " const>" : ">"),
+                                  type.dependencies};
+                add_function(
+                    member.name,
+                    std::move(view_type),
+                    {},
+                    {ReturnStmt{init_list(
+                        {call(named("column_data<" + type.spelling + ">", type.dependencies),
+                              {offset(member.name, call(named("capacity_blocks")))}),
+                         native ? static_cast_expr("std::size_t", named("count_"))
+                                : named("count_")})}},
+                    true);
             }
         }
-        emit_columns(schema, {}, "columns");
-        out << (native ? "template <typename Func> void each_column(Func&& func) const { "
-                         "columns().each_column(std::forward<Func>(func)); }\n"
-                       : "template <typename Func> auto apply_arrays(Func&& func) const -> "
-                         "decltype(auto) { auto arrays{columns()}; return "
-                         "arrays.apply_arrays(std::forward<Func>(func)); }\n")
-            << "};\nstatic_assert(sizeof(" << name << ") == 16);\n"
-            << "static_assert(std::is_trivially_copyable_v<" << name << ">);\n";
+        add_columns(schema, {}, "columns");
+        auto const forward{
+            call(named("std::forward<Func>", {{"std::forward", "utility", {}}}), {named("func")})};
+        Nodes body;
+        if (native) {
+            body.push_back(ExpressionStmt{
+                call(member_access(call(named("columns")), "each_column"), {forward})});
+        } else {
+            body.push_back(VariableDeclarationStmt{"auto", "arrays", call(named("columns"))});
+            body.push_back(
+                ReturnStmt{call(member_access(named("arrays"), "apply_arrays"), {forward})});
+        }
+        members.add(
+            Function{FunctionSpec{
+                .name = native ? "each_column" : "apply_arrays",
+                .return_type = native ? "void" : "auto",
+                .parameters = {{"Func&&", "func"}},
+                .body = std::move(body),
+                .qualifiers = {.trailing_return_type =
+                                   native ? std::nullopt : std::optional<CppType>{"decltype(auto)"},
+                               .is_const = true},
+                .template_parameters = "typename Func",
+                .formatting = {.body_layout = FunctionFormatting::BodyLayout::compact,
+                               .template_placement =
+                                   FunctionFormatting::TemplatePlacement::same_line}}},
+            1);
+        result.add(Struct{.name = name, .children = members.build(), .bases = {base}}, 1);
+        result.add(raw("static_assert(sizeof(" + name +
+                       ") == 16);\n"
+                       "static_assert(std::is_trivially_copyable_v<" +
+                       name + ">);"),
+                   1);
     }
-    out << "inline " << const_view << "::" << const_view << "(" << view
-        << " const& other) : Base{other} {}\n";
+    result.add(Function{FunctionSpec{.name = const_view,
+                                     .parameters = {{view + " const&", "other"}},
+                                     .is_inline = true,
+                                     .member_initializers = {{"Base", "other"}}},
+                        const_view,
+                        false,
+                        true},
+               1);
+    return result.build();
 }
-auto lower_single_allocation_node(SoaSchema const& schema,
-                                  std::map<std::string, SoaSchema const*> const& schemas,
-                                  std::map<std::string, CppType> const& types,
-                                  bool const native) -> Node {
+auto lower_single_allocation_nodes(SoaSchema const& schema,
+                                   std::map<std::string, SoaSchema const*> const& schemas,
+                                   std::map<std::string, CppType> const& types,
+                                   bool const native) -> Nodes {
     auto const* runtime{native ? "ml::native_soa::" : "ml::soa_storage::"};
     std::string free_data{native ? "ml::native_soa::free(data_, allocation_alignment)"
                                  : "ml::soa_storage::MimallocStorageAllocator::free(data_)"};
@@ -214,7 +303,6 @@ auto lower_single_allocation_node(SoaSchema const& schema,
             {"single_allocation_removal", "SandboxCore/single_allocation/removal.h", {}});
         dependencies.push_back(
             {"single_allocation_vector_views", "SandboxCore/single_allocation/vector_views.h", {}});
-        dependencies.push_back({"single_allocation_memory_ops", "Templates/MemoryOps.h", {}});
     }
     std::string allocate{std::string{runtime} +
                          (native ? "allocate" : "MimallocStorageAllocator::allocate")};
@@ -344,112 +432,289 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         out << "struct " << compact_view << ";\nstruct " << schema.name << "SingleConstView;\n"
             << layout_output.str();
     }
-    out << "struct " << storage_name << " : " << layout_name << ", protected " << runtime
-        << "StorageState, " << runtime << "StorageOperations {\n"
-        << "using View = " << compact_view << ";\n"
-        << "using ConstView = " << schema.name << "SingleConstView;\n"
-        << "/* **************************************** */\n// Lifetime\n/* "
-           "**************************************** */\n"
-        << storage_name << "() noexcept = default;\n"
-        << "~" << storage_name << "() { " << free_data << "; }\n"
-        << storage_name << "(" << storage_name << " const&) = delete;\n"
-        << "auto operator=(" << storage_name << " const&) -> " << storage_name << "& = delete;\n"
-        << storage_name << "(" << storage_name << "&& other) noexcept\n"
-        << "    : StorageState{std::exchange(other.data_, nullptr), std::exchange(other.num_, 0), "
-           "std::exchange(other.capacity_, 0)} {}\n"
-        << "auto operator=(" << storage_name << "&& other) noexcept -> " << storage_name << "& {\n"
-        << "    if (this != &other) {\n        " << free_data
-        << ";\n        data_ = "
-           "std::exchange(other.data_, nullptr);\n        num_ = std::exchange(other.num_, 0);\n   "
-           "     capacity_ = std::exchange(other.capacity_, 0);\n    }\n    return *this;\n}\n\n"
-        << "protected:\n"
-        << "template <typename Byte> struct DataPointers {\n"
-        << "    template <typename T> using Element = std::conditional_t<std::is_const_v<Byte>, T "
-           "const, T>;\n";
+    NodeListBuilder result;
+    result.add(raw(out.str()));
+    out.str({});
+    NodeListBuilder storage;
+    storage.add(UsingDeclaration{"View", compact_view}, 1)
+        .add(UsingDeclaration{"ConstView", schema.name + "SingleConstView"}, 1)
+        .add(raw("/* **************************************** */\n// Lifetime\n"
+                 "/* **************************************** */"),
+             1);
+    storage.add(
+        Function{FunctionSpec{
+            .name = storage_name,
+            .qualifiers = {.is_noexcept = true, .disposition = FunctionDisposition::defaulted}}},
+        1);
+    storage.add(Function{FunctionSpec{
+                    .name = "~" + storage_name,
+                    .body = {ExpressionStmt{RawExpr{free_data}}},
+                    .formatting = {.body_layout = FunctionFormatting::BodyLayout::compact}}},
+                1);
+    storage.add(Function{FunctionSpec{.name = storage_name,
+                                      .parameters = {{storage_name + " const&", ""}},
+                                      .qualifiers = {.disposition = FunctionDisposition::deleted}}},
+                1);
+    storage.add(
+        Function{FunctionSpec{.name = "operator=",
+                              .return_type = "auto",
+                              .parameters = {{storage_name + " const&", ""}},
+                              .qualifiers = {.trailing_return_type = CppType{storage_name + "&"},
+                                             .disposition = FunctionDisposition::deleted}}},
+        1);
+    storage.add(Function{FunctionSpec{
+                    .name = storage_name,
+                    .parameters = {{storage_name + "&&", "other"}},
+                    .qualifiers = {.is_noexcept = true},
+                    .member_initializers =
+                        {{"StorageState",
+                          "std::exchange(other.data_, nullptr), std::exchange(other.num_, 0), "
+                          "std::exchange(other.capacity_, 0)"}}}},
+                1);
+    auto exchange = [](std::string member, Expr replacement) {
+        return call(named("std::exchange", {{"std::exchange", "utility", {}}}),
+                    {member_access(named("other"), std::move(member)), std::move(replacement)});
+    };
+    storage.add(
+        Function{FunctionSpec{
+            .name = "operator=",
+            .return_type = "auto",
+            .parameters = {{storage_name + "&&", "other"}},
+            .body = {IfStmt{binary(BinaryOperator::not_equal,
+                                   named("this"),
+                                   unary(UnaryOperator::address_of, named("other"))),
+                            Block{{ExpressionStmt{RawExpr{free_data}},
+                                   AssignmentStmt{named("data_"),
+                                                  exchange("data_", literal("nullptr"))},
+                                   AssignmentStmt{named("num_"), exchange("num_", literal("0"))},
+                                   AssignmentStmt{named("capacity_"),
+                                                  exchange("capacity_", literal("0"))}}}},
+                     ReturnStmt{unary(UnaryOperator::dereference, named("this"))}},
+            .qualifiers = {.trailing_return_type = CppType{storage_name + "&"},
+                           .is_noexcept = true}}},
+        2);
+    storage.add(AccessSpecifier{"protected"}, 1);
+    NodeListBuilder pointers;
+    pointers.add(raw("template <typename T> using Element = "
+                     "std::conditional_t<std::is_const_v<Byte>, T const, T>;"),
+                 1);
+    std::vector<Expr> shifted;
     for (auto const& leaf : layout.leaves) {
         auto const id{fixed_leaf_argument(leaf)};
-        out << "    Element<" << leaf.type.spelling << ">* " << id << "{};\n";
+        pointers.add(Member{CppType{"Element<" + leaf.type.spelling + ">*", leaf.type.dependencies},
+                            id,
+                            RawExpr{""}},
+                     1);
+        shifted.push_back(binary(BinaryOperator::add, named(id), named("offset")));
     }
-    out << "    auto operator+(size_type const offset) const noexcept -> DataPointers {\n"
-        << "        if (" << fixed_leaf_argument(layout.leaves.front())
-        << " == nullptr) { return {}; }\n"
-        << "        return {\n";
+    pointers.add(Function{FunctionSpec{
+                     .name = "operator+",
+                     .return_type = "auto",
+                     .parameters = {{"size_type const", "offset"}},
+                     .body = {IfStmt{binary(BinaryOperator::equal,
+                                            named(fixed_leaf_argument(layout.leaves.front())),
+                                            literal("nullptr")),
+                                     Block{{ReturnStmt{init_list({})}}}},
+                              ReturnStmt{init_list(std::move(shifted))}},
+                     .qualifiers = {.trailing_return_type = CppType{"DataPointers"},
+                                    .is_const = true,
+                                    .is_noexcept = true}}},
+                 1);
+    storage.add(Struct{.name = "DataPointers",
+                       .children = pointers.build(),
+                       .template_parameters = "typename Byte"},
+                1);
+    storage.add(
+        Function{FunctionSpec{
+            .name = "get_data",
+            .return_type = "auto",
+            .parameters = {{"this Self&", "self"}},
+            .body = {UsingDeclaration{
+                         "Byte",
+                         "std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>"},
+                     IfStmt{binary(BinaryOperator::equal,
+                                   member_access(named("self"), "data_"),
+                                   literal("nullptr")),
+                            Block{{ReturnStmt{init_list({}, CppType{"DataPointers<Byte>"})}}}},
+                     ReturnStmt{
+                         call(named("make_data_unchecked"),
+                              {static_cast_expr("Byte*", member_access(named("self"), "data_")),
+                               call(member_access(named("self"), "capacity_blocks"))})}},
+            .qualifiers = {.is_noexcept = true},
+            .template_parameters = "typename Self",
+            .formatting = {.template_placement =
+                               FunctionFormatting::TemplatePlacement::same_line}}},
+        1);
+    storage.add(Function{FunctionSpec{
+                    .name = "get_data",
+                    .return_type = "auto",
+                    .parameters = {{"this Self&", "self"}, {"size_type const", "offset"}},
+                    .body = {ReturnStmt{binary(BinaryOperator::add,
+                                               call(member_access(named("self"), "get_data")),
+                                               named("offset"))}},
+                    .qualifiers = {.is_noexcept = true},
+                    .template_parameters = "typename Self",
+                    .formatting = {.template_placement =
+                                       FunctionFormatting::TemplatePlacement::same_line}}},
+                2);
+    storage.add(AccessSpecifier{"private"}, 1)
+        .add(FriendDeclaration{std::string{runtime} + "StorageOperations", "struct"}, 1)
+        .add(raw("/* **************************************** */\n// Column pointers\n"
+                 "/* **************************************** */"),
+             1);
+    NodeListBuilder pointer_body;
+    pointer_body.add(raw("auto const pointer_at = [data, blocks](auto const& column) noexcept {\n"
+                         "    using Column = std::remove_cvref_t<decltype(column)>;\n"
+                         "    using Pointer = std::conditional_t<std::is_const_v<Byte>,\n"
+                         "                                       typename Column::const_pointer,\n"
+                         "                                       typename Column::pointer>;\n"
+                         "    return std::launder(\n"
+                         "        reinterpret_cast<Pointer>(data + column.offset(blocks)));\n"
+                         "};"),
+                     1);
+    std::vector<Expr> values;
     for (auto const& leaf : layout.leaves) {
-        out << "            " << fixed_leaf_argument(leaf) << " + offset,\n";
+        values.push_back(
+            call(named("pointer_at"),
+                 {named(layout_column_name(fixed_leaf_argument(leaf), type_identifiers))}));
     }
-    out << "        };\n    }\n};\n"
-        << "template <typename Self> auto get_data(this Self& self) noexcept {\n"
-        << "    using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, "
-           "std::byte>;\n"
-        << "    if (self.data_ == nullptr) { return DataPointers<Byte>{}; }\n"
-        << "    return make_data_unchecked(static_cast<Byte*>(self.data_), "
-           "self.capacity_blocks());\n}\n"
-        << "template <typename Self> auto get_data(this Self& self, size_type const offset) "
-           "noexcept {\n"
-        << "    return self.get_data() + offset;\n}\n\n"
-        << "private:\nfriend struct " << runtime << "StorageOperations;\n"
-        << "/* **************************************** */\n// Column pointers\n/* "
-           "**************************************** */\n"
-        << "template <typename Byte> static auto make_data_unchecked(Byte* const data, "
-           "byte_size_type const blocks) noexcept -> DataPointers<Byte> {\n"
-        << "    auto const pointer_at = [data, blocks](auto const& column) noexcept {\n"
-        << "        using Column = std::remove_cvref_t<decltype(column)>;\n"
-        << "        using Pointer = std::conditional_t<std::is_const_v<Byte>,\n"
-        << "                                           typename Column::const_pointer,\n"
-        << "                                           typename Column::pointer>;\n"
-        << "        return std::launder(\n"
-        << "            reinterpret_cast<Pointer>(data + column.offset(blocks)));\n"
-        << "    };\n"
-        << "    return {\n";
+    pointer_body.add(ReturnStmt{init_list(std::move(values))});
+    storage.add(Function{FunctionSpec{
+                    .name = "make_data_unchecked",
+                    .return_type = "auto",
+                    .parameters = {{"Byte* const", "data"}, {"byte_size_type const", "blocks"}},
+                    .body = pointer_body.build(),
+                    .qualifiers = {.trailing_return_type = CppType{"DataPointers<Byte>"},
+                                   .is_noexcept = true},
+                    .is_static = true,
+                    .template_parameters = "typename Byte",
+                    .formatting = {.template_placement =
+                                       FunctionFormatting::TemplatePlacement::same_line}}},
+                1);
+    storage.add(Function{FunctionSpec{
+                    .name = "capacity_blocks",
+                    .return_type = "auto",
+                    .body = {ReturnStmt{static_cast_expr("byte_size_type",
+                                                         binary(BinaryOperator::divide,
+                                                                named("capacity_"),
+                                                                named("capacity_granularity")))}},
+                    .qualifiers = {.trailing_return_type = CppType{"byte_size_type"},
+                                   .is_const = true,
+                                   .is_noexcept = true},
+                    .formatting = {.body_layout = FunctionFormatting::BodyLayout::compact}}},
+                2);
+    storage.add(
+        raw("/* **************************************** */\n// Typed mutations and growth\n"
+            "/* **************************************** */"),
+        1);
+    NodeListBuilder construct_body;
+    construct_body.add(VariableDeclarationStmt{
+        "auto const",
+        "columns",
+        binary(BinaryOperator::add,
+               call(named("make_data_unchecked"), {named("data_"), call(named("capacity_blocks"))}),
+               named("first"))});
+    for (auto const& leaf : layout.leaves) {
+        auto const function{std::string{native ? "std::uninitialized_value_construct_n<"
+                                               : "DefaultConstructItems<"} +
+                            leaf.type.spelling + (native ? "*>" : ">")};
+        auto function_dependencies{leaf.type.dependencies};
+        function_dependencies.push_back(
+            {function, native ? "memory" : "Templates/MemoryOps.h", {}});
+        construct_body.add(ExpressionStmt{
+            call(named(function, std::move(function_dependencies)),
+                 {member_access(named("columns"), fixed_leaf_argument(leaf)), named("count")})});
+    }
+    storage.add(Function{FunctionSpec{
+                    .name = "default_construct_columns",
+                    .return_type = "void",
+                    .parameters = {{"size_type const", "first"}, {"size_type const", "count"}},
+                    .body = construct_body.build()}},
+                1);
+    storage.add(Function{FunctionSpec{.name = "swap_remove_columns",
+                                      .return_type = "void",
+                                      .parameters = {{"size_type const", "index"},
+                                                     {"size_type const", "source"},
+                                                     {"size_type const", "move_count"}},
+                                      .body = {ExpressionStmt{call(named("copy_columns"),
+                                                                   {call(named("get_data")),
+                                                                    named("index"),
+                                                                    named("source"),
+                                                                    named("move_count")})}}}},
+                1);
+    auto copy_function = [&] {
+        return named(copy, {{copy, native ? "cstring" : "HAL/UnrealMemory.h", {}}});
+    };
+    auto copy_sizes = [&](NodeListBuilder& body, std::string const& count) {
+        for (auto const* leaf : unique_types) {
+            body.add(VariableDeclarationStmt{
+                "auto const",
+                fixed_leaf_argument(*leaf) + "_bytes",
+                binary(BinaryOperator::multiply, named(count), sizeof_type(leaf->type))});
+        }
+    };
+    NodeListBuilder copy_body;
+    copy_body.add(VariableDeclarationStmt{
+        "auto const", "elements_to_move", static_cast_expr("byte_size_type", named("move_count"))});
+    copy_sizes(copy_body, "elements_to_move");
     for (auto const& leaf : layout.leaves) {
         auto const id{fixed_leaf_argument(leaf)};
-        out << "        pointer_at(" << layout_column_name(id, type_identifiers) << "),\n";
+        auto const column{member_access(named("columns"), id)};
+        copy_body.add(ExpressionStmt{call(copy_function(),
+                                          {binary(BinaryOperator::add, column, named("index")),
+                                           binary(BinaryOperator::add, column, named("source")),
+                                           named(type_ids.at(leaf.type.spelling) + "_bytes")})});
     }
-    out << "    };\n}\n"
-        << "auto capacity_blocks() const noexcept -> byte_size_type { return "
-           "static_cast<byte_size_type>(capacity_ / capacity_granularity); }\n\n"
-        << "/* **************************************** */\n// Typed mutations and growth\n/* "
-           "**************************************** */\n"
-        << "void default_construct_columns(size_type const first, size_type const count) {\n"
-        << "    auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};\n";
+    storage.add(Function{FunctionSpec{.name = "copy_columns",
+                                      .return_type = "void",
+                                      .parameters = {{"DataPointers<std::byte> const&", "columns"},
+                                                     {"size_type", "index"},
+                                                     {"size_type", "source"},
+                                                     {"size_type", "move_count"}},
+                                      .body = copy_body.build(),
+                                      .is_static = true}},
+                1);
+    storage.add(
+        Function{FunctionSpec{
+            .name = "swap_remove_indices",
+            .return_type = "void",
+            .parameters = {{"std::span<size_type const>", "indices"}},
+            .body = {VariableDeclarationStmt{"auto const", "columns", call(named("get_data"))},
+                     raw(std::string{
+                             "ml::soa_storage_detail::for_each_removal_run(num_, indices, "} +
+                         runtime +
+                         "require, [&](size_type index, size_type source, size_type count) { "
+                         "copy_columns(columns, index, source, count); });")}}},
+        1);
+    NodeListBuilder append_body;
+    append_body.add(VariableDeclarationStmt{
+        "auto const", "destination", call(named("get_data"), {named("first")})});
+    append_body.add(VariableDeclarationStmt{
+        "auto const", "elements_to_copy", static_cast_expr("byte_size_type", named("count"))});
+    copy_sizes(append_body, "elements_to_copy");
     for (auto const& leaf : layout.leaves) {
-        out << "    "
-            << (native ? "std::uninitialized_value_construct_n<" : "DefaultConstructItems<")
-            << leaf.type.spelling << (native ? "*>" : ">") << "(columns."
-            << fixed_leaf_argument(leaf) << ", count);\n";
+        auto source{named("source")};
+        for (auto const& member : leaf.path) {
+            source = member_access(std::move(source), member);
+        }
+        append_body.add(ExpressionStmt{
+            call(copy_function(),
+                 {member_access(named("destination"), fixed_leaf_argument(leaf)),
+                  call(member_access(std::move(source), native ? "data" : "GetData")),
+                  named(type_ids.at(leaf.type.spelling) + "_bytes")})});
     }
-    out << "}\n"
-        << "void swap_remove_columns(size_type const index, size_type const source, size_type "
-           "const move_count) {\n"
-        << "    copy_columns(get_data(), index, source, move_count);\n}\n"
-        << "static void copy_columns(DataPointers<std::byte> const& columns, size_type index, "
-           "size_type source, size_type move_count) {\n"
-        << "    auto const elements_to_move{static_cast<byte_size_type>(move_count)};\n";
-    emit_copy_sizes(out, "elements_to_move");
-    for (auto const& leaf : layout.leaves) {
-        auto const id{fixed_leaf_argument(leaf)};
-        out << "    " << copy << "(columns." << id << " + index, columns." << id << " + source, "
-            << type_ids.at(leaf.type.spelling) << "_bytes);\n";
-    }
-    out << "}\n"
-        << "void swap_remove_indices(std::span<size_type const> indices) {\n"
-        << "auto const columns{get_data()};\n"
-        << "ml::soa_storage_detail::for_each_removal_run(num_, indices, " << runtime
-        << "require, [&](size_type index, size_type source, size_type count) { "
-           "copy_columns(columns, index, source, count); });\n}\n"
-        << "template <typename Columns> void append_columns(Columns const& source, size_type "
-           "first, size_type count) {\n"
-        << "auto const destination{get_data(first)};\nauto const "
-           "elements_to_copy{static_cast<byte_size_type>(count)};\n";
-    emit_copy_sizes(out, "elements_to_copy");
-    for (auto const& leaf : layout.leaves) {
-        out << copy << "(destination." << fixed_leaf_argument(leaf) << ", source."
-            << join(leaf.path, ".") << (native ? ".data()" : ".GetData()") << ", "
-            << type_ids.at(leaf.type.spelling) << "_bytes);\n";
-    }
-    out << "}\n"
-        << "void reallocate(size_type const new_capacity) {\n"
-        << "    auto* const "
+    storage.add(Function{FunctionSpec{
+                    .name = "append_columns",
+                    .return_type = "void",
+                    .parameters = {{"Columns const&", "source"},
+                                   {"size_type", "first"},
+                                   {"size_type", "count"}},
+                    .body = append_body.build(),
+                    .template_parameters = "typename Columns",
+                    .formatting = {.template_placement =
+                                       FunctionFormatting::TemplatePlacement::same_line}}},
+                1);
+    out << "    auto* const "
            "new_data{"
         << allocate
         << "(layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)), "
@@ -459,7 +724,8 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         << "        auto const old_blocks{capacity_blocks()};\n"
         << "        auto const new_blocks{static_cast<byte_size_type>(new_capacity / "
            "capacity_granularity)};\n"
-        << "        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), "
+        << "        auto const source{make_data_unchecked(static_cast<std::byte "
+           "const*>(data_), "
            "old_blocks)};\n"
         << "        auto const destination{make_data_unchecked(new_data, new_blocks)};\n"
         << "        auto const live_count{static_cast<byte_size_type>(num_)};\n";
@@ -471,47 +737,124 @@ auto lower_single_allocation_node(SoaSchema const& schema,
     }
     out << "    }\n    " << free_data
         << ";\n    data_ = new_data;\n    capacity_ = "
-           "new_capacity;\n}\n"
-        << "};\n\n";
+           "new_capacity;\n";
+    storage.add(Function{FunctionSpec{.name = "reallocate",
+                                      .return_type = "void",
+                                      .parameters = {{"size_type const", "new_capacity"}},
+                                      .body = {raw(out.str())}}},
+                1);
+    out.str({});
+    result.add(Struct{.name = storage_name,
+                      .children = storage.build(),
+                      .bases = {layout_name,
+                                std::string{"protected "} + runtime + "StorageState",
+                                std::string{runtime} + "StorageOperations"},
+                      .dependencies = dependencies});
     if (!schema.single_allocation_allocator) {
         std::map<std::string, CppType> leaf_types;
         for (auto const& leaf : layout.leaves) {
             leaf_types.emplace(fixed_leaf_argument(leaf), leaf.type);
         }
-        emit_compact_views(
-            out, schema, schemas, leaf_types, type_identifiers, layout_name, runtime, native);
+        result.append(compact_view_nodes(
+            schema, schemas, leaf_types, type_identifiers, layout_name, runtime, native));
     }
-    out << "struct " << name << " : " << storage_name << " {\n"
-        << name << "() noexcept = default;\n"
-        << name << "(" << name << " const&) = delete;\n"
-        << "auto operator=(" << name << " const&) -> " << name << "& = delete;\n"
-        << name << "(" << name << "&&) noexcept = default;\n"
-        << "auto operator=(" << name << "&&) noexcept -> " << name << "& = default;\n";
+    NodeListBuilder owner;
+    auto special_member = [&](std::string function,
+                              CppType return_type,
+                              std::vector<FunctionParameter> parameters,
+                              FunctionDisposition disposition,
+                              bool is_noexcept) {
+        FunctionSpec spec{.name = std::move(function),
+                          .return_type = std::move(return_type),
+                          .parameters = std::move(parameters),
+                          .qualifiers = {.is_noexcept = is_noexcept, .disposition = disposition}};
+        if (spec.return_type.spelling == "auto") {
+            spec.qualifiers.trailing_return_type = CppType{name + "&"};
+        }
+        owner.add(Function{std::move(spec)}, 1);
+    };
+    special_member(name, "", {}, FunctionDisposition::defaulted, true);
+    special_member(name, "", {{name + " const&", ""}}, FunctionDisposition::deleted, false);
+    special_member(
+        "operator=", "auto", {{name + " const&", ""}}, FunctionDisposition::deleted, false);
+    special_member(name, "", {{name + "&&", ""}}, FunctionDisposition::defaulted, true);
+    special_member("operator=", "auto", {{name + "&&", ""}}, FunctionDisposition::defaulted, true);
+    auto borrow_function = [&](std::string function,
+                               CppType type,
+                               std::vector<FunctionParameter> parameters,
+                               Expr value,
+                               bool is_const) {
+        FunctionSpec spec{.name = std::move(function),
+                          .return_type = "auto",
+                          .parameters = std::move(parameters),
+                          .body = {ReturnStmt{std::move(value)}},
+                          .qualifiers = {.trailing_return_type = std::move(type),
+                                         .is_const = is_const,
+                                         .ref_qualifier = RefQualifier::lvalue},
+                          .formatting = {.body_layout = FunctionFormatting::BodyLayout::compact}};
+        return spec;
+    };
     for (bool const is_const : {false, true}) {
-        auto const qualifier{is_const ? " const &" : " &"};
         auto const view{is_const ? "ConstView" : "View"};
-        out << "auto get_view()" << qualifier << " -> " << view << " { return {this, 0, num()}; }\n"
-            << "auto get_view(size_type offset, size_type count)" << qualifier << " -> " << view
-            << " { return {this, offset, count}; }\n"
-            << "auto slice(size_type offset, size_type count)" << qualifier << " -> " << view
-            << " { return get_view(offset, count); }\n"
-            << "auto left(size_type count)" << qualifier << " -> " << view
-            << " { return get_view().left(count); }\n"
-            << "auto right(size_type count)" << qualifier << " -> " << view
-            << " { return get_view().right(count); }\n";
-        auto const rvalue{is_const ? " const &&" : " &&"};
-        out << "auto get_view()" << rvalue << " -> " << view << " = delete;\n"
-            << "auto get_view(size_type, size_type)" << rvalue << " -> " << view << " = delete;\n"
-            << "auto slice(size_type, size_type)" << rvalue << " -> " << view << " = delete;\n"
-            << "auto left(size_type)" << rvalue << " -> " << view << " = delete;\n"
-            << "auto right(size_type)" << rvalue << " -> " << view << " = delete;\n";
+        std::vector<FunctionSpec> functions;
+        functions.push_back(
+            borrow_function("get_view",
+                            view,
+                            {},
+                            init_list({named("this"), literal("0"), call(named("num"))}),
+                            is_const));
+        functions.push_back(
+            borrow_function("get_view",
+                            view,
+                            {{"size_type", "offset"}, {"size_type", "count"}},
+                            init_list({named("this"), named("offset"), named("count")}),
+                            is_const));
+        functions.push_back(
+            borrow_function("slice",
+                            view,
+                            {{"size_type", "offset"}, {"size_type", "count"}},
+                            call(named("get_view"), {named("offset"), named("count")}),
+                            is_const));
+        for (auto const* function : {"left", "right"}) {
+            functions.push_back(borrow_function(
+                function,
+                view,
+                {{"size_type", "count"}},
+                call(member_access(call(named("get_view")), function), {named("count")}),
+                is_const));
+        }
+        for (auto const& function : functions) {
+            owner.add(Function{function}, 1);
+        }
+        for (auto& function : functions) {
+            function.body.clear();
+            function.qualifiers.ref_qualifier = RefQualifier::rvalue;
+            function.qualifiers.disposition = FunctionDisposition::deleted;
+            for (auto& parameter : function.parameters) {
+                parameter.name.clear();
+            }
+            owner.add(Function{std::move(function)}, 1);
+        }
     }
-    out << "auto get_const_view() const & -> ConstView { return get_view(); }\n"
-        << "auto get_const_view(size_type offset, size_type count) const & -> ConstView { return "
-           "get_view(offset, count); }\n"
-        << "auto get_const_view() const && -> ConstView = delete;\n"
-        << "auto get_const_view(size_type, size_type) const && -> ConstView = delete;\n};";
-    return raw(out.str(), std::move(dependencies));
+    auto const_view{
+        borrow_function("get_const_view", "ConstView", {}, call(named("get_view")), true)};
+    auto const_slice{borrow_function("get_const_view",
+                                     "ConstView",
+                                     {{"size_type", "offset"}, {"size_type", "count"}},
+                                     call(named("get_view"), {named("offset"), named("count")}),
+                                     true)};
+    owner.add(Function{const_view}, 1).add(Function{const_slice}, 1);
+    for (auto* function : {&const_view, &const_slice}) {
+        function->body.clear();
+        function->qualifiers.ref_qualifier = RefQualifier::rvalue;
+        function->qualifiers.disposition = FunctionDisposition::deleted;
+        for (auto& parameter : function->parameters) {
+            parameter.name.clear();
+        }
+        owner.add(Function{std::move(*function)}, 1);
+    }
+    result.add(Struct{.name = name, .children = owner.build(), .bases = {storage_name}});
+    return result.build();
 }
 
 } // namespace codegen::detail

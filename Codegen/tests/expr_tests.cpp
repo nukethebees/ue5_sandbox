@@ -40,6 +40,94 @@ TEST(Expr, PreservesBinaryGroupingAndPostfixBinding) {
     EXPECT_EQ(render(static_cast_expr("bool", inner)), "static_cast<bool>(a == b)");
 }
 
+TEST(Expr, RendersUnaryPointerAccessAndLogicalPrecedence) {
+    auto const pointer{named("state")};
+    auto const data{pointer_member_access(pointer, "data")};
+    auto const missing{binary(BinaryOperator::logical_or,
+                              unary(UnaryOperator::logical_not, pointer),
+                              unary(UnaryOperator::logical_not, data))};
+    EXPECT_EQ(render(missing), "!state || !state->data");
+    EXPECT_EQ(render(unary(UnaryOperator::logical_not, missing)), "!(!state || !state->data)");
+    EXPECT_EQ(render(call(named("test"), {missing})), "test(!state || !state->data)");
+    EXPECT_EQ(render(binary(BinaryOperator::equal, missing, literal("false"))),
+              "(!state || !state->data) == false");
+    EXPECT_EQ(render(member_access(unary(UnaryOperator::dereference, pointer), "data")),
+              "(*state).data");
+    EXPECT_EQ(render(unary(UnaryOperator::address_of, unary(UnaryOperator::address_of, pointer))),
+              "&(&state)");
+    EXPECT_EQ(render(binary(BinaryOperator::not_equal,
+                            named("this"),
+                            unary(UnaryOperator::address_of, named("other")))),
+              "this != &other");
+    EXPECT_EQ(render(binary(BinaryOperator::divide,
+                            named("a"),
+                            binary(BinaryOperator::multiply, named("b"), named("c")))),
+              "a / (b * c)");
+    auto const expression{
+        unary(UnaryOperator::logical_not,
+              pointer_member_access(named("state", {{"state", "State.h", {}}}), "data"))};
+    auto const deps{dependencies(expression)};
+    ASSERT_EQ(deps.size(), 1);
+    EXPECT_EQ(deps.front().header, "State.h");
+}
+
+TEST(Ast, RendersRefQualifiedMethodsAndInlineOutOfLineConstructors) {
+    FunctionSpec spec{.name = "view",
+                      .return_type = "auto",
+                      .qualifiers = {.trailing_return_type = CppType{"View"},
+                                     .is_const = true,
+                                     .is_noexcept = true,
+                                     .ref_qualifier = RefQualifier::lvalue}};
+    EXPECT_EQ(render(declaration(spec)), "auto view() const & noexcept -> View;");
+    spec.qualifiers.ref_qualifier = RefQualifier::rvalue;
+    spec.qualifiers.disposition = FunctionDisposition::deleted;
+    EXPECT_EQ(render(Function{spec}), "auto view() const && noexcept -> View = delete;");
+    spec.is_static = true;
+    spec.qualifiers.is_const = false;
+    EXPECT_THROW(render(Function{spec}), std::invalid_argument);
+    Function const constructor{
+        FunctionSpec{.name = "View",
+                     .is_inline = true,
+                     .formatting = {.body_layout = FunctionFormatting::BodyLayout::compact}},
+        "View",
+        false,
+        true};
+    EXPECT_EQ(render(constructor), "inline View::View() {  }");
+}
+
+TEST(Expr, RendersSizeofAndPreservesArithmeticGrouping) {
+    auto const a{named("a")};
+    auto const b{named("b")};
+    auto const c{named("c")};
+    auto const sum{binary(BinaryOperator::add, a, b)};
+    auto const product{binary(BinaryOperator::multiply, b, c)};
+    EXPECT_EQ(render(binary(BinaryOperator::multiply, sum, c)), "(a + b) * c");
+    EXPECT_EQ(render(binary(BinaryOperator::add, a, product)), "a + b * c");
+    EXPECT_EQ(render(binary(BinaryOperator::multiply, a, product)), "a * (b * c)");
+    EXPECT_EQ(render(binary(BinaryOperator::add, a, binary(BinaryOperator::subtract, b, c))),
+              "a + (b - c)");
+    EXPECT_EQ(render(binary(BinaryOperator::multiply, named("count"), sizeof_type("Element"))),
+              "count * sizeof(Element)");
+    EXPECT_EQ(render(static_cast_expr("int", sizeof_type("Element"))),
+              "static_cast<int>(sizeof(Element))");
+}
+
+TEST(Expr, CollectsSizeofTypeDependenciesThroughArithmetic) {
+    CppFile const file{
+        .path = "Example.h",
+        .nodes = {
+            IncludeDependencies{},
+            Function{FunctionSpec{.name = "bytes",
+                                  .return_type = "auto",
+                                  .body = {ReturnStmt{binary(
+                                      BinaryOperator::multiply,
+                                      literal("2"),
+                                      sizeof_type(CppType{"Element", "Project/Element.h"}))}}}}}};
+    auto const output{render(file)};
+    EXPECT_NE(output.find("#include \"Project/Element.h\""), std::string::npos);
+    EXPECT_NE(output.find("return 2 * sizeof(Element);"), std::string::npos);
+}
+
 TEST(Expr, KeepsRawVerbatimAndProtectsNestedRawOperands) {
     Expr const raw_expression{RawExpr{"left, right"}};
     EXPECT_EQ(render(raw_expression), "left, right");

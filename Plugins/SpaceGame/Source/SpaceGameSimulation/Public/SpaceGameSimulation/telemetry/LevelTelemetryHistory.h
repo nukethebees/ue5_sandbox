@@ -17,6 +17,7 @@
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
+#include "HAL/UnrealMemory.h"
 #include "Templates/MemoryOps.h"
 
 #include <utility>
@@ -684,25 +685,23 @@ struct FSingleAllocationHistoryRowsStorage
             if (completed_ticks == nullptr) {
                 return {};
             }
-            return {
-                completed_ticks + offset,
-                validity_masks + offset,
-                active_entities + offset,
-                active_entities_by_type + offset,
-                active_entities_by_team_and_type + offset,
-                spawned_entities + offset,
-                destroyed_entities + offset,
-                kills + offset,
-                registry_slot_count + offset,
-                active_lasers + offset,
-                lasers_fired + offset,
-                occupied_spatial_cell_count + offset,
-                grid_rebuild_count + offset,
-                range_query_count + offset,
-                line_trace_count + offset,
-                sweep_trace_count + offset,
-                requested_time_scale + offset,
-            };
+            return {completed_ticks + offset,
+                    validity_masks + offset,
+                    active_entities + offset,
+                    active_entities_by_type + offset,
+                    active_entities_by_team_and_type + offset,
+                    spawned_entities + offset,
+                    destroyed_entities + offset,
+                    kills + offset,
+                    registry_slot_count + offset,
+                    active_lasers + offset,
+                    lasers_fired + offset,
+                    occupied_spatial_cell_count + offset,
+                    grid_rebuild_count + offset,
+                    range_query_count + offset,
+                    line_trace_count + offset,
+                    sweep_trace_count + offset,
+                    requested_time_scale + offset};
         }
     };
     template <typename Self>
@@ -732,25 +731,23 @@ struct FSingleAllocationHistoryRowsStorage
                                                typename Column::pointer>;
             return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
         };
-        return {
-            pointer_at(CompletedTicks),
-            pointer_at(ValidityMasks),
-            pointer_at(ActiveEntities),
-            pointer_at(ActiveEntitiesByType),
-            pointer_at(ActiveEntitiesByTeamAndType),
-            pointer_at(SpawnedEntities),
-            pointer_at(DestroyedEntities),
-            pointer_at(Kills),
-            pointer_at(RegistrySlotCount),
-            pointer_at(ActiveLasers),
-            pointer_at(LasersFired),
-            pointer_at(OccupiedSpatialCellCount),
-            pointer_at(GridRebuildCount),
-            pointer_at(RangeQueryCount),
-            pointer_at(LineTraceCount),
-            pointer_at(SweepTraceCount),
-            pointer_at(RequestedTimeScale),
-        };
+        return {pointer_at(CompletedTicks),
+                pointer_at(ValidityMasks),
+                pointer_at(ActiveEntities),
+                pointer_at(ActiveEntitiesByType),
+                pointer_at(ActiveEntitiesByTeamAndType),
+                pointer_at(SpawnedEntities),
+                pointer_at(DestroyedEntities),
+                pointer_at(Kills),
+                pointer_at(RegistrySlotCount),
+                pointer_at(ActiveLasers),
+                pointer_at(LasersFired),
+                pointer_at(OccupiedSpatialCellCount),
+                pointer_at(GridRebuildCount),
+                pointer_at(RangeQueryCount),
+                pointer_at(LineTraceCount),
+                pointer_at(SweepTraceCount),
+                pointer_at(RequestedTimeScale)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);

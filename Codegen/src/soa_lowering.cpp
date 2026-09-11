@@ -88,14 +88,14 @@ auto lower_soa_module_impl(SoaModuleSchema const& module,
             NodeListBuilder header;
             header.append(std::move(lowered.header))
                 .new_lines(2)
-                .add(lower_single_allocation_node(
+                .append(lower_single_allocation_nodes(
                     schema, schemas, types, module.experimental_stdlib));
             for (auto const& variant : schema.single_allocation_variants) {
                 auto copy{schema};
                 copy.single_allocation = variant.name;
                 copy.single_allocation_allocator = variant.allocator;
-                header.new_lines(2).add(
-                    lower_single_allocation_node(copy, schemas, types, module.experimental_stdlib));
+                header.new_lines(2).append(lower_single_allocation_nodes(
+                    copy, schemas, types, module.experimental_stdlib));
             }
             lowered.header = header.build();
         }

@@ -7,6 +7,7 @@
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
+#include "HAL/UnrealMemory.h"
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/mimalloc_storage_allocator.h"
@@ -656,16 +657,14 @@ struct SingleSpacingDoublesStorage
             if (positions0_xs == nullptr) {
                 return {};
             }
-            return {
-                positions0_xs + offset,  positions0_ys + offset,  positions0_zs + offset,
-                velocities0_xs + offset, velocities0_ys + offset, velocities0_zs + offset,
-                positions1_xs + offset,  positions1_ys + offset,  positions1_zs + offset,
-                velocities1_xs + offset, velocities1_ys + offset, velocities1_zs + offset,
-                positions2_xs + offset,  positions2_ys + offset,  positions2_zs + offset,
-                velocities2_xs + offset, velocities2_ys + offset, velocities2_zs + offset,
-                positions3_xs + offset,  positions3_ys + offset,  positions3_zs + offset,
-                velocities3_xs + offset, velocities3_ys + offset, velocities3_zs + offset,
-            };
+            return {positions0_xs + offset,  positions0_ys + offset,  positions0_zs + offset,
+                    velocities0_xs + offset, velocities0_ys + offset, velocities0_zs + offset,
+                    positions1_xs + offset,  positions1_ys + offset,  positions1_zs + offset,
+                    velocities1_xs + offset, velocities1_ys + offset, velocities1_zs + offset,
+                    positions2_xs + offset,  positions2_ys + offset,  positions2_zs + offset,
+                    velocities2_xs + offset, velocities2_ys + offset, velocities2_zs + offset,
+                    positions3_xs + offset,  positions3_ys + offset,  positions3_zs + offset,
+                    velocities3_xs + offset, velocities3_ys + offset, velocities3_zs + offset};
         }
     };
     template <typename Self>
@@ -695,16 +694,14 @@ struct SingleSpacingDoublesStorage
                                                typename Column::pointer>;
             return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
         };
-        return {
-            pointer_at(Positions0Xs),  pointer_at(Positions0Ys),  pointer_at(Positions0Zs),
-            pointer_at(Velocities0Xs), pointer_at(Velocities0Ys), pointer_at(Velocities0Zs),
-            pointer_at(Positions1Xs),  pointer_at(Positions1Ys),  pointer_at(Positions1Zs),
-            pointer_at(Velocities1Xs), pointer_at(Velocities1Ys), pointer_at(Velocities1Zs),
-            pointer_at(Positions2Xs),  pointer_at(Positions2Ys),  pointer_at(Positions2Zs),
-            pointer_at(Velocities2Xs), pointer_at(Velocities2Ys), pointer_at(Velocities2Zs),
-            pointer_at(Positions3Xs),  pointer_at(Positions3Ys),  pointer_at(Positions3Zs),
-            pointer_at(Velocities3Xs), pointer_at(Velocities3Ys), pointer_at(Velocities3Zs),
-        };
+        return {pointer_at(Positions0Xs),  pointer_at(Positions0Ys),  pointer_at(Positions0Zs),
+                pointer_at(Velocities0Xs), pointer_at(Velocities0Ys), pointer_at(Velocities0Zs),
+                pointer_at(Positions1Xs),  pointer_at(Positions1Ys),  pointer_at(Positions1Zs),
+                pointer_at(Velocities1Xs), pointer_at(Velocities1Ys), pointer_at(Velocities1Zs),
+                pointer_at(Positions2Xs),  pointer_at(Positions2Ys),  pointer_at(Positions2Zs),
+                pointer_at(Velocities2Xs), pointer_at(Velocities2Ys), pointer_at(Velocities2Zs),
+                pointer_at(Positions3Xs),  pointer_at(Positions3Ys),  pointer_at(Positions3Zs),
+                pointer_at(Velocities3Xs), pointer_at(Velocities3Ys), pointer_at(Velocities3Zs)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -2117,22 +2114,20 @@ struct SingleSpacingMixedWidthsStorage
             if (bundle0_flags == nullptr) {
                 return {};
             }
-            return {
-                bundle0_flags + offset,    bundle0_counters + offset, bundle0_counts + offset,
-                bundle0_totals + offset,   bundle0_payloads + offset, bundle0_values + offset,
-                bundle0_rates + offset,    bundle1_flags + offset,    bundle1_counters + offset,
-                bundle1_counts + offset,   bundle1_totals + offset,   bundle1_payloads + offset,
-                bundle1_values + offset,   bundle1_rates + offset,    bundle2_flags + offset,
-                bundle2_counters + offset, bundle2_counts + offset,   bundle2_totals + offset,
-                bundle2_payloads + offset, bundle2_values + offset,   bundle2_rates + offset,
-                bundle3_flags + offset,    bundle3_counters + offset, bundle3_counts + offset,
-                bundle3_totals + offset,   bundle3_payloads + offset, bundle3_values + offset,
-                bundle3_rates + offset,    bundle4_flags + offset,    bundle4_counters + offset,
-                bundle4_counts + offset,   bundle4_totals + offset,   bundle4_payloads + offset,
-                bundle4_values + offset,   bundle4_rates + offset,    bundle5_flags + offset,
-                bundle5_counters + offset, bundle5_counts + offset,   bundle5_totals + offset,
-                bundle5_payloads + offset, bundle5_values + offset,   bundle5_rates + offset,
-            };
+            return {bundle0_flags + offset,    bundle0_counters + offset, bundle0_counts + offset,
+                    bundle0_totals + offset,   bundle0_payloads + offset, bundle0_values + offset,
+                    bundle0_rates + offset,    bundle1_flags + offset,    bundle1_counters + offset,
+                    bundle1_counts + offset,   bundle1_totals + offset,   bundle1_payloads + offset,
+                    bundle1_values + offset,   bundle1_rates + offset,    bundle2_flags + offset,
+                    bundle2_counters + offset, bundle2_counts + offset,   bundle2_totals + offset,
+                    bundle2_payloads + offset, bundle2_values + offset,   bundle2_rates + offset,
+                    bundle3_flags + offset,    bundle3_counters + offset, bundle3_counts + offset,
+                    bundle3_totals + offset,   bundle3_payloads + offset, bundle3_values + offset,
+                    bundle3_rates + offset,    bundle4_flags + offset,    bundle4_counters + offset,
+                    bundle4_counts + offset,   bundle4_totals + offset,   bundle4_payloads + offset,
+                    bundle4_values + offset,   bundle4_rates + offset,    bundle5_flags + offset,
+                    bundle5_counters + offset, bundle5_counts + offset,   bundle5_totals + offset,
+                    bundle5_payloads + offset, bundle5_values + offset,   bundle5_rates + offset};
         }
     };
     template <typename Self>
@@ -2176,8 +2171,7 @@ struct SingleSpacingMixedWidthsStorage
             pointer_at(Bundle4Counts),   pointer_at(Bundle4Totals),   pointer_at(Bundle4Payloads),
             pointer_at(Bundle4Values),   pointer_at(Bundle4Rates),    pointer_at(Bundle5Flags),
             pointer_at(Bundle5Counters), pointer_at(Bundle5Counts),   pointer_at(Bundle5Totals),
-            pointer_at(Bundle5Payloads), pointer_at(Bundle5Values),   pointer_at(Bundle5Rates),
-        };
+            pointer_at(Bundle5Payloads), pointer_at(Bundle5Values),   pointer_at(Bundle5Rates)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -3842,23 +3836,21 @@ struct SingleSpacingAlignedStorage
             if (bundle0_positions == nullptr) {
                 return {};
             }
-            return {
-                bundle0_positions + offset,
-                bundle0_velocities + offset,
-                bundle0_aligned32 + offset,
-                bundle0_aligned64 + offset,
-                bundle0_aligned256 + offset,
-                bundle1_positions + offset,
-                bundle1_velocities + offset,
-                bundle1_aligned32 + offset,
-                bundle1_aligned64 + offset,
-                bundle1_aligned256 + offset,
-                bundle2_positions + offset,
-                bundle2_velocities + offset,
-                bundle2_aligned32 + offset,
-                bundle2_aligned64 + offset,
-                bundle2_aligned256 + offset,
-            };
+            return {bundle0_positions + offset,
+                    bundle0_velocities + offset,
+                    bundle0_aligned32 + offset,
+                    bundle0_aligned64 + offset,
+                    bundle0_aligned256 + offset,
+                    bundle1_positions + offset,
+                    bundle1_velocities + offset,
+                    bundle1_aligned32 + offset,
+                    bundle1_aligned64 + offset,
+                    bundle1_aligned256 + offset,
+                    bundle2_positions + offset,
+                    bundle2_velocities + offset,
+                    bundle2_aligned32 + offset,
+                    bundle2_aligned64 + offset,
+                    bundle2_aligned256 + offset};
         }
     };
     template <typename Self>
@@ -3888,23 +3880,21 @@ struct SingleSpacingAlignedStorage
                                                typename Column::pointer>;
             return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
         };
-        return {
-            pointer_at(Bundle0Positions),
-            pointer_at(Bundle0Velocities),
-            pointer_at(Bundle0Aligned32),
-            pointer_at(Bundle0Aligned64),
-            pointer_at(Bundle0Aligned256),
-            pointer_at(Bundle1Positions),
-            pointer_at(Bundle1Velocities),
-            pointer_at(Bundle1Aligned32),
-            pointer_at(Bundle1Aligned64),
-            pointer_at(Bundle1Aligned256),
-            pointer_at(Bundle2Positions),
-            pointer_at(Bundle2Velocities),
-            pointer_at(Bundle2Aligned32),
-            pointer_at(Bundle2Aligned64),
-            pointer_at(Bundle2Aligned256),
-        };
+        return {pointer_at(Bundle0Positions),
+                pointer_at(Bundle0Velocities),
+                pointer_at(Bundle0Aligned32),
+                pointer_at(Bundle0Aligned64),
+                pointer_at(Bundle0Aligned256),
+                pointer_at(Bundle1Positions),
+                pointer_at(Bundle1Velocities),
+                pointer_at(Bundle1Aligned32),
+                pointer_at(Bundle1Aligned64),
+                pointer_at(Bundle1Aligned256),
+                pointer_at(Bundle2Positions),
+                pointer_at(Bundle2Velocities),
+                pointer_at(Bundle2Aligned32),
+                pointer_at(Bundle2Aligned64),
+                pointer_at(Bundle2Aligned256)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
