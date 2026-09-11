@@ -10,7 +10,8 @@ namespace {
 class Lexer {
   public:
     Lexer(std::string_view const path, std::string_view const source)
-        : path_{path}, source_{source} {}
+        : path_{path}
+        , source_{source} {}
 
     auto lex() -> std::vector<Token> {
         std::vector<Token> result;
@@ -37,9 +38,10 @@ class Lexer {
             }
         }
     }
-
   private:
-    auto current_span() const -> SourceSpan { return SourceSpan{line_, column_}; }
+    auto current_span() const -> SourceSpan {
+        return SourceSpan{line_, column_, std::string{path_}, {}};
+    }
 
     auto at_end() const -> bool { return index_ >= source_.size(); }
 
@@ -120,12 +122,21 @@ class Lexer {
             }
             value = advance();
             switch (value) {
-            case '\\':
-            case '"': text.push_back(value); break;
-            case 'n': text.push_back('\n'); break;
-            case 'r': text.push_back('\r'); break;
-            case 't': text.push_back('\t'); break;
-            default: throw SourceError{path_, current_span(), "unsupported text escape"};
+                case '\\':
+                case '"':
+                    text.push_back(value);
+                    break;
+                case 'n':
+                    text.push_back('\n');
+                    break;
+                case 'r':
+                    text.push_back('\r');
+                    break;
+                case 't':
+                    text.push_back('\t');
+                    break;
+                default:
+                    throw SourceError{path_, current_span(), "unsupported text escape"};
             }
         }
         if (at_end()) {

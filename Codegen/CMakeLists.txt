@@ -30,6 +30,7 @@ else()
 endif()
 
 add_subdirectory(sexpr)
+add_subdirectory(material)
 
 add_library(codegen-lib
   src/ast.cpp
@@ -139,7 +140,11 @@ add_executable(codegen-tests
   tests/static_table_lowering_tests.cpp
   tests/validation_tests.cpp
 )
-add_dependencies(codegen-tests codegen-generated-compile-tests)
+add_dependencies(codegen-tests
+  codegen-generated-compile-tests
+  codegen-sexpr-tests
+  material-synth-tests
+)
 target_link_libraries(codegen-tests PRIVATE
   codegen-lib
   GTest::gtest_main

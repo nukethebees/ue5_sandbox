@@ -20,6 +20,9 @@ public class SandboxEditorTests : ModuleRules
             "UnrealEd",
             "AssetRegistry",
             "CQTest",
+            "MaterialEditor",
+            "RenderCore",
+            "RHI",
         });
     }
 }

@@ -3,6 +3,8 @@
 #include "lexer.h"
 #include "manifest.h"
 
+#include <codegen/sexpr/reader.h>
+
 #include <algorithm>
 #include <cctype>
 #include <map>
@@ -12,41 +14,11 @@
 namespace slate_codegen::detail {
 namespace {
 
-struct Form {
-    Token token;
-    std::vector<Form> children;
-    Token closing;
-
-    auto is_list() const -> bool { return token.kind == TokenKind::left_parenthesis; }
-
-    auto head() const -> std::string_view {
-        if (is_list() && !children.empty() && children.front().token.kind == TokenKind::atom) {
-            return children.front().token.text;
-        }
-        return {};
-    }
-};
+using codegen::sexpr::Form;
+using codegen::sexpr::read_form;
 
 [[noreturn]] void fail(SourceSpan const& span, std::string const& message) {
     throw SourceError{span.path, span, message};
-}
-
-auto read_form(std::vector<Token> const& tokens, std::size_t& index) -> Form {
-    auto const token{tokens[index++]};
-    if (token.kind == TokenKind::right_parenthesis || token.kind == TokenKind::end) {
-        fail(token.span, "expected an expression");
-    }
-    Form result{token, {}, token};
-    if (result.is_list()) {
-        while (tokens[index].kind != TokenKind::right_parenthesis) {
-            if (tokens[index].kind == TokenKind::end) {
-                fail(token.span, "expected ')' after expression");
-            }
-            result.children.push_back(read_form(tokens, index));
-        }
-        result.closing = tokens[index++];
-    }
-    return result;
 }
 
 auto location(SourceSpan const& span) -> std::string {
@@ -63,12 +35,24 @@ auto format_token(Token const& token) -> std::string {
     std::string result{"\""};
     for (auto const character : token.text) {
         switch (character) {
-        case '\\': result += "\\\\"; break;
-        case '"': result += "\\\""; break;
-        case '\n': result += "\\n"; break;
-        case '\r': result += "\\r"; break;
-        case '\t': result += "\\t"; break;
-        default: result += character; break;
+            case '\\':
+                result += "\\\\";
+                break;
+            case '"':
+                result += "\\\"";
+                break;
+            case '\n':
+                result += "\\n";
+                break;
+            case '\r':
+                result += "\\r";
+                break;
+            case '\t':
+                result += "\\t";
+                break;
+            default:
+                result += character;
+                break;
         }
     }
     return result + '"';
@@ -100,9 +84,8 @@ void format_form(Form const& form, std::size_t indent, std::string& output) {
 
 auto is_name(std::string const& name) -> bool {
     return !name.empty() && std::islower(static_cast<unsigned char>(name.front())) != 0 &&
-           std::ranges::all_of(name, [](unsigned char c) {
-               return std::isalnum(c) != 0 || c == '_' || c == '-';
-           });
+           std::ranges::all_of(
+               name, [](unsigned char c) { return std::isalnum(c) != 0 || c == '_' || c == '-'; });
 }
 
 struct Macro {
@@ -125,7 +108,6 @@ class Preprocessor {
         result.push_back(Token{TokenKind::end, {}, SourceSpan{1, 1, input.generic_string(), {}}});
         return result;
     }
-
   private:
     auto resolve(Form const& form, std::filesystem::path const& including) const
         -> std::filesystem::path {
@@ -147,8 +129,8 @@ class Preprocessor {
             }
             searched += "\n  " + candidate.lexically_normal().generic_string();
         }
-        fail(form.token.span, "include not found: " + requested.generic_string() +
-                                  "\nsearched:" + searched);
+        fail(form.token.span,
+             "include not found: " + requested.generic_string() + "\nsearched:" + searched);
     }
 
     auto load(std::filesystem::path const& input, bool included, SourceSpan const& invocation)
@@ -178,7 +160,8 @@ class Preprocessor {
             } else if (form.head() == "defmacro") {
                 define(form);
             } else if (included) {
-                fail(form.token.span, "included files may contain only include and defmacro declarations");
+                fail(form.token.span,
+                     "included files may contain only include and defmacro declarations");
             } else {
                 result.push_back(std::move(form));
             }
@@ -194,11 +177,14 @@ class Preprocessor {
         }
         auto const& name{form.children[1].token.text};
         static std::set<std::string> const reserved{
-            "include", "defmacro", "widget-class", "widget-library", "function", "params", "let", "vbox",
-            "hbox", "auto", "fill", "assign", "existing", "call", "slot", "loc",
-            "callback", "method", "uobject", "value", "factory"};
+            "include", "defmacro", "widget-class", "widget-library", "function",
+            "params",  "let",      "vbox",         "hbox",           "auto",
+            "fill",    "assign",   "existing",     "call",           "slot",
+            "loc",     "callback", "method",       "uobject",        "value",
+            "factory"};
         if (!is_name(name) || reserved.contains(name)) {
-            fail(form.token.span, "macro name must start with a lowercase letter and not name a built-in form");
+            fail(form.token.span,
+                 "macro name must start with a lowercase letter and not name a built-in form");
         }
         Macro macro{{}, form.children[3]};
         std::set<std::string> parameters;
@@ -211,8 +197,9 @@ class Preprocessor {
         }
         validate_template(macro.body, parameters);
         if (auto const previous{macros_.find(name)}; previous != macros_.end()) {
-            fail(form.token.span, "duplicate macro '" + name + "'; first defined at " +
-                                      location(previous->second.body.token.span));
+            fail(form.token.span,
+                 "duplicate macro '" + name + "'; first defined at " +
+                     location(previous->second.body.token.span));
         }
         macros_.emplace(name, std::move(macro));
     }
@@ -227,7 +214,8 @@ class Preprocessor {
         }
     }
 
-    auto substitute(Form const& form, std::map<std::string, Form> const& arguments,
+    auto substitute(Form const& form,
+                    std::map<std::string, Form> const& arguments,
                     std::string const& trace) const -> Form {
         if (form.token.kind == TokenKind::atom && form.token.text.starts_with('$')) {
             auto result{arguments.at(form.token.text.substr(1))};
@@ -265,16 +253,18 @@ class Preprocessor {
                 fail(form.token.span, "recursive macro expansion of '" + name + "'");
             }
             if (form.children.size() != macro.parameters.size() + 1) {
-                fail(form.token.span, "macro '" + name + "' expects " +
-                                          std::to_string(macro.parameters.size()) + " arguments");
+                fail(form.token.span,
+                     "macro '" + name + "' expects " + std::to_string(macro.parameters.size()) +
+                         " arguments");
             }
             std::map<std::string, Form> arguments;
             auto const count{macro.parameters.size()};
             for (std::size_t i{}; i < count; ++i) {
                 arguments.emplace(macro.parameters[i], expand(form.children[i + 1]));
             }
-            auto const trace{"\n  macro '" + name + "' defined at " + location(macro.body.token.span) +
-                             "\n  expanded at " + location(form.token.span) + form.token.span.expansion};
+            auto const trace{"\n  macro '" + name + "' defined at " +
+                             location(macro.body.token.span) + "\n  expanded at " +
+                             location(form.token.span) + form.token.span.expansion};
             active_macros_.push_back(name);
             auto result{expand(substitute(macro.body, arguments, trace))};
             active_macros_.pop_back();

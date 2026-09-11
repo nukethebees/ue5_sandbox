@@ -832,7 +832,21 @@ add_custom_target(resave-assets
 
 add_custom_target(generate-ui-glow-material
   COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
-    -run=UiGlowLab -GenerateMaterial -RenderOffscreen -AllowCommandletRendering
+    -run=MaterialSynth
+    "-Input=${CMAKE_CURRENT_SOURCE_DIR}/Plugins/SandboxUI/Source/SandboxUI/Private/materials/UiGlowComposite.material.scm"
+    -Generate -RenderOffscreen -AllowCommandletRendering
+    -unattended -nop4 -nosplash -nosound -stdout
+  DEPENDS editor
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  USES_TERMINAL
+  VERBATIM
+)
+
+add_custom_target(validate-ui-glow-material
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    -run=MaterialSynth
+    "-Input=${CMAKE_CURRENT_SOURCE_DIR}/Plugins/SandboxUI/Source/SandboxUI/Private/materials/UiGlowComposite.material.scm"
+    -Validate -nullrhi
     -unattended -nop4 -nosplash -nosound -stdout
   DEPENDS editor
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -861,6 +875,25 @@ add_test(
     -nosplash
     -nosound
     -stdout
+)
+
+add_test(
+  NAME SandboxEditor.MaterialSynth
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    "-ExecCmds=Automation RunTests SandboxEditor.MaterialSynth; Quit"
+    -RenderOffscreen
+    -AllowCommandletRendering
+    -DDC-ForceMemoryCache
+    -unattended
+    -nop4
+    -nosplash
+    -nosound
+    -stdout
+)
+set_tests_properties(SandboxEditor.MaterialSynth PROPERTIES
+  LABELS "material-synth;all"
+  TIMEOUT 900
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 set_tests_properties(SandboxShaders.ShaderSmoke PROPERTIES
   LABELS all

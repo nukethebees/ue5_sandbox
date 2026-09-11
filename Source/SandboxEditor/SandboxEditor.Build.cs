@@ -1,4 +1,5 @@
 using UnrealBuildTool;
+using System.IO;
 
 public class SandboxEditor : ModuleRules
 {
@@ -8,6 +9,8 @@ public class SandboxEditor : ModuleRules
         CppStandard = CppStandardVersion.Latest;
         MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
         PublicIncludePaths.Add(ModuleDirectory);
+
+        PublicIncludePaths.Add(Path.Combine(ModuleDirectory, "../../Codegen/sexpr/include"));
 
         // Core dependencies
         PublicDependencyModuleNames.AddRange(new string[]

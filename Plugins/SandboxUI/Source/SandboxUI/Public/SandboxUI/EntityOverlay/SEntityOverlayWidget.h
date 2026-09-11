@@ -13,7 +13,7 @@ class SImage;
 class SANDBOXUI_API SEntityOverlayWidget final : public SCompoundWidget {
   public:
     inline static constexpr TCHAR const* glow_material_path{
-        TEXT("/SandboxUI/Materials/M_UiGlowComposite.M_UiGlowComposite")};
+        TEXT("/SandboxUI/Generated/Materials/M_UiGlowComposite.M_UiGlowComposite")};
     SLATE_BEGIN_ARGS(SEntityOverlayWidget) {}
     SLATE_END_ARGS()
 

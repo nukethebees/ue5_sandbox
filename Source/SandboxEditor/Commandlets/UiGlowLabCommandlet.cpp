@@ -20,9 +20,6 @@ int32 UUiGlowLabCommandlet::Main(FString const& params) {
         UE_LOG(LogTemp, Error, TEXT("UiGlowLab requires a real graphics RHI."));
         return 1;
     }
-    if (FParse::Param(*params, TEXT("GenerateMaterial"))) {
-        return ml::ui::glow_lab::generate_material() ? 0 : 1;
-    }
     FString output_directory{FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("UiGlowLab"))};
     FParse::Value(*params, TEXT("Output="), output_directory);
     bool const initialise_slate{!FSlateApplication::IsInitialized()};
