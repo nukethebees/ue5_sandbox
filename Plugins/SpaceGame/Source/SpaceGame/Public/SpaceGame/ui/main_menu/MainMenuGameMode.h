@@ -11,6 +11,8 @@ class SPACEGAME_API AMainMenuGameMode : public AGameModeBase {
   public:
     AMainMenuGameMode();
 
+    void StartPlay() override;
     void PostLogin(APlayerController* new_player) override;
+    void EndPlay(EEndPlayReason::Type reason) override;
 };
 }

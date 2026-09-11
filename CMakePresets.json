@@ -212,6 +212,11 @@
       "targets": ["generate-lab-mesh-assemblies"]
     },
     {
+      "name": "import-menu-ambience",
+      "configurePreset": "debug-game",
+      "targets": ["import-menu-ambience"]
+    },
+    {
       "name": "generate-project-files",
       "configurePreset": "debug-game",
       "targets": ["generate-project-files"]
@@ -639,6 +644,13 @@
       "steps": [
         { "type": "configure", "name": "debug-game" },
         { "type": "build", "name": "generate-lab-mesh-assemblies" }
+      ]
+    },
+    {
+      "name": "import-menu-ambience",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "import-menu-ambience" }
       ]
     },
     {

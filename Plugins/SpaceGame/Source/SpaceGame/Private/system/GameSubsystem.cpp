@@ -4,6 +4,7 @@
 #include "persistence/ExistingSaveGameBrowserSource.h"
 
 #include "SpaceGame/persistence/SpaceSaveSubsystem.h"
+#include "SpaceGame/settings/GameSettingsSubsystem.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiSettings.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
@@ -85,6 +86,18 @@ void UGameSubsystem::Initialize(FSubsystemCollectionBase& collection) {
 
     audio_.initialize();
 
+    collection.InitializeDependency(UGameSettingsSubsystem::StaticClass());
+    auto* const settings_subsystem{GetGameInstance()->GetSubsystem<UGameSettingsSubsystem>()};
+    if (IsValid(settings_subsystem)) {
+        settings_subsystem->settings_changed.AddUObject(this, &ThisClass::update_audio_settings);
+        update_audio_settings();
+    } else {
+        UE_LOG(LogSandboxSubsystem,
+               Warning,
+               TEXT("UGameSubsystem::Initialize: Game settings subsystem is invalid; audio "
+                    "will use its default volume."));
+    }
+
     collection.InitializeDependency(UGameUiStyleSubsystem::StaticClass());
 
     collection.InitializeDependency(USpaceSaveSubsystem::StaticClass());
@@ -107,12 +120,42 @@ void UGameSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     save_game_browser_.refresh();
 }
 
+void UGameSubsystem::Deinitialize() {
+    auto* const game_instance{GetGameInstance()};
+    auto* const settings_subsystem{
+        IsValid(game_instance) ? game_instance->GetSubsystem<UGameSettingsSubsystem>() : nullptr};
+    if (IsValid(settings_subsystem)) {
+        settings_subsystem->settings_changed.RemoveAll(this);
+    }
+    audio_.stop_menu_ambience();
+
+    Super::Deinitialize();
+}
+
 auto UGameSubsystem::get_platform_capabilities() const -> FGameCapabilities const& {
     return platform_capabilities_;
 }
 
 auto UGameSubsystem::get_save_game_browser() -> FSaveGameBrowser& {
     return save_game_browser_;
+}
+
+void UGameSubsystem::start_menu_ambience() {
+    audio_.start_menu_ambience(*this);
+}
+
+void UGameSubsystem::stop_menu_ambience() {
+    audio_.stop_menu_ambience();
+}
+
+void UGameSubsystem::update_audio_settings() {
+    auto* const game_instance{GetGameInstance()};
+    auto* const settings_subsystem{
+        IsValid(game_instance) ? game_instance->GetSubsystem<UGameSettingsSubsystem>() : nullptr};
+    if (!IsValid(settings_subsystem)) {
+        return;
+    }
+    audio_.set_music_volume(settings_subsystem->settings_state().music_volume);
 }
 
 /* **************************************** */

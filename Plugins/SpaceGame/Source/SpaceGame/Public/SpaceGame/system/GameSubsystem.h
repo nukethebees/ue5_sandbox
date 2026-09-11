@@ -128,9 +128,12 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     // Lifecycle and services
     /* **************************************** */
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
+    virtual void Deinitialize() override;
 
     auto get_platform_capabilities() const -> FGameCapabilities const&;
     auto get_save_game_browser() -> FSaveGameBrowser&;
+    void start_menu_ambience();
+    void stop_menu_ambience();
 
     /* **************************************** */
     // UI configuration
@@ -159,6 +162,8 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     auto has_level_launch_error() const noexcept -> bool;
     auto take_level_launch_error() -> FString;
   private:
+    void update_audio_settings();
+
     /* **************************************** */
     // State
     /* **************************************** */

@@ -25,6 +25,8 @@ public class SandboxEditor : ModuleRules
         PrivateDependencyModuleNames.AddRange(new string[]
         {
             "AssetRegistry", // For scanning data assets
+            "AssetTools",
+            "AudioEditor",
             "BlueprintEditorLibrary",
             "BlueprintGraph", // Required by UnrealEd
             "CommonUI",

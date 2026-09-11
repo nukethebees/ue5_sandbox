@@ -2,8 +2,10 @@
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include "SpaceGame/ships/player/SpaceGamePlayerController.h"
+#include "SpaceGame/system/GameSubsystem.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
+#include <Engine/GameInstance.h>
 #include <UObject/ConstructorHelpers.h>
 
 namespace ml::ioj {
@@ -18,6 +20,22 @@ AMainMenuGameMode::AMainMenuGameMode() {
     HUDClass = nullptr;
 }
 
+void AMainMenuGameMode::StartPlay() {
+    Super::StartPlay();
+
+    auto* const game_instance{GetGameInstance()};
+    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>()
+                                            : nullptr};
+    if (!IsValid(game)) {
+        UE_LOG(LogSandboxUI,
+               Warning,
+               TEXT("AMainMenuGameMode::StartPlay: Game subsystem is unavailable; menu "
+                    "ambience will not play."));
+        return;
+    }
+    game->start_menu_ambience();
+}
+
 void AMainMenuGameMode::PostLogin(APlayerController* const new_player) {
     Super::PostLogin(new_player);
 
@@ -30,5 +48,16 @@ void AMainMenuGameMode::PostLogin(APlayerController* const new_player) {
         return;
     }
     controller->show_main_menu();
+}
+
+void AMainMenuGameMode::EndPlay(EEndPlayReason::Type const reason) {
+    auto* const game_instance{GetGameInstance()};
+    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>()
+                                            : nullptr};
+    if (IsValid(game)) {
+        game->stop_menu_ambience();
+    }
+
+    Super::EndPlay(reason);
 }
 }
