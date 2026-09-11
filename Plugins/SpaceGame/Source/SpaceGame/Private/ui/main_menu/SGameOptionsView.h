@@ -4,6 +4,7 @@
 #include "SpaceGame/settings/GameSettings.generated.h"
 #include "SpaceGame/ui/main_menu/ControlChordCapture.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
+#include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
 #include <Widgets/SCompoundWidget.h>
@@ -29,11 +30,13 @@ class SGameOptionsView final : public SCompoundWidget {
         : _Settings(nullptr)
         , _Capabilities(nullptr)
         , _Style(nullptr)
-        , _InitialTab(EOptionsTab::Video) {}
+        , _InitialTab(EOptionsTab::Video)
+        , _Audio() {}
     SLATE_ARGUMENT(UGameSettingsSubsystem*, Settings)
     SLATE_ARGUMENT(FGameCapabilities const*, Capabilities)
     SLATE_ARGUMENT(FGameUiStyle const*, Style)
     SLATE_ARGUMENT(EOptionsTab, InitialTab)
+    SLATE_ARGUMENT(FGameAudioFacade, Audio)
     SLATE_EVENT(FOnOptionsTabChanged, OnTabChanged)
     SLATE_EVENT(FSimpleDelegate, OnApply)
     SLATE_EVENT(FSimpleDelegate, OnReset)
@@ -127,6 +130,7 @@ class SGameOptionsView final : public SCompoundWidget {
     TWeakObjectPtr<UGameSettingsSubsystem> settings_{};
     FGameCapabilities const* capabilities_{};
     FGameUiStyle const* style_{};
+    FGameAudioFacade audio_{};
     EOptionsTab active_tab_{EOptionsTab::Video};
 
     FOnOptionsTabChanged on_tab_changed_{};

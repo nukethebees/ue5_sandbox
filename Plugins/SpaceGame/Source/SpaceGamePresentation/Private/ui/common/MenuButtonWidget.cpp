@@ -61,6 +61,10 @@ auto UMenuButtonWidget::get_text() const -> FText {
     return text_;
 }
 
+void UMenuButtonWidget::set_audio(FGameAudioFacade audio) {
+    audio_ = MoveTemp(audio);
+}
+
 void UMenuButtonWidget::NativePreConstruct() {
     resolved_style_ = resolve_style();
     Super::NativePreConstruct();
@@ -78,6 +82,7 @@ void UMenuButtonWidget::NativePreConstruct() {
 
 void UMenuButtonWidget::NativeOnPressed() {
     Super::NativeOnPressed();
+    audio_.play_button_pressed();
     update_visual_style();
 }
 

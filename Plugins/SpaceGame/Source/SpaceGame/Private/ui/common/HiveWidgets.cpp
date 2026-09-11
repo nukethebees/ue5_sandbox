@@ -56,6 +56,7 @@ void SHiveNavigationButton::Construct(FArguments const& args) {
                   .Text(args._Text)
                   .Enabled(args._Enabled)
                   .Selected(args._Selected)
+                  .Audio(args._Audio)
                   .OnClicked(args._OnClicked)];
 }
 

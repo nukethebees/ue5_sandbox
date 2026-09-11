@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
 #include <Widgets/SCompoundWidget.h>
@@ -20,7 +21,8 @@ class SPACEGAME_API SGameButton final : public SCompoundWidget {
         , _Text()
         , _ToolTipText()
         , _Enabled(true)
-        , _Selected(false) {}
+        , _Selected(false)
+        , _Audio() {}
     SLATE_ARGUMENT(FGameButtonPresentationStyle const*, Style)
     SLATE_ARGUMENT(FSlateBrush const*, Icon)
     SLATE_ATTRIBUTE(FSlateColor, IconTint)
@@ -31,6 +33,7 @@ class SPACEGAME_API SGameButton final : public SCompoundWidget {
     SLATE_ATTRIBUTE(FText, ToolTipText)
     SLATE_ATTRIBUTE(bool, Enabled)
     SLATE_ARGUMENT(bool, Selected)
+    SLATE_ARGUMENT(FGameAudioFacade, Audio)
     SLATE_EVENT(FOnClicked, OnClicked)
     SLATE_END_ARGS()
 
@@ -41,8 +44,10 @@ class SPACEGAME_API SGameButton final : public SCompoundWidget {
   private:
     auto text_colour() const -> FSlateColor;
     auto focus_brush() const -> FSlateBrush const*;
+    void play_pressed_audio();
 
     FGameButtonPresentationStyle const* style_{};
+    FGameAudioFacade audio_{};
     TSharedPtr<SButton> button_{};
     bool selected_{};
 };

@@ -16,6 +16,7 @@
 namespace ml::ioj {
 void SLevelCompletionView::Construct(FArguments const& args) {
     style_ = args._Style;
+    audio_ = args._Audio;
     check(style_ != nullptr);
     on_return_to_mission_control_ = args._OnReturnToMissionControl;
     on_keep_operating_ = args._OnKeepOperating;
@@ -221,6 +222,7 @@ auto SLevelCompletionView::build_footer() -> TSharedRef<SWidget> {
     auto return_button{
         SNew(SGameButton)
             .Style(&style_->button(EGameButtonStyle::Primary))
+            .Audio(audio_)
             .Text(NSLOCTEXT("LevelCompletion", "Return", "Return to Mission Control"))
             .OnClicked(this,
                        &SLevelCompletionView::activate_action,
@@ -229,6 +231,7 @@ auto SLevelCompletionView::build_footer() -> TSharedRef<SWidget> {
     auto keep_operating_button{
         SNew(SGameButton)
             .Style(&style_->button(EGameButtonStyle::Secondary))
+            .Audio(audio_)
             .Text(NSLOCTEXT("LevelCompletion", "KeepOperating", "Keep Operating"))
             .OnClicked(this,
                        &SLevelCompletionView::activate_action,

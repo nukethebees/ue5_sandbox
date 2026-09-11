@@ -55,6 +55,7 @@ auto UOptionsWidget::RebuildWidget() -> TSharedRef<SWidget> {
         .Settings(settings_)
         .Capabilities(&game_->get_platform_capabilities())
         .Style(&game_->get_ui_style())
+        .Audio(game_->get_audio())
         .InitialTab(active_tab_)
         .OnTabChanged(FOnOptionsTabChanged::CreateUObject(this, &ThisClass::handle_tab_changed))
         .OnApply(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_apply))

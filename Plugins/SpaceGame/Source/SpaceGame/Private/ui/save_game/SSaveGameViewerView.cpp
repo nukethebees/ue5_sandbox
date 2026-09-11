@@ -18,11 +18,13 @@ namespace ml::ioj {
 namespace {
 auto action_button(TSharedPtr<SGameButton>& button,
                    FGameUiStyle const& style,
+                   FGameAudioFacade const audio,
                    EGameButtonStyle const button_style,
                    FText text,
                    FOnClicked on_clicked) -> TSharedRef<SWidget> {
     return SNew(SBox).MinDesiredWidth(190.0f)[SAssignNew(button, SGameButton)
                                                   .Style(&style.button(button_style))
+                                                  .Audio(audio)
                                                   .Text(MoveTemp(text))
                                                   .OnClicked(MoveTemp(on_clicked))];
 }
@@ -42,6 +44,7 @@ auto metadata_text(FText const& first, FText const& second, FText const& third, 
 /* **************************************** */
 void SSaveGameViewerView::Construct(FArguments const& args) {
     style_ = args._Style;
+    audio_ = args._Audio;
     check(style_ != nullptr);
     on_profile_selected_ = args._OnProfileSelected;
     on_outcome_selected_ = args._OnOutcomeSelected;
@@ -305,6 +308,7 @@ auto SSaveGameViewerView::build_report() -> TSharedRef<SWidget> {
             .VAlign(VAlign_Top)[action_button(
                 activate_button_,
                 *style_,
+                audio_,
                 EGameButtonStyle::Primary,
                 NSLOCTEXT("SaveGameViewer", "ActivateProfile", "Set Active Record"),
                 FOnClicked::CreateSP(this, &SSaveGameViewerView::handle_action, on_activate_))]};
@@ -355,6 +359,7 @@ auto SSaveGameViewerView::build_footer() -> TSharedRef<SWidget> {
     footer->AddSlot().AutoWidth()[action_button(
         create_button_,
         *style_,
+        audio_,
         EGameButtonStyle::Primary,
         NSLOCTEXT("SaveGameViewer", "CreateProfile", "New Service Record"),
         FOnClicked::CreateSP(this, &SSaveGameViewerView::handle_action, on_begin_create_))];
@@ -363,6 +368,7 @@ auto SSaveGameViewerView::build_footer() -> TSharedRef<SWidget> {
     footer->AddSlot().AutoWidth()[action_button(
         reset_button,
         *style_,
+        audio_,
         EGameButtonStyle::Secondary,
         NSLOCTEXT("SaveGameViewer", "ResetTestProfile", "Reset Test Record"),
         FOnClicked::CreateSP(this, &SSaveGameViewerView::handle_action, on_reset_test_profile_))];
@@ -371,6 +377,7 @@ auto SSaveGameViewerView::build_footer() -> TSharedRef<SWidget> {
     footer->AddSlot().AutoWidth()[action_button(
         refresh_button_,
         *style_,
+        audio_,
         EGameButtonStyle::Secondary,
         NSLOCTEXT("SaveGameViewer", "Refresh", "Refresh Archive"),
         FOnClicked::CreateSP(this, &SSaveGameViewerView::handle_action, on_refresh_))];
@@ -435,6 +442,7 @@ auto SSaveGameViewerView::build_create_prompt() -> TSharedRef<SWidget> {
                                        SHorizontalBox::Slot().AutoWidth()[action_button(
                                            cancel_button,
                                            *style_,
+                                           audio_,
                                            EGameButtonStyle::Secondary,
                                            NSLOCTEXT("SaveGameViewer", "CancelCreate", "Cancel"),
                                            FOnClicked::CreateSP(this,
@@ -444,6 +452,7 @@ auto SSaveGameViewerView::build_create_prompt() -> TSharedRef<SWidget> {
                                            FMargin{10.0f, 0.0f, 0.0f, 0.0f})[action_button(
                                            confirm_button,
                                            *style_,
+                                           audio_,
                                            EGameButtonStyle::Primary,
                                            NSLOCTEXT(
                                                "SaveGameViewer", "ConfirmCreate", "Create Record"),
@@ -497,6 +506,7 @@ void SSaveGameViewerView::rebuild_profiles() {
         auto const button{
             SNew(SGameButton)
                 .Style(&style_->button(EGameButtonStyle::Secondary))
+                .Audio(audio_)
                 .ContentAlignment(HAlign_Left)
                 .Text(row.text)
                 .Selected(index == state_.selected_profile_index)
@@ -517,6 +527,7 @@ void SSaveGameViewerView::rebuild_outcomes() {
         auto const button{
             SNew(SGameButton)
                 .Style(&style_->button(EGameButtonStyle::Secondary))
+                .Audio(audio_)
                 .ContentAlignment(HAlign_Left)
                 .Text(row.text)
                 .Selected(index == state_.selected_outcome_index)

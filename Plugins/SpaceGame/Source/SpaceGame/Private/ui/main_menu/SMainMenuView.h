@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SpaceGame/ui/main_menu/MainMenuWidget.h"
+#include "SpaceGamePresentation/audio/GameAudio.h"
 
 #include <Widgets/SBoxPanel.h>
 #include <Widgets/SCompoundWidget.h>
@@ -17,9 +18,11 @@ class SMainMenuView final : public SCompoundWidget {
   public:
     SLATE_BEGIN_ARGS(SMainMenuView)
         : _Style(nullptr)
-        , _InitialPage(EMainMenuPage::SelectMission) {}
+        , _InitialPage(EMainMenuPage::SelectMission)
+        , _Audio() {}
     SLATE_ARGUMENT(FGameUiStyle const*, Style)
     SLATE_ARGUMENT(EMainMenuPage, InitialPage)
+    SLATE_ARGUMENT(FGameAudioFacade, Audio)
     SLATE_NAMED_SLOT(FArguments, MissionContent)
     SLATE_NAMED_SLOT(FArguments, ArchiveContent)
     SLATE_NAMED_SLOT(FArguments, TelemetryContent)
@@ -56,6 +59,7 @@ class SMainMenuView final : public SCompoundWidget {
     auto navigation_has_focus() const -> bool;
 
     FGameUiStyle const* style_{};
+    FGameAudioFacade audio_{};
     FOnMainMenuPageSelected on_page_selected_{};
     FSimpleDelegate on_quit_{};
     FSimpleDelegate on_focus_content_{};

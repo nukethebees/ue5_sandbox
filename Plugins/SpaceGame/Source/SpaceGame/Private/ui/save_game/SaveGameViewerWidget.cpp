@@ -61,6 +61,7 @@ auto USaveGameViewerWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto result{
         SAssignNew(view_, SSaveGameViewerView)
             .Style(style)
+            .Audio(IsValid(game_) ? game_->get_audio() : FGameAudioFacade{})
             .OnProfileSelected(
                 FOnSaveProfileSelected::CreateUObject(this, &ThisClass::select_profile))
             .OnOutcomeSelected(

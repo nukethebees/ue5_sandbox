@@ -35,6 +35,8 @@ TEST_CLASS(BoomAudioLibrary, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("An unset root has no directories"), unset.directories.IsEmpty());
         TestRunner->TestTrue(TEXT("An unset root has no source path"),
                              unset.menu_ambience_source.path.IsEmpty());
+        TestRunner->TestTrue(TEXT("An unset root has no button source path"),
+                             unset.menu_button_pressed_source.path.IsEmpty());
 
         FTemporaryBoomAudioDirectory directory;
         auto const missing_path{FPaths::Combine(directory.path, TEXT("missing"))};
@@ -47,6 +49,8 @@ TEST_CLASS(BoomAudioLibrary, "Sandbox.UnitTests")
                              missing.directories.IsEmpty());
         TestRunner->TestTrue(TEXT("A missing root has no source path"),
                              missing.menu_ambience_source.path.IsEmpty());
+        TestRunner->TestTrue(TEXT("A missing root has no button source path"),
+                             missing.menu_button_pressed_source.path.IsEmpty());
     }
 
     TEST_METHOD(ResolvesAvailablePackDirectoriesRelativeToTheRoot)
@@ -66,6 +70,13 @@ TEST_CLASS(BoomAudioLibrary, "Sandbox.UnitTests")
         TestRunner->TestTrue(
             TEXT("The menu ambience fixture is written"),
             FFileHelper::SaveStringToFile(TEXT("wave fixture"), *expected_source_path));
+        auto const expected_button_relative_path{FPaths::Combine(
+            TEXT("sci-fi_ds_2220mb"), TEXT("SCICmpt_Computer Beep High 01_B00M_SFDS.wav"))};
+        auto const expected_button_path{
+            FPaths::Combine(directory.path, expected_button_relative_path)};
+        TestRunner->TestTrue(
+            TEXT("The menu button fixture is written"),
+            FFileHelper::SaveStringToFile(TEXT("wave fixture"), *expected_button_path));
 
         auto const resolution{ml::ioj::resolve_boom_audio_library(directory.path)};
         TestRunner->TestTrue(TEXT("The root is valid"), resolution.root.valid);
@@ -85,6 +96,14 @@ TEST_CLASS(BoomAudioLibrary, "Sandbox.UnitTests")
                               FPaths::Combine(expected_root, expected_source_relative_path));
         TestRunner->TestTrue(TEXT("The menu ambience source is available"),
                              resolution.menu_ambience_source.valid);
+        TestRunner->TestEqual(TEXT("The menu button relative path is preserved"),
+                              resolution.menu_button_pressed_source.relative_path,
+                              expected_button_relative_path);
+        TestRunner->TestEqual(TEXT("The menu button path is resolved beneath the root"),
+                              resolution.menu_button_pressed_source.path,
+                              FPaths::Combine(expected_root, expected_button_relative_path));
+        TestRunner->TestTrue(TEXT("The menu button source is available"),
+                             resolution.menu_button_pressed_source.valid);
         for (int32 index{}; index < expected_relative_directories.Num(); ++index) {
             auto const& resolved_directory{resolution.directories[index]};
             TestRunner->TestEqual(TEXT("The relative directory is preserved"),
@@ -131,6 +150,8 @@ TEST_CLASS(BoomAudioLibrary, "Sandbox.UnitTests")
                               resolution.directories[0].valid);
         TestRunner->TestFalse(TEXT("The source beneath a missing pack is unavailable"),
                               resolution.menu_ambience_source.valid);
+        TestRunner->TestFalse(TEXT("The button source beneath a missing pack is unavailable"),
+                              resolution.menu_button_pressed_source.valid);
     }
 
     TEST_METHOD(ReportsMissingMenuAmbienceSource)
@@ -144,5 +165,18 @@ TEST_CLASS(BoomAudioLibrary, "Sandbox.UnitTests")
                               resolution.menu_ambience_source.valid);
         TestRunner->TestTrue(TEXT("The missing menu ambience source has a resolved path"),
                              !resolution.menu_ambience_source.path.IsEmpty());
+    }
+
+    TEST_METHOD(ReportsMissingMenuButtonSource)
+    {
+        FTemporaryBoomAudioDirectory directory;
+        IFileManager::Get().MakeDirectory(
+            *FPaths::Combine(directory.path, TEXT("sci-fi_ds_2220mb")), true);
+
+        auto const resolution{ml::ioj::resolve_boom_audio_library(directory.path)};
+        TestRunner->TestFalse(TEXT("A missing menu button source is unavailable"),
+                              resolution.menu_button_pressed_source.valid);
+        TestRunner->TestTrue(TEXT("The missing menu button source has a resolved path"),
+                             !resolution.menu_button_pressed_source.path.IsEmpty());
     }
 };

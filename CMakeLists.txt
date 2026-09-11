@@ -346,9 +346,9 @@ add_custom_target(generate-scripted-level-assets
   VERBATIM
 )
 
-add_custom_target(import-menu-ambience
+add_custom_target(import-game-audio
   COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
-    -run=ImportMenuAmbience
+    -run=ImportGameAudio
     "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
     -ddc=NoZenLocalFallback
     -unattended
@@ -359,7 +359,7 @@ add_custom_target(import-menu-ambience
     -stdout
   DEPENDS editor
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-  COMMENT "Importing optional local menu ambience audio"
+  COMMENT "Importing optional local game audio"
   USES_TERMINAL
   VERBATIM
 )

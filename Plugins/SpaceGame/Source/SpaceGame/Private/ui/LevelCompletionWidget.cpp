@@ -49,6 +49,7 @@ void ULevelCompletionWidget::NativeOnInitialized() {
     auto const* const style{IsValid(game_) ? &game_->get_ui_style() : &fallback_style_};
     view_host->SetContent(SAssignNew(view_, SLevelCompletionView)
                               .Style(style)
+                              .Audio(IsValid(game_) ? game_->get_audio() : FGameAudioFacade{})
                               .OnReturnToMissionControl(FSimpleDelegate::CreateUObject(
                                   this, &ThisClass::request_return_to_mission_control))
                               .OnKeepOperating(FSimpleDelegate::CreateUObject(

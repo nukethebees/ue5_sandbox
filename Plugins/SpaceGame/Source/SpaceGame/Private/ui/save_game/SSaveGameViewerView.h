@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SpaceGame/ui/save_game/SaveGameViewerWidget.h"
+#include "SpaceGamePresentation/audio/GameAudio.h"
 
 #include <Widgets/SCompoundWidget.h>
 
@@ -19,8 +20,10 @@ DECLARE_DELEGATE_OneParam(FOnCreateSaveProfile, FString const&);
 class SSaveGameViewerView final : public SCompoundWidget {
   public:
     SLATE_BEGIN_ARGS(SSaveGameViewerView)
-        : _Style(nullptr) {}
+        : _Style(nullptr)
+        , _Audio() {}
     SLATE_ARGUMENT(FGameUiStyle const*, Style)
+    SLATE_ARGUMENT(FGameAudioFacade, Audio)
     SLATE_EVENT(FOnSaveProfileSelected, OnProfileSelected)
     SLATE_EVENT(FOnSaveOutcomeSelected, OnOutcomeSelected)
     SLATE_EVENT(FSimpleDelegate, OnRefresh)
@@ -77,6 +80,7 @@ class SSaveGameViewerView final : public SCompoundWidget {
     // State
     /* **************************************** */
     FGameUiStyle const* style_{};
+    FGameAudioFacade audio_{};
     FSaveGameViewState state_{};
     FOnSaveProfileSelected on_profile_selected_{};
     FOnSaveOutcomeSelected on_outcome_selected_{};

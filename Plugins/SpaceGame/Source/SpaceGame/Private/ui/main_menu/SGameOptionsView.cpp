@@ -127,6 +127,7 @@ void SGameOptionsView::Construct(FArguments const& args) {
     settings_ = args._Settings;
     capabilities_ = args._Capabilities;
     style_ = args._Style;
+    audio_ = args._Audio;
     active_tab_ = args._InitialTab;
     check(style_ != nullptr);
     on_tab_changed_ = args._OnTabChanged;
@@ -403,6 +404,7 @@ auto SGameOptionsView::build_footer() -> TSharedRef<SWidget> {
              SHorizontalBox::Slot().AutoWidth().Padding(FMargin{0.0f, 0.0f, spacing, 0.0f})
                  [SAssignNew(reset_button_, SGameButton)
                       .Style(&style_->button(EGameButtonStyle::Secondary))
+                      .Audio(audio_)
                       .Text(NSLOCTEXT("OptionsMenu", "ResetCategory", "Reset Category"))
                       .OnClicked_Lambda([delegate = on_reset_]() {
                           delegate.ExecuteIfBound();
@@ -411,6 +413,7 @@ auto SGameOptionsView::build_footer() -> TSharedRef<SWidget> {
              SHorizontalBox::Slot()
                  .AutoWidth()[SAssignNew(apply_button_, SGameButton)
                                   .Style(&style_->button(EGameButtonStyle::Primary))
+                                  .Audio(audio_)
                                   .Text(NSLOCTEXT("OptionsMenu", "Apply", "Apply"))
                                   .OnClicked_Lambda([delegate = on_apply_]() {
                                       delegate.ExecuteIfBound();
@@ -560,6 +563,7 @@ void SGameOptionsView::rebuild_controls_page() {
         style_->settings().button_spacing,
         0.0f})[SNew(SGameButton)
                    .Style(&style_->button(EGameButtonStyle::Secondary))
+                   .Audio(audio_)
                    .Text(NSLOCTEXT("OptionsMenu", "CreateCustomProfile", "Copy to New Custom"))
                    .OnClicked_Lambda([this] {
                        if (auto* const current{settings_.Get()}) {
@@ -622,6 +626,7 @@ void SGameOptionsView::rebuild_controls_page() {
         profile_actions->AddSlot()
             .AutoWidth()[SNew(SGameButton)
                              .Style(&style_->button(EGameButtonStyle::Secondary))
+                             .Audio(audio_)
                              .Text(NSLOCTEXT("OptionsMenu", "DeleteCustomProfile", "Delete Custom"))
                              .OnClicked_Lambda([this, profile_id = active_profile->id] {
                                  if (auto* const current{settings_.Get()}) {
@@ -790,6 +795,7 @@ auto SGameOptionsView::build_binding_cell(TConstArrayView<FControlBindingView> c
                  FMargin{0.0f, 0.0f, style_->settings().button_spacing, 0.0f})
                  [SNew(SGameButton)
                       .Style(&style_->button(EGameButtonStyle::Secondary))
+                      .Audio(audio_)
                       .Text(key_text)
                       .ToolTipText(binding.chord.IsSet()
                                        ? NSLOCTEXT("OptionsMenu",
@@ -809,6 +815,7 @@ auto SGameOptionsView::build_binding_cell(TConstArrayView<FControlBindingView> c
                  FMargin{0.0f, 0.0f, style_->settings().button_spacing, 0.0f})
                  [SNew(SGameButton)
                       .Style(&style_->button(EGameButtonStyle::Secondary))
+                      .Audio(audio_)
                       .Text(NSLOCTEXT("OptionsMenu", "ClearBinding", "Clear"))
                       .Enabled(binding.current_key.IsValid())
                       .OnClicked_Lambda([this, address = binding.address] {
@@ -822,6 +829,7 @@ auto SGameOptionsView::build_binding_cell(TConstArrayView<FControlBindingView> c
              SHorizontalBox::Slot()
                  .AutoWidth()[SNew(SGameButton)
                                   .Style(&style_->button(EGameButtonStyle::Secondary))
+                                  .Audio(audio_)
                                   .Text(NSLOCTEXT("OptionsMenu", "ResetBinding", "Reset"))
                                   .Enabled(binding.modified)
                                   .Visibility(binding.custom_profile ? EVisibility::Collapsed
@@ -1272,6 +1280,7 @@ auto SGameOptionsView::build_dirty_prompt() -> TSharedRef<SWidget> {
     auto const& secondary{style_->button(EGameButtonStyle::Secondary)};
     auto dirty_apply{SAssignNew(dirty_apply_button_, SGameButton)
                          .Style(&primary)
+                         .Audio(audio_)
                          .Text(NSLOCTEXT("OptionsMenu", "PromptApply", "Apply"))
                          .OnClicked_Lambda([delegate = on_dirty_apply_]() {
                              delegate.ExecuteIfBound();
@@ -1279,6 +1288,7 @@ auto SGameOptionsView::build_dirty_prompt() -> TSharedRef<SWidget> {
                          })};
     auto dirty_discard{SAssignNew(dirty_discard_button_, SGameButton)
                            .Style(&secondary)
+                           .Audio(audio_)
                            .Text(NSLOCTEXT("OptionsMenu", "PromptDiscard", "Discard"))
                            .OnClicked_Lambda([delegate = on_dirty_discard_]() {
                                delegate.ExecuteIfBound();
@@ -1286,6 +1296,7 @@ auto SGameOptionsView::build_dirty_prompt() -> TSharedRef<SWidget> {
                            })};
     auto dirty_stay{SAssignNew(dirty_stay_button_, SGameButton)
                         .Style(&secondary)
+                        .Audio(audio_)
                         .Text(NSLOCTEXT("OptionsMenu", "PromptStay", "Stay"))
                         .OnClicked_Lambda([delegate = on_dirty_stay_]() {
                             delegate.ExecuteIfBound();
@@ -1301,6 +1312,7 @@ auto SGameOptionsView::build_display_prompt() -> TSharedRef<SWidget> {
     auto const& secondary{style_->button(EGameButtonStyle::Secondary)};
     auto confirm{SAssignNew(confirm_display_button_, SGameButton)
                      .Style(&primary)
+                     .Audio(audio_)
                      .Text(NSLOCTEXT("OptionsMenu", "KeepChanges", "Keep Changes"))
                      .OnClicked_Lambda([delegate = on_confirm_display_]() {
                          delegate.ExecuteIfBound();
@@ -1308,6 +1320,7 @@ auto SGameOptionsView::build_display_prompt() -> TSharedRef<SWidget> {
                      })};
     auto revert{SAssignNew(revert_display_button_, SGameButton)
                     .Style(&secondary)
+                    .Audio(audio_)
                     .Text(NSLOCTEXT("OptionsMenu", "RevertChanges", "Revert"))
                     .OnClicked_Lambda([delegate = on_revert_display_]() {
                         delegate.ExecuteIfBound();
@@ -1329,6 +1342,7 @@ auto SGameOptionsView::build_display_prompt() -> TSharedRef<SWidget> {
 auto SGameOptionsView::build_capture_prompt() -> TSharedRef<SWidget> {
     auto confirm{SAssignNew(chord_confirm_button_, SGameButton)
                      .Style(&style_->button(EGameButtonStyle::Primary))
+                     .Audio(audio_)
                      .Text(NSLOCTEXT("OptionsMenu", "ConfirmChordCapture", "Confirm"))
                      .Enabled_Lambda(
                          [this] { return captured_chord_.IsSet() && chord_capture_.is_complete(); })
@@ -1339,6 +1353,7 @@ auto SGameOptionsView::build_capture_prompt() -> TSharedRef<SWidget> {
                      .OnClicked_Lambda([this] { return confirm_chord_capture(); })};
     auto clear{SAssignNew(chord_clear_button_, SGameButton)
                    .Style(&style_->button(EGameButtonStyle::Secondary))
+                   .Audio(audio_)
                    .Text(NSLOCTEXT("OptionsMenu", "ClearChordCapture", "Clear Capture"))
                    .Visibility_Lambda([this] {
                        return captured_chord_.IsSet() ? EVisibility::Visible
@@ -1352,6 +1367,7 @@ auto SGameOptionsView::build_capture_prompt() -> TSharedRef<SWidget> {
                    })};
     auto cancel{SAssignNew(chord_cancel_button_, SGameButton)
                     .Style(&style_->button(EGameButtonStyle::Secondary))
+                    .Audio(audio_)
                     .Text(NSLOCTEXT("OptionsMenu", "CancelChordCapture", "Cancel"))
                     .Visibility_Lambda([this] {
                         return captured_chord_.IsSet() ? EVisibility::Visible
@@ -1404,6 +1420,7 @@ auto SGameOptionsView::build_capture_prompt() -> TSharedRef<SWidget> {
 auto SGameOptionsView::build_conflict_prompt() -> TSharedRef<SWidget> {
     auto replace{SAssignNew(conflict_replace_button_, SGameButton)
                      .Style(&style_->button(EGameButtonStyle::Primary))
+                     .Audio(audio_)
                      .Text(NSLOCTEXT("OptionsMenu", "ReplaceBinding", "Replace"))
                      .OnClicked_Lambda([this] {
                          auto applied{false};
@@ -1434,6 +1451,7 @@ auto SGameOptionsView::build_conflict_prompt() -> TSharedRef<SWidget> {
                      })};
     auto cancel{SAssignNew(conflict_cancel_button_, SGameButton)
                     .Style(&style_->button(EGameButtonStyle::Secondary))
+                    .Audio(audio_)
                     .Text(NSLOCTEXT("OptionsMenu", "CancelBinding", "Cancel"))
                     .OnClicked_Lambda([this] {
                         close_binding_prompt();

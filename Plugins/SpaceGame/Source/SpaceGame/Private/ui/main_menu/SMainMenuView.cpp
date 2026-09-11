@@ -13,6 +13,7 @@
 namespace ml::ioj {
 void SMainMenuView::Construct(FArguments const& args) {
     style_ = args._Style;
+    audio_ = args._Audio;
     active_page_ = args._InitialPage;
     check(style_ != nullptr);
     on_page_selected_ = args._OnPageSelected;
@@ -228,6 +229,7 @@ auto SMainMenuView::build_navigation() -> TSharedRef<SWidget> {
                                               .Style(style_)
                                               .Icon(&style_->icon(EGameUiIcon::System))
                                               .Text(NSLOCTEXT("MainMenu", "QuitGame", "Quit Game"))
+                                              .Audio(audio_)
                                               .OnClicked(this, &SMainMenuView::handle_quit)];
     navigation->AddSlot().AutoHeight().Padding(FMargin{
         0.0f,
@@ -277,6 +279,7 @@ void SMainMenuView::add_page(TSharedRef<SVerticalBox> const& navigation,
                                               .Style(style_)
                                               .Icon(&style_->icon(icon))
                                               .Text(MoveTemp(text))
+                                              .Audio(audio_)
                                               .OnClicked(this, &SMainMenuView::handle_page, page)];
     page_buttons_.Add(button);
 }

@@ -32,12 +32,14 @@ auto fallback_button_style() -> FGameButtonPresentationStyle const& {
 void SGameButton::Construct(FArguments const& args) {
     style_ = args._Style != nullptr ? args._Style : &fallback_button_style();
     selected_ = args._Selected;
+    audio_ = args._Audio;
 
     SAssignNew(button_, SButton)
         .ButtonStyle(selected_ ? &style_->selected : &style_->normal)
         .ContentPadding(style_->custom_padding)
         .IsEnabled(args._Enabled)
         .ToolTipText(args._ToolTipText)
+        .OnPressed(this, &SGameButton::play_pressed_audio)
         .OnClicked(args._OnClicked)
             [SNew(SBox)
                  .MinDesiredWidth(style_->minimum_size.X)
@@ -104,6 +106,10 @@ auto SGameButton::text_colour() const -> FSlateColor {
 
 auto SGameButton::focus_brush() const -> FSlateBrush const* {
     return has_focus() ? &style_->focus : nullptr;
+}
+
+void SGameButton::play_pressed_audio() {
+    audio_.play_button_pressed();
 }
 
 } // namespace ml::ioj

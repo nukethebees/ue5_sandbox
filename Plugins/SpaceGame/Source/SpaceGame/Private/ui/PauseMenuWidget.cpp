@@ -64,6 +64,21 @@ void UPauseMenuWidget::NativeOnInitialized() {
         this, &ThisClass::handle_return_to_level_select);
     quit_button->OnClicked().AddUObject(this, &ThisClass::handle_quit);
 
+    auto* const game_instance{GetGameInstance()};
+    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>()
+                                            : nullptr};
+    auto const audio{IsValid(game) ? game->get_audio() : FGameAudioFacade{}};
+    for (auto* const button : {resume_button,
+                               overview_button,
+                               forces_button,
+                               combat_button,
+                               telemetry_button,
+                               options_button,
+                               return_to_level_select_button,
+                               quit_button}) {
+        button->set_audio(audio);
+    }
+
     for (auto* const button :
          {overview_button, forces_button, combat_button, telemetry_button, options_button}) {
         button->SetIsSelectable(true);

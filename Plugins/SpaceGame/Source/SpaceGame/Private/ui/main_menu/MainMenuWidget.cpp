@@ -90,6 +90,7 @@ auto UMainMenuWidget::RebuildWidget() -> TSharedRef<SWidget> {
         SAssignNew(view_, SMainMenuView)
             .Style(style)
             .InitialPage(active_page_)
+            .Audio(IsValid(game_) ? game_->get_audio() : FGameAudioFacade{})
             .MissionContent()[mission_content]
             .ArchiveContent()[archive_content]
             .TelemetryContent()[telemetry_content]

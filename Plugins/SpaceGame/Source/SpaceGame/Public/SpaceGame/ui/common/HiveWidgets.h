@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
 #include <Widgets/SCompoundWidget.h>
@@ -43,12 +44,14 @@ class SPACEGAME_API SHiveNavigationButton final : public SCompoundWidget {
         , _Icon(nullptr)
         , _Text()
         , _Enabled(true)
-        , _Selected(false) {}
+        , _Selected(false)
+        , _Audio() {}
     SLATE_ARGUMENT(FGameUiStyle const*, Style)
     SLATE_ARGUMENT(FSlateBrush const*, Icon)
     SLATE_ATTRIBUTE(FText, Text)
     SLATE_ATTRIBUTE(bool, Enabled)
     SLATE_ARGUMENT(bool, Selected)
+    SLATE_ARGUMENT(FGameAudioFacade, Audio)
     SLATE_EVENT(FOnClicked, OnClicked)
     SLATE_END_ARGS()
 

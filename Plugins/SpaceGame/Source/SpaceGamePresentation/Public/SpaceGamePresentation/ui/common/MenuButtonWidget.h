@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
 #include <CommonButtonBase.h>
@@ -32,6 +33,7 @@ class SPACEGAMEPRESENTATION_API UMenuButtonWidget : public UCommonButtonBase {
 
     void set_text(FText const& text);
     [[nodiscard]] auto get_text() const -> FText;
+    void set_audio(FGameAudioFacade audio);
   protected:
     void NativePreConstruct() override;
     void NativeOnPressed() override;
@@ -64,5 +66,6 @@ class SPACEGAMEPRESENTATION_API UMenuButtonWidget : public UCommonButtonBase {
     void update_visual_style();
 
     FGameButtonPresentationStyle resolved_style_{};
+    FGameAudioFacade audio_{};
 };
 }

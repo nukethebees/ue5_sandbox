@@ -212,9 +212,9 @@
       "targets": ["generate-lab-mesh-assemblies"]
     },
     {
-      "name": "import-menu-ambience",
+      "name": "import-game-audio",
       "configurePreset": "debug-game",
-      "targets": ["import-menu-ambience"]
+      "targets": ["import-game-audio"]
     },
     {
       "name": "generate-project-files",
@@ -647,10 +647,10 @@
       ]
     },
     {
-      "name": "import-menu-ambience",
+      "name": "import-game-audio",
       "steps": [
         { "type": "configure", "name": "debug-game" },
-        { "type": "build", "name": "import-menu-ambience" }
+        { "type": "build", "name": "import-game-audio" }
       ]
     },
     {

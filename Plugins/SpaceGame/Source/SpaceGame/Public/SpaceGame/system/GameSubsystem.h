@@ -132,6 +132,7 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
 
     auto get_platform_capabilities() const -> FGameCapabilities const&;
     auto get_save_game_browser() -> FSaveGameBrowser&;
+    auto get_audio() -> FGameAudioFacade;
     void start_menu_ambience();
     void stop_menu_ambience();
 

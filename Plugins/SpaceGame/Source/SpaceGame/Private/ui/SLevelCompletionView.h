@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 #include "SpaceGameSimulation/missions/TestMissionState.h"
 #include "SpaceGameSimulation/simulation/LevelTelemetrySnapshot.h"
@@ -20,8 +21,10 @@ enum class ELevelCompletionAction : uint8 {
 class SLevelCompletionView final : public SCompoundWidget {
   public:
     SLATE_BEGIN_ARGS(SLevelCompletionView)
-        : _Style(nullptr) {}
+        : _Style(nullptr)
+        , _Audio() {}
     SLATE_ARGUMENT(FGameUiStyle const*, Style)
+    SLATE_ARGUMENT(FGameAudioFacade, Audio)
     SLATE_EVENT(FSimpleDelegate, OnReturnToMissionControl)
     SLATE_EVENT(FSimpleDelegate, OnKeepOperating)
     SLATE_END_ARGS()
@@ -47,6 +50,7 @@ class SLevelCompletionView final : public SCompoundWidget {
     void focus_action(ELevelCompletionAction action);
 
     FGameUiStyle const* style_{};
+    FGameAudioFacade audio_{};
     FSimpleDelegate on_return_to_mission_control_{};
     FSimpleDelegate on_keep_operating_{};
     ELevelCompletionAction focused_action_{ELevelCompletionAction::ReturnToMissionControl};
