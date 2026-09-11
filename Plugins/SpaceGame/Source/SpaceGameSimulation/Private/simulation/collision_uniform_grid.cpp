@@ -435,11 +435,11 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
     }
 }
 
-void CollisionUniformGrid::append_overlapping_entities(
-    FBox3f const& query_bounds,
-    FRegistryEntityHandle const ignored_entity,
-    TArray<FRegistryEntityHandle>& out_entities) const {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::append_overlapping_entities);
+void CollisionUniformGrid::append_overlaps(FBox3f const& query_bounds,
+                                           FRegistryEntityHandle const ignored_entity,
+                                           TArray<FRegistryEntityHandle>& out_entities,
+                                           TArray<int32>& out_static_geometry_indices) const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::append_overlaps);
 
     auto const [min_coord, max_coord]{to_cell_coord_bounds(query_bounds.Min, query_bounds.Max)};
     checkf(is_cell_coord_in_bounds(min_coord, max_coord),
@@ -448,34 +448,53 @@ void CollisionUniformGrid::append_overlapping_entities(
            *query_bounds.Max.ToString(),
            *to_string(grid_dims_));
 
+    auto const overlaps_query{
+        [&query_bounds](FVector3f const candidate_min, FVector3f const candidate_max) {
+            return query_bounds.Min.X <= candidate_max.X && query_bounds.Max.X >= candidate_min.X &&
+                   query_bounds.Min.Y <= candidate_max.Y && query_bounds.Max.Y >= candidate_min.Y &&
+                   query_bounds.Min.Z <= candidate_max.Z && query_bounds.Max.Z >= candidate_min.Z;
+        }};
+    auto const static_aabbs{static_aabbs_.get_const_view()};
+    auto const static_aabb_indices{TConstArrayView<int32>{static_aabb_indices_}};
+
     for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
         for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
             for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
                 auto const cell_index{to_index(x, y, z)};
                 auto const entity_count{cell_entity_counts_[cell_index]};
-                if (entity_count == 0) {
+                if (entity_count > 0) {
+                    auto const entity_offset{cell_entity_offsets_[cell_index]};
+                    auto const entities{TConstArrayView<FRegistryEntityHandle>{entities_}.Slice(
+                        entity_offset, entity_count)};
+                    auto const aabbs{aabbs_.get_const_view(entity_offset, entity_count)};
+
+                    for (int32 entity_index{}; entity_index < entity_count; ++entity_index) {
+                        auto const entity{entities[entity_index]};
+                        if (entity == ignored_entity || !entity_registry_.is_valid_alive(entity)) {
+                            continue;
+                        }
+
+                        if (overlaps_query(aabbs.mins[entity_index], aabbs.maxes[entity_index])) {
+                            out_entities.Add(entity);
+                        }
+                    }
+                }
+
+                auto const static_range_index{cell_static_range_indices_.IsValidIndex(cell_index)
+                                                  ? cell_static_range_indices_[cell_index]
+                                                  : INDEX_NONE};
+                if (static_range_index == INDEX_NONE) {
                     continue;
                 }
 
-                auto const entity_offset{cell_entity_offsets_[cell_index]};
-                auto const entities{TConstArrayView<FRegistryEntityHandle>{entities_}.Slice(
-                    entity_offset, entity_count)};
-                auto const aabbs{aabbs_.get_const_view(entity_offset, entity_count)};
-
-                for (int32 entity_index{}; entity_index < entity_count; ++entity_index) {
-                    auto const entity{entities[entity_index]};
-                    if (entity == ignored_entity || !entity_registry_.is_valid_alive(entity)) {
-                        continue;
-                    }
-
-                    auto const entity_min{aabbs.mins[entity_index]};
-                    auto const entity_max{aabbs.maxes[entity_index]};
-                    auto const overlaps{
-                        query_bounds.Min.X <= entity_max.X && query_bounds.Max.X >= entity_min.X &&
-                        query_bounds.Min.Y <= entity_max.Y && query_bounds.Max.Y >= entity_min.Y &&
-                        query_bounds.Min.Z <= entity_max.Z && query_bounds.Max.Z >= entity_min.Z};
-                    if (overlaps) {
-                        out_entities.Add(entity);
+                auto const static_offset{static_cell_range_offsets_[static_range_index]};
+                auto const static_count{static_cell_range_counts_[static_range_index]};
+                auto const static_indices{static_aabb_indices.Slice(
+                    static_cast<int32>(static_offset), static_cast<int32>(static_count))};
+                for (auto const static_index : static_indices) {
+                    if (overlaps_query(static_aabbs.mins[static_index],
+                                       static_aabbs.maxes[static_index])) {
+                        out_static_geometry_indices.Add(static_index);
                     }
                 }
             }

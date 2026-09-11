@@ -7,14 +7,17 @@
 namespace ml::ioj {
 void FCollisionSystem::initialise(FEntityAABBs const& bounds) {
     entity_aabbs_ = bounds;
-    overlap_pairs_.Reset();
-    overlap_query_scratch_.Reset();
+    entity_entity_overlaps_.reset();
+    entity_static_overlaps_.reset();
+    overlapping_entities_scratch_.Reset();
+    overlapping_static_geometry_indices_scratch_.Reset();
+    overlap_sort_indices_scratch_.Reset();
 }
 void FCollisionSystem::update(
     TConstArrayView<FRegistryEntityHandle> const collision_dirty_entities) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCollisionSystem::update);
     rebuild_grid();
-    find_overlap_pairs(collision_dirty_entities);
+    collect_overlaps_for_moved_entities(collision_dirty_entities);
 }
 FCollisionSystem::FCollisionSystem(FTestEntityRegistry const& registry) noexcept
     : entity_registry_{registry}
@@ -23,11 +26,12 @@ void FCollisionSystem::rebuild_grid() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCollisionSystem::rebuild_grid);
     uniform_grid_.rebuild_grid(entity_aabbs_);
 }
-void FCollisionSystem::find_overlap_pairs(
+void FCollisionSystem::collect_overlaps_for_moved_entities(
     TConstArrayView<FRegistryEntityHandle> const collision_dirty_entities) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCollisionSystem::find_overlap_pairs);
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCollisionSystem::collect_overlaps_for_moved_entities);
 
-    overlap_pairs_.Reset();
+    entity_entity_overlaps_.reset();
+    entity_static_overlaps_.reset();
 
     auto const& entity_data{entity_registry_.get_entity_data()};
     for (auto const dirty_entity : collision_dirty_entities) {
@@ -43,32 +47,88 @@ void FCollisionSystem::find_overlap_pairs(
             entity_data.locations[entity_index],
             FRotator3f{ml::get_rotator3d(entity_data.rotations, entity_index)})};
 
-        overlap_query_scratch_.Reset();
-        uniform_grid_.append_overlapping_entities(bounds, dirty_entity, overlap_query_scratch_);
+        overlapping_entities_scratch_.Reset();
+        overlapping_static_geometry_indices_scratch_.Reset();
+        uniform_grid_.append_overlaps(bounds,
+                                      dirty_entity,
+                                      overlapping_entities_scratch_,
+                                      overlapping_static_geometry_indices_scratch_);
 
-        for (auto const overlapping_entity : overlap_query_scratch_) {
+        for (auto const overlapping_entity : overlapping_entities_scratch_) {
             if (overlapping_entity < dirty_entity) {
-                overlap_pairs_.Add({overlapping_entity, dirty_entity});
+                entity_entity_overlaps_.add(overlapping_entity, dirty_entity);
             } else {
-                overlap_pairs_.Add({dirty_entity, overlapping_entity});
+                entity_entity_overlaps_.add(dirty_entity, overlapping_entity);
             }
         }
-    }
 
-    overlap_pairs_.Sort();
-    auto const pair_count{overlap_pairs_.Num()};
-    if (pair_count < 2) {
-        return;
-    }
-
-    int32 write_index{1};
-    for (int32 read_index{1}; read_index < pair_count; ++read_index) {
-        if (overlap_pairs_[read_index] == overlap_pairs_[write_index - 1]) {
-            continue;
+        for (auto const static_geometry_index : overlapping_static_geometry_indices_scratch_) {
+            entity_static_overlaps_.add(dirty_entity, static_geometry_index);
         }
-
-        overlap_pairs_[write_index++] = overlap_pairs_[read_index];
     }
-    overlap_pairs_.SetNum(write_index, EAllowShrinking::No);
+
+    sort_and_deduplicate_overlaps();
+}
+void FCollisionSystem::sort_and_deduplicate_overlaps() {
+    auto const entity_pair_count{entity_entity_overlaps_.num()};
+    if (entity_pair_count > 1) {
+        overlap_sort_indices_scratch_.SetNumUninitialized(entity_pair_count, EAllowShrinking::No);
+        entity_entity_overlaps_.sort(
+            [](FEntityEntityOverlaps const& overlaps, int32 const lhs, int32 const rhs) {
+                auto const lhs_first{overlaps.first_entities[lhs]};
+                auto const rhs_first{overlaps.first_entities[rhs]};
+                return lhs_first < rhs_first ||
+                       (lhs_first == rhs_first &&
+                        overlaps.second_entities[lhs] < overlaps.second_entities[rhs]);
+            },
+            overlap_sort_indices_scratch_);
+
+        int32 write_index{1};
+        for (int32 read_index{1}; read_index < entity_pair_count; ++read_index) {
+            if (entity_entity_overlaps_.first_entities[read_index] ==
+                    entity_entity_overlaps_.first_entities[write_index - 1] &&
+                entity_entity_overlaps_.second_entities[read_index] ==
+                    entity_entity_overlaps_.second_entities[write_index - 1]) {
+                continue;
+            }
+
+            entity_entity_overlaps_.set(write_index,
+                                        entity_entity_overlaps_.first_entities[read_index],
+                                        entity_entity_overlaps_.second_entities[read_index]);
+            ++write_index;
+        }
+        entity_entity_overlaps_.set_num(write_index, EAllowShrinking::No);
+    }
+
+    auto const entity_static_count{entity_static_overlaps_.num()};
+    if (entity_static_count > 1) {
+        overlap_sort_indices_scratch_.SetNumUninitialized(entity_static_count, EAllowShrinking::No);
+        entity_static_overlaps_.sort(
+            [](FEntityStaticOverlaps const& overlaps, int32 const lhs, int32 const rhs) {
+                auto const lhs_entity{overlaps.entities[lhs]};
+                auto const rhs_entity{overlaps.entities[rhs]};
+                return lhs_entity < rhs_entity ||
+                       (lhs_entity == rhs_entity && overlaps.static_geometry_indices[lhs] <
+                                                        overlaps.static_geometry_indices[rhs]);
+            },
+            overlap_sort_indices_scratch_);
+
+        int32 write_index{1};
+        for (int32 read_index{1}; read_index < entity_static_count; ++read_index) {
+            if (entity_static_overlaps_.entities[read_index] ==
+                    entity_static_overlaps_.entities[write_index - 1] &&
+                entity_static_overlaps_.static_geometry_indices[read_index] ==
+                    entity_static_overlaps_.static_geometry_indices[write_index - 1]) {
+                continue;
+            }
+
+            entity_static_overlaps_.set(
+                write_index,
+                entity_static_overlaps_.entities[read_index],
+                entity_static_overlaps_.static_geometry_indices[read_index]);
+            ++write_index;
+        }
+        entity_static_overlaps_.set_num(write_index, EAllowShrinking::No);
+    }
 }
 }

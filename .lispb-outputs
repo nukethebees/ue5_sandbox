@@ -63,6 +63,7 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalS
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFightersSoA.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/player/TestSpaceShipPhaseInterface.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/simulation/EntityCellData.cpp
+Plugins/SpaceGame/Source/SpaceGameSimulation/Private/simulation/EntityOverlaps.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/simulation/LineTraces.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/simulation/TraceHits.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/telemetry/LevelTelemetryHistory.cpp
@@ -95,6 +96,7 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fi
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/player/TestSpaceShipPhaseInterface.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/EntityAABBs.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/EntityCellData.h
+Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/EntityOverlaps.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/LineTraces.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/TraceHits.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/telemetry/LevelTelemetryHistory.h
