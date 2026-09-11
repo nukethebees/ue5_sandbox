@@ -457,6 +457,8 @@ auto dependencies(Node const& node) -> std::vector<TypeDependency> {
                 return result;
             } else if constexpr (std::is_same_v<T, Function>) {
                 auto result{value.spec.return_type.dependencies};
+                result.insert(
+                    result.end(), value.spec.dependencies.begin(), value.spec.dependencies.end());
                 if (value.spec.qualifiers.trailing_return_type.has_value()) {
                     result.insert(result.end(),
                                   value.spec.qualifiers.trailing_return_type->dependencies.begin(),

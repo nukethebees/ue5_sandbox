@@ -7,24 +7,50 @@
 namespace codegen {
 namespace {
 
-auto precedence(Expr const& expression) -> int {
+enum class ExprPrecedence {
+    raw,
+    equality,
+    relational,
+    additive,
+    postfix,
+};
+
+auto binary_precedence(BinaryOperator const operation) -> ExprPrecedence {
+    switch (operation) {
+        case BinaryOperator::equal:
+            return ExprPrecedence::equality;
+        case BinaryOperator::greater_equal:
+            return ExprPrecedence::relational;
+        case BinaryOperator::subtract:
+            return ExprPrecedence::additive;
+    }
+    throw std::invalid_argument{"Unsupported binary operator"};
+}
+
+auto precedence(Expr const& expression) -> ExprPrecedence {
     return std::visit(
         [](auto const& value) {
             using T = std::decay_t<decltype(value)>;
             if constexpr (std::is_same_v<T, RawExpr>) {
-                return 0;
+                return ExprPrecedence::raw;
             } else if constexpr (std::is_same_v<T, BinaryExpr>) {
-                return 1;
+                return binary_precedence(value.operation);
             } else {
-                return 2;
+                return ExprPrecedence::postfix;
             }
         },
         expression.value());
 }
 
-auto render_operand(Expr const& expression, int const minimum_precedence) -> std::string {
+auto render_operand(Expr const& expression,
+                    ExprPrecedence const minimum_precedence,
+                    bool const parenthesize_equal = false) -> std::string {
     auto text{render(expression)};
-    return precedence(expression) < minimum_precedence ? "(" + text + ")" : text;
+    auto const operand_precedence{precedence(expression)};
+    return operand_precedence < minimum_precedence ||
+                   (parenthesize_equal && operand_precedence == minimum_precedence)
+             ? "(" + text + ")"
+             : text;
 }
 
 auto render_arguments(std::vector<Expr> const& arguments) -> std::string {
@@ -34,7 +60,7 @@ auto render_arguments(std::vector<Expr> const& arguments) -> std::string {
         if (index != 0) {
             result += ", ";
         }
-        result += render_operand(arguments[index], 1);
+        result += render_operand(arguments[index], ExprPrecedence::equality);
     }
     return result;
 }
@@ -43,6 +69,10 @@ auto binary_spelling(BinaryOperator const operation) -> std::string_view {
     switch (operation) {
         case BinaryOperator::equal:
             return " == ";
+        case BinaryOperator::greater_equal:
+            return " >= ";
+        case BinaryOperator::subtract:
+            return " - ";
     }
     throw std::invalid_argument{"Unsupported binary operator"};
 }
@@ -54,6 +84,10 @@ Expr::Expr(NamedExpr value)
 Expr::Expr(LiteralExpr value)
     : value_{std::make_shared<ExprData const>(std::move(value))} {}
 Expr::Expr(CallExpr value)
+    : value_{std::make_shared<ExprData const>(std::move(value))} {}
+Expr::Expr(MemberAccessExpr value)
+    : value_{std::make_shared<ExprData const>(std::move(value))} {}
+Expr::Expr(SubscriptExpr value)
     : value_{std::make_shared<ExprData const>(std::move(value))} {}
 Expr::Expr(BinaryExpr value)
     : value_{std::make_shared<ExprData const>(std::move(value))} {}
@@ -113,6 +147,12 @@ auto string_literal(std::string_view const value) -> Expr {
 auto call(Expr callee, std::vector<Expr> arguments) -> Expr {
     return CallExpr{std::move(callee), std::move(arguments)};
 }
+auto member_access(Expr object, std::string member) -> Expr {
+    return MemberAccessExpr{std::move(object), std::move(member)};
+}
+auto subscript(Expr object, Expr index) -> Expr {
+    return SubscriptExpr{std::move(object), std::move(index)};
+}
 auto binary(BinaryOperator const operation, Expr left, Expr right) -> Expr {
     return BinaryExpr{operation, std::move(left), std::move(right)};
 }
@@ -132,15 +172,21 @@ auto render(Expr const& expression) -> std::string {
             } else if constexpr (std::is_same_v<T, RawExpr>) {
                 return value.text;
             } else if constexpr (std::is_same_v<T, CallExpr>) {
-                return render_operand(value.callee, 2) + "(" + render_arguments(value.arguments) +
-                       ")";
+                return render_operand(value.callee, ExprPrecedence::postfix) + "(" +
+                       render_arguments(value.arguments) + ")";
+            } else if constexpr (std::is_same_v<T, MemberAccessExpr>) {
+                return render_operand(value.object, ExprPrecedence::postfix) + "." + value.member;
+            } else if constexpr (std::is_same_v<T, SubscriptExpr>) {
+                return render_operand(value.object, ExprPrecedence::postfix) + "[" +
+                       render_operand(value.index, ExprPrecedence::equality) + "]";
             } else if constexpr (std::is_same_v<T, BinaryExpr>) {
-                return render_operand(value.left, 1) +
+                auto const parent_precedence{binary_precedence(value.operation)};
+                return render_operand(value.left, parent_precedence) +
                        std::string{binary_spelling(value.operation)} +
-                       render_operand(value.right, 2);
+                       render_operand(value.right, parent_precedence, true);
             } else if constexpr (std::is_same_v<T, StaticCastExpr>) {
                 return "static_cast<" + value.type.spelling + ">(" +
-                       render_operand(value.operand, 1) + ")";
+                       render_operand(value.operand, ExprPrecedence::equality) + ")";
             } else if constexpr (std::is_same_v<T, InitializerListExpr>) {
                 return (value.type.has_value() ? value.type->spelling : "") + "{" +
                        render_arguments(value.elements) + "}";
@@ -169,6 +215,11 @@ auto dependencies(Expr const& expression) -> std::vector<TypeDependency> {
             } else if constexpr (std::is_same_v<T, BinaryExpr>) {
                 append(value.left);
                 append(value.right);
+            } else if constexpr (std::is_same_v<T, MemberAccessExpr>) {
+                append(value.object);
+            } else if constexpr (std::is_same_v<T, SubscriptExpr>) {
+                append(value.object);
+                append(value.index);
             } else if constexpr (std::is_same_v<T, StaticCastExpr>) {
                 result = value.type.dependencies;
                 append(value.operand);

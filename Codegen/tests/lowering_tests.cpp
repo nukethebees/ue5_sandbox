@@ -382,6 +382,51 @@ TEST(Lowering, UsesRegisteredAndGenericNestedRemovalOperations) {
               std::string::npos);
     EXPECT_NE(output.header.find("ml::remove_at_swap(generic, index, count, allow_shrinking);"),
               std::string::npos);
+    EXPECT_EQ(occurrences(output.header, "#include \"SandboxCore/container_ops.h\""), 1);
+}
+
+TEST(Lowering, RegisteredRemovalDoesNotRequireGenericContainerHelpers) {
+    CppType registered{"FRegistered", "Project/Registered.h"};
+    registered.member_operations.emplace(TypeOperation::remove_at_swap, "erase_swap");
+    auto schema{SoaSchema{
+        .name = "FData",
+        .members = {SoaMemberSchema{"registered", SoaMemberKind::nested, TypeRef{"@registered"}}},
+        .operations = {StorageOperation::remove_at_swap},
+    }};
+    auto const output{render_soa(std::move(schema), {{"registered", std::move(registered)}})};
+    EXPECT_NE(output.header.find("registered.erase_swap(index, count, allow_shrinking);"),
+              std::string::npos);
+    EXPECT_NE(output.header.find("#include \"Project/Registered.h\""), std::string::npos);
+    EXPECT_EQ(output.header.find("SandboxCore/container_ops.h"), std::string::npos);
+}
+
+TEST(Lowering, SourceOnlyStorageHelpersDoNotLeakIntoHeader) {
+    auto schema{basic_schema()};
+    schema.operations = {StorageOperation::reserve};
+    auto const output{render_soa(std::move(schema))};
+    EXPECT_EQ(output.header.find("SandboxCore/container_ops.h"), std::string::npos);
+    EXPECT_EQ(occurrences(output.source, "#include \"SandboxCore/container_ops.h\""), 1);
+    EXPECT_NE(output.source.find("ml::reserve(ids, count);\n    ml::reserve(weights, count);"),
+              std::string::npos);
+}
+
+TEST(Lowering, CustomSetAndAddStillSuppressGeneratedBodies) {
+    auto schema{basic_schema()};
+    schema.functions = {
+        FunctionSchema{.name = "set",
+                       .return_type = TypeRef{"void"},
+                       .body_lines = {"custom_set();"},
+                       .is_inline = true},
+        FunctionSchema{.name = "add",
+                       .return_type = TypeRef{"void"},
+                       .body_lines = {"custom_add();"},
+                       .is_inline = true},
+    };
+    auto const output{render_soa(std::move(schema))};
+    EXPECT_EQ(occurrences(output.header, "custom_set();"), 1);
+    EXPECT_EQ(occurrences(output.header, "custom_add();"), 1);
+    EXPECT_EQ(output.header.find("ids[index] = new_ids;"), std::string::npos);
+    EXPECT_EQ(output.header.find("ids.Add(new_ids);"), std::string::npos);
 }
 
 TEST(Lowering, EmitsLogicalElementSettersAndAddForArraysAndSupportedNestedMembers) {
@@ -426,6 +471,7 @@ TEST(Lowering, OmitsLogicalElementSetterAndAddForUnsupportedNestedMembers) {
         .name = "FData",
         .members =
             {
+                SoaMemberSchema{"ids", SoaMemberKind::array, TypeRef{"int32"}},
                 SoaMemberSchema{"values", SoaMemberKind::nested, TypeRef{"@nested"}},
             },
     }};
@@ -447,6 +493,10 @@ TEST(Lowering, SupportsMemberwiseCopying) {
     EXPECT_NE(output.header.find("weights[dst_i] = other.weights[src_i];"), std::string::npos);
     EXPECT_EQ(output.header.find("ml::copy_element(ids"), std::string::npos);
     EXPECT_NE(output.header.find("ml::copy_elements(ids, dst_i, other.ids, src_i, count);"),
+              std::string::npos);
+    EXPECT_NE(output.header.find("auto const count{other.num()};\n"
+                                 "        check(num() >= count);\n"
+                                 "        copy_elements(num() - count, other, 0, count);"),
               std::string::npos);
 }
 

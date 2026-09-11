@@ -119,12 +119,9 @@ void test_homogeneous_storage() {
 
 void test_dynamic_soa() {
     FRows rows;
-    rows.ids.Add(30);
-    rows.weights.Add(3.0f);
-    rows.ids.Add(10);
-    rows.weights.Add(1.0f);
-    rows.ids.Add(20);
-    rows.weights.Add(2.0f);
+    check(rows.add(30, 3.0f) == 0);
+    check(rows.add(10, 1.0f) == 1);
+    check(rows.add(20, 2.0f) == 2);
     rows.validate_array_sizes();
     rows.reserve(16);
     check(rows.first_id() == 30);
@@ -173,6 +170,15 @@ void test_dynamic_soa() {
     parents.remove_at_swap(0, 1, EAllowShrinking::No);
     parents.validate_array_sizes();
     check(parents.keys[0] == 2 && parents.children.values[0] == 20);
+
+    FParents nested_copy;
+    nested_copy.add_defaulted(parents.num());
+    nested_copy.copy_elements(0, parents.get_const_view(), 0, parents.num());
+    check(nested_copy.keys[0] == 2 && nested_copy.children.values[0] == 20);
+    nested_copy.append_from(parents.get_const_view());
+    nested_copy.validate_array_sizes();
+    check(nested_copy.num() == 2);
+    check(nested_copy.keys[1] == 2 && nested_copy.children.values[1] == 20);
 }
 
 void test_fixed_soa_lifetimes() {

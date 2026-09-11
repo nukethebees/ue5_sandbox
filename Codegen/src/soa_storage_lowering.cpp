@@ -10,12 +10,16 @@ namespace {
 
 TypeDependency const tarray_view{"TArrayView", "Containers/ArrayView.h", {}};
 TypeDependency const allow_shrinking{"EAllowShrinking", "Containers/AllowShrinking.h", {}};
-TypeDependency const container_ops{"ml::num", "SandboxCore/container_ops.h", {}};
 TypeDependency const soa_concepts{
     "ml::SupportsApplyArrayPairsWith", "SandboxCore/soa_concepts.h", {}};
 TypeDependency const soa_permutation{"ml::apply_permutation", "SandboxCore/soa_permutation.h", {}};
 TypeDependency const fill_indices{"ml::fill_indices", "SandboxCore/array_utils.h", {}};
 TypeDependency const check_dependency{"check", "CoreMinimal.h", {}};
+
+auto container_function(std::string spelling) -> Expr {
+    TypeDependency dependency{spelling, "SandboxCore/container_ops.h", {}};
+    return named(std::move(spelling), {std::move(dependency)});
+}
 
 auto function_spec(FunctionSchema const& schema, std::map<std::string, CppType> const& types)
     -> FunctionSpec {
@@ -86,7 +90,8 @@ auto soa_set_spec(SoaSchema const& schema,
             parameters.emplace_back(
                 parameter_type(member.element_type, member.element_type.parameter_passing),
                 argument);
-            body.add(AssignmentStmt{RawExpr{member.name + "[index]"}, RawExpr{argument}});
+            body.add(
+                AssignmentStmt{subscript(named(member.name), named("index")), named(argument)});
             continue;
         }
 
@@ -99,8 +104,8 @@ auto soa_set_spec(SoaSchema const& schema,
                                                member.container_type.operation_parameter_passing(
                                                    TypeOperation::set_element)),
                                 argument);
-        body.add(
-            ExpressionStmt{RawExpr{member.name + "." + *operation + "(index, " + argument + ")"}});
+        body.add(ExpressionStmt{call(member_access(named(member.name), *operation),
+                                     {named("index"), named(argument)})});
     }
     return FunctionSpec{
         .name = "set",
@@ -120,14 +125,15 @@ auto soa_add_spec(SoaSchema const& schema, std::vector<ResolvedMember> const& me
 
     std::vector<FunctionParameter> parameters;
     NodeListBuilder body;
-    body.add(VariableDeclarationStmt{"auto const", "index", RawExpr{"num()"}});
+    body.add(VariableDeclarationStmt{"auto const", "index", call(named("num"))});
     for (auto const& member : members) {
         auto const argument{"new_" + member.name};
         if (member.kind == SoaMemberKind::array) {
             parameters.emplace_back(
                 parameter_type(member.element_type, member.element_type.parameter_passing),
                 argument);
-            body.add(ExpressionStmt{RawExpr{member.name + ".Add(" + argument + ")"}});
+            body.add(
+                ExpressionStmt{call(member_access(named(member.name), "Add"), {named(argument)})});
             continue;
         }
 
@@ -140,9 +146,10 @@ auto soa_add_spec(SoaSchema const& schema, std::vector<ResolvedMember> const& me
                                                member.container_type.operation_parameter_passing(
                                                    TypeOperation::add_element)),
                                 argument);
-        body.add(ExpressionStmt{RawExpr{member.name + "." + *operation + "(" + argument + ")"}});
+        body.add(
+            ExpressionStmt{call(member_access(named(member.name), *operation), {named(argument)})});
     }
-    body.add(ReturnStmt{RawExpr{"index"}});
+    body.add(ReturnStmt{named("index")});
     return FunctionSpec{
         .name = "add",
         .return_type = "auto",
@@ -157,14 +164,12 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
                                  std::vector<ResolvedMember> const& members)
     -> std::vector<FunctionSpec> {
     std::vector<FunctionSpec> result;
-    auto member_calls = [&](std::string const& function,
-                            std::vector<std::string> const& arguments) {
+    auto member_calls = [&](Expr const& function, std::vector<Expr> const& arguments) {
         NodeListBuilder calls;
         for (auto const& member : members) {
-            auto values{std::vector<std::string>{member.name}};
+            auto values{std::vector<Expr>{named(member.name)}};
             values.insert(values.end(), arguments.begin(), arguments.end());
-            calls.add(ExpressionStmt{RawExpr{function + "(" + join(values, ", ") + ")"},
-                                     {container_ops}});
+            calls.add(ExpressionStmt{call(function, std::move(values))});
         }
         return calls.build();
     };
@@ -172,15 +177,16 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
         return std::ranges::find(schema.operations, operation) != schema.operations.end();
     };
     if (contains(StorageOperation::reset)) {
-        result.push_back(FunctionSpec{
-            .name = "reset", .return_type = "void", .body = member_calls("ml::reset", {})});
+        result.push_back(FunctionSpec{.name = "reset",
+                                      .return_type = "void",
+                                      .body = member_calls(container_function("ml::reset"), {})});
     }
     if (contains(StorageOperation::reserve)) {
         result.push_back(FunctionSpec{
             .name = "reserve",
             .return_type = "void",
             .parameters = {FunctionParameter{"int32 const", "count"}},
-            .body = member_calls("ml::reserve", {"count"}),
+            .body = member_calls(container_function("ml::reserve"), {named("count")}),
         });
     }
     if (contains(StorageOperation::add_uninitialised)) {
@@ -188,7 +194,7 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
             .name = "add_uninitialised",
             .return_type = "void",
             .parameters = {FunctionParameter{"int32 const", "count"}},
-            .body = member_calls("ml::add_uninitialised", {"count"}),
+            .body = member_calls(container_function("ml::add_uninitialised"), {named("count")}),
         });
     }
     if (contains(StorageOperation::add_defaulted)) {
@@ -196,19 +202,23 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
             .name = "add_defaulted",
             .return_type = "void",
             .parameters = {FunctionParameter{"int32 const", "count"}},
-            .body = member_calls("ml::add_defaulted", {"count"}),
+            .body = member_calls(container_function("ml::add_defaulted"), {named("count")}),
         });
     }
     if (contains(StorageOperation::remove_at_swap)) {
         NodeListBuilder calls;
         for (auto const& member : members) {
             auto const operation{member.container_type.operation(TypeOperation::remove_at_swap)};
-            calls.add(ExpressionStmt{
-                RawExpr{operation.has_value()
-                            ? member.name + "." + *operation + "(index, count, allow_shrinking)"
-                            : "ml::remove_at_swap(" + member.name +
-                                  ", index, count, allow_shrinking)"},
-                {container_ops}});
+            auto const invocation{
+                operation.has_value()
+                    ? call(member_access(named(member.name), *operation),
+                           {named("index"), named("count"), named("allow_shrinking")})
+                    : call(container_function("ml::remove_at_swap"),
+                           {named(member.name),
+                            named("index"),
+                            named("count"),
+                            named("allow_shrinking")})};
+            calls.add(ExpressionStmt{invocation});
         }
         result.push_back(FunctionSpec{
             .name = "remove_at_swap",
@@ -228,26 +238,27 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
             .parameters = {FunctionParameter{"int32 const", "count"},
                            FunctionParameter{CppType{"EAllowShrinking const", {allow_shrinking}},
                                              "allow_shrinking"}},
-            .body = member_calls("ml::set_num", {"count", "allow_shrinking"}),
+            .body = member_calls(container_function("ml::set_num"),
+                                 {named("count"), named("allow_shrinking")}),
         });
     }
     if (contains(StorageOperation::copy_element)) {
         NodeListBuilder copy_one;
         NodeListBuilder copy_range;
         for (auto const& member : members) {
+            auto const destination{named(member.name)};
+            auto const source{member_access(named("other"), member.name)};
             if (schema.copy_element_memberwise) {
-                copy_one.add(AssignmentStmt{RawExpr{member.name + "[dst_i]"},
-                                            RawExpr{"other." + member.name + "[src_i]"},
-                                            {container_ops}});
+                copy_one.add(AssignmentStmt{subscript(destination, named("dst_i")),
+                                            subscript(source, named("src_i"))});
             } else {
-                copy_one.add(ExpressionStmt{RawExpr{"ml::copy_element(" + member.name +
-                                                    ", dst_i, other." + member.name + ", src_i)"},
-                                            {container_ops}});
+                copy_one.add(
+                    ExpressionStmt{call(container_function("ml::copy_element"),
+                                        {destination, named("dst_i"), source, named("src_i")})});
             }
-            copy_range.add(
-                ExpressionStmt{RawExpr{"ml::copy_elements(" + member.name + ", dst_i, other." +
-                                       member.name + ", src_i, count)"},
-                               {container_ops}});
+            copy_range.add(ExpressionStmt{
+                call(container_function("ml::copy_elements"),
+                     {destination, named("dst_i"), source, named("src_i"), named("count")})});
         }
         result.push_back(FunctionSpec{
             .name = "copy_element",
@@ -276,9 +287,18 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
             .parameters = {FunctionParameter{"Other const&", "other"}},
             .body =
                 {
-                    VariableDeclarationStmt{"auto const", "count", RawExpr{"other.num()"}},
-                    ExpressionStmt{RawExpr{"check(num() >= count)"}, {check_dependency}},
-                    ExpressionStmt{RawExpr{"copy_elements(num() - count, other, 0, count)"}},
+                    VariableDeclarationStmt{
+                        "auto const", "count", call(member_access(named("other"), "num"))},
+                    ExpressionStmt{call(named("check", {check_dependency}),
+                                        {binary(BinaryOperator::greater_equal,
+                                                call(named("num")),
+                                                named("count"))})},
+                    ExpressionStmt{
+                        call(named("copy_elements"),
+                             {binary(BinaryOperator::subtract, call(named("num")), named("count")),
+                              named("other"),
+                              literal("0"),
+                              named("count")})},
                 },
             .is_inline = true,
             .template_parameters = "typename Other",
@@ -289,11 +309,13 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
         auto const member_count{members.size()};
         for (std::size_t index{}; index < member_count; ++index) {
             auto const& member{members[index]};
-            auto const call{schema.members[index].nested_schema
-                                ? member.name + ".append_from(other." + member.name + ")"
-                                : "ml::append_from(" + member.name + ", other." + member.name +
-                                      ")"};
-            calls.add(ExpressionStmt{RawExpr{call}, {container_ops, soa_concepts}});
+            auto const destination{named(member.name)};
+            auto const source{member_access(named("other"), member.name)};
+            auto const invocation{
+                schema.members[index].nested_schema
+                    ? call(member_access(destination, "append_from"), {source})
+                    : call(container_function("ml::append_from"), {destination, source})};
+            calls.add(ExpressionStmt{invocation});
         }
         result.push_back(FunctionSpec{
             .name = "append_from",
@@ -303,6 +325,7 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
             .is_inline = true,
             .template_parameters = "typename Other",
             .requires_clause = "ml::SupportsApplyArrayPairsWith<" + schema.name + ", Other>",
+            .dependencies = {soa_concepts},
         });
     }
     return result;

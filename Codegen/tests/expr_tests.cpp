@@ -54,6 +54,52 @@ TEST(Expr, KeepsRawVerbatimAndProtectsNestedRawOperands) {
     EXPECT_EQ(render(init_list({raw_expression})), "{(left, right)}");
 }
 
+TEST(Expr, RendersMemberAccessAndSubscriptsWithPostfixBinding) {
+    auto const other_values{member_access(named("other"), "values")};
+    auto const element{subscript(other_values, named("index"))};
+    EXPECT_EQ(render(element), "other.values[index]");
+    EXPECT_EQ(render(call(member_access(element, "size"))), "other.values[index].size()");
+    EXPECT_EQ(render(subscript(call(named("get_values")), named("index"))), "get_values()[index]");
+    EXPECT_EQ(render(call(member_access(named("values"), "set"), {named("index"), literal("42")})),
+              "values.set(index, 42)");
+    auto const difference{binary(BinaryOperator::subtract, named("end"), named("count"))};
+    EXPECT_EQ(render(subscript(other_values, difference)), "other.values[end - count]");
+    EXPECT_EQ(render(subscript(difference, named("index"))), "(end - count)[index]");
+    EXPECT_EQ(render(member_access(difference, "value")), "(end - count).value");
+    EXPECT_EQ(render(member_access(RawExpr{"*pointer"}, "value")), "(*pointer).value");
+    EXPECT_EQ(render(subscript(RawExpr{"*pointer"}, RawExpr{"first, last"})),
+              "(*pointer)[(first, last)]");
+}
+
+TEST(Expr, PreservesSubtractionAndComparisonPrecedence) {
+    auto const a{named("a")};
+    auto const b{named("b")};
+    auto const c{named("c")};
+    auto const subtraction{binary(BinaryOperator::subtract, a, b)};
+    auto const comparison{binary(BinaryOperator::greater_equal, a, b)};
+    auto const equality{binary(BinaryOperator::equal, a, b)};
+
+    EXPECT_EQ(render(binary(BinaryOperator::subtract, subtraction, c)), "a - b - c");
+    EXPECT_EQ(render(binary(BinaryOperator::subtract, c, subtraction)), "c - (a - b)");
+    EXPECT_EQ(render(binary(BinaryOperator::greater_equal, subtraction, c)), "a - b >= c");
+    EXPECT_EQ(render(binary(BinaryOperator::subtract, comparison, c)), "(a >= b) - c");
+    EXPECT_EQ(render(binary(BinaryOperator::subtract, c, comparison)), "c - (a >= b)");
+    EXPECT_EQ(render(binary(BinaryOperator::equal, comparison, c)), "a >= b == c");
+    EXPECT_EQ(render(binary(BinaryOperator::greater_equal, equality, c)), "(a == b) >= c");
+    EXPECT_EQ(render(binary(BinaryOperator::greater_equal, c, comparison)), "c >= (a >= b)");
+    EXPECT_EQ(render(binary(BinaryOperator::subtract, c, RawExpr{"a - b"})), "c - (a - b)");
+}
+
+TEST(Expr, CollectsMemberObjectAndSubscriptIndexDependencies) {
+    TypeDependency const object{"get_rows", "Project/Rows.h", {}};
+    TypeDependency const index{"get_index", "Project/Index.h", {}};
+    auto const expression{subscript(member_access(call(named("get_rows", {object})), "values"),
+                                    call(named("get_index", {index})))};
+    EXPECT_EQ(dependencies(expression), (std::vector<TypeDependency>{object, index}));
+    EXPECT_EQ(dependencies(Node{AssignmentStmt{expression, literal("42")}}),
+              (std::vector<TypeDependency>{object, index}));
+}
+
 TEST(Expr, EscapesStringContentsWithoutConsumingFollowingDigits) {
     EXPECT_EQ(render(string_literal("")), "\"\"");
     EXPECT_EQ(render(string_literal("a\"b\\c\n\r\t")), "\"a\\\"b\\\\c\\n\\r\\t\"");

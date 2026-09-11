@@ -408,6 +408,31 @@ TEST(Ast, CollectsTrailingReturnTypeDependencies) {
     EXPECT_EQ(dependencies(function), std::vector<TypeDependency>{dependency});
 }
 
+TEST(Ast, CollectsOpaqueDeclarationDependenciesWithoutIncludingTheBody) {
+    TypeDependency const requirement{"SupportsValue", "Project/Requirement.h", {}};
+    TypeDependency const implementation{"apply", "Project/Implementation.h", {}};
+    FunctionSpec const spec{
+        .name = "use",
+        .return_type = "void",
+        .parameters = {FunctionParameter{"T const&", "value"}},
+        .body = {ExpressionStmt{call(named("apply", {implementation}), {named("value")})}},
+        .template_parameters = "typename T",
+        .requires_clause = "SupportsValue<T>",
+        .dependencies = {requirement},
+    };
+    CppFile file{.path = "Example.h", .nodes = {IncludeDependencies{}, declaration(spec)}};
+    auto const header{render(file)};
+    EXPECT_NE(header.find("#include \"Project/Requirement.h\""), std::string::npos);
+    EXPECT_EQ(header.find("Project/Implementation.h"), std::string::npos);
+    EXPECT_NE(header.find("requires SupportsValue<T>"), std::string::npos);
+
+    file.nodes.back() = Function{spec};
+    auto const source{render(file)};
+    EXPECT_NE(source.find("#include \"Project/Requirement.h\""), std::string::npos);
+    EXPECT_NE(source.find("#include \"Project/Implementation.h\""), std::string::npos);
+    EXPECT_EQ(source.find("Project/Requirement.h"), source.rfind("Project/Requirement.h"));
+}
+
 TEST(Ast, RejectsInvalidFunctionQualifierCombinations) {
     auto expect_error = [](Node const& function, std::string_view expected) {
         try {

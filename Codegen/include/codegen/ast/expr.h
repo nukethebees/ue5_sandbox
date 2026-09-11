@@ -14,6 +14,8 @@ namespace codegen {
 struct NamedExpr;
 struct LiteralExpr;
 struct CallExpr;
+struct MemberAccessExpr;
+struct SubscriptExpr;
 struct BinaryExpr;
 struct StaticCastExpr;
 struct InitializerListExpr;
@@ -25,6 +27,8 @@ class Expr {
     Expr(NamedExpr value);
     Expr(LiteralExpr value);
     Expr(CallExpr value);
+    Expr(MemberAccessExpr value);
+    Expr(SubscriptExpr value);
     Expr(BinaryExpr value);
     Expr(StaticCastExpr value);
     Expr(InitializerListExpr value);
@@ -50,8 +54,20 @@ struct CallExpr {
     std::vector<Expr> arguments;
 };
 
+struct MemberAccessExpr {
+    Expr object;
+    std::string member;
+};
+
+struct SubscriptExpr {
+    Expr object;
+    Expr index;
+};
+
 enum class BinaryOperator {
     equal,
+    greater_equal,
+    subtract,
 };
 
 struct BinaryExpr {
@@ -78,6 +94,8 @@ struct RawExpr {
 using ExprValue = std::variant<NamedExpr,
                                LiteralExpr,
                                CallExpr,
+                               MemberAccessExpr,
+                               SubscriptExpr,
                                BinaryExpr,
                                StaticCastExpr,
                                InitializerListExpr,
@@ -91,6 +109,8 @@ auto named(std::string spelling, std::vector<TypeDependency> dependencies = {}) 
 auto literal(std::string spelling) -> Expr;
 auto string_literal(std::string_view value) -> Expr;
 auto call(Expr callee, std::vector<Expr> arguments = {}) -> Expr;
+auto member_access(Expr object, std::string member) -> Expr;
+auto subscript(Expr object, Expr index) -> Expr;
 auto binary(BinaryOperator operation, Expr left, Expr right) -> Expr;
 auto static_cast_expr(CppType type, Expr operand) -> Expr;
 auto init_list(std::vector<Expr> elements, std::optional<CppType> type = std::nullopt) -> Expr;

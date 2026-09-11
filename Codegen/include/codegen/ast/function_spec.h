@@ -27,6 +27,8 @@ struct FunctionSpec {
     std::optional<std::string> requires_clause;
     FunctionFormatting formatting;
     std::vector<std::pair<std::string, std::string>> member_initializers;
+    // Dependencies in unstructured declaration syntax, such as requires clauses.
+    std::vector<TypeDependency> dependencies;
 };
 
 } // namespace codegen
