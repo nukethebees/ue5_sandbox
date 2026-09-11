@@ -52,28 +52,26 @@ TEST(Ast, RendersFriendDeclarations) {
     EXPECT_EQ(render(Node{FriendDeclaration{"FValue", "struct"}}), "friend struct FValue;");
 }
 
-TEST(Ast, RendersTypedStatements) {
-    EXPECT_EQ(render(Node{ExpressionStatement{RawExpr{"apply(value)"}}}), "apply(value);");
-    EXPECT_EQ(render(Node{ReturnStatement{RawExpr{"value"}}}), "return value;");
-    EXPECT_EQ(render(Node{ReturnStatement{}}), "return;");
-    EXPECT_EQ(render(Node{AssignmentStatement{RawExpr{"target"}, RawExpr{"value"}}}),
-              "target = value;");
-    EXPECT_EQ(
-        render(Node{VariableDeclarationStatement{"auto const", "count", RawExpr{"values.Num()"}}}),
-        "auto const count{values.Num()};");
+TEST(Ast, RendersTypedStmts) {
+    EXPECT_EQ(render(Node{ExpressionStmt{RawExpr{"apply(value)"}}}), "apply(value);");
+    EXPECT_EQ(render(Node{ReturnStmt{RawExpr{"value"}}}), "return value;");
+    EXPECT_EQ(render(Node{ReturnStmt{}}), "return;");
+    EXPECT_EQ(render(Node{AssignmentStmt{RawExpr{"target"}, RawExpr{"value"}}}), "target = value;");
+    EXPECT_EQ(render(Node{VariableDeclarationStmt{"auto const", "count", RawExpr{"values.Num()"}}}),
+              "auto const count{values.Num()};");
 }
 
-TEST(Ast, TypedStatementsReportDependencies) {
+TEST(Ast, TypedStmtsReportDependencies) {
     TypeDependency const dependency{"FValue", "Project/Value.h", {}};
 
-    EXPECT_EQ(dependencies(Node{ExpressionStatement{RawExpr{"use_value()"}, {dependency}}}),
+    EXPECT_EQ(dependencies(Node{ExpressionStmt{RawExpr{"use_value()"}, {dependency}}}),
               std::vector<TypeDependency>{dependency});
-    EXPECT_EQ(dependencies(Node{ReturnStatement{RawExpr{"FValue{}"}, {dependency}}}),
+    EXPECT_EQ(dependencies(Node{ReturnStmt{RawExpr{"FValue{}"}, {dependency}}}),
               std::vector<TypeDependency>{dependency});
-    EXPECT_EQ(dependencies(
-                  Node{AssignmentStatement{RawExpr{"target"}, RawExpr{"FValue{}"}, {dependency}}}),
-              std::vector<TypeDependency>{dependency});
-    EXPECT_EQ(dependencies(Node{VariableDeclarationStatement{
+    EXPECT_EQ(
+        dependencies(Node{AssignmentStmt{RawExpr{"target"}, RawExpr{"FValue{}"}, {dependency}}}),
+        std::vector<TypeDependency>{dependency});
+    EXPECT_EQ(dependencies(Node{VariableDeclarationStmt{
                   CppType{"FValue", {dependency}}, "value", RawExpr{"make_value()"}}}),
               std::vector<TypeDependency>{dependency});
 }
@@ -516,7 +514,7 @@ TEST(Ast, AppliesStaticAndDefaultArgumentRulesToFunctionForms) {
         .name = "make",
         .return_type = "int32",
         .parameters = {FunctionParameter{"int32 const", "value", "7"}},
-        .body = {ReturnStatement{RawExpr{"value"}}},
+        .body = {ReturnStmt{RawExpr{"value"}}},
         .is_static = true,
         .is_inline = true,
     };

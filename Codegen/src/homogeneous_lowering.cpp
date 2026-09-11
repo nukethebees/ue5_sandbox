@@ -11,11 +11,11 @@ TypeDependency const check_dependency{"check", "CoreMinimal.h", {}};
 auto homogeneous_permutation_definition(HomogeneousLayoutSchema const& layout,
                                         HomogeneousValueSchema const& value) -> Node {
     NodeListBuilder body;
-    body.add(ExpressionStatement{RawExpr{"validate_array_sizes()"}})
-        .add(ExpressionStatement{RawExpr{"check(indices.Num() == num())"}, {check_dependency}});
+    body.add(ExpressionStmt{RawExpr{"validate_array_sizes()"}})
+        .add(ExpressionStmt{RawExpr{"check(indices.Num() == num())"}, {check_dependency}});
     for (auto const& component : layout.components) {
-        body.add(ExpressionStatement{RawExpr{"ml::apply_permutation(" + component + ", indices)"},
-                                     {soa_permutation}});
+        body.add(ExpressionStmt{RawExpr{"ml::apply_permutation(" + component + ", indices)"},
+                                {soa_permutation}});
     }
     return definition(
         FunctionSpec{

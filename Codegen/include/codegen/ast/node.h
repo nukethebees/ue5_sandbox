@@ -1,26 +1,26 @@
 #pragma once
 
 #include <codegen/ast/access_specifier.h>
-#include <codegen/ast/assignment_statement.h>
+#include <codegen/ast/assignment_stmt.h>
 #include <codegen/ast/block.h>
-#include <codegen/ast/break_statement.h>
+#include <codegen/ast/break_stmt.h>
 #include <codegen/ast/enum.h>
-#include <codegen/ast/expression_statement.h>
+#include <codegen/ast/expression_stmt.h>
 #include <codegen/ast/forward_declaration.h>
 #include <codegen/ast/friend_declaration.h>
 #include <codegen/ast/function.h>
-#include <codegen/ast/if_statement.h>
+#include <codegen/ast/if_stmt.h>
 #include <codegen/ast/include.h>
 #include <codegen/ast/include_dependencies.h>
 #include <codegen/ast/member.h>
 #include <codegen/ast/namespace.h>
 #include <codegen/ast/new_lines.h>
 #include <codegen/ast/raw.h>
-#include <codegen/ast/return_statement.h>
+#include <codegen/ast/return_stmt.h>
 #include <codegen/ast/struct.h>
-#include <codegen/ast/switch_statement.h>
+#include <codegen/ast/switch_stmt.h>
 #include <codegen/ast/using_declaration.h>
-#include <codegen/ast/variable_declaration_statement.h>
+#include <codegen/ast/variable_declaration_stmt.h>
 
 #include <variant>
 
@@ -28,13 +28,13 @@ namespace codegen {
 
 using NodeValue = std::variant<Raw,
                                Block,
-                               IfStatement,
-                               SwitchStatement,
-                               BreakStatement,
-                               ExpressionStatement,
-                               ReturnStatement,
-                               AssignmentStatement,
-                               VariableDeclarationStatement,
+                               IfStmt,
+                               SwitchStmt,
+                               BreakStmt,
+                               ExpressionStmt,
+                               ReturnStmt,
+                               AssignmentStmt,
+                               VariableDeclarationStmt,
                                NewLines,
                                AccessSpecifier,
                                Include,

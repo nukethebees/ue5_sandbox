@@ -86,7 +86,7 @@ auto soa_set_spec(SoaSchema const& schema,
             parameters.emplace_back(
                 parameter_type(member.element_type, member.element_type.parameter_passing),
                 argument);
-            body.add(AssignmentStatement{RawExpr{member.name + "[index]"}, RawExpr{argument}});
+            body.add(AssignmentStmt{RawExpr{member.name + "[index]"}, RawExpr{argument}});
             continue;
         }
 
@@ -99,8 +99,8 @@ auto soa_set_spec(SoaSchema const& schema,
                                                member.container_type.operation_parameter_passing(
                                                    TypeOperation::set_element)),
                                 argument);
-        body.add(ExpressionStatement{
-            RawExpr{member.name + "." + *operation + "(index, " + argument + ")"}});
+        body.add(
+            ExpressionStmt{RawExpr{member.name + "." + *operation + "(index, " + argument + ")"}});
     }
     return FunctionSpec{
         .name = "set",
@@ -120,14 +120,14 @@ auto soa_add_spec(SoaSchema const& schema, std::vector<ResolvedMember> const& me
 
     std::vector<FunctionParameter> parameters;
     NodeListBuilder body;
-    body.add(VariableDeclarationStatement{"auto const", "index", RawExpr{"num()"}});
+    body.add(VariableDeclarationStmt{"auto const", "index", RawExpr{"num()"}});
     for (auto const& member : members) {
         auto const argument{"new_" + member.name};
         if (member.kind == SoaMemberKind::array) {
             parameters.emplace_back(
                 parameter_type(member.element_type, member.element_type.parameter_passing),
                 argument);
-            body.add(ExpressionStatement{RawExpr{member.name + ".Add(" + argument + ")"}});
+            body.add(ExpressionStmt{RawExpr{member.name + ".Add(" + argument + ")"}});
             continue;
         }
 
@@ -140,10 +140,9 @@ auto soa_add_spec(SoaSchema const& schema, std::vector<ResolvedMember> const& me
                                                member.container_type.operation_parameter_passing(
                                                    TypeOperation::add_element)),
                                 argument);
-        body.add(
-            ExpressionStatement{RawExpr{member.name + "." + *operation + "(" + argument + ")"}});
+        body.add(ExpressionStmt{RawExpr{member.name + "." + *operation + "(" + argument + ")"}});
     }
-    body.add(ReturnStatement{RawExpr{"index"}});
+    body.add(ReturnStmt{RawExpr{"index"}});
     return FunctionSpec{
         .name = "add",
         .return_type = "auto",
@@ -164,8 +163,8 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
         for (auto const& member : members) {
             auto values{std::vector<std::string>{member.name}};
             values.insert(values.end(), arguments.begin(), arguments.end());
-            calls.add(ExpressionStatement{RawExpr{function + "(" + join(values, ", ") + ")"},
-                                          {container_ops}});
+            calls.add(ExpressionStmt{RawExpr{function + "(" + join(values, ", ") + ")"},
+                                     {container_ops}});
         }
         return calls.build();
     };
@@ -204,7 +203,7 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
         NodeListBuilder calls;
         for (auto const& member : members) {
             auto const operation{member.container_type.operation(TypeOperation::remove_at_swap)};
-            calls.add(ExpressionStatement{
+            calls.add(ExpressionStmt{
                 RawExpr{operation.has_value()
                             ? member.name + "." + *operation + "(index, count, allow_shrinking)"
                             : "ml::remove_at_swap(" + member.name +
@@ -237,19 +236,18 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
         NodeListBuilder copy_range;
         for (auto const& member : members) {
             if (schema.copy_element_memberwise) {
-                copy_one.add(AssignmentStatement{RawExpr{member.name + "[dst_i]"},
-                                                 RawExpr{"other." + member.name + "[src_i]"},
-                                                 {container_ops}});
+                copy_one.add(AssignmentStmt{RawExpr{member.name + "[dst_i]"},
+                                            RawExpr{"other." + member.name + "[src_i]"},
+                                            {container_ops}});
             } else {
-                copy_one.add(
-                    ExpressionStatement{RawExpr{"ml::copy_element(" + member.name +
-                                                ", dst_i, other." + member.name + ", src_i)"},
-                                        {container_ops}});
+                copy_one.add(ExpressionStmt{RawExpr{"ml::copy_element(" + member.name +
+                                                    ", dst_i, other." + member.name + ", src_i)"},
+                                            {container_ops}});
             }
             copy_range.add(
-                ExpressionStatement{RawExpr{"ml::copy_elements(" + member.name + ", dst_i, other." +
-                                            member.name + ", src_i, count)"},
-                                    {container_ops}});
+                ExpressionStmt{RawExpr{"ml::copy_elements(" + member.name + ", dst_i, other." +
+                                       member.name + ", src_i, count)"},
+                               {container_ops}});
         }
         result.push_back(FunctionSpec{
             .name = "copy_element",
@@ -278,9 +276,9 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
             .parameters = {FunctionParameter{"Other const&", "other"}},
             .body =
                 {
-                    VariableDeclarationStatement{"auto const", "count", RawExpr{"other.num()"}},
-                    ExpressionStatement{RawExpr{"check(num() >= count)"}, {check_dependency}},
-                    ExpressionStatement{RawExpr{"copy_elements(num() - count, other, 0, count)"}},
+                    VariableDeclarationStmt{"auto const", "count", RawExpr{"other.num()"}},
+                    ExpressionStmt{RawExpr{"check(num() >= count)"}, {check_dependency}},
+                    ExpressionStmt{RawExpr{"copy_elements(num() - count, other, 0, count)"}},
                 },
             .is_inline = true,
             .template_parameters = "typename Other",
@@ -295,7 +293,7 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
                                 ? member.name + ".append_from(other." + member.name + ")"
                                 : "ml::append_from(" + member.name + ", other." + member.name +
                                       ")"};
-            calls.add(ExpressionStatement{RawExpr{call}, {container_ops, soa_concepts}});
+            calls.add(ExpressionStmt{RawExpr{call}, {container_ops, soa_concepts}});
         }
         result.push_back(FunctionSpec{
             .name = "append_from",
@@ -313,22 +311,21 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
 auto soa_permutation_specs(std::vector<ResolvedMember> const& members)
     -> std::vector<FunctionSpec> {
     NodeListBuilder apply;
-    apply.add(ExpressionStatement{RawExpr{"validate_array_sizes()"}})
-        .add(ExpressionStatement{RawExpr{"check(indices.Num() == num())"}, {check_dependency}});
+    apply.add(ExpressionStmt{RawExpr{"validate_array_sizes()"}})
+        .add(ExpressionStmt{RawExpr{"check(indices.Num() == num())"}, {check_dependency}});
     for (auto const& member : members) {
-        apply.add(ExpressionStatement{
-            RawExpr{"ml::apply_permutation(" + member.name + ", indices)"}, {soa_permutation}});
+        apply.add(ExpressionStmt{RawExpr{"ml::apply_permutation(" + member.name + ", indices)"},
+                                 {soa_permutation}});
     }
     auto sort_body = [](std::string sort_expression) {
         NodeListBuilder result;
-        return result.add(ExpressionStatement{RawExpr{"validate_array_sizes()"}})
-            .add(VariableDeclarationStatement{"auto const", "n", RawExpr{"num()"}})
-            .add(ExpressionStatement{RawExpr{"check(scratch_indices.Num() == n)"},
-                                     {check_dependency}})
-            .add(ExpressionStatement{RawExpr{"ml::fill_indices(scratch_indices)"}, {fill_indices}})
+        return result.add(ExpressionStmt{RawExpr{"validate_array_sizes()"}})
+            .add(VariableDeclarationStmt{"auto const", "n", RawExpr{"num()"}})
+            .add(ExpressionStmt{RawExpr{"check(scratch_indices.Num() == n)"}, {check_dependency}})
+            .add(ExpressionStmt{RawExpr{"ml::fill_indices(scratch_indices)"}, {fill_indices}})
             .add(raw("// indices[new_index] is the old row index that belongs at new_index.\n" +
                      std::move(sort_expression)))
-            .add(ExpressionStatement{RawExpr{"apply_permutation(scratch_indices)"}})
+            .add(ExpressionStmt{RawExpr{"apply_permutation(scratch_indices)"}})
             .build();
     };
     return {

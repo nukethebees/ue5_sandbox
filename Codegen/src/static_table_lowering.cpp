@@ -28,8 +28,7 @@ auto group_getter(StaticTableGroupSchema const& group, std::map<std::string, Cpp
         .name = "get_" + group.name,
         .return_type = "auto",
         .parameters = {FunctionParameter{CppType{"int32 const", "CoreMinimal.h"}, "index"}},
-        .body = {ReturnStatement{
-            RawExpr{result_type.spelling + "{" + join(arguments, ", ") + "}"}}},
+        .body = {ReturnStmt{RawExpr{result_type.spelling + "{" + join(arguments, ", ") + "}"}}},
         .qualifiers = {.trailing_return_type = result_type, .is_const = true},
         .is_inline = true,
     });
@@ -56,7 +55,7 @@ auto table_node(StaticTableSchema const& table, std::map<std::string, CppType> c
     children.add(header_function(FunctionSpec{
                      .name = "num",
                      .return_type = "auto",
-                     .body = {ReturnStatement{RawExpr{"num_rows"}}},
+                     .body = {ReturnStmt{RawExpr{"num_rows"}}},
                      .qualifiers =
                          {
                              .trailing_return_type = int32_type,

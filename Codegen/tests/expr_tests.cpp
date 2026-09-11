@@ -43,7 +43,7 @@ TEST(Expr, PreservesBinaryGroupingAndPostfixBinding) {
 TEST(Expr, KeepsRawVerbatimAndProtectsNestedRawOperands) {
     Expr const raw_expression{RawExpr{"left, right"}};
     EXPECT_EQ(render(raw_expression), "left, right");
-    EXPECT_EQ(render(Node{ReturnStatement{raw_expression}}), "return left, right;");
+    EXPECT_EQ(render(Node{ReturnStmt{raw_expression}}), "return left, right;");
     EXPECT_EQ(render(call(named("f"), {raw_expression})), "f((left, right))");
     EXPECT_EQ(render(call(RawExpr{"*function_pointer"})), "(*function_pointer)()");
     EXPECT_EQ(render(binary(BinaryOperator::equal, raw_expression, literal("0"))),
@@ -84,18 +84,17 @@ TEST(Expr, CollectsDependenciesFromEveryOperandAndType) {
         (std::vector<TypeDependency>{list_type, callee, left, right, cast_type, raw_dependency}));
 }
 
-TEST(Expr, StatementsCollectInitializersAndAssignmentOperands) {
+TEST(Expr, StmtsCollectInitializersAndAssignmentOperands) {
     TypeDependency const make{"make", "Project/Make.h", {}};
     TypeDependency const target{"target", "Project/Target.h", {}};
     auto const expression{call(named("make", {make}))};
-    EXPECT_EQ(dependencies(Node{ExpressionStatement{expression}}),
-              std::vector<TypeDependency>{make});
-    EXPECT_EQ(dependencies(Node{ReturnStatement{expression}}), std::vector<TypeDependency>{make});
+    EXPECT_EQ(dependencies(Node{ExpressionStmt{expression}}), std::vector<TypeDependency>{make});
+    EXPECT_EQ(dependencies(Node{ReturnStmt{expression}}), std::vector<TypeDependency>{make});
     EXPECT_EQ(dependencies(Node{Member{"auto", "value", expression}}),
               std::vector<TypeDependency>{make});
-    EXPECT_EQ(dependencies(Node{VariableDeclarationStatement{"auto", "value", expression}}),
+    EXPECT_EQ(dependencies(Node{VariableDeclarationStmt{"auto", "value", expression}}),
               std::vector<TypeDependency>{make});
-    EXPECT_EQ(dependencies(Node{AssignmentStatement{named("target", {target}), expression}}),
+    EXPECT_EQ(dependencies(Node{AssignmentStmt{named("target", {target}), expression}}),
               (std::vector<TypeDependency>{target, make}));
 }
 
@@ -103,24 +102,22 @@ TEST(Expr, PreservesAbsentEmptyAndStructuredInitializers) {
     EXPECT_EQ(render(Node{Member{"int", "value"}}), "int value;");
     EXPECT_EQ(render(Node{Member{"int", "value", RawExpr{""}}}), "int value{};");
     EXPECT_EQ(render(Node{Member{"int", "value", literal("42")}}), "int value{42};");
-    EXPECT_EQ(render(Node{VariableDeclarationStatement{"int", "value", RawExpr{""}}}),
-              "int value{};");
-    EXPECT_EQ(render(Node{VariableDeclarationStatement{"auto const", "value", call(named("f"))}}),
+    EXPECT_EQ(render(Node{VariableDeclarationStmt{"int", "value", RawExpr{""}}}), "int value{};");
+    EXPECT_EQ(render(Node{VariableDeclarationStmt{"auto const", "value", call(named("f"))}}),
               "auto const value{f()};");
-    EXPECT_EQ(render(Node{ReturnStatement{}}), "return;");
+    EXPECT_EQ(render(Node{ReturnStmt{}}), "return;");
 }
 
 TEST(Ast, RendersNestedControlFlowWithExplicitBreaksAndSpacing) {
     NodeListBuilder body;
-    body.add(IfStatement{named("ready"),
-                         Block{{ReturnStatement{literal("true")}}},
-                         Block{{ExpressionStatement{call(named("retry"))}}}},
+    body.add(IfStmt{named("ready"),
+                    Block{{ReturnStmt{literal("true")}}},
+                    Block{{ExpressionStmt{call(named("retry"))}}}},
              2)
-        .add(BreakStatement{});
-    Node const statement{
-        SwitchStatement{named("mode"),
-                        {{named("Mode::Ready"), Block{body.build()}},
-                         {std::nullopt, Block{{ReturnStatement{literal("false")}}}}}}};
+        .add(BreakStmt{});
+    Node const statement{SwitchStmt{named("mode"),
+                                    {{named("Mode::Ready"), Block{body.build()}},
+                                     {std::nullopt, Block{{ReturnStmt{literal("false")}}}}}}};
 
     EXPECT_EQ(render(statement, {.indent_level = 1}),
               "    switch (mode) {\n"
@@ -141,19 +138,19 @@ TEST(Ast, RendersNestedControlFlowWithExplicitBreaksAndSpacing) {
 
 TEST(Ast, RendersEmptyControlFlowAndStandaloneBlocks) {
     EXPECT_EQ(render(Node{Block{}}), "{\n\n}");
-    EXPECT_EQ(render(Node{Block{{ReturnStatement{}}}}), "{\n    return;\n}");
-    EXPECT_EQ(render(Node{IfStatement{named("ready"), Block{}}}), "if (ready) {\n\n}");
-    EXPECT_EQ(render(Node{SwitchStatement{named("mode"), {}}}), "switch (mode) {\n}");
-    EXPECT_EQ(render(Node{SwitchStatement{named("mode"), {{std::nullopt, Block{}}}}}),
+    EXPECT_EQ(render(Node{Block{{ReturnStmt{}}}}), "{\n    return;\n}");
+    EXPECT_EQ(render(Node{IfStmt{named("ready"), Block{}}}), "if (ready) {\n\n}");
+    EXPECT_EQ(render(Node{SwitchStmt{named("mode"), {}}}), "switch (mode) {\n}");
+    EXPECT_EQ(render(Node{SwitchStmt{named("mode"), {{std::nullopt, Block{}}}}}),
               "switch (mode) {\ndefault: {\n\n}\n}");
 }
 
 TEST(Ast, VisitsBothBranchesAndAllSwitchBodiesInOrder) {
-    Node const branches{IfStatement{named("ready"), Block{{raw("then")}}, Block{{raw("else")}}}};
-    Node const cases{SwitchStatement{named("mode"),
-                                     {{literal("1"), Block{{raw("one")}}},
-                                      {literal("2"), Block{{raw("two")}}},
-                                      {std::nullopt, Block{{raw("default")}}}}}};
+    Node const branches{IfStmt{named("ready"), Block{{raw("then")}}, Block{{raw("else")}}}};
+    Node const cases{SwitchStmt{named("mode"),
+                                {{literal("1"), Block{{raw("one")}}},
+                                 {literal("2"), Block{{raw("two")}}},
+                                 {std::nullopt, Block{{raw("default")}}}}}};
     std::vector<std::string> visited;
     auto visit = [&](Node const& node) { visited.push_back(node.get_if<Raw>()->text); };
     for_each_child(branches, visit);
@@ -167,17 +164,17 @@ TEST(Ast, CollectsDeepControlFlowDependenciesOnlyForDefinitions) {
         return named(name, {TypeDependency{name, header, {}}});
     };
     auto const body_call{call(symbol("body_only"), {symbol("argument_only")})};
-    SwitchStatement const selection{
+    SwitchStmt const selection{
         symbol("switch_only"),
-        {{symbol("case_only"), Block{{ExpressionStatement{body_call}}}},
-         {std::nullopt, Block{{Block{{ExpressionStatement{call(symbol("default_only"))}}}}}}},
+        {{symbol("case_only"), Block{{ExpressionStmt{body_call}}}},
+         {std::nullopt, Block{{Block{{ExpressionStmt{call(symbol("default_only"))}}}}}}},
     };
     FunctionSpec const spec{
         .name = "f",
         .return_type = "void",
-        .body = {IfStatement{call(symbol("condition_only")),
-                             Block{{selection}},
-                             Block{{ReturnStatement{call(symbol("else_only"))}}}}},
+        .body = {IfStmt{call(symbol("condition_only")),
+                        Block{{selection}},
+                        Block{{ReturnStmt{call(symbol("else_only"))}}}}},
     };
     CppFile file{.path = "Example.h", .nodes = {IncludeDependencies{}, declaration(spec)}};
     EXPECT_EQ(render(file).find("Project/"), std::string::npos);
@@ -205,7 +202,7 @@ TEST(Ast, DeduplicatesSharedSymbolDependenciesAndTheirNestedHeaders) {
         .nodes = {IncludeDependencies{},
                   Member{"auto", "value", expression},
                   Function{FunctionSpec{
-                      .name = "f", .return_type = "auto", .body = {ReturnStatement{expression}}}}},
+                      .name = "f", .return_type = "auto", .body = {ReturnStmt{expression}}}}},
     };
     auto const output{render(file)};
     for (auto const* header : {"Project/Make.h", "Project/Value.h"}) {

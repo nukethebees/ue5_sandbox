@@ -5,14 +5,10 @@
 
 namespace codegen {
 
-struct SwitchCase {
-    std::optional<Expr> label;
-    Block body;
-};
-
-struct SwitchStatement {
+struct IfStmt {
     Expr condition;
-    std::vector<SwitchCase> cases;
+    Block then_block;
+    std::optional<Block> else_block;
 };
 
 } // namespace codegen

@@ -2,6 +2,6 @@
 
 namespace codegen {
 
-struct BreakStatement {};
+struct BreakStmt {};
 
 } // namespace codegen

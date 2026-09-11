@@ -7,7 +7,7 @@
 
 namespace codegen {
 
-struct ExpressionStatement {
+struct ExpressionStmt {
     Expr expression;
     std::vector<TypeDependency> dependencies;
 };

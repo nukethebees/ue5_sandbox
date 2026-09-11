@@ -16,10 +16,9 @@ auto lower_facade_module_impl(FacadeModuleSchema const& module,
         .name = facade.reference_target ? facade.name : "bind",
         .return_type = facade.reference_target ? "" : "void",
         .parameters = {FunctionParameter{qualify(target_type, "&"), "new_target"}},
-        .body = facade.reference_target
-                  ? Nodes{raw("")}
-                  : Nodes{AssignmentStatement{RawExpr{facade.target_member_name},
-                                              RawExpr{"&new_target"}}},
+        .body = facade.reference_target ? Nodes{raw("")}
+                                        : Nodes{AssignmentStmt{RawExpr{facade.target_member_name},
+                                                               RawExpr{"&new_target"}}},
         .is_inline = !definitions_in_source,
         .member_initializers =
             facade.reference_target
@@ -52,10 +51,9 @@ auto lower_facade_module_impl(FacadeModuleSchema const& module,
                   method.target_name.value_or(method.name) + "(" + join(arguments, ", ") + ")"};
         auto const return_type{resolve_type(method.return_type, types)};
         if (return_type.spelling == "void") {
-            body.add(
-                ExpressionStatement{RawExpr{std::move(call)}, std::move(validation_dependencies)});
+            body.add(ExpressionStmt{RawExpr{std::move(call)}, std::move(validation_dependencies)});
         } else {
-            body.add(ReturnStatement{RawExpr{std::move(call)}, std::move(validation_dependencies)});
+            body.add(ReturnStmt{RawExpr{std::move(call)}, std::move(validation_dependencies)});
         }
         methods.push_back(FunctionSpec{
             .name = method.name,

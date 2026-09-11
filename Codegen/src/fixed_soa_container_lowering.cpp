@@ -471,8 +471,7 @@ auto fixed_container_set_nodes(SoaSchema const& schema, std::map<std::string, Cp
         for (auto const& parameter : setter.parameters) {
             arguments.push_back(parameter.name);
         }
-        setter.body = {
-            ExpressionStatement{RawExpr{"get_view().set(" + join(arguments, ", ") + ")"}}};
+        setter.body = {ExpressionStmt{RawExpr{"get_view().set(" + join(arguments, ", ") + ")"}}};
         setter.qualifiers.is_const = false;
         setter.formatting = compact_function_formatting();
         result.add(header_function(setter), 1);

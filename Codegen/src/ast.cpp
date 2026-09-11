@@ -393,12 +393,12 @@ void for_each_child(Node const& node, std::function<void(Node const&)> const& vi
                 if (!value.declaration) {
                     visit_nodes(value.spec.body);
                 }
-            } else if constexpr (std::is_same_v<T, IfStatement>) {
+            } else if constexpr (std::is_same_v<T, IfStmt>) {
                 visit_nodes(value.then_block.children);
                 if (value.else_block.has_value()) {
                     visit_nodes(value.else_block->children);
                 }
-            } else if constexpr (std::is_same_v<T, SwitchStatement>) {
+            } else if constexpr (std::is_same_v<T, SwitchStmt>) {
                 for (auto const& branch : value.cases) {
                     visit_nodes(branch.body.children);
                 }
@@ -418,17 +418,17 @@ auto dependencies(Node const& node) -> std::vector<TypeDependency> {
             };
             if constexpr (std::is_same_v<T, Raw>) {
                 return value.dependencies;
-            } else if constexpr (std::is_same_v<T, ExpressionStatement>) {
+            } else if constexpr (std::is_same_v<T, ExpressionStmt>) {
                 auto result{value.dependencies};
                 append_expression(result, value.expression);
                 return result;
-            } else if constexpr (std::is_same_v<T, ReturnStatement>) {
+            } else if constexpr (std::is_same_v<T, ReturnStmt>) {
                 auto result{value.dependencies};
                 if (value.expression.has_value()) {
                     append_expression(result, *value.expression);
                 }
                 return result;
-            } else if constexpr (std::is_same_v<T, AssignmentStatement>) {
+            } else if constexpr (std::is_same_v<T, AssignmentStmt>) {
                 auto result{value.dependencies};
                 append_expression(result, value.target);
                 append_expression(result, value.value);
@@ -441,13 +441,13 @@ auto dependencies(Node const& node) -> std::vector<TypeDependency> {
                     append_expression(result, *value.initializer);
                 }
                 return result;
-            } else if constexpr (std::is_same_v<T, VariableDeclarationStatement>) {
+            } else if constexpr (std::is_same_v<T, VariableDeclarationStmt>) {
                 auto result{value.type.dependencies};
                 append_expression(result, value.initializer);
                 return result;
-            } else if constexpr (std::is_same_v<T, IfStatement>) {
+            } else if constexpr (std::is_same_v<T, IfStmt>) {
                 return dependencies(value.condition);
-            } else if constexpr (std::is_same_v<T, SwitchStatement>) {
+            } else if constexpr (std::is_same_v<T, SwitchStmt>) {
                 auto result{dependencies(value.condition)};
                 for (auto const& branch : value.cases) {
                     if (branch.label.has_value()) {
@@ -514,7 +514,7 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                 return context.apply_indent("{") + "\n" +
                        render_nodes(value.children, context.indent(), 1) + "\n" +
                        context.apply_indent("}");
-            } else if constexpr (std::is_same_v<T, IfStatement>) {
+            } else if constexpr (std::is_same_v<T, IfStmt>) {
                 auto result{context.apply_indent("if (" + render(value.condition) + ") {") + "\n" +
                             render_nodes(value.then_block.children, context.indent(), 1) + "\n" +
                             context.apply_indent("}")};
@@ -524,7 +524,7 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                               context.apply_indent("}");
                 }
                 return result;
-            } else if constexpr (std::is_same_v<T, SwitchStatement>) {
+            } else if constexpr (std::is_same_v<T, SwitchStmt>) {
                 auto result{context.apply_indent("switch (" + render(value.condition) + ") {")};
                 for (auto const& branch : value.cases) {
                     auto const label{branch.label.has_value() ? "case " + render(*branch.label)
@@ -534,18 +534,18 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                               context.apply_indent("}");
                 }
                 return result + "\n" + context.apply_indent("}");
-            } else if constexpr (std::is_same_v<T, BreakStatement>) {
+            } else if constexpr (std::is_same_v<T, BreakStmt>) {
                 return context.apply_indent("break;");
-            } else if constexpr (std::is_same_v<T, ExpressionStatement>) {
+            } else if constexpr (std::is_same_v<T, ExpressionStmt>) {
                 return context.apply_indent(render(value.expression) + ";");
-            } else if constexpr (std::is_same_v<T, ReturnStatement>) {
+            } else if constexpr (std::is_same_v<T, ReturnStmt>) {
                 return context.apply_indent(value.expression.has_value()
                                                 ? "return " + render(*value.expression) + ";"
                                                 : "return;");
-            } else if constexpr (std::is_same_v<T, AssignmentStatement>) {
+            } else if constexpr (std::is_same_v<T, AssignmentStmt>) {
                 return context.apply_indent(render(value.target) + " = " + render(value.value) +
                                             ";");
-            } else if constexpr (std::is_same_v<T, VariableDeclarationStatement>) {
+            } else if constexpr (std::is_same_v<T, VariableDeclarationStmt>) {
                 return context.apply_indent(value.type.spelling + " " + value.name + "{" +
                                             render(value.initializer) + "};");
             } else if constexpr (std::is_same_v<T, NewLines>) {

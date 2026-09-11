@@ -6,7 +6,7 @@
 
 namespace codegen {
 
-struct VariableDeclarationStatement {
+struct VariableDeclarationStmt {
     CppType type;
     std::string name;
     Expr initializer;

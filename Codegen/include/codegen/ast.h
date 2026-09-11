@@ -1,22 +1,22 @@
 #pragma once
 
 #include <codegen/ast/access_specifier.h>
-#include <codegen/ast/assignment_statement.h>
+#include <codegen/ast/assignment_stmt.h>
 #include <codegen/ast/block.h>
-#include <codegen/ast/break_statement.h>
+#include <codegen/ast/break_stmt.h>
 #include <codegen/ast/cpp_file.h>
 #include <codegen/ast/cpp_type.h>
 #include <codegen/ast/enum.h>
 #include <codegen/ast/enumerator.h>
 #include <codegen/ast/expr.h>
-#include <codegen/ast/expression_statement.h>
+#include <codegen/ast/expression_stmt.h>
 #include <codegen/ast/forward_declaration.h>
 #include <codegen/ast/friend_declaration.h>
 #include <codegen/ast/function.h>
 #include <codegen/ast/function_formatting.h>
 #include <codegen/ast/function_parameter.h>
 #include <codegen/ast/function_spec.h>
-#include <codegen/ast/if_statement.h>
+#include <codegen/ast/if_stmt.h>
 #include <codegen/ast/include.h>
 #include <codegen/ast/include_dependencies.h>
 #include <codegen/ast/member.h>
@@ -27,13 +27,13 @@
 #include <codegen/ast/node_list_builder.h>
 #include <codegen/ast/raw.h>
 #include <codegen/ast/render_context.h>
-#include <codegen/ast/return_statement.h>
+#include <codegen/ast/return_stmt.h>
 #include <codegen/ast/struct.h>
-#include <codegen/ast/switch_statement.h>
+#include <codegen/ast/switch_stmt.h>
 #include <codegen/ast/type_dependency.h>
 #include <codegen/ast/type_operation.h>
 #include <codegen/ast/using_declaration.h>
-#include <codegen/ast/variable_declaration_statement.h>
+#include <codegen/ast/variable_declaration_stmt.h>
 
 #include <functional>
 #include <string>

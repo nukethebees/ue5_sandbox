@@ -64,17 +64,17 @@ auto exact_lookup(EnumModuleSchema const& module, EnumSchema const& schema) -> F
     NodeListBuilder body;
     std::vector<SwitchCase> cases;
     for (auto const& value : schema.values) {
-        cases.push_back({named(enum_name + "::" + value.name),
-                         Block{{ReturnStatement{text_literal(value.name)}}}});
+        cases.push_back(
+            {named(enum_name + "::" + value.name), Block{{ReturnStmt{text_literal(value.name)}}}});
     }
-    body.add(SwitchStatement{named("value"), std::move(cases)}, 2)
+    body.add(SwitchStmt{named("value"), std::move(cases)}, 2)
         .add(raw("ensureMsgf(false,\n"
                  "           TEXT(\"Unhandled " +
                  schema.name +
                  " value: %lld\"),\n"
                  "           static_cast<int64>(value));"),
              1)
-        .add(ReturnStatement{text_literal("<invalid " + schema.name + ">")});
+        .add(ReturnStmt{text_literal("<invalid " + schema.name + ">")});
     return FunctionSpec{
         .name = internal_name(schema, "name"),
         .return_type = "auto",
@@ -92,14 +92,14 @@ auto display_lookup(EnumModuleSchema const& module, EnumSchema const& schema) ->
             continue;
         }
         cases.push_back({named(enum_name + "::" + value.name),
-                         Block{{ReturnStatement{text_literal(*value.display_name)}}}});
+                         Block{{ReturnStmt{text_literal(*value.display_name)}}}});
     }
     NodeListBuilder body;
     if (!cases.empty()) {
-        cases.push_back({std::nullopt, Block{{BreakStatement{}}}});
-        body.add(SwitchStatement{named("value"), std::move(cases)}, 2);
+        cases.push_back({std::nullopt, Block{{BreakStmt{}}}});
+        body.add(SwitchStmt{named("value"), std::move(cases)}, 2);
     }
-    body.add(ReturnStatement{call(named(internal_name(schema, "name")), {named("value")})});
+    body.add(ReturnStmt{call(named(internal_name(schema, "name")), {named("value")})});
     return FunctionSpec{
         .name = internal_name(schema, "display_name"),
         .return_type = "auto",
@@ -118,16 +118,16 @@ auto serialized_lookup(EnumModuleSchema const& module, EnumSchema const& schema)
             continue;
         }
         cases.push_back({named(enum_name + "::" + value.name),
-                         Block{{ReturnStatement{text_literal(*value.serialized_name)}}}});
+                         Block{{ReturnStmt{text_literal(*value.serialized_name)}}}});
     }
-    body.add(SwitchStatement{named("value"), std::move(cases)}, 2)
+    body.add(SwitchStmt{named("value"), std::move(cases)}, 2)
         .add(raw("ensureMsgf(false,\n"
                  "           TEXT(\"Unhandled serialized " +
                  schema.name +
                  " value: %lld\"),\n"
                  "           static_cast<int64>(value));"),
              1)
-        .add(ReturnStatement{text_literal("<invalid " + schema.name + ">")});
+        .add(ReturnStmt{text_literal("<invalid " + schema.name + ">")});
     return FunctionSpec{
         .name = internal_name(schema, "serialized_name"),
         .return_type = "auto",
@@ -145,13 +145,13 @@ auto serialized_parser(EnumModuleSchema const& module, EnumSchema const& schema)
             continue;
         }
         body.add(
-            IfStatement{
+            IfStmt{
                 binary(BinaryOperator::equal, named("value"), text_literal(*value.serialized_name)),
-                Block{{AssignmentStatement{named("result"), named(enum_name + "::" + value.name)},
-                       ReturnStatement{literal("true")}}}},
+                Block{{AssignmentStmt{named("result"), named(enum_name + "::" + value.name)},
+                       ReturnStmt{literal("true")}}}},
             1);
     }
-    body.add(ReturnStatement{literal("false")});
+    body.add(ReturnStmt{literal("false")});
     return FunctionSpec{
         .name = "try_parse_serialized",
         .return_type = "auto",
@@ -190,7 +190,7 @@ auto conversion_spec(EnumModuleSchema const& module,
     FunctionSpec result{
         .return_type = "auto",
         .parameters = {FunctionParameter{CppType{parameter_type + " const"}, "value"}},
-        .body = {ReturnStatement{lookup}},
+        .body = {ReturnStmt{lookup}},
         .export_specifier = schema.export_specifier,
     };
     switch (conversion) {
@@ -202,13 +202,12 @@ auto conversion_spec(EnumModuleSchema const& module,
             result.name = "to_string_view";
             result.qualifiers.trailing_return_type = CppType{"FStringView", "CoreMinimal.h"};
             result.body = {
-                ReturnStatement{init_list({lookup}, CppType{"FStringView", "CoreMinimal.h"})}};
+                ReturnStmt{init_list({lookup}, CppType{"FStringView", "CoreMinimal.h"})}};
             break;
         case EnumConversion::string:
             result.name = "to_string";
             result.qualifiers.trailing_return_type = CppType{"FString", "CoreMinimal.h"};
-            result.body = {
-                ReturnStatement{init_list({lookup}, CppType{"FString", "CoreMinimal.h"})}};
+            result.body = {ReturnStmt{init_list({lookup}, CppType{"FString", "CoreMinimal.h"})}};
             break;
         case EnumConversion::lex_to_display_string:
             result.name = "LexToDisplayString";
@@ -218,13 +217,12 @@ auto conversion_spec(EnumModuleSchema const& module,
             result.name = "to_display_string_view";
             result.qualifiers.trailing_return_type = CppType{"FStringView", "CoreMinimal.h"};
             result.body = {
-                ReturnStatement{init_list({lookup}, CppType{"FStringView", "CoreMinimal.h"})}};
+                ReturnStmt{init_list({lookup}, CppType{"FStringView", "CoreMinimal.h"})}};
             break;
         case EnumConversion::display_string:
             result.name = "to_display_string";
             result.qualifiers.trailing_return_type = CppType{"FString", "CoreMinimal.h"};
-            result.body = {
-                ReturnStatement{init_list({lookup}, CppType{"FString", "CoreMinimal.h"})}};
+            result.body = {ReturnStmt{init_list({lookup}, CppType{"FString", "CoreMinimal.h"})}};
             break;
         case EnumConversion::lex_to_serialized_string:
             result.name = "LexToSerializedString";
