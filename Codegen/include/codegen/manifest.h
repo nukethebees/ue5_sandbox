@@ -1,6 +1,5 @@
 #pragma once
 
-#include <codegen/manifest_error.h>
 #include <codegen/schema.h>
 
 #include <filesystem>

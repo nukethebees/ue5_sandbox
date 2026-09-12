@@ -1,0 +1,12 @@
+(soa-module sandbox_ismc_instance_data
+  :header "Plugins/SandboxISMC/Source/SandboxISMC/Public/SandboxISMCInstanceData.h"
+  :source "Plugins/SandboxISMC/Source/SandboxISMC/Private/SandboxISMCInstanceData.cpp"
+  :header-include "SandboxISMCInstanceData.h"
+  :namespace ml::sandbox_ismc
+  :include-order ("SandboxISMC/" "SandboxCore/")
+  (struct InstanceData
+    :operations (all)
+    :export-specifier SANDBOXISMC_API
+    (member positions array @vector_3f_value)
+    (member rotations array @quat_4f)
+    (member scales array @vector_3f_value)))

@@ -1,0 +1,181 @@
+(enum-module game_ui_style_types
+  :header "Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/ui/style/GameUiStyleTypes.h"
+  :source "Plugins/SpaceGame/Source/SpaceGamePresentation/Private/ui/style/GameUiStyleTypes.cpp"
+  :header-include "SpaceGamePresentation/ui/style/GameUiStyleTypes.h"
+  :helper-namespace ml::ioj
+  (enum EGameTextStyle uint8
+    :reflection uenum
+    :enum-array true
+    :conversions (lex-to-string string-view display-string-view)
+    :export-specifier SPACEGAMEPRESENTATION_API
+    (value Body)
+    (value BodySecondary
+      :display-name "Body Secondary")
+    (value Caption)
+    (value Heading1
+      :display-name "Heading 1")
+    (value Heading2
+      :display-name "Heading 2")
+    (value Heading3
+      :display-name "Heading 3")
+    (value Warning)
+    (value HudPrimary
+      :display-name "HUD Primary")
+    (value HudSecondary
+      :display-name "HUD Secondary")
+    (value Disabled))
+  (enum EGameButtonStyle uint8
+    :reflection uenum
+    :enum-array true
+    :conversions (lex-to-string string-view display-string-view)
+    :export-specifier SPACEGAMEPRESENTATION_API
+    (value Primary)
+    (value Secondary))
+  (enum EGameUiIcon uint8
+    :reflection uenum
+    :enum-array true
+    :conversions (lex-to-string string-view display-string-view)
+    :export-specifier SPACEGAMEPRESENTATION_API
+    (value Hive)
+    (value Video)
+    (value Gameplay)
+    (value Audio)
+    (value Controls)
+    (value Accessibility)
+    (value System)))
+
+(enum-module mission_modes
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionMode.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/missions/TestMissionMode.cpp"
+  :header-include "SpaceGameSimulation/missions/TestMissionMode.h"
+  :helper-namespace ml
+  (enum ETestMissionMode uint8
+    :reflection uenum
+    :enum-array true
+    :conversions (lex-to-string string-view display-string-view lex-to-serialized-string try-parse-serialized)
+    :export-specifier SPACEGAMESIMULATION_API
+    (value None
+      :serialized-name none)
+    (value SurviveTime
+      :display-name "Survive Time"
+      :serialized-name survive_time)
+    (value KillEnemies
+      :display-name "Kill Enemies"
+      :serialized-name kill_enemies)
+    (value KillEnemiesWithinTime
+      :display-name "Kill Enemies Within Time"
+      :serialized-name kill_enemies_within_time)))
+
+(enum-module mission_states
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionState.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/missions/TestMissionState.cpp"
+  :header-include "SpaceGameSimulation/missions/TestMissionState.h"
+  :helper-namespace ml
+  (enum ETestMissionState uint8
+    :reflection uenum
+    :conversions (lex-to-serialized-string try-parse-serialized)
+    :export-specifier SPACEGAMESIMULATION_API
+    (value NotStarted
+      :serialized-name not_started)
+    (value Running
+      :serialized-name running)
+    (value Succeeded
+      :serialized-name succeeded)
+    (value Failed
+      :serialized-name failed)
+    (value Disabled
+      :serialized-name disabled)))
+
+(enum-module mission_fail_reasons
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionFailReason.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/missions/TestMissionFailReason.cpp"
+  :header-include "SpaceGameSimulation/missions/TestMissionFailReason.h"
+  :helper-namespace ml
+  (enum ETestMissionFailReason uint8
+    :reflection uenum
+    :conversions (lex-to-serialized-string try-parse-serialized)
+    :export-specifier SPACEGAMESIMULATION_API
+    (value None
+      :serialized-name none)
+    (value PlayerKilled
+      :serialized-name player_killed)
+    (value TimeElapsed
+      :serialized-name time_elapsed)
+    (value DefenceObjectiveFailed
+      :serialized-name defence_objective_failed)))
+
+(enum-module test_teams
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/TestTeam.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/TestTeam.cpp"
+  :header-include "SpaceGameSimulation/entities/TestTeam.h"
+  :helper-namespace ml
+  (enum ETestTeam uint8
+    :reflection uenum
+    :conversions (lex-to-serialized-string try-parse-serialized)
+    :export-specifier SPACEGAMESIMULATION_API
+    (value White
+      :serialized-name white)
+    (value Red
+      :serialized-name red)
+    (value Green
+      :serialized-name green)
+    (value Blue
+      :serialized-name blue)
+    (value Orange
+      :serialized-name orange)
+    (value Yellow
+      :serialized-name yellow)
+    (value COUNT
+      :display-name "Count"
+      :hidden true
+      :serialized-name count)))
+
+(enum-module level_telemetry_run_end_reasons
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/telemetry/LevelTelemetryRunEndReason.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/telemetry/LevelTelemetryRunEndReason.cpp"
+  :header-include "SpaceGameSimulation/telemetry/LevelTelemetryRunEndReason.h"
+  :helper-namespace ml
+  (enum ELevelTelemetryRunEndReason uint8
+    :conversions (lex-to-serialized-string try-parse-serialized)
+    :export-specifier SPACEGAMESIMULATION_API
+    (value MissionSucceeded
+      :serialized-name mission_succeeded)
+    (value MissionFailed
+      :serialized-name mission_failed)
+    (value BattleResolved
+      :serialized-name battle_resolved)
+    (value DurationReached
+      :serialized-name duration_reached)
+    (value OrchestratorReset
+      :serialized-name orchestrator_reset)
+    (value WorldEnd
+      :serialized-name world_end)))
+
+(enum-module test_entity_type
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/TestEntityType.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/TestEntityTypeEnum.cpp"
+  :header-include "SpaceGameSimulation/entities/TestEntityType.h"
+  :prelude ("enum class ETestEntityType : uint8;" "namespace ml {" "SPACEGAMESIMULATION_API auto get_entity_display_name(ETestEntityType type) -> FString const&;" "SPACEGAMESIMULATION_API auto get_entity_class_name(ETestEntityType type) -> FString const&;" "SPACEGAMESIMULATION_API auto get_entity_short_name(ETestEntityType type) -> FString const&;" "}")
+  :helper-namespace ml
+  (enum ETestEntityType uint8
+    :reflection uenum
+    :enum-array true
+    :count COUNT
+    :conversions (lex-to-string string-view display-string-view lex-to-serialized-string try-parse-serialized)
+    :export-specifier SPACEGAMESIMULATION_API
+    (value PlayerShip
+      :display-name "Player Ship"
+      :serialized-name player_ship)
+    (value Turret
+      :serialized-name turret)
+    (value CapitalShip
+      :display-name "Capital Ship"
+      :serialized-name capital_ship)
+    (value CapitalShipFighter
+      :display-name "Capital Ship Fighter"
+      :serialized-name capital_ship_fighter)
+    (value TubeSpinner
+      :display-name "Tube Spinner"
+      :serialized-name tube_spinner)
+    (value COUNT
+      :hidden true)))

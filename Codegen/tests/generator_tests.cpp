@@ -1,5 +1,5 @@
 #include <codegen/generator.h>
-#include <codegen/json.h>
+#include <codegen/manifest.h>
 
 #include <gtest/gtest.h>
 
@@ -570,7 +570,7 @@ TEST(Generator, LowersFlatAndNestedFixedSoaLayouts) {
 
 TEST(Generator, RendersCompleteProductionManifest) {
     auto const manifest_path{std::filesystem::path{SANDBOX_CODEGEN_SOURCE_DIR} /
-                             "manifests/manifest.json"};
+                             "manifests/manifest.sbxgen"};
     auto const manifest{load_manifest(manifest_path)};
     auto const files{render_modules(lower_modules(manifest))};
 
@@ -585,7 +585,7 @@ TEST(Generator, RendersCompleteProductionManifest) {
 TEST(Generator, CommittedProductionFilesAreCurrent) {
     auto const codegen_root{std::filesystem::path{SANDBOX_CODEGEN_SOURCE_DIR}};
     auto const project_root{codegen_root.parent_path()};
-    auto const manifest{load_manifest(codegen_root / "manifests/manifest.json")};
+    auto const manifest{load_manifest(codegen_root / "manifests/manifest.sbxgen")};
     auto const files{render_modules(lower_modules(manifest))};
 
     EXPECT_EQ(generate_files(files, project_root, project_root, true), 0);

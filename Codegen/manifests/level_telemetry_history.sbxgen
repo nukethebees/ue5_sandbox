@@ -1,0 +1,27 @@
+(soa-module level_telemetry_history
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/telemetry/LevelTelemetryHistory.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/telemetry/LevelTelemetryHistory.cpp"
+  :header-include "SpaceGameSimulation/telemetry/LevelTelemetryHistory.h"
+  :namespace ml::level_telemetry
+  :include-order ("SpaceGameSimulation/" "SandboxCore/")
+  (struct FHistoryRows
+    :operations (all)
+    :export-specifier SPACEGAMESIMULATION_API
+    (member completed_ticks array uint64)
+    (member validity_masks array uint64)
+    (member active_entities array int32)
+    (member active_entities_by_type array @level_telemetry_entity_type_counts)
+    (member active_entities_by_team_and_type array @level_telemetry_entity_counts)
+    (member spawned_entities array int32)
+    (member destroyed_entities array int32)
+    (member kills array int32)
+    (member registry_slot_count array int32)
+    (member active_lasers array int32)
+    (member lasers_fired array int32)
+    (member occupied_spatial_cell_count array int32)
+    (member grid_rebuild_count array uint64)
+    (member range_query_count array uint64)
+    (member line_trace_count array uint64)
+    (member sweep_trace_count array uint64)
+    (member requested_time_scale array double)
+    (single-allocation FSingleAllocationHistoryRows)))

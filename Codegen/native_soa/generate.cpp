@@ -1,5 +1,5 @@
 #include <codegen/generator.h>
-#include <codegen/json.h>
+#include <codegen/manifest.h>
 
 #include <iostream>
 #include <stdexcept>
@@ -10,7 +10,7 @@ auto main(int argc, char** argv) -> int {
             throw std::invalid_argument{"Expected source root and output directory"};
         }
         std::filesystem::path const root{argv[1]};
-        auto manifest{codegen::load_manifest(root / "Codegen/native_soa/manifest.json")};
+        auto manifest{codegen::load_manifest(root / "Codegen/native_soa/manifest.sbxgen")};
         codegen::SoaModuleSchema native;
         for (auto const& module : manifest.modules) {
             auto const* soa{std::get_if<codegen::SoaModuleSchema>(&module)};

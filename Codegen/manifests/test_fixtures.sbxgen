@@ -1,0 +1,41 @@
+(soa-module fixed_soa_test_types
+  :header "Plugins/SandboxCore/Tests/SandboxCoreTests/Private/fixed_soa_test_types.h"
+  :source "Plugins/SandboxCore/Tests/SandboxCoreTests/Private/fixed_soa_test_types.cpp"
+  :namespace ml::fixed_soa_tests
+  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
+  (struct FTestFixedChild
+    (member names array @fstring)
+    (member references array @shared_ptr_int32)
+    (fixed TTestFixedChildStorage
+      :containers ()))
+  (struct FTestFixedRows
+    (member children nested FTestFixedChild
+      :fixed-schema FTestFixedChild)
+    (member ids array int32)
+    (fixed TTestFixedRowsStorage
+      :containers (TTestFixedRowsArray TTestFixedRowsArrayAlternate))))
+
+(static-table-module static_table_test_types
+  :header "Plugins/SandboxCore/Tests/SandboxCoreTests/Private/static_table_test_types.h"
+  :namespace ml::static_table_tests
+  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
+  (table FTestStaticTable
+    (row first)
+    (row second)
+    (row third)
+    (column ids int32)
+    (column weights float))
+  (table FTestStaticGroupTable
+    (row first)
+    (row second)
+    (row third)
+    (column min_xs float)
+    (column min_ys float)
+    (column min_zs float)
+    (column max_xs float)
+    (column max_ys float)
+    (column max_zs float)
+    (group min_point @vector_3f_value
+      :columns (min_xs min_ys min_zs))
+    (group max_point @vector_3f_value
+      :columns (max_xs max_ys max_zs))))

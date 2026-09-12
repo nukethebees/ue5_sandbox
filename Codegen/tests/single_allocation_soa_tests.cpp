@@ -1,12 +1,12 @@
 #include <codegen/generator.h>
-#include <codegen/json.h>
+#include <codegen/manifest.h>
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <filesystem>
-#include <fstream>
-#include <nlohmann/json.hpp>
 #include <stdexcept>
+#include <string_view>
 
 namespace codegen::single_allocation_tests {
 
@@ -339,15 +339,25 @@ TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
 }
 
 TEST(SingleAllocationSoa, BenchmarkSchemaTracksFighterLeafOrderAndWidths) {
-    auto read = [](std::string const& filename) {
-        std::ifstream stream{std::filesystem::path{SANDBOX_CODEGEN_SOURCE_DIR} / "manifests" /
-                             filename};
-        return nlohmann::json::parse(stream);
+    auto const manifest{load_manifest(std::filesystem::path{SANDBOX_CODEGEN_SOURCE_DIR} /
+                                      "manifests/manifest.sbxgen")};
+    auto find_struct = [&](std::string_view const module_name) -> SoaSchema const& {
+        for (auto const& module : manifest.modules) {
+            auto const* soa{std::get_if<SoaModuleSchema>(&module)};
+            if (soa == nullptr || soa->settings.name != module_name) {
+                continue;
+            }
+            auto const found{std::ranges::find_if(
+                soa->structs, [](SoaSchema const& schema) { return schema.name == "EntityData"; })};
+            if (found != soa->structs.end()) {
+                return *found;
+            }
+        }
+        throw std::runtime_error{"Missing EntityData schema in module " + std::string{module_name}};
     };
-    auto const fighter_document = read("batch_game.json");
-    auto const experiment_document = read("single_allocation_experiment.json");
-    auto const& fighter{fighter_document["modules"][0]["structs"][0]["members"]};
-    auto const& experiment{experiment_document["modules"][0]["structs"][4]["members"]};
+
+    auto const& fighter{find_struct("test_capital_ship_fighters_soa").members};
+    auto const& experiment{find_struct("single_allocation_experiment").members};
     ASSERT_EQ(fighter.size(), experiment.size());
     std::map<std::string, std::string> const equivalents{
         {"@registry_handle", "@soa_experiment_Handle"},
@@ -358,11 +368,11 @@ TEST(SingleAllocationSoa, BenchmarkSchemaTracksFighterLeafOrderAndWidths) {
         {"@tick_countdown_16", "Countdown16"},
         {"@periodic_tick_countdown_16", "PeriodicCountdown16"}};
     for (std::size_t index{}; index < fighter.size(); ++index) {
-        EXPECT_EQ(fighter[index]["name"], experiment[index]["name"]);
-        EXPECT_EQ(fighter[index]["kind"], experiment[index]["kind"]);
-        auto const type{fighter[index]["type"].get<std::string>()};
+        EXPECT_EQ(fighter[index].name, experiment[index].name);
+        EXPECT_EQ(fighter[index].kind, experiment[index].kind);
+        auto const& type{fighter[index].type.name};
         auto const found{equivalents.find(type)};
-        EXPECT_EQ(experiment[index]["type"], found == equivalents.end() ? type : found->second);
+        EXPECT_EQ(experiment[index].type.name, found == equivalents.end() ? type : found->second);
     }
 }
 }

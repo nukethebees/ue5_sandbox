@@ -1,0 +1,165 @@
+(facade-module test_capital_ship_fighters_command_interface
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFightersCommandInterface.h"
+  :namespace ml::test_capital_ship_fighters
+  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
+  (facade CommandInterface @test_fighters fighters
+    :export-specifier SPACEGAMESIMULATION_API
+    :target-storage reference
+    (method queue_spawns int32
+      (parameter queue @fighter_spawn_queue_const_view))
+    (method queue_orders void
+      (parameter queue (type-ref @fighter_order_queue :suffix " const&")))
+    (method self_destruct_fighter void
+      (parameter handle (type-ref @registry_handle :suffix " const")))
+    (method get_new_spawn_entity_data (type-ref @test_fighters :suffix " const&" :nested "RegistryEntityData")
+      :const true)
+    (method get_new_spawn_entity_handles (type-ref @spawned_entity_handles :suffix " const&")
+      :const true)
+    (method get_num_instances int32
+      :const true
+      :noexcept true)
+    (method get_target_handle @registry_handle
+      :const true
+      :noexcept true
+      (parameter fighter_handle (type-ref @registry_handle :suffix " const")))))
+
+(facade-module test_space_ship_phase_interface
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/player/TestSpaceShipPhaseInterface.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/player/TestSpaceShipPhaseInterface.cpp"
+  :header-include "SpaceGameSimulation/ships/player/TestSpaceShipPhaseInterface.h"
+  :namespace ml::test_space_ship
+  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
+  (facade PhaseInterface @test_space_ship simulation
+    :export-specifier SPACEGAMESIMULATION_API
+    :method-access private
+    :friends (FLevelSimulation)
+    :friend-kind struct
+    :definitions-in-source true
+    :target-storage reference
+    (method begin_play void)
+    (method update_timers void
+      (parameter dt "float const"))
+    (method move void
+      (parameter dt "float const"))
+    (method queue_commands void)
+    (method resolve_damage_events void)
+    (method update_entity_registry void)))
+
+(facade-module test_lasers_phase_interface
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/combat/lasers/TestLasersPhaseInterface.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/combat/lasers/TestLasersPhaseInterface.cpp"
+  :header-include "SpaceGameSimulation/combat/lasers/TestLasersPhaseInterface.h"
+  :namespace ml::test_lasers
+  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
+  (facade PhaseInterface @test_lasers simulation
+    :export-specifier SPACEGAMESIMULATION_API
+    :bind-access private
+    :method-access private
+    :friends (FLevelSimulation)
+    :friend-kind struct
+    :definitions-in-source true
+    :target-storage reference
+    (method begin_play void)
+    (method begin_tick void)
+    (method simulate void
+      (parameter dt "float const"))
+    (method commit_spawns void)
+    (method end_tick void)))
+
+(facade-module test_capital_ships_phase_interface
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/capital/TestCapitalShipsPhaseInterface.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/capital/TestCapitalShipsPhaseInterface.cpp"
+  :header-include "SpaceGameSimulation/ships/capital/TestCapitalShipsPhaseInterface.h"
+  :namespace ml::test_capital_ships
+  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
+  (facade PhaseInterface @test_capital_ships simulation
+    :export-specifier SPACEGAMESIMULATION_API
+    :bind-access private
+    :method-access private
+    :friends (FLevelSimulation)
+    :friend-kind struct
+    :definitions-in-source true
+    :target-storage reference
+    (method begin_play void)
+    (method begin_tick void)
+    (method update_timers void
+      (parameter dt "float const"))
+    (method make_decisions void)
+    (method resolve_damage_events void)
+    (method update_entity_registry void)
+    (method sync_from_registry void)
+    (method end_tick void)))
+
+(facade-module test_capital_ship_fighters_phase_interface
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFightersPhaseInterface.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFightersPhaseInterface.cpp"
+  :header-include "SpaceGameSimulation/ships/fighters/TestCapitalShipFightersPhaseInterface.h"
+  :namespace ml::test_capital_ship_fighters
+  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
+  (facade PhaseInterface @test_fighters simulation
+    :export-specifier SPACEGAMESIMULATION_API
+    :bind-access private
+    :method-access private
+    :friends (FLevelSimulation)
+    :friend-kind struct
+    :definitions-in-source true
+    :target-storage reference
+    (method begin_play void)
+    (method begin_tick void)
+    (method update_timers void
+      (parameter dt "float const"))
+    (method make_decisions void)
+    (method move void
+      (parameter dt "float const"))
+    (method queue_commands void)
+    (method resolve_damage_events void)
+    (method update_entity_registry void)
+    (method sync_from_registry void)
+    (method end_tick void)))
+
+(facade-module test_static_turrets_phase_interface
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/defences/turrets/TestStaticTurretsPhaseInterface.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/defences/turrets/TestStaticTurretsPhaseInterface.cpp"
+  :header-include "SpaceGameSimulation/defences/turrets/TestStaticTurretsPhaseInterface.h"
+  :namespace ml::test_static_turrets
+  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
+  (facade PhaseInterface @test_static_turrets simulation
+    :export-specifier SPACEGAMESIMULATION_API
+    :bind-access private
+    :method-access private
+    :friends (FLevelSimulation)
+    :friend-kind struct
+    :definitions-in-source true
+    :target-storage reference
+    (method begin_play void)
+    (method begin_tick void)
+    (method update_timers void
+      (parameter dt "float const"))
+    (method make_decisions void)
+    (method queue_commands void)
+    (method resolve_damage_events void)
+    (method update_entity_registry void)
+    (method sync_from_registry void)
+    (method end_tick void)))
+
+(facade-module test_tube_spinners_phase_interface
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/defences/spinners/TestTubeSpinnersPhaseInterface.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/defences/spinners/TestTubeSpinnersPhaseInterface.cpp"
+  :header-include "SpaceGameSimulation/defences/spinners/TestTubeSpinnersPhaseInterface.h"
+  :namespace ml::test_tube_spinners
+  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
+  (facade PhaseInterface @test_tube_spinners simulation
+    :export-specifier SPACEGAMESIMULATION_API
+    :bind-access private
+    :method-access private
+    :friends (FLevelSimulation)
+    :friend-kind struct
+    :definitions-in-source true
+    :target-storage reference
+    (method begin_play void)
+    (method update_timers void
+      (parameter dt "float const"))
+    (method move void
+      (parameter dt "float const"))
+    (method queue_commands void)
+    (method end_tick void)))

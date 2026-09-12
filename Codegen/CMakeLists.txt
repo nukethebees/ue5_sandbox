@@ -34,7 +34,7 @@ add_library(codegen-lib
   src/homogeneous_lowering.cpp
   src/homogeneous_storage_lowering.cpp
   src/homogeneous_view_lowering.cpp
-  src/json.cpp
+  src/manifest.cpp
   src/lowering_utils.cpp
   src/schema.cpp
   src/settings_lowering.cpp
@@ -54,8 +54,9 @@ target_compile_features(codegen-lib PUBLIC cxx_std_23)
 target_compile_definitions(codegen-lib PRIVATE SANDBOX_CLANG_FORMAT_EXECUTABLE="${SANDBOX_CLANG_FORMAT_EXECUTABLE}")
 target_include_directories(codegen-lib PUBLIC include)
 target_link_libraries(codegen-lib
-  PUBLIC nlohmann_json::nlohmann_json
-  PRIVATE sandbox::codegen_warnings
+  PRIVATE
+    codegen-sexpr
+    sandbox::codegen_warnings
 )
 
 add_executable(sandbox-codegen src/main.cpp)
@@ -92,14 +93,14 @@ add_custom_command(
     ${CODEGEN_COMPILE_FIXTURE_HEADERS}
     ${CODEGEN_COMPILE_FIXTURE_SOURCES}
   COMMAND sandbox-codegen
-    --manifest "${CODEGEN_COMPILE_FIXTURE_SOURCE}/manifest.json"
+    --manifest "${CODEGEN_COMPILE_FIXTURE_SOURCE}/manifest.sbxgen"
     --project-root "${CODEGEN_COMPILE_FIXTURE_SOURCE}"
     --output-root "${CODEGEN_COMPILE_FIXTURE_OUTPUT}"
   DEPENDS
     sandbox-codegen
-    "${CODEGEN_COMPILE_FIXTURE_SOURCE}/manifest.json"
-    "${CODEGEN_COMPILE_FIXTURE_SOURCE}/types.json"
-    "${CODEGEN_COMPILE_FIXTURE_SOURCE}/modules.json"
+    "${CODEGEN_COMPILE_FIXTURE_SOURCE}/manifest.sbxgen"
+    "${CODEGEN_COMPILE_FIXTURE_SOURCE}/types.sbxgen"
+    "${CODEGEN_COMPILE_FIXTURE_SOURCE}/modules.sbxgen"
   COMMENT "Generating compile-tested codegen fixture"
   VERBATIM
 )
@@ -123,7 +124,7 @@ add_executable(codegen-tests
   tests/single_allocation_soa_tests.cpp
   tests/generator_tests.cpp
   tests/homogeneous_lowering_tests.cpp
-  tests/json_tests.cpp
+  tests/manifest_tests.cpp
   tests/lowering_tests.cpp
   tests/static_table_lowering_tests.cpp
   tests/validation_tests.cpp
@@ -167,7 +168,7 @@ foreach(restriction IN ITEMS COPY DESTRUCTOR DEFAULT)
 endforeach()
 add_test(NAME CodegenCliChecksGeneratedFixture
   COMMAND sandbox-codegen
-    --manifest "${CODEGEN_COMPILE_FIXTURE_SOURCE}/manifest.json"
+    --manifest "${CODEGEN_COMPILE_FIXTURE_SOURCE}/manifest.sbxgen"
     --project-root "${CODEGEN_COMPILE_FIXTURE_SOURCE}"
     --output-root "${CODEGEN_COMPILE_FIXTURE_OUTPUT}"
     --check
@@ -198,14 +199,14 @@ set_tests_properties(CodegenCliRejectsDuplicateArguments PROPERTIES
   WILL_FAIL TRUE
 )
 add_test(NAME CodegenCliReportsMissingManifest
-  COMMAND sandbox-codegen --manifest missing-codegen-manifest.json
+  COMMAND sandbox-codegen --manifest missing-codegen-manifest.sbxgen
 )
 set_tests_properties(CodegenCliReportsMissingManifest PROPERTIES
   LABELS "unit;all;codegen"
   WILL_FAIL TRUE
 )
 
-set(SANDBOX_CODEGEN_MANIFEST "${CMAKE_CURRENT_SOURCE_DIR}/manifests/manifest.json")
+set(SANDBOX_CODEGEN_MANIFEST "${CMAKE_CURRENT_SOURCE_DIR}/manifests/manifest.sbxgen")
 
 add_custom_target(generate-code
   COMMAND sandbox-codegen

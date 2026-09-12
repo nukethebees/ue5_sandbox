@@ -1,0 +1,50 @@
+(type counting_allocator
+  :spelling "CountingAllocator"
+  :header "Project/CountingAllocator.h")
+
+(type restricted_leaf
+  :spelling "RestrictedLeaf"
+  :header "Project/RestrictedLeaf.h")
+
+(type vector
+  :spelling "FVector2f"
+  :header "Project/Vector2f.h")
+
+(type vector2d
+  :spelling "FVector2d"
+  :header "Project/Vector2d.h")
+
+(type point
+  :spelling "FPoint2f"
+  :header "Project/Point2f.h")
+
+(type row
+  :spelling "FRow"
+  :header "Project/Row.h")
+
+(type scalar
+  :spelling "FScalar1f"
+  :header "Project/Scalar1f.h")
+
+(type vector3
+  :spelling "FVector3f"
+  :header "Project/Vector3f.h")
+
+(type tracked
+  :spelling "FTracked"
+  :header "Project/Tracked.h")
+
+(type target
+  :spelling "FTarget"
+  :header "Project/Target.h")
+
+(type check
+  :spelling "check"
+  :header "CoreMinimal.h")
+
+(type child
+  :spelling "FChild"
+  (operation remove-at-swap remove_at_swap))
+
+(type fixed_child
+  :spelling "FFixedChild")

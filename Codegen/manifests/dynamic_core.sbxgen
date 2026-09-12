@@ -1,0 +1,15 @@
+(soa-module sandbox_core_countdown_timers
+  :header "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/countdown_timers.h"
+  :source "Plugins/SandboxCore/Source/SandboxCore/Private/countdown_timers.cpp"
+  :header-include "SandboxCore/countdown_timers.h"
+  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
+  (struct FCountdownTimers
+    :operations (all)
+    :export-specifier SANDBOXCORE_API
+    (member remaining_times array float)
+    (function tick void
+      :body ("ml::subtract_in_place(remaining_times, dt);")
+      :dependencies (array_math)
+      :noexcept true
+      :definition-in-source true
+      (parameter dt (type-ref float :suffix " const")))))

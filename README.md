@@ -33,7 +33,7 @@ The project utilizes a custom plugin to extend the engine's capabilities:
 
 ## Code generation
 
-Generated C++ files are defined by the JSON schemas in `Codegen/manifests`. The standalone
+Generated C++ files are defined by the S-expression schemas in `Codegen/manifests`. The standalone
 C++ generator is built with CMake and regenerates the files from the repository root:
 
 ```bash

@@ -9,9 +9,9 @@ add_custom_command(
   OUTPUT "${NATIVE_SOA_GENERATED}/native_soa_types.h"
   COMMAND native-soa-generate "${PROJECT_SOURCE_DIR}" "${NATIVE_SOA_GENERATED}"
   DEPENDS native-soa-generate
-    "${CMAKE_CURRENT_SOURCE_DIR}/manifest.json"
-    "${PROJECT_SOURCE_DIR}/Codegen/manifests/single_allocation_experiment.json"
-    "${PROJECT_SOURCE_DIR}/Codegen/manifests/types.json"
+    "${CMAKE_CURRENT_SOURCE_DIR}/manifest.sbxgen"
+    "${PROJECT_SOURCE_DIR}/Codegen/manifests/single_allocation_experiment.sbxgen"
+    "${PROJECT_SOURCE_DIR}/Codegen/manifests/types.sbxgen"
   VERBATIM)
 add_library(native-soa INTERFACE)
 target_compile_features(native-soa INTERFACE cxx_std_23)

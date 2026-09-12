@@ -1,0 +1,200 @@
+(settings-module game_settings
+  :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/settings/GameSettings.generated.h"
+  :source "Plugins/SpaceGame/Source/SpaceGame/Private/settings/GameSettings.generated.cpp"
+  :header-include "SpaceGame/settings/GameSettings.generated.h"
+  :namespace ml::ioj
+  :api-name TGameSettingsAccess
+  :state-name FGameSettingsState
+  :export-specifier SPACEGAME_API
+  (category video "Video")
+  (category gameplay "Gameplay")
+  (category audio "Audio")
+  (category controls "Controls")
+  (category accessibility "Accessibility")
+  (setting resolution "Resolution"
+    :tooltip "Display resolution."
+    :category video
+    :value-type @int_point
+    :backend game_user_settings
+    :apply confirm
+    (control choice
+      :options-provider supported_resolutions))
+  (setting window_mode "Window Mode"
+    :category video
+    :value-type @game_window_mode
+    :backend game_user_settings
+    :apply confirm
+    (control choice
+      :options-provider window_modes))
+  (setting vsync "VSync"
+    :category video
+    :value-type bool
+    :backend game_user_settings
+    :apply deferred
+    (control toggle))
+  (setting frame_rate_limit "Frame Rate Limit"
+    :category video
+    :value-type float
+    :backend game_user_settings
+    :apply deferred
+    (control choice
+      :options-provider frame_rate_limits))
+  (setting resolution_scale "Resolution Scale"
+    :category video
+    :value-type float
+    :backend game_user_settings
+    :apply deferred
+    (control float-range
+      :min 50
+      :max 100
+      :step 1))
+  (setting aa_method "Anti-Aliasing Method"
+    :category video
+    :value-type @game_anti_aliasing_method
+    :backend game_user_settings
+    :apply deferred
+    (control choice
+      :options-provider aa_methods))
+  (setting aa_quality "Anti-Aliasing Quality"
+    :category video
+    :value-type @game_quality_level
+    :backend game_user_settings
+    :apply deferred
+    (control choice
+      :options-provider quality_levels
+      :availability-provider aa_quality))
+  (setting shadow_quality "Shadow Quality"
+    :category video
+    :value-type @game_quality_level
+    :backend game_user_settings
+    :apply deferred
+    (control choice
+      :options-provider quality_levels))
+  (setting texture_quality "Texture Quality"
+    :category video
+    :value-type @game_quality_level
+    :backend game_user_settings
+    :apply deferred
+    (control choice
+      :options-provider quality_levels))
+  (setting effects_quality "Effects Quality"
+    :category video
+    :value-type @game_quality_level
+    :backend game_user_settings
+    :apply deferred
+    (control choice
+      :options-provider quality_levels))
+  (setting reflections_quality "Reflections Quality"
+    :category video
+    :value-type @game_quality_level
+    :backend game_user_settings
+    :apply deferred
+    (control choice
+      :options-provider quality_levels))
+  (setting shading_quality "Shading Quality"
+    :category video
+    :value-type @game_quality_level
+    :backend game_user_settings
+    :apply deferred
+    (control choice
+      :options-provider quality_levels))
+  (setting master_volume "Master Volume"
+    :category audio
+    :value-type float
+    :backend audio
+    :apply immediate
+    (control float-range
+      :min 0
+      :max 1
+      :step 0.01))
+  (setting music_volume "Music Volume"
+    :category audio
+    :value-type float
+    :backend audio
+    :apply immediate
+    (control float-range
+      :min 0
+      :max 1
+      :step 0.01))
+  (setting sfx_volume "SFX Volume"
+    :category audio
+    :value-type float
+    :backend audio
+    :apply immediate
+    (control float-range
+      :min 0
+      :max 1
+      :step 0.01))
+  (setting ui_volume "UI Volume"
+    :category audio
+    :value-type float
+    :backend audio
+    :apply immediate
+    (control float-range
+      :min 0
+      :max 1
+      :step 0.01))
+  (setting bees "Bees"
+    :tooltip "Number of bees."
+    :category gameplay
+    :value-type int32
+    :backend custom
+    :apply immediate
+    (control integer-range
+      :min 0
+      :max 5
+      :step 1))
+  (setting mouse_turn_sensitivity "Mouse Sensitivity"
+    :tooltip "Mouse turning sensitivity."
+    :category controls
+    :value-type float
+    :backend enhanced_input_user_settings
+    :apply immediate
+    (control float-range
+      :min 0.01
+      :max 0.2
+      :step 0.005))
+  (setting gamepad_turn_sensitivity "Controller Sensitivity"
+    :tooltip "Controller turning sensitivity."
+    :category controls
+    :value-type float
+    :backend enhanced_input_user_settings
+    :apply immediate
+    (control float-range
+      :min 0.25
+      :max 2.0
+      :step 0.05))
+  (setting gamepad_turn_dead_zone "Turn Stick Dead Zone"
+    :tooltip "Inner dead zone for the stick controlling turning or aiming."
+    :category controls
+    :value-type float
+    :backend enhanced_input_user_settings
+    :apply immediate
+    (control float-range
+      :min 0.0
+      :max 0.5
+      :step 0.01))
+  (setting gamepad_move_dead_zone "Movement Stick Dead Zone"
+    :tooltip "Inner dead zone for sticks controlling movement."
+    :category controls
+    :value-type float
+    :backend enhanced_input_user_settings
+    :apply immediate
+    (control float-range
+      :min 0.0
+      :max 0.5
+      :step 0.01))
+  (setting invert_mouse_pitch "Invert Mouse Pitch"
+    :tooltip "Invert vertical mouse turning."
+    :category controls
+    :value-type bool
+    :backend enhanced_input_user_settings
+    :apply immediate
+    (control toggle))
+  (setting invert_gamepad_pitch "Invert Controller Pitch"
+    :tooltip "Invert vertical controller turning."
+    :category controls
+    :value-type bool
+    :backend enhanced_input_user_settings
+    :apply immediate
+    (control toggle)))

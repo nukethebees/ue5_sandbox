@@ -1,0 +1,367 @@
+(type level_telemetry_entity_type_counts
+  :spelling "FTestEntityRegistry::EntityTypeCounts"
+  :header "SpaceGameSimulation/entities/TestEntityRegistry.h")
+
+(type level_telemetry_entity_counts
+  :spelling "FTestEntityRegistry::EntityCounts"
+  :header "SpaceGameSimulation/entities/TestEntityRegistry.h")
+
+(type soa_experiment_MimallocArrayAllocator
+  :spelling "MimallocArrayAllocator"
+  :header "SbxCoreExperiments/soa_reference_allocators.h")
+
+(type soa_experiment_FMemoryStorageAllocator
+  :spelling "ml::soa_storage::FMemoryStorageAllocator"
+  :header "SandboxCore/single_allocation/allocators.h")
+
+(type soa_experiment_MallocAllocator
+  :spelling "MallocAllocator"
+  :header "SbxCoreExperiments/soa_reference_allocators.h")
+
+(type soa_experiment_ReallocAllocator
+  :spelling "ReallocAllocator"
+  :header "SbxCoreExperiments/soa_reference_allocators.h")
+
+(type soa_experiment_Handle
+  :spelling "Handle"
+  :header "SbxCoreExperiments/soa_leaf_types.h")
+
+(type soa_experiment_Task
+  :spelling "Task"
+  :header "SbxCoreExperiments/soa_leaf_types.h")
+
+(type soa_experiment_Team
+  :spelling "Team"
+  :header "SbxCoreExperiments/soa_leaf_types.h")
+
+(type soa_experiment_OddBytes
+  :spelling "OddBytes"
+  :header "SbxCoreExperiments/soa_leaf_types.h")
+
+(type soa_experiment_Aligned32
+  :spelling "Aligned32"
+  :header "SbxCoreExperiments/soa_leaf_types.h")
+
+(type soa_experiment_Aligned64
+  :spelling "Aligned64"
+  :header "SbxCoreExperiments/soa_leaf_types.h")
+
+(type soa_experiment_Aligned256
+  :spelling "Aligned256"
+  :header "SbxCoreExperiments/soa_leaf_types.h")
+
+(type array_fill
+  :spelling "ml::fill"
+  :header "SandboxCore/array_utils.h")
+
+(type array_math
+  :spelling "ml::subtract_in_place"
+  :header "SandboxCore/array_math.h")
+
+(type actor_ptr
+  :spelling "AActor*"
+  :header "GameFramework/Actor.h"
+  :pass-by value)
+
+(type actor_weak_ptr
+  :spelling "TWeakObjectPtr<AActor>"
+  :header "GameFramework/Actor.h"
+  :pass-by value)
+
+(type check
+  :spelling "check"
+  :header "CoreMinimal.h")
+
+(type countdown_timers
+  :spelling "FCountdownTimers"
+  :header "SandboxCore/countdown_timers.h"
+  (operation remove-at-swap remove_at_swap))
+
+(type death_reason
+  :spelling "ETestDeathReason"
+  :header "SpaceGameSimulation/entities/TestDeathReason.h"
+  :pass-by value)
+
+(type collision_enabled
+  :spelling "ECollisionEnabled::Type"
+  :header "Engine/EngineTypes.h"
+  :pass-by value)
+
+(type entity_type
+  :spelling "ETestEntityType"
+  :header "SpaceGameSimulation/entities/TestEntityType.h"
+  :pass-by value)
+
+(type level_event_count
+  :spelling "ml::FLevelEventCount"
+  :header "SpaceGameSimulation/levels/LevelEventGroupCounts.h"
+  :pass-by value)
+
+(type level_mission_event_type
+  :spelling "ml::ELevelMissionEventType"
+  :header "SpaceGameSimulation/levels/LevelMissionEventType.h"
+  :pass-by value)
+
+(type fighter_order
+  :spelling "TestCapitalShipFighterOrder"
+  :header "SpaceGameSimulation/ships/fighters/TestCapitalShipFighterOrder.h")
+
+(type fighter_order_queue
+  :spelling "TestCapitalShipFighterOrderQueue"
+  :header "SpaceGameSimulation/ships/fighters/TestCapitalShipFighterOrderQueue.h"
+  (operation remove-at-swap remove_at_swap))
+
+(type fighter_spawn_queue
+  :spelling "TestCapitalShipFighterSpawnQueue"
+  :header "SpaceGameSimulation/ships/fighters/TestCapitalShipFighterSpawnQueue.h"
+  (operation remove-at-swap remove_at_swap))
+
+(type fighter_spawn_queue_const_view
+  :spelling "TestCapitalShipFighterSpawnQueueConstView"
+  :header "SpaceGameSimulation/ships/fighters/TestCapitalShipFighterSpawnQueue.h"
+  :pass-by value)
+
+(type fighter_task
+  :spelling "ETestCapitalShipFightersTask"
+  :header "SpaceGameSimulation/ships/fighters/TestCapitalShipFightersTask.h"
+  :pass-by value)
+
+(type fstring
+  :spelling "FString"
+  :header "CoreMinimal.h")
+
+(type entity_archetype_id
+  :spelling "ml::FEntityArchetypeId"
+  :header "SpaceGameSimulation/levels/LevelTypes.h"
+  :pass-by value)
+
+(type level_entity_id
+  :spelling "ml::FLevelEntityId"
+  :header "SpaceGameSimulation/levels/LevelTypes.h"
+  :pass-by value)
+
+(type level_team_id
+  :spelling "ml::FLevelTeamId"
+  :header "SpaceGameSimulation/levels/LevelTypes.h"
+  :pass-by value)
+
+(type index_span
+  :spelling "FIndexSpan"
+  :header "SpaceGameSimulation/support/IndexSpan.h"
+  :pass-by value)
+
+(type instance_data
+  :spelling "FInstancedStaticMeshInstanceData"
+  :header "Components/InstancedStaticMeshComponent.h")
+
+(type linear_color
+  :spelling "FLinearColor"
+  :header "Math/Color.h"
+  :pass-by value)
+
+(type periodic_tick_countdown_16
+  :spelling "FPeriodicTickCountdown16"
+  :header "SandboxCore/periodic_tick_countdown.h"
+  (operation remove-at-swap remove_at_swap))
+
+(type primitive_component_const_ptr
+  :spelling "UPrimitiveComponent const*"
+  :header "Components/PrimitiveComponent.h"
+  :pass-by value)
+
+(type primitive_component_ptr
+  :spelling "UPrimitiveComponent*"
+  :header "Components/PrimitiveComponent.h"
+  :pass-by value)
+
+(type primitive_component_weak_ptr
+  :spelling "TWeakObjectPtr<UPrimitiveComponent>"
+  :header "Components/PrimitiveComponent.h"
+  :pass-by value)
+
+(type registry_handle
+  :spelling "FRegistryEntityHandle"
+  :header "SandboxNative/RegistryEntityHandle.h"
+  :pass-by value)
+
+(type registry_handle_array
+  :spelling "TArray<FRegistryEntityHandle>"
+  :header "Containers/Array.h")
+
+(type rotator_3f
+  :spelling "FRotator3f"
+  :header "CoreMinimal.h"
+  :pass-by value)
+
+(type rotator_3d
+  :spelling "FRotator3d"
+  :header "CoreMinimal.h")
+
+(type rotators_f
+  :spelling "FRotatorsf"
+  :header "SandboxCore/soa_rotators.h"
+  (operation add-element add
+    :pass-by value)
+  (operation remove-at-swap remove_at_swap)
+  (operation set-element set
+    :pass-by value))
+
+(type rotators_d
+  :spelling "FRotatorsd"
+  :header "SandboxCore/soa_rotators.h"
+  (operation add-element add
+    :pass-by const-ref)
+  (operation remove-at-swap remove_at_swap)
+  (operation set-element set
+    :pass-by const-ref))
+
+(type soa_vector_fill
+  :spelling "ml::fill"
+  :header "SandboxCore/soa_vector_utils.h")
+
+(type shared_ptr_int32
+  :spelling "TSharedPtr<int32>"
+  :header "Templates/SharedPointer.h")
+
+(type team
+  :spelling "ETestTeam"
+  :header "SpaceGameSimulation/entities/TestTeam.h"
+  :pass-by value)
+
+(type tick_countdown_8
+  :spelling "FTickCountdown8"
+  :header "SandboxCore/tick_countdown.h"
+  (operation remove-at-swap remove_at_swap))
+
+(type tick_countdown_16
+  :spelling "FTickCountdown16"
+  :header "SandboxCore/tick_countdown.h"
+  (operation remove-at-swap remove_at_swap))
+
+(type unique_id
+  :spelling "TestEntityUniqueId"
+  :header "SpaceGameSimulation/entities/TestEntityUniqueId.h"
+  :pass-by value)
+
+(type vector_2f
+  :spelling "FVector2f"
+  :header "CoreMinimal.h"
+  :pass-by value)
+
+(type vector_2d
+  :spelling "FVector2d"
+  :header "CoreMinimal.h"
+  :pass-by value)
+
+(type int_point
+  :spelling "FIntPoint"
+  :header "CoreMinimal.h"
+  :pass-by value)
+
+(type game_window_mode
+  :spelling "EGameWindowMode"
+  :header "SpaceGame/settings/GameSettingsTypes.h"
+  :pass-by value)
+
+(type game_anti_aliasing_method
+  :spelling "EGameAntiAliasingMethod"
+  :header "SpaceGame/settings/GameSettingsTypes.h"
+  :pass-by value)
+
+(type game_quality_level
+  :spelling "EGameQualityLevel"
+  :header "SpaceGame/settings/GameSettingsTypes.h"
+  :pass-by value)
+
+(type uint_point
+  :spelling "FUintPoint"
+  :header "CoreMinimal.h"
+  :pass-by value)
+
+(type vector_3f_value
+  :spelling "FVector3f"
+  :header "CoreMinimal.h"
+  :pass-by value)
+
+(type vector_3d
+  :spelling "FVector3d"
+  :header "CoreMinimal.h")
+
+(type int_vector
+  :spelling "FIntVector"
+  :header "CoreMinimal.h"
+  :pass-by value)
+
+(type uint_vector_3
+  :spelling "FUintVector3"
+  :header "CoreMinimal.h"
+  :pass-by value)
+
+(type quat_4f
+  :spelling "FQuat4f"
+  :header "CoreMinimal.h"
+  :pass-by value)
+
+(type vectors_3f
+  :spelling "FVectors3f"
+  :header "SandboxCore/soa_vectors_3f.h"
+  (operation add-element add
+    :pass-by value)
+  (operation remove-at-swap remove_at_swap)
+  (operation set-element set
+    :pass-by value))
+
+(type transform
+  :spelling "FTransform"
+  :header "Math/Transform.h")
+
+(type vectors_3d
+  :spelling "FVectors3d"
+  :header "SandboxCore/soa_vectors_3d.h"
+  (operation add-element add
+    :pass-by const-ref)
+  (operation remove-at-swap remove_at_swap)
+  (operation set-element set
+    :pass-by const-ref))
+
+(type vectors_3i32
+  :spelling "FVectors3i32"
+  :header "SandboxCore/soa_vectors_3i32.h"
+  (operation add-element add
+    :pass-by value)
+  (operation remove-at-swap remove_at_swap)
+  (operation set-element set
+    :pass-by value))
+
+(type test_fighters
+  :spelling "ml::test_capital_ship_fighters::Simulation"
+  :header "SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h")
+
+(type spawned_entity_handles
+  :spelling "SpawnedEntityHandles"
+  :header "SpaceGameSimulation/entities/TestEntityRegistry.h")
+
+(type test_space_ship
+  :spelling "ml::test_space_ship::Simulation"
+  :header "SpaceGameSimulation/ships/player/TestSpaceShipSimulation.h")
+
+(type test_lasers
+  :spelling "ml::test_lasers::Simulation"
+  :header "SpaceGameSimulation/combat/lasers/TestLasersSimulation.h")
+
+(type test_capital_ships
+  :spelling "ml::test_capital_ships::Simulation"
+  :header "SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h")
+
+(type test_static_turrets
+  :spelling "ml::test_static_turrets::Simulation"
+  :header "SpaceGameSimulation/defences/turrets/TestStaticTurretsSimulation.h")
+
+(type test_tube_spinners
+  :spelling "ml::test_tube_spinners::Simulation"
+  :header "SpaceGameSimulation/defences/spinners/TestTubeSpinnersSimulation.h")
+
+(type laser_source
+  :spelling "FLaserSource"
+  :header "SpaceGameSimulation/combat/lasers/LaserSource.h"
+  :pass-by value)

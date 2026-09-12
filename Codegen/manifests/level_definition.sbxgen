@@ -1,0 +1,47 @@
+(soa-module level_definition_soa
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/levels/LevelDefinitionSoA.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/levels/LevelDefinitionSoA.cpp"
+  :header-include "SpaceGameSimulation/levels/LevelDefinitionSoA.h"
+  :namespace ml
+  :include-order ("SpaceGame/" "SandboxCore/")
+  (struct FLevelEntityTable
+    :operations (all)
+    :export-specifier SPACEGAMESIMULATION_API
+    (member ids array @level_entity_id)
+    (member archetypes array @entity_archetype_id)
+    (member teams array @level_team_id)
+    (member positions nested @vectors_3d)
+    (member rotations nested @rotators_d)
+    (member spawn_times_seconds array double))
+  (struct FLevelSpawnGroups
+    :operations (all)
+    :export-specifier SPACEGAMESIMULATION_API
+    (member types array @entity_type)
+    (member offsets array int32)
+    (member counts array @level_event_count))
+  (struct FLevelCapitalSpawnEvents
+    :operations (all)
+    :export-specifier SPACEGAMESIMULATION_API
+    (member entity_indices array int32)
+    (member target_entity_indices array int32)
+    (member locations nested @vectors_3f)
+    (member rotations nested @rotators_f)
+    (member teams array @team)
+    (member healths array int32)
+    (member initial_fighter_spawn_delays array float)
+    (member fighter_spawn_cooldowns array float))
+  (struct FLevelTurretSpawnEvents
+    :operations (all)
+    :export-specifier SPACEGAMESIMULATION_API
+    (member entity_indices array int32)
+    (member locations nested @vectors_3f)
+    (member rotations nested @rotators_f)
+    (member teams array @team)
+    (member healths array int32)
+    (member laser_damages array int32))
+  (struct FLevelMissionEventGroups
+    :operations (all)
+    :export-specifier SPACEGAMESIMULATION_API
+    (member types array @level_mission_event_type)
+    (member offsets array int32)
+    (member counts array @level_event_count)))

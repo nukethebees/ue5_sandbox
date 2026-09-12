@@ -1,0 +1,75 @@
+(soa-module soa_spacing_shapes
+  :header "Plugins/SandboxCore/Source/SbxCoreExperiments/Public/SbxCoreExperiments/soa_spacing_shapes.h"
+  :source "Plugins/SandboxCore/Source/SbxCoreExperiments/Private/soa_spacing_shapes.cpp"
+  :header-include "SbxCoreExperiments/soa_spacing_shapes.h"
+  :namespace ml::single_allocation_experiment
+  (struct SpacingDoubleVector
+    :operations (all)
+    :export-specifier SBXCOREEXPERIMENTS_API
+    (member xs array double)
+    (member ys array double)
+    (member zs array double))
+  (struct SpacingDoubles
+    :operations (all)
+    :export-specifier SBXCOREEXPERIMENTS_API
+    (member positions0 nested SpacingDoubleVector
+      :nested-schema SpacingDoubleVector)
+    (member velocities0 nested SpacingDoubleVector
+      :nested-schema SpacingDoubleVector)
+    (member positions1 nested SpacingDoubleVector
+      :nested-schema SpacingDoubleVector)
+    (member velocities1 nested SpacingDoubleVector
+      :nested-schema SpacingDoubleVector)
+    (member positions2 nested SpacingDoubleVector
+      :nested-schema SpacingDoubleVector)
+    (member velocities2 nested SpacingDoubleVector
+      :nested-schema SpacingDoubleVector)
+    (member positions3 nested SpacingDoubleVector
+      :nested-schema SpacingDoubleVector)
+    (member velocities3 nested SpacingDoubleVector
+      :nested-schema SpacingDoubleVector)
+    (single-allocation SingleSpacingDoubles))
+  (struct SpacingMixedBundle
+    :operations (all)
+    :export-specifier SBXCOREEXPERIMENTS_API
+    (member flags array uint8)
+    (member counters array uint16)
+    (member counts array uint32)
+    (member totals array uint64)
+    (member payloads array @soa_experiment_OddBytes)
+    (member values array float)
+    (member rates array double))
+  (struct SpacingMixedWidths
+    :operations (all)
+    :export-specifier SBXCOREEXPERIMENTS_API
+    (member bundle0 nested SpacingMixedBundle
+      :nested-schema SpacingMixedBundle)
+    (member bundle1 nested SpacingMixedBundle
+      :nested-schema SpacingMixedBundle)
+    (member bundle2 nested SpacingMixedBundle
+      :nested-schema SpacingMixedBundle)
+    (member bundle3 nested SpacingMixedBundle
+      :nested-schema SpacingMixedBundle)
+    (member bundle4 nested SpacingMixedBundle
+      :nested-schema SpacingMixedBundle)
+    (member bundle5 nested SpacingMixedBundle
+      :nested-schema SpacingMixedBundle)
+    (single-allocation SingleSpacingMixedWidths))
+  (struct SpacingAlignedBundle
+    :operations (all)
+    :export-specifier SBXCOREEXPERIMENTS_API
+    (member positions array float)
+    (member velocities array float)
+    (member aligned32 array @soa_experiment_Aligned32)
+    (member aligned64 array @soa_experiment_Aligned64)
+    (member aligned256 array @soa_experiment_Aligned256))
+  (struct SpacingAligned
+    :operations (all)
+    :export-specifier SBXCOREEXPERIMENTS_API
+    (member bundle0 nested SpacingAlignedBundle
+      :nested-schema SpacingAlignedBundle)
+    (member bundle1 nested SpacingAlignedBundle
+      :nested-schema SpacingAlignedBundle)
+    (member bundle2 nested SpacingAlignedBundle
+      :nested-schema SpacingAlignedBundle)
+    (single-allocation SingleSpacingAligned)))

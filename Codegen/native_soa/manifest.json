@@ -1,5 +1,0 @@
-{
-  "schema_version": 11,
-  "types": "../manifests/types.json",
-  "modules": ["../manifests/single_allocation_experiment.json"]
-}

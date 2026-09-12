@@ -1,5 +1,5 @@
 #include <codegen/generator.h>
-#include <codegen/json.h>
+#include <codegen/manifest.h>
 
 #include <filesystem>
 #include <iostream>
@@ -11,7 +11,7 @@
 namespace {
 
 struct Arguments {
-    std::filesystem::path manifest{"Codegen/manifests/manifest.json"};
+    std::filesystem::path manifest{"Codegen/manifests/manifest.sbxgen"};
     std::filesystem::path project_root{std::filesystem::current_path()};
     std::optional<std::filesystem::path> output_root;
     bool check{false};

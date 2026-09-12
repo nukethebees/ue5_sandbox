@@ -1,0 +1,208 @@
+(soa-module test_capital_ship_fighters_soa
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSoA.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFightersSoA.cpp"
+  :header-include "SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSoA.h"
+  :namespace ml::test_capital_ship_fighters
+  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
+  (struct EntityData
+    :operations (all)
+    :export-specifier SPACEGAMESIMULATION_API
+    (member entity_handles array @registry_handle)
+    (member integral_biases array uint32)
+    (member float_biases array float)
+    (member tasks array @fighter_task)
+    (member locations nested @vectors_3f)
+    (member desired_move_locations nested @vectors_3f)
+    (member aim_directions nested @vectors_3f)
+    (member desired_aiming_directions nested @vectors_3f)
+    (member movement_directions nested @vectors_3f)
+    (member velocities nested @vectors_3f)
+    (member move_distances array float)
+    (member speeds array float)
+    (member teams array @team)
+    (member healths array int32)
+    (member parent_handles array @registry_handle)
+    (member awareness_scan_countdowns nested @tick_countdown_8)
+    (member navigation_update_countdowns nested @periodic_tick_countdown_16)
+    (member separation_steering nested @vectors_3f)
+    (member navigation_risk_tiers array uint8)
+    (member navigation_lower_risk_scan_counts array uint8)
+    (member avoidance_choice_indices array int8)
+    (member avoidance_clear_scan_counts array uint8)
+    (member attack_reposition_countdowns nested @tick_countdown_16)
+    (member attack_cooldowns nested @tick_countdown_16)
+    (member target_handles array @registry_handle)
+    (member target_locations nested @vectors_3f)
+    (member target_velocities nested @vectors_3f)
+    (member target_directions nested @vectors_3f)
+    (member intercept_times array float)
+    (member target_distance_sq array float)
+    (member target_distances array float)
+    (member target_radii array float)))
+
+(soa-module test_capital_ships_soa
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/capital/TestCapitalShipsSoA.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/capital/TestCapitalShipsSoA.cpp"
+  :header-include "SpaceGameSimulation/ships/capital/TestCapitalShipsSoA.h"
+  :namespace ml::test_capital_ships
+  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
+  (struct SpawnData
+    :operations (all)
+    :export-specifier SPACEGAMESIMULATION_API
+    (member target_handles array @registry_handle)
+    (member locations nested @vectors_3f)
+    (member rotations nested @rotators_f)
+    (member teams array @team)
+    (member healths array int32)
+    (member initial_spawn_delays array float)
+    (member spawn_cooldowns array float))
+  (struct EntityTickData
+    :operations (all)
+    :export-specifier SPACEGAMESIMULATION_API
+    (member fighter_queue nested @fighter_spawn_queue))
+  (struct EntityData
+    :operations (all)
+    :export-specifier SPACEGAMESIMULATION_API
+    (member handles array @registry_handle)
+    (member locations nested @vectors_3f)
+    (member rotations nested @rotators_f)
+    (member fighter_spawn_timers nested @countdown_timers)
+    (member fighter_spawn_cooldowns array float)
+    (member teams array @team)
+    (member healths array int32)
+    (member capital_fighter_handle_spans array @index_span)
+    (member target_handles array @registry_handle))
+  (struct FighterReassignment
+    :operations (all)
+    :export-specifier SPACEGAMESIMULATION_API
+    (member capital_handles array @registry_handle)
+    (member fighter_handles array @registry_handle)
+    (function add void
+      :body ("capital_handles.Add(ch);" "fighter_handles.Add(fh);")
+      :inline true
+      (parameter ch (type-ref @registry_handle :suffix " const"))
+      (parameter fh (type-ref @registry_handle :suffix " const")))))
+
+(soa-module test_lasers_soa
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/combat/lasers/TestLasersSoA.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/combat/lasers/TestLasersSoA.cpp"
+  :header-include "SpaceGameSimulation/combat/lasers/TestLasersSoA.h"
+  :namespace ml::test_lasers
+  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
+  (struct SpawnRequests
+    :operations (all)
+    :export-specifier SPACEGAMESIMULATION_API
+    (member locations nested @vectors_3f)
+    (member rotations nested @rotators_f)
+    (member base_velocities nested @vectors_3f)
+    (member damages array int32)
+    (member speeds array float)
+    (member max_distances array float)
+    (member instigator_handles array @registry_handle)
+    (member sources array @laser_source)
+    (function set_damages void
+      (parameter value "int32 const"))
+    (function set_speeds void
+      (parameter value "float const"))
+    (function set_max_distances void
+      (parameter value "float const"))
+    (function set_sources void
+      (parameter value (type-ref @laser_source :suffix " const"))))
+  (struct Entities
+    :operations (all)
+    :export-specifier SPACEGAMESIMULATION_API
+    (member sources array @laser_source)
+    (member locations nested @vectors_3f)
+    (member rotations nested @rotators_f)
+    (member velocities nested @vectors_3f)
+    (member damages array int32)
+    (member lifetimes_remaining array float)
+    (member instigator_handles array @registry_handle)
+    (member initial_lifetimes array float)
+    (member spawn_times array float))
+  (struct HitDetails
+    :operations (all)
+    :export-specifier SPACEGAMESIMULATION_API
+    (member locations nested @vectors_3f)
+    (member emission_directions nested @vectors_3f)
+    (member sources array @laser_source)))
+
+(soa-module test_capital_ship_fighter_spawn_queue_soa
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFighterSpawnQueueSoA.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFighterSpawnQueueSoA.cpp"
+  :header-include "SpaceGameSimulation/ships/fighters/TestCapitalShipFighterSpawnQueueSoA.h"
+  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
+  (struct TestCapitalShipFighterSpawnQueue
+    :operations (all)
+    :export-specifier SPACEGAMESIMULATION_API
+    (member locations nested @vectors_3f)
+    (member rotations nested @rotators_f)
+    (member teams array @team)
+    (member parents array @registry_handle)
+    (member targets array @registry_handle)))
+
+(soa-module test_capital_ship_fighter_order_queue
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFighterOrderQueue.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFighterOrderQueue.cpp"
+  :header-include "SpaceGameSimulation/ships/fighters/TestCapitalShipFighterOrderQueue.h"
+  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
+  (struct TestCapitalShipFighterOrderQueue
+    :operations (all)
+    :export-specifier SPACEGAMESIMULATION_API
+    :using-declarations ("Task = ETestCapitalShipFightersTask" "Order = TestCapitalShipFighterOrder")
+    (member handles array @registry_handle)
+    (member orders array @fighter_order)
+    (member tasks array @fighter_task)
+    (member targets array @registry_handle)
+    (function add void
+      :body ("handles.Add(handle);" "orders.Add(order);" "tasks.Add(task);" "targets.Add(target);")
+      :inline true
+      (parameter handle (type-ref @registry_handle :suffix " const"))
+      (parameter order "Order const")
+      (parameter task "Task const")
+      (parameter target (type-ref @registry_handle :suffix " const")))))
+
+(soa-module test_static_turrets_soa
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/defences/turrets/TestStaticTurretsSoA.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/defences/turrets/TestStaticTurretsSoA.cpp"
+  :header-include "SpaceGameSimulation/defences/turrets/TestStaticTurretsSoA.h"
+  :namespace ml::test_static_turrets
+  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
+  (struct SpawnData
+    :operations (all)
+    :export-specifier SPACEGAMESIMULATION_API
+    (member locations nested @vectors_3f)
+    (member teams array @team)
+    (member healths array int32)
+    (member laser_damages array int32))
+  (struct EntityData
+    :operations (all)
+    :export-specifier SPACEGAMESIMULATION_API
+    (member handles array @registry_handle)
+    (member integral_biases array uint32)
+    (member locations nested @vectors_3f)
+    (member fire_point_locations nested @vectors_3f)
+    (member rotations nested @rotators_f)
+    (member teams array @team)
+    (member laser_cooldowns nested @tick_countdown_16)
+    (member laser_damages array int32)
+    (member target_refresh_countdowns nested @periodic_tick_countdown_16)
+    (member target_handles array @registry_handle)
+    (member target_locations nested @vectors_3f)
+    (member target_velocities nested @vectors_3f)
+    (member healths array int32)))
+
+(soa-module test_tube_spinners_soa
+  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/defences/spinners/TestTubeSpinnersSoA.h"
+  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/defences/spinners/TestTubeSpinnersSoA.cpp"
+  :header-include "SpaceGameSimulation/defences/spinners/TestTubeSpinnersSoA.h"
+  :namespace ml::test_tube_spinners
+  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
+  (struct EntityData
+    :operations (all)
+    :export-specifier SPACEGAMESIMULATION_API
+    (member handles array @registry_handle)
+    (member locations nested @vectors_3f)
+    (member yaws array float)
+    (member laser_cooldowns nested @tick_countdown_16)
+    (member next_fire_point_indices array int32)))

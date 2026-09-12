@@ -1,0 +1,92 @@
+(soa-module single_allocation_experiment
+  :header "Plugins/SandboxCore/Source/SbxCoreExperiments/Public/SbxCoreExperiments/soa_types.h"
+  :source "Plugins/SandboxCore/Source/SbxCoreExperiments/Private/soa_types.cpp"
+  :header-include "SbxCoreExperiments/soa_types.h"
+  :namespace ml::single_allocation_experiment
+  (array-allocator Mimalloc @soa_experiment_MimallocArrayAllocator)
+  (array-allocator Malloc @soa_experiment_MallocAllocator)
+  (array-allocator Realloc @soa_experiment_ReallocAllocator)
+  (struct Vectors
+    :operations (all)
+    :export-specifier SBXCOREEXPERIMENTS_API
+    (member xs array float)
+    (member ys array float)
+    (member zs array float))
+  (struct Countdown8
+    :operations (all)
+    :export-specifier SBXCOREEXPERIMENTS_API
+    (member counters array int8))
+  (struct Countdown16
+    :operations (all)
+    :export-specifier SBXCOREEXPERIMENTS_API
+    (member counters array int16))
+  (struct PeriodicCountdown16
+    :operations (all)
+    :export-specifier SBXCOREEXPERIMENTS_API
+    (member remaining_ticks array int16)
+    (member periods array int16))
+  (struct EntityData
+    :operations (all)
+    :export-specifier SBXCOREEXPERIMENTS_API
+    (member entity_handles array @soa_experiment_Handle)
+    (member integral_biases array uint32)
+    (member float_biases array float)
+    (member tasks array @soa_experiment_Task)
+    (member locations nested Vectors
+      :nested-schema Vectors)
+    (member desired_move_locations nested Vectors
+      :nested-schema Vectors)
+    (member aim_directions nested Vectors
+      :nested-schema Vectors)
+    (member desired_aiming_directions nested Vectors
+      :nested-schema Vectors)
+    (member movement_directions nested Vectors
+      :nested-schema Vectors)
+    (member velocities nested Vectors
+      :nested-schema Vectors)
+    (member move_distances array float)
+    (member speeds array float)
+    (member teams array @soa_experiment_Team)
+    (member healths array int32)
+    (member parent_handles array @soa_experiment_Handle)
+    (member awareness_scan_countdowns nested Countdown8
+      :nested-schema Countdown8)
+    (member navigation_update_countdowns nested PeriodicCountdown16
+      :nested-schema PeriodicCountdown16)
+    (member separation_steering nested Vectors
+      :nested-schema Vectors)
+    (member navigation_risk_tiers array uint8)
+    (member navigation_lower_risk_scan_counts array uint8)
+    (member avoidance_choice_indices array int8)
+    (member avoidance_clear_scan_counts array uint8)
+    (member attack_reposition_countdowns nested Countdown16
+      :nested-schema Countdown16)
+    (member attack_cooldowns nested Countdown16
+      :nested-schema Countdown16)
+    (member target_handles array @soa_experiment_Handle)
+    (member target_locations nested Vectors
+      :nested-schema Vectors)
+    (member target_velocities nested Vectors
+      :nested-schema Vectors)
+    (member target_directions nested Vectors
+      :nested-schema Vectors)
+    (member intercept_times array float)
+    (member target_distance_sq array float)
+    (member target_distances array float)
+    (member target_radii array float)
+    (single-allocation SingleAllocationEntityData
+      (variant FMemorySingleEntityData @soa_experiment_FMemoryStorageAllocator)))
+  (struct AlignmentData
+    :operations (all)
+    :export-specifier SBXCOREEXPERIMENTS_API
+    (member bytes array uint8)
+    (member odd array @soa_experiment_OddBytes)
+    (member aligned32 array @soa_experiment_Aligned32)
+    (member nested nested Vectors
+      :nested-schema Vectors)
+    (member aligned64 array @soa_experiment_Aligned64)
+    (member small array int8)
+    (member aligned256 array @soa_experiment_Aligned256)
+    (member handles array @soa_experiment_Handle)
+    (single-allocation SingleAllocationAlignmentData
+      (variant FMemorySingleAlignmentData @soa_experiment_FMemoryStorageAllocator))))

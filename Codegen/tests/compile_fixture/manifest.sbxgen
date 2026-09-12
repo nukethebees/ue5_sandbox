@@ -1,0 +1,5 @@
+(codegen-manifest
+  :schema-version 11
+  :types "types.sbxgen"
+  :modules (
+    "modules.sbxgen"))

@@ -13,6 +13,44 @@ SCHEMAS = ("EntityData", "SpacingDoubles", "SpacingMixedWidths", "SpacingAligned
 CAPACITIES = (65536, 65600, 75008, 100032, 131072)
 GAPS = (0, 64, 192)
 
+ENTITY_DATA_FIELDS = (
+    "entity_handles", "integral_biases", "float_biases", "tasks",
+    ("locations", "xs", "ys", "zs"),
+    ("desired_move_locations", "xs", "ys", "zs"),
+    ("aim_directions", "xs", "ys", "zs"),
+    ("desired_aiming_directions", "xs", "ys", "zs"),
+    ("movement_directions", "xs", "ys", "zs"),
+    ("velocities", "xs", "ys", "zs"),
+    "move_distances", "speeds", "teams", "healths", "parent_handles",
+    ("awareness_scan_countdowns", "counters"),
+    ("navigation_update_countdowns", "remaining_ticks", "periods"),
+    ("separation_steering", "xs", "ys", "zs"),
+    "navigation_risk_tiers", "navigation_lower_risk_scan_counts",
+    "avoidance_choice_indices", "avoidance_clear_scan_counts",
+    ("attack_reposition_countdowns", "counters"),
+    ("attack_cooldowns", "counters"),
+    "target_handles",
+    ("target_locations", "xs", "ys", "zs"),
+    ("target_velocities", "xs", "ys", "zs"),
+    ("target_directions", "xs", "ys", "zs"),
+    "intercept_times", "target_distance_sq", "target_distances", "target_radii",
+)
+
+
+def repeated_fields(prefixes: tuple[str, ...], leaves: tuple[str, ...]) -> tuple[tuple[str, ...], ...]:
+    return tuple((prefix, *leaves) for prefix in prefixes)
+
+
+FIELD_SHAPES = (
+    ENTITY_DATA_FIELDS,
+    repeated_fields(tuple(f"{kind}{index}" for index in range(4) for kind in ("positions", "velocities")),
+                    ("xs", "ys", "zs")),
+    repeated_fields(tuple(f"bundle{index}" for index in range(6)),
+                    ("flags", "counters", "counts", "totals", "payloads", "values", "rates")),
+    repeated_fields(tuple(f"bundle{index}" for index in range(3)),
+                    ("positions", "velocities", "aligned32", "aligned64", "aligned256")),
+)
+
 
 def confirmation_cases(smoke: bool = False, *, generated_gap: int = 192) -> list[Record]:
     result: list[Record] = []
@@ -30,23 +68,14 @@ def confirmation_cases(smoke: bool = False, *, generated_gap: int = 192) -> list
     return result
 
 
-def field_paths(root: Path, schema: int) -> list[str]:
-    # Read names from the same manifests as codegen; ordinal order is checked against diagnostics.
-    structs: dict[str, Record] = {}
-    for name in ("single_allocation_experiment.json", "soa_spacing_shapes.json"):
-        document = json.loads((root / "Codegen/manifests" / name).read_text(encoding="utf-8"))
-        for module in document["modules"]:
-            structs.update({item["name"]: item for item in module["structs"]})
-    def flatten(name: str, prefix: str = "") -> list[str]:
-        paths: list[str] = []
-        for member in structs[name]["members"]:
-            path = prefix + member["name"]
-            if member["kind"] == "nested":
-                paths += flatten(member["nested_schema"], path + ".")
-            else:
-                paths.append(path)
-        return paths
-    return flatten(SCHEMAS[schema])
+def field_paths(_root: Path, schema: int) -> list[str]:
+    result: list[str] = []
+    for field in FIELD_SHAPES[schema]:
+        if isinstance(field, str):
+            result.append(field)
+        else:
+            result.extend(f"{field[0]}.{leaf}" for leaf in field[1:])
+    return result
 
 
 def summarize(records: list[Record]) -> tuple[list[Record], Record]:

@@ -380,7 +380,7 @@ The normal production Unreal generator remains one TArray-backed implementation.
 
 | Concern | Repository location |
 |---|---|
-| Canonical fighter-equivalent schema and allocator variants | `Codegen/manifests/single_allocation_experiment.json`, `types.json` |
+| Canonical fighter-equivalent schema and allocator variants | `Codegen/manifests/single_allocation_experiment.sbxgen`, `types.sbxgen` |
 | Normal Unreal owner and allocator expansion | `Codegen/src/soa_lowering.cpp` |
 | Single-allocation emission, shared by Unreal/native and allocator variants | `Codegen/src/single_allocation_soa_lowering.cpp` |
 | Reused nested flattening | `Codegen/src/fixed_soa_layout.cpp` |

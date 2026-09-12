@@ -1,0 +1,187 @@
+(enum-module plain_enum_fixture
+  :header "PlainEnums.h"
+  :source "PlainEnums.cpp"
+  :header-include "PlainEnums.h"
+  :namespace codegen_compile_fixture
+  (enum EPlainFixture uint8
+    :enum-array true
+    :conversions (lex-to-string string-view string lex-to-display-string display-string-view display-string lex-to-serialized-string try-parse-serialized)
+    :export-specifier COMPILE_FIXTURE_API
+    (value First
+      :serialized-name first)
+    (value ReadableName
+      :display-name "Readable Name"
+      :serialized-name readable_name)))
+
+(enum-module reflected_enum_fixture
+  :header "ReflectedEnums.h"
+  :source "ReflectedEnums.cpp"
+  :header-include "ReflectedEnums.h"
+  :helper-namespace codegen_compile_fixture
+  (enum EReflectedFixture uint8
+    :reflection blueprint
+    :enum-array true
+    :count COUNT
+    :conversions (lex-to-string display-string-view)
+    (value Visible
+      :display-name "Visible Value")
+    (value COUNT
+      :hidden true)))
+
+(homogeneous-soa-module homogeneous_fixture
+  :header "Homogeneous.h"
+  :source "Homogeneous.cpp"
+  :header-include "Homogeneous.h"
+  :namespace codegen_compile_fixture
+  (layout Values
+    :components (xs ys)
+    (value-type float f
+      :equivalent-type @vector
+      :input-types (@vector @point))
+    (value-type double d
+      :equivalent-type @vector2d))
+  (layout Scalar
+    :components (values)
+    (value-type int32 i)))
+
+(static-table-module static_table_fixture
+  :header "StaticTables.h"
+  :namespace codegen_compile_fixture
+  (table FStaticTableFixture
+    (row first)
+    (row second)
+    (row third)
+    (column ids int32)
+    (column weights float)
+    (group row @row
+      :columns (ids weights)))
+  (table FStaticGroupFixture
+    (row first)
+    (row second)
+    (row third)
+    (column min_xs float)
+    (column min_ys float)
+    (column min_zs float)
+    (column max_xs float)
+    (column max_ys float)
+    (column max_zs float)
+    (group min_point @vector3
+      :columns (min_xs min_ys min_zs))
+    (group max_point @vector3
+      :columns (max_xs max_ys max_zs))))
+
+(soa-module soa_fixture
+  :header "Soa.h"
+  :source "Soa.cpp"
+  :header-include "Soa.h"
+  :namespace codegen_compile_fixture
+  (struct FRows
+    :operations (all)
+    :equivalent-type @row
+    (member ids array int32)
+    (member weights array float)
+    (function first_id int32
+      :body ("return ids[0];")
+      :inline true)
+    (function weight_sum float
+      :body ("return weights[0] + weights[1];")
+      :definition-in-source true)
+    (function manual_value int32
+      :const true))
+  (struct FChild
+    :operations (all)
+    (member values array int32))
+  (struct FParents
+    :operations (all)
+    (member keys array int32)
+    (member children nested @child
+      :nested-schema FChild)
+    (single-allocation SingleParents
+      (variant CountedParents @counting_allocator)))
+  (struct RestrictionRows
+    (member restricted array @restricted_leaf)
+    (single-allocation SingleRestrictionRows))
+  (struct FFixedChild
+    (member tracked array @tracked)
+    (fixed TFixedChildStorage))
+  (struct FFixedRows
+    (member ids array int32)
+    (member children nested @fixed_child
+      :fixed-schema FFixedChild)
+    (fixed TFixedRowsStorage
+      :containers (TFixedRows TFixedRowsAlt))))
+
+(vector-soa-module vector2_fixture
+  :header "Vector2.h"
+  :source "Vector2.cpp"
+  :header-include "Vector2.h"
+  :namespace codegen_compile_fixture
+  :storage-name FVectors2f
+  :value-type float
+  :components (xs ys)
+  :equivalent-type @vector)
+
+(vector-soa-module vector1_fixture
+  :header "Vector1.h"
+  :source "Vector1.cpp"
+  :header-include "Vector1.h"
+  :namespace codegen_compile_fixture
+  :storage-name FVectors1f
+  :value-type float
+  :components (xs)
+  :equivalent-type @scalar)
+
+(vector-soa-module vector3_fixture
+  :header "Vector3.h"
+  :source "Vector3.cpp"
+  :header-include "Vector3.h"
+  :namespace codegen_compile_fixture
+  :storage-name FVectors3f
+  :value-type float
+  :components (xs ys zs)
+  :equivalent-type @vector3
+  (fixed TVectors3Storage
+    :containers (TFixedVectors3)))
+
+(facade-module inline_facade_fixture
+  :header "InlineFacade.h"
+  :namespace codegen_compile_fixture
+  (facade FInlineFacade @target target
+    :validation ("check(target != nullptr);")
+    :validation-dependencies (check)
+    (method get int32
+      :const true
+      (parameter offset "int32 const"
+        :default "0"))
+    (method reset void
+      :target-name clear)))
+
+(facade-module reference_facade_fixture
+  :header "ReferenceFacade.h"
+  :namespace codegen_compile_fixture
+  (facade FReferenceFacade @target target
+    :target-storage reference
+    (method get int32
+      :const true)
+    (method set_value void
+      :target-name set
+      (parameter value "int32 const"))))
+
+(facade-module source_facade_fixture
+  :header "SourceFacade.h"
+  :source "SourceFacade.cpp"
+  :header-include "SourceFacade.h"
+  :namespace codegen_compile_fixture
+  (facade FSourceFacade @target target
+    :validation ("check(target != nullptr);")
+    :validation-dependencies (check)
+    :definitions-in-source true
+    (method set_value void
+      :target-name set
+      (parameter value "int32 const"))
+    (method get int32
+      :const true)))
+
+(umbrella-module all_fixture
+  :header "Generated.h"
+  :headers ("Homogeneous.h" "Soa.h" "Vector1.h" "Vector2.h" "Vector3.h" "InlineFacade.h" "SourceFacade.h" "ReferenceFacade.h" "PlainEnums.h" "ReflectedEnums.h" "StaticTables.h"))
