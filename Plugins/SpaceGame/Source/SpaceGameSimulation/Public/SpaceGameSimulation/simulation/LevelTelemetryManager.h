@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sandbox/simulation/level_telemetry_history_stats.h>
+
 #include "SpaceGameSimulation/simulation/LevelTelemetrySnapshot.h"
 
 #include <SandboxCore/time_series_data.h>
@@ -7,8 +9,6 @@
 #include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
 #include <SpaceGameSimulation/telemetry/LevelTelemetryBlockHistory.h>
 #include <SpaceGameSimulation/telemetry/LevelTelemetryRunRecord.h>
-
-#include <HAL/Platform.h>
 
 struct FLevelTelemetryCurrentState {
     using EntityCounts = FTestEntityRegistry::EntityCounts;
@@ -31,22 +31,7 @@ struct FLevelTelemetryCurrentState {
     uint64 sweep_trace_count{};
 };
 
-struct FLevelTelemetryHistoryStats {
-    SIZE_T configured_block_bytes{};
-    SIZE_T layout_bytes_per_block{};
-    int32 rows_per_block{};
-    int32 acquired_block_count{};
-    int32 retained_block_count{};
-    int32 peak_block_count{};
-    int32 total_sample_capacity{};
-    SIZE_T total_byte_capacity{};
-    int32 used_sample_count{};
-    SIZE_T used_payload_bytes{};
-    int32 unused_samples_in_final_block{};
-    SIZE_T unused_payload_bytes_in_final_block{};
-    SIZE_T fixed_layout_overhead_bytes{};
-    uint64 payload_write_count{};
-};
+using FLevelTelemetryHistoryStats = ml::simulation::LevelTelemetryHistoryStats;
 
 struct FLevelMissionResult;
 struct FSimulationClock;
