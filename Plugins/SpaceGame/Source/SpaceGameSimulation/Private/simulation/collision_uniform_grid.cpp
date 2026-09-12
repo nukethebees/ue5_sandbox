@@ -185,6 +185,8 @@ void CollisionUniformGrid::rebuild_static_grid() {
     static_aabb_indices_.Reset();
 
     auto const n_cells{num_cells()};
+    auto const row_stride{grid_dims_.X};
+    auto const plane_stride{row_stride * grid_dims_.Y};
     cell_static_range_indices_.Init(INDEX_NONE, n_cells);
 
     TArray<int32> cell_counts;
@@ -198,12 +200,17 @@ void CollisionUniformGrid::rebuild_static_grid() {
                TEXT("Static collision AABB %d is outside the collision grid"),
                static_index);
 
-        for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
+        auto plane_index{min_coord.X + min_coord.Y * row_stride + min_coord.Z * plane_stride};
+        for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
+            auto row_index{plane_index};
             for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
-                for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
-                    ++cell_counts[to_index(x, y, z)];
+                auto cell_index{row_index};
+                for (int32 x{min_coord.X}; x <= max_coord.X; ++x, ++cell_index) {
+                    ++cell_counts[cell_index];
                 }
+                row_index += row_stride;
             }
+            plane_index += plane_stride;
         }
     }
 
@@ -234,14 +241,19 @@ void CollisionUniformGrid::rebuild_static_grid() {
         auto const [min_coord, max_coord]{to_cell_coord_bounds(static_aabbs_.mins[static_index],
                                                                static_aabbs_.maxes[static_index])};
 
-        for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
+        auto plane_index{min_coord.X + min_coord.Y * row_stride + min_coord.Z * plane_stride};
+        for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
+            auto row_index{plane_index};
             for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
-                for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
-                    auto const range_index{cell_static_range_indices_[to_index(x, y, z)]};
+                auto cell_index{row_index};
+                for (int32 x{min_coord.X}; x <= max_coord.X; ++x, ++cell_index) {
+                    auto const range_index{cell_static_range_indices_[cell_index]};
                     auto& write_index{write_indices[range_index]};
                     static_aabb_indices_[static_cast<int32>(write_index++)] = static_index;
                 }
+                row_index += row_stride;
             }
+            plane_index += plane_stride;
         }
     }
 
@@ -274,6 +286,8 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
     auto const gens{entity_registry_.get_generations()};
 
     auto const n_cells{num_cells()};
+    auto const row_stride{grid_dims_.X};
+    auto const plane_stride{row_stride * grid_dims_.Y};
 
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::prepare_counts);
@@ -344,17 +358,21 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
             entities_buffer_.maxes.add(max_coord);
             entities_buffer_.handles.Add({i, gens[i]});
 
-            for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
+            auto plane_index{min_coord.X + min_coord.Y * row_stride + min_coord.Z * plane_stride};
+            for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
+                auto row_index{plane_index};
                 for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
-                    for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
-                        auto const cell_index{to_index(x, y, z)};
+                    auto cell_index{row_index};
+                    for (int32 x{min_coord.X}; x <= max_coord.X; ++x, ++cell_index) {
                         auto& count{cell_entity_counts_[cell_index]};
                         if (count == 0) {
                             non_empty_cell_indices_.Add(cell_index);
                         }
                         ++count;
                     }
+                    row_index += row_stride;
                 }
+                plane_index += plane_stride;
             }
         }
     }
@@ -398,17 +416,21 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
             auto const min_point{entities_buffer_.min_points[i]};
             auto const max_point{entities_buffer_.max_points[i]};
 
-            for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
+            auto plane_index{min_coord.X + min_coord.Y * row_stride + min_coord.Z * plane_stride};
+            for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
+                auto row_index{plane_index};
                 for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
-                    for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
-                        auto const cell_index{to_index(x, y, z)};
+                    auto cell_index{row_index};
+                    for (int32 x{min_coord.X}; x <= max_coord.X; ++x, ++cell_index) {
                         auto const write_index{cell_entity_write_indexes_[cell_index]++};
 
                         entities_[write_index] = entities_buffer_.handles[i];
 
                         aabbs_.set(write_index, min_point, max_point);
                     }
+                    row_index += row_stride;
                 }
+                plane_index += plane_stride;
             }
         }
     }
@@ -456,11 +478,15 @@ void CollisionUniformGrid::append_overlaps(FBox3f const& query_bounds,
         }};
     auto const static_aabbs{static_aabbs_.get_const_view()};
     auto const static_aabb_indices{TConstArrayView<int32>{static_aabb_indices_}};
+    auto const row_stride{grid_dims_.X};
+    auto const plane_stride{row_stride * grid_dims_.Y};
 
-    for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
+    auto plane_index{min_coord.X + min_coord.Y * row_stride + min_coord.Z * plane_stride};
+    for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
+        auto row_index{plane_index};
         for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
-            for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
-                auto const cell_index{to_index(x, y, z)};
+            auto cell_index{row_index};
+            for (int32 x{min_coord.X}; x <= max_coord.X; ++x, ++cell_index) {
                 auto const entity_count{cell_entity_counts_[cell_index]};
                 if (entity_count > 0) {
                     auto const entity_offset{cell_entity_offsets_[cell_index]};
@@ -498,7 +524,9 @@ void CollisionUniformGrid::append_overlaps(FBox3f const& query_bounds,
                     }
                 }
             }
+            row_index += row_stride;
         }
+        plane_index += plane_stride;
     }
 }
 
