@@ -113,6 +113,12 @@ void USpaceGameLevelConfig::get_validation_errors(TArray<FString>& errors,
         REQUIRE_CONFIG(!entity_overlay.enabled || entity_overlay.soft_target.material,
                        "entity_overlay.soft_target.material is null");
     }
+    REQUIRE_CONFIG(FMath::IsFinite(player_ship.cruise_speed) && player_ship.cruise_speed > 0.f,
+                   "player_ship.cruise_speed must be finite and positive");
+    REQUIRE_CONFIG(FMath::IsFinite(player_ship.forward_velocity_trim_fraction) &&
+                       player_ship.forward_velocity_trim_fraction > 0.f &&
+                       player_ship.forward_velocity_trim_fraction <= 1.f,
+                   "player_ship.forward_velocity_trim_fraction must be finite and in (0, 1]");
     REQUIRE_CONFIG(laser_projectiles.max_cull_distance >= laser_projectiles.min_cull_distance,
                    "laser_projectiles cull distance range is invalid");
     REQUIRE_CONFIG(laser_projectiles.n_preallocated_instances >= 0,

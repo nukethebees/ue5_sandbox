@@ -45,6 +45,7 @@
 #include <Components/VerticalBoxSlot.h>
 #include <Components/WidgetSwitcher.h>
 #include <Engine/Blueprint.h>
+#include <Engine/BlueprintGeneratedClass.h>
 #include <FileHelpers.h>
 #include <GameFramework/GameModeBase.h>
 #include <GameFramework/WorldSettings.h>
@@ -933,21 +934,35 @@ auto set_profile_override(UInputMappingContext& destination,
     return true;
 }
 
-struct FGeneratedShipTurnActions {
+struct FGeneratedShipInputActions {
     UInputAction* pointer_delta{nullptr};
     UInputAction* engage_pointer{nullptr};
+    UInputAction* increase_desired_forward_velocity{nullptr};
+    UInputAction* decrease_desired_forward_velocity{nullptr};
 
-    auto is_valid() const -> bool { return IsValid(pointer_delta) && IsValid(engage_pointer); }
+    auto is_valid() const -> bool {
+        return IsValid(pointer_delta) && IsValid(engage_pointer) &&
+               IsValid(increase_desired_forward_velocity) &&
+               IsValid(decrease_desired_forward_velocity);
+    }
 };
 
-auto generate_gameplay_input_assets() -> FGeneratedShipTurnActions {
-    FGeneratedShipTurnActions actions{
+auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
+    FGeneratedShipInputActions actions{
         .pointer_delta = create_input_action(ship_input_package_path,
                                              TEXT("IA_Ship_TurnPointerDelta"),
                                              EInputActionValueType::Axis2D),
         .engage_pointer = create_input_action(ship_input_package_path,
                                               TEXT("IA_Ship_EngagePointerTurn"),
                                               EInputActionValueType::Boolean),
+        .increase_desired_forward_velocity =
+            create_input_action(ship_input_package_path,
+                                TEXT("IA_ship_increase_desired_forward_velocity"),
+                                EInputActionValueType::Boolean),
+        .decrease_desired_forward_velocity =
+            create_input_action(ship_input_package_path,
+                                TEXT("IA_ship_decrease_desired_forward_velocity"),
+                                EInputActionValueType::Boolean),
     };
     auto* const base{LoadObject<UInputMappingContext>(nullptr, ship_base_mapping_object_path)};
     auto* const aim_move{
@@ -965,6 +980,10 @@ auto generate_gameplay_input_assets() -> FGeneratedShipTurnActions {
     base->Modify();
     base->UnmapKey(actions.engage_pointer, EKeys::RightMouseButton);
     base->MapKey(actions.engage_pointer, EKeys::RightMouseButton);
+    base->UnmapKey(actions.increase_desired_forward_velocity, EKeys::MouseScrollUp);
+    base->MapKey(actions.increase_desired_forward_velocity, EKeys::MouseScrollUp);
+    base->UnmapKey(actions.decrease_desired_forward_velocity, EKeys::MouseScrollDown);
+    base->MapKey(actions.decrease_desired_forward_velocity, EKeys::MouseScrollDown);
     auto& default_mappings{const_cast<TArray<FEnhancedActionKeyMapping>&>(base->GetMappings())};
     configure_mappings(default_mappings, *base, *actions.pointer_delta);
 
@@ -977,9 +996,10 @@ auto generate_gameplay_input_assets() -> FGeneratedShipTurnActions {
         set_profile_override(
             *base, profiles[3].id, *z_roll_aim, default_mappings, *actions.pointer_delta)};
     return success && save_asset(*actions.pointer_delta) && save_asset(*actions.engage_pointer) &&
-                   save_asset(*base)
+                   save_asset(*actions.increase_desired_forward_velocity) &&
+                   save_asset(*actions.decrease_desired_forward_velocity) && save_asset(*base)
              ? actions
-             : FGeneratedShipTurnActions{};
+             : FGeneratedShipInputActions{};
 }
 
 auto configure_ui_data(UClass& root_class,
@@ -1064,7 +1084,7 @@ auto configure_control_context_inputs(UBlueprint& blueprint,
 auto configure_gameplay_inputs(UBlueprint& blueprint,
                                UBlueprint const& source,
                                UInputMappingContext& mapping_context,
-                               FGeneratedShipTurnActions const& turn_actions) -> bool {
+                               FGeneratedShipInputActions const& actions) -> bool {
     auto* const controller{
         Cast<ASpaceGamePlayerController>(blueprint.GeneratedClass->GetDefaultObject())};
     auto const* const source_controller{
@@ -1084,33 +1104,41 @@ auto configure_gameplay_inputs(UBlueprint& blueprint,
     }
 
     controller->Modify();
-    input_property->CopyCompleteValue(
-        input_property->ContainerPtrToValuePtr<void>(controller),
-        source_input_property->ContainerPtrToValuePtr<void>(source_controller));
-    global_input_property->CopyCompleteValue(
-        global_input_property->ContainerPtrToValuePtr<void>(controller),
-        source_global_input_property->ContainerPtrToValuePtr<void>(source_controller));
+    if (&blueprint != &source) {
+        input_property->CopyCompleteValue(
+            input_property->ContainerPtrToValuePtr<void>(controller),
+            source_input_property->ContainerPtrToValuePtr<void>(source_controller));
+        global_input_property->CopyCompleteValue(
+            global_input_property->ContainerPtrToValuePtr<void>(controller),
+            source_global_input_property->ContainerPtrToValuePtr<void>(source_controller));
+    }
     auto* const input{
         input_property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(controller)};
     input->mapping_context = &mapping_context;
-    input->turn_pointer_delta = turn_actions.pointer_delta;
-    input->engage_pointer_turn = turn_actions.engage_pointer;
-    FPropertyChangedEvent property_changed{input_property, EPropertyChangeType::ValueSet};
-    controller->PostEditChangeProperty(property_changed);
-    blueprint.Modify();
+    input->turn_pointer_delta = actions.pointer_delta;
+    input->engage_pointer_turn = actions.engage_pointer;
+    input->increase_desired_forward_velocity = actions.increase_desired_forward_velocity;
+    input->decrease_desired_forward_velocity = actions.decrease_desired_forward_velocity;
     FBlueprintEditorUtils::MarkBlueprintAsModified(&blueprint);
     return true;
 }
 
 auto load_or_create_player_controller(FObserverControlInputs const& observer,
                                       FBenchmarkControlInputs const& benchmark,
-                                      FGeneratedShipTurnActions const& turn_actions)
-    -> UBlueprint* {
+                                      FGeneratedShipInputActions const& actions) -> UBlueprint* {
     auto* const source{LoadObject<UBlueprint>(nullptr, source_player_controller_object_path)};
     auto* const mapping_context{
         LoadObject<UInputMappingContext>(nullptr, ship_base_mapping_object_path)};
     if (!IsValid(source) || !IsValid(source->GeneratedClass) || !IsValid(mapping_context)) {
         UE_LOG(LogTemp, Error, TEXT("Could not load source player controller inputs"));
+        return nullptr;
+    }
+    if (!configure_gameplay_inputs(*source, *source, *mapping_context, actions)) {
+        return nullptr;
+    }
+    CastChecked<UBlueprintGeneratedClass>(source->GeneratedClass)
+        ->UpdateCustomPropertyListForPostConstruction();
+    if (!save_asset(*source)) {
         return nullptr;
     }
 
@@ -1136,7 +1164,7 @@ auto load_or_create_player_controller(FObserverControlInputs const& observer,
         return nullptr;
     }
     if (!configure_control_context_inputs(*blueprint, observer, benchmark) ||
-        !configure_gameplay_inputs(*blueprint, *source, *mapping_context, turn_actions)) {
+        !configure_gameplay_inputs(*blueprint, *source, *mapping_context, actions)) {
         return nullptr;
     }
 
@@ -1148,9 +1176,11 @@ auto load_or_create_player_controller(FObserverControlInputs const& observer,
         return nullptr;
     }
     if (!configure_control_context_inputs(*blueprint, observer, benchmark) ||
-        !configure_gameplay_inputs(*blueprint, *source, *mapping_context, turn_actions)) {
+        !configure_gameplay_inputs(*blueprint, *source, *mapping_context, actions)) {
         return nullptr;
     }
+    CastChecked<UBlueprintGeneratedClass>(blueprint->GeneratedClass)
+        ->UpdateCustomPropertyListForPostConstruction();
     auto* const compiled_controller{
         Cast<ASpaceGamePlayerController>(blueprint->GeneratedClass->GetDefaultObject())};
     auto const* const compiled_observer_property{
@@ -1227,9 +1257,9 @@ auto load_or_create_runtime_config(UClass& player_controller_class) -> USpaceGam
 
 auto generate_runtime_map(FObserverControlInputs const& observer,
                           FBenchmarkControlInputs const& benchmark,
-                          FGeneratedShipTurnActions const& turn_actions) -> bool {
+                          FGeneratedShipInputActions const& actions) -> bool {
     auto* const controller_blueprint{
-        load_or_create_player_controller(observer, benchmark, turn_actions)};
+        load_or_create_player_controller(observer, benchmark, actions)};
     auto* const controller_class{
         IsValid(controller_blueprint) ? controller_blueprint->GeneratedClass.Get() : nullptr};
     if (!IsValid(controller_class) || !configure_runtime_game_mode(*controller_class)) {
@@ -1307,9 +1337,9 @@ int32 UGenerateScriptedLevelAssetsCommandlet::Main(FString const&) {
     auto const context_input_generated{
         generate_menu_input_assets() &&
         generate_control_context_input_assets(observer_input, benchmark_input)};
-    auto const turn_actions{context_input_generated ? generate_gameplay_input_assets()
-                                                    : FGeneratedShipTurnActions{}};
-    auto const input_generated{turn_actions.is_valid()};
+    auto const ship_input_actions{context_input_generated ? generate_gameplay_input_assets()
+                                                          : FGeneratedShipInputActions{}};
+    auto const input_generated{ship_input_actions.is_valid()};
     auto* const button_class{generate_menu_button_widget()};
     auto* const root_class{generate_root_layout_widget()};
     auto* const pause_class{IsValid(button_class) ? generate_pause_menu_widget(*button_class)
@@ -1333,8 +1363,9 @@ int32 UGenerateScriptedLevelAssetsCommandlet::Main(FString const&) {
                                               *completion_class,
                                               *battle_viewer_class,
                                               *benchmark_class)};
-    auto const map_generated{input_generated &&
-                             generate_runtime_map(observer_input, benchmark_input, turn_actions) &&
-                             generate_main_menu_map()};
+    auto const map_generated{
+        input_generated &&
+        generate_runtime_map(observer_input, benchmark_input, ship_input_actions) &&
+        generate_main_menu_map()};
     return input_generated && ui_generated && map_generated ? 0 : 1;
 }

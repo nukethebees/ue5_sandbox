@@ -171,6 +171,10 @@ void ATestSpaceShip::stop_sampling() {
     simulation().stop_sampling();
 }
 
+void ATestSpaceShip::adjust_desired_forward_velocity(float const direction) {
+    simulation().adjust_desired_forward_velocity(direction);
+}
+
 void ATestSpaceShip::turn(FVector2D const direction) {
 #if WITH_EDITOR
     if (log_config.can_log(EActorLogVerbosity::VeryVerbose)) {

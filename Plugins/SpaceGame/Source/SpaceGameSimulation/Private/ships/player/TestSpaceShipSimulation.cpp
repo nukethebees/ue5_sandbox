@@ -216,6 +216,17 @@ void Simulation::update_body_orientation(float const dt) {
     body_transform.SetRotation(FRotator{new_pitch, new_yaw, new_roll}.Quaternion());
 }
 
+void Simulation::set_desired_planar_velocity(FVector const desired_velocity) {
+    target_local_planar_velocity = desired_velocity;
+
+    auto const local_velocity{transform.InverseTransformVectorNoScale(desired_velocity)};
+    target_local_planar_velocity_scale =
+        FVector2D{local_velocity.Y / config.cruise_speed, local_velocity.X / config.cruise_speed};
+    planar_flight_model.set_new_impulse(config.speed_responses.accelerating_to_cruise,
+                                        planar_velocity,
+                                        target_local_planar_velocity);
+}
+
 void Simulation::set_boost_brake_state(EBoostBrakeState const state) {
     if (state == EBoostBrakeState::Boost && boost_brake_state != state) {
         ++boost_start_sequence_;
@@ -329,10 +340,26 @@ void Simulation::stop_sampling() {
     auto const world_direction{
         transform.GetUnitAxis(EAxis::X) * target_local_planar_velocity_scale.Y +
         transform.GetUnitAxis(EAxis::Y) * target_local_planar_velocity_scale.X};
-    target_local_planar_velocity = world_direction * config.cruise_speed;
-    planar_flight_model.set_new_impulse(config.speed_responses.accelerating_to_cruise,
-                                        planar_velocity,
-                                        target_local_planar_velocity);
+    set_desired_planar_velocity(world_direction * config.cruise_speed);
+}
+
+void Simulation::adjust_desired_forward_velocity(float const direction) {
+    if (flight_mode != ETestSpaceShipFlightMode::PlanarVelocity ||
+        control_mode != ETestSpaceShipControlMode::Velocity || sampling ||
+        FMath::IsNearlyZero(direction)) {
+        return;
+    }
+
+    auto const forward{transform.GetUnitAxis(EAxis::X)};
+    auto const current_forward_velocity{FVector::DotProduct(target_local_planar_velocity, forward)};
+    auto const adjustment_direction{direction > 0.f ? 1.f : -1.f};
+    auto const adjustment{adjustment_direction * config.cruise_speed *
+                          config.forward_velocity_trim_fraction};
+    auto const desired_forward_velocity{FMath::Clamp(
+        current_forward_velocity + adjustment, -config.cruise_speed, config.cruise_speed)};
+    auto const desired_velocity{target_local_planar_velocity +
+                                forward * (desired_forward_velocity - current_forward_velocity)};
+    set_desired_planar_velocity(desired_velocity);
 }
 
 void Simulation::turn(FVector2D const direction) noexcept {

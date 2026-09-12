@@ -9,6 +9,7 @@
 #include <SpaceGame/ships/player/TestSpaceShipData.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SimulationConfig.h>
+#include <SpaceGame/simulation/SimulationConfigConversion.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestSimulationConfig.h>
 #include <SpaceGameS7/LevelDefinitionReader.h>
@@ -40,6 +41,16 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Simulation vertical trim defaults to 3000"),
                               simulation_defaults.planar_vertical_trim_speed,
                               3000.f);
+        TestRunner->TestEqual(TEXT("Presentation forward velocity trim defaults to five percent"),
+                              presentation_defaults.forward_velocity_trim_fraction,
+                              0.05f);
+        TestRunner->TestEqual(TEXT("Simulation forward velocity trim defaults to five percent"),
+                              simulation_defaults.forward_velocity_trim_fraction,
+                              0.05f);
+        auto const converted_defaults{make_simulation_config(presentation_defaults)};
+        TestRunner->TestEqual(TEXT("Forward velocity trim is copied into simulation config"),
+                              converted_defaults.forward_velocity_trim_fraction,
+                              presentation_defaults.forward_velocity_trim_fraction);
 
         auto const* const source{ml::load_default_level_config()};
         if (!TestRunner->TestNotNull(TEXT("Default level config loads"), source)) {
@@ -51,6 +62,9 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Authored vertical trim uses the current default"),
                               source->player_ship.planar_vertical_trim_speed,
                               3000.f);
+        TestRunner->TestEqual(TEXT("Authored forward velocity trim uses the current default"),
+                              source->player_ship.forward_velocity_trim_fraction,
+                              0.05f);
     }
 
     TEST_METHOD(RotatedWorldBoundsEncloseTransformedCorners)

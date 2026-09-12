@@ -440,6 +440,65 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
             });
     }
 
+    TEST_METHOD(MouseWheelAdjustsPersistentDesiredForwardVelocity)
+    {
+        auto const default_profile{ml::ioj::control_profile_definitions()[0].id};
+        auto desired_forward_scale = [this] {
+            auto const* const controller{controller_.Get()};
+            auto const* const ship{IsValid(controller) ? Cast<ATestSpaceShip>(controller->GetPawn())
+                                                       : nullptr};
+            return IsValid(ship) ? ship->get_target_local_planar_velocity_scale().Y : 0.f;
+        };
+        TestCommandBuilder
+            .Do([this, default_profile] {
+                if (!setup(default_profile)) {
+                    return;
+                }
+            })
+            .Until([this] { return !checks.all_passed || input_is_ready(); }, timeout)
+            .Then([this, default_profile] {
+                check_input_is_ready();
+                auto const& ship_input{FPlayerControllerTestAccess::ship_input(*controller_)};
+                if (!checks.is_true(has_ship_mapping(default_profile,
+                                                     ship_input.increase_desired_forward_velocity,
+                                                     EKeys::MouseScrollUp),
+                                    TEXT("Default profile maps wheel up to velocity increase")) ||
+                    !checks.is_true(has_ship_mapping(default_profile,
+                                                     ship_input.decrease_desired_forward_velocity,
+                                                     EKeys::MouseScrollDown),
+                                    TEXT("Default profile maps wheel down to velocity decrease"))) {
+                    return;
+                }
+                checks.is_true(!snapshot().sampling_active,
+                               TEXT("Velocity trim starts outside sampling"));
+                press_key(EKeys::MouseScrollUp);
+            })
+            .Until(
+                [this, desired_forward_scale] {
+                    return !checks.all_passed || desired_forward_scale() > 0.f;
+                },
+                timeout)
+            .Then([this, desired_forward_scale] {
+                checks.is_true(FMath::IsNearlyEqual(desired_forward_scale(), 0.05f),
+                               TEXT("Wheel up applies one configured trim step"));
+                checks.is_true(!snapshot().sampling_active,
+                               TEXT("Wheel trim does not enter sampling"));
+                release_key(EKeys::MouseScrollUp);
+                press_key(EKeys::MouseScrollDown);
+            })
+            .Until(
+                [this, desired_forward_scale] {
+                    return !checks.all_passed || FMath::IsNearlyZero(desired_forward_scale());
+                },
+                timeout)
+            .Then([this, desired_forward_scale] {
+                checks.is_true(FMath::IsNearlyZero(desired_forward_scale()),
+                               TEXT("Wheel down adjusts the existing persistent target"));
+                checks.is_true(!snapshot().sampling_active,
+                               TEXT("Decreasing velocity remains outside sampling"));
+            });
+    }
+
     TEST_METHOD(PointerVirtualStickTurn)
     {
         auto const default_profile{ml::ioj::control_profile_definitions()[0].id};

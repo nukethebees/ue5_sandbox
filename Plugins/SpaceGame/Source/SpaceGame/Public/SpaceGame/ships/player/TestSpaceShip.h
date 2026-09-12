@@ -66,6 +66,7 @@ class SPACEGAME_API ATestSpaceShip
     void select_previous_control_mode();
     void start_sampling();
     void stop_sampling();
+    void adjust_desired_forward_velocity(float direction);
     void turn(FVector2D direction);
     void start_boost();
     void stop_boost();

@@ -94,6 +94,7 @@ struct SPACEGAMESIMULATION_API Simulation {
     void select_previous_control_mode();
     void start_sampling() noexcept;
     void stop_sampling();
+    void adjust_desired_forward_velocity(float direction);
     void turn(FVector2D direction) noexcept;
     void start_boost();
     void stop_boost();
@@ -199,6 +200,7 @@ struct SPACEGAMESIMULATION_API Simulation {
     void integrate_velocity(float dt);
     void update_rotation(float dt);
     void update_body_orientation(float dt);
+    void set_desired_planar_velocity(FVector desired_velocity);
     uint64 boost_start_sequence_{};
     void set_boost_brake_state(EBoostBrakeState state);
     void update_boost_brake(float dt);

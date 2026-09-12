@@ -57,6 +57,10 @@ struct SPACEGAME_API FSpaceShipControllerInputs {
     UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* sample_and_hold{nullptr};
     UPROPERTY(EditAnywhere, Category = "Input")
+    UInputAction* increase_desired_forward_velocity{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Input")
+    UInputAction* decrease_desired_forward_velocity{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* ship_2d_control{nullptr};
     UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* ship_1d_control_x{nullptr};

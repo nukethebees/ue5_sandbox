@@ -123,6 +123,9 @@ struct SPACEGAMEPRESENTATION_API FPlayerShipConfig {
     UPROPERTY(EditAnywhere, Category = "Movement")
     float planar_vertical_trim_speed{3000.f};
 
+    UPROPERTY(EditAnywhere, Category = "Movement", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float forward_velocity_trim_fraction{0.05f};
+
     UPROPERTY(EditAnywhere, Category = "Combat")
     FLaserWeaponConfig laser{};
 

@@ -175,6 +175,12 @@ void FShipControlContext::bind_actions() {
                   &FShipControlContext::cycle_previous_control_mode);
     bind_no_value(input_->sample_and_hold, Started, &FShipControlContext::start_sampling);
     bind_no_value(input_->sample_and_hold, Completed, &FShipControlContext::stop_sampling);
+    bind_no_value(input_->increase_desired_forward_velocity,
+                  Started,
+                  &FShipControlContext::increase_desired_forward_velocity);
+    bind_no_value(input_->decrease_desired_forward_velocity,
+                  Started,
+                  &FShipControlContext::decrease_desired_forward_velocity);
 
     bind_value(input_->turn, Triggered, &FShipControlContext::turn);
     bind_no_value(input_->turn, Completed, &FShipControlContext::turn_completed);
@@ -343,6 +349,16 @@ void FShipControlContext::start_sampling() {
 void FShipControlContext::stop_sampling() {
     if (auto* const ship{get_ship()}) {
         ship->stop_sampling();
+    }
+}
+void FShipControlContext::increase_desired_forward_velocity() {
+    if (auto* const ship{get_ship()}) {
+        ship->adjust_desired_forward_velocity(1.f);
+    }
+}
+void FShipControlContext::decrease_desired_forward_velocity() {
+    if (auto* const ship{get_ship()}) {
+        ship->adjust_desired_forward_velocity(-1.f);
     }
 }
 void FShipControlContext::turn(FInputActionValue const& value) {

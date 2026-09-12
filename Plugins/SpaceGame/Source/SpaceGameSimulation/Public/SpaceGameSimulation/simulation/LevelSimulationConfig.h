@@ -37,6 +37,7 @@ struct SPACEGAMESIMULATION_API FPlayerSimulationConfig {
     float vertical_adjustment_speed{5000.f};
     float planar_lateral_trim_speed{3000.f};
     float planar_vertical_trim_speed{3000.f};
+    float forward_velocity_trim_fraction{0.05f};
     FSimulationLaserWeaponConfig laser{};
     float laser_lock_on_transition_delay{1.f};
     float laser_lock_on_distance{10000.f};

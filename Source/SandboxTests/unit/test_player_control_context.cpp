@@ -170,6 +170,10 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         matches(TEXT("Runtime sample-and-hold action matches the authored controller"),
                 runtime_input->sample_and_hold,
                 source_input->sample_and_hold);
+        TestRunner->TestTrue(TEXT("Runtime increase-forward-velocity action is generated"),
+                             IsValid(runtime_input->increase_desired_forward_velocity));
+        TestRunner->TestTrue(TEXT("Runtime decrease-forward-velocity action is generated"),
+                             IsValid(runtime_input->decrease_desired_forward_velocity));
         matches(TEXT("Runtime 2D sample action matches the authored controller"),
                 runtime_input->ship_2d_control,
                 source_input->ship_2d_control);
@@ -301,6 +305,12 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                              has_mapping(input->ship_1d_control_y, EKeys::S));
         TestRunner->TestTrue(TEXT("Mouse thumb 2 has sample-and-hold"),
                              has_mapping(input->sample_and_hold, EKeys::ThumbMouseButton2));
+        TestRunner->TestTrue(
+            TEXT("Mouse wheel up increases desired forward velocity"),
+            has_mapping(input->increase_desired_forward_velocity, EKeys::MouseScrollUp));
+        TestRunner->TestTrue(
+            TEXT("Mouse wheel down decreases desired forward velocity"),
+            has_mapping(input->decrease_desired_forward_velocity, EKeys::MouseScrollDown));
         auto const has_named_mapping = [mapping_context](FName const action_name, FKey const key) {
             return mapping_context->GetMappings().ContainsByPredicate(
                 [action_name, key](FEnhancedActionKeyMapping const& mapping) {
@@ -368,6 +378,22 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                 TestRunner->TestTrue(
                     *FString::Printf(TEXT("Profile '%s' contains mappings"), *profile.id),
                     !registered->GetPlayerMappingRows().IsEmpty());
+                auto const profile_has_action = [registered](UInputAction const* const action) {
+                    for (auto const& row : registered->GetPlayerMappingRows()) {
+                        for (auto const& mapping : row.Value.Mappings) {
+                            if (mapping.GetAssociatedInputAction() == action) {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                };
+                TestRunner->TestTrue(
+                    *FString::Printf(TEXT("Profile '%s' contains increase velocity"), *profile.id),
+                    profile_has_action(input->increase_desired_forward_velocity));
+                TestRunner->TestTrue(
+                    *FString::Printf(TEXT("Profile '%s' contains decrease velocity"), *profile.id),
+                    profile_has_action(input->decrease_desired_forward_velocity));
             }
         }
 
@@ -751,6 +777,71 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                               FVector2D{1.0f, 0.0f});
     }
 
+    TEST_METHOD(DesiredForwardVelocityTrimAdjustsThePersistentTarget)
+    {
+        FSimulationClock clock;
+        FTestEntityRegistry registry;
+        ml::FSpatialQueryManager queries{registry};
+        ml::FFrameMemoryResource frame_memory{1024 * 1024};
+        ml::test_lasers::Simulation lasers{clock, registry, queries, frame_memory};
+        ml::test_space_ship::Simulation simulation{clock, registry, queries, lasers};
+        FPlayerSimulationConfig config;
+        config.cruise_speed = 1000.f;
+        config.forward_velocity_trim_fraction = 0.1f;
+        simulation.set_config(config);
+        simulation.set_flight_mode(ETestSpaceShipFlightMode::PlanarVelocity);
+
+        simulation.start_sampling();
+        simulation.set_ship_2d_control(FVector2D{0.25, -0.5});
+        simulation.stop_sampling();
+        TestRunner->TestTrue(
+            TEXT("Sample establishes a reverse persistent target"),
+            simulation.target_local_planar_velocity.Equals(FVector{-500.0, 250.0, 0.0}));
+
+        simulation.adjust_desired_forward_velocity(1.f);
+        TestRunner->TestTrue(
+            TEXT("Increasing makes reverse velocity less negative"),
+            simulation.target_local_planar_velocity.Equals(FVector{-400.0, 250.0, 0.0}));
+
+        simulation.transform.SetRotation(FRotator{0.0, 90.0, 0.0}.Quaternion());
+        simulation.adjust_desired_forward_velocity(1.f);
+        TestRunner->TestTrue(
+            TEXT("Trim follows the current ship forward axis"),
+            simulation.target_local_planar_velocity.Equals(FVector{-400.0, 350.0, 0.0}, 0.01));
+
+        for (int32 adjustment{}; adjustment < 20; ++adjustment) {
+            simulation.adjust_desired_forward_velocity(-1.f);
+        }
+        auto const forward{simulation.transform.GetUnitAxis(EAxis::X)};
+        TestRunner->TestTrue(
+            TEXT("Reverse trim clamps to the configured velocity limit"),
+            FMath::IsNearlyEqual(
+                FVector::DotProduct(simulation.target_local_planar_velocity, forward),
+                -config.cruise_speed,
+                0.01));
+
+        auto const persistent_target{simulation.target_local_planar_velocity};
+        simulation.control_mode = ETestSpaceShipControlMode::Power;
+        simulation.adjust_desired_forward_velocity(1.f);
+        TestRunner->TestTrue(TEXT("Power mode leaves the persistent target unchanged"),
+                             simulation.target_local_planar_velocity.Equals(persistent_target));
+        simulation.control_mode = ETestSpaceShipControlMode::Velocity;
+        simulation.set_flight_mode(ETestSpaceShipFlightMode::ForwardSpeed);
+        simulation.adjust_desired_forward_velocity(1.f);
+        TestRunner->TestTrue(TEXT("Forward-speed flight leaves the planar target unchanged"),
+                             simulation.target_local_planar_velocity.Equals(persistent_target));
+        simulation.set_flight_mode(ETestSpaceShipFlightMode::PlanarVelocity);
+        simulation.start_boost();
+        simulation.stop_boost();
+        TestRunner->TestTrue(TEXT("Boost preserves the persistent planar target"),
+                             simulation.target_local_planar_velocity.Equals(persistent_target));
+
+        simulation.start_sampling();
+        simulation.adjust_desired_forward_velocity(1.f);
+        TestRunner->TestTrue(TEXT("Trim does not alter an active sample"),
+                             simulation.target_local_planar_velocity.Equals(persistent_target));
+    }
+
     TEST_METHOD(ConfiguredObserverAndBenchmarkMappingsAreComplete)
     {
         auto const* const config{ml::load_default_level_config()};
@@ -933,6 +1024,8 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         input.lateral_move = move_action;
         input.vertical_move = move_action;
         input.sample_and_hold = move_action;
+        input.increase_desired_forward_velocity = move_action;
+        input.decrease_desired_forward_velocity = move_action;
         input.ship_2d_control = move_action;
         input.ship_1d_control_x = move_action;
         input.ship_1d_control_y = move_action;

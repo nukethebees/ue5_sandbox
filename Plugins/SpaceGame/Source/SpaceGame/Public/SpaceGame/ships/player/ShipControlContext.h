@@ -55,6 +55,8 @@ struct SPACEGAME_API FShipControlContext {
     void cycle_previous_control_mode();
     void start_sampling();
     void stop_sampling();
+    void increase_desired_forward_velocity();
+    void decrease_desired_forward_velocity();
     void turn(FInputActionValue const& value);
     void turn_completed();
     void engage_pointer_turn();
