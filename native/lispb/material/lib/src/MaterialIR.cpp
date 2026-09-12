@@ -237,10 +237,6 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
                     material.nodes[node.inputs[0].index].texture_sampler_type) {
                 report(diagnostics, node.span, "malformed texture sample node");
             }
-        } else if (node.kind == NodeKind::time) {
-            if (node.type != ValueType::float1 || !node.inputs.empty()) {
-                report(diagnostics, node.span, "malformed time node");
-            }
         } else if (node.kind == NodeKind::custom) {
             std::set<std::string> input_names;
             if (!is_numeric(node.type) || node.code.empty() ||

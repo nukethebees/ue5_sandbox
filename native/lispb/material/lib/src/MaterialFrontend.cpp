@@ -758,16 +758,6 @@ class Analyzer {
                  .texture_sampler_type = material_.nodes[texture->index].texture_sampler_type});
     }
 
-    auto time(Form const& form) -> std::optional<NodeHandle> {
-        if (form.children.size() != 1) {
-            fail(form.token.span, "time requires no operands");
-            return std::nullopt;
-        }
-        return add_node(Node{.kind = NodeKind::time,
-                             .type = ValueType::float1,
-                             .span = material_span(form.token.span)});
-    }
-
     auto resolve_texture(Form const& path_form) -> std::optional<std::string> {
         if (path_form.token.kind != TokenKind::string) {
             fail(path_form.token.span, "texture path must be quoted");

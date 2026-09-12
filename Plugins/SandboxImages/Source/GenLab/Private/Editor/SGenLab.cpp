@@ -1,7 +1,7 @@
 #include "Editor/SGenLab.h"
 
 #include "Engine/Texture2D.h"
-#include "Generation/LabImageWriter.h"
+#include "Generation/GeneratedImageAssetWriter.h"
 #include "HAL/FileManager.h"
 #include "HAL/PlatformProcess.h"
 #include "IDetailsView.h"
@@ -226,7 +226,8 @@ void SGenLab::update_preview() {
 
 auto SGenLab::generate_selected() -> FReply {
     auto const request{settings_->to_request()};
-    auto const success{SandboxImages::GenLab::generate_and_import(request)};
+    auto const success{
+        SandboxImages::GenLab::generate_and_import(request, SandboxImages::GenLab::lab_content_path)};
     status_ = success
                 ? FText::Format(LOCTEXT("SelectedSucceeded", "Generated and imported {0}."),
                                 FText::FromString(UTF8_TO_TCHAR(request.output_name.c_str())))
@@ -243,7 +244,8 @@ auto SGenLab::generate_all() -> FReply {
 }
 
 auto SGenLab::open_output_directory() -> FReply {
-    auto const output_directory{SandboxImages::GenLab::get_output_directory()};
+    auto const output_directory{
+        SandboxImages::GenLab::get_output_directory(SandboxImages::GenLab::lab_content_path)};
     if (output_directory.IsEmpty()) {
         status_ = LOCTEXT("NoOutputDirectory", "The SandboxImages plugin directory was not found.");
         return FReply::Handled();

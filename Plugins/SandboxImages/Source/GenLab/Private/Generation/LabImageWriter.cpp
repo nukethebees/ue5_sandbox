@@ -1,11 +1,10 @@
-#include "Generation/LabImageWriter.h"
+#include "Generation/GeneratedImageAssetWriter.h"
 
 #include "AssetImportTask.h"
 #include "AssetToolsModule.h"
 #include "Engine/Texture2D.h"
 #include "HAL/FileManager.h"
 #include "ImageUtils.h"
-#include "Interfaces/IPluginManager.h"
 #include "Misc/PackageName.h"
 #include "Misc/Paths.h"
 #include "UObject/MetaData.h"
@@ -73,7 +72,7 @@ auto ensure_output_directory(FString const& output_directory) -> bool {
     if (output_directory.IsEmpty()) {
         UE_LOG(LogSandboxImagesGenLab,
                Error,
-               TEXT("Cannot find the SandboxImages plugin output directory."));
+               TEXT("Cannot resolve the generated image output directory."));
         return false;
     }
 
@@ -89,10 +88,11 @@ auto ensure_output_directory(FString const& output_directory) -> bool {
     return true;
 }
 
-auto validate_output_name(FString const& output_name) -> bool {
+auto validate_output_name(FString const& output_name,
+                          FString const& destination_content_path) -> bool {
     FText reason;
-    auto const object_path{
-        FString::Printf(TEXT("/SandboxImages/Lab/Images/%s.%s"), *output_name, *output_name)};
+    auto const object_path{FString::Printf(
+        TEXT("%s/%s.%s"), *destination_content_path, *output_name, *output_name)};
     if (output_name.IsEmpty() || !FPackageName::IsValidObjectPath(object_path, &reason)) {
         UE_LOG(LogSandboxImagesGenLab,
                Error,
@@ -139,11 +139,12 @@ auto write_png(FString const& output_path, GeneratedImage const& image) -> bool 
 
 auto import_texture(FString const& source_path,
                     GenerationRequest const& request,
-                    FTextureImportSettings const& settings) -> bool {
+                    FTextureImportSettings const& settings,
+                    FString const& destination_content_path) -> bool {
     auto* task{NewObject<UAssetImportTask>()};
     task->AddToRoot();
     task->Filename = source_path;
-    task->DestinationPath = TEXT("/SandboxImages/Lab/Images");
+    task->DestinationPath = destination_content_path;
     task->DestinationName = UTF8_TO_TCHAR(request.output_name.c_str());
     task->bAutomated = true;
     task->bReplaceExisting = true;
@@ -207,18 +208,16 @@ auto import_texture(FString const& source_path,
 }
 }
 
-auto get_output_directory() -> FString {
-    auto const plugin{IPluginManager::Get().FindPlugin(TEXT("SandboxImages"))};
-    if (!plugin.IsValid()) {
-        return {};
-    }
-    return FPaths::Combine(plugin->GetContentDir(), TEXT("Lab"), TEXT("Images"));
+auto get_output_directory(FString const& destination_content_path) -> FString {
+    return FPackageName::LongPackageNameToFilename(destination_content_path);
 }
 
-auto generate_and_import(GenerationRequest const& request) -> bool {
-    auto const output_directory{get_output_directory()};
+auto generate_and_import(GenerationRequest const& request,
+                         FString const& destination_content_path) -> bool {
+    auto const output_directory{get_output_directory(destination_content_path)};
     auto const output_name{FString{UTF8_TO_TCHAR(request.output_name.c_str())}};
-    if (!ensure_output_directory(output_directory) || !validate_output_name(output_name)) {
+    if (!ensure_output_directory(output_directory) ||
+        !validate_output_name(output_name, destination_content_path)) {
         return false;
     }
 
@@ -227,20 +226,21 @@ auto generate_and_import(GenerationRequest const& request) -> bool {
     if (!write_png(output_path, image)) {
         return false;
     }
-    return import_texture(output_path, request, import_settings_for(request));
+    return import_texture(
+        output_path, request, import_settings_for(request), destination_content_path);
 }
 
 auto regenerate_all() -> bool {
     bool success{true};
     for (auto const& request : sandbox::image::default_generation_requests()) {
-        success &= generate_and_import(request);
+        success &= generate_and_import(request, lab_content_path);
     }
 
     if (success) {
         UE_LOG(LogSandboxImagesGenLab,
                Display,
                TEXT("Regenerated all SandboxImages Lab images in %s."),
-               *get_output_directory());
+               *get_output_directory(lab_content_path));
     } else {
         UE_LOG(LogSandboxImagesGenLab,
                Error,

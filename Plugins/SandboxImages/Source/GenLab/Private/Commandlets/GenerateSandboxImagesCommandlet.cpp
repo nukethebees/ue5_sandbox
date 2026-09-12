@@ -1,6 +1,6 @@
 #include "Commandlets/GenerateSandboxImagesCommandlet.h"
 
-#include "Generation/LabImageWriter.h"
+#include "Generation/GeneratedImageAssetWriter.h"
 
 UGenerateSandboxImagesCommandlet::UGenerateSandboxImagesCommandlet() {
     IsClient = false;

@@ -1,5 +1,5 @@
 #include "Editor/SGenLab.h"
-#include "Generation/LabImageWriter.h"
+#include "Generation/GeneratedImageAssetWriter.h"
 
 #include "Framework/Docking/TabManager.h"
 #include "HAL/IConsoleManager.h"

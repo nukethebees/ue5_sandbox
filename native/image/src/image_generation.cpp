@@ -699,6 +699,38 @@ auto make_default_request(GeneratorType const generator) -> GenerationRequest {
     return request;
 }
 
+auto make_energy_filaments_request() -> GenerationRequest {
+    auto energy_filaments{make_default_request(GeneratorType::DomainWarpedNoise)};
+    energy_filaments.output_name = ("energy_filaments");
+    energy_filaments.domain_warped_noise = {.base_seed = 0x454E4552u,
+                                            .warp_seed = 0x46494C41u,
+                                            .base_scale = 38.0f,
+                                            .warp_scale = 72.0f,
+                                            .warp_strength = 52.0f,
+                                            .base_octave_count = 6,
+                                            .warp_octave_count = 3,
+                                            .persistence = 0.55f,
+                                            .tileable = true};
+    energy_filaments.post_process = {.contrast = 1.8f,
+                                     .threshold_enabled = true,
+                                     .threshold = 0.53f,
+                                     .threshold_softness = 0.22f};
+    return energy_filaments;
+}
+
+auto make_shield_distortion_flow_request() -> GenerationRequest {
+    auto shield_distortion_flow{make_default_request(GeneratorType::CurlNoiseFlow)};
+    shield_distortion_flow.output_name = ("shield_distortion_flow");
+    shield_distortion_flow.curl_noise_flow = {.seed = 0x53484945u,
+                                              .base_scale = 64.0f,
+                                              .octave_count = 4,
+                                              .persistence = 0.35f,
+                                              .derivative_step = 2.0f,
+                                              .strength = 0.85f,
+                                              .tileable = true};
+    return shield_distortion_flow;
+}
+
 auto default_generation_requests() -> std::vector<GenerationRequest> {
     auto ring_distance{make_default_request(GeneratorType::RingMask)};
     ring_distance.output_name = ("ring_distance");
@@ -715,21 +747,7 @@ auto default_generation_requests() -> std::vector<GenerationRequest> {
                                   .normal_strength = 10.0f,
                                   .normal_wrap = true};
 
-    auto energy_filaments{make_default_request(GeneratorType::DomainWarpedNoise)};
-    energy_filaments.output_name = ("energy_filaments");
-    energy_filaments.domain_warped_noise = {.base_seed = 0x454E4552u,
-                                            .warp_seed = 0x46494C41u,
-                                            .base_scale = 38.0f,
-                                            .warp_scale = 72.0f,
-                                            .warp_strength = 52.0f,
-                                            .base_octave_count = 6,
-                                            .warp_octave_count = 3,
-                                            .persistence = 0.55f,
-                                            .tileable = true};
-    energy_filaments.post_process = {.contrast = 1.8f,
-                                     .threshold_enabled = true,
-                                     .threshold = 0.53f,
-                                     .threshold_softness = 0.22f};
+    auto energy_filaments{make_energy_filaments_request()};
 
     auto shield_turbulence{make_default_request(GeneratorType::DomainWarpedNoise)};
     shield_turbulence.output_name = ("shield_turbulence");
@@ -749,15 +767,7 @@ auto default_generation_requests() -> std::vector<GenerationRequest> {
 
     auto nebula_flow{make_default_request(GeneratorType::CurlNoiseFlow)};
 
-    auto shield_distortion_flow{make_default_request(GeneratorType::CurlNoiseFlow)};
-    shield_distortion_flow.output_name = ("shield_distortion_flow");
-    shield_distortion_flow.curl_noise_flow = {.seed = 0x53484945u,
-                                              .base_scale = 64.0f,
-                                              .octave_count = 4,
-                                              .persistence = 0.35f,
-                                              .derivative_step = 2.0f,
-                                              .strength = 0.85f,
-                                              .tileable = true};
+    auto shield_distortion_flow{make_shield_distortion_flow_request()};
 
     auto cellular_regions{make_default_request(GeneratorType::CellularNoise)};
 

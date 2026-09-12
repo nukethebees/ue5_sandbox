@@ -122,8 +122,6 @@ auto kind_name(material_synth::NodeKind const kind) -> std::string_view {
             return "saturate";
         case sample:
             return "sample";
-        case time:
-            return "time";
         case custom:
             return "custom";
         case vector_constructor:
