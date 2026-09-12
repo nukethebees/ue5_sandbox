@@ -28,6 +28,21 @@
   (let uv (texcoord 0))
   (let game_time (time))
 
+  (let range (saturate range_alpha))
+  (let smooth_range (* (* range range) (- 3.0 (* 2.0 range))))
+  (let buildup (* smooth_range smooth_range))
+  (let locked
+    (custom float
+      ((Range float range))
+      :description "Soft-target weapon-range lock"
+      "return step(0.999, Range);\n"))
+  (let base_energy (lerp FarEmissive NearEmissive buildup))
+  (let locked_energy (lerp base_energy LockedEmissive locked))
+  (let flash_alpha (* (saturate pulse) locked))
+  (let energy (lerp locked_energy FlashEmissive flash_alpha))
+  (let plasma_strength (lerp 0.05 PlasmaStrength buildup))
+  (let opacity_scale (lerp FarOpacityScale 1.0 buildup))
+
   (emissive
     (custom float3
       ((Plasma texture PlasmaMask)
@@ -36,23 +51,11 @@
        (Red float red)
        (Green float green)
        (Blue float blue)
-       (Pulse float pulse)
-       (RangeAlpha float range_alpha)
-       (FarEnergy float FarEmissive)
-       (NearEnergy float NearEmissive)
-       (LockedEnergy float LockedEmissive)
-       (FlashEnergy float FlashEmissive)
+       (Energy float energy)
+       (PlasmaStrength float plasma_strength)
        (Speed float PlasmaSpeed)
-       (MaximumPlasmaStrength float PlasmaStrength)
        (Gap float SegmentGap))
       :description "Segmented soft-target plasma emissive"
-      "float range = saturate(RangeAlpha);\n"
-      "float smooth_range = range * range * (3.0 - 2.0 * range);\n"
-      "float buildup = smooth_range * smooth_range;\n"
-      "float locked = step(0.999, range);\n"
-      "float energy = lerp(FarEnergy, NearEnergy, buildup);\n"
-      "energy = lerp(energy, LockedEnergy, locked);\n"
-      "energy = lerp(energy, FlashEnergy, saturate(Pulse) * locked);\n"
       "float side_u = frac(UV.x * 6.0);\n"
       "float corner_distance = min(side_u, 1.0 - side_u);\n"
       "float segment = smoothstep(Gap * 0.5, Gap, corner_distance);\n"
@@ -71,20 +74,15 @@
       "float plasma_a = Texture2DSample(Plasma, PlasmaSampler, plasma_uv_a).r;\n"
       "float plasma_b = Texture2DSample(Plasma, PlasmaSampler, plasma_uv_b).r;\n"
       "float plasma = saturate(plasma_a * 0.65 + plasma_b * 0.55 - 0.20);\n"
-      "float plasma_strength = lerp(0.05, MaximumPlasmaStrength, buildup);\n"
-      "float shimmer = lerp(1.0 - plasma_strength, 1.0 + plasma_strength, plasma);\n"
-      "return float3(Red, Green, Blue) * energy * segment * surface_profile * shimmer;\n"))
+      "float shimmer = lerp(1.0 - PlasmaStrength, 1.0 + PlasmaStrength, plasma);\n"
+      "return float3(Red, Green, Blue) * Energy * segment * surface_profile * shimmer;\n"))
   (opacity
     (custom float
       ((UV float2 uv)
        (Opacity float opacity)
-       (RangeAlpha float range_alpha)
-       (FarScale float FarOpacityScale)
+       (OpacityScale float opacity_scale)
        (Gap float SegmentGap))
       :description "Segmented soft-target range opacity"
-      "float range = saturate(RangeAlpha);\n"
-      "float smooth_range = range * range * (3.0 - 2.0 * range);\n"
-      "float buildup = smooth_range * smooth_range;\n"
       "float side_u = frac(UV.x * 6.0);\n"
       "float corner_distance = min(side_u, 1.0 - side_u);\n"
       "float segment = smoothstep(Gap * 0.5, Gap, corner_distance);\n"
@@ -93,4 +91,4 @@
       "float ribbon_edge = min(front_v, 1.0 - front_v);\n"
       "float body = smoothstep(0.0, 0.12, ribbon_edge);\n"
       "float surface_profile = front_surface * body + (1.0 - front_surface) * 0.35;\n"
-      "return saturate(Opacity * lerp(FarScale, 1.0, buildup) * segment * surface_profile);\n")))
+      "return saturate(Opacity * OpacityScale * segment * surface_profile);\n")))
