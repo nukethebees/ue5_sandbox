@@ -16,32 +16,22 @@ class SGraphNodeMaterialUSFLoader : public SGraphNodeMaterialBase {
     SLATE_BEGIN_ARGS(ThisClass) {}
     SLATE_END_ARGS()
 
-    void Construct(FArguments const& InArgs, UEdGraphNode* InNode);
-
-    UMaterialGraphNode* GetMaterialGraphNode() const { return MaterialNode; }
+    void Construct(FArguments const&, UEdGraphNode* node);
   protected:
     //~ Begin SGraphNode Interface
-    virtual void CreateBelowPinControls(TSharedPtr<SVerticalBox> MainBox) override;
-    virtual void CreateAdvancedViewArrow(TSharedPtr<SVerticalBox> MainBox) override;
+    virtual void CreateBelowPinControls(TSharedPtr<SVerticalBox> main_box) override;
+    virtual void CreateAdvancedViewArrow(TSharedPtr<SVerticalBox> main_box) override;
     virtual EVisibility AdvancedViewArrowVisibility() const override;
-    virtual void OnAdvancedViewChanged(ECheckBoxState const NewCheckedState) override;
+    virtual void OnAdvancedViewChanged(ECheckBoxState const new_checked_state) override;
     virtual ECheckBoxState IsAdvancedViewChecked() const override;
     virtual FSlateBrush const* GetAdvancedViewArrow() const override;
     //~ End SGraphNode Interface
-    FReply on_mark_dirty_clicked();
   private:
-    /** Visibility of the generated code display */
-    EVisibility CodeVisibility() const;
+    FReply on_refresh_includes_clicked();
+    EVisibility code_visibility() const;
+    FText get_generated_code_text() const;
+    UMaterialExpressionUSFLoader* get_usf_loader_expression() const;
 
-    /** Get the generated code text */
-    FText GetGeneratedCodeText() const;
-  protected:
-    /** Syntax highlighter for HLSL code */
-    TSharedPtr<FHLSLSyntaxHighlighterMarshaller> SyntaxHighlighter;
-
-    /** The read-only text box showing generated shader code */
-    TSharedPtr<SMultiLineEditableTextBox> GeneratedCodeTextBox;
-
-    /** Get the USF Loader expression from this node */
-    UMaterialExpressionUSFLoader* GetUSFLoaderExpression() const;
+    TSharedPtr<FHLSLSyntaxHighlighterMarshaller> syntax_highlighter_;
+    TSharedPtr<SMultiLineEditableTextBox> generated_code_text_box_;
 };

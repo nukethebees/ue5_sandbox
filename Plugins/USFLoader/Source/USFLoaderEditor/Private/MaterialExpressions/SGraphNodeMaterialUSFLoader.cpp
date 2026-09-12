@@ -1,27 +1,32 @@
 #include "SGraphNodeMaterialUSFLoader.h"
 
 #include "MaterialExpressionUSFLoader.h"
+#include "USFLoader.h"
 
 #include "GraphEditAction.h"
 #include "GraphEditorSettings.h"
 #include "MaterialGraph/MaterialGraphNode.h"
+#include "Materials/Material.h"
 #include "Text/HLSLSyntaxHighlighterMarshaller.h"
 #include "Widgets/Images/SImage.h"
+#include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SCheckBox.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
 
-void SGraphNodeMaterialUSFLoader::Construct(FArguments const& InArgs, UEdGraphNode* InNode) {
-    auto* material_graph_node{Cast<UMaterialGraphNode>(InNode)};
-    if (!material_graph_node) {
-        UE_LOG(
-            LogTemp,
-            Error,
-            TEXT("SGraphNodeMaterialUSFLoader: Failed to cast UEdGraphNode to UMaterialGraphNode"));
+#define LOCTEXT_NAMESPACE "SGraphNodeMaterialUSFLoader"
+
+void SGraphNodeMaterialUSFLoader::Construct(FArguments const&, UEdGraphNode* node) {
+    auto* const material_graph_node{Cast<UMaterialGraphNode>(node)};
+    if (material_graph_node == nullptr) {
+        UE_LOG(LogUSFLoader,
+               Error,
+               TEXT("Unable to construct the USF Loader graph node from '%s'."),
+               node != nullptr ? *node->GetClass()->GetName() : TEXT("nullptr"));
         return;
     }
 
-    this->GraphNode = material_graph_node;
-    this->MaterialNode = material_graph_node;
+    GraphNode = material_graph_node;
+    MaterialNode = material_graph_node;
 
     auto get_style{[&app_style = FAppStyle::Get()](auto* style) {
         return app_style.GetWidgetStyle<FTextBlockStyle>(style);
@@ -37,35 +42,34 @@ void SGraphNodeMaterialUSFLoader::Construct(FArguments const& InArgs, UEdGraphNo
         get_style("SyntaxHighlight.SourceCode.PreProcessorKeyword"),
         get_style("SyntaxHighlight.SourceCode.Error")}};
 
-    SyntaxHighlighter = FHLSLSyntaxHighlighterMarshaller::Create(code_style);
+    syntax_highlighter_ = FHLSLSyntaxHighlighterMarshaller::Create(code_style);
 
-    this->SetCursor(EMouseCursor::CardinalCross);
-    this->UpdateGraphNode();
+    SetCursor(EMouseCursor::CardinalCross);
+    UpdateGraphNode();
 }
 
-void SGraphNodeMaterialUSFLoader::CreateBelowPinControls(TSharedPtr<SVerticalBox> MainBox) {
-    TAttribute<FText> GetText{};
-    GetText.Bind(this, &ThisClass::GetGeneratedCodeText);
+void SGraphNodeMaterialUSFLoader::CreateBelowPinControls(TSharedPtr<SVerticalBox> main_box) {
+    TAttribute<FText> generated_code;
+    generated_code.Bind(this, &ThisClass::get_generated_code_text);
 
-    // Create read-only text box for generated code
-    constexpr auto padding{UMaterialExpressionUSFLoader::Constants::UI_PADDING};
-    SAssignNew(GeneratedCodeTextBox, SMultiLineEditableTextBox)
+    constexpr auto padding{UMaterialExpressionUSFLoader::Constants::ui_padding};
+    SAssignNew(generated_code_text_box_, SMultiLineEditableTextBox)
         .AutoWrapText(false)
-        .IsReadOnly(true) // Read-only unlike Custom expression
+        .IsReadOnly(true)
         .Margin(FMargin(padding, padding, padding, padding))
-        .Text(GetText)
-        .Visibility(this, &ThisClass::CodeVisibility)
-        .Marshaller(SyntaxHighlighter)
-        .ToolTipText(FText::FromString(TEXT("Generated shader code from USF Loader (read-only)")));
+        .Text(generated_code)
+        .Visibility(this, &ThisClass::code_visibility)
+        .Marshaller(syntax_highlighter_)
+        .ToolTipText(LOCTEXT("GeneratedCodeTooltip", "Generated USF Loader shader code"));
 
-    TSharedPtr<SVerticalBox> PreviewBox{};
-    SAssignNew(PreviewBox, SVerticalBox);
+    TSharedPtr<SVerticalBox> preview_box;
+    SAssignNew(preview_box, SVerticalBox);
 
-    SGraphNodeMaterialBase::CreateBelowPinControls(PreviewBox);
+    SGraphNodeMaterialBase::CreateBelowPinControls(preview_box);
 
-    constexpr auto margin{Expr::Constants::UI_MARGIN};
+    constexpr auto margin{Expr::Constants::ui_margin};
     // clang-format off
-    MainBox->AddSlot()
+    main_box->AddSlot()
         .Padding(Settings->GetNonPinNodeBodyPadding())
         .AutoHeight()
         [
@@ -74,53 +78,53 @@ void SGraphNodeMaterialUSFLoader::CreateBelowPinControls(TSharedPtr<SVerticalBox
                 .AutoWidth()
                 .Padding(FMargin(margin, padding, margin, margin))
                 [
-                    GeneratedCodeTextBox.ToSharedRef()
+                    generated_code_text_box_.ToSharedRef()
                 ]
             + SHorizontalBox::Slot()
                 .AutoWidth()
                 [
-                    PreviewBox.ToSharedRef()
+                    preview_box.ToSharedRef()
                 ]
             + SHorizontalBox::Slot()
                 .AutoWidth()
                 .Padding(FMargin(margin, padding, margin, margin))
                 [
                     SNew(SButton)
-                        .Text(FText::FromString(TEXT("Mark Dirty")))
-                        .ToolTipText(FText::FromString(TEXT("Mark this USF Loader node as dirty")))
-                        .OnClicked(this, &ThisClass::on_mark_dirty_clicked)
+                        .Text(LOCTEXT("RefreshIncludes", "Refresh Includes"))
+                        .ToolTipText(LOCTEXT("RefreshIncludesTooltip", "Recompile the material after shader include files change"))
+                        .OnClicked(this, &ThisClass::on_refresh_includes_clicked)
                 ]
         ];
     // clang-format on
 }
 
-EVisibility SGraphNodeMaterialUSFLoader::CodeVisibility() const {
-    auto State{IsAdvancedViewChecked()};
-    return (State == ECheckBoxState::Checked) ? EVisibility::Visible : EVisibility::Collapsed;
+EVisibility SGraphNodeMaterialUSFLoader::code_visibility() const {
+    return IsAdvancedViewChecked() == ECheckBoxState::Checked ? EVisibility::Visible
+                                                              : EVisibility::Collapsed;
 }
 
-FText SGraphNodeMaterialUSFLoader::GetGeneratedCodeText() const {
-    if (auto* usf_expression{GetUSFLoaderExpression()}) {
+FText SGraphNodeMaterialUSFLoader::get_generated_code_text() const {
+    if (auto const* usf_expression{get_usf_loader_expression()}) {
         return FText::FromString(usf_expression->debug_code);
     }
-    return FText::FromString(TEXT("// No code generated"));
+    return LOCTEXT("NoGeneratedCode", "// No code generated");
 }
 
-UMaterialExpressionUSFLoader* SGraphNodeMaterialUSFLoader::GetUSFLoaderExpression() const {
-    if (MaterialNode && MaterialNode->MaterialExpression) {
+UMaterialExpressionUSFLoader* SGraphNodeMaterialUSFLoader::get_usf_loader_expression() const {
+    if (MaterialNode != nullptr && MaterialNode->MaterialExpression != nullptr) {
         return Cast<UMaterialExpressionUSFLoader>(MaterialNode->MaterialExpression.Get());
     }
     return nullptr;
 }
 
-void SGraphNodeMaterialUSFLoader::CreateAdvancedViewArrow(TSharedPtr<SVerticalBox> MainBox) {
-    if (!GetUSFLoaderExpression()) {
+void SGraphNodeMaterialUSFLoader::CreateAdvancedViewArrow(TSharedPtr<SVerticalBox> main_box) {
+    if (get_usf_loader_expression() == nullptr) {
         return;
     }
 
-    constexpr auto margin{UMaterialExpressionUSFLoader::Constants::UI_MARGIN_SMALL};
+    constexpr auto margin{UMaterialExpressionUSFLoader::Constants::ui_margin_small};
     // clang-format off
-    MainBox->AddSlot()
+    main_box->AddSlot()
         .AutoHeight()
         .HAlign(HAlign_Fill)
         .VAlign(VAlign_Top)
@@ -146,65 +150,66 @@ void SGraphNodeMaterialUSFLoader::CreateAdvancedViewArrow(TSharedPtr<SVerticalBo
 }
 
 EVisibility SGraphNodeMaterialUSFLoader::AdvancedViewArrowVisibility() const {
-    // Always show the arrow for USF Loader
-    return GraphNode ? EVisibility::Visible : EVisibility::Collapsed;
+    return GraphNode != nullptr ? EVisibility::Visible : EVisibility::Collapsed;
 }
 
-void SGraphNodeMaterialUSFLoader::OnAdvancedViewChanged(ECheckBoxState const NewCheckedState) {
-    if (auto* usf_expression{GetUSFLoaderExpression()}) {
-        usf_expression->bShowCodePreview = (NewCheckedState == ECheckBoxState::Checked);
-        usf_expression->MarkPackageDirty();
+void SGraphNodeMaterialUSFLoader::OnAdvancedViewChanged(ECheckBoxState const new_checked_state) {
+    if (auto* usf_expression{get_usf_loader_expression()}) {
+        bool const show_code_preview{new_checked_state == ECheckBoxState::Checked};
+        if (usf_expression->bShowCodePreview != show_code_preview) {
+            usf_expression->Modify();
+            usf_expression->bShowCodePreview = show_code_preview;
+            usf_expression->MarkPackageDirty();
+        }
     }
 }
 
 ECheckBoxState SGraphNodeMaterialUSFLoader::IsAdvancedViewChecked() const {
     using enum ECheckBoxState;
 
-    if (auto* usf_expression{GetUSFLoaderExpression()}) {
+    if (auto const* usf_expression{get_usf_loader_expression()}) {
         return usf_expression->bShowCodePreview ? Checked : Unchecked;
     }
     return Unchecked;
 }
 
 FSlateBrush const* SGraphNodeMaterialUSFLoader::GetAdvancedViewArrow() const {
-    static auto const CHEVRON_UP{TEXT("Icons.ChevronUp")};
-    static auto const CHEVRON_DOWN{TEXT("Icons.ChevronDown")};
+    static auto const chevron_up{TEXT("Icons.ChevronUp")};
+    static auto const chevron_down{TEXT("Icons.ChevronDown")};
 
-    if (!GetUSFLoaderExpression()) {
-        return FAppStyle::GetBrush(CHEVRON_DOWN);
+    if (get_usf_loader_expression() == nullptr) {
+        return FAppStyle::GetBrush(chevron_down);
     }
 
     auto const state{IsAdvancedViewChecked()};
-    return FAppStyle::GetBrush((state == ECheckBoxState::Checked) ? CHEVRON_UP : CHEVRON_DOWN);
+    return FAppStyle::GetBrush(state == ECheckBoxState::Checked ? chevron_up : chevron_down);
 }
 
-FReply SGraphNodeMaterialUSFLoader::on_mark_dirty_clicked() {
-    // All non-functional
-    UE_LOG(LogTemp, Display, TEXT("on_mark_dirty_clicked."));
-
-    if (auto* usf_expression = GetUSFLoaderExpression()) {
-        usf_expression->Modify(true);
-        usf_expression->MarkPackageDirty();
-
-        if (auto mat{usf_expression->Material}) {
-            mat->PreEditChange(nullptr);
-            mat->MarkPackageDirty();
-            mat->Modify(true);
-            mat->PostEditChange();
-        } else {
-            UE_LOG(LogTemp, Warning, TEXT("usf_expression->Material is nullptr."));
-        }
-
-        if (MaterialNode) {
-            auto* graph{GraphNode->GetGraph()};
-            graph->NotifyGraphChanged();
-            graph->NotifyNodeChanged(MaterialNode);
-        } else {
-            UE_LOG(LogTemp, Warning, TEXT("MaterialNode is nullptr."));
-        }
-
-        return FReply::Handled();
+FReply SGraphNodeMaterialUSFLoader::on_refresh_includes_clicked() {
+    auto* const usf_expression{get_usf_loader_expression()};
+    if (usf_expression == nullptr) {
+        UE_LOG(
+            LogUSFLoader, Warning, TEXT("Unable to refresh includes without a loader expression."));
+        return FReply::Unhandled();
     }
-    UE_LOG(LogTemp, Warning, TEXT("on_mark_dirty_clicked failed."));
-    return FReply::Unhandled();
+
+    auto* const material{usf_expression->Material.Get()};
+    if (material == nullptr) {
+        UE_LOG(LogUSFLoader, Warning, TEXT("Unable to refresh includes without a material."));
+        return FReply::Unhandled();
+    }
+
+    material->PreEditChange(nullptr);
+    material->PostEditChange();
+
+    if (auto* const graph{GraphNode != nullptr ? GraphNode->GetGraph() : nullptr}) {
+        graph->NotifyGraphChanged();
+        graph->NotifyNodeChanged(MaterialNode);
+    } else {
+        UE_LOG(LogUSFLoader, Warning, TEXT("Unable to refresh the USF Loader graph node."));
+    }
+
+    return FReply::Handled();
 }
+
+#undef LOCTEXT_NAMESPACE
