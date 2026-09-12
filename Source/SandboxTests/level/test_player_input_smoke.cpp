@@ -237,6 +237,18 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                state.turn.IsNearlyZero() && state.sampled_movement.IsNearlyZero();
     }
 
+    auto keyboard_left_is_active() const -> bool {
+        auto const state{snapshot()};
+        return state.movement.X < 0.0 && FMath::IsNearlyZero(state.movement.Y) &&
+               state.turn.IsNearlyZero() && state.sampled_movement.IsNearlyZero();
+    }
+
+    auto keyboard_right_is_active() const -> bool {
+        auto const state{snapshot()};
+        return state.movement.X > 0.0 && FMath::IsNearlyZero(state.movement.Y) &&
+               state.turn.IsNearlyZero() && state.sampled_movement.IsNearlyZero();
+    }
+
     auto ship_axes_are_clear() const -> bool {
         auto const state{snapshot()};
         return state.movement.IsNearlyZero() && state.turn.IsNearlyZero();
@@ -329,31 +341,27 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                                TEXT("S produces backward movement without turning"));
                 release_key(EKeys::S);
                 press_key(EKeys::A);
-                release_wait_ticks_ = 0;
             })
-            .Until(
-                [this] {
-                    ++release_wait_ticks_;
-                    return !checks.all_passed || release_wait_ticks_ > 1;
-                },
-                timeout)
+            .Until([this] { return !checks.all_passed || keyboard_left_is_active(); }, timeout)
             .Then([this] {
-                checks.is_true(ship_axes_are_clear(),
-                               TEXT("Unmodified A leaves movement and turn neutral"));
+                checks.is_true(keyboard_left_is_active(),
+                               TEXT("A produces left movement without turning"));
                 release_key(EKeys::A);
-                press_key(EKeys::D);
-                release_wait_ticks_ = 0;
             })
-            .Until(
-                [this] {
-                    ++release_wait_ticks_;
-                    return !checks.all_passed || release_wait_ticks_ > 1;
-                },
-                timeout)
+            .Until([this] { return !checks.all_passed || ship_axes_are_clear(); }, timeout)
             .Then([this] {
-                checks.is_true(ship_axes_are_clear(),
-                               TEXT("Unmodified D leaves movement and turn neutral"));
+                checks.is_true(ship_axes_are_clear(), TEXT("Releasing A clears movement"));
+                press_key(EKeys::D);
+            })
+            .Until([this] { return !checks.all_passed || keyboard_right_is_active(); }, timeout)
+            .Then([this] {
+                checks.is_true(keyboard_right_is_active(),
+                               TEXT("D produces right movement without turning"));
                 release_key(EKeys::D);
+            })
+            .Until([this] { return !checks.all_passed || ship_axes_are_clear(); }, timeout)
+            .Then([this] {
+                checks.is_true(ship_axes_are_clear(), TEXT("Releasing D clears movement"));
             });
     }
 
