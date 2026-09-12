@@ -16,8 +16,11 @@ inline constexpr TCHAR cloud_material_path[]{
     TEXT("/SandboxShaders/CelestialBackdrop/M_CelestialClouds.M_CelestialClouds")};
 inline constexpr TCHAR atmosphere_material_path[]{
     TEXT("/SandboxShaders/CelestialBackdrop/M_CelestialAtmosphere.M_CelestialAtmosphere")};
+inline constexpr TCHAR ring_material_path[]{
+    TEXT("/SandboxShaders/CelestialBackdrop/M_CelestialRings.M_CelestialRings")};
 inline FVector const default_sun_direction{0.35, -0.45, 0.82};
 inline constexpr float engine_sphere_radius{50.0f};
+inline constexpr float engine_plane_radius{50.0f};
 
 void configure_backdrop_mesh(UStaticMeshComponent& mesh) {
     mesh.SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -38,6 +41,18 @@ FLinearColor vector_parameter(FVector const& vector) {
                         static_cast<float>(vector.Y),
                         static_cast<float>(vector.Z),
                         0.0f};
+}
+
+float emission_pattern_parameter(ECelestialBackdropEmissionPattern const pattern) {
+    switch (pattern) {
+        case ECelestialBackdropEmissionPattern::HiveCells:
+            return 1.0f;
+        case ECelestialBackdropEmissionPattern::MoltenCracks:
+            return 2.0f;
+        case ECelestialBackdropEmissionPattern::Noise:
+        default:
+            return 0.0f;
+    }
 }
 
 void apply_close_approach(UMaterialInstanceDynamic& instance,
@@ -85,6 +100,11 @@ ACelestialBackdropActor::ACelestialBackdropActor() {
     SandboxCelestials::Private::configure_backdrop_mesh(*atmosphere_mesh_);
     atmosphere_mesh_->SetTranslucentSortPriority(1);
 
+    ring_mesh_ = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Rings"));
+    ring_mesh_->SetupAttachment(root_);
+    SandboxCelestials::Private::configure_backdrop_mesh(*ring_mesh_);
+    ring_mesh_->SetTranslucentSortPriority(-1);
+
     static ConstructorHelpers::FObjectFinder<UStaticMesh> const sphere_mesh{
         TEXT("/Engine/BasicShapes/Sphere.Sphere")};
     if (sphere_mesh.Succeeded()) {
@@ -93,6 +113,14 @@ ACelestialBackdropActor::ACelestialBackdropActor() {
         atmosphere_mesh_->SetStaticMesh(sphere_mesh.Object);
     } else {
         UE_LOG(LogCelestialBackdrop, Error, TEXT("Could not load the engine sphere mesh."));
+    }
+
+    static ConstructorHelpers::FObjectFinder<UStaticMesh> const plane_mesh{
+        TEXT("/Engine/BasicShapes/Plane.Plane")};
+    if (plane_mesh.Succeeded()) {
+        ring_mesh_->SetStaticMesh(plane_mesh.Object);
+    } else {
+        UE_LOG(LogCelestialBackdrop, Error, TEXT("Could not load the engine plane mesh."));
     }
 
     static ConstructorHelpers::FObjectFinder<UMaterialInterface> const surface_material{
@@ -114,6 +142,13 @@ ACelestialBackdropActor::ACelestialBackdropActor() {
     if (atmosphere_material.Succeeded()) {
         atmosphere_material_ = atmosphere_material.Object;
         atmosphere_mesh_->SetMaterial(0, atmosphere_material_);
+    }
+
+    static ConstructorHelpers::FObjectFinder<UMaterialInterface> const ring_material{
+        SandboxCelestials::Private::ring_material_path};
+    if (ring_material.Succeeded()) {
+        ring_material_ = ring_material.Object;
+        ring_mesh_->SetMaterial(0, ring_material_);
     }
 }
 
@@ -138,6 +173,10 @@ void ACelestialBackdropActor::apply_settings() {
     auto const atmosphere_visible{settings.atmosphere.enabled && atmosphere_thickness > 0.0f &&
                                   settings.atmosphere.density > 0.0f &&
                                   settings.atmosphere.limb_intensity > 0.0f};
+    auto const ring_inner_ratio{FMath::Clamp(settings.rings.inner_radius_ratio, 1.01f, 4.0f)};
+    auto const ring_outer_ratio{
+        FMath::Clamp(settings.rings.outer_radius_ratio, ring_inner_ratio + 0.01f, 6.0f)};
+    auto const rings_visible{settings.rings.enabled && settings.rings.emission_intensity > 0.0f};
 
     surface_mesh_->SetRelativeScale3D(
         FVector{radius / SandboxCelestials::Private::engine_sphere_radius});
@@ -145,21 +184,35 @@ void ACelestialBackdropActor::apply_settings() {
                                             SandboxCelestials::Private::engine_sphere_radius});
     atmosphere_mesh_->SetRelativeScale3D(FVector{radius * (1.0f + atmosphere_thickness) /
                                                  SandboxCelestials::Private::engine_sphere_radius});
+    ring_mesh_->SetRelativeRotation(settings.rings.tilt);
+    ring_mesh_->SetRelativeScale3D(
+        FVector{radius * ring_outer_ratio / SandboxCelestials::Private::engine_plane_radius,
+                radius * ring_outer_ratio / SandboxCelestials::Private::engine_plane_radius,
+                1.0});
     cloud_mesh_->SetVisibility(clouds_visible, true);
     cloud_mesh_->SetHiddenInGame(!clouds_visible, true);
     atmosphere_mesh_->SetVisibility(atmosphere_visible, true);
     atmosphere_mesh_->SetHiddenInGame(!atmosphere_visible, true);
+    ring_mesh_->SetVisibility(rings_visible, true);
+    ring_mesh_->SetHiddenInGame(!rings_visible, true);
 
     auto const outer_radius_ratio{
         FMath::Max(1.0f,
                    FMath::Max(clouds_visible ? 1.0f + cloud_altitude : 1.0f,
                               atmosphere_visible ? 1.0f + atmosphere_thickness : 1.0f))};
+    auto const guarded_outer_radius_ratio{
+        FMath::Max(outer_radius_ratio, rings_visible ? ring_outer_ratio : 1.0f)};
     auto const actor_scale{GetActorScale3D().GetAbsMax()};
-    auto const outer_radius{radius * outer_radius_ratio * FMath::Max(actor_scale, UE_SMALL_NUMBER)};
+    auto const outer_radius{radius * guarded_outer_radius_ratio *
+                            FMath::Max(actor_scale, UE_SMALL_NUMBER)};
     auto const sun_direction{settings.sun_direction.GetSafeNormal(
         UE_SMALL_NUMBER, SandboxCelestials::Private::default_sun_direction)};
     auto const sun_parameter{SandboxCelestials::Private::vector_parameter(sun_direction)};
     auto const terminator_softness{FMath::Clamp(settings.terminator_softness, 0.001f, 1.0f)};
+    auto const ring_normal{
+        GetActorQuat().RotateVector(settings.rings.tilt.RotateVector(FVector::UpVector))};
+    auto const ring_normal_parameter{
+        SandboxCelestials::Private::vector_parameter(ring_normal.GetSafeNormal())};
 
     if (IsValid(surface_instance_)) {
         SandboxCelestials::Private::apply_close_approach(
@@ -202,6 +255,46 @@ void ACelestialBackdropActor::apply_settings() {
         surface_instance_->SetScalarParameterValue(
             TEXT("EmissionThreshold"),
             FMath::Clamp(settings.surface.emission_threshold, 0.0f, 1.0f));
+        surface_instance_->SetScalarParameterValue(
+            TEXT("EmissionPattern"),
+            SandboxCelestials::Private::emission_pattern_parameter(
+                settings.surface.emission_pattern));
+        surface_instance_->SetScalarParameterValue(
+            TEXT("EmissionScale"), FMath::Clamp(settings.surface.emission_scale, 0.5f, 64.0f));
+        surface_instance_->SetScalarParameterValue(
+            TEXT("PolarCapsEnabled"), settings.accents.polar_caps_enabled ? 1.0f : 0.0f);
+        surface_instance_->SetVectorParameterValue(TEXT("PolarCapColour"),
+                                                   settings.accents.polar_cap_colour);
+        surface_instance_->SetScalarParameterValue(
+            TEXT("PolarCapSize"), FMath::Clamp(settings.accents.polar_cap_size, 0.0f, 1.0f));
+        surface_instance_->SetScalarParameterValue(
+            TEXT("PolarCapSoftness"),
+            FMath::Clamp(settings.accents.polar_cap_softness, 0.001f, 0.5f));
+        surface_instance_->SetScalarParameterValue(TEXT("StormEnabled"),
+                                                   settings.accents.storm_enabled ? 1.0f : 0.0f);
+        surface_instance_->SetVectorParameterValue(TEXT("StormColour"),
+                                                   settings.accents.storm_colour);
+        surface_instance_->SetScalarParameterValue(
+            TEXT("StormLatitudeDegrees"),
+            FMath::Clamp(settings.accents.storm_latitude_degrees, -90.0f, 90.0f));
+        surface_instance_->SetScalarParameterValue(
+            TEXT("StormLongitudeDegrees"),
+            FMath::Clamp(settings.accents.storm_longitude_degrees, -180.0f, 180.0f));
+        surface_instance_->SetScalarParameterValue(
+            TEXT("StormSize"), FMath::Clamp(settings.accents.storm_size, 0.02f, 0.8f));
+        surface_instance_->SetScalarParameterValue(
+            TEXT("StormIntensity"), FMath::Clamp(settings.accents.storm_intensity, 0.0f, 1.0f));
+        surface_instance_->SetVectorParameterValue(TEXT("RingNormalWS"), ring_normal_parameter);
+        surface_instance_->SetScalarParameterValue(
+            TEXT("RingShadowEnabled"),
+            rings_visible && settings.rings.approximate_shadow_enabled ? 1.0f : 0.0f);
+        surface_instance_->SetScalarParameterValue(
+            TEXT("RingShadowDarkness"), FMath::Clamp(settings.rings.shadow_darkness, 0.0f, 1.0f));
+        surface_instance_->SetScalarParameterValue(
+            TEXT("RingShadowWidth"), FMath::Clamp(settings.rings.shadow_width, 0.005f, 0.5f));
+        surface_instance_->SetScalarParameterValue(
+            TEXT("RingShadowSoftness"),
+            FMath::Clamp(settings.rings.shadow_softness, 0.001f, 0.25f));
     }
 
     if (IsValid(cloud_instance_)) {
@@ -242,12 +335,40 @@ void ACelestialBackdropActor::apply_settings() {
         atmosphere_instance_->SetScalarParameterValue(
             TEXT("LimbFalloff"), FMath::Clamp(settings.atmosphere.limb_falloff, 0.5f, 12.0f));
     }
+
+    if (IsValid(ring_instance_)) {
+        SandboxCelestials::Private::apply_close_approach(*ring_instance_, settings, outer_radius);
+        ring_instance_->SetVectorParameterValue(TEXT("InnerRingColour"),
+                                                settings.rings.inner_colour);
+        ring_instance_->SetVectorParameterValue(TEXT("OuterRingColour"),
+                                                settings.rings.outer_colour);
+        ring_instance_->SetScalarParameterValue(TEXT("InnerRadiusFraction"),
+                                                ring_inner_ratio / ring_outer_ratio);
+        ring_instance_->SetScalarParameterValue(
+            TEXT("RingBandCount"), FMath::Clamp(settings.rings.band_count, 1.0f, 128.0f));
+        ring_instance_->SetScalarParameterValue(
+            TEXT("RingBandStrength"), FMath::Clamp(settings.rings.band_strength, 0.0f, 1.0f));
+        ring_instance_->SetScalarParameterValue(TEXT("RingBreakup"),
+                                                FMath::Clamp(settings.rings.breakup, 0.0f, 1.0f));
+        ring_instance_->SetScalarParameterValue(
+            TEXT("RingEdgeSoftness"), FMath::Clamp(settings.rings.edge_softness, 0.001f, 0.25f));
+        ring_instance_->SetScalarParameterValue(
+            TEXT("RingEmissionIntensity"),
+            FMath::Clamp(settings.rings.emission_intensity, 0.0f, 20.0f));
+        ring_instance_->SetScalarParameterValue(TEXT("PatternSeed"),
+                                                static_cast<float>(settings.surface.pattern_seed));
+    }
 }
 
 void ACelestialBackdropActor::apply_earth_like_preset() {
     settings.surface = SandboxCelestials::Private::earth_surface();
+    auto accents{FCelestialBackdropAccentSettings{}};
+    accents.polar_caps_enabled = true;
+    accents.polar_cap_size = 0.18f;
+    settings.accents = accents;
     settings.clouds = SandboxCelestials::Private::earth_clouds();
     settings.atmosphere = SandboxCelestials::Private::earth_atmosphere();
+    settings.rings = FCelestialBackdropRingSettings{};
     settings.terminator_softness = 0.16f;
     apply_settings();
 }
@@ -265,7 +386,10 @@ void ACelestialBackdropActor::apply_hive_world_preset() {
     surface.emission_colour = FLinearColor{1.0f, 0.22f, 0.005f, 1.0f};
     surface.emission_intensity = 7.5f;
     surface.emission_threshold = 0.72f;
+    surface.emission_pattern = ECelestialBackdropEmissionPattern::HiveCells;
+    surface.emission_scale = 12.0f;
     settings.surface = surface;
+    settings.accents = FCelestialBackdropAccentSettings{};
 
     auto clouds{FCelestialBackdropCloudSettings{}};
     clouds.colour = FLinearColor{0.75f, 0.19f, 0.015f, 1.0f};
@@ -283,6 +407,20 @@ void ACelestialBackdropActor::apply_hive_world_preset() {
     atmosphere.limb_intensity = 8.5f;
     atmosphere.limb_falloff = 3.8f;
     settings.atmosphere = atmosphere;
+
+    auto rings{FCelestialBackdropRingSettings{}};
+    rings.enabled = true;
+    rings.inner_radius_ratio = 1.18f;
+    rings.outer_radius_ratio = 2.20f;
+    rings.tilt = FRotator{24.0, 8.0, 15.0};
+    rings.inner_colour = FLinearColor{0.035f, 0.003f, 0.0f, 1.0f};
+    rings.outer_colour = FLinearColor{1.0f, 0.24f, 0.008f, 1.0f};
+    rings.band_count = 42.0f;
+    rings.band_strength = 0.82f;
+    rings.breakup = 0.32f;
+    rings.emission_intensity = 2.8f;
+    rings.shadow_darkness = 0.52f;
+    settings.rings = rings;
     settings.terminator_softness = 0.10f;
     apply_settings();
 }
@@ -301,7 +439,10 @@ void ACelestialBackdropActor::apply_dark_alien_preset() {
     surface.emission_colour = FLinearColor{0.12f, 0.8f, 1.0f, 1.0f};
     surface.emission_intensity = 12.0f;
     surface.emission_threshold = 0.76f;
+    surface.emission_pattern = ECelestialBackdropEmissionPattern::MoltenCracks;
+    surface.emission_scale = 14.0f;
     settings.surface = surface;
+    settings.accents = FCelestialBackdropAccentSettings{};
 
     auto clouds{FCelestialBackdropCloudSettings{}};
     clouds.enabled = false;
@@ -314,6 +455,7 @@ void ACelestialBackdropActor::apply_dark_alien_preset() {
     atmosphere.limb_intensity = 14.0f;
     atmosphere.limb_falloff = 5.2f;
     settings.atmosphere = atmosphere;
+    settings.rings = FCelestialBackdropRingSettings{};
     settings.terminator_softness = 0.08f;
     apply_settings();
 }
@@ -334,6 +476,15 @@ void ACelestialBackdropActor::apply_gas_giant_preset() {
     surface.band_warp = 0.28f;
     settings.surface = surface;
 
+    auto accents{FCelestialBackdropAccentSettings{}};
+    accents.storm_enabled = true;
+    accents.storm_colour = FLinearColor{0.95f, 0.11f, 0.015f, 1.0f};
+    accents.storm_latitude_degrees = -18.0f;
+    accents.storm_longitude_degrees = -22.0f;
+    accents.storm_size = 0.21f;
+    accents.storm_intensity = 0.92f;
+    settings.accents = accents;
+
     auto clouds{FCelestialBackdropCloudSettings{}};
     clouds.enabled = false;
     settings.clouds = clouds;
@@ -345,6 +496,7 @@ void ACelestialBackdropActor::apply_gas_giant_preset() {
     atmosphere.limb_intensity = 4.5f;
     atmosphere.limb_falloff = 2.6f;
     settings.atmosphere = atmosphere;
+    settings.rings = FCelestialBackdropRingSettings{};
     settings.terminator_softness = 0.24f;
     apply_settings();
 }
@@ -362,6 +514,10 @@ void ACelestialBackdropActor::ensure_materials() {
         atmosphere_material_ = LoadObject<UMaterialInterface>(
             nullptr, SandboxCelestials::Private::atmosphere_material_path);
     }
+    if (!IsValid(ring_material_)) {
+        ring_material_ =
+            LoadObject<UMaterialInterface>(nullptr, SandboxCelestials::Private::ring_material_path);
+    }
 
     if (IsValid(surface_material_) && !IsValid(surface_instance_)) {
         surface_instance_ = surface_mesh_->CreateDynamicMaterialInstance(0, surface_material_);
@@ -373,9 +529,12 @@ void ACelestialBackdropActor::ensure_materials() {
         atmosphere_instance_ =
             atmosphere_mesh_->CreateDynamicMaterialInstance(0, atmosphere_material_);
     }
+    if (IsValid(ring_material_) && !IsValid(ring_instance_)) {
+        ring_instance_ = ring_mesh_->CreateDynamicMaterialInstance(0, ring_material_);
+    }
 
     if (!IsValid(surface_instance_) || !IsValid(cloud_instance_) ||
-        !IsValid(atmosphere_instance_)) {
+        !IsValid(atmosphere_instance_) || !IsValid(ring_instance_)) {
         UE_LOG(LogCelestialBackdrop,
                Warning,
                TEXT("Celestial backdrop materials are unavailable or failed to instantiate."));

@@ -27,6 +27,64 @@ float sbx_celestial_stylise(float value, float const steps) {
     return floor(saturate(value) * intervals + 0.5) / intervals;
 }
 
+float sbx_celestial_hive_edges(float3 const direction, float const scale) {
+    float3 const weights = pow(abs(direction), 6.0);
+    float2 coordinates;
+    if (weights.x >= weights.y && weights.x >= weights.z) {
+        coordinates = direction.yz;
+    } else if (weights.y >= weights.z) {
+        coordinates = direction.xz;
+    } else {
+        coordinates = direction.xy;
+    }
+
+    coordinates *= max(scale, 0.5);
+    coordinates.x *= 0.57735027;
+    coordinates.y += frac(floor(coordinates.x) * 0.5) * 0.5;
+    float2 const cell = abs(frac(coordinates) - 0.5);
+    float const edge_distance = max(cell.x * 1.55 + cell.y * 0.72, cell.y * 1.75);
+    return smoothstep(0.60, 0.82, edge_distance);
+}
+
+float sbx_celestial_storm(float3 const direction,
+                          float const latitude_degrees,
+                          float const longitude_degrees,
+                          float const size,
+                          float const breakup) {
+    float const latitude = radians(clamp(latitude_degrees, -89.9, 89.9));
+    float const longitude = radians(longitude_degrees);
+    float const latitude_cosine = cos(latitude);
+    float3 const centre =
+        float3(latitude_cosine * cos(longitude), latitude_cosine * sin(longitude), sin(latitude));
+    float3 const east = float3(-sin(longitude), cos(longitude), 0.0);
+    float3 const north =
+        float3(-sin(latitude) * cos(longitude), -sin(latitude) * sin(longitude), latitude_cosine);
+    float2 storm_coordinates = float2(dot(direction, east) / max(size * 1.9, 0.001),
+                                      dot(direction, north) / max(size, 0.001));
+    float const swirl = sin(atan2(storm_coordinates.y, storm_coordinates.x) * 3.0 + breakup * 8.0);
+    storm_coordinates.x += swirl * 0.09;
+    float const storm_distance = length(storm_coordinates);
+    float const facing = smoothstep(-0.02, 0.08, dot(direction, centre));
+    return (1.0 - smoothstep(0.62, 1.0, storm_distance)) * facing;
+}
+
+float sbx_celestial_emission_pattern(float3 const direction,
+                                     float const detail_noise,
+                                     float const surface_pattern,
+                                     float const pattern,
+                                     float const scale) {
+    if (pattern >= 1.5) {
+        float const cracks = 1.0 - abs(detail_noise * 2.0 - 1.0);
+        float const fine_cracks =
+            1.0 - abs(sbx_value_noise3(direction * max(scale, 0.5) * 1.73 + 37.1) * 2.0 - 1.0);
+        return saturate(max(cracks, fine_cracks) * 1.16 - 0.22);
+    }
+    if (pattern >= 0.5) {
+        return sbx_celestial_hive_edges(direction, scale);
+    }
+    return detail_noise * 0.65 + (1.0 - surface_pattern) * 0.35;
+}
+
 float3 sbx_celestial_surface(float3 normal_local,
                              float3 normal_ws,
                              float3 sun_direction,
@@ -46,7 +104,24 @@ float3 sbx_celestial_surface(float3 normal_local,
                              float band_strength,
                              float band_warp,
                              float emission_intensity,
-                             float emission_threshold) {
+                             float emission_threshold,
+                             float emission_pattern,
+                             float emission_scale,
+                             float polar_caps_enabled,
+                             float3 polar_cap_colour,
+                             float polar_cap_size,
+                             float polar_cap_softness,
+                             float storm_enabled,
+                             float3 storm_colour,
+                             float storm_latitude_degrees,
+                             float storm_longitude_degrees,
+                             float storm_size,
+                             float storm_intensity,
+                             float3 ring_normal_ws,
+                             float ring_shadow_enabled,
+                             float ring_shadow_darkness,
+                             float ring_shadow_width,
+                             float ring_shadow_softness) {
     normal_local = normalize(normal_local);
     float3 const seed_offset = sbx_celestial_seed_offset(pattern_seed);
     float const broad_noise = sbx_fbm3(normal_local * max(detail_scale, 0.1) + seed_offset);
@@ -72,12 +147,70 @@ float3 sbx_celestial_surface(float3 normal_local,
         night_colour * max(night_brightness, 0.0) * lerp(0.72, 1.18, pattern);
     float3 colour = lerp(dark_colour, day_colour, daylight);
 
-    float const emission_mask = smoothstep(saturate(emission_threshold),
-                                           saturate(emission_threshold + 0.12),
-                                           detail_noise * 0.65 + (1.0 - pattern) * 0.35);
+    float const polar_threshold = 1.0 - saturate(polar_cap_size);
+    float const polar_mask = smoothstep(polar_threshold - max(polar_cap_softness, 0.001),
+                                        polar_threshold + max(polar_cap_softness, 0.001),
+                                        abs(normal_local.z)) *
+                             saturate(polar_caps_enabled);
+    colour = lerp(colour, polar_cap_colour * lerp(0.42, 1.0, daylight), polar_mask);
+
+    float storm_mask = 0.0;
+    if (storm_enabled >= 0.5) {
+        storm_mask = sbx_celestial_storm(normal_local,
+                                         storm_latitude_degrees,
+                                         storm_longitude_degrees,
+                                         max(storm_size, 0.02),
+                                         broad_noise) *
+                     saturate(storm_intensity);
+    }
+    colour = lerp(colour, storm_colour * lerp(0.34, 1.1, daylight), storm_mask);
+
+    float const ring_plane_distance = abs(dot(normalize(normal_ws), normalize(ring_normal_ws)));
+    float const ring_shadow =
+        (1.0 - smoothstep(max(ring_shadow_width, 0.005),
+                          max(ring_shadow_width + ring_shadow_softness, 0.006),
+                          ring_plane_distance)) *
+        saturate(ring_shadow_enabled) * saturate(ring_shadow_darkness) * daylight;
+    colour *= 1.0 - ring_shadow;
+
+    float const emission_source = sbx_celestial_emission_pattern(
+        normal_local, detail_noise, pattern, emission_pattern, emission_scale);
+    float const emission_mask = smoothstep(
+        saturate(emission_threshold), saturate(emission_threshold + 0.12), emission_source);
     colour +=
         emission_colour * emission_mask * max(emission_intensity, 0.0) * (1.0 - daylight * 0.88);
     return colour;
+}
+
+float4 sbx_celestial_rings(float2 const uv,
+                           float3 const inner_colour,
+                           float3 const outer_colour,
+                           float inner_radius_fraction,
+                           float band_count,
+                           float band_strength,
+                           float breakup,
+                           float edge_softness,
+                           float emission_intensity,
+                           float pattern_seed) {
+    float2 const centred = (uv - 0.5) * 2.0;
+    float const radius = length(centred);
+    float const inner_radius = clamp(inner_radius_fraction, 0.05, 0.98);
+    float const ring_width = max(1.0 - inner_radius, 0.001);
+    float const radial_position = saturate((radius - inner_radius) / ring_width);
+    float const softness = max(edge_softness, 0.001);
+    float const annulus = smoothstep(inner_radius, inner_radius + softness, radius) *
+                          (1.0 - smoothstep(1.0 - softness, 1.0, radius));
+
+    float const broad_noise = sbx_value_noise(centred * 3.7 + pattern_seed * 0.013);
+    float const fine_noise = sbx_value_noise(centred * 17.3 + pattern_seed * 0.031 + 8.4);
+    float const bands = 0.5 + 0.5 * sin(radial_position * max(band_count, 1.0) * 6.2831853 +
+                                        (broad_noise - 0.5) * 4.0);
+    float const band_mask = lerp(1.0, smoothstep(0.18, 0.82, bands), saturate(band_strength));
+    float const breakup_mask = lerp(1.0, smoothstep(0.22, 0.78, fine_noise), saturate(breakup));
+    float const mask = annulus * band_mask * breakup_mask;
+    float3 const colour = lerp(inner_colour, outer_colour, radial_position) *
+                          (0.48 + bands * 0.52) * max(emission_intensity, 0.0);
+    return float4(colour, mask);
 }
 
 float4 sbx_celestial_clouds(float3 normal_local,

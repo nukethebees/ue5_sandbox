@@ -16,6 +16,13 @@ enum class ECelestialBackdropStyle : uint8 {
     GasGiant,
 };
 
+UENUM(BlueprintType)
+enum class ECelestialBackdropEmissionPattern : uint8 {
+    Noise,
+    HiveCells,
+    MoltenCracks,
+};
+
 USTRUCT(BlueprintType)
 struct SANDBOXCELESTIALS_API FCelestialBackdropSurfaceSettings {
     GENERATED_BODY()
@@ -97,6 +104,68 @@ struct SANDBOXCELESTIALS_API FCelestialBackdropSurfaceSettings {
               Category = "Surface|Emission",
               meta = (ClampMin = "0.0", ClampMax = "1.0"))
     float emission_threshold{0.72f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Surface|Emission")
+    ECelestialBackdropEmissionPattern emission_pattern{ECelestialBackdropEmissionPattern::Noise};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Surface|Emission",
+              meta = (ClampMin = "0.5", ClampMax = "64.0"))
+    float emission_scale{9.0f};
+};
+
+USTRUCT(BlueprintType)
+struct SANDBOXCELESTIALS_API FCelestialBackdropAccentSettings {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Accents|Polar Caps")
+    bool polar_caps_enabled{false};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Accents|Polar Caps")
+    FLinearColor polar_cap_colour{0.65f, 0.82f, 1.0f, 1.0f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Accents|Polar Caps",
+              meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float polar_cap_size{0.22f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Accents|Polar Caps",
+              meta = (ClampMin = "0.001", ClampMax = "0.5"))
+    float polar_cap_softness{0.08f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Accents|Storm")
+    bool storm_enabled{false};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Accents|Storm")
+    FLinearColor storm_colour{0.75f, 0.14f, 0.035f, 1.0f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Accents|Storm",
+              meta = (ClampMin = "-90.0", ClampMax = "90.0", Units = "deg"))
+    float storm_latitude_degrees{-22.0f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Accents|Storm",
+              meta = (ClampMin = "-180.0", ClampMax = "180.0", Units = "deg"))
+    float storm_longitude_degrees{28.0f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Accents|Storm",
+              meta = (ClampMin = "0.02", ClampMax = "0.8"))
+    float storm_size{0.18f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Accents|Storm",
+              meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float storm_intensity{0.85f};
 };
 
 USTRUCT(BlueprintType)
@@ -185,6 +254,86 @@ struct SANDBOXCELESTIALS_API FCelestialBackdropAtmosphereSettings {
 };
 
 USTRUCT(BlueprintType)
+struct SANDBOXCELESTIALS_API FCelestialBackdropRingSettings {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rings")
+    bool enabled{false};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Rings",
+              meta = (ClampMin = "1.01", ClampMax = "4.0"))
+    float inner_radius_ratio{1.20f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Rings",
+              meta = (ClampMin = "1.02", ClampMax = "6.0"))
+    float outer_radius_ratio{2.05f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rings")
+    FRotator tilt{18.0, 0.0, 12.0};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rings")
+    FLinearColor inner_colour{0.10f, 0.025f, 0.004f, 1.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rings")
+    FLinearColor outer_colour{0.95f, 0.35f, 0.035f, 1.0f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Rings|Pattern",
+              meta = (ClampMin = "1.0", ClampMax = "128.0"))
+    float band_count{34.0f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Rings|Pattern",
+              meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float band_strength{0.72f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Rings|Pattern",
+              meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float breakup{0.24f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Rings|Pattern",
+              meta = (ClampMin = "0.001", ClampMax = "0.25"))
+    float edge_softness{0.025f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Rings",
+              meta = (ClampMin = "0.0", ClampMax = "20.0"))
+    float emission_intensity{1.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rings|Shadow")
+    bool approximate_shadow_enabled{true};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Rings|Shadow",
+              meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float shadow_darkness{0.42f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Rings|Shadow",
+              meta = (ClampMin = "0.005", ClampMax = "0.5"))
+    float shadow_width{0.10f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Rings|Shadow",
+              meta = (ClampMin = "0.001", ClampMax = "0.25"))
+    float shadow_softness{0.035f};
+};
+
+USTRUCT(BlueprintType)
 struct SANDBOXCELESTIALS_API FCelestialBackdropCloseApproachSettings {
     GENERATED_BODY()
 
@@ -221,10 +370,16 @@ struct SANDBOXCELESTIALS_API FCelestialBackdropSettings {
     FCelestialBackdropSurfaceSettings surface;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Celestial Backdrop")
+    FCelestialBackdropAccentSettings accents;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Celestial Backdrop")
     FCelestialBackdropCloudSettings clouds;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Celestial Backdrop")
     FCelestialBackdropAtmosphereSettings atmosphere;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Celestial Backdrop")
+    FCelestialBackdropRingSettings rings;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Celestial Backdrop")
     FCelestialBackdropCloseApproachSettings close_approach;
@@ -274,6 +429,9 @@ class SANDBOXCELESTIALS_API ACelestialBackdropActor final : public AActor {
     UPROPERTY(VisibleAnywhere, Category = "Celestial Backdrop")
     TObjectPtr<UStaticMeshComponent> atmosphere_mesh_;
 
+    UPROPERTY(VisibleAnywhere, Category = "Celestial Backdrop")
+    TObjectPtr<UStaticMeshComponent> ring_mesh_;
+
     UPROPERTY()
     TObjectPtr<UMaterialInterface> surface_material_;
 
@@ -283,6 +441,9 @@ class SANDBOXCELESTIALS_API ACelestialBackdropActor final : public AActor {
     UPROPERTY()
     TObjectPtr<UMaterialInterface> atmosphere_material_;
 
+    UPROPERTY()
+    TObjectPtr<UMaterialInterface> ring_material_;
+
     UPROPERTY(Transient)
     TObjectPtr<UMaterialInstanceDynamic> surface_instance_;
 
@@ -291,4 +452,7 @@ class SANDBOXCELESTIALS_API ACelestialBackdropActor final : public AActor {
 
     UPROPERTY(Transient)
     TObjectPtr<UMaterialInstanceDynamic> atmosphere_instance_;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UMaterialInstanceDynamic> ring_instance_;
 };
