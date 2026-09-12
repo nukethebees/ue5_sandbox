@@ -37,13 +37,21 @@ under the unusually close camera positions this game can produce.
 2. Position it as scenery and set `Body Radius` in centimetres. Uniform actor scaling is supported,
    although using the radius property keeps authored intent clearer.
 3. Set `Sun Direction` to the world-space direction from the body towards its light source.
-4. Choose `Rocky` or `Gas Giant`, tune the grouped settings, or press one of the four preset buttons.
+4. Assign a **Celestial Backdrop Profile** for a reusable look, tune local settings, or press one of
+   the four preset buttons.
 5. Enable rings when needed and set their tilt independently. Clouds rotate around world Z; a
    negative speed reverses them and zero pauses them.
 
 Changes made in the Details panel update through the construction path. Runtime code may change the
-public `settings` struct and call `apply_settings()`. Appearance presets intentionally preserve the
-actor transform, body radius, sun direction, and close-approach settings.
+public `settings` struct and call `apply_settings()`. Profiles contain appearance only: body radius,
+sun direction, transform, and close-approach policy always remain per actor. Enable `Override Profile
+Appearance` to use that actor's local appearance fields without breaking its profile reference.
+Pressing a preset button enables this override automatically.
+
+Create a profile through **Content Browser > Add > Miscellaneous > Data Asset**, selecting
+`CelestialBackdropProfile`, then assign it to any number of backdrop actors. Four editable example
+profiles live under `CelestialBackdrop/Profiles`: Earth-like, Hive world, dark alien, and gas giant.
+Editing a profile refreshes actors that reference it in open editor worlds.
 
 ## Important controls
 
@@ -59,9 +67,9 @@ actor transform, body radius, sun direction, and close-approach settings.
   emission, and a cheap aligned surface-shadow approximation.
 - **Close Approach:** enablement and the minimum camera-distance ratio.
 
-The supplied examples are Earth-like rocky, orange Hive world, dark emissive alien world, and gas
-giant. They are code presets rather than separate material instances, so every resulting value
-remains directly editable.
+The shader showcase uses all four supplied profiles. The real `GameRuntime` map includes a distant
+Hive homeworld using the same profile, demonstrating that profile reuse does not couple body size or
+lighting direction between levels.
 
 ## Close approach
 

@@ -1,5 +1,7 @@
 #include "SandboxCelestials/CelestialBackdropActor.h"
 
+#include "SandboxCelestials/CelestialBackdropProfile.h"
+
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
@@ -163,20 +165,34 @@ void ACelestialBackdropActor::PostRegisterAllComponents() {
 }
 
 void ACelestialBackdropActor::apply_settings() {
+    auto resolved_settings{settings};
+    if (IsValid(profile) && !override_profile_appearance) {
+        profile->apply_to(resolved_settings);
+    }
+
+    apply_settings(resolved_settings);
+}
+
+void ACelestialBackdropActor::apply_settings(FCelestialBackdropSettings const& resolved_settings) {
     ensure_materials();
 
-    auto const radius{FMath::Max(settings.body_radius, 1.0f)};
-    auto const cloud_altitude{FMath::Clamp(settings.clouds.altitude, 0.0f, 0.25f)};
-    auto const atmosphere_thickness{FMath::Clamp(settings.atmosphere.thickness, 0.0f, 0.35f)};
-    auto const clouds_visible{settings.clouds.enabled && settings.clouds.amount > 0.0f &&
-                              settings.clouds.opacity > 0.0f};
-    auto const atmosphere_visible{settings.atmosphere.enabled && atmosphere_thickness > 0.0f &&
-                                  settings.atmosphere.density > 0.0f &&
-                                  settings.atmosphere.limb_intensity > 0.0f};
-    auto const ring_inner_ratio{FMath::Clamp(settings.rings.inner_radius_ratio, 1.01f, 4.0f)};
+    auto const radius{FMath::Max(resolved_settings.body_radius, 1.0f)};
+    auto const cloud_altitude{FMath::Clamp(resolved_settings.clouds.altitude, 0.0f, 0.25f)};
+    auto const atmosphere_thickness{
+        FMath::Clamp(resolved_settings.atmosphere.thickness, 0.0f, 0.35f)};
+    auto const clouds_visible{resolved_settings.clouds.enabled &&
+                              resolved_settings.clouds.amount > 0.0f &&
+                              resolved_settings.clouds.opacity > 0.0f};
+    auto const atmosphere_visible{resolved_settings.atmosphere.enabled &&
+                                  atmosphere_thickness > 0.0f &&
+                                  resolved_settings.atmosphere.density > 0.0f &&
+                                  resolved_settings.atmosphere.limb_intensity > 0.0f};
+    auto const ring_inner_ratio{
+        FMath::Clamp(resolved_settings.rings.inner_radius_ratio, 1.01f, 4.0f)};
     auto const ring_outer_ratio{
-        FMath::Clamp(settings.rings.outer_radius_ratio, ring_inner_ratio + 0.01f, 6.0f)};
-    auto const rings_visible{settings.rings.enabled && settings.rings.emission_intensity > 0.0f};
+        FMath::Clamp(resolved_settings.rings.outer_radius_ratio, ring_inner_ratio + 0.01f, 6.0f)};
+    auto const rings_visible{resolved_settings.rings.enabled &&
+                             resolved_settings.rings.emission_intensity > 0.0f};
 
     surface_mesh_->SetRelativeScale3D(
         FVector{radius / SandboxCelestials::Private::engine_sphere_radius});
@@ -184,7 +200,7 @@ void ACelestialBackdropActor::apply_settings() {
                                             SandboxCelestials::Private::engine_sphere_radius});
     atmosphere_mesh_->SetRelativeScale3D(FVector{radius * (1.0f + atmosphere_thickness) /
                                                  SandboxCelestials::Private::engine_sphere_radius});
-    ring_mesh_->SetRelativeRotation(settings.rings.tilt);
+    ring_mesh_->SetRelativeRotation(resolved_settings.rings.tilt);
     ring_mesh_->SetRelativeScale3D(
         FVector{radius * ring_outer_ratio / SandboxCelestials::Private::engine_plane_radius,
                 radius * ring_outer_ratio / SandboxCelestials::Private::engine_plane_radius,
@@ -205,162 +221,183 @@ void ACelestialBackdropActor::apply_settings() {
     auto const actor_scale{GetActorScale3D().GetAbsMax()};
     auto const outer_radius{radius * guarded_outer_radius_ratio *
                             FMath::Max(actor_scale, UE_SMALL_NUMBER)};
-    auto const sun_direction{settings.sun_direction.GetSafeNormal(
+    auto const sun_direction{resolved_settings.sun_direction.GetSafeNormal(
         UE_SMALL_NUMBER, SandboxCelestials::Private::default_sun_direction)};
     auto const sun_parameter{SandboxCelestials::Private::vector_parameter(sun_direction)};
-    auto const terminator_softness{FMath::Clamp(settings.terminator_softness, 0.001f, 1.0f)};
+    auto const terminator_softness{
+        FMath::Clamp(resolved_settings.terminator_softness, 0.001f, 1.0f)};
     auto const ring_normal{
-        GetActorQuat().RotateVector(settings.rings.tilt.RotateVector(FVector::UpVector))};
+        GetActorQuat().RotateVector(resolved_settings.rings.tilt.RotateVector(FVector::UpVector))};
     auto const ring_normal_parameter{
         SandboxCelestials::Private::vector_parameter(ring_normal.GetSafeNormal())};
 
     if (IsValid(surface_instance_)) {
         SandboxCelestials::Private::apply_close_approach(
-            *surface_instance_, settings, outer_radius);
+            *surface_instance_, resolved_settings, outer_radius);
         surface_instance_->SetVectorParameterValue(TEXT("SunDirection"), sun_parameter);
         surface_instance_->SetVectorParameterValue(TEXT("PrimaryDayColour"),
-                                                   settings.surface.primary_day_colour);
+                                                   resolved_settings.surface.primary_day_colour);
         surface_instance_->SetVectorParameterValue(TEXT("SecondaryDayColour"),
-                                                   settings.surface.secondary_day_colour);
+                                                   resolved_settings.surface.secondary_day_colour);
         surface_instance_->SetVectorParameterValue(TEXT("NightColour"),
-                                                   settings.surface.night_colour);
+                                                   resolved_settings.surface.night_colour);
         surface_instance_->SetVectorParameterValue(TEXT("EmissionColour"),
-                                                   settings.surface.emission_colour);
+                                                   resolved_settings.surface.emission_colour);
         surface_instance_->SetScalarParameterValue(
             TEXT("BodyStyle"),
-            settings.surface.style == ECelestialBackdropStyle::GasGiant ? 1.0f : 0.0f);
+            resolved_settings.surface.style == ECelestialBackdropStyle::GasGiant ? 1.0f : 0.0f);
         surface_instance_->SetScalarParameterValue(TEXT("TerminatorSoftness"), terminator_softness);
         surface_instance_->SetScalarParameterValue(
-            TEXT("NightBrightness"), FMath::Clamp(settings.surface.night_brightness, 0.0f, 2.0f));
+            TEXT("NightBrightness"),
+            FMath::Clamp(resolved_settings.surface.night_brightness, 0.0f, 2.0f));
         surface_instance_->SetScalarParameterValue(
-            TEXT("DetailScale"), FMath::Clamp(settings.surface.detail_scale, 0.1f, 64.0f));
+            TEXT("DetailScale"), FMath::Clamp(resolved_settings.surface.detail_scale, 0.1f, 64.0f));
         surface_instance_->SetScalarParameterValue(
-            TEXT("DetailStrength"), FMath::Clamp(settings.surface.detail_strength, 0.0f, 2.0f));
+            TEXT("DetailStrength"),
+            FMath::Clamp(resolved_settings.surface.detail_strength, 0.0f, 2.0f));
         surface_instance_->SetScalarParameterValue(
-            TEXT("NoiseBreakup"), FMath::Clamp(settings.surface.noise_breakup, 0.0f, 1.0f));
+            TEXT("NoiseBreakup"),
+            FMath::Clamp(resolved_settings.surface.noise_breakup, 0.0f, 1.0f));
         surface_instance_->SetScalarParameterValue(
             TEXT("StylisationSteps"),
-            static_cast<float>(FMath::Clamp(settings.surface.stylisation_steps, 0, 12)));
+            static_cast<float>(FMath::Clamp(resolved_settings.surface.stylisation_steps, 0, 12)));
         surface_instance_->SetScalarParameterValue(
-            TEXT("PatternSeed"), static_cast<float>(settings.surface.pattern_seed));
+            TEXT("PatternSeed"), static_cast<float>(resolved_settings.surface.pattern_seed));
         surface_instance_->SetScalarParameterValue(
-            TEXT("BandCount"), FMath::Clamp(settings.surface.band_count, 1.0f, 64.0f));
+            TEXT("BandCount"), FMath::Clamp(resolved_settings.surface.band_count, 1.0f, 64.0f));
         surface_instance_->SetScalarParameterValue(
-            TEXT("BandStrength"), FMath::Clamp(settings.surface.band_strength, 0.0f, 1.0f));
+            TEXT("BandStrength"),
+            FMath::Clamp(resolved_settings.surface.band_strength, 0.0f, 1.0f));
         surface_instance_->SetScalarParameterValue(
-            TEXT("BandWarp"), FMath::Clamp(settings.surface.band_warp, 0.0f, 1.0f));
+            TEXT("BandWarp"), FMath::Clamp(resolved_settings.surface.band_warp, 0.0f, 1.0f));
         surface_instance_->SetScalarParameterValue(
             TEXT("EmissionIntensity"),
-            FMath::Clamp(settings.surface.emission_intensity, 0.0f, 50.0f));
+            FMath::Clamp(resolved_settings.surface.emission_intensity, 0.0f, 50.0f));
         surface_instance_->SetScalarParameterValue(
             TEXT("EmissionThreshold"),
-            FMath::Clamp(settings.surface.emission_threshold, 0.0f, 1.0f));
+            FMath::Clamp(resolved_settings.surface.emission_threshold, 0.0f, 1.0f));
         surface_instance_->SetScalarParameterValue(
             TEXT("EmissionPattern"),
             SandboxCelestials::Private::emission_pattern_parameter(
-                settings.surface.emission_pattern));
+                resolved_settings.surface.emission_pattern));
         surface_instance_->SetScalarParameterValue(
-            TEXT("EmissionScale"), FMath::Clamp(settings.surface.emission_scale, 0.5f, 64.0f));
+            TEXT("EmissionScale"),
+            FMath::Clamp(resolved_settings.surface.emission_scale, 0.5f, 64.0f));
         surface_instance_->SetScalarParameterValue(
-            TEXT("PolarCapsEnabled"), settings.accents.polar_caps_enabled ? 1.0f : 0.0f);
+            TEXT("PolarCapsEnabled"), resolved_settings.accents.polar_caps_enabled ? 1.0f : 0.0f);
         surface_instance_->SetVectorParameterValue(TEXT("PolarCapColour"),
-                                                   settings.accents.polar_cap_colour);
+                                                   resolved_settings.accents.polar_cap_colour);
         surface_instance_->SetScalarParameterValue(
-            TEXT("PolarCapSize"), FMath::Clamp(settings.accents.polar_cap_size, 0.0f, 1.0f));
+            TEXT("PolarCapSize"),
+            FMath::Clamp(resolved_settings.accents.polar_cap_size, 0.0f, 1.0f));
         surface_instance_->SetScalarParameterValue(
             TEXT("PolarCapSoftness"),
-            FMath::Clamp(settings.accents.polar_cap_softness, 0.001f, 0.5f));
-        surface_instance_->SetScalarParameterValue(TEXT("StormEnabled"),
-                                                   settings.accents.storm_enabled ? 1.0f : 0.0f);
+            FMath::Clamp(resolved_settings.accents.polar_cap_softness, 0.001f, 0.5f));
+        surface_instance_->SetScalarParameterValue(
+            TEXT("StormEnabled"), resolved_settings.accents.storm_enabled ? 1.0f : 0.0f);
         surface_instance_->SetVectorParameterValue(TEXT("StormColour"),
-                                                   settings.accents.storm_colour);
+                                                   resolved_settings.accents.storm_colour);
         surface_instance_->SetScalarParameterValue(
             TEXT("StormLatitudeDegrees"),
-            FMath::Clamp(settings.accents.storm_latitude_degrees, -90.0f, 90.0f));
+            FMath::Clamp(resolved_settings.accents.storm_latitude_degrees, -90.0f, 90.0f));
         surface_instance_->SetScalarParameterValue(
             TEXT("StormLongitudeDegrees"),
-            FMath::Clamp(settings.accents.storm_longitude_degrees, -180.0f, 180.0f));
+            FMath::Clamp(resolved_settings.accents.storm_longitude_degrees, -180.0f, 180.0f));
         surface_instance_->SetScalarParameterValue(
-            TEXT("StormSize"), FMath::Clamp(settings.accents.storm_size, 0.02f, 0.8f));
+            TEXT("StormSize"), FMath::Clamp(resolved_settings.accents.storm_size, 0.02f, 0.8f));
         surface_instance_->SetScalarParameterValue(
-            TEXT("StormIntensity"), FMath::Clamp(settings.accents.storm_intensity, 0.0f, 1.0f));
+            TEXT("StormIntensity"),
+            FMath::Clamp(resolved_settings.accents.storm_intensity, 0.0f, 1.0f));
         surface_instance_->SetVectorParameterValue(TEXT("RingNormalWS"), ring_normal_parameter);
         surface_instance_->SetScalarParameterValue(
             TEXT("RingShadowEnabled"),
-            rings_visible && settings.rings.approximate_shadow_enabled ? 1.0f : 0.0f);
+            rings_visible && resolved_settings.rings.approximate_shadow_enabled ? 1.0f : 0.0f);
         surface_instance_->SetScalarParameterValue(
-            TEXT("RingShadowDarkness"), FMath::Clamp(settings.rings.shadow_darkness, 0.0f, 1.0f));
+            TEXT("RingShadowDarkness"),
+            FMath::Clamp(resolved_settings.rings.shadow_darkness, 0.0f, 1.0f));
         surface_instance_->SetScalarParameterValue(
-            TEXT("RingShadowWidth"), FMath::Clamp(settings.rings.shadow_width, 0.005f, 0.5f));
+            TEXT("RingShadowWidth"),
+            FMath::Clamp(resolved_settings.rings.shadow_width, 0.005f, 0.5f));
         surface_instance_->SetScalarParameterValue(
             TEXT("RingShadowSoftness"),
-            FMath::Clamp(settings.rings.shadow_softness, 0.001f, 0.25f));
+            FMath::Clamp(resolved_settings.rings.shadow_softness, 0.001f, 0.25f));
     }
 
     if (IsValid(cloud_instance_)) {
-        SandboxCelestials::Private::apply_close_approach(*cloud_instance_, settings, outer_radius);
+        SandboxCelestials::Private::apply_close_approach(
+            *cloud_instance_, resolved_settings, outer_radius);
         cloud_instance_->SetVectorParameterValue(TEXT("SunDirection"), sun_parameter);
-        cloud_instance_->SetVectorParameterValue(TEXT("CloudColour"), settings.clouds.colour);
+        cloud_instance_->SetVectorParameterValue(TEXT("CloudColour"),
+                                                 resolved_settings.clouds.colour);
         cloud_instance_->SetVectorParameterValue(TEXT("CloudNightColour"),
-                                                 settings.clouds.night_colour);
+                                                 resolved_settings.clouds.night_colour);
         cloud_instance_->SetScalarParameterValue(TEXT("TerminatorSoftness"), terminator_softness);
-        cloud_instance_->SetScalarParameterValue(TEXT("CloudAmount"),
-                                                 FMath::Clamp(settings.clouds.amount, 0.0f, 1.0f));
-        cloud_instance_->SetScalarParameterValue(TEXT("CloudOpacity"),
-                                                 FMath::Clamp(settings.clouds.opacity, 0.0f, 1.0f));
         cloud_instance_->SetScalarParameterValue(
-            TEXT("CloudDetailScale"), FMath::Clamp(settings.clouds.detail_scale, 0.1f, 64.0f));
-        cloud_instance_->SetScalarParameterValue(TEXT("CloudBreakup"),
-                                                 FMath::Clamp(settings.clouds.breakup, 0.0f, 1.0f));
-        cloud_instance_->SetScalarParameterValue(TEXT("PatternSeed"),
-                                                 static_cast<float>(settings.surface.pattern_seed));
+            TEXT("CloudAmount"), FMath::Clamp(resolved_settings.clouds.amount, 0.0f, 1.0f));
+        cloud_instance_->SetScalarParameterValue(
+            TEXT("CloudOpacity"), FMath::Clamp(resolved_settings.clouds.opacity, 0.0f, 1.0f));
+        cloud_instance_->SetScalarParameterValue(
+            TEXT("CloudDetailScale"),
+            FMath::Clamp(resolved_settings.clouds.detail_scale, 0.1f, 64.0f));
+        cloud_instance_->SetScalarParameterValue(
+            TEXT("CloudBreakup"), FMath::Clamp(resolved_settings.clouds.breakup, 0.0f, 1.0f));
+        cloud_instance_->SetScalarParameterValue(
+            TEXT("PatternSeed"), static_cast<float>(resolved_settings.surface.pattern_seed));
         cloud_instance_->SetScalarParameterValue(TEXT("CloudRotationPhaseDegrees"),
-                                                 settings.clouds.rotation_phase_degrees);
-        cloud_instance_->SetScalarParameterValue(TEXT("CloudRotationSpeedDegrees"),
-                                                 settings.clouds.rotation_speed_degrees_per_second);
+                                                 resolved_settings.clouds.rotation_phase_degrees);
+        cloud_instance_->SetScalarParameterValue(
+            TEXT("CloudRotationSpeedDegrees"),
+            resolved_settings.clouds.rotation_speed_degrees_per_second);
     }
 
     if (IsValid(atmosphere_instance_)) {
         SandboxCelestials::Private::apply_close_approach(
-            *atmosphere_instance_, settings, outer_radius);
+            *atmosphere_instance_, resolved_settings, outer_radius);
         atmosphere_instance_->SetVectorParameterValue(TEXT("SunDirection"), sun_parameter);
         atmosphere_instance_->SetVectorParameterValue(TEXT("AtmosphereColour"),
-                                                      settings.atmosphere.colour);
+                                                      resolved_settings.atmosphere.colour);
         atmosphere_instance_->SetScalarParameterValue(TEXT("TerminatorSoftness"),
                                                       terminator_softness);
         atmosphere_instance_->SetScalarParameterValue(
-            TEXT("AtmosphereDensity"), FMath::Clamp(settings.atmosphere.density, 0.0f, 8.0f));
+            TEXT("AtmosphereDensity"),
+            FMath::Clamp(resolved_settings.atmosphere.density, 0.0f, 8.0f));
         atmosphere_instance_->SetScalarParameterValue(
-            TEXT("LimbIntensity"), FMath::Clamp(settings.atmosphere.limb_intensity, 0.0f, 50.0f));
+            TEXT("LimbIntensity"),
+            FMath::Clamp(resolved_settings.atmosphere.limb_intensity, 0.0f, 50.0f));
         atmosphere_instance_->SetScalarParameterValue(
-            TEXT("LimbFalloff"), FMath::Clamp(settings.atmosphere.limb_falloff, 0.5f, 12.0f));
+            TEXT("LimbFalloff"),
+            FMath::Clamp(resolved_settings.atmosphere.limb_falloff, 0.5f, 12.0f));
     }
 
     if (IsValid(ring_instance_)) {
-        SandboxCelestials::Private::apply_close_approach(*ring_instance_, settings, outer_radius);
+        SandboxCelestials::Private::apply_close_approach(
+            *ring_instance_, resolved_settings, outer_radius);
         ring_instance_->SetVectorParameterValue(TEXT("InnerRingColour"),
-                                                settings.rings.inner_colour);
+                                                resolved_settings.rings.inner_colour);
         ring_instance_->SetVectorParameterValue(TEXT("OuterRingColour"),
-                                                settings.rings.outer_colour);
+                                                resolved_settings.rings.outer_colour);
         ring_instance_->SetScalarParameterValue(TEXT("InnerRadiusFraction"),
                                                 ring_inner_ratio / ring_outer_ratio);
         ring_instance_->SetScalarParameterValue(
-            TEXT("RingBandCount"), FMath::Clamp(settings.rings.band_count, 1.0f, 128.0f));
+            TEXT("RingBandCount"), FMath::Clamp(resolved_settings.rings.band_count, 1.0f, 128.0f));
         ring_instance_->SetScalarParameterValue(
-            TEXT("RingBandStrength"), FMath::Clamp(settings.rings.band_strength, 0.0f, 1.0f));
-        ring_instance_->SetScalarParameterValue(TEXT("RingBreakup"),
-                                                FMath::Clamp(settings.rings.breakup, 0.0f, 1.0f));
+            TEXT("RingBandStrength"),
+            FMath::Clamp(resolved_settings.rings.band_strength, 0.0f, 1.0f));
         ring_instance_->SetScalarParameterValue(
-            TEXT("RingEdgeSoftness"), FMath::Clamp(settings.rings.edge_softness, 0.001f, 0.25f));
+            TEXT("RingBreakup"), FMath::Clamp(resolved_settings.rings.breakup, 0.0f, 1.0f));
+        ring_instance_->SetScalarParameterValue(
+            TEXT("RingEdgeSoftness"),
+            FMath::Clamp(resolved_settings.rings.edge_softness, 0.001f, 0.25f));
         ring_instance_->SetScalarParameterValue(
             TEXT("RingEmissionIntensity"),
-            FMath::Clamp(settings.rings.emission_intensity, 0.0f, 20.0f));
-        ring_instance_->SetScalarParameterValue(TEXT("PatternSeed"),
-                                                static_cast<float>(settings.surface.pattern_seed));
+            FMath::Clamp(resolved_settings.rings.emission_intensity, 0.0f, 20.0f));
+        ring_instance_->SetScalarParameterValue(
+            TEXT("PatternSeed"), static_cast<float>(resolved_settings.surface.pattern_seed));
     }
 }
 
 void ACelestialBackdropActor::apply_earth_like_preset() {
+    override_profile_appearance = true;
     settings.surface = SandboxCelestials::Private::earth_surface();
     auto accents{FCelestialBackdropAccentSettings{}};
     accents.polar_caps_enabled = true;
@@ -374,6 +411,7 @@ void ACelestialBackdropActor::apply_earth_like_preset() {
 }
 
 void ACelestialBackdropActor::apply_hive_world_preset() {
+    override_profile_appearance = true;
     auto surface{FCelestialBackdropSurfaceSettings{}};
     surface.primary_day_colour = FLinearColor{0.16f, 0.035f, 0.004f, 1.0f};
     surface.secondary_day_colour = FLinearColor{0.95f, 0.42f, 0.025f, 1.0f};
@@ -426,6 +464,7 @@ void ACelestialBackdropActor::apply_hive_world_preset() {
 }
 
 void ACelestialBackdropActor::apply_dark_alien_preset() {
+    override_profile_appearance = true;
     auto surface{FCelestialBackdropSurfaceSettings{}};
     surface.primary_day_colour = FLinearColor{0.008f, 0.006f, 0.018f, 1.0f};
     surface.secondary_day_colour = FLinearColor{0.035f, 0.012f, 0.07f, 1.0f};
@@ -461,6 +500,7 @@ void ACelestialBackdropActor::apply_dark_alien_preset() {
 }
 
 void ACelestialBackdropActor::apply_gas_giant_preset() {
+    override_profile_appearance = true;
     auto surface{FCelestialBackdropSurfaceSettings{}};
     surface.style = ECelestialBackdropStyle::GasGiant;
     surface.primary_day_colour = FLinearColor{0.12f, 0.025f, 0.005f, 1.0f};

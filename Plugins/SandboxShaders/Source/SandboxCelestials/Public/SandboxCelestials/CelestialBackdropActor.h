@@ -9,6 +9,7 @@ class UMaterialInstanceDynamic;
 class UMaterialInterface;
 class USceneComponent;
 class UStaticMeshComponent;
+class UCelestialBackdropProfile;
 
 UENUM(BlueprintType)
 enum class ECelestialBackdropStyle : uint8 {
@@ -385,6 +386,36 @@ struct SANDBOXCELESTIALS_API FCelestialBackdropSettings {
     FCelestialBackdropCloseApproachSettings close_approach;
 };
 
+USTRUCT(BlueprintType)
+struct SANDBOXCELESTIALS_API FCelestialBackdropAppearanceSettings {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Celestial Backdrop",
+              meta = (ClampMin = "0.001", ClampMax = "1.0"))
+    float terminator_softness{0.16f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Celestial Backdrop")
+    FCelestialBackdropSurfaceSettings surface;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Celestial Backdrop")
+    FCelestialBackdropAccentSettings accents;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Celestial Backdrop")
+    FCelestialBackdropCloudSettings clouds;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Celestial Backdrop")
+    FCelestialBackdropAtmosphereSettings atmosphere;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Celestial Backdrop")
+    FCelestialBackdropRingSettings rings;
+
+    void apply_to(FCelestialBackdropSettings& target) const;
+    static FCelestialBackdropAppearanceSettings
+        from_settings(FCelestialBackdropSettings const& source);
+};
+
 UCLASS(Blueprintable, ClassGroup = (Rendering))
 class SANDBOXCELESTIALS_API ACelestialBackdropActor final : public AActor {
     GENERATED_BODY()
@@ -409,12 +440,22 @@ class SANDBOXCELESTIALS_API ACelestialBackdropActor final : public AActor {
     UFUNCTION(BlueprintCallable, CallInEditor, Category = "Celestial Backdrop|Presets")
     void apply_gas_giant_preset();
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Celestial Backdrop|Profile")
+    TObjectPtr<UCelestialBackdropProfile> profile;
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Celestial Backdrop|Profile",
+              meta = (EditCondition = "profile != nullptr"))
+    bool override_profile_appearance{false};
+
     UPROPERTY(EditAnywhere,
               BlueprintReadWrite,
               Category = "Celestial Backdrop",
               meta = (ShowOnlyInnerProperties))
     FCelestialBackdropSettings settings;
   private:
+    void apply_settings(FCelestialBackdropSettings const& resolved_settings);
     void ensure_materials();
 
     UPROPERTY(VisibleAnywhere, Category = "Celestial Backdrop")
