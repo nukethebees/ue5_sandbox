@@ -15,8 +15,6 @@ class UNiagaraSystem;
 class UMaterialInterface;
 
 class UTestTeamVisualData;
-class USandboxVisualLoggerStyle;
-
 UENUM()
 enum class ETestCapitalShipsMainExplosionDelayMode : uint8 {
     AfterSmallExplosions,
@@ -93,9 +91,6 @@ class UTestCapitalShipsConfig : public UDataAsset {
 
     UPROPERTY(EditAnywhere, Category = "Debug")
     FVector debug_status_text_offset{0.0, 0.0, 500.0};
-
-    UPROPERTY(EditDefaultsOnly, Category = "Debug")
-    TObjectPtr<USandboxVisualLoggerStyle> visual_logger_style{nullptr};
 
     // Proxy settings
     UPROPERTY(EditAnywhere, Category = "Proxy")

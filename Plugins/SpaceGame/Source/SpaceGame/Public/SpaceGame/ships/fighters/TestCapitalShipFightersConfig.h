@@ -11,8 +11,6 @@
 class UStaticMesh;
 
 class UTestTeamVisualData;
-class USandboxVisualLoggerStyle;
-
 UCLASS(BlueprintType)
 class UTestCapitalShipFightersConfig : public UDataAsset {
     GENERATED_BODY()
@@ -87,7 +85,4 @@ class UTestCapitalShipFightersConfig : public UDataAsset {
     // Debug
     UPROPERTY(EditAnywhere, Category = "Debug")
     FDrawDebugConfig debug_drawer;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Debug")
-    TObjectPtr<USandboxVisualLoggerStyle> visual_logger_style{nullptr};
 };

@@ -4,7 +4,6 @@
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGamePresentation/presentation/DelayedNiagaraSpawns.h>
-#include <SpaceGamePresentation/support/logging/SandboxVisualLoggerStyle.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
@@ -19,7 +18,6 @@
 #include <Components/SceneComponent.h>
 #include <Engine/StaticMesh.h>
 #include <NiagaraSystem.h>
-#include <VisualLogger/VisualLogger.h>
 
 FCapitalPresentation::FCapitalPresentation(UInstancedStaticMeshComponent& component)
     : instances{&component} {}
@@ -101,7 +99,6 @@ void FCapitalPresentation::commit_visual_data() {
 void FCapitalPresentation::end_tick_presentation() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCapitalPresentation::end_tick_presentation);
     validate_array_sizes();
-    visual_log_state();
 }
 
 void FCapitalPresentation::configure_ismc() {
@@ -240,97 +237,6 @@ void FCapitalPresentation::draw_debugging_shapes() const {
                                            ship_handle.generation,
                                            entities.healths[i])};
         debug_drawer.draw_string(ship_location + text_offset, message);
-    }
-}
-
-void FCapitalPresentation::visual_log_state() const {
-#if ENABLE_VISUAL_LOG
-    if (!FVisualLogger::IsRecording()) {
-        return;
-    }
-#else
-    return;
-#endif
-
-    auto const& capital_simulation{view()};
-    auto const& entity_registry{*capital_simulation.registry};
-    if (!actor_config) {
-        UE_LOG(LogSandboxEntities,
-               Error,
-               TEXT("FCapitalPresentation::visual_log_state actor_config is nullptr"));
-        return;
-    }
-    if (auto const message{ml::report_invalid_uobject_ptrs({
-            SANDBOX_NAMED_UOBJECT_PTR(actor_config->visual_logger_style),
-        })}) {
-        UE_LOG(LogSandboxEntities,
-               Error,
-               TEXT("FCapitalPresentation::visual_log_state UObject ptrs are invalid:\n%s"),
-               *message);
-        return;
-    }
-
-    auto const& entities{capital_simulation.entities};
-    auto const& style{*actor_config->visual_logger_style};
-    FVector const capital_extent{style.entities.capital_ship_box_extent};
-    auto const normal_line_thickness{static_cast<uint16>(style.lines.normal_line_thickness)};
-    auto const highlighted_line_thickness{
-        static_cast<uint16>(style.lines.highlighted_line_thickness)};
-    auto const capital_count{capital_simulation.get_num_instances()};
-    for (int32 capital_index{0}; capital_index < capital_count; ++capital_index) {
-        FVector const capital_location{ml::get_vector3f(entities.locations, capital_index)};
-        FBox const capital_box{capital_location - capital_extent,
-                               capital_location + capital_extent};
-        UE_VLOG_BOX(instances->GetOwner(),
-                    LogSandboxEntities,
-                    Log,
-                    capital_box,
-                    style.entities.capital_ship_colour,
-                    TEXT("Capital %d Team %d"),
-                    entities.handles[capital_index].index,
-                    static_cast<int32>(entities.teams[capital_index]));
-
-        auto const fighter_handles{capital_simulation.get_fighter_handles(capital_index)};
-        auto const fighter_count{fighter_handles.Num()};
-        for (int32 fighter_index{0}; fighter_index < fighter_count; ++fighter_index) {
-            auto const fighter_handle{fighter_handles[fighter_index]};
-            if (!entity_registry.is_valid_alive(fighter_handle)) {
-                continue;
-            }
-            FVector const fighter_location{entity_registry.get_location(fighter_handle)};
-            UE_VLOG_SEGMENT_THICK(instances->GetOwner(),
-                                  LogSandboxEntities,
-                                  Log,
-                                  capital_location,
-                                  fighter_location,
-                                  style.navigation.parent_to_child_line_colour,
-                                  normal_line_thickness,
-                                  TEXT("Fighter %d"),
-                                  fighter_handle.index);
-        }
-
-        auto const target_handle{entities.target_handles[capital_index]};
-        if (!entity_registry.is_valid_alive(target_handle)) {
-            continue;
-        }
-        FVector const target_location{entity_registry.get_location(target_handle)};
-        UE_VLOG_WIRESPHERE(instances->GetOwner(),
-                           LogSandboxTargeting,
-                           Log,
-                           target_location,
-                           style.entities.fighter_entity_radius,
-                           style.combat.selected_target_colour,
-                           TEXT("Target %d"),
-                           target_handle.index);
-        UE_VLOG_SEGMENT_THICK(instances->GetOwner(),
-                              LogSandboxTargeting,
-                              Log,
-                              capital_location,
-                              target_location,
-                              style.combat.selected_target_colour,
-                              highlighted_line_thickness,
-                              TEXT("Target %d"),
-                              target_handle.index);
     }
 }
 

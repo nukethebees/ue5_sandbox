@@ -263,8 +263,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto make_presentation_resources() const -> FLevelPresentationResources;
     void bind_capital_ship_proxy_targets(FProxyEntityMap const& proxy_entities);
     void bind_and_destroy_proxies();
-    void start_visual_logging();
-    void stop_visual_logging();
     void refresh_collision_grid_visualization();
     void update_collision_bounds_visualization();
 
@@ -279,9 +277,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     EOrchestratorStartMode start_mode{EOrchestratorStartMode::Automatic};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Presentation")
     bool presentation_enabled{true};
-
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Visual Logger")
-    bool enable_visual_logging{false};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
     TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};

@@ -12,7 +12,7 @@ ALLOWED_DEPENDENCIES = {
 }
 FORBIDDEN = re.compile(
     r"presentation|SpaceGameRendering|Niagara|SandboxISMC|SandboxUI|"
-    r"InstancedStaticMeshComponent|UserWidget|VisualLogger|DrawDebug|"
+    r"InstancedStaticMeshComponent|UserWidget|DrawDebug|"
     r"\b(?:UMG|Slate|SlateCore|CommonUI)\b|ATestBatchOrchestrator|"
     r"[#]\s*include\s*[<\"](?:SpaceGame|SandboxGameShared)/",
     re.IGNORECASE,

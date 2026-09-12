@@ -45,7 +45,6 @@ void FEntityInterfaceScenario::spawn_fixture() {
     }
     capital_config->spawn_delay = 10.f;
     capital_config->max_health = 10000;
-    capital_config->visual_logger_style = nullptr;
     context_.orchestrator.set_level_config(*level_config);
 
     auto* const player{spawn_player_ship(

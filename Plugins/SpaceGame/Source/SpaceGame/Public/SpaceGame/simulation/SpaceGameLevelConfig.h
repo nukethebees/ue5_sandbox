@@ -25,7 +25,6 @@ class ATestSpaceShip;
 class ASpaceGamePlayerController;
 class UMaterialInterface;
 class UNiagaraSystem;
-class USandboxVisualLoggerStyle;
 class UStaticMesh;
 class UTestTeamVisualData;
 

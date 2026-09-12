@@ -12,7 +12,6 @@
 
 class UMaterialInterface;
 class UNiagaraSystem;
-class USandboxVisualLoggerStyle;
 class UStaticMesh;
 class UTestTeamVisualData;
 
@@ -219,9 +218,6 @@ struct SPACEGAMEPRESENTATION_API FCapitalShipConfig {
     UPROPERTY(EditAnywhere, Category = "Debug")
     FVector debug_status_text_offset{0.0, 0.0, 500.0};
 
-    UPROPERTY(EditDefaultsOnly, Category = "Debug")
-    TObjectPtr<USandboxVisualLoggerStyle> visual_logger_style{nullptr};
-
     UPROPERTY(EditAnywhere, Category = "Proxy")
     float proxy_arrow_size{5.f};
 };
@@ -325,9 +321,6 @@ struct SPACEGAMEPRESENTATION_API FFighterConfig {
 
     UPROPERTY(EditAnywhere, Category = "Debug")
     FDrawDebugConfig debug_drawer;
-
-    UPROPERTY(EditDefaultsOnly, Category = "Debug")
-    TObjectPtr<USandboxVisualLoggerStyle> visual_logger_style{nullptr};
 };
 
 USTRUCT(BlueprintType)

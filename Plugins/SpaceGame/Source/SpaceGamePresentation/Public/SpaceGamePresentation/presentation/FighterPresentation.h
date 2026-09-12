@@ -31,7 +31,6 @@ struct SPACEGAMEPRESENTATION_API FFighterPresentation {
     void update_ismc();
     void draw_debug_shapes();
     void write_ismc_custom_data(int32 offset, int32 count);
-    void visual_log_state() const;
     void validate_array_sizes() const;
 
     UInstancedStaticMeshComponent* instances{nullptr};

@@ -47,7 +47,6 @@
 #include <Misc/DateTime.h>
 #include <SpaceGame/persistence/SpaceSaveGame.h>
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
-#include <VisualLogger/VisualLogger.h>
 
 namespace {
 auto end_play_reason_name(EEndPlayReason::Type const reason) -> FString {
@@ -199,7 +198,6 @@ void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason)
     level_definition_.Reset();
     world_collision_.restore_collision();
     SetActorTickEnabled(false);
-    stop_visual_logging();
     clear_end_tick_test_hook();
 
     Super::EndPlay(end_play_reason);
@@ -215,7 +213,6 @@ void ATestBatchOrchestrator::start_simulation() {
     }
     level_simulation_->start();
     SetActorTickEnabled(true);
-    start_visual_logging();
 }
 void ATestBatchOrchestrator::pause_simulation() {
     if (level_simulation_.IsSet()) {
@@ -240,7 +237,6 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     }
 
     SetActorTickEnabled(false);
-    stop_visual_logging();
     clear_end_tick_test_hook();
 
     hud_manager.deactivate();
@@ -773,7 +769,6 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         (start_mode == EOrchestratorStartMode::PausedInTest && !GIsAutomationTesting)};
     if (automatic) {
         level_simulation_->start();
-        start_visual_logging();
     }
 
     SetActorTickEnabled(automatic);
@@ -781,7 +776,6 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
 }
 void ATestBatchOrchestrator::handle_level_start_failure(FString message) {
     SetActorTickEnabled(false);
-    stop_visual_logging();
     UE_LOG(LogSandbox, Error, TEXT("%s"), *message);
 
     auto* const world{GetWorld()};
@@ -889,30 +883,6 @@ auto ATestBatchOrchestrator::should_initialise_in_begin_play() const noexcept ->
 /* **************************************** */
 // Presentation and diagnostics
 /* **************************************** */
-void ATestBatchOrchestrator::start_visual_logging() {
-#if ENABLE_VISUAL_LOG
-    if (!presentation_enabled || !enable_visual_logging) {
-        return;
-    }
-
-    auto& visual_logger{FVisualLogger::Get()};
-    visual_logger.SetGetTimeStampFunc([this](UObject const*) { return get_simulation_time(); });
-    visual_logger.SetIsRecording(true);
-#endif
-}
-void ATestBatchOrchestrator::stop_visual_logging() {
-#if ENABLE_VISUAL_LOG
-    if (!enable_visual_logging) {
-        return;
-    }
-
-    auto& visual_logger{FVisualLogger::Get()};
-    if (FVisualLogger::IsRecording()) {
-        visual_logger.SetIsRecording(false);
-    }
-    visual_logger.SetGetTimeStampFunc(TFunction<double(UObject const*)>{});
-#endif
-}
 void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
     if (!IsValid(collision_grid_visualization)) {
         UE_LOG(LogSandbox,

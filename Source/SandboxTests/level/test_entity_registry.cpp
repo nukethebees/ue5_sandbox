@@ -166,7 +166,6 @@ void FEntityRegistryScenario::spawn_fixture() {
     if (!checks.not_nullptr(capital_config, TEXT("Entity registry capital config is created"))) {
         return;
     }
-    capital_config->visual_logger_style = nullptr;
     context_.orchestrator.set_level_config(*level_config);
 
     if (scenario_ != EEntityRegistryScenario::TeamCounts) {

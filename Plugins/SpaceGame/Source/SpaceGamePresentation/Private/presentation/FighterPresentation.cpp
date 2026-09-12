@@ -3,7 +3,6 @@
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
-#include <SpaceGamePresentation/support/logging/SandboxVisualLoggerStyle.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_checks.h>
@@ -14,21 +13,6 @@
 #include <Async/ParallelFor.h>
 #include <Components/SceneComponent.h>
 #include <Engine/StaticMesh.h>
-#include <VisualLogger/VisualLogger.h>
-
-namespace {
-auto get_visual_logger_entity_colour(FSandboxVisualLoggerEntityStyle const& style,
-                                     ETestTeam const team) -> FColor {
-    switch (team) {
-        case ETestTeam::Blue:
-            return style.friendly_entity_colour;
-        case ETestTeam::Red:
-            return style.enemy_entity_colour;
-        default:
-            return style.neutral_entity_colour;
-    }
-}
-} // namespace
 
 FFighterPresentation::FFighterPresentation(UInstancedStaticMeshComponent& component)
     : instances{&component} {}
@@ -81,7 +65,6 @@ void FFighterPresentation::commit_visual_data() {
 void FFighterPresentation::end_tick_presentation() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::end_tick_presentation);
     validate_array_sizes();
-    visual_log_state();
 }
 
 void FFighterPresentation::configure_ismc() {
@@ -176,96 +159,6 @@ void FFighterPresentation::write_ismc_custom_data(int32 const offset, int32 cons
 
     constexpr bool mark_render_dirty{false};
     instances->SetCustomData(offset, offset + count - 1, custom_data_buffer, mark_render_dirty);
-}
-
-void FFighterPresentation::visual_log_state() const {
-#if ENABLE_VISUAL_LOG
-    if (!FVisualLogger::IsRecording()) {
-        return;
-    }
-#else
-    return;
-#endif
-
-    auto const& fighter_simulation{view()};
-    auto const& entity_registry{*fighter_simulation.registry};
-    if (!actor_config) {
-        UE_LOG(LogSandboxEntities,
-               Error,
-               TEXT("FFighterPresentation::visual_log_state actor_config is nullptr"));
-        return;
-    }
-    if (auto const message{ml::report_invalid_uobject_ptrs({
-            SANDBOX_NAMED_UOBJECT_PTR(actor_config->visual_logger_style),
-        })}) {
-        UE_LOG(LogSandboxEntities,
-               Error,
-               TEXT("FFighterPresentation::visual_log_state UObject ptrs are invalid:\n%s"),
-               *message);
-        return;
-    }
-
-    auto const& style{*actor_config->visual_logger_style};
-    auto const normal_line_thickness{static_cast<uint16>(style.lines.normal_line_thickness)};
-    auto const highlighted_line_thickness{
-        static_cast<uint16>(style.lines.highlighted_line_thickness)};
-    auto const& data{fighter_simulation.entities};
-    auto const fighter_count{data.num()};
-    for (int32 fighter_index{0}; fighter_index < fighter_count; ++fighter_index) {
-        auto const fighter_handle{data.entity_handles[fighter_index]};
-        FVector const fighter_location{ml::get_vector3f(data.locations, fighter_index)};
-        auto const fighter_colour{
-            get_visual_logger_entity_colour(style.entities, data.teams[fighter_index])};
-        UE_VLOG_SPHERE(instances->GetOwner(),
-                       LogSandboxEntities,
-                       Log,
-                       fighter_location,
-                       style.entities.fighter_entity_radius,
-                       fighter_colour,
-                       TEXT("Fighter %d"),
-                       fighter_handle.index);
-
-        FVector const desired_move_location{
-            ml::get_vector3f(data.desired_move_locations, fighter_index)};
-        UE_VLOG_WIRESPHERE(instances->GetOwner(),
-                           LogSandboxNavigation,
-                           Log,
-                           desired_move_location,
-                           style.entities.fighter_entity_radius,
-                           style.navigation.movement_destination_colour,
-                           TEXT("Move destination"));
-        UE_VLOG_SEGMENT_THICK(instances->GetOwner(),
-                              LogSandboxNavigation,
-                              Log,
-                              fighter_location,
-                              desired_move_location,
-                              style.navigation.movement_destination_colour,
-                              normal_line_thickness,
-                              TEXT("Move destination"));
-
-        auto const target_handle{data.target_handles[fighter_index]};
-        if (!entity_registry.is_valid_alive(target_handle)) {
-            continue;
-        }
-        FVector const target_location{ml::get_vector3f(data.target_locations, fighter_index)};
-        UE_VLOG_WIRESPHERE(instances->GetOwner(),
-                           LogSandboxTargeting,
-                           Log,
-                           target_location,
-                           style.entities.fighter_entity_radius,
-                           style.combat.selected_target_colour,
-                           TEXT("Target %d"),
-                           target_handle.index);
-        UE_VLOG_SEGMENT_THICK(instances->GetOwner(),
-                              LogSandboxTargeting,
-                              Log,
-                              fighter_location,
-                              target_location,
-                              style.combat.selected_target_colour,
-                              highlighted_line_thickness,
-                              TEXT("Target %d"),
-                              target_handle.index);
-    }
 }
 
 void FFighterPresentation::validate_array_sizes() const {

@@ -42,9 +42,7 @@ void FSimultaneousCapitalReassignmentScenario::spawn_fixture() {
     }
     config->capital_ships.spawn_delay = 6000.f;
     config->capital_ships.max_health = 10000;
-    config->capital_ships.visual_logger_style = nullptr;
     config->fighters.laser.damage = 0;
-    config->fighters.visual_logger_style = nullptr;
     context_.orchestrator.set_level_config(*config);
     TArray<ATestCapitalShipProxy*> proxies;
     for (int32 i{}; i < 4; ++i) {
@@ -305,10 +303,8 @@ void FCapitalFighterHandlesScenario::spawn_fixture() {
     }
     capital_config->spawn_delay = 10.f;
     capital_config->max_health = 10000;
-    capital_config->visual_logger_style = nullptr;
     fighter_config->speed = 2000.f;
     fighter_config->laser.max_distance = 15000.f;
-    fighter_config->visual_logger_style = nullptr;
     context_.orchestrator.set_level_config(*level_config);
 
     auto* const green{spawn_capital_proxy(

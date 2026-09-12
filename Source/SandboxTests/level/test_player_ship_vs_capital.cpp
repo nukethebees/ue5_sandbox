@@ -130,7 +130,6 @@ void FPlayerShipVsCapitalScenario::spawn_fixture() {
     }
     fighter_config->laser.projectile_speed = 20000.f;
     fighter_config->laser.max_distance = 1.f;
-    fighter_config->visual_logger_style = nullptr;
     context_.orchestrator.set_level_config(*level_config);
 
     auto* const player{spawn_player_ship(

@@ -35,7 +35,6 @@ struct SPACEGAMEPRESENTATION_API FCapitalPresentation {
     void add_visual_instances(int32 first_index, int32 count);
     void trigger_death_effects();
     void draw_debugging_shapes() const;
-    void visual_log_state() const;
     void validate_array_sizes() const;
 
     FCapitalShipConfig const* actor_config{nullptr};
