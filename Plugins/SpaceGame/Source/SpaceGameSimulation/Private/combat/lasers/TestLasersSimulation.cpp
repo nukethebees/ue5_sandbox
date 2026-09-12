@@ -191,10 +191,9 @@ void Simulation::handle_collisions(float const dt) {
             collision_scratch.trace_ends.set(trace_index, start + dt * velocity);
         }
 
-        auto const traces{FLineTracesConstView{
+        auto const traces{make_line_traces_const_view(
             collision_scratch.trace_starts.get_const_view().slice(i_start, trace_count),
-            collision_scratch.trace_ends.get_const_view().slice(i_start, trace_count),
-        }};
+            collision_scratch.trace_ends.get_const_view().slice(i_start, trace_count))};
         auto const hits{collision_scratch.trace_hits.get_view().slice(i_start, trace_count)};
         auto const ignored_entities{
             TConstArrayView<FRegistryEntityHandle>{entities.instigator_handles}.Slice(i_start,

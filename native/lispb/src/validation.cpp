@@ -889,7 +889,15 @@ void validate_vector(VectorModuleSchema const& module,
         module.equivalent_type, types, "Vector module '" + module.settings.name + "' equivalent");
     validate_export_specifier(module.export_specifier,
                               "Vector module '" + module.settings.name + "' export specifier");
-    if (!module.settings.source.has_value()) {
+    if (module.backend == SoaBackend::standard_library && module.fixed.has_value()) {
+        throw std::invalid_argument{"Standard-library vector module '" + module.settings.name +
+                                    "' does not support fixed storage"};
+    }
+    if (module.backend == SoaBackend::standard_library && module.settings.source.has_value()) {
+        throw std::invalid_argument{"Standard-library vector module '" + module.settings.name +
+                                    "' must be header-only"};
+    }
+    if (module.backend == SoaBackend::unreal && !module.settings.source.has_value()) {
         throw std::invalid_argument{"Vector module '" + module.settings.name +
                                     "' must have a source output"};
     }

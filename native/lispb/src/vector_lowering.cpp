@@ -8,6 +8,42 @@ namespace codegen::detail {
 
 auto lower_vector_module(VectorModuleSchema const& module,
                          std::map<std::string, CppType> const& types) -> Module {
+    if (module.backend == SoaBackend::standard_library) {
+        std::vector<SoaMemberSchema> members;
+        for (auto const& component : module.components) {
+            members.push_back(SoaMemberSchema{component, SoaMemberKind::array, module.value_type});
+        }
+        SoaSchema schema{
+            .name = module.storage_name,
+            .members = std::move(members),
+            .operations = all_storage_operations(),
+            .equivalent_type = module.equivalent_type,
+            .copy_element_memberwise = true,
+        };
+        std::map<std::string, SoaSchema const*> const schemas{{schema.name, &schema}};
+        auto lowered{lower_native_soa(schema, schemas, types, true)};
+        auto definitions{std::move(lowered.header)};
+        if (module.settings.namespace_name.has_value()) {
+            definitions = {Namespace{*module.settings.namespace_name, std::move(definitions)}};
+        }
+        NodeListBuilder header;
+        header.add(IncludeDependencies{}, 2);
+        if (!module.settings.prelude_lines.empty()) {
+            header.add(raw(join_lines(module.settings.prelude_lines)), 2);
+        }
+        header.append(std::move(definitions));
+        return Module{
+            .name = module.settings.name,
+            .header =
+                CppFile{
+                    .path = module.settings.header,
+                    .nodes = header.build(),
+                    .include_order = module.settings.include_order,
+                    .format_generated = true,
+                },
+        };
+    }
+
     auto const value_type{resolve_type(module.value_type, types)};
     std::vector<SoaMemberSchema> members;
     for (auto const& component : module.components) {

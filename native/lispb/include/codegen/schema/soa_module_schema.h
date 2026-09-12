@@ -1,6 +1,7 @@
 #pragma once
 
 #include <codegen/schema/module_settings.h>
+#include <codegen/schema/soa_backend.h>
 #include <codegen/schema/soa_schema.h>
 
 #include <vector>
@@ -10,11 +11,6 @@ namespace codegen {
 struct SoaAllocatorVariant {
     std::string prefix;
     TypeRef allocator;
-};
-
-enum class SoaBackend {
-    unreal,
-    standard_library,
 };
 
 struct SoaModuleSchema {

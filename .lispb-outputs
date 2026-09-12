@@ -59,8 +59,6 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalS
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFightersSoA.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/player/TestSpaceShipPhaseInterface.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/simulation/EntityCellData.cpp
-Plugins/SpaceGame/Source/SpaceGameSimulation/Private/simulation/LineTraces.cpp
-Plugins/SpaceGame/Source/SpaceGameSimulation/Private/simulation/TraceHits.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/telemetry/LevelTelemetryHistory.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/telemetry/LevelTelemetryRunEndReason.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/combat/lasers/TestLasersPhaseInterface.h
@@ -87,8 +85,6 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fi
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/player/TestSpaceShipPhaseInterface.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/EntityAABBs.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/EntityCellData.h
-Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/LineTraces.h
-Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/TraceHits.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/telemetry/LevelTelemetryHistory.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/telemetry/LevelTelemetryRunEndReason.h
 native/simulation/include/sandbox/simulation/direct_damage_events.h
@@ -97,3 +93,4 @@ native/simulation/include/sandbox/simulation/entity_overlaps.h
 native/simulation/include/sandbox/simulation/fighter_order_queue.h
 native/simulation/include/sandbox/simulation/fighter_reassignment.h
 native/simulation/include/sandbox/simulation/registry_entity_handles.h
+native/simulation/include/sandbox/simulation/vectors3f.h

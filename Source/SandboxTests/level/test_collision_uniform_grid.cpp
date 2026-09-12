@@ -240,8 +240,8 @@ auto make_line_traces(TConstArrayView<FVector3f> const starts,
     traces.starts.reserve(count);
     traces.ends.reserve(count);
     for (int32 i{}; i < count; ++i) {
-        traces.starts.add(starts[i]);
-        traces.ends.add(ends[i]);
+        traces.starts.add(ml::to_native(starts[i]));
+        traces.ends.add(ml::to_native(ends[i]));
     }
     return traces;
 }
@@ -323,7 +323,7 @@ void check_traces(FSoftTestAssertions& checks,
         FString const location_description{
             FString::Printf(TEXT("%s resolves expected hit location"), trace_case.name)};
         checks.dist_zero(trace_case.expected_location,
-                         hits.locations[i],
+                         ml::to_unreal(hits.locations[i]),
                          hit_location_tolerance,
                          location_description);
     }
@@ -533,7 +533,7 @@ void FCollisionUniformGridTraceScenario::test_hits_and_misses() {
         checks.are_equal(
             fixture.handles[0], hits.entities[i], TEXT("Trace resolves expected entity"), i);
         checks.dist_zero(expected_locations[i],
-                         hits.locations[i],
+                         ml::to_unreal(hits.locations[i]),
                          hit_location_tolerance,
                          TEXT("Trace resolves expected hit location"),
                          i);
@@ -578,7 +578,7 @@ void FCollisionUniformGridTraceScenario::test_returns_nearest_hit() {
     checks.are_equal(
         fixture.handles[1], hits.entities[0], TEXT("Trace returns nearest intersecting entity"));
     checks.dist_zero(expected_near_contact,
-                     hits.locations[0],
+                     ml::to_unreal(hits.locations[0]),
                      hit_location_tolerance,
                      TEXT("Trace returns nearest intersection location"));
 }
@@ -601,7 +601,7 @@ void FCollisionUniformGridTraceScenario::test_handles_zero_length_traces() {
     checks.are_equal(
         fixture.handles[0], hits.entities[0], TEXT("Stationary point resolves containing entity"));
     checks.dist_zero(starts[0],
-                     hits.locations[0],
+                     ml::to_unreal(hits.locations[0]),
                      hit_location_tolerance,
                      TEXT("Stationary point hit location is the trace point"));
     checks.are_equal(
@@ -629,7 +629,7 @@ void FCollisionUniformGridTraceScenario::test_includes_negative_endpoint_boundar
     checks.are_equal(
         fixture.handles[0], hits.entities[0], TEXT("Endpoint trace resolves touched entity"));
     checks.dist_zero(boundary_contact,
-                     hits.locations[0],
+                     ml::to_unreal(hits.locations[0]),
                      hit_location_tolerance,
                      TEXT("Endpoint trace returns boundary contact location"));
 }
@@ -650,13 +650,13 @@ void FCollisionUniformGridTraceScenario::test_applies_aabb_centre() {
         uint8{1}, rotated_hits.hits[0], TEXT("Trace finds rotated box in its new grid cell"));
     checks.are_equal(uint8{0}, rotated_hits.hits[1], TEXT("Trace misses old unrotated box"));
     checks.dist_zero(FVector3f{-5.f, 150.f, 0.f},
-                     rotated_hits.locations[0],
+                     ml::to_unreal(rotated_hits.locations[0]),
                      0.001f,
                      TEXT("Rotated box has swapped extents"));
     auto const swept{run_sweeps(rotated, rotated_starts, rotated_ends, FVector3f{2.f, 2.f, 2.f})};
     checks.are_equal(uint8{1}, swept.hits[0], TEXT("Sweep uses rotated cached box"));
     checks.dist_zero(FVector3f{-7.f, 150.f, 0.f},
-                     swept.locations[0],
+                     ml::to_unreal(swept.locations[0]),
                      0.001f,
                      TEXT("Sweep expands rotated world bounds"));
     auto const cached{rotated.grid.get_entity_world_bounds()};
@@ -703,7 +703,7 @@ void FCollisionUniformGridTraceScenario::test_applies_aabb_centre() {
     checks.are_equal(
         fixture.handles[0], hits.entities[0], TEXT("Trace resolves locally centred entity"));
     checks.dist_zero(expected_contact,
-                     hits.locations[0],
+                     ml::to_unreal(hits.locations[0]),
                      hit_location_tolerance,
                      TEXT("Trace applies local AABB centre to hit location"));
 
@@ -772,7 +772,7 @@ void FCollisionUniformGridTraceScenario::test_applies_aabb_centre() {
         auto const world_centre{mixed_locations[i] + local_centres[i]};
         auto const expected_type_contact{world_centre - FVector3f{0.f, half_extents[i].Y, 0.f}};
         checks.dist_zero(expected_type_contact,
-                         mixed_hits.locations[i],
+                         ml::to_unreal(mixed_hits.locations[i]),
                          hit_location_tolerance,
                          TEXT("Mixed entity-type trace applies its AABB row"),
                          i);
@@ -1590,7 +1590,7 @@ void FCollisionUniformGridTraceScenario::test_deterministic_reference_sweep() {
                              case_index);
             auto const expected_location{FMath::Lerp(starts[i_trace], ends[i_trace], nearest_t)};
             checks.dist_zero(expected_location,
-                             hits.locations[i_trace],
+                             ml::to_unreal(hits.locations[i_trace]),
                              hit_location_tolerance,
                              TEXT("Reference sweep trace resolves nearest location"),
                              case_index);
@@ -1644,8 +1644,8 @@ void FCollisionUniformGridTraceScenario::test_invariance_properties() {
             }
             checks.are_equal(
                 baseline_hits.entities[i].index, candidate_hits.entities[i].index, description, i);
-            checks.dist_zero(baseline_hits.locations[i],
-                             candidate_hits.locations[i],
+            checks.dist_zero(ml::to_unreal(baseline_hits.locations[i]),
+                             ml::to_unreal(candidate_hits.locations[i]),
                              hit_location_tolerance,
                              description,
                              i);
@@ -1684,8 +1684,8 @@ void FCollisionUniformGridTraceScenario::test_invariance_properties() {
                          permuted_hits.entities[i],
                          TEXT("Trace permutation preserves entity"),
                          i);
-        checks.dist_zero(baseline_hits.locations[source_index],
-                         permuted_hits.locations[i],
+        checks.dist_zero(ml::to_unreal(baseline_hits.locations[source_index]),
+                         ml::to_unreal(permuted_hits.locations[i]),
                          hit_location_tolerance,
                          TEXT("Trace permutation preserves location"),
                          i);
@@ -1705,8 +1705,8 @@ void FCollisionUniformGridTraceScenario::test_invariance_properties() {
                          TEXT("Entity insertion order preserves hit flag"),
                          i);
         if (baseline_hits.hits[i] != 0 && reversed_hits.hits[i] != 0) {
-            checks.dist_zero(baseline_hits.locations[i],
-                             reversed_hits.locations[i],
+            checks.dist_zero(ml::to_unreal(baseline_hits.locations[i]),
+                             ml::to_unreal(reversed_hits.locations[i]),
                              hit_location_tolerance,
                              TEXT("Entity insertion order preserves nearest location"),
                              i);
@@ -1737,8 +1737,8 @@ void FCollisionUniformGridTraceScenario::test_invariance_properties() {
                              translated_hits.entities[i].index,
                              TEXT("Whole-cell translation preserves entity"),
                              i);
-            checks.dist_zero(baseline_hits.locations[i] + translation,
-                             translated_hits.locations[i],
+            checks.dist_zero(ml::to_unreal(baseline_hits.locations[i]) + translation,
+                             ml::to_unreal(translated_hits.locations[i]),
                              hit_location_tolerance,
                              TEXT("Whole-cell translation preserves location"),
                              i);
@@ -1902,7 +1902,7 @@ void FCollisionUniformGridTraceScenario::test_static_geometry() {
                      static_hits.static_geometry_indices[0],
                      TEXT("Static hit identifies canonical static geometry"));
     checks.dist_zero(FVector3f{-60.f, 0.f, 0.f},
-                     static_hits.locations[0],
+                     ml::to_unreal(static_hits.locations[0]),
                      hit_location_tolerance,
                      TEXT("Static hit reports nearest entry point"));
 
@@ -1915,7 +1915,7 @@ void FCollisionUniformGridTraceScenario::test_static_geometry() {
         run_sweeps(fixture, offset_starts, offset_ends, FVector3f{20.f, 20.f, 20.f})};
     checks.are_equal(uint8{1}, sweep_hits.hits[0], TEXT("AABB sweep detects static geometry"));
     checks.dist_zero(FVector3f{-80.f, 80.f, 0.f},
-                     sweep_hits.locations[0],
+                     ml::to_unreal(sweep_hits.locations[0]),
                      hit_location_tolerance,
                      TEXT("AABB sweep reports expanded entry point"));
 

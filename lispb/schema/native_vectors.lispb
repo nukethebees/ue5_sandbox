@@ -1,0 +1,8 @@
+(vector-soa-module native_vectors_3f
+  :header "native/simulation/include/sandbox/simulation/vectors3f.h"
+  :backend standard-library
+  :namespace ml::simulation
+  :storage-name Vectors3f
+  :value-type float
+  :components (xs ys zs)
+  :equivalent-type @native_vector_3f)

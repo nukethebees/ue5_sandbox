@@ -5,6 +5,7 @@
 #include <SandboxCore/frame_array.h>
 #include <SandboxCore/frame_vectors.h>
 
+#include <cstddef>
 #include <memory_resource>
 
 namespace ml {
@@ -34,10 +35,18 @@ struct FFrameTraceHits {
         hits.clear();
     }
     auto get_view() -> FTraceHitsView {
-        return {locations.get_view(), entities, static_geometry_indices, hits};
+        auto const count{static_cast<std::size_t>(num())};
+        return {ml::to_native(locations.get_view()),
+                {entities.data(), count},
+                {static_geometry_indices.data(), count},
+                {hits.data(), count}};
     }
     auto get_const_view() const -> FTraceHitsConstView {
-        return {locations.get_const_view(), entities, static_geometry_indices, hits};
+        auto const count{static_cast<std::size_t>(num())};
+        return {ml::to_native(locations.get_const_view()),
+                {entities.data(), count},
+                {static_geometry_indices.data(), count},
+                {hits.data(), count}};
     }
     auto num() const -> int32 { return locations.num(); }
 

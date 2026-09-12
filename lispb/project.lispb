@@ -17,6 +17,7 @@
         "lispb/schema/native_registry_entity_handles.lispb"
         "lispb/schema/native_fighter_order_queue.lispb"
         "lispb/schema/native_fighter_reassignment.lispb"
+        "lispb/schema/native_vectors.lispb"
         "lispb/schema/collision.lispb"
       "lispb/schema/level_definition.lispb"
       "lispb/schema/entity_registry.lispb"

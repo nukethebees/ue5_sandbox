@@ -204,6 +204,11 @@
   :header "sandbox/simulation/fighter_types.h"
   :pass-by value)
 
+(type native_vector_3f
+  :spelling "ml::simulation::Vector3f"
+  :header "sandbox/simulation/vector_types.h"
+  :pass-by value)
+
 (type rotator_3f
   :spelling "FRotator3f"
   :header "CoreMinimal.h"

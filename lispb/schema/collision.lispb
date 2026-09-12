@@ -42,32 +42,6 @@
       (parameter component @primitive_component_ptr)
       (parameter original_collision_mode (type-ref @collision_enabled :suffix " const")))))
 
-(soa-module line_traces
-  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/LineTraces.h"
-  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/simulation/LineTraces.cpp"
-  :header-include "SpaceGameSimulation/simulation/LineTraces.h"
-  :namespace ml
-  :include-order ("SpaceGame/" "SandboxCore/" "SandboxNative/")
-  (struct FLineTraces
-    :operations (all)
-    :export-specifier SPACEGAMESIMULATION_API
-    (member starts nested @vectors_3f)
-    (member ends nested @vectors_3f)))
-
-(soa-module trace_hits
-  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/TraceHits.h"
-  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/simulation/TraceHits.cpp"
-  :header-include "SpaceGameSimulation/simulation/TraceHits.h"
-  :namespace ml
-  :include-order ("SpaceGame/" "SandboxCore/" "SandboxNative/")
-  (struct FTraceHits
-    :operations (all)
-    :export-specifier SPACEGAMESIMULATION_API
-    (member locations nested @vectors_3f)
-    (member entities array @registry_handle)
-    (member static_geometry_indices array int32)
-    (member hits array uint8)))
-
 (static-table-module entity_aabbs
   :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/EntityAABBs.h"
   :namespace ml::ioj

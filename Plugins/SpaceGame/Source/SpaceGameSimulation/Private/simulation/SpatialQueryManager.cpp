@@ -66,21 +66,24 @@ auto trace_impl(ml::FSpatialQueryManager const& manager, FTraceRequest const& re
     auto& buffers{buffer_lease.get()};
     auto& traces{buffers.line_traces};
     auto& hits{buffers.trace_hits};
-    hits.set_num(count, EAllowShrinking::No);
+    hits.set_num(count);
 
     auto const trace_view{[&] {
         if constexpr (Mode == EQueryMode::TargetLineOfSight || Mode == EQueryMode::ClosestHit) {
-            traces.set_num(count, EAllowShrinking::No);
+            traces.set_num(count);
             for (int32 i{}; i < count; ++i) {
                 if constexpr (Mode == EQueryMode::TargetLineOfSight) {
-                    traces.set(i, request.scalar_start, ml::get_vector3f(request.end_locations, i));
+                    traces.set(i,
+                               ml::to_native(request.scalar_start),
+                               ml::to_native(ml::get_vector3f(request.end_locations, i)));
                 } else {
-                    traces.set(i, request.scalar_start, request.scalar_end);
+                    traces.set(
+                        i, ml::to_native(request.scalar_start), ml::to_native(request.scalar_end));
                 }
             }
             return traces.get_const_view();
         } else {
-            return ml::FLineTracesConstView{request.start_locations, request.end_locations};
+            return ml::make_line_traces_const_view(request.start_locations, request.end_locations);
         }
     }()};
 
@@ -99,7 +102,7 @@ auto trace_impl(ml::FSpatialQueryManager const& manager, FTraceRequest const& re
 
     if constexpr (Mode == EQueryMode::ClosestHit) {
         return {
-            .location = ml::get_vector3f(hits.locations, 0),
+            .location = ml::to_unreal(hits.locations[0]),
             .entity = hits.entities[0],
             .static_geometry_index = hits.static_geometry_indices[0],
             .hit = hits.hits[0] != 0,
@@ -359,7 +362,7 @@ void FSpatialQueryManager::trace_closest_lines(
     check(out_hits.num() == count);
     check(ignored_entities.IsEmpty() || ignored_entities.Num() == count);
 
-    auto const traces{FLineTracesConstView{start_locations, end_locations}};
+    auto const traces{make_line_traces_const_view(start_locations, end_locations)};
     if (ignored_entities.IsEmpty()) {
         collision.get_uniform_grid().trace_aabbs(traces, out_hits);
     } else {
@@ -381,11 +384,12 @@ void FSpatialQueryManager::sweep_closest_aabbs(
     check(out_hits.num() == count);
     check(ignored_entities.IsEmpty() || ignored_entities.Num() == count);
 
-    collision.get_uniform_grid().sweep_aabbs(FLineTracesConstView{start_locations, end_locations},
-                                             moving_half_extent,
-                                             out_hits,
-                                             ignored_entities,
-                                             entity_filter);
+    collision.get_uniform_grid().sweep_aabbs(
+        make_line_traces_const_view(start_locations, end_locations),
+        moving_half_extent,
+        out_hits,
+        ignored_entities,
+        entity_filter);
 }
 
 /* **************************************** */

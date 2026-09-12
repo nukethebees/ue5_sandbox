@@ -4,6 +4,8 @@
 #include <SGCollision/world_aabbs.h>
 #include <SpaceGameSimulation/simulation/EntityAABBs.h>
 #include <SpaceGameSimulation/simulation/EntityCellData.h>
+#include <SpaceGameSimulation/simulation/LineTraces.h>
+#include <SpaceGameSimulation/simulation/TraceHits.h>
 
 #include <CoreMinimal.h>
 #include <SandboxCore/soa_vectors.h>
@@ -12,11 +14,6 @@
 
 class UStaticMesh;
 struct FTestEntityRegistry;
-
-namespace ml {
-struct FLineTracesConstView;
-struct FTraceHitsView;
-}
 
 namespace ml::ioj {
 enum class ETraceEntityFilter : uint8 {

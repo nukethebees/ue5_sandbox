@@ -50,6 +50,7 @@ auto lower_single_allocation_nodes(SoaSchema const& schema,
 
 auto lower_native_soa(SoaSchema const& schema,
                       std::map<std::string, SoaSchema const*> const& schemas,
-                      std::map<std::string, CppType> const& types) -> LoweredSoa;
+                      std::map<std::string, CppType> const& types,
+                      bool allow_equivalent_type = false) -> LoweredSoa;
 
 } // namespace codegen::detail

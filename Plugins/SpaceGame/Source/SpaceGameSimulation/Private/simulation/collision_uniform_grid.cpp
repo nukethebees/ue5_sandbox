@@ -597,8 +597,8 @@ void CollisionUniformGrid::trace_aabbs_impl(
         hits.entities[i_test] = FRegistryEntityHandle{};
         hits.static_geometry_indices[i_test] = INDEX_NONE;
 
-        auto const p0{traces.starts[i_test]};
-        auto const p1{traces.ends[i_test]};
+        auto const p0{ml::to_unreal(traces.starts[i_test])};
+        auto const p1{ml::to_unreal(traces.ends[i_test])};
         auto const delta{p1 - p0};
         simulation::collision::GridTraversal traversal;
         if (!simulation::collision::GridTraversal::create(
@@ -805,8 +805,11 @@ void CollisionUniformGrid::trace_aabbs_impl(
         }
 
         if (FMath::IsFinite(nearest_t)) {
-            hits.set(
-                i_test, p0 + delta * nearest_t, nearest_entity, nearest_static_index, uint8{1});
+            hits.set(i_test,
+                     ml::to_native(p0 + delta * nearest_t),
+                     nearest_entity,
+                     nearest_static_index,
+                     uint8{1});
         }
     }
 }

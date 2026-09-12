@@ -708,7 +708,8 @@ auto parse_module(Form const& form) -> ModuleSchema {
                          "value-type",
                          "components",
                          "equivalent-type",
-                         "export-specifier"},
+                         "export-specifier",
+                         "backend"},
                         {"fixed"});
         std::optional<FixedSoaSchema> fixed;
         if (!fields.declarations().empty()) {
@@ -717,8 +718,20 @@ auto parse_module(Form const& form) -> ModuleSchema {
             }
             fixed = parse_fixed(*fields.declarations().front());
         }
+        auto backend{SoaBackend::unreal};
+        if (auto const value{optional_text(fields, "backend")}) {
+            if (*value == "unreal") {
+                backend = SoaBackend::unreal;
+            } else if (*value == "standard-library") {
+                backend = SoaBackend::standard_library;
+            } else {
+                fail(fields.required("backend").token.span,
+                     "vector SOA backend must be unreal or standard-library");
+            }
+        }
         return VectorModuleSchema{
             .settings = parse_module_settings(fields),
+            .backend = backend,
             .storage_name = text(fields.required("storage-name"), "vector storage name"),
             .value_type = parse_type_ref(fields.required("value-type")),
             .components = text_list(fields.required("components"), "vector components"),
