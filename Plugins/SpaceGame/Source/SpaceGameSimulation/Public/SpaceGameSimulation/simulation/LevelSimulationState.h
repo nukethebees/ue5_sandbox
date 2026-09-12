@@ -1,11 +1,4 @@
 #pragma once
-#include <CoreMinimal.h>
-#include "LevelSimulationState.generated.h"
+#include <sandbox/simulation/simulation_state.h>
 
-UENUM(BlueprintType)
-enum class EOrchestratorState : uint8 {
-    Uninitialised,
-    Paused,
-    Running,
-    Stopped,
-};
+using EOrchestratorState = ml::simulation::OrchestratorState;

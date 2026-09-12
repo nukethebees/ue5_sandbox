@@ -4,21 +4,22 @@
 
 #include <utility>
 
-FGameMemoryBackingLease::FGameMemoryBackingLease(FGameMemoryBacking& backing) noexcept
-    : backing_{&backing} {}
+FGameMemoryBackingLease::FGameMemoryBackingLease(FGameMemoryBacking& backing,
+                                                 ml::memory::BackingLease lease) noexcept
+    : backing_{&backing}
+    , lease_{std::move(lease)} {}
 
-FGameMemoryBackingLease::~FGameMemoryBackingLease() {
-    reset();
-}
+FGameMemoryBackingLease::~FGameMemoryBackingLease() = default;
 
 FGameMemoryBackingLease::FGameMemoryBackingLease(FGameMemoryBackingLease&& other) noexcept
-    : backing_{std::exchange(other.backing_, nullptr)} {}
+    : backing_{std::exchange(other.backing_, nullptr)}
+    , lease_{std::move(other.lease_)} {}
 
 auto FGameMemoryBackingLease::operator=(FGameMemoryBackingLease&& other) noexcept
     -> FGameMemoryBackingLease& {
     if (this != &other) {
-        reset();
         backing_ = std::exchange(other.backing_, nullptr);
+        lease_ = std::move(other.lease_);
     }
     return *this;
 }
@@ -31,11 +32,4 @@ auto FGameMemoryBackingLease::get() noexcept -> FGameMemoryBacking& {
 auto FGameMemoryBackingLease::get() const noexcept -> FGameMemoryBacking const& {
     check(backing_ != nullptr);
     return *backing_;
-}
-
-void FGameMemoryBackingLease::reset() {
-    if (backing_ != nullptr) {
-        backing_->release_lease();
-        backing_ = nullptr;
-    }
 }

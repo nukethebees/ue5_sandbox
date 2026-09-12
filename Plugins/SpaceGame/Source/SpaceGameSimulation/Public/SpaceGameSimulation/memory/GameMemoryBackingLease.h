@@ -2,6 +2,8 @@
 
 #include "CoreMinimal.h"
 
+#include <native/memory/backing.h>
+
 class FGameMemoryBacking;
 
 class SPACEGAMESIMULATION_API FGameMemoryBackingLease {
@@ -19,8 +21,8 @@ class SPACEGAMESIMULATION_API FGameMemoryBackingLease {
   private:
     friend class FGameMemoryBacking;
 
-    explicit FGameMemoryBackingLease(FGameMemoryBacking& backing) noexcept;
-    void reset();
+    FGameMemoryBackingLease(FGameMemoryBacking& backing, ml::memory::BackingLease lease) noexcept;
 
     FGameMemoryBacking* backing_{};
+    ml::memory::BackingLease lease_{};
 };

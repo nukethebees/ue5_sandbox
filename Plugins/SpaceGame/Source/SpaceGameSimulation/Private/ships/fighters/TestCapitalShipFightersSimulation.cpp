@@ -1663,8 +1663,8 @@ void Simulation::check_fighter_tasks() const {
             UE_LOG(LogSandbox,
                    Fatal,
                    TEXT("Found task %s when current group was %s"),
-                   *ml::to_string_without_type_prefix(task),
-                   *ml::to_string_without_type_prefix(current_task_group));
+                   *LexToString(task),
+                   *LexToString(current_task_group));
         }
     }
 
@@ -1682,7 +1682,7 @@ void Simulation::check_fighter_tasks() const {
         FString message{TEXT("Incorrect task spans.")};
         for (int32 i{0}; i < n_task_types; ++i) {
             message += FString::Printf(TEXT("\n    %s: Exp: %s, Got: %s"),
-                                       *ml::to_string_without_type_prefix(static_cast<Task>(i)),
+                                       *LexToString(static_cast<Task>(i)),
                                        *to_compact_string(task_spans[i]),
                                        *to_compact_string(checked_task_spans[i]));
         }

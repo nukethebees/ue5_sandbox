@@ -1,0 +1,12 @@
+(soa-module native_entity_overlaps
+  :header "native/simulation/include/sandbox/simulation/entity_overlaps.h"
+  :backend standard-library
+  :namespace ml::ioj
+  (struct FEntityEntityOverlaps
+    :operations (all)
+    (member first_entities array @native_registry_handle)
+    (member second_entities array @native_registry_handle))
+  (struct FEntityStaticOverlaps
+    :operations (all)
+    (member entities array @native_registry_handle)
+    (member static_geometry_indices array int32)))

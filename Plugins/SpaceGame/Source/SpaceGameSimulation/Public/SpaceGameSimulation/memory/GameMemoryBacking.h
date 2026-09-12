@@ -4,7 +4,10 @@
 
 #include "CoreMinimal.h"
 
+#include <native/memory/backing.h>
+
 #include <cstddef>
+#include <memory>
 
 class SPACEGAMESIMULATION_API FGameMemoryBacking {
   public:
@@ -17,16 +20,12 @@ class SPACEGAMESIMULATION_API FGameMemoryBacking {
     auto operator=(FGameMemoryBacking&&) -> FGameMemoryBacking& = delete;
 
     auto try_acquire_lease() -> TOptional<FGameMemoryBackingLease>;
-    auto data() const noexcept -> std::byte* { return data_; }
-    auto capacity_bytes() const noexcept -> SIZE_T { return capacity_bytes_; }
-    auto is_leased() const noexcept -> bool { return leased_; }
+    auto data() const noexcept -> std::byte* { return backing_->data(); }
+    auto capacity_bytes() const noexcept -> SIZE_T { return backing_->capacity_bytes(); }
+    auto is_leased() const noexcept -> bool { return backing_->is_leased(); }
   private:
     friend class FGameMemoryBackingLease;
 
     explicit FGameMemoryBacking(SIZE_T capacity_bytes);
-    void release_lease();
-
-    std::byte* data_{};
-    SIZE_T capacity_bytes_{};
-    bool leased_{};
+    std::unique_ptr<ml::memory::Backing> backing_{};
 };

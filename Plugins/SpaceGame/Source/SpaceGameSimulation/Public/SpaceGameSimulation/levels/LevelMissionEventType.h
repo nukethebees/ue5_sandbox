@@ -1,11 +1,7 @@
 #pragma once
 
-#include <CoreMinimal.h>
+#include <sandbox/simulation/level_event_types.h>
 
 namespace ml {
-enum class ELevelMissionEventType : uint8 {
-    MustSurvive,
-    RequiredKill,
-    IncreaseKillTarget,
-};
+using ELevelMissionEventType = simulation::LevelMissionEventType;
 }

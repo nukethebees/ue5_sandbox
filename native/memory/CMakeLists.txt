@@ -1,4 +1,6 @@
-add_library(native-memory STATIC
+add_library(native-memory STATIC)
+target_sources(native-memory PRIVATE
+  src/backing.cpp
   src/block.cpp
   src/root_arena.cpp
 )
@@ -14,7 +16,8 @@ set_target_properties(native-memory PROPERTIES
   ARCHIVE_OUTPUT_DIRECTORY "${NATIVE_MEMORY_LIBRARY_DIRECTORY}"
 )
 
-add_executable(native-memory-tests tests/root_arena_tests.cpp)
+add_executable(native-memory-tests)
+target_sources(native-memory-tests PRIVATE tests/root_arena_tests.cpp)
 target_link_libraries(native-memory-tests PRIVATE
   native-memory
   sandbox::warnings_as_errors

@@ -184,6 +184,11 @@
   :header "SandboxNative/RegistryEntityHandle.h"
   :pass-by value)
 
+(type native_registry_handle
+  :spelling "FRegistryEntityHandle"
+  :header "sandbox/simulation/entity_handle.h"
+  :pass-by value)
+
 (type registry_handle_array
   :spelling "TArray<FRegistryEntityHandle>"
   :header "Containers/Array.h")

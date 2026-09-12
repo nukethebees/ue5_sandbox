@@ -11,6 +11,7 @@
       "lispb/schema/single_allocation_experiment.lispb"
       "lispb/schema/level_telemetry_history.lispb"
       "lispb/schema/soa_spacing_shapes.lispb"
+      "lispb/schema/native_collision.lispb"
       "lispb/schema/collision.lispb"
       "lispb/schema/dynamic_entities.lispb"
       "lispb/schema/level_definition.lispb"

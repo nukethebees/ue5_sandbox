@@ -1,12 +1,8 @@
 #pragma once
 
-#include <CoreMinimal.h>
+#include <sandbox/simulation/level_event_types.h>
 
 namespace ml {
-using FLevelEventCount = uint8;
-
-struct SPACEGAMESIMULATION_API FLevelEventGroupCounts {
-    FLevelEventCount spawn_groups{};
-    FLevelEventCount mission_groups{};
-};
+using FLevelEventCount = simulation::LevelEventCount;
+using FLevelEventGroupCounts = simulation::LevelEventGroupCounts;
 }

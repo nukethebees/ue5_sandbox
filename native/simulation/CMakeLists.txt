@@ -2,6 +2,7 @@ find_package(GTest CONFIG REQUIRED)
 
 add_library(native-simulation STATIC)
 target_sources(native-simulation PRIVATE
+  include/sandbox/simulation/entity_overlaps.h
   src/collision_grid.cpp
   src/deterministic_bias.cpp
   src/fixed_tick.cpp
@@ -10,7 +11,11 @@ target_sources(native-simulation PRIVATE
   src/step_response.cpp
 )
 target_compile_features(native-simulation PUBLIC cxx_std_23)
-target_include_directories(native-simulation PUBLIC include)
+target_include_directories(native-simulation PUBLIC
+  include
+  "${PROJECT_SOURCE_DIR}/native/core/include"
+  "${PROJECT_SOURCE_DIR}/native/lispb/native_soa/include"
+)
 target_link_libraries(native-simulation PRIVATE sandbox::warnings_as_errors)
 
 set(NATIVE_SIMULATION_LIBRARY_DIRECTORY

@@ -20,6 +20,7 @@ public class SandboxNative : ModuleRules
 
         PublicDependencyModuleNames.AddRange(new string[] {
             "Core",
+            "SandboxCore",
         });
 
         PrivateDependencyModuleNames.AddRange(new string[] {
@@ -37,6 +38,8 @@ public class SandboxNative : ModuleRules
 
         string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", ".."));
         PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "simulation", "include"));
+        PublicSystemIncludePaths.Add(
+            Path.Combine(repositoryRoot, "native", "lispb", "native_soa", "include"));
 
         if (!Target.bGenerateProjectFiles)
         {

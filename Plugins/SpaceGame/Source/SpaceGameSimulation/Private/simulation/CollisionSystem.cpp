@@ -107,7 +107,8 @@ void FCollisionSystem::sort_and_deduplicate_overlaps() {
                        (lhs_first == rhs_first &&
                         overlaps.second_entities[lhs] < overlaps.second_entities[rhs]);
             },
-            overlap_sort_indices_scratch_);
+            std::span{overlap_sort_indices_scratch_.GetData(),
+                      static_cast<std::size_t>(overlap_sort_indices_scratch_.Num())});
 
         int32 write_index{1};
         for (int32 read_index{1}; read_index < entity_pair_count; ++read_index) {
@@ -123,7 +124,7 @@ void FCollisionSystem::sort_and_deduplicate_overlaps() {
                                         entity_entity_overlaps_.second_entities[read_index]);
             ++write_index;
         }
-        entity_entity_overlaps_.set_num(write_index, EAllowShrinking::No);
+        entity_entity_overlaps_.set_num(write_index);
     }
 
     auto const entity_static_count{entity_static_overlaps_.num()};
@@ -137,7 +138,8 @@ void FCollisionSystem::sort_and_deduplicate_overlaps() {
                        (lhs_entity == rhs_entity && overlaps.static_geometry_indices[lhs] <
                                                         overlaps.static_geometry_indices[rhs]);
             },
-            overlap_sort_indices_scratch_);
+            std::span{overlap_sort_indices_scratch_.GetData(),
+                      static_cast<std::size_t>(overlap_sort_indices_scratch_.Num())});
 
         int32 write_index{1};
         for (int32 read_index{1}; read_index < entity_static_count; ++read_index) {
@@ -154,7 +156,7 @@ void FCollisionSystem::sort_and_deduplicate_overlaps() {
                 entity_static_overlaps_.static_geometry_indices[read_index]);
             ++write_index;
         }
-        entity_static_overlaps_.set_num(write_index, EAllowShrinking::No);
+        entity_static_overlaps_.set_num(write_index);
     }
 }
 }

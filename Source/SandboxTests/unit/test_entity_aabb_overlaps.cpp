@@ -592,9 +592,8 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
         check_single_pair(TestRunner, first_events.entity_entity_overlaps, moved, stationary);
         check_single_static_overlap(
             TestRunner, first_events.entity_static_overlaps, moved, static_index);
-        auto const* const entity_storage{
-            first_events.entity_entity_overlaps.first_entities.GetData()};
-        auto const* const static_storage{first_events.entity_static_overlaps.entities.GetData()};
+        auto const* const entity_storage{first_events.entity_entity_overlaps.first_entities.data()};
+        auto const* const static_storage{first_events.entity_static_overlaps.entities.data()};
 
         collision_system.reset_frame_events();
 
@@ -607,11 +606,10 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
         TestRunner->TestEqual(
             TEXT("Frame reset clears event batches"), reset_events.batches.Num(), 0);
         TestRunner->TestTrue(TEXT("Dynamic event storage is retained across reset"),
-                             reset_events.entity_entity_overlaps.first_entities.GetData() ==
+                             reset_events.entity_entity_overlaps.first_entities.data() ==
                                  entity_storage);
         TestRunner->TestTrue(TEXT("Static event storage is retained across reset"),
-                             reset_events.entity_static_overlaps.entities.GetData() ==
-                                 static_storage);
+                             reset_events.entity_static_overlaps.entities.data() == static_storage);
 
         collision_system.update(handles, ++fixture.current_tick);
         auto const recaptured_events{collision_system.get_aabb_overlap_events()};
@@ -619,10 +617,10 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
         check_single_static_overlap(
             TestRunner, recaptured_events.entity_static_overlaps, moved, static_index);
         TestRunner->TestTrue(TEXT("Dynamic event storage is reused after recapture"),
-                             recaptured_events.entity_entity_overlaps.first_entities.GetData() ==
+                             recaptured_events.entity_entity_overlaps.first_entities.data() ==
                                  entity_storage);
         TestRunner->TestTrue(TEXT("Static event storage is reused after recapture"),
-                             recaptured_events.entity_static_overlaps.entities.GetData() ==
+                             recaptured_events.entity_static_overlaps.entities.data() ==
                                  static_storage);
 
         collision_system.update(handles, ++fixture.current_tick);

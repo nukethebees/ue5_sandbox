@@ -1,8 +1,5 @@
 #pragma once
 
-#include <CoreMinimal.h>
+#include <sandbox/simulation/fighter_types.h>
 
-struct TestCapitalShipFighterOrder {
-    uint8 task   : 1 {0};
-    uint8 target : 1 {0};
-};
+using TestCapitalShipFighterOrder = ml::simulation::CapitalShipFighterOrder;

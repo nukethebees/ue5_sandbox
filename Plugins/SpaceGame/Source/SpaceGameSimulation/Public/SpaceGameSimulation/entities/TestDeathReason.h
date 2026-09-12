@@ -1,12 +1,5 @@
 #pragma once
 
-#include <CoreMinimal.h>
+#include <sandbox/simulation/entity_types.h>
 
-#include "TestDeathReason.generated.h"
-
-UENUM()
-enum class ETestDeathReason : uint8 {
-    Unset,
-    Unknown,
-    Combat,
-};
+using ETestDeathReason = ml::simulation::DeathReason;

@@ -1,10 +1,5 @@
 #pragma once
 
-#include <HAL/Platform.h>
+#include <sandbox/simulation/entity_types.h>
 
-enum class ERegistryHandleState : uint8 {
-    Active,
-    Stale,
-    Invalid,
-    Null,
-};
+using ERegistryHandleState = ml::simulation::RegistryHandleState;

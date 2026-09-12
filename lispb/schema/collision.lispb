@@ -25,23 +25,6 @@
     (member maxes nested @vectors_3i32)
     (member handles array @registry_handle)))
 
-(soa-module entity_overlaps
-  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/EntityOverlaps.h"
-  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/simulation/EntityOverlaps.cpp"
-  :header-include "SpaceGameSimulation/simulation/EntityOverlaps.h"
-  :namespace ml::ioj
-  :include-order ("SpaceGame/" "SandboxCore/" "SandboxNative/")
-  (struct FEntityEntityOverlaps
-    :operations (all)
-    :export-specifier SPACEGAMESIMULATION_API
-    (member first_entities array @registry_handle)
-    (member second_entities array @registry_handle))
-  (struct FEntityStaticOverlaps
-    :operations (all)
-    :export-specifier SPACEGAMESIMULATION_API
-    (member entities array @registry_handle)
-    (member static_geometry_indices array int32)))
-
 (soa-module static_collision_sources
   :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/StaticCollisionSources.h"
   :source "Plugins/SpaceGame/Source/SpaceGame/Private/simulation/StaticCollisionSources.cpp"

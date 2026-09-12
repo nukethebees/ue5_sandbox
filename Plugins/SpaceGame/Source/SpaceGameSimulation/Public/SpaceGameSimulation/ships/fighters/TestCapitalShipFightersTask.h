@@ -1,19 +1,16 @@
 #pragma once
 
-#include <SandboxCoreEngine/enums.h>
-
 #include "CoreMinimal.h"
 
-#include "TestCapitalShipFightersTask.generated.h"
+#include <sandbox/simulation/fighter_types.h>
 
-UENUM()
-enum class ETestCapitalShipFightersTask : uint8 {
-    Standby,
-    MoveToDestination,
-    Attack,
-    COUNT UMETA(DisplayName = "Count", Hidden),
-};
+using ETestCapitalShipFightersTask = ml::simulation::CapitalShipFighterTask;
 
-inline auto LexToString(ETestCapitalShipFightersTask const task) -> FString {
-    return ml::to_string_without_type_prefix(task);
+namespace ml::simulation {
+inline auto LexToString(CapitalShipFighterTask const task) -> FString {
+    auto const value{ml::simulation::to_string_view(task)};
+    return FString{static_cast<int32>(value.size()), UTF8_TO_TCHAR(value.data())};
 }
+}
+
+using ml::simulation::LexToString;
