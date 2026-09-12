@@ -1,6 +1,7 @@
 #include "SandboxEditor/SandboxEditor.h"
 
 #include "SandboxEditor/codegen/TypedefCodeGenerator.h"
+#include "SandboxEditor/levels/S7InitialStateImporter.h"
 #include "SandboxEditor/slate/BoxSizeCustomisation.h"
 #include "SandboxEditor/slate/StrongTypedefPreview.h"
 #include "SandboxEditor/slate/TestVolumeDetailsCustomisation.h"
@@ -113,6 +114,13 @@ void FSandboxEditorModule::register_menu_extensions() {
 
     TRY_INIT_PTR(menu, tool_menus->ExtendMenu("LevelEditor.LevelEditorToolBar.User"));
     FToolMenuSection& section{menu->AddSection("SandboxTools", FText::FromString("Sandbox Tools"))};
+
+    section.AddEntry(FToolMenuEntry::InitToolBarButton(
+        "ImportS7InitialState",
+        FUIAction(FExecuteAction::CreateStatic(&ml::editor::execute_s7_initial_state_import)),
+        FText::FromString("Import S7 Initial State"),
+        FText::FromString("Materialise an S7 level's initial entities in the current map"),
+        FSlateIcon(FAppStyle::GetAppStyleSetName(), "Icons.Import")));
 
     section.AddEntry(FToolMenuEntry::InitToolBarButton(
         "GenerateTypedefs",

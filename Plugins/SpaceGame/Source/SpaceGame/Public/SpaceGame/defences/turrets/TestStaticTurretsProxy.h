@@ -47,6 +47,7 @@ class ATestStaticTurretsProxy
   protected:
     void OnConstruction(FTransform const& transform) override;
     void configure_component(UPrimitiveComponent& component);
+    void apply_actor_configuration();
 
 #if WITH_EDITOR
     UFUNCTION(CallInEditor, Category = "Proxy")

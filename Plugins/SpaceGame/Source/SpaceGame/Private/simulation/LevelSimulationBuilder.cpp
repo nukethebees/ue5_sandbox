@@ -1,8 +1,8 @@
 #include "SpaceGame/simulation/LevelSimulationBuilder.h"
-#include "../levels/LevelTeamResolution.h"
 
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 #include <SpaceGame/levels/CompileLevelEvents.h>
+#include <SpaceGame/levels/LevelEntityResolution.h>
 #include <SpaceGame/simulation/SimulationConfigConversion.h>
 
 #include <SpaceGame/simulation/LevelCollisionHost.h>
@@ -195,7 +195,7 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     data.static_bounds = MoveTemp(static_bounds);
     data.participating_teams.reserve(definition.teams.Num());
     for (auto const team_id : definition.teams) {
-        auto const team{level_team_detail::resolve(team_id)};
+        auto const team{resolve_level_team(team_id)};
         check(team.IsSet());
         data.participating_teams.add(team.GetValue());
     }

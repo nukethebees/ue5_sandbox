@@ -63,6 +63,7 @@ public class SandboxEditor : ModuleRules
             "BlueprintEditorLibrary",
             "BlueprintGraph", // Required by UnrealEd
             "CommonUI",
+            "DesktopPlatform",
             "EditorSubsystem",
             "EditorStyle",
             "EditorWidgets",

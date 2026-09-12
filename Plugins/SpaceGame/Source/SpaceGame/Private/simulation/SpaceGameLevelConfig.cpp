@@ -1,5 +1,6 @@
 #include "SpaceGame/simulation/SpaceGameLevelConfig.h"
 
+#include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SimulationActorClasses.h>
@@ -61,6 +62,9 @@ auto collision_grid_dimensions_are_valid(FCollisionGridConfig const& config) -> 
     return xy_cell_count <= (std::numeric_limits<int32>::max() / dimensions.Z);
 }
 }
+
+FScenarioClassConfig::FScenarioClassConfig()
+    : static_turret_proxy_class{ATestStaticTurretsProxy::StaticClass()} {}
 
 FCollisionGridConfig::FCollisionGridConfig()
     : harvested_collision_actor_classes{AStaticMeshActor::StaticClass()}

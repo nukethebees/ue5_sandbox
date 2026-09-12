@@ -1,9 +1,9 @@
 #include "SpaceGame/levels/LevelLoader.h"
 
 #include "LevelEntityTableOperations.h"
-#include "LevelTeamResolution.h"
 
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
+#include <SpaceGame/levels/LevelEntityResolution.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
@@ -68,7 +68,7 @@ auto spawn_player(UWorld& world,
                   FSpawnedActorTransaction& transaction,
                   FLevelLoadResult& result) -> ATestSpaceShip* {
     auto const entity{level_entity_table_detail::get(entities, player_index)};
-    auto const team{level_team_detail::resolve(entity.team)};
+    auto const team{resolve_level_team(entity.team)};
     check(team.IsSet());
     auto const transform{FTransform{entity.rotation, entity.position}};
     auto* const player{

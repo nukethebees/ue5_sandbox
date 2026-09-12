@@ -21,6 +21,7 @@
 
 class AActor;
 class ATestCapitalShipProxy;
+class ATestStaticTurretsProxy;
 class ATestSpaceShip;
 class ASpaceGamePlayerController;
 class UMaterialInterface;
@@ -32,6 +33,8 @@ USTRUCT(BlueprintType)
 struct SPACEGAME_API FScenarioClassConfig {
     GENERATED_BODY()
 
+    FScenarioClassConfig();
+
     UPROPERTY(EditAnywhere, Category = "Classes")
     TSubclassOf<ASpaceGamePlayerController> player_controller_class{nullptr};
 
@@ -40,6 +43,9 @@ struct SPACEGAME_API FScenarioClassConfig {
 
     UPROPERTY(EditAnywhere, Category = "Classes")
     TSubclassOf<ATestCapitalShipProxy> capital_ship_proxy_class{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Classes")
+    TSubclassOf<ATestStaticTurretsProxy> static_turret_proxy_class{nullptr};
 };
 
 USTRUCT(BlueprintType)

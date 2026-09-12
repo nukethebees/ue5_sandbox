@@ -1,11 +1,10 @@
 #include "SpaceGameSimulation/levels/LevelEventSchedule.h"
 
-#include "LevelArchetypeResolution.h"
 #include "LevelEntityTableOperations.h"
-#include "LevelTeamResolution.h"
 
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SpaceGame/levels/CompileLevelEvents.h>
+#include <SpaceGame/levels/LevelEntityResolution.h>
 
 namespace ml {
 namespace {
@@ -194,15 +193,15 @@ auto compile_level_events(FLevelDefinition const& definition,
                                        FLevelCapitalSpawnEvents& capital_events,
                                        FLevelTurretSpawnEvents& turret_events) {
         auto const entity{level_entity_table_detail::get(entities, entity_index)};
-        auto const archetype{level_archetype_detail::resolve(entity.archetype)};
-        auto const team{level_team_detail::resolve(entity.team)};
+        auto const archetype{resolve_level_archetype(entity.archetype)};
+        auto const team{resolve_level_team(entity.team)};
         check(archetype.IsSet() && team.IsSet());
 
         switch (archetype.GetValue()) {
-            case level_archetype_detail::EResolvedArchetype::PlayerFighter: {
+            case EResolvedLevelArchetype::PlayerFighter: {
                 break;
             }
-            case level_archetype_detail::EResolvedArchetype::CapitalShip: {
+            case EResolvedLevelArchetype::CapitalShip: {
                 capital_events.add(entity_index,
                                    INDEX_NONE,
                                    FVector3f{entity.position},
@@ -213,7 +212,7 @@ auto compile_level_events(FLevelDefinition const& definition,
                                    capital_config.spawn_delay);
                 break;
             }
-            case level_archetype_detail::EResolvedArchetype::StaticTurret: {
+            case EResolvedLevelArchetype::StaticTurret: {
                 turret_events.add(entity_index,
                                   FVector3f{entity.position},
                                   FRotator3f{entity.rotation},

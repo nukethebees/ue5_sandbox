@@ -1,8 +1,8 @@
 #include "SpaceGame/levels/LevelDefinition.h"
 
-#include "LevelArchetypeResolution.h"
 #include "LevelEntityTableOperations.h"
-#include "LevelTeamResolution.h"
+
+#include <SpaceGame/levels/LevelEntityResolution.h>
 
 #include <Containers/Map.h>
 #include <Containers/Set.h>
@@ -105,7 +105,7 @@ auto validate_teams(FLevelDefinition const& definition, FLevelValidationResult& 
         }
 
         declared_teams.Add(team);
-        if (!level_team_detail::resolve(team).IsSet()) {
+        if (!resolve_level_team(team).IsSet()) {
             add_error(result,
                       ELevelValidationErrorCode::UnsupportedTeamId,
                       FString::Printf(TEXT("Team %d uses unsupported team id '%s'"),
@@ -142,7 +142,7 @@ void validate_archetype(FEntityArchetypeId const archetype,
         return;
     }
 
-    auto const resolved{level_archetype_detail::resolve(archetype)};
+    auto const resolved{resolve_level_archetype(archetype)};
     if (!resolved.IsSet()) {
         add_error(result,
                   ELevelValidationErrorCode::UnsupportedArchetype,
@@ -152,8 +152,7 @@ void validate_archetype(FEntityArchetypeId const archetype,
         return;
     }
 
-    auto const is_player_archetype{resolved.GetValue() ==
-                                   level_archetype_detail::EResolvedArchetype::PlayerFighter};
+    auto const is_player_archetype{resolved.GetValue() == EResolvedLevelArchetype::PlayerFighter};
     if (is_player != is_player_archetype) {
         add_error(result,
                   ELevelValidationErrorCode::ArchetypeRoleMismatch,

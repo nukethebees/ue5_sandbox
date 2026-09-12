@@ -1,6 +1,7 @@
 #include "SpaceGame/defences/turrets/TestStaticTurretsProxy.h"
 
 #include "SpaceGame/entities/TestProxyActorFunctions.h"
+#include "SpaceGamePresentation/entities/TestTeamVisualData.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <SandboxCoreEngine/actor_utils.h>
@@ -38,6 +39,7 @@ ATestStaticTurretsProxy::ATestStaticTurretsProxy()
 void ATestStaticTurretsProxy::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
     ml::set_proxy_actor_name(*this, TEXT("StaticTurret"), team);
+    apply_actor_configuration();
 }
 
 void ATestStaticTurretsProxy::configure_component(UPrimitiveComponent& component) {
@@ -46,6 +48,24 @@ void ATestStaticTurretsProxy::configure_component(UPrimitiveComponent& component
     component.SetCanEverAffectNavigation(false);
     component.SetCastShadow(false);
     component.SetAffectDistanceFieldLighting(false);
+}
+
+void ATestStaticTurretsProxy::apply_actor_configuration() {
+    if (!actor_config) {
+        return;
+    }
+
+    mesh->SetStaticMesh(actor_config->mesh);
+    detection->SetSphereRadius(actor_config->detection_radius);
+    fire_point->SetRelativeTransform(actor_config->fire_point_offset);
+    detection->SetVisibility(actor_config->show_collision);
+
+    if (IsValid(actor_config->team_visual_data) && ml::is_valid(team)) {
+        actor_config->team_visual_data->ensure_all_team_colours_exist();
+        auto const colour_cache{
+            UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
+        mesh->SetCustomPrimitiveDataVector3f(0, FVector3f{colour_cache[team]});
+    }
 }
 
 #if WITH_EDITOR
@@ -65,12 +85,7 @@ void ATestStaticTurretsProxy::apply_asset_configuration() {
     mesh->Modify();
     detection->Modify();
     fire_point->Modify();
-
-    mesh->SetStaticMesh(actor_config->mesh);
-    detection->SetSphereRadius(actor_config->detection_radius);
-    fire_point->SetRelativeTransform(actor_config->fire_point_offset);
-
-    detection->SetVisibility(actor_config->show_collision);
+    apply_actor_configuration();
     MarkPackageDirty();
 }
 void ATestStaticTurretsProxy::apply_asset_configuration_to_all_instances() {
