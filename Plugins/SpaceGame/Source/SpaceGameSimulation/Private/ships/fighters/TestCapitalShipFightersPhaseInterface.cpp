@@ -36,6 +36,10 @@ void PhaseInterface::queue_commands() {
     simulation.queue_commands();
 }
 
+void PhaseInterface::commit_spawns() {
+    simulation.commit_spawns();
+}
+
 void PhaseInterface::resolve_damage_events() {
     simulation.resolve_damage_events();
 }

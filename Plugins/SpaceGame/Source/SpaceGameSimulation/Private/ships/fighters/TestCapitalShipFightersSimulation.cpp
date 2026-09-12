@@ -543,9 +543,8 @@ void Simulation::resolve_damage_events() {
     for (int32 i{0}; i < n_direct_damage; ++i) {
         auto const local_index{data.entity_handles.Find(direct_damage.damaged_entities[i])};
         auto const instigator{direct_damage.instigators[i]};
-        if (local_index != INDEX_NONE &&
-            (!entity_registry.is_valid_handle(instigator) ||
-             entity_registry.get_team(instigator) != data.teams[local_index])) {
+        if (local_index != INDEX_NONE && entity_registry.is_valid_handle(instigator) &&
+            entity_registry.get_team(instigator) != data.teams[local_index]) {
             data.target_handles[local_index] = instigator;
         }
     }
@@ -566,7 +565,6 @@ void Simulation::sync_from_registry() {
 
     tasks_are_contiguous();
     remove_dead_entities();
-    commit_spawns();
     commit_orders();
     refresh_target_data();
     if (!tasks_are_contiguous()) {

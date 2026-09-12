@@ -509,10 +509,10 @@ void FSpatialQueryManager::are_spheres_in_bounds(FVectors3f::ConstView const cen
 /* **************************************** */
 // Collision state and telemetry
 /* **************************************** */
-void FSpatialQueryManager::update() {
+auto FSpatialQueryManager::update(uint64 const tick) -> ioj::FDetectedOverlapsView {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpatialQueryManager::update);
 
-    collision.update(entity_registry.get_moved_entities_this_tick());
+    return collision.update(entity_registry.get_moved_entities_this_tick(), tick);
 }
 
 void FSpatialQueryManager::reset_runtime_telemetry() noexcept {

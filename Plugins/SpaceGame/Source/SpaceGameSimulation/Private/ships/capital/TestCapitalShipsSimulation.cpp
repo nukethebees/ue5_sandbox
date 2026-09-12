@@ -224,7 +224,7 @@ void Simulation::spawn_ships(SpawnDataConstView const spawn_data) {
 void Simulation::prepare_entity_update_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::test_capital_ships::Simulation::prepare_entity_update_data);
-    check(entity_update_data.num() == 0);
+    entity_update_data.reset();
     auto const n{get_num_instances()};
     entity_update_data.add_uninitialised(n);
     entity_update_data.locations = entities.locations;

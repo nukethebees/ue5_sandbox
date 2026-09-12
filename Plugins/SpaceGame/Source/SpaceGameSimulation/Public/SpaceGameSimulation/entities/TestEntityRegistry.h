@@ -80,9 +80,9 @@ struct SPACEGAMESIMULATION_API FTestEntityRegistry {
     void reset();
     // Clears the movement list published by the previous tick.
     void begin_tick();
-    // Applies one queued final row per entity, then deaths. Queues are retained until end_tick().
+    // Applies and consumes one queued final row per entity, then deaths.
     void commit_updates();
-    // Publishes dead slots for reuse and clears this tick's queues and death list.
+    // Publishes dead slots for reuse and clears transient damage and death observations.
     void end_tick();
 
     /* **************************************** */
@@ -94,7 +94,7 @@ struct SPACEGAMESIMULATION_API FTestEntityRegistry {
     /* **************************************** */
     // Queued updates
     /* **************************************** */
-    // Each handle may occur once between end_tick() calls. Radius and entity type are spawn-only.
+    // Each handle may occur once per commit. Radius and entity type are spawn-only.
     // Alive/team changes also update history and counts.
     void queue_entity_updates(ConstView const view, EntityDeathInfo const& death_info);
 

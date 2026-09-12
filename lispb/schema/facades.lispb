@@ -112,6 +112,7 @@
     (method move void
       (parameter dt "float const"))
     (method queue_commands void)
+    (method commit_spawns void)
     (method resolve_damage_events void)
     (method update_entity_registry void)
     (method sync_from_registry void)

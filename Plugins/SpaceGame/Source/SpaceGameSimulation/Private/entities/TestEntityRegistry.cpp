@@ -59,6 +59,8 @@ void FTestEntityRegistry::commit_updates() {
     commit_entity_updates();
     commit_death_updates();
 
+    ml::reset(queued_entity_data, queued_entity_update_handles, queued_death_infos);
+
     validate_array_sizes();
 }
 void FTestEntityRegistry::refresh_free_indices() {
@@ -72,11 +74,7 @@ void FTestEntityRegistry::end_tick() {
 
     refresh_free_indices();
 
-    ml::reset(queued_entity_data,
-              queued_entity_update_handles,
-              queued_death_infos,
-              queued_direct_damage_events,
-              dead_entities_this_frame);
+    ml::reset(queued_direct_damage_events, dead_entities_this_frame);
 
     validate_array_sizes();
     validate_unique_ids();
@@ -189,7 +187,7 @@ void FTestEntityRegistry::commit_entity_updates() {
                                     entity_data.rotations.rolls[slot_index] !=
                                         queued_entity_data.rotations.rolls[update_index]};
 
-        if (position_changed || rotation_changed) {
+        if ((position_changed || rotation_changed) && !moved_entities_this_tick_.Contains(handle)) {
             moved_entities_this_tick_.Add(handle);
         }
 
@@ -209,7 +207,6 @@ void FTestEntityRegistry::commit_entity_updates() {
 void FTestEntityRegistry::commit_death_updates() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::commit_death_updates);
 
-    dead_entities_this_frame.Reset();
     queued_death_infos.validate_array_sizes();
 
     auto const n_deaths{queued_death_infos.num()};

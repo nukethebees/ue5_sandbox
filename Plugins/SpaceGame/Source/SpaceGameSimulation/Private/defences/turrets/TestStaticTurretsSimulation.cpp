@@ -231,7 +231,7 @@ void Simulation::end_tick() {
 void Simulation::prepare_entity_update_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::test_static_turrets::Simulation::prepare_entity_update_data);
-    check(entity_update_data.num() == 0);
+    entity_update_data.reset();
 
     auto const n{get_num_instances()};
 

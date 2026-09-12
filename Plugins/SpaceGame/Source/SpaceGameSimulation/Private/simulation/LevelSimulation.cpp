@@ -120,6 +120,7 @@ FLevelSimulation::FLevelSimulation(FLevelSimulationInitData data)
     , game_memory_{data.game_memory != nullptr ? data.game_memory : local_game_memory_.Get()}
     , frame_memory_{data.frame_memory_capacity_bytes}
     , query_manager_{entity_registry_}
+    , overlap_handler_{entity_registry_, data.overlap_response}
     , lasers_simulation_{clock_, entity_registry_, query_manager_, frame_memory_}
     , lasers_phase_{lasers_simulation_}
     , capital_ship_fighters_simulation_{clock_,
@@ -164,7 +165,7 @@ void FLevelSimulation::finish_initialisation() {
     check(state_ == EOrchestratorState::Uninitialised);
 
     entity_registry_.commit_updates();
-    query_manager_.update();
+    query_manager_.update(clock_.get_completed_ticks());
     entity_registry_.end_tick();
 
     // Initialization rebuilds must not contribute to runtime telemetry.
@@ -363,6 +364,21 @@ void FLevelSimulation::advance(time_type const dt) {
         auto const player_simulation_is_active{[this] {
             return player_ship_simulation_.IsSet() && player_ship_simulation_->health.is_alive();
         }};
+        auto const publish_entity_state{[&] {
+            TRACE_CPUPROFILER_EVENT_SCOPE(
+                Sandbox::FLevelSimulation::advance::update_entity_registry);
+
+            if (player_simulation_is_active()) {
+                player_ship_phase_->update_entity_registry();
+            }
+
+            capital_ships_phase_.update_entity_registry();
+            capital_ship_fighters_phase_.update_entity_registry();
+            turrets_phase_.update_entity_registry();
+
+            measure(ESimulationTelemetryTimingSystem::Registry,
+                    [&] { entity_registry_.commit_updates(); });
+        }};
 
         /* -------------------------------------------------------------------------------- */
         // Setup phase
@@ -383,7 +399,7 @@ void FLevelSimulation::advance(time_type const dt) {
                     [&] { spawned = event_manager_.dispatch_tick(clock_.completed_ticks + 1); });
             if (spawned) {
                 measure(ESimulationTelemetryTimingSystem::SpatialQueries,
-                        [&] { query_manager_.update(); });
+                        [&] { query_manager_.update(clock_.get_completed_ticks() + 1); });
             }
         }
         finish_phase(ELevelTelemetryTimingPhase::Setup);
@@ -476,6 +492,15 @@ void FLevelSimulation::advance(time_type const dt) {
         finish_phase(ELevelTelemetryTimingPhase::Simulation);
         frame_memory_.reclaim();
 
+        capital_ship_fighters_phase_.commit_spawns();
+        publish_entity_state();
+
+        ml::ioj::FDetectedOverlapsView detected_overlaps;
+        measure(ESimulationTelemetryTimingSystem::SpatialQueries, [&] {
+            detected_overlaps = query_manager_.update(clock_.get_completed_ticks() + 1);
+        });
+        overlap_handler_.handle(detected_overlaps);
+
         /* -------------------------------------------------------------------------------- */
         // Resolution phase
         /* -------------------------------------------------------------------------------- */
@@ -496,26 +521,7 @@ void FLevelSimulation::advance(time_type const dt) {
                     [&] { turrets_phase_.resolve_damage_events(); });
         }
 
-        {
-            // Send updates to the registry
-            TRACE_CPUPROFILER_EVENT_SCOPE(
-                Sandbox::FLevelSimulation::advance::update_entity_registry);
-
-            if (player_simulation_is_active()) {
-                player_ship_phase_->update_entity_registry();
-            }
-
-            capital_ships_phase_.update_entity_registry();
-            capital_ship_fighters_phase_.update_entity_registry();
-            turrets_phase_.update_entity_registry();
-        }
-
-        {
-            TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLevelSimulation::advance::commit_updates);
-
-            measure(ESimulationTelemetryTimingSystem::Registry,
-                    [&] { entity_registry_.commit_updates(); });
-        }
+        publish_entity_state();
 
         {
             // Apply changes from the registry e.g. destroyed targets
@@ -544,8 +550,6 @@ void FLevelSimulation::advance(time_type const dt) {
             spinners_phase_.end_tick();
             lasers_phase_.end_tick();
 
-            measure(ESimulationTelemetryTimingSystem::SpatialQueries,
-                    [&] { query_manager_.update(); });
             measure(ESimulationTelemetryTimingSystem::Registry,
                     [&] { entity_registry_.end_tick(); });
         }

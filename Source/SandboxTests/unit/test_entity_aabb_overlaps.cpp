@@ -38,7 +38,7 @@ struct FOverlapFixture {
 
     void finish_spawning() {
         registry.commit_updates();
-        query_manager.update();
+        query_manager.update(current_tick);
         registry.end_tick();
         query_manager.get_collision_system().reset_frame_events();
     }
@@ -82,7 +82,7 @@ struct FOverlapFixture {
 
         registry.queue_entity_updates({handles, updates.get_const_view()}, deaths);
         registry.commit_updates();
-        query_manager.update();
+        query_manager.update(++current_tick);
         tick_is_open = true;
     }
 
@@ -91,7 +91,7 @@ struct FOverlapFixture {
         query_manager.get_collision_system().reset_frame_events();
         registry.begin_tick();
         registry.commit_updates();
-        query_manager.update();
+        query_manager.update(++current_tick);
         tick_is_open = true;
     }
 
@@ -126,6 +126,7 @@ struct FOverlapFixture {
     FTestEntityRegistry registry;
     ml::FSpatialQueryManager query_manager;
     ml::ioj::FEntityAABBs entity_bounds;
+    uint64 current_tick{};
     bool tick_is_open{};
 };
 
@@ -559,6 +560,18 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
             TestRunner, collision_system.get_entity_static_overlaps(), moved, static_index);
         check_single_pair(TestRunner, fixture.get_entity_overlaps(), moved, stationary);
         check_single_static_overlap(TestRunner, fixture.get_static_overlaps(), moved, static_index);
+
+        auto const events{collision_system.get_aabb_overlap_events()};
+        TestRunner->TestEqual(
+            TEXT("The collision pass records one event batch"), events.batches.Num(), 1);
+        if (events.batches.Num() == 1) {
+            auto const batch{events.get_batch(0)};
+            TestRunner->TestEqual(
+                TEXT("The event batch records its fixed tick"), batch.tick, fixture.current_tick);
+            check_single_pair(TestRunner, batch.overlaps.entity_entity_overlaps, moved, stationary);
+            check_single_static_overlap(
+                TestRunner, batch.overlaps.entity_static_overlaps, moved, static_index);
+        }
     }
 
     TEST_METHOD(FrameEventResetRetainsStorageAndPassesAppend)
@@ -591,6 +604,8 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
                               0);
         TestRunner->TestEqual(
             TEXT("Frame reset clears static events"), reset_events.entity_static_overlaps.num(), 0);
+        TestRunner->TestEqual(
+            TEXT("Frame reset clears event batches"), reset_events.batches.Num(), 0);
         TestRunner->TestTrue(TEXT("Dynamic event storage is retained across reset"),
                              reset_events.entity_entity_overlaps.first_entities.GetData() ==
                                  entity_storage);
@@ -598,7 +613,7 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
                              reset_events.entity_static_overlaps.entities.GetData() ==
                                  static_storage);
 
-        collision_system.update(handles);
+        collision_system.update(handles, ++fixture.current_tick);
         auto const recaptured_events{collision_system.get_aabb_overlap_events()};
         check_single_pair(TestRunner, recaptured_events.entity_entity_overlaps, moved, stationary);
         check_single_static_overlap(
@@ -610,7 +625,7 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
                              recaptured_events.entity_static_overlaps.entities.GetData() ==
                                  static_storage);
 
-        collision_system.update(handles);
+        collision_system.update(handles, ++fixture.current_tick);
         auto const appended_events{collision_system.get_aabb_overlap_events()};
         TestRunner->TestEqual(TEXT("Collision passes append dynamic events within a frame"),
                               appended_events.entity_entity_overlaps.num(),
@@ -618,6 +633,13 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Collision passes append static events within a frame"),
                               appended_events.entity_static_overlaps.num(),
                               2);
+        TestRunner->TestEqual(TEXT("Collision passes retain separate batch metadata"),
+                              appended_events.batches.Num(),
+                              2);
+        if (appended_events.batches.Num() == 2) {
+            TestRunner->TestTrue(TEXT("Later passes retain their own fixed tick"),
+                                 appended_events.batches[0].tick < appended_events.batches[1].tick);
+        }
 
         collision_system.reset_frame_events();
         auto const next_frame_events{collision_system.get_aabb_overlap_events()};
@@ -626,6 +648,9 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
                               0);
         TestRunner->TestEqual(TEXT("The next frame starts without static events"),
                               next_frame_events.entity_static_overlaps.num(),
+                              0);
+        TestRunner->TestEqual(TEXT("The next frame starts without event batches"),
+                              next_frame_events.batches.Num(),
                               0);
     }
 
@@ -657,7 +682,7 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
 
         TArray const dirty_entities{
             FRegistryEntityHandle{}, FRegistryEntityHandle{999, 0}, removed, live};
-        fixture.query_manager.get_collision_system().update(dirty_entities);
+        fixture.query_manager.get_collision_system().update(dirty_entities, ++fixture.current_tick);
 
         check_single_pair(TestRunner, fixture.get_entity_overlaps(), live, replacement);
         check_single_static_overlap(TestRunner, fixture.get_static_overlaps(), live, static_index);

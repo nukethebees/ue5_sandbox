@@ -140,7 +140,7 @@ struct SPACEGAMESIMULATION_API FSpatialQueryManager {
     auto get_collision_system() noexcept -> ioj::FCollisionSystem& { return collision; }
     auto get_collision_system() const noexcept -> ioj::FCollisionSystem const& { return collision; }
 
-    void update();
+    auto update(uint64 tick) -> ioj::FDetectedOverlapsView;
     void reset_runtime_telemetry() noexcept;
     auto get_runtime_telemetry() const noexcept -> FSpatialQueryTelemetrySnapshot;
   private:

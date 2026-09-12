@@ -2,6 +2,7 @@
 
 #include <SpaceGameSimulation/combat/lasers/TestLasersPhaseInterface.h>
 #include <SpaceGameSimulation/combat/lasers/TestLasersSimulation.h>
+#include <SpaceGameSimulation/combat/OverlapHandler.h>
 #include <SpaceGameSimulation/defences/spinners/TestTubeSpinnersPhaseInterface.h>
 #include <SpaceGameSimulation/defences/spinners/TestTubeSpinnersSimulation.h>
 #include <SpaceGameSimulation/defences/turrets/TestStaticTurretsPhaseInterface.h>
@@ -31,6 +32,7 @@ struct FLevelSimulationInitData {
     FFixedTickLoop clock_settings{};
 
     FLaserSimulationConfig lasers;
+    FOverlapResponseConfig overlap_response;
     FCapitalSimulationConfig capital_ships;
     FFighterSimulationConfig fighters;
     FTurretSimulationConfig turrets;
@@ -188,6 +190,7 @@ struct SPACEGAMESIMULATION_API FLevelSimulation {
     ml::FFrameMemoryResource frame_memory_;
     FTestEntityRegistry entity_registry_;
     ml::FSpatialQueryManager query_manager_;
+    ml::FOverlapHandler overlap_handler_;
 
     ml::test_lasers::Simulation lasers_simulation_;
     ml::test_lasers::PhaseInterface lasers_phase_;

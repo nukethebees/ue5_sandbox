@@ -47,6 +47,10 @@ struct SPACEGAMESIMULATION_API FLaserSimulationConfig {
     int32 collision_jobs{8};
 };
 
+struct SPACEGAMESIMULATION_API FOverlapResponseConfig {
+    int32 damage_per_overlap_detection{50};
+};
+
 struct SPACEGAMESIMULATION_API FCapitalSimulationConfig {
     float spawn_delay{5.f};
     int32 fighter_spawn_slots{0};

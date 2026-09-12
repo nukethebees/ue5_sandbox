@@ -23,6 +23,8 @@ class SPACEGAMESIMULATION_API PhaseInterface {
 
     void queue_commands();
 
+    void commit_spawns();
+
     void resolve_damage_events();
 
     void update_entity_registry();

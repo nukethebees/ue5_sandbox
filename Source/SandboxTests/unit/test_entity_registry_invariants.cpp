@@ -291,10 +291,16 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Consolidated movement reports the handle"),
                              moved[0] == handles[0]);
 
+        auto second{first};
+        second.locations.xs[0] += 10.f;
+        registry_.queue_entity_updates({TArray{handles[0]}, view_of(second, 0, 1)}, {});
         registry_.commit_updates();
-        TestRunner->TestEqual(TEXT("Replaying an unchanged final row does not duplicate movement"),
+        TestRunner->TestEqual(TEXT("A second commit does not duplicate movement"),
                               registry_.get_moved_entities_this_tick().Num(),
                               1);
+        TestRunner->TestEqual(TEXT("A second commit publishes the latest row"),
+                              registry_.get_location(handles[0]),
+                              second.locations[0]);
         registry_.end_tick();
         registry_.begin_tick();
     }

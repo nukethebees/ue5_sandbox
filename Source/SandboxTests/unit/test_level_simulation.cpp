@@ -61,6 +61,20 @@ auto make_battle() -> FLevelSimulationInitData {
     return data;
 }
 
+auto make_overlap_response_battle() -> FLevelSimulationInitData {
+    auto data{make_battle()};
+    data.overlap_response.damage_per_overlap_detection = 50;
+    data.capital_spawns.healths = {5000, 5000};
+    data.player.Emplace();
+    data.player->transform.SetLocation(FVector{-1000.0, 0.0, 0.0});
+    data.player->config.lateral_adjustment_speed = 1.f;
+    data.player->health = {150, 150};
+    data.entity_bounds.half_extent_xs[ml::ioj::FEntityAABBs::capital_ship_index] = 100.f;
+    data.entity_bounds.half_extent_ys[ml::ioj::FEntityAABBs::capital_ship_index] = 100.f;
+    data.entity_bounds.half_extent_zs[ml::ioj::FEntityAABBs::capital_ship_index] = 100.f;
+    return data;
+}
+
 auto make_scheduled_battle() -> FLevelSimulationInitData {
     auto data{make_battle()};
     data.capital_spawns.reset();
@@ -188,6 +202,60 @@ auto FWorldlessLevelSimulationTest::RunTest(FString const&) -> bool {
     first.start();
     first.advance(dt);
     TestEqual(TEXT("Battle resumes"), first.get_clock().get_completed_ticks(), paused_ticks + 1);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FLevelSimulationOverlapResponseTest,
+    "Sandbox.UnitTests.LevelSimulation.OverlapDamageResolvesInTheDetectionTick",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+auto FLevelSimulationOverlapResponseTest::RunTest(FString const&) -> bool {
+    FLevelSimulation simulation{make_overlap_response_battle()};
+    simulation.finish_initialisation();
+    simulation.start();
+    auto const dt{simulation.get_clock().get_tick_period()};
+    auto* player{simulation.get_player_ship_simulation()};
+    if (!TestNotNull(TEXT("The overlap fixture has a movable low-health entity"), player)) {
+        return false;
+    }
+
+    player->set_lateral_move_input(1.f);
+    auto const player_handle{player->registry_handle};
+    auto const capital{simulation.get_capital_ships().get_handle(0)};
+    auto const player_id{simulation.get_entity_registry().find_unique_id(player_handle)};
+    auto& registry{simulation.get_entity_registry()};
+
+    for (int32 overlap_detection{}; overlap_detection < 3; ++overlap_detection) {
+        simulation.advance(dt);
+        auto const events{simulation.get_spatial_query_manager()
+                              .get_collision_system()
+                              .get_aabb_overlap_events()};
+        TestEqual(TEXT("The tick captures one unique dynamic overlap"),
+                  events.entity_entity_overlaps.num(),
+                  1);
+        TestEqual(
+            TEXT("The tick captures no static overlap"), events.entity_static_overlaps.num(), 0);
+
+        TestEqual(TEXT("The high-health capital receives damage in the detection tick"),
+                  registry.get_health(capital),
+                  5000 - (overlap_detection + 1) * 50);
+        if (overlap_detection < 2) {
+            TestEqual(TEXT("The low-health entity receives damage in the detection tick"),
+                      registry.get_health(player_handle),
+                      150 - (overlap_detection + 1) * 50);
+        }
+    }
+
+    TestFalse(TEXT("The low-health entity dies after three detected overlaps"),
+              registry.is_valid_alive(player_handle));
+    TestEqual(TEXT("The capital receives one contribution per detected tick"),
+              registry.get_health(capital),
+              4850);
+    TestTrue(TEXT("Overlap death uses the environmental death path"),
+             registry.get_unique_entities().death_reason[player_id.id] ==
+                 ETestDeathReason::Unknown);
+    TestEqual(TEXT("Environmental overlap death gives no combat kill"), registry.count_kills(), 0);
     return true;
 }
 

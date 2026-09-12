@@ -14,15 +14,36 @@ void FCollisionSystem::initialise(FEntityAABBs const& bounds) {
     overlapping_static_geometry_indices_scratch_.Reset();
     overlap_sort_indices_scratch_.Reset();
 }
-void FCollisionSystem::update(
-    TConstArrayView<FRegistryEntityHandle> const collision_dirty_entities) {
+auto FCollisionSystem::update(TConstArrayView<FRegistryEntityHandle> const collision_dirty_entities,
+                              uint64 const tick) -> FDetectedOverlapsView {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCollisionSystem::update);
     rebuild_grid();
     collect_overlaps_for_moved_entities(collision_dirty_entities);
+
+    auto const entity_entity_offset{entity_entity_overlap_events_.num()};
+    auto const entity_static_offset{entity_static_overlap_events_.num()};
+    entity_entity_overlap_events_.append_from(entity_entity_overlaps_.get_const_view());
+    entity_static_overlap_events_.append_from(entity_static_overlaps_.get_const_view());
+    overlap_event_batches_.Add({
+        .tick = tick,
+        .entity_entity_overlaps =
+            {
+                .offset = entity_entity_offset,
+                .count = entity_entity_overlaps_.num(),
+            },
+        .entity_static_overlaps =
+            {
+                .offset = entity_static_offset,
+                .count = entity_static_overlaps_.num(),
+            },
+    });
+
+    return {entity_entity_overlaps_.get_const_view(), entity_static_overlaps_.get_const_view()};
 }
 void FCollisionSystem::reset_frame_events() {
     entity_entity_overlap_events_.reset();
     entity_static_overlap_events_.reset();
+    overlap_event_batches_.Reset();
 }
 FCollisionSystem::FCollisionSystem(FTestEntityRegistry const& registry) noexcept
     : entity_registry_{registry}
@@ -73,9 +94,6 @@ void FCollisionSystem::collect_overlaps_for_moved_entities(
     }
 
     sort_and_deduplicate_overlaps();
-
-    entity_entity_overlap_events_.append_from(entity_entity_overlaps_.get_const_view());
-    entity_static_overlap_events_.append_from(entity_static_overlaps_.get_const_view());
 }
 void FCollisionSystem::sort_and_deduplicate_overlaps() {
     auto const entity_pair_count{entity_entity_overlaps_.num()};
