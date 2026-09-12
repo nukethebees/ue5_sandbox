@@ -1,16 +1,14 @@
 #pragma once
 
 #include <CoreMinimal.h>
+#include <sandbox/simulation/simulation_config.h>
 #include <SandboxCoreEngine/SpeedResponse.h>
 #include <SpaceGameSimulation/combat/lasers/AttackDistanceBand.h>
 #include <SpaceGameSimulation/ships/common/BarrelRoll.h>
 
-struct SPACEGAMESIMULATION_API FSimulationLaserWeaponConfig {
-    int32 damage{5};
-    float projectile_speed{10000.f};
-    float max_distance{10000.f};
-    float fire_cooldown{0.33f};
-};
+using FSimulationLaserWeaponConfig = ml::simulation::LaserWeaponConfig;
+using FLaserSimulationConfig = ml::simulation::LaserSimulationConfig;
+using FOverlapResponseConfig = ml::simulation::OverlapResponseConfig;
 
 struct SPACEGAMESIMULATION_API FPlayerSimulationConfig {
     float thrust_energy_max{1.f};
@@ -42,15 +40,6 @@ struct SPACEGAMESIMULATION_API FPlayerSimulationConfig {
     FSimulationLaserWeaponConfig laser{};
     float laser_lock_on_transition_delay{1.f};
     float laser_lock_on_distance{10000.f};
-};
-
-struct SPACEGAMESIMULATION_API FLaserSimulationConfig {
-    int32 n_preallocated_instances{5000};
-    int32 collision_jobs{8};
-};
-
-struct SPACEGAMESIMULATION_API FOverlapResponseConfig {
-    int32 damage_per_overlap_detection{50};
 };
 
 struct SPACEGAMESIMULATION_API FCapitalSimulationConfig {

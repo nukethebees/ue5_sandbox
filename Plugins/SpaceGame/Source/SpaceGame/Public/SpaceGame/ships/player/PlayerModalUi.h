@@ -2,13 +2,13 @@
 
 #include <CoreMinimal.h>
 #include <SpaceGame/ships/player/PlayerControlContext.h>
+#include <SpaceGameSimulation/simulation/LevelTelemetrySnapshot.h>
 #include "PlayerModalUi.generated.h"
 
 class ASpaceGamePlayerController;
 class UTestBatchGameUiData;
 class UInputAction;
 struct FTestMissionCompletion;
-struct FLevelTelemetrySnapshot;
 namespace ml::ioj {
 class UGameUiRootLayout;
 class UPauseMenuWidget;
