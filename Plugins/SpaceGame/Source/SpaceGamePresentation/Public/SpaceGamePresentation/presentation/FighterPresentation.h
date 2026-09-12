@@ -1,19 +1,20 @@
 #pragma once
 
+#include <SpaceGamePresentation/entities/TeamColours.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
 #include <SpaceGameSimulation/simulation/SystemReadViews.h>
 
-#include <Components/InstancedStaticMeshComponent.h>
 #include <CoreMinimal.h>
+
+class USandboxISMCComponent;
 
 struct SPACEGAMEPRESENTATION_API FFighterPresentation {
     friend struct FLevelPresentation;
   public:
-    static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{3};
 
-    explicit FFighterPresentation(UInstancedStaticMeshComponent& component);
+    explicit FFighterPresentation(USandboxISMCComponent& component);
 
     void set_actor_config(FFighterConfig const* new_config) noexcept;
   private:
@@ -26,19 +27,14 @@ struct SPACEGAMEPRESENTATION_API FFighterPresentation {
     void end_tick_presentation();
 
     void configure_ismc();
-    void apply_simulation_changes_to_ismc();
-    void prepare_ismc_transforms();
     void update_ismc();
     void draw_debug_shapes();
-    void write_ismc_custom_data(int32 offset, int32 count);
     void validate_array_sizes() const;
 
-    UInstancedStaticMeshComponent* instances{nullptr};
+    USandboxISMCComponent* instances{nullptr};
 
     FFighterConfig const* actor_config{nullptr};
-    TArray<FTransform> ismc_transforms;
-    TArray<FTransform> dummy_transforms_spawn_buffer;
-    TArray<float> custom_data_buffer;
+    FTeamColours team_colours_;
 
     FDrawDebugConfig debug_drawer;
     bool enable_target_debug_drawing{false};

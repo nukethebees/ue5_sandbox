@@ -563,8 +563,10 @@ auto FLevelSimulationPresentationEquivalenceTest::RunTest(FString const&) -> boo
     resources.sparks = NewObject<USparkRendererComponent>(owner);
     owner->AddInstanceComponent(resources.sparks);
     resources.sparks->RegisterComponent();
-    for (auto** slot :
-         {&resources.capital_ships, &resources.fighters, &resources.turrets, &resources.spinners}) {
+    resources.fighters = NewObject<USandboxISMCComponent>(owner);
+    owner->AddInstanceComponent(resources.fighters);
+    resources.fighters->RegisterComponent();
+    for (auto** slot : {&resources.capital_ships, &resources.turrets, &resources.spinners}) {
         *slot = NewObject<UInstancedStaticMeshComponent>(owner);
         owner->AddInstanceComponent(*slot);
         (*slot)->RegisterComponent();
@@ -668,8 +670,10 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     resources.sparks = NewObject<USparkRendererComponent>(owner);
     owner->AddInstanceComponent(resources.sparks);
     resources.sparks->RegisterComponent();
-    for (auto** slot :
-         {&resources.capital_ships, &resources.fighters, &resources.turrets, &resources.spinners}) {
+    resources.fighters = NewObject<USandboxISMCComponent>(owner);
+    owner->AddInstanceComponent(resources.fighters);
+    resources.fighters->RegisterComponent();
+    for (auto** slot : {&resources.capital_ships, &resources.turrets, &resources.spinners}) {
         *slot = NewObject<UInstancedStaticMeshComponent>(owner);
         owner->AddInstanceComponent(*slot);
         (*slot)->RegisterComponent();

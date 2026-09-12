@@ -318,7 +318,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
     TObjectPtr<UInstancedStaticMeshComponent> capital_instances_;
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
-    TObjectPtr<UInstancedStaticMeshComponent> fighter_instances_;
+    TObjectPtr<USandboxISMCComponent> fighter_instances_;
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
     TObjectPtr<UInstancedStaticMeshComponent> turret_instances_;
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")

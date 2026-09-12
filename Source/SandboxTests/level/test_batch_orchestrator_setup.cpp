@@ -67,8 +67,9 @@ void FTestBatchOrchestratorSetupScenario::prepare_level() {
         TestRunner->TestTrue(TEXT("Batch components are available"), resources.is_valid());
         TestRunner->TestTrue(TEXT("Orchestrator owns the laser batch component"),
                              resources.lasers->GetOwner() == orchestrator);
-        for (auto* component :
-             {resources.capital_ships, resources.fighters, resources.turrets, resources.spinners}) {
+        TestRunner->TestTrue(TEXT("Orchestrator owns the fighter batch component"),
+                             resources.fighters->GetOwner() == orchestrator);
+        for (auto* component : {resources.capital_ships, resources.turrets, resources.spinners}) {
             TestRunner->TestTrue(TEXT("Orchestrator owns each batch component"),
                                  component->GetOwner() == orchestrator);
         }

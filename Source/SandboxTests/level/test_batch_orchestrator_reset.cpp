@@ -145,8 +145,9 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
         TEXT("Reset retains the orchestrator's presentation components"));
     checks.are_equal(
         0, retained.lasers->get_instance_count(), TEXT("Reset clears laser instances"));
-    for (auto const* component :
-         {retained.capital_ships, retained.fighters, retained.turrets, retained.spinners}) {
+    checks.are_equal(
+        0, retained.fighters->get_instance_count(), TEXT("Reset clears fighter instances"));
+    for (auto const* component : {retained.capital_ships, retained.turrets, retained.spinners}) {
         checks.are_equal(
             0, component->GetInstanceCount(), TEXT("Reset clears presentation instances"));
     }

@@ -152,7 +152,7 @@ ATestBatchOrchestrator::ATestBatchOrchestrator() {
     capital_instances_ =
         CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("CapitalShips"));
     capital_instances_->SetupAttachment(RootComponent);
-    fighter_instances_ = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("Fighters"));
+    fighter_instances_ = CreateDefaultSubobject<USandboxISMCComponent>(TEXT("Fighters"));
     fighter_instances_->SetupAttachment(RootComponent);
     turret_instances_ = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("Turrets"));
     turret_instances_->SetupAttachment(RootComponent);
@@ -256,10 +256,9 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     world_collision_.restore_collision();
     collision_grid_visualization->clear_collision_bounds();
     laser_instances_->clear_instances();
-    for (auto* component : {capital_instances_.Get(),
-                            fighter_instances_.Get(),
-                            turret_instances_.Get(),
-                            spinner_instances_.Get()}) {
+    fighter_instances_->clear_instances();
+    for (auto* component :
+         {capital_instances_.Get(), turret_instances_.Get(), spinner_instances_.Get()}) {
         component->ClearInstances();
     }
 

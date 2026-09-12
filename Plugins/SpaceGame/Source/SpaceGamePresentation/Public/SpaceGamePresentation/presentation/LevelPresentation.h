@@ -14,7 +14,7 @@
 struct SPACEGAMEPRESENTATION_API FLevelPresentationResources {
     USandboxISMCComponent* lasers{nullptr};
     UInstancedStaticMeshComponent* capital_ships{nullptr};
-    UInstancedStaticMeshComponent* fighters{nullptr};
+    USandboxISMCComponent* fighters{nullptr};
     UInstancedStaticMeshComponent* turrets{nullptr};
     UInstancedStaticMeshComponent* spinners{nullptr};
     USparkRendererComponent* sparks{nullptr};
