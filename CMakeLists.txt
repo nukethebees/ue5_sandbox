@@ -4,7 +4,7 @@ project(SandboxUnrealBuild LANGUAGES CXX)
 
 enable_testing()
 
-include(cmake/compiler_warnings.cmake)
+add_subdirectory(cmake/compiler_warnings)
 
 option(SANDBOX_CODEGEN_ONLY "Configure only the standalone code generator" OFF)
 option(SANDBOX_NATIVE_MEMORY_ONLY "Configure only the standalone native memory library" OFF)
@@ -320,238 +320,69 @@ add_dependencies(editor
 add_dependencies(game check-space-game-layers)
 add_dependencies(game check-generated-code)
 
-add_custom_target(generate-lab-images
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
-    -run=GenerateSandboxImages
-    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
-    -ddc=NoZenLocalFallback
-    -unattended
-    -nop4
-    -nosplash
-    -nullrhi
-    -nosound
-    -stdout
-  DEPENDS editor
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+add_unreal_commandlet_target(generate-lab-images
+  COMMANDLET GenerateSandboxImages
   COMMENT "Regenerating SandboxImages Lab PNGs"
-  USES_TERMINAL
-  VERBATIM
 )
 
-add_custom_target(generate-s7lab-assets
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
-    -run=GenerateS7LabAssets
-    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
-    -ddc=NoZenLocalFallback
-    -unattended
-    -nop4
-    -nosplash
-    -nullrhi
-    -nosound
-    -stdout
-  DEPENDS editor
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+add_unreal_commandlet_target(generate-s7lab-assets
+  COMMANDLET GenerateS7LabAssets
   COMMENT "Generating S7Lab Editor Utility Widget assets"
-  USES_TERMINAL
-  VERBATIM
 )
 
-add_custom_target(generate-slate-dsl-smoke-asset
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
-    -run=GenerateSlateDslSmokeAsset
-    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
-    -ddc=NoZenLocalFallback
-    -unattended
-    -nop4
-    -nosplash
-    -nullrhi
-    -nosound
-    -stdout
-  DEPENDS editor
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+add_unreal_commandlet_target(generate-slate-dsl-smoke-asset
+  COMMANDLET GenerateSlateDslSmokeAsset
   COMMENT "Generating the Slate DSL smoke Editor Utility Widget asset"
-  USES_TERMINAL
-  VERBATIM
 )
 
-add_custom_target(generate-scripted-level-assets
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
-    -run=GenerateScriptedLevelAssets
-    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
-    -ddc=NoZenLocalFallback
-    -unattended
-    -nop4
-    -nosplash
-    -nullrhi
-    -nosound
-    -stdout
-  DEPENDS editor
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+add_unreal_commandlet_target(generate-scripted-level-assets
+  COMMANDLET GenerateScriptedLevelAssets
   COMMENT "Generating scripted-level runtime and menu assets"
-  USES_TERMINAL
-  VERBATIM
 )
 
-add_custom_target(import-game-audio
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
-    -run=ImportGameAudio
-    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
-    -ddc=NoZenLocalFallback
-    -unattended
-    -nop4
-    -nosplash
-    -nullrhi
-    -nosound
-    -stdout
-  DEPENDS editor
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+add_unreal_commandlet_target(import-game-audio
+  COMMANDLET ImportGameAudio
   COMMENT "Importing optional local game audio"
-  USES_TERMINAL
-  VERBATIM
 )
 
-add_custom_target(generate-lab-mesh-box
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
-    -run=GenerateSandboxMeshBox
-    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
-    -ddc=NoZenLocalFallback
-    -unattended
-    -nop4
-    -nosplash
-    -nullrhi
-    -nosound
-    -stdout
-  DEPENDS editor
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+add_unreal_commandlet_target(generate-lab-mesh-box
+  COMMANDLET GenerateSandboxMeshBox
   COMMENT "Generating the SandboxMesh Lab box"
-  USES_TERMINAL
-  VERBATIM
 )
 
-add_custom_target(generate-lab-mesh-cylinder
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
-    -run=GenerateSandboxMeshCylinder
-    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
-    -ddc=NoZenLocalFallback
-    -unattended
-    -nop4
-    -nosplash
-    -nullrhi
-    -nosound
-    -stdout
-  DEPENDS editor
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+add_unreal_commandlet_target(generate-lab-mesh-cylinder
+  COMMANDLET GenerateSandboxMeshCylinder
   COMMENT "Generating the SandboxMesh Lab cylinder"
-  USES_TERMINAL
-  VERBATIM
 )
 
-add_custom_target(generate-lab-mesh-sphere
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
-    -run=GenerateSandboxMeshSphere
-    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
-    -ddc=NoZenLocalFallback
-    -unattended
-    -nop4
-    -nosplash
-    -nullrhi
-    -nosound
-    -stdout
-  DEPENDS editor
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+add_unreal_commandlet_target(generate-lab-mesh-sphere
+  COMMANDLET GenerateSandboxMeshSphere
   COMMENT "Generating the SandboxMesh Lab sphere"
-  USES_TERMINAL
-  VERBATIM
 )
 
-add_custom_target(generate-lab-mesh-cone
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
-    -run=GenerateSandboxMeshCone
-    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
-    -ddc=NoZenLocalFallback
-    -unattended
-    -nop4
-    -nosplash
-    -nullrhi
-    -nosound
-    -stdout
-  DEPENDS editor
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+add_unreal_commandlet_target(generate-lab-mesh-cone
+  COMMANDLET GenerateSandboxMeshCone
   COMMENT "Generating the SandboxMesh Lab cone"
-  USES_TERMINAL
-  VERBATIM
 )
 
-add_custom_target(generate-lab-mesh-hex-frame
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
-    -run=GenerateSandboxMeshHexFrame
-    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
-    -ddc=NoZenLocalFallback
-    -unattended
-    -nop4
-    -nosplash
-    -nullrhi
-    -nosound
-    -stdout
-  DEPENDS editor
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+add_unreal_commandlet_target(generate-lab-mesh-hex-frame
+  COMMANDLET GenerateSandboxMeshHexFrame
   COMMENT "Generating the SandboxMesh Lab hex frame"
-  USES_TERMINAL
-  VERBATIM
 )
 
-add_custom_target(generate-lab-mesh-hex-tile
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
-    -run=GenerateSandboxMeshHexTile
-    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
-    -ddc=NoZenLocalFallback
-    -unattended
-    -nop4
-    -nosplash
-    -nullrhi
-    -nosound
-    -stdout
-  DEPENDS editor
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+add_unreal_commandlet_target(generate-lab-mesh-hex-tile
+  COMMANDLET GenerateSandboxMeshHexTile
   COMMENT "Generating the SandboxMesh Lab hex tile"
-  USES_TERMINAL
-  VERBATIM
 )
 
-add_custom_target(generate-lab-mesh-honeycomb-panel
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
-    -run=GenerateSandboxMeshHoneycombPanel
-    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
-    -ddc=NoZenLocalFallback
-    -unattended
-    -nop4
-    -nosplash
-    -nullrhi
-    -nosound
-    -stdout
-  DEPENDS editor
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+add_unreal_commandlet_target(generate-lab-mesh-honeycomb-panel
+  COMMANDLET GenerateSandboxMeshHoneycombPanel
   COMMENT "Generating the SandboxMesh Lab honeycomb panel"
-  USES_TERMINAL
-  VERBATIM
 )
 
-add_custom_target(generate-lab-mesh-assemblies
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
-    -run=GenerateSandboxMeshAssemblies
-    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
-    -ddc=NoZenLocalFallback
-    -unattended
-    -nop4
-    -nosplash
-    -nullrhi
-    -nosound
-    -stdout
-  DEPENDS editor
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+add_unreal_commandlet_target(generate-lab-mesh-assemblies
+  COMMANDLET GenerateSandboxMeshAssemblies
   COMMENT "Generating SandboxMesh Lab JSON assemblies"
-  USES_TERMINAL
-  VERBATIM
 )
 
 set(SANDBOX_UNIT_AUTOMATION_FILTERS
@@ -598,47 +429,24 @@ add_unreal_automation_test(
   LABELS all
 )
 
-add_test(
-  NAME SandboxISMC.RenderTests
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+add_unreal_editor_test(SandboxISMC.RenderTests
+  ARGUMENTS
     "-ExecCmds=Automation RunTests StartsWith:SandboxISMC.RenderTests; Quit"
     -RenderOffscreen
-    -unattended
-    -nop4
-    -nosplash
-    -nosound
-    -stdout
-    -ddc=NoZenLocalFallback
-    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
-)
-set_tests_properties(SandboxISMC.RenderTests PROPERTIES
-  LABELS "level;all"
+  LABELS level all
   TIMEOUT 900
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
-add_test(
-  NAME Sandbox.SparkRenderTests
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+add_unreal_editor_test(Sandbox.SparkRenderTests
+  ARGUMENTS
     "-ExecCmds=Automation RunTests StartsWith:Sandbox.SparkRenderTests; Quit"
     -RenderOffscreen
-    -unattended
-    -nop4
-    -nosplash
-    -nosound
-    -stdout
-    -ddc=NoZenLocalFallback
-    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
-)
-set_tests_properties(Sandbox.SparkRenderTests PROPERTIES
-  LABELS "level;all"
+  LABELS level all
   TIMEOUT 900
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
-add_test(
-  NAME SandboxBenchmarks.SparkBenchmark
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+add_unreal_editor_test(SandboxBenchmarks.SparkBenchmark
+  ARGUMENTS
     "-ExecCmds=Automation RunTests StartsWith:SandboxBenchmarks.SparkBenchmark; Quit"
     "-SandboxSparkBenchmarkSeconds=${SANDBOX_SPARK_BENCHMARK_SECONDS}"
     "-SandboxSparkBenchmarkCapacity=${SANDBOX_SPARK_BENCHMARK_CAPACITY}"
@@ -646,84 +454,40 @@ add_test(
     "-SandboxSparkBenchmarkImpactsPerFrame=${SANDBOX_SPARK_BENCHMARK_IMPACTS_PER_FRAME}"
     "-SandboxSparkBenchmarkWarmupFrames=${SANDBOX_SPARK_BENCHMARK_WARMUP_FRAMES}"
     -RenderOffscreen
-    -unattended
-    -nop4
-    -nosplash
-    -nosound
-    -stdout
     -FullStdOutLogOutput
-    -ddc=NoZenLocalFallback
-    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
-)
-set_tests_properties(SandboxBenchmarks.SparkBenchmark PROPERTIES
   LABELS spark-benchmark
   TIMEOUT 1200
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
-add_test(
-  NAME SandboxBenchmarks.LevelTelemetryStorage
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+add_unreal_editor_test(SandboxBenchmarks.LevelTelemetryStorage
+  ARGUMENTS
     "-ExecCmds=Automation RunTests SandboxBenchmarks.LevelTelemetryStorage; Quit"
     "-SandboxTelemetryBenchmarkSamples=${SANDBOX_TELEMETRY_BENCHMARK_SAMPLES}"
-    -unattended
-    -nop4
-    -nosplash
-    -nosound
-    -stdout
     -FullStdOutLogOutput
-    -ddc=NoZenLocalFallback
-    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
-)
-set_tests_properties(SandboxBenchmarks.LevelTelemetryStorage PROPERTIES
   LABELS telemetry-benchmark
   TIMEOUT 1200
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
-add_test(
-  NAME SandboxBenchmarks.LevelTelemetryIntegration
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+add_unreal_editor_test(SandboxBenchmarks.LevelTelemetryIntegration
+  ARGUMENTS
     "-ExecCmds=Automation RunTests SandboxBenchmarks.TelemetryBenchmark; Quit"
-    -unattended
-    -nop4
-    -nosplash
-    -nosound
-    -stdout
     -FullStdOutLogOutput
-    -ddc=NoZenLocalFallback
-    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
-)
-set_tests_properties(SandboxBenchmarks.LevelTelemetryIntegration PROPERTIES
   LABELS telemetry-benchmark
   TIMEOUT 1200
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
-add_test(
-  NAME SandboxBenchmarks.FrameMemoryLevel
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+add_unreal_editor_test(SandboxBenchmarks.FrameMemoryLevel
+  ARGUMENTS
     "-ExecCmds=Automation RunTests SandboxBenchmarks.FrameMemoryLevel; Quit"
     "-SandboxFrameMemoryLevelBenchmarkSeconds=${SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK_SECONDS}"
-    -unattended
-    -nop4
-    -nosplash
     -nullrhi
-    -nosound
-    -stdout
     -FullStdOutLogOutput
-    -ddc=NoZenLocalFallback
-    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
-)
-set_tests_properties(SandboxBenchmarks.FrameMemoryLevel PROPERTIES
   LABELS frame-memory-level-benchmark
   TIMEOUT 1200
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
-add_test(
-  NAME SandboxISMC.RemoteBenchmark
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+add_unreal_editor_test(SandboxISMC.RemoteBenchmark
+  ARGUMENTS
     "-ExecCmds=Automation RunTests SandboxISMC.RemoteBenchmark; Quit"
     "-SandboxISMCBenchmarkSeconds=${SANDBOX_ISMC_BENCHMARK_SECONDS}"
     "-SandboxISMCBenchmarkInstances=${SANDBOX_ISMC_BENCHMARK_INSTANCES}"
@@ -739,19 +503,9 @@ add_test(
     "-SandboxISMCBenchmarkShadows=${SANDBOX_ISMC_BENCHMARK_SHADOWS}"
     -SandboxISMCBenchmarkEndPIE
     -RenderOffscreen
-    -unattended
-    -nop4
-    -nosplash
-    -nosound
-    -stdout
     -FullStdOutLogOutput
-    -ddc=NoZenLocalFallback
-    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
-)
-set_tests_properties(SandboxISMC.RemoteBenchmark PROPERTIES
   LABELS sandbox-ismc-benchmark
   TIMEOUT 600
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
 add_custom_target(dev-core

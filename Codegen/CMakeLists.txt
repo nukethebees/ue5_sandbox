@@ -14,21 +14,6 @@ if(SANDBOX_KERNEL_BENCHMARK_PLOTS)
   find_program(UV_EXECUTABLE NAMES uv REQUIRED)
 endif()
 
-add_library(sandbox_codegen_warnings INTERFACE)
-add_library(sandbox::codegen_warnings ALIAS sandbox_codegen_warnings)
-if(SANDBOX_MSVC_FRONTEND)
-  target_compile_options(sandbox_codegen_warnings INTERFACE /W4 /WX)
-else()
-  target_compile_options(sandbox_codegen_warnings INTERFACE
-    -Wall
-    -Wextra
-    -Wpedantic
-    -Werror
-    -Wno-missing-designated-field-initializers
-    -Wno-missing-field-initializers
-  )
-endif()
-
 add_subdirectory(sexpr)
 add_subdirectory(
   "${PROJECT_SOURCE_DIR}/native/material_gen"
