@@ -17,7 +17,8 @@ auto capacity_for_bytes(SIZE_T const bytes) -> int32 {
 }
 
 constexpr auto logical_payload_bytes_per_row() -> SIZE_T {
-    return sizeof(uint64) * 6 + sizeof(int32) * 8 + sizeof(FTestEntityRegistry::EntityTypeCounts) +
+    return sizeof(uint64) * 5 + sizeof(ml::level_telemetry::FHistoryFieldMask) + sizeof(int32) * 8 +
+           sizeof(FTestEntityRegistry::EntityTypeCounts) +
            sizeof(FTestEntityRegistry::EntityCounts) + sizeof(double);
 }
 }

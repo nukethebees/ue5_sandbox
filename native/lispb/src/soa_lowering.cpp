@@ -11,6 +11,157 @@
 namespace codegen::detail {
 namespace {
 
+auto title_case_identifier(std::string_view const identifier) -> std::string {
+    std::string result;
+    result.reserve(identifier.size());
+    bool capitalize{true};
+    for (auto const character : identifier) {
+        if (character == '_') {
+            capitalize = true;
+            continue;
+        }
+        result.push_back(
+            capitalize ? static_cast<char>(std::toupper(static_cast<unsigned char>(character)))
+                       : character);
+        capitalize = false;
+    }
+    return result;
+}
+
+auto mask_field_width(SoaMemberSchema const& member) -> std::string {
+    if (member.mask_dimensions.empty()) {
+        return "1";
+    }
+    std::vector<std::string> extents;
+    extents.reserve(member.mask_dimensions.size());
+    for (auto const& dimension : member.mask_dimensions) {
+        extents.push_back("(" + dimension.extent + ")");
+    }
+    return join(extents, " * ");
+}
+
+auto mask_index_expression(SoaMemberSchema const& member) -> std::string {
+    std::vector<std::string> terms;
+    auto const dimension_count{member.mask_dimensions.size()};
+    terms.reserve(dimension_count);
+    for (std::size_t index{}; index < dimension_count; ++index) {
+        auto term{member.mask_dimensions[index].index_name};
+        for (auto extent_index{index + 1}; extent_index < dimension_count; ++extent_index) {
+            term += " * (" + member.mask_dimensions[extent_index].extent + ")";
+        }
+        terms.push_back(std::move(term));
+    }
+    return join(terms, " + ");
+}
+
+auto field_mask_nodes(SoaSchema const& schema) -> Nodes {
+    if (!schema.field_mask_name.has_value()) {
+        return {};
+    }
+
+    auto const& mask_name{*schema.field_mask_name};
+    auto const& enum_name{*schema.field_enum_name};
+    std::string output{"enum class " + enum_name + " : uint8 {\n"};
+    std::string previous_name;
+    std::string previous_width;
+    for (auto const& member : schema.members) {
+        if (!member.mask_field) {
+            continue;
+        }
+        auto const name{title_case_identifier(member.name)};
+        auto const initializer{previous_name.empty() ? "0"
+                                                     : "static_cast<uint8>(" + previous_name +
+                                                           ") + " + previous_width};
+        output += "    " + name + " = " + initializer + ",\n";
+        previous_name = name;
+        previous_width = mask_field_width(member);
+    }
+    output +=
+        "    Count = static_cast<uint8>(" + previous_name + ") + " + previous_width + ",\n};\n\n";
+
+    output +=
+        "struct " + mask_name +
+        " {\n"
+        "    inline static constexpr int32 field_count{static_cast<int32>(" +
+        enum_name +
+        "::Count)};\n"
+        "    static_assert(field_count <= 64, \"Field mask exceeds 64 bits.\");\n"
+        "    using storage_type = std::conditional_t<\n"
+        "        field_count <= 8,\n"
+        "        uint8,\n"
+        "        std::conditional_t<field_count <= 16,\n"
+        "                           uint16,\n"
+        "                           std::conditional_t<field_count <= 32, uint32, uint64>>>;\n\n"
+        "    constexpr " +
+        mask_name +
+        "() noexcept = default;\n"
+        "    explicit constexpr " +
+        mask_name +
+        "(storage_type const value) noexcept : value_{value} {}\n\n"
+        "    [[nodiscard]] constexpr auto value() const noexcept -> storage_type { return value_; "
+        "}\n"
+        "    [[nodiscard]] constexpr auto is_empty() const noexcept -> bool { return value_ == 0; "
+        "}\n"
+        "    [[nodiscard]] constexpr auto has(" +
+        enum_name +
+        " const field) const noexcept -> bool {\n"
+        "        return (value_ & bit(field)) != 0;\n"
+        "    }\n"
+        "    [[nodiscard]] static constexpr auto index(" +
+        enum_name +
+        " const field) noexcept -> int32 {\n"
+        "        return static_cast<int32>(field);\n"
+        "    }\n"
+        "    constexpr void set(" +
+        enum_name +
+        " const field) noexcept { value_ |= bit(field); }\n"
+        "    constexpr void set(" +
+        mask_name +
+        " const fields) noexcept { value_ |= fields.value_; }\n"
+        "    constexpr void clear(" +
+        enum_name +
+        " const field) noexcept {\n"
+        "        value_ = static_cast<storage_type>(value_ & ~bit(field));\n"
+        "    }\n";
+
+    for (auto const& member : schema.members) {
+        if (!member.mask_field || member.mask_dimensions.empty()) {
+            continue;
+        }
+        output += "\n    [[nodiscard]] static constexpr auto " + member.name + "_field(";
+        for (std::size_t index{}; index < member.mask_dimensions.size(); ++index) {
+            if (index > 0) {
+                output += ", ";
+            }
+            output += "int32 const " + member.mask_dimensions[index].index_name;
+        }
+        output += ") noexcept -> " + enum_name +
+                  " {\n"
+                  "        return static_cast<" +
+                  enum_name + ">(static_cast<int32>(" + enum_name +
+                  "::" + title_case_identifier(member.name) + ") + " +
+                  mask_index_expression(member) +
+                  ");\n"
+                  "    }\n";
+    }
+
+    output += "  private:\n"
+              "    [[nodiscard]] static constexpr auto bit(" +
+              enum_name +
+              " const field) noexcept -> storage_type {\n"
+              "        return static_cast<storage_type>(uint64{1} << static_cast<uint8>(field));\n"
+              "    }\n\n"
+              "    storage_type value_{};\n"
+              "};\n"
+              "static_assert(sizeof(" +
+              mask_name + ") == sizeof(" + mask_name +
+              "::storage_type));\n"
+              "static_assert(std::is_trivially_copyable_v<" +
+              mask_name + ">);";
+
+    return {raw(std::move(output), {TypeDependency{"std::conditional_t", "type_traits", {}}})};
+}
+
 auto lower_soa_impl(SoaSchema const& schema,
                     std::map<std::string, CppType> const& types,
                     Nodes storage_prelude) -> LoweredSoa {
@@ -27,6 +178,10 @@ auto lower_soa_impl(SoaSchema const& schema,
                                   std::move(storage_prelude))};
 
     NodeListBuilder header;
+    auto mask_nodes{field_mask_nodes(schema)};
+    if (!mask_nodes.empty()) {
+        header.append(std::move(mask_nodes)).new_lines(2);
+    }
     header.append(soa_view_struct_nodes(schema, members, types, view_name, const_view_name))
         .add(std::move(storage));
 

@@ -5,8 +5,14 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace codegen {
+
+struct SoaMaskDimensionSchema {
+    std::string index_name;
+    std::string extent;
+};
 
 struct SoaMemberSchema {
     std::string name;
@@ -14,6 +20,8 @@ struct SoaMemberSchema {
     TypeRef type;
     std::optional<std::string> fixed_schema;
     std::optional<std::string> nested_schema;
+    bool mask_field{false};
+    std::vector<SoaMaskDimensionSchema> mask_dimensions;
 };
 
 } // namespace codegen

@@ -31,6 +31,17 @@ auto valid_soa_module() -> SoaModuleSchema {
     };
 }
 
+auto valid_mask_soa_module() -> SoaModuleSchema {
+    auto module{valid_soa_module()};
+    auto& schema{module.structs.front()};
+    schema.field_mask_name = "FFieldMask";
+    schema.field_enum_name = "EField";
+    schema.members.insert(schema.members.begin(),
+                          SoaMemberSchema{"masks", SoaMemberKind::array, TypeRef{"FFieldMask"}});
+    schema.members.back().mask_field = true;
+    return module;
+}
+
 auto valid_vector_module() -> VectorModuleSchema {
     return VectorModuleSchema{
         .settings =
@@ -417,6 +428,42 @@ TEST(Validation, RejectsMalformedSoaMemberIdentifiers) {
     auto module{valid_soa_module()};
     module.structs.front().members.front().name = "bad-name";
 
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
+TEST(Validation, RejectsIncompleteSoaFieldMaskDeclarations) {
+    auto module{valid_mask_soa_module()};
+    module.structs.front().field_enum_name.reset();
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_mask_soa_module();
+    module.structs.front().field_mask_name.reset();
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
+TEST(Validation, RejectsInvalidSoaFieldMaskMembers) {
+    auto module{valid_mask_soa_module()};
+    module.structs.front().members.front().type = TypeRef{"uint8"};
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_mask_soa_module();
+    module.structs.front().members.back().mask_field = false;
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_soa_module();
+    module.structs.front().members.front().mask_field = true;
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
+TEST(Validation, RejectsInvalidSoaMaskDimensions) {
+    auto module{valid_mask_soa_module()};
+    auto& member{module.structs.front().members.back()};
+    member.mask_dimensions.push_back({"field_index", "4"});
+    member.mask_dimensions.push_back({"field_index", "2"});
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_mask_soa_module();
+    module.structs.front().members.back().mask_dimensions.push_back({"bad-index", "4"});
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
