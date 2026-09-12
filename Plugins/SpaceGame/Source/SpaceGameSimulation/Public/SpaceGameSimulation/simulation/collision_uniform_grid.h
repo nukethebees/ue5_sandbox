@@ -121,14 +121,6 @@ struct SPACEGAMESIMULATION_API CollisionUniformGrid {
         PerTrace,
     };
 
-    template <ETraceKind TraceKind>
-    static auto trace_aabb(WorldAABBs::ConstView const& aabbs,
-                           int32 aabb_index,
-                           FVector3f trace_start,
-                           FVector3f inverse_trace_delta,
-                           FVector3f trace_delta,
-                           FVector3f expansion) -> float;
-
     template <ETraceKind TraceKind,
               EIgnoredEntityMode IgnoredEntityMode,
               ETraceEntityFilter EntityFilter>

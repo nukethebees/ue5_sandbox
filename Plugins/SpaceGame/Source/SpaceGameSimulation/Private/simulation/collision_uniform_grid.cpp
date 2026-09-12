@@ -1,5 +1,6 @@
 #include "SpaceGameSimulation/simulation/collision_uniform_grid.h"
 
+#include <sandbox/simulation/collision_grid.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/entities/TestEntityType.h>
@@ -23,66 +24,21 @@ static_assert(FEntityAABBs::fighter_index ==
 static_assert(FEntityAABBs::tube_spinner_index == std::to_underlying(ETestEntityType::TubeSpinner));
 static_assert(FEntityAABBs::num_rows == std::to_underlying(ETestEntityType::COUNT));
 
-auto to_cell(float const value, float const cell_dim, float const half_grid_extent) -> int32 {
-    return FMath::FloorToInt((value + half_grid_extent) / cell_dim);
+auto to_native(FVector3f const value) noexcept -> simulation::collision::Vec3f {
+    return {value.X, value.Y, value.Z};
 }
-
-auto to_closed_max_cell(float const value,
-                        float const cell_dim,
-                        int32 const grid_dim,
-                        float const half_grid_extent) -> int32 {
-    if (value == half_grid_extent) {
-        return grid_dim - 1;
-    }
-
-    return to_cell(value, cell_dim, half_grid_extent);
+auto to_unreal(simulation::collision::Vec3f const value) noexcept -> FVector3f {
+    return {value.x, value.y, value.z};
 }
-
-auto clip_segment_to_half_open_aabb(FVector3f const start,
-                                    FVector3f const end,
-                                    FVector3f const bounds_min,
-                                    FVector3f const bounds_max_inside,
-                                    FVector3f& clipped_start,
-                                    FVector3f& clipped_end) -> bool {
-    auto const delta{end - start};
-    float entry_t{};
-    float exit_t{1.f};
-
-    // Intersect the segment's t range with the grid slab on each axis.
-    for (int32 axis{}; axis < 3; ++axis) {
-        auto const axis_delta{delta[axis]};
-        if (axis_delta == 0.f) {
-            // A parallel segment overlaps this slab only when its fixed coordinate is inside it.
-            if (start[axis] < bounds_min[axis] || start[axis] > bounds_max_inside[axis]) {
-                return false;
-            }
-
-            continue;
-        }
-
-        auto axis_entry_t{(bounds_min[axis] - start[axis]) / axis_delta};
-        auto axis_exit_t{(bounds_max_inside[axis] - start[axis]) / axis_delta};
-        if (axis_entry_t > axis_exit_t) {
-            Swap(axis_entry_t, axis_exit_t);
-        }
-
-        entry_t = FMath::Max(entry_t, axis_entry_t);
-        exit_t = FMath::Min(exit_t, axis_exit_t);
-        if (entry_t > exit_t) {
-            return false;
-        }
-    }
-
-    clipped_start = start + (delta * entry_t);
-    clipped_end = start + (delta * exit_t);
-    for (int32 axis{}; axis < 3; ++axis) {
-        clipped_start[axis] =
-            FMath::Clamp(clipped_start[axis], bounds_min[axis], bounds_max_inside[axis]);
-        clipped_end[axis] =
-            FMath::Clamp(clipped_end[axis], bounds_min[axis], bounds_max_inside[axis]);
-    }
-
-    return true;
+auto to_native(FIntVector3 const value) noexcept -> simulation::collision::CellCoord {
+    return {value.X, value.Y, value.Z};
+}
+auto to_unreal(simulation::collision::CellCoord const value) noexcept -> FIntVector3 {
+    return {value.x, value.y, value.z};
+}
+auto grid_geometry(FIntVector3 const dimensions, FVector3f const cell_dimensions) noexcept
+    -> simulation::collision::GridGeometry {
+    return {to_native(dimensions), to_native(cell_dimensions)};
 }
 }
 
@@ -104,13 +60,7 @@ CollisionUniformGrid::CollisionUniformGrid(FTestEntityRegistry const& entity_reg
     : entity_registry_{entity_registry} {}
 
 auto CollisionUniformGrid::is_configured() const noexcept -> bool {
-    if (grid_dims_.X <= 0 || grid_dims_.Y <= 0 || grid_dims_.Z <= 0 || cell_dims_.X <= 0.0f ||
-        cell_dims_.Y <= 0.0f || cell_dims_.Z <= 0.0f) {
-        return false;
-    }
-
-    auto const xy_cell_count{static_cast<int64>(grid_dims_.X) * grid_dims_.Y};
-    return xy_cell_count <= (std::numeric_limits<int32>::max() / grid_dims_.Z);
+    return simulation::collision::is_configured(grid_geometry(grid_dims_, cell_dims_));
 }
 
 auto CollisionUniformGrid::num_cells() const -> int32 {
@@ -530,56 +480,6 @@ void CollisionUniformGrid::append_overlaps(FBox3f const& query_bounds,
     }
 }
 
-template <CollisionUniformGrid::ETraceKind TraceKind>
-auto CollisionUniformGrid::trace_aabb(WorldAABBs::ConstView const& aabbs,
-                                      int32 const aabb_index,
-                                      FVector3f const trace_start,
-                                      FVector3f const inverse_trace_delta,
-                                      FVector3f const trace_delta,
-                                      FVector3f const expansion) -> float {
-    constexpr auto no_hit{std::numeric_limits<float>::infinity()};
-
-    auto aabb_min{aabbs.mins[aabb_index]};
-    auto aabb_max{aabbs.maxes[aabb_index]};
-    if constexpr (TraceKind == ETraceKind::Sweep) {
-        aabb_min -= expansion;
-        aabb_max += expansion;
-    } else if constexpr (TraceKind != ETraceKind::Line) {
-        static_assert(false, "Unsupported collision trace kind.");
-    }
-
-    float tmin{0.f};
-    float tmax{1.f};
-    for (int32 axis{}; axis < 3; ++axis) {
-        auto const slab_min{aabb_min[axis]};
-        auto const slab_max{aabb_max[axis]};
-        auto const start{trace_start[axis]};
-        auto const axis_delta{trace_delta[axis]};
-
-        if (axis_delta == 0.f) {
-            if (start < slab_min || start > slab_max) {
-                return no_hit;
-            }
-
-            continue;
-        }
-
-        auto t1{(slab_min - start) * inverse_trace_delta[axis]};
-        auto t2{(slab_max - start) * inverse_trace_delta[axis]};
-        if (t1 > t2) {
-            Swap(t1, t2);
-        }
-
-        tmin = std::max(tmin, t1);
-        tmax = std::min(tmax, t2);
-        if (tmin > tmax) {
-            return no_hit;
-        }
-    }
-
-    return tmin;
-}
-
 void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
                                        FTraceHitsView const& hits) const {
     line_trace_count_.fetch_add(static_cast<uint64>(traces.num()), std::memory_order_relaxed);
@@ -664,8 +564,6 @@ void CollisionUniformGrid::trace_aabbs_impl(
     FTraceHitsView const& hits,
     TConstArrayView<FRegistryEntityHandle> const ignored_entities,
     FVector3f const moving_half_extent) const {
-    constexpr int32 n_axes{3};
-
     auto const n{traces.num()};
     check(n == hits.num());
     if constexpr (IgnoredEntityMode == EIgnoredEntityMode::PerTrace) {
@@ -677,58 +575,12 @@ void CollisionUniformGrid::trace_aabbs_impl(
     auto const grid_width{grid_dims_.X};
     auto const grid_plane_stride{grid_dims_.X * grid_dims_.Y};
     FIntVector3 const max_cell_coord{grid_dims_.X - 1, grid_dims_.Y - 1, grid_dims_.Z - 1};
-    FVector3f const grid_dimensions{static_cast<float>(grid_dims_.X),
-                                    static_cast<float>(grid_dims_.Y),
-                                    static_cast<float>(grid_dims_.Z)};
-    auto const half_grid_size{grid_dimensions * cell_dims_ * 0.5f};
-    auto const grid_min{-half_grid_size};
-    auto const grid_max{half_grid_size};
-    auto grid_max_inside{grid_max};
-    for (int32 axis{}; axis < n_axes; ++axis) {
-        grid_max_inside[axis] = std::nextafter(grid_max[axis], grid_min[axis]);
-    }
-    auto const to_traversal_cell_coord{[this, max_cell_coord](FVector3f const position) {
-        auto cell_coord{to_cell_coord(position)};
-        for (int32 axis{}; axis < n_axes; ++axis) {
-            cell_coord[axis] = FMath::Clamp(cell_coord[axis], 0, max_cell_coord[axis]);
-        }
-        return cell_coord;
-    }};
+    auto const geometry{grid_geometry(grid_dims_, cell_dims_)};
     auto const to_linear_index{[grid_width, grid_plane_stride](FIntVector3 const cell) {
         return cell.X + cell.Y * grid_width + cell.Z * grid_plane_stride;
     }};
     auto const static_aabb_indices{TConstArrayView<int32>{static_aabb_indices_}};
     auto const static_aabbs{static_aabbs_.get_const_view()};
-
-    constexpr auto initialise_traversal_axis{[](float const cell_min,
-                                                float const cell_dim,
-                                                float const start,
-                                                float const delta,
-                                                int32& step,
-                                                float& t,
-                                                float& t_delta) {
-        if (delta == 0.0f) {
-            step = 0;
-            t = TNumericLimits<float>::Max();
-            t_delta = TNumericLimits<float>::Max();
-            return;
-        }
-
-        step = delta > 0.0f ? 1 : -1;
-        auto const next_cell_boundary{cell_min + (step > 0 ? cell_dim : 0.0f)};
-        t = (next_cell_boundary - start) / delta;
-        t_delta = cell_dim / FMath::Abs(delta);
-    }};
-    constexpr auto advance_to_next_cell{
-        [](FIntVector3& cell, FIntVector3 const& steps, FVector3f& t, FVector3f const& t_deltas) {
-            auto const next_t{FMath::Min3(t.X, t.Y, t.Z)};
-            for (int32 axis{}; axis < 3; ++axis) {
-                if (t[axis] == next_t) {
-                    cell[axis] += steps[axis];
-                    t[axis] += t_deltas[axis];
-                }
-            }
-        }};
     FIntVector3 cell_padding{};
     if constexpr (TraceKind == ETraceKind::Sweep) {
         cell_padding = {
@@ -748,44 +600,22 @@ void CollisionUniformGrid::trace_aabbs_impl(
         auto const p0{traces.starts[i_test]};
         auto const p1{traces.ends[i_test]};
         auto const delta{p1 - p0};
-        FVector3f traversal_start;
-        FVector3f traversal_end;
-
-        // Restrict this trace to the grid before converting its endpoints to cell coordinates.
-        // This also rejects parallel traces on the excluded positive grid boundary.
-        if (!clip_segment_to_half_open_aabb(
-                p0, p1, grid_min, grid_max_inside, traversal_start, traversal_end)) {
+        simulation::collision::GridTraversal traversal;
+        if (!simulation::collision::GridTraversal::create(
+                geometry, to_native(p0), to_native(p1), traversal)) {
             continue;
         }
-
-        auto const coord0{to_traversal_cell_coord(traversal_start)};
-        auto const coord1{to_traversal_cell_coord(traversal_end)};
-        auto const traversal_delta{traversal_end - traversal_start};
-        auto current_cell{coord0};
-
-        auto const cell_min{to_cell_min(current_cell)};
-        FIntVector3 cell_steps{0, 0, 0};
-
-        // The distance along the ray t: 0 -> 1
-        FVector3f t{FVector3f::ZeroVector};
-
-        // How far we move along an axis per cell
-        FVector3f t_deltas{FVector3f::ZeroVector};
+        auto current_cell{to_unreal(traversal.current_cell())};
         FVector3f inv_delta{FVector3f::ZeroVector};
-
-        for (int32 axis{}; axis < n_axes; ++axis) {
-            initialise_traversal_axis(cell_min[axis],
-                                      cell_dims_[axis],
-                                      traversal_start[axis],
-                                      traversal_delta[axis],
-                                      cell_steps[axis],
-                                      t[axis],
-                                      t_deltas[axis]);
-
+        for (int32 axis{}; axis < 3; ++axis) {
             if (delta[axis] != 0.0f) {
                 inv_delta[axis] = 1.0f / delta[axis];
             }
         }
+        auto const native_p0{to_native(p0)};
+        auto const native_delta{to_native(delta)};
+        auto const native_inv_delta{to_native(inv_delta)};
+        auto const native_expansion{to_native(moving_half_extent)};
 
         auto nearest_t{std::numeric_limits<float>::infinity()};
         FRegistryEntityHandle nearest_entity;
@@ -822,8 +652,13 @@ void CollisionUniformGrid::trace_aabbs_impl(
                         static_assert(false, "Unsupported trace entity filter.");
                     }
 
-                    auto const hit_t{trace_aabb<TraceKind>(
-                        aabbs, i_entity, p0, inv_delta, delta, moving_half_extent)};
+                    auto const hit_t{
+                        simulation::collision::trace_aabb(native_p0,
+                                                          native_inv_delta,
+                                                          native_delta,
+                                                          to_native(aabbs.mins[i_entity]),
+                                                          to_native(aabbs.maxes[i_entity]),
+                                                          native_expansion)};
                     if (hit_t < nearest_t) {
                         nearest_t = hit_t;
                         nearest_entity = entities[i_entity];
@@ -845,8 +680,13 @@ void CollisionUniformGrid::trace_aabbs_impl(
                 static_aabb_indices.Slice(static_cast<int32>(offset), static_cast<int32>(count))};
 
             for (auto const static_index : static_indices) {
-                auto const hit_t{trace_aabb<TraceKind>(
-                    static_aabbs, static_index, p0, inv_delta, delta, moving_half_extent)};
+                auto const hit_t{
+                    simulation::collision::trace_aabb(native_p0,
+                                                      native_inv_delta,
+                                                      native_delta,
+                                                      to_native(static_aabbs.mins[static_index]),
+                                                      to_native(static_aabbs.maxes[static_index]),
+                                                      native_expansion)};
                 if (hit_t < nearest_t) {
                     nearest_t = hit_t;
                     nearest_entity = FRegistryEntityHandle{};
@@ -856,14 +696,10 @@ void CollisionUniformGrid::trace_aabbs_impl(
         }};
 
         auto const try_advance_traversal{[&] {
-            if (current_cell == coord1) {
+            if (!traversal.advance()) {
                 return false;
             }
-            if (FMath::Min3(t.X, t.Y, t.Z) > 1.f) {
-                return false;
-            }
-
-            advance_to_next_cell(current_cell, cell_steps, t, t_deltas);
+            current_cell = to_unreal(traversal.current_cell());
             return true;
         }};
 
@@ -902,7 +738,7 @@ void CollisionUniformGrid::trace_aabbs_impl(
             auto const get_padded_cell_range{[&](FIntVector3 const centre_cell) {
                 auto min_cell{centre_cell - cell_padding};
                 auto max_cell{centre_cell + cell_padding};
-                for (int32 axis{}; axis < n_axes; ++axis) {
+                for (int32 axis{}; axis < 3; ++axis) {
                     min_cell[axis] = FMath::Max(min_cell[axis], 0);
                     max_cell[axis] = FMath::Min(max_cell[axis], max_cell_coord[axis]);
                 }
@@ -976,66 +812,40 @@ void CollisionUniformGrid::trace_aabbs_impl(
 }
 
 auto CollisionUniformGrid::to_cell_x(float const value) const -> int32 {
-    auto const half_grid_extent{static_cast<float>(grid_dims_.X) * cell_dims_.X * 0.5f};
-    return to_cell(value, cell_dims_.X, half_grid_extent);
+    return simulation::collision::to_cell_coord(value, cell_dims_.X, grid_dims_.X);
 }
 auto CollisionUniformGrid::to_cell_y(float const value) const -> int32 {
-    auto const half_grid_extent{static_cast<float>(grid_dims_.Y) * cell_dims_.Y * 0.5f};
-    return to_cell(value, cell_dims_.Y, half_grid_extent);
+    return simulation::collision::to_cell_coord(value, cell_dims_.Y, grid_dims_.Y);
 }
 auto CollisionUniformGrid::to_cell_z(float const value) const -> int32 {
-    auto const half_grid_extent{static_cast<float>(grid_dims_.Z) * cell_dims_.Z * 0.5f};
-    return to_cell(value, cell_dims_.Z, half_grid_extent);
+    return simulation::collision::to_cell_coord(value, cell_dims_.Z, grid_dims_.Z);
 }
 auto CollisionUniformGrid::to_cell_coord(FVector3f const pos) const -> FIntVector3 {
-    return {
-        to_cell_x(pos.X),
-        to_cell_y(pos.Y),
-        to_cell_z(pos.Z),
-    };
+    return to_unreal(simulation::collision::to_cell_coord(grid_geometry(grid_dims_, cell_dims_),
+                                                          to_native(pos)));
 }
 auto CollisionUniformGrid::to_min_cell_coord(FVector3f const pos) const -> FIntVector3 {
     return to_cell_coord(pos);
 }
 auto CollisionUniformGrid::to_max_cell_coord(FVector3f const pos) const -> FIntVector3 {
-    FVector3f const grid_dimensions{static_cast<float>(grid_dims_.X),
-                                    static_cast<float>(grid_dims_.Y),
-                                    static_cast<float>(grid_dims_.Z)};
-    auto const half_grid_extents{grid_dimensions * cell_dims_ * 0.5f};
-    return {
-        to_closed_max_cell(pos.X, cell_dims_.X, grid_dims_.X, half_grid_extents.X),
-        to_closed_max_cell(pos.Y, cell_dims_.Y, grid_dims_.Y, half_grid_extents.Y),
-        to_closed_max_cell(pos.Z, cell_dims_.Z, grid_dims_.Z, half_grid_extents.Z),
-    };
+    return to_unreal(simulation::collision::to_max_cell_coord(grid_geometry(grid_dims_, cell_dims_),
+                                                              to_native(pos)));
 }
 auto CollisionUniformGrid::to_cell_coord_bounds(FVector3f const min_point,
                                                 FVector3f const max_point) const
     -> FCellCoordBounds {
-    FVector3f const grid_dimensions{static_cast<float>(grid_dims_.X),
-                                    static_cast<float>(grid_dims_.Y),
-                                    static_cast<float>(grid_dims_.Z)};
-    auto const half_grid_extents{grid_dimensions * cell_dims_ * 0.5f};
-
-    return {
-        {to_cell(min_point.X, cell_dims_.X, half_grid_extents.X),
-         to_cell(min_point.Y, cell_dims_.Y, half_grid_extents.Y),
-         to_cell(min_point.Z, cell_dims_.Z, half_grid_extents.Z)},
-        {to_closed_max_cell(max_point.X, cell_dims_.X, grid_dims_.X, half_grid_extents.X),
-         to_closed_max_cell(max_point.Y, cell_dims_.Y, grid_dims_.Y, half_grid_extents.Y),
-         to_closed_max_cell(max_point.Z, cell_dims_.Z, grid_dims_.Z, half_grid_extents.Z)},
-    };
+    auto const bounds{simulation::collision::to_cell_coord_bounds(
+        grid_geometry(grid_dims_, cell_dims_), to_native(min_point), to_native(max_point))};
+    return {to_unreal(bounds.min), to_unreal(bounds.max)};
 }
 auto CollisionUniformGrid::to_cell_min_x(int32 const x) const -> float {
-    auto const half_grid_extent{static_cast<float>(grid_dims_.X) * cell_dims_.X * 0.5f};
-    return (static_cast<float>(x) * cell_dims_.X) - half_grid_extent;
+    return simulation::collision::to_cell_min(x, cell_dims_.X, grid_dims_.X);
 }
 auto CollisionUniformGrid::to_cell_min_y(int32 const y) const -> float {
-    auto const half_grid_extent{static_cast<float>(grid_dims_.Y) * cell_dims_.Y * 0.5f};
-    return (static_cast<float>(y) * cell_dims_.Y) - half_grid_extent;
+    return simulation::collision::to_cell_min(y, cell_dims_.Y, grid_dims_.Y);
 }
 auto CollisionUniformGrid::to_cell_min_z(int32 const z) const -> float {
-    auto const half_grid_extent{static_cast<float>(grid_dims_.Z) * cell_dims_.Z * 0.5f};
-    return (static_cast<float>(z) * cell_dims_.Z) - half_grid_extent;
+    return simulation::collision::to_cell_min(z, cell_dims_.Z, grid_dims_.Z);
 }
 auto CollisionUniformGrid::to_cell_min(int32 const x, int32 const y, int32 const z) const
     -> FVector3f {
@@ -1046,7 +856,8 @@ auto CollisionUniformGrid::to_cell_min(int32 const x, int32 const y, int32 const
     };
 }
 auto CollisionUniformGrid::to_cell_min(FIntVector3 const coord) const -> FVector3f {
-    return to_cell_min(coord.X, coord.Y, coord.Z);
+    return to_unreal(simulation::collision::to_cell_min(grid_geometry(grid_dims_, cell_dims_),
+                                                        to_native(coord)));
 }
 auto CollisionUniformGrid::to_cell_centre_x(int32 const x) const -> float {
     return to_cell_min_x(x) + (cell_dims_.X * 0.5f);
@@ -1066,11 +877,12 @@ auto CollisionUniformGrid::to_cell_centre(int32 const x, int32 const y, int32 co
     };
 }
 auto CollisionUniformGrid::to_cell_centre(FIntVector3 const coord) const -> FVector3f {
-    return to_cell_centre(coord.X, coord.Y, coord.Z);
+    return to_unreal(simulation::collision::to_cell_centre(grid_geometry(grid_dims_, cell_dims_),
+                                                           to_native(coord)));
 }
 auto CollisionUniformGrid::is_cell_coord_in_bounds(FIntVector3 const coord) const -> bool {
-    return coord.X >= 0 && coord.X < grid_dims_.X && coord.Y >= 0 && coord.Y < grid_dims_.Y &&
-           coord.Z >= 0 && coord.Z < grid_dims_.Z;
+    return simulation::collision::is_cell_coord_in_bounds(grid_geometry(grid_dims_, cell_dims_),
+                                                          to_native(coord));
 }
 auto CollisionUniformGrid::is_cell_coord_in_bounds(FIntVector3 const min_coord,
                                                    FIntVector3 const max_coord) const -> bool {

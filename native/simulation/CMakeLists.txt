@@ -2,6 +2,7 @@ find_package(GTest CONFIG REQUIRED)
 
 add_library(native-simulation STATIC)
 target_sources(native-simulation PRIVATE
+  src/collision_grid.cpp
   src/deterministic_bias.cpp
   src/fixed_tick.cpp
   src/simulation_clock.cpp
