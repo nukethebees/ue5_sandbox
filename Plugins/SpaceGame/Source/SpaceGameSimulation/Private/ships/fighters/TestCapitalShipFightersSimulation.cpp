@@ -1587,7 +1587,7 @@ void Simulation::handle_firing(TaskView const& data) {
 /* **************************************** */
 void Simulation::queue_orders(TestCapitalShipFighterOrderQueue const& queue) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::queue_orders);
-    order_queue.append_from(queue);
+    order_queue.append_from(queue.get_const_view());
 }
 void Simulation::commit_orders() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::commit_orders);

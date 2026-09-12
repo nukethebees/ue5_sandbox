@@ -376,7 +376,7 @@ void Simulation::refresh_fighter_handles() {
             if (capital_index == new_capital_index) {
                 fighter_handles_scratch.Add(
                     fighter_reassignment_queue.fighter_handles[reassigned_index]);
-                fighter_reassignment_queue.remove_at_swap(reassigned_index, 1, EAllowShrinking::No);
+                fighter_reassignment_queue.remove_at_swap(reassigned_index, 1);
                 ++new_span.count;
             }
         }
@@ -405,7 +405,7 @@ void Simulation::queue_fighter_orders() {
             auto const fighter_handle{fighter_handles[fighter_span_index]};
             if (capital_target.is_null()) {
                 fighter_order_queue.add(fighter_handle,
-                                        TestCapitalShipFighterOrderQueue::Order{
+                                        ml::simulation::CapitalShipFighterOrder{
                                             .task = 1,
                                             .target = 1,
                                         },
@@ -417,7 +417,7 @@ void Simulation::queue_fighter_orders() {
             auto const fighter_target{fighters_interface.get_target_handle(fighter_handle)};
             if (fighter_target.is_null() || entity_registry.is_valid_dead(fighter_target)) {
                 fighter_order_queue.add(fighter_handle,
-                                        TestCapitalShipFighterOrderQueue::Order{
+                                        ml::simulation::CapitalShipFighterOrder{
                                             .task = 0,
                                             .target = 1,
                                         },

@@ -1,0 +1,8 @@
+(soa-module native_fighter_reassignment
+  :header "native/simulation/include/sandbox/simulation/fighter_reassignment.h"
+  :backend standard-library
+  :namespace ml::test_capital_ships
+  (struct FighterReassignment
+    :operations (all)
+    (member capital_handles array @native_registry_handle)
+    (member fighter_handles array @native_registry_handle)))

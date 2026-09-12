@@ -71,17 +71,7 @@
     (member teams array @team)
     (member healths array int32)
     (member capital_fighter_handle_spans array @index_span)
-    (member target_handles array @registry_handle))
-  (struct FighterReassignment
-    :operations (all)
-    :export-specifier SPACEGAMESIMULATION_API
-    (member capital_handles array @registry_handle)
-    (member fighter_handles array @registry_handle)
-    (function add void
-      :body ("capital_handles.Add(ch);" "fighter_handles.Add(fh);")
-      :inline true
-      (parameter ch (type-ref @registry_handle :suffix " const"))
-      (parameter fh (type-ref @registry_handle :suffix " const")))))
+    (member target_handles array @registry_handle)))
 
 (soa-module test_lasers_soa
   :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/combat/lasers/TestLasersSoA.h"
@@ -140,27 +130,6 @@
     (member teams array @team)
     (member parents array @registry_handle)
     (member targets array @registry_handle)))
-
-(soa-module test_capital_ship_fighter_order_queue
-  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFighterOrderQueue.h"
-  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFighterOrderQueue.cpp"
-  :header-include "SpaceGameSimulation/ships/fighters/TestCapitalShipFighterOrderQueue.h"
-  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  (struct TestCapitalShipFighterOrderQueue
-    :operations (all)
-    :export-specifier SPACEGAMESIMULATION_API
-    :using-declarations ("Task = ETestCapitalShipFightersTask" "Order = TestCapitalShipFighterOrder")
-    (member handles array @registry_handle)
-    (member orders array @fighter_order)
-    (member tasks array @fighter_task)
-    (member targets array @registry_handle)
-    (function add void
-      :body ("handles.Add(handle);" "orders.Add(order);" "tasks.Add(task);" "targets.Add(target);")
-      :inline true
-      (parameter handle (type-ref @registry_handle :suffix " const"))
-      (parameter order "Order const")
-      (parameter task "Task const")
-      (parameter target (type-ref @registry_handle :suffix " const")))))
 
 (soa-module test_static_turrets_soa
   :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/defences/turrets/TestStaticTurretsSoA.h"

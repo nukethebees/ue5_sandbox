@@ -54,7 +54,6 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Private/missions/TestMissionMode.cp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/missions/TestMissionState.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/capital/TestCapitalShipsPhaseInterface.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/capital/TestCapitalShipsSoA.cpp
-Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFighterOrderQueue.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFighterSpawnQueueSoA.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFightersPhaseInterface.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFightersSoA.cpp
@@ -81,7 +80,6 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionState.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/capital/TestCapitalShipsPhaseInterface.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/capital/TestCapitalShipsSoA.h
-Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFighterOrderQueue.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFighterSpawnQueueSoA.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFightersCommandInterface.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFightersPhaseInterface.h
@@ -96,4 +94,6 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/telemetr
 native/simulation/include/sandbox/simulation/direct_damage_events.h
 native/simulation/include/sandbox/simulation/entity_death_info.h
 native/simulation/include/sandbox/simulation/entity_overlaps.h
+native/simulation/include/sandbox/simulation/fighter_order_queue.h
+native/simulation/include/sandbox/simulation/fighter_reassignment.h
 native/simulation/include/sandbox/simulation/registry_entity_handles.h

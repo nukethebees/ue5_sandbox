@@ -1,0 +1,9 @@
+(soa-module native_fighter_order_queue
+  :header "native/simulation/include/sandbox/simulation/fighter_order_queue.h"
+  :backend standard-library
+  (struct TestCapitalShipFighterOrderQueue
+    :operations (all)
+    (member handles array @native_registry_handle)
+    (member orders array @native_fighter_order)
+    (member tasks array @native_fighter_task)
+    (member targets array @native_registry_handle)))

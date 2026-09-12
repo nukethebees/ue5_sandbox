@@ -1,4 +1,6 @@
 #pragma once
+#include <sandbox/simulation/fighter_reassignment.h>
+
 #include <SpaceGameSimulation/simulation/SystemReadViews.h>
 
 #include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>

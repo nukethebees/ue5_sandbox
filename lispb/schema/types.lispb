@@ -194,6 +194,16 @@
   :header "sandbox/simulation/entity_types.h"
   :pass-by value)
 
+(type native_fighter_order
+  :spelling "ml::simulation::CapitalShipFighterOrder"
+  :header "sandbox/simulation/fighter_types.h"
+  :pass-by value)
+
+(type native_fighter_task
+  :spelling "ml::simulation::CapitalShipFighterTask"
+  :header "sandbox/simulation/fighter_types.h"
+  :pass-by value)
+
 (type rotator_3f
   :spelling "FRotator3f"
   :header "CoreMinimal.h"

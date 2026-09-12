@@ -5,6 +5,8 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/direct_damage_events.h
   include/sandbox/simulation/entity_death_info.h
   include/sandbox/simulation/entity_overlaps.h
+  include/sandbox/simulation/fighter_order_queue.h
+  include/sandbox/simulation/fighter_reassignment.h
   include/sandbox/simulation/registry_entity_handles.h
   src/collision_grid.cpp
   src/deterministic_bias.cpp
