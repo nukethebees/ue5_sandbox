@@ -18,7 +18,8 @@ star energy rather than making stabilized stars artificially brighter. The addit
 applies a squared circular falloff using the interpolated quad UV and uses vertex colour for
 per-star brightness and subtle temperature variation. For the brightest population, the vertex
 factory can remap that same falloff into a compact radial core and procedural cross while modestly
-expanding only those quads. There is no tick and no per-star work after generation.
+expanding only those quads. The same sparse population can twinkle using deterministic phases and
+the view's game time. There is no tick and no per-star CPU work after generation.
 
 When galactic haze is enabled, the same proxy, canonical quad, vertex factory, and material submit
 one additional far, screen-covering draw. The vertex factory reconstructs a local sky direction,
@@ -36,6 +37,9 @@ retain their logical depth, so geometry farther away than a star can still rende
 - `galactic_band_strength` controls the fraction of stars concentrated around the actor's local
   equatorial plane. `0` exactly retains uniform spherical generation. Actor rotation orients the
   band without regenerating it.
+- `stellar_cluster_strength` controls the fraction of stars concentrated around six seeded sky
+  directions. `stellar_cluster_width_degrees` controls their angular spread. Both controls
+  regenerate the immutable star set, and strength `0` preserves the previous generation path.
 - `dust_lane_strength` darkens stars through the galactic midplane during generation. `0` exactly
   preserves the distribution's previous star brightness.
 - `galactic_haze_strength` controls the luminous background band. `0` disables its draw entirely.
@@ -54,6 +58,8 @@ retain their logical depth, so geometry farther away than a star can still rende
   retains the original circular falloff; the default `0.25` is intentionally subtle. This is also a
   dynamic shader control and does not rebuild star data. Each cross receives a deterministic
   rotation and length variation without adding data to the star buffer.
+- `twinkle_strength` and `twinkle_speed` animate only the sparse bright-star population. Strength
+  `0` disables the shader work; neither control regenerates star data.
 - `galactic_band_width_degrees` controls the standard deviation of the generated band latitude.
   Changing it or band strength regenerates the immutable star set.
 - `dust_lane_width_degrees` and `dust_lane_irregularity` control the lane's latitude profile and
@@ -80,7 +86,9 @@ brightness boosts. The same 1% belongs to the near population, keeping the most 
 on the strongest translational-parallax layer. Direction
 generation mixes a uniform sphere with a truncated normal latitude distribution around the local
 equator. The default places 65% of stars in a 15-degree band while retaining a uniform population
-throughout the rest of the sky. A default 90%-strength, 5-degree dust lane attenuates brightness at
+throughout the rest of the sky. Twelve percent are concentrated into six deterministic,
+four-degree clusters whose centres follow the same band distribution. A default 90%-strength,
+5-degree dust lane attenuates brightness at
 the local equator. A few fixed longitude waves vary its centre, width, and darkness without adding
 a noise dependency or consuming random-stream values. The optional 18-degree procedural haze uses
 the same local equator and dust mask, so rotating the actor or editing dust controls keeps both

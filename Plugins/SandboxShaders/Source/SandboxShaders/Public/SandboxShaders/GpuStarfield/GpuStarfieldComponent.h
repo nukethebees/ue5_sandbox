@@ -35,6 +35,14 @@ struct SANDBOXSHADERS_API FGpuStarfieldSettings {
               Category = "GPU Starfield",
               meta = (ClampMin = "0.0",
                       ClampMax = "1.0",
+                      ToolTip = "Fraction of stars concentrated into deterministic clusters."))
+    float stellar_cluster_strength{0.12f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "GPU Starfield",
+              meta = (ClampMin = "0.0",
+                      ClampMax = "1.0",
                       ToolTip = "Darkens stars through the galactic midplane. Zero disables it."))
     float dust_lane_strength{0.9f};
 
@@ -53,6 +61,14 @@ struct SANDBOXSHADERS_API FGpuStarfieldSettings {
                       ClampMax = "10.0",
                       ToolTip = "Adds a warm core along the local positive-X galactic horizon."))
     float galactic_core_strength{0.65f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "GPU Starfield",
+              meta = (ClampMin = "0.0",
+                      ClampMax = "0.5",
+                      ToolTip = "Subtly varies the brightness of the brightest stars."))
+    float twinkle_strength{0.1f};
 
     UPROPERTY(EditAnywhere,
               BlueprintReadWrite,
@@ -130,6 +146,12 @@ struct SANDBOXSHADERS_API FGpuStarfieldSettings {
     UPROPERTY(EditAnywhere,
               BlueprintReadWrite,
               Category = "GPU Starfield|Advanced",
+              meta = (ClampMin = "1.0", ClampMax = "20.0", Units = "deg"))
+    float stellar_cluster_width_degrees{4.0f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "GPU Starfield|Advanced",
               meta = (ClampMin = "0.5", ClampMax = "20.0", Units = "deg"))
     float dust_lane_width_degrees{5.0f};
 
@@ -158,6 +180,12 @@ struct SANDBOXSHADERS_API FGpuStarfieldSettings {
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GPU Starfield|Advanced")
     FLinearColor galactic_core_colour{0.8f, 0.42f, 0.18f, 1.0f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "GPU Starfield|Advanced",
+              meta = (ClampMin = "0.0", ClampMax = "2.0", Units = "Hz"))
+    float twinkle_speed{0.35f};
 };
 
 struct FGpuStarfieldGpuData {

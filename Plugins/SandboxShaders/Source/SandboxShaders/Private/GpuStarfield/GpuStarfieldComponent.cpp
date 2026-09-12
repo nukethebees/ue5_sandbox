@@ -43,6 +43,25 @@ auto generate_band_direction(FRandomStream& random_stream, float const width_deg
             FMath::Sin(latitude)};
 }
 
+auto generate_cluster_direction(FRandomStream& random_stream,
+                                FVector const& cluster_direction,
+                                float const width_degrees) -> FVector {
+    FVector cluster_tangent;
+    FVector cluster_bitangent;
+    cluster_direction.FindBestAxisVectors(cluster_tangent, cluster_bitangent);
+
+    auto const normal_sample_radius{
+        FMath::Sqrt(-2.0f * FMath::Loge(FMath::Max(random_stream.FRand(), UE_SMALL_NUMBER)))};
+    auto const angular_distance{FMath::Min(normal_sample_radius *
+                                               FMath::DegreesToRadians(width_degrees),
+                                           UE_HALF_PI)};
+    auto const azimuth{random_stream.FRandRange(-UE_PI, UE_PI)};
+    auto const radial_direction{cluster_tangent * FMath::Cos(azimuth) +
+                                cluster_bitangent * FMath::Sin(azimuth)};
+    return cluster_direction * FMath::Cos(angular_distance) +
+           radial_direction * FMath::Sin(angular_distance);
+}
+
 auto calculate_dust_lane_attenuation(FVector const& direction,
                                      float const strength,
                                      float const width_degrees,
@@ -77,6 +96,8 @@ struct FGpuStarfieldRenderParameters {
     float bright_star_brightness_multiplier{1.0f};
     float parallax_strength{0.0f};
     float bright_star_shape_strength{0.0f};
+    float twinkle_strength{0.0f};
+    float twinkle_speed{0.0f};
     float dust_lane_strength{0.0f};
     float dust_lane_width_degrees{0.0f};
     float dust_lane_irregularity{0.0f};
@@ -101,6 +122,8 @@ auto make_render_parameters(FGpuStarfieldSettings const& settings)
         .bright_star_brightness_multiplier = settings.bright_star_brightness_multiplier,
         .parallax_strength = settings.parallax_strength,
         .bright_star_shape_strength = settings.bright_star_shape_strength,
+        .twinkle_strength = settings.twinkle_strength,
+        .twinkle_speed = settings.twinkle_speed,
         .dust_lane_strength = settings.dust_lane_strength,
         .dust_lane_width_degrees = settings.dust_lane_width_degrees,
         .dust_lane_irregularity = settings.dust_lane_irregularity,
@@ -171,6 +194,8 @@ class FGpuStarfieldVertexFactoryShaderParameters final : public FVertexFactorySh
         parallax_strength_.Bind(parameter_map, TEXT("GpuStarfieldParallaxStrength"));
         bright_star_shape_strength_.Bind(parameter_map,
                                          TEXT("GpuStarfieldBrightStarShapeStrength"));
+        twinkle_strength_.Bind(parameter_map, TEXT("GpuStarfieldTwinkleStrength"));
+        twinkle_speed_.Bind(parameter_map, TEXT("GpuStarfieldTwinkleSpeed"));
         dust_lane_strength_.Bind(parameter_map, TEXT("GpuStarfieldDustLaneStrength"));
         dust_lane_width_degrees_.Bind(parameter_map, TEXT("GpuStarfieldDustLaneWidthDegrees"));
         dust_lane_irregularity_.Bind(parameter_map, TEXT("GpuStarfieldDustLaneIrregularity"));
@@ -204,6 +229,8 @@ class FGpuStarfieldVertexFactoryShaderParameters final : public FVertexFactorySh
     LAYOUT_FIELD(FShaderParameter, bright_star_brightness_multiplier_);
     LAYOUT_FIELD(FShaderParameter, parallax_strength_);
     LAYOUT_FIELD(FShaderParameter, bright_star_shape_strength_);
+    LAYOUT_FIELD(FShaderParameter, twinkle_strength_);
+    LAYOUT_FIELD(FShaderParameter, twinkle_speed_);
     LAYOUT_FIELD(FShaderParameter, dust_lane_strength_);
     LAYOUT_FIELD(FShaderParameter, dust_lane_width_degrees_);
     LAYOUT_FIELD(FShaderParameter, dust_lane_irregularity_);
@@ -279,6 +306,8 @@ void FGpuStarfieldVertexFactoryShaderParameters::GetElementShaderBindings(
     shader_bindings.Add(parallax_strength_, user_data->parameters.parallax_strength);
     shader_bindings.Add(bright_star_shape_strength_,
                         user_data->parameters.bright_star_shape_strength);
+    shader_bindings.Add(twinkle_strength_, user_data->parameters.twinkle_strength);
+    shader_bindings.Add(twinkle_speed_, user_data->parameters.twinkle_speed);
     shader_bindings.Add(dust_lane_strength_, user_data->parameters.dust_lane_strength);
     shader_bindings.Add(dust_lane_width_degrees_, user_data->parameters.dust_lane_width_degrees);
     shader_bindings.Add(dust_lane_irregularity_, user_data->parameters.dust_lane_irregularity);
@@ -477,6 +506,10 @@ void UGpuStarfieldComponent::apply_settings(FGpuStarfieldSettings const& setting
     normalised.galactic_band_strength = FMath::Clamp(normalised.galactic_band_strength, 0.0f, 1.0f);
     normalised.galactic_band_width_degrees =
         FMath::Clamp(normalised.galactic_band_width_degrees, 1.0f, 45.0f);
+    normalised.stellar_cluster_strength =
+        FMath::Clamp(normalised.stellar_cluster_strength, 0.0f, 1.0f);
+    normalised.stellar_cluster_width_degrees =
+        FMath::Clamp(normalised.stellar_cluster_width_degrees, 1.0f, 20.0f);
     normalised.dust_lane_strength = FMath::Clamp(normalised.dust_lane_strength, 0.0f, 1.0f);
     normalised.dust_lane_width_degrees =
         FMath::Clamp(normalised.dust_lane_width_degrees, 0.5f, 20.0f);
@@ -508,12 +541,16 @@ void UGpuStarfieldComponent::apply_settings(FGpuStarfieldSettings const& setting
     normalised.parallax_strength = FMath::Clamp(normalised.parallax_strength, 0.0f, 1.0f);
     normalised.bright_star_shape_strength =
         FMath::Clamp(normalised.bright_star_shape_strength, 0.0f, 1.0f);
+    normalised.twinkle_strength = FMath::Clamp(normalised.twinkle_strength, 0.0f, 0.5f);
+    normalised.twinkle_speed = FMath::Clamp(normalised.twinkle_speed, 0.0f, 2.0f);
 
     auto const structural_change{
         !has_generated_stars_ || settings_.star_count != normalised.star_count ||
         settings_.random_seed != normalised.random_seed ||
         settings_.galactic_band_strength != normalised.galactic_band_strength ||
         settings_.galactic_band_width_degrees != normalised.galactic_band_width_degrees ||
+        settings_.stellar_cluster_strength != normalised.stellar_cluster_strength ||
+        settings_.stellar_cluster_width_degrees != normalised.stellar_cluster_width_degrees ||
         settings_.dust_lane_strength != normalised.dust_lane_strength ||
         settings_.dust_lane_width_degrees != normalised.dust_lane_width_degrees ||
         settings_.dust_lane_irregularity != normalised.dust_lane_irregularity ||
@@ -529,6 +566,8 @@ void UGpuStarfieldComponent::apply_settings(FGpuStarfieldSettings const& setting
             normalised.bright_star_brightness_multiplier ||
         settings_.parallax_strength != normalised.parallax_strength ||
         settings_.bright_star_shape_strength != normalised.bright_star_shape_strength ||
+        settings_.twinkle_strength != normalised.twinkle_strength ||
+        settings_.twinkle_speed != normalised.twinkle_speed ||
         settings_.galactic_haze_strength != normalised.galactic_haze_strength ||
         settings_.galactic_haze_width_degrees != normalised.galactic_haze_width_degrees ||
         settings_.galactic_haze_colour != normalised.galactic_haze_colour ||
@@ -598,6 +637,20 @@ void UGpuStarfieldComponent::generate_stars() {
     FRandomStream random_stream{settings_.random_seed};
     star_data_.SetNumUninitialized(settings_.star_count);
 
+    constexpr int32 cluster_count{6};
+    FVector cluster_directions[cluster_count];
+    if (settings_.stellar_cluster_strength > 0.0f) {
+        FRandomStream cluster_random_stream{settings_.random_seed ^ 0x53a9b4d1};
+        for (auto& cluster_direction : cluster_directions) {
+            cluster_direction = cluster_random_stream.VRand();
+            if (settings_.galactic_band_strength > 0.0f &&
+                cluster_random_stream.FRand() < settings_.galactic_band_strength) {
+                cluster_direction = generate_band_direction(cluster_random_stream,
+                                                            settings_.galactic_band_width_degrees);
+            }
+        }
+    }
+
     auto const star_count{star_data_.Num()};
     for (int32 star_index{0}; star_index < star_count; ++star_index) {
         auto direction{random_stream.VRand()};
@@ -605,6 +658,13 @@ void UGpuStarfieldComponent::generate_stars() {
             random_stream.FRand() < settings_.galactic_band_strength) {
             direction =
                 generate_band_direction(random_stream, settings_.galactic_band_width_degrees);
+        }
+        if (settings_.stellar_cluster_strength > 0.0f &&
+            random_stream.FRand() < settings_.stellar_cluster_strength) {
+            auto const cluster_index{random_stream.RandRange(0, cluster_count - 1)};
+            direction = generate_cluster_direction(random_stream,
+                                                   cluster_directions[cluster_index],
+                                                   settings_.stellar_cluster_width_degrees);
         }
 
         auto const population_roll{random_stream.FRand()};

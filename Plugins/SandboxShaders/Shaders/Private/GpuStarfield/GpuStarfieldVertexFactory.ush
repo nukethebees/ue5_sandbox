@@ -20,6 +20,8 @@ float GpuStarfieldBrightStarSizeMultiplier;
 float GpuStarfieldBrightStarBrightnessMultiplier;
 float GpuStarfieldParallaxStrength;
 float GpuStarfieldBrightStarShapeStrength;
+float GpuStarfieldTwinkleStrength;
+float GpuStarfieldTwinkleSpeed;
 float GpuStarfieldDustLaneStrength;
 float GpuStarfieldDustLaneWidthDegrees;
 float GpuStarfieldDustLaneIrregularity;
@@ -121,13 +123,23 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
         max(1.0, MinimumHalfSizePixels / max(ProjectedHalfSize, 0.0001));
     float const HalfSize = UnstabilizedHalfSize * StabilizationScale * BrightStarSizeScale;
     float const EnergyScale = rcp(StabilizationScale * StabilizationScale);
-    float const StarBrightness =
+    float const BoostedStarBrightness =
         Star.Brightness *
         lerp(1.0, GpuStarfieldBrightStarBrightnessMultiplier, Star.BrightStarFactor);
-    float const BrightStarFactor = smoothstep(0.8, 1.0, StarBrightness);
+    float const BrightStarFactor = smoothstep(0.8, 1.0, BoostedStarBrightness);
     float const BrightStarShapeAmount = GpuStarfieldBrightStarShapeStrength * BrightStarFactor;
     float const BrightStarShapeRandom =
         frac(Star.ColourTemperature * 13.37 + dot(Star.Direction, float3(7.13, 17.17, 29.41)));
+    float TwinkleScale = 1.0;
+    [branch] if (GpuStarfieldTwinkleStrength > 0.0 && Star.BrightStarFactor > 0.0) {
+        float const TwinkleFrequency = lerp(0.7, 1.3, BrightStarShapeRandom);
+        float const TwinklePhase = BrightStarShapeRandom * (PI * 2.0);
+        TwinkleScale += GpuStarfieldTwinkleStrength *
+                        sin(View.GameTime * GpuStarfieldTwinkleSpeed * TwinkleFrequency *
+                                (PI * 2.0) +
+                            TwinklePhase);
+    }
+    float const StarBrightness = BoostedStarBrightness * TwinkleScale;
     float const BrightStarShapeRotation = BrightStarShapeRandom * (PI * 0.5);
     float const BrightStarShapeLength = lerp(2.0, 3.0, frac(BrightStarShapeRandom * 1.618));
     float const BrightStarShapeScale = 1.0 + BrightStarShapeAmount * BrightStarShapeLength;
