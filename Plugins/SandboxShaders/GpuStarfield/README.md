@@ -39,6 +39,8 @@ retain their logical depth, so geometry farther away than a star can still rende
 - `dust_lane_strength` darkens stars through the galactic midplane during generation. `0` exactly
   preserves the distribution's previous star brightness.
 - `galactic_haze_strength` controls the luminous background band. `0` disables its draw entirely.
+- `galactic_core_strength` adds a warm localized bulge along the local positive-X galactic
+  horizon. `0` preserves the previous uniform band profile.
 - `starfield_scale` is the primary distance control. At `1`, the logical shell radius is 1,000 km
   and the base billboard diameter is 500 m. Scaling both together preserves angular star size.
 - `star_size_multiplier`, `global_brightness`, and `parallax_strength` are advanced shader controls
@@ -50,12 +52,15 @@ retain their logical depth, so geometry farther away than a star can still rende
   `bright_star_brightness_multiplier` update on the GPU without regenerating stars.
 - `bright_star_shape_strength` controls the procedural cross on only the brightest stars. `0`
   retains the original circular falloff; the default `0.25` is intentionally subtle. This is also a
-  dynamic shader control and does not rebuild star data.
+  dynamic shader control and does not rebuild star data. Each cross receives a deterministic
+  rotation and length variation without adding data to the star buffer.
 - `galactic_band_width_degrees` controls the standard deviation of the generated band latitude.
   Changing it or band strength regenerates the immutable star set.
 - `dust_lane_width_degrees` and `dust_lane_irregularity` control the lane's latitude profile and
   broad deterministic variation around the sky. Dust controls regenerate the immutable star set.
 - `galactic_haze_width_degrees` and `galactic_haze_colour` control the background band without
+  rebuilding star data.
+- `galactic_core_width_degrees` and `galactic_core_colour` shape the localized core without
   rebuilding star data.
 - `parallax_strength = 0` makes the logical field follow camera translation; `1` behaves like
   ordinary actor-anchored world geometry. The default `0.01` gives the base scale an effective

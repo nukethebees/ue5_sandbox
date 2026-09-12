@@ -83,6 +83,9 @@ struct FGpuStarfieldRenderParameters {
     float galactic_haze_strength{0.0f};
     float galactic_haze_width_degrees{0.0f};
     FVector3f galactic_haze_colour{FVector3f::ZeroVector};
+    float galactic_core_strength{0.0f};
+    float galactic_core_width_degrees{0.0f};
+    FVector3f galactic_core_colour{FVector3f::ZeroVector};
     float render_haze{0.0f};
 };
 
@@ -106,6 +109,11 @@ auto make_render_parameters(FGpuStarfieldSettings const& settings)
         .galactic_haze_colour = {settings.galactic_haze_colour.R,
                                  settings.galactic_haze_colour.G,
                                  settings.galactic_haze_colour.B},
+        .galactic_core_strength = settings.galactic_core_strength,
+        .galactic_core_width_degrees = settings.galactic_core_width_degrees,
+        .galactic_core_colour = {settings.galactic_core_colour.R,
+                                 settings.galactic_core_colour.G,
+                                 settings.galactic_core_colour.B},
     };
 }
 
@@ -170,6 +178,10 @@ class FGpuStarfieldVertexFactoryShaderParameters final : public FVertexFactorySh
         galactic_haze_width_degrees_.Bind(parameter_map,
                                           TEXT("GpuStarfieldGalacticHazeWidthDegrees"));
         galactic_haze_colour_.Bind(parameter_map, TEXT("GpuStarfieldGalacticHazeColour"));
+        galactic_core_strength_.Bind(parameter_map, TEXT("GpuStarfieldGalacticCoreStrength"));
+        galactic_core_width_degrees_.Bind(parameter_map,
+                                          TEXT("GpuStarfieldGalacticCoreWidthDegrees"));
+        galactic_core_colour_.Bind(parameter_map, TEXT("GpuStarfieldGalacticCoreColour"));
         render_haze_.Bind(parameter_map, TEXT("GpuStarfieldRenderHaze"));
     }
 
@@ -198,6 +210,9 @@ class FGpuStarfieldVertexFactoryShaderParameters final : public FVertexFactorySh
     LAYOUT_FIELD(FShaderParameter, galactic_haze_strength_);
     LAYOUT_FIELD(FShaderParameter, galactic_haze_width_degrees_);
     LAYOUT_FIELD(FShaderParameter, galactic_haze_colour_);
+    LAYOUT_FIELD(FShaderParameter, galactic_core_strength_);
+    LAYOUT_FIELD(FShaderParameter, galactic_core_width_degrees_);
+    LAYOUT_FIELD(FShaderParameter, galactic_core_colour_);
     LAYOUT_FIELD(FShaderParameter, render_haze_);
 };
 
@@ -271,6 +286,10 @@ void FGpuStarfieldVertexFactoryShaderParameters::GetElementShaderBindings(
     shader_bindings.Add(galactic_haze_width_degrees_,
                         user_data->parameters.galactic_haze_width_degrees);
     shader_bindings.Add(galactic_haze_colour_, user_data->parameters.galactic_haze_colour);
+    shader_bindings.Add(galactic_core_strength_, user_data->parameters.galactic_core_strength);
+    shader_bindings.Add(galactic_core_width_degrees_,
+                        user_data->parameters.galactic_core_width_degrees);
+    shader_bindings.Add(galactic_core_colour_, user_data->parameters.galactic_core_colour);
     shader_bindings.Add(render_haze_, user_data->parameters.render_haze);
 }
 
@@ -469,6 +488,13 @@ void UGpuStarfieldComponent::apply_settings(FGpuStarfieldSettings const& setting
     normalised.galactic_haze_colour.R = FMath::Max(normalised.galactic_haze_colour.R, 0.0f);
     normalised.galactic_haze_colour.G = FMath::Max(normalised.galactic_haze_colour.G, 0.0f);
     normalised.galactic_haze_colour.B = FMath::Max(normalised.galactic_haze_colour.B, 0.0f);
+    normalised.galactic_core_strength =
+        FMath::Clamp(normalised.galactic_core_strength, 0.0f, 10.0f);
+    normalised.galactic_core_width_degrees =
+        FMath::Clamp(normalised.galactic_core_width_degrees, 1.0f, 90.0f);
+    normalised.galactic_core_colour.R = FMath::Max(normalised.galactic_core_colour.R, 0.0f);
+    normalised.galactic_core_colour.G = FMath::Max(normalised.galactic_core_colour.G, 0.0f);
+    normalised.galactic_core_colour.B = FMath::Max(normalised.galactic_core_colour.B, 0.0f);
     normalised.starfield_scale = FMath::Max(normalised.starfield_scale, 0.001f);
     normalised.star_size_multiplier = FMath::Max(normalised.star_size_multiplier, 0.0f);
     normalised.global_brightness = FMath::Max(normalised.global_brightness, 0.0f);
@@ -505,7 +531,10 @@ void UGpuStarfieldComponent::apply_settings(FGpuStarfieldSettings const& setting
         settings_.bright_star_shape_strength != normalised.bright_star_shape_strength ||
         settings_.galactic_haze_strength != normalised.galactic_haze_strength ||
         settings_.galactic_haze_width_degrees != normalised.galactic_haze_width_degrees ||
-        settings_.galactic_haze_colour != normalised.galactic_haze_colour};
+        settings_.galactic_haze_colour != normalised.galactic_haze_colour ||
+        settings_.galactic_core_strength != normalised.galactic_core_strength ||
+        settings_.galactic_core_width_degrees != normalised.galactic_core_width_degrees ||
+        settings_.galactic_core_colour != normalised.galactic_core_colour};
 
     settings_ = normalised;
     if (structural_change) {

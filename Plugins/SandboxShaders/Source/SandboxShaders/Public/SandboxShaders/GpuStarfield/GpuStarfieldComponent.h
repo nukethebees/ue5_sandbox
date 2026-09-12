@@ -49,6 +49,14 @@ struct SANDBOXSHADERS_API FGpuStarfieldSettings {
     UPROPERTY(EditAnywhere,
               BlueprintReadWrite,
               Category = "GPU Starfield",
+              meta = (ClampMin = "0.0",
+                      ClampMax = "10.0",
+                      ToolTip = "Adds a warm core along the local positive-X galactic horizon."))
+    float galactic_core_strength{0.65f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "GPU Starfield",
               meta = (ClampMin = "0.001",
                       ToolTip = "Scales the logical shell distance and billboard size together."))
     float starfield_scale{1.0f};
@@ -141,6 +149,15 @@ struct SANDBOXSHADERS_API FGpuStarfieldSettings {
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GPU Starfield|Advanced")
     FLinearColor galactic_haze_colour{0.18f, 0.22f, 0.35f, 1.0f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "GPU Starfield|Advanced",
+              meta = (ClampMin = "1.0", ClampMax = "90.0", Units = "deg"))
+    float galactic_core_width_degrees{32.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GPU Starfield|Advanced")
+    FLinearColor galactic_core_colour{0.8f, 0.42f, 0.18f, 1.0f};
 };
 
 struct FGpuStarfieldGpuData {

@@ -26,6 +26,9 @@ float GpuStarfieldDustLaneIrregularity;
 float GpuStarfieldGalacticHazeStrength;
 float GpuStarfieldGalacticHazeWidthDegrees;
 float3 GpuStarfieldGalacticHazeColour;
+float GpuStarfieldGalacticCoreStrength;
+float GpuStarfieldGalacticCoreWidthDegrees;
+float3 GpuStarfieldGalacticCoreColour;
 float GpuStarfieldRenderHaze;
 
 #undef GetInstanceIdFromVF
@@ -38,12 +41,12 @@ struct FVertexFactoryInput {
 };
 
 struct FVertexFactoryInterpolantsVSToPS {
-    float2 TexCoord             : TEXCOORD0;
-    float3 Colour               : TEXCOORD1;
-    float BrightStarShapeAmount : TEXCOORD2;
-    float3 HazeDirection        : TEXCOORD3;
-    float4 HazeParameters       : TEXCOORD4;
-    float RenderHaze            : TEXCOORD5;
+    float2 TexCoord                   : TEXCOORD0;
+    float3 Colour                     : TEXCOORD1;
+    float3 BrightStarShapeParameters  : TEXCOORD2;
+    float3 HazeDirection              : TEXCOORD3;
+    float4 HazeParameters             : TEXCOORD4;
+    float4 HazeOutputParameters       : TEXCOORD5;
 };
 
 struct FVertexFactoryIntermediates {
@@ -51,10 +54,10 @@ struct FVertexFactoryIntermediates {
     float3 PositionInstanceSpace;
     float2 TexCoord;
     float3 Colour;
-    float BrightStarShapeAmount;
+    float3 BrightStarShapeParameters;
     float3 HazeDirection;
     float4 HazeParameters;
-    float RenderHaze;
+    float4 HazeOutputParameters;
     FSceneDataIntermediates SceneData;
 };
 
@@ -87,7 +90,10 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
                                               GpuStarfieldDustLaneStrength,
                                               GpuStarfieldDustLaneWidthDegrees,
                                               GpuStarfieldDustLaneIrregularity);
-        Intermediates.RenderHaze = 1.0;
+        Intermediates.BrightStarShapeParameters =
+            float3(GpuStarfieldGalacticCoreStrength, GpuStarfieldGalacticCoreWidthDegrees, 0.0);
+        Intermediates.HazeOutputParameters =
+            float4(1.0, GpuStarfieldGalacticCoreColour * GpuStarfieldGalacticHazeStrength);
         return Intermediates;
     }
 
@@ -120,7 +126,11 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
         lerp(1.0, GpuStarfieldBrightStarBrightnessMultiplier, Star.BrightStarFactor);
     float const BrightStarFactor = smoothstep(0.8, 1.0, StarBrightness);
     float const BrightStarShapeAmount = GpuStarfieldBrightStarShapeStrength * BrightStarFactor;
-    float const BrightStarShapeScale = 1.0 + BrightStarShapeAmount * 3.0;
+    float const BrightStarShapeRandom =
+        frac(Star.ColourTemperature * 13.37 + dot(Star.Direction, float3(7.13, 17.17, 29.41)));
+    float const BrightStarShapeRotation = BrightStarShapeRandom * (PI * 0.5);
+    float const BrightStarShapeLength = lerp(2.0, 3.0, frac(BrightStarShapeRandom * 1.618));
+    float const BrightStarShapeScale = 1.0 + BrightStarShapeAmount * BrightStarShapeLength;
     float3 const BillboardOffset =
         (Input.Corner.x * ResolvedView.ViewRight + Input.Corner.y * ResolvedView.ViewUp) *
         HalfSize * BrightStarShapeScale;
@@ -129,7 +139,8 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
         float4(ResolvedView.TranslatedWorldCameraOrigin + RelativePosition + BillboardOffset, 1.0);
     Intermediates.PositionInstanceSpace = Star.Direction;
     Intermediates.TexCoord = Input.Corner * 0.5 + 0.5;
-    Intermediates.BrightStarShapeAmount = BrightStarShapeAmount;
+    Intermediates.BrightStarShapeParameters =
+        float3(BrightStarShapeAmount, BrightStarShapeRotation, BrightStarShapeScale);
     Intermediates.HazeDirection = Star.Direction;
 
     float const WarmWeight = saturate(1.0 - Star.ColourTemperature * 2.0);
@@ -151,29 +162,37 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
                                                     float4 SvPosition) {
     FMaterialPixelParameters Result = MakeInitializedMaterialPixelParameters();
     float2 TexCoord = Interpolants.TexCoord;
+    float3 DisplayColour = Interpolants.Colour;
 
-    [branch] if (Interpolants.BrightStarShapeAmount > 0.0) {
-        float const ShapeScale = 1.0 + Interpolants.BrightStarShapeAmount * 3.0;
+    [branch] if (Interpolants.BrightStarShapeParameters.x > 0.0) {
+        float const ShapeAmount = Interpolants.BrightStarShapeParameters.x;
+        float const ShapeRotation = Interpolants.BrightStarShapeParameters.y;
+        float const ShapeScale = Interpolants.BrightStarShapeParameters.z;
         float2 const Position = TexCoord * 2.0 - 1.0;
-        float2 const CorePosition = Position * ShapeScale;
+        float RotationSin;
+        float RotationCos;
+        sincos(ShapeRotation, RotationSin, RotationCos);
+        float2 const RotatedPosition = float2(Position.x * RotationCos - Position.y * RotationSin,
+                                              Position.x * RotationSin + Position.y * RotationCos);
+        float2 const CorePosition = RotatedPosition * ShapeScale;
         float const RadialFalloff = saturate(1.0 - dot(CorePosition, CorePosition));
         float const AxisDistance = min(abs(CorePosition.x), abs(CorePosition.y));
-        float const AxisExtent = max(abs(Position.x), abs(Position.y));
+        float const AxisExtent = max(abs(RotatedPosition.x), abs(RotatedPosition.y));
         float const SpikeFalloff = saturate(1.0 - AxisDistance * 8.0) * saturate(1.0 - AxisExtent) *
-                                   Interpolants.BrightStarShapeAmount;
+                                   ShapeAmount;
         float const ShapedFalloff = max(RadialFalloff, SpikeFalloff);
         float const ShapedRadius = sqrt(saturate(1.0 - ShapedFalloff));
         TexCoord = float2(ShapedRadius * 0.5 + 0.5, 0.5);
     }
 
-    [branch] if (Interpolants.RenderHaze > 0.5) {
+    [branch] if (Interpolants.HazeOutputParameters.x > 0.5) {
         float3 const Direction = normalize(Interpolants.HazeDirection);
         float const Longitude = atan2(Direction.y, Direction.x);
         float const Latitude = asin(clamp(Direction.z, -1.0, 1.0));
 
         float const HazeWidth = radians(Interpolants.HazeParameters.x);
         float const HazeLatitude = Latitude / HazeWidth;
-        float const CoreProfile = exp(-0.5 * HazeLatitude * HazeLatitude);
+        float const BandCoreProfile = exp(-0.5 * HazeLatitude * HazeLatitude);
         float const BroadLatitude = Latitude / (HazeWidth * 2.2);
         float const BroadProfile = exp(-0.5 * BroadLatitude * BroadLatitude) * 0.25;
         float const StructureWave = 0.5 * sin(Longitude - 0.8) + 0.3 * sin(3.0 * Longitude + 1.4) +
@@ -198,7 +217,20 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
         float const DustOpacity = lerp(1.0, IrregularOpacity, DustIrregularity);
         float const DustTransmission = saturate(1.0 - DustStrength * DustProfile * DustOpacity);
 
-        float const Haze = saturate((CoreProfile + BroadProfile) * Structure * DustTransmission);
+        float const GalacticCoreWidth = radians(Interpolants.BrightStarShapeParameters.y);
+        float const GalacticCoreLongitude = Longitude / GalacticCoreWidth;
+        float const GalacticCoreLatitude = Latitude / (HazeWidth * 0.7);
+        float const GalacticCoreProfile =
+            exp(-0.5 * (GalacticCoreLongitude * GalacticCoreLongitude +
+                        GalacticCoreLatitude * GalacticCoreLatitude));
+        float const GalacticCore =
+            GalacticCoreProfile * Interpolants.BrightStarShapeParameters.x;
+        float const BandHaze = (BandCoreProfile + BroadProfile) * Structure;
+        float const Haze = saturate((BandHaze + GalacticCore) * DustTransmission);
+        float const GalacticCoreBlend =
+            saturate(GalacticCore / max(BandHaze + GalacticCore, 0.0001));
+        DisplayColour = lerp(
+            DisplayColour, Interpolants.HazeOutputParameters.yzw, GalacticCoreBlend);
         float const MaterialFalloff = sqrt(Haze);
         float const EncodedRadius = sqrt(saturate(1.0 - MaterialFalloff));
         TexCoord = float2(EncodedRadius * 0.5 + 0.5, 0.5);
@@ -211,7 +243,7 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
     }
 #endif
 
-    Result.VertexColor = float4(Interpolants.Colour, 1.0);
+    Result.VertexColor = float4(DisplayColour, 1.0);
     Result.TwoSidedSign = 1.0;
     return Result;
 }
@@ -278,10 +310,10 @@ FVertexFactoryInterpolantsVSToPS
     FVertexFactoryInterpolantsVSToPS Interpolants;
     Interpolants.TexCoord = Intermediates.TexCoord;
     Interpolants.Colour = Intermediates.Colour;
-    Interpolants.BrightStarShapeAmount = Intermediates.BrightStarShapeAmount;
+    Interpolants.BrightStarShapeParameters = Intermediates.BrightStarShapeParameters;
     Interpolants.HazeDirection = Intermediates.HazeDirection;
     Interpolants.HazeParameters = Intermediates.HazeParameters;
-    Interpolants.RenderHaze = Intermediates.RenderHaze;
+    Interpolants.HazeOutputParameters = Intermediates.HazeOutputParameters;
     return Interpolants;
 }
 
