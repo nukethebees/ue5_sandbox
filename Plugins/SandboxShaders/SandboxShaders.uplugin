@@ -16,6 +16,11 @@
 			"LoadingPhase": "PostConfigInit"
 		},
 		{
+			"Name": "SandboxCelestials",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
 			"Name": "SbxShadersExperiments",
 			"Type": "Runtime",
 			"LoadingPhase": "PostConfigInit"

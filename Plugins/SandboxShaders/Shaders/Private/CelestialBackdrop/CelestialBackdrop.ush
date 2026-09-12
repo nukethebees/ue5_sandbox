@@ -1,0 +1,158 @@
+#ifndef SANDBOX_SHADERS_CELESTIAL_BACKDROP
+#define SANDBOX_SHADERS_CELESTIAL_BACKDROP
+
+#include "/Plugin/SandboxShaders/Common/ProceduralNoise.ush"
+
+float3 sbx_celestial_seed_offset(float const seed) {
+    return float3(sbx_hash21(float2(seed, seed + 17.0)),
+                  sbx_hash21(float2(seed + 41.0, seed + 73.0)),
+                  sbx_hash21(float2(seed + 101.0, seed + 149.0))) *
+           97.0;
+}
+
+float sbx_celestial_terminator(float3 const normal_ws,
+                               float3 const sun_direction,
+                               float const softness) {
+    float const sun_facing = dot(normalize(normal_ws), normalize(sun_direction));
+    float const width = max(softness, 0.001);
+    return smoothstep(-width, width, sun_facing);
+}
+
+float sbx_celestial_stylise(float value, float const steps) {
+    if (steps < 2.0) {
+        return saturate(value);
+    }
+
+    float const intervals = max(round(steps) - 1.0, 1.0);
+    return floor(saturate(value) * intervals + 0.5) / intervals;
+}
+
+float3 sbx_celestial_surface(float3 normal_local,
+                             float3 normal_ws,
+                             float3 sun_direction,
+                             float3 primary_day_colour,
+                             float3 secondary_day_colour,
+                             float3 night_colour,
+                             float3 emission_colour,
+                             float body_style,
+                             float terminator_softness,
+                             float night_brightness,
+                             float detail_scale,
+                             float detail_strength,
+                             float noise_breakup,
+                             float stylisation_steps,
+                             float pattern_seed,
+                             float band_count,
+                             float band_strength,
+                             float band_warp,
+                             float emission_intensity,
+                             float emission_threshold) {
+    normal_local = normalize(normal_local);
+    float3 const seed_offset = sbx_celestial_seed_offset(pattern_seed);
+    float const broad_noise = sbx_fbm3(normal_local * max(detail_scale, 0.1) + seed_offset);
+    float const detail_noise =
+        sbx_value_noise3(normal_local * max(detail_scale, 0.1) * 3.17 + seed_offset.yzx + 11.7);
+    float const broken_noise =
+        lerp(broad_noise, broad_noise * 0.68 + detail_noise * 0.42, saturate(noise_breakup));
+
+    float pattern = broken_noise;
+    if (body_style >= 0.5) {
+        float const warped_latitude =
+            normal_local.z + (broad_noise - 0.5) * saturate(band_warp) * 0.35;
+        float const bands = 0.5 + 0.5 * sin(warped_latitude * max(band_count, 1.0) * 6.2831853);
+        pattern = lerp(broken_noise, bands * 0.82 + detail_noise * 0.18, saturate(band_strength));
+    }
+
+    pattern = lerp(0.5, pattern, max(detail_strength, 0.0));
+    pattern = sbx_celestial_stylise(pattern, stylisation_steps);
+
+    float const daylight = sbx_celestial_terminator(normal_ws, sun_direction, terminator_softness);
+    float3 const day_colour = lerp(primary_day_colour, secondary_day_colour, pattern);
+    float3 const dark_colour =
+        night_colour * max(night_brightness, 0.0) * lerp(0.72, 1.18, pattern);
+    float3 colour = lerp(dark_colour, day_colour, daylight);
+
+    float const emission_mask = smoothstep(saturate(emission_threshold),
+                                           saturate(emission_threshold + 0.12),
+                                           detail_noise * 0.65 + (1.0 - pattern) * 0.35);
+    colour +=
+        emission_colour * emission_mask * max(emission_intensity, 0.0) * (1.0 - daylight * 0.88);
+    return colour;
+}
+
+float4 sbx_celestial_clouds(float3 normal_local,
+                            float3 normal_ws,
+                            float3 sun_direction,
+                            float3 cloud_colour,
+                            float3 cloud_night_colour,
+                            float terminator_softness,
+                            float cloud_amount,
+                            float cloud_opacity,
+                            float cloud_detail_scale,
+                            float cloud_breakup,
+                            float pattern_seed,
+                            float rotation_phase_degrees,
+                            float rotation_speed_degrees,
+                            float animation_time) {
+    float const angle = radians(rotation_phase_degrees + rotation_speed_degrees * animation_time);
+    float const angle_sine = sin(angle);
+    float const angle_cosine = cos(angle);
+    float3 rotated_normal = normalize(normal_local);
+    rotated_normal.xy = float2(rotated_normal.x * angle_cosine - rotated_normal.y * angle_sine,
+                               rotated_normal.x * angle_sine + rotated_normal.y * angle_cosine);
+
+    float3 const seed_offset = sbx_celestial_seed_offset(pattern_seed + 317.0);
+    float const broad_noise = sbx_fbm3(rotated_normal * max(cloud_detail_scale, 0.1) + seed_offset);
+    float const detail_noise =
+        sbx_value_noise3(rotated_normal * max(cloud_detail_scale, 0.1) * 3.83 + seed_offset.zxy);
+    float const cloud_noise =
+        lerp(broad_noise, broad_noise * 0.72 + detail_noise * 0.36, saturate(cloud_breakup));
+    float const threshold = lerp(0.93, 0.24, saturate(cloud_amount));
+    float const mask = smoothstep(threshold, min(threshold + 0.16, 1.0), cloud_noise);
+    float const daylight = sbx_celestial_terminator(normal_ws, sun_direction, terminator_softness);
+    float3 const colour =
+        lerp(cloud_night_colour, cloud_colour, daylight) * (0.45 + daylight * 0.75);
+    return float4(colour, mask * saturate(cloud_opacity));
+}
+
+float4 sbx_celestial_atmosphere(float3 normal_ws,
+                                float3 camera_vector_ws,
+                                float3 sun_direction,
+                                float3 atmosphere_colour,
+                                float terminator_softness,
+                                float atmosphere_density,
+                                float limb_intensity,
+                                float limb_falloff) {
+    float3 const normal = normalize(normal_ws);
+    float3 const view_direction = normalize(camera_vector_ws);
+    float const view_cosine = saturate(dot(normal, view_direction));
+    float const limb = pow(1.0 - view_cosine, max(limb_falloff, 0.5));
+    float const density = max(atmosphere_density, 0.0);
+    float const optical_depth = 1.0 - exp(-density / max(view_cosine * 4.0, 0.18));
+    float const daylight =
+        sbx_celestial_terminator(normal, sun_direction, max(terminator_softness * 1.8, 0.02));
+    float const horizon_daylight = lerp(0.09, 1.0, daylight);
+    float const forward_scatter =
+        pow(saturate(dot(view_direction, normalize(sun_direction))), 8.0) * daylight;
+    float const energy =
+        saturate(optical_depth * (0.18 + limb * 1.55) * horizon_daylight + forward_scatter * 0.16);
+    return float4(atmosphere_colour * energy * max(limb_intensity, 0.0), saturate(energy * 0.82));
+}
+
+float3 sbx_celestial_close_approach_wpo(float3 const vertex_world_position,
+                                        float3 const object_world_position,
+                                        float3 const camera_world_position,
+                                        float const enabled,
+                                        float const outer_radius,
+                                        float const minimum_distance_ratio) {
+    if (enabled < 0.5) {
+        return 0.0;
+    }
+
+    float const camera_distance = distance(camera_world_position, object_world_position);
+    float const guard_distance = max(outer_radius, 0.001) * max(minimum_distance_ratio, 1.001);
+    float const scale = saturate(camera_distance / guard_distance);
+    return (vertex_world_position - object_world_position) * (scale - 1.0);
+}
+
+#endif
