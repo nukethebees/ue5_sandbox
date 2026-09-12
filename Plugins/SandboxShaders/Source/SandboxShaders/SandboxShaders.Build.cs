@@ -8,12 +8,18 @@ public class SandboxShaders : ModuleRules
         CppStandard = CppStandardVersion.Latest;
         MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
 
-        PublicDependencyModuleNames.Add("Core");
+        PublicDependencyModuleNames.AddRange(new string[]
+        {
+            "Core",
+            "CoreUObject",
+            "Engine",
+        });
 
         PrivateDependencyModuleNames.AddRange(new string[]
         {
             "Projects",
             "RenderCore",
+            "RHI",
         });
     }
 }

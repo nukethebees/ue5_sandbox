@@ -1,30 +1,21 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-#include "SbxShadersExperiments/GpuStarfield/GpuStarfieldComponent.h"
+#include "SandboxShaders/GpuStarfield/GpuStarfieldActor.h"
 
-#include "GpuStarfieldExperimentActor.generated.h"
+#include "GpuStarfieldBenchmarkActor.generated.h"
 
 class ACameraActor;
 
 UCLASS(Blueprintable)
-class SBXSHADERSEXPERIMENTS_API AGpuStarfieldExperimentActor final : public AActor {
+class SBXSHADERSEXPERIMENTS_API AGpuStarfieldBenchmarkActor final : public AGpuStarfieldActor {
     GENERATED_BODY()
   public:
-    AGpuStarfieldExperimentActor();
+    AGpuStarfieldBenchmarkActor();
 
     void BeginPlay() override;
     void EndPlay(EEndPlayReason::Type end_play_reason) override;
     void Tick(float delta_seconds) override;
-    void OnConstruction(FTransform const& transform) override;
-    void PostRegisterAllComponents() override;
-
-    UFUNCTION(CallInEditor, BlueprintCallable, Category = "GPU Starfield")
-    void apply_settings();
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GPU Starfield")
-    FGpuStarfieldSettings settings;
   private:
     struct FBenchmarkPhase {
         int32 star_count{0};
@@ -38,9 +29,6 @@ class SBXSHADERSEXPERIMENTS_API AGpuStarfieldExperimentActor final : public AAct
     void begin_csv_capture();
     void finish_benchmark_phase(FString const& filename);
     void update_benchmark_camera();
-
-    UPROPERTY(VisibleAnywhere, Category = "GPU Starfield")
-    TObjectPtr<UGpuStarfieldComponent> starfield_component_;
 
     TArray<FBenchmarkPhase> benchmark_phases_;
     FString benchmark_output_directory_;

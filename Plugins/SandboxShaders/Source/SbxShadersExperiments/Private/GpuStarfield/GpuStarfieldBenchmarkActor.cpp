@@ -1,4 +1,4 @@
-#include "SbxShadersExperiments/GpuStarfield/GpuStarfieldExperimentActor.h"
+#include "SbxShadersExperiments/GpuStarfield/GpuStarfieldBenchmarkActor.h"
 
 #include "Async/Async.h"
 #include "Camera/CameraActor.h"
@@ -66,23 +66,27 @@ auto parse_camera_motion_modes() -> TArray<bool> {
 }
 }
 
-AGpuStarfieldExperimentActor::AGpuStarfieldExperimentActor() {
+AGpuStarfieldBenchmarkActor::AGpuStarfieldBenchmarkActor() {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = false;
-
-    starfield_component_ = CreateDefaultSubobject<UGpuStarfieldComponent>(TEXT("GpuStarfield"));
-    SetRootComponent(starfield_component_);
 }
 
-void AGpuStarfieldExperimentActor::BeginPlay() {
+void AGpuStarfieldBenchmarkActor::BeginPlay() {
     Super::BeginPlay();
+
+    int32 profile_star_count{0};
+    FParse::Value(FCommandLine::Get(), TEXT("GpuStarfieldCount="), profile_star_count);
+    if (profile_star_count > 0) {
+        settings.star_count = profile_star_count;
+        apply_settings();
+    }
 
     if (FParse::Param(FCommandLine::Get(), TEXT("GpuStarfieldBenchmark"))) {
         start_benchmark();
     }
 }
 
-void AGpuStarfieldExperimentActor::EndPlay(EEndPlayReason::Type const end_play_reason) {
+void AGpuStarfieldBenchmarkActor::EndPlay(EEndPlayReason::Type const end_play_reason) {
     if (csv_finished_delegate_.IsValid()) {
         FCsvProfiler::Get()->OnCSVProfileFinished().Remove(csv_finished_delegate_);
         csv_finished_delegate_.Reset();
@@ -91,7 +95,7 @@ void AGpuStarfieldExperimentActor::EndPlay(EEndPlayReason::Type const end_play_r
     Super::EndPlay(end_play_reason);
 }
 
-void AGpuStarfieldExperimentActor::Tick(float const delta_seconds) {
+void AGpuStarfieldBenchmarkActor::Tick(float const delta_seconds) {
     Super::Tick(delta_seconds);
 
     if (!benchmark_active_) {
@@ -112,23 +116,7 @@ void AGpuStarfieldExperimentActor::Tick(float const delta_seconds) {
     begin_csv_capture();
 }
 
-void AGpuStarfieldExperimentActor::OnConstruction(FTransform const& transform) {
-    Super::OnConstruction(transform);
-    apply_settings();
-}
-
-void AGpuStarfieldExperimentActor::PostRegisterAllComponents() {
-    Super::PostRegisterAllComponents();
-    apply_settings();
-}
-
-void AGpuStarfieldExperimentActor::apply_settings() {
-    if (IsValid(starfield_component_)) {
-        starfield_component_->apply_settings(settings);
-    }
-}
-
-void AGpuStarfieldExperimentActor::start_benchmark() {
+void AGpuStarfieldBenchmarkActor::start_benchmark() {
     auto const star_counts{parse_star_counts()};
     auto const camera_motion_modes{parse_camera_motion_modes()};
     if (star_counts.IsEmpty() || camera_motion_modes.IsEmpty()) {
@@ -220,7 +208,7 @@ void AGpuStarfieldExperimentActor::start_benchmark() {
     begin_benchmark_phase();
 }
 
-void AGpuStarfieldExperimentActor::begin_benchmark_phase() {
+void AGpuStarfieldBenchmarkActor::begin_benchmark_phase() {
     auto const& phase{benchmark_phases_[benchmark_phase_index_]};
     settings.star_count = phase.star_count;
     apply_settings();
@@ -244,7 +232,7 @@ void AGpuStarfieldExperimentActor::begin_benchmark_phase() {
            phase.repeat_index + 1);
 }
 
-void AGpuStarfieldExperimentActor::begin_csv_capture() {
+void AGpuStarfieldBenchmarkActor::begin_csv_capture() {
     auto const& phase{benchmark_phases_[benchmark_phase_index_]};
     auto const filename{FString::Printf(TEXT("gpu_starfield_%d_%s_%s_r%d.csv"),
                                         phase.star_count,
@@ -253,7 +241,7 @@ void AGpuStarfieldExperimentActor::begin_csv_capture() {
                                         phase.repeat_index + 1)};
 
     benchmark_capture_pending_ = true;
-    TWeakObjectPtr<AGpuStarfieldExperimentActor> const weak_this{this};
+    TWeakObjectPtr<AGpuStarfieldBenchmarkActor> const weak_this{this};
     csv_finished_delegate_ = FCsvProfiler::Get()->OnCSVProfileFinished().AddLambda(
         [weak_this](FString const& output_filename) {
             AsyncTask(ENamedThreads::GameThread, [weak_this, output_filename] {
@@ -268,7 +256,7 @@ void AGpuStarfieldExperimentActor::begin_csv_capture() {
     UE_LOG(LogGpuStarfieldBenchmark, Display, TEXT("Capturing %s"), *filename);
 }
 
-void AGpuStarfieldExperimentActor::finish_benchmark_phase(FString const& filename) {
+void AGpuStarfieldBenchmarkActor::finish_benchmark_phase(FString const& filename) {
     FCsvProfiler::Get()->OnCSVProfileFinished().Remove(csv_finished_delegate_);
     csv_finished_delegate_.Reset();
 
@@ -297,7 +285,7 @@ void AGpuStarfieldExperimentActor::finish_benchmark_phase(FString const& filenam
     begin_benchmark_phase();
 }
 
-void AGpuStarfieldExperimentActor::update_benchmark_camera() {
+void AGpuStarfieldBenchmarkActor::update_benchmark_camera() {
     auto* const camera{benchmark_camera_.Get()};
     if (camera == nullptr || !benchmark_phases_.IsValidIndex(benchmark_phase_index_)) {
         return;

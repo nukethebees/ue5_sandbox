@@ -8,7 +8,7 @@
 class UMaterialInterface;
 
 USTRUCT(BlueprintType)
-struct SBXSHADERSEXPERIMENTS_API FGpuStarfieldSettings {
+struct SANDBOXSHADERS_API FGpuStarfieldSettings {
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere,
@@ -155,7 +155,7 @@ struct FGpuStarfieldGpuData {
 static_assert(sizeof(FGpuStarfieldGpuData) == 32);
 
 UCLASS(ClassGroup = (Rendering))
-class SBXSHADERSEXPERIMENTS_API UGpuStarfieldComponent final : public UPrimitiveComponent {
+class SANDBOXSHADERS_API UGpuStarfieldComponent final : public UPrimitiveComponent {
     GENERATED_BODY()
   public:
     UGpuStarfieldComponent();

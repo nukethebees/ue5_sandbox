@@ -339,7 +339,7 @@ USparkRendererComponent::USparkRendererComponent()
     CanCharacterStepUpOn = ECB_No;
 
     static ConstructorHelpers::FObjectFinder<UMaterialInterface> const material{
-        TEXT("/SandboxShaders/Experiments/GpuStarfield/M_GpuStarfield.M_GpuStarfield")};
+        TEXT("/SandboxShaders/GpuStarfield/M_GpuStarfield.M_GpuStarfield")};
     if (material.Succeeded()) {
         material_ = material.Object;
     }

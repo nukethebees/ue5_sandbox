@@ -78,7 +78,7 @@ public class SandboxEditor : ModuleRules
             "Sandbox", // Reference to runtime module
             "SandboxGameShared",
             "SandboxUI",
-            "SbxShadersExperiments",
+            "SandboxShaders",
             "SbxMeshGenLab",
             "SpaceGame",
             "SpaceGameSimulation",

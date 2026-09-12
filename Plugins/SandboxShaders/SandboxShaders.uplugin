@@ -3,11 +3,11 @@
 	"Version": 1,
 	"VersionName": "1.0",
 	"FriendlyName": "Sandbox Shaders",
-	"Description": "Experimental shader and rendering playground.",
+	"Description": "Runtime shader systems and isolated rendering experiments.",
 	"Category": "Sandbox",
 	"CanContainContent": true,
 	"IsBetaVersion": false,
-	"IsExperimentalVersion": true,
+	"IsExperimentalVersion": false,
 	"Installed": false,
 	"Modules": [
 		{

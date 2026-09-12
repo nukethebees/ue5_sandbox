@@ -1,7 +1,7 @@
 # GPU Starfield
 
-This experiment tests a minimal custom scene renderer for deterministic, camera-relative stars. An
-`AGpuStarfieldExperimentActor` owns one `UGpuStarfieldComponent`. The component generates one
+The GPU starfield is a custom scene renderer for deterministic, camera-relative stars. An
+`AGpuStarfieldActor` owns one `UGpuStarfieldComponent`. The component generates one
 immutable 32-byte record per star and hands a copy to its `FPrimitiveSceneProxy`; the proxy uploads
 that array to a render-thread-owned structured buffer. Each record stores a unit direction, angular
 size, brightness, relative depth, a warm-to-cool colour value, and sparse bright-population
@@ -61,9 +61,11 @@ retain their logical depth, so geometry farther away than a star can still rende
   ordinary actor-anchored world geometry. The default `0.01` gives the base scale an effective
   apparent distance of approximately 100,000 km.
 
-The showcase actor defaults to 10,000 stars, seed 1337, and a scale of `1`. The editor clamp permits
-profiling up to one million stars. A standalone profiling run can override the placed actor without
-resaving the map by passing `-GpuStarfieldCount=N`.
+The production actor defaults to 10,000 stars, seed 1337, and a scale of `1`. The editor clamp
+permits profiling up to one million stars. The showcase uses
+`AGpuStarfieldBenchmarkActor`, an experimental subclass that owns the command-line benchmark
+driver. A standalone profiling run can override the placed showcase actor without resaving the map
+by passing `-GpuStarfieldCount=N`.
 
 Generation uses continuous randomized depth within three deliberately sparse populations: 1% near
 at `0.001-0.01` of the base radius, 14% middle at `0.03-0.2`, and 85% distant at `0.5-1.0`. These are

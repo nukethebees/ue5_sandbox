@@ -1,4 +1,4 @@
-#include "SbxShadersExperiments/GpuStarfield/GpuStarfieldComponent.h"
+#include "SandboxShaders/GpuStarfield/GpuStarfieldComponent.h"
 
 #include "Containers/ResourceArray.h"
 #include "Engine/Engine.h"
@@ -7,8 +7,6 @@
 #include "Materials/MaterialInterface.h"
 #include "MeshDrawShaderBindings.h"
 #include "MeshMaterialShader.h"
-#include "Misc/CommandLine.h"
-#include "Misc/Parse.h"
 #include "PrimitiveSceneProxy.h"
 #include "PrimitiveViewRelevance.h"
 #include "ProfilingDebugging/CsvProfiler.h"
@@ -21,7 +19,7 @@
 #include "UObject/ConstructorHelpers.h"
 #include "VertexFactory.h"
 
-DEFINE_LOG_CATEGORY_STATIC(LogGpuStarfieldExperiment, Log, All);
+DEFINE_LOG_CATEGORY_STATIC(LogGpuStarfield, Log, All);
 
 namespace {
 constexpr int32 maximum_star_count{1000000};
@@ -68,12 +66,6 @@ auto calculate_dust_lane_attenuation(FVector const& direction,
     auto const irregular_opacity{0.55f + 0.45f * (opacity_wave * 0.5f + 0.5f)};
     auto const opacity{FMath::Lerp(1.0f, irregular_opacity, irregularity)};
     return FMath::Clamp(1.0f - strength * latitude_profile * opacity, 0.0f, 1.0f);
-}
-
-auto get_profile_star_count_override() -> int32 {
-    int32 star_count{0};
-    FParse::Value(FCommandLine::Get(), TEXT("GpuStarfieldCount="), star_count);
-    return star_count;
 }
 
 struct FGpuStarfieldRenderParameters {
@@ -454,7 +446,7 @@ UGpuStarfieldComponent::UGpuStarfieldComponent() {
     CanCharacterStepUpOn = ECB_No;
 
     static ConstructorHelpers::FObjectFinder<UMaterialInterface> const material{
-        TEXT("/SandboxShaders/Experiments/GpuStarfield/M_GpuStarfield.M_GpuStarfield")};
+        TEXT("/SandboxShaders/GpuStarfield/M_GpuStarfield.M_GpuStarfield")};
     if (material.Succeeded()) {
         material_ = material.Object;
     }
@@ -462,10 +454,6 @@ UGpuStarfieldComponent::UGpuStarfieldComponent() {
 
 void UGpuStarfieldComponent::apply_settings(FGpuStarfieldSettings const& settings) {
     auto normalised{settings};
-    auto const profile_star_count{get_profile_star_count_override()};
-    if (profile_star_count > 0) {
-        normalised.star_count = profile_star_count;
-    }
     normalised.star_count = FMath::Clamp(normalised.star_count, 1, maximum_star_count);
     normalised.galactic_band_strength = FMath::Clamp(normalised.galactic_band_strength, 0.0f, 1.0f);
     normalised.galactic_band_width_degrees =
@@ -536,9 +524,9 @@ void UGpuStarfieldComponent::apply_settings(FGpuStarfieldSettings const& setting
 FPrimitiveSceneProxy* UGpuStarfieldComponent::CreateSceneProxy() {
     if (!IsValid(material_) || star_data_.IsEmpty()) {
         if (!IsValid(material_)) {
-            UE_LOG(LogGpuStarfieldExperiment,
+            UE_LOG(LogGpuStarfield,
                    Warning,
-                   TEXT("GPU starfield material is unavailable; regenerate the showcase assets."));
+                   TEXT("GPU starfield material is unavailable."));
         }
         return nullptr;
     }

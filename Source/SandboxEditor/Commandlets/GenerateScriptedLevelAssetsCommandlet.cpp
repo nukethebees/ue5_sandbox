@@ -1,6 +1,6 @@
 #include "SandboxEditor/Commandlets/GenerateScriptedLevelAssetsCommandlet.h"
 
-#include <SbxShadersExperiments/GpuStarfield/GpuStarfieldExperimentActor.h>
+#include <SandboxShaders/GpuStarfield/GpuStarfieldActor.h>
 #include <SpaceGame/input/ControlProfiles.h>
 #include <SpaceGame/input/SpaceGameInputModifier.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
@@ -1293,7 +1293,7 @@ auto generate_runtime_map(FObserverControlInputs const& observer,
     orchestrator->set_level_config(*config);
     orchestrator->set_start_mode(EOrchestratorStartMode::AuthoredLevel);
 
-    auto* const starfield{world->SpawnActor<AGpuStarfieldExperimentActor>()};
+    auto* const starfield{world->SpawnActor<AGpuStarfieldActor>()};
     if (!IsValid(starfield)) {
         UE_LOG(LogTemp, Error, TEXT("Could not spawn runtime GPU starfield"));
         return false;

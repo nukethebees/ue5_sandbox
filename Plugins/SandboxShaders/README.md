@@ -1,9 +1,9 @@
 # SandboxShaders
 
-`SandboxShaders` is a deliberately small shader playground. The runtime `SandboxShaders` module
-only installs the `/Plugin/SandboxShaders` shader-source mapping. `SbxShadersExperiments` contains
-the concrete experiment actors and their rendering code, while `SandboxShadersEditor` adds the
-showcase launcher and smoke tests.
+`SandboxShaders` contains reusable runtime shader systems and the
+`/Plugin/SandboxShaders` shader-source mapping. `SbxShadersExperiments` contains isolated
+experiment actors and rendering code, while `SandboxShadersEditor` adds the showcase launcher and
+smoke tests.
 
 The experiments module uses the qualified name `SbxShadersExperiments` because this project already
 has an Unreal module named `Experiments` in `SandboxUI`; Unreal module names share one target-wide
@@ -27,6 +27,9 @@ See the experiment-specific documentation:
 - [Planet Atmosphere](Experiments/PlanetAtmosphere/README.md)
 - [Construction / Spawn](Experiments/ConstructionSpawn/README.md)
 - [Energy Beam](Experiments/EnergyBeam/README.md)
-- [GPU Starfield](Experiments/GpuStarfield/README.md)
 - [Procedural Nebula Backdrop](Experiments/NebulaBackdrop/README.md)
 - [Bounded Nebula Volume](Experiments/NebulaVolume/README.md)
+
+## Runtime systems
+
+- [GPU Starfield](GpuStarfield/README.md)
