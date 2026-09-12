@@ -2,15 +2,21 @@
 
 #include "TestSaveProfileSource.h"
 
+#include "SpaceGame/persistence/SaveProfileFileStorage.h"
 #include "SpaceGame/persistence/SpaceSaveGame.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 
+#include <CoreGlobals.h>
 #include <Engine/GameInstance.h>
 #include <Engine/World.h>
+#include <HAL/FileManager.h>
 #include <HAL/IConsoleManager.h>
 #include <Kismet/GameplayStatics.h>
+#include <Misc/App.h>
+#include <Misc/CommandLine.h>
+#include <Misc/Paths.h>
 
 namespace space_save_subsystem {
 void reset_test_profile_command(TArray<FString> const&, UWorld* const world) {
@@ -218,7 +224,101 @@ auto USpaceSaveSubsystem::legacy_slot_name() -> FString {
 }
 
 auto USpaceSaveSubsystem::make_storage() -> ml::ioj::FSaveProfileStorage {
+    ml::ioj::FSaveProfileStorageSelection selection{};
+    FString error{};
+    if (!ml::ioj::resolve_save_profile_storage(FCommandLine::Get(),
+#if WITH_EDITOR
+                                               true,
+#else
+                                               false,
+#endif
+                                               FApp::IsUnattended(),
+                                               GIsAutomationTesting,
+                                               selection,
+                                               error)) {
+        UE_LOG(LogSandboxSubsystem, Error, TEXT("Invalid save storage selection: %s"), *error);
+        return {};
+    }
+
+    if (selection.mode == ml::ioj::ESaveProfileStorageMode::platform ||
+        selection.mode == ml::ioj::ESaveProfileStorageMode::local) {
+        UE_LOG(LogSandboxSubsystem,
+               Display,
+               TEXT("Save storage mode: %s (%s)"),
+               selection.mode == ml::ioj::ESaveProfileStorageMode::platform ? TEXT("Platform")
+                                                                            : TEXT("Local"),
+               *selection.root);
+        return make_slot_storage();
+    }
+
+    auto const shared_root{FPaths::Combine(ml::ioj::development_save_base_root(), TEXT("Shared"))};
+    if (selection.clone_shared &&
+        !ml::ioj::clone_save_profile_files(shared_root, selection.root, error)) {
+        UE_LOG(LogSandboxSubsystem, Error, TEXT("Failed to clone Shared saves: %s"), *error);
+        return {};
+    }
+
+    if (selection.mode == ml::ioj::ESaveProfileStorageMode::shared) {
+        auto const local_saves_exist{
+            UGameplayStatics::DoesSaveGameExist(profile_index_slot_name(), user_index) ||
+            UGameplayStatics::DoesSaveGameExist(legacy_slot_name(), user_index)};
+        auto const shared_exists{IFileManager::Get().FileExists(*FPaths::Combine(
+                                     selection.root, TEXT("SpaceProfileIndex.sav"))) ||
+                                 IFileManager::Get().FileExists(*FPaths::Combine(
+                                     selection.root, TEXT("SpaceProfileIndex.sav.bak")))};
+        if (!shared_exists && local_saves_exist && !selection.import_local &&
+            !selection.start_fresh) {
+            UE_LOG(LogSandboxSubsystem,
+                   Error,
+                   TEXT("Local saves exist but Shared storage has not been initialized. Relaunch "
+                        "with -SpaceSaveImportLocal or -SpaceSaveStartFresh."));
+            return {};
+        }
+        if (selection.import_local) {
+            if (!local_saves_exist) {
+                UE_LOG(LogSandboxSubsystem,
+                       Error,
+                       TEXT("-SpaceSaveImportLocal was requested but no local saves exist."));
+                return {};
+            }
+            auto legacy_loader = [](TArray<FScoreRecord>& records) {
+                auto* const save{Cast<USpaceSaveGame>(
+                    UGameplayStatics::LoadGameFromSlot(legacy_slot_name(), user_index))};
+                if (!IsValid(save)) {
+                    return ml::ioj::ESaveProfileLoadResult::failed;
+                }
+                records = save->score_records;
+                migrate_legacy_records(save->save_version, records);
+                return ml::ioj::ESaveProfileLoadResult::succeeded;
+            };
+            if (!ml::ioj::import_local_save_profiles(
+                    selection.root, MoveTemp(legacy_loader), error)) {
+                UE_LOG(
+                    LogSandboxSubsystem, Error, TEXT("Failed to import local saves: %s"), *error);
+                return {};
+            }
+        }
+    }
+
+    if (selection.mode == ml::ioj::ESaveProfileStorageMode::experimental) {
+        UE_LOG(LogSandboxSubsystem,
+               Warning,
+               TEXT("Save storage mode: Experimental (%s)"),
+               *selection.root);
+    } else {
+        UE_LOG(
+            LogSandboxSubsystem, Display, TEXT("Save storage mode: Shared (%s)"), *selection.root);
+    }
+
+    auto legacy_loader = [](TArray<FScoreRecord>&) {
+        return ml::ioj::ESaveProfileLoadResult::not_found;
+    };
+    return ml::ioj::make_file_profile_storage(selection.root, MoveTemp(legacy_loader));
+}
+
+auto USpaceSaveSubsystem::make_slot_storage() -> ml::ioj::FSaveProfileStorage {
     return {
+        .with_exclusive_access = [](TFunctionRef<bool()> operation) { return operation(); },
         .load_index =
             [](FSaveProfileIndexData& data) {
                 auto const slot{profile_index_slot_name()};

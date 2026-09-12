@@ -27,6 +27,7 @@ struct SPACEGAME_API FCreateSaveProfileResponse {
 };
 
 struct SPACEGAME_API FSaveProfileStorage {
+    TFunction<bool(TFunctionRef<bool()>)> with_exclusive_access{};
     TFunction<ESaveProfileLoadResult(FSaveProfileIndexData&)> load_index{};
     TFunction<bool(FSaveProfileIndexData const&)> save_index{};
     TFunction<ESaveProfileLoadResult(FString const&, FSaveProfileResultsData&)> load_results{};
@@ -83,6 +84,8 @@ class SPACEGAME_API FSaveProfileManager {
     static auto migrate_index(FSaveProfileIndexData& index) -> bool;
     static auto results_version_is_supported(FSaveProfileResultsData const& results) -> bool;
 
+    bool initialise_locked();
+    bool reload_latest(FString const& active_profile_id, bool load_active_results);
     bool create_initial_profile(TConstArrayView<FScoreRecord> legacy_records);
     bool save_new_profile(FSaveProfileMetadata metadata,
                           FSaveProfileResultsData results,

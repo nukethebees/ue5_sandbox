@@ -1,8 +1,14 @@
+#include <SpaceGame/persistence/SaveProfileFileStorage.h>
 #include <SpaceGame/persistence/SaveProfileManager.h>
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
 
 #include <CQTest.h>
+#include <HAL/FileManager.h>
 #include <Kismet/GameplayStatics.h>
+#include <Misc/FileHelper.h>
+#include <Misc/Guid.h>
+#include <Misc/Paths.h>
+#include <Misc/ScopeExit.h>
 
 namespace save_profile_manager_test {
 struct FFakeProfileStorage {
@@ -18,6 +24,7 @@ struct FFakeProfileStorage {
 
     auto make() -> ml::ioj::FSaveProfileStorage {
         return {
+            .with_exclusive_access = [](TFunctionRef<bool()> operation) { return operation(); },
             .load_index =
                 [this](FSaveProfileIndexData& output) {
                     if (index_load_fails) {
@@ -220,6 +227,50 @@ TEST_CLASS(SaveProfileManager, "Sandbox.UnitTests")
                              progress.state == ml::ioj::ELevelProgressState::Completed);
     }
 
+    TEST_METHOD(ConcurrentManagersRebaseBeforeAppending)
+    {
+        save_profile_manager_test::FFakeProfileStorage storage{};
+        ml::ioj::FSaveProfileManager first{storage.make()};
+        ml::ioj::FSaveProfileManager second{storage.make()};
+        TestRunner->TestTrue(TEXT("First manager initialises"), first.initialise());
+        TestRunner->TestTrue(TEXT("Second manager initialises"), second.initialise());
+
+        auto const first_record{save_profile_manager_test::make_record(
+            FDateTime{2026, 9, 10}, TEXT("first-editor"), 2)};
+        auto const second_record{save_profile_manager_test::make_record(
+            FDateTime{2026, 9, 11}, TEXT("second-editor"), 3)};
+        TestRunner->TestTrue(TEXT("First manager appends"),
+                             first.append_score_record(first_record));
+        TestRunner->TestTrue(TEXT("Stale second manager appends"),
+                             second.append_score_record(second_record));
+
+        ml::ioj::FSaveProfileManager reloaded{storage.make()};
+        TestRunner->TestTrue(TEXT("Combined state reloads"), reloaded.initialise());
+        TestRunner->TestEqual(
+            TEXT("Neither editor's result is lost"), reloaded.get_active_records().Num(), 2);
+    }
+
+    TEST_METHOD(ConcurrentManagersPreserveNewProfiles)
+    {
+        save_profile_manager_test::FFakeProfileStorage storage{};
+        ml::ioj::FSaveProfileManager first{storage.make()};
+        ml::ioj::FSaveProfileManager second{storage.make()};
+        TestRunner->TestTrue(TEXT("First manager initialises"), first.initialise());
+        TestRunner->TestTrue(TEXT("Second manager initialises"), second.initialise());
+
+        TestRunner->TestEqual(TEXT("First profile is created"),
+                              first.create_profile(TEXT("Alpha")).result,
+                              ml::ioj::ECreateSaveProfileResult::succeeded);
+        TestRunner->TestEqual(TEXT("Second profile is created from stale state"),
+                              second.create_profile(TEXT("Bravo")).result,
+                              ml::ioj::ECreateSaveProfileResult::succeeded);
+
+        ml::ioj::FSaveProfileManager reloaded{storage.make()};
+        TestRunner->TestTrue(TEXT("Combined profiles reload"), reloaded.initialise());
+        TestRunner->TestEqual(
+            TEXT("Default and both new profiles remain"), reloaded.get_profiles().Num(), 3);
+    }
+
     TEST_METHOD(MigratesProfileIndexAndPreservesExistingData)
     {
         auto const record{save_profile_manager_test::make_record(
@@ -407,6 +458,21 @@ TEST_CLASS(SaveProfileManager, "Sandbox.UnitTests")
             TEXT("Rejected results do not rewrite the index"), future_results.index_save_count, 0);
     }
 
+    TEST_METHOD(RejectsMissingResultsReferencedByAnExistingIndex)
+    {
+        save_profile_manager_test::FFakeProfileStorage storage{
+            .index_exists = true,
+            .index = {.active_profile_id = TEXT("missing"),
+                      .profiles = {{.profile_id = TEXT("missing"),
+                                    .display_name = TEXT("Missing")}}},
+        };
+        ml::ioj::FSaveProfileManager manager{storage.make()};
+
+        TestRunner->TestFalse(TEXT("Missing results fail closed"), manager.initialise());
+        TestRunner->TestFalse(TEXT("Missing results are not replaced with an empty file"),
+                              storage.results.Contains(TEXT("missing")));
+    }
+
     TEST_METHOD(ProfileDebugSettingsRoundTripThroughUnrealSerialization)
     {
         auto* const save{NewObject<USpaceSaveProfileIndexSaveGame>()};
@@ -446,5 +512,124 @@ TEST_CLASS(SaveProfileManager, "Sandbox.UnitTests")
                               loaded->data.profiles[1].debug_settings.unlock_all_missions);
         TestRunner->TestFalse(TEXT("Disabled paused launch round-trips"),
                               loaded->data.profiles[1].debug_settings.start_levels_paused);
+    }
+
+    TEST_METHOD(SelectsDevelopmentStorageRoots)
+    {
+        ml::ioj::FSaveProfileStorageSelection selection{};
+        FString error{};
+        TestRunner->TestTrue(
+            TEXT("Interactive editor selection resolves"),
+            ml::ioj::resolve_save_profile_storage(TEXT(""), true, false, false, selection, error));
+        TestRunner->TestTrue(TEXT("Interactive editor defaults Shared"),
+                             selection.mode == ml::ioj::ESaveProfileStorageMode::shared);
+        TestRunner->TestTrue(TEXT("Shared root has a stable leaf"),
+                             selection.root.EndsWith(TEXT("DevelopmentSaves/Shared")));
+
+        TestRunner->TestTrue(
+            TEXT("Unattended selection resolves"),
+            ml::ioj::resolve_save_profile_storage(TEXT(""), true, true, false, selection, error));
+        TestRunner->TestTrue(TEXT("Unattended editor defaults Local"),
+                             selection.mode == ml::ioj::ESaveProfileStorageMode::local);
+
+        TestRunner->TestTrue(TEXT("Experiment selection resolves"),
+                             ml::ioj::resolve_save_profile_storage(
+                                 TEXT("-SpaceSaveExperiment=Migration_Test -SpaceSaveCloneShared"),
+                                 true,
+                                 false,
+                                 false,
+                                 selection,
+                                 error));
+        TestRunner->TestEqual(TEXT("Experiment name is canonical"),
+                              selection.experiment_name,
+                              FString{TEXT("migration_test")});
+        TestRunner->TestTrue(TEXT("Experiment cloning is selected"), selection.clone_shared);
+
+        TestRunner->TestFalse(
+            TEXT("Conflicting selectors are rejected"),
+            ml::ioj::resolve_save_profile_storage(
+                TEXT("-SpaceSaveLocal -SpaceSaveShared"), true, false, false, selection, error));
+        TestRunner->TestFalse(
+            TEXT("Unsafe experiment names are rejected"),
+            ml::ioj::resolve_save_profile_storage(
+                TEXT("-SpaceSaveExperiment=../shared"), true, false, false, selection, error));
+    }
+
+    TEST_METHOD(FileStorageRecoversPreviousValidFile)
+    {
+        auto const root{FPaths::Combine(FPaths::ProjectSavedDir(),
+                                        TEXT("Automation"),
+                                        TEXT("SaveProfileStorage"),
+                                        FGuid::NewGuid().ToString(EGuidFormats::Digits))};
+        ON_SCOPE_EXIT {
+            IFileManager::Get().DeleteDirectory(*root, false, true);
+        };
+
+        auto no_legacy = [](TArray<FScoreRecord>&) {
+            return ml::ioj::ESaveProfileLoadResult::not_found;
+        };
+        auto storage{ml::ioj::make_file_profile_storage(root, MoveTemp(no_legacy))};
+        FSaveProfileIndexData first{.active_profile_id = TEXT("default_profile")};
+        first.profiles.Add(FSaveProfileMetadata{.profile_id = TEXT("default_profile"),
+                                                .display_name = TEXT("Default Profile")});
+        auto second{first};
+        second.profiles[0].display_name = TEXT("Updated Profile");
+        ASSERT_THAT(IsTrue(storage.save_index(first)));
+        ASSERT_THAT(IsTrue(storage.save_index(second)));
+
+        auto const primary{FPaths::Combine(root, TEXT("SpaceProfileIndex.sav"))};
+        TestRunner->TestTrue(TEXT("Primary can be corrupted for recovery test"),
+                             FFileHelper::SaveStringToFile(TEXT("corrupt"), *primary));
+        FSaveProfileIndexData recovered{};
+        ASSERT_THAT(
+            IsTrue(storage.load_index(recovered) == ml::ioj::ESaveProfileLoadResult::succeeded));
+        TestRunner->TestEqual(TEXT("Previous valid generation is recovered"),
+                              recovered.profiles[0].display_name,
+                              FString{TEXT("Default Profile")});
+    }
+
+    TEST_METHOD(ExperimentalCloneCopiesOnceThenRemainsIsolated)
+    {
+        auto const root{FPaths::Combine(FPaths::ProjectSavedDir(),
+                                        TEXT("Automation"),
+                                        TEXT("SaveProfileClone"),
+                                        FGuid::NewGuid().ToString(EGuidFormats::Digits))};
+        ON_SCOPE_EXIT {
+            IFileManager::Get().DeleteDirectory(*root, false, true);
+        };
+
+        auto no_legacy = [](TArray<FScoreRecord>&) {
+            return ml::ioj::ESaveProfileLoadResult::not_found;
+        };
+        auto const shared_root{FPaths::Combine(root, TEXT("Shared"))};
+        auto const experiment_root{FPaths::Combine(root, TEXT("Experiment"))};
+        auto shared{ml::ioj::make_file_profile_storage(shared_root, no_legacy)};
+        FSaveProfileIndexData index{.active_profile_id = TEXT("default_profile")};
+        index.profiles.Add(FSaveProfileMetadata{.profile_id = TEXT("default_profile"),
+                                                .display_name = TEXT("Shared Profile")});
+        ASSERT_THAT(IsTrue(shared.save_results(TEXT("default_profile"), {})));
+        ASSERT_THAT(IsTrue(shared.save_index(index)));
+
+        FString error{};
+        ASSERT_THAT(IsTrue(ml::ioj::clone_save_profile_files(shared_root, experiment_root, error)));
+        auto experiment{ml::ioj::make_file_profile_storage(experiment_root, no_legacy)};
+        FSaveProfileIndexData experiment_index{};
+        ASSERT_THAT(IsTrue(experiment.load_index(experiment_index) ==
+                           ml::ioj::ESaveProfileLoadResult::succeeded));
+        experiment_index.profiles[0].display_name = TEXT("Experiment Profile");
+        ASSERT_THAT(IsTrue(experiment.save_index(experiment_index)));
+
+        ASSERT_THAT(IsTrue(ml::ioj::clone_save_profile_files(shared_root, experiment_root, error)));
+        FSaveProfileIndexData shared_index{};
+        ASSERT_THAT(
+            IsTrue(shared.load_index(shared_index) == ml::ioj::ESaveProfileLoadResult::succeeded));
+        ASSERT_THAT(IsTrue(experiment.load_index(experiment_index) ==
+                           ml::ioj::ESaveProfileLoadResult::succeeded));
+        TestRunner->TestEqual(TEXT("Shared source is unchanged"),
+                              shared_index.profiles[0].display_name,
+                              FString{TEXT("Shared Profile")});
+        TestRunner->TestEqual(TEXT("Existing experiment is not cloned again"),
+                              experiment_index.profiles[0].display_name,
+                              FString{TEXT("Experiment Profile")});
     }
 };
