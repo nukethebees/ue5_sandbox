@@ -13,6 +13,8 @@
 #include <SandboxCore/soa_vectors.h>
 
 #include <atomic>
+#include <cstdint>
+#include <span>
 #include <vector>
 
 class UStaticMesh;
@@ -50,10 +52,10 @@ struct SPACEGAMESIMULATION_API CollisionUniformGrid {
 
     auto num_cells() const -> int32;
     auto get_non_empty_cell_count() const noexcept -> int32 {
-        return non_empty_cell_indices_.Num();
+        return static_cast<int32>(non_empty_cell_indices_.size());
     }
     auto get_cell_entities(FIntVector3 const cell_coord) const
-        -> TConstArrayView<FRegistryEntityHandle>;
+        -> std::span<FRegistryEntityHandle const>;
 
     auto to_cell_coord(FVector3f pos) const -> FIntVector3;
     auto to_min_cell_coord(FVector3f pos) const -> FIntVector3;
@@ -143,20 +145,20 @@ struct SPACEGAMESIMULATION_API CollisionUniformGrid {
     FIntVector3 grid_dims_{FIntVector3::ZeroValue};
     FVector3f cell_dims_{FVector3f::ZeroVector};
 
-    TArray<int32> cell_entity_offsets_;
-    TArray<uint16> cell_entity_counts_;
-    TArray<int32> cell_entity_write_indexes_;
-    TArray<int32> non_empty_cell_indices_;
-    TArray<FRegistryEntityHandle> entities_;
+    std::vector<std::int32_t> cell_entity_offsets_;
+    std::vector<std::uint16_t> cell_entity_counts_;
+    std::vector<std::int32_t> cell_entity_write_indexes_;
+    std::vector<std::int32_t> non_empty_cell_indices_;
+    std::vector<FRegistryEntityHandle> entities_;
     WorldAABBs aabbs_;
 
     simulation::collision::EntityCellData entities_buffer_;
 
     WorldAABBs static_aabbs_;
-    TArray<int32> cell_static_range_indices_;
-    TArray<uint32> static_cell_range_offsets_;
-    TArray<uint16> static_cell_range_counts_;
-    TArray<int32> static_aabb_indices_;
+    std::vector<std::int32_t> cell_static_range_indices_;
+    std::vector<std::uint32_t> static_cell_range_offsets_;
+    std::vector<std::uint16_t> static_cell_range_counts_;
+    std::vector<std::int32_t> static_aabb_indices_;
 
     std::atomic<uint64> rebuild_count_{};
     mutable std::atomic<uint64> line_trace_count_{};

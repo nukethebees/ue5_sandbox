@@ -63,7 +63,7 @@ auto CollisionUniformGrid::num_cells() const -> int32 {
     return grid_dims_.X * grid_dims_.Y * grid_dims_.Z;
 }
 auto CollisionUniformGrid::get_cell_entities(FIntVector3 const cell_coord) const
-    -> TConstArrayView<FRegistryEntityHandle> {
+    -> std::span<FRegistryEntityHandle const> {
     checkf(is_cell_coord_in_bounds(cell_coord),
            TEXT("Collision grid cell coordinate %s is outside grid dimensions %s"),
            *to_string(cell_coord),
@@ -75,25 +75,25 @@ auto CollisionUniformGrid::get_cell_entities(FIntVector3 const cell_coord) const
         return {};
     }
 
-    return TConstArrayView<FRegistryEntityHandle>{entities_}.Slice(cell_entity_offsets_[cell_index],
-                                                                   count);
+    return std::span{entities_}.subspan(static_cast<std::size_t>(cell_entity_offsets_[cell_index]),
+                                        count);
 }
 
 void CollisionUniformGrid::reset() {
     grid_dims_ = FIntVector3::ZeroValue;
     cell_dims_ = FVector3f::ZeroVector;
-    cell_entity_offsets_.Reset();
-    cell_entity_counts_.Reset();
-    cell_entity_write_indexes_.Reset();
-    non_empty_cell_indices_.Reset();
-    entities_.Reset();
+    cell_entity_offsets_.clear();
+    cell_entity_counts_.clear();
+    cell_entity_write_indexes_.clear();
+    non_empty_cell_indices_.clear();
+    entities_.clear();
     aabbs_.reset();
     entities_buffer_.reset();
     static_aabbs_.reset();
-    cell_static_range_indices_.Reset();
-    static_cell_range_offsets_.Reset();
-    static_cell_range_counts_.Reset();
-    static_aabb_indices_.Reset();
+    cell_static_range_indices_.clear();
+    static_cell_range_offsets_.clear();
+    static_cell_range_counts_.clear();
+    static_aabb_indices_.clear();
 }
 
 void CollisionUniformGrid::set_static_aabbs(WorldAABBs static_aabbs) {
@@ -125,17 +125,16 @@ auto CollisionUniformGrid::add_static_aabb(FVector3f const min_point, FVector3f 
 }
 
 void CollisionUniformGrid::rebuild_static_grid() {
-    static_cell_range_offsets_.Reset();
-    static_cell_range_counts_.Reset();
-    static_aabb_indices_.Reset();
+    static_cell_range_offsets_.clear();
+    static_cell_range_counts_.clear();
+    static_aabb_indices_.clear();
 
     auto const n_cells{num_cells()};
     auto const row_stride{grid_dims_.X};
     auto const plane_stride{row_stride * grid_dims_.Y};
-    cell_static_range_indices_.Init(INDEX_NONE, n_cells);
+    cell_static_range_indices_.assign(static_cast<std::size_t>(n_cells), INDEX_NONE);
 
-    TArray<int32> cell_counts;
-    cell_counts.AddZeroed(n_cells);
+    std::vector<int32> cell_counts(static_cast<std::size_t>(n_cells));
 
     auto const static_aabbs{static_aabbs_.get_const_view().columns()};
     auto const static_count{static_aabbs.num()};
@@ -175,14 +174,15 @@ void CollisionUniformGrid::rebuild_static_grid() {
         checkf(membership_count + count <= std::numeric_limits<int32>::max(),
                TEXT("Static collision grid contains too many cell memberships"));
 
-        cell_static_range_indices_[cell_index] = static_cell_range_offsets_.Num();
-        static_cell_range_offsets_.Add(static_cast<uint32>(membership_count));
-        static_cell_range_counts_.Add(static_cast<uint16>(count));
+        cell_static_range_indices_[cell_index] =
+            static_cast<int32>(static_cell_range_offsets_.size());
+        static_cell_range_offsets_.push_back(static_cast<uint32>(membership_count));
+        static_cell_range_counts_.push_back(static_cast<uint16>(count));
         membership_count += count;
     }
 
-    static_aabb_indices_.AddUninitialized(static_cast<int32>(membership_count));
-    TArray<uint32> write_indices{static_cell_range_offsets_};
+    static_aabb_indices_.resize(static_cast<std::size_t>(membership_count));
+    auto write_indices{static_cell_range_offsets_};
 
     for (int32 static_index{}; static_index < static_count; ++static_index) {
         auto const [min_coord, max_coord]{to_cell_coord_bounds(
@@ -205,7 +205,7 @@ void CollisionUniformGrid::rebuild_static_grid() {
         }
     }
 
-    auto const range_count{static_cell_range_offsets_.Num()};
+    auto const range_count{static_cast<int32>(static_cell_range_offsets_.size())};
     for (int32 range_index{}; range_index < range_count; ++range_index) {
         auto const offset{static_cell_range_offsets_[range_index]};
         auto const count{static_cell_range_counts_[range_index]};
@@ -244,15 +244,14 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
             cell_entity_counts_[cell_index] = 0;
         }
 
-        non_empty_cell_indices_.Reset();
+        non_empty_cell_indices_.clear();
 
-        if (cell_entity_counts_.Num() != n_cells) {
-            cell_entity_counts_.Reset();
-            cell_entity_counts_.AddZeroed(n_cells);
+        if (cell_entity_counts_.size() != static_cast<std::size_t>(n_cells)) {
+            cell_entity_counts_.assign(static_cast<std::size_t>(n_cells), std::uint16_t{});
         }
 
-        cell_entity_offsets_.SetNumUninitialized(n_cells);
-        cell_entity_write_indexes_.SetNumUninitialized(n_cells);
+        cell_entity_offsets_.resize(static_cast<std::size_t>(n_cells));
+        cell_entity_write_indexes_.resize(static_cast<std::size_t>(n_cells));
     }
 
     entities_buffer_.reset();
@@ -315,7 +314,7 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
                     for (int32 x{min_coord.x}; x <= max_coord.x; ++x, ++cell_index) {
                         auto& count{cell_entity_counts_[cell_index]};
                         if (count == 0) {
-                            non_empty_cell_indices_.Add(cell_index);
+                            non_empty_cell_indices_.push_back(cell_index);
                         }
                         ++count;
                     }
@@ -332,9 +331,9 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::count_entries);
         int32 offset{0};
 
-        auto* RESTRICT offsets{cell_entity_offsets_.GetData()};
-        auto* RESTRICT write_indexes{cell_entity_write_indexes_.GetData()};
-        auto* RESTRICT counts{cell_entity_counts_.GetData()};
+        auto* RESTRICT offsets{cell_entity_offsets_.data()};
+        auto* RESTRICT write_indexes{cell_entity_write_indexes_.data()};
+        auto* RESTRICT counts{cell_entity_counts_.data()};
 
         for (auto const cell_index : non_empty_cell_indices_) {
             offsets[cell_index] = offset;
@@ -350,8 +349,7 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
         aabbs_.reset();
         aabbs_.add_uninitialised(n_entries);
 
-        entities_.Reset();
-        entities_.AddUninitialized(n_entries);
+        entities_.resize(static_cast<std::size_t>(n_entries));
     }
 
     auto const entity_cells{entities_buffer_.get_const_view().columns()};
@@ -395,9 +393,9 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::index_check);
 
-        auto* RESTRICT write_indexes{cell_entity_write_indexes_.GetData()};
-        auto* RESTRICT offsets{cell_entity_offsets_.GetData()};
-        auto* RESTRICT counts{cell_entity_counts_.GetData()};
+        auto* RESTRICT write_indexes{cell_entity_write_indexes_.data()};
+        auto* RESTRICT offsets{cell_entity_offsets_.data()};
+        auto* RESTRICT counts{cell_entity_counts_.data()};
 
         for (auto const cell_index : non_empty_cell_indices_) {
             auto const write_index{write_indexes[cell_index]};
@@ -437,7 +435,7 @@ void CollisionUniformGrid::append_overlaps(simulation::collision::WorldAABB cons
                query_bounds.min.Z <= candidate_max.Z && query_bounds.max.Z >= candidate_min.Z;
     }};
     auto const static_aabbs{static_aabbs_.get_const_view().columns()};
-    auto const static_aabb_indices{TConstArrayView<int32>{static_aabb_indices_}};
+    auto const static_aabb_indices{std::span{static_aabb_indices_}};
     auto const row_stride{grid_dims_.X};
     auto const plane_stride{row_stride * grid_dims_.Y};
 
@@ -450,8 +448,8 @@ void CollisionUniformGrid::append_overlaps(simulation::collision::WorldAABB cons
                 auto const entity_count{cell_entity_counts_[cell_index]};
                 if (entity_count > 0) {
                     auto const entity_offset{cell_entity_offsets_[cell_index]};
-                    auto const entities{TConstArrayView<FRegistryEntityHandle>{entities_}.Slice(
-                        entity_offset, entity_count)};
+                    auto const entities{std::span{entities_}.subspan(
+                        static_cast<std::size_t>(entity_offset), entity_count)};
                     auto const aabbs{aabbs_.get_const_view(entity_offset, entity_count).columns()};
 
                     for (int32 entity_index{}; entity_index < entity_count; ++entity_index) {
@@ -467,7 +465,9 @@ void CollisionUniformGrid::append_overlaps(simulation::collision::WorldAABB cons
                     }
                 }
 
-                auto const static_range_index{cell_static_range_indices_.IsValidIndex(cell_index)
+                auto const static_range_index{cell_index >= 0 &&
+                                                      static_cast<std::size_t>(cell_index) <
+                                                          cell_static_range_indices_.size()
                                                   ? cell_static_range_indices_[cell_index]
                                                   : INDEX_NONE};
                 if (static_range_index == INDEX_NONE) {
@@ -476,8 +476,7 @@ void CollisionUniformGrid::append_overlaps(simulation::collision::WorldAABB cons
 
                 auto const static_offset{static_cell_range_offsets_[static_range_index]};
                 auto const static_count{static_cell_range_counts_[static_range_index]};
-                auto const static_indices{static_aabb_indices.Slice(
-                    static_cast<int32>(static_offset), static_cast<int32>(static_count))};
+                auto const static_indices{static_aabb_indices.subspan(static_offset, static_count)};
                 for (auto const static_index : static_indices) {
                     if (overlaps_query(simulation::collision::min_at(static_aabbs, static_index),
                                        simulation::collision::max_at(static_aabbs, static_index))) {
@@ -590,7 +589,7 @@ void CollisionUniformGrid::trace_aabbs_impl(
     auto const to_linear_index{[grid_width, grid_plane_stride](FIntVector3 const cell) {
         return cell.X + cell.Y * grid_width + cell.Z * grid_plane_stride;
     }};
-    auto const static_aabb_indices{TConstArrayView<int32>{static_aabb_indices_}};
+    auto const static_aabb_indices{std::span{static_aabb_indices_}};
     auto const static_aabbs{static_aabbs_.get_const_view().columns()};
     FIntVector3 cell_padding{};
     if constexpr (TraceKind == ETraceKind::Sweep) {
@@ -638,8 +637,8 @@ void CollisionUniformGrid::trace_aabbs_impl(
             auto const entity_count{cell_entity_counts_[cell_index]};
 
             if (entity_count > 0) {
-                auto const entities{TConstArrayView<FRegistryEntityHandle>{entities_}.Slice(
-                    entity_offset, entity_count)};
+                auto const entities{std::span{entities_}.subspan(
+                    static_cast<std::size_t>(entity_offset), entity_count)};
                 auto const aabbs{aabbs_.get_const_view(entity_offset, entity_count).columns()};
 
                 for (int32 i_entity{0}; i_entity < entity_count; ++i_entity) {
@@ -674,7 +673,8 @@ void CollisionUniformGrid::trace_aabbs_impl(
                 }
             }
 
-            auto const static_range_index{cell_static_range_indices_.IsValidIndex(cell_index)
+            auto const static_range_index{cell_index >= 0 && static_cast<std::size_t>(cell_index) <
+                                                                 cell_static_range_indices_.size()
                                               ? cell_static_range_indices_[cell_index]
                                               : INDEX_NONE};
             if (static_range_index == INDEX_NONE) {
@@ -683,8 +683,7 @@ void CollisionUniformGrid::trace_aabbs_impl(
 
             auto const offset{static_cell_range_offsets_[static_range_index]};
             auto const count{static_cell_range_counts_[static_range_index]};
-            auto const static_indices{
-                static_aabb_indices.Slice(static_cast<int32>(offset), static_cast<int32>(count))};
+            auto const static_indices{static_aabb_indices.subspan(offset, count)};
 
             for (auto const static_index : static_indices) {
                 auto const hit_t{simulation::collision::trace_aabb(

@@ -34,6 +34,7 @@
 #include <Engine/World.h>
 #include <limits>
 #include <Misc/ScopeExit.h>
+#include <span>
 
 namespace ml {
 namespace {
@@ -330,7 +331,7 @@ void check_traces(FSoftTestAssertions& checks,
     }
 }
 
-auto count_handle(TConstArrayView<FRegistryEntityHandle> const handles,
+auto count_handle(std::span<FRegistryEntityHandle const> const handles,
                   FRegistryEntityHandle const expected) -> int32 {
     int32 count{};
     for (auto const handle : handles) {
@@ -1310,7 +1311,8 @@ void FCollisionUniformGridTraceScenario::test_varied_grid_geometry() {
     checks.are_equal(
         1, single_cell_fixture.grid.num_cells(), TEXT("Single-cell grid has one cell"));
     checks.are_equal(1,
-                     single_cell_fixture.grid.get_cell_entities(FIntVector3::ZeroValue).Num(),
+                     static_cast<int32>(
+                         single_cell_fixture.grid.get_cell_entities(FIntVector3::ZeroValue).size()),
                      TEXT("Single-cell grid contains its entity"));
 
     TArray<FExpectedTrace> const single_cell_cases{
@@ -1796,7 +1798,7 @@ void FCollisionUniformGridTraceScenario::test_dense_and_wide_aabbs() {
     FTraceFixture const dense_fixture{dense_locations, dense_half_extents};
     auto const dense_cell{dense_fixture.grid.to_cell_coord(dense_location)};
     checks.are_equal(dense_entity_count,
-                     dense_fixture.grid.get_cell_entities(dense_cell).Num(),
+                     static_cast<int32>(dense_fixture.grid.get_cell_entities(dense_cell).size()),
                      TEXT("Dense cell retains every entity"));
 
     TArray<FExpectedTrace> const dense_cases{

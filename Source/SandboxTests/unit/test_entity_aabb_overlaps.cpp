@@ -4,6 +4,8 @@
 
 #include <CQTest.h>
 
+#include <algorithm>
+
 namespace {
 struct FOverlapFixture {
     explicit FOverlapFixture(FVector3f const capital_half_extents = {10.f, 10.f, 10.f},
@@ -209,15 +211,12 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Broad-phase cell sharing is rejected by exact AABB testing"),
                               fixture.get_entity_overlaps().num(),
                               0);
+        auto const cell_entities{
+            fixture.query_manager.get_collision_system().get_uniform_grid().get_cell_entities(
+                {20, 20, 20})};
         TestRunner->TestTrue(TEXT("Both entities remain in the same grid cell"),
-                             fixture.query_manager.get_collision_system()
-                                     .get_uniform_grid()
-                                     .get_cell_entities({20, 20, 20})
-                                     .Contains(stationary) &&
-                                 fixture.query_manager.get_collision_system()
-                                     .get_uniform_grid()
-                                     .get_cell_entities({20, 20, 20})
-                                     .Contains(moved));
+                             std::ranges::find(cell_entities, stationary) != cell_entities.end() &&
+                                 std::ranges::find(cell_entities, moved) != cell_entities.end());
     }
 
     TEST_METHOD(MultiCellOverlapProducesOnePair)
