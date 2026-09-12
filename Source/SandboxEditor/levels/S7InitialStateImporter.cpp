@@ -19,7 +19,6 @@
 #include <GameFramework/Actor.h>
 #include <IDesktopPlatform.h>
 #include <LevelUtils.h>
-#include <Misc/MessageDialog.h>
 #include <ScopedTransaction.h>
 #include <UObject/SoftObjectPath.h>
 
@@ -177,9 +176,6 @@ void configure_actor(AActor& actor,
 
 void show_error(FString const& message) {
     UE_LOG(LogSandbox, Error, TEXT("S7 initial-state import failed: %s"), *message);
-    FMessageDialog::Open(EAppMsgType::Ok,
-                         FText::FromString(FString::Printf(
-                             TEXT("S7 initial-state import failed.\n\n%s"), *message)));
 }
 }
 
@@ -377,7 +373,10 @@ void execute_s7_initial_state_import() {
         summary += TEXT("\n\nUnsupported level features:\n");
         summary += plan->unsupported.format();
     }
-    UE_LOG(LogSandbox, Display, TEXT("%s"), *summary);
-    FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(summary));
+    if (plan->unsupported.is_empty()) {
+        UE_LOG(LogSandbox, Display, TEXT("%s"), *summary);
+    } else {
+        UE_LOG(LogSandbox, Warning, TEXT("%s"), *summary);
+    }
 }
 }
