@@ -169,10 +169,24 @@ function Invoke-Benchmark {
         $_ -notlike '-LocalDataCachePath=*'
     })
     $ddcPath = Join-Path $SourceDirectory '.local/ddc'
-    Invoke-Checked -Executable $command[0] `
-        -Arguments @($arguments + "-LocalDataCachePath=$ddcPath" + '-notraceserver' +
-                     '-traceautostart=0' +
-                     '-SandboxFrameMemoryLevelBenchmarkTicksPerAdvance=1') `
+    $activityModule = Join-Path $repo 'cmake/machine_activity.cmake'
+    $activityRunner = Join-Path $repo 'cmake/run_with_machine_activity.cmake'
+    $activityArguments = @(
+        "-DMACHINE_ACTIVITY_MODULE=$activityModule"
+        '-DMACHINE_ACTIVITY_MODE=benchmark'
+        "-DMACHINE_ACTIVITY_OPERATION=$benchmarkName revision comparison"
+        '-P'
+        $activityRunner
+        '--'
+    )
+    $benchmarkCommand = @($command[0]) + $arguments + @(
+        "-LocalDataCachePath=$ddcPath"
+        '-notraceserver'
+        '-traceautostart=0'
+        '-SandboxFrameMemoryLevelBenchmarkTicksPerAdvance=1'
+    )
+    Invoke-Checked -Executable 'cmake' `
+        -Arguments @($activityArguments + $benchmarkCommand) `
         -WorkingDirectory $SourceDirectory | Out-Host
 
     $log = Join-Path $SourceDirectory 'Saved/Logs/Sandbox.log'

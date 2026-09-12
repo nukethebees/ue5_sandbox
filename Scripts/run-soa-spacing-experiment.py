@@ -17,12 +17,37 @@ import random
 import shutil
 import re
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any, cast
 import soa_spacing_confirmation as confirmation_suite
 
 ROOT = Path(__file__).resolve().parent.parent
 CAPACITIES = (65536, 65600, 75008, 100032, 131072)
+
+
+def run_with_benchmark_access() -> int | None:
+    if (
+        "--smoke" in sys.argv
+        or os.environ.get("SANDBOX_MACHINE_ACTIVITY_MODE") == "benchmark"
+    ):
+        return None
+
+    module = ROOT / "cmake" / "machine_activity.cmake"
+    runner = ROOT / "cmake" / "run_with_machine_activity.cmake"
+    command = [
+        "cmake",
+        f"-DMACHINE_ACTIVITY_MODULE={module}",
+        "-DMACHINE_ACTIVITY_MODE=benchmark",
+        "-DMACHINE_ACTIVITY_OPERATION=single-allocation SoA spacing benchmark",
+        "-P",
+        str(runner),
+        "--",
+        sys.executable,
+        str(Path(__file__).resolve()),
+        *sys.argv[1:],
+    ]
+    return subprocess.run(command, cwd=ROOT, check=False).returncode
 GAPS = (0, 64, 128, 192, 256, 384, 512, 768, 1024)
 OWNERS = {0: "Spaced", 1: "Generated", 2: "TArray"}
 Record = dict[str, Any]
@@ -294,4 +319,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    activity_result = run_with_benchmark_access()
+    if activity_result is not None:
+        raise SystemExit(activity_result)
     main()

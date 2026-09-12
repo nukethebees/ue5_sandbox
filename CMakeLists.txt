@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 4.4.2)
 
+include(cmake/machine_activity_integration.cmake)
+sandbox_configure_machine_activity()
+
 project(SandboxUnrealBuild LANGUAGES CXX)
+sandbox_add_machine_activity_status_target()
 
 enable_testing()
 
@@ -224,6 +228,7 @@ set(UE_LOCKED_COMMAND_PREFIX
   "-DUNREAL_LOCK_PATH=${UE_BUILD_LOCK_PATH}"
   "-DUNREAL_ENGINE_ROOT=${UE_ROOT_CANONICAL}"
   "-DUNREAL_WORKING_DIRECTORY=${CMAKE_CURRENT_SOURCE_DIR}"
+  "-DMACHINE_ACTIVITY_MODULE=${SANDBOX_MACHINE_ACTIVITY_MODULE}"
   -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/run_unreal_locked.cmake"
   --
 )
@@ -421,7 +426,7 @@ add_custom_target(compile-migrated-materials DEPENDS ${MIGRATED_MATERIAL_ARTIFAC
 add_unreal_target(editor SandboxEditor)
 add_unreal_target(game Sandbox)
 add_custom_target(run-editor
-  COMMAND "${UE_EDITOR_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${standard_activity_command} "${UE_EDITOR_EXE}" "${SANDBOX_UPROJECT}"
     "${SANDBOX_LIVE_CODING_DISABLED_ARGUMENT}"
   DEPENDS editor
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -430,7 +435,7 @@ add_custom_target(run-editor
   VERBATIM
 )
 add_custom_target(run-editor-debug
-  COMMAND "${UE_EDITOR_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${standard_activity_command} "${UE_EDITOR_EXE}" "${SANDBOX_UPROJECT}"
     "${SANDBOX_LIVE_CODING_DISABLED_ARGUMENT}"
     -WaitForDebugger
   DEPENDS editor
@@ -554,6 +559,18 @@ add_unreal_commandlet_target(generate-lab-mesh-assemblies
   COMMENT "Generating SandboxMesh Lab JSON assemblies"
 )
 
+add_unreal_benchmark_commandlet_target(heatmap-benchmark HeatmapBenchmark
+  -Resolutions=32,64,128,256,512 -Warmup=10 -Iterations=100
+  -Output=Saved/Benchmarks/HeatmapBenchmark.csv)
+add_unreal_benchmark_commandlet_target(radar-3d-benchmark Radar3DBenchmark
+  -ContactCounts=32,128,256,512 -Warmup=10 -Iterations=100
+  -Output=Saved/Benchmarks/Radar3DBenchmark.csv)
+add_unreal_benchmark_commandlet_target(scatter-3d-benchmark Scatter3DBenchmark
+  -PointCounts=1,64,1024,16384,65536 -Warmup=20 -Iterations=100
+  -Output=Saved/Benchmarks/Scatter3DBenchmark.csv)
+add_unreal_benchmark_commandlet_target(volume-heatmap-3d-benchmark
+  VolumeHeatmap3DBenchmark -d3d12)
+
 set(SANDBOX_UNIT_AUTOMATION_FILTERS
   Sandbox.enum
   Sandbox.fighters
@@ -614,6 +631,7 @@ add_unreal_editor_test(Sandbox.SparkRenderTests
 )
 
 add_unreal_editor_test(SandboxBenchmarks.SparkBenchmark
+  ACTIVITY BENCHMARK
   ARGUMENTS
     "-ExecCmds=Automation RunTests StartsWith:SandboxBenchmarks.SparkBenchmark; Quit"
     "-SandboxSparkBenchmarkSeconds=${SANDBOX_SPARK_BENCHMARK_SECONDS}"
@@ -628,6 +646,7 @@ add_unreal_editor_test(SandboxBenchmarks.SparkBenchmark
 )
 
 add_unreal_editor_test(SandboxBenchmarks.LevelTelemetryStorage
+  ACTIVITY BENCHMARK
   ARGUMENTS
     "-ExecCmds=Automation RunTests SandboxBenchmarks.LevelTelemetryStorage; Quit"
     "-SandboxTelemetryBenchmarkSamples=${SANDBOX_TELEMETRY_BENCHMARK_SAMPLES}"
@@ -637,6 +656,7 @@ add_unreal_editor_test(SandboxBenchmarks.LevelTelemetryStorage
 )
 
 add_unreal_editor_test(SandboxBenchmarks.LevelTelemetryIntegration
+  ACTIVITY BENCHMARK
   ARGUMENTS
     "-ExecCmds=Automation RunTests SandboxBenchmarks.TelemetryBenchmark; Quit"
     -FullStdOutLogOutput
@@ -645,6 +665,7 @@ add_unreal_editor_test(SandboxBenchmarks.LevelTelemetryIntegration
 )
 
 add_unreal_editor_test(SandboxBenchmarks.FrameMemoryLevel
+  ACTIVITY BENCHMARK
   ARGUMENTS
     "-ExecCmds=Automation RunTests SandboxBenchmarks.FrameMemoryLevel; Quit"
     "-SandboxFrameMemoryLevelBenchmarkSeconds=${SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK_SECONDS}"
@@ -655,6 +676,7 @@ add_unreal_editor_test(SandboxBenchmarks.FrameMemoryLevel
 )
 
 add_unreal_editor_test(SandboxISMC.RemoteBenchmark
+  ACTIVITY BENCHMARK
   ARGUMENTS
     "-ExecCmds=Automation RunTests SandboxISMC.RemoteBenchmark; Quit"
     "-SandboxISMCBenchmarkSeconds=${SANDBOX_ISMC_BENCHMARK_SECONDS}"
@@ -693,16 +715,21 @@ add_custom_target(dev-core
 if(SANDBOX_TEST_SUITE STREQUAL "benchmark")
   set(SANDBOX_SOA_SPACING_CPU_GROUP "0" CACHE STRING "Processor group for the pinned SoA confirmation")
   set(SANDBOX_SOA_SPACING_CPU "2" CACHE STRING "Logical CPU within the group for the pinned SoA confirmation")
-  add_low_level_test_suite(benchmarks SandboxCoreBenchmarks SandboxCore benchmark)
+  add_low_level_test_suite(benchmarks SandboxCoreBenchmarks SandboxCore
+    ACTIVITY BENCHMARK
+    LABELS benchmark
+  )
   add_dependencies(benchmarks check-generated-code)
   add_custom_target(single-allocation-soa-spacing
-    COMMAND uv run "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/run-soa-spacing-experiment.py"
+    COMMAND ${benchmark_activity_command} uv run
+      "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/run-soa-spacing-experiment.py"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     USES_TERMINAL
     VERBATIM
   )
   add_custom_target(single-allocation-soa-spacing-confirmation
-    COMMAND uv run "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/run-soa-spacing-experiment.py" --suite confirmation
+    COMMAND ${benchmark_activity_command} uv run
+      "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/run-soa-spacing-experiment.py" --suite confirmation
       --cpu-group "${SANDBOX_SOA_SPACING_CPU_GROUP}" --cpu "${SANDBOX_SOA_SPACING_CPU}"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     USES_TERMINAL
@@ -733,8 +760,10 @@ if(SANDBOX_TEST_SUITE STREQUAL "benchmark")
     USES_TERMINAL
   )
 elseif(SANDBOX_TEST_SUITE STREQUAL "default")
-  add_low_level_test_suite(core-tests SandboxCoreTests SandboxCore low-level-core)
-  add_low_level_test_suite(native-tests SandboxNativeTests SandboxNative low-level-native)
+  add_low_level_test_suite(core-tests SandboxCoreTests SandboxCore
+    LABELS low-level-core)
+  add_low_level_test_suite(native-tests SandboxNativeTests SandboxNative
+    LABELS low-level-native)
 
   add_dependencies(core-tests check-generated-code)
   add_dependencies(native-tests check-generated-code)
@@ -753,7 +782,7 @@ else()
 endif()
 
 add_custom_target(resave-assets
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=ResavePackages
     -projectonly
     -fixupredirects
@@ -766,7 +795,7 @@ add_custom_target(resave-assets
 )
 
 add_custom_target(generate-ui-glow-material
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=MaterialSynth
     "-Artifact=${UI_GLOW_MATERIAL_ARTIFACT}"
     -Generate -RenderOffscreen -AllowCommandletRendering
@@ -778,7 +807,7 @@ add_custom_target(generate-ui-glow-material
 )
 
 add_custom_target(validate-ui-glow-material-unreal
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=MaterialSynth
     "-Artifact=${UI_GLOW_MATERIAL_ARTIFACT}"
     -Validate -unattended -nop4 -nosplash -nullrhi -nosound -stdout
@@ -799,12 +828,12 @@ add_custom_target(validate-ui-glow-material
   VERBATIM
 )
 add_custom_target(generate-world-soft-target-assets
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=MaterialSynth
     "-Artifact=${WORLD_SOFT_TARGET_MATERIAL_ARTIFACT}"
     -Generate -RenderOffscreen -AllowCommandletRendering
     -unattended -nop4 -nosplash -nosound -stdout
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=GenerateWorldSoftTargetAssets -RenderOffscreen -AllowCommandletRendering
     -unattended -nop4 -nosplash -nosound -stdout
   DEPENDS editor
@@ -814,7 +843,7 @@ add_custom_target(generate-world-soft-target-assets
 )
 
 add_custom_target(generate-migrated-materials
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=MaterialSynth
     "-ArtifactDirectory=${CMAKE_CURRENT_SOURCE_DIR}/Intermediate/MaterialGen"
     "-ArtifactList=UiGlowComposite,RadarDisplay,EnergyShield,SpaceEnergyField,GlowingCross,VertexRipple,ConstructionSpawn,PlanetAtmosphere,PlanetSurface,TacticalScan"
@@ -839,7 +868,7 @@ add_custom_target(validate-world-soft-target-material
 
 add_test(
   NAME SandboxShaders.ShaderSmoke
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     "-ExecCmds=Automation RunTests StartsWith:SandboxShaders.ShaderSmoke; Quit"
     -AllowCommandletRendering
     -unattended
@@ -852,7 +881,7 @@ add_test(
 
 add_test(
   NAME USFLoader.ShaderSmoke
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     "-ExecCmds=Automation RunTests StartsWith:USFLoader.ShaderSmoke; Quit"
     -AllowCommandletRendering
     -unattended
@@ -865,7 +894,7 @@ add_test(
 
 add_test(
   NAME SandboxEditor.MaterialSynth
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     "-ExecCmds=Automation RunTests SandboxEditor.MaterialSynth; Quit"
     -RenderOffscreen
     -AllowCommandletRendering
@@ -894,7 +923,7 @@ set_tests_properties(USFLoader.ShaderSmoke PROPERTIES
 
 add_test(
   NAME SandboxUI.EntityOverlayBenchmark
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${benchmark_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=EntityOverlayBenchmark
     -RenderOffscreen
     -AllowCommandletRendering
@@ -913,7 +942,7 @@ set_tests_properties(SandboxUI.EntityOverlayBenchmark PROPERTIES
 
 add_test(
   NAME SandboxShaders.GpuStarfieldBenchmark
-  COMMAND "${Python3_EXECUTABLE}"
+  COMMAND ${benchmark_activity_command} "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/run-gpu-starfield-benchmark.py"
     "--editor=${UE_EDITOR_CMD_EXE}"
     "--project=${SANDBOX_UPROJECT}"
@@ -927,7 +956,7 @@ set_tests_properties(SandboxShaders.GpuStarfieldBenchmark PROPERTIES
 
 add_test(
   NAME SandboxShaders.GpuStarfieldMatrix
-  COMMAND "${Python3_EXECUTABLE}"
+  COMMAND ${benchmark_activity_command} "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/run-gpu-starfield-benchmark.py"
     "--editor=${UE_EDITOR_CMD_EXE}"
     "--project=${SANDBOX_UPROJECT}"
@@ -944,7 +973,7 @@ set_tests_properties(SandboxShaders.GpuStarfieldMatrix PROPERTIES
 )
 
 add_custom_target(gpu-tutorial-shader-tests
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     "-ExecCmds=Automation RunTests StartsWith:SandboxGpuTutorials.UnitTests; Quit"
     -unattended
     -nop4

@@ -10,10 +10,38 @@ import csv
 import importlib
 import json
 import math
+import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any, cast
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def run_with_benchmark_access() -> int | None:
+    if (
+        "--dry-run" in sys.argv
+        or os.environ.get("SANDBOX_MACHINE_ACTIVITY_MODE") == "benchmark"
+    ):
+        return None
+
+    module = ROOT / "cmake" / "machine_activity.cmake"
+    runner = ROOT / "cmake" / "run_with_machine_activity.cmake"
+    command = [
+        "cmake",
+        f"-DMACHINE_ACTIVITY_MODULE={module}",
+        "-DMACHINE_ACTIVITY_MODE=benchmark",
+        "-DMACHINE_ACTIVITY_OPERATION=native SoA reserve matrix",
+        "-P",
+        str(runner),
+        "--",
+        sys.executable,
+        str(Path(__file__).resolve()),
+        *sys.argv[1:],
+    ]
+    return subprocess.run(command, cwd=ROOT, check=False).returncode
 
 OWNERS = (1, 2, 4, 8, 16, 32, 64, 128, 200, 256, 512)
 IMPLEMENTATIONS = ("Vector", "Single", "RawMalloc", "RawRealloc")
@@ -104,4 +132,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    activity_result = run_with_benchmark_access()
+    if activity_result is not None:
+        raise SystemExit(activity_result)
     main()

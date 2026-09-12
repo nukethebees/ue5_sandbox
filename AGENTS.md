@@ -17,6 +17,7 @@ Unreal Engine 5.8 project.
 * A Windows-only CMake 4.3+/Ninja layer at the repository root invokes UnrealBuildTool through `RunUBT.bat`. `.Target.cs`, `.Build.cs`, and UBT remain authoritative.
 * Use the CMake layer for builds; do not invoke UBT, `RunUBT.bat`, or `Build.bat` directly.
 * CMake serializes Unreal builds that share an engine checkout. Do not overlap a CMake Unreal build with Visual Studio, Live Coding, or another Unreal build launched outside CMake because those paths do not participate in the CMake lock.
+* CMake also coordinates expensive work and benchmarks across worktrees through a per-user machine activity gate under `%TEMP%/SandboxUnrealBuild/activity/v1`. Requests are FIFO: standard build/test work may overlap unless an older benchmark is waiting or running, while benchmarks wait for every older request and run exclusively. Use `get-machine-activity-state` or the `machine-activity-status` target to inspect it.
 * Preferred build: `cmake --workflow --preset debug-game`.
 * Targets: `editor`, `game`, `core-tests`, `native-tests`, `dev-core`, `resave-assets`, and `generate-project-files`.
 * Link every first-party native CMake target to `sandbox::warnings_as_errors` or a stricter
