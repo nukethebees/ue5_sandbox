@@ -77,7 +77,7 @@ void AGpuStarfieldBenchmarkActor::BeginPlay() {
     int32 profile_star_count{0};
     FParse::Value(FCommandLine::Get(), TEXT("GpuStarfieldCount="), profile_star_count);
     if (profile_star_count > 0) {
-        settings.star_count = profile_star_count;
+        settings.distribution.star_count = profile_star_count;
         apply_settings();
     }
 
@@ -127,11 +127,11 @@ void AGpuStarfieldBenchmarkActor::start_benchmark() {
         return;
     }
 
-    auto star_size_multiplier{settings.star_size_multiplier};
+    auto star_size_multiplier{settings.stars.star_size_multiplier};
     FParse::Value(FCommandLine::Get(),
                   TEXT("GpuStarfieldBenchmarkStarSizeMultiplier="),
                   star_size_multiplier);
-    settings.star_size_multiplier = FMath::Max(star_size_multiplier, 0.0f);
+    settings.stars.star_size_multiplier = FMath::Max(star_size_multiplier, 0.0f);
 
     benchmark_warmup_frames_ = default_warmup_frames;
     benchmark_capture_frames_ = default_capture_frames;
@@ -210,7 +210,7 @@ void AGpuStarfieldBenchmarkActor::start_benchmark() {
 
 void AGpuStarfieldBenchmarkActor::begin_benchmark_phase() {
     auto const& phase{benchmark_phases_[benchmark_phase_index_]};
-    settings.star_count = phase.star_count;
+    settings.distribution.star_count = phase.star_count;
     apply_settings();
     starfield_component_->SetVisibility(phase.enabled, true);
     benchmark_camera_->SetActorLocation(benchmark_camera_origin_);

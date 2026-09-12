@@ -24,7 +24,9 @@ the view's game time. There is no tick and no per-star CPU work after generation
 When galactic haze is enabled, the same proxy, canonical quad, vertex factory, and material submit
 one additional far, screen-covering draw. The vertex factory reconstructs a local sky direction,
 evaluates a broad longitude-varying luminous band per pixel, and applies the same irregular dust
-lane as a transmission mask. Strength zero omits this draw. The haze adds no GPU buffer or texture.
+lane as a transmission mask. Three soft nebular knots add localized colour using inexpensive
+polynomial falloffs in that same pass. Strength zero omits this draw. The haze adds no GPU buffer
+or texture.
 
 The additive translucent material retains the normal scene depth test but does not write scene
 depth. Opaque geometry therefore occludes both stars and haze while the background renderer does
@@ -32,6 +34,10 @@ not contaminate gameplay depth. The haze quad uses a reversed-Z depth close to t
 retain their logical depth, so geometry farther away than a star can still render behind it.
 
 ## Controls
+
+The actor exposes three expandable settings structs: `distribution` for generated sky layout,
+`stars` for billboard appearance and motion, and `haze` for the background band, core, and nebular
+knots. The leaf control names below omit those prefixes for readability.
 
 - `star_count` and `random_seed` regenerate and reupload the immutable star set.
 - `galactic_band_strength` controls the fraction of stars concentrated around the actor's local
@@ -45,6 +51,8 @@ retain their logical depth, so geometry farther away than a star can still rende
 - `galactic_haze_strength` controls the luminous background band. `0` disables its draw entirely.
 - `galactic_core_strength` adds a warm localized bulge along the local positive-X galactic
   horizon. `0` preserves the previous uniform band profile.
+- `nebular_knot_strength` adds three localized coloured clouds to the existing haze pass. `0`
+  preserves the previous haze profile.
 - `starfield_scale` is the primary distance control. At `1`, the logical shell radius is 1,000 km
   and the base billboard diameter is 500 m. Scaling both together preserves angular star size.
 - `star_size_multiplier`, `global_brightness`, and `parallax_strength` are advanced shader controls
@@ -68,6 +76,8 @@ retain their logical depth, so geometry farther away than a star can still rende
   rebuilding star data.
 - `galactic_core_width_degrees` and `galactic_core_colour` shape the localized core without
   rebuilding star data.
+- `nebular_knot_size_degrees` and `nebular_knot_colour` shape the localized clouds without
+  rebuilding star data or adding another draw.
 - `parallax_strength = 0` makes the logical field follow camera translation; `1` behaves like
   ordinary actor-anchored world geometry. The default `0.01` gives the base scale an effective
   apparent distance of approximately 100,000 km.

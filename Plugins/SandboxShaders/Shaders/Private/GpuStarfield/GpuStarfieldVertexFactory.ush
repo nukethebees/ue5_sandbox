@@ -31,6 +31,9 @@ float3 GpuStarfieldGalacticHazeColour;
 float GpuStarfieldGalacticCoreStrength;
 float GpuStarfieldGalacticCoreWidthDegrees;
 float3 GpuStarfieldGalacticCoreColour;
+float GpuStarfieldNebularKnotStrength;
+float GpuStarfieldNebularKnotSizeDegrees;
+float3 GpuStarfieldNebularKnotColour;
 float GpuStarfieldRenderHaze;
 
 #undef GetInstanceIdFromVF
@@ -43,10 +46,10 @@ struct FVertexFactoryInput {
 };
 
 struct FVertexFactoryInterpolantsVSToPS {
-    float2 TexCoord                   : TEXCOORD0;
-    float3 Colour                     : TEXCOORD1;
-    float3 BrightStarShapeParameters  : TEXCOORD2;
-    float3 HazeDirection              : TEXCOORD3;
+    float3 TexCoord                   : TEXCOORD0;
+    float4 Colour                     : TEXCOORD1;
+    float4 BrightStarShapeParameters  : TEXCOORD2;
+    float4 HazeDirection              : TEXCOORD3;
     float4 HazeParameters             : TEXCOORD4;
     float4 HazeOutputParameters       : TEXCOORD5;
 };
@@ -54,10 +57,10 @@ struct FVertexFactoryInterpolantsVSToPS {
 struct FVertexFactoryIntermediates {
     float4 WorldPosition;
     float3 PositionInstanceSpace;
-    float2 TexCoord;
-    float3 Colour;
-    float3 BrightStarShapeParameters;
-    float3 HazeDirection;
+    float3 TexCoord;
+    float4 Colour;
+    float4 BrightStarShapeParameters;
+    float4 HazeDirection;
     float4 HazeParameters;
     float4 HazeOutputParameters;
     FSceneDataIntermediates SceneData;
@@ -85,15 +88,24 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 
         Intermediates.WorldPosition = float4(TranslatedWorldPosition.xyz, 1.0);
         Intermediates.PositionInstanceSpace = LocalDirection;
-        Intermediates.TexCoord = Input.Corner * 0.5 + 0.5;
-        Intermediates.Colour = GpuStarfieldGalacticHazeColour * GpuStarfieldGalacticHazeStrength;
-        Intermediates.HazeDirection = LocalDirection;
+        Intermediates.TexCoord = float3(Input.Corner * 0.5 + 0.5,
+                                        GpuStarfieldNebularKnotColour.b *
+                                            GpuStarfieldGalacticHazeStrength);
+        Intermediates.Colour = float4(
+            GpuStarfieldGalacticHazeColour * GpuStarfieldGalacticHazeStrength,
+            GpuStarfieldNebularKnotColour.r * GpuStarfieldGalacticHazeStrength);
+        Intermediates.HazeDirection = float4(
+            LocalDirection,
+            GpuStarfieldNebularKnotColour.g * GpuStarfieldGalacticHazeStrength);
         Intermediates.HazeParameters = float4(GpuStarfieldGalacticHazeWidthDegrees,
                                               GpuStarfieldDustLaneStrength,
                                               GpuStarfieldDustLaneWidthDegrees,
                                               GpuStarfieldDustLaneIrregularity);
         Intermediates.BrightStarShapeParameters =
-            float3(GpuStarfieldGalacticCoreStrength, GpuStarfieldGalacticCoreWidthDegrees, 0.0);
+            float4(GpuStarfieldGalacticCoreStrength,
+                   GpuStarfieldGalacticCoreWidthDegrees,
+                   GpuStarfieldNebularKnotStrength,
+                   GpuStarfieldNebularKnotSizeDegrees);
         Intermediates.HazeOutputParameters =
             float4(1.0, GpuStarfieldGalacticCoreColour * GpuStarfieldGalacticHazeStrength);
         return Intermediates;
@@ -150,10 +162,10 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
     Intermediates.WorldPosition =
         float4(ResolvedView.TranslatedWorldCameraOrigin + RelativePosition + BillboardOffset, 1.0);
     Intermediates.PositionInstanceSpace = Star.Direction;
-    Intermediates.TexCoord = Input.Corner * 0.5 + 0.5;
+    Intermediates.TexCoord = float3(Input.Corner * 0.5 + 0.5, 0.0);
     Intermediates.BrightStarShapeParameters =
-        float3(BrightStarShapeAmount, BrightStarShapeRotation, BrightStarShapeScale);
-    Intermediates.HazeDirection = Star.Direction;
+        float4(BrightStarShapeAmount, BrightStarShapeRotation, BrightStarShapeScale, 0.0);
+    Intermediates.HazeDirection = float4(Star.Direction, 0.0);
 
     float const WarmWeight = saturate(1.0 - Star.ColourTemperature * 2.0);
     float const CoolWeight = saturate(Star.ColourTemperature * 2.0 - 1.0);
@@ -165,16 +177,16 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
         WarmColour * WarmWeight + NeutralColour * NeutralWeight + CoolColour * CoolWeight;
     float3 const DisplayColour =
         lerp(NeutralColour, StarColour, GpuStarfieldColourVariationStrength);
-    Intermediates.Colour =
-        DisplayColour * StarBrightness * GpuStarfieldGlobalBrightness * EnergyScale;
+    Intermediates.Colour = float4(
+        DisplayColour * StarBrightness * GpuStarfieldGlobalBrightness * EnergyScale, 0.0);
     return Intermediates;
 }
 
 FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVSToPS Interpolants,
                                                     float4 SvPosition) {
     FMaterialPixelParameters Result = MakeInitializedMaterialPixelParameters();
-    float2 TexCoord = Interpolants.TexCoord;
-    float3 DisplayColour = Interpolants.Colour;
+    float2 TexCoord = Interpolants.TexCoord.xy;
+    float3 DisplayColour = Interpolants.Colour.xyz;
 
     [branch] if (Interpolants.BrightStarShapeParameters.x > 0.0) {
         float const ShapeAmount = Interpolants.BrightStarShapeParameters.x;
@@ -198,7 +210,7 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
     }
 
     [branch] if (Interpolants.HazeOutputParameters.x > 0.5) {
-        float3 const Direction = normalize(Interpolants.HazeDirection);
+        float3 const Direction = normalize(Interpolants.HazeDirection.xyz);
         float const Longitude = atan2(Direction.y, Direction.x);
         float const Latitude = asin(clamp(Direction.z, -1.0, 1.0));
 
@@ -238,11 +250,32 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
         float const GalacticCore =
             GalacticCoreProfile * Interpolants.BrightStarShapeParameters.x;
         float const BandHaze = (BandCoreProfile + BroadProfile) * Structure;
-        float const Haze = saturate((BandHaze + GalacticCore) * DustTransmission);
+        float NebularKnots = 0.0;
+        [branch] if (Interpolants.BrightStarShapeParameters.z > 0.0) {
+            float const KnotSize = radians(Interpolants.BrightStarShapeParameters.w);
+            float2 const InverseKnotSize = rcp(float2(KnotSize * 1.8, KnotSize));
+            float2 KnotOffset = (float2(Longitude, Latitude) - float2(-1.7, 0.12)) *
+                                InverseKnotSize;
+            float KnotProfile = saturate(1.0 - dot(KnotOffset, KnotOffset));
+            NebularKnots = KnotProfile * KnotProfile;
+            KnotOffset = (float2(Longitude, Latitude) - float2(0.9, -0.08)) * InverseKnotSize;
+            KnotProfile = saturate(1.0 - dot(KnotOffset, KnotOffset));
+            NebularKnots += KnotProfile * KnotProfile * 0.8;
+            KnotOffset = (float2(Longitude, Latitude) - float2(2.35, 0.16)) * InverseKnotSize;
+            KnotProfile = saturate(1.0 - dot(KnotOffset, KnotOffset));
+            NebularKnots += KnotProfile * KnotProfile * 0.65;
+            NebularKnots *= Interpolants.BrightStarShapeParameters.z;
+        }
+        float const TotalHaze = BandHaze + GalacticCore + NebularKnots;
+        float const Haze = saturate(TotalHaze * DustTransmission);
         float const GalacticCoreBlend =
             saturate(GalacticCore / max(BandHaze + GalacticCore, 0.0001));
         DisplayColour = lerp(
             DisplayColour, Interpolants.HazeOutputParameters.yzw, GalacticCoreBlend);
+        float const NebularKnotBlend = saturate(NebularKnots / max(TotalHaze, 0.0001));
+        float3 const NebularKnotColour =
+            float3(Interpolants.Colour.w, Interpolants.HazeDirection.w, Interpolants.TexCoord.z);
+        DisplayColour = lerp(DisplayColour, NebularKnotColour, NebularKnotBlend);
         float const MaterialFalloff = sqrt(Haze);
         float const EncodedRadius = sqrt(saturate(1.0 - MaterialFalloff));
         TexCoord = float2(EncodedRadius * 0.5 + 0.5, 0.5);
@@ -275,7 +308,7 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
     Result.WorldPosition = WorldPosition;
     Result.PositionInstanceSpace = Intermediates.PositionInstanceSpace;
     Result.PositionPrimitiveSpace = Intermediates.PositionInstanceSpace;
-    Result.VertexColor = float4(Intermediates.Colour, 1.0);
+    Result.VertexColor = float4(Intermediates.Colour.xyz, 1.0);
     Result.TangentToWorld =
         mul(TangentToLocal, DFToFloat3x3(GetPrimitiveData(Intermediates).LocalToWorld));
     Result.PrevFrameLocalToWorld = GetPrimitiveDataFromUniformBuffer().LocalToWorld;
