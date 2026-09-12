@@ -1,6 +1,8 @@
 #pragma once
 #include <SpaceGameSimulation/telemetry/LevelTelemetryRunRecord.h>
 
+#include <array>
+
 enum class ELevelTelemetryTimingSystem : uint8 {
     Player,
     Capitals,
@@ -55,9 +57,9 @@ struct FLevelTelemetryPerformanceWindow {
     FLevelTelemetryTimingAggregate render_thread{};
     FLevelTelemetryTimingAggregate gpu{};
     FLevelTelemetryTimingAggregate simulation_tick{};
-    TStaticArray<FLevelTelemetryTimingAggregate, system_count> systems{};
-    TStaticArray<FLevelTelemetryTimingAggregate, phase_count> phases{};
-    TStaticArray<double, phase_count> phase_cpu_share{};
+    std::array<FLevelTelemetryTimingAggregate, system_count> systems{};
+    std::array<FLevelTelemetryTimingAggregate, phase_count> phases{};
+    std::array<double, phase_count> phase_cpu_share{};
 };
 
 struct SPACEGAME_API FLevelTelemetryReport {

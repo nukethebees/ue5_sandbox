@@ -1,16 +1,13 @@
 #pragma once
 
-#include <SandboxCore/time_series_data.h>
-#include <SandboxCoreEngine/enums.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
-#include <SpaceGameSimulation/entities/TestEntityType.h>
+#include <sandbox/simulation/level_telemetry_run_data.h>
+
 #include <SpaceGameSimulation/entities/TestTeam.h>
 #include <SpaceGameSimulation/missions/TestMissionFailReason.h>
 #include <SpaceGameSimulation/missions/TestMissionMode.h>
 #include <SpaceGameSimulation/missions/TestMissionState.h>
 #include <SpaceGameSimulation/telemetry/LevelTelemetryRunEndReason.h>
 
-#include <Containers/StaticArray.h>
 #include <CoreMinimal.h>
 
 struct FLevelTelemetryRunMetadata {
@@ -46,91 +43,12 @@ struct FLevelTelemetryRunCompletion {
     TOptional<ETestTeam> winning_team{};
 };
 
-struct FLevelTelemetryBattleSample {
-    uint64 completed_tick{};
-    double simulated_elapsed_seconds{};
-    FTestEntityRegistry::CombatTelemetryCounters combat{};
-    FTestEntityRegistry::EntityCounts alive{};
-    int32 active_lasers{};
-    int32 lasers_fired{};
-    int32 registry_slot_count{};
-    int32 occupied_spatial_cell_count{};
-    uint64 grid_rebuild_count{};
-    uint64 range_query_count{};
-    uint64 line_trace_count{};
-    uint64 sweep_trace_count{};
-};
-
-enum class ESimulationTelemetryTimingSystem : uint8 {
-    Player,
-    Capitals,
-    Fighters,
-    Turrets,
-    Spinners,
-    Lasers,
-    Registry,
-    SpatialQueries,
-    Mission,
-    Telemetry,
-    COUNT,
-};
-
-enum class ELevelTelemetryTimingPhase : uint8 {
-    Setup,
-    Decision,
-    Simulation,
-    Resolution,
-    End,
-    COUNT,
-};
-
-struct FLevelTelemetryTimingAggregate {
-    double mean_ms{};
-    double p95_ms{};
-    double max_ms{};
-    uint64 sample_count{};
-};
-
-struct FSimulationTelemetryPerformanceWindow {
-    static constexpr int32 system_count{
-        static_cast<int32>(ESimulationTelemetryTimingSystem::COUNT)};
-    static constexpr int32 phase_count{static_cast<int32>(ELevelTelemetryTimingPhase::COUNT)};
-    double real_elapsed_seconds{};
-    uint64 completed_tick{};
-    FLevelTelemetryTimingAggregate frame{};
-    FLevelTelemetryTimingAggregate game_thread{};
-    FLevelTelemetryTimingAggregate simulation_tick{};
-    TStaticArray<FLevelTelemetryTimingAggregate, system_count> systems{};
-    TStaticArray<FLevelTelemetryTimingAggregate, phase_count> phases{};
-    TStaticArray<double, phase_count> phase_cpu_share{};
-};
-
-struct FLevelTelemetryTickSeries {
-    static constexpr int32 team_count{ml::EnumCountTrait<ETestTeam>::count_value};
-    static constexpr int32 entity_type_count{ml::EnumCountTrait<ETestEntityType>::count_value};
-
-    using Int32Data = ml::XYSeriesData<uint64, int32>;
-    using Uint64Data = ml::XYSeriesData<uint64, uint64>;
-    using DoubleData = ml::XYSeriesData<uint64, double>;
-    using ActiveEntitiesByTypeData = TStaticArray<Int32Data, entity_type_count>;
-    using ActiveEntitiesByTeamAndTypeData = TStaticArray<ActiveEntitiesByTypeData, team_count>;
-
-    Int32Data active_entities{};
-    ActiveEntitiesByTypeData active_entities_by_type{};
-    ActiveEntitiesByTeamAndTypeData active_entities_by_team_and_type{};
-    Int32Data spawned_entities{};
-    Int32Data destroyed_entities{};
-    Int32Data kills{};
-    Int32Data registry_slot_count{};
-    Int32Data active_lasers{};
-    Int32Data lasers_fired{};
-    Int32Data occupied_spatial_cell_count{};
-    Uint64Data grid_rebuild_count{};
-    Uint64Data range_query_count{};
-    Uint64Data line_trace_count{};
-    Uint64Data sweep_trace_count{};
-    DoubleData requested_time_scale{};
-};
+using FLevelTelemetryBattleSample = ml::simulation::LevelTelemetryBattleSample;
+using ESimulationTelemetryTimingSystem = ml::simulation::SimulationTelemetryTimingSystem;
+using ELevelTelemetryTimingPhase = ml::simulation::LevelTelemetryTimingPhase;
+using FLevelTelemetryTimingAggregate = ml::simulation::LevelTelemetryTimingAggregate;
+using FSimulationTelemetryPerformanceWindow = ml::simulation::SimulationTelemetryPerformanceWindow;
+using FLevelTelemetryTickSeries = ml::simulation::LevelTelemetryTickSeries;
 
 struct FLevelTelemetryRunRecord {
     static constexpr int32 schema_version{2};
