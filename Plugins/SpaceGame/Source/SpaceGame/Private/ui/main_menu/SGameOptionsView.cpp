@@ -46,13 +46,21 @@ auto section_label(FGameSettingDescriptor const& descriptor) -> FText {
         case EGameSetting::ResolutionScale:
             return NSLOCTEXT("OptionsMenu", "DisplaySection", "Display");
         case EGameSetting::AAMethod:
+        case EGameSetting::OverallQuality:
+        case EGameSetting::ViewDistanceQuality:
         case EGameSetting::AAQuality:
         case EGameSetting::ShadowQuality:
+        case EGameSetting::GlobalIlluminationQuality:
+        case EGameSetting::ReflectionsQuality:
+        case EGameSetting::PostProcessingQuality:
         case EGameSetting::TextureQuality:
         case EGameSetting::EffectsQuality:
-        case EGameSetting::ReflectionsQuality:
         case EGameSetting::ShadingQuality:
             return NSLOCTEXT("OptionsMenu", "QualitySection", "Quality");
+        case EGameSetting::Bloom:
+        case EGameSetting::MotionBlur:
+            return NSLOCTEXT(
+                "OptionsMenu", "PostProcessingEffectsSection", "Post Processing Effects");
         case EGameSetting::MasterVolume:
         case EGameSetting::MusicVolume:
         case EGameSetting::SfxVolume:

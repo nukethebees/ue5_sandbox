@@ -18,13 +18,19 @@ enum class EGameSetting : uint8 {
     VSync,
     FrameRateLimit,
     ResolutionScale,
+    OverallQuality,
+    ViewDistanceQuality,
     AAMethod,
     AAQuality,
     ShadowQuality,
+    GlobalIlluminationQuality,
+    ReflectionsQuality,
+    PostProcessingQuality,
     TextureQuality,
     EffectsQuality,
-    ReflectionsQuality,
     ShadingQuality,
+    Bloom,
+    MotionBlur,
     MasterVolume,
     MusicVolume,
     SfxVolume,
@@ -48,9 +54,9 @@ enum class EGameSettingCategory : uint8 {
 
 enum class ESettingApplyMode : uint8 { Immediate, Deferred, Confirm };
 enum class ESettingControlKind : uint8 { Toggle, Choice, FloatRange, IntegerRange, Custom };
-enum class EGameSettingValueType : uint8 { IntPoint, GameWindowMode, Bool, Float, GameAntiAliasingMethod, GameQualityLevel, Int32 };
+enum class EGameSettingValueType : uint8 { IntPoint, GameWindowMode, Bool, Float, GameGraphicsPreset, GameQualityLevel, GameAntiAliasingMethod, Int32 };
 enum class EGameSettingBackend : uint8 { Audio, Custom, EnhancedInputUserSettings, GameUserSettings };
-enum class EGameSettingOptionProvider : uint8 { None, AAMethods, FrameRateLimits, QualityLevels, SupportedResolutions, WindowModes };
+enum class EGameSettingOptionProvider : uint8 { None, AAMethods, FrameRateLimits, GraphicsPresets, QualityLevels, SupportedResolutions, WindowModes };
 enum class EGameSettingAvailabilityProvider : uint8 { Always, AAQuality };
 
 struct SPACEGAME_API FGameSettingCategoryDescriptor {
@@ -82,13 +88,19 @@ struct SPACEGAME_API FGameSettingsState {
     bool vsync{};
     float frame_rate_limit{};
     float resolution_scale{};
+    EGameGraphicsPreset overall_quality{};
+    EGameQualityLevel view_distance_quality{};
     EGameAntiAliasingMethod aa_method{};
     EGameQualityLevel aa_quality{};
     EGameQualityLevel shadow_quality{};
+    EGameQualityLevel global_illumination_quality{};
+    EGameQualityLevel reflections_quality{};
+    EGameQualityLevel post_processing_quality{};
     EGameQualityLevel texture_quality{};
     EGameQualityLevel effects_quality{};
-    EGameQualityLevel reflections_quality{};
     EGameQualityLevel shading_quality{};
+    bool bloom{};
+    bool motion_blur{};
     float master_volume{};
     float music_volume{};
     float sfx_volume{};
@@ -104,7 +116,7 @@ struct SPACEGAME_API FGameSettingsState {
     auto operator==(FGameSettingsState const&) const -> bool = default;
 };
 
-using FGameSettingValue = std::variant<FIntPoint, EGameWindowMode, bool, float, EGameAntiAliasingMethod, EGameQualityLevel, int32>;
+using FGameSettingValue = std::variant<FIntPoint, EGameWindowMode, bool, float, EGameGraphicsPreset, EGameQualityLevel, EGameAntiAliasingMethod, int32>;
 
 SPACEGAME_API auto game_setting_category_descriptors() -> TConstArrayView<FGameSettingCategoryDescriptor>;
 SPACEGAME_API auto game_setting_descriptors() -> TConstArrayView<FGameSettingDescriptor>;
@@ -155,6 +167,22 @@ public:
         derived().set_setting(EGameSetting::ResolutionScale, FGameSettingValue{value});
     }
 
+    auto overall_quality() const -> EGameGraphicsPreset {
+        return derived().settings_state().overall_quality;
+    }
+
+    void set_overall_quality(EGameGraphicsPreset const value) {
+        derived().set_setting(EGameSetting::OverallQuality, FGameSettingValue{value});
+    }
+
+    auto view_distance_quality() const -> EGameQualityLevel {
+        return derived().settings_state().view_distance_quality;
+    }
+
+    void set_view_distance_quality(EGameQualityLevel const value) {
+        derived().set_setting(EGameSetting::ViewDistanceQuality, FGameSettingValue{value});
+    }
+
     auto aa_method() const -> EGameAntiAliasingMethod {
         return derived().settings_state().aa_method;
     }
@@ -179,6 +207,30 @@ public:
         derived().set_setting(EGameSetting::ShadowQuality, FGameSettingValue{value});
     }
 
+    auto global_illumination_quality() const -> EGameQualityLevel {
+        return derived().settings_state().global_illumination_quality;
+    }
+
+    void set_global_illumination_quality(EGameQualityLevel const value) {
+        derived().set_setting(EGameSetting::GlobalIlluminationQuality, FGameSettingValue{value});
+    }
+
+    auto reflections_quality() const -> EGameQualityLevel {
+        return derived().settings_state().reflections_quality;
+    }
+
+    void set_reflections_quality(EGameQualityLevel const value) {
+        derived().set_setting(EGameSetting::ReflectionsQuality, FGameSettingValue{value});
+    }
+
+    auto post_processing_quality() const -> EGameQualityLevel {
+        return derived().settings_state().post_processing_quality;
+    }
+
+    void set_post_processing_quality(EGameQualityLevel const value) {
+        derived().set_setting(EGameSetting::PostProcessingQuality, FGameSettingValue{value});
+    }
+
     auto texture_quality() const -> EGameQualityLevel {
         return derived().settings_state().texture_quality;
     }
@@ -195,20 +247,28 @@ public:
         derived().set_setting(EGameSetting::EffectsQuality, FGameSettingValue{value});
     }
 
-    auto reflections_quality() const -> EGameQualityLevel {
-        return derived().settings_state().reflections_quality;
-    }
-
-    void set_reflections_quality(EGameQualityLevel const value) {
-        derived().set_setting(EGameSetting::ReflectionsQuality, FGameSettingValue{value});
-    }
-
     auto shading_quality() const -> EGameQualityLevel {
         return derived().settings_state().shading_quality;
     }
 
     void set_shading_quality(EGameQualityLevel const value) {
         derived().set_setting(EGameSetting::ShadingQuality, FGameSettingValue{value});
+    }
+
+    auto bloom() const -> bool {
+        return derived().settings_state().bloom;
+    }
+
+    void set_bloom(bool const value) {
+        derived().set_setting(EGameSetting::Bloom, FGameSettingValue{value});
+    }
+
+    auto motion_blur() const -> bool {
+        return derived().settings_state().motion_blur;
+    }
+
+    void set_motion_blur(bool const value) {
+        derived().set_setting(EGameSetting::MotionBlur, FGameSettingValue{value});
     }
 
     auto master_volume() const -> float {

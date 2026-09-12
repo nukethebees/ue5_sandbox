@@ -25,4 +25,12 @@ enum class EGameQualityLevel : uint8 {
     Epic,
 };
 
+enum class EGameGraphicsPreset : uint8 {
+    Custom,
+    Low,
+    Medium,
+    High,
+    Epic,
+};
+
 } // namespace ml::ioj

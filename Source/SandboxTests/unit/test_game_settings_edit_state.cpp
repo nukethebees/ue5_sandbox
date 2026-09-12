@@ -60,4 +60,46 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
             TEXT("AA quality is enabled from the pending anti-aliasing method"),
             backend.is_available(ml::ioj::EGameSettingAvailabilityProvider::AAQuality, state));
     }
+
+    TEST_METHOD(GraphicsPresetUpdatesOnlyItsQualityGroups)
+    {
+        ml::ioj::FGameSettingsState applied;
+        applied.resolution_scale = 73.0f;
+        applied.bloom = false;
+        applied.motion_blur = true;
+
+        ml::ioj::FGameSettingsEditState state;
+        state.begin(applied, applied);
+        state.set_setting(ml::ioj::EGameSetting::OverallQuality,
+                          ml::ioj::FGameSettingValue{ml::ioj::EGameGraphicsPreset::High});
+
+        auto const& preset{state.pending()};
+        TestRunner->TestTrue(TEXT("The selected preset is reported"),
+                             preset.overall_quality == ml::ioj::EGameGraphicsPreset::High);
+        TestRunner->TestTrue(
+            TEXT("The preset updates every player-facing scalability group"),
+            preset.view_distance_quality == ml::ioj::EGameQualityLevel::High &&
+                preset.aa_quality == ml::ioj::EGameQualityLevel::High &&
+                preset.shadow_quality == ml::ioj::EGameQualityLevel::High &&
+                preset.global_illumination_quality == ml::ioj::EGameQualityLevel::High &&
+                preset.reflections_quality == ml::ioj::EGameQualityLevel::High &&
+                preset.post_processing_quality == ml::ioj::EGameQualityLevel::High &&
+                preset.texture_quality == ml::ioj::EGameQualityLevel::High &&
+                preset.effects_quality == ml::ioj::EGameQualityLevel::High &&
+                preset.shading_quality == ml::ioj::EGameQualityLevel::High);
+        TestRunner->TestTrue(TEXT("Independent graphics controls are unchanged"),
+                             FMath::IsNearlyEqual(preset.resolution_scale, 73.0f) &&
+                                 !preset.bloom && preset.motion_blur);
+
+        state.set_setting(ml::ioj::EGameSetting::ShadowQuality,
+                          ml::ioj::FGameSettingValue{ml::ioj::EGameQualityLevel::Medium});
+        TestRunner->TestTrue(TEXT("Changing one quality group produces a custom preset"),
+                             state.pending().overall_quality ==
+                                 ml::ioj::EGameGraphicsPreset::Custom);
+
+        state.set_setting(ml::ioj::EGameSetting::OverallQuality,
+                          ml::ioj::FGameSettingValue{ml::ioj::EGameGraphicsPreset::Custom});
+        TestRunner->TestTrue(TEXT("Selecting Custom preserves the individual quality values"),
+                             state.pending().shadow_quality == ml::ioj::EGameQualityLevel::Medium);
+    }
 };

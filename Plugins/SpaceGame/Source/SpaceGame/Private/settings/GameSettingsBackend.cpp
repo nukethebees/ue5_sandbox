@@ -42,6 +42,25 @@ auto to_quality(int32 const value) -> EGameQualityLevel {
     return static_cast<EGameQualityLevel>(FMath::Clamp(value, 0, 3));
 }
 
+auto graphics_preset(EGameQualityLevel const view_distance,
+                     EGameQualityLevel const anti_aliasing,
+                     EGameQualityLevel const shadows,
+                     EGameQualityLevel const global_illumination,
+                     EGameQualityLevel const reflections,
+                     EGameQualityLevel const post_processing,
+                     EGameQualityLevel const textures,
+                     EGameQualityLevel const effects,
+                     EGameQualityLevel const shading) -> EGameGraphicsPreset {
+    if (anti_aliasing != view_distance || shadows != view_distance ||
+        global_illumination != view_distance || reflections != view_distance ||
+        post_processing != view_distance || textures != view_distance || effects != view_distance ||
+        shading != view_distance) {
+        return EGameGraphicsPreset::Custom;
+    }
+
+    return static_cast<EGameGraphicsPreset>(static_cast<uint8>(view_distance) + 1);
+}
+
 auto make_option(FGameSettingValue value, TCHAR const* label) -> FGameSettingOption {
     return FGameSettingOption{MoveTemp(value), FText::FromString(label)};
 }
@@ -65,6 +84,16 @@ auto FGameSettingsBackend::read() const -> FGameSettingsState {
     settings->GetResolutionScaleInformationEx(
         normalized_scale, resolution_scale, minimum_scale, maximum_scale);
 
+    auto const view_distance_quality{to_quality(settings->GetViewDistanceQuality())};
+    auto const aa_quality{to_quality(settings->GetAntiAliasingQuality())};
+    auto const shadow_quality{to_quality(settings->GetShadowQuality())};
+    auto const global_illumination_quality{to_quality(settings->GetGlobalIlluminationQuality())};
+    auto const reflections_quality{to_quality(settings->GetReflectionQuality())};
+    auto const post_processing_quality{to_quality(settings->GetPostProcessingQuality())};
+    auto const texture_quality{to_quality(settings->GetTextureQuality())};
+    auto const effects_quality{to_quality(settings->GetVisualEffectQuality())};
+    auto const shading_quality{to_quality(settings->GetShadingQuality())};
+
     auto const* const input_settings{input_user_settings()};
     auto const* const input_defaults{GetDefault<USpaceGameInputUserSettings>()};
     return FGameSettingsState{
@@ -73,13 +102,27 @@ auto FGameSettingsBackend::read() const -> FGameSettingsState {
         .vsync = settings->IsVSyncEnabled(),
         .frame_rate_limit = settings->GetFrameRateLimit(),
         .resolution_scale = resolution_scale,
+        .overall_quality = graphics_preset(view_distance_quality,
+                                           aa_quality,
+                                           shadow_quality,
+                                           global_illumination_quality,
+                                           reflections_quality,
+                                           post_processing_quality,
+                                           texture_quality,
+                                           effects_quality,
+                                           shading_quality),
+        .view_distance_quality = view_distance_quality,
         .aa_method = settings->anti_aliasing_method(),
-        .aa_quality = to_quality(settings->GetAntiAliasingQuality()),
-        .shadow_quality = to_quality(settings->GetShadowQuality()),
-        .texture_quality = to_quality(settings->GetTextureQuality()),
-        .effects_quality = to_quality(settings->GetVisualEffectQuality()),
-        .reflections_quality = to_quality(settings->GetReflectionQuality()),
-        .shading_quality = to_quality(settings->GetShadingQuality()),
+        .aa_quality = aa_quality,
+        .shadow_quality = shadow_quality,
+        .global_illumination_quality = global_illumination_quality,
+        .reflections_quality = reflections_quality,
+        .post_processing_quality = post_processing_quality,
+        .texture_quality = texture_quality,
+        .effects_quality = effects_quality,
+        .shading_quality = shading_quality,
+        .bloom = settings->bloom_enabled(),
+        .motion_blur = settings->motion_blur_enabled(),
         .master_volume = settings->master_volume(),
         .music_volume = settings->music_volume(),
         .sfx_volume = settings->sfx_volume(),
@@ -120,6 +163,17 @@ auto FGameSettingsBackend::defaults() const -> FGameSettingsState {
     float maximum_scale{};
     defaults->GetResolutionScaleInformationEx(
         normalized_scale, resolution_scale, minimum_scale, maximum_scale);
+
+    auto const view_distance_quality{to_quality(defaults->GetViewDistanceQuality())};
+    auto const aa_quality{to_quality(defaults->GetAntiAliasingQuality())};
+    auto const shadow_quality{to_quality(defaults->GetShadowQuality())};
+    auto const global_illumination_quality{to_quality(defaults->GetGlobalIlluminationQuality())};
+    auto const reflections_quality{to_quality(defaults->GetReflectionQuality())};
+    auto const post_processing_quality{to_quality(defaults->GetPostProcessingQuality())};
+    auto const texture_quality{to_quality(defaults->GetTextureQuality())};
+    auto const effects_quality{to_quality(defaults->GetVisualEffectQuality())};
+    auto const shading_quality{to_quality(defaults->GetShadingQuality())};
+
     auto const* const input_defaults{GetDefault<USpaceGameInputUserSettings>()};
     return FGameSettingsState{
         .resolution = resolution,
@@ -127,13 +181,27 @@ auto FGameSettingsBackend::defaults() const -> FGameSettingsState {
         .vsync = defaults->IsVSyncEnabled(),
         .frame_rate_limit = defaults->GetFrameRateLimit(),
         .resolution_scale = resolution_scale,
+        .overall_quality = graphics_preset(view_distance_quality,
+                                           aa_quality,
+                                           shadow_quality,
+                                           global_illumination_quality,
+                                           reflections_quality,
+                                           post_processing_quality,
+                                           texture_quality,
+                                           effects_quality,
+                                           shading_quality),
+        .view_distance_quality = view_distance_quality,
         .aa_method = defaults->anti_aliasing_method(),
-        .aa_quality = to_quality(defaults->GetAntiAliasingQuality()),
-        .shadow_quality = to_quality(defaults->GetShadowQuality()),
-        .texture_quality = to_quality(defaults->GetTextureQuality()),
-        .effects_quality = to_quality(defaults->GetVisualEffectQuality()),
-        .reflections_quality = to_quality(defaults->GetReflectionQuality()),
-        .shading_quality = to_quality(defaults->GetShadingQuality()),
+        .aa_quality = aa_quality,
+        .shadow_quality = shadow_quality,
+        .global_illumination_quality = global_illumination_quality,
+        .reflections_quality = reflections_quality,
+        .post_processing_quality = post_processing_quality,
+        .texture_quality = texture_quality,
+        .effects_quality = effects_quality,
+        .shading_quality = shading_quality,
+        .bloom = defaults->bloom_enabled(),
+        .motion_blur = defaults->motion_blur_enabled(),
         .master_volume = defaults->master_volume(),
         .music_volume = defaults->music_volume(),
         .sfx_volume = defaults->sfx_volume(),
@@ -300,6 +368,16 @@ auto FGameSettingsBackend::options(EGameSettingOptionProvider const provider) co
             };
             break;
         }
+        case EGameSettingOptionProvider::GraphicsPresets: {
+            result = {
+                make_option(EGameGraphicsPreset::Custom, TEXT("Custom")),
+                make_option(EGameGraphicsPreset::Low, TEXT("Low")),
+                make_option(EGameGraphicsPreset::Medium, TEXT("Medium")),
+                make_option(EGameGraphicsPreset::High, TEXT("High")),
+                make_option(EGameGraphicsPreset::Epic, TEXT("Epic")),
+            };
+            break;
+        }
         case EGameSettingOptionProvider::QualityLevels: {
             result = {
                 make_option(EGameQualityLevel::Low, TEXT("Low")),
@@ -370,12 +448,17 @@ void FGameSettingsBackend::write_non_display(USpaceGameUserSettings& settings,
     settings.SetFrameRateLimit(state.frame_rate_limit);
     settings.SetResolutionScaleValueEx(state.resolution_scale);
     settings.set_anti_aliasing_method(state.aa_method);
+    settings.SetViewDistanceQuality(static_cast<int32>(state.view_distance_quality));
     settings.SetAntiAliasingQuality(static_cast<int32>(state.aa_quality));
     settings.SetShadowQuality(static_cast<int32>(state.shadow_quality));
+    settings.SetGlobalIlluminationQuality(static_cast<int32>(state.global_illumination_quality));
+    settings.SetReflectionQuality(static_cast<int32>(state.reflections_quality));
+    settings.SetPostProcessingQuality(static_cast<int32>(state.post_processing_quality));
     settings.SetTextureQuality(static_cast<int32>(state.texture_quality));
     settings.SetVisualEffectQuality(static_cast<int32>(state.effects_quality));
-    settings.SetReflectionQuality(static_cast<int32>(state.reflections_quality));
     settings.SetShadingQuality(static_cast<int32>(state.shading_quality));
+    settings.set_bloom_enabled(state.bloom);
+    settings.set_motion_blur_enabled(state.motion_blur);
     settings.set_master_volume(state.master_volume);
     settings.set_music_volume(state.music_volume);
     settings.set_sfx_volume(state.sfx_volume);

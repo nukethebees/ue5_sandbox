@@ -40,6 +40,7 @@
     (control choice
       :options-provider frame_rate_limits))
   (setting resolution_scale "Resolution Scale"
+    :tooltip "Internal rendering resolution as a percentage of the display resolution."
     :category video
     :value-type float
     :backend game_user_settings
@@ -48,7 +49,24 @@
       :min 50
       :max 100
       :step 1))
+  (setting overall_quality "Overall Quality"
+    :tooltip "Set the player-facing graphics quality groups together. Resolution scale, anti-aliasing method, bloom, and motion blur remain independent."
+    :category video
+    :value-type @game_graphics_preset
+    :backend game_user_settings
+    :apply deferred
+    (control choice
+      :options-provider graphics_presets))
+  (setting view_distance_quality "View Distance Quality"
+    :tooltip "Controls how far detailed objects remain visible."
+    :category video
+    :value-type @game_quality_level
+    :backend game_user_settings
+    :apply deferred
+    (control choice
+      :options-provider quality_levels))
   (setting aa_method "Anti-Aliasing Method"
+    :tooltip "Select the technique used to smooth jagged edges."
     :category video
     :value-type @game_anti_aliasing_method
     :backend game_user_settings
@@ -56,6 +74,7 @@
     (control choice
       :options-provider aa_methods))
   (setting aa_quality "Anti-Aliasing Quality"
+    :tooltip "Controls the quality of the selected anti-aliasing method."
     :category video
     :value-type @game_quality_level
     :backend game_user_settings
@@ -64,20 +83,15 @@
       :options-provider quality_levels
       :availability-provider aa_quality))
   (setting shadow_quality "Shadow Quality"
+    :tooltip "Controls shadow resolution and rendering distance."
     :category video
     :value-type @game_quality_level
     :backend game_user_settings
     :apply deferred
     (control choice
       :options-provider quality_levels))
-  (setting texture_quality "Texture Quality"
-    :category video
-    :value-type @game_quality_level
-    :backend game_user_settings
-    :apply deferred
-    (control choice
-      :options-provider quality_levels))
-  (setting effects_quality "Effects Quality"
+  (setting global_illumination_quality "Global Illumination Quality"
+    :tooltip "Controls indirect lighting quality."
     :category video
     :value-type @game_quality_level
     :backend game_user_settings
@@ -85,6 +99,31 @@
     (control choice
       :options-provider quality_levels))
   (setting reflections_quality "Reflections Quality"
+    :tooltip "Controls reflection detail and accuracy."
+    :category video
+    :value-type @game_quality_level
+    :backend game_user_settings
+    :apply deferred
+    (control choice
+      :options-provider quality_levels))
+  (setting post_processing_quality "Post Processing Quality"
+    :tooltip "Controls the quality of screen-space visual effects."
+    :category video
+    :value-type @game_quality_level
+    :backend game_user_settings
+    :apply deferred
+    (control choice
+      :options-provider quality_levels))
+  (setting texture_quality "Texture Quality"
+    :tooltip "Controls texture detail and streaming quality."
+    :category video
+    :value-type @game_quality_level
+    :backend game_user_settings
+    :apply deferred
+    (control choice
+      :options-provider quality_levels))
+  (setting effects_quality "Effects Quality"
+    :tooltip "Controls particle and visual-effects quality."
     :category video
     :value-type @game_quality_level
     :backend game_user_settings
@@ -92,12 +131,27 @@
     (control choice
       :options-provider quality_levels))
   (setting shading_quality "Shading Quality"
+    :tooltip "Controls material and lighting shading quality."
     :category video
     :value-type @game_quality_level
     :backend game_user_settings
     :apply deferred
     (control choice
       :options-provider quality_levels))
+  (setting bloom "Bloom"
+    :tooltip "Allow bright areas to glow."
+    :category video
+    :value-type bool
+    :backend game_user_settings
+    :apply deferred
+    (control toggle))
+  (setting motion_blur "Motion Blur"
+    :tooltip "Blur moving objects and camera motion."
+    :category video
+    :value-type bool
+    :backend game_user_settings
+    :apply deferred
+    (control toggle))
   (setting master_volume "Master Volume"
     :category audio
     :value-type float

@@ -12,10 +12,16 @@ class SPACEGAME_API USpaceGameUserSettings : public UGameUserSettings {
     GENERATED_BODY()
   public:
     virtual void ApplyNonResolutionSettings() override;
+    virtual void ValidateSettings() override;
     virtual void SetToDefaults() override;
 
     auto anti_aliasing_method() const -> EGameAntiAliasingMethod;
     void set_anti_aliasing_method(EGameAntiAliasingMethod value);
+
+    auto bloom_enabled() const -> bool;
+    auto motion_blur_enabled() const -> bool;
+    void set_bloom_enabled(bool value);
+    void set_motion_blur_enabled(bool value);
 
     auto master_volume() const -> float;
     auto music_volume() const -> float;
@@ -33,6 +39,12 @@ class SPACEGAME_API USpaceGameUserSettings : public UGameUserSettings {
   private:
     UPROPERTY(Config)
     int32 anti_aliasing_method_{};
+
+    UPROPERTY(Config)
+    bool bloom_enabled_{true};
+
+    UPROPERTY(Config)
+    bool motion_blur_enabled_{};
 
     UPROPERTY(Config)
     float master_volume_{1.0f};

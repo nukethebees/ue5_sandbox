@@ -21,14 +21,20 @@ static TArray<FGameSettingDescriptor> const descriptors{
     {EGameSetting::WindowMode, EGameSettingCategory::Video, EGameSettingValueType::GameWindowMode, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Confirm, ESettingControlKind::Choice, EGameSettingOptionProvider::WindowModes, EGameSettingAvailabilityProvider::Always, TEXT("window_mode"), FText::FromString(TEXT("Window Mode")), FText::FromString(TEXT("")), 0, 0, 0, TEXT("")},
     {EGameSetting::VSync, EGameSettingCategory::Video, EGameSettingValueType::Bool, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Toggle, EGameSettingOptionProvider::None, EGameSettingAvailabilityProvider::Always, TEXT("vsync"), FText::FromString(TEXT("VSync")), FText::FromString(TEXT("")), 0, 0, 0, TEXT("")},
     {EGameSetting::FrameRateLimit, EGameSettingCategory::Video, EGameSettingValueType::Float, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Choice, EGameSettingOptionProvider::FrameRateLimits, EGameSettingAvailabilityProvider::Always, TEXT("frame_rate_limit"), FText::FromString(TEXT("Frame Rate Limit")), FText::FromString(TEXT("")), 0, 0, 0, TEXT("")},
-    {EGameSetting::ResolutionScale, EGameSettingCategory::Video, EGameSettingValueType::Float, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::FloatRange, EGameSettingOptionProvider::None, EGameSettingAvailabilityProvider::Always, TEXT("resolution_scale"), FText::FromString(TEXT("Resolution Scale")), FText::FromString(TEXT("")), 50, 100, 1, TEXT("")},
-    {EGameSetting::AAMethod, EGameSettingCategory::Video, EGameSettingValueType::GameAntiAliasingMethod, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Choice, EGameSettingOptionProvider::AAMethods, EGameSettingAvailabilityProvider::Always, TEXT("aa_method"), FText::FromString(TEXT("Anti-Aliasing Method")), FText::FromString(TEXT("")), 0, 0, 0, TEXT("")},
-    {EGameSetting::AAQuality, EGameSettingCategory::Video, EGameSettingValueType::GameQualityLevel, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Choice, EGameSettingOptionProvider::QualityLevels, EGameSettingAvailabilityProvider::AAQuality, TEXT("aa_quality"), FText::FromString(TEXT("Anti-Aliasing Quality")), FText::FromString(TEXT("")), 0, 0, 0, TEXT("")},
-    {EGameSetting::ShadowQuality, EGameSettingCategory::Video, EGameSettingValueType::GameQualityLevel, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Choice, EGameSettingOptionProvider::QualityLevels, EGameSettingAvailabilityProvider::Always, TEXT("shadow_quality"), FText::FromString(TEXT("Shadow Quality")), FText::FromString(TEXT("")), 0, 0, 0, TEXT("")},
-    {EGameSetting::TextureQuality, EGameSettingCategory::Video, EGameSettingValueType::GameQualityLevel, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Choice, EGameSettingOptionProvider::QualityLevels, EGameSettingAvailabilityProvider::Always, TEXT("texture_quality"), FText::FromString(TEXT("Texture Quality")), FText::FromString(TEXT("")), 0, 0, 0, TEXT("")},
-    {EGameSetting::EffectsQuality, EGameSettingCategory::Video, EGameSettingValueType::GameQualityLevel, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Choice, EGameSettingOptionProvider::QualityLevels, EGameSettingAvailabilityProvider::Always, TEXT("effects_quality"), FText::FromString(TEXT("Effects Quality")), FText::FromString(TEXT("")), 0, 0, 0, TEXT("")},
-    {EGameSetting::ReflectionsQuality, EGameSettingCategory::Video, EGameSettingValueType::GameQualityLevel, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Choice, EGameSettingOptionProvider::QualityLevels, EGameSettingAvailabilityProvider::Always, TEXT("reflections_quality"), FText::FromString(TEXT("Reflections Quality")), FText::FromString(TEXT("")), 0, 0, 0, TEXT("")},
-    {EGameSetting::ShadingQuality, EGameSettingCategory::Video, EGameSettingValueType::GameQualityLevel, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Choice, EGameSettingOptionProvider::QualityLevels, EGameSettingAvailabilityProvider::Always, TEXT("shading_quality"), FText::FromString(TEXT("Shading Quality")), FText::FromString(TEXT("")), 0, 0, 0, TEXT("")},
+    {EGameSetting::ResolutionScale, EGameSettingCategory::Video, EGameSettingValueType::Float, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::FloatRange, EGameSettingOptionProvider::None, EGameSettingAvailabilityProvider::Always, TEXT("resolution_scale"), FText::FromString(TEXT("Resolution Scale")), FText::FromString(TEXT("Internal rendering resolution as a percentage of the display resolution.")), 50, 100, 1, TEXT("")},
+    {EGameSetting::OverallQuality, EGameSettingCategory::Video, EGameSettingValueType::GameGraphicsPreset, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Choice, EGameSettingOptionProvider::GraphicsPresets, EGameSettingAvailabilityProvider::Always, TEXT("overall_quality"), FText::FromString(TEXT("Overall Quality")), FText::FromString(TEXT("Set the player-facing graphics quality groups together. Resolution scale, anti-aliasing method, bloom, and motion blur remain independent.")), 0, 0, 0, TEXT("")},
+    {EGameSetting::ViewDistanceQuality, EGameSettingCategory::Video, EGameSettingValueType::GameQualityLevel, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Choice, EGameSettingOptionProvider::QualityLevels, EGameSettingAvailabilityProvider::Always, TEXT("view_distance_quality"), FText::FromString(TEXT("View Distance Quality")), FText::FromString(TEXT("Controls how far detailed objects remain visible.")), 0, 0, 0, TEXT("")},
+    {EGameSetting::AAMethod, EGameSettingCategory::Video, EGameSettingValueType::GameAntiAliasingMethod, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Choice, EGameSettingOptionProvider::AAMethods, EGameSettingAvailabilityProvider::Always, TEXT("aa_method"), FText::FromString(TEXT("Anti-Aliasing Method")), FText::FromString(TEXT("Select the technique used to smooth jagged edges.")), 0, 0, 0, TEXT("")},
+    {EGameSetting::AAQuality, EGameSettingCategory::Video, EGameSettingValueType::GameQualityLevel, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Choice, EGameSettingOptionProvider::QualityLevels, EGameSettingAvailabilityProvider::AAQuality, TEXT("aa_quality"), FText::FromString(TEXT("Anti-Aliasing Quality")), FText::FromString(TEXT("Controls the quality of the selected anti-aliasing method.")), 0, 0, 0, TEXT("")},
+    {EGameSetting::ShadowQuality, EGameSettingCategory::Video, EGameSettingValueType::GameQualityLevel, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Choice, EGameSettingOptionProvider::QualityLevels, EGameSettingAvailabilityProvider::Always, TEXT("shadow_quality"), FText::FromString(TEXT("Shadow Quality")), FText::FromString(TEXT("Controls shadow resolution and rendering distance.")), 0, 0, 0, TEXT("")},
+    {EGameSetting::GlobalIlluminationQuality, EGameSettingCategory::Video, EGameSettingValueType::GameQualityLevel, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Choice, EGameSettingOptionProvider::QualityLevels, EGameSettingAvailabilityProvider::Always, TEXT("global_illumination_quality"), FText::FromString(TEXT("Global Illumination Quality")), FText::FromString(TEXT("Controls indirect lighting quality.")), 0, 0, 0, TEXT("")},
+    {EGameSetting::ReflectionsQuality, EGameSettingCategory::Video, EGameSettingValueType::GameQualityLevel, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Choice, EGameSettingOptionProvider::QualityLevels, EGameSettingAvailabilityProvider::Always, TEXT("reflections_quality"), FText::FromString(TEXT("Reflections Quality")), FText::FromString(TEXT("Controls reflection detail and accuracy.")), 0, 0, 0, TEXT("")},
+    {EGameSetting::PostProcessingQuality, EGameSettingCategory::Video, EGameSettingValueType::GameQualityLevel, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Choice, EGameSettingOptionProvider::QualityLevels, EGameSettingAvailabilityProvider::Always, TEXT("post_processing_quality"), FText::FromString(TEXT("Post Processing Quality")), FText::FromString(TEXT("Controls the quality of screen-space visual effects.")), 0, 0, 0, TEXT("")},
+    {EGameSetting::TextureQuality, EGameSettingCategory::Video, EGameSettingValueType::GameQualityLevel, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Choice, EGameSettingOptionProvider::QualityLevels, EGameSettingAvailabilityProvider::Always, TEXT("texture_quality"), FText::FromString(TEXT("Texture Quality")), FText::FromString(TEXT("Controls texture detail and streaming quality.")), 0, 0, 0, TEXT("")},
+    {EGameSetting::EffectsQuality, EGameSettingCategory::Video, EGameSettingValueType::GameQualityLevel, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Choice, EGameSettingOptionProvider::QualityLevels, EGameSettingAvailabilityProvider::Always, TEXT("effects_quality"), FText::FromString(TEXT("Effects Quality")), FText::FromString(TEXT("Controls particle and visual-effects quality.")), 0, 0, 0, TEXT("")},
+    {EGameSetting::ShadingQuality, EGameSettingCategory::Video, EGameSettingValueType::GameQualityLevel, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Choice, EGameSettingOptionProvider::QualityLevels, EGameSettingAvailabilityProvider::Always, TEXT("shading_quality"), FText::FromString(TEXT("Shading Quality")), FText::FromString(TEXT("Controls material and lighting shading quality.")), 0, 0, 0, TEXT("")},
+    {EGameSetting::Bloom, EGameSettingCategory::Video, EGameSettingValueType::Bool, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Toggle, EGameSettingOptionProvider::None, EGameSettingAvailabilityProvider::Always, TEXT("bloom"), FText::FromString(TEXT("Bloom")), FText::FromString(TEXT("Allow bright areas to glow.")), 0, 0, 0, TEXT("")},
+    {EGameSetting::MotionBlur, EGameSettingCategory::Video, EGameSettingValueType::Bool, EGameSettingBackend::GameUserSettings, ESettingApplyMode::Deferred, ESettingControlKind::Toggle, EGameSettingOptionProvider::None, EGameSettingAvailabilityProvider::Always, TEXT("motion_blur"), FText::FromString(TEXT("Motion Blur")), FText::FromString(TEXT("Blur moving objects and camera motion.")), 0, 0, 0, TEXT("")},
     {EGameSetting::MasterVolume, EGameSettingCategory::Audio, EGameSettingValueType::Float, EGameSettingBackend::Audio, ESettingApplyMode::Immediate, ESettingControlKind::FloatRange, EGameSettingOptionProvider::None, EGameSettingAvailabilityProvider::Always, TEXT("master_volume"), FText::FromString(TEXT("Master Volume")), FText::FromString(TEXT("")), 0, 1, 0.01, TEXT("")},
     {EGameSetting::MusicVolume, EGameSettingCategory::Audio, EGameSettingValueType::Float, EGameSettingBackend::Audio, ESettingApplyMode::Immediate, ESettingControlKind::FloatRange, EGameSettingOptionProvider::None, EGameSettingAvailabilityProvider::Always, TEXT("music_volume"), FText::FromString(TEXT("Music Volume")), FText::FromString(TEXT("")), 0, 1, 0.01, TEXT("")},
     {EGameSetting::SfxVolume, EGameSettingCategory::Audio, EGameSettingValueType::Float, EGameSettingBackend::Audio, ESettingApplyMode::Immediate, ESettingControlKind::FloatRange, EGameSettingOptionProvider::None, EGameSettingAvailabilityProvider::Always, TEXT("sfx_volume"), FText::FromString(TEXT("SFX Volume")), FText::FromString(TEXT("")), 0, 1, 0.01, TEXT("")},
@@ -63,13 +69,19 @@ auto game_setting_value(FGameSettingsState const& state, EGameSetting const id) 
     case EGameSetting::VSync: return FGameSettingValue{state.vsync};
     case EGameSetting::FrameRateLimit: return FGameSettingValue{state.frame_rate_limit};
     case EGameSetting::ResolutionScale: return FGameSettingValue{state.resolution_scale};
+    case EGameSetting::OverallQuality: return FGameSettingValue{state.overall_quality};
+    case EGameSetting::ViewDistanceQuality: return FGameSettingValue{state.view_distance_quality};
     case EGameSetting::AAMethod: return FGameSettingValue{state.aa_method};
     case EGameSetting::AAQuality: return FGameSettingValue{state.aa_quality};
     case EGameSetting::ShadowQuality: return FGameSettingValue{state.shadow_quality};
+    case EGameSetting::GlobalIlluminationQuality: return FGameSettingValue{state.global_illumination_quality};
+    case EGameSetting::ReflectionsQuality: return FGameSettingValue{state.reflections_quality};
+    case EGameSetting::PostProcessingQuality: return FGameSettingValue{state.post_processing_quality};
     case EGameSetting::TextureQuality: return FGameSettingValue{state.texture_quality};
     case EGameSetting::EffectsQuality: return FGameSettingValue{state.effects_quality};
-    case EGameSetting::ReflectionsQuality: return FGameSettingValue{state.reflections_quality};
     case EGameSetting::ShadingQuality: return FGameSettingValue{state.shading_quality};
+    case EGameSetting::Bloom: return FGameSettingValue{state.bloom};
+    case EGameSetting::MotionBlur: return FGameSettingValue{state.motion_blur};
     case EGameSetting::MasterVolume: return FGameSettingValue{state.master_volume};
     case EGameSetting::MusicVolume: return FGameSettingValue{state.music_volume};
     case EGameSetting::SfxVolume: return FGameSettingValue{state.sfx_volume};
@@ -118,6 +130,18 @@ auto set_game_setting_value(FGameSettingsState& state, EGameSetting const id, FG
         state.resolution_scale = *typed_value;
         return true;
     }
+    case EGameSetting::OverallQuality: {
+        auto const* typed_value{std::get_if<EGameGraphicsPreset>(&value)};
+        if (typed_value == nullptr) { return false; }
+        state.overall_quality = *typed_value;
+        return true;
+    }
+    case EGameSetting::ViewDistanceQuality: {
+        auto const* typed_value{std::get_if<EGameQualityLevel>(&value)};
+        if (typed_value == nullptr) { return false; }
+        state.view_distance_quality = *typed_value;
+        return true;
+    }
     case EGameSetting::AAMethod: {
         auto const* typed_value{std::get_if<EGameAntiAliasingMethod>(&value)};
         if (typed_value == nullptr) { return false; }
@@ -136,6 +160,24 @@ auto set_game_setting_value(FGameSettingsState& state, EGameSetting const id, FG
         state.shadow_quality = *typed_value;
         return true;
     }
+    case EGameSetting::GlobalIlluminationQuality: {
+        auto const* typed_value{std::get_if<EGameQualityLevel>(&value)};
+        if (typed_value == nullptr) { return false; }
+        state.global_illumination_quality = *typed_value;
+        return true;
+    }
+    case EGameSetting::ReflectionsQuality: {
+        auto const* typed_value{std::get_if<EGameQualityLevel>(&value)};
+        if (typed_value == nullptr) { return false; }
+        state.reflections_quality = *typed_value;
+        return true;
+    }
+    case EGameSetting::PostProcessingQuality: {
+        auto const* typed_value{std::get_if<EGameQualityLevel>(&value)};
+        if (typed_value == nullptr) { return false; }
+        state.post_processing_quality = *typed_value;
+        return true;
+    }
     case EGameSetting::TextureQuality: {
         auto const* typed_value{std::get_if<EGameQualityLevel>(&value)};
         if (typed_value == nullptr) { return false; }
@@ -148,16 +190,22 @@ auto set_game_setting_value(FGameSettingsState& state, EGameSetting const id, FG
         state.effects_quality = *typed_value;
         return true;
     }
-    case EGameSetting::ReflectionsQuality: {
-        auto const* typed_value{std::get_if<EGameQualityLevel>(&value)};
-        if (typed_value == nullptr) { return false; }
-        state.reflections_quality = *typed_value;
-        return true;
-    }
     case EGameSetting::ShadingQuality: {
         auto const* typed_value{std::get_if<EGameQualityLevel>(&value)};
         if (typed_value == nullptr) { return false; }
         state.shading_quality = *typed_value;
+        return true;
+    }
+    case EGameSetting::Bloom: {
+        auto const* typed_value{std::get_if<bool>(&value)};
+        if (typed_value == nullptr) { return false; }
+        state.bloom = *typed_value;
+        return true;
+    }
+    case EGameSetting::MotionBlur: {
+        auto const* typed_value{std::get_if<bool>(&value)};
+        if (typed_value == nullptr) { return false; }
+        state.motion_blur = *typed_value;
         return true;
     }
     case EGameSetting::MasterVolume: {
