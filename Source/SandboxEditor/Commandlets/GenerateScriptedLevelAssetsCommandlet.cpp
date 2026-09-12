@@ -877,7 +877,9 @@ void configure_mappings(TArray<FEnhancedActionKeyMapping>& mappings, UInputMappi
 
 auto set_profile_override(UInputMappingContext& destination,
                           FString const& profile_id,
-                          UInputMappingContext const& source) -> bool {
+                          UInputMappingContext const& source,
+                          TConstArrayView<FEnhancedActionKeyMapping> const shared_mappings)
+    -> bool {
     auto* const property{FindFProperty<FMapProperty>(UInputMappingContext::StaticClass(),
                                                      TEXT("MappingProfileOverrides"))};
     if (property == nullptr) {
@@ -897,6 +899,14 @@ auto set_profile_override(UInputMappingContext& destination,
 
     auto* const data{reinterpret_cast<FInputMappingContextMappingData*>(value)};
     data->Mappings = source.GetMappings();
+    data->Mappings.RemoveAll([](FEnhancedActionKeyMapping const& mapping) {
+        return !mapping_device_is_gamepad(mapping);
+    });
+    for (auto const& mapping : shared_mappings) {
+        if (!mapping_device_is_gamepad(mapping)) {
+            data->Mappings.Add(mapping);
+        }
+    }
     for (auto& mapping : data->Mappings) {
         duplicate_instanced_mapping_data(mapping, destination);
     }
@@ -919,16 +929,12 @@ auto generate_gameplay_input_assets() -> bool {
 
     base->Modify();
     auto& default_mappings{const_cast<TArray<FEnhancedActionKeyMapping>&>(base->GetMappings())};
-    default_mappings = z_roll_aim->GetMappings();
-    for (auto& mapping : default_mappings) {
-        duplicate_instanced_mapping_data(mapping, *base);
-    }
     configure_mappings(default_mappings, *base);
 
     auto const profiles{ml::ioj::control_profile_definitions()};
-    auto const success{set_profile_override(*base, profiles[1].id, *aim_move) &&
-                       set_profile_override(*base, profiles[2].id, *move_aim) &&
-                       set_profile_override(*base, profiles[3].id, *z_roll_aim)};
+    auto const success{set_profile_override(*base, profiles[1].id, *aim_move, default_mappings) &&
+                       set_profile_override(*base, profiles[2].id, *move_aim, default_mappings) &&
+                       set_profile_override(*base, profiles[3].id, *z_roll_aim, default_mappings)};
     return success && save_asset(*base);
 }
 

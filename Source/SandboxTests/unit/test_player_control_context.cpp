@@ -240,7 +240,12 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
 
         mapping_context->ForEachKeyMapping([this](FEnhancedActionKeyMapping const& mapping) {
             TestRunner->TestTrue(TEXT("Mapping contains a valid action"), IsValid(mapping.Action));
-            TestRunner->TestTrue(TEXT("Mapping is player mappable"), mapping.IsPlayerMappable());
+            TestRunner->TestTrue(*FString::Printf(TEXT("Mapping '%s' on '%s' is player mappable"),
+                                                  IsValid(mapping.Action)
+                                                      ? *mapping.Action->GetName()
+                                                      : TEXT("Invalid"),
+                                                  *mapping.Key.GetFName().ToString()),
+                                 mapping.IsPlayerMappable());
         });
     }
 
@@ -282,6 +287,10 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                              has_mapping(input->ship_1d_control_x, EKeys::A));
         TestRunner->TestTrue(TEXT("D has sampled lateral control"),
                              has_mapping(input->ship_1d_control_x, EKeys::D));
+        TestRunner->TestTrue(TEXT("A has trim-based lateral movement"),
+                             has_mapping(input->lateral_move, EKeys::A));
+        TestRunner->TestTrue(TEXT("D has trim-based lateral movement"),
+                             has_mapping(input->lateral_move, EKeys::D));
         TestRunner->TestTrue(TEXT("W has sampled forward control"),
                              has_mapping(input->ship_1d_control_y, EKeys::W));
         TestRunner->TestTrue(TEXT("S has sampled backward control"),
@@ -417,7 +426,17 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                 continue;
             }
 
-            auto const& expected{source->GetMappings()};
+            TArray<FEnhancedActionKeyMapping> expected;
+            for (auto const& mapping : source->GetMappings()) {
+                if (mapping.Key.IsGamepadKey()) {
+                    expected.Add(mapping);
+                }
+            }
+            for (auto const& mapping : generated->GetMappings()) {
+                if (!mapping.Key.IsGamepadKey()) {
+                    expected.Add(mapping);
+                }
+            }
             if (source_index == 2) {
                 auto vertical_move_mappings{0};
                 auto move_mappings{0};
