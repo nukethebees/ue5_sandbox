@@ -320,6 +320,16 @@ add_dependencies(editor
 add_dependencies(game check-space-game-layers)
 add_dependencies(game check-generated-code)
 
+add_custom_target(worktree-dependencies
+  DEPENDS
+    native-memory
+    sandbox-image
+    sandbox-material-gen
+    check-generated-code
+    check-generated-slate-code
+    compile-ui-glow-material
+)
+
 add_unreal_commandlet_target(generate-lab-images
   COMMANDLET GenerateSandboxImages
   COMMENT "Regenerating SandboxImages Lab PNGs"

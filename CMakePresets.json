@@ -187,6 +187,16 @@
       "targets": ["generate-code"]
     },
     {
+      "name": "worktree-dependencies-debug-game",
+      "configurePreset": "debug-game",
+      "targets": ["worktree-dependencies"]
+    },
+    {
+      "name": "worktree-dependencies-development",
+      "configurePreset": "development",
+      "targets": ["worktree-dependencies"]
+    },
+    {
       "name": "debug",
       "configurePreset": "debug",
       "targets": ["dev-core"]
@@ -229,6 +239,11 @@
     {
       "name": "generate-project-files",
       "configurePreset": "debug-game",
+      "targets": ["generate-project-files"]
+    },
+    {
+      "name": "generate-project-files-development",
+      "configurePreset": "development",
       "targets": ["generate-project-files"]
     },
     {
@@ -570,6 +585,27 @@
       "steps": [
         { "type": "configure", "name": "codegen" },
         { "type": "build", "name": "generate-code" }
+      ]
+    },
+    {
+      "name": "setup-worktree-debug-game",
+      "displayName": "Prepare a worktree for DebugGame development",
+      "description": "Build DebugGame dependencies, import optional audio, and generate project files",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "worktree-dependencies-debug-game" },
+        { "type": "build", "name": "import-game-audio" },
+        { "type": "build", "name": "generate-project-files" }
+      ]
+    },
+    {
+      "name": "setup-worktree-development",
+      "displayName": "Prepare a worktree for Development",
+      "description": "Build non-Unreal Development dependencies and generate project files",
+      "steps": [
+        { "type": "configure", "name": "development" },
+        { "type": "build", "name": "worktree-dependencies-development" },
+        { "type": "build", "name": "generate-project-files-development" }
       ]
     },
     {

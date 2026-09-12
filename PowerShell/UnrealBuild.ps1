@@ -30,7 +30,7 @@ function Test-SandboxCMakeProcess {
     )
 
     $process.Name -eq 'cmake.exe' -and
-        $process.CommandLine -match '--preset\s+(debug-game|debug-game-unit-tests|debug-game-tests|debug-game-level-tests|generate-project-files|resave-assets)'
+        $process.CommandLine -match '--preset\s+(debug-game|debug-game-unit-tests|debug-game-tests|debug-game-level-tests|generate-project-files|resave-assets|setup-worktree-(debug-game|development))'
 }
 
 function Test-UbtProcess {
@@ -179,6 +179,34 @@ function reset-ubt-build-state {
     }
 
     Write-Host "Stopped $($orphaned_workers.Count) orphaned UE MSBuild worker(s)."
+}
+
+function csetup {
+    param(
+        [ValidateSet('all', 'debug-game', 'development')]
+        [string]$configuration = 'all'
+    )
+
+    $configurations = if ($configuration -eq 'all') {
+        @('debug-game', 'development')
+    } else {
+        @($configuration)
+    }
+
+    Push-Location -LiteralPath $script:dev_project_root
+    try {
+        foreach ($current_configuration in $configurations) {
+            $workflow = "setup-worktree-$current_configuration"
+            Write-Host "Preparing worktree with CMake workflow '$workflow'."
+            & cmake --workflow --preset $workflow
+
+            if ($LASTEXITCODE -ne 0) {
+                throw "CMake workflow '$workflow' exited with code $LASTEXITCODE."
+            }
+        }
+    } finally {
+        Pop-Location
+    }
 }
 
 enable-ubt-build-safety
