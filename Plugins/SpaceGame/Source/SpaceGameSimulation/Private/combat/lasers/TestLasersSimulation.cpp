@@ -2,6 +2,7 @@
 
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/simulation/LineTraces.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 #include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
 
 #include <SandboxCore/array_checks.h>
@@ -230,7 +231,7 @@ void Simulation::handle_collisions(float const dt) {
 
         auto const velocity{ml::get_vector3f(entities.velocities, entity_index)};
         hit_details.add(
-            ml::get_vector3f(collision_scratch.trace_hits.locations.get_const_view(), entity_index),
+            ml::to_unreal(collision_scratch.trace_hits.locations.get_const_view()[entity_index]),
             -velocity.GetSafeNormal(UE_SMALL_NUMBER, FVector3f::UpVector),
             entities.sources[entity_index]);
     }

@@ -11,6 +11,8 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/entity_overlaps.h
   include/sandbox/simulation/fighter_order_queue.h
   include/sandbox/simulation/fighter_reassignment.h
+  include/sandbox/simulation/frame_trace_hits.h
+  include/sandbox/simulation/frame_vectors3f.h
   include/sandbox/simulation/laser_source.h
   include/sandbox/simulation/level_telemetry_snapshot.h
   include/sandbox/simulation/line_traces.h
@@ -26,6 +28,8 @@ target_sources(native-simulation PRIVATE
   src/collision_grid.cpp
   src/deterministic_bias.cpp
   src/fixed_tick.cpp
+  src/frame_trace_hits.cpp
+  src/frame_vectors3f.cpp
   src/simulation_clock.cpp
   src/spatial.cpp
   src/step_response.cpp

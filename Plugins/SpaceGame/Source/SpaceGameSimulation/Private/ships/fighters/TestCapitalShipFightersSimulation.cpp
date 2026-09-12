@@ -6,6 +6,7 @@
 #include <SpaceGameSimulation/simulation/FighterDiagnostics.h>
 #include <SpaceGameSimulation/simulation/FrameTraceHits.h>
 #include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 #include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
@@ -947,8 +948,8 @@ void Simulation::select_navigation_alternatives(NavigationScratch& scratch,
                 chosen_choice = choice;
                 break;
             }
-            auto const hit_location{ml::get_vector3f(scratch.trace_hits.locations.get_const_view(),
-                                                     candidate_trace_index)};
+            auto const hit_location{ml::to_unreal(
+                scratch.trace_hits.locations.get_const_view()[candidate_trace_index])};
             auto const distance_sq{FVector3f::DistSquared(fighter_location, hit_location)};
             if (distance_sq > best_distance_sq) {
                 best_distance_sq = distance_sq;
@@ -986,8 +987,8 @@ void Simulation::select_navigation_alternatives(NavigationScratch& scratch,
                        scratch.trace_hits.hits[trace_index]
                            ? FVector3f::Dist(
                                  fighter_location,
-                                 ml::get_vector3f(scratch.trace_hits.locations.get_const_view(),
-                                                  trace_index))
+                                 ml::to_unreal(
+                                     scratch.trace_hits.locations.get_const_view()[trace_index]))
                            : -1.f);
             }
         }
