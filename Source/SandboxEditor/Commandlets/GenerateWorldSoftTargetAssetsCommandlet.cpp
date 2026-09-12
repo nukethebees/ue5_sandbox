@@ -1,6 +1,7 @@
 #include "SandboxEditor/Commandlets/GenerateWorldSoftTargetAssetsCommandlet.h"
 
 #include "SpaceGame/simulation/SpaceGameLevelConfig.h"
+#include "SpaceGamePresentation/presentation/WorldSoftTargetMaterialData.h"
 
 #include <SbxMeshGenLab/HexFrameGenerator.h>
 #include <SbxMeshGenLab/MeshAssetWriter.h>
@@ -71,21 +72,26 @@ auto generate_material() -> UMaterial* {
     material->bDisableDepthTest = true;
     material->SetMaterialUsage(MATUSAGE_InstancedStaticMeshes);
 
-    auto* const red{make_custom_data(*material, 0, -300)};
-    auto* const green{make_custom_data(*material, 1, -200)};
-    auto* const blue{make_custom_data(*material, 2, -100)};
-    auto* const opacity{make_custom_data(*material, 3, 100)};
-    auto* const intensity{make_custom_data(*material, 4, 200)};
+    auto* const red{make_custom_data(*material, ml::soft_target_world::color_red_index, -300)};
+    auto* const green{make_custom_data(*material, ml::soft_target_world::color_green_index, -200)};
+    auto* const blue{make_custom_data(*material, ml::soft_target_world::color_blue_index, -100)};
+    auto* const opacity{make_custom_data(*material, ml::soft_target_world::opacity_index, 100)};
+    auto* const intensity{make_custom_data(*material, ml::soft_target_world::intensity_index, 200)};
+    auto* const range_alpha{
+        make_custom_data(*material, ml::soft_target_world::range_alpha_index, 300)};
     auto* const emissive{
         CastChecked<UMaterialExpressionCustom>(UMaterialEditingLibrary::CreateMaterialExpression(
             material, UMaterialExpressionCustom::StaticClass(), -100, -150))};
     emissive->OutputType = CMOT_Float3;
-    emissive->Description = TEXT("Per-instance soft-target colour and intensity");
-    emissive->Code = TEXT("return float3(Red, Green, Blue) * Intensity * 2.0;");
+    emissive->Description = TEXT("Per-instance soft-target colour, intensity, and range alpha");
+    emissive->Code = TEXT("float ClampedRangeAlpha = saturate(RangeAlpha);\n"
+                          "float RangeIntensity = lerp(1.0, 2.0, ClampedRangeAlpha);\n"
+                          "return float3(Red, Green, Blue) * Intensity * RangeIntensity * 2.0;");
     for (auto const input : {TPair<FName, UMaterialExpression*>{TEXT("Red"), red},
                              {TEXT("Green"), green},
                              {TEXT("Blue"), blue},
-                             {TEXT("Intensity"), intensity}}) {
+                             {TEXT("Intensity"), intensity},
+                             {TEXT("RangeAlpha"), range_alpha}}) {
         auto& material_input{emissive->Inputs.AddDefaulted_GetRef()};
         material_input.InputName = input.Key;
         material_input.Input.Connect(0, input.Value);

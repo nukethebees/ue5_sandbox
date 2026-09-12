@@ -11,7 +11,7 @@ struct SPACEGAMEPRESENTATION_API FSoftTargetSelectionSettings {
     float retention_radius_pixels{96.0f};
     float centre_tie_radius_pixels{4.0f};
     float switch_improvement_ratio{0.75f};
-    float approach_range_multiplier{4.0f};
+    float range_transition_start_multiplier{4.0f};
     float minimum_indicator_radius_pixels{28.0f};
     float maximum_indicator_radius_pixels{96.0f};
     float bounds_padding_pixels{10.0f};
@@ -30,10 +30,9 @@ struct SPACEGAMEPRESENTATION_API FSoftTargetSelectionContext {
 
 struct SPACEGAMEPRESENTATION_API FSoftTargetSelectionResult {
     FRegistryEntityHandle handle{};
-    float range_progress{0.0f};
+    float range_alpha{0.0f};
     float indicator_radius_pixels{0.0f};
     float world_units_per_pixel{0.0f};
-    bool in_range{false};
     bool previous_target_can_fade{false};
 };
 

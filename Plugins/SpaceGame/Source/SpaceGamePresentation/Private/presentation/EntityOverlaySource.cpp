@@ -16,10 +16,9 @@ struct FSoftTargetCandidate {
     float centre_distance_pixels{std::numeric_limits<float>::max()};
     float centre_score_pixels{std::numeric_limits<float>::max()};
     float surface_distance{std::numeric_limits<float>::max()};
-    float range_progress{0.0f};
+    float range_alpha{0.0f};
     float indicator_radius_pixels{0.0f};
     float world_units_per_pixel{0.0f};
-    bool in_range{false};
 };
 
 auto is_better_candidate(FSoftTargetCandidate const& candidate,
@@ -137,7 +136,8 @@ auto select_soft_target(ml::entity_registry::EntityData::ConstView const entitie
     auto const maximum_overlay_range{FMath::Max(context.maximum_overlay_range, 0.0f)};
     auto const maximum_overlay_range_squared{maximum_overlay_range * maximum_overlay_range};
     auto const effective_range{FMath::Max(context.effective_weapon_range, 0.0f)};
-    auto const approach_multiplier{FMath::Max(settings.approach_range_multiplier, 1.0f)};
+    auto const transition_start_multiplier{
+        FMath::Max(settings.range_transition_start_multiplier, 1.0f)};
 
     FSoftTargetCandidate best_candidate;
     FSoftTargetCandidate current_candidate;
@@ -210,31 +210,29 @@ auto select_soft_target(ml::entity_registry::EntityData::ConstView const entitie
         auto const centre_score{FMath::Max(centre_distance - centre_tie_radius, 0.0f)};
         auto const surface_distance{
             FMath::Max(FVector3f::Distance(context.aim_origin, position) - world_radius, 0.0f)};
-        auto const in_range{effective_range > 0.0f && surface_distance <= effective_range};
-
-        float range_progress{};
-        if (in_range) {
-            range_progress = 1.0f;
-        } else if (effective_range > 0.0f && approach_multiplier > 1.0f) {
-            auto const approach_distance{effective_range * approach_multiplier};
-            auto const linear_progress{FMath::Clamp((approach_distance - surface_distance) /
-                                                        (approach_distance - effective_range),
-                                                    0.0f,
-                                                    1.0f)};
-            range_progress = linear_progress;
+        float range_alpha{};
+        if (effective_range > 0.0f) {
+            if (surface_distance <= effective_range) {
+                range_alpha = 1.0f;
+            } else if (transition_start_multiplier > 1.0f) {
+                auto const transition_start{effective_range * transition_start_multiplier};
+                range_alpha = FMath::Clamp((transition_start - surface_distance) /
+                                               (transition_start - effective_range),
+                                           0.0f,
+                                           1.0f);
+            }
         }
 
         FSoftTargetCandidate const candidate{.handle = {index, generations[index]},
                                              .centre_distance_pixels = centre_distance,
                                              .centre_score_pixels = centre_score,
                                              .surface_distance = surface_distance,
-                                             .range_progress = range_progress,
+                                             .range_alpha = FMath::Clamp(range_alpha, 0.0f, 1.0f),
                                              .indicator_radius_pixels =
                                                  FMath::Clamp(projected_radius + bounds_padding,
                                                               minimum_indicator_radius,
                                                               maximum_indicator_radius),
-                                             .world_units_per_pixel = world_units_per_pixel,
-                                             .in_range = in_range};
+                                             .world_units_per_pixel = world_units_per_pixel};
 
         if (candidate.handle == current_target) {
             current_candidate = candidate;
@@ -270,19 +268,17 @@ auto select_soft_target(ml::entity_registry::EntityData::ConstView const entitie
 
     if (!has_selected_candidate) {
         if (has_current_candidate) {
-            return {.range_progress = current_candidate.range_progress,
+            return {.range_alpha = current_candidate.range_alpha,
                     .indicator_radius_pixels = current_candidate.indicator_radius_pixels,
                     .world_units_per_pixel = current_candidate.world_units_per_pixel,
-                    .in_range = current_candidate.in_range,
                     .previous_target_can_fade = true};
         }
         return {};
     }
     return {.handle = selected_candidate.handle,
-            .range_progress = selected_candidate.range_progress,
+            .range_alpha = selected_candidate.range_alpha,
             .indicator_radius_pixels = selected_candidate.indicator_radius_pixels,
-            .world_units_per_pixel = selected_candidate.world_units_per_pixel,
-            .in_range = selected_candidate.in_range};
+            .world_units_per_pixel = selected_candidate.world_units_per_pixel};
 }
 
 auto collect_entity_overlay_instances(

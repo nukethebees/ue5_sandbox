@@ -11,6 +11,7 @@
 #include <SpaceGamePresentation/presentation/LevelPresentationSettings.h>
 #include <SpaceGamePresentation/presentation/RadarSource.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudKillData.h>
+#include <SpaceGamePresentation/presentation/WorldSoftTargetMaterialData.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/entities/TestEntityType.h>
 #include <SpaceGameSimulation/missions/TestMissionMode.h>
@@ -196,6 +197,9 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     }
 #endif
   private:
+    using FWorldSoftTargetCustomDataBuffer =
+        TArray<float, TInlineAllocator<ml::soft_target_world::custom_data_count * 2>>;
+
     struct FRegisteredHud {
         TWeakObjectPtr<USimulationHudWidget> hud;
         TWeakObjectPtr<UShipHudWidget> ship_hud;
@@ -203,17 +207,15 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
         FEntityOverlayCollector entity_overlay_collector;
         FRadarFrameStorePtr radar_frame_store;
         FRegistryEntityHandle soft_target{};
-        float soft_target_range_progress{0.0f};
+        float soft_target_range_alpha{0.0f};
         float soft_target_radius_pixels{0.0f};
         float soft_target_world_units_per_pixel{0.0f};
         float soft_target_pulse_remaining{0.0f};
-        bool soft_target_in_range{false};
         FRegistryEntityHandle fading_soft_target{};
-        float fading_soft_target_range_progress{0.0f};
+        float fading_soft_target_range_alpha{0.0f};
         float fading_soft_target_radius_pixels{0.0f};
         float fading_soft_target_world_units_per_pixel{0.0f};
         float fading_soft_target_visibility_remaining{0.0f};
-        bool fading_soft_target_in_range{false};
     };
 
     auto collect_data(FPeriodicTickCountdown8::counter_type num_ticks)
@@ -232,16 +234,16 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     void configure_world_soft_target_renderer();
     void clear_world_soft_targets();
     void add_world_soft_target(FRegistryEntityHandle handle,
-                               float range_progress,
+                               float range_alpha,
                                float indicator_radius_pixels,
                                float world_units_per_pixel,
                                float pulse,
                                float visibility,
-                               bool in_range,
                                FVector camera_location,
                                FRotator camera_rotation,
                                FLinearColor neutral_color,
-                               FLinearColor in_range_color);
+                               FLinearColor in_range_color,
+                               FWorldSoftTargetCustomDataBuffer& custom_data);
     void update_radars();
     void update_radar(FRegisteredHud& registration);
 #if WITH_EDITOR

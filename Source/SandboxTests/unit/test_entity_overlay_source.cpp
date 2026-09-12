@@ -254,27 +254,60 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
             TEXT("Materially nearer tied target replaces rear target"), switched.handle.index, 1);
     }
 
-    TEST_METHOD(ShapesProgressAndUsesTargetSurfaceForRange)
+    TEST_METHOD(NormalizesRangeAlphaUsingTargetSurfaceDistance)
     {
         ml::entity_registry::EntityData entities;
         add_entity(entities,
-                   {2500.0f, 0.0f, 0.0f},
+                   {5000.0f, 0.0f, 0.0f},
                    20,
                    ETestEntityType::Turret,
                    0.0f,
                    true,
                    ETestTeam::Red);
 
-        auto approaching{select_target(entities)};
+        auto const comfortably_out_of_range{select_target(entities)};
+        TestRunner->TestEqual(TEXT("Beyond transition start clamps to zero"),
+                              comfortably_out_of_range.range_alpha,
+                              0.0f);
+
+        entities.locations.xs[0] = 2500.0f;
+        auto const approaching{select_target(entities)};
         TestRunner->TestEqual(
-            TEXT("Mid-approach progress is linear"), approaching.range_progress, 0.5f);
-        TestRunner->TestFalse(TEXT("Mid-approach target is out of range"), approaching.in_range);
+            TEXT("Mid-transition range alpha is linear"), approaching.range_alpha, 0.5f);
 
         entities.locations.xs[0] = 1100.0f;
         entities.radii[0] = 100.0f;
-        auto const in_range{select_target(entities)};
-        TestRunner->TestTrue(TEXT("Surface at range boundary is engageable"), in_range.in_range);
-        TestRunner->TestEqual(TEXT("In-range progress is complete"), in_range.range_progress, 1.0f);
+        auto const at_range_boundary{select_target(entities)};
+        TestRunner->TestEqual(TEXT("Surface at range boundary has full range alpha"),
+                              at_range_boundary.range_alpha,
+                              1.0f);
+
+        entities.locations.xs[0] = 500.0f;
+        auto const inside_range{select_target(entities)};
+        TestRunner->TestEqual(
+            TEXT("Inside range remains clamped to one"), inside_range.range_alpha, 1.0f);
+
+        auto const invalid_weapon_range{select_target(entities, {}, 0.0f)};
+        TestRunner->TestEqual(TEXT("Missing weapon range produces zero range alpha"),
+                              invalid_weapon_range.range_alpha,
+                              0.0f);
+    }
+
+    TEST_METHOD(RangeAlphaUsesTargetSurfaceRatherThanCentre)
+    {
+        ml::entity_registry::EntityData entities;
+        add_entity(entities,
+                   {1100.0f, 0.0f, 0.0f},
+                   20,
+                   ETestEntityType::Turret,
+                   100.0f,
+                   true,
+                   ETestTeam::Red);
+
+        auto const selected{select_target(entities)};
+        TestRunner->TestEqual(TEXT("Target surface at weapon range has full range alpha"),
+                              selected.range_alpha,
+                              1.0f);
     }
 
     TEST_METHOD(ReportsWorldScaleSeparatelyFromClampedIndicatorRadius)

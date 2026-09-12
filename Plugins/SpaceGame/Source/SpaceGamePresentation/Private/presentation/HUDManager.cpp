@@ -32,15 +32,6 @@ TRACE_DECLARE_INT_COUNTER(SandboxRadarCandidateCount, TEXT("Sandbox/Radar/Candid
 TRACE_DECLARE_INT_COUNTER(SandboxRadarVisibleCount, TEXT("Sandbox/Radar/VisibleCount"));
 TRACE_DECLARE_INT_COUNTER(SandboxRadarUploadBytes, TEXT("Sandbox/Radar/UploadBytes"));
 
-namespace ml::soft_target_world {
-inline constexpr int32 custom_data_count{5};
-inline constexpr int32 color_red_index{0};
-inline constexpr int32 color_green_index{1};
-inline constexpr int32 color_blue_index{2};
-inline constexpr int32 opacity_index{3};
-inline constexpr int32 intensity_index{4};
-}
-
 void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
                              FTestMissionManager const& new_mission_manager,
                              FTestEntityRegistry const& new_entity_registry,
@@ -137,7 +128,8 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
         .retention_radius_pixels = entity_overlay_settings.soft_target.retention_radius_pixels,
         .centre_tie_radius_pixels = entity_overlay_settings.soft_target.centre_tie_radius_pixels,
         .switch_improvement_ratio = entity_overlay_settings.soft_target.switch_improvement_ratio,
-        .approach_range_multiplier = entity_overlay_settings.soft_target.approach_range_multiplier,
+        .range_transition_start_multiplier =
+            entity_overlay_settings.soft_target.range_transition_start_multiplier,
         .minimum_indicator_radius_pixels =
             entity_overlay_settings.soft_target.minimum_radius_pixels,
         .maximum_indicator_radius_pixels =
@@ -185,17 +177,15 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     }
     for (auto& registration : registered_huds) {
         registration.soft_target = {};
-        registration.soft_target_range_progress = 0.0f;
+        registration.soft_target_range_alpha = 0.0f;
         registration.soft_target_radius_pixels = 0.0f;
         registration.soft_target_world_units_per_pixel = 0.0f;
         registration.soft_target_pulse_remaining = 0.0f;
-        registration.soft_target_in_range = false;
         registration.fading_soft_target = {};
-        registration.fading_soft_target_range_progress = 0.0f;
+        registration.fading_soft_target_range_alpha = 0.0f;
         registration.fading_soft_target_radius_pixels = 0.0f;
         registration.fading_soft_target_world_units_per_pixel = 0.0f;
         registration.fading_soft_target_visibility_remaining = 0.0f;
-        registration.fading_soft_target_in_range = false;
     }
     update_entity_overlays(0.0f);
     update_radars();
@@ -442,19 +432,17 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
     auto& frame{registration.entity_overlay_frame_store->next()};
     auto const clear_active_soft_target = [&registration] {
         registration.soft_target = {};
-        registration.soft_target_range_progress = 0.0f;
+        registration.soft_target_range_alpha = 0.0f;
         registration.soft_target_radius_pixels = 0.0f;
         registration.soft_target_world_units_per_pixel = 0.0f;
         registration.soft_target_pulse_remaining = 0.0f;
-        registration.soft_target_in_range = false;
     };
     auto const clear_fading_soft_target = [&registration] {
         registration.fading_soft_target = {};
-        registration.fading_soft_target_range_progress = 0.0f;
+        registration.fading_soft_target_range_alpha = 0.0f;
         registration.fading_soft_target_radius_pixels = 0.0f;
         registration.fading_soft_target_world_units_per_pixel = 0.0f;
         registration.fading_soft_target_visibility_remaining = 0.0f;
-        registration.fading_soft_target_in_range = false;
     };
     auto const clear_soft_target_state = [&clear_active_soft_target, &clear_fading_soft_target] {
         clear_active_soft_target();
@@ -522,12 +510,11 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
             return;
         }
         registration.fading_soft_target = registration.soft_target;
-        registration.fading_soft_target_range_progress = registration.soft_target_range_progress;
+        registration.fading_soft_target_range_alpha = registration.soft_target_range_alpha;
         registration.fading_soft_target_radius_pixels = registration.soft_target_radius_pixels;
         registration.fading_soft_target_world_units_per_pixel =
             registration.soft_target_world_units_per_pixel;
         registration.fading_soft_target_visibility_remaining = soft_target_fade_out_duration_;
-        registration.fading_soft_target_in_range = registration.soft_target_in_range;
     };
 
     if (soft_target.handle.is_valid()) {
@@ -537,14 +524,13 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
             }
             begin_active_soft_target_fade();
             registration.soft_target_pulse_remaining = 0.0f;
-        } else if (!registration.soft_target_in_range && soft_target.in_range) {
+        } else if (registration.soft_target_range_alpha < 1.0f && soft_target.range_alpha >= 1.0f) {
             registration.soft_target_pulse_remaining = soft_target_pulse_duration_;
         }
         registration.soft_target = soft_target.handle;
-        registration.soft_target_range_progress = soft_target.range_progress;
+        registration.soft_target_range_alpha = FMath::Clamp(soft_target.range_alpha, 0.0f, 1.0f);
         registration.soft_target_radius_pixels = soft_target.indicator_radius_pixels;
         registration.soft_target_world_units_per_pixel = soft_target.world_units_per_pixel;
-        registration.soft_target_in_range = soft_target.in_range;
     } else {
         if (soft_target.previous_target_can_fade) {
             begin_active_soft_target_fade();
@@ -563,28 +549,42 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
     if (render_world_target) {
         auto const neutral_color{hud->get_soft_target_neutral_colour()};
         auto const in_range_color{hud->get_soft_target_in_range_colour()};
+        FWorldSoftTargetCustomDataBuffer custom_data;
         add_world_soft_target(registration.soft_target,
-                              registration.soft_target_range_progress,
+                              registration.soft_target_range_alpha,
                               registration.soft_target_radius_pixels,
                               registration.soft_target_world_units_per_pixel,
                               pulse,
                               1.0f,
-                              registration.soft_target_in_range,
                               camera_location,
                               camera_rotation,
                               neutral_color,
-                              in_range_color);
+                              in_range_color,
+                              custom_data);
         add_world_soft_target(registration.fading_soft_target,
-                              registration.fading_soft_target_range_progress,
+                              registration.fading_soft_target_range_alpha,
                               registration.fading_soft_target_radius_pixels,
                               registration.fading_soft_target_world_units_per_pixel,
                               0.0f,
                               fading_visibility,
-                              registration.fading_soft_target_in_range,
                               camera_location,
                               camera_rotation,
                               neutral_color,
-                              in_range_color);
+                              in_range_color,
+                              custom_data);
+
+        if (!custom_data.IsEmpty()) {
+            auto* const instances{soft_target_instances_.Get()};
+            auto const instance_count{custom_data.Num() / ml::soft_target_world::custom_data_count};
+            check(IsValid(instances));
+            check(custom_data.Num() == instance_count * ml::soft_target_world::custom_data_count);
+            check(instance_count == instances->GetInstanceCount());
+            if (!instances->SetCustomData(0, instance_count - 1, custom_data, true)) {
+                UE_LOG(LogSandboxUI,
+                       Error,
+                       TEXT("FHUDManager: Failed to upload world soft-target custom data."));
+            }
+        }
     }
 
     auto const result{
@@ -663,16 +663,16 @@ void FHUDManager::clear_world_soft_targets() {
 }
 
 void FHUDManager::add_world_soft_target(FRegistryEntityHandle const handle,
-                                        float const range_progress,
+                                        float const range_alpha,
                                         float const indicator_radius_pixels,
                                         float const world_units_per_pixel,
                                         float const pulse,
                                         float const visibility,
-                                        bool const in_range,
                                         FVector const camera_location,
                                         FRotator const camera_rotation,
                                         FLinearColor const neutral_color,
-                                        FLinearColor const in_range_color) {
+                                        FLinearColor const in_range_color,
+                                        FWorldSoftTargetCustomDataBuffer& custom_data) {
     auto* const instances{soft_target_instances_.Get()};
     if (!IsValid(instances) || !instances->IsVisible() || !handle.is_valid() ||
         !entity_registry->is_valid_alive(handle) || visibility <= 0.0f ||
@@ -683,10 +683,11 @@ void FHUDManager::add_world_soft_target(FRegistryEntityHandle const handle,
 
     auto const entities{entity_registry->get_entity_data().get_const_view()};
     auto const target_fit_radius{indicator_radius_pixels * world_units_per_pixel};
+    auto const clamped_range_alpha{FMath::Clamp(range_alpha, 0.0f, 1.0f)};
     auto const closing_scale{FMath::Lerp(
         FMath::Max(entity_overlay_settings_.soft_target.bracket_start_radius_multiplier, 1.0f),
         1.0f,
-        FMath::Clamp(range_progress, 0.0f, 1.0f))};
+        clamped_range_alpha)};
     auto const uniform_scale{target_fit_radius * closing_scale / soft_target_mesh_vertical_radius_};
     if (!FMath::IsFinite(uniform_scale) || uniform_scale <= UE_SMALL_NUMBER) {
         return;
@@ -706,25 +707,23 @@ void FHUDManager::add_world_soft_target(FRegistryEntityHandle const handle,
         return;
     }
 
-    auto const color{in_range ? in_range_color : neutral_color};
+    auto const color{clamped_range_alpha >= 1.0f ? in_range_color : neutral_color};
     auto const opacity{
         FMath::Clamp((entity_overlay_settings_.soft_target.opacity +
                       pulse * entity_overlay_settings_.soft_target.pulse_opacity_boost) *
                          visibility * color.A,
                      0.0f,
                      1.0f)};
-    instances->SetCustomDataValue(
-        instance_index, ml::soft_target_world::color_red_index, color.R, false);
-    instances->SetCustomDataValue(
-        instance_index, ml::soft_target_world::color_green_index, color.G, false);
-    instances->SetCustomDataValue(
-        instance_index, ml::soft_target_world::color_blue_index, color.B, false);
-    instances->SetCustomDataValue(
-        instance_index, ml::soft_target_world::opacity_index, opacity, false);
-    instances->SetCustomDataValue(instance_index,
-                                  ml::soft_target_world::intensity_index,
-                                  1.0f + FMath::Clamp(pulse, 0.0f, 1.0f),
-                                  true);
+    check(custom_data.Num() == instance_index * ml::soft_target_world::custom_data_count);
+    float instance_custom_data[ml::soft_target_world::custom_data_count]{};
+    instance_custom_data[ml::soft_target_world::color_red_index] = color.R;
+    instance_custom_data[ml::soft_target_world::color_green_index] = color.G;
+    instance_custom_data[ml::soft_target_world::color_blue_index] = color.B;
+    instance_custom_data[ml::soft_target_world::opacity_index] = opacity;
+    instance_custom_data[ml::soft_target_world::intensity_index] =
+        1.0f + FMath::Clamp(pulse, 0.0f, 1.0f);
+    instance_custom_data[ml::soft_target_world::range_alpha_index] = clamped_range_alpha;
+    custom_data.Append(instance_custom_data, ml::soft_target_world::custom_data_count);
 }
 
 void FHUDManager::update_radars() {

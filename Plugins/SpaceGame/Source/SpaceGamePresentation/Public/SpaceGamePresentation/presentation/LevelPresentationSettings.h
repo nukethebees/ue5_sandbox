@@ -22,7 +22,7 @@ struct FSoftTargetSettings {
     float switch_improvement_ratio{0.75f};
 
     UPROPERTY(EditAnywhere, Category = "Selection", meta = (ClampMin = "1.0"))
-    float approach_range_multiplier{4.0f};
+    float range_transition_start_multiplier{4.0f};
 
     UPROPERTY(EditAnywhere, Category = "Appearance", meta = (ClampMin = "1.0"))
     float minimum_radius_pixels{28.0f};
