@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sandbox/simulation/level_telemetry_current_state.h>
 #include <sandbox/simulation/level_telemetry_history_stats.h>
 
 #include "SpaceGameSimulation/simulation/LevelTelemetrySnapshot.h"
@@ -10,27 +11,7 @@
 #include <SpaceGameSimulation/telemetry/LevelTelemetryBlockHistory.h>
 #include <SpaceGameSimulation/telemetry/LevelTelemetryRunRecord.h>
 
-struct FLevelTelemetryCurrentState {
-    using EntityCounts = FTestEntityRegistry::EntityCounts;
-
-    EntityCounts active_entities_by_team_and_type{};
-    int32 active_entities{};
-    int32 spawned_entities{};
-    int32 destroyed_entities{};
-    int32 kills{};
-
-    int32 registry_slot_count{};
-
-    int32 active_lasers{};
-    int32 lasers_fired{};
-
-    int32 occupied_spatial_cell_count{};
-    uint64 grid_rebuild_count{};
-    uint64 range_query_count{};
-    uint64 line_trace_count{};
-    uint64 sweep_trace_count{};
-};
-
+using FLevelTelemetryCurrentState = ml::simulation::LevelTelemetryCurrentState;
 using FLevelTelemetryHistoryStats = ml::simulation::LevelTelemetryHistoryStats;
 
 struct FLevelMissionResult;

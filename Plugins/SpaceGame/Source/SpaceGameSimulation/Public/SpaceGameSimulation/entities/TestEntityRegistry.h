@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sandbox/simulation/entity_telemetry.h>
+
 #include "SpaceGameSimulation/entities/TestEntityRegistryData.h"
 
 #include <SandboxCoreEngine/enums.h>
@@ -16,7 +18,6 @@
 #include <SandboxCore/array_utils.h>
 
 #include "CoreMinimal.h"
-#include "Containers/StaticArray.h"
 
 struct SpawnedEntityHandles {
     FRegistryEntityHandles registry_handles;
@@ -32,32 +33,15 @@ struct SpawnedEntityHandles {
 struct SPACEGAMESIMULATION_API FTestEntityRegistry {
   public:
     using EntityData = ml::entity_registry::EntityData;
-    using TeamCounts = TStaticArray<int32, ml::EnumCountTrait<ETestTeam>::count_value>;
-    using EntityTypeCounts = TStaticArray<int32, ml::EnumCountTrait<ETestEntityType>::count_value>;
-    using EntityCounts = TStaticArray<EntityTypeCounts, ml::EnumCountTrait<ETestTeam>::count_value>;
-    using Uint64EntityTypeCounts =
-        TStaticArray<uint64, ml::EnumCountTrait<ETestEntityType>::count_value>;
-    using Uint64EntityCounts =
-        TStaticArray<Uint64EntityTypeCounts, ml::EnumCountTrait<ETestTeam>::count_value>;
-    using DoubleEntityTypeCounts =
-        TStaticArray<double, ml::EnumCountTrait<ETestEntityType>::count_value>;
-    using DoubleEntityCounts =
-        TStaticArray<DoubleEntityTypeCounts, ml::EnumCountTrait<ETestTeam>::count_value>;
-    using KillMatrix =
-        TStaticArray<TStaticArray<uint64, ml::EnumCountTrait<ETestTeam>::count_value>,
-                     ml::EnumCountTrait<ETestTeam>::count_value>;
-
-    struct CombatTelemetryCounters {
-        Uint64EntityCounts spawned{};
-        Uint64EntityCounts destroyed{};
-        Uint64EntityCounts shots{};
-        Uint64EntityCounts hits{};
-        DoubleEntityCounts damage_dealt{};
-        DoubleEntityCounts damage_received{};
-        Uint64EntityCounts kills{};
-        Uint64EntityCounts losses{};
-        KillMatrix kill_matrix{};
-    };
+    using TeamCounts = ml::simulation::telemetry::TeamCounts;
+    using EntityTypeCounts = ml::simulation::telemetry::EntityTypeCounts;
+    using EntityCounts = ml::simulation::telemetry::EntityCounts;
+    using Uint64EntityTypeCounts = ml::simulation::telemetry::Uint64EntityTypeCounts;
+    using Uint64EntityCounts = ml::simulation::telemetry::Uint64EntityCounts;
+    using DoubleEntityTypeCounts = ml::simulation::telemetry::DoubleEntityTypeCounts;
+    using DoubleEntityCounts = ml::simulation::telemetry::DoubleEntityCounts;
+    using KillMatrix = ml::simulation::telemetry::KillMatrix;
+    using CombatTelemetryCounters = ml::simulation::telemetry::CombatTelemetryCounters;
 
     struct ConstView {
         auto get_num() const { return indices.Num(); }

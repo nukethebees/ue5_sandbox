@@ -11,6 +11,7 @@
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 
+#include <numeric>
 #include <utility>
 
 /* **************************************** */
@@ -556,7 +557,8 @@ auto FTestEntityRegistry::count_alive_per_team() const noexcept -> TeamCounts {
 
     constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};
     for (int32 team_index{}; team_index < team_count; ++team_index) {
-        out[team_index] = ml::sum(TConstArrayView<int32>{alive_counts_[team_index]});
+        auto const& counts{alive_counts_[team_index]};
+        out[team_index] = std::accumulate(counts.begin(), counts.end(), int32{});
     }
 
     return out;
@@ -569,7 +571,8 @@ auto FTestEntityRegistry::count_alive_not_on_team(ETestTeam const team) const no
     if (team_index >= TEAM_COUNT) {
         return alive_count_;
     }
-    return alive_count_ - ml::sum(TConstArrayView<int32>{alive_counts_[team_index]});
+    auto const& counts{alive_counts_[team_index]};
+    return alive_count_ - std::accumulate(counts.begin(), counts.end(), int32{});
 }
 
 /* **************************************** */

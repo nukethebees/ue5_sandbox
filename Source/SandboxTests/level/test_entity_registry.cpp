@@ -64,7 +64,11 @@ void run_worldless_entity_registry_scenario(FAutomationTestBase& test,
         harness.timeline.finish_at(0.1);
         test.TestTrue(TEXT("Team-count timeline completes"),
                       harness.run_until_timeline_finished(1.0));
-        checks.are_equal(15, sum(TConstArrayView<int32>{counts}), TEXT("Check entity total"));
+        int32 total_count{};
+        for (auto const count : counts) {
+            total_count += count;
+        }
+        checks.are_equal(15, total_count, TEXT("Check entity total"));
         for (int32 team_index{}; team_index < expected_team_counts.Num(); ++team_index) {
             auto const team{static_cast<ETestTeam>(team_index)};
             checks.are_equal(

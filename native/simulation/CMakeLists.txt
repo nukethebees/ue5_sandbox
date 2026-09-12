@@ -11,6 +11,7 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/entity_death_info.h
   include/sandbox/simulation/entity_history.h
   include/sandbox/simulation/entity_overlaps.h
+  include/sandbox/simulation/entity_telemetry.h
   include/sandbox/simulation/entity_world_bounds.h
   include/sandbox/simulation/fighter_order_queue.h
   include/sandbox/simulation/fighter_reassignment.h
@@ -22,6 +23,7 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/frame_trace_hits.h
   include/sandbox/simulation/frame_vectors3f.h
   include/sandbox/simulation/laser_source.h
+  include/sandbox/simulation/level_telemetry_current_state.h
   include/sandbox/simulation/level_telemetry_history_stats.h
   include/sandbox/simulation/level_telemetry_snapshot.h
   include/sandbox/simulation/line_traces.h

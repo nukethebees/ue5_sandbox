@@ -265,7 +265,7 @@ auto parse_flat_counts(FJsonObject const& source,
     }
     int32 expected_count{};
     for (auto const& row : output) {
-        expected_count += row.Num();
+        expected_count += static_cast<int32>(row.size());
     }
     if (values->Num() != expected_count) {
         return std::unexpected{error_at(path, TEXT("array has the wrong number of values"))};
