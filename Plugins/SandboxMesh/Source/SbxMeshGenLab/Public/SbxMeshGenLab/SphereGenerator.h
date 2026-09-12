@@ -2,15 +2,10 @@
 
 #include "SbxMeshGenLab/MeshData.h"
 
-struct FSbxSphereParameters {
-    float radius{50.0f};
-    int32 longitude_segments{32};
-    int32 latitude_segments{16};
-};
+using FSbxSphereParameters = mesh_gen::SphereParameters;
 
 namespace SandboxMesh {
 
-[[nodiscard]] SBXMESHGENLAB_API auto generate_sphere(FSbxSphereParameters const& parameters = {})
-    -> FSbxMeshData;
+using mesh_gen::generate_sphere;
 
 }

@@ -8,6 +8,7 @@ add_subdirectory(cmake/compiler_warnings)
 
 option(SANDBOX_CODEGEN_ONLY "Configure only the standalone code generator" OFF)
 option(SANDBOX_NATIVE_MEMORY_ONLY "Configure only the standalone native memory library" OFF)
+option(SANDBOX_NATIVE_MESH_ONLY "Configure only the standalone native mesh generator" OFF)
 option(SANDBOX_KERNEL_BENCHMARKS "Build native generated-kernel benchmarks" OFF)
 option(SANDBOX_NATIVE_SOA_BENCHMARKS "Build standalone experimental SoA benchmarks" OFF)
 option(SANDBOX_KERNEL_BENCHMARK_PLOTS "Generate native kernel benchmark plots" OFF)
@@ -33,6 +34,11 @@ set_property(CACHE UE_CONFIGURATION PROPERTY STRINGS
 
 if(SANDBOX_NATIVE_MEMORY_ONLY)
   add_subdirectory(native/memory)
+  return()
+endif()
+
+if(SANDBOX_NATIVE_MESH_ONLY)
+  add_subdirectory(native/mesh_gen)
   return()
 endif()
 
@@ -268,6 +274,8 @@ include(cmake/catch2.cmake)
 
 add_subdirectory(native/image)
 add_dependencies(generate-project-files sandbox-image)
+add_subdirectory(native/mesh_gen)
+add_dependencies(generate-project-files sandbox-mesh-gen)
 
 set(UI_GLOW_MATERIAL_SOURCE
   "${CMAKE_CURRENT_SOURCE_DIR}/Plugins/SandboxUI/Source/SandboxUI/Private/materials/UiGlowComposite.material.scm"
@@ -311,6 +319,7 @@ set_tests_properties(SpaceGame.Architecture SpaceGame.ArchitectureChecker PROPER
 )
 add_dependencies(editor
   sandbox-image
+  sandbox-mesh-gen
   check-space-game-layers
   check-generated-code
   check-generated-slate-code
@@ -511,6 +520,7 @@ add_unreal_editor_test(SandboxISMC.RemoteBenchmark
 add_custom_target(dev-core
   DEPENDS
     sandbox-image-tests
+    mesh-gen-tests
     editor
     codegen-tests
     kernel-codegen-tests

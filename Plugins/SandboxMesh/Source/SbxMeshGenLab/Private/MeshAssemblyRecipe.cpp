@@ -1,4 +1,5 @@
 #include "SbxMeshGenLab/MeshAssemblyRecipe.h"
+#include "SbxMeshGenLab/NativeMeshTypes.h"
 
 auto FSbxMeshAssemblyRecipePart::from_part(FSbxMeshAssemblyPart const& part,
                                            FGuid const id,
@@ -8,15 +9,15 @@ auto FSbxMeshAssemblyRecipePart::from_part(FSbxMeshAssemblyPart const& part,
     recipe_part.parent_id = parent_id;
     recipe_part.visible = part.visible;
     recipe_part.locked = part.locked;
-    recipe_part.shape = part.mesh.shape;
-    recipe_part.material_role = part.mesh.material_role;
-    recipe_part.translation = FVector{part.transform.translation};
-    recipe_part.rotation = FRotator{part.transform.rotation};
-    recipe_part.scale = FVector{part.transform.scale};
-    recipe_part.box_dimensions = FVector{part.mesh.box.dimensions};
-    recipe_part.beveled_box_dimensions = FVector{part.mesh.beveled_box.dimensions};
+    recipe_part.shape = SandboxMesh::to_unreal(part.mesh.shape);
+    recipe_part.material_role = SandboxMesh::to_unreal(part.mesh.material_role);
+    recipe_part.translation = SandboxMesh::to_unreal(part.transform.translation);
+    recipe_part.rotation = SandboxMesh::to_unreal(part.transform.rotation);
+    recipe_part.scale = SandboxMesh::to_unreal(part.transform.scale);
+    recipe_part.box_dimensions = SandboxMesh::to_unreal(part.mesh.box.dimensions);
+    recipe_part.beveled_box_dimensions = SandboxMesh::to_unreal(part.mesh.beveled_box.dimensions);
     recipe_part.beveled_box_bevel_width = part.mesh.beveled_box.bevel_width;
-    recipe_part.wedge_dimensions = FVector{part.mesh.wedge.dimensions};
+    recipe_part.wedge_dimensions = SandboxMesh::to_unreal(part.mesh.wedge.dimensions);
     recipe_part.wedge_top_length = part.mesh.wedge.top_length;
     recipe_part.wedge_top_offset = part.mesh.wedge.top_offset;
     recipe_part.cylinder_radius = part.mesh.cylinder.radius;
@@ -48,11 +49,11 @@ auto FSbxMeshAssemblyRecipePart::from_part(FSbxMeshAssemblyPart const& part,
 auto FSbxMeshAssemblyRecipePart::to_part(FName const output_asset_name) const
     -> FSbxMeshAssemblyPart {
     auto request{SandboxMesh::make_default_mesh_request(shape)};
-    request.asset_name = output_asset_name;
-    request.material_role = material_role;
-    request.box.dimensions = FVector3f{box_dimensions};
-    request.beveled_box = {FVector3f{beveled_box_dimensions}, beveled_box_bevel_width};
-    request.wedge = {FVector3f{wedge_dimensions}, wedge_top_length, wedge_top_offset};
+    request.asset_name = TCHAR_TO_UTF8(*output_asset_name.ToString());
+    request.material_role = SandboxMesh::to_native(material_role);
+    request.box.dimensions = SandboxMesh::to_native(box_dimensions);
+    request.beveled_box = {SandboxMesh::to_native(beveled_box_dimensions), beveled_box_bevel_width};
+    request.wedge = {SandboxMesh::to_native(wedge_dimensions), wedge_top_length, wedge_top_offset};
     request.cylinder = {cylinder_radius, cylinder_height, cylinder_radial_segments};
     request.sphere = {sphere_radius, sphere_longitude_segments, sphere_latitude_segments};
     request.cone = {cone_radius, cone_height, cone_radial_segments};
@@ -67,8 +68,12 @@ auto FSbxMeshAssemblyRecipePart::to_part(FName const output_asset_name) const
                                honeycomb_depth,
                                honeycomb_pointy_top};
 
-    return {
-        request, {FVector3f{translation}, FRotator3f{rotation}, FVector3f{scale}}, visible, locked};
+    return {request,
+            {SandboxMesh::to_native(translation),
+             SandboxMesh::to_native(rotation),
+             SandboxMesh::to_native(scale)},
+            visible,
+            locked};
 }
 
 auto FSbxMeshAssemblyRecipeGroup::to_transform() const -> FTransform {
@@ -111,9 +116,9 @@ auto get_node_local_transform(FGuid const id,
     }
 
     auto const part{parts[*part_index].to_part(NAME_None)};
-    transform = FTransform{FRotator{part.transform.rotation},
-                           FVector{part.transform.translation},
-                           FVector{part.transform.scale}};
+    transform = FTransform{SandboxMesh::to_unreal(part.transform.rotation),
+                           SandboxMesh::to_unreal(part.transform.translation),
+                           SandboxMesh::to_unreal(part.transform.scale)};
     parent_id = parts[*part_index].parent_id;
     visible = parts[*part_index].visible;
     locked = parts[*part_index].locked;
@@ -324,9 +329,9 @@ auto resolve_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& p
     for (auto const& recipe_part : parts) {
         auto part{recipe_part.to_part(output_asset_name)};
         auto const& transform{transforms.FindChecked(recipe_part.id)};
-        part.transform = {FVector3f{transform.GetLocation()},
-                          FRotator3f{transform.Rotator()},
-                          FVector3f{transform.GetScale3D()}};
+        part.transform = {SandboxMesh::to_native(transform.GetLocation()),
+                          SandboxMesh::to_native(transform.Rotator()),
+                          SandboxMesh::to_native(transform.GetScale3D())};
         part.visible = visibilities.FindChecked(recipe_part.id);
         part.locked = locks.FindChecked(recipe_part.id);
         resolved_parts.Add(MoveTemp(part));

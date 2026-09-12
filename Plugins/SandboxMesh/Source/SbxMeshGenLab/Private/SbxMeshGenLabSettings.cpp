@@ -1,14 +1,13 @@
 #include "SbxMeshGenLab/SbxMeshGenLabSettings.h"
+#include "SbxMeshGenLab/NativeMeshTypes.h"
 
 auto USbxMeshGenLabSettings::to_request() const -> FSbxMeshGenerationRequest {
     auto request{SandboxMesh::make_default_mesh_request(shape)};
-    request.asset_name = asset_name;
-    request.material_role = material_role;
-    request.box.dimensions = FVector3f{static_cast<float>(box_dimensions.X),
-                                       static_cast<float>(box_dimensions.Y),
-                                       static_cast<float>(box_dimensions.Z)};
-    request.beveled_box = {FVector3f{beveled_box_dimensions}, beveled_box_bevel_width};
-    request.wedge = {FVector3f{wedge_dimensions}, wedge_top_length, wedge_top_offset};
+    request.asset_name = TCHAR_TO_UTF8(*asset_name.ToString());
+    request.material_role = SandboxMesh::to_native(material_role);
+    request.box.dimensions = SandboxMesh::to_native(box_dimensions);
+    request.beveled_box = {SandboxMesh::to_native(beveled_box_dimensions), beveled_box_bevel_width};
+    request.wedge = {SandboxMesh::to_native(wedge_dimensions), wedge_top_length, wedge_top_offset};
     request.cylinder = {cylinder_radius, cylinder_height, cylinder_radial_segments};
     request.sphere = {sphere_radius, sphere_longitude_segments, sphere_latitude_segments};
     request.cone = {cone_radius, cone_height, cone_radial_segments};
@@ -26,17 +25,19 @@ auto USbxMeshGenLabSettings::to_request() const -> FSbxMeshGenerationRequest {
 }
 
 auto USbxMeshGenLabSettings::to_transform() const -> FSbxMeshTransform {
-    return {FVector3f{part_translation}, FRotator3f{part_rotation}, FVector3f{part_scale}};
+    return {SandboxMesh::to_native(part_translation),
+            SandboxMesh::to_native(part_rotation),
+            SandboxMesh::to_native(part_scale)};
 }
 
 void USbxMeshGenLabSettings::load_request(FSbxMeshGenerationRequest const& request) {
-    shape = request.shape;
-    asset_name = request.asset_name;
-    material_role = request.material_role;
-    box_dimensions = FVector{request.box.dimensions};
-    beveled_box_dimensions = FVector{request.beveled_box.dimensions};
+    shape = SandboxMesh::to_unreal(request.shape);
+    asset_name = FName{UTF8_TO_TCHAR(request.asset_name.c_str())};
+    material_role = SandboxMesh::to_unreal(request.material_role);
+    box_dimensions = SandboxMesh::to_unreal(request.box.dimensions);
+    beveled_box_dimensions = SandboxMesh::to_unreal(request.beveled_box.dimensions);
     beveled_box_bevel_width = request.beveled_box.bevel_width;
-    wedge_dimensions = FVector{request.wedge.dimensions};
+    wedge_dimensions = SandboxMesh::to_unreal(request.wedge.dimensions);
     wedge_top_length = request.wedge.top_length;
     wedge_top_offset = request.wedge.top_offset;
     cylinder_radius = request.cylinder.radius;
@@ -65,7 +66,7 @@ void USbxMeshGenLabSettings::load_request(FSbxMeshGenerationRequest const& reque
 }
 
 void USbxMeshGenLabSettings::load_transform(FSbxMeshTransform const& transform) {
-    part_translation = FVector{transform.translation};
-    part_rotation = FRotator{transform.rotation};
-    part_scale = FVector{transform.scale};
+    part_translation = SandboxMesh::to_unreal(transform.translation);
+    part_rotation = SandboxMesh::to_unreal(transform.rotation);
+    part_scale = SandboxMesh::to_unreal(transform.scale);
 }

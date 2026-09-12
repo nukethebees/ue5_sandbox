@@ -7,6 +7,7 @@
 #include "SbxMeshGenLab/HexFrameGenerator.h"
 #include "SbxMeshGenLab/HexTileGenerator.h"
 #include "SbxMeshGenLab/HoneycombPanelGenerator.h"
+#include "SbxMeshGenLab/MeshMaterialRole.h"
 #include "SbxMeshGenLab/SphereGenerator.h"
 #include "SbxMeshGenLab/WedgeGenerator.h"
 
@@ -25,30 +26,19 @@ enum class ESbxMeshShape : uint8 {
     Wedge UMETA(DisplayName = "Wedge"),
 };
 
-struct FSbxMeshGenerationRequest {
-    ESbxMeshShape shape{ESbxMeshShape::Box};
-    FName asset_name{TEXT("SM_GeneratedBox")};
-    ESbxMeshMaterialRole material_role{ESbxMeshMaterialRole::Structure};
-    FSbxBoxParameters box;
-    FSbxCylinderParameters cylinder;
-    FSbxSphereParameters sphere;
-    FSbxConeParameters cone;
-    FSbxHexTileParameters hex_tile;
-    FSbxHexFrameParameters hex_frame;
-    FSbxHoneycombPanelParameters honeycomb_panel;
-    FSbxBeveledBoxParameters beveled_box;
-    FSbxWedgeParameters wedge;
-};
+using FSbxMeshGenerationRequest = mesh_gen::GenerationRequest;
 
 namespace SandboxMesh {
 
 [[nodiscard]] SBXMESHGENLAB_API auto make_default_mesh_request(ESbxMeshShape shape)
     -> FSbxMeshGenerationRequest;
+[[nodiscard]] SBXMESHGENLAB_API auto to_native(ESbxMeshShape shape) -> mesh_gen::Shape;
+[[nodiscard]] SBXMESHGENLAB_API auto to_unreal(mesh_gen::Shape shape) -> ESbxMeshShape;
 [[nodiscard]] SBXMESHGENLAB_API auto validate_mesh_request(FSbxMeshGenerationRequest const& request)
     -> FString;
-[[nodiscard]] SBXMESHGENLAB_API auto generate_mesh(FSbxMeshGenerationRequest const& request)
-    -> FSbxMeshData;
 [[nodiscard]] SBXMESHGENLAB_API auto describe_mesh_request(FSbxMeshGenerationRequest const& request)
     -> FString;
+
+using mesh_gen::generate_mesh;
 
 }

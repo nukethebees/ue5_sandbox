@@ -34,4 +34,12 @@ auto get_mesh_material_color(ESbxMeshMaterialRole const role) -> FLinearColor {
     return FLinearColor{1.0f, 0.0f, 1.0f};
 }
 
+auto to_native(ESbxMeshMaterialRole const role) -> mesh_gen::MaterialRole {
+    return static_cast<mesh_gen::MaterialRole>(role);
+}
+
+auto to_unreal(mesh_gen::MaterialRole const role) -> ESbxMeshMaterialRole {
+    return static_cast<ESbxMeshMaterialRole>(role);
+}
+
 }

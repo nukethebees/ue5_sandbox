@@ -2,6 +2,7 @@
 
 #include "Generation/MeshAssetWriter.h"
 #include "SbxMeshGenLab/MeshGenerationRequest.h"
+#include "SbxMeshGenLab/NativeMeshTypes.h"
 
 #include "Engine/StaticMesh.h"
 #include "HAL/FileManager.h"
@@ -16,8 +17,9 @@ UGenerateSandboxMeshHexTileCommandlet::UGenerateSandboxMeshHexTileCommandlet() {
 int32 UGenerateSandboxMeshHexTileCommandlet::Main(FString const&) {
     auto const request{SandboxMesh::make_default_mesh_request(ESbxMeshShape::HexTile)};
     auto const mesh_data{SandboxMesh::generate_mesh(request)};
+    auto const asset_name{SandboxMesh::to_unreal_name(request.asset_name)};
     auto* const static_mesh{SandboxMesh::write_generated_static_mesh_asset(
-        mesh_data, request.asset_name, SandboxMesh::describe_mesh_request(request))};
+        mesh_data, asset_name, SandboxMesh::describe_mesh_request(request))};
     if (static_mesh == nullptr) {
         return 1;
     }
@@ -34,7 +36,7 @@ int32 UGenerateSandboxMeshHexTileCommandlet::Main(FString const&) {
         return 1;
     }
 
-    auto const output_filename{SandboxMesh::get_generated_asset_filename(request.asset_name)};
+    auto const output_filename{SandboxMesh::get_generated_asset_filename(asset_name)};
     if (!IFileManager::Get().FileExists(*output_filename)) {
         UE_LOG(LogTemp,
                Error,

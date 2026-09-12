@@ -2,6 +2,7 @@
 
 #include "Editor/SMeshGenLabViewport.h"
 #include "Generation/MeshAssetWriter.h"
+#include "SbxMeshGenLab/NativeMeshTypes.h"
 #include "SbxMeshGenLab/SbxMeshGenLabSettings.h"
 
 #include "Engine/StaticMesh.h"
@@ -194,7 +195,8 @@ auto USbxMeshGenLabWidget::RebuildWidget() -> TSharedRef<SWidget> {
                                                               "PartListEntry",
                                                               "Part {0} — {1}"),
                                                     FText::AsNumber(part_index),
-                                                    get_shape_text(part->mesh.shape));
+                                                    get_shape_text(
+                                                        SandboxMesh::to_unreal(part->mesh.shape)));
                                             })];
                                         })
                                     .OnSelectionChanged_Lambda(
@@ -365,7 +367,7 @@ auto USbxMeshGenLabWidget::save_generated_mesh() -> FReply {
     parts.Reserve(parts_.Num());
     for (auto const& part : parts_) {
         parts.Add(*part);
-        parts.Last().mesh.asset_name = settings_->asset_name;
+        parts.Last().mesh.asset_name = SandboxMesh::to_native(settings_->asset_name);
     }
 
     auto const validation_error{SandboxMesh::validate_mesh_assembly(parts)};
@@ -404,7 +406,7 @@ void USbxMeshGenLabWidget::update_preview() {
     parts.Reserve(parts_.Num());
     for (auto const& part : parts_) {
         parts.Add(*part);
-        parts.Last().mesh.asset_name = settings_->asset_name;
+        parts.Last().mesh.asset_name = SandboxMesh::to_native(settings_->asset_name);
     }
 
     auto const validation_error{SandboxMesh::validate_mesh_assembly(parts)};
@@ -429,8 +431,8 @@ void USbxMeshGenLabWidget::update_preview() {
         NSLOCTEXT(
             "SbxMeshGenLab", "PreviewReady", "Preview: {0} parts, {1} vertices, {2} triangles."),
         FText::AsNumber(parts.Num()),
-        FText::AsNumber(mesh_data.positions.Num()),
-        FText::AsNumber(mesh_data.indices.Num() / 3)));
+        FText::AsNumber(static_cast<int64>(mesh_data.positions.size())),
+        FText::AsNumber(static_cast<int64>(mesh_data.indices.size() / 3))));
 }
 
 void USbxMeshGenLabWidget::sync_selected_part_from_settings() {

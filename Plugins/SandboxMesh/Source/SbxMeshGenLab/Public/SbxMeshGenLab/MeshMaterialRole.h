@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mesh_gen/MeshGeneration.h>
+
 #include "CoreMinimal.h"
 
 #include "MeshMaterialRole.generated.h"
@@ -20,5 +22,7 @@ inline constexpr int32 mesh_material_role_count{4};
     -> FName;
 [[nodiscard]] SBXMESHGENLAB_API auto get_mesh_material_color(ESbxMeshMaterialRole role)
     -> FLinearColor;
+[[nodiscard]] SBXMESHGENLAB_API auto to_native(ESbxMeshMaterialRole role) -> mesh_gen::MaterialRole;
+[[nodiscard]] SBXMESHGENLAB_API auto to_unreal(mesh_gen::MaterialRole role) -> ESbxMeshMaterialRole;
 
 }

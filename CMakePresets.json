@@ -138,6 +138,15 @@
         "SANDBOX_NATIVE_MEMORY_ONLY": true,
         "UE_CONFIGURATION": "DebugGame"
       }
+    },
+    {
+      "name": "native-mesh",
+      "displayName": "Native mesh generation",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "SANDBOX_NATIVE_MESH_ONLY": true
+      }
     }
   ],
   "buildPresets": [
@@ -280,6 +289,11 @@
       "name": "native-memory",
       "configurePreset": "native-memory",
       "targets": ["native-memory-tests"]
+    },
+    {
+      "name": "native-mesh",
+      "configurePreset": "native-mesh",
+      "targets": ["mesh-gen-tests"]
     }
   ],
   "testPresets": [
@@ -483,6 +497,21 @@
         "include": {
           "name": "^native-memory-tests$"
         }
+      }
+    },
+    {
+      "name": "native-mesh",
+      "configurePreset": "native-mesh",
+      "output": {
+        "outputOnFailure": true
+      },
+      "filter": {
+        "include": {
+          "label": "native-mesh"
+        }
+      },
+      "execution": {
+        "noTestsAction": "error"
       }
     }
   ],
@@ -703,6 +732,14 @@
         { "type": "configure", "name": "debug-game" },
         { "type": "build", "name": "debug-game" },
         { "type": "test", "name": "debug-game-unit-tests" }
+      ]
+    },
+    {
+      "name": "native-mesh",
+      "steps": [
+        { "type": "configure", "name": "native-mesh" },
+        { "type": "build", "name": "native-mesh" },
+        { "type": "test", "name": "native-mesh" }
       ]
     },
     {

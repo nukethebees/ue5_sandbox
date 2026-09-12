@@ -1,5 +1,6 @@
 #include "Generation/MeshAssetWriter.h"
 #include "SbxMeshGenLab/MeshGenerationRequest.h"
+#include "SbxMeshGenLab/NativeMeshTypes.h"
 
 #include "AssetRegistry/AssetData.h"
 #include "AssetRegistry/AssetRegistryModule.h"
@@ -26,7 +27,7 @@ TEST_CLASS(MeshAssetWriter, "SandboxMesh.UnitTests")
         } while (IFileManager::Get().DirectoryExists(*FPaths::GetPath(filename)));
 
         auto request{make_default_mesh_request(ESbxMeshShape::HexFrame)};
-        request.asset_name = asset_name;
+        request.asset_name = SandboxMesh::to_native(asset_name);
 
         auto* const static_mesh{write_generated_static_mesh_asset(generate_mesh(request),
                                                                   asset_name,

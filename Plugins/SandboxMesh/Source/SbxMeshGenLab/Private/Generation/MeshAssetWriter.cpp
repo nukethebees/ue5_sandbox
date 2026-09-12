@@ -1,4 +1,8 @@
 #include "Generation/MeshAssetWriter.h"
+#include "SbxMeshGenLab/MeshMaterialRole.h"
+#include "SbxMeshGenLab/NativeMeshTypes.h"
+
+#include <cstddef>
 
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Engine/StaticMesh.h"
@@ -169,10 +173,10 @@ auto make_mesh_description(FSbxMeshData const& mesh_data) -> FMeshDescription {
     vertex_instance_uvs.SetNumChannels(1);
 
     TArray<FVertexID> vertices;
-    vertices.Reserve(mesh_data.positions.Num());
+    vertices.Reserve(static_cast<int32>(mesh_data.positions.size()));
     for (auto const position : mesh_data.positions) {
         auto const vertex_id{mesh_description.CreateVertex()};
-        vertex_positions[vertex_id] = position;
+        vertex_positions[vertex_id] = SandboxMesh::to_unreal_float(position);
         vertices.Add(vertex_id);
     }
 
@@ -186,22 +190,25 @@ auto make_mesh_description(FSbxMeshData const& mesh_data) -> FMeshDescription {
         polygon_groups.Add(polygon_group);
     }
 
-    auto const triangle_count{mesh_data.indices.Num() / 3};
-    for (int32 triangle_index{0}; triangle_index < triangle_count; ++triangle_index) {
+    auto const triangle_count{mesh_data.indices.size() / 3};
+    for (std::size_t triangle_index{}; triangle_index < triangle_count; ++triangle_index) {
         TArray<FVertexInstanceID> vertex_instances;
         vertex_instances.Reserve(3);
 
         for (int32 corner_index{0}; corner_index < 3; ++corner_index) {
             auto const mesh_index{mesh_data.indices[triangle_index * 3 + corner_index]};
             auto const vertex_instance{mesh_description.CreateVertexInstance(vertices[mesh_index])};
-            vertex_instance_normals[vertex_instance] = mesh_data.normals[mesh_index];
-            vertex_instance_uvs.Set(vertex_instance, 0, mesh_data.uvs[mesh_index]);
+            vertex_instance_normals[vertex_instance] =
+                SandboxMesh::to_unreal_float(mesh_data.normals[mesh_index]);
+            vertex_instance_uvs.Set(
+                vertex_instance, 0, SandboxMesh::to_unreal(mesh_data.uvs[mesh_index]));
             vertex_instances.Add(vertex_instance);
         }
 
-        auto const role{mesh_data.triangle_material_roles.IsEmpty()
-                            ? ESbxMeshMaterialRole::Structure
-                            : mesh_data.triangle_material_roles[triangle_index]};
+        auto const role{
+            mesh_data.triangle_material_roles.empty()
+                ? ESbxMeshMaterialRole::Structure
+                : SandboxMesh::to_unreal(mesh_data.triangle_material_roles[triangle_index])};
         auto const role_index{static_cast<int32>(role)};
         check(polygon_groups.IsValidIndex(role_index));
         mesh_description.CreatePolygon(polygon_groups[role_index], vertex_instances);
@@ -216,31 +223,13 @@ auto has_valid_bounds(FMeshDescription const& mesh_description) -> bool {
            FMath::IsFinite(bounds.SphereRadius) && bounds.SphereRadius > 0.0;
 }
 
-auto has_valid_mesh_data(FSbxMeshData const& mesh_data) -> bool {
-    if (mesh_data.positions.IsEmpty() || mesh_data.indices.IsEmpty() ||
-        mesh_data.indices.Num() % 3 != 0 || mesh_data.normals.Num() != mesh_data.positions.Num() ||
-        mesh_data.uvs.Num() != mesh_data.positions.Num() ||
-        (!mesh_data.triangle_material_roles.IsEmpty() &&
-         mesh_data.triangle_material_roles.Num() != mesh_data.indices.Num() / 3)) {
-        return false;
-    }
-
-    auto const vertex_count{static_cast<uint32>(mesh_data.positions.Num())};
-    for (auto const index : mesh_data.indices) {
-        if (index >= vertex_count) {
-            return false;
-        }
-    }
-    return true;
-}
-
 auto build_static_mesh(UStaticMesh& static_mesh,
                        FSbxMeshData const& mesh_data,
                        bool const fast_build,
                        bool const persistent_materials,
                        FString const& material_package_path = {},
                        FName const material_unique_suffix = NAME_None) -> bool {
-    if (!has_valid_mesh_data(mesh_data)) {
+    if (!mesh_gen::is_valid_mesh_data(mesh_data)) {
         UE_LOG(LogSbxMeshGenLab, Error, TEXT("Generated mesh buffers are invalid."));
         return false;
     }
