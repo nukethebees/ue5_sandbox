@@ -76,6 +76,36 @@ TEST(SourceLoader, ReadsCommentsAndTypedSoa) {
               "FHandle");
 }
 
+TEST(SourceLoader, ReadsStandardLibrarySoaBackend) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(soa-module native_data
+  :header "NativeData.h"
+  :backend standard-library
+  (struct Data
+    :operations (all)
+    (member values array int32)))
+)");
+
+    auto const manifest{files.load()};
+    auto const& module{std::get<SoaModuleSchema>(manifest.modules.front())};
+    EXPECT_EQ(module.backend, SoaBackend::standard_library);
+    EXPECT_FALSE(module.settings.source.has_value());
+}
+
+TEST(SourceLoader, RejectsUnknownSoaBackend) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(soa-module native_data
+  :header "NativeData.h"
+  :backend portable
+  (struct Data
+    (member values array int32)))
+)");
+
+    EXPECT_THROW(files.load(), ManifestError);
+}
+
 TEST(SourceLoader, ReadsSoaFieldMaskMetadata) {
     TemporaryManifest files;
     files.write_root(R"(

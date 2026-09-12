@@ -23,7 +23,7 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
         Manifest{.schema_version = manifest_schema_version,
                  .modules = {SoaModuleSchema{.settings = {.name = "native", .header = "Native.h"},
                                              .structs = std::move(structs),
-                                             .experimental_stdlib = true}}}))};
+                                             .backend = SoaBackend::standard_library}}}))};
     auto const& output{files.front().content};
     EXPECT_NE(output.find("ml::native_soa::Vector<std::int32_t> ids"), std::string::npos);
     EXPECT_NE(output.find("std::span<std::int32_t const> ids"), std::string::npos);

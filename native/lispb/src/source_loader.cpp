@@ -583,7 +583,7 @@ auto parse_module(Form const& form) -> ModuleSchema {
                          "namespace",
                          "include-order",
                          "prelude",
-                         "experimental-stdlib"},
+                         "backend"},
                         {"array-allocator", "struct"});
         std::vector<SoaAllocatorVariant> allocators;
         std::vector<SoaSchema> structs;
@@ -597,10 +597,19 @@ auto parse_module(Form const& form) -> ModuleSchema {
                 structs.push_back(parse_soa(*declaration));
             }
         }
-        return SoaModuleSchema{parse_module_settings(fields),
-                               std::move(structs),
-                               boolean_or(fields, "experimental-stdlib"),
-                               std::move(allocators)};
+        auto backend{SoaBackend::unreal};
+        if (auto const value{optional_text(fields, "backend")}) {
+            if (*value == "unreal") {
+                backend = SoaBackend::unreal;
+            } else if (*value == "standard-library") {
+                backend = SoaBackend::standard_library;
+            } else {
+                fail(fields.required("backend").token.span,
+                     "SOA backend must be unreal or standard-library");
+            }
+        }
+        return SoaModuleSchema{
+            parse_module_settings(fields), std::move(structs), backend, std::move(allocators)};
     }
     if (head == "enum-module") {
         Fields const fields{form, head, 1};

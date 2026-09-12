@@ -12,10 +12,15 @@ struct SoaAllocatorVariant {
     TypeRef allocator;
 };
 
+enum class SoaBackend {
+    unreal,
+    standard_library,
+};
+
 struct SoaModuleSchema {
     ModuleSettings settings;
     std::vector<SoaSchema> structs;
-    bool experimental_stdlib{false};
+    SoaBackend backend{SoaBackend::unreal};
     std::vector<SoaAllocatorVariant> experimental_array_allocators;
 };
 

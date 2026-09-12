@@ -218,7 +218,8 @@ auto lower_soa_impl(SoaSchema const& schema,
 
 auto lower_soa_module_impl(SoaModuleSchema const& module,
                            std::map<std::string, CppType> const& types) -> Module {
-    auto const format_generated{module.experimental_stdlib ||
+    auto const standard_library{module.backend == SoaBackend::standard_library};
+    auto const format_generated{standard_library ||
                                 std::ranges::any_of(module.structs, [](auto const& schema) {
                                     return schema.single_allocation.has_value();
                                 })};
@@ -230,8 +231,8 @@ auto lower_soa_module_impl(SoaModuleSchema const& module,
     std::vector<LoweredSoa> lowered_structs;
     lowered_structs.reserve(module.structs.size());
     for (auto const& schema : module.structs) {
-        auto lowered{module.experimental_stdlib ? lower_native_soa(schema, schemas, types)
-                                                : lower_soa_impl(schema, types, {})};
+        auto lowered{standard_library ? lower_native_soa(schema, schemas, types)
+                                      : lower_soa_impl(schema, types, {})};
         if (schema.fixed.has_value()) {
             NodeListBuilder header;
             header.append(std::move(lowered.header))
@@ -243,14 +244,13 @@ auto lower_soa_module_impl(SoaModuleSchema const& module,
             NodeListBuilder header;
             header.append(std::move(lowered.header))
                 .new_lines(2)
-                .append(lower_single_allocation_nodes(
-                    schema, schemas, types, module.experimental_stdlib));
+                .append(lower_single_allocation_nodes(schema, schemas, types, standard_library));
             for (auto const& variant : schema.single_allocation_variants) {
                 auto copy{schema};
                 copy.single_allocation = variant.name;
                 copy.single_allocation_allocator = variant.allocator;
-                header.new_lines(2).append(lower_single_allocation_nodes(
-                    copy, schemas, types, module.experimental_stdlib));
+                header.new_lines(2).append(
+                    lower_single_allocation_nodes(copy, schemas, types, standard_library));
             }
             lowered.header = header.build();
         }
@@ -328,7 +328,7 @@ auto lower_soa_module(SoaModuleSchema const& module, std::map<std::string, CppTy
     if (module.experimental_array_allocators.empty()) {
         return lower_soa_module_impl(module, types);
     }
-    if (module.experimental_stdlib) {
+    if (module.backend == SoaBackend::standard_library) {
         throw std::invalid_argument{"TArray allocator variants require the Unreal backend"};
     }
     auto expanded{module};

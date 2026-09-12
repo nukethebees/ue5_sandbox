@@ -1,41 +1,42 @@
-#include <SandboxCore/frame_memory_resource.h>
-
-#include <SandboxCore/log_categories.h>
-#include <SandboxCore/mimalloc_storage_allocator.h>
-
-#include <Misc/AssertionMacros.h>
+#include "sandbox/core/frame_memory_resource.h"
 
 #include <algorithm>
 #include <bit>
-#include <cstdint>
+#include <exception>
 #include <memory>
+#include <new>
+#include <stdexcept>
 
 namespace ml {
 namespace frame_memory_resource {
-inline constexpr uint32 backing_alignment{64};
+inline constexpr std::size_t backing_alignment{64};
 }
 
-FFrameMemoryResource::FFrameMemoryResource(SIZE_T const capacity_bytes)
+FrameMemoryResource::FrameMemoryResource(std::size_t const capacity_bytes)
     : capacity_bytes_{capacity_bytes} {
     if (capacity_bytes_ == 0) {
-        UE_LOG(LogSandboxCore, Fatal, TEXT("Frame memory capacity must be positive."));
+        throw std::invalid_argument{"Frame memory capacity must be positive"};
     }
 
-    backing_ = soa_storage::MimallocStorageAllocator::allocate(
-        capacity_bytes_, frame_memory_resource::backing_alignment);
+    backing_ = static_cast<std::byte*>(::operator new(
+        capacity_bytes_, std::align_val_t{frame_memory_resource::backing_alignment}));
 }
 
-FFrameMemoryResource::~FFrameMemoryResource() {
-    checkf(outstanding_allocation_count_.load(std::memory_order_relaxed) == 0,
-           TEXT("Frame memory resource destroyed with outstanding allocations."));
-    soa_storage::MimallocStorageAllocator::free(backing_);
+FrameMemoryResource::~FrameMemoryResource() {
+    if (outstanding_allocation_count_.load(std::memory_order_relaxed) != 0) {
+        std::terminate();
+    }
+    ::operator delete(backing_, std::align_val_t{frame_memory_resource::backing_alignment});
 }
 
-auto FFrameMemoryResource::try_allocate(SIZE_T const bytes, SIZE_T const alignment) noexcept
-    -> void* {
-    check(std::has_single_bit(alignment));
+auto FrameMemoryResource::try_allocate(std::size_t const bytes,
+                                       std::size_t const alignment) noexcept -> void* {
+    if (!std::has_single_bit(alignment)) {
+        record_overflow(bytes, alignment, claimed_bytes_.load(std::memory_order_relaxed));
+        return nullptr;
+    }
 
-    auto const allocation_bytes{std::max<SIZE_T>(bytes, 1)};
+    auto const allocation_bytes{std::max<std::size_t>(bytes, 1)};
     auto current{claimed_bytes_.load(std::memory_order_relaxed)};
     for (;;) {
         auto* aligned_pointer{static_cast<void*>(backing_ + current)};
@@ -46,7 +47,7 @@ auto FFrameMemoryResource::try_allocate(SIZE_T const bytes, SIZE_T const alignme
         }
 
         auto* const aligned_bytes{static_cast<std::byte*>(aligned_pointer)};
-        auto const aligned_offset{static_cast<SIZE_T>(aligned_bytes - backing_)};
+        auto const aligned_offset{static_cast<std::size_t>(aligned_bytes - backing_)};
         auto const next{aligned_offset + allocation_bytes};
         if (claimed_bytes_.compare_exchange_weak(
                 current, next, std::memory_order_relaxed, std::memory_order_relaxed)) {
@@ -64,19 +65,15 @@ auto FFrameMemoryResource::try_allocate(SIZE_T const bytes, SIZE_T const alignme
     }
 }
 
-void FFrameMemoryResource::reclaim() {
-    auto const outstanding{outstanding_allocation_count_.load(std::memory_order_relaxed)};
-    if (outstanding != 0) {
-        UE_LOG(LogSandboxCore,
-               Fatal,
-               TEXT("Frame memory cannot be reclaimed with %llu outstanding allocations."),
-               outstanding);
+void FrameMemoryResource::reclaim() {
+    if (outstanding_allocation_count_.load(std::memory_order_relaxed) != 0) {
+        throw std::logic_error{"Frame memory cannot be reclaimed with outstanding allocations"};
     }
 
     claimed_bytes_.store(0, std::memory_order_relaxed);
 }
 
-void FFrameMemoryResource::reset() {
+void FrameMemoryResource::reset() {
     reclaim();
 
     last_frame_claimed_bytes_ = frame_peak_claimed_bytes_.load(std::memory_order_relaxed);
@@ -90,7 +87,7 @@ void FFrameMemoryResource::reset() {
     frame_peak_claimed_bytes_.store(0, std::memory_order_relaxed);
 }
 
-auto FFrameMemoryResource::get_stats() const noexcept -> FFrameMemoryStats {
+auto FrameMemoryResource::get_stats() const noexcept -> FrameMemoryStats {
     return {
         .capacity_bytes = capacity_bytes_,
         .current_claimed_bytes = claimed_bytes_.load(std::memory_order_relaxed),
@@ -116,49 +113,45 @@ auto FFrameMemoryResource::get_stats() const noexcept -> FFrameMemoryStats {
     };
 }
 
-auto FFrameMemoryResource::owns(void const* const pointer) const noexcept -> bool {
-    auto const address{reinterpret_cast<uintptr_t>(pointer)};
-    auto const begin{reinterpret_cast<uintptr_t>(backing_)};
+auto FrameMemoryResource::owns(void const* const pointer) const noexcept -> bool {
+    auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
+    auto const begin{reinterpret_cast<std::uintptr_t>(backing_)};
     return address >= begin && address < begin + capacity_bytes_;
 }
 
-auto FFrameMemoryResource::do_allocate(SIZE_T const bytes, SIZE_T const alignment) -> void* {
+auto FrameMemoryResource::do_allocate(std::size_t const bytes, std::size_t const alignment)
+    -> void* {
     if (auto* const allocation{try_allocate(bytes, alignment)}) {
         return allocation;
     }
-
-    UE_LOG(LogSandboxCore,
-           Fatal,
-           TEXT("Frame memory exhausted: requested %llu bytes aligned to %llu with %llu of %llu "
-                "bytes already claimed."),
-           static_cast<uint64>(bytes),
-           static_cast<uint64>(alignment),
-           static_cast<uint64>(claimed_bytes_.load(std::memory_order_relaxed)),
-           static_cast<uint64>(capacity_bytes_));
-    return nullptr;
+    throw std::bad_alloc{};
 }
 
-void FFrameMemoryResource::do_deallocate(void* const pointer, SIZE_T const, SIZE_T const) {
-    check(owns(pointer));
+void FrameMemoryResource::do_deallocate(void* const pointer, std::size_t const, std::size_t const) {
+    if (!owns(pointer)) {
+        std::terminate();
+    }
     auto const previous{outstanding_allocation_count_.fetch_sub(1, std::memory_order_relaxed)};
-    check(previous > 0);
+    if (previous == 0) {
+        std::terminate();
+    }
 }
 
-auto FFrameMemoryResource::do_is_equal(std::pmr::memory_resource const& other) const noexcept
+auto FrameMemoryResource::do_is_equal(std::pmr::memory_resource const& other) const noexcept
     -> bool {
     return this == &other;
 }
 
-void FFrameMemoryResource::update_peak(SIZE_T const claimed_bytes) noexcept {
+void FrameMemoryResource::update_peak(std::size_t const claimed_bytes) noexcept {
     auto peak{peak_claimed_bytes_.load(std::memory_order_relaxed)};
     while (peak < claimed_bytes &&
            !peak_claimed_bytes_.compare_exchange_weak(
                peak, claimed_bytes, std::memory_order_relaxed, std::memory_order_relaxed)) {}
 }
 
-void FFrameMemoryResource::record_overflow(SIZE_T const bytes,
-                                           SIZE_T const alignment,
-                                           SIZE_T const claimed_bytes) noexcept {
+void FrameMemoryResource::record_overflow(std::size_t const bytes,
+                                          std::size_t const alignment,
+                                          std::size_t const claimed_bytes) noexcept {
     overflow_count_.fetch_add(1, std::memory_order_relaxed);
     last_failure_requested_bytes_.store(bytes, std::memory_order_relaxed);
     last_failure_alignment_.store(alignment, std::memory_order_relaxed);

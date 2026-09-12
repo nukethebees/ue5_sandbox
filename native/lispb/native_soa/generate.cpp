@@ -23,7 +23,7 @@ auto main(int argc, char** argv) -> int {
         if (native.structs.empty()) {
             throw std::runtime_error{"Missing canonical experimental schema"};
         }
-        native.experimental_stdlib = true;
+        native.backend = codegen::SoaBackend::standard_library;
         native.experimental_array_allocators.clear();
         native.settings = {.name = "native_soa",
                            .header = "native_soa_types.h",

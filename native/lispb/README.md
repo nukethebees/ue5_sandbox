@@ -42,6 +42,23 @@ properties, and owned declarations are nested forms:
       (parameter dt (type-ref float :suffix " const")))))
 ```
 
+`soa-module` defaults to the Unreal backend. Native libraries can select
+`:backend standard-library` and omit `:source`; the generated owning storage uses
+`std::vector`, views use `std::span`, and nested and single-allocation layouts remain available.
+Native targets compiling that output must include `native/lispb/native_soa/include` as well as
+`native/core/include`.
+
+```lisp
+(soa-module simulation_contacts
+  :header "generated/contacts.h"
+  :backend standard-library
+  :namespace sandbox::simulation
+  (struct Contacts
+    :operations (all)
+    (member entity_ids array std::uint32_t)
+    (member distances array float)))
+```
+
 An SOA struct can generate a compact named field mask from its array members. The generator
 selects `uint8`, `uint16`, `uint32`, or `uint64` storage from the resulting field count. Optional
 dimensions reserve a contiguous row-major range for an indexed field:

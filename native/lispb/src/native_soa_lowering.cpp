@@ -11,13 +11,13 @@ auto lower_native_soa(SoaSchema const& schema,
                       std::map<std::string, CppType> const& types) -> LoweredSoa {
     if (schema.fixed || !schema.functions.empty() || !schema.mutable_view_functions.empty() ||
         schema.equivalent_type || !schema.using_declarations.empty()) {
-        throw std::invalid_argument{"Experimental stdlib SoA does not support custom functions, "
+        throw std::invalid_argument{"Standard-library SoA does not support custom functions, "
                                     "fixed storage or equivalent types"};
     }
     auto const layout{build_soa_layout(schema, schemas, types, false)};
     for (auto const& leaf : layout.leaves) {
         if (leaf.type.spelling == "bool") {
-            throw std::invalid_argument{"Experimental stdlib SoA requires contiguous columns; "
+            throw std::invalid_argument{"Standard-library SoA requires contiguous columns; "
                                         "std::vector<bool> is unsupported"};
         }
     }
