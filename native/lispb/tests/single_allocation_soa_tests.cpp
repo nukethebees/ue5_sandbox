@@ -26,6 +26,7 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
                                              .backend = SoaBackend::standard_library}}}))};
     auto const& output{files.front().content};
     EXPECT_NE(output.find("ml::native_soa::Vector<std::int32_t> ids"), std::string::npos);
+    EXPECT_NE(output.find("ColLayout<std::int32_t> Ids"), std::string::npos);
     EXPECT_NE(output.find("std::span<std::int32_t const> ids"), std::string::npos);
     EXPECT_NE(output.find("std::span<float> xs"), std::string::npos);
     EXPECT_NE(output.find("ColLayout<float> NestedXs{Ids}"), std::string::npos);

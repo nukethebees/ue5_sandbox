@@ -92,7 +92,7 @@ void FTestPlayerShipDeathScenario::queue_player_ship_death() {
 void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
     auto const& unique_entities{test_driver->get_registry().get_unique_entities()};
 
-    if (!checks.is_true(unique_entities.alive.IsValidIndex(player_ship_id.id),
+    if (!checks.is_true(test_driver->get_registry().is_valid_unique_id(player_ship_id),
                         TEXT("Check player id is valid"))) {
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }

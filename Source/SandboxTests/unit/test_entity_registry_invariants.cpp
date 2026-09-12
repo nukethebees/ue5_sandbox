@@ -1,3 +1,4 @@
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 
 #include <CQTest.h>
@@ -121,8 +122,10 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
             TEXT("Historical generation"), history.registry_generations[id.id], handle.generation);
         TestRunner->TestEqual(TEXT("Historical alive"), history.alive[id.id], actual.alive[slot]);
         TestRunner->TestTrue(TEXT("Historical type"),
-                             history.entity_types[id.id] == actual.entity_types[slot]);
-        TestRunner->TestTrue(TEXT("Historical team"), history.teams[id.id] == actual.teams[slot]);
+                             history.entity_types[id.id] ==
+                                 ml::to_native(actual.entity_types[slot]));
+        TestRunner->TestTrue(TEXT("Historical team"),
+                             history.teams[id.id] == ml::to_native(actual.teams[slot]));
     }
 
     TEST_METHOD(MixedSlotReusePreservesDataAndHistoricalIdentity)
@@ -490,7 +493,8 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
         auto const replacement{ml::registry_tests::make_entities(1)};
         registry_.add_entities(view_of(replacement));
         TestRunner->TestTrue(TEXT("Reused slot preserves victim's last team"),
-                             registry_.get_unique_entities().teams[1] == ETestTeam::Yellow);
+                             registry_.get_unique_entities().teams[1] ==
+                                 ml::to_native(ETestTeam::Yellow));
     }
 
     TEST_METHOD(StaleKillersRetainCreditAcrossTicksAndSlotReuse)

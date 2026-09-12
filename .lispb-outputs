@@ -46,7 +46,6 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Private/defences/turrets/TestStatic
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/CollisionDamageEventsSoA.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/TestEntityRegistryData.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/TestEntityTypeEnum.cpp
-Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/TestEntityUniqueEntityDataSoA.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/TestTeam.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/levels/LevelDefinitionSoA.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/missions/TestMissionFailReason.cpp
@@ -70,7 +69,6 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/defences
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/CollisionDamageEventsSoA.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/TestEntityRegistryData.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/TestEntityType.h
-Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/TestEntityUniqueEntityDataSoA.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/TestTeam.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/levels/LevelDefinitionSoA.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionFailReason.h
@@ -89,6 +87,7 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/telemetr
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/telemetry/LevelTelemetryRunEndReason.h
 native/simulation/include/sandbox/simulation/direct_damage_events.h
 native/simulation/include/sandbox/simulation/entity_death_info.h
+native/simulation/include/sandbox/simulation/entity_history.h
 native/simulation/include/sandbox/simulation/entity_overlaps.h
 native/simulation/include/sandbox/simulation/fighter_order_queue.h
 native/simulation/include/sandbox/simulation/fighter_reassignment.h

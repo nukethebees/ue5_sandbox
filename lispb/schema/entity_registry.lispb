@@ -20,24 +20,6 @@
     (member hit_items array int32)
     (member instigators array @registry_handle)))
 
-(soa-module test_entity_unique_entity_data_soa
-  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/TestEntityUniqueEntityDataSoA.h"
-  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/TestEntityUniqueEntityDataSoA.cpp"
-  :header-include "SpaceGameSimulation/entities/TestEntityUniqueEntityDataSoA.h"
-  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  (struct TestEntityUniqueEntityData
-    :operations (all)
-    :export-specifier SPACEGAMESIMULATION_API
-    :using-declarations ("kills_type = uint32")
-    (member registry_indices array (type-ref @registry_handle :nested "index_type"))
-    (member registry_generations array (type-ref @registry_handle :nested "generation_type"))
-    (member entity_types array @entity_type)
-    (member teams array @team)
-    (member kills array uint32)
-    (member alive array uint8)
-    (member killed_by array @unique_id)
-    (member death_reason array @death_reason)))
-
 (soa-module test_entity_registry_data_soa
   :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/TestEntityRegistryData.h"
   :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/TestEntityRegistryData.cpp"

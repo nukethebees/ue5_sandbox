@@ -6,6 +6,7 @@
 #include "SpaceGamePresentation/presentation/widgets/ShipHudWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/SimulationHudWidget.h"
 #include "SpaceGamePresentation/support/mesh.h"
+#include "SpaceGameSimulation/entities/NativeEntityTypes.h"
 #include "SpaceGameSimulation/missions/TestMissionManager.h"
 #include "SpaceGameSimulation/ships/player/TestSpaceShipSimulation.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
@@ -850,8 +851,9 @@ void FHUDManager::collect_kill_data() {
         auto const entity_id{top_killer_ids_buffer[top_killer_index]};
         next_data.top_killers.entity_ids[top_killer_index] = entity_id;
         next_data.top_killers.entity_types[top_killer_index] =
-            unique_entities.entity_types[entity_id.id];
-        next_data.top_killers.teams[top_killer_index] = unique_entities.teams[entity_id.id];
+            ml::to_unreal(unique_entities.entity_types[entity_id.id]);
+        next_data.top_killers.teams[top_killer_index] =
+            ml::to_unreal(unique_entities.teams[entity_id.id]);
         next_data.top_killers.kills[top_killer_index] =
             static_cast<int32>(unique_entities.kills[entity_id.id]);
     }
@@ -870,8 +872,8 @@ void FHUDManager::collect_kill_data() {
             type_index >= ml::ship_hud::FTeamKillMatrix::entity_type_count) {
             continue;
         }
-        next_data.team_kill_matrix.add(unique_entities.teams[killer_id.id],
-                                       unique_entities.entity_types[victim_index]);
+        next_data.team_kill_matrix.add(ml::to_unreal(unique_entities.teams[killer_id.id]),
+                                       ml::to_unreal(unique_entities.entity_types[victim_index]));
     }
     kill_data_buffers.cycle();
 }

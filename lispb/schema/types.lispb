@@ -194,6 +194,21 @@
   :header "sandbox/simulation/entity_types.h"
   :pass-by value)
 
+(type native_entity_type
+  :spelling "ml::simulation::EntityType"
+  :header "sandbox/simulation/entity_types.h"
+  :pass-by value)
+
+(type native_team
+  :spelling "ml::simulation::Team"
+  :header "sandbox/simulation/entity_types.h"
+  :pass-by value)
+
+(type native_unique_id
+  :spelling "ml::simulation::EntityUniqueId"
+  :header "sandbox/simulation/entity_types.h"
+  :pass-by value)
+
 (type native_fighter_order
   :spelling "ml::simulation::CapitalShipFighterOrder"
   :header "sandbox/simulation/fighter_types.h"

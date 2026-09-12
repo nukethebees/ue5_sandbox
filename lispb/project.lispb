@@ -14,6 +14,7 @@
       "lispb/schema/native_collision.lispb"
         "lispb/schema/native_direct_damage_events.lispb"
         "lispb/schema/native_entity_death_info.lispb"
+        "lispb/schema/native_entity_history.lispb"
         "lispb/schema/native_registry_entity_handles.lispb"
         "lispb/schema/native_fighter_order_queue.lispb"
         "lispb/schema/native_fighter_reassignment.lispb"

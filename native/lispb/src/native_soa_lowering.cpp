@@ -1,7 +1,6 @@
 #include "fixed_soa_internal.h"
 #include "lowering_utils.h"
 
-#include <array>
 #include <ranges>
 #include <sstream>
 #include <stdexcept>
@@ -9,25 +8,6 @@
 
 namespace codegen::detail {
 namespace {
-auto native_spelling(std::string const& spelling) -> std::string {
-    constexpr std::array integer_types{
-        std::pair{"int8", "std::int8_t"},
-        std::pair{"uint8", "std::uint8_t"},
-        std::pair{"int16", "std::int16_t"},
-        std::pair{"uint16", "std::uint16_t"},
-        std::pair{"int32", "std::int32_t"},
-        std::pair{"uint32", "std::uint32_t"},
-        std::pair{"int64", "std::int64_t"},
-        std::pair{"uint64", "std::uint64_t"},
-    };
-    for (auto const& [source, destination] : integer_types) {
-        if (spelling == source) {
-            return destination;
-        }
-    }
-    return spelling;
-}
-
 auto all_members_are_arrays(FixedLayout const& layout) -> bool {
     return std::ranges::all_of(layout.members, [](auto const& member) {
         return member.schema->kind == SoaMemberKind::array;

@@ -8,6 +8,7 @@
 #include <SpaceGameSimulation/entities/EntityDeathInfo.h>
 #include <SpaceGameSimulation/entities/RegistryEntityHandles.h>
 #include <SpaceGameSimulation/entities/RegistryHandleState.h>
+#include <SpaceGameSimulation/entities/TestDeathReason.h>
 #include <SpaceGameSimulation/entities/TestEntityUniqueEntityData.h>
 #include <SpaceGameSimulation/entities/TestEntityUniqueId.h>
 #include <SpaceGameSimulation/entities/TestTeam.h>
@@ -170,17 +171,17 @@ struct SPACEGAMESIMULATION_API FTestEntityRegistry {
     /* **************************************** */
     // Unique entity queries
     /* **************************************** */
-    auto get_unique_entities() const noexcept -> TestEntityUniqueEntityData const& {
-        return unique_entities;
+    auto get_unique_entities() const noexcept -> TestEntityUniqueEntityData {
+        return unique_entity_history_.get_const_view().columns();
     }
     // Slot-to-ID mapping includes current dead occupants until their slots are reused.
     auto get_active_unique_ids() const noexcept -> TConstArrayView<TestEntityUniqueId> {
         return unique_ids;
     }
     auto is_valid_unique_id(TestEntityUniqueId const id) const -> bool;
-    auto get_num_unique_ids_issued() const -> int32 { return ml::num(unique_entities); }
+    auto get_num_unique_ids_issued() const -> int32 { return unique_entity_history_.num(); }
     auto find_unique_id(FRegistryEntityHandle const handle) const -> TestEntityUniqueId;
-    auto get_kills(TestEntityUniqueId const id) const -> TestEntityUniqueEntityData::kills_type;
+    auto get_kills(TestEntityUniqueId const id) const -> uint32;
 
     /* **************************************** */
     // Spatial queries
@@ -238,7 +239,7 @@ struct SPACEGAMESIMULATION_API FTestEntityRegistry {
 
     // Append-only rows indexed by unique ID until reset; handle/type stay fixed, team/alive track
     // committed state. Old rows and their death/kill accounting survive slot reuse.
-    TestEntityUniqueEntityData unique_entities;
+    ml::simulation::EntityHistory unique_entity_history_;
 
     // Queued updates
     EntityData queued_entity_data;

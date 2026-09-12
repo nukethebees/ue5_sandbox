@@ -4,6 +4,7 @@ add_library(native-simulation STATIC)
 target_sources(native-simulation PRIVATE
   include/sandbox/simulation/direct_damage_events.h
   include/sandbox/simulation/entity_death_info.h
+  include/sandbox/simulation/entity_history.h
   include/sandbox/simulation/entity_overlaps.h
   include/sandbox/simulation/fighter_order_queue.h
   include/sandbox/simulation/fighter_reassignment.h

@@ -1,5 +1,6 @@
 #include "SpaceGameSimulation/missions/TestMissionManager.h"
 
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/levels/LevelDefinitionSoA.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
@@ -246,7 +247,8 @@ void FTestMissionManager::add_entity_that_must_survive(FRegistryEntityHandle han
     auto const id{entity_registry.find_unique_id(handle)};
     entity_handles_that_must_survive.Add(handle);
     entity_ids_that_must_survive.Add(id);
-    entity_types_that_must_survive.Add(entity_registry.get_unique_entities().entity_types[id.id]);
+    entity_types_that_must_survive.Add(
+        ml::to_unreal(entity_registry.get_unique_entities().entity_types[id.id]));
     if (mission_state == ETestMissionState::Running) {
         entity_health_that_must_survive.Emplace(entity_registry.get_health(handle));
     }
@@ -262,7 +264,8 @@ void FTestMissionManager::add_entity_required_to_kill(FRegistryEntityHandle hand
     auto const id{entity_registry.find_unique_id(handle)};
     entity_handles_required_to_kill.Add(handle);
     entity_ids_required_to_kill.Add(id);
-    entity_types_required_to_kill.Add(entity_registry.get_unique_entities().entity_types[id.id]);
+    entity_types_required_to_kill.Add(
+        ml::to_unreal(entity_registry.get_unique_entities().entity_types[id.id]));
     if (mission_state == ETestMissionState::Running) {
         entity_health_required_to_kill.Emplace(entity_registry.get_health(handle));
     }

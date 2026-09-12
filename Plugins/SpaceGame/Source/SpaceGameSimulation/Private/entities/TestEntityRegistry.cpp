@@ -2,6 +2,7 @@
 
 #include <SpaceGameSimulation/entities/DirectDamageEvents.h>
 #include <SpaceGameSimulation/entities/EntityDeathInfo.h>
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_checks.h>
@@ -34,7 +35,7 @@ void SpawnedEntityHandles::add_uninitialised(int32 const count) {
 void FTestEntityRegistry::reset() {
     ml::reset(entity_data,
               queued_entity_data,
-              unique_entities,
+              unique_entity_history_,
               queued_death_infos,
               generations,
               unique_ids,
@@ -96,8 +97,8 @@ auto FTestEntityRegistry::add_entities(EntityData::ConstView const view) -> Spaw
         return new_entities;
     }
 
-    new_entities.first_id = {.id = unique_entities.num()};
-    unique_entities.add_defaulted(count);
+    new_entities.first_id = {.id = unique_entity_history_.num()};
+    unique_entity_history_.add_defaulted(count);
     new_entities.registry_handles.add_uninitialised(count);
 
     auto const reuse_count{FMath::Min(free_indices.Num(), count)};
@@ -137,12 +138,13 @@ FORCEINLINE auto FTestEntityRegistry::register_spawned_entity(EntityData::ConstV
     auto const team{view.teams[source_index]};
     auto const type{view.entity_types[source_index]};
     auto const alive{view.alive[source_index]};
+    auto const unique_entities{unique_entity_history_.get_view().columns()};
     unique_ids[slot_index] = unique_id;
     unique_entities.registry_indices[unique_id.id] = slot_index;
     unique_entities.registry_generations[unique_id.id] = generation;
     unique_entities.alive[unique_id.id] = alive;
-    unique_entities.entity_types[unique_id.id] = type;
-    unique_entities.teams[unique_id.id] = team;
+    unique_entities.entity_types[unique_id.id] = ml::to_native(type);
+    unique_entities.teams[unique_id.id] = ml::to_native(team);
 
     ++combat_telemetry_.spawned[std::to_underlying(team)][std::to_underlying(type)];
     if (alive != 0) {
@@ -228,6 +230,7 @@ void FTestEntityRegistry::commit_death_updates() {
 }
 FORCEINLINE void FTestEntityRegistry::record_entity_death(TestEntityUniqueId const victim_id,
                                                           ETestDeathReason const reason) {
+    auto const unique_entities{unique_entity_history_.get_view().columns()};
     unique_entities.alive[victim_id.id] = 0;
     unique_entities.death_reason[victim_id.id] = reason;
     auto const team_index{std::to_underlying(unique_entities.teams[victim_id.id])};
@@ -237,6 +240,7 @@ FORCEINLINE void FTestEntityRegistry::record_entity_death(TestEntityUniqueId con
 }
 FORCEINLINE void FTestEntityRegistry::credit_entity_kill(TestEntityUniqueId const killer_id,
                                                          TestEntityUniqueId const victim_id) {
+    auto const unique_entities{unique_entity_history_.get_view().columns()};
     unique_entities.killed_by[victim_id.id] = killer_id;
     ++unique_entities.kills[killer_id.id];
     ++cumulative_kill_count_;
@@ -283,9 +287,10 @@ FORCEINLINE void FTestEntityRegistry::apply_live_state_transition(int32 const sl
     entity_data.teams[slot_index] = team;
     entity_data.alive[slot_index] = alive;
     auto const unique_id{unique_ids[slot_index]};
+    auto const unique_entities{unique_entity_history_.get_view().columns()};
     unique_entities.alive[unique_id.id] = alive;
     if (old_team != team) {
-        unique_entities.teams[unique_id.id] = team;
+        unique_entities.teams[unique_id.id] = ml::to_native(team);
     }
 }
 
@@ -296,6 +301,7 @@ void FTestEntityRegistry::queue_direct_damage_events(
     DirectDamageEventsConstView const damage_events) {
     damage_events.validate_array_sizes();
 
+    auto const unique_entities{unique_entity_history_.get_const_view().columns()};
     auto const count{damage_events.num()};
     for (int32 index{}; index < count; ++index) {
         auto const victim_id{find_unique_id(damage_events.damaged_entities[index])};
@@ -321,6 +327,7 @@ void FTestEntityRegistry::queue_direct_damage_events(
     queued_direct_damage_events.append_from(damage_events);
 }
 void FTestEntityRegistry::record_shots(TConstArrayView<FRegistryEntityHandle> const instigators) {
+    auto const unique_entities{unique_entity_history_.get_const_view().columns()};
     for (auto const instigator : instigators) {
         if (!instigator.is_valid()) {
             continue;
@@ -594,6 +601,7 @@ auto FTestEntityRegistry::find_unique_id(FRegistryEntityHandle const handle) con
         }
     }
 
+    auto const unique_entities{unique_entity_history_.get_const_view().columns()};
     auto const n_unique{unique_entities.num()};
 
     for (int32 i{0}; i < n_unique; ++i) {
@@ -606,9 +614,9 @@ auto FTestEntityRegistry::find_unique_id(FRegistryEntityHandle const handle) con
     checkf(false, TEXT("A missing unique ID should be impossible here."));
     return {};
 }
-auto FTestEntityRegistry::get_kills(TestEntityUniqueId const id) const
-    -> TestEntityUniqueEntityData::kills_type {
+auto FTestEntityRegistry::get_kills(TestEntityUniqueId const id) const -> uint32 {
     check(is_valid_unique_id(id));
+    auto const unique_entities{unique_entity_history_.get_const_view().columns()};
     return unique_entities.kills[id.id];
 }
 
@@ -673,7 +681,7 @@ void FTestEntityRegistry::validate_array_sizes() const {
 
 #if DO_CHECK
     queued_entity_data.validate_array_sizes();
-    unique_entities.validate_array_sizes();
+    unique_entity_history_.get_const_view().columns().validate_array_sizes();
     check(queued_entity_data.num() == queued_entity_update_handles.Num());
 #endif
 }
@@ -681,6 +689,7 @@ void FTestEntityRegistry::validate_unique_ids() const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::validate_unique_ids);
 
     // Development-time validation for the unique id system
+    auto const unique_entities{unique_entity_history_.get_const_view().columns()};
     auto const n{unique_ids.Num()};
 
     for (int32 i{0}; i < n; ++i) {
@@ -698,6 +707,7 @@ void FTestEntityRegistry::validate_unique_ids() const {
 void FTestEntityRegistry::validate_unique_entity_data() const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::validate_unique_entity_data);
 
+    auto const unique_entities{unique_entity_history_.get_const_view().columns()};
     auto const n{unique_entities.num()};
 
     for (int32 i{0}; i < n; ++i) {
