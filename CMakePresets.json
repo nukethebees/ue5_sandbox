@@ -104,6 +104,22 @@
       }
     },
     {
+      "name": "telemetry-benchmark",
+      "displayName": "SpaceGame telemetry benchmark",
+      "inherits": "development",
+      "cacheVariables": {
+        "SANDBOX_TEST_SUITE": "editor-only"
+      }
+    },
+    {
+      "name": "frame-memory-level-benchmark",
+      "displayName": "SpaceGame frame-memory level benchmark",
+      "inherits": "development",
+      "cacheVariables": {
+        "SANDBOX_TEST_SUITE": "editor-only"
+      }
+    },
+    {
       "name": "shipping",
       "displayName": "Shipping",
       "inherits": "unreal",
@@ -306,6 +322,16 @@
       "targets": ["editor"]
     },
     {
+      "name": "telemetry-benchmark",
+      "configurePreset": "telemetry-benchmark",
+      "targets": ["editor"]
+    },
+    {
+      "name": "frame-memory-level-benchmark",
+      "configurePreset": "frame-memory-level-benchmark",
+      "targets": ["editor"]
+    },
+    {
       "name": "native-soa",
       "configurePreset": "native-soa",
       "targets": ["native-soa-tests", "native-soa-tests-mimalloc", "native-soa-benchmarks", "native-soa-reserve-matrix", "native-soa-reserve-matrix-mimalloc", "codegen-tests"]
@@ -450,7 +476,7 @@
       "configurePreset": "benchmark",
       "filter": {
         "include": {
-          "label": "benchmark"
+          "label": "^benchmark$"
         }
       }
     },
@@ -490,7 +516,27 @@
       "configurePreset": "spark-benchmark",
       "filter": {
         "include": {
-          "label": "spark-benchmark"
+          "label": "^spark-benchmark$"
+        }
+      }
+    },
+    {
+      "name": "telemetry-benchmark",
+      "inherits": "test-base",
+      "configurePreset": "telemetry-benchmark",
+      "filter": {
+        "include": {
+          "label": "^telemetry-benchmark$"
+        }
+      }
+    },
+    {
+      "name": "frame-memory-level-benchmark",
+      "inherits": "test-base",
+      "configurePreset": "frame-memory-level-benchmark",
+      "filter": {
+        "include": {
+          "label": "^frame-memory-level-benchmark$"
         }
       }
     },
@@ -810,6 +856,22 @@
         { "type": "configure", "name": "spark-benchmark" },
         { "type": "build", "name": "spark-benchmark" },
         { "type": "test", "name": "spark-benchmark" }
+      ]
+    },
+    {
+      "name": "telemetry-benchmark",
+      "steps": [
+        { "type": "configure", "name": "telemetry-benchmark" },
+        { "type": "build", "name": "telemetry-benchmark" },
+        { "type": "test", "name": "telemetry-benchmark" }
+      ]
+    },
+    {
+      "name": "frame-memory-level-benchmark",
+      "steps": [
+        { "type": "configure", "name": "frame-memory-level-benchmark" },
+        { "type": "build", "name": "frame-memory-level-benchmark" },
+        { "type": "test", "name": "frame-memory-level-benchmark" }
       ]
     },
     {

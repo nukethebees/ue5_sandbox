@@ -68,11 +68,10 @@ function Resolve-GitCommit {
 function Build-Editor {
     param([string] $SourceDirectory)
 
-    Invoke-Checked -Executable 'cmake' -Arguments @('--preset', 'debug-game') `
+    Invoke-Checked -Executable 'cmake' -Arguments @('--preset', 'frame-memory-level-benchmark') `
         -WorkingDirectory $SourceDirectory
     Invoke-Checked -Executable 'cmake' `
-        -Arguments @('--build', '--preset', 'debug-game', '--target', 'editor', 'core-tests',
-                     'native-tests') `
+        -Arguments @('--build', '--preset', 'frame-memory-level-benchmark') `
         -WorkingDirectory $SourceDirectory
 }
 
@@ -132,7 +131,7 @@ function Invoke-Benchmark {
         [string] $Commit
     )
 
-    $testDescription = (& ctest --preset debug-game-level-tests -N -R $benchmarkPattern `
+    $testDescription = (& ctest --preset frame-memory-level-benchmark -N -R $benchmarkPattern `
         --show-only=json-v1 | Out-String | ConvertFrom-Json)
     if ($LASTEXITCODE -ne 0) {
         throw "Could not read the benchmark command in $SourceDirectory"
