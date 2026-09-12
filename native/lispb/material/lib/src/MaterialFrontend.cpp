@@ -267,6 +267,8 @@ class Analyzer {
             material_.settings.blend_mode = BlendMode::opaque;
         } else if (*value == "masked") {
             material_.settings.blend_mode = BlendMode::masked;
+        } else if (*value == "alpha-composite") {
+            material_.settings.blend_mode = BlendMode::alpha_composite;
         } else {
             fail(form.children[1].token.span, "unknown blend mode '" + std::string{*value} + "'");
         }
@@ -542,6 +544,9 @@ class Analyzer {
         }
         if (head == "camera-vector") {
             return standard_value(form, NodeKind::camera_vector, ValueType::float3);
+        }
+        if (head == "camera-position") {
+            return standard_value(form, NodeKind::camera_position, ValueType::float3);
         }
         if (head == "transform-position") {
             return transform_position(form);

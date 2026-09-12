@@ -7,6 +7,7 @@
 #include "Materials/Material.h"
 #include "Materials/MaterialExpressionAdd.h"
 #include "Materials/MaterialExpressionAppendVector.h"
+#include "Materials/MaterialExpressionCameraPositionWS.h"
 #include "Materials/MaterialExpressionCameraVectorWS.h"
 #include "Materials/MaterialExpressionComponentMask.h"
 #include "Materials/MaterialExpressionConstant.h"
@@ -178,7 +179,8 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
     material->BlendMode = ir.settings.blend_mode == BlendMode::additive    ? BLEND_Additive
                         : ir.settings.blend_mode == BlendMode::translucent ? BLEND_Translucent
                         : ir.settings.blend_mode == BlendMode::opaque      ? BLEND_Opaque
-                                                                           : BLEND_Masked;
+                        : ir.settings.blend_mode == BlendMode::masked      ? BLEND_Masked
+                                                                           : BLEND_AlphaComposite;
     material->OpacityMaskClipValue = static_cast<float>(ir.settings.opacity_mask_clip_value);
     material->SetShadingModel(ir.settings.shading_model == ShadingModel::unlit ? MSM_Unlit
                                                                                : MSM_DefaultLit);
@@ -368,6 +370,9 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
                 break;
             case NodeKind::camera_vector:
                 expression = create_expression(UMaterialExpressionCameraVectorWS::StaticClass());
+                break;
+            case NodeKind::camera_position:
+                expression = create_expression(UMaterialExpressionCameraPositionWS::StaticClass());
                 break;
             case NodeKind::transform_position: {
                 auto* const transform{CastChecked<UMaterialExpressionTransformPosition>(

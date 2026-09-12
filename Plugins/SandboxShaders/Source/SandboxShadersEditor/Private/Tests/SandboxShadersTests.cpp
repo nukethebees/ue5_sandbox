@@ -58,6 +58,8 @@ constexpr TCHAR planet_surface_material_path[]{
     TEXT("/SandboxShaders/Experiments/PlanetAtmosphere/M_PlanetSurface.M_PlanetSurface")};
 constexpr TCHAR planet_atmosphere_material_path[]{
     TEXT("/SandboxShaders/Experiments/PlanetAtmosphere/M_PlanetAtmosphere.M_PlanetAtmosphere")};
+constexpr TCHAR celestial_analytic_material_path[]{
+    TEXT("/SandboxShaders/CelestialBackdrop/M_CelestialAnalytic.M_CelestialAnalytic")};
 constexpr TCHAR construction_material_path[]{
     TEXT("/SandboxShaders/Experiments/ConstructionSpawn/M_ConstructionSpawn.M_ConstructionSpawn")};
 constexpr TCHAR energy_beam_material_path[]{
@@ -252,6 +254,8 @@ TEST_CLASS(ShaderSmoke, "SandboxShaders.ShaderSmoke")
             LoadObject<UMaterial>(nullptr, planet_surface_material_path)};
         auto* const planet_atmosphere_material{
             LoadObject<UMaterial>(nullptr, planet_atmosphere_material_path)};
+        auto* const celestial_analytic_material{
+            LoadObject<UMaterial>(nullptr, celestial_analytic_material_path)};
         auto* const construction_material{
             LoadObject<UMaterial>(nullptr, construction_material_path)};
         auto* const energy_beam_material{LoadObject<UMaterial>(nullptr, energy_beam_material_path)};
@@ -269,6 +273,8 @@ TEST_CLASS(ShaderSmoke, "SandboxShaders.ShaderSmoke")
                                      planet_surface_material) ||
             !TestRunner->TestNotNull(TEXT("Planet atmosphere material loads"),
                                      planet_atmosphere_material) ||
+            !TestRunner->TestNotNull(TEXT("Celestial analytic material loads"),
+                                     celestial_analytic_material) ||
             !TestRunner->TestNotNull(TEXT("Construction spawn material loads"),
                                      construction_material) ||
             !TestRunner->TestNotNull(TEXT("Energy beam material loads"), energy_beam_material)) {
@@ -303,6 +309,9 @@ TEST_CLASS(ShaderSmoke, "SandboxShaders.ShaderSmoke")
         TestRunner->TestTrue(
             TEXT("Planet atmosphere shader compiles without errors"),
             UMaterialEditingLibrary::RecompileMaterial(planet_atmosphere_material).IsEmpty());
+        TestRunner->TestTrue(
+            TEXT("Celestial analytic shader compiles without errors"),
+            UMaterialEditingLibrary::RecompileMaterial(celestial_analytic_material).IsEmpty());
         TestRunner->TestTrue(
             TEXT("Construction spawn shader compiles without errors"),
             UMaterialEditingLibrary::RecompileMaterial(construction_material).IsEmpty());

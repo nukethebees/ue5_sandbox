@@ -133,6 +133,9 @@
   (material tactical-scan-material
     :source "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/TacticalScan.lispb"
     :artifact (project-path "Intermediate/MaterialGen/TacticalScan.smat"))
+  (material celestial-analytic-material
+    :source "Plugins/SandboxShaders/Source/SandboxCelestials/Private/materials/CelestialAnalytic.lispb"
+    :artifact (project-path "Intermediate/MaterialGen/CelestialAnalytic.smat"))
 
   (group slate-production
     :targets (

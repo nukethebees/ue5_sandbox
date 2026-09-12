@@ -18,6 +18,12 @@ enum class ECelestialBackdropStyle : uint8 {
 };
 
 UENUM(BlueprintType)
+enum class ECelestialBackdropRenderMode : uint8 {
+    Layered,
+    Analytic,
+};
+
+UENUM(BlueprintType)
 enum class ECelestialBackdropEmissionPattern : uint8 {
     Noise,
     HiveCells,
@@ -359,6 +365,9 @@ struct SANDBOXCELESTIALS_API FCelestialBackdropSettings {
     float body_radius{50000.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Celestial Backdrop")
+    ECelestialBackdropRenderMode render_mode{ECelestialBackdropRenderMode::Layered};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Celestial Backdrop")
     FVector sun_direction{0.35, -0.45, 0.82};
 
     UPROPERTY(EditAnywhere,
@@ -473,6 +482,9 @@ class SANDBOXCELESTIALS_API ACelestialBackdropActor final : public AActor {
     UPROPERTY(VisibleAnywhere, Category = "Celestial Backdrop")
     TObjectPtr<UStaticMeshComponent> ring_mesh_;
 
+    UPROPERTY(VisibleAnywhere, Category = "Celestial Backdrop")
+    TObjectPtr<UStaticMeshComponent> analytic_mesh_;
+
     UPROPERTY()
     TObjectPtr<UMaterialInterface> surface_material_;
 
@@ -485,6 +497,9 @@ class SANDBOXCELESTIALS_API ACelestialBackdropActor final : public AActor {
     UPROPERTY()
     TObjectPtr<UMaterialInterface> ring_material_;
 
+    UPROPERTY()
+    TObjectPtr<UMaterialInterface> analytic_material_;
+
     UPROPERTY(Transient)
     TObjectPtr<UMaterialInstanceDynamic> surface_instance_;
 
@@ -496,4 +511,7 @@ class SANDBOXCELESTIALS_API ACelestialBackdropActor final : public AActor {
 
     UPROPERTY(Transient)
     TObjectPtr<UMaterialInstanceDynamic> ring_instance_;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UMaterialInstanceDynamic> analytic_instance_;
 };

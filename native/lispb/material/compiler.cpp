@@ -146,6 +146,8 @@ auto kind_name(material_synth::NodeKind const kind) -> std::string_view {
             return "vertex-normal";
         case camera_vector:
             return "camera-vector";
+        case camera_position:
+            return "camera-position";
         case transform_position:
             return "transform-position";
         case scene_texture:
@@ -165,7 +167,8 @@ void dump_ir(std::ostream& stream, material_synth::MaterialIR const& material) {
         material.settings.blend_mode == material_synth::BlendMode::additive      ? "additive"
         : material.settings.blend_mode == material_synth::BlendMode::translucent ? "translucent"
         : material.settings.blend_mode == material_synth::BlendMode::opaque      ? "opaque"
-                                                                                 : "masked"};
+        : material.settings.blend_mode == material_synth::BlendMode::masked      ? "masked"
+                                                                            : "alpha-composite"};
     auto const shading{material.settings.shading_model == material_synth::ShadingModel::unlit
                            ? "unlit"
                            : "default-lit"};

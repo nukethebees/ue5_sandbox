@@ -193,7 +193,7 @@ auto read_node(Reader& reader) -> std::expected<Node, std::string> {
     auto const kind{reader.read_u8()};
     auto const type{read_value_type(reader)};
     auto const input_count{reader.read_size(maximum_collection_size)};
-    if (!kind || *kind > static_cast<std::uint8_t>(NodeKind::shader_call) || !type ||
+    if (!kind || *kind > static_cast<std::uint8_t>(NodeKind::camera_position) || !type ||
         !input_count) {
         return std::unexpected{"invalid material node header"};
     }
@@ -384,7 +384,7 @@ auto deserialize(std::span<std::uint8_t const> const bytes)
         !shading_model || !two_sided || !disable_depth_test || !used_with_instances ||
         !adopt_existing || !opacity_mask_clip_value ||
         *domain > static_cast<std::uint8_t>(MaterialDomain::post_process) ||
-        *blend_mode > static_cast<std::uint8_t>(BlendMode::masked) ||
+        *blend_mode > static_cast<std::uint8_t>(BlendMode::alpha_composite) ||
         *shading_model > static_cast<std::uint8_t>(ShadingModel::unlit) || *two_sided > 1 ||
         *disable_depth_test > 1 || *used_with_instances > 1 || *adopt_existing > 1) {
         return std::unexpected{"malformed compiled material settings"};

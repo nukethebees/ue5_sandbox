@@ -421,6 +421,9 @@ add_migrated_material_ir("planet surface" planet-surface-material
   "${SHADER_MATERIAL_SOURCE_ROOT}/PlanetSurface.lispb" PlanetSurface)
 add_migrated_material_ir("tactical scan" tactical-scan-material
   "${SHADER_MATERIAL_SOURCE_ROOT}/TacticalScan.lispb" TacticalScan)
+add_migrated_material_ir("celestial analytic" celestial-analytic-material
+  "Plugins/SandboxShaders/Source/SandboxCelestials/Private/materials/CelestialAnalytic.lispb"
+  CelestialAnalytic)
 add_custom_target(compile-migrated-materials DEPENDS ${MIGRATED_MATERIAL_ARTIFACTS})
 
 add_unreal_target(editor SandboxEditor)
@@ -846,10 +849,23 @@ add_custom_target(generate-migrated-materials
   COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=MaterialSynth
     "-ArtifactDirectory=${CMAKE_CURRENT_SOURCE_DIR}/Intermediate/MaterialGen"
-    "-ArtifactList=UiGlowComposite,RadarDisplay,EnergyShield,SpaceEnergyField,GlowingCross,VertexRipple,ConstructionSpawn,PlanetAtmosphere,PlanetSurface,TacticalScan"
+    "-ArtifactList=UiGlowComposite,RadarDisplay,EnergyShield,SpaceEnergyField,GlowingCross,VertexRipple,ConstructionSpawn,PlanetAtmosphere,PlanetSurface,TacticalScan,CelestialAnalytic"
     -GenerateAll -RenderOffscreen -AllowCommandletRendering
     -unattended -nop4 -nosplash -nosound -stdout
   DEPENDS editor compile-migrated-materials
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  USES_TERMINAL
+  VERBATIM
+)
+
+add_custom_target(generate-celestial-analytic-material
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    -run=MaterialSynth
+    "-Artifact=${CMAKE_CURRENT_SOURCE_DIR}/Intermediate/MaterialGen/CelestialAnalytic.smat"
+    -Generate -RenderOffscreen -AllowCommandletRendering
+    -unattended -nop4 -nosplash -nosound -stdout
+  DEPENDS editor
+    "${CMAKE_CURRENT_SOURCE_DIR}/Intermediate/MaterialGen/CelestialAnalytic.smat"
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   USES_TERMINAL
   VERBATIM

@@ -76,7 +76,7 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
         material.settings.domain < MaterialDomain::ui ||
         material.settings.domain > MaterialDomain::post_process ||
         material.settings.blend_mode < BlendMode::additive ||
-        material.settings.blend_mode > BlendMode::masked ||
+        material.settings.blend_mode > BlendMode::alpha_composite ||
         material.settings.shading_model < ShadingModel::default_lit ||
         material.settings.shading_model > ShadingModel::unlit ||
         !std::isfinite(material.settings.opacity_mask_clip_value) ||
@@ -93,7 +93,8 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
           material.settings.disable_depth_test ||
           material.settings.used_with_instanced_static_meshes)) ||
         (material.settings.disable_depth_test &&
-         material.settings.blend_mode != BlendMode::translucent)) {
+         material.settings.blend_mode != BlendMode::translucent &&
+         material.settings.blend_mode != BlendMode::alpha_composite)) {
         diagnostics.push_back({{}, 1, 1, "invalid or unsafe material settings"});
     }
 
@@ -152,7 +153,7 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
     auto const node_count{material.nodes.size()};
     for (std::size_t index{}; index < node_count; ++index) {
         auto const& node{material.nodes[index]};
-        if (node.kind < NodeKind::constant || node.kind > NodeKind::shader_call ||
+        if (node.kind < NodeKind::constant || node.kind > NodeKind::camera_position ||
             node.type == ValueType::invalid) {
             report(diagnostics, node.span, "invalid material node kind or type");
             continue;
@@ -301,7 +302,8 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
             }
         } else if (node.kind == NodeKind::world_position ||
                    node.kind == NodeKind::object_position || node.kind == NodeKind::pixel_normal ||
-                   node.kind == NodeKind::vertex_normal || node.kind == NodeKind::camera_vector) {
+                   node.kind == NodeKind::vertex_normal || node.kind == NodeKind::camera_vector ||
+                   node.kind == NodeKind::camera_position) {
             if (node.type != ValueType::float3 || !node.inputs.empty()) {
                 report(diagnostics, node.span, "malformed standard material-value node");
             }
@@ -368,7 +370,8 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
         } else if (output.name == "opacity" &&
                    material.settings.domain == MaterialDomain::surface &&
                    (material.settings.blend_mode == BlendMode::translucent ||
-                    material.settings.blend_mode == BlendMode::additive)) {
+                    material.settings.blend_mode == BlendMode::additive ||
+                    material.settings.blend_mode == BlendMode::alpha_composite)) {
             if (type != ValueType::float1) {
                 report(diagnostics, output.span, "opacity output requires float");
             }

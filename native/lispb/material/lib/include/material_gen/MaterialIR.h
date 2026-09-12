@@ -11,7 +11,7 @@ namespace material_synth {
 enum class ValueType { invalid, float1, float2, float3, float4, texture };
 enum class TextureSamplerType { linear_color, linear_grayscale };
 enum class MaterialDomain { ui, surface, post_process };
-enum class BlendMode { additive, translucent, opaque, masked };
+enum class BlendMode { additive, translucent, opaque, masked, alpha_composite };
 enum class ShadingModel { default_lit, unlit };
 enum class PositionSpace { world, local };
 enum class SceneTexture { post_process_input0, scene_depth };
@@ -42,6 +42,7 @@ enum class NodeKind {
     transform_position,
     scene_texture,
     shader_call,
+    camera_position,
 };
 
 struct NodeHandle {

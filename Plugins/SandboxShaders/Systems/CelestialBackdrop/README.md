@@ -12,7 +12,15 @@ struct feeding a rendering-only component, while Nebula Backdrop and Nebula Volu
 bounded procedural detail and explicit quality costs. The production system keeps those ideas but
 does not share the prototype actor, shader, materials, or parameter contract.
 
-The body uses up to three concentric engine spheres and one optional plane:
+The actor offers two rendering modes with the same settings and profiles:
+
+- **Layered** uses up to three concentric engine spheres and one optional plane. It is the simpler
+  reference path and retains opaque surface depth.
+- **Analytic** uses one translucent sphere proxy and one AlphaComposite material. The pixel shader
+  intersects the body, cloud shell, atmosphere shell, and ring plane analytically, then composites
+  them front-to-back. Disabled features remain branches in that shader, but the body stays one draw.
+
+The layered mode is assembled from:
 
 - An opaque unlit surface writes depth and supplies the silhouette, procedural palette, terminator,
   and optional night-side emission.
@@ -23,9 +31,10 @@ The body uses up to three concentric engine spheres and one optional plane:
 
 All patterns use three-dimensional sphere directions, so there is no longitude seam or polar UV
 pinching. The shaders have fixed bounded work, do not raymarch, and do not sample scene textures.
-The normal maximum cost is four draws per body; disabling clouds, atmosphere, or rings removes the
-corresponding draw. Polar caps, storms, ring shadows, and emission patterns are folded into the
-surface draw.
+The layered mode costs at most four draws per body; disabling clouds, atmosphere, or rings removes
+the corresponding draw. Analytic mode always costs one draw and avoids self-sorting between those
+layers, at the cost of more pixel shader work and translucent scene-depth behaviour. Polar caps,
+storms, ring shadows, and emission patterns are folded into the surface evaluation in both modes.
 
 A physically based atmosphere, a raymarched body, and a camera-facing impostor were deliberately
 not used. They respectively add cost and tuning complexity, add unnecessary volume work, or break
@@ -37,9 +46,11 @@ under the unusually close camera positions this game can produce.
 2. Position it as scenery and set `Body Radius` in centimetres. Uniform actor scaling is supported,
    although using the radius property keeps authored intent clearer.
 3. Set `Sun Direction` to the world-space direction from the body towards its light source.
-4. Assign a **Celestial Backdrop Profile** for a reusable look, tune local settings, or press one of
+4. Select `Render Mode`. Use **Analytic** for the one-draw prototype or **Layered** when opaque
+   surface depth or conventional material inspection is more important.
+5. Assign a **Celestial Backdrop Profile** for a reusable look, tune local settings, or press one of
    the four preset buttons.
-5. Enable rings when needed and set their tilt independently. Clouds rotate around world Z; a
+6. Enable rings when needed and set their tilt independently. Clouds rotate around world Z; a
    negative speed reverses them and zero pauses them.
 
 Changes made in the Details panel update through the construction path. Runtime code may change the
@@ -52,6 +63,14 @@ Create a profile through **Content Browser > Add > Miscellaneous > Data Asset**,
 `CelestialBackdropProfile`, then assign it to any number of backdrop actors. Four editable example
 profiles live under `CelestialBackdrop/Profiles`: Earth-like, Hive world, dark alien, and gas giant.
 Editing a profile refreshes actors that reference it in open editor worlds.
+
+The analytic material is generated from
+`Source/SandboxCelestials/Private/materials/CelestialAnalytic.lispb`. After changing its graph,
+regenerate the asset with:
+
+```text
+cmake --build --preset debug-game --target generate-celestial-analytic-material
+```
 
 ## Important controls
 
@@ -67,14 +86,15 @@ Editing a profile refreshes actors that reference it in open editor worlds.
   emission, and a cheap aligned surface-shadow approximation.
 - **Close Approach:** enablement and the minimum camera-distance ratio.
 
-The shader showcase uses all four supplied profiles. The real `GameRuntime` map includes a distant
-Hive homeworld using the same profile, demonstrating that profile reuse does not couple body size or
-lighting direction between levels.
+The shader showcase uses all four supplied profiles. Earth-like and gas giant use Layered mode;
+Hive world and dark alien use Analytic mode for direct A/B inspection. The real `GameRuntime` map
+uses the analytic path for its distant Hive homeworld. Profiles remain independent of render mode,
+body size, and lighting direction.
 
 ## Close approach
 
-With the close guard enabled, the materials begin shrinking every shell and the ring plane around
-the fixed actor origin when the camera comes inside `outer radius * minimum camera distance ratio`.
+With the close guard enabled, the active geometry and its represented layers shrink around the fixed
+actor origin when the camera comes inside `outer radius * minimum camera distance ratio`.
 The guard uses the ring radius when rings are enabled. Angular size then stops increasing,
 preventing entry through the atmosphere, rings, or surface without moving the actor, ticking, or
 consulting a player camera manager. At the exact body centre the geometry collapses to nothing.
@@ -89,5 +109,10 @@ This is an intentional background-scenery cheat rather than physical traversal.
   graphic than dusty translucent rings.
 - Several overlapping translucent celestial bodies may need ordinary Unreal translucency sort
   priority adjustments.
+- Analytic mode does not write the physical body's depth: its single translucent proxy is sorted as
+  one object. This is appropriate for isolated background scenery, but Layered mode is safer when
+  opaque or translucent geometry must closely intersect a planet.
+- Analytic mode uses bounded sphere and plane intersections rather than raymarching. It cannot
+  represent terrain relief, volumetric clouds, or thick dusty rings without adding another model.
 - The engine sphere is appropriate while the close guard caps screen coverage; this is not a
   walkable or orbit-to-ground planet renderer.

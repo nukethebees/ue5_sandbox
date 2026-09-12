@@ -288,4 +288,270 @@ float3 sbx_celestial_close_approach_wpo(float3 const vertex_world_position,
     return (vertex_world_position - object_world_position) * (scale - 1.0);
 }
 
+bool sbx_celestial_ray_sphere(float3 const ray_origin,
+                              float3 const ray_direction,
+                              float3 const centre,
+                              float const radius,
+                              out float distance_to_hit,
+                              out float3 normal_ws) {
+    float3 const offset = ray_origin - centre;
+    float const projected = dot(offset, ray_direction);
+    float const discriminant = projected * projected - dot(offset, offset) + radius * radius;
+    if (discriminant < 0.0) {
+        distance_to_hit = 0.0;
+        normal_ws = 0.0;
+        return false;
+    }
+
+    float const root = sqrt(discriminant);
+    float const near_distance = -projected - root;
+    float const far_distance = -projected + root;
+    distance_to_hit = near_distance > 0.0 ? near_distance : far_distance;
+    if (distance_to_hit <= 0.0) {
+        normal_ws = 0.0;
+        return false;
+    }
+
+    normal_ws = normalize(ray_origin + ray_direction * distance_to_hit - centre);
+    return true;
+}
+
+float4 sbx_celestial_alpha_over(float4 const foreground, float4 const background) {
+    return float4(foreground.rgb + background.rgb * (1.0 - foreground.a),
+                  foreground.a + background.a * (1.0 - foreground.a));
+}
+
+float4 sbx_celestial_analytic(float3 const pixel_world_position,
+                              float3 const object_world_position,
+                              float3 const camera_world_position,
+                              float3 const local_axis_x,
+                              float3 const local_axis_y,
+                              float3 const local_axis_z,
+                              float3 const ring_axis_x,
+                              float3 const ring_axis_y,
+                              float3 const ring_normal_ws,
+                              float const body_radius,
+                              float const outer_radius,
+                              float const cloud_altitude,
+                              float const atmosphere_thickness,
+                              float3 const sun_direction,
+                              float3 const primary_day_colour,
+                              float3 const secondary_day_colour,
+                              float3 const night_colour,
+                              float3 const emission_colour,
+                              float const body_style,
+                              float const terminator_softness,
+                              float const night_brightness,
+                              float const detail_scale,
+                              float const detail_strength,
+                              float const noise_breakup,
+                              float const stylisation_steps,
+                              float const pattern_seed,
+                              float const band_count,
+                              float const band_strength,
+                              float const band_warp,
+                              float const emission_intensity,
+                              float const emission_threshold,
+                              float const emission_pattern,
+                              float const emission_scale,
+                              float const polar_caps_enabled,
+                              float3 const polar_cap_colour,
+                              float const polar_cap_size,
+                              float const polar_cap_softness,
+                              float const storm_enabled,
+                              float3 const storm_colour,
+                              float const storm_latitude_degrees,
+                              float const storm_longitude_degrees,
+                              float const storm_size,
+                              float const storm_intensity,
+                              float const clouds_enabled,
+                              float3 const cloud_colour,
+                              float3 const cloud_night_colour,
+                              float const cloud_amount,
+                              float const cloud_opacity,
+                              float const cloud_detail_scale,
+                              float const cloud_breakup,
+                              float const cloud_rotation_phase_degrees,
+                              float const cloud_rotation_speed_degrees,
+                              float const atmosphere_enabled,
+                              float3 const atmosphere_colour,
+                              float const atmosphere_density,
+                              float const limb_intensity,
+                              float const limb_falloff,
+                              float const rings_enabled,
+                              float3 const inner_ring_colour,
+                              float3 const outer_ring_colour,
+                              float const ring_inner_radius_fraction,
+                              float const ring_outer_radius_ratio,
+                              float const ring_band_count,
+                              float const ring_band_strength,
+                              float const ring_breakup,
+                              float const ring_edge_softness,
+                              float const ring_emission_intensity,
+                              float const ring_shadow_enabled,
+                              float const ring_shadow_darkness,
+                              float const ring_shadow_width,
+                              float const ring_shadow_softness,
+                              float const close_approach_enabled,
+                              float const minimum_camera_distance_ratio,
+                              float const animation_time) {
+    float const camera_distance = distance(camera_world_position, object_world_position);
+    float const guard_distance =
+        max(outer_radius, 0.001) * max(minimum_camera_distance_ratio, 1.001);
+    float const close_scale =
+        close_approach_enabled >= 0.5 ? saturate(camera_distance / guard_distance) : 1.0;
+    float const effective_body_radius = max(body_radius * close_scale, 0.001);
+    float const cloud_radius = effective_body_radius * (1.0 + max(cloud_altitude, 0.0));
+    float const atmosphere_radius = effective_body_radius * (1.0 + max(atmosphere_thickness, 0.0));
+    float const ring_outer_radius = effective_body_radius * max(ring_outer_radius_ratio, 1.001);
+    float3 const ray_direction = normalize(pixel_world_position - camera_world_position);
+
+    float body_distance;
+    float3 body_normal_ws;
+    bool const body_hit = sbx_celestial_ray_sphere(camera_world_position,
+                                                   ray_direction,
+                                                   object_world_position,
+                                                   effective_body_radius,
+                                                   body_distance,
+                                                   body_normal_ws);
+
+    float4 body_layer = 0.0;
+    if (body_hit) {
+        float3 const body_normal_local = float3(dot(body_normal_ws, normalize(local_axis_x)),
+                                                dot(body_normal_ws, normalize(local_axis_y)),
+                                                dot(body_normal_ws, normalize(local_axis_z)));
+        body_layer = float4(sbx_celestial_surface(body_normal_local,
+                                                  body_normal_ws,
+                                                  sun_direction,
+                                                  primary_day_colour,
+                                                  secondary_day_colour,
+                                                  night_colour,
+                                                  emission_colour,
+                                                  body_style,
+                                                  terminator_softness,
+                                                  night_brightness,
+                                                  detail_scale,
+                                                  detail_strength,
+                                                  noise_breakup,
+                                                  stylisation_steps,
+                                                  pattern_seed,
+                                                  band_count,
+                                                  band_strength,
+                                                  band_warp,
+                                                  emission_intensity,
+                                                  emission_threshold,
+                                                  emission_pattern,
+                                                  emission_scale,
+                                                  polar_caps_enabled,
+                                                  polar_cap_colour,
+                                                  polar_cap_size,
+                                                  polar_cap_softness,
+                                                  storm_enabled,
+                                                  storm_colour,
+                                                  storm_latitude_degrees,
+                                                  storm_longitude_degrees,
+                                                  storm_size,
+                                                  storm_intensity,
+                                                  ring_normal_ws,
+                                                  ring_shadow_enabled * rings_enabled,
+                                                  ring_shadow_darkness,
+                                                  ring_shadow_width,
+                                                  ring_shadow_softness),
+                            1.0);
+    }
+
+    float cloud_distance;
+    float3 cloud_normal_ws;
+    bool const cloud_hit = clouds_enabled >= 0.5 && sbx_celestial_ray_sphere(camera_world_position,
+                                                                             ray_direction,
+                                                                             object_world_position,
+                                                                             cloud_radius,
+                                                                             cloud_distance,
+                                                                             cloud_normal_ws);
+    float4 cloud_layer = 0.0;
+    if (cloud_hit) {
+        float3 const cloud_normal_local = float3(dot(cloud_normal_ws, normalize(local_axis_x)),
+                                                 dot(cloud_normal_ws, normalize(local_axis_y)),
+                                                 dot(cloud_normal_ws, normalize(local_axis_z)));
+        float4 const cloud = sbx_celestial_clouds(cloud_normal_local,
+                                                  cloud_normal_ws,
+                                                  sun_direction,
+                                                  cloud_colour,
+                                                  cloud_night_colour,
+                                                  terminator_softness,
+                                                  cloud_amount,
+                                                  cloud_opacity,
+                                                  cloud_detail_scale,
+                                                  cloud_breakup,
+                                                  pattern_seed,
+                                                  cloud_rotation_phase_degrees,
+                                                  cloud_rotation_speed_degrees,
+                                                  animation_time);
+        cloud_layer = float4(cloud.rgb * cloud.a, cloud.a);
+    }
+
+    float ring_distance = 0.0;
+    float4 ring_layer = 0.0;
+    bool ring_hit = false;
+    float const ring_denominator = dot(ray_direction, normalize(ring_normal_ws));
+    if (rings_enabled >= 0.5 && abs(ring_denominator) > 0.00001) {
+        ring_distance =
+            dot(object_world_position - camera_world_position, normalize(ring_normal_ws)) /
+            ring_denominator;
+        float3 const ring_offset =
+            camera_world_position + ray_direction * ring_distance - object_world_position;
+        float2 const ring_coordinates = float2(dot(ring_offset, normalize(ring_axis_x)),
+                                               dot(ring_offset, normalize(ring_axis_y))) /
+                                        max(ring_outer_radius, 0.001);
+        float4 const ring = sbx_celestial_rings(ring_coordinates * 0.5 + 0.5,
+                                                inner_ring_colour,
+                                                outer_ring_colour,
+                                                ring_inner_radius_fraction,
+                                                ring_band_count,
+                                                ring_band_strength,
+                                                ring_breakup,
+                                                ring_edge_softness,
+                                                ring_emission_intensity,
+                                                pattern_seed);
+        ring_hit = ring_distance > 0.0 && ring.a > 0.0;
+        ring_layer = float4(ring.rgb * ring.a, ring.a);
+    }
+
+    float4 result = body_layer;
+    if (ring_hit && (!body_hit || ring_distance < body_distance)) {
+        if (cloud_hit && cloud_distance < ring_distance) {
+            result = sbx_celestial_alpha_over(cloud_layer,
+                                              sbx_celestial_alpha_over(ring_layer, body_layer));
+        } else {
+            result = sbx_celestial_alpha_over(ring_layer,
+                                              sbx_celestial_alpha_over(cloud_layer, body_layer));
+        }
+    } else {
+        result = sbx_celestial_alpha_over(cloud_layer, body_layer);
+    }
+
+    float atmosphere_distance;
+    float3 atmosphere_normal_ws;
+    bool const atmosphere_hit =
+        atmosphere_enabled >= 0.5 && sbx_celestial_ray_sphere(camera_world_position,
+                                                              ray_direction,
+                                                              object_world_position,
+                                                              atmosphere_radius,
+                                                              atmosphere_distance,
+                                                              atmosphere_normal_ws);
+    if (atmosphere_hit) {
+        float4 const atmosphere = sbx_celestial_atmosphere(atmosphere_normal_ws,
+                                                           -ray_direction,
+                                                           sun_direction,
+                                                           atmosphere_colour,
+                                                           terminator_softness,
+                                                           atmosphere_density,
+                                                           limb_intensity,
+                                                           limb_falloff);
+        result.rgb += atmosphere.rgb;
+    }
+
+    return result;
+}
+
 #endif
