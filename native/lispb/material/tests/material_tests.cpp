@@ -90,7 +90,7 @@ TEST(CompiledMaterial, RoundTripsDeterministically) {
 }
 
 TEST(CompiledMaterial, RejectsWrongVersionCorruptionAndTrailingData) {
-    std::vector<std::uint8_t> wrong_version{'S', 'B', 'X', 'M', 'A', 'T', 'I', 'R', 3, 0, 0, 0};
+    std::vector<std::uint8_t> wrong_version{'S', 'B', 'X', 'M', 'A', 'T', 'I', 'R', 4, 0, 0, 0};
     EXPECT_FALSE(deserialize(wrong_version).has_value());
 
     std::vector<std::uint8_t> truncated{'S', 'B', 'X'};
@@ -112,20 +112,11 @@ TEST(CompiledMaterial, RejectsWrongVersionCorruptionAndTrailingData) {
 }
 
 TEST(MaterialFrontend, LowersWorldSurfaceSettingsInstanceDataAndOpacity) {
-    constexpr std::string_view source{R"(
-(material M_World
-  (asset "/Game/Generated/Materials/M_World")
-  (domain surface)
-  (blend translucent)
-  (shading unlit)
-  (two-sided true)
-  (disable-depth-test true)
-  (usage instanced-static-meshes)
-  (let red (per-instance-custom-data 0))
-  (let opacity (per-instance-custom-data 3))
-  (emissive (custom float3 ((Red float red)) "return Red.xxx;"))
-  (opacity opacity)))"};
-    auto const result{analyze("world.scm", source, TextureResolver{nullptr, resolve})};
+    auto const source_path{std::filesystem::path{SANDBOX_PROJECT_SOURCE_DIR} /
+                           "Plugins/SpaceGame/Source/SpaceGamePresentation/Private/materials/"
+                           "SoftTargetWorld.lispb"};
+    auto const result{analyze(
+        source_path.generic_string(), read(source_path), TextureResolver{nullptr, resolve})};
     ASSERT_TRUE(result.material.has_value())
         << (result.diagnostics.empty() ? "" : result.diagnostics.front().message);
     auto const& material{*result.material};
@@ -135,16 +126,23 @@ TEST(MaterialFrontend, LowersWorldSurfaceSettingsInstanceDataAndOpacity) {
     EXPECT_TRUE(material.settings.two_sided);
     EXPECT_TRUE(material.settings.disable_depth_test);
     EXPECT_TRUE(material.settings.used_with_instanced_static_meshes);
-    ASSERT_EQ(material.nodes.size(), 3);
+    ASSERT_EQ(material.nodes.size(), 13);
     EXPECT_EQ(material.nodes[0].kind, NodeKind::per_instance_custom_data);
     EXPECT_EQ(material.nodes[0].instance_data_index, 0);
-    EXPECT_EQ(material.nodes[1].instance_data_index, 3);
+    EXPECT_EQ(material.nodes[3].instance_data_index, 3);
+    EXPECT_EQ(material.nodes[6].kind, NodeKind::vector_constructor);
+    EXPECT_EQ(material.nodes[6].inputs.size(), 3);
+    EXPECT_EQ(material.nodes[10].kind, NodeKind::lerp);
+    EXPECT_EQ(material.nodes[12].kind, NodeKind::multiply);
+    EXPECT_EQ(material.nodes[12].inputs.size(), 4);
+    EXPECT_TRUE(std::ranges::none_of(
+        material.nodes, [](Node const& node) { return node.kind == NodeKind::custom; }));
     ASSERT_EQ(material.outputs.size(), 2);
     EXPECT_EQ(material.outputs[1].name, "opacity");
     EXPECT_TRUE(validate(material).empty());
 
     CompiledMaterial const compiled{
-        .source_path = "world.scm",
+        .source_path = source_path.generic_string(),
         .source_hash = "0000000000000000000000000000000000000000000000000000000000000000",
         .material = material};
     auto const bytes{serialize(compiled)};
@@ -154,7 +152,48 @@ TEST(MaterialFrontend, LowersWorldSurfaceSettingsInstanceDataAndOpacity) {
     EXPECT_EQ(decoded->material.settings.domain, MaterialDomain::surface);
     EXPECT_EQ(decoded->material.settings.shading_model, ShadingModel::unlit);
     EXPECT_TRUE(decoded->material.settings.used_with_instanced_static_meshes);
-    EXPECT_EQ(decoded->material.nodes[1].instance_data_index, 3);
+    EXPECT_EQ(decoded->material.nodes[3].instance_data_index, 3);
+    EXPECT_EQ(decoded->material.nodes[6].kind, NodeKind::vector_constructor);
+}
+
+TEST(MaterialFrontend, LowersTimeTrigDynamicVectorsAndNaryArithmetic) {
+    constexpr std::string_view source{R"(
+(material M_Pulse
+  (asset "/Game/Generated/Materials/M_Pulse") (domain ui) (blend additive)
+  (parameter color Colour 0.8 0.6 0.2 1.0)
+  (parameter scalar Speed 2.0)
+  (parameter scalar Intensity 4.0)
+  (let phase (* (time) Speed))
+  (let pulse (* 0.5 (+ 1.0 (sin phase))))
+  (let offset (cos phase))
+  (let tint (float3 pulse offset 1.0))
+  (emissive (* tint Intensity 1.0 1.0))))"};
+    auto const result{analyze("pulse.scm", source, TextureResolver{nullptr, resolve})};
+    ASSERT_TRUE(result.material.has_value())
+        << (result.diagnostics.empty() ? "" : result.diagnostics.front().message);
+    auto const& material{*result.material};
+
+    auto const find_binding{[&](std::string_view const name) -> Node const& {
+        auto const binding{
+            std::ranges::find_if(material.bindings, [name](NamedNode const& candidate) {
+                return candidate.name == name;
+            })};
+        EXPECT_NE(binding, material.bindings.end());
+        return material.nodes[binding->node.index];
+    }};
+
+    EXPECT_EQ(find_binding("phase").kind, NodeKind::multiply);
+    EXPECT_EQ(find_binding("pulse").kind, NodeKind::multiply);
+    EXPECT_EQ(find_binding("offset").kind, NodeKind::cosine);
+    EXPECT_EQ(find_binding("tint").kind, NodeKind::vector_constructor);
+    EXPECT_TRUE(std::ranges::any_of(material.nodes,
+                                    [](Node const& node) { return node.kind == NodeKind::time; }));
+    EXPECT_TRUE(std::ranges::any_of(material.nodes,
+                                    [](Node const& node) { return node.kind == NodeKind::sine; }));
+    auto const& emissive{material.nodes[material.outputs.front().node.index]};
+    EXPECT_EQ(emissive.kind, NodeKind::multiply);
+    EXPECT_EQ(emissive.inputs.size(), 4);
+    EXPECT_TRUE(validate(material).empty());
 }
 
 TEST(MaterialFrontend, SupportsEveryNumericExpressionAndPropagatesTypes) {
@@ -240,7 +279,13 @@ INSTANTIATE_TEST_SUITE_P(
         "(material M (asset \"/Game/Generated/Materials/M\") (domain ui) (blend additive) "
         "(emissive (custom texture () \"return 0;\")))",
         "(material M (asset \"/Game/Generated/Materials/M\") (domain ui) (blend additive) "
-        "(emissive (custom float3 () \"\")))"));
+        "(emissive (custom float3 () \"\")))",
+        "(material M (asset \"/Game/Generated/Materials/M\") (domain ui) (blend additive) "
+        "(emissive (float3 (sin (float2 1 2)) 1 1)))",
+        "(material M (asset \"/Game/Generated/Materials/M\") (domain ui) (blend additive) "
+        "(emissive (float3 (time 1) 1 1)))",
+        "(material M (asset \"/Game/Generated/Materials/M\") (domain ui) (blend additive) "
+        "(emissive (float3 (+ 1) 1 1)))"));
 
 }
 }

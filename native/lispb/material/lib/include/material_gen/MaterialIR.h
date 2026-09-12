@@ -25,6 +25,10 @@ enum class NodeKind {
     saturate,
     sample,
     custom,
+    vector_constructor,
+    time,
+    sine,
+    cosine,
 };
 
 struct NodeHandle {

@@ -443,7 +443,7 @@ class Analyzer {
             return std::nullopt;
         }
         if (head == "float2" || head == "float3" || head == "float4") {
-            return vector_constant(form, parse_type(head));
+            return vector(form, parse_type(head));
         }
         if (head == "+" || head == "-" || head == "*" || head == "/") {
             return arithmetic(form, head);
@@ -453,6 +453,12 @@ class Analyzer {
         }
         if (head == "saturate") {
             return saturate(form);
+        }
+        if (head == "time") {
+            return time(form);
+        }
+        if (head == "sin" || head == "cos") {
+            return trigonometric(form, head);
         }
         if (head == "texcoord") {
             return texcoord(form);
@@ -470,41 +476,77 @@ class Analyzer {
         return std::nullopt;
     }
 
-    auto vector_constant(Form const& form, ValueType const type) -> std::optional<NodeHandle> {
+    auto vector(Form const& form, ValueType const type) -> std::optional<NodeHandle> {
         auto const components{component_count(type)};
         if (form.children.size() != components + 1) {
-            fail(form.token.span, "vector constant has the wrong arity");
+            fail(form.token.span, "vector constructor has the wrong arity");
             return std::nullopt;
         }
+
         Node node{.kind = NodeKind::constant,
                   .type = type,
                   .span = material_span(form.token.span),
                   .component_count = components};
+        bool is_constant{true};
         for (std::size_t index{}; index < components; ++index) {
             auto const value{parse_number(form.children[index + 1])};
             if (!value) {
-                fail(form.children[index + 1].token.span,
-                     "vector component must be a finite numeric literal");
-                return std::nullopt;
+                is_constant = false;
+                break;
             }
             node.constant[index] = *value;
+        }
+        if (is_constant) {
+            return add_node(std::move(node));
+        }
+
+        node = Node{.kind = NodeKind::vector_constructor,
+                    .type = type,
+                    .span = material_span(form.token.span)};
+        for (std::size_t index{}; index < components; ++index) {
+            auto const component{expression(form.children[index + 1])};
+            if (!component) {
+                continue;
+            }
+            if (material_.nodes[component->index].type != ValueType::float1) {
+                fail(form.children[index + 1].token.span,
+                     "vector constructor components must be scalar values");
+                continue;
+            }
+            node.inputs.push_back(*component);
+        }
+        if (node.inputs.size() != components) {
+            return std::nullopt;
         }
         return add_node(std::move(node));
     }
 
     auto arithmetic(Form const& form, std::string_view const operation)
         -> std::optional<NodeHandle> {
-        if (form.children.size() != 3) {
-            fail(form.token.span, "arithmetic operations require two operands");
+        auto const is_nary{operation == "+" || operation == "*"};
+        if (form.children.size() < 3 || (!is_nary && form.children.size() != 3)) {
+            fail(form.token.span,
+                 is_nary ? "addition and multiplication require at least two operands"
+                         : "subtraction and division require two operands");
             return std::nullopt;
         }
-        auto const left{expression(form.children[1])};
-        auto const right{expression(form.children[2])};
-        if (!left || !right) {
+
+        std::vector<NodeHandle> inputs;
+        inputs.reserve(form.children.size() - 1);
+        for (std::size_t index{1}; index < form.children.size(); ++index) {
+            auto const input{expression(form.children[index])};
+            if (input) {
+                inputs.push_back(*input);
+            }
+        }
+        if (inputs.size() != form.children.size() - 1) {
             return std::nullopt;
         }
-        auto const type{
-            promote(material_.nodes[left->index].type, material_.nodes[right->index].type)};
+
+        auto type{material_.nodes[inputs.front().index].type};
+        for (std::size_t index{1}; index < inputs.size(); ++index) {
+            type = promote(type, material_.nodes[inputs[index].index].type);
+        }
         if (type == ValueType::invalid) {
             fail(form.token.span, "arithmetic operands must be compatible scalar/vector values");
             return std::nullopt;
@@ -515,7 +557,37 @@ class Analyzer {
                                                : NodeKind::divide};
         return add_node(Node{.kind = kind,
                              .type = type,
-                             .inputs = {*left, *right},
+                             .inputs = std::move(inputs),
+                             .span = material_span(form.token.span)});
+    }
+
+    auto time(Form const& form) -> std::optional<NodeHandle> {
+        if (form.children.size() != 1) {
+            fail(form.token.span, "time requires no operands");
+            return std::nullopt;
+        }
+        return add_node(Node{.kind = NodeKind::time,
+                             .type = ValueType::float1,
+                             .span = material_span(form.token.span)});
+    }
+
+    auto trigonometric(Form const& form, std::string_view const operation)
+        -> std::optional<NodeHandle> {
+        if (form.children.size() != 2) {
+            fail(form.token.span, std::string{operation} + " requires one operand");
+            return std::nullopt;
+        }
+        auto const input{expression(form.children[1])};
+        if (!input) {
+            return std::nullopt;
+        }
+        if (material_.nodes[input->index].type != ValueType::float1) {
+            fail(form.token.span, std::string{operation} + " requires a scalar operand");
+            return std::nullopt;
+        }
+        return add_node(Node{.kind = operation == "sin" ? NodeKind::sine : NodeKind::cosine,
+                             .type = ValueType::float1,
+                             .inputs = {*input},
                              .span = material_span(form.token.span)});
     }
 

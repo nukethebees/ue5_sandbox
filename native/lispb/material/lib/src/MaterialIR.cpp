@@ -134,7 +134,7 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
     auto const node_count{material.nodes.size()};
     for (std::size_t index{}; index < node_count; ++index) {
         auto const& node{material.nodes[index]};
-        if (node.kind < NodeKind::constant || node.kind > NodeKind::custom ||
+        if (node.kind < NodeKind::constant || node.kind > NodeKind::cosine ||
             node.type == ValueType::invalid) {
             report(diagnostics, node.span, "invalid material node kind or type");
             continue;
@@ -168,7 +168,22 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
                 node.type != ValueType::float1 || !node.inputs.empty()) {
                 report(diagnostics, node.span, "malformed per-instance custom-data node");
             }
-        } else if (node.kind >= NodeKind::add && node.kind <= NodeKind::divide) {
+        } else if (node.kind == NodeKind::add || node.kind == NodeKind::multiply) {
+            auto type{ValueType::invalid};
+            if (node.inputs.size() >= 2 && valid_handle(material, node.inputs[0])) {
+                type = material.nodes[node.inputs[0].index].type;
+                for (std::size_t input_index{1}; input_index < node.inputs.size(); ++input_index) {
+                    if (!valid_handle(material, node.inputs[input_index])) {
+                        type = ValueType::invalid;
+                        break;
+                    }
+                    type = promoted(type, material.nodes[node.inputs[input_index].index].type);
+                }
+            }
+            if (type != node.type) {
+                report(diagnostics, node.span, "malformed n-ary arithmetic node");
+            }
+        } else if (node.kind == NodeKind::subtract || node.kind == NodeKind::divide) {
             if (node.inputs.size() != 2 || !valid_handle(material, node.inputs[0]) ||
                 !valid_handle(material, node.inputs[1]) ||
                 promoted(material.nodes[node.inputs[0].index].type,
@@ -218,6 +233,26 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
                      material.nodes[input.node.index].type != input.type)) {
                     report(diagnostics, node.span, "malformed custom input '" + input.name + "'");
                 }
+            }
+        } else if (node.kind == NodeKind::vector_constructor) {
+            if (node.type == ValueType::float1 || !is_numeric(node.type) ||
+                node.inputs.size() != component_count(node.type) ||
+                std::ranges::any_of(node.inputs, [&](NodeHandle const input) {
+                    return !valid_handle(material, input) ||
+                           material.nodes[input.index].type != ValueType::float1;
+                })) {
+                report(diagnostics, node.span, "malformed vector-constructor node");
+            }
+        } else if (node.kind == NodeKind::time) {
+            if (node.type != ValueType::float1 || !node.inputs.empty()) {
+                report(diagnostics, node.span, "malformed time node");
+            }
+        } else if (node.kind == NodeKind::sine || node.kind == NodeKind::cosine) {
+            if (node.type != ValueType::float1 || node.inputs.size() != 1 ||
+                !valid_handle(material, node.inputs[0]) ||
+                (valid_handle(material, node.inputs[0]) &&
+                 material.nodes[node.inputs[0].index].type != ValueType::float1)) {
+                report(diagnostics, node.span, "malformed trigonometric node");
             }
         }
     }

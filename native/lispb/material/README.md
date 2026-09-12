@@ -72,11 +72,39 @@ A source contains one `material` definition with an owned generated asset path. 
 surface/additive or surface/translucent materials are supported. Surface materials may select
 `unlit` shading, two-sided rendering, disabled depth testing, instanced-static-mesh usage, and an
 opacity output. Expressions support numeric literals, symbols, `float2`, `float3`, `float4`, `+`,
-`-`, `*`, `/`, `lerp`, `saturate`, `texcoord`, `per-instance-custom-data`, `sample`, and `custom`
-HLSL.
+`-`, `*`, `/`, `lerp`, `saturate`, `time`, `sin`, `cos`, `texcoord`,
+`per-instance-custom-data`, `sample`, and `custom` HLSL.
+
+`+` and `*` accept two or more operands and remain n-ary operations in the material IR; the Unreal
+backend lowers them to binary expression chains. `float2`, `float3`, and `float4` accept scalar
+expressions as components while literal-only forms remain compact constant nodes. `(time)` returns
+pause-respecting game time in seconds, and `(sin value)` / `(cos value)` use radians.
 
 See
 `Plugins/SandboxUI/Source/SandboxUI/Private/materials/UiGlowComposite.lispb` for the
 canonical example.
 The world-space per-instance example is
 `Plugins/SpaceGame/Source/SpaceGamePresentation/Private/materials/SoftTargetWorld.lispb`.
+
+## Unreal Engine 5.8 backend
+
+MaterialGen creates built-in `UMaterialExpression` objects through `UMaterialEditingLibrary`, which
+sets their material owner, adds them to the expression collection, assigns editor positions and
+GUIDs, and registers parameter expressions. Regeneration validates the native IR and dependencies,
+then completely replaces the expressions of a MaterialGen-owned asset so removed source nodes do
+not remain serialized. `RecompileMaterial` finalizes the change and updates dependent material
+instances before the package is saved.
+
+UE 5.8 has two compiler paths for built-in expressions. The normal path calls
+`Compile(FMaterialCompiler*)`; its arithmetic implementation folds constants and uniform
+expressions and applies identities such as multiplication by zero or one. The newer path calls
+`Build(MIR::FEmitter&)`, where the material IR emitter performs further operator folding and
+simplification. `GenerateHLSLExpression(...)` and `GenerateHLSLStatements(...)`, which appear in
+some older examples, are not present in the UE 5.8 source tree.
+
+The new translator is guarded by `r.Material.Translator.EnableNew`, defaults to disabled, and the
+editor describes it as experimental and incomplete. Generated materials therefore do not enable
+`bEnableNewHLSLGenerator`; emitting built-in expression graphs supports both paths without taking a
+dependency on the experimental MIR emitter API. Custom expressions also implement both compiler
+interfaces, but their HLSL bodies remain opaque functions, so native nodes should be preferred for
+semantics represented by the material IR.

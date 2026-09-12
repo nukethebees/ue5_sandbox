@@ -10,7 +10,7 @@
 
 namespace material_synth {
 
-inline constexpr std::uint32_t compiled_material_version{2};
+inline constexpr std::uint32_t compiled_material_version{3};
 
 struct CompiledMaterial {
     std::string source_path;

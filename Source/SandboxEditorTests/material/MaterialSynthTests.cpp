@@ -7,8 +7,12 @@
 #include "Engine/Texture.h"
 #include "MaterialDomain.h"
 #include "Materials/Material.h"
+#include "Materials/MaterialExpressionAppendVector.h"
 #include "Materials/MaterialExpressionCustom.h"
+#include "Materials/MaterialExpressionLinearInterpolate.h"
+#include "Materials/MaterialExpressionMultiply.h"
 #include "Materials/MaterialExpressionPerInstanceCustomData.h"
+#include "Materials/MaterialExpressionSaturate.h"
 #include "Materials/MaterialExpressionScalarParameter.h"
 #include "Materials/MaterialExpressionTextureObjectParameter.h"
 #include "Materials/MaterialExpressionVectorParameter.h"
@@ -147,6 +151,9 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
         auto const emitted{material_synth::emit(compiled->material, source_path, source_hash)};
         if (!TestRunner->TestTrue(TEXT("World material generation succeeds"),
                                   emitted.material != nullptr && emitted.errors.IsEmpty())) {
+            for (auto const& error : emitted.errors) {
+                TestRunner->AddError(error);
+            }
             return;
         }
 
@@ -163,11 +170,21 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
                              material.GetUsageByFlag(MATUSAGE_InstancedStaticMeshes));
 
         TArray<int32> custom_data_indices;
+        int32 append_count{};
+        int32 lerp_count{};
+        int32 multiply_count{};
+        int32 saturate_count{};
+        int32 custom_count{};
         for (auto const expression : material.GetExpressions()) {
             if (auto const* custom_data{
                     Cast<UMaterialExpressionPerInstanceCustomData>(expression)}) {
                 custom_data_indices.Add(custom_data->DataIndex);
             }
+            append_count += expression->IsA<UMaterialExpressionAppendVector>() ? 1 : 0;
+            lerp_count += expression->IsA<UMaterialExpressionLinearInterpolate>() ? 1 : 0;
+            multiply_count += expression->IsA<UMaterialExpressionMultiply>() ? 1 : 0;
+            saturate_count += expression->IsA<UMaterialExpressionSaturate>() ? 1 : 0;
+            custom_count += expression->IsA<UMaterialExpressionCustom>() ? 1 : 0;
         }
         custom_data_indices.Sort();
         TestRunner->TestEqual(
@@ -177,11 +194,21 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
                                   custom_data_indices[index],
                                   index);
         }
+        TestRunner->TestEqual(
+            TEXT("RGB construction emits two AppendVector nodes"), append_count, 2);
+        TestRunner->TestEqual(TEXT("Range intensity emits one Lerp node"), lerp_count, 1);
+        TestRunner->TestEqual(
+            TEXT("Four-operand product emits three Multiply nodes"), multiply_count, 3);
+        TestRunner->TestEqual(TEXT("Range alpha emits one Saturate node"), saturate_count, 1);
+        TestRunner->TestEqual(TEXT("World material emits no Custom nodes"), custom_count, 0);
 
         auto const* emissive{material.GetExpressionInputForProperty(MP_EmissiveColor)};
         auto const* opacity{material.GetExpressionInputForProperty(MP_Opacity)};
         TestRunner->TestTrue(TEXT("Emissive output is connected"),
                              emissive != nullptr && emissive->Expression != nullptr);
+        TestRunner->TestTrue(TEXT("Emissive output ends at native arithmetic"),
+                             emissive != nullptr &&
+                                 emissive->Expression->IsA<UMaterialExpressionMultiply>());
         TestRunner->TestTrue(TEXT("Opacity output is connected"),
                              opacity != nullptr && opacity->Expression != nullptr);
     }

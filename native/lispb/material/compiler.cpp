@@ -120,6 +120,14 @@ auto kind_name(material_synth::NodeKind const kind) -> std::string_view {
             return "sample";
         case custom:
             return "custom";
+        case vector_constructor:
+            return "vector";
+        case time:
+            return "time";
+        case sine:
+            return "sine";
+        case cosine:
+            return "cosine";
     }
     return "unknown";
 }
