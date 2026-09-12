@@ -9,7 +9,7 @@ types, emit material expressions, compile shaders, and save packages.
 
 - `lib/include/material_gen` contains the public native API and IR.
 - `lib/src` contains parsing, semantic analysis, IR validation, and source hashing.
-- `cli` contains the Material adapter linked into the unified `lispb` frontend.
+- `compiler.cpp` contains the Material adapter linked into the unified `lispb` frontend.
 - `tests` contains GoogleTest coverage for the native library.
 
 ## Commands
@@ -37,10 +37,9 @@ The artifact contains the project-relative source filename, SHA-256 source hash,
 resolved texture dependencies. Repeated compilation of identical inputs produces identical bytes.
 Pass `--depfile <file>` to emit Ninja-compatible source and texture dependency information.
 
-The compiler locates the nearest parent directory containing a `.uproject`. Use
-`--project-root <directory>` when the material source is outside the project tree. Native texture
-validation checks that `/Game/...` or `/<Plugin>/...` resolves to an existing `.uasset`. Unreal
-generation additionally verifies that the object is a texture.
+The unified project file establishes the project root used for source and texture resolution.
+Native texture validation checks that `/Game/...` or `/<Plugin>/...` resolves to an existing
+`.uasset`. Unreal generation additionally verifies that the object is a texture.
 
 The repository target performs native validation directly:
 

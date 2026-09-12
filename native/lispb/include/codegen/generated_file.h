@@ -1,16 +1,9 @@
 #pragma once
 
-#include <filesystem>
-#include <string>
+#include <lispb/compilation.h>
 
 namespace codegen {
 
-struct GeneratedFile {
-    std::filesystem::path path;
-    std::string content;
-    bool format_generated{false};
-
-    auto operator==(GeneratedFile const&) const -> bool = default;
-};
+using GeneratedFile = lispb::TextArtifact;
 
 } // namespace codegen

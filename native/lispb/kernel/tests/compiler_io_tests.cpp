@@ -1,6 +1,7 @@
 #include <kernel_codegen/compiler.h>
 
 #include <gtest/gtest.h>
+#include <lispb/output.h>
 
 #include <filesystem>
 #include <fstream>
@@ -71,46 +72,43 @@ class TemporaryProject {
     std::filesystem::path root_;
 };
 
+auto compile(TemporaryProject const& project,
+             std::vector<std::filesystem::path> inputs,
+             Profile const profile = Profile::unreal,
+             bool const check = false) -> int {
+    auto const root{project.path({})};
+    auto const compilation{
+        compile_sources({.source_root = root, .inputs = std::move(inputs), .profile = profile})};
+    return lispb::publish(
+        compilation,
+        {.path_base = root / "generated", .output_root = root / "generated", .check_only = check});
+}
+
 TEST(KernelCompiler, WritesChecksAndDetectsStaleOutputs) {
     TemporaryProject project{"check-mode"};
-    project.write("manifest.lispb",
-                  R"((kernel-manifest :schema-version 1 :entries ("array_math.lispb")))");
     project.write("array_math.lispb", kernel_source);
-    auto const options{CompileOptions{.manifest = project.path("manifest.lispb"),
-                                      .output_root = project.path("generated")}};
-
-    ASSERT_EQ(compile_manifest(options), 0);
+    ASSERT_EQ(compile(project, {"array_math.lispb"}), 0);
     EXPECT_TRUE(
         project.read("generated/ArrayKernels.h").contains("void COMPILE_FIXTURE_API multiply("));
     EXPECT_TRUE(project.read("generated/ArrayKernels.cpp").contains("lhs[i] * rhs"));
     EXPECT_TRUE(project.read("generated/.lispb-outputs").contains("ArrayKernels.cpp"));
-    EXPECT_EQ(compile_manifest(CompileOptions{
-                  .manifest = options.manifest, .output_root = options.output_root, .check = true}),
-              0);
+    EXPECT_EQ(compile(project, {"array_math.lispb"}, Profile::unreal, true), 0);
 
     project.write("generated/ArrayKernels.h", "stale\n");
-    EXPECT_EQ(compile_manifest(CompileOptions{
-                  .manifest = options.manifest, .output_root = options.output_root, .check = true}),
-              1);
+    EXPECT_EQ(compile(project, {"array_math.lispb"}, Profile::unreal, true), 1);
 }
 
-TEST(KernelCompiler, RejectsOutputCollisionsAcrossManifestEntries) {
+TEST(KernelCompiler, RejectsOutputCollisionsAcrossInputs) {
     TemporaryProject project{"duplicate-outputs"};
-    project.write("manifest.lispb",
-                  R"((kernel-manifest :schema-version 1 :entries ("first.lispb" "second.lispb")))");
     project.write("first.lispb", kernel_source);
     project.write("second.lispb", kernel_source);
 
-    EXPECT_THROW(
-        static_cast<void>(compile_manifest(CompileOptions{
-            .manifest = project.path("manifest.lispb"), .output_root = project.path("generated")})),
-        std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(compile(project, {"first.lispb", "second.lispb"})),
+                 std::invalid_argument);
 }
 
 TEST(KernelCompiler, EmitsOnlyTheSelectedProfile) {
     TemporaryProject project{"profile-selection"};
-    project.write("manifest.lispb",
-                  R"((kernel-manifest :schema-version 1 :entries ("array_math.lispb")))");
     auto source{std::string{kernel_source}};
     auto const insertion{source.find("  (type-set")};
     source.insert(insertion,
@@ -122,10 +120,7 @@ TEST(KernelCompiler, EmitsOnlyTheSelectedProfile) {
                   "    (namespace ml))\n");
     project.write("array_math.lispb", source);
 
-    ASSERT_EQ(compile_manifest(CompileOptions{.manifest = project.path("manifest.lispb"),
-                                              .output_root = project.path("generated"),
-                                              .profile = Profile::standard}),
-              0);
+    ASSERT_EQ(compile(project, {"array_math.lispb"}, Profile::standard), 0);
     EXPECT_TRUE(project.read("generated/standard/Kernels.h").contains("std::span<float const>"));
     EXPECT_TRUE(project.read("generated/standard/KernelsTests.cpp").contains("TEST("));
     EXPECT_FALSE(std::filesystem::exists(project.path("generated/ArrayKernels.h")));
@@ -133,8 +128,6 @@ TEST(KernelCompiler, EmitsOnlyTheSelectedProfile) {
 
 TEST(KernelCompiler, EmitsOnlyTheSelectedAvx2LabKernel) {
     TemporaryProject project{"avx2-lab-profile"};
-    project.write("manifest.lispb",
-                  R"((kernel-manifest :schema-version 1 :entries ("array_math.lispb")))");
     auto source{std::string{kernel_source}};
     source.replace(source.find("    (variants"), 0, "    (aliasing pairwise-disjoint)\n");
     auto const insertion{source.find("  (type-set")};
@@ -151,10 +144,7 @@ TEST(KernelCompiler, EmitsOnlyTheSelectedAvx2LabKernel) {
                   "      (variant out-of-place)))\n");
     project.write("array_math.lispb", source);
 
-    ASSERT_EQ(compile_manifest(CompileOptions{.manifest = project.path("manifest.lispb"),
-                                              .output_root = project.path("generated"),
-                                              .profile = Profile::unreal_avx2_lab}),
-              0);
+    ASSERT_EQ(compile(project, {"array_math.lispb"}, Profile::unreal_avx2_lab), 0);
     EXPECT_TRUE(project.read("generated/lab/Kernels.h").contains("multiply_avx2"));
     EXPECT_TRUE(project.read("generated/lab/Kernels.cpp").contains("_mm256_mul_ps"));
     EXPECT_FALSE(std::filesystem::exists(project.path("generated/ArrayKernels.h")));
@@ -162,8 +152,6 @@ TEST(KernelCompiler, EmitsOnlyTheSelectedAvx2LabKernel) {
 
 TEST(KernelCompiler, EmitsIsolatedNativeSimdLabSources) {
     TemporaryProject project{"native-simd-lab-profile"};
-    project.write("manifest.lispb",
-                  R"((kernel-manifest :schema-version 1 :entries ("array_math.lispb")))");
     auto source{std::string{kernel_source}};
     source.replace(source.find("    (variants"), 0, "    (aliasing pairwise-disjoint)\n");
     auto const insertion{source.find("  (type-set")};
@@ -182,10 +170,7 @@ TEST(KernelCompiler, EmitsIsolatedNativeSimdLabSources) {
                   "      (variant out-of-place)))\n");
     project.write("array_math.lispb", source);
 
-    ASSERT_EQ(compile_manifest(CompileOptions{.manifest = project.path("manifest.lispb"),
-                                              .output_root = project.path("generated"),
-                                              .profile = Profile::native_x86_simd_lab}),
-              0);
+    ASSERT_EQ(compile(project, {"array_math.lispb"}, Profile::native_x86_simd_lab), 0);
     EXPECT_TRUE(project.read("generated/native/Kernels.h").contains("X86SimdBackend"));
     EXPECT_TRUE(project.read("generated/native/KernelsAvx2.cpp").contains("_mm256_mul_ps"));
     EXPECT_TRUE(project.read("generated/native/KernelsAvx512.cpp").contains("_mm512_mul_ps"));

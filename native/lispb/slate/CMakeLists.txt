@@ -1,15 +1,14 @@
 add_library(slate-codegen-lib
   src/compiler.cpp
-  src/lexer.cpp
-  src/manifest.cpp
   src/parser.cpp
   src/preprocessor.cpp
   src/renderer.cpp
 )
 target_compile_features(slate-codegen-lib PUBLIC cxx_std_23)
 target_include_directories(slate-codegen-lib PUBLIC include)
-target_link_libraries(slate-codegen-lib PRIVATE
-  lispb-output
+target_link_libraries(slate-codegen-lib
+  PUBLIC lispb-output
+  PRIVATE
   lispb-syntax
   sandbox::codegen_warnings
 )

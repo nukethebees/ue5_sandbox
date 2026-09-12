@@ -1,4 +1,5 @@
 add_library(lispb-syntax
+  src/fields.cpp
   src/lexer.cpp
   src/reader.cpp
 )

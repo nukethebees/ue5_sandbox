@@ -1,14 +1,9 @@
-#include <codegen/manifest.h>
+#include <codegen/source_loader.h>
 
 #include <codegen/manifest_error.h>
-#include <codegen/sexpr/reader.h>
+#include <codegen/sexpr/fields.h>
 
-#include <charconv>
-#include <cmath>
 #include <fstream>
-#include <initializer_list>
-#include <map>
-#include <set>
 #include <span>
 #include <string_view>
 #include <utility>
@@ -18,7 +13,6 @@ namespace {
 
 using sexpr::Form;
 using sexpr::SourceSpan;
-using sexpr::TokenKind;
 
 [[noreturn]] void fail(SourceSpan const& span, std::string const& message) {
     throw ManifestError{span.path + ":" + std::to_string(span.line) + ":" +
@@ -41,141 +35,26 @@ auto read_document(std::filesystem::path const& path) -> std::vector<Form> {
     }
 }
 
-class Fields {
+class Fields : public sexpr::Fields {
   public:
     Fields(Form const& form, std::string_view const expected_head, std::size_t const positionals)
-        : form_{form} {
-        if (!form.is_list() || form.head() != expected_head) {
-            fail(form.token.span, "expected '" + std::string{expected_head} + "' form");
-        }
-        if (form.children.size() < positionals + 1) {
-            fail(form.token.span,
-                 "'" + std::string{expected_head} + "' requires " + std::to_string(positionals) +
-                     " positional value" + (positionals == 1 ? "" : "s"));
-        }
-
-        for (std::size_t index{positionals + 1}; index < form.children.size();) {
-            auto const& child{form.children[index]};
-            if (child.token.kind == TokenKind::keyword) {
-                if (index + 1 >= form.children.size() ||
-                    form.children[index + 1].token.kind == TokenKind::keyword) {
-                    fail(child.token.span, "property ':" + child.token.text + "' requires a value");
-                }
-                if (!properties_.emplace(child.token.text, &form.children[index + 1]).second) {
-                    fail(child.token.span, "duplicate property ':" + child.token.text + "'");
-                }
-                property_spans_.emplace(child.token.text, child.token.span);
-                index += 2;
-                continue;
-            }
-            if (!child.is_list()) {
-                fail(child.token.span, "expected a property or nested declaration");
-            }
-            declarations_.push_back(&child);
-            ++index;
-        }
-    }
-
-    auto positional(std::size_t const index) const -> Form const& {
-        return form_.children.at(index + 1);
-    }
-
-    auto optional(std::string_view const name) const -> Form const* {
-        auto const found{properties_.find(name)};
-        return found == properties_.end() ? nullptr : found->second;
-    }
-
-    auto required(std::string_view const name) const -> Form const& {
-        auto const* value{optional(name)};
-        if (value == nullptr) {
-            fail(form_.token.span, "missing required property ':" + std::string{name} + "'");
-        }
-        return *value;
-    }
-
-    auto declarations() const -> std::span<Form const* const> { return declarations_; }
-
-    void validate(std::initializer_list<std::string_view> const properties,
-                  std::initializer_list<std::string_view> const declarations = {}) const {
-        std::set<std::string_view> const allowed_properties{properties};
-        for (auto const& [name, unused] : properties_) {
-            static_cast<void>(unused);
-            if (!allowed_properties.contains(name)) {
-                fail(property_spans_.at(name), "unknown property ':" + name + "'");
-            }
-        }
-
-        std::set<std::string_view> const allowed_declarations{declarations};
-        for (auto const* declaration : declarations_) {
-            auto const head{declaration->head()};
-            if (head.empty()) {
-                fail(declaration->token.span, "nested declaration must begin with a symbol");
-            }
-            if (!allowed_declarations.contains(head)) {
-                fail(declaration->token.span,
-                     "unexpected nested declaration '" + std::string{head} + "'");
-            }
-        }
-    }
-  private:
-    Form const& form_;
-    std::map<std::string, Form const*, std::less<>> properties_;
-    std::map<std::string, SourceSpan, std::less<>> property_spans_;
-    std::vector<Form const*> declarations_;
+        : sexpr::Fields{form, expected_head, positionals, fail} {}
 };
 
 auto text(Form const& form, std::string_view const purpose) -> std::string {
-    if (form.is_list() ||
-        (form.token.kind != TokenKind::atom && form.token.kind != TokenKind::string)) {
-        fail(form.token.span, std::string{purpose} + " must be text or a symbol");
-    }
-    return form.token.text;
+    return sexpr::text(form, purpose, fail);
 }
 
 auto boolean(Form const& form, std::string_view const purpose) -> bool {
-    if (!form.is_list() && form.token.kind == TokenKind::atom) {
-        if (form.token.text == "true") {
-            return true;
-        }
-        if (form.token.text == "false") {
-            return false;
-        }
-    }
-    fail(form.token.span, std::string{purpose} + " must be 'true' or 'false'");
-}
-
-auto integer(Form const& form, std::string_view const purpose) -> int {
-    auto const value{text(form, purpose)};
-    int result{};
-    auto const [position,
-                error]{std::from_chars(value.data(), value.data() + value.size(), result)};
-    if (error != std::errc{} || position != value.data() + value.size()) {
-        fail(form.token.span, std::string{purpose} + " must be an integer");
-    }
-    return result;
+    return sexpr::boolean(form, purpose, fail);
 }
 
 auto number(Form const& form, std::string_view const purpose) -> double {
-    auto const value{text(form, purpose)};
-    double result{};
-    auto const [position,
-                error]{std::from_chars(value.data(), value.data() + value.size(), result)};
-    if (error != std::errc{} || position != value.data() + value.size() || !std::isfinite(result)) {
-        fail(form.token.span, std::string{purpose} + " must be a finite number");
-    }
-    return result;
+    return sexpr::number(form, purpose, fail);
 }
 
 auto text_list(Form const& form, std::string_view const purpose) -> std::vector<std::string> {
-    if (!form.is_list()) {
-        fail(form.token.span, std::string{purpose} + " must be a list");
-    }
-    std::vector<std::string> result;
-    result.reserve(form.children.size());
-    for (auto const& child : form.children) {
-        result.push_back(text(child, purpose));
-    }
-    return result;
+    return sexpr::text_list(form, purpose, fail);
 }
 
 auto optional_text(Fields const& fields, std::string_view const name)
@@ -915,39 +794,6 @@ auto load_types(std::filesystem::path const& path) -> std::map<std::string, CppT
 }
 
 } // namespace
-
-auto load_manifest(std::filesystem::path const& path) -> Manifest {
-    auto const forms{read_document(path)};
-    if (forms.size() != 1 || forms.front().head() != "codegen-manifest") {
-        auto const span{forms.empty() ? SourceSpan{1, 1, path.string(), {}}
-                                      : forms.front().token.span};
-        fail(span, "manifest must contain exactly one 'codegen-manifest' form");
-    }
-    Fields const fields{forms.front(), "codegen-manifest", 0};
-    fields.validate({"schema-version", "types", "modules"});
-    auto const version{integer(fields.required("schema-version"), "schema version")};
-    if (version != manifest_schema_version) {
-        if (version == 1) {
-            fail(fields.required("schema-version").token.span,
-                 "schema version 1 is obsolete; version " +
-                     std::to_string(manifest_schema_version) +
-                     " replaces function 'suffix' with 'const' and 'noexcept' properties");
-        }
-        fail(fields.required("schema-version").token.span,
-             "unsupported schema version " + std::to_string(version) + "; expected " +
-                 std::to_string(manifest_schema_version));
-    }
-
-    auto const directory{path.parent_path()};
-    auto const types_path{directory / text(fields.required("types"), "types file")};
-    auto const module_names{text_list(fields.required("modules"), "module files")};
-    std::vector<std::filesystem::path> module_paths;
-    module_paths.reserve(module_names.size());
-    for (auto const& module : module_names) {
-        module_paths.push_back(directory / module);
-    }
-    return load_sources(types_path, module_paths);
-}
 
 auto load_sources(std::filesystem::path const& types_path,
                   std::span<std::filesystem::path const> const module_paths) -> Manifest {

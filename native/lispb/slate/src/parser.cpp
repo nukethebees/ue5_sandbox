@@ -10,11 +10,17 @@
 namespace slate_codegen::detail {
 namespace {
 
+using codegen::sexpr::Form;
+
 class Parser {
   public:
-    Parser(std::string_view const path, std::vector<Token> tokens)
-        : path_{path}
-        , tokens_{std::move(tokens)} {}
+    Parser(std::string_view const path, std::vector<Form> const& forms)
+        : path_{path} {
+        for (auto const& form : forms) {
+            flatten(form);
+        }
+        tokens_.push_back(Token{TokenKind::end, {}, SourceSpan{.path = std::string{path}}});
+    }
 
     auto parse() -> Document {
         Document document;
@@ -40,6 +46,16 @@ class Parser {
         ParameterKind kind;
         std::size_t uses{};
     };
+
+    void flatten(Form const& form) {
+        tokens_.push_back(form.token);
+        for (auto const& child : form.children) {
+            flatten(child);
+        }
+        if (form.is_list()) {
+            tokens_.push_back(form.closing);
+        }
+    }
 
     auto current() const -> Token const& { return tokens_[index_]; }
 
@@ -715,8 +731,8 @@ class Parser {
 
 }
 
-auto parse(std::string_view const path, std::vector<Token> tokens) -> Document {
-    return Parser{path, std::move(tokens)}.parse();
+auto parse(std::string_view const path, std::vector<Form> forms) -> Document {
+    return Parser{path, forms}.parse();
 }
 
 }

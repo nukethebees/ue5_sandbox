@@ -1,7 +1,7 @@
 #include "parser.h"
 #include "renderer.h"
 
-#include <codegen/sexpr/lexer.h>
+#include <codegen/sexpr/reader.h>
 
 #include <gtest/gtest.h>
 
@@ -118,8 +118,8 @@ auto occurrence_count(std::string_view text, std::string_view const value) -> st
     }
 }
 
-auto render_source(std::string_view const source) -> std::vector<codegen::GeneratedFile> {
-    auto const document{parse("test.lispb", codegen::sexpr::lex("test.lispb", source))};
+auto render_source(std::string_view const source) -> std::vector<lispb::TextArtifact> {
+    auto const document{parse("test.lispb", codegen::sexpr::read_forms("test.lispb", source))};
     return render(document.modules[0], Profile::unreal);
 }
 
@@ -145,7 +145,8 @@ auto literal_source(std::string_view const types, std::string_view const literal
 }
 
 TEST(KernelParser, ParsesTypedMapDeclaration) {
-    auto const document{parse("test.lispb", codegen::sexpr::lex("test.lispb", valid_source))};
+    auto const document{
+        parse("test.lispb", codegen::sexpr::read_forms("test.lispb", valid_source))};
 
     ASSERT_EQ(document.modules.size(), 1);
     ASSERT_EQ(document.modules[0].operations.size(), 1);
@@ -172,7 +173,8 @@ TEST(KernelRenderer, GeneratesConcreteOverloadsAndSourceLoops) {
 }
 
 TEST(KernelRenderer, GeneratesStandardLibraryBindingsAndTests) {
-    auto const document{parse("test.lispb", codegen::sexpr::lex("test.lispb", standard_source))};
+    auto const document{
+        parse("test.lispb", codegen::sexpr::read_forms("test.lispb", standard_source))};
     auto const files{render(document.modules[0], Profile::standard)};
 
     ASSERT_EQ(files.size(), 3);
@@ -191,7 +193,8 @@ TEST(KernelRenderer, GeneratesStandardLibraryBindingsAndTests) {
 }
 
 TEST(KernelRenderer, GeneratesOneSelectedAvx2LabVariant) {
-    auto const document{parse("test.lispb", codegen::sexpr::lex("test.lispb", avx2_lab_source))};
+    auto const document{
+        parse("test.lispb", codegen::sexpr::read_forms("test.lispb", avx2_lab_source))};
     auto const files{render(document.modules[0], Profile::unreal_avx2_lab)};
 
     ASSERT_EQ(files.size(), 2);
@@ -223,7 +226,7 @@ TEST(KernelParser, ValidatesAvx2LabSelection) {
         auto source{std::string{avx2_lab_source}};
         source.replace(source.find(needle), needle.size(), replacement);
         EXPECT_THROW(
-            static_cast<void>(parse("bad.lispb", codegen::sexpr::lex("bad.lispb", source))),
+            static_cast<void>(parse("bad.lispb", codegen::sexpr::read_forms("bad.lispb", source))),
             std::runtime_error);
     }
 }
@@ -233,17 +236,18 @@ TEST(KernelParser, RequiresSelectionOnlyForAvx2LabProfile) {
     auto const selection_begin{missing_selection.find("    (select")};
     auto const selection_end{missing_selection.find("))\n  (type-set", selection_begin)};
     missing_selection.erase(selection_begin, selection_end + 2 - selection_begin);
-    EXPECT_THROW(
-        static_cast<void>(parse("bad.lispb", codegen::sexpr::lex("bad.lispb", missing_selection))),
-        std::runtime_error);
+    EXPECT_THROW(static_cast<void>(parse(
+                     "bad.lispb", codegen::sexpr::read_forms("bad.lispb", missing_selection))),
+                 std::runtime_error);
 
     auto standard_with_selection{std::string{avx2_lab_source}};
     standard_with_selection.replace(standard_with_selection.find("unreal-avx2-lab"),
                                     std::string{"unreal-avx2-lab"}.size(),
                                     "standard");
-    EXPECT_THROW(static_cast<void>(
-                     parse("bad.lispb", codegen::sexpr::lex("bad.lispb", standard_with_selection))),
-                 std::runtime_error);
+    EXPECT_THROW(
+        static_cast<void>(
+            parse("bad.lispb", codegen::sexpr::read_forms("bad.lispb", standard_with_selection))),
+        std::runtime_error);
 }
 
 TEST(KernelRenderer, RejectsOperationsOutsideTheAvx2LabBoundary) {
@@ -254,7 +258,7 @@ TEST(KernelRenderer, RejectsOperationsOutsideTheAvx2LabBoundary) {
              {"(aliasing pairwise-disjoint)", "(aliasing output-disjoint)"}}) {
         auto source{std::string{avx2_lab_source}};
         source.replace(source.find(needle), needle.size(), replacement);
-        auto const document{parse("test.lispb", codegen::sexpr::lex("test.lispb", source))};
+        auto const document{parse("test.lispb", codegen::sexpr::read_forms("test.lispb", source))};
         EXPECT_THROW(static_cast<void>(render(document.modules[0], Profile::unreal_avx2_lab)),
                      std::invalid_argument);
     }
@@ -277,7 +281,7 @@ TEST(KernelRenderer, GeneratesIsolatedNativeSimdLabSources) {
                   "      (type float)\n"
                   "      (storage array array scalar)\n"
                   "      (variant out-of-place)))\n");
-    auto const document{parse("test.lispb", codegen::sexpr::lex("test.lispb", source))};
+    auto const document{parse("test.lispb", codegen::sexpr::read_forms("test.lispb", source))};
     auto const files{render(document.modules[0], Profile::native_x86_simd_lab)};
 
     ASSERT_EQ(files.size(), 4);
@@ -310,7 +314,8 @@ TEST(KernelRenderer, GeneratesIsolatedNativeSimdLabSources) {
 }
 
 TEST(KernelRenderer, GeneratesNativeSumReduction) {
-    auto const document{parse("test.lispb", codegen::sexpr::lex("test.lispb", sum_lab_source))};
+    auto const document{
+        parse("test.lispb", codegen::sexpr::read_forms("test.lispb", sum_lab_source))};
     auto const files{render(document.modules[0], Profile::native_x86_simd_lab)};
 
     ASSERT_EQ(files.size(), 6);
@@ -359,20 +364,21 @@ TEST(KernelParser, KeepsSoaosInsideTheNarrowNativeLabBoundary) {
     auto unsupported_width{std::string{sum_lab_source}};
     unsupported_width.replace(
         unsupported_width.find("(soaos 16)"), std::string{"(soaos 16)"}.size(), "(soaos 8)");
-    EXPECT_THROW(
-        static_cast<void>(parse("bad.lispb", codegen::sexpr::lex("bad.lispb", unsupported_width))),
-        std::runtime_error);
+    EXPECT_THROW(static_cast<void>(parse(
+                     "bad.lispb", codegen::sexpr::read_forms("bad.lispb", unsupported_width))),
+                 std::runtime_error);
 
     auto duplicate{std::string{sum_lab_source}};
     duplicate.insert(duplicate.find("    (soaos 16)"), "    (soaos 16)\n");
-    EXPECT_THROW(static_cast<void>(parse("bad.lispb", codegen::sexpr::lex("bad.lispb", duplicate))),
-                 std::runtime_error);
+    EXPECT_THROW(
+        static_cast<void>(parse("bad.lispb", codegen::sexpr::read_forms("bad.lispb", duplicate))),
+        std::runtime_error);
 
     auto unsupported_profile{std::string{standard_source}};
     unsupported_profile.insert(unsupported_profile.find("    (namespace ml::standard)"),
                                "    (soaos 16)\n");
-    EXPECT_THROW(static_cast<void>(
-                     parse("bad.lispb", codegen::sexpr::lex("bad.lispb", unsupported_profile))),
+    EXPECT_THROW(static_cast<void>(parse(
+                     "bad.lispb", codegen::sexpr::read_forms("bad.lispb", unsupported_profile))),
                  std::runtime_error);
 }
 
@@ -385,8 +391,9 @@ TEST(KernelParser, RequiresRelaxedSourcesForRelaxedFloatingPointMode) {
     auto const relaxed_avx512_end{source.find('\n', relaxed_avx512) + 1};
     source.erase(relaxed_avx512, relaxed_avx512_end - relaxed_avx512);
 
-    EXPECT_THROW(static_cast<void>(parse("bad.lispb", codegen::sexpr::lex("bad.lispb", source))),
-                 std::runtime_error);
+    EXPECT_THROW(
+        static_cast<void>(parse("bad.lispb", codegen::sexpr::read_forms("bad.lispb", source))),
+        std::runtime_error);
 }
 
 TEST(KernelParser, KeepsSumReductionsInsideTheNarrowNativeLabBoundary) {
@@ -394,9 +401,9 @@ TEST(KernelParser, KeepsSumReductionsInsideTheNarrowNativeLabBoundary) {
     auto const array_operand{scalar_operand.find("(operand rhs array)")};
     scalar_operand.replace(
         array_operand, std::string{"(operand rhs array)"}.size(), "(operand rhs scalar)");
-    EXPECT_THROW(
-        static_cast<void>(parse("bad.lispb", codegen::sexpr::lex("bad.lispb", scalar_operand))),
-        std::runtime_error);
+    EXPECT_THROW(static_cast<void>(
+                     parse("bad.lispb", codegen::sexpr::read_forms("bad.lispb", scalar_operand))),
+                 std::runtime_error);
 
     constexpr std::string_view standard_emission = R"(
 (kernel-module reductions
@@ -413,9 +420,9 @@ TEST(KernelParser, KeepsSumReductionsInsideTheNarrowNativeLabBoundary) {
     (aliasing pairwise-disjoint)
     (expression (* lhs rhs))))
 )";
-    EXPECT_THROW(
-        static_cast<void>(parse("bad.lispb", codegen::sexpr::lex("bad.lispb", standard_emission))),
-        std::runtime_error);
+    EXPECT_THROW(static_cast<void>(parse(
+                     "bad.lispb", codegen::sexpr::read_forms("bad.lispb", standard_emission))),
+                 std::runtime_error);
 }
 
 TEST(KernelRenderer, RejectsInvalidIntegralReferenceFixtures) {
@@ -440,7 +447,7 @@ TEST(KernelRenderer, RejectsInvalidIntegralReferenceFixtures) {
 
     for (auto const expression : {"(* (* data 50000) 50000)", "(/ data 0)"}) {
         auto const source{std::string{prefix} + expression + std::string{suffix}};
-        auto const document{parse("test.lispb", codegen::sexpr::lex("test.lispb", source))};
+        auto const document{parse("test.lispb", codegen::sexpr::read_forms("test.lispb", source))};
         EXPECT_THROW(static_cast<void>(render(document.modules[0], Profile::standard)),
                      std::invalid_argument);
     }
@@ -469,7 +476,7 @@ TEST(KernelReferenceEvaluator, EvaluatesEveryOperatorForEveryNumericType) {
       (out-of-place calculate))))
 )";
 
-    auto const document{parse("test.lispb", codegen::sexpr::lex("test.lispb", source))};
+    auto const document{parse("test.lispb", codegen::sexpr::read_forms("test.lispb", source))};
     auto const files{render(document.modules[0], Profile::standard)};
 
     ASSERT_EQ(files.size(), 3);
@@ -480,7 +487,8 @@ TEST(KernelReferenceEvaluator, EvaluatesEveryOperatorForEveryNumericType) {
 }
 
 TEST(KernelRenderer, SkipsModulesWithoutTheSelectedProfile) {
-    auto const document{parse("test.lispb", codegen::sexpr::lex("test.lispb", valid_source))};
+    auto const document{
+        parse("test.lispb", codegen::sexpr::read_forms("test.lispb", valid_source))};
 
     EXPECT_TRUE(render(document.modules[0], Profile::standard).empty());
 }
@@ -489,23 +497,25 @@ TEST(KernelParser, RejectsInvalidEmissionProfiles) {
     auto unknown{std::string{valid_source}};
     unknown.replace(
         unknown.find("emit unreal"), std::string{"emit unreal"}.size(), "emit portable");
-    EXPECT_THROW(static_cast<void>(parse("bad.lispb", codegen::sexpr::lex("bad.lispb", unknown))),
-                 std::runtime_error);
+    EXPECT_THROW(
+        static_cast<void>(parse("bad.lispb", codegen::sexpr::read_forms("bad.lispb", unknown))),
+        std::runtime_error);
 
     auto duplicate{std::string{valid_source}};
     auto const emission_begin{duplicate.find("  (emit unreal")};
     auto const emission_end{duplicate.find("\n  (type-set", emission_begin)};
     duplicate.insert(emission_end, duplicate.substr(emission_begin, emission_end - emission_begin));
-    EXPECT_THROW(static_cast<void>(parse("bad.lispb", codegen::sexpr::lex("bad.lispb", duplicate))),
-                 std::runtime_error);
+    EXPECT_THROW(
+        static_cast<void>(parse("bad.lispb", codegen::sexpr::read_forms("bad.lispb", duplicate))),
+        std::runtime_error);
 
     auto ignored_export{std::string{standard_source}};
     ignored_export.replace(ignored_export.find("    (namespace ml::standard)"),
                            std::string{"    (namespace ml::standard)"}.size(),
                            "    (namespace ml::standard)\n    (export UNUSED_API)");
-    EXPECT_THROW(
-        static_cast<void>(parse("bad.lispb", codegen::sexpr::lex("bad.lispb", ignored_export))),
-        std::runtime_error);
+    EXPECT_THROW(static_cast<void>(
+                     parse("bad.lispb", codegen::sexpr::read_forms("bad.lispb", ignored_export))),
+                 std::runtime_error);
 }
 
 TEST(KernelRenderer, ExpandsStorageCartesianProductWithoutRewritingExpression) {
@@ -554,7 +564,7 @@ TEST(KernelRenderer, PairwiseDisjointRestrictsAndChecksEveryArray) {
 TEST(KernelRenderer, StandardPairwiseDisjointChecksEveryArray) {
     auto source{std::string{standard_source}};
     source.replace(source.find("(variants"), 0, "(aliasing pairwise-disjoint)\n    ");
-    auto const document{parse("test.lispb", codegen::sexpr::lex("test.lispb", source))};
+    auto const document{parse("test.lispb", codegen::sexpr::read_forms("test.lispb", source))};
     auto const files{render(document.modules[0], Profile::standard)};
 
     EXPECT_TRUE(files[1].content.contains(
@@ -600,7 +610,7 @@ TEST(KernelRenderer, RendersNamedConstantsForEachConcreteFloatingType) {
     EXPECT_TRUE(files[1].content.contains("std::numeric_limits<double>::quiet_NaN()"));
     EXPECT_TRUE(files[1].content.contains("-std::numeric_limits<double>::infinity()"));
 
-    auto const document{parse("test.lispb", codegen::sexpr::lex("test.lispb", source))};
+    auto const document{parse("test.lispb", codegen::sexpr::read_forms("test.lispb", source))};
     auto const standard_files{render(document.modules[0], Profile::standard)};
 
     EXPECT_TRUE(standard_files[1].content.contains("#include <limits>"));
@@ -653,7 +663,7 @@ TEST(KernelParser, RejectsUnknownExpressionOperatorWithLocation) {
     source.replace(source.find("(* lhs rhs)"), std::string{"(* lhs rhs)"}.size(), "(% lhs rhs)");
 
     try {
-        static_cast<void>(parse("bad.lispb", codegen::sexpr::lex("bad.lispb", source)));
+        static_cast<void>(parse("bad.lispb", codegen::sexpr::read_forms("bad.lispb", source)));
         FAIL() << "Expected parsing to fail";
     } catch (std::runtime_error const& error) {
         EXPECT_NE(std::string{error.what()}.find("bad.lispb:"), std::string::npos);
@@ -668,8 +678,9 @@ TEST(KernelParser, RejectsDuplicateStructuralVariants) {
                    std::string{"(out-of-place multiply)"}.size(),
                    "(out-of-place multiply) (out-of-place multiply_again)");
 
-    EXPECT_THROW(static_cast<void>(parse("bad.lispb", codegen::sexpr::lex("bad.lispb", source))),
-                 std::runtime_error);
+    EXPECT_THROW(
+        static_cast<void>(parse("bad.lispb", codegen::sexpr::read_forms("bad.lispb", source))),
+        std::runtime_error);
 }
 
 TEST(KernelParser, RejectsScalarOnlyInPlaceTargets) {
@@ -678,16 +689,18 @@ TEST(KernelParser, RejectsScalarOnlyInPlaceTargets) {
                    std::string{"(operand lhs array)"}.size(),
                    "(operand lhs scalar)");
 
-    EXPECT_THROW(static_cast<void>(parse("bad.lispb", codegen::sexpr::lex("bad.lispb", source))),
-                 std::runtime_error);
+    EXPECT_THROW(
+        static_cast<void>(parse("bad.lispb", codegen::sexpr::read_forms("bad.lispb", source))),
+        std::runtime_error);
 }
 
 TEST(KernelParser, RejectsNonFiniteNumericLiterals) {
     auto source{std::string{valid_source}};
     source.replace(source.find("(* lhs rhs)"), std::string{"(* lhs rhs)"}.size(), "(* lhs inf)");
 
-    EXPECT_THROW(static_cast<void>(parse("bad.lispb", codegen::sexpr::lex("bad.lispb", source))),
-                 std::runtime_error);
+    EXPECT_THROW(
+        static_cast<void>(parse("bad.lispb", codegen::sexpr::read_forms("bad.lispb", source))),
+        std::runtime_error);
 }
 
 TEST(KernelParser, RejectsUnknownAndMalformedConstants) {

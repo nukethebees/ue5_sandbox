@@ -1,15 +1,22 @@
 #pragma once
 
-#include <codegen/generated_file.h>
+#include <lispb/compilation.h>
 
 #include <filesystem>
-#include <vector>
 
 namespace lispb {
 
-auto publish_generated_files(std::vector<codegen::GeneratedFile> const& files,
-                             std::filesystem::path const& project_root,
-                             std::filesystem::path const& output_root,
-                             bool check_only) -> int;
+struct PublicationOptions {
+    std::filesystem::path path_base;
+    std::filesystem::path output_root;
+    bool track_outputs{true};
+    bool check_only{false};
+};
+
+[[nodiscard]] auto publish(Compilation const& compilation, PublicationOptions const& options)
+    -> int;
+void write_depfile(std::filesystem::path const& path,
+                   Compilation const& compilation,
+                   PublicationOptions const& options);
 
 } // namespace lispb

@@ -45,7 +45,7 @@ add_library(codegen-lib
   src/homogeneous_lowering.cpp
   src/homogeneous_storage_lowering.cpp
   src/homogeneous_view_lowering.cpp
-  src/manifest.cpp
+  src/source_loader.cpp
   src/lowering_utils.cpp
   src/schema.cpp
   src/settings_lowering.cpp
@@ -73,7 +73,7 @@ target_link_libraries(codegen-lib
 
 add_executable(lispb
   src/main.cpp
-  material/cli/main.cpp
+  material/compiler.cpp
 )
 target_compile_features(lispb PRIVATE cxx_std_23)
 target_link_libraries(lispb PRIVATE
@@ -146,7 +146,7 @@ add_executable(codegen-tests
   tests/single_allocation_soa_tests.cpp
   tests/generator_tests.cpp
   tests/homogeneous_lowering_tests.cpp
-  tests/manifest_tests.cpp
+  tests/source_loader_tests.cpp
   tests/lowering_tests.cpp
   tests/static_table_lowering_tests.cpp
   tests/validation_tests.cpp
@@ -220,10 +220,10 @@ set_tests_properties(CodegenCliRejectsDuplicateArguments PROPERTIES
   LABELS "unit;all;codegen"
   WILL_FAIL TRUE
 )
-add_test(NAME CodegenCliReportsMissingManifest
+add_test(NAME CodegenCliReportsMissingProject
   COMMAND lispb generate --project missing-project.lispb --target sandbox-code
 )
-set_tests_properties(CodegenCliReportsMissingManifest PROPERTIES
+set_tests_properties(CodegenCliReportsMissingProject PROPERTIES
   LABELS "unit;all;codegen"
   WILL_FAIL TRUE
 )

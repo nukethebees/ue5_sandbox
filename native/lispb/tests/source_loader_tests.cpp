@@ -1,4 +1,4 @@
-#include <codegen/manifest.h>
+#include <codegen/source_loader.h>
 
 #include <codegen/manifest_error.h>
 
@@ -35,15 +35,17 @@ class TemporaryManifest {
     void write_root(std::string const& modules) const {
         write("types.lispb", "");
         write("modules.lispb", modules);
-        write("manifest.lispb",
-              "(codegen-manifest :schema-version 11 :types \"types.lispb\" "
-              ":modules (\"modules.lispb\"))");
+    }
+
+    auto load() const -> Manifest {
+        std::filesystem::path const modules[]{path("modules.lispb")};
+        return load_sources(path("types.lispb"), modules);
     }
   private:
     std::filesystem::path directory_;
 };
 
-TEST(Manifest, ReadsCommentsAndTypedSoa) {
+TEST(SourceLoader, ReadsCommentsAndTypedSoa) {
     TemporaryManifest files;
     files.write("types.lispb", R"(
 ; Shared type definition.
@@ -62,11 +64,7 @@ TEST(Manifest, ReadsCommentsAndTypedSoa) {
     :operations (all)
     (member handles array @handle)))
 )");
-    files.write(
-        "manifest.lispb",
-        R"((codegen-manifest :schema-version 11 :types "types.lispb" :modules ("modules.lispb")))");
-
-    auto const manifest{load_manifest(files.path("manifest.lispb"))};
+    auto const manifest{files.load()};
 
     ASSERT_EQ(manifest.types.size(), 1);
     EXPECT_EQ(manifest.types.at("handle").spelling, "FHandle");
@@ -78,12 +76,12 @@ TEST(Manifest, ReadsCommentsAndTypedSoa) {
               "FHandle");
 }
 
-TEST(Manifest, ReportsSourceLocationForUnknownProperties) {
+TEST(SourceLoader, ReportsSourceLocationForUnknownProperties) {
     TemporaryManifest files;
     files.write_root("(umbrella-module all\n  :header \"All.h\"\n  :headers ()\n  :typo true)\n");
 
     try {
-        static_cast<void>(load_manifest(files.path("manifest.lispb")));
+        static_cast<void>(files.load());
         FAIL() << "Expected manifest error";
     } catch (ManifestError const& error) {
         auto const message{std::string{error.what()}};
@@ -92,60 +90,13 @@ TEST(Manifest, ReportsSourceLocationForUnknownProperties) {
     }
 }
 
-TEST(Manifest, RejectsDuplicateProperties) {
-    TemporaryManifest files;
-    files.write(
-        "manifest.lispb",
-        R"((codegen-manifest :schema-version 11 :schema-version 11 :types "types.lispb" :modules ()))");
-    EXPECT_THROW(load_manifest(files.path("manifest.lispb")), ManifestError);
-}
-
-TEST(Manifest, RejectsMalformedDocumentsWithTheirFileName) {
-    TemporaryManifest files;
-    files.write("manifest.lispb", "(codegen-manifest");
-    try {
-        static_cast<void>(load_manifest(files.path("manifest.lispb")));
-        FAIL() << "Expected manifest error";
-    } catch (ManifestError const& error) {
-        EXPECT_NE(std::string{error.what()}.find("manifest.lispb"), std::string::npos);
-    }
-}
-
-TEST(Manifest, RejectsUnsupportedSchemaVersions) {
-    TemporaryManifest files;
-    files.write("manifest.lispb",
-                R"((codegen-manifest :schema-version 12 :types "types.lispb" :modules ()))");
-    EXPECT_THROW(load_manifest(files.path("manifest.lispb")), ManifestError);
-}
-
-TEST(Manifest, ExplainsVersionOneFunctionQualifierMigration) {
-    TemporaryManifest files;
-    files.write("manifest.lispb",
-                R"((codegen-manifest :schema-version 1 :types "types.lispb" :modules ()))");
-    try {
-        static_cast<void>(load_manifest(files.path("manifest.lispb")));
-        FAIL() << "Expected manifest error";
-    } catch (ManifestError const& error) {
-        auto const message{std::string{error.what()}};
-        EXPECT_NE(message.find("schema version 1 is obsolete"), std::string::npos);
-        EXPECT_NE(message.find("'const' and 'noexcept'"), std::string::npos);
-    }
-}
-
-TEST(Manifest, RejectsMissingReferencedDocuments) {
-    TemporaryManifest files;
-    files.write("manifest.lispb",
-                R"((codegen-manifest :schema-version 11 :types "missing.lispb" :modules ()))");
-    EXPECT_THROW(load_manifest(files.path("manifest.lispb")), ManifestError);
-}
-
-TEST(Manifest, RejectsUnknownModuleDeclarations) {
+TEST(SourceLoader, RejectsUnknownModuleDeclarations) {
     TemporaryManifest files;
     files.write_root("(mystery-module bad :header \"Bad.h\")");
-    EXPECT_THROW(load_manifest(files.path("manifest.lispb")), ManifestError);
+    EXPECT_THROW(files.load(), ManifestError);
 }
 
-TEST(Manifest, RejectsAllCombinedWithSpecificOperations) {
+TEST(SourceLoader, RejectsAllCombinedWithSpecificOperations) {
     TemporaryManifest files;
     files.write_root(R"(
 (soa-module bad
@@ -154,10 +105,10 @@ TEST(Manifest, RejectsAllCombinedWithSpecificOperations) {
     :operations (all reset)
     (member values array int32)))
 )");
-    EXPECT_THROW(load_manifest(files.path("manifest.lispb")), ManifestError);
+    EXPECT_THROW(files.load(), ManifestError);
 }
 
-TEST(Manifest, LoadsStructuredTypeReferencesAndFacadeStorage) {
+TEST(SourceLoader, LoadsStructuredTypeReferencesAndFacadeStorage) {
     TemporaryManifest files;
     files.write_root(R"(
 (facade-module facade
@@ -173,7 +124,7 @@ TEST(Manifest, LoadsStructuredTypeReferencesAndFacadeStorage) {
       (parameter index int32 :default "0"))))
 )");
 
-    auto const manifest{load_manifest(files.path("manifest.lispb"))};
+    auto const manifest{files.load()};
     auto const& facade{std::get<FacadeModuleSchema>(manifest.modules.front()).facade};
     EXPECT_TRUE(facade.reference_target);
     EXPECT_TRUE(facade.definitions_in_source);
@@ -182,7 +133,7 @@ TEST(Manifest, LoadsStructuredTypeReferencesAndFacadeStorage) {
     EXPECT_TRUE(facade.methods.front().is_const);
 }
 
-TEST(Manifest, LoadsSettingsControls) {
+TEST(SourceLoader, LoadsSettingsControls) {
     TemporaryManifest files;
     files.write_root(R"(
 (settings-module settings
@@ -198,7 +149,7 @@ TEST(Manifest, LoadsSettingsControls) {
     (control float-range :min 50 :max 100 :step 0.5)))
 )");
 
-    auto const manifest{load_manifest(files.path("manifest.lispb"))};
+    auto const manifest{files.load()};
     auto const& module{std::get<SettingsModuleSchema>(manifest.modules.front())};
     ASSERT_EQ(module.settings_list.size(), 1);
     EXPECT_EQ(module.settings_list.front().apply_mode, SettingApplyMode::deferred);

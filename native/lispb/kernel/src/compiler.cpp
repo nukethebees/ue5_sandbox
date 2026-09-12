@@ -1,13 +1,12 @@
 #include <kernel_codegen/compiler.h>
 
-#include "manifest.h"
 #include "parser.h"
 #include "renderer.h"
 
-#include <codegen/sexpr/lexer.h>
-#include <lispb/output.h>
+#include <codegen/sexpr/reader.h>
 
 #include <filesystem>
+#include <fstream>
 #include <iterator>
 #include <stdexcept>
 #include <utility>
@@ -30,45 +29,34 @@ auto lower_profile(Profile const profile) -> detail::Profile {
     throw std::invalid_argument{"Unknown kernel profile"};
 }
 
-}
-
-auto compile_manifest(CompileOptions const& options) -> int {
-    auto const manifest_path{std::filesystem::absolute(options.manifest).lexically_normal()};
-    auto const manifest_directory{manifest_path.parent_path()};
-    auto const output_root{options.output_root
-                               ? std::filesystem::absolute(*options.output_root).lexically_normal()
-                               : manifest_directory / "generated"};
-    auto const manifest{detail::load_manifest(manifest_path)};
-    std::vector<std::filesystem::path> inputs;
-    inputs.reserve(manifest.entries.size());
-    for (auto const& entry : manifest.entries) {
-        inputs.push_back(entry.input);
+auto read_file(std::filesystem::path const& path) -> std::string {
+    std::ifstream input{path, std::ios::binary};
+    if (!input) {
+        throw std::runtime_error{"Cannot open Kernel source: " + path.string()};
     }
-    return compile_sources(SourceOptions{.source_root = manifest_directory,
-                                         .inputs = std::move(inputs),
-                                         .output_root = output_root,
-                                         .profile = options.profile,
-                                         .check = options.check});
+    return std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
 }
 
-auto compile_sources(SourceOptions const& options) -> int {
+}
+
+auto compile_sources(SourceOptions const& options) -> lispb::Compilation {
     auto const source_root{std::filesystem::absolute(options.source_root).lexically_normal()};
-    auto const output_root{std::filesystem::absolute(options.output_root).lexically_normal()};
     auto const profile{lower_profile(options.profile)};
-    std::vector<codegen::GeneratedFile> files;
+    lispb::Compilation result;
     for (auto const& input : options.inputs) {
         auto const input_path{source_root / input};
-        auto const source{detail::read_file(input_path)};
-        auto const document{detail::parse(input.generic_string(),
-                                          codegen::sexpr::lex(input.generic_string(), source))};
+        result.dependencies.push_back(input_path.lexically_normal());
+        auto const source{read_file(input_path)};
+        auto const document{detail::parse(
+            input.generic_string(), codegen::sexpr::read_forms(input.generic_string(), source))};
         for (auto const& module : document.modules) {
             auto rendered{detail::render(module, profile)};
-            files.insert(files.end(),
-                         std::make_move_iterator(rendered.begin()),
-                         std::make_move_iterator(rendered.end()));
+            result.artifacts.insert(result.artifacts.end(),
+                                    std::make_move_iterator(rendered.begin()),
+                                    std::make_move_iterator(rendered.end()));
         }
     }
-    return lispb::publish_generated_files(files, output_root, output_root, options.check);
+    return result;
 }
 
 }

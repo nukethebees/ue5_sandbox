@@ -1,12 +1,10 @@
 #include "preprocessor.h"
 
-#include "lexer.h"
-#include "manifest.h"
-
 #include <codegen/sexpr/reader.h>
 
 #include <algorithm>
 #include <cctype>
+#include <fstream>
 #include <map>
 #include <set>
 #include <utility>
@@ -15,7 +13,6 @@ namespace slate_codegen::detail {
 namespace {
 
 using codegen::sexpr::Form;
-using codegen::sexpr::read_form;
 
 [[noreturn]] void fail(SourceSpan const& span, std::string const& message) {
     throw SourceError{span.path, span, message};
@@ -23,6 +20,14 @@ using codegen::sexpr::read_form;
 
 auto location(SourceSpan const& span) -> std::string {
     return span.path + ":" + std::to_string(span.line) + ":" + std::to_string(span.column);
+}
+
+auto read_file(std::filesystem::path const& path) -> std::string {
+    std::ifstream input{path, std::ios::binary};
+    if (!input) {
+        throw std::runtime_error{"Cannot open Slate source: " + path.string()};
+    }
+    return std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
 }
 
 auto format_token(Token const& token) -> std::string {
@@ -98,15 +103,14 @@ class Preprocessor {
     explicit Preprocessor(std::vector<std::filesystem::path> const& include_directories)
         : include_directories_{include_directories} {}
 
-    auto run(std::filesystem::path const& input) -> std::vector<Token> {
+    auto run(std::filesystem::path const& input) -> PreprocessedSource {
         source_directory_ = std::filesystem::canonical(input).parent_path();
         auto forms{load(input, false, SourceSpan{})};
-        std::vector<Token> result;
-        for (auto const& form : forms) {
-            flatten(expand(form), result);
+        for (auto& form : forms) {
+            form = expand(form);
         }
-        result.push_back(Token{TokenKind::end, {}, SourceSpan{1, 1, input.generic_string(), {}}});
-        return result;
+        return {.forms = std::move(forms),
+                .dependencies = {loaded_files_.begin(), loaded_files_.end()}};
     }
   private:
     auto resolve(Form const& form, std::filesystem::path const& including) const
@@ -147,14 +151,10 @@ class Preprocessor {
             return {};
         }
         active_files_.push_back(path);
-        auto tokens{lex(path.generic_string(), read_file(path))};
-        for (auto& token : tokens) {
-            token.span.path = path.lexically_relative(source_directory_).generic_string();
-        }
+        auto forms{codegen::sexpr::read_forms(path.generic_string(), read_file(path))};
         std::vector<Form> result;
-        std::size_t index{};
-        while (tokens[index].kind != TokenKind::end) {
-            auto form{read_form(tokens, index)};
+        for (auto& form : forms) {
+            set_relative_path(form, path.lexically_relative(source_directory_).generic_string());
             if (form.head() == "include") {
                 static_cast<void>(load(resolve(form, path), true, form.token.span));
             } else if (form.head() == "defmacro") {
@@ -168,6 +168,14 @@ class Preprocessor {
         }
         active_files_.pop_back();
         return result;
+    }
+
+    static void set_relative_path(Form& form, std::string const& path) {
+        form.token.span.path = path;
+        form.closing.span.path = path;
+        for (auto& child : form.children) {
+            set_relative_path(child, path);
+        }
     }
 
     void define(Form const& form) {
@@ -280,16 +288,6 @@ class Preprocessor {
         return result;
     }
 
-    static void flatten(Form const& form, std::vector<Token>& tokens) {
-        tokens.push_back(form.token);
-        for (auto const& child : form.children) {
-            flatten(child, tokens);
-        }
-        if (form.is_list()) {
-            tokens.push_back(form.closing);
-        }
-    }
-
     std::vector<std::filesystem::path> const& include_directories_;
     std::filesystem::path source_directory_;
     std::set<std::filesystem::path> loaded_files_;
@@ -303,18 +301,17 @@ class Preprocessor {
 
 auto preprocess(std::filesystem::path const& input,
                 std::vector<std::filesystem::path> const& include_directories)
-    -> std::vector<Token> {
+    -> PreprocessedSource {
     return Preprocessor{include_directories}.run(input);
 }
 
-auto format_expansion(std::vector<Token> const& tokens) -> std::string {
+auto format_expansion(std::vector<Form> const& forms) -> std::string {
     std::string result;
-    std::size_t index{};
-    while (tokens[index].kind != TokenKind::end) {
+    for (auto const& form : forms) {
         if (!result.empty()) {
             result += '\n';
         }
-        format_form(read_form(tokens, index), 0, result);
+        format_form(form, 0, result);
         result += '\n';
     }
     return result;

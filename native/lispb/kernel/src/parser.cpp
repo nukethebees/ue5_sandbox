@@ -16,17 +16,10 @@
 namespace kernel_codegen::detail {
 namespace {
 
+using codegen::sexpr::Form;
 using codegen::sexpr::SourceError;
 using codegen::sexpr::SourceSpan;
-using codegen::sexpr::Token;
 using codegen::sexpr::TokenKind;
-
-struct Form {
-    Token token;
-    std::vector<Form> children;
-
-    auto is_list() const -> bool { return token.kind == TokenKind::left_parenthesis; }
-};
 
 struct DecimalLiteral {
     std::string spelling;
@@ -117,16 +110,15 @@ auto parse_decimal_literal(std::string_view const source) -> std::optional<Decim
 
 class Parser {
   public:
-    Parser(std::string_view const path, std::vector<Token> tokens)
+    Parser(std::string_view const path, std::vector<Form> forms)
         : path_{path}
-        , tokens_{std::move(tokens)} {}
+        , forms_{std::move(forms)} {}
 
     auto parse() -> Document {
-        auto const forms{read_document()};
         Document result;
         std::set<std::string> names;
         std::set<std::string> output_paths;
-        for (auto const& form : forms) {
+        for (auto const& form : forms_) {
             auto module{parse_module(form)};
             if (!names.insert(module.name).second) {
                 fail(module.span, "duplicate kernel module '" + module.name + "'");
@@ -149,41 +141,13 @@ class Parser {
             result.modules.push_back(std::move(module));
         }
         if (result.modules.empty()) {
-            fail(tokens_.back().span, "document must contain at least one kernel-module");
+            fail(SourceSpan{.path = path_}, "document must contain at least one kernel-module");
         }
         return result;
     }
   private:
     [[noreturn]] void fail(SourceSpan const span, std::string const& message) const {
         throw SourceError{path_, span, message};
-    }
-
-    auto read_form(std::size_t& index) const -> Form {
-        auto const token{tokens_[index++]};
-        if (token.kind == TokenKind::right_parenthesis || token.kind == TokenKind::end) {
-            fail(token.span, "expected an expression");
-        }
-        Form result{token, {}};
-        if (!result.is_list()) {
-            return result;
-        }
-        while (tokens_[index].kind != TokenKind::right_parenthesis) {
-            if (tokens_[index].kind == TokenKind::end) {
-                fail(token.span, "expected ')' after expression");
-            }
-            result.children.push_back(read_form(index));
-        }
-        ++index;
-        return result;
-    }
-
-    auto read_document() const -> std::vector<Form> {
-        std::vector<Form> result;
-        std::size_t index{};
-        while (tokens_[index].kind != TokenKind::end) {
-            result.push_back(read_form(index));
-        }
-        return result;
     }
 
     auto head(Form const& form, std::string_view const context) const -> std::string const& {
@@ -1102,13 +1066,13 @@ class Parser {
     }
 
     std::string path_;
-    std::vector<Token> tokens_;
+    std::vector<Form> forms_;
 };
 
 }
 
-auto parse(std::string_view const path, std::vector<Token> tokens) -> Document {
-    return Parser{path, std::move(tokens)}.parse();
+auto parse(std::string_view const path, std::vector<Form> forms) -> Document {
+    return Parser{path, std::move(forms)}.parse();
 }
 
 }

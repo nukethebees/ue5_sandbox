@@ -11,6 +11,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <system_error>
+#include <type_traits>
 
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
@@ -202,12 +203,12 @@ auto is_generated_file(std::filesystem::path const& path) -> bool {
 
 } // namespace
 
-auto publish_generated_files(std::vector<codegen::GeneratedFile> const& input_files,
-                             std::filesystem::path const& project_root,
-                             std::filesystem::path const& output_root,
-                             bool check_only) -> int {
+static auto publish_text_artifacts(std::vector<TextArtifact> const& input_files,
+                                   std::filesystem::path const& project_root,
+                                   std::filesystem::path const& output_root,
+                                   bool check_only) -> int {
     auto files{input_files};
-    std::map<std::string, codegen::GeneratedFile const*> expected;
+    std::map<std::string, TextArtifact const*> expected;
     for (auto const& file : files) {
         auto const relative{safe_relative_output_path(file.path, project_root)};
         auto const path{relative.generic_string()};
@@ -297,6 +298,130 @@ auto publish_generated_files(std::vector<codegen::GeneratedFile> const& input_fi
         return 1;
     }
     return 0;
+}
+
+auto publish(Compilation const& compilation, PublicationOptions const& options) -> int {
+    if (options.track_outputs) {
+        std::vector<TextArtifact> files;
+        files.reserve(compilation.artifacts.size());
+        for (auto const& artifact : compilation.artifacts) {
+            auto const* file{std::get_if<TextArtifact>(&artifact)};
+            if (file == nullptr) {
+                throw std::invalid_argument{"Tracked Lispb outputs must be text files"};
+            }
+            files.push_back(*file);
+        }
+        return publish_text_artifacts(
+            files, options.path_base, options.output_root, options.check_only);
+    }
+
+    bool stale{false};
+    std::set<std::string> paths;
+    for (auto const& artifact : compilation.artifacts) {
+        auto const path{std::visit([](auto const& value) { return value.path; }, artifact)};
+        auto const relative{safe_relative_output_path(path, options.path_base)};
+        if (!paths.insert(output_path_key(relative)).second) {
+            throw std::invalid_argument{"Duplicate generated output path: " +
+                                        relative.generic_string()};
+        }
+
+        auto const destination{options.output_root / relative};
+        validate_destination(destination, options.output_root);
+        auto const current{read_file(destination)};
+        auto const content{std::visit(
+            [&](auto const& value) {
+                using Value = std::decay_t<decltype(value)>;
+                if constexpr (std::is_same_v<Value, TextArtifact>) {
+                    return value.format_generated
+                             ? codegen::detail::format_generated(value.content, destination)
+                             : value.content;
+                } else {
+                    if (value.content.empty()) {
+                        return std::string{};
+                    }
+                    return std::string{reinterpret_cast<char const*>(value.content.data()),
+                                       value.content.size()};
+                }
+            },
+            artifact)};
+        auto const equal{std::visit(
+            [&](auto const& value) {
+                using Value = std::decay_t<decltype(value)>;
+                if (!current) {
+                    return false;
+                }
+                if constexpr (std::is_same_v<Value, TextArtifact>) {
+                    return normalize_line_endings(*current) == normalize_line_endings(content);
+                } else {
+                    return *current == content;
+                }
+            },
+            artifact)};
+        if (equal) {
+            std::cout << "Unchanged " << relative.generic_string() << '\n';
+            continue;
+        }
+        if (options.check_only) {
+            stale = true;
+            std::cout << "Stale " << relative.generic_string() << '\n';
+            continue;
+        }
+        write_file_atomically(destination, content, options.output_root);
+        std::cout << "Wrote " << relative.generic_string() << '\n';
+    }
+    if (stale) {
+        std::cout << "Generated files are stale.\n";
+        return 1;
+    }
+    return 0;
+}
+
+void write_depfile(std::filesystem::path const& path,
+                   Compilation const& compilation,
+                   PublicationOptions const& options) {
+    if (compilation.artifacts.empty()) {
+        throw std::invalid_argument{"Cannot write a depfile for a compilation with no artifacts"};
+    }
+
+    auto escape_path = [](std::filesystem::path const& value) {
+        auto const source{value.generic_string()};
+        std::string escaped;
+        escaped.reserve(source.size());
+        for (char const character : source) {
+            if (character == ' ' || character == '#') {
+                escaped.push_back('\\');
+            } else if (character == '$') {
+                escaped.push_back('$');
+            }
+            escaped.push_back(character);
+        }
+        return escaped;
+    };
+
+    std::string content;
+    for (std::size_t index{}; index < compilation.artifacts.size(); ++index) {
+        if (index != 0) {
+            content += ' ';
+        }
+        auto const artifact_path{std::visit([](auto const& artifact) { return artifact.path; },
+                                            compilation.artifacts[index])};
+        content += escape_path(options.output_root /
+                               safe_relative_output_path(artifact_path, options.path_base));
+    }
+    content += ':';
+    std::set<std::string> emitted_dependencies;
+    for (auto const& dependency : compilation.dependencies) {
+        auto const key{output_path_key(dependency)};
+        if (!emitted_dependencies.insert(key).second) {
+            continue;
+        }
+        content += ' ';
+        content += escape_path(dependency);
+    }
+    content += '\n';
+
+    auto const absolute{std::filesystem::absolute(path).lexically_normal()};
+    write_file_atomically(absolute, content, absolute.parent_path());
 }
 
 } // namespace lispb

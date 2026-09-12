@@ -1,9 +1,10 @@
 #include <slate_codegen/compiler.h>
 
-#include "lexer.h"
 #include "syntax.h"
 
+#include <codegen/sexpr/lexer.h>
 #include <gtest/gtest.h>
+#include <lispb/output.h>
 
 #include <filesystem>
 #include <fstream>
@@ -56,10 +57,30 @@ class TemporaryProject {
     std::filesystem::path root_;
 };
 
+auto compile(TemporaryProject const& project,
+             std::vector<std::filesystem::path> inputs,
+             std::vector<std::filesystem::path> include_directories = {},
+             bool const check = false) -> int {
+    auto const root{project.path({})};
+    auto const compilation{
+        compile_sources({.source_root = root,
+                         .inputs = std::move(inputs),
+                         .include_directories = std::move(include_directories)})};
+    return lispb::publish(
+        compilation,
+        {.path_base = root / "generated", .output_root = root / "generated", .check_only = check});
+}
+
+auto expand(TemporaryProject const& project,
+            std::vector<std::filesystem::path> inputs,
+            std::vector<std::filesystem::path> include_directories = {}) -> std::string {
+    return expand_sources({.source_root = project.path({}),
+                           .inputs = std::move(inputs),
+                           .include_directories = std::move(include_directories)});
+}
+
 TEST(SlateCompiler, WritesMultipleOwnersAndQualifiedOutputPaths) {
     TemporaryProject project{"multiple-owners"};
-    project.write("manifest.lispb",
-                  R"((slate-manifest :schema-version 1 :entries ("panels.lispb")))");
     project.write("panels.lispb", R"(
 (widget-class SFirstPanel
   (function Build
@@ -71,7 +92,7 @@ TEST(SlateCompiler, WritesMultipleOwnersAndQualifiedOutputPaths) {
     (SImage)))
 )");
 
-    ASSERT_EQ(compile_manifest(CompileOptions{.manifest = project.path("manifest.lispb")}), 0);
+    ASSERT_EQ(compile(project, {"panels.lispb"}), 0);
     EXPECT_TRUE(project.read("generated/SFirstPanel.slate.generated.h")
                     .contains("struct SFirstPanelBuilder"));
     auto const qualified_output{project.read("generated/Example/SSecondPanel.slate.generated.h")};
@@ -85,31 +106,25 @@ TEST(SlateCompiler, WritesMultipleOwnersAndQualifiedOutputPaths) {
 
 TEST(SlateCompiler, CheckModeDetectsStaleAndMissingOutputs) {
     TemporaryProject project{"check-mode"};
-    project.write("manifest.lispb",
-                  R"((slate-manifest :schema-version 1 :entries ("panel.lispb")))");
     project.write("panel.lispb", R"(
 (widget-class SPanel
   (function Build
     (params)
     (SButton)))
 )");
-    auto const options{CompileOptions{.manifest = project.path("manifest.lispb")}};
-
-    ASSERT_EQ(compile_manifest(options), 0);
-    EXPECT_EQ(compile_manifest(CompileOptions{.manifest = options.manifest, .check = true}), 0);
+    ASSERT_EQ(compile(project, {"panel.lispb"}), 0);
+    EXPECT_EQ(compile(project, {"panel.lispb"}, {}, true), 0);
 
     project.write("generated/SPanel.slate.generated.h", "stale\n");
-    EXPECT_EQ(compile_manifest(CompileOptions{.manifest = options.manifest, .check = true}), 1);
+    EXPECT_EQ(compile(project, {"panel.lispb"}, {}, true), 1);
 
-    ASSERT_EQ(compile_manifest(options), 0);
+    ASSERT_EQ(compile(project, {"panel.lispb"}), 0);
     ASSERT_TRUE(std::filesystem::remove(project.path("generated/SPanel.slate.generated.h")));
-    EXPECT_EQ(compile_manifest(CompileOptions{.manifest = options.manifest, .check = true}), 1);
+    EXPECT_EQ(compile(project, {"panel.lispb"}, {}, true), 1);
 }
 
 TEST(SlateCompiler, RejectsDuplicateOwnersAcrossInputs) {
     TemporaryProject project{"duplicate-owners"};
-    project.write("manifest.lispb",
-                  R"((slate-manifest :schema-version 1 :entries ("first.lispb" "second.lispb")))");
     auto const source{R"(
 (widget-class SPanel
   (function Build
@@ -120,8 +135,7 @@ TEST(SlateCompiler, RejectsDuplicateOwnersAcrossInputs) {
     project.write("second.lispb", source);
 
     try {
-        static_cast<void>(
-            compile_manifest(CompileOptions{.manifest = project.path("manifest.lispb")}));
+        static_cast<void>(compile(project, {"first.lispb", "second.lispb"}));
         FAIL() << "Expected duplicate owner to be rejected";
     } catch (detail::SourceError const& error) {
         EXPECT_TRUE(std::string{error.what()}.contains("duplicate widget declaration 'SPanel'"));
@@ -130,17 +144,13 @@ TEST(SlateCompiler, RejectsDuplicateOwnersAcrossInputs) {
 
 TEST(SlateCompiler, ExpandsIncludedMacrosWithoutChangingGeneratedCpp) {
     TemporaryProject project{"macro-equivalence"};
-    project.write(
-        "manifest.lispb",
-        R"((slate-manifest :schema-version 1 :include-directories ("shared") :entries ("panel.lispb")))");
     project.write("panel.lispb", R"(
 (widget-class SPanel
   (function Build
     (params (value label))
     (vbox (auto :padding (0 0 0 10) (STextBlock :Text label)))))
 )");
-    auto const options{CompileOptions{.manifest = project.path("manifest.lispb")}};
-    ASSERT_EQ(compile_manifest(options), 0);
+    ASSERT_EQ(compile(project, {"panel.lispb"}, {"shared"}), 0);
     auto const without_line_directives{[](std::string const& text) {
         std::istringstream input{text};
         std::string line;
@@ -171,20 +181,17 @@ TEST(SlateCompiler, ExpandsIncludedMacrosWithoutChangingGeneratedCpp) {
 (include "Common/./Text.lispb")
 (widget-class SPanel (builder Build))
 )");
-    ASSERT_EQ(compile_manifest(options), 0);
+    ASSERT_EQ(compile(project, {"panel.lispb"}, {"shared"}), 0);
     EXPECT_EQ(without_line_directives(project.read("generated/SPanel.slate.generated.h")),
               expected);
     project.write("shared/Common/Text.lispb", R"(
 (defmacro label-text (label) (SButton :Text $label))
 )");
-    EXPECT_EQ(compile_manifest(CompileOptions{.manifest = options.manifest, .check = true}), 1);
+    EXPECT_EQ(compile(project, {"panel.lispb"}, {"shared"}, true), 1);
 }
 
 TEST(SlateCompiler, ResolvesIncludesLocallyThenInDirectoryOrder) {
     TemporaryProject project{"include-order"};
-    project.write(
-        "manifest.lispb",
-        R"((slate-manifest :schema-version 1 :include-directories ("first" "second") :entries ("local/panel.lispb")))");
     project.write("local/panel.lispb", R"(
 (include "Widgets.lispb")
 (widget-class SPanel (function Build (params) (content)))
@@ -192,21 +199,21 @@ TEST(SlateCompiler, ResolvesIncludesLocallyThenInDirectoryOrder) {
     project.write("local/Widgets.lispb", "(defmacro content () (STextBlock))");
     project.write("first/Widgets.lispb", "(defmacro content () (SButton))");
     project.write("second/Widgets.lispb", "(defmacro content () (SImage))");
-    auto const options{CompileOptions{.manifest = project.path("manifest.lispb")}};
-    ASSERT_EQ(compile_manifest(options), 0);
+    ASSERT_EQ(compile(project, {"local/panel.lispb"}, {"first", "second"}), 0);
     EXPECT_TRUE(project.read("generated/SPanel.slate.generated.h").contains("SNew(STextBlock)"));
     ASSERT_TRUE(std::filesystem::remove(project.path("local/Widgets.lispb")));
-    ASSERT_EQ(compile_manifest(options), 0);
+    ASSERT_EQ(compile(project, {"local/panel.lispb"}, {"first", "second"}), 0);
     EXPECT_TRUE(project.read("generated/SPanel.slate.generated.h").contains("SNew(SButton)"));
     ASSERT_TRUE(std::filesystem::remove(project.path("first/Widgets.lispb")));
-    ASSERT_EQ(compile_manifest(options), 0);
+    ASSERT_EQ(compile(project, {"local/panel.lispb"}, {"first", "second"}), 0);
     EXPECT_TRUE(project.read("generated/SPanel.slate.generated.h").contains("SNew(SImage)"));
 }
 
-auto compile_error(TemporaryProject const& project) -> std::string {
+auto compile_error(TemporaryProject const& project,
+                   std::vector<std::filesystem::path> inputs = {"panel.lispb"},
+                   std::vector<std::filesystem::path> include_directories = {}) -> std::string {
     try {
-        static_cast<void>(
-            compile_manifest(CompileOptions{.manifest = project.path("manifest.lispb")}));
+        static_cast<void>(compile(project, std::move(inputs), std::move(include_directories)));
     } catch (std::exception const& error) {
         return error.what();
     }
@@ -215,17 +222,14 @@ auto compile_error(TemporaryProject const& project) -> std::string {
 
 TEST(SlateCompiler, ReportsMissingIncludesAndCycles) {
     TemporaryProject project{"include-errors"};
-    project.write(
-        "manifest.lispb",
-        R"((slate-manifest :schema-version 1 :include-directories ("shared") :entries ("panel.lispb")))");
     project.write("panel.lispb", "(include \"Missing.lispb\")");
-    auto error{compile_error(project)};
+    auto error{compile_error(project, {"panel.lispb"}, {"shared"})};
     EXPECT_TRUE(error.contains("include not found"));
     EXPECT_TRUE(error.contains("shared/Missing.lispb"));
     project.write("panel.lispb", "(include \"First.lispb\")");
     project.write("shared/First.lispb", "(include \"Second.lispb\")");
     project.write("shared/Second.lispb", "(include \"./First.lispb\")");
-    error = compile_error(project);
+    error = compile_error(project, {"panel.lispb"}, {"shared"});
     EXPECT_TRUE(error.contains("include cycle"));
     EXPECT_TRUE(error.contains("First.lispb"));
     EXPECT_TRUE(error.contains("Second.lispb"));
@@ -233,8 +237,6 @@ TEST(SlateCompiler, ReportsMissingIncludesAndCycles) {
 
 TEST(SlateCompiler, RejectsInvalidMacroDeclarationsAndInvocations) {
     TemporaryProject project{"macro-errors"};
-    project.write("manifest.lispb",
-                  R"((slate-manifest :schema-version 1 :entries ("panel.lispb")))");
     struct Case {
         std::string_view source;
         std::string_view expected;
@@ -261,8 +263,6 @@ TEST(SlateCompiler, RejectsInvalidMacroDeclarationsAndInvocations) {
 
 TEST(SlateCompiler, ReportsMacroDefinitionAndInvocationForSemanticErrors) {
     TemporaryProject project{"macro-diagnostics"};
-    project.write("manifest.lispb",
-                  R"((slate-manifest :schema-version 1 :entries ("panel.lispb")))");
     project.write("Common.lispb", R"(
 (defmacro broken (child) (vbox (auto :halign sideways $child)))
 )");
@@ -278,80 +278,57 @@ TEST(SlateCompiler, ReportsMacroDefinitionAndInvocationForSemanticErrors) {
 
 TEST(SlateCompiler, RestrictsIncludedFilesAndIsolatesMacrosBetweenInputs) {
     TemporaryProject project{"macro-isolation"};
-    project.write("manifest.lispb",
-                  R"((slate-manifest :schema-version 1 :entries ("panel.lispb")))");
     project.write("panel.lispb", "(include \"Common.lispb\")");
     project.write("Common.lispb", "(widget-class SPanel (function Build (params) (SImage)))");
     EXPECT_TRUE(compile_error(project).contains("included files may contain only"));
-    project.write("manifest.lispb",
-                  R"((slate-manifest :schema-version 1 :entries ("panel.lispb" "other.lispb")))");
     project.write("panel.lispb", R"(
 (defmacro builder () (function Build (params) (SImage)))
 (widget-class SPanel (builder))
 )");
     project.write("other.lispb", "(widget-class SOther (builder))");
-    EXPECT_TRUE(compile_error(project).contains("expected 'function' declaration"));
-}
-
-TEST(SlateCompiler, RejectsInvalidIncludeDirectories) {
-    TemporaryProject project{"include-directories"};
-    for (auto const directories : {"nil", "true", "1", "\"shared\"", "(1)", "(\"\")"}) {
-        project.write("manifest.lispb",
-                      std::string{"(slate-manifest :schema-version 1 "
-                                  ":entries (\"panel.lispb\") :include-directories "} +
-                          directories + ")");
-        EXPECT_FALSE(compile_error(project).empty());
-    }
+    EXPECT_TRUE(compile_error(project, {"panel.lispb", "other.lispb"})
+                    .contains("expected 'function' declaration"));
 }
 
 TEST(SlateCompiler, LibraryMigrationRemovesTheObsoleteOwnerHeader) {
     TemporaryProject project{"library-migration"};
-    project.write("manifest.lispb",
-                  R"((slate-manifest :schema-version 1 :entries ("panel.lispb")))");
     project.write("panel.lispb", "(widget-class FOwner (function Build (params) (SImage)))");
-    auto const options{CompileOptions{.manifest = project.path("manifest.lispb")}};
-    ASSERT_EQ(compile_manifest(options), 0);
+    ASSERT_EQ(compile(project, {"panel.lispb"}), 0);
     project.write("Common.lispb", "(defmacro image () (SImage))");
     project.write("panel.lispb", R"(
 (include "Common.lispb")
 (widget-library Example::Images (function Build (params) (image)))
 )");
-    ASSERT_EQ(compile_manifest(options), 0);
+    ASSERT_EQ(compile(project, {"panel.lispb"}), 0);
     EXPECT_FALSE(std::filesystem::exists(project.path("generated/FOwner.slate.generated.h")));
     EXPECT_TRUE(
         project.read("generated/Example/Images.slate.generated.h").contains("inline auto Build()"));
-    EXPECT_EQ(compile_manifest(CompileOptions{.manifest = options.manifest, .check = true}), 0);
+    EXPECT_EQ(compile(project, {"panel.lispb"}, {}, true), 0);
 }
 
 TEST(SlateCompiler, ExpansionResolvesIncludesAndNeverWritesGeneratedFiles) {
     TemporaryProject project{"expand-read-only"};
-    project.write(
-        "manifest.lispb",
-        R"((slate-manifest :schema-version 1 :include-directories ("shared") :entries ("panel.lispb")))");
     project.write("shared/Common.lispb", "(defmacro content () (SImage))");
     project.write("panel.lispb", R"(
 (include "Common.lispb")
 (widget-library Images (function Build (params) (content)))
 )");
-    auto const manifest{project.path("manifest.lispb")};
-    auto const expanded{expand_manifest(manifest)};
+    auto const expanded{expand(project, {"panel.lispb"}, {"shared"})};
     EXPECT_EQ(expanded,
               "(widget-library Images\n  (function Build\n    (params)\n    (SImage)))\n");
     EXPECT_FALSE(std::filesystem::exists(project.path("generated")));
 
-    ASSERT_EQ(compile_manifest(CompileOptions{.manifest = manifest}), 0);
+    ASSERT_EQ(compile(project, {"panel.lispb"}, {"shared"}), 0);
     auto const header{project.read("generated/Images.slate.generated.h")};
     auto const inventory{project.read("generated/.lispb-outputs")};
     project.write("shared/Common.lispb", "(defmacro content () (SButton))");
-    EXPECT_TRUE(expand_manifest(manifest).contains("(SButton)"));
+    EXPECT_TRUE(expand(project, {"panel.lispb"}, {"shared"}).contains("(SButton)"));
     EXPECT_EQ(project.read("generated/Images.slate.generated.h"), header);
     EXPECT_EQ(project.read("generated/.lispb-outputs"), inventory);
 }
 
-TEST(SlateCompiler, ExpansionPreservesStringsKeywordsAndManifestOrder) {
+TEST(SlateCompiler, ExpansionPreservesStringsKeywordsAndSourceOrder) {
     TemporaryProject project{"expand-roundtrip"};
-    project.write("manifest.lispb",
-                  R"((slate-manifest :schema-version 1 :entries ("first.lispb" "second.lispb")))");
     std::string const first{R"(
 (widget-library First
   (function Build (params)
@@ -361,9 +338,9 @@ TEST(SlateCompiler, ExpansionPreservesStringsKeywordsAndManifestOrder) {
     std::string const second{R"((widget-library Second (function Build (params) (SImage))))"};
     project.write("first.lispb", first);
     project.write("second.lispb", second);
-    auto const expanded{expand_manifest(project.path("manifest.lispb"))};
-    auto const expected{detail::lex("expected", first + second)};
-    auto const actual{detail::lex("expanded", expanded)};
+    auto const expanded{expand(project, {"first.lispb", "second.lispb"})};
+    auto const expected{codegen::sexpr::lex("expected", first + second)};
+    auto const actual{codegen::sexpr::lex("expanded", expanded)};
     ASSERT_EQ(actual.size(), expected.size());
     auto const count{expected.size()};
     for (std::size_t index{}; index < count; ++index) {
@@ -374,13 +351,11 @@ TEST(SlateCompiler, ExpansionPreservesStringsKeywordsAndManifestOrder) {
 
 TEST(SlateCompiler, ExpansionCanInspectSemanticallyInvalidTrees) {
     TemporaryProject project{"expand-invalid-tree"};
-    project.write("manifest.lispb",
-                  R"((slate-manifest :schema-version 1 :entries ("panel.lispb")))");
     project.write("panel.lispb", R"(
 (defmacro bad () (assign image_ SImage))
 (widget-library Images (function Build (params) (bad)))
 )");
-    EXPECT_TRUE(expand_manifest(project.path("manifest.lispb")).contains("(assign image_ SImage)"));
+    EXPECT_TRUE(expand(project, {"panel.lispb"}).contains("(assign image_ SImage)"));
     EXPECT_TRUE(compile_error(project).contains("requires a widget-class host"));
 }
 

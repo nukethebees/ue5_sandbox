@@ -1,7 +1,6 @@
 add_library(kernel-codegen-lib
   src/compiler.cpp
   src/lowering.cpp
-  src/manifest.cpp
   src/parser.cpp
   src/reference_evaluator.cpp
   src/renderer.cpp
@@ -12,8 +11,9 @@ add_library(kernel-codegen-lib
 )
 target_compile_features(kernel-codegen-lib PUBLIC cxx_std_23)
 target_include_directories(kernel-codegen-lib PUBLIC include)
-target_link_libraries(kernel-codegen-lib PRIVATE
-  lispb-output
+target_link_libraries(kernel-codegen-lib
+  PUBLIC lispb-output
+  PRIVATE
   lispb-syntax
   sandbox::codegen_warnings
 )

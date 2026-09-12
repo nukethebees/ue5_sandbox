@@ -1,4 +1,5 @@
 #include <codegen/generator.h>
+#include <codegen/source_loader.h>
 
 #include "lowering.h"
 #include "lowering_utils.h"
@@ -79,6 +80,19 @@ auto render_modules(std::vector<Module> const& modules) -> std::vector<Generated
             }
             result.push_back(GeneratedFile{normalized, render(*file), file->format_generated});
         }
+    }
+    return result;
+}
+
+auto compile_sources(std::filesystem::path const& types,
+                     std::span<std::filesystem::path const> const modules) -> lispb::Compilation {
+    auto const manifest{load_sources(types, modules)};
+    auto const files{render_modules(lower_modules(manifest))};
+    lispb::Compilation result;
+    result.dependencies.push_back(types);
+    result.dependencies.insert(result.dependencies.end(), modules.begin(), modules.end());
+    for (auto const& file : files) {
+        result.artifacts.push_back(file);
     }
     return result;
 }

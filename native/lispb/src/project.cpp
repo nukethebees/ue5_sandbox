@@ -1,6 +1,6 @@
 #include <lispb/project.h>
 
-#include <codegen/sexpr/reader.h>
+#include <codegen/sexpr/fields.h>
 
 #include <fstream>
 #include <set>
@@ -11,10 +11,10 @@
 namespace lispb {
 namespace {
 
+using codegen::sexpr::Fields;
 using codegen::sexpr::Form;
 using codegen::sexpr::SourceError;
 using codegen::sexpr::SourceSpan;
-using codegen::sexpr::TokenKind;
 
 [[noreturn]] void fail(SourceSpan const& span, std::string const& message) {
     throw SourceError{span.path, span, message};
@@ -29,105 +29,22 @@ auto read_file(std::filesystem::path const& path) -> std::string {
 }
 
 auto text(Form const& form, std::string_view const purpose) -> std::string {
-    if (form.is_list() ||
-        (form.token.kind != TokenKind::atom && form.token.kind != TokenKind::string)) {
-        fail(form.token.span, std::string{purpose} + " must be text or a symbol");
-    }
-    return form.token.text;
+    return codegen::sexpr::text(form, purpose, codegen::sexpr::throw_source_error);
 }
 
 auto paths(Form const& form, std::string_view const purpose) -> std::vector<std::filesystem::path> {
-    if (!form.is_list()) {
-        fail(form.token.span, std::string{purpose} + " must be a list");
-    }
+    auto const values{codegen::sexpr::text_list(form, purpose, codegen::sexpr::throw_source_error)};
     std::vector<std::filesystem::path> result;
-    result.reserve(form.children.size());
-    for (auto const& child : form.children) {
-        result.emplace_back(text(child, purpose));
+    result.reserve(values.size());
+    for (auto const& value : values) {
+        result.emplace_back(value);
     }
     return result;
 }
 
 auto names(Form const& form, std::string_view const purpose) -> std::vector<std::string> {
-    if (!form.is_list()) {
-        fail(form.token.span, std::string{purpose} + " must be a list");
-    }
-    std::vector<std::string> result;
-    result.reserve(form.children.size());
-    for (auto const& child : form.children) {
-        result.push_back(text(child, purpose));
-    }
-    return result;
+    return codegen::sexpr::text_list(form, purpose, codegen::sexpr::throw_source_error);
 }
-
-class Fields {
-  public:
-    Fields(Form const& form, std::string_view const head, std::size_t const positionals)
-        : form_{form} {
-        if (!form.is_list() || form.head() != head || form.children.size() < positionals + 1) {
-            fail(form.token.span, "expected '" + std::string{head} + "' form");
-        }
-        for (std::size_t index{positionals + 1}; index < form.children.size();) {
-            auto const& child{form.children[index]};
-            if (child.token.kind == TokenKind::keyword) {
-                if (index + 1 >= form.children.size() ||
-                    form.children[index + 1].token.kind == TokenKind::keyword) {
-                    fail(child.token.span, "property ':" + child.token.text + "' requires a value");
-                }
-                if (!properties_.emplace(child.token.text, &form.children[index + 1]).second) {
-                    fail(child.token.span, "duplicate property ':" + child.token.text + "'");
-                }
-                property_spans_.emplace(child.token.text, child.token.span);
-                index += 2;
-            } else {
-                if (!child.is_list()) {
-                    fail(child.token.span, "expected a property or nested declaration");
-                }
-                declarations_.push_back(&child);
-                ++index;
-            }
-        }
-    }
-
-    auto positional(std::size_t const index) const -> Form const& {
-        return form_.children.at(index + 1);
-    }
-    auto optional(std::string_view const name) const -> Form const* {
-        auto const found{properties_.find(name)};
-        return found == properties_.end() ? nullptr : found->second;
-    }
-    auto required(std::string_view const name) const -> Form const& {
-        auto const* value{optional(name)};
-        if (value == nullptr) {
-            fail(form_.token.span, "missing required property ':" + std::string{name} + "'");
-        }
-        return *value;
-    }
-    auto declarations() const -> std::span<Form const* const> { return declarations_; }
-
-    void validate(std::initializer_list<std::string_view> const properties,
-                  std::initializer_list<std::string_view> const declarations = {}) const {
-        std::set<std::string_view> const allowed_properties{properties};
-        for (auto const& [name, unused] : properties_) {
-            static_cast<void>(unused);
-            if (!allowed_properties.contains(name)) {
-                fail(property_spans_.at(name), "unknown property ':" + name + "'");
-            }
-        }
-        std::set<std::string_view> const allowed_declarations{declarations};
-        for (auto const* declaration : declarations_) {
-            if (!allowed_declarations.contains(declaration->head())) {
-                fail(declaration->token.span,
-                     "unexpected nested declaration '" + std::string{declaration->head()} + "'");
-            }
-        }
-    }
-  private:
-    Form const& form_;
-    std::map<std::string, Form const*, std::less<>> properties_;
-    std::map<std::string, SourceSpan, std::less<>> property_spans_;
-    std::vector<Form const*> declarations_;
-};
 
 auto rooted_path(Form const& form, std::string_view const purpose) -> RootedPath {
     if (!form.is_list() || form.children.size() != 2 ||

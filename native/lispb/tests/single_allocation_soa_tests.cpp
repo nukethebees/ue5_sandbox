@@ -1,5 +1,5 @@
 #include <codegen/generator.h>
-#include <codegen/manifest.h>
+#include <codegen/source_loader.h>
 #include <lispb/project.h>
 
 #include <gtest/gtest.h>

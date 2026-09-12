@@ -1,7 +1,7 @@
-#include "lexer.h"
 #include "parser.h"
 #include "renderer.h"
 
+#include <codegen/sexpr/reader.h>
 #include <gtest/gtest.h>
 
 #include <string>
@@ -11,7 +11,7 @@ namespace slate_codegen::detail {
 namespace {
 
 auto parse_source(std::string_view const source) -> Document {
-    return parse("test.lispb", lex("test.lispb", source));
+    return parse("test.lispb", codegen::sexpr::read_forms("test.lispb", source));
 }
 
 auto parse_error(std::string_view const source) -> std::string {
