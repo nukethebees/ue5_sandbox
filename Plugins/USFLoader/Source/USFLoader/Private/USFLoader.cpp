@@ -2,18 +2,21 @@
 
 #include "USFLoader.h"
 
-#define LOCTEXT_NAMESPACE "FUSFLoaderModule"
+#include "Interfaces/IPluginManager.h"
+#include "Misc/Paths.h"
+#include "ShaderCore.h"
+
+DEFINE_LOG_CATEGORY(LogUSFLoader);
 
 void FUSFLoaderModule::StartupModule() {
-    // This code will execute after your module is loaded into memory; the exact timing is specified
-    // in the .uplugin file per-module
-}
+    auto const plugin{IPluginManager::Get().FindPlugin(TEXT("USFLoader"))};
+    if (!plugin.IsValid()) {
+        UE_LOG(LogUSFLoader, Error, TEXT("Unable to find the USFLoader plugin."));
+        return;
+    }
 
-void FUSFLoaderModule::ShutdownModule() {
-    // This function may be called during shutdown to clean up your module.  For modules that
-    // support dynamic reloading, we call this function before unloading the module.
+    auto const shader_directory{FPaths::Combine(plugin->GetBaseDir(), TEXT("Shaders"))};
+    AddShaderSourceDirectoryMapping(TEXT("/Plugin/USFLoader"), shader_directory);
 }
-
-#undef LOCTEXT_NAMESPACE
 
 IMPLEMENT_MODULE(FUSFLoaderModule, USFLoader)

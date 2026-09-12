@@ -89,7 +89,6 @@ public class SandboxEditor : ModuleRules
             "ImageCore",
             "ToolWidgets",
             "ToolMenus", // For editor toolbar buttons
-            "USFLoaderEditor" // USF Loader plugin dependency            
         });
     }
 }

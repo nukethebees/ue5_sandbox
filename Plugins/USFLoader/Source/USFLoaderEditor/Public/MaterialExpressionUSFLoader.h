@@ -42,39 +42,9 @@ class USFLOADEREDITOR_API UMaterialExpressionUSFLoader : public UMaterialExpress
     UMaterialExpressionUSFLoader();
 
     struct Constants {
-        static FText const& DisplayName() {
-            static FText const text{FText::FromString(TEXT("USF Loader"))};
-            return text;
-        }
-        static FText const& CreationDescription() {
-            static FText const text{
-                FText::FromString(TEXT("Loads a USF file and makes its functions available to "
-                                       "subsequent material nodes"))};
-            return text;
-        }
-
-        // UI Layout Constants
-        static constexpr float UI_PADDING{5.0f};
-        static constexpr float UI_MARGIN{10.0f};
-        static constexpr float UI_MARGIN_SMALL{3.0f};
-
-        // Shader Code Templates
-        static FString const& ShaderHeaderTemplate() {
-            static FString const text{TEXT("// USF Loader: End current function\n"
-                                           "return previous_block;\n"
-                                           "}\n\n")};
-            return text;
-        }
-
-        static FString const& NoFilesComment() {
-            static FString const text{TEXT("// No USF files specified\n\n")};
-            return text;
-        }
-
-        static FString const& EmptyPathComment() {
-            static FString const text{TEXT("// Empty file path - include skipped\n")};
-            return text;
-        }
+        static constexpr float ui_padding{5.0f};
+        static constexpr float ui_margin{10.0f};
+        static constexpr float ui_margin_small{3.0f};
     };
 
     /** Optional prefix to add to all file paths (e.g., "/Project/", "/Engine/",
@@ -99,6 +69,7 @@ class USFLOADEREDITOR_API UMaterialExpressionUSFLoader : public UMaterialExpress
     bool bShowCodePreview{false};
 
     UPROPERTY(VisibleAnywhere,
+              Transient,
               Category = "USF Loader",
               meta = (MultiLine = "true", DisplayName = "Generated Code"))
     FString debug_code;
@@ -115,12 +86,11 @@ class USFLOADEREDITOR_API UMaterialExpressionUSFLoader : public UMaterialExpress
     virtual bool CanRenameNode() const override;
     virtual FString GetEditableName() const override;
     virtual void SetEditableName(FString const& NewName) override;
+    virtual void GetIncludeFilePaths(TSet<FString>& out_include_file_paths) const override;
     virtual TSharedPtr<class SGraphNodeMaterialBase> CreateCustomGraphNodeWidget() override;
 //~ End UMaterialExpression Interface
 #endif
   private:
-    bool is_valid_include_path(FString const& path) const;
-
     UPROPERTY(EditAnywhere, Category = "USF Loader")
     FString instance_name{};
 };

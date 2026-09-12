@@ -1,5 +1,5 @@
 // Test dummy shader for USF Path Validation testing
-// This file should be found by the validation system when using "/Project/Shaders/TestDummy.usf"
+// This file should resolve as "/Plugin/USFLoader/TestDummy.usf".
 
 float TestDummyFunction() {
     return 1.0f;

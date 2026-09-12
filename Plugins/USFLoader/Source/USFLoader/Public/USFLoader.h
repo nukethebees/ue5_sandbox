@@ -2,11 +2,12 @@
 
 #pragma once
 
+#include "Logging/LogMacros.h"
 #include "Modules/ModuleManager.h"
+
+USFLOADER_API DECLARE_LOG_CATEGORY_EXTERN(LogUSFLoader, Log, All);
 
 class FUSFLoaderModule : public IModuleInterface {
   public:
-    /** IModuleInterface implementation */
     virtual void StartupModule() override;
-    virtual void ShutdownModule() override;
 };

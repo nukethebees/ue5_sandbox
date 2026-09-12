@@ -4,37 +4,26 @@ public class USFLoaderEditor : ModuleRules
 {
     public USFLoaderEditor(ReadOnlyTargetRules Target) : base(Target)
     {
-        PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
+        PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+        CppStandard = CppStandardVersion.Latest;
 
-        PublicDependencyModuleNames.AddRange(
-            new string[]
-            {
-                "Core",
-                "CoreUObject",
-                "Engine",
-                "UnrealEd",
-                "MaterialEditor",
-                "KismetCompiler",
-                "GraphEditor",
-                "Slate",
-                "SlateCore",
-                "EditorStyle",
-                "EditorWidgets",
-                "ToolMenus",
-                "USFLoader"
-            }
-        );
+        PublicDependencyModuleNames.AddRange(new string[]
+        {
+            "Core",
+            "CoreUObject",
+            "Engine",
+            "MaterialEditor",
+            "Slate",
+            "SlateCore",
+        });
 
-        PrivateDependencyModuleNames.AddRange(
-            new string[]
-            {
-                "CQTest",
-                "EditorSubsystem",
-                "RenderCore",
-                "RHI",
-                "Projects",
-                "ShaderCompilerCommon"
-            }
-        );
+        PrivateDependencyModuleNames.AddRange(new string[]
+        {
+            "CQTest",
+            "GraphEditor",
+            "RenderCore",
+            "UnrealEd",
+            "USFLoader",
+        });
     }
 }
