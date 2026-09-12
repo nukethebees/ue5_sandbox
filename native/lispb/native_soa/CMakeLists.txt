@@ -15,7 +15,7 @@ add_custom_command(
 add_library(native-soa INTERFACE)
 target_compile_features(native-soa INTERFACE cxx_std_23)
 target_include_directories(native-soa INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include" "${NATIVE_SOA_GENERATED}")
-target_include_directories(native-soa INTERFACE "${PROJECT_SOURCE_DIR}/Plugins/SandboxCore/Source/SandboxCore/Public")
+target_include_directories(native-soa INTERFACE "${PROJECT_SOURCE_DIR}/native/core/include")
 target_sources(native-soa INTERFACE "${NATIVE_SOA_GENERATED}/native_soa_types.h")
 target_link_libraries(native-soa INTERFACE sandbox::warnings_as_errors)
 

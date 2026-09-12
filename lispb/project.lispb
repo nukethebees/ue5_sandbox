@@ -84,6 +84,11 @@
     (emission kernel-native-simd
       :profile native-x86-simd-lab
       :output-root (build-path "native/lispb/kernel/native-simd-generated")))
+  (kernel native-core-kernels
+    :sources ("Plugins/SandboxCore/Source/SandboxCore/Kernels/array_math.lispb")
+    (emission kernel-native-core
+      :profile standard
+      :output-root (project-path "native/core")))
   (kernel kernel-fixtures
     :sources ("native/lispb/kernel/tests/compile/array_math.lispb")
     (emission kernel-compile-fixture
@@ -111,6 +116,6 @@
       slate-game-options
       slate-level-select))
   (group committed-code
-    :targets (sandbox-code slate-production kernel-unreal kernel-avx2-lab))
+    :targets (sandbox-code slate-production kernel-unreal kernel-native-core kernel-avx2-lab))
   (group materials
     :targets (ui-glow-material world-soft-target-material)))

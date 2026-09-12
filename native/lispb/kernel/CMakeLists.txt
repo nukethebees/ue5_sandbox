@@ -86,9 +86,9 @@ set(KERNEL_CANDIDATE_DOCUMENT "${KERNEL_PRODUCTION_ROOT}/Kernels/candidate_math.
 
 set(KERNEL_STANDARD_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/standard-generated")
 set(KERNEL_STANDARD_FILES
-  "${KERNEL_STANDARD_OUTPUT}/standard/array_math_kernels.h"
-  "${KERNEL_STANDARD_OUTPUT}/standard/array_math_kernels.cpp"
-  "${KERNEL_STANDARD_OUTPUT}/standard/array_math_kernels_tests.cpp"
+  "${KERNEL_STANDARD_OUTPUT}/include/sandbox/core/generated/array_math_kernels.h"
+  "${KERNEL_STANDARD_OUTPUT}/src/generated/array_math_kernels.cpp"
+  "${KERNEL_STANDARD_OUTPUT}/tests/generated/array_math_kernels_tests.cpp"
   "${KERNEL_STANDARD_OUTPUT}/standard/candidate_math_kernels.h"
   "${KERNEL_STANDARD_OUTPUT}/standard/candidate_math_kernels.cpp"
   "${KERNEL_STANDARD_OUTPUT}/standard/candidate_math_kernels_tests.cpp"
@@ -112,7 +112,10 @@ add_executable(kernel-generated-standard-tests
   ${KERNEL_STANDARD_FILES}
 )
 target_compile_features(kernel-generated-standard-tests PRIVATE cxx_std_23)
-target_include_directories(kernel-generated-standard-tests PRIVATE "${KERNEL_STANDARD_OUTPUT}")
+target_include_directories(kernel-generated-standard-tests PRIVATE
+  "${KERNEL_STANDARD_OUTPUT}"
+  "${KERNEL_STANDARD_OUTPUT}/include"
+)
 target_link_libraries(kernel-generated-standard-tests PRIVATE
   GTest::gtest_main
   sandbox::codegen_warnings
@@ -148,6 +151,36 @@ add_custom_target(check-generated-kernel-code
     "${KERNEL_CANDIDATE_DOCUMENT}"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Checking committed SandboxCore kernel code"
+  USES_TERMINAL
+  VERBATIM
+)
+
+add_custom_target(generate-native-core-kernels
+  COMMAND lispb generate
+    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
+    --build-root "${CMAKE_BINARY_DIR}"
+    --target kernel-native-core
+  DEPENDS
+    lispb
+    "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
+    "${KERNEL_PRODUCTION_DOCUMENT}"
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+  COMMENT "Generating committed native-core kernels"
+  USES_TERMINAL
+  VERBATIM
+)
+
+add_custom_target(check-generated-native-core-kernels
+  COMMAND lispb check
+    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
+    --build-root "${CMAKE_BINARY_DIR}"
+    --target kernel-native-core
+  DEPENDS
+    lispb
+    "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
+    "${KERNEL_PRODUCTION_DOCUMENT}"
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+  COMMENT "Checking committed native-core kernels"
   USES_TERMINAL
   VERBATIM
 )
@@ -523,6 +556,8 @@ if(SANDBOX_KERNEL_BENCHMARKS)
 endif()
 
 add_dependencies(generate-code generate-kernel-code)
+add_dependencies(generate-code generate-native-core-kernels)
 add_dependencies(generate-code generate-kernel-avx2-lab)
 add_dependencies(check-generated-code check-generated-kernel-code)
+add_dependencies(check-generated-code check-generated-native-core-kernels)
 add_dependencies(check-generated-code check-generated-kernel-avx2-lab)

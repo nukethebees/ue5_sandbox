@@ -1,18 +1,14 @@
 (kernel-module array_math
-  (emit unreal
-    (header "Public/SandboxCore/array_math_kernels.h")
-    (source "Private/array_math_kernels.cpp")
-    (header-include "SandboxCore/array_math_kernels.h")
-    (namespace ml)
-    (export SANDBOXCORE_API))
   (emit standard
-    (header "standard/array_math_kernels.h")
-    (source "standard/array_math_kernels.cpp")
-    (tests "standard/array_math_kernels_tests.cpp")
-    (header-include "standard/array_math_kernels.h")
+    (header "include/sandbox/core/generated/array_math_kernels.h")
+    (source "src/generated/array_math_kernels.cpp")
+    (tests "tests/generated/array_math_kernels_tests.cpp")
+    (header-include "sandbox/core/generated/array_math_kernels.h")
     (namespace ml))
 
   (type-set numeric int32 float double)
+  (type-set vector_numeric int32 float double)
+  (type-set floating float double)
 
   (map add
     (types numeric)
@@ -49,4 +45,86 @@
     (output out)
     (expression (/ data value))
     (variants
-      (in-place data divide_in_place))))
+      (in-place data divide_in_place)))
+
+  (map add_arrays
+    (types vector_numeric)
+    (operand lhs array)
+    (operand rhs array)
+    (output out)
+    (expression (+ lhs rhs))
+    (variants
+      (out-of-place add_arrays)
+      (in-place lhs add_arrays_in_place)))
+
+  (map lerp
+    (types floating)
+    (operand from array)
+    (operand to array)
+    (operand alpha (array scalar))
+    (output out)
+    (expression (+ from (* alpha (- to from))))
+    (variants
+      (out-of-place lerp_1d)
+      (in-place from lerp_1d_in_place)))
+
+  (map add_scaled
+    (types floating)
+    (operand base array)
+    (operand value array)
+    (operand scale (array scalar))
+    (output out)
+    (aliasing pairwise-disjoint)
+    (expression (+ base (* value scale)))
+    (variants
+      (out-of-place add_scaled)
+      (in-place base add_scaled_in_place)))
+
+  (map subtract_scaled
+    (types floating)
+    (operand base array)
+    (operand value array)
+    (operand scale (array scalar))
+    (output out)
+    (expression (- base (* value scale)))
+    (variants
+      (out-of-place subtract_scaled)
+      (in-place base subtract_scaled_in_place)))
+
+  (map size_squared_3d
+    (types floating)
+    (operand x array)
+    (operand y array)
+    (operand z array)
+    (output out)
+    (expression (+ (+ (* x x) (* y y)) (* z z)))
+    (variants
+      (out-of-place size_squared_3d)))
+
+  (map distance_squared_3d
+    (types floating)
+    (operand ax array)
+    (operand ay array)
+    (operand az array)
+    (operand bx array)
+    (operand by array)
+    (operand bz array)
+    (output out)
+    (expression (+ (+ (* (- bx ax) (- bx ax))
+                      (* (- by ay) (- by ay)))
+                   (* (- bz az) (- bz az))))
+    (variants
+      (out-of-place distance_squared_3d)))
+
+  (map dot_product_3d
+    (types floating)
+    (operand ax array)
+    (operand ay array)
+    (operand az array)
+    (operand bx array)
+    (operand by array)
+    (operand bz array)
+    (output out)
+    (expression (+ (+ (* ax bx) (* ay by)) (* az bz)))
+    (variants
+      (out-of-place dot_product_3d))))

@@ -109,7 +109,7 @@ auto make_dialect(bool const native) -> SingleAllocationDialect {
         .column_iteration_returns_result = true,
         .dependencies =
             {{"single_allocation_operations", "SandboxCore/single_allocation/operations.h", {}},
-             {"single_allocation_removal", "SandboxCore/single_allocation/removal.h", {}},
+             {"single_allocation_removal", "sandbox/core/single_allocation/removal.h", {}},
              {"single_allocation_vector_views", "SandboxCore/single_allocation/vector_views.h", {}},
              {"single_allocation_memory_ops", "Templates/MemoryOps.h", {}}},
     };

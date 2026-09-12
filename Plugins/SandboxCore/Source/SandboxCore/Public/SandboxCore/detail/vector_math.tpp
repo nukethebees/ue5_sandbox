@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sandbox/core/vector_math.h>
+
 #include "SandboxCore/array_checks.h"
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/log_categories.h"
@@ -15,11 +17,11 @@ namespace ml {
 /* ---------------------------------------------------------------------------------------------- */
 template <ml::Numeric T>
 FORCEINLINE auto size_sq(T const x, T const y, T const z) noexcept -> T {
-    return x * x + y * y + z * z;
+    return ml::native_math::size_squared(x, y, z);
 }
 template <ml::Numeric T>
 auto size(T const x, T const y, T const z) noexcept -> T {
-    return FMath::Sqrt(size_sq(x, y, z));
+    return ml::native_math::size(x, y, z);
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -28,15 +30,11 @@ auto size(T const x, T const y, T const z) noexcept -> T {
 template <ml::Numeric T>
 FORCEINLINE auto
     dist_sq(T const ax, T const ay, T const az, T const bx, T const by, T const bz) noexcept -> T {
-    auto const dx{bx - ax};
-    auto const dy{by - ay};
-    auto const dz{bz - az};
-
-    return size_sq(dx, dy, dz);
+    return ml::native_math::distance_squared(ax, ay, az, bx, by, bz);
 }
 template <ml::Numeric T>
 auto dist(T const ax, T const ay, T const az, T const bx, T const by, T const bz) noexcept -> T {
-    return FMath::Sqrt(dist_sq(ax, ay, az, bx, by, bz));
+    return ml::native_math::distance(ax, ay, az, bx, by, bz);
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -45,7 +43,7 @@ auto dist(T const ax, T const ay, T const az, T const bx, T const by, T const bz
 template <ml::Numeric T>
 auto dot_product(T const ax, T const ay, T const az, T const bx, T const by, T const bz) noexcept
     -> T {
-    return (ax * bx) + (ay * by) + (az * bz);
+    return ml::native_math::dot_product(ax, ay, az, bx, by, bz);
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -75,11 +73,8 @@ void add_vector3(T* RESTRICT out_x,
                  T const* RESTRICT rhs_y,
                  T const* RESTRICT rhs_z,
                  int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        out_x[i] = lhs_x[i] + rhs_x[i];
-        out_y[i] = lhs_y[i] + rhs_y[i];
-        out_z[i] = lhs_z[i] + rhs_z[i];
-    }
+    ml::native_math::add_vector3(
+        out_x, out_y, out_z, lhs_x, lhs_y, lhs_z, rhs_x, rhs_y, rhs_z, count);
 }
 
 template <ml::Numeric T>
@@ -90,11 +85,7 @@ void add_vector3_in_place(T* dst_x,
                           T const* RESTRICT src_y,
                           T const* RESTRICT src_z,
                           int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        dst_x[i] += src_x[i];
-        dst_y[i] += src_y[i];
-        dst_z[i] += src_z[i];
-    }
+    ml::native_math::add_vector3_in_place(dst_x, dst_y, dst_z, src_x, src_y, src_z, count);
 }
 
 template <ml::Numeric T>
@@ -106,11 +97,8 @@ void add_scaled_in_place(T* const RESTRICT dst_x,
                          T const* const RESTRICT src_z,
                          T const scale_factor,
                          int32 const count) {
-    for (int32 i{0}; i < count; ++i) {
-        dst_x[i] += src_x[i] * scale_factor;
-        dst_y[i] += src_y[i] * scale_factor;
-        dst_z[i] += src_z[i] * scale_factor;
-    }
+    ml::native_math::add_scaled_in_place(
+        dst_x, dst_y, dst_z, src_x, src_y, src_z, scale_factor, count);
 }
 
 template <ml::Numeric T>
@@ -125,11 +113,8 @@ void add_scaled_in_place(T* const RESTRICT dst_x,
                          T const* const RESTRICT b_z,
                          T const c,
                          int32 const count) {
-    for (int32 i{0}; i < count; ++i) {
-        dst_x[i] += (a_x[i] * b_x[i] * c);
-        dst_y[i] += (a_y[i] * b_y[i] * c);
-        dst_z[i] += (a_z[i] * b_z[i] * c);
-    }
+    ml::native_math::add_scaled_product_in_place(
+        dst_x, dst_y, dst_z, a_x, a_y, a_z, b_x, b_y, b_z, c, count);
 }
 
 template <ml::Numeric T>
@@ -142,11 +127,8 @@ void add_scaled_in_place(T* const RESTRICT dst_x,
                          T const* const RESTRICT b,
                          T const c,
                          int32 const count) {
-    for (int32 i{0}; i < count; ++i) {
-        dst_x[i] += (a_x[i] * b[i] * c);
-        dst_y[i] += (a_y[i] * b[i] * c);
-        dst_z[i] += (a_z[i] * b[i] * c);
-    }
+    ml::native_math::add_scaled_product_in_place(
+        dst_x, dst_y, dst_z, a_x, a_y, a_z, b, c, count);
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -164,11 +146,8 @@ void subtract_scaled(T* RESTRICT out_x,
                      T const* RESTRICT b_z,
                      T const c,
                      int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        out_x[i] = a_x[i] - b_x[i] * c;
-        out_y[i] = a_y[i] - b_y[i] * c;
-        out_z[i] = a_z[i] - b_z[i] * c;
-    }
+    ml::native_math::subtract_scaled(
+        out_x, out_y, out_z, a_x, a_y, a_z, b_x, b_y, b_z, c, count);
 }
 template <ml::Numeric T>
 void subtract_scaled_in_place(T* RESTRICT a_x,
@@ -179,11 +158,7 @@ void subtract_scaled_in_place(T* RESTRICT a_x,
                               T const* RESTRICT b_z,
                               T const c,
                               int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        a_x[i] -= b_x[i] * c;
-        a_y[i] -= b_y[i] * c;
-        a_z[i] -= b_z[i] * c;
-    }
+    ml::native_math::subtract_scaled_in_place(a_x, a_y, a_z, b_x, b_y, b_z, c, count);
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -192,11 +167,7 @@ void subtract_scaled_in_place(T* RESTRICT a_x,
 template <ml::Numeric T>
 void multiply_in_place(
     T* RESTRICT a_x, T* RESTRICT a_y, T* RESTRICT a_z, T const b, int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        a_x[i] *= b;
-        a_y[i] *= b;
-        a_z[i] *= b;
-    }
+    ml::native_math::multiply_vector3(a_x, a_y, a_z, a_x, a_y, a_z, b, count);
 }
 
 template <ml::Numeric T>
@@ -205,11 +176,7 @@ void multiply_in_place(T* RESTRICT a_x,
                        T* RESTRICT a_z,
                        T const* RESTRICT b,
                        int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        a_x[i] *= b[i];
-        a_y[i] *= b[i];
-        a_z[i] *= b[i];
-    }
+    ml::native_math::multiply_vector3(a_x, a_y, a_z, a_x, a_y, a_z, b, count);
 }
 
 template <ml::Numeric T>
@@ -220,11 +187,7 @@ void multiply_in_place(T* RESTRICT a_x,
                        T const* RESTRICT b_y,
                        T const* RESTRICT b_z,
                        int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        a_x[i] *= b_x[i];
-        a_y[i] *= b_y[i];
-        a_z[i] *= b_z[i];
-    }
+    ml::native_math::multiply_vector3_in_place(a_x, a_y, a_z, b_x, b_y, b_z, count);
 }
 
 template <ml::Numeric T>
@@ -236,11 +199,8 @@ void multiply(T* RESTRICT dst_x,
               T const* RESTRICT lhs_z,
               T const* RESTRICT scale_factor,
               int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        dst_x[i] = lhs_x[i] * scale_factor[i];
-        dst_y[i] = lhs_y[i] * scale_factor[i];
-        dst_z[i] = lhs_z[i] * scale_factor[i];
-    }
+    ml::native_math::multiply_vector3(
+        dst_x, dst_y, dst_z, lhs_x, lhs_y, lhs_z, scale_factor, count);
 }
 template <ml::Numeric T>
 void multiply(T* RESTRICT dst_x,
@@ -251,11 +211,8 @@ void multiply(T* RESTRICT dst_x,
               T const* RESTRICT lhs_z,
               T const scale_factor,
               int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        dst_x[i] = lhs_x[i] * scale_factor;
-        dst_y[i] = lhs_y[i] * scale_factor;
-        dst_z[i] = lhs_z[i] * scale_factor;
-    }
+    ml::native_math::multiply_vector3(
+        dst_x, dst_y, dst_z, lhs_x, lhs_y, lhs_z, scale_factor, count);
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -276,9 +233,7 @@ void size_sq_vector(T* RESTRICT out,
                     T const* RESTRICT ys,
                     T const* RESTRICT zs,
                     int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        out[i] = xs[i] * xs[i] + ys[i] * ys[i] + zs[i] * zs[i];
-    }
+    ml::native_math::size_squared_vector(out, xs, ys, zs, count);
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -303,12 +258,8 @@ void dist_sq_vector(T* RESTRICT out,
                     T const* RESTRICT ys_rhs,
                     T const* RESTRICT zs_rhs,
                     int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        auto const x{xs_rhs[i] - xs_lhs[i]};
-        auto const y{ys_rhs[i] - ys_lhs[i]};
-        auto const z{zs_rhs[i] - zs_lhs[i]};
-        out[i] = x * x + y * y + z * z;
-    }
+    ml::native_math::distance_squared_vector(
+        out, xs_lhs, ys_lhs, zs_lhs, xs_rhs, ys_rhs, zs_rhs, count);
 }
 
 template <std::floating_point T>
@@ -321,15 +272,15 @@ void dist_and_dist_sq_vector(T* RESTRICT out_distances,
                              T const* RESTRICT ys_rhs,
                              T const* RESTRICT zs_rhs,
                              int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        auto const x{xs_rhs[i] - xs_lhs[i]};
-        auto const y{ys_rhs[i] - ys_lhs[i]};
-        auto const z{zs_rhs[i] - zs_lhs[i]};
-        auto const distance_sq{x * x + y * y + z * z};
-
-        out_distances[i] = FMath::Sqrt(distance_sq);
-        out_distances_sq[i] = distance_sq;
-    }
+    ml::native_math::distance_and_squared_vector(out_distances,
+                                                  out_distances_sq,
+                                                  xs_lhs,
+                                                  ys_lhs,
+                                                  zs_lhs,
+                                                  xs_rhs,
+                                                  ys_rhs,
+                                                  zs_rhs,
+                                                  count);
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -344,9 +295,8 @@ void dot_product(T* RESTRICT out,
                  T const* RESTRICT b_ys,
                  T const* RESTRICT b_zs,
                  int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        out[i] = (a_xs[i] * b_xs[i]) + (a_ys[i] * b_ys[i]) + (a_zs[i] * b_zs[i]);
-    }
+    ml::native_math::dot_product_vector(
+        out, a_xs, a_ys, a_zs, b_xs, b_ys, b_zs, count);
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -363,26 +313,17 @@ void direction(T* const RESTRICT out_xs,
                T const* const RESTRICT to_ys,
                T const* const RESTRICT to_zs,
                int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        auto const dx{to_xs[i] - from_xs[i]};
-        auto const dy{to_ys[i] - from_ys[i]};
-        auto const dz{to_zs[i] - from_zs[i]};
-
-        auto const size_sq{ml::size_sq(dx, dy, dz)};
-
-        if (size_sq <= static_cast<T>(UE_SMALL_NUMBER)) {
-            out_xs[i] = T{0};
-            out_ys[i] = T{0};
-            out_zs[i] = T{0};
-            continue;
-        }
-
-        auto const inv_size{static_cast<T>(1) / FMath::Sqrt(size_sq)};
-
-        out_xs[i] = dx * inv_size;
-        out_ys[i] = dy * inv_size;
-        out_zs[i] = dz * inv_size;
-    }
+    ml::native_math::direction_and_distance(out_xs,
+                                            out_ys,
+                                            out_zs,
+                                            static_cast<T*>(nullptr),
+                                            from_xs,
+                                            from_ys,
+                                            from_zs,
+                                            to_xs,
+                                            to_ys,
+                                            to_zs,
+                                            count);
 }
 
 template <std::floating_point T>
@@ -397,29 +338,17 @@ void direction_and_distance(T* const RESTRICT out_xs,
                             T const* const RESTRICT to_ys,
                             T const* const RESTRICT to_zs,
                             int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        auto const dx{to_xs[i] - from_xs[i]};
-        auto const dy{to_ys[i] - from_ys[i]};
-        auto const dz{to_zs[i] - from_zs[i]};
-
-        auto const size_sq{ml::size_sq(dx, dy, dz)};
-
-        if (size_sq <= static_cast<T>(UE_SMALL_NUMBER)) {
-            out_xs[i] = T{0};
-            out_ys[i] = T{0};
-            out_zs[i] = T{0};
-            out_distances[i] = T{0};
-            continue;
-        }
-
-        auto const distance{FMath::Sqrt(size_sq)};
-        auto const inv_distance{static_cast<T>(1) / distance};
-
-        out_xs[i] = dx * inv_distance;
-        out_ys[i] = dy * inv_distance;
-        out_zs[i] = dz * inv_distance;
-        out_distances[i] = distance;
-    }
+    ml::native_math::direction_and_distance(out_xs,
+                                            out_ys,
+                                            out_zs,
+                                            out_distances,
+                                            from_xs,
+                                            from_ys,
+                                            from_zs,
+                                            to_xs,
+                                            to_ys,
+                                            to_zs,
+                                            count);
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -433,12 +362,7 @@ void to_rotations(T* const RESTRICT pitches,
                   T const* const RESTRICT ys,
                   T const* const RESTRICT zs,
                   int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        auto const rotation{ml::to_rotation(xs[i], ys[i], zs[i])};
-        pitches[i] = rotation.Pitch;
-        yaws[i] = rotation.Yaw;
-        rolls[i] = rotation.Roll;
-    }
+    ml::native_math::to_rotations(pitches, yaws, rolls, xs, ys, zs, count);
 }
 }
 

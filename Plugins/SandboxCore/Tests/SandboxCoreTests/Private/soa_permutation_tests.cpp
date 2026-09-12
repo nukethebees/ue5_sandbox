@@ -1,5 +1,6 @@
 #include <SandboxCore/soa_permutation.h>
 
+#include "Containers/UnrealString.h"
 #include "TestHarness.h"
 
 namespace {
@@ -42,7 +43,7 @@ TEST_CASE("SandboxCore.SoaPermutation.MoveOnlyValuesAndDisjointCycles") {
 
 TEST_CASE("SandboxCore.SoaPermutation.ReusesPermutationAcrossParallelStreams") {
     TArray<int32> ids{10, 20, 30, 40};
-    TArray<FString> names{TEXT("ten"), TEXT("twenty"), TEXT("thirty"), TEXT("forty")};
+    TArray<FString> names{FString{TEXT("ten")}, FString{TEXT("twenty")}, FString{TEXT("thirty")}, FString{TEXT("forty")}};
     TArray<int32> indices{2, 0, 3, 1};
     auto const expected_indices{indices};
 
@@ -50,7 +51,7 @@ TEST_CASE("SandboxCore.SoaPermutation.ReusesPermutationAcrossParallelStreams") {
     ml::apply_permutation(names, indices);
 
     CHECK((ids == TArray<int32>{30, 10, 40, 20}));
-    CHECK((names == TArray<FString>{TEXT("thirty"), TEXT("ten"), TEXT("forty"), TEXT("twenty")}));
+    CHECK((names == TArray<FString>{FString{TEXT("thirty")}, FString{TEXT("ten")}, FString{TEXT("forty")}, FString{TEXT("twenty")}}));
     CHECK(indices == expected_indices);
 }
 

@@ -135,6 +135,7 @@ target_compile_features(codegen-generated-compile-tests PRIVATE cxx_std_23)
 target_include_directories(codegen-generated-compile-tests PRIVATE
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}"
   "${CODEGEN_COMPILE_FIXTURE_SOURCE}/stubs"
+  "${PROJECT_SOURCE_DIR}/native/core/include"
   "${PROJECT_SOURCE_DIR}/Plugins/SandboxCore/Source/SandboxCore/Public"
 )
 target_link_libraries(codegen-generated-compile-tests PRIVATE sandbox::codegen_warnings)
@@ -179,6 +180,7 @@ foreach(restriction IN ITEMS COPY DESTRUCTOR DEFAULT)
   target_include_directories(${reject_target} PRIVATE
     "${CODEGEN_COMPILE_FIXTURE_OUTPUT}"
     "${CODEGEN_COMPILE_FIXTURE_SOURCE}/stubs"
+    "${PROJECT_SOURCE_DIR}/native/core/include"
     "${PROJECT_SOURCE_DIR}/Plugins/SandboxCore/Source/SandboxCore/Public"
   )
   target_link_libraries(${reject_target} PRIVATE sandbox::codegen_warnings)
