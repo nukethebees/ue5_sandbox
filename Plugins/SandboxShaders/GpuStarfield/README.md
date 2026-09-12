@@ -35,9 +35,10 @@ retain their logical depth, so geometry farther away than a star can still rende
 
 ## Controls
 
-The actor exposes three expandable settings structs: `distribution` for generated sky layout,
-`stars` for billboard appearance and motion, and `haze` for the background band, core, and nebular
-knots. The leaf control names below omit those prefixes for readability.
+The actor exposes one root-level expandable struct for each feature: `generation`, `star`,
+`galactic_band`, `stellar_cluster`, `dust_lane`, `bright_star`, `twinkle`, `galactic_haze`,
+`galactic_core`, and `nebular_knot`. None of these groups contains another settings group. The leaf
+control names below omit those prefixes for readability.
 
 - `star_count` and `random_seed` regenerate and reupload the immutable star set.
 - `galactic_band_strength` controls the fraction of stars concentrated around the actor's local

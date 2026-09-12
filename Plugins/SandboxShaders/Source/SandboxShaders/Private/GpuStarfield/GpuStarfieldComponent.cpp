@@ -115,38 +115,40 @@ struct FGpuStarfieldRenderParameters {
 
 auto make_render_parameters(FGpuStarfieldSettings const& settings)
     -> FGpuStarfieldRenderParameters {
-    auto const& stars{settings.stars};
-    auto const& distribution{settings.distribution};
-    auto const& haze{settings.haze};
+    auto const& star{settings.star};
+    auto const& bright_star{settings.bright_star};
+    auto const& twinkle{settings.twinkle};
+    auto const& dust_lane{settings.dust_lane};
+    auto const& galactic_haze{settings.galactic_haze};
+    auto const& galactic_core{settings.galactic_core};
+    auto const& nebular_knot{settings.nebular_knot};
     return {
-        .starfield_radius = base_starfield_radius * stars.starfield_scale,
-        .global_star_size = base_star_size * stars.starfield_scale * stars.star_size_multiplier,
-        .global_brightness = stars.global_brightness,
-        .star_colour_variation_strength = stars.star_colour_variation_strength,
-        .bright_star_size_multiplier = stars.bright_star_size_multiplier,
-        .bright_star_brightness_multiplier = stars.bright_star_brightness_multiplier,
-        .parallax_strength = stars.parallax_strength,
-        .bright_star_shape_strength = stars.bright_star_shape_strength,
-        .twinkle_strength = stars.twinkle_strength,
-        .twinkle_speed = stars.twinkle_speed,
-        .dust_lane_strength = distribution.dust_lane_strength,
-        .dust_lane_width_degrees = distribution.dust_lane_width_degrees,
-        .dust_lane_irregularity = distribution.dust_lane_irregularity,
-        .galactic_haze_strength = haze.galactic_haze_strength,
-        .galactic_haze_width_degrees = haze.galactic_haze_width_degrees,
-        .galactic_haze_colour = {haze.galactic_haze_colour.R,
-                                 haze.galactic_haze_colour.G,
-                                 haze.galactic_haze_colour.B},
-        .galactic_core_strength = haze.galactic_core_strength,
-        .galactic_core_width_degrees = haze.galactic_core_width_degrees,
-        .galactic_core_colour = {haze.galactic_core_colour.R,
-                                 haze.galactic_core_colour.G,
-                                 haze.galactic_core_colour.B},
-        .nebular_knot_strength = haze.nebular_knot_strength,
-        .nebular_knot_size_degrees = haze.nebular_knot_size_degrees,
-        .nebular_knot_colour = {haze.nebular_knot_colour.R,
-                                haze.nebular_knot_colour.G,
-                                haze.nebular_knot_colour.B},
+        .starfield_radius = base_starfield_radius * star.scale,
+        .global_star_size = base_star_size * star.scale * star.size_multiplier,
+        .global_brightness = star.global_brightness,
+        .star_colour_variation_strength = star.colour_variation_strength,
+        .bright_star_size_multiplier = bright_star.size_multiplier,
+        .bright_star_brightness_multiplier = bright_star.brightness_multiplier,
+        .parallax_strength = star.parallax_strength,
+        .bright_star_shape_strength = bright_star.shape_strength,
+        .twinkle_strength = twinkle.strength,
+        .twinkle_speed = twinkle.speed,
+        .dust_lane_strength = dust_lane.strength,
+        .dust_lane_width_degrees = dust_lane.width_degrees,
+        .dust_lane_irregularity = dust_lane.irregularity,
+        .galactic_haze_strength = galactic_haze.strength,
+        .galactic_haze_width_degrees = galactic_haze.width_degrees,
+        .galactic_haze_colour = {galactic_haze.colour.R,
+                                 galactic_haze.colour.G,
+                                 galactic_haze.colour.B},
+        .galactic_core_strength = galactic_core.strength,
+        .galactic_core_width_degrees = galactic_core.width_degrees,
+        .galactic_core_colour = {
+            galactic_core.colour.R, galactic_core.colour.G, galactic_core.colour.B},
+        .nebular_knot_strength = nebular_knot.strength,
+        .nebular_knot_size_degrees = nebular_knot.size_degrees,
+        .nebular_knot_colour = {
+            nebular_knot.colour.R, nebular_knot.colour.G, nebular_knot.colour.B},
     };
 }
 
@@ -523,99 +525,83 @@ UGpuStarfieldComponent::UGpuStarfieldComponent() {
 
 void UGpuStarfieldComponent::apply_settings(FGpuStarfieldSettings const& settings) {
     auto normalised{settings};
-    auto& distribution{normalised.distribution};
-    auto& stars{normalised.stars};
-    auto& haze{normalised.haze};
+    auto& generation{normalised.generation};
+    auto& star{normalised.star};
+    auto& galactic_band{normalised.galactic_band};
+    auto& stellar_cluster{normalised.stellar_cluster};
+    auto& dust_lane{normalised.dust_lane};
+    auto& bright_star{normalised.bright_star};
+    auto& twinkle{normalised.twinkle};
+    auto& galactic_haze{normalised.galactic_haze};
+    auto& galactic_core{normalised.galactic_core};
+    auto& nebular_knot{normalised.nebular_knot};
 
-    distribution.star_count = FMath::Clamp(distribution.star_count, 1, maximum_star_count);
-    distribution.galactic_band_strength =
-        FMath::Clamp(distribution.galactic_band_strength, 0.0f, 1.0f);
-    distribution.galactic_band_width_degrees =
-        FMath::Clamp(distribution.galactic_band_width_degrees, 1.0f, 45.0f);
-    distribution.stellar_cluster_strength =
-        FMath::Clamp(distribution.stellar_cluster_strength, 0.0f, 1.0f);
-    distribution.stellar_cluster_width_degrees =
-        FMath::Clamp(distribution.stellar_cluster_width_degrees, 1.0f, 20.0f);
-    distribution.dust_lane_strength =
-        FMath::Clamp(distribution.dust_lane_strength, 0.0f, 1.0f);
-    distribution.dust_lane_width_degrees =
-        FMath::Clamp(distribution.dust_lane_width_degrees, 0.5f, 20.0f);
-    distribution.dust_lane_irregularity =
-        FMath::Clamp(distribution.dust_lane_irregularity, 0.0f, 1.0f);
-
-    stars.starfield_scale = FMath::Max(stars.starfield_scale, 0.001f);
-    stars.star_size_multiplier = FMath::Max(stars.star_size_multiplier, 0.0f);
-    stars.global_brightness = FMath::Max(stars.global_brightness, 0.0f);
-    stars.star_colour_variation_strength =
-        FMath::Clamp(stars.star_colour_variation_strength, 0.0f, 1.0f);
-    stars.bright_star_fraction = FMath::Clamp(stars.bright_star_fraction, 0.0f, 0.1f);
-    stars.bright_star_size_multiplier = FMath::Max(stars.bright_star_size_multiplier, 1.0f);
-    stars.bright_star_brightness_multiplier =
-        FMath::Max(stars.bright_star_brightness_multiplier, 1.0f);
-    stars.bright_star_shape_strength =
-        FMath::Clamp(stars.bright_star_shape_strength, 0.0f, 1.0f);
-    stars.twinkle_strength = FMath::Clamp(stars.twinkle_strength, 0.0f, 0.5f);
-    stars.twinkle_speed = FMath::Clamp(stars.twinkle_speed, 0.0f, 2.0f);
-    stars.parallax_strength = FMath::Clamp(stars.parallax_strength, 0.0f, 1.0f);
-
-    haze.galactic_haze_strength = FMath::Clamp(haze.galactic_haze_strength, 0.0f, 10.0f);
-    haze.galactic_haze_width_degrees =
-        FMath::Clamp(haze.galactic_haze_width_degrees, 1.0f, 60.0f);
-    haze.galactic_haze_colour.R = FMath::Max(haze.galactic_haze_colour.R, 0.0f);
-    haze.galactic_haze_colour.G = FMath::Max(haze.galactic_haze_colour.G, 0.0f);
-    haze.galactic_haze_colour.B = FMath::Max(haze.galactic_haze_colour.B, 0.0f);
-    haze.galactic_core_strength = FMath::Clamp(haze.galactic_core_strength, 0.0f, 10.0f);
-    haze.galactic_core_width_degrees =
-        FMath::Clamp(haze.galactic_core_width_degrees, 1.0f, 90.0f);
-    haze.galactic_core_colour.R = FMath::Max(haze.galactic_core_colour.R, 0.0f);
-    haze.galactic_core_colour.G = FMath::Max(haze.galactic_core_colour.G, 0.0f);
-    haze.galactic_core_colour.B = FMath::Max(haze.galactic_core_colour.B, 0.0f);
-    haze.nebular_knot_strength = FMath::Clamp(haze.nebular_knot_strength, 0.0f, 10.0f);
-    haze.nebular_knot_size_degrees =
-        FMath::Clamp(haze.nebular_knot_size_degrees, 2.0f, 30.0f);
-    haze.nebular_knot_colour.R = FMath::Max(haze.nebular_knot_colour.R, 0.0f);
-    haze.nebular_knot_colour.G = FMath::Max(haze.nebular_knot_colour.G, 0.0f);
-    haze.nebular_knot_colour.B = FMath::Max(haze.nebular_knot_colour.B, 0.0f);
-
-    auto const& previous_distribution{settings_.distribution};
-    auto const& previous_stars{settings_.stars};
-    auto const& previous_haze{settings_.haze};
+    generation.star_count = FMath::Clamp(generation.star_count, 1, maximum_star_count);
+    star.scale = FMath::Max(star.scale, 0.001f);
+    star.size_multiplier = FMath::Max(star.size_multiplier, 0.0f);
+    star.global_brightness = FMath::Max(star.global_brightness, 0.0f);
+    star.colour_variation_strength = FMath::Clamp(star.colour_variation_strength, 0.0f, 1.0f);
+    star.parallax_strength = FMath::Clamp(star.parallax_strength, 0.0f, 1.0f);
+    galactic_band.strength = FMath::Clamp(galactic_band.strength, 0.0f, 1.0f);
+    galactic_band.width_degrees = FMath::Clamp(galactic_band.width_degrees, 1.0f, 45.0f);
+    stellar_cluster.strength = FMath::Clamp(stellar_cluster.strength, 0.0f, 1.0f);
+    stellar_cluster.width_degrees = FMath::Clamp(stellar_cluster.width_degrees, 1.0f, 20.0f);
+    dust_lane.strength = FMath::Clamp(dust_lane.strength, 0.0f, 1.0f);
+    dust_lane.width_degrees = FMath::Clamp(dust_lane.width_degrees, 0.5f, 20.0f);
+    dust_lane.irregularity = FMath::Clamp(dust_lane.irregularity, 0.0f, 1.0f);
+    bright_star.fraction = FMath::Clamp(bright_star.fraction, 0.0f, 0.1f);
+    bright_star.size_multiplier = FMath::Max(bright_star.size_multiplier, 1.0f);
+    bright_star.brightness_multiplier = FMath::Max(bright_star.brightness_multiplier, 1.0f);
+    bright_star.shape_strength = FMath::Clamp(bright_star.shape_strength, 0.0f, 1.0f);
+    twinkle.strength = FMath::Clamp(twinkle.strength, 0.0f, 0.5f);
+    twinkle.speed = FMath::Clamp(twinkle.speed, 0.0f, 2.0f);
+    galactic_haze.strength = FMath::Clamp(galactic_haze.strength, 0.0f, 10.0f);
+    galactic_haze.width_degrees = FMath::Clamp(galactic_haze.width_degrees, 1.0f, 60.0f);
+    galactic_haze.colour.R = FMath::Max(galactic_haze.colour.R, 0.0f);
+    galactic_haze.colour.G = FMath::Max(galactic_haze.colour.G, 0.0f);
+    galactic_haze.colour.B = FMath::Max(galactic_haze.colour.B, 0.0f);
+    galactic_core.strength = FMath::Clamp(galactic_core.strength, 0.0f, 10.0f);
+    galactic_core.width_degrees = FMath::Clamp(galactic_core.width_degrees, 1.0f, 90.0f);
+    galactic_core.colour.R = FMath::Max(galactic_core.colour.R, 0.0f);
+    galactic_core.colour.G = FMath::Max(galactic_core.colour.G, 0.0f);
+    galactic_core.colour.B = FMath::Max(galactic_core.colour.B, 0.0f);
+    nebular_knot.strength = FMath::Clamp(nebular_knot.strength, 0.0f, 10.0f);
+    nebular_knot.size_degrees = FMath::Clamp(nebular_knot.size_degrees, 2.0f, 30.0f);
+    nebular_knot.colour.R = FMath::Max(nebular_knot.colour.R, 0.0f);
+    nebular_knot.colour.G = FMath::Max(nebular_knot.colour.G, 0.0f);
+    nebular_knot.colour.B = FMath::Max(nebular_knot.colour.B, 0.0f);
 
     auto const structural_change{
-        !has_generated_stars_ || previous_distribution.star_count != distribution.star_count ||
-        previous_distribution.random_seed != distribution.random_seed ||
-        previous_distribution.galactic_band_strength != distribution.galactic_band_strength ||
-        previous_distribution.galactic_band_width_degrees !=
-            distribution.galactic_band_width_degrees ||
-        previous_distribution.stellar_cluster_strength != distribution.stellar_cluster_strength ||
-        previous_distribution.stellar_cluster_width_degrees !=
-            distribution.stellar_cluster_width_degrees ||
-        previous_distribution.dust_lane_strength != distribution.dust_lane_strength ||
-        previous_distribution.dust_lane_width_degrees != distribution.dust_lane_width_degrees ||
-        previous_distribution.dust_lane_irregularity != distribution.dust_lane_irregularity ||
-        previous_stars.bright_star_fraction != stars.bright_star_fraction};
-    auto const bounds_change{previous_stars.starfield_scale != stars.starfield_scale ||
-                             previous_stars.star_size_multiplier != stars.star_size_multiplier ||
-                             previous_stars.bright_star_size_multiplier !=
-                                 stars.bright_star_size_multiplier};
+        !has_generated_stars_ || settings_.generation.star_count != generation.star_count ||
+        settings_.generation.random_seed != generation.random_seed ||
+        settings_.galactic_band.strength != galactic_band.strength ||
+        settings_.galactic_band.width_degrees != galactic_band.width_degrees ||
+        settings_.stellar_cluster.strength != stellar_cluster.strength ||
+        settings_.stellar_cluster.width_degrees != stellar_cluster.width_degrees ||
+        settings_.dust_lane.strength != dust_lane.strength ||
+        settings_.dust_lane.width_degrees != dust_lane.width_degrees ||
+        settings_.dust_lane.irregularity != dust_lane.irregularity ||
+        settings_.bright_star.fraction != bright_star.fraction};
+    auto const bounds_change{settings_.star.scale != star.scale ||
+                             settings_.star.size_multiplier != star.size_multiplier ||
+                             settings_.bright_star.size_multiplier != bright_star.size_multiplier};
     auto const shader_parameter_change{
-        bounds_change || previous_stars.global_brightness != stars.global_brightness ||
-        previous_stars.star_colour_variation_strength != stars.star_colour_variation_strength ||
-        previous_stars.bright_star_brightness_multiplier !=
-            stars.bright_star_brightness_multiplier ||
-        previous_stars.parallax_strength != stars.parallax_strength ||
-        previous_stars.bright_star_shape_strength != stars.bright_star_shape_strength ||
-        previous_stars.twinkle_strength != stars.twinkle_strength ||
-        previous_stars.twinkle_speed != stars.twinkle_speed ||
-        previous_haze.galactic_haze_strength != haze.galactic_haze_strength ||
-        previous_haze.galactic_haze_width_degrees != haze.galactic_haze_width_degrees ||
-        previous_haze.galactic_haze_colour != haze.galactic_haze_colour ||
-        previous_haze.galactic_core_strength != haze.galactic_core_strength ||
-        previous_haze.galactic_core_width_degrees != haze.galactic_core_width_degrees ||
-        previous_haze.galactic_core_colour != haze.galactic_core_colour ||
-        previous_haze.nebular_knot_strength != haze.nebular_knot_strength ||
-        previous_haze.nebular_knot_size_degrees != haze.nebular_knot_size_degrees ||
-        previous_haze.nebular_knot_colour != haze.nebular_knot_colour};
+        bounds_change || settings_.star.global_brightness != star.global_brightness ||
+        settings_.star.colour_variation_strength != star.colour_variation_strength ||
+        settings_.star.parallax_strength != star.parallax_strength ||
+        settings_.bright_star.brightness_multiplier != bright_star.brightness_multiplier ||
+        settings_.bright_star.shape_strength != bright_star.shape_strength ||
+        settings_.twinkle.strength != twinkle.strength ||
+        settings_.twinkle.speed != twinkle.speed ||
+        settings_.galactic_haze.strength != galactic_haze.strength ||
+        settings_.galactic_haze.width_degrees != galactic_haze.width_degrees ||
+        settings_.galactic_haze.colour != galactic_haze.colour ||
+        settings_.galactic_core.strength != galactic_core.strength ||
+        settings_.galactic_core.width_degrees != galactic_core.width_degrees ||
+        settings_.galactic_core.colour != galactic_core.colour ||
+        settings_.nebular_knot.strength != nebular_knot.strength ||
+        settings_.nebular_knot.size_degrees != nebular_knot.size_degrees ||
+        settings_.nebular_knot.colour != nebular_knot.colour};
 
     settings_ = normalised;
     if (structural_change) {
@@ -646,10 +632,10 @@ FPrimitiveSceneProxy* UGpuStarfieldComponent::CreateSceneProxy() {
 }
 
 FBoxSphereBounds UGpuStarfieldComponent::CalcBounds(FTransform const& local_to_world) const {
-    auto const& stars{settings_.stars};
-    auto const radius{base_starfield_radius * stars.starfield_scale +
-                      base_star_size * stars.starfield_scale * stars.star_size_multiplier *
-                          stars.bright_star_size_multiplier};
+    auto const& star{settings_.star};
+    auto const radius{base_starfield_radius * star.scale +
+                      base_star_size * star.scale * star.size_multiplier *
+                          settings_.bright_star.size_multiplier};
     return FBoxSphereBounds{FVector::ZeroVector, FVector{radius}, radius}.TransformBy(
         local_to_world);
 }
@@ -677,21 +663,23 @@ void UGpuStarfieldComponent::GetUsedMaterials(TArray<UMaterialInterface*>& out_m
 }
 
 void UGpuStarfieldComponent::generate_stars() {
-    auto const& distribution{settings_.distribution};
-    auto const& stars{settings_.stars};
-    FRandomStream random_stream{distribution.random_seed};
-    star_data_.SetNumUninitialized(distribution.star_count);
+    auto const& generation{settings_.generation};
+    auto const& galactic_band{settings_.galactic_band};
+    auto const& stellar_cluster{settings_.stellar_cluster};
+    auto const& dust_lane{settings_.dust_lane};
+    FRandomStream random_stream{generation.random_seed};
+    star_data_.SetNumUninitialized(generation.star_count);
 
     constexpr int32 cluster_count{6};
     FVector cluster_directions[cluster_count];
-    if (distribution.stellar_cluster_strength > 0.0f) {
-        FRandomStream cluster_random_stream{distribution.random_seed ^ 0x53a9b4d1};
+    if (stellar_cluster.strength > 0.0f) {
+        FRandomStream cluster_random_stream{generation.random_seed ^ 0x53a9b4d1};
         for (auto& cluster_direction : cluster_directions) {
             cluster_direction = cluster_random_stream.VRand();
-            if (distribution.galactic_band_strength > 0.0f &&
-                cluster_random_stream.FRand() < distribution.galactic_band_strength) {
-                cluster_direction = generate_band_direction(cluster_random_stream,
-                                                            distribution.galactic_band_width_degrees);
+            if (galactic_band.strength > 0.0f &&
+                cluster_random_stream.FRand() < galactic_band.strength) {
+                cluster_direction =
+                    generate_band_direction(cluster_random_stream, galactic_band.width_degrees);
             }
         }
     }
@@ -699,17 +687,16 @@ void UGpuStarfieldComponent::generate_stars() {
     auto const star_count{star_data_.Num()};
     for (int32 star_index{0}; star_index < star_count; ++star_index) {
         auto direction{random_stream.VRand()};
-        if (distribution.galactic_band_strength > 0.0f &&
-            random_stream.FRand() < distribution.galactic_band_strength) {
-            direction = generate_band_direction(random_stream,
-                                                distribution.galactic_band_width_degrees);
+        if (galactic_band.strength > 0.0f &&
+            random_stream.FRand() < galactic_band.strength) {
+            direction = generate_band_direction(random_stream, galactic_band.width_degrees);
         }
-        if (distribution.stellar_cluster_strength > 0.0f &&
-            random_stream.FRand() < distribution.stellar_cluster_strength) {
+        if (stellar_cluster.strength > 0.0f &&
+            random_stream.FRand() < stellar_cluster.strength) {
             auto const cluster_index{random_stream.RandRange(0, cluster_count - 1)};
             direction = generate_cluster_direction(random_stream,
                                                    cluster_directions[cluster_index],
-                                                   distribution.stellar_cluster_width_degrees);
+                                                   stellar_cluster.width_degrees);
         }
 
         auto const population_roll{random_stream.FRand()};
@@ -733,15 +720,16 @@ void UGpuStarfieldComponent::generate_stars() {
         star.direction = FVector3f{direction};
         star.size = FMath::Lerp(0.65f, 1.8f, magnitude);
         star.brightness = FMath::Lerp(0.08f, 1.0f, magnitude);
-        if (distribution.dust_lane_strength > 0.0f) {
+        if (dust_lane.strength > 0.0f) {
             star.brightness *= calculate_dust_lane_attenuation(direction,
-                                                               distribution.dust_lane_strength,
-                                                               distribution.dust_lane_width_degrees,
-                                                               distribution.dust_lane_irregularity);
+                                                               dust_lane.strength,
+                                                               dust_lane.width_degrees,
+                                                               dust_lane.irregularity);
         }
         star.depth_factor = depth_factor;
         star.colour_temperature = (random_stream.FRand() + random_stream.FRand()) * 0.5f;
-        star.bright_star_factor = population_roll < stars.bright_star_fraction ? 1.0f : 0.0f;
+        star.bright_star_factor =
+            population_roll < settings_.bright_star.fraction ? 1.0f : 0.0f;
     }
 
     has_generated_stars_ = true;
