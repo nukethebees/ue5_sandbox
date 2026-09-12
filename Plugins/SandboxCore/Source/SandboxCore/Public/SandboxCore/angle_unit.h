@@ -1,10 +1,3 @@
 #pragma once
 
-#include <cstdint>
-
-namespace ml {
-enum class AngleUnit : std::uint8_t {
-    Degrees,
-    Radians,
-};
-}
+#include <sandbox/core/angle_unit.h>

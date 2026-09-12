@@ -2,6 +2,8 @@
 
 #include "soa_vectors.h"
 
+#include <sandbox/core/projectile_intercept.h>
+
 #include "Containers/ArrayView.h"
 #include "Math/Vector.h"
 

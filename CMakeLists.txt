@@ -7,6 +7,7 @@ enable_testing()
 add_subdirectory(cmake/compiler_warnings)
 
 option(SANDBOX_CODEGEN_ONLY "Configure only the standalone code generator" OFF)
+option(SANDBOX_NATIVE_CORE_ONLY "Configure only the standalone native core library" OFF)
 option(SANDBOX_NATIVE_MEMORY_ONLY "Configure only the standalone native memory library" OFF)
 option(SANDBOX_NATIVE_MESH_ONLY "Configure only the standalone native mesh generator" OFF)
 option(SANDBOX_NATIVE_S7_ONLY "Configure only the standalone native S7 library" OFF)
@@ -32,6 +33,11 @@ set_property(CACHE UE_CONFIGURATION PROPERTY STRINGS
   Shipping
   Test
 )
+
+if(SANDBOX_NATIVE_CORE_ONLY)
+  add_subdirectory(native/core)
+  return()
+endif()
 
 if(SANDBOX_NATIVE_MEMORY_ONLY)
   add_subdirectory(native/memory)
@@ -62,6 +68,7 @@ set(CACHE{UE_ROOT}
 
 add_subdirectory(native/memory)
 add_subdirectory(native/s7)
+add_subdirectory(native/core)
 
 set(CACHE{SANDBOX_TEST_SUITE}
   TYPE STRING
@@ -368,6 +375,7 @@ add_dependencies(game check-generated-code)
 
 add_custom_target(worktree-dependencies
   DEPENDS
+    native-core
     native-memory
     sandbox-s7
     sandbox-image
@@ -561,6 +569,7 @@ add_unreal_editor_test(SandboxISMC.RemoteBenchmark
 
 add_custom_target(dev-core
   DEPENDS
+    native-core-tests
     sandbox-image-tests
     mesh-gen-tests
     editor

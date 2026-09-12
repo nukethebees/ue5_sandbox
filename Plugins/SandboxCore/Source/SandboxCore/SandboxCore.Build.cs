@@ -18,6 +18,40 @@ public class SandboxCore : ModuleRules
             }
             );
 
+        if (Target.Platform != UnrealTargetPlatform.Win64 ||
+            Target.Architecture != UnrealArch.X64 ||
+            Target.bUseStaticCRT ||
+            (Target.Configuration == UnrealTargetConfiguration.Debug &&
+             Target.bDebugBuildsActuallyUseDebugCRT))
+        {
+            throw new BuildException(
+                "SandboxCore's native library requires Win64 x64 with the dynamic release CRT.");
+        }
+
+        string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
+        PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "core", "include"));
+
+        if (!Target.bGenerateProjectFiles)
+        {
+            string nativeCoreLibrary = Path.Combine(
+                repositoryRoot,
+                "Binaries",
+                "Native",
+                "Core",
+                Target.Platform.ToString(),
+                Target.Configuration.ToString(),
+                "SandboxNativeCore.lib");
+            if (!File.Exists(nativeCoreLibrary))
+            {
+                throw new BuildException(
+                    "SandboxCore expected the CMake-built native core library at '{0}'. " +
+                    "Build Unreal targets through a repository CMake workflow.",
+                    nativeCoreLibrary);
+            }
+            PublicAdditionalLibraries.Add(nativeCoreLibrary);
+            ExternalDependencies.Add(nativeCoreLibrary);
+        }
+
         if (Target.Platform == UnrealTargetPlatform.Win64)
         {
             Target.Logger.LogInformation($"Target.WindowsPlatform.ToolChainDir : {Target.WindowsPlatform.ToolChainDir}");
@@ -34,11 +68,6 @@ public class SandboxCore : ModuleRules
 
             PublicAdditionalLibraries.Add(OneCoreLib);
         }
-        if (Target.Platform != UnrealTargetPlatform.Win64 || Target.Architecture != UnrealArch.X64 || Target.bUseStaticCRT)
-        {
-            throw new BuildException("SandboxCore mimalloc requires Win64 x64 with the dynamic CRT.");
-        }
-        string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
         string packageRoot = Path.Combine(repositoryRoot, "vcpkg_installed", "x64-windows");
         bool debugCrt = Target.Configuration == UnrealTargetConfiguration.Debug && Target.bDebugBuildsActuallyUseDebugCRT;
         string variantRoot = debugCrt ? Path.Combine(packageRoot, "debug") : packageRoot;
