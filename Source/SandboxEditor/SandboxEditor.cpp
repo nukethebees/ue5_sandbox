@@ -1,6 +1,7 @@
 #include "SandboxEditor/SandboxEditor.h"
 
 #include "SandboxEditor/codegen/TypedefCodeGenerator.h"
+#include "SandboxEditor/levels/S7InitialStateExporter.h"
 #include "SandboxEditor/levels/S7InitialStateImporter.h"
 #include "SandboxEditor/slate/BoxSizeCustomisation.h"
 #include "SandboxEditor/slate/StrongTypedefPreview.h"
@@ -121,6 +122,13 @@ void FSandboxEditorModule::register_menu_extensions() {
         FText::FromString("Import S7 Initial State"),
         FText::FromString("Materialise an S7 level's initial entities in the current map"),
         FSlateIcon(FAppStyle::GetAppStyleSetName(), "Icons.Import")));
+
+    section.AddEntry(FToolMenuEntry::InitToolBarButton(
+        "ExportS7InitialState",
+        FUIAction(FExecuteAction::CreateStatic(&ml::editor::execute_s7_initial_state_export)),
+        FText::FromString("Export S7 Initial State"),
+        FText::FromString("Export supported entities from the current map as an S7 seed"),
+        FSlateIcon(FAppStyle::GetAppStyleSetName(), "Icons.Export")));
 
     section.AddEntry(FToolMenuEntry::InitToolBarButton(
         "GenerateTypedefs",

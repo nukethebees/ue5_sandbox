@@ -47,4 +47,37 @@ inline auto resolve_level_team(FLevelTeamId const id) -> TOptional<ETestTeam> {
     }
     return NullOpt;
 }
+
+inline auto to_level_archetype_id(EResolvedLevelArchetype const archetype) -> FEntityArchetypeId {
+    switch (archetype) {
+        case EResolvedLevelArchetype::PlayerFighter:
+            return level_archetypes::player_fighter;
+        case EResolvedLevelArchetype::CapitalShip:
+            return level_archetypes::capital_ship;
+        case EResolvedLevelArchetype::StaticTurret:
+            return level_archetypes::static_turret;
+    }
+    checkNoEntry();
+    return {};
+}
+
+inline auto to_level_team_id(ETestTeam const team) -> TOptional<FLevelTeamId> {
+    switch (team) {
+        case ETestTeam::White:
+            return level_teams::white;
+        case ETestTeam::Red:
+            return level_teams::red;
+        case ETestTeam::Green:
+            return level_teams::green;
+        case ETestTeam::Blue:
+            return level_teams::blue;
+        case ETestTeam::Orange:
+            return level_teams::orange;
+        case ETestTeam::Yellow:
+            return level_teams::yellow;
+        case ETestTeam::COUNT:
+            return NullOpt;
+    }
+    return NullOpt;
+}
 }
