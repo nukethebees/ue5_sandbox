@@ -458,11 +458,22 @@ void SScriptLevelSelectView::rebuild_catalog(FLevelSelectViewState const& state)
         }
 
         auto const button_index{level_buttons_.Num()};
+        auto const completed{row.indicator_state != ELevelCompletionIndicatorState::Incomplete};
+        auto const* const icon{completed ? &style_->icon(EGameUiIcon::LevelComplete)
+                                         : &style_->icon(EGameUiIcon::LevelIncomplete)};
+        auto const icon_tint{row.indicator_state == ELevelCompletionIndicatorState::ParAchieved
+                                 ? style_->palette().honey
+                             : completed ? style_->palette().completion
+                                         : style_->palette().text_secondary};
         TSharedPtr<ml::ioj::SGameButton> button;
         catalog_rows_->AddSlot().AutoHeight().Padding(
             FMargin{0.0f, 0.0f, 0.0f, style_->chrome().navigation_spacing})
             [SAssignNew(button, ml::ioj::SGameButton)
                  .Style(&style_->button(EGameButtonStyle::Secondary))
+                 .Icon(icon)
+                 .IconTint(icon_tint)
+                 .IconSize(FVector2D{18.0f, 18.0f})
+                 .IconSpacing(10.0f)
                  .ContentAlignment(HAlign_Left)
                  .Text(row.text)
                  .Selected(button_index == state.selected_button_index)

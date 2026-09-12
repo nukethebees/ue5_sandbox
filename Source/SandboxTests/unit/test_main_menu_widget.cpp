@@ -1,5 +1,6 @@
 #include <SandboxTests/support/test_setup.h>
 
+#include <SpaceGame/persistence/SpaceSaveSubsystem.h>
 #include <SpaceGame/ui/main_menu/DebugSettingsWidget.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGame/ui/main_menu/OptionsWidget.h>
@@ -114,6 +115,9 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
                              palette.canvas.GetLuminance() < 0.02f);
         TestRunner->TestTrue(TEXT("Honey is brighter than the raised surface"),
                              palette.honey.GetLuminance() > palette.surface_raised.GetLuminance());
+        TestRunner->TestTrue(TEXT("Completion blue is brighter than the raised surface"),
+                             palette.completion.GetLuminance() >
+                                 palette.surface_raised.GetLuminance());
         TestRunner->TestTrue(TEXT("Primary text remains readable against the canvas"),
                              palette.text_primary.GetLuminance() - palette.canvas.GetLuminance() >
                                  0.65f);
@@ -199,32 +203,25 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Preferred valid level can be launched immediately"),
                              level_select_widget->can_launch_selected_level());
 
-        TestRunner->TestEqual(TEXT("Completed level rows receive a visible marker"),
-                              ml::s7::format_level_row_title(TEXT("Border Skirmish"),
-                                                             ml::s7::ELevelRowState::Completed),
-                              FString{TEXT("\u2713 Border Skirmish")});
-        TestRunner->TestEqual(TEXT("Meeting par adds a visible marker"),
-                              ml::s7::format_level_row_title(TEXT("Border Skirmish"),
-                                                             ml::s7::ELevelRowState::ParAchieved),
-                              FString{TEXT("\u2713 \u2605 Border Skirmish")});
-        TestRunner->TestTrue(TEXT("A faster best time achieves par"),
-                             ml::s7::level_par_is_achieved(70.0f, TOptional<float>{75.0f}));
-        TestRunner->TestFalse(TEXT("A slower best time does not achieve par"),
-                              ml::s7::level_par_is_achieved(80.0f, TOptional<float>{75.0f}));
-        TestRunner->TestFalse(TEXT("A completion without a par target has no par achievement"),
-                              ml::s7::level_par_is_achieved(70.0f, NullOpt));
-        TestRunner->TestEqual(TEXT("Unlocked rows remain concise"),
-                              ml::s7::format_level_row_title(TEXT("Border Skirmish"),
-                                                             ml::s7::ELevelRowState::Unlocked),
-                              FString{TEXT("\u25CB Border Skirmish")});
+        ml::ioj::FLevelProgressSummary progress;
         TestRunner->TestTrue(
-            TEXT("Locked level rows receive a visible marker"),
-            ml::s7::format_level_row_title(TEXT("Border Skirmish"), ml::s7::ELevelRowState::Locked)
-                .EndsWith(TEXT("Border Skirmish")));
-        TestRunner->TestEqual(
-            TEXT("Invalid level rows receive an error marker"),
-            ml::s7::format_level_row_title(TEXT("Broken Script"), ml::s7::ELevelRowState::Invalid),
-            FString{TEXT("! Broken Script")});
+            TEXT("An uncompleted level uses the incomplete indicator"),
+            ml::s7::level_completion_indicator_state(progress, TOptional<float>{75.0f}) ==
+                ml::s7::ELevelCompletionIndicatorState::Incomplete);
+        progress.state = ml::ioj::ELevelProgressState::Completed;
+        progress.best_completion_time_seconds = 80.0f;
+        TestRunner->TestTrue(
+            TEXT("A completed level above par uses the completed indicator"),
+            ml::s7::level_completion_indicator_state(progress, TOptional<float>{75.0f}) ==
+                ml::s7::ELevelCompletionIndicatorState::Completed);
+        progress.best_completion_time_seconds = 70.0f;
+        TestRunner->TestTrue(
+            TEXT("A completed level below par upgrades the indicator"),
+            ml::s7::level_completion_indicator_state(progress, TOptional<float>{75.0f}) ==
+                ml::s7::ELevelCompletionIndicatorState::ParAchieved);
+        TestRunner->TestTrue(TEXT("A completed level without a par uses the completed indicator"),
+                             ml::s7::level_completion_indicator_state(progress, NullOpt) ==
+                                 ml::s7::ELevelCompletionIndicatorState::Completed);
 
         auto const shell_frame{find_slate_descendant(slate_widget, FName{TEXT("SHiveFrame")})};
         if (!TestRunner->TestTrue(TEXT("Command deck uses one reusable Hive frame"),

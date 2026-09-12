@@ -126,6 +126,7 @@ USpaceGameUiTheme::USpaceGameUiTheme() {
     palette_.warning = srgb(TEXT("D98B37"));
     palette_.danger = srgb(TEXT("C45D4C"));
     palette_.success = srgb(TEXT("7E9E62"));
+    palette_.completion = srgb(TEXT("5EA8E3"));
     palette_.modal_overlay = srgb(TEXT("050604")).CopyWithNewOpacity(0.85f);
 
     typography_.body = FCoreStyle::GetDefaultFontStyle(TEXT("Mono"), 14);

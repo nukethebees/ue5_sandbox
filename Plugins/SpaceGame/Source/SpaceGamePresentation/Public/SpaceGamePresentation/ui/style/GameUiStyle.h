@@ -110,6 +110,8 @@ struct SPACEGAMEPRESENTATION_API FGameUiPalette {
     FLinearColor danger{};
     UPROPERTY(EditAnywhere, Category = "Status")
     FLinearColor success{};
+    UPROPERTY(EditAnywhere, Category = "Status")
+    FLinearColor completion{};
     UPROPERTY(EditAnywhere, Category = "Surfaces")
     FLinearColor modal_overlay{};
 };

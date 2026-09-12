@@ -116,6 +116,12 @@ auto get_game_ui_icon_name(EGameUiIcon const value) -> TCHAR const* {
     case EGameUiIcon::System: {
         return TEXT("System");
     }
+    case EGameUiIcon::LevelIncomplete: {
+        return TEXT("LevelIncomplete");
+    }
+    case EGameUiIcon::LevelComplete: {
+        return TEXT("LevelComplete");
+    }
     }
 
     ensureMsgf(false,

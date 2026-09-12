@@ -39,6 +39,8 @@ enum class EGameUiIcon : uint8 {
     Controls,
     Accessibility,
     System,
+    LevelIncomplete,
+    LevelComplete,
 };
 
 template <>
@@ -53,7 +55,7 @@ struct TEnumTraits<EGameButtonStyle> {
 
 template <>
 struct TEnumTraits<EGameUiIcon> {
-    static constexpr int32 count{7};
+    static constexpr int32 count{9};
 };
 
 SPACEGAMEPRESENTATION_API auto LexToString(EGameTextStyle const value) -> TCHAR const*;

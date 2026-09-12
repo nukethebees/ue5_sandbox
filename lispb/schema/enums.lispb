@@ -42,7 +42,9 @@
     (value Audio)
     (value Controls)
     (value Accessibility)
-    (value System)))
+    (value System)
+    (value LevelIncomplete)
+    (value LevelComplete)))
 
 (enum-module mission_modes
   :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionMode.h"

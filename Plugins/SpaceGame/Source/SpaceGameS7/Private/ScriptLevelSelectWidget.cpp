@@ -15,36 +15,17 @@
 #include <Misc/FileHelper.h>
 
 namespace ml::s7 {
-auto level_par_is_achieved(float const best_completion_time_seconds,
-                           TOptional<float> const par_time_seconds) -> bool {
-    return par_time_seconds.IsSet() && best_completion_time_seconds >= 0.0f &&
-           best_completion_time_seconds <= par_time_seconds.GetValue();
-}
-
-auto format_level_row_title(FString title, ELevelRowState const state) -> FString {
-    FString prefix;
-    switch (state) {
-        case ELevelRowState::Invalid:
-            prefix = TEXT("! ");
-            break;
-        case ELevelRowState::Locked:
-            prefix = TEXT("\U0001F512 ");
-            break;
-        case ELevelRowState::Unlocked:
-            prefix = TEXT("\u25CB ");
-            break;
-        case ELevelRowState::Completed:
-            prefix = TEXT("\u2713 ");
-            break;
-        case ELevelRowState::ParAchieved:
-            prefix = TEXT("\u2713 \u2605 ");
-            break;
-        default:
-            checkNoEntry();
-            return title;
+auto level_completion_indicator_state(ml::ioj::FLevelProgressSummary const& progress,
+                                      TOptional<float> const par_time_seconds)
+    -> ELevelCompletionIndicatorState {
+    if (progress.state != ml::ioj::ELevelProgressState::Completed) {
+        return ELevelCompletionIndicatorState::Incomplete;
     }
-
-    return prefix + title;
+    if (par_time_seconds.IsSet() && progress.best_completion_time_seconds >= 0.0f &&
+        progress.best_completion_time_seconds <= par_time_seconds.GetValue()) {
+        return ELevelCompletionIndicatorState::ParAchieved;
+    }
+    return ELevelCompletionIndicatorState::Completed;
 }
 
 namespace {
@@ -84,12 +65,11 @@ auto level_details(FLevelScriptEntry const& entry, ml::ioj::FLevelProgressSummar
 
     auto const par_time{definition.metadata.par_time_seconds};
     if (par_time.IsSet()) {
-        details +=
-            FString::Printf(TEXT("\nPAR TIME  //  %.1f S    PAR STATUS  //  %s"),
-                            par_time.GetValue(),
-                            level_par_is_achieved(progress.best_completion_time_seconds, par_time)
-                                ? TEXT("ACHIEVED")
-                                : TEXT("NOT ACHIEVED"));
+        auto const par_achieved{level_completion_indicator_state(progress, par_time) ==
+                                ELevelCompletionIndicatorState::ParAchieved};
+        details += FString::Printf(TEXT("\nPAR TIME  //  %.1f S    PAR STATUS  //  %s"),
+                                   par_time.GetValue(),
+                                   par_achieved ? TEXT("ACHIEVED") : TEXT("NOT ACHIEVED"));
     }
     if (progress.attempt_count == 0) {
         return details;
@@ -145,20 +125,6 @@ auto description_with_requirements(FLevelScriptEntry const& entry,
                                        *criterion.description.ToString());
     }
     return description;
-}
-
-auto row_state(FLevelUnlockStatus const& unlock_status,
-               ml::ioj::FLevelProgressSummary const& progress,
-               TOptional<float> const par_time) -> ELevelRowState {
-    if (!unlock_status.unlocked) {
-        return ELevelRowState::Locked;
-    }
-    if (progress.state != ml::ioj::ELevelProgressState::Completed) {
-        return ELevelRowState::Unlocked;
-    }
-    return level_par_is_achieved(progress.best_completion_time_seconds, par_time)
-             ? ELevelRowState::ParAchieved
-             : ELevelRowState::Completed;
 }
 
 auto entry_matches_category(FLevelScriptEntry const& entry, ELevelCatalogCategory const category)
@@ -300,7 +266,6 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
     auto* const game_instance{GetGameInstance()};
     auto* const save_subsystem{
         IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr};
-    auto const evaluator{make_unlock_evaluator(entries_, save_subsystem)};
     auto const entry_indices{[this] {
         TMap<FLevelId, int32> result;
         auto const count{entries_.Num()};
@@ -318,32 +283,28 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
     auto add_header = [this](FString const& label) {
         view_state_.rows.Add(FLevelSelectViewRow{FText::FromString(label.ToUpper()), true});
     };
-    auto add_level = [this,
-                      &evaluator,
-                      save_subsystem,
-                      focus_level_id,
-                      &preferred_button_index,
-                      &visible_entry_count](int32 const entry_index) {
-        auto const& entry{entries_[entry_index]};
-        auto state{ELevelRowState::Invalid};
-        if (entry) {
-            auto const id{entry.definition->metadata.id};
-            auto const progress{IsValid(save_subsystem) ? save_subsystem->get_level_progress(id)
-                                                        : ml::ioj::FLevelProgressSummary{}};
-            state = row_state(evaluator.evaluate(entry.definition.GetValue()),
-                              progress,
-                              entry.definition->metadata.par_time_seconds);
-            if (preferred_button_index == INDEX_NONE && !focus_level_id.IsNone() &&
-                id.value == focus_level_id) {
-                preferred_button_index = level_entry_indices_.Num();
+    auto add_level =
+        [this, save_subsystem, focus_level_id, &preferred_button_index, &visible_entry_count](
+            int32 const entry_index) {
+            auto const& entry{entries_[entry_index]};
+            auto indicator_state{ELevelCompletionIndicatorState::Incomplete};
+            if (entry) {
+                auto const id{entry.definition->metadata.id};
+                auto const progress{IsValid(save_subsystem) ? save_subsystem->get_level_progress(id)
+                                                            : ml::ioj::FLevelProgressSummary{}};
+                indicator_state = level_completion_indicator_state(
+                    progress, entry.definition->metadata.par_time_seconds);
+                if (preferred_button_index == INDEX_NONE && !focus_level_id.IsNone() &&
+                    id.value == focus_level_id) {
+                    preferred_button_index = level_entry_indices_.Num();
+                }
             }
-        }
 
-        auto const row_title{format_level_row_title(entry.display_title, state)};
-        view_state_.rows.Add(FLevelSelectViewRow{FText::FromString(row_title), false});
-        level_entry_indices_.Add(entry_index);
-        ++visible_entry_count;
-    };
+            view_state_.rows.Add(FLevelSelectViewRow{
+                FText::FromString(entry.display_title), false, indicator_state});
+            level_entry_indices_.Add(entry_index);
+            ++visible_entry_count;
+        };
 
     TSet<FLevelId> grouped_levels;
     for (auto const& campaign : campaigns_) {
