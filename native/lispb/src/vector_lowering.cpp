@@ -21,7 +21,12 @@ auto lower_vector_module(VectorModuleSchema const& module,
             .copy_element_memberwise = true,
         };
         std::map<std::string, SoaSchema const*> const schemas{{schema.name, &schema}};
-        auto lowered{lower_native_soa(schema, schemas, types, true, module.equivalent_members)};
+        auto lowered{lower_native_soa(schema,
+                                      schemas,
+                                      types,
+                                      true,
+                                      module.equivalent_members,
+                                      module.equivalent_constructor.value_or(""))};
         auto definitions{std::move(lowered.header)};
         if (module.settings.namespace_name.has_value()) {
             definitions = {Namespace{*module.settings.namespace_name, std::move(definitions)}};

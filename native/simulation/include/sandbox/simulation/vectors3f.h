@@ -16,9 +16,9 @@ struct Vectors3fConstView {
     using size_type = std::int32_t;
     using equivalent_type = ml::simulation::Vector3f;
     auto operator[](size_type const index) const -> equivalent_type {
-        return {xs[static_cast<std::size_t>(index)],
-                ys[static_cast<std::size_t>(index)],
-                zs[static_cast<std::size_t>(index)]};
+        return HMM_V3(xs[static_cast<std::size_t>(index)],
+                      ys[static_cast<std::size_t>(index)],
+                      zs[static_cast<std::size_t>(index)]);
     }
     std::span<float const> xs;
     std::span<float const> ys;
@@ -71,9 +71,9 @@ struct Vectors3fView {
     using size_type = std::int32_t;
     using equivalent_type = ml::simulation::Vector3f;
     auto operator[](size_type const index) const -> equivalent_type {
-        return {xs[static_cast<std::size_t>(index)],
-                ys[static_cast<std::size_t>(index)],
-                zs[static_cast<std::size_t>(index)]};
+        return HMM_V3(xs[static_cast<std::size_t>(index)],
+                      ys[static_cast<std::size_t>(index)],
+                      zs[static_cast<std::size_t>(index)]);
     }
     std::span<float> xs;
     std::span<float> ys;
@@ -127,7 +127,7 @@ struct Vectors3fView {
         zs[static_cast<std::size_t>(index)] = new_zs;
     }
     void set(size_type const index, equivalent_type const value) const {
-        set(index, value.x, value.y, value.z);
+        set(index, value.X, value.Y, value.Z);
     }
 };
 struct Vectors3f {

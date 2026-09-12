@@ -9,6 +9,7 @@ sandbox_add_machine_activity_status_target()
 enable_testing()
 
 add_subdirectory(cmake/compiler_warnings)
+add_subdirectory(native/third_party/handmade_math)
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 

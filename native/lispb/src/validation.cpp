@@ -900,6 +900,11 @@ void validate_vector(VectorModuleSchema const& module,
         throw std::invalid_argument{"Standard-library vector module '" + module.settings.name +
                                     "' must declare equivalent members"};
     }
+    if (module.equivalent_constructor.has_value()) {
+        require_qualified_identifier(*module.equivalent_constructor,
+                                     "Vector module '" + module.settings.name +
+                                         "' equivalent constructor");
+    }
     validate_type(module.value_type, types, "Vector module '" + module.settings.name + "' value");
     validate_type(
         module.equivalent_type, types, "Vector module '" + module.settings.name + "' equivalent");

@@ -14,12 +14,12 @@ inline void add(EntityCellData& data,
     auto const index{data.num()};
     data.add_uninitialised(1);
     data.get_view().columns().set(index,
-                                  min_point.x,
-                                  min_point.y,
-                                  min_point.z,
-                                  max_point.x,
-                                  max_point.y,
-                                  max_point.z,
+                                  min_point.X,
+                                  min_point.Y,
+                                  min_point.Z,
+                                  max_point.X,
+                                  max_point.Y,
+                                  max_point.Z,
                                   min_cell.x,
                                   min_cell.y,
                                   min_cell.z,
@@ -32,13 +32,15 @@ inline void add(EntityCellData& data,
 [[nodiscard]] inline auto min_point_at(EntityCellDataColumnsConstView const& data,
                                        std::int32_t const index) -> Vector3f {
     auto const element{static_cast<std::size_t>(index)};
-    return {data.min_point_xs[element], data.min_point_ys[element], data.min_point_zs[element]};
+    return make_vector3f(
+        data.min_point_xs[element], data.min_point_ys[element], data.min_point_zs[element]);
 }
 
 [[nodiscard]] inline auto max_point_at(EntityCellDataColumnsConstView const& data,
                                        std::int32_t const index) -> Vector3f {
     auto const element{static_cast<std::size_t>(index)};
-    return {data.max_point_xs[element], data.max_point_ys[element], data.max_point_zs[element]};
+    return make_vector3f(
+        data.max_point_xs[element], data.max_point_ys[element], data.max_point_zs[element]);
 }
 
 [[nodiscard]] inline auto min_cell_at(EntityCellDataColumnsConstView const& data,

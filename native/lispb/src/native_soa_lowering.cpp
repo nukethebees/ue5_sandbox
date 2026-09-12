@@ -32,7 +32,8 @@ auto lower_native_soa(SoaSchema const& schema,
                       std::map<std::string, SoaSchema const*> const& schemas,
                       std::map<std::string, CppType> const& types,
                       bool const allow_equivalent_type,
-                      std::span<std::string const> const equivalent_members) -> LoweredSoa {
+                      std::span<std::string const> const equivalent_members,
+                      std::string_view const equivalent_constructor) -> LoweredSoa {
     if (schema.fixed || !schema.functions.empty() || !schema.mutable_view_functions.empty() ||
         !schema.using_declarations.empty() ||
         (schema.equivalent_type.has_value() && !allow_equivalent_type)) {
@@ -78,14 +79,19 @@ auto lower_native_soa(SoaSchema const& schema,
             << "using size_type = std::int32_t;\n";
         if (equivalent_type.has_value()) {
             out << "using equivalent_type = " << native_spelling(equivalent_type->spelling) << ";\n"
-                << "auto operator[](size_type const index) const -> equivalent_type { return {";
+                << "auto operator[](size_type const index) const -> equivalent_type { return ";
+            if (equivalent_constructor.empty()) {
+                out << "{";
+            } else {
+                out << equivalent_constructor << "(";
+            }
             for (std::size_t index{}; index < layout.members.size(); ++index) {
                 if (index > 0) {
                     out << ", ";
                 }
                 out << layout.members[index].schema->name << "[static_cast<std::size_t>(index)]";
             }
-            out << "}; }\n";
+            out << (equivalent_constructor.empty() ? "}; }\n" : "); }\n");
         }
         for (auto const& member : layout.members) {
             auto const& resolved{member.member};

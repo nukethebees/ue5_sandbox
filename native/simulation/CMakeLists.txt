@@ -20,7 +20,6 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/simulation_config.h
   include/sandbox/simulation/trace_hits.h
   include/sandbox/simulation/vector_types.h
-  include/sandbox/simulation/vector_math.h
   include/sandbox/simulation/vectors3f.h
   include/sandbox/simulation/world_aabbs.h
   include/sandbox/simulation/world_aabb_operations.h
@@ -37,7 +36,10 @@ target_include_directories(native-simulation PUBLIC
   "${PROJECT_SOURCE_DIR}/native/core/include"
   "${PROJECT_SOURCE_DIR}/native/lispb/native_soa/include"
 )
-target_link_libraries(native-simulation PRIVATE sandbox::warnings_as_errors)
+target_link_libraries(native-simulation
+  PUBLIC sandbox::handmade_math
+  PRIVATE sandbox::warnings_as_errors
+)
 
 set(NATIVE_SIMULATION_LIBRARY_DIRECTORY
   "${PROJECT_SOURCE_DIR}/Binaries/Native/Simulation/${UE_PLATFORM}/${UE_CONFIGURATION}"

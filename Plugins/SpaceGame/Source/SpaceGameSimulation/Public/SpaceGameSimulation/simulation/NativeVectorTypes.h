@@ -10,11 +10,11 @@
 
 namespace ml {
 inline auto to_native(FVector3f const value) noexcept -> simulation::Vector3f {
-    return {value.X, value.Y, value.Z};
+    return make_vector3f(value.X, value.Y, value.Z);
 }
 
 inline auto to_unreal(simulation::Vector3f const value) noexcept -> FVector3f {
-    return {value.x, value.y, value.z};
+    return {value.X, value.Y, value.Z};
 }
 
 inline auto to_native(FVectors3f::ConstView const view) noexcept -> simulation::Vectors3fConstView {

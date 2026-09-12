@@ -8,6 +8,7 @@ endif()
 
 add_library(native-core STATIC)
 target_sources(native-core PRIVATE
+  include/sandbox/core/math_types.h
   src/generated/array_math_kernels.cpp
   src/array_math.cpp
   src/array_utils.cpp
@@ -20,7 +21,10 @@ target_sources(native-core PRIVATE
 )
 target_compile_features(native-core PUBLIC cxx_std_23)
 target_include_directories(native-core PUBLIC include)
-target_link_libraries(native-core PRIVATE sandbox::warnings_as_errors)
+target_link_libraries(native-core
+  PUBLIC sandbox::handmade_math
+  PRIVATE sandbox::warnings_as_errors
+)
 
 set(NATIVE_CORE_LIBRARY_DIRECTORY
   "${PROJECT_SOURCE_DIR}/Binaries/Native/Core/${UE_PLATFORM}/${UE_CONFIGURATION}"

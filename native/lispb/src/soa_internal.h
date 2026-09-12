@@ -5,6 +5,7 @@
 
 #include <span>
 #include <string>
+#include <string_view>
 
 namespace codegen::detail {
 
@@ -55,6 +56,7 @@ auto lower_native_soa(SoaSchema const& schema,
                       std::map<std::string, SoaSchema const*> const& schemas,
                       std::map<std::string, CppType> const& types,
                       bool allow_equivalent_type = false,
-                      std::span<std::string const> equivalent_members = {}) -> LoweredSoa;
+                      std::span<std::string const> equivalent_members = {},
+                      std::string_view equivalent_constructor = {}) -> LoweredSoa;
 
 } // namespace codegen::detail

@@ -1,30 +1,8 @@
 #pragma once
 
-#include <cstddef>
+#include "sandbox/core/math_types.h"
 
 namespace ml::simulation {
-struct Vector3f {
-    float x{};
-    float y{};
-    float z{};
-
-    [[nodiscard]] constexpr auto operator[](std::size_t const index) noexcept -> float& {
-        if (index == 0) {
-            return x;
-        }
-        if (index == 1) {
-            return y;
-        }
-        return z;
-    }
-    [[nodiscard]] constexpr auto operator[](std::size_t const index) const noexcept -> float {
-        if (index == 0) {
-            return x;
-        }
-        if (index == 1) {
-            return y;
-        }
-        return z;
-    }
-};
+using Vector3f = ml::Vector3f;
+using Quaternion4f = ml::Quaternion4f;
 } // namespace ml::simulation

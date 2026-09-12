@@ -18,6 +18,7 @@ struct VectorModuleSchema {
     TypeRef value_type;
     std::vector<std::string> components;
     std::vector<std::string> equivalent_members;
+    std::optional<std::string> equivalent_constructor;
     TypeRef equivalent_type;
     std::optional<std::string> export_specifier;
     std::optional<FixedSoaSchema> fixed;

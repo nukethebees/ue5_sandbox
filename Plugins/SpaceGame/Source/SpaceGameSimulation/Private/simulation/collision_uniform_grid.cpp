@@ -2,7 +2,6 @@
 
 #include <sandbox/simulation/collision_grid.h>
 #include <sandbox/simulation/entity_cell_data_operations.h>
-#include <sandbox/simulation/vector_math.h>
 #include <sandbox/simulation/world_aabb_operations.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
@@ -379,12 +378,12 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
                         entities_[write_index] = entity_cells.handles[i];
 
                         aabbs.set(write_index,
-                                  min_point.x,
-                                  min_point.y,
-                                  min_point.z,
-                                  max_point.x,
-                                  max_point.y,
-                                  max_point.z);
+                                  min_point.X,
+                                  min_point.Y,
+                                  min_point.Z,
+                                  max_point.X,
+                                  max_point.Y,
+                                  max_point.Z);
                     }
                     row_index += row_stride;
                 }
@@ -430,9 +429,9 @@ void CollisionUniformGrid::append_overlaps(FBox3f const& query_bounds,
 
     auto const overlaps_query{[&query_bounds](simulation::Vector3f const candidate_min,
                                               simulation::Vector3f const candidate_max) {
-        return query_bounds.Min.X <= candidate_max.x && query_bounds.Max.X >= candidate_min.x &&
-               query_bounds.Min.Y <= candidate_max.y && query_bounds.Max.Y >= candidate_min.y &&
-               query_bounds.Min.Z <= candidate_max.z && query_bounds.Max.Z >= candidate_min.z;
+        return query_bounds.Min.X <= candidate_max.X && query_bounds.Max.X >= candidate_min.X &&
+               query_bounds.Min.Y <= candidate_max.Y && query_bounds.Max.Y >= candidate_min.Y &&
+               query_bounds.Min.Z <= candidate_max.Z && query_bounds.Max.Z >= candidate_min.Z;
     }};
     auto const static_aabbs{static_aabbs_.get_const_view().columns()};
     auto const static_aabb_indices{TConstArrayView<int32>{static_aabb_indices_}};
@@ -616,8 +615,8 @@ void CollisionUniformGrid::trace_aabbs_impl(
         auto current_cell{to_unreal(traversal.current_cell())};
         simulation::Vector3f inv_delta{};
         for (int32 axis{}; axis < 3; ++axis) {
-            if (delta[axis] != 0.0f) {
-                inv_delta[axis] = 1.0f / delta[axis];
+            if (delta.Elements[axis] != 0.0f) {
+                inv_delta.Elements[axis] = 1.0f / delta.Elements[axis];
             }
         }
         auto const native_expansion{ml::to_native(moving_half_extent)};

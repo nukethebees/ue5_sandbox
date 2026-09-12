@@ -30,6 +30,8 @@ public class SandboxCore : ModuleRules
 
         string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
         PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "core", "include"));
+        PublicSystemIncludePaths.Add(
+            Path.Combine(repositoryRoot, "native", "third_party", "handmade_math"));
 
         if (!Target.bGenerateProjectFiles)
         {

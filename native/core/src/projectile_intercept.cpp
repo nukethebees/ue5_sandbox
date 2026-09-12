@@ -4,33 +4,28 @@
 #include <limits>
 
 namespace {
-auto size_squared(ml::NativeVector3f const value) noexcept -> float {
-    return value.x * value.x + value.y * value.y + value.z * value.z;
+auto size_squared(ml::Vector3f const value) noexcept -> float {
+    return HMM_LenSqrV3(value);
 }
 
-auto dot_product(ml::NativeVector3f const lhs, ml::NativeVector3f const rhs) noexcept -> float {
-    return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
+auto dot_product(ml::Vector3f const lhs, ml::Vector3f const rhs) noexcept -> float {
+    return HMM_DotV3(lhs, rhs);
 }
 
-auto at(ml::NativeVector3fSoAView const values, std::int32_t const index) noexcept
-    -> ml::NativeVector3f {
-    return {values.xs[index], values.ys[index], values.zs[index]};
+auto at(ml::Vector3fSoAView const values, std::int32_t const index) noexcept -> ml::Vector3f {
+    return ml::make_vector3f(values.xs[index], values.ys[index], values.zs[index]);
 }
 }
 
 namespace ml {
-auto solve_intercept_time(NativeVector3f const shooter_position,
-                          NativeVector3f const target_position,
-                          NativeVector3f const target_velocity,
+auto solve_intercept_time(Vector3f const shooter_position,
+                          Vector3f const target_position,
+                          Vector3f const target_velocity,
                           float const projectile_speed) noexcept -> float {
     constexpr float no_intercept{};
     constexpr float epsilon{1e-8f};
 
-    auto const relative_position{NativeVector3f{
-        target_position.x - shooter_position.x,
-        target_position.y - shooter_position.y,
-        target_position.z - shooter_position.z,
-    }};
+    auto const relative_position{target_position - shooter_position};
     auto const a{size_squared(target_velocity) - projectile_speed * projectile_speed};
     auto const b{2.0f * dot_product(relative_position, target_velocity)};
     auto const c{size_squared(relative_position)};
@@ -67,9 +62,9 @@ auto solve_intercept_time(NativeVector3f const shooter_position,
 
 namespace ml::detail::solve_intercept_times_aos {
 void solve_intercept_times(float* const out_intercept_times,
-                           NativeVector3fSoAView const shooter_positions,
-                           NativeVector3fSoAView const target_positions,
-                           NativeVector3fSoAView const target_velocities,
+                           Vector3fSoAView const shooter_positions,
+                           Vector3fSoAView const target_positions,
+                           Vector3fSoAView const target_velocities,
                            float const projectile_speed,
                            std::int32_t const count) noexcept {
     for (std::int32_t i{}; i < count; ++i) {
@@ -83,9 +78,9 @@ void solve_intercept_times(float* const out_intercept_times,
 
 namespace ml::detail::solve_intercept_times_struct_loop {
 void solve_intercept_times(float* const out_intercept_times,
-                           NativeVector3fSoAView const shooter_positions,
-                           NativeVector3fSoAView const target_positions,
-                           NativeVector3fSoAView const target_velocities,
+                           Vector3fSoAView const shooter_positions,
+                           Vector3fSoAView const target_positions,
+                           Vector3fSoAView const target_velocities,
                            float const projectile_speed,
                            std::int32_t const count) noexcept {
     constexpr float no_intercept{};
@@ -97,11 +92,7 @@ void solve_intercept_times(float* const out_intercept_times,
         auto const shooter_position{at(shooter_positions, i)};
         auto const target_position{at(target_positions, i)};
         auto const target_velocity{at(target_velocities, i)};
-        auto const relative_position{NativeVector3f{
-            target_position.x - shooter_position.x,
-            target_position.y - shooter_position.y,
-            target_position.z - shooter_position.z,
-        }};
+        auto const relative_position{target_position - shooter_position};
         auto const a{size_squared(target_velocity) - projectile_speed_squared};
         auto const b{2.0f * dot_product(relative_position, target_velocity)};
         auto const c{size_squared(relative_position)};
@@ -142,9 +133,9 @@ void solve_intercept_times(float* const out_intercept_times,
 
 namespace ml::detail::solve_intercept_times_soa_loop {
 void solve_intercept_times(float* const out_intercept_times,
-                           NativeVector3fSoAView const shooter_positions,
-                           NativeVector3fSoAView const target_positions,
-                           NativeVector3fSoAView const target_velocities,
+                           Vector3fSoAView const shooter_positions,
+                           Vector3fSoAView const target_positions,
+                           Vector3fSoAView const target_velocities,
                            float const projectile_speed,
                            std::int32_t const count) noexcept {
     constexpr float no_intercept{};

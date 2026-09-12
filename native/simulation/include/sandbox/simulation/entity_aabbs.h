@@ -21,12 +21,13 @@ struct EntityAABBs {
 
     [[nodiscard]] constexpr auto get_centre(size_type const index) const noexcept -> Vector3f {
         auto const element{static_cast<std::size_t>(index)};
-        return {centre_xs[element], centre_ys[element], centre_zs[element]};
+        return make_vector3f(centre_xs[element], centre_ys[element], centre_zs[element]);
     }
     [[nodiscard]] constexpr auto get_half_extents(size_type const index) const noexcept
         -> Vector3f {
         auto const element{static_cast<std::size_t>(index)};
-        return {half_extent_xs[element], half_extent_ys[element], half_extent_zs[element]};
+        return make_vector3f(
+            half_extent_xs[element], half_extent_ys[element], half_extent_zs[element]);
     }
 
     std::array<float, num_rows> centre_xs{};
