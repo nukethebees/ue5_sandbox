@@ -8,7 +8,7 @@
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 
-#include <mutex>
+#include <cstddef>
 #include <utility>
 
 namespace {
@@ -175,15 +175,8 @@ auto collect_grid_entities_in_range(ml::ioj::CollisionUniformGrid const& grid,
 
     auto& entity_stamps{buffers.range_query_entity_stamps};
     auto const entity_count{entity_registry.get_num_elements()};
-    if (entity_stamps.Num() < entity_count) {
-        entity_stamps.AddZeroed(entity_count - entity_stamps.Num());
-    }
-    ++buffers.range_query_stamp;
-    if (buffers.range_query_stamp == 0) {
-        ml::fill(entity_stamps, uint32{});
-        buffers.range_query_stamp = 1;
-    }
-    auto const query_stamp{buffers.range_query_stamp};
+    buffers.ensure_entity_stamp_count(entity_count);
+    auto const query_stamp{buffers.advance_range_query_stamp()};
     auto const radius_squared{radius * radius};
     auto const& entity_data{entity_registry.get_entity_data()};
     int32 count{};
@@ -192,11 +185,12 @@ auto collect_grid_entities_in_range(ml::ioj::CollisionUniformGrid const& grid,
         for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
             for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
                 for (auto const handle : grid.get_cell_entities({x, y, z})) {
+                    auto const entity_index{static_cast<std::size_t>(handle.index)};
                     if (!entity_registry.is_valid_alive(handle) ||
-                        entity_stamps[handle.index] == query_stamp) {
+                        entity_stamps[entity_index] == query_stamp) {
                         continue;
                     }
-                    entity_stamps[handle.index] = query_stamp;
+                    entity_stamps[entity_index] = query_stamp;
 
                     if (!include_entity(handle, entity_data)) {
                         continue;
@@ -234,7 +228,7 @@ FThreadBufferLease::~FThreadBufferLease() {
 }
 
 auto FThreadBufferLease::get() const -> FThreadBuffers& {
-    return manager.thread_buffers[index];
+    return manager.thread_buffer_pool_.get(index);
 }
 }
 
@@ -246,48 +240,32 @@ void FSpatialQueryManager::reserve_thread_buffers(int32 const count) {
     auto const hardware_thread_count{
         FMath::Max(1, FPlatformMisc::NumberOfCoresIncludingHyperthreads())};
     auto const maximum_thread_buffer_count{hardware_thread_count * 2};
-    checkf(count > 0, TEXT("Thread buffer count must be positive"));
     checkf(count <= maximum_thread_buffer_count,
            TEXT("Thread buffer count %d exceeds the maximum of %d"),
            count,
            maximum_thread_buffer_count);
 
-    std::lock_guard const lock{thread_buffers_mutex};
-    if (count <= thread_buffers.Num()) {
-        return;
-    }
-
-    checkf(active_thread_buffer_count == 0,
+    auto const result{thread_buffer_pool_.reserve(count)};
+    checkf(result != simulation::QueryThreadBufferReserveResult::invalid_count,
+           TEXT("Thread buffer count must be positive"));
+    checkf(result != simulation::QueryThreadBufferReserveResult::active_queries,
            TEXT("Thread buffers cannot be grown while queries are active"));
-
-    auto const previous_count{thread_buffers.Num()};
-    thread_buffers.AddDefaulted(count - previous_count);
-    free_thread_buffer_indices.Reserve(count);
-    for (int32 i{previous_count}; i < count; ++i) {
-        free_thread_buffer_indices.Add(i);
-    }
 }
 
 auto FSpatialQueryManager::acquire_thread_buffer() const -> int32 {
-    std::lock_guard const lock{thread_buffers_mutex};
-    if (free_thread_buffer_indices.IsEmpty()) {
+    auto const index{thread_buffer_pool_.try_acquire()};
+    if (!index.has_value()) {
         UE_LOG(LogSandbox,
                Fatal,
                TEXT("FSpatialQueryManager thread buffer pool exhausted. Reserve enough buffers "
                     "before starting concurrent queries."));
     }
 
-    ++active_thread_buffer_count;
-    return free_thread_buffer_indices.Pop(EAllowShrinking::No);
+    return *index;
 }
 
 void FSpatialQueryManager::release_thread_buffer(int32 const index) const {
-    std::lock_guard const lock{thread_buffers_mutex};
-    check(thread_buffers.IsValidIndex(index));
-    check(!free_thread_buffer_indices.Contains(index));
-    check(active_thread_buffer_count > 0);
-    free_thread_buffer_indices.Add(index);
-    --active_thread_buffer_count;
+    check(thread_buffer_pool_.release(index));
 }
 
 /* **************************************** */

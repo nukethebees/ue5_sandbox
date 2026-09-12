@@ -26,4 +26,9 @@ inline auto to_native(FVectors3f::View const view) noexcept -> simulation::Vecto
     auto const count{static_cast<std::size_t>(view.num())};
     return {{view.xs.GetData(), count}, {view.ys.GetData(), count}, {view.zs.GetData(), count}};
 }
+
+inline auto to_unreal(simulation::Vectors3fConstView const view) noexcept -> FVectors3f::ConstView {
+    auto const count{view.num()};
+    return {{view.xs.data(), count}, {view.ys.data(), count}, {view.zs.data(), count}};
+}
 }

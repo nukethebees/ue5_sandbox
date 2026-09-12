@@ -2,6 +2,7 @@ find_package(GTest CONFIG REQUIRED)
 
 add_library(native-simulation STATIC)
 target_sources(native-simulation PRIVATE
+  include/sandbox/simulation/collision_events.h
   include/sandbox/simulation/direct_damage_events.h
   include/sandbox/simulation/entity_aabbs.h
   include/sandbox/simulation/entity_cell_data.h
@@ -12,11 +13,16 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/entity_world_bounds.h
   include/sandbox/simulation/fighter_order_queue.h
   include/sandbox/simulation/fighter_reassignment.h
+  include/sandbox/simulation/frame_collision_scratch.h
+  include/sandbox/simulation/frame_direct_damage_events.h
+  include/sandbox/simulation/frame_hit_details.h
   include/sandbox/simulation/frame_trace_hits.h
   include/sandbox/simulation/frame_vectors3f.h
   include/sandbox/simulation/laser_source.h
   include/sandbox/simulation/level_telemetry_snapshot.h
   include/sandbox/simulation/line_traces.h
+  include/sandbox/simulation/query_thread_buffer_pool.h
+  include/sandbox/simulation/query_thread_buffers.h
   include/sandbox/simulation/registry_entity_handles.h
   include/sandbox/simulation/rotator_types.h
   include/sandbox/simulation/rotators3f.h
@@ -26,12 +32,18 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/vectors3f.h
   include/sandbox/simulation/world_aabbs.h
   include/sandbox/simulation/world_aabb_operations.h
+  src/collision_events.cpp
   src/collision_grid.cpp
   src/deterministic_bias.cpp
   src/entity_world_bounds.cpp
   src/fixed_tick.cpp
+  src/frame_collision_scratch.cpp
+  src/frame_direct_damage_events.cpp
+  src/frame_hit_details.cpp
   src/frame_trace_hits.cpp
   src/frame_vectors3f.cpp
+  src/query_thread_buffer_pool.cpp
+  src/query_thread_buffers.cpp
   src/simulation_clock.cpp
   src/spatial.cpp
   src/step_response.cpp

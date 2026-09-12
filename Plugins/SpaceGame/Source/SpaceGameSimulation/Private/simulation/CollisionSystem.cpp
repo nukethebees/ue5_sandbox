@@ -10,9 +10,9 @@ void FCollisionSystem::initialise(FEntityAABBs const& bounds) {
     entity_entity_overlaps_.reset();
     entity_static_overlaps_.reset();
     reset_frame_events();
-    overlapping_entities_scratch_.Reset();
-    overlapping_static_geometry_indices_scratch_.Reset();
-    overlap_sort_indices_scratch_.Reset();
+    overlapping_entities_scratch_.clear();
+    overlapping_static_geometry_indices_scratch_.clear();
+    overlap_sort_indices_scratch_.clear();
 }
 auto FCollisionSystem::update(TConstArrayView<FRegistryEntityHandle> const collision_dirty_entities,
                               uint64 const tick) -> FDetectedOverlapsView {
@@ -24,7 +24,7 @@ auto FCollisionSystem::update(TConstArrayView<FRegistryEntityHandle> const colli
     auto const entity_static_offset{entity_static_overlap_events_.num()};
     entity_entity_overlap_events_.append_from(entity_entity_overlaps_.get_const_view());
     entity_static_overlap_events_.append_from(entity_static_overlaps_.get_const_view());
-    overlap_event_batches_.Add({
+    overlap_event_batches_.push_back({
         .tick = tick,
         .entity_entity_overlaps =
             {
@@ -43,7 +43,7 @@ auto FCollisionSystem::update(TConstArrayView<FRegistryEntityHandle> const colli
 void FCollisionSystem::reset_frame_events() {
     entity_entity_overlap_events_.reset();
     entity_static_overlap_events_.reset();
-    overlap_event_batches_.Reset();
+    overlap_event_batches_.clear();
 }
 FCollisionSystem::FCollisionSystem(FTestEntityRegistry const& registry) noexcept
     : entity_registry_{registry}
@@ -73,8 +73,8 @@ void FCollisionSystem::collect_overlaps_for_moved_entities(
             entity_data.locations[entity_index],
             FRotator3f{ml::get_rotator3d(entity_data.rotations, entity_index)})};
 
-        overlapping_entities_scratch_.Reset();
-        overlapping_static_geometry_indices_scratch_.Reset();
+        overlapping_entities_scratch_.clear();
+        overlapping_static_geometry_indices_scratch_.clear();
         uniform_grid_.append_overlaps(bounds,
                                       dirty_entity,
                                       overlapping_entities_scratch_,
@@ -98,7 +98,7 @@ void FCollisionSystem::collect_overlaps_for_moved_entities(
 void FCollisionSystem::sort_and_deduplicate_overlaps() {
     auto const entity_pair_count{entity_entity_overlaps_.num()};
     if (entity_pair_count > 1) {
-        overlap_sort_indices_scratch_.SetNumUninitialized(entity_pair_count, EAllowShrinking::No);
+        overlap_sort_indices_scratch_.resize(static_cast<std::size_t>(entity_pair_count));
         entity_entity_overlaps_.sort(
             [](FEntityEntityOverlaps const& overlaps, int32 const lhs, int32 const rhs) {
                 auto const lhs_first{overlaps.first_entities[lhs]};
@@ -107,8 +107,7 @@ void FCollisionSystem::sort_and_deduplicate_overlaps() {
                        (lhs_first == rhs_first &&
                         overlaps.second_entities[lhs] < overlaps.second_entities[rhs]);
             },
-            std::span{overlap_sort_indices_scratch_.GetData(),
-                      static_cast<std::size_t>(overlap_sort_indices_scratch_.Num())});
+            std::span{overlap_sort_indices_scratch_});
 
         int32 write_index{1};
         for (int32 read_index{1}; read_index < entity_pair_count; ++read_index) {
@@ -129,7 +128,7 @@ void FCollisionSystem::sort_and_deduplicate_overlaps() {
 
     auto const entity_static_count{entity_static_overlaps_.num()};
     if (entity_static_count > 1) {
-        overlap_sort_indices_scratch_.SetNumUninitialized(entity_static_count, EAllowShrinking::No);
+        overlap_sort_indices_scratch_.resize(static_cast<std::size_t>(entity_static_count));
         entity_static_overlaps_.sort(
             [](FEntityStaticOverlaps const& overlaps, int32 const lhs, int32 const rhs) {
                 auto const lhs_entity{overlaps.entities[lhs]};
@@ -138,8 +137,7 @@ void FCollisionSystem::sort_and_deduplicate_overlaps() {
                        (lhs_entity == rhs_entity && overlaps.static_geometry_indices[lhs] <
                                                         overlaps.static_geometry_indices[rhs]);
             },
-            std::span{overlap_sort_indices_scratch_.GetData(),
-                      static_cast<std::size_t>(overlap_sort_indices_scratch_.Num())});
+            std::span{overlap_sort_indices_scratch_});
 
         int32 write_index{1};
         for (int32 read_index{1}; read_index < entity_static_count; ++read_index) {

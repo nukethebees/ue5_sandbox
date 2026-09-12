@@ -188,8 +188,8 @@ void Simulation::handle_collisions(float const dt) {
         for (int32 trace_index{i_start}; trace_index < i_end; ++trace_index) {
             auto const start{ml::get_vector3f(entities.locations, trace_index)};
             auto const velocity{ml::get_vector3f(entities.velocities, trace_index)};
-            collision_scratch.trace_starts.set(trace_index, start);
-            collision_scratch.trace_ends.set(trace_index, start + dt * velocity);
+            collision_scratch.trace_starts.set(trace_index, ml::to_native(start));
+            collision_scratch.trace_ends.set(trace_index, ml::to_native(start + dt * velocity));
         }
 
         auto const traces{make_line_traces_const_view(
@@ -231,8 +231,8 @@ void Simulation::handle_collisions(float const dt) {
 
         auto const velocity{ml::get_vector3f(entities.velocities, entity_index)};
         hit_details.add(
-            ml::to_unreal(collision_scratch.trace_hits.locations.get_const_view()[entity_index]),
-            -velocity.GetSafeNormal(UE_SMALL_NUMBER, FVector3f::UpVector),
+            collision_scratch.trace_hits.locations.get_const_view()[entity_index],
+            ml::to_native(-velocity.GetSafeNormal(UE_SMALL_NUMBER, FVector3f::UpVector)),
             entities.sources[entity_index]);
     }
     entity_registry.queue_direct_damage_events(collision_damage_events.get_const_view());
@@ -240,7 +240,7 @@ void Simulation::handle_collisions(float const dt) {
     to_remove.view().Sort(TGreater<int32>{});
     remove_instances(to_remove);
 
-    frame_hits_.append_from(hit_details.get_const_view());
+    frame_hits_.append_from(make_hit_details_const_view(hit_details));
 
     auto const hit_count{hit_details.num()};
     for (int32 i{}; i < hit_count; ++i) {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sandbox/simulation/query_thread_buffer_pool.h>
+
 #include <SandboxNative/RegistryEntityHandle.h>
 #include <SpaceGameSimulation/entities/TestEntityType.h>
 #include <SpaceGameSimulation/entities/TestTeam.h>
@@ -7,13 +9,11 @@
 #include <SpaceGameSimulation/simulation/LineTraces.h>
 #include <SpaceGameSimulation/simulation/TraceHits.h>
 
-#include <Containers/Array.h>
 #include <Containers/ArrayView.h>
 #include <CoreMinimal.h>
 #include <SandboxCore/soa_vectors.h>
 
 #include <atomic>
-#include <mutex>
 #include <utility>
 
 struct FTestEntityRegistry;
@@ -23,12 +23,7 @@ struct FSpatialQueryManager;
 }
 
 namespace ml::query_manager {
-struct FThreadBuffers {
-    FLineTraces line_traces;
-    FTraceHits trace_hits;
-    TArray<uint32> range_query_entity_stamps;
-    uint32 range_query_stamp{};
-};
+using FThreadBuffers = simulation::QueryThreadBuffers;
 
 class FThreadBufferLease {
   public:
@@ -159,10 +154,7 @@ struct SPACEGAMESIMULATION_API FSpatialQueryManager {
     /* **************************************** */
     FTestEntityRegistry const& entity_registry;
 
-    mutable std::mutex thread_buffers_mutex;
-    mutable TArray<FThreadBuffers> thread_buffers;
-    mutable TArray<int32> free_thread_buffer_indices;
-    mutable int32 active_thread_buffer_count{};
+    mutable simulation::QueryThreadBufferPool thread_buffer_pool_;
 
     ioj::FCollisionSystem collision;
     mutable std::atomic<uint64> range_query_count_{};

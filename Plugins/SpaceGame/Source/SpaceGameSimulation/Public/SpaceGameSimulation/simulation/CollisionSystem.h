@@ -1,49 +1,21 @@
 #pragma once
 
+#include <sandbox/simulation/collision_events.h>
+
 #include <SpaceGameSimulation/entities/TestEntityType.h>
 #include <SpaceGameSimulation/simulation/collision_uniform_grid.h>
 #include <SpaceGameSimulation/simulation/EntityAABBs.h>
 #include <SpaceGameSimulation/simulation/EntityOverlaps.h>
-#include <SpaceGameSimulation/support/IndexSpan.h>
+
+#include <vector>
 
 struct FTestEntityRegistry;
 
 namespace ml::ioj {
-struct FDetectedOverlapsView {
-    FEntityEntityOverlaps::ConstView entity_entity_overlaps;
-    FEntityStaticOverlaps::ConstView entity_static_overlaps;
-};
-
-struct FAABBOverlapEventBatch {
-    uint64 tick{};
-    FIndexSpan entity_entity_overlaps;
-    FIndexSpan entity_static_overlaps;
-};
-
-struct FAABBOverlapEventBatchView {
-    uint64 tick{};
-    FDetectedOverlapsView overlaps;
-};
-
-struct FAABBOverlapEventsView {
-    FEntityEntityOverlaps::ConstView entity_entity_overlaps;
-    FEntityStaticOverlaps::ConstView entity_static_overlaps;
-    TConstArrayView<FAABBOverlapEventBatch> batches;
-
-    auto get_batch(int32 const index) const -> FAABBOverlapEventBatchView {
-        auto const batch{batches[index]};
-        return {
-            .tick = batch.tick,
-            .overlaps =
-                {
-                    .entity_entity_overlaps = entity_entity_overlaps.slice(
-                        batch.entity_entity_overlaps.offset, batch.entity_entity_overlaps.count),
-                    .entity_static_overlaps = entity_static_overlaps.slice(
-                        batch.entity_static_overlaps.offset, batch.entity_static_overlaps.count),
-                },
-        };
-    }
-};
+using FDetectedOverlapsView = simulation::collision::DetectedOverlapsView;
+using FAABBOverlapEventBatch = simulation::collision::AABBOverlapEventBatch;
+using FAABBOverlapEventBatchView = simulation::collision::AABBOverlapEventBatchView;
+using FAABBOverlapEventsView = simulation::collision::AABBOverlapEventsView;
 
 struct SPACEGAMESIMULATION_API FCollisionSystem {
   public:
@@ -88,10 +60,10 @@ struct SPACEGAMESIMULATION_API FCollisionSystem {
 
     FEntityEntityOverlaps entity_entity_overlap_events_;
     FEntityStaticOverlaps entity_static_overlap_events_;
-    TArray<FAABBOverlapEventBatch> overlap_event_batches_;
+    std::vector<FAABBOverlapEventBatch> overlap_event_batches_;
 
-    TArray<FRegistryEntityHandle> overlapping_entities_scratch_;
-    TArray<int32> overlapping_static_geometry_indices_scratch_;
-    TArray<int32> overlap_sort_indices_scratch_;
+    std::vector<FRegistryEntityHandle> overlapping_entities_scratch_;
+    std::vector<int32> overlapping_static_geometry_indices_scratch_;
+    std::vector<int32> overlap_sort_indices_scratch_;
 };
 }

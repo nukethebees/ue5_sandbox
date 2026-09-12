@@ -12,6 +12,7 @@
 #include <SandboxCore/soa_vectors.h>
 
 #include <atomic>
+#include <vector>
 
 class UStaticMesh;
 struct FTestEntityRegistry;
@@ -102,8 +103,8 @@ struct SPACEGAMESIMULATION_API CollisionUniformGrid {
     // Appends exact overlaps. Multi-cell participants may be appended more than once.
     void append_overlaps(simulation::collision::WorldAABB const& query_bounds,
                          FRegistryEntityHandle ignored_entity,
-                         TArray<FRegistryEntityHandle>& out_entities,
-                         TArray<int32>& out_static_geometry_indices) const;
+                         std::vector<FRegistryEntityHandle>& out_entities,
+                         std::vector<int32>& out_static_geometry_indices) const;
     void trace_aabbs(FLineTracesConstView const& traces, FTraceHitsView const& hits) const;
     void trace_aabbs(FLineTracesConstView const& traces,
                      FTraceHitsView const& hits,

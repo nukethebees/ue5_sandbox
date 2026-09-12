@@ -416,8 +416,8 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
 
 void CollisionUniformGrid::append_overlaps(simulation::collision::WorldAABB const& query_bounds,
                                            FRegistryEntityHandle const ignored_entity,
-                                           TArray<FRegistryEntityHandle>& out_entities,
-                                           TArray<int32>& out_static_geometry_indices) const {
+                                           std::vector<FRegistryEntityHandle>& out_entities,
+                                           std::vector<int32>& out_static_geometry_indices) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::append_overlaps);
 
     auto const geometry{grid_geometry(grid_dims_, cell_dims_)};
@@ -462,7 +462,7 @@ void CollisionUniformGrid::append_overlaps(simulation::collision::WorldAABB cons
 
                         if (overlaps_query(simulation::collision::min_at(aabbs, entity_index),
                                            simulation::collision::max_at(aabbs, entity_index))) {
-                            out_entities.Add(entity);
+                            out_entities.push_back(entity);
                         }
                     }
                 }
@@ -481,7 +481,7 @@ void CollisionUniformGrid::append_overlaps(simulation::collision::WorldAABB cons
                 for (auto const static_index : static_indices) {
                     if (overlaps_query(simulation::collision::min_at(static_aabbs, static_index),
                                        simulation::collision::max_at(static_aabbs, static_index))) {
-                        out_static_geometry_indices.Add(static_index);
+                        out_static_geometry_indices.push_back(static_index);
                     }
                 }
             }

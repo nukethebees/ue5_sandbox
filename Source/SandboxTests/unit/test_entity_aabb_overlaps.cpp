@@ -562,9 +562,10 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
         check_single_static_overlap(TestRunner, fixture.get_static_overlaps(), moved, static_index);
 
         auto const events{collision_system.get_aabb_overlap_events()};
-        TestRunner->TestEqual(
-            TEXT("The collision pass records one event batch"), events.batches.Num(), 1);
-        if (events.batches.Num() == 1) {
+        TestRunner->TestEqual(TEXT("The collision pass records one event batch"),
+                              static_cast<int32>(events.batches.size()),
+                              1);
+        if (events.batches.size() == 1) {
             auto const batch{events.get_batch(0)};
             TestRunner->TestEqual(
                 TEXT("The event batch records its fixed tick"), batch.tick, fixture.current_tick);
@@ -603,8 +604,9 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
                               0);
         TestRunner->TestEqual(
             TEXT("Frame reset clears static events"), reset_events.entity_static_overlaps.num(), 0);
-        TestRunner->TestEqual(
-            TEXT("Frame reset clears event batches"), reset_events.batches.Num(), 0);
+        TestRunner->TestEqual(TEXT("Frame reset clears event batches"),
+                              static_cast<int32>(reset_events.batches.size()),
+                              0);
         TestRunner->TestTrue(TEXT("Dynamic event storage is retained across reset"),
                              reset_events.entity_entity_overlaps.first_entities.data() ==
                                  entity_storage);
@@ -632,9 +634,9 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
                               appended_events.entity_static_overlaps.num(),
                               2);
         TestRunner->TestEqual(TEXT("Collision passes retain separate batch metadata"),
-                              appended_events.batches.Num(),
+                              static_cast<int32>(appended_events.batches.size()),
                               2);
-        if (appended_events.batches.Num() == 2) {
+        if (appended_events.batches.size() == 2) {
             TestRunner->TestTrue(TEXT("Later passes retain their own fixed tick"),
                                  appended_events.batches[0].tick < appended_events.batches[1].tick);
         }
@@ -648,7 +650,7 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
                               next_frame_events.entity_static_overlaps.num(),
                               0);
         TestRunner->TestEqual(TEXT("The next frame starts without event batches"),
-                              next_frame_events.batches.Num(),
+                              static_cast<int32>(next_frame_events.batches.size()),
                               0);
     }
 
