@@ -11,6 +11,7 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/entity_death_info.h
   include/sandbox/simulation/entity_history.h
   include/sandbox/simulation/entity_overlaps.h
+  include/sandbox/simulation/entity_registry_bookkeeping.h
   include/sandbox/simulation/entity_telemetry.h
   include/sandbox/simulation/entity_world_bounds.h
   include/sandbox/simulation/fighter_order_queue.h
@@ -45,6 +46,7 @@ target_sources(native-simulation PRIVATE
   src/collision_events.cpp
   src/collision_grid.cpp
   src/deterministic_bias.cpp
+  src/entity_registry_bookkeeping.cpp
   src/entity_world_bounds.cpp
   src/fixed_tick.cpp
   src/frame_collision_scratch.cpp

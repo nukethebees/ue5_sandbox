@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sandbox/simulation/entity_registry_bookkeeping.h>
 #include <sandbox/simulation/entity_telemetry.h>
 
 #include "SpaceGameSimulation/entities/TestEntityRegistryData.h"
@@ -14,8 +15,6 @@
 #include <SpaceGameSimulation/entities/TestEntityUniqueEntityData.h>
 #include <SpaceGameSimulation/entities/TestEntityUniqueId.h>
 #include <SpaceGameSimulation/entities/TestTeam.h>
-
-#include <SandboxCore/array_utils.h>
 
 #include "CoreMinimal.h"
 
@@ -120,7 +119,10 @@ struct SPACEGAMESIMULATION_API FTestEntityRegistry {
     // Entity data queries
     /* **************************************** */
     auto get_entity_data() const noexcept -> EntityData const& { return entity_data; }
-    auto get_generations() const noexcept -> TConstArrayView<int> { return generations; }
+    auto get_generations() const noexcept -> TConstArrayView<int> {
+        return {bookkeeping_.generations.data(),
+                static_cast<int32>(bookkeeping_.generations.size())};
+    }
     auto get_location(FRegistryEntityHandle const handle) const -> FVector3f;
     auto get_velocity(FRegistryEntityHandle const handle) const -> FVector3f;
     auto get_health(FRegistryEntityHandle const handle) const -> int32;
@@ -160,7 +162,7 @@ struct SPACEGAMESIMULATION_API FTestEntityRegistry {
     }
     // Slot-to-ID mapping includes current dead occupants until their slots are reused.
     auto get_active_unique_ids() const noexcept -> TConstArrayView<TestEntityUniqueId> {
-        return unique_ids;
+        return {bookkeeping_.unique_ids.data(), static_cast<int32>(bookkeeping_.unique_ids.size())};
     }
     auto is_valid_unique_id(TestEntityUniqueId const id) const -> bool;
     auto get_num_unique_ids_issued() const -> int32 { return unique_entity_history_.num(); }
@@ -216,10 +218,9 @@ struct SPACEGAMESIMULATION_API FTestEntityRegistry {
     void validate_unique_ids() const;
     void validate_unique_entity_data() const;
 
-    // Current slot data: all three arrays share slot indices. Reuse changes the generation and ID.
+    // Current slot data shares indices with bookkeeping generations and IDs. Reuse changes both.
     EntityData entity_data;
-    TArray<int32> generations;
-    TArray<TestEntityUniqueId> unique_ids;
+    ml::simulation::EntityRegistryBookkeeping bookkeeping_;
 
     // Append-only rows indexed by unique ID until reset; handle/type stay fixed, team/alive track
     // committed state. Old rows and their death/kill accounting survive slot reuse.
@@ -227,18 +228,12 @@ struct SPACEGAMESIMULATION_API FTestEntityRegistry {
 
     // Queued updates
     EntityData queued_entity_data;
-    TArray<FRegistryEntityHandle> queued_entity_update_handles;
     EntityDeathInfo queued_death_infos;
 
     // Queued damage events
     DirectDamageEvents queued_direct_damage_events;
 
     // Per-tick entity changes
-    TArray<FRegistryEntityHandle> dead_entities_this_frame;
-    TArray<FRegistryEntityHandle> moved_entities_this_tick_;
-    // Ascending dead-slot snapshot from end_tick(), consumed from the tail by add_entities().
-    TArray<int32> free_indices;
-
     EntityCounts alive_counts_{};
     int32 alive_count_{};
     int32 cumulative_kill_count_{};
@@ -246,8 +241,7 @@ struct SPACEGAMESIMULATION_API FTestEntityRegistry {
 };
 
 inline auto FTestEntityRegistry::is_valid_handle(FRegistryEntityHandle const handle) const -> bool {
-    return generations.IsValidIndex(handle.index) &&
-           (generations[handle.index] == handle.generation);
+    return bookkeeping_.is_valid_handle(handle);
 }
 inline auto FTestEntityRegistry::is_valid_alive(FRegistryEntityHandle const handle) const -> bool {
     return is_valid_handle(handle) && (entity_data.alive[handle.index] > 0);

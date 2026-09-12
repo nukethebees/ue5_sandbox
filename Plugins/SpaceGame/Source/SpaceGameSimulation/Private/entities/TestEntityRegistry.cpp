@@ -6,7 +6,6 @@
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_checks.h>
-#include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
@@ -38,13 +37,8 @@ void FTestEntityRegistry::reset() {
               queued_entity_data,
               unique_entity_history_,
               queued_death_infos,
-              generations,
-              unique_ids,
-              queued_entity_update_handles,
-              queued_direct_damage_events,
-              dead_entities_this_frame,
-              moved_entities_this_tick_,
-              free_indices);
+              queued_direct_damage_events);
+    bookkeeping_.reset();
 
     alive_counts_ = {};
     alive_count_ = 0;
@@ -52,7 +46,7 @@ void FTestEntityRegistry::reset() {
     combat_telemetry_ = {};
 }
 void FTestEntityRegistry::begin_tick() {
-    moved_entities_this_tick_.Reset();
+    bookkeeping_.begin_tick();
 }
 void FTestEntityRegistry::commit_updates() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::commit_updates);
@@ -61,22 +55,24 @@ void FTestEntityRegistry::commit_updates() {
     commit_entity_updates();
     commit_death_updates();
 
-    ml::reset(queued_entity_data, queued_entity_update_handles, queued_death_infos);
+    ml::reset(queued_entity_data, queued_death_infos);
+    bookkeeping_.clear_queued_updates();
 
     validate_array_sizes();
 }
 void FTestEntityRegistry::refresh_free_indices() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::refresh_free_indices);
 
-    ml::collect_indices_less_equal(
-        TConstArrayView<uint8>{entity_data.alive}, uint8{0}, free_indices);
+    bookkeeping_.refresh_free_indices(
+        std::span{entity_data.alive.GetData(), static_cast<std::size_t>(entity_data.alive.Num())});
 }
 void FTestEntityRegistry::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::end_tick);
 
     refresh_free_indices();
 
-    ml::reset(queued_direct_damage_events, dead_entities_this_frame);
+    queued_direct_damage_events.reset();
+    bookkeeping_.clear_dead_entities();
 
     validate_array_sizes();
     validate_unique_ids();
@@ -102,11 +98,10 @@ auto FTestEntityRegistry::add_entities(EntityData::ConstView const view) -> Spaw
     unique_entity_history_.add_defaulted(count);
     new_entities.registry_handles.add_uninitialised(count);
 
-    auto const reuse_count{FMath::Min(free_indices.Num(), count)};
+    auto const reuse_count{FMath::Min(bookkeeping_.available_free_slot_count(), count)};
     for (int32 source_index{}; source_index < reuse_count; ++source_index) {
-        auto const slot_index{free_indices.Pop(EAllowShrinking::No)};
+        auto const slot_index{bookkeeping_.take_free_slot()};
         entity_data.copy_element(slot_index, view, source_index);
-        ++generations[slot_index];
 
         auto const handle{register_spawned_entity(
             view, source_index, slot_index, new_entities.first_id + source_index)};
@@ -115,8 +110,7 @@ auto FTestEntityRegistry::add_entities(EntityData::ConstView const view) -> Spaw
 
     auto const append_count{count - reuse_count};
     auto const first_slot_index{entity_data.num()};
-    generations.AddZeroed(append_count);
-    unique_ids.AddDefaulted(append_count);
+    bookkeeping_.append_slots(append_count);
     entity_data.append_from(view.get_view(reuse_count, append_count));
 
     for (int32 offset{}; offset < append_count; ++offset) {
@@ -135,12 +129,12 @@ FORCEINLINE auto FTestEntityRegistry::register_spawned_entity(EntityData::ConstV
                                                               int32 const slot_index,
                                                               TestEntityUniqueId const unique_id)
     -> FRegistryEntityHandle {
-    auto const generation{generations[slot_index]};
+    auto const generation{bookkeeping_.generations[slot_index]};
     auto const team{view.teams[source_index]};
     auto const type{view.entity_types[source_index]};
     auto const alive{view.alive[source_index]};
     auto const unique_entities{unique_entity_history_.get_view().columns()};
-    unique_ids[slot_index] = unique_id;
+    bookkeeping_.unique_ids[slot_index] = unique_id;
     unique_entities.registry_indices[unique_id.id] = slot_index;
     unique_entities.registry_generations[unique_id.id] = generation;
     unique_entities.alive[unique_id.id] = alive;
@@ -163,7 +157,8 @@ void FTestEntityRegistry::queue_entity_updates(ConstView const view,
 
     check(view.indices.Num() == view.data.num());
     queued_entity_data.append_from(view.data);
-    queued_entity_update_handles.Append(view.indices);
+    bookkeeping_.queue_update_handles(
+        std::span{view.indices.GetData(), static_cast<std::size_t>(view.indices.Num())});
 
     death_info.validate_array_sizes();
     queued_death_infos.append_from(death_info.get_const_view());
@@ -172,10 +167,10 @@ void FTestEntityRegistry::commit_entity_updates() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::commit_entity_updates);
 
     auto const count{queued_entity_data.num()};
-    check(queued_entity_update_handles.Num() == count);
+    check(static_cast<int32>(bookkeeping_.queued_update_handles.size()) == count);
 
     for (int32 update_index{}; update_index < count; ++update_index) {
-        auto const handle{queued_entity_update_handles[update_index]};
+        auto const handle{bookkeeping_.queued_update_handles[update_index]};
         check(is_valid_handle(handle));
         auto const slot_index{handle.index};
 
@@ -190,8 +185,8 @@ void FTestEntityRegistry::commit_entity_updates() {
                                     entity_data.rotations.rolls[slot_index] !=
                                         queued_entity_data.rotations.rolls[update_index]};
 
-        if ((position_changed || rotation_changed) && !moved_entities_this_tick_.Contains(handle)) {
-            moved_entities_this_tick_.Add(handle);
+        if (position_changed || rotation_changed) {
+            bookkeeping_.record_moved(handle);
         }
 
         apply_live_state_transition(slot_index,
@@ -217,7 +212,7 @@ void FTestEntityRegistry::commit_death_updates() {
         auto const victim_handle{queued_death_infos.victims[i]};
         auto const victim_id{find_unique_id(victim_handle)};
 
-        dead_entities_this_frame.Add(victim_handle);
+        bookkeeping_.record_dead(victim_handle);
 
         record_entity_death(victim_id, queued_death_infos.reasons[i]);
 
@@ -287,7 +282,7 @@ FORCEINLINE void FTestEntityRegistry::apply_live_state_transition(int32 const sl
 
     entity_data.teams[slot_index] = team;
     entity_data.alive[slot_index] = alive;
-    auto const unique_id{unique_ids[slot_index]};
+    auto const unique_id{bookkeeping_.unique_ids[slot_index]};
     auto const unique_entities{unique_entity_history_.get_view().columns()};
     unique_entities.alive[unique_id.id] = alive;
     if (old_team != team) {
@@ -348,25 +343,10 @@ auto FTestEntityRegistry::get_direct_damage_queue_view() const -> DirectDamageEv
 /* **************************************** */
 auto FTestEntityRegistry::analyse_handle(FRegistryEntityHandle const handle) const
     -> ERegistryHandleState {
-    if (handle.is_null()) {
-        return ERegistryHandleState::Null;
-    }
-    if (!generations.IsValidIndex(handle.index)) {
-        return ERegistryHandleState::Invalid;
-    }
-    auto const current_generation{generations[handle.index]};
-    if (current_generation == handle.generation) {
-        return ERegistryHandleState::Active;
-    }
-    if (current_generation > handle.generation) {
-        return ERegistryHandleState::Stale;
-    }
-
-    return ERegistryHandleState::Invalid;
+    return bookkeeping_.analyse_handle(handle);
 }
 auto FTestEntityRegistry::is_stale(FRegistryEntityHandle const handle) const -> bool {
-    return generations.IsValidIndex(handle.index) &&
-           (generations[handle.index] > handle.generation);
+    return bookkeeping_.is_stale(handle);
 }
 
 /* **************************************** */
@@ -407,8 +387,7 @@ void FTestEntityRegistry::refresh_locations(TConstArrayView<FRegistryEntityHandl
         if (handle.is_null()) {
             locations.set(i, FVector3f::ZeroVector);
         } else {
-            check(generations.IsValidIndex(handle.index));
-            check(handle.generation == generations[handle.index]);
+            check(bookkeeping_.is_valid_handle(handle));
 
             locations.set(i, entity_data.locations[handle.index]);
         }
@@ -499,11 +478,13 @@ auto FTestEntityRegistry::get_alive(FRegistryEntityHandle const handle) const ->
 /* **************************************** */
 auto FTestEntityRegistry::get_moved_entities_this_tick() const
     -> TConstArrayView<FRegistryEntityHandle> {
-    return moved_entities_this_tick_;
+    return {bookkeeping_.moved_entities.data(),
+            static_cast<int32>(bookkeeping_.moved_entities.size())};
 }
 auto FTestEntityRegistry::get_dead_entities_this_frame() const
     -> TConstArrayView<FRegistryEntityHandle> {
-    return dead_entities_this_frame;
+    return {bookkeeping_.dead_entities.data(),
+            static_cast<int32>(bookkeeping_.dead_entities.size())};
 }
 auto FTestEntityRegistry::get_handles_not_in_team(ETestTeam const team) const
     -> TArray<FRegistryEntityHandle> {
@@ -524,7 +505,7 @@ void FTestEntityRegistry::get_handles_not_in_team(ETestTeam const team,
             continue;
         }
 
-        out.Emplace(i, generations[i]);
+        out.Emplace(i, bookkeeping_.generations[i]);
     }
 }
 
@@ -593,7 +574,7 @@ auto FTestEntityRegistry::find_unique_id(FRegistryEntityHandle const handle) con
             return {};
         }
         case ERegistryHandleState::Active: {
-            return unique_ids[handle.index];
+            return bookkeeping_.unique_ids[handle.index];
         }
         case ERegistryHandleState::Stale: {
             break;
@@ -646,7 +627,7 @@ auto FTestEntityRegistry::collect_entities_in_range(
         auto const dist_sq{ml::dist_sq(entity_data.locations, i, ox, oy, oz)};
 
         if (dist_sq <= radius_squared) {
-            out_entities[count++] = FRegistryEntityHandle{i, generations[i]};
+            out_entities[count++] = FRegistryEntityHandle{i, bookkeeping_.generations[i]};
         }
 
         if (count >= n_out_limit) {
@@ -663,7 +644,7 @@ auto FTestEntityRegistry::collect_entities_in_range(
 void FTestEntityRegistry::validate_unique_queued_entity_update_handles() const {
 #if DO_CHECK
     TBitArray<> seen_handles{false, entity_data.num()};
-    for (auto const handle : queued_entity_update_handles) {
+    for (auto const handle : bookkeeping_.queued_update_handles) {
         check(is_valid_handle(handle));
         checkf(!seen_handles[handle.index],
                TEXT("Entity update handle %s was queued more than once in one tick"),
@@ -673,11 +654,10 @@ void FTestEntityRegistry::validate_unique_queued_entity_update_handles() const {
 #endif
 }
 void FTestEntityRegistry::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(entity_data),
-        SANDBOX_NAMED_NUM(generations),
-        SANDBOX_NAMED_NUM(unique_ids),
-    });
+    auto const entity_count{entity_data.num()};
+    ml::fatal_if_nums_not_equal({entity_count,
+                                 static_cast<int32>(bookkeeping_.generations.size()),
+                                 static_cast<int32>(bookkeeping_.unique_ids.size())});
 
     entity_data.validate_array_sizes();
     queued_direct_damage_events.validate_array_sizes();
@@ -685,7 +665,8 @@ void FTestEntityRegistry::validate_array_sizes() const {
 #if DO_CHECK
     queued_entity_data.validate_array_sizes();
     unique_entity_history_.get_const_view().columns().validate_array_sizes();
-    check(queued_entity_data.num() == queued_entity_update_handles.Num());
+    check(queued_entity_data.num() ==
+          static_cast<int32>(bookkeeping_.queued_update_handles.size()));
 #endif
 }
 void FTestEntityRegistry::validate_unique_ids() const {
@@ -693,18 +674,19 @@ void FTestEntityRegistry::validate_unique_ids() const {
 
     // Development-time validation for the unique id system
     auto const unique_entities{unique_entity_history_.get_const_view().columns()};
-    auto const n{unique_ids.Num()};
+    auto const n{static_cast<int32>(bookkeeping_.unique_ids.size())};
 
     for (int32 i{0}; i < n; ++i) {
-        if (!is_valid_unique_id(unique_ids[i])) {
+        auto const unique_id{bookkeeping_.unique_ids[i]};
+        if (!is_valid_unique_id(unique_id)) {
             UE_LOG(LogSandbox,
                    Fatal,
                    TEXT("Invalid unique id detected: (id[%d] = %d)"),
                    i,
-                   unique_ids[i].id);
+                   unique_id.id);
         }
-        check(unique_entities.registry_indices[unique_ids[i].id] == i);
-        check(unique_entities.registry_generations[unique_ids[i].id] == generations[i]);
+        check(unique_entities.registry_indices[unique_id.id] == i);
+        check(unique_entities.registry_generations[unique_id.id] == bookkeeping_.generations[i]);
     }
 }
 void FTestEntityRegistry::validate_unique_entity_data() const {
