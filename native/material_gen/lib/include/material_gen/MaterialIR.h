@@ -9,12 +9,14 @@
 namespace material_synth {
 
 enum class ValueType { invalid, float1, float2, float3, float4, texture };
-enum class MaterialDomain { ui };
-enum class BlendMode { additive };
+enum class MaterialDomain { ui, surface };
+enum class BlendMode { additive, translucent };
+enum class ShadingModel { default_lit, unlit };
 enum class NodeKind {
     constant,
     parameter,
     texture_coordinate,
+    per_instance_custom_data,
     add,
     subtract,
     multiply,
@@ -60,6 +62,7 @@ struct Node {
     std::size_t component_count{};
     std::size_t parameter_index{};
     unsigned coordinate_index{};
+    unsigned instance_data_index{};
     std::string description;
     std::string code;
     std::vector<CustomInput> custom_inputs;
@@ -85,6 +88,10 @@ struct MaterialSettings {
     std::string package_path;
     MaterialDomain domain{MaterialDomain::ui};
     BlendMode blend_mode{BlendMode::additive};
+    ShadingModel shading_model{ShadingModel::default_lit};
+    bool two_sided{};
+    bool disable_depth_test{};
+    bool used_with_instanced_static_meshes{};
 };
 
 struct MaterialIR {

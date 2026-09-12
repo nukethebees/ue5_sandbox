@@ -8,6 +8,7 @@
 #include "MaterialDomain.h"
 #include "Materials/Material.h"
 #include "Materials/MaterialExpressionCustom.h"
+#include "Materials/MaterialExpressionPerInstanceCustomData.h"
 #include "Materials/MaterialExpressionScalarParameter.h"
 #include "Materials/MaterialExpressionTextureObjectParameter.h"
 #include "Materials/MaterialExpressionVectorParameter.h"
@@ -17,9 +18,10 @@
 
 namespace {
 
-auto load_golden() -> std::expected<material_synth::CompiledMaterial, std::string> {
+auto load_compiled(TCHAR const* const filename)
+    -> std::expected<material_synth::CompiledMaterial, std::string> {
     auto const path{FPaths::ConvertRelativePathToFull(FPaths::ProjectIntermediateDir(),
-                                                      TEXT("MaterialGen/UiGlowComposite.smat"))};
+                                                      FString{TEXT("MaterialGen/")} + filename)};
     TArray<uint8> bytes;
     if (!FFileHelper::LoadFileToArray(bytes, *path)) {
         return std::unexpected{"unable to load compiled golden material"};
@@ -53,7 +55,7 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
 
     TEST_METHOD(GeneratesCompilesSavesReloadsAndIsIdempotent)
     {
-        auto const compiled{load_golden()};
+        auto const compiled{load_compiled(TEXT("UiGlowComposite.smat"))};
         if (!TestRunner->TestTrue(TEXT("Compiled golden material loads"), compiled.has_value())) {
             return;
         }
@@ -131,5 +133,56 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
                                  ? FindObject<UMaterial>(loaded_package, TEXT("M_UiGlowComposite"))
                                  : nullptr};
         TestRunner->TestNotNull(TEXT("Saved material reloads from its package"), reloaded);
+    }
+
+    TEST_METHOD(GeneratesWorldSurfaceMaterialWithPerInstanceRangeData)
+    {
+        auto const compiled{load_compiled(TEXT("SoftTargetWorld.smat"))};
+        if (!TestRunner->TestTrue(TEXT("Compiled world material loads"), compiled.has_value())) {
+            return;
+        }
+
+        auto const source_path{FString{UTF8_TO_TCHAR(compiled->source_path.c_str())}};
+        auto const source_hash{FString{UTF8_TO_TCHAR(compiled->source_hash.c_str())}};
+        auto const emitted{material_synth::emit(compiled->material, source_path, source_hash)};
+        if (!TestRunner->TestTrue(TEXT("World material generation succeeds"),
+                                  emitted.material != nullptr && emitted.errors.IsEmpty())) {
+            return;
+        }
+
+        auto& material{*emitted.material};
+        TestRunner->TestEqual(
+            TEXT("Material domain is surface"), material.MaterialDomain, MD_Surface);
+        TestRunner->TestEqual(
+            TEXT("Blend mode is translucent"), material.BlendMode, BLEND_Translucent);
+        TestRunner->TestTrue(TEXT("Material is unlit"),
+                             material.GetShadingModels().HasShadingModel(MSM_Unlit));
+        TestRunner->TestTrue(TEXT("Material is two-sided"), material.TwoSided);
+        TestRunner->TestTrue(TEXT("Material disables depth testing"), material.bDisableDepthTest);
+        TestRunner->TestTrue(TEXT("Material supports instanced static meshes"),
+                             material.GetUsageByFlag(MATUSAGE_InstancedStaticMeshes));
+
+        TArray<int32> custom_data_indices;
+        for (auto const expression : material.GetExpressions()) {
+            if (auto const* custom_data{
+                    Cast<UMaterialExpressionPerInstanceCustomData>(expression)}) {
+                custom_data_indices.Add(custom_data->DataIndex);
+            }
+        }
+        custom_data_indices.Sort();
+        TestRunner->TestEqual(
+            TEXT("Six per-instance values are emitted"), custom_data_indices.Num(), 6);
+        for (int32 index{}; index < custom_data_indices.Num(); ++index) {
+            TestRunner->TestEqual(TEXT("Per-instance data indices remain contiguous"),
+                                  custom_data_indices[index],
+                                  index);
+        }
+
+        auto const* emissive{material.GetExpressionInputForProperty(MP_EmissiveColor)};
+        auto const* opacity{material.GetExpressionInputForProperty(MP_Opacity)};
+        TestRunner->TestTrue(TEXT("Emissive output is connected"),
+                             emissive != nullptr && emissive->Expression != nullptr);
+        TestRunner->TestTrue(TEXT("Opacity output is connected"),
+                             opacity != nullptr && opacity->Expression != nullptr);
     }
 };

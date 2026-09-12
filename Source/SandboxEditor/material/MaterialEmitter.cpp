@@ -14,6 +14,7 @@
 #include "Materials/MaterialExpressionDivide.h"
 #include "Materials/MaterialExpressionLinearInterpolate.h"
 #include "Materials/MaterialExpressionMultiply.h"
+#include "Materials/MaterialExpressionPerInstanceCustomData.h"
 #include "Materials/MaterialExpressionSaturate.h"
 #include "Materials/MaterialExpressionScalarParameter.h"
 #include "Materials/MaterialExpressionSubtract.h"
@@ -124,8 +125,15 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
     for (auto* const expression : previous_expressions) {
         UMaterialEditingLibrary::DeleteMaterialExpression(material, expression);
     }
-    material->MaterialDomain = MD_UI;
-    material->BlendMode = BLEND_Additive;
+    material->MaterialDomain = ir.settings.domain == MaterialDomain::ui ? MD_UI : MD_Surface;
+    material->BlendMode =
+        ir.settings.blend_mode == BlendMode::additive ? BLEND_Additive : BLEND_Translucent;
+    material->SetShadingModel(ir.settings.shading_model == ShadingModel::unlit ? MSM_Unlit
+                                                                               : MSM_DefaultLit);
+    material->TwoSided = ir.settings.two_sided;
+    material->bDisableDepthTest = ir.settings.disable_depth_test;
+    material->SetUsageByFlag(MATUSAGE_InstancedStaticMeshes,
+                             ir.settings.used_with_instanced_static_meshes);
 
     TArray<UMaterialExpression*> expressions;
     expressions.Reserve(static_cast<int32>(ir.nodes.size()));
@@ -212,6 +220,15 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
                 expression = coordinate;
                 break;
             }
+            case NodeKind::per_instance_custom_data: {
+                auto* const custom_data{CastChecked<UMaterialExpressionPerInstanceCustomData>(
+                    make_expression(*material,
+                                    UMaterialExpressionPerInstanceCustomData::StaticClass(),
+                                    index))};
+                custom_data->DataIndex = static_cast<int32>(node.instance_data_index);
+                expression = custom_data;
+                break;
+            }
             case NodeKind::add:
                 expression =
                     make_expression(*material, UMaterialExpressionAdd::StaticClass(), index);
@@ -287,6 +304,9 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
         if (output.name == "emissive") {
             UMaterialEditingLibrary::ConnectMaterialProperty(
                 expressions[output.node.index], TEXT(""), MP_EmissiveColor);
+        } else if (output.name == "opacity") {
+            UMaterialEditingLibrary::ConnectMaterialProperty(
+                expressions[output.node.index], TEXT(""), MP_Opacity);
         }
     }
 

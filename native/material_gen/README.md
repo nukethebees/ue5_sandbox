@@ -71,11 +71,15 @@ cmake --build --preset debug-game --target generate-ui-glow-material
 
 ## Language
 
-A source contains one `material` definition with an owned generated asset path, UI domain, additive
-blend mode, parameters, sequential `let` bindings, and one emissive output. Expressions support
-numeric literals, symbols, `float2`, `float3`, `float4`, `+`, `-`, `*`, `/`, `lerp`, `saturate`,
-`texcoord`, `sample`, and `custom` HLSL.
+A source contains one `material` definition with an owned generated asset path. UI/additive and
+surface/additive or surface/translucent materials are supported. Surface materials may select
+`unlit` shading, two-sided rendering, disabled depth testing, instanced-static-mesh usage, and an
+opacity output. Expressions support numeric literals, symbols, `float2`, `float3`, `float4`, `+`,
+`-`, `*`, `/`, `lerp`, `saturate`, `texcoord`, `per-instance-custom-data`, `sample`, and `custom`
+HLSL.
 
 See
 `Plugins/SandboxUI/Source/SandboxUI/Private/materials/UiGlowComposite.material.scm` for the
 canonical example.
+The world-space per-instance example is
+`Plugins/SpaceGame/Source/SpaceGamePresentation/Private/materials/SoftTargetWorld.material.scm`.

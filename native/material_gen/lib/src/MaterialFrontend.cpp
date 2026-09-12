@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <charconv>
 #include <cmath>
+#include <cstdint>
+#include <limits>
 #include <map>
 #include <set>
 #include <utility>
@@ -156,7 +158,8 @@ class Analyzer {
                 fail(clause.token.span, "material clause must be a list beginning with a symbol");
                 continue;
             }
-            if (head == "asset" || head == "domain" || head == "blend") {
+            if (head == "asset" || head == "domain" || head == "blend" || head == "shading" ||
+                head == "two-sided" || head == "disable-depth-test" || head == "usage") {
                 if (!clauses.insert(std::string{head}).second) {
                     fail(clause.token.span,
                          "duplicate material setting '" + std::string{head} + "'");
@@ -166,15 +169,26 @@ class Analyzer {
             if (head == "asset") {
                 parse_asset(clause);
             } else if (head == "domain") {
-                parse_setting(clause, "ui", "domain");
+                parse_domain(clause);
             } else if (head == "blend") {
-                parse_setting(clause, "additive", "blend mode");
+                parse_blend_mode(clause);
+            } else if (head == "shading") {
+                parse_shading_model(clause);
+            } else if (head == "two-sided") {
+                parse_boolean_setting(clause, "two-sided", material_.settings.two_sided);
+            } else if (head == "disable-depth-test") {
+                parse_boolean_setting(
+                    clause, "disable-depth-test", material_.settings.disable_depth_test);
+            } else if (head == "usage") {
+                parse_usage(clause);
             } else if (head == "parameter") {
                 parse_parameter(clause);
             } else if (head == "let") {
                 parse_binding(clause);
             } else if (head == "emissive") {
-                parse_output(clause);
+                parse_output(clause, "emissive");
+            } else if (head == "opacity") {
+                parse_output(clause, "opacity");
             } else {
                 fail(clause.token.span, "unknown material clause '" + std::string{head} + "'");
             }
@@ -206,13 +220,83 @@ class Analyzer {
         material_.settings.package_path = path;
     }
 
-    void parse_setting(Form const& form,
-                       std::string_view const expected,
-                       std::string_view const description) {
-        if (form.children.size() != 2 || form.children[1].token.kind != TokenKind::atom ||
-            form.children[1].token.text != expected) {
-            fail(form.token.span,
-                 std::string{description} + " currently requires '" + std::string{expected} + "'");
+    auto setting_value(Form const& form, std::string_view const description)
+        -> std::optional<std::string_view> {
+        if (form.children.size() != 2) {
+            fail(form.token.span, std::string{description} + " requires one value");
+            return std::nullopt;
+        }
+        return atom(form.children[1], description);
+    }
+
+    void parse_domain(Form const& form) {
+        auto const value{setting_value(form, "domain")};
+        if (!value) {
+            return;
+        }
+        if (*value == "ui") {
+            material_.settings.domain = MaterialDomain::ui;
+        } else if (*value == "surface") {
+            material_.settings.domain = MaterialDomain::surface;
+        } else {
+            fail(form.children[1].token.span,
+                 "unknown material domain '" + std::string{*value} + "'");
+        }
+    }
+
+    void parse_blend_mode(Form const& form) {
+        auto const value{setting_value(form, "blend mode")};
+        if (!value) {
+            return;
+        }
+        if (*value == "additive") {
+            material_.settings.blend_mode = BlendMode::additive;
+        } else if (*value == "translucent") {
+            material_.settings.blend_mode = BlendMode::translucent;
+        } else {
+            fail(form.children[1].token.span, "unknown blend mode '" + std::string{*value} + "'");
+        }
+    }
+
+    void parse_shading_model(Form const& form) {
+        auto const value{setting_value(form, "shading model")};
+        if (!value) {
+            return;
+        }
+        if (*value == "default-lit") {
+            material_.settings.shading_model = ShadingModel::default_lit;
+        } else if (*value == "unlit") {
+            material_.settings.shading_model = ShadingModel::unlit;
+        } else {
+            fail(form.children[1].token.span,
+                 "unknown shading model '" + std::string{*value} + "'");
+        }
+    }
+
+    void parse_boolean_setting(Form const& form, std::string_view const name, bool& setting) {
+        auto const value{setting_value(form, name)};
+        if (!value) {
+            return;
+        }
+        if (*value == "true") {
+            setting = true;
+        } else if (*value == "false") {
+            setting = false;
+        } else {
+            fail(form.children[1].token.span, std::string{name} + " requires 'true' or 'false'");
+        }
+    }
+
+    void parse_usage(Form const& form) {
+        auto const value{setting_value(form, "usage")};
+        if (!value) {
+            return;
+        }
+        if (*value == "instanced-static-meshes") {
+            material_.settings.used_with_instanced_static_meshes = true;
+        } else {
+            fail(form.children[1].token.span,
+                 "unknown material usage '" + std::string{*value} + "'");
         }
     }
 
@@ -316,20 +400,19 @@ class Analyzer {
         material_.bindings.push_back({std::string{*name}, *node, material_span(form.token.span)});
     }
 
-    void parse_output(Form const& form) {
+    void parse_output(Form const& form, std::string_view const name) {
         if (form.children.size() != 2) {
-            fail(form.token.span, "emissive requires one expression");
+            fail(form.token.span, std::string{name} + " requires one expression");
             return;
         }
-        if (std::ranges::any_of(material_.outputs, [](NamedNode const& output) {
-                return output.name == "emissive";
-            })) {
-            fail(form.token.span, "duplicate emissive output");
+        if (std::ranges::any_of(material_.outputs,
+                                [name](NamedNode const& output) { return output.name == name; })) {
+            fail(form.token.span, "duplicate " + std::string{name} + " output");
             return;
         }
         auto const node{expression(form.children[1])};
         if (node) {
-            material_.outputs.push_back({"emissive", *node, material_span(form.token.span)});
+            material_.outputs.push_back({std::string{name}, *node, material_span(form.token.span)});
         }
     }
 
@@ -373,6 +456,9 @@ class Analyzer {
         }
         if (head == "texcoord") {
             return texcoord(form);
+        }
+        if (head == "per-instance-custom-data") {
+            return per_instance_custom_data(form);
         }
         if (head == "sample") {
             return sample(form);
@@ -513,6 +599,25 @@ class Analyzer {
                              .type = ValueType::float4,
                              .inputs = {*texture, *coordinates},
                              .span = material_span(form.token.span)});
+    }
+
+    auto per_instance_custom_data(Form const& form) -> std::optional<NodeHandle> {
+        if (form.children.size() != 2) {
+            fail(form.token.span, "per-instance-custom-data requires one index");
+            return std::nullopt;
+        }
+        auto const value{parse_number(form.children[1])};
+        if (!value || *value < 0.0 ||
+            *value > static_cast<double>(std::numeric_limits<std::int32_t>::max()) ||
+            std::floor(*value) != *value) {
+            fail(form.children[1].token.span,
+                 "per-instance custom-data index must be a non-negative integer");
+            return std::nullopt;
+        }
+        return add_node(Node{.kind = NodeKind::per_instance_custom_data,
+                             .type = ValueType::float1,
+                             .span = material_span(form.token.span),
+                             .instance_data_index = static_cast<unsigned>(*value)});
     }
 
     auto custom(Form const& form) -> std::optional<NodeHandle> {

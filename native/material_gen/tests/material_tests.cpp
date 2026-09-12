@@ -90,7 +90,7 @@ TEST(CompiledMaterial, RoundTripsDeterministically) {
 }
 
 TEST(CompiledMaterial, RejectsWrongVersionCorruptionAndTrailingData) {
-    std::vector<std::uint8_t> wrong_version{'S', 'B', 'X', 'M', 'A', 'T', 'I', 'R', 2, 0, 0, 0};
+    std::vector<std::uint8_t> wrong_version{'S', 'B', 'X', 'M', 'A', 'T', 'I', 'R', 3, 0, 0, 0};
     EXPECT_FALSE(deserialize(wrong_version).has_value());
 
     std::vector<std::uint8_t> truncated{'S', 'B', 'X'};
@@ -109,6 +109,52 @@ TEST(CompiledMaterial, RejectsWrongVersionCorruptionAndTrailingData) {
     ASSERT_TRUE(artifact.has_value());
     artifact->push_back(0);
     EXPECT_FALSE(deserialize(*artifact).has_value());
+}
+
+TEST(MaterialFrontend, LowersWorldSurfaceSettingsInstanceDataAndOpacity) {
+    constexpr std::string_view source{R"(
+(material M_World
+  (asset "/Game/Generated/Materials/M_World")
+  (domain surface)
+  (blend translucent)
+  (shading unlit)
+  (two-sided true)
+  (disable-depth-test true)
+  (usage instanced-static-meshes)
+  (let red (per-instance-custom-data 0))
+  (let opacity (per-instance-custom-data 3))
+  (emissive (custom float3 ((Red float red)) "return Red.xxx;"))
+  (opacity opacity)))"};
+    auto const result{analyze("world.scm", source, TextureResolver{nullptr, resolve})};
+    ASSERT_TRUE(result.material.has_value())
+        << (result.diagnostics.empty() ? "" : result.diagnostics.front().message);
+    auto const& material{*result.material};
+    EXPECT_EQ(material.settings.domain, MaterialDomain::surface);
+    EXPECT_EQ(material.settings.blend_mode, BlendMode::translucent);
+    EXPECT_EQ(material.settings.shading_model, ShadingModel::unlit);
+    EXPECT_TRUE(material.settings.two_sided);
+    EXPECT_TRUE(material.settings.disable_depth_test);
+    EXPECT_TRUE(material.settings.used_with_instanced_static_meshes);
+    ASSERT_EQ(material.nodes.size(), 3);
+    EXPECT_EQ(material.nodes[0].kind, NodeKind::per_instance_custom_data);
+    EXPECT_EQ(material.nodes[0].instance_data_index, 0);
+    EXPECT_EQ(material.nodes[1].instance_data_index, 3);
+    ASSERT_EQ(material.outputs.size(), 2);
+    EXPECT_EQ(material.outputs[1].name, "opacity");
+    EXPECT_TRUE(validate(material).empty());
+
+    CompiledMaterial const compiled{
+        .source_path = "world.scm",
+        .source_hash = "0000000000000000000000000000000000000000000000000000000000000000",
+        .material = material};
+    auto const bytes{serialize(compiled)};
+    ASSERT_TRUE(bytes.has_value()) << bytes.error();
+    auto const decoded{deserialize(*bytes)};
+    ASSERT_TRUE(decoded.has_value()) << decoded.error();
+    EXPECT_EQ(decoded->material.settings.domain, MaterialDomain::surface);
+    EXPECT_EQ(decoded->material.settings.shading_model, ShadingModel::unlit);
+    EXPECT_TRUE(decoded->material.settings.used_with_instanced_static_meshes);
+    EXPECT_EQ(decoded->material.nodes[1].instance_data_index, 3);
 }
 
 TEST(MaterialFrontend, SupportsEveryNumericExpressionAndPropagatesTypes) {

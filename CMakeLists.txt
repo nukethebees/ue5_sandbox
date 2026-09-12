@@ -302,6 +302,33 @@ add_custom_command(
 )
 add_custom_target(compile-ui-glow-material DEPENDS "${UI_GLOW_MATERIAL_ARTIFACT}")
 
+set(WORLD_SOFT_TARGET_MATERIAL_SOURCE
+  "${CMAKE_CURRENT_SOURCE_DIR}/Plugins/SpaceGame/Source/SpaceGamePresentation/Private/materials/SoftTargetWorld.material.scm"
+)
+set(WORLD_SOFT_TARGET_MATERIAL_ARTIFACT
+  "${CMAKE_CURRENT_SOURCE_DIR}/Intermediate/MaterialGen/SoftTargetWorld.smat"
+)
+set(WORLD_SOFT_TARGET_MATERIAL_DEPFILE
+  "${CMAKE_CURRENT_BINARY_DIR}/SoftTargetWorld.smat.d"
+)
+add_custom_command(
+  OUTPUT "${WORLD_SOFT_TARGET_MATERIAL_ARTIFACT}"
+  COMMAND "${CMAKE_COMMAND}" -E make_directory
+    "${CMAKE_CURRENT_SOURCE_DIR}/Intermediate/MaterialGen"
+  COMMAND $<TARGET_FILE:materialc> compile
+    --input "${WORLD_SOFT_TARGET_MATERIAL_SOURCE}"
+    --output "${WORLD_SOFT_TARGET_MATERIAL_ARTIFACT}"
+    --depfile "${WORLD_SOFT_TARGET_MATERIAL_DEPFILE}"
+  DEPENDS materialc "${WORLD_SOFT_TARGET_MATERIAL_SOURCE}"
+  DEPFILE "${WORLD_SOFT_TARGET_MATERIAL_DEPFILE}"
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  COMMENT "Compiling world soft-target material IR"
+  VERBATIM
+)
+add_custom_target(compile-world-soft-target-material
+  DEPENDS "${WORLD_SOFT_TARGET_MATERIAL_ARTIFACT}"
+)
+
 add_unreal_target(editor SandboxEditor)
 add_unreal_target(game Sandbox)
 add_custom_target(check-space-game-layers
@@ -324,6 +351,7 @@ add_dependencies(editor
   check-generated-code
   check-generated-slate-code
   compile-ui-glow-material
+  compile-world-soft-target-material
   sandbox-material-gen
 )
 add_dependencies(game check-space-game-layers)
@@ -647,9 +675,23 @@ add_custom_target(validate-ui-glow-material
 )
 add_custom_target(generate-world-soft-target-assets
   COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    -run=MaterialSynth
+    "-Artifact=${WORLD_SOFT_TARGET_MATERIAL_ARTIFACT}"
+    -Generate -RenderOffscreen -AllowCommandletRendering
+    -unattended -nop4 -nosplash -nosound -stdout
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=GenerateWorldSoftTargetAssets -RenderOffscreen -AllowCommandletRendering
     -unattended -nop4 -nosplash -nosound -stdout
   DEPENDS editor
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  USES_TERMINAL
+  VERBATIM
+)
+
+add_custom_target(validate-world-soft-target-material
+  COMMAND $<TARGET_FILE:materialc> validate
+    --input "${WORLD_SOFT_TARGET_MATERIAL_SOURCE}"
+  DEPENDS materialc
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   USES_TERMINAL
   VERBATIM

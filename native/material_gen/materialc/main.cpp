@@ -212,6 +212,8 @@ auto kind_name(material_synth::NodeKind const kind) -> std::string_view {
             return "parameter";
         case texture_coordinate:
             return "texcoord";
+        case per_instance_custom_data:
+            return "per-instance-custom-data";
         case add:
             return "add";
         case subtract:
@@ -233,9 +235,20 @@ auto kind_name(material_synth::NodeKind const kind) -> std::string_view {
 }
 
 void dump_ir(material_synth::MaterialIR const& material) {
+    auto const domain{material.settings.domain == material_synth::MaterialDomain::ui ? "ui"
+                                                                                     : "surface"};
+    auto const blend{material.settings.blend_mode == material_synth::BlendMode::additive
+                         ? "additive"
+                         : "translucent"};
+    auto const shading{material.settings.shading_model == material_synth::ShadingModel::unlit
+                           ? "unlit"
+                           : "default-lit"};
     std::cout << "material " << material.settings.name << '\n'
               << "asset " << material.settings.package_path << '\n'
-              << "domain ui\nblend additive\n";
+              << "domain " << domain << "\nblend " << blend << "\nshading " << shading << '\n'
+              << "two-sided " << material.settings.two_sided << "\ndisable-depth-test "
+              << material.settings.disable_depth_test << "\nused-with-instanced-static-meshes "
+              << material.settings.used_with_instanced_static_meshes << '\n';
 
     std::cout << "parameters " << material.parameters.size() << '\n';
     for (std::size_t index{}; index < material.parameters.size(); ++index) {
@@ -274,6 +287,8 @@ void dump_ir(material_synth::MaterialIR const& material) {
             std::cout << " parameter=" << node.parameter_index;
         } else if (node.kind == material_synth::NodeKind::texture_coordinate) {
             std::cout << " coordinate=" << node.coordinate_index;
+        } else if (node.kind == material_synth::NodeKind::per_instance_custom_data) {
+            std::cout << " data-index=" << node.instance_data_index;
         } else if (node.kind == material_synth::NodeKind::custom) {
             std::cout << " description=" << std::quoted(node.description)
                       << " code=" << std::quoted(node.code);

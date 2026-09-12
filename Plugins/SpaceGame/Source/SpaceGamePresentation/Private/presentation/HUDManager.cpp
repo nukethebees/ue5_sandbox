@@ -707,7 +707,7 @@ void FHUDManager::add_world_soft_target(FRegistryEntityHandle const handle,
         return;
     }
 
-    auto const color{clamped_range_alpha >= 1.0f ? in_range_color : neutral_color};
+    auto const color{FMath::Lerp(neutral_color, in_range_color, clamped_range_alpha)};
     auto const opacity{
         FMath::Clamp((entity_overlay_settings_.soft_target.opacity +
                       pulse * entity_overlay_settings_.soft_target.pulse_opacity_boost) *

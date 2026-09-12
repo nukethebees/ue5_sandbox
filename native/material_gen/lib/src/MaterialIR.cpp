@@ -70,8 +70,19 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
     std::set<std::string> names;
 
     if (!valid_identifier(material.settings.name) || !valid_generated_path(material.settings) ||
-        material.settings.domain != MaterialDomain::ui ||
-        material.settings.blend_mode != BlendMode::additive) {
+        material.settings.domain < MaterialDomain::ui ||
+        material.settings.domain > MaterialDomain::surface ||
+        material.settings.blend_mode < BlendMode::additive ||
+        material.settings.blend_mode > BlendMode::translucent ||
+        material.settings.shading_model < ShadingModel::default_lit ||
+        material.settings.shading_model > ShadingModel::unlit ||
+        (material.settings.domain == MaterialDomain::ui &&
+         (material.settings.blend_mode != BlendMode::additive ||
+          material.settings.shading_model != ShadingModel::default_lit ||
+          material.settings.two_sided || material.settings.disable_depth_test ||
+          material.settings.used_with_instanced_static_meshes)) ||
+        (material.settings.disable_depth_test &&
+         material.settings.blend_mode != BlendMode::translucent)) {
         diagnostics.push_back({{}, 1, 1, "invalid or unsafe material settings"});
     }
 
@@ -152,6 +163,11 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
                 !node.inputs.empty()) {
                 report(diagnostics, node.span, "malformed texture-coordinate node");
             }
+        } else if (node.kind == NodeKind::per_instance_custom_data) {
+            if (material.settings.domain != MaterialDomain::surface ||
+                node.type != ValueType::float1 || !node.inputs.empty()) {
+                report(diagnostics, node.span, "malformed per-instance custom-data node");
+            }
         } else if (node.kind >= NodeKind::add && node.kind <= NodeKind::divide) {
             if (node.inputs.size() != 2 || !valid_handle(material, node.inputs[0]) ||
                 !valid_handle(material, node.inputs[1]) ||
@@ -213,18 +229,30 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
         }
     }
 
+    std::size_t emissive_count{};
+    std::size_t opacity_count{};
     for (auto const& output : material.outputs) {
-        if (output.name != "emissive" || !valid_handle(material, output.node) ||
-            (valid_handle(material, output.node) &&
-             material.nodes[output.node.index].type != ValueType::float3 &&
-             material.nodes[output.node.index].type != ValueType::float4)) {
-            report(diagnostics,
-                   output.span,
-                   "UI materials require a float3 or float4 emissive output");
+        auto const type{valid_handle(material, output.node) ? material.nodes[output.node.index].type
+                                                            : ValueType::invalid};
+        if (output.name == "emissive") {
+            ++emissive_count;
+            if (type != ValueType::float3 && type != ValueType::float4) {
+                report(diagnostics, output.span, "emissive output requires float3 or float4");
+            }
+        } else if (output.name == "opacity" &&
+                   material.settings.domain == MaterialDomain::surface &&
+                   material.settings.blend_mode == BlendMode::translucent) {
+            ++opacity_count;
+            if (type != ValueType::float1) {
+                report(diagnostics, output.span, "opacity output requires float");
+            }
+        } else {
+            report(diagnostics, output.span, "output is not supported by the material domain");
         }
     }
-    if (material.outputs.size() != 1) {
-        diagnostics.push_back({{}, 1, 1, "UI material requires exactly one emissive output"});
+    if (emissive_count != 1 || opacity_count > 1 ||
+        (material.settings.domain == MaterialDomain::ui && material.outputs.size() != 1)) {
+        diagnostics.push_back({{}, 1, 1, "material outputs do not match the material domain"});
     }
     return diagnostics;
 }

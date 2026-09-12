@@ -153,6 +153,7 @@ void write_node(Writer& writer, Node const& node) {
     writer.write_size(node.component_count);
     writer.write_size(node.parameter_index);
     writer.write_u32(node.coordinate_index);
+    writer.write_u32(node.instance_data_index);
     writer.write_string(node.description);
     writer.write_string(node.code);
     writer.write_size(node.custom_inputs.size());
@@ -204,15 +205,18 @@ auto read_node(Reader& reader) -> std::expected<Node, std::string> {
     auto const components{reader.read_size(4)};
     auto const parameter{reader.read_size(maximum_collection_size)};
     auto const coordinate{reader.read_u32()};
+    auto const instance_data{reader.read_u32()};
     auto description{reader.read_string()};
     auto code{reader.read_string()};
     auto const custom_input_count{reader.read_size(maximum_collection_size)};
-    if (!components || !parameter || !coordinate || !description || !code || !custom_input_count) {
+    if (!components || !parameter || !coordinate || !instance_data || !description || !code ||
+        !custom_input_count) {
         return std::unexpected{"malformed material node payload"};
     }
     node.component_count = *components;
     node.parameter_index = *parameter;
     node.coordinate_index = *coordinate;
+    node.instance_data_index = *instance_data;
     node.description = std::move(*description);
     node.code = std::move(*code);
     node.custom_inputs.reserve(*custom_input_count);
@@ -271,6 +275,10 @@ auto serialize(CompiledMaterial const& compiled)
     writer.write_string(compiled.material.settings.package_path);
     writer.write_u8(static_cast<std::uint8_t>(compiled.material.settings.domain));
     writer.write_u8(static_cast<std::uint8_t>(compiled.material.settings.blend_mode));
+    writer.write_u8(static_cast<std::uint8_t>(compiled.material.settings.shading_model));
+    writer.write_u8(compiled.material.settings.two_sided ? 1 : 0);
+    writer.write_u8(compiled.material.settings.disable_depth_test ? 1 : 0);
+    writer.write_u8(compiled.material.settings.used_with_instanced_static_meshes ? 1 : 0);
 
     writer.write_size(compiled.material.parameters.size());
     for (auto const& parameter : compiled.material.parameters) {
@@ -323,17 +331,28 @@ auto deserialize(std::span<std::uint8_t const> const bytes)
     auto package_path{reader.read_string()};
     auto const domain{reader.read_u8()};
     auto const blend_mode{reader.read_u8()};
+    auto const shading_model{reader.read_u8()};
+    auto const two_sided{reader.read_u8()};
+    auto const disable_depth_test{reader.read_u8()};
+    auto const used_with_instances{reader.read_u8()};
     if (!source_path || !source_hash || !name || !package_path || !domain || !blend_mode ||
-        *domain != static_cast<std::uint8_t>(MaterialDomain::ui) ||
-        *blend_mode != static_cast<std::uint8_t>(BlendMode::additive)) {
+        !shading_model || !two_sided || !disable_depth_test || !used_with_instances ||
+        *domain > static_cast<std::uint8_t>(MaterialDomain::surface) ||
+        *blend_mode > static_cast<std::uint8_t>(BlendMode::translucent) ||
+        *shading_model > static_cast<std::uint8_t>(ShadingModel::unlit) || *two_sided > 1 ||
+        *disable_depth_test > 1 || *used_with_instances > 1) {
         return std::unexpected{"malformed compiled material settings"};
     }
     compiled.source_path = std::move(*source_path);
     compiled.source_hash = std::move(*source_hash);
-    compiled.material.settings = {std::move(*name),
-                                  std::move(*package_path),
-                                  static_cast<MaterialDomain>(*domain),
-                                  static_cast<BlendMode>(*blend_mode)};
+    compiled.material.settings = {.name = std::move(*name),
+                                  .package_path = std::move(*package_path),
+                                  .domain = static_cast<MaterialDomain>(*domain),
+                                  .blend_mode = static_cast<BlendMode>(*blend_mode),
+                                  .shading_model = static_cast<ShadingModel>(*shading_model),
+                                  .two_sided = *two_sided != 0,
+                                  .disable_depth_test = *disable_depth_test != 0,
+                                  .used_with_instanced_static_meshes = *used_with_instances != 0};
     if (compiled.source_path.empty() || !valid_source_hash(compiled.source_hash)) {
         return std::unexpected{"invalid compiled material source metadata"};
     }
