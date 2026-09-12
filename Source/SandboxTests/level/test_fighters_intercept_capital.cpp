@@ -13,18 +13,21 @@
 #include <SandboxTests/support/WorldlessSimulationTest.h>
 
 namespace ml {
+namespace fighters_intercept_test {
+inline constexpr int32 collision_resilient_health{1'000'000};
+}
+
 void run_worldless_fighters_intercept_capital(FAutomationTestBase& test,
                                               FSoftTestAssertions& checks,
                                               USpaceGameLevelConfig const& config) {
     auto data{make_worldless_simulation_test_data(config)};
+    data.fighters.health = fighters_intercept_test::collision_resilient_health;
     data.capital_spawns.add_defaulted(3);
     data.capital_spawns.locations.xs = {-61180.f, 77320.f, 3590.f};
     data.capital_spawns.locations.ys = {2170.f, 2170.f, 3240.f};
     data.capital_spawns.locations.zs = {4360.f, 4360.f, 4360.f};
     data.capital_spawns.teams = {ETestTeam::Green, ETestTeam::Red, ETestTeam::Blue};
-    data.capital_spawns.healths = {data.capital_ships.max_health,
-                                   data.capital_ships.max_health,
-                                   data.capital_ships.max_health};
+    data.capital_spawns.healths.Init(fighters_intercept_test::collision_resilient_health, 3);
     data.capital_spawns.initial_spawn_delays = {0.f, 600.f, 600.f};
     data.capital_spawns.spawn_cooldowns = {60.f, 60.f, 60.f};
     data.capital_target_spawn_indices = {1, 0, 0};
@@ -46,7 +49,9 @@ void run_worldless_fighters_intercept_capital(FAutomationTestBase& test,
         Sample sample;
         sample.parent_target = capitals.get_target_handle(0);
         for (auto const fighter_handle : capitals.get_fighter_handles(0)) {
-            sample.fighter_targets.Add(fighters.get_target_handle(fighter_handle));
+            if (fighters.has_handle(fighter_handle)) {
+                sample.fighter_targets.Add(fighters.get_target_handle(fighter_handle));
+            }
         }
         samples.add(harness.get_time(), MoveTemp(sample));
     };
@@ -156,7 +161,9 @@ void FFightersInterceptCapitalScenario::sample_values() {
     sample.fighter_count = fighter_handles.Num();
     sample.fighter_targets.Reserve(fighter_handles.Num());
     for (auto const fighter_handle : fighter_handles) {
-        sample.fighter_targets.Add(fighters->get_target_handle(fighter_handle));
+        if (fighters->has_handle(fighter_handle)) {
+            sample.fighter_targets.Add(fighters->get_target_handle(fighter_handle));
+        }
     }
     samples.add(test_driver->get_time(), MoveTemp(sample));
 }

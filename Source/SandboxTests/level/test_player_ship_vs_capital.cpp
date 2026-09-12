@@ -18,14 +18,20 @@
 #include <Engine/DataTable.h>
 
 namespace ml {
+namespace player_vs_capital_test {
+inline constexpr int32 collision_resilient_health{1'000'000};
+}
+
 void run_worldless_player_ship_vs_capital(FAutomationTestBase& test,
                                           FSoftTestAssertions& checks,
                                           USpaceGameLevelConfig const& config) {
     auto data{make_worldless_simulation_test_data(config)};
+    data.fighters.health = player_vs_capital_test::collision_resilient_health;
     data.fighters.laser.projectile_speed = 20000.f;
     data.fighters.laser.max_distance = 1.f;
     data.player.Emplace(make_worldless_player_spawn(
         config, FTransform{FRotator{0.f, -90.f, 0.f}, FVector{19850.f, 1300.f, 980.f}}));
+    data.player->health.health = player_vs_capital_test::collision_resilient_health;
     add_worldless_capital_spawn(data,
                                 FVector3f{-22020.f, 2170.f, 4360.f},
                                 ETestTeam::Green,
@@ -130,6 +136,7 @@ void FPlayerShipVsCapitalScenario::spawn_fixture() {
     }
     fighter_config->laser.projectile_speed = 20000.f;
     fighter_config->laser.max_distance = 1.f;
+    fighter_config->health = player_vs_capital_test::collision_resilient_health;
     context_.orchestrator.set_level_config(*level_config);
 
     auto* const player{spawn_player_ship(
@@ -138,6 +145,8 @@ void FPlayerShipVsCapitalScenario::spawn_fixture() {
         return;
     }
     player->set_flight_mode(ETestSpaceShipFlightMode::ForwardSpeed);
+    player->add_health(player_vs_capital_test::collision_resilient_health -
+                       player->get_health_info().health);
     player->SetActorTransform(
         FTransform{FRotator{0.f, -90.f, 0.f}, FVector{19850.f, 1300.f, 980.f}});
     context_.orchestrator.set_player_ship(*player);

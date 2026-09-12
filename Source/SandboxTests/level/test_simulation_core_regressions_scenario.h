@@ -41,4 +41,29 @@ class FSimulationCoreRegressionScenario final : public FSimulationTestScenario {
     FRegistryEntityHandle damaged_handle;
     int32 end_tick_calls{0};
 };
+
+class FCollisionDamageScenario final : public FSimulationTestScenario {
+    struct FSample {
+        int32 player_health{};
+        int32 capital_health{};
+        int32 dynamic_overlap_count{};
+        int32 kill_count{};
+        bool player_alive{};
+    };
+  public:
+    explicit FCollisionDamageScenario(FSimulationTestContext& context);
+    void run() override;
+  private:
+    void on_tear_down() override;
+    void spawn_fixture();
+    void bind_fixture(FProxyEntityMap const& proxy_entities);
+    void begin_test();
+    void on_end_tick(ATestBatchOrchestrator& orchestrator);
+    void check_results();
+
+    TimeSeriesData<FSample> samples;
+    FRegistryEntityHandle player_handle;
+    FRegistryEntityHandle capital_handle;
+    TestEntityUniqueId capital_id;
+};
 }

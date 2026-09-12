@@ -27,6 +27,10 @@ The assumption is that there is one wave of fighters total.
 */
 
 namespace ml {
+namespace capital_fighter_handles_test {
+inline constexpr int32 collision_resilient_health{1'000'000};
+}
+
 /* **************************************** */
 // Simultaneous capital deaths
 /* **************************************** */
@@ -41,8 +45,9 @@ void FSimultaneousCapitalReassignmentScenario::spawn_fixture() {
         return;
     }
     config->capital_ships.spawn_delay = 6000.f;
-    config->capital_ships.max_health = 10000;
+    config->capital_ships.max_health = capital_fighter_handles_test::collision_resilient_health;
     config->fighters.laser.damage = 0;
+    config->fighters.health = capital_fighter_handles_test::collision_resilient_health;
     context_.orchestrator.set_level_config(*config);
     TArray<ATestCapitalShipProxy*> proxies;
     for (int32 i{}; i < 4; ++i) {
@@ -56,6 +61,7 @@ void FSimultaneousCapitalReassignmentScenario::spawn_fixture() {
             return;
         }
         proxy->set_actor_config(&config->capital_ships);
+        proxy->set_initial_spawn_delay(0.f);
         proxy->set_spawn_cooldown(6000.f);
         proxy->set_team(i % 2 == 0 ? ETestTeam::Green : ETestTeam::Red);
         proxies.Add(proxy);

@@ -19,6 +19,10 @@
 #include <limits>
 
 namespace ml {
+namespace fighter_navigation_test {
+inline constexpr int32 collision_resilient_health{1'000'000};
+}
+
 void run_worldless_fighter_obstacle_avoidance(FAutomationTestBase& test,
                                               FSoftTestAssertions& checks,
                                               USpaceGameLevelConfig const& config) {
@@ -28,6 +32,7 @@ void run_worldless_fighter_obstacle_avoidance(FAutomationTestBase& test,
     FVector3f const obstacle_max{1000.f, 1500.f, 1500.f};
 
     auto data{make_worldless_simulation_test_data(config)};
+    data.fighters.health = fighter_navigation_test::collision_resilient_health;
     data.fighters.speed = 4000.f;
     data.fighters.avoidance_update_frequency = 5.f;
     data.fighters.avoidance_lookahead_time = 1.f;
@@ -88,6 +93,7 @@ auto make_fighter_navigation_test_data(USpaceGameLevelConfig const& config,
                                        FVector3f const target_location)
     -> FLevelSimulationInitData {
     auto data{make_worldless_simulation_test_data(config)};
+    data.fighters.health = fighter_navigation_test::collision_resilient_health;
     data.fighters.speed = 4000.f;
     data.fighters.avoidance_lookahead_time = 1.f;
     data.fighters.laser.max_distance = 2000.f;
@@ -112,6 +118,7 @@ void run_worldless_fighter_capital_obstruction(FAutomationTestBase& test,
     FVector3f const obstacle{0.f, 0.f, 0.f};
     FVector3f const target{18000.f, 0.f, 0.f};
     auto data{make_worldless_simulation_test_data(config)};
+    data.fighters.health = fighter_navigation_test::collision_resilient_health;
     data.fighters.speed = 4000.f;
     data.fighters.avoidance_lookahead_time = 1.f;
     data.fighters.laser.max_distance = 2000.f;

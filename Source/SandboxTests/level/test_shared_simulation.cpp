@@ -340,6 +340,7 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     { run_core_regression(ml::ESimulationCoreRegressionScenario::FixedTickLifecycle); }
     TEST_METHOD(Entities_NonLethalThenLethalDamageCleansUpAtomically)
     { run_core_regression(ml::ESimulationCoreRegressionScenario::DamageLifecycle); }
+    SHARED_SIMULATION_TEST(Entities_CollisionOverlapDamagesAndKills, ml::FCollisionDamageScenario)
 
     TEST_METHOD(Mission_SurviveTime)
     { run_mission_scenario(ml::EMissionManagerScenario::SurviveTime); }

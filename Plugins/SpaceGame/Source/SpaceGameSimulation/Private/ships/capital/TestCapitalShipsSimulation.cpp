@@ -330,7 +330,13 @@ void Simulation::refresh_fighter_handles() {
     ensure(spawn_handles.registry_handles.num() == previous.fighter_queue.num());
     auto const spawned_count{
         FMath::Min(spawn_handles.registry_handles.num(), previous.fighter_queue.num())};
+    int32 surviving_spawn_count{};
     for (int32 spawn_index{}; spawn_index < spawned_count; ++spawn_index) {
+        auto const fighter_handle{spawn_handles.registry_handles[spawn_index]};
+        if (!entity_registry.is_valid_alive(fighter_handle)) {
+            continue;
+        }
+
         auto const parent_handle{previous.fighter_queue.parents[spawn_index]};
         auto destination_handle{parent_handle};
         if (entities.handles.Find(parent_handle) == INDEX_NONE) {
@@ -343,8 +349,8 @@ void Simulation::refresh_fighter_handles() {
             }
             destination_handle = *replacement;
         }
-        fighter_reassignment_queue.add(destination_handle,
-                                       spawn_handles.registry_handles[spawn_index]);
+        fighter_reassignment_queue.add(destination_handle, fighter_handle);
+        ++surviving_spawn_count;
     }
 
     auto const n_capitals{get_num_instances()};
@@ -378,7 +384,7 @@ void Simulation::refresh_fighter_handles() {
         entities.capital_fighter_handle_spans[capital_index] = new_span;
     }
 
-    check(fighter_handles_scratch.Num() >= spawn_data.num());
+    check(fighter_handles_scratch.Num() >= surviving_spawn_count);
     Swap(fighter_handles, fighter_handles_scratch);
 }
 

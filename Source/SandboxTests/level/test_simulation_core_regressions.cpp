@@ -1,13 +1,16 @@
 #include "test_simulation_core_regressions_scenario.h"
 
+#include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/time_series_test_data.h>
 #include <SandboxTests/support/WorldlessSimulationTest.h>
 
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
+#include <SpaceGameSimulation/ships/player/TestSpaceShipSimulation.h>
 
 namespace ml {
 namespace {
@@ -15,6 +18,13 @@ constexpr double nonlethal_damage_time{0.05};
 constexpr double lethal_damage_time{0.15};
 constexpr double damage_test_end_time{0.25};
 constexpr int32 initial_health{100};
+}
+
+namespace collision_damage_test {
+inline constexpr int32 player_health{1000};
+inline constexpr int32 capital_health{150};
+inline constexpr int32 overlap_damage{50};
+inline constexpr double duration{0.1};
 }
 
 void run_worldless_simulation_core_regression(FAutomationTestBase& test,
@@ -279,5 +289,147 @@ void FSimulationCoreRegressionScenario::run() {
     TestCommandBuilder.Do([this] { begin_damage_lifecycle(); })
         .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 2})
         .Then([this] { check_damage_lifecycle(); });
+}
+
+FCollisionDamageScenario::FCollisionDamageScenario(FSimulationTestContext& context)
+    : FSimulationTestScenario{context} {
+    TestCommandBuilder.Do([this] { spawn_fixture(); });
+}
+
+void FCollisionDamageScenario::on_tear_down() {
+    ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
+    if (test_driver.IsSet()) {
+        test_driver->orchestrator.clear_end_tick_test_hook();
+        test_driver->orchestrator.pause_simulation();
+    }
+}
+
+void FCollisionDamageScenario::spawn_fixture() {
+    auto* const level_config{duplicate_level_config(context_.config, context_.orchestrator)};
+    if (!checks.not_nullptr(level_config, TEXT("Collision test level config is duplicated"))) {
+        return;
+    }
+
+    level_config->player_ship.lateral_adjustment_speed = 1.f;
+    context_.orchestrator.set_level_config(*level_config);
+
+    auto* const player{spawn_player_ship(context_.world,
+                                         level_config->classes.player_ship_class,
+                                         &level_config->player_ship,
+                                         FTransform::Identity)};
+    if (!checks.is_valid(player, TEXT("Collision test player is spawned"))) {
+        return;
+    }
+
+    player->set_flight_mode(ETestSpaceShipFlightMode::PlanarVelocity);
+    context_.orchestrator.set_player_ship(*player);
+
+    auto* const capital{spawn_capital_proxy(
+        context_.world, *level_config, checks, TEXT("collision_target"), FVector::ZeroVector)};
+    if (!checks.is_valid(capital, TEXT("Collision test capital is spawned"))) {
+        return;
+    }
+
+    capital->set_health(collision_damage_test::capital_health);
+    capital->set_initial_spawn_delay(60.f);
+    capital->set_spawn_cooldown(60.f);
+    ATestBatchOrchestrator::on_proxy_entities_bound.AddRaw(this,
+                                                           &FCollisionDamageScenario::bind_fixture);
+}
+
+void FCollisionDamageScenario::bind_fixture(FProxyEntityMap const& proxy_entities) {
+    TArray<FProxyEntityBinding> const bindings{
+        {TEXT("collision_target"), &capital_handle, &capital_id},
+    };
+    resolve_proxy_entity_bindings(proxy_entities, bindings, checks);
+    ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
+}
+
+void FCollisionDamageScenario::begin_test() {
+    auto& driver{initialise_test_driver()};
+    driver.set_time_scale(1.0);
+    driver.orchestrator.start_simulation();
+
+    auto* const player{driver.orchestrator.get_player_ship_simulation()};
+    checks.not_nullptr(player, TEXT("Collision test player simulation is available"));
+    checks.is_true(capital_handle.is_valid(), TEXT("Collision test capital handle is bound"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+
+    player_handle = player->registry_handle;
+    player->add_health(collision_damage_test::player_health - player->health.health);
+    player->set_lateral_move_input(1.f);
+
+    reset_and_reserve_time_series(driver.orchestrator, collision_damage_test::duration, samples);
+    driver.orchestrator.set_end_tick_test_hook(
+        FOrchestratorEndTickTestHook::CreateRaw(this, &FCollisionDamageScenario::on_end_tick));
+    driver.timeline.finish_after(collision_damage_test::duration);
+}
+
+void FCollisionDamageScenario::on_end_tick(ATestBatchOrchestrator& orchestrator) {
+    auto const& registry{test_driver->get_registry()};
+    auto const events{
+        orchestrator.get_spatial_query_manager().get_collision_system().get_aabb_overlap_events()};
+    int32 dynamic_overlap_count{};
+    if (!events.batches.IsEmpty()) {
+        dynamic_overlap_count =
+            events.get_batch(events.batches.Num() - 1).overlaps.entity_entity_overlaps.num();
+    }
+
+    samples.add(test_driver->get_time(),
+                FSample{
+                    .player_health = registry.get_health(player_handle),
+                    .capital_health = registry.get_health(capital_handle),
+                    .dynamic_overlap_count = dynamic_overlap_count,
+                    .kill_count = registry.count_kills(),
+                    .player_alive = registry.is_valid_alive(player_handle),
+                });
+    test_driver->advance_timeline();
+}
+
+void FCollisionDamageScenario::check_results() {
+    checks.is_greater_than(samples.num(), 2, TEXT("Three collision ticks are recorded"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+
+    auto const& first{samples.value_at(0)};
+    auto const& second{samples.value_at(1)};
+    auto const& third{samples.value_at(2)};
+    checks.are_equal(1, first.dynamic_overlap_count, TEXT("First tick detects one overlap"));
+    checks.are_equal(1, second.dynamic_overlap_count, TEXT("Second tick detects one overlap"));
+    checks.are_equal(1, third.dynamic_overlap_count, TEXT("Third tick detects one overlap"));
+    checks.are_equal(collision_damage_test::player_health - collision_damage_test::overlap_damage,
+                     first.player_health,
+                     TEXT("First overlap damages the player"));
+    checks.are_equal(collision_damage_test::player_health -
+                         2 * collision_damage_test::overlap_damage,
+                     second.player_health,
+                     TEXT("Second overlap damages the player"));
+    checks.are_equal(collision_damage_test::player_health -
+                         3 * collision_damage_test::overlap_damage,
+                     third.player_health,
+                     TEXT("Third overlap damages the player"));
+    checks.are_equal(collision_damage_test::capital_health - collision_damage_test::overlap_damage,
+                     first.capital_health,
+                     TEXT("First overlap damages the capital"));
+    checks.are_equal(collision_damage_test::capital_health -
+                         2 * collision_damage_test::overlap_damage,
+                     second.capital_health,
+                     TEXT("Second overlap damages the capital"));
+    checks.are_equal(collision_damage_test::capital_health -
+                         3 * collision_damage_test::overlap_damage,
+                     third.capital_health,
+                     TEXT("Third overlap kills the capital"));
+    checks.is_true(third.player_alive, TEXT("Player survives the third overlap tick"));
+    checks.is_true(test_driver->get_registry().is_valid_dead(capital_handle),
+                   TEXT("Capital death commits in the third overlap tick"));
+    checks.are_equal(0, third.kill_count, TEXT("Collision death grants no combat kill"));
+    checks.is_true(test_driver->get_registry().get_unique_entities().death_reason[capital_id.id] ==
+                       ETestDeathReason::Unknown,
+                   TEXT("Collision death is environmental"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+}
+
+void FCollisionDamageScenario::run() {
+    run_until_timeline_finished(
+        [this] { begin_test(); }, FTimespan{0, 0, 2}, [this] { check_results(); });
 }
 }

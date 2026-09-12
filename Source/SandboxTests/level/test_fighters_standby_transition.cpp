@@ -20,12 +20,29 @@
 #include <Misc/Optional.h>
 
 namespace ml {
+namespace fighters_standby_test {
+inline constexpr int32 collision_resilient_health{1'000'000};
+}
+
 void run_worldless_fighters_standby_transition(FAutomationTestBase& test,
                                                FSoftTestAssertions& checks,
                                                USpaceGameLevelConfig const& config) {
     auto data{make_worldless_simulation_test_data(config)};
-    add_worldless_capital_spawn(data, FVector3f{-4000.f, 0.f, 0.f}, ETestTeam::Green, 1);
-    add_worldless_capital_spawn(data, FVector3f{4000.f, 0.f, 0.f}, ETestTeam::Red, 0);
+    data.fighters.health = fighters_standby_test::collision_resilient_health;
+    add_worldless_capital_spawn(data,
+                                FVector3f{-4000.f, 0.f, 0.f},
+                                ETestTeam::Green,
+                                1,
+                                0.f,
+                                60.f,
+                                fighters_standby_test::collision_resilient_health);
+    add_worldless_capital_spawn(data,
+                                FVector3f{4000.f, 0.f, 0.f},
+                                ETestTeam::Red,
+                                0,
+                                0.f,
+                                60.f,
+                                fighters_standby_test::collision_resilient_health);
 
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();
