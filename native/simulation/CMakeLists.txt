@@ -31,6 +31,7 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/rotator_types.h
   include/sandbox/simulation/rotators3f.h
   include/sandbox/simulation/simulation_config.h
+  include/sandbox/simulation/spatial_query_telemetry.h
   include/sandbox/simulation/trace_hits.h
   include/sandbox/simulation/vector_types.h
   include/sandbox/simulation/vectors3f.h

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sandbox/simulation/query_thread_buffer_pool.h>
+#include <sandbox/simulation/spatial_query_telemetry.h>
 
 #include <SandboxNative/RegistryEntityHandle.h>
 #include <SpaceGameSimulation/entities/TestEntityType.h>
@@ -43,13 +44,7 @@ class FThreadBufferLease {
 }
 
 namespace ml {
-struct FSpatialQueryTelemetrySnapshot {
-    uint64 grid_rebuild_count{};
-    uint64 range_query_count{};
-    uint64 line_trace_count{};
-    uint64 sweep_trace_count{};
-    int32 occupied_dynamic_cell_count{};
-};
+using FSpatialQueryTelemetrySnapshot = simulation::collision::SpatialQueryTelemetrySnapshot;
 
 struct FLineTraceResult {
     FVector3f location{FVector3f::ZeroVector};

@@ -2,6 +2,7 @@
 
 #include <sandbox/simulation/entity_cell_data.h>
 #include <sandbox/simulation/entity_world_bounds.h>
+#include <sandbox/simulation/spatial_query_telemetry.h>
 #include <SandboxNative/RegistryEntityHandle.h>
 #include <SGCollision/world_aabbs.h>
 #include <SpaceGameSimulation/simulation/EntityAABBs.h>
@@ -28,11 +29,7 @@ struct FCellCoordBounds {
     FIntVector3 max;
 };
 
-struct FCollisionGridTelemetrySnapshot {
-    uint64 rebuild_count{};
-    uint64 line_trace_count{};
-    uint64 sweep_trace_count{};
-};
+using FCollisionGridTelemetrySnapshot = simulation::collision::CollisionGridTelemetrySnapshot;
 
 struct SPACEGAMESIMULATION_API CollisionUniformGrid {
     static inline FVector3f const origin{FVector3f::ZeroVector};
