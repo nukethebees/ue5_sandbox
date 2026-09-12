@@ -6,6 +6,7 @@
 #include <SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGameSimulation/simulation/FighterDiagnostics.h>
 #include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 #include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
@@ -455,10 +456,11 @@ void Simulation::handle_dead_entities() {
 
     ml::batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
 
-    auto const batch_index{deaths_.Num()};
-    deaths_.Reserve(batch_index + local_indices_to_remove.Num());
+    auto const batch_index{static_cast<int32>(deaths_.size())};
+    deaths_.reserve(deaths_.size() + static_cast<std::size_t>(local_indices_to_remove.Num()));
     for (auto const index : local_indices_to_remove) {
-        deaths_.Add({ml::get_vector3f(entities.locations, index), batch_index});
+        deaths_.push_back(
+            {ml::to_native(ml::get_vector3f(entities.locations, index)), batch_index});
         frame_changes_.Add({.kind = EEntityFrameChange::RemoveSwap,
                             .index = index,
                             .handle = entities.handles[index]});

@@ -713,7 +713,9 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
         TestTrue(TEXT("Changes identify the same entity"),
                  frame.capitals.changes[0].handle == frame.capitals.changes[1].handle);
     }
-    TestEqual(TEXT("Death effect remains available"), frame.capitals.deaths.Num(), 1);
+    TestEqual(TEXT("Death effect remains available"),
+              static_cast<int32>(frame.capitals.deaths.size()),
+              1);
     presentation.tick(static_cast<float>(dt * 4.25), frame);
     TestEqual(
         TEXT("One presentation follows all fixed ticks"), presentation.get_tick_count(), uint64{1});
@@ -730,7 +732,9 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     auto const idle_frame{simulation.get_read_view()};
     TestEqual(
         TEXT("Zero-step frame has no previous changes"), idle_frame.capitals.changes.Num(), 0);
-    TestEqual(TEXT("Zero-step frame has no previous deaths"), idle_frame.capitals.deaths.Num(), 0);
+    TestEqual(TEXT("Zero-step frame has no previous deaths"),
+              static_cast<int32>(idle_frame.capitals.deaths.size()),
+              0);
     presentation.tick(0.f, idle_frame);
     TestEqual(
         TEXT("Zero fixed ticks still presents once"), presentation.get_tick_count(), uint64{2});
@@ -770,7 +774,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     deaths.advance(0.425);
     auto const death_frame{deaths.get_read_view()};
     if (!TestEqual(TEXT("Deaths from two fixed ticks survive the frame"),
-                   death_frame.capitals.deaths.Num(),
+                   static_cast<int32>(death_frame.capitals.deaths.size()),
                    2)) {
         return false;
     }

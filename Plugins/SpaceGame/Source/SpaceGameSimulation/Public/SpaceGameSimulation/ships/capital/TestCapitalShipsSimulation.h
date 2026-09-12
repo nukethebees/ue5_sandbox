@@ -20,6 +20,7 @@
 
 #include <memory_resource>
 #include <optional>
+#include <vector>
 
 struct FLevelSimulation;
 struct FCapitalSimulationConfig;
@@ -63,7 +64,7 @@ struct SPACEGAMESIMULATION_API Simulation {
     }
     void reset_frame_output() {
         frame_changes_.Reset();
-        deaths_.Reset();
+        deaths_.clear();
     }
     void set_config(FCapitalSimulationConfig const& new_config) noexcept;
 
@@ -176,7 +177,7 @@ struct SPACEGAMESIMULATION_API Simulation {
     TArray<int32> local_indices_to_remove;
     EntityDeathInfo entity_death_info;
     TArray<FEntityFrameChange> frame_changes_;
-    TArray<FCapitalDeathEvent> deaths_;
+    std::vector<FCapitalDeathEvent> deaths_;
     RegistryEntityData entity_update_data;
 
     ml::test_capital_ship_fighters::CommandInterface fighters_interface;

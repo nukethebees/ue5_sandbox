@@ -2,6 +2,7 @@ find_package(GTest CONFIG REQUIRED)
 
 add_library(native-simulation STATIC)
 target_sources(native-simulation PRIVATE
+  include/sandbox/simulation/capital_death_event.h
   include/sandbox/simulation/collision_events.h
   include/sandbox/simulation/direct_damage_events.h
   include/sandbox/simulation/entity_aabbs.h

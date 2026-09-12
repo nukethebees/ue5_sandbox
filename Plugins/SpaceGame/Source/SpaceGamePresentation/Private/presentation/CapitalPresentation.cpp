@@ -5,6 +5,7 @@
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGamePresentation/presentation/DelayedNiagaraSpawns.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_checks.h>
@@ -147,7 +148,7 @@ void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 c
 
 void FCapitalPresentation::trigger_death_effects() {
     auto const deaths{view().deaths};
-    auto const n{deaths.Num()};
+    auto const n{static_cast<int32>(deaths.size())};
     auto* const small_death_explosion{actor_config->small_death_explosion.Get()};
     auto* const main_death_explosion{actor_config->main_death_explosion.Get()};
     auto const has_small_death_explosion{IsValid(small_death_explosion)};
@@ -187,7 +188,7 @@ void FCapitalPresentation::trigger_death_effects() {
             current_delay = 0.f;
             previous_batch = death.batch_index;
         }
-        FVector const base_location{death.location};
+        FVector const base_location{ml::to_unreal(death.location)};
         if (has_small_death_explosion) {
             for (int32 explosion_index{0}; explosion_index < n_small_explosions;
                  ++explosion_index) {
