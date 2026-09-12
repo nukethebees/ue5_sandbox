@@ -71,9 +71,16 @@ Appearance` to use that actor's local appearance fields without breaking its pro
 Pressing a preset button enables this override automatically.
 
 Create a profile through **Content Browser > Add > Miscellaneous > Data Asset**, selecting
-`CelestialBackdropProfile`, then assign it to any number of backdrop actors. Four editable example
-profiles live under `CelestialBackdrop/Profiles`: Earth-like, Hive world, dark alien, and gas giant.
-Editing a profile refreshes actors that reference it in open editor worlds.
+`CelestialBackdropProfile`, then assign it to any number of backdrop actors. Ten editable example
+profiles live under `CelestialBackdrop/Profiles`:
+
+- Earth-like, ocean, ice, and toxic terrestrial worlds.
+- Barren and molten airless worlds.
+- Hive and dark-alien emissive worlds.
+- Gas giant and ringed ice giant worlds.
+
+Editing a profile refreshes actors that reference it in open editor worlds. The profile controls
+appearance only, so the same preset can be reused at different sizes, positions, and sun directions.
 
 The analytic material is generated from
 `Source/SandboxCelestials/Private/materials/CelestialAnalytic.lispb`. After changing its graph,
@@ -97,8 +104,9 @@ cmake --build --preset debug-game --target generate-celestial-analytic-material
   edge softness, emission, and a cheap aligned surface-shadow approximation.
 - **Close Approach:** enablement and the minimum camera-distance ratio.
 
-The shader showcase uses all four supplied profiles. Earth-like and gas giant use Layered mode;
-Hive world and dark alien use Analytic mode for direct A/B inspection. The real `GameRuntime` map
+The shader showcase uses all ten supplied profiles. Its original four-body row keeps Earth-like and
+gas giant in Layered mode and Hive world and dark alien in Analytic mode for direct A/B inspection.
+A second six-body row shows the extended profiles in Analytic mode. The real `GameRuntime` map
 uses the analytic path for its distant Hive homeworld and contains an Earth-like hero scale
 reference: 200 km in diameter, centred about 322 km from the world origin. It occupies approximately
 34.5 degrees from the origin, making its scale unmistakable beside ships. The four bodies in the
