@@ -9,7 +9,7 @@
 #include <SpaceGameSimulation/entities/EntityDeathInfo.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistryData.h>
-#include <SpaceGameSimulation/entities/TestTeam.h>
+#include <SpaceGameSimulation/entities/TestTeamUtils.h>
 #include <SpaceGameSimulation/ships/fighters/TestCapitalShipFighterOrderQueue.h>
 #include <SpaceGameSimulation/ships/fighters/TestCapitalShipFighterSpawnQueue.h>
 #include <SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSoA.h>
@@ -318,8 +318,8 @@ struct SPACEGAMESIMULATION_API Simulation {
     friend class PhaseInterface;
 
     FFighterSimulationConfig config{};
-    TStaticArray<uint8, static_cast<int32>(ETestTeam::COUNT)> participant_mask{};
-    TStaticArray<int32, static_cast<int32>(ETestTeam::COUNT)> remaining_team_capacity{};
+    TStaticTeamArray<uint8> participant_mask{};
+    TStaticTeamArray<int32> remaining_team_capacity{};
     int32 per_team_limit{};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
     FTickCountdown16::counter_type attack_retry_cooldown_tick_value{0};

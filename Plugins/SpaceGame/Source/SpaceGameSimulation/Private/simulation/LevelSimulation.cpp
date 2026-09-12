@@ -11,7 +11,7 @@ namespace ml::level_simulation {
 // Participating teams
 /* **************************************** */
 static void finalise_participating_teams(FLevelSimulationInitData& data) {
-    TStaticArray<uint8, static_cast<int32>(ETestTeam::COUNT)> included{};
+    TStaticTeamArray<uint8> included{};
     auto const included_count{included.Num()};
     auto include = [&included, included_count](ETestTeam const team) {
         auto const team_index{static_cast<int32>(team)};

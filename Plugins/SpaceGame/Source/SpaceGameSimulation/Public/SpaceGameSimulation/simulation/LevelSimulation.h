@@ -7,6 +7,7 @@
 #include <SpaceGameSimulation/defences/turrets/TestStaticTurretsPhaseInterface.h>
 #include <SpaceGameSimulation/defences/turrets/TestStaticTurretsSimulation.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/entities/TestTeamUtils.h>
 #include <SpaceGameSimulation/levels/LevelEventManager.h>
 #include <SpaceGameSimulation/memory/GameMemory.h>
 #include <SpaceGameSimulation/missions/TestMissionManager.h>
@@ -20,7 +21,6 @@
 #include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
 #include <SpaceGameSimulation/support/FixedTickLoop.h>
 
-#include <SandboxCore/fixed_array.h>
 #include <SandboxCore/frame_memory_resource.h>
 #include <SpaceGameSimulation/simulation/LevelReadView.h>
 #include <SpaceGameSimulation/simulation/LevelSimulationState.h>
@@ -36,7 +36,7 @@ struct FLevelSimulationInitData {
     FTurretSimulationConfig turrets;
     FSpinnerSimulationConfig spinners;
 
-    ml::TFixedArray<ETestTeam, static_cast<int32>(ETestTeam::COUNT)> participating_teams;
+    ml::FTestTeamList participating_teams;
 
     TOptional<ml::test_space_ship::FPlayerSpawnData> player;
     ml::test_capital_ships::SpawnData capital_spawns;

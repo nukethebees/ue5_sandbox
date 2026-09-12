@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Containers/StaticArray.h>
 #include <Math/Color.h>
-#include <SpaceGameSimulation/entities/TestTeam.h>
+#include <SpaceGameSimulation/entities/TestTeamUtils.h>
+
 #include <utility>
 
 struct FTeamColours {
@@ -15,5 +15,5 @@ struct FTeamColours {
         return colours[std::to_underlying(team)];
     }
     auto operator[](ETestTeam team) -> FLinearColor& { return colours[std::to_underlying(team)]; }
-    TStaticArray<FLinearColor, std::to_underlying(ETestTeam::COUNT)> colours;
+    ml::TStaticTeamArray<FLinearColor> colours;
 };
