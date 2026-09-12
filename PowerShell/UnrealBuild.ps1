@@ -183,17 +183,20 @@ function reset-ubt-build-state {
 
 function cbuild {
     param(
+        [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
         [ValidateSet('debug', 'debug-game', 'development', 'shipping', 'test')]
-        [string]$configuration = 'debug-game'
+        [string[]]$configuration = @('debug-game')
     )
 
     Push-Location -LiteralPath $script:dev_project_root
     try {
-        Write-Host "Building the project with CMake workflow '$configuration'."
-        & cmake --workflow --preset $configuration
+        foreach ($current_configuration in $configuration) {
+            Write-Host "Building the project with CMake workflow '$current_configuration'."
+            & cmake --workflow --preset $current_configuration
 
-        if ($LASTEXITCODE -ne 0) {
-            throw "CMake workflow '$configuration' exited with code $LASTEXITCODE."
+            if ($LASTEXITCODE -ne 0) {
+                throw "CMake workflow '$current_configuration' exited with code $LASTEXITCODE."
+            }
         }
     } finally {
         Pop-Location
