@@ -22,6 +22,7 @@ public class USFLoaderEditor : ModuleRules
             "CQTest",
             "GraphEditor",
             "RenderCore",
+            "RHI",
             "UnrealEd",
             "USFLoader",
         });

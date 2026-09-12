@@ -719,6 +719,19 @@ add_test(
 )
 
 add_test(
+  NAME USFLoader.ShaderSmoke
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    "-ExecCmds=Automation RunTests StartsWith:USFLoader.ShaderSmoke; Quit"
+    -AllowCommandletRendering
+    -unattended
+    -DDC-ForceMemoryCache
+    -nop4
+    -nosplash
+    -nosound
+    -stdout
+)
+
+add_test(
   NAME SandboxEditor.MaterialSynth
   COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     "-ExecCmds=Automation RunTests SandboxEditor.MaterialSynth; Quit"
@@ -737,6 +750,11 @@ set_tests_properties(SandboxEditor.MaterialSynth PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 set_tests_properties(SandboxShaders.ShaderSmoke PROPERTIES
+  LABELS all
+  TIMEOUT 900
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+set_tests_properties(USFLoader.ShaderSmoke PROPERTIES
   LABELS all
   TIMEOUT 900
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
