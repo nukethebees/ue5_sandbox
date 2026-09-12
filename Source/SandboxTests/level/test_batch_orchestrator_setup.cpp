@@ -437,6 +437,16 @@ struct FLevelTelemetryManagerTestAccess {
 };
 
 auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
+    using Field = ml::level_telemetry::EHistoryField;
+    using FieldMask = ml::level_telemetry::FHistoryFieldMask;
+    static_assert(FieldMask::index(Field::ActiveEntities) == 0);
+    static_assert(FieldMask::index(Field::ActiveEntitiesByType) == 1);
+    static_assert(FieldMask::index(Field::ActiveEntitiesByTeamAndType) == 6);
+    static_assert(FieldMask::index(Field::SpawnedEntities) == 36);
+    static_assert(FieldMask::index(Field::RequestedTimeScale) == 47);
+    static_assert(FieldMask::field_count == 48);
+    static_assert(sizeof(FieldMask) == sizeof(uint64));
+
     FSimulationClock clock;
     clock.initialise({});
     FTestEntityRegistry entity_registry;
@@ -481,8 +491,8 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               initial_history.num(),
               int32{1});
     TestEqual(TEXT("Initial row marks all 48 telemetry fields valid"),
-              initial_history_columns.validity_masks[0],
-              (uint64{1} << 48) - 1);
+              initial_history_columns.validity_masks[0].value(),
+              (uint64{1} << ml::level_telemetry::FHistoryFieldMask::field_count) - 1);
     TestEqual(TEXT("Initial row performs one payload write per logical series"),
               telemetry_manager.get_history_stats().payload_write_count,
               uint64{48});
@@ -534,8 +544,9 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               time_scale_columns.num(),
               int32{2});
     TestEqual(TEXT("Single-field row marks only requested time scale valid"),
-              time_scale_columns.validity_masks[1],
-              uint64{1} << 47);
+              time_scale_columns.validity_masks[1].value(),
+              uint64{1} << ml::level_telemetry::FHistoryFieldMask::index(
+                  ml::level_telemetry::EHistoryField::RequestedTimeScale));
 
     clock.completed_ticks = 5;
     clock.tick_loop.tick_period = 0.25;
@@ -643,7 +654,7 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               entity_change_columns.num(),
               int32{2});
     TestEqual(TEXT("Entity change row marks all nine changed fields valid"),
-              std::popcount(entity_change_columns.validity_masks[1]),
+              std::popcount(entity_change_columns.validity_masks[1].value()),
               int32{9});
 
     clock.completed_ticks = 3;

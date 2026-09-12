@@ -206,7 +206,7 @@ auto parse_fixed(Form const& form) -> FixedSoaSchema {
 
 auto parse_member(Form const& form) -> SoaMemberSchema {
     Fields const fields{form, "member", 3};
-    fields.validate({"fixed-schema", "nested-schema"});
+    fields.validate({"fixed-schema", "nested-schema", "mask-field", "mask-dimensions"});
     auto const kind_name{text(fields.positional(1), "member kind")};
     SoaMemberKind kind;
     if (kind_name == "array") {
@@ -216,12 +216,30 @@ auto parse_member(Form const& form) -> SoaMemberSchema {
     } else {
         fail(fields.positional(1).token.span, "unknown SOA member kind '" + kind_name + "'");
     }
+    std::vector<SoaMaskDimensionSchema> mask_dimensions;
+    if (auto const* dimensions{fields.optional("mask-dimensions")}) {
+        if (!dimensions->is_list()) {
+            fail(dimensions->token.span, "mask-dimensions must be a list");
+        }
+        for (auto const& dimension : dimensions->children) {
+            if (!dimension.is_list() || dimension.children.size() != 2) {
+                fail(dimension.token.span,
+                     "mask dimension must contain an index name and extent expression");
+            }
+            mask_dimensions.push_back({
+                .index_name = text(dimension.children[0], "mask dimension index name"),
+                .extent = text(dimension.children[1], "mask dimension extent"),
+            });
+        }
+    }
     return SoaMemberSchema{
         .name = text(fields.positional(0), "member name"),
         .kind = kind,
         .type = parse_type_ref(fields.positional(2)),
         .fixed_schema = optional_text(fields, "fixed-schema"),
         .nested_schema = optional_text(fields, "nested-schema"),
+        .mask_field = boolean_or(fields, "mask-field"),
+        .mask_dimensions = std::move(mask_dimensions),
     };
 }
 
@@ -248,7 +266,9 @@ auto parse_soa(Form const& form) -> SoaSchema {
                      "export-specifier",
                      "using-declarations",
                      "equivalent-type",
-                     "copy-element-memberwise"},
+                     "copy-element-memberwise",
+                     "field-mask-name",
+                     "field-enum-name"},
                     {"member", "function", "fixed", "single-allocation"});
 
     std::vector<SoaMemberSchema> members;
@@ -297,6 +317,8 @@ auto parse_soa(Form const& form) -> SoaSchema {
         .fixed = std::move(fixed),
         .single_allocation = std::move(single_allocation),
         .single_allocation_variants = std::move(variants),
+        .field_mask_name = optional_text(fields, "field-mask-name"),
+        .field_enum_name = optional_text(fields, "field-enum-name"),
     };
 }
 

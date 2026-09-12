@@ -76,6 +76,35 @@ TEST(SourceLoader, ReadsCommentsAndTypedSoa) {
               "FHandle");
 }
 
+TEST(SourceLoader, ReadsSoaFieldMaskMetadata) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(soa-module example
+  :header "Generated.h"
+  (struct FData
+    :field-mask-name FFieldMask
+    :field-enum-name EField
+    (member masks array FFieldMask)
+    (member values array int32
+      :mask-field true
+      :mask-dimensions ((row_index "3") (column_index "4")))))
+)");
+
+    auto const manifest{files.load()};
+    auto const& schema{std::get<SoaModuleSchema>(manifest.modules.front()).structs.front()};
+    ASSERT_TRUE(schema.field_mask_name.has_value());
+    EXPECT_EQ(*schema.field_mask_name, "FFieldMask");
+    ASSERT_TRUE(schema.field_enum_name.has_value());
+    EXPECT_EQ(*schema.field_enum_name, "EField");
+    auto const& member{schema.members[1]};
+    EXPECT_TRUE(member.mask_field);
+    ASSERT_EQ(member.mask_dimensions.size(), 2);
+    EXPECT_EQ(member.mask_dimensions[0].index_name, "row_index");
+    EXPECT_EQ(member.mask_dimensions[0].extent, "3");
+    EXPECT_EQ(member.mask_dimensions[1].index_name, "column_index");
+    EXPECT_EQ(member.mask_dimensions[1].extent, "4");
+}
+
 TEST(SourceLoader, ReportsSourceLocationForUnknownProperties) {
     TemporaryManifest files;
     files.write_root("(umbrella-module all\n  :header \"All.h\"\n  :headers ()\n  :typo true)\n");

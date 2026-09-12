@@ -20,9 +20,82 @@
 #include "sandbox/core/single_allocation/removal.h"
 #include "Templates/MemoryOps.h"
 
+#include <type_traits>
 #include <utility>
 
 namespace ml::level_telemetry {
+enum class EHistoryField : uint8 {
+    ActiveEntities = 0,
+    ActiveEntitiesByType = static_cast<uint8>(ActiveEntities) + 1,
+    ActiveEntitiesByTeamAndType = static_cast<uint8>(ActiveEntitiesByType) +
+                                  (ml::EnumCountTrait<ETestEntityType>::count_value),
+    SpawnedEntities = static_cast<uint8>(ActiveEntitiesByTeamAndType) +
+                      (ml::EnumCountTrait<ETestTeam>::count_value) *
+                          (ml::EnumCountTrait<ETestEntityType>::count_value),
+    DestroyedEntities = static_cast<uint8>(SpawnedEntities) + 1,
+    Kills = static_cast<uint8>(DestroyedEntities) + 1,
+    RegistrySlotCount = static_cast<uint8>(Kills) + 1,
+    ActiveLasers = static_cast<uint8>(RegistrySlotCount) + 1,
+    LasersFired = static_cast<uint8>(ActiveLasers) + 1,
+    OccupiedSpatialCellCount = static_cast<uint8>(LasersFired) + 1,
+    GridRebuildCount = static_cast<uint8>(OccupiedSpatialCellCount) + 1,
+    RangeQueryCount = static_cast<uint8>(GridRebuildCount) + 1,
+    LineTraceCount = static_cast<uint8>(RangeQueryCount) + 1,
+    SweepTraceCount = static_cast<uint8>(LineTraceCount) + 1,
+    RequestedTimeScale = static_cast<uint8>(SweepTraceCount) + 1,
+    Count = static_cast<uint8>(RequestedTimeScale) + 1,
+};
+
+struct FHistoryFieldMask {
+    inline static constexpr int32 field_count{static_cast<int32>(EHistoryField::Count)};
+    static_assert(field_count <= 64, "Field mask exceeds 64 bits.");
+    using storage_type = std::conditional_t<
+        field_count <= 8,
+        uint8,
+        std::conditional_t<field_count <= 16,
+                           uint16,
+                           std::conditional_t<field_count <= 32, uint32, uint64>>>;
+
+    constexpr FHistoryFieldMask() noexcept = default;
+    explicit constexpr FHistoryFieldMask(storage_type const value) noexcept
+        : value_{value} {}
+
+    [[nodiscard]] constexpr auto value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_empty() const noexcept -> bool { return value_ == 0; }
+    [[nodiscard]] constexpr auto has(EHistoryField const field) const noexcept -> bool {
+        return (value_ & bit(field)) != 0;
+    }
+    [[nodiscard]] static constexpr auto index(EHistoryField const field) noexcept -> int32 {
+        return static_cast<int32>(field);
+    }
+    constexpr void set(EHistoryField const field) noexcept { value_ |= bit(field); }
+    constexpr void set(FHistoryFieldMask const fields) noexcept { value_ |= fields.value_; }
+    constexpr void clear(EHistoryField const field) noexcept {
+        value_ = static_cast<storage_type>(value_ & ~bit(field));
+    }
+
+    [[nodiscard]] static constexpr auto
+        active_entities_by_type_field(int32 const entity_type_index) noexcept -> EHistoryField {
+        return static_cast<EHistoryField>(static_cast<int32>(EHistoryField::ActiveEntitiesByType) +
+                                          entity_type_index);
+    }
+
+    [[nodiscard]] static constexpr auto active_entities_by_team_and_type_field(
+        int32 const team_index, int32 const entity_type_index) noexcept -> EHistoryField {
+        return static_cast<EHistoryField>(
+            static_cast<int32>(EHistoryField::ActiveEntitiesByTeamAndType) +
+            team_index * (ml::EnumCountTrait<ETestEntityType>::count_value) + entity_type_index);
+    }
+  private:
+    [[nodiscard]] static constexpr auto bit(EHistoryField const field) noexcept -> storage_type {
+        return static_cast<storage_type>(uint64{1} << static_cast<uint8>(field));
+    }
+
+    storage_type value_{};
+};
+static_assert(sizeof(FHistoryFieldMask) == sizeof(FHistoryFieldMask::storage_type));
+static_assert(std::is_trivially_copyable_v<FHistoryFieldMask>);
+
 struct FHistoryRowsView;
 struct FHistoryRowsConstView;
 
@@ -63,7 +136,7 @@ struct SPACEGAMESIMULATION_API FHistoryRowsConstView {
     auto right(int32 const count) const -> ConstView;
 
     TConstArrayView<uint64> completed_ticks;
-    TConstArrayView<uint64> validity_masks;
+    TConstArrayView<FHistoryFieldMask> validity_masks;
     TConstArrayView<int32> active_entities;
     TConstArrayView<FTestEntityRegistry::EntityTypeCounts> active_entities_by_type;
     TConstArrayView<FTestEntityRegistry::EntityCounts> active_entities_by_team_and_type;
@@ -87,7 +160,7 @@ struct SPACEGAMESIMULATION_API FHistoryRowsView {
 
     void set(int32 const index,
              uint64 const new_completed_ticks,
-             uint64 const new_validity_masks,
+             FHistoryFieldMask const& new_validity_masks,
              int32 const new_active_entities,
              FTestEntityRegistry::EntityTypeCounts const& new_active_entities_by_type,
              FTestEntityRegistry::EntityCounts const& new_active_entities_by_team_and_type,
@@ -160,7 +233,7 @@ struct SPACEGAMESIMULATION_API FHistoryRowsView {
     auto right(int32 const count) const -> ConstView;
 
     TArrayView<uint64> completed_ticks;
-    TArrayView<uint64> validity_masks;
+    TArrayView<FHistoryFieldMask> validity_masks;
     TArrayView<int32> active_entities;
     TArrayView<FTestEntityRegistry::EntityTypeCounts> active_entities_by_type;
     TArrayView<FTestEntityRegistry::EntityCounts> active_entities_by_team_and_type;
@@ -184,7 +257,7 @@ struct SPACEGAMESIMULATION_API FHistoryRows {
 
     void set(int32 const index,
              uint64 const new_completed_ticks,
-             uint64 const new_validity_masks,
+             FHistoryFieldMask const& new_validity_masks,
              int32 const new_active_entities,
              FTestEntityRegistry::EntityTypeCounts const& new_active_entities_by_type,
              FTestEntityRegistry::EntityCounts const& new_active_entities_by_team_and_type,
@@ -220,7 +293,7 @@ struct SPACEGAMESIMULATION_API FHistoryRows {
     }
 
     auto add(uint64 const new_completed_ticks,
-             uint64 const new_validity_masks,
+             FHistoryFieldMask const& new_validity_masks,
              int32 const new_active_entities,
              FTestEntityRegistry::EntityTypeCounts const& new_active_entities_by_type,
              FTestEntityRegistry::EntityCounts const& new_active_entities_by_team_and_type,
@@ -473,7 +546,7 @@ struct SPACEGAMESIMULATION_API FHistoryRows {
     auto right(int32 const count) const -> ConstView;
 
     TArray<uint64> completed_ticks;
-    TArray<uint64> validity_masks;
+    TArray<FHistoryFieldMask> validity_masks;
     TArray<int32> active_entities;
     TArray<FTestEntityRegistry::EntityTypeCounts> active_entities_by_type;
     TArray<FTestEntityRegistry::EntityCounts> active_entities_by_team_and_type;
@@ -508,7 +581,7 @@ struct FHistoryRowsSingleLayout {
         capacity_granularity, column_gap, 64};
 
     inline static constexpr ColLayout<uint64> CompletedTicks{LayoutStart};
-    inline static constexpr ColLayout<uint64> ValidityMasks{CompletedTicks};
+    inline static constexpr ColLayout<FHistoryFieldMask> ValidityMasks{CompletedTicks};
     inline static constexpr ColLayout<int32> ActiveEntities{ValidityMasks};
     inline static constexpr ColLayout<FTestEntityRegistry::EntityTypeCounts> ActiveEntitiesByType{
         ActiveEntities};
@@ -563,6 +636,10 @@ struct FHistoryRowsSingleLayout {
             "Single-allocation leaf completed_ticks requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
+            ml::soa_storage::supported_leaf<FHistoryFieldMask>,
+            "Single-allocation leaf validity_masks requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
             ml::soa_storage::supported_leaf<int32>,
             "Single-allocation leaf active_entities requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
@@ -584,7 +661,7 @@ struct FHistoryRowsSingleLayout {
             "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
         static_assert(sizeof(uint64) <=
                       (max_allocation_size - CompletedTicks.block_offset) / capacity_granularity);
-        static_assert(sizeof(uint64) <=
+        static_assert(sizeof(FHistoryFieldMask) <=
                       (max_allocation_size - ValidityMasks.block_offset) / capacity_granularity);
         static_assert(sizeof(int32) <=
                       (max_allocation_size - ActiveEntities.block_offset) / capacity_granularity);
@@ -665,7 +742,7 @@ struct FSingleAllocationHistoryRowsStorage
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
         Element<uint64>* completed_ticks{};
-        Element<uint64>* validity_masks{};
+        Element<FHistoryFieldMask>* validity_masks{};
         Element<int32>* active_entities{};
         Element<FTestEntityRegistry::EntityTypeCounts>* active_entities_by_type{};
         Element<FTestEntityRegistry::EntityCounts>* active_entities_by_team_and_type{};
@@ -759,7 +836,7 @@ struct FSingleAllocationHistoryRowsStorage
     void default_construct_columns(size_type const first, size_type const count) {
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         DefaultConstructItems<uint64>(columns.completed_ticks, count);
-        DefaultConstructItems<uint64>(columns.validity_masks, count);
+        DefaultConstructItems<FHistoryFieldMask>(columns.validity_masks, count);
         DefaultConstructItems<int32>(columns.active_entities, count);
         DefaultConstructItems<FTestEntityRegistry::EntityTypeCounts>(
             columns.active_entities_by_type, count);
@@ -789,6 +866,7 @@ struct FSingleAllocationHistoryRowsStorage
                              size_type move_count) {
         auto const elements_to_move{static_cast<byte_size_type>(move_count)};
         auto const completed_ticks_bytes{elements_to_move * sizeof(uint64)};
+        auto const validity_masks_bytes{elements_to_move * sizeof(FHistoryFieldMask)};
         auto const active_entities_bytes{elements_to_move * sizeof(int32)};
         auto const active_entities_by_type_bytes{elements_to_move *
                                                  sizeof(FTestEntityRegistry::EntityTypeCounts)};
@@ -799,7 +877,7 @@ struct FSingleAllocationHistoryRowsStorage
                         columns.completed_ticks + source,
                         completed_ticks_bytes);
         FMemory::Memcpy(
-            columns.validity_masks + index, columns.validity_masks + source, completed_ticks_bytes);
+            columns.validity_masks + index, columns.validity_masks + source, validity_masks_bytes);
         FMemory::Memcpy(columns.active_entities + index,
                         columns.active_entities + source,
                         active_entities_bytes);
@@ -857,6 +935,7 @@ struct FSingleAllocationHistoryRowsStorage
         auto const destination{get_data(first)};
         auto const elements_to_copy{static_cast<byte_size_type>(count)};
         auto const completed_ticks_bytes{elements_to_copy * sizeof(uint64)};
+        auto const validity_masks_bytes{elements_to_copy * sizeof(FHistoryFieldMask)};
         auto const active_entities_bytes{elements_to_copy * sizeof(int32)};
         auto const active_entities_by_type_bytes{elements_to_copy *
                                                  sizeof(FTestEntityRegistry::EntityTypeCounts)};
@@ -866,7 +945,7 @@ struct FSingleAllocationHistoryRowsStorage
         FMemory::Memcpy(
             destination.completed_ticks, source.completed_ticks.GetData(), completed_ticks_bytes);
         FMemory::Memcpy(
-            destination.validity_masks, source.validity_masks.GetData(), completed_ticks_bytes);
+            destination.validity_masks, source.validity_masks.GetData(), validity_masks_bytes);
         FMemory::Memcpy(
             destination.active_entities, source.active_entities.GetData(), active_entities_bytes);
         FMemory::Memcpy(destination.active_entities_by_type,
@@ -918,6 +997,7 @@ struct FSingleAllocationHistoryRowsStorage
             auto const destination{make_data_unchecked(new_data, new_blocks)};
             auto const live_count{static_cast<byte_size_type>(num_)};
             auto const completed_ticks_bytes{live_count * sizeof(uint64)};
+            auto const validity_masks_bytes{live_count * sizeof(FHistoryFieldMask)};
             auto const active_entities_bytes{live_count * sizeof(int32)};
             auto const active_entities_by_type_bytes{live_count *
                                                      sizeof(FTestEntityRegistry::EntityTypeCounts)};
@@ -927,7 +1007,7 @@ struct FSingleAllocationHistoryRowsStorage
             FMemory::Memcpy(
                 destination.completed_ticks, source.completed_ticks, completed_ticks_bytes);
             FMemory::Memcpy(
-                destination.validity_masks, source.validity_masks, completed_ticks_bytes);
+                destination.validity_masks, source.validity_masks, validity_masks_bytes);
             FMemory::Memcpy(
                 destination.active_entities, source.active_entities, active_entities_bytes);
             FMemory::Memcpy(destination.active_entities_by_type,
@@ -982,10 +1062,10 @@ struct FHistoryRowsSingleConstView : ml::soa_storage::CompactViewState<true> {
             column_data<uint64>(FHistoryRowsSingleLayout::CompletedTicks.offset(capacity_blocks())),
             count_};
     }
-    auto validity_masks() const -> TArrayView<uint64 const> {
-        return {
-            column_data<uint64>(FHistoryRowsSingleLayout::ValidityMasks.offset(capacity_blocks())),
-            count_};
+    auto validity_masks() const -> TArrayView<FHistoryFieldMask const> {
+        return {column_data<FHistoryFieldMask>(
+                    FHistoryRowsSingleLayout::ValidityMasks.offset(capacity_blocks())),
+                count_};
     }
     auto active_entities() const -> TArrayView<int32 const> {
         return {
@@ -1072,7 +1152,8 @@ struct FHistoryRowsSingleConstView : ml::soa_storage::CompactViewState<true> {
         return FHistoryRowsConstView{
             {column_data_unchecked<uint64>(FHistoryRowsSingleLayout::CompletedTicks.offset(blocks)),
              count_},
-            {column_data_unchecked<uint64>(FHistoryRowsSingleLayout::ValidityMasks.offset(blocks)),
+            {column_data_unchecked<FHistoryFieldMask>(
+                 FHistoryRowsSingleLayout::ValidityMasks.offset(blocks)),
              count_},
             {column_data_unchecked<int32>(FHistoryRowsSingleLayout::ActiveEntities.offset(blocks)),
              count_},
@@ -1136,10 +1217,10 @@ struct FHistoryRowsSingleView : ml::soa_storage::CompactViewState<false> {
             column_data<uint64>(FHistoryRowsSingleLayout::CompletedTicks.offset(capacity_blocks())),
             count_};
     }
-    auto validity_masks() const -> TArrayView<uint64> {
-        return {
-            column_data<uint64>(FHistoryRowsSingleLayout::ValidityMasks.offset(capacity_blocks())),
-            count_};
+    auto validity_masks() const -> TArrayView<FHistoryFieldMask> {
+        return {column_data<FHistoryFieldMask>(
+                    FHistoryRowsSingleLayout::ValidityMasks.offset(capacity_blocks())),
+                count_};
     }
     auto active_entities() const -> TArrayView<int32> {
         return {
@@ -1224,7 +1305,8 @@ struct FHistoryRowsSingleView : ml::soa_storage::CompactViewState<false> {
         return FHistoryRowsView{
             {column_data_unchecked<uint64>(FHistoryRowsSingleLayout::CompletedTicks.offset(blocks)),
              count_},
-            {column_data_unchecked<uint64>(FHistoryRowsSingleLayout::ValidityMasks.offset(blocks)),
+            {column_data_unchecked<FHistoryFieldMask>(
+                 FHistoryRowsSingleLayout::ValidityMasks.offset(blocks)),
              count_},
             {column_data_unchecked<int32>(FHistoryRowsSingleLayout::ActiveEntities.offset(blocks)),
              count_},

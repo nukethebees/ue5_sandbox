@@ -98,6 +98,50 @@
       :nested-schema FChild)
     (single-allocation SingleParents
       (variant CountedParents @counting_allocator)))
+  (struct FMaskRows8
+    :field-mask-name FFieldMask8
+    :field-enum-name EField8
+    (member masks array FFieldMask8)
+    (member values array int32
+      :mask-field true
+      :mask-dimensions ((value_index "8"))))
+  (struct FMaskRows9
+    :field-mask-name FFieldMask9
+    :field-enum-name EField9
+    (member masks array FFieldMask9)
+    (member values array int32
+      :mask-field true
+      :mask-dimensions ((value_index "8")))
+    (member tail array int32
+      :mask-field true))
+  (struct FMaskRows16
+    :field-mask-name FFieldMask16
+    :field-enum-name EField16
+    (member masks array FFieldMask16)
+    (member values array int32
+      :mask-field true
+      :mask-dimensions ((value_index "16"))))
+  (struct FMaskRows17
+    :field-mask-name FFieldMask17
+    :field-enum-name EField17
+    (member masks array FFieldMask17)
+    (member values array int32
+      :mask-field true
+      :mask-dimensions ((value_index "17"))))
+  (struct FMaskRows32
+    :field-mask-name FFieldMask32
+    :field-enum-name EField32
+    (member masks array FFieldMask32)
+    (member values array int32
+      :mask-field true
+      :mask-dimensions ((value_index "32"))))
+  (struct FMaskRows33
+    :field-mask-name FFieldMask33
+    :field-enum-name EField33
+    (member masks array FFieldMask33)
+    (member values array int32
+      :mask-field true
+      :mask-dimensions ((value_index "33"))))
   (struct RestrictionRows
     (member restricted array @restricted_leaf)
     (single-allocation SingleRestrictionRows))

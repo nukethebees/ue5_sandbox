@@ -82,6 +82,48 @@ TEST(Generator, LowersDynamicSoaIntoTypedHeaderAndSource) {
     EXPECT_NE(source.find("auto FData::get_view() -> View"), std::string::npos);
 }
 
+TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
+    Manifest const manifest{
+        .schema_version = manifest_schema_version,
+        .modules = {SoaModuleSchema{
+            .settings = ModuleSettings{.name = "mask", .header = "Mask.h", .source = "Mask.cpp"},
+            .structs = {SoaSchema{
+                .name = "FRows",
+                .members =
+                    {
+                        SoaMemberSchema{"masks", SoaMemberKind::array, TypeRef{"FFieldMask"}},
+                        SoaMemberSchema{.name = "first",
+                                        .kind = SoaMemberKind::array,
+                                        .type = TypeRef{"int32"},
+                                        .mask_field = true},
+                        SoaMemberSchema{
+                            .name = "matrix",
+                            .kind = SoaMemberKind::array,
+                            .type = TypeRef{"int32"},
+                            .mask_field = true,
+                            .mask_dimensions = {{"row_index", "2"}, {"column_index", "3"}}},
+                        SoaMemberSchema{.name = "last",
+                                        .kind = SoaMemberKind::array,
+                                        .type = TypeRef{"int32"},
+                                        .mask_field = true},
+                    },
+                .field_mask_name = "FFieldMask",
+                .field_enum_name = "EField",
+            }},
+        }},
+    };
+
+    auto const header{render_modules(lower_modules(manifest)).front().content};
+    EXPECT_NE(header.find("enum class EField : uint8"), std::string::npos);
+    EXPECT_NE(header.find("First = 0"), std::string::npos);
+    EXPECT_NE(header.find("Matrix = static_cast<uint8>(First) + 1"), std::string::npos);
+    EXPECT_NE(header.find("Last = static_cast<uint8>(Matrix) + (2) * (3)"), std::string::npos);
+    EXPECT_NE(header.find("using storage_type = std::conditional_t<"), std::string::npos);
+    EXPECT_NE(header.find("matrix_field(int32 const row_index, int32 const column_index)"),
+              std::string::npos);
+    EXPECT_NE(header.find("TArray<FFieldMask> masks;"), std::string::npos);
+}
+
 TEST(Generator, RejectsDuplicateOutputPaths) {
     auto manifest{example_manifest()};
     manifest.modules.push_back(UmbrellaModuleSchema{

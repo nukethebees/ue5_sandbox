@@ -42,6 +42,21 @@ properties, and owned declarations are nested forms:
       (parameter dt (type-ref float :suffix " const")))))
 ```
 
+An SOA struct can generate a compact named field mask from its array members. The generator
+selects `uint8`, `uint16`, `uint32`, or `uint64` storage from the resulting field count. Optional
+dimensions reserve a contiguous row-major range for an indexed field:
+
+```lisp
+(struct FHistory
+  :field-enum-name EHistoryField
+  :field-mask-name FHistoryFieldMask
+  (member validity_masks array FHistoryFieldMask)
+  (member active_entities array uint32 :mask-field true)
+  (member active_entities_by_type array uint32
+    :mask-field true
+    :mask-dimensions ((entity_type_index "ml::EnumCountTrait<EEntityType>::count_value"))))
+```
+
 A type reference is normally an atom or quoted C++ spelling. Use `(type-ref <name> :suffix <text>
 :nested <name>)` when a reference needs additional structure. Arbitrary C++ lines, paths, labels,
 and other text containing whitespace or semicolons must be quoted. Strings support `\\`, `\"`,

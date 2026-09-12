@@ -10,6 +10,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FLevelTelemetryBlockHistoryTest,
 
 auto FLevelTelemetryBlockHistoryTest::RunTest(FString const&) -> bool {
     using Layout = ml::level_telemetry::FHistoryRowsSingleLayout;
+    using Field = ml::level_telemetry::EHistoryField;
+    using FieldMask = ml::level_telemetry::FHistoryFieldMask;
+    constexpr auto active_entities_mask{[] {
+        FieldMask result;
+        result.set(Field::ActiveEntities);
+        return result;
+    }()};
     auto const block_bytes{Layout::layout_bytes(1)};
     FGameMemory memory{{.root_capacity_bytes = block_bytes * 8}};
     FLevelTelemetryBlockHistory history{memory, {.block_bytes = block_bytes}};
@@ -17,7 +24,7 @@ auto FLevelTelemetryBlockHistoryTest::RunTest(FString const&) -> bool {
     for (uint64 tick{}; tick < 64; ++tick) {
         auto columns{history.append_uninitialized().columns()};
         columns.completed_ticks[0] = tick;
-        columns.validity_masks[0] = 1;
+        columns.validity_masks[0] = active_entities_mask;
         columns.active_entities[0] = static_cast<int32>(tick);
     }
     TestEqual(
@@ -30,7 +37,7 @@ auto FLevelTelemetryBlockHistoryTest::RunTest(FString const&) -> bool {
 
     auto next{history.append_uninitialized().columns()};
     next.completed_ticks[0] = 64;
-    next.validity_masks[0] = 1;
+    next.validity_masks[0] = active_entities_mask;
     next.active_entities[0] = 64;
     TestEqual(TEXT("One row past capacity acquires exactly one more block"),
               history.retained_block_count(),

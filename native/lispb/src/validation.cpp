@@ -479,6 +479,16 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
         add_generated_type(schema.name);
         add_generated_type(schema.view_name.value_or(schema.name + "View"));
         add_generated_type(schema.const_view_name.value_or(schema.name + "ConstView"));
+        if (schema.field_mask_name.has_value() != schema.field_enum_name.has_value()) {
+            throw std::invalid_argument{"SOA '" + schema.name +
+                                        "' must specify both field-mask-name and field-enum-name"};
+        }
+        if (schema.field_mask_name.has_value()) {
+            require_identifier(*schema.field_mask_name, "SOA '" + schema.name + "' field mask");
+            require_identifier(*schema.field_enum_name, "SOA '" + schema.name + "' field enum");
+            add_generated_type(*schema.field_mask_name);
+            add_generated_type(*schema.field_enum_name);
+        }
         if (schema.single_allocation.has_value()) {
             require_identifier(*schema.single_allocation, "Single-allocation owner");
             add_generated_type(*schema.single_allocation);
@@ -497,6 +507,8 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
             throw std::invalid_argument{"SOA '" + schema.name + "' must have members"};
         }
         std::vector<std::string> member_names;
+        int mask_storage_member_count{};
+        int mask_field_count{};
         for (auto const& member : schema.members) {
             member_names.push_back(member.name);
             require_identifier(member.name, "SOA '" + schema.name + "' member name");
@@ -515,6 +527,49 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
             if (member.nested_schema.has_value()) {
                 require_identifier(*member.nested_schema, "Nested SOA schema reference");
             }
+            if (schema.field_mask_name.has_value() && member.type.name == *schema.field_mask_name) {
+                ++mask_storage_member_count;
+                if (member.kind != SoaMemberKind::array) {
+                    throw std::invalid_argument{"SOA '" + schema.name +
+                                                "' field-mask storage must be an array member"};
+                }
+            }
+            if (!member.mask_dimensions.empty() && !member.mask_field) {
+                throw std::invalid_argument{"SOA '" + schema.name + "' member '" + member.name +
+                                            "' has mask dimensions but is not a mask field"};
+            }
+            if (member.mask_field) {
+                ++mask_field_count;
+                if (!schema.field_mask_name.has_value()) {
+                    throw std::invalid_argument{"SOA '" + schema.name + "' member '" + member.name +
+                                                "' is a mask field without a generated field mask"};
+                }
+                if (member.kind != SoaMemberKind::array) {
+                    throw std::invalid_argument{"SOA '" + schema.name + "' mask field '" +
+                                                member.name + "' must be an array member"};
+                }
+                std::set<std::string> dimension_names;
+                for (auto const& dimension : member.mask_dimensions) {
+                    require_identifier(dimension.index_name,
+                                       "SOA '" + schema.name + "' mask dimension index");
+                    require_value(dimension.extent,
+                                  "SOA '" + schema.name + "' mask dimension extent");
+                    if (!dimension_names.insert(dimension.index_name).second) {
+                        throw std::invalid_argument{"SOA '" + schema.name + "' mask field '" +
+                                                    member.name +
+                                                    "' has duplicate dimension names"};
+                    }
+                }
+            }
+        }
+        if (schema.field_mask_name.has_value() && mask_storage_member_count != 1) {
+            throw std::invalid_argument{
+                "SOA '" + schema.name +
+                "' must have exactly one array member of its field-mask type"};
+        }
+        if (schema.field_mask_name.has_value() && mask_field_count == 0) {
+            throw std::invalid_argument{"SOA '" + schema.name +
+                                        "' generated field mask must contain at least one field"};
         }
         require_unique_names(member_names, "SOA '" + schema.name + "' members");
         require_unique_operations(schema.operations, "SOA '" + schema.name + "' operations");

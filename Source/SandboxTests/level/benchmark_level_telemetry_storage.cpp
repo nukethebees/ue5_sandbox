@@ -23,10 +23,13 @@
 #include <type_traits>
 
 namespace level_telemetry_benchmark {
-inline constexpr int32 int32_series_count{43};
-inline constexpr int32 uint64_series_count{4};
-inline constexpr int32 double_series_bit{47};
-inline constexpr int32 series_count{48};
+using Field = ml::level_telemetry::EHistoryField;
+using FieldMask = ml::level_telemetry::FHistoryFieldMask;
+
+inline constexpr int32 int32_series_count{FieldMask::index(Field::GridRebuildCount)};
+inline constexpr int32 double_series_bit{FieldMask::index(Field::RequestedTimeScale)};
+inline constexpr int32 uint64_series_count{double_series_bit - int32_series_count};
+inline constexpr int32 series_count{FieldMask::field_count};
 inline constexpr SIZE_T row_payload_bytes{228};
 
 struct FWorkload {
@@ -215,7 +218,7 @@ void write_new_payload(ml::level_telemetry::FHistoryRowsView const& rows,
 auto checksum_rows(ml::level_telemetry::FHistoryRowsConstView const& rows) -> uint64 {
     uint64 result{};
     for (int32 row{}; row < rows.num(); ++row) {
-        auto mask{rows.validity_masks[row]};
+        auto mask{rows.validity_masks[row].value()};
         while (mask != 0) {
             auto const field{static_cast<int32>(std::countr_zero(mask))};
             if (field == 0) {
@@ -327,7 +330,7 @@ auto benchmark_new(FWorkload const& workload, SIZE_T const reserve_bytes) -> FRe
         auto const row{history.num() - 1};
         auto rows{history.get_view().columns()};
         rows.completed_ticks[row] = static_cast<uint64>(tick);
-        rows.validity_masks[row] = mask;
+        rows.validity_masks[row] = FieldMask{static_cast<FieldMask::storage_type>(mask)};
         auto remaining{mask};
         while (remaining != 0) {
             auto const field{static_cast<int32>(std::countr_zero(remaining))};
@@ -371,7 +374,7 @@ auto benchmark_blocks(FWorkload const& workload, SIZE_T const block_bytes) -> FR
         auto const append_started{FPlatformTime::Seconds()};
         auto rows{history.append_uninitialized().columns()};
         rows.completed_ticks[0] = static_cast<uint64>(tick);
-        rows.validity_masks[0] = mask;
+        rows.validity_masks[0] = FieldMask{static_cast<FieldMask::storage_type>(mask)};
         auto remaining{mask};
         while (remaining != 0) {
             auto const field{static_cast<int32>(std::countr_zero(remaining))};
@@ -516,7 +519,7 @@ void populate_new(ml::level_telemetry::FSingleAllocationHistoryRows& history,
         auto const row{history.num() - 1};
         auto rows{history.get_view().columns()};
         rows.completed_ticks[row] = static_cast<uint64>(tick);
-        rows.validity_masks[row] = mask;
+        rows.validity_masks[row] = FieldMask{static_cast<FieldMask::storage_type>(mask)};
         auto remaining{mask};
         while (remaining != 0) {
             auto const field{static_cast<int32>(std::countr_zero(remaining))};

@@ -19,7 +19,7 @@ auto FHistoryRowsConstView::get_view() const -> ConstView {
 auto FHistoryRowsConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
         TConstArrayView<uint64>{completed_ticks}.Slice(offset, count),
-        TConstArrayView<uint64>{validity_masks}.Slice(offset, count),
+        TConstArrayView<FHistoryFieldMask>{validity_masks}.Slice(offset, count),
         TConstArrayView<int32>{active_entities}.Slice(offset, count),
         TConstArrayView<FTestEntityRegistry::EntityTypeCounts>{active_entities_by_type}.Slice(
             offset, count),
@@ -48,7 +48,7 @@ auto FHistoryRowsConstView::get_const_view(int32 const offset, int32 const count
     -> ConstView {
     return ConstView{
         TConstArrayView<uint64>{completed_ticks}.Slice(offset, count),
-        TConstArrayView<uint64>{validity_masks}.Slice(offset, count),
+        TConstArrayView<FHistoryFieldMask>{validity_masks}.Slice(offset, count),
         TConstArrayView<int32>{active_entities}.Slice(offset, count),
         TConstArrayView<FTestEntityRegistry::EntityTypeCounts>{active_entities_by_type}.Slice(
             offset, count),
@@ -118,7 +118,7 @@ auto FHistoryRowsView::get_view() -> View {
 auto FHistoryRowsView::get_view(int32 const offset, int32 const count) -> View {
     return View{
         TArrayView<uint64>{completed_ticks}.Slice(offset, count),
-        TArrayView<uint64>{validity_masks}.Slice(offset, count),
+        TArrayView<FHistoryFieldMask>{validity_masks}.Slice(offset, count),
         TArrayView<int32>{active_entities}.Slice(offset, count),
         TArrayView<FTestEntityRegistry::EntityTypeCounts>{active_entities_by_type}.Slice(offset,
                                                                                          count),
@@ -146,7 +146,7 @@ auto FHistoryRowsView::get_view() const -> ConstView {
 auto FHistoryRowsView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
         TConstArrayView<uint64>{completed_ticks}.Slice(offset, count),
-        TConstArrayView<uint64>{validity_masks}.Slice(offset, count),
+        TConstArrayView<FHistoryFieldMask>{validity_masks}.Slice(offset, count),
         TConstArrayView<int32>{active_entities}.Slice(offset, count),
         TConstArrayView<FTestEntityRegistry::EntityTypeCounts>{active_entities_by_type}.Slice(
             offset, count),
@@ -174,7 +174,7 @@ auto FHistoryRowsView::get_const_view() const -> ConstView {
 auto FHistoryRowsView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
         TConstArrayView<uint64>{completed_ticks}.Slice(offset, count),
-        TConstArrayView<uint64>{validity_masks}.Slice(offset, count),
+        TConstArrayView<FHistoryFieldMask>{validity_masks}.Slice(offset, count),
         TConstArrayView<int32>{active_entities}.Slice(offset, count),
         TConstArrayView<FTestEntityRegistry::EntityTypeCounts>{active_entities_by_type}.Slice(
             offset, count),
@@ -378,7 +378,7 @@ auto FHistoryRows::get_view() -> View {
 auto FHistoryRows::get_view(int32 const offset, int32 const count) -> View {
     return View{
         TArrayView<uint64>{completed_ticks}.Slice(offset, count),
-        TArrayView<uint64>{validity_masks}.Slice(offset, count),
+        TArrayView<FHistoryFieldMask>{validity_masks}.Slice(offset, count),
         TArrayView<int32>{active_entities}.Slice(offset, count),
         TArrayView<FTestEntityRegistry::EntityTypeCounts>{active_entities_by_type}.Slice(offset,
                                                                                          count),
@@ -406,7 +406,7 @@ auto FHistoryRows::get_view() const -> ConstView {
 auto FHistoryRows::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
         TConstArrayView<uint64>{completed_ticks}.Slice(offset, count),
-        TConstArrayView<uint64>{validity_masks}.Slice(offset, count),
+        TConstArrayView<FHistoryFieldMask>{validity_masks}.Slice(offset, count),
         TConstArrayView<int32>{active_entities}.Slice(offset, count),
         TConstArrayView<FTestEntityRegistry::EntityTypeCounts>{active_entities_by_type}.Slice(
             offset, count),
@@ -434,7 +434,7 @@ auto FHistoryRows::get_const_view() const -> ConstView {
 auto FHistoryRows::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
         TConstArrayView<uint64>{completed_ticks}.Slice(offset, count),
-        TConstArrayView<uint64>{validity_masks}.Slice(offset, count),
+        TConstArrayView<FHistoryFieldMask>{validity_masks}.Slice(offset, count),
         TConstArrayView<int32>{active_entities}.Slice(offset, count),
         TConstArrayView<FTestEntityRegistry::EntityTypeCounts>{active_entities_by_type}.Slice(
             offset, count),

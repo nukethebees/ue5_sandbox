@@ -181,6 +181,34 @@ void test_dynamic_soa() {
     check(nested_copy.keys[1] == 2 && nested_copy.children.values[1] == 20);
 }
 
+void test_field_masks() {
+    static_assert(FFieldMask8::field_count == 8);
+    static_assert(sizeof(FFieldMask8) == sizeof(uint8));
+    static_assert(FFieldMask9::field_count == 9);
+    static_assert(sizeof(FFieldMask9) == sizeof(uint16));
+    static_assert(sizeof(FFieldMask16) == sizeof(uint16));
+    static_assert(sizeof(FFieldMask17) == sizeof(uint32));
+    static_assert(sizeof(FFieldMask32) == sizeof(uint32));
+    static_assert(sizeof(FFieldMask33) == sizeof(uint64));
+
+    constexpr auto last_value{FFieldMask8::values_field(7)};
+    static_assert(FFieldMask8::index(last_value) == 7);
+
+    FFieldMask8 mask;
+    check(mask.is_empty());
+    mask.set(last_value);
+    check(mask.has(last_value) && mask.value() == uint8{0x80});
+    mask.clear(last_value);
+    check(mask.is_empty());
+
+    FFieldMask9 wide;
+    wide.set(EField9::Tail);
+    check(wide.has(EField9::Tail) && wide.value() == uint16{0x100});
+    FFieldMask9 merged;
+    merged.set(wide);
+    check(merged.has(EField9::Tail));
+}
+
 void test_fixed_soa_lifetimes() {
     check(FTracked::alive == 0);
     {
@@ -408,6 +436,7 @@ auto main() -> int {
         check(moved.get_view().columns().children.values[0] == 37);
         test_homogeneous_storage();
         test_dynamic_soa();
+        test_field_masks();
         test_fixed_soa_lifetimes();
         test_vectors();
         test_facades();

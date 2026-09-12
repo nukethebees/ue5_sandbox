@@ -10,32 +10,8 @@
 #include <bit>
 
 namespace level_telemetry_detail {
-inline constexpr int32 active_entities_bit{};
-inline constexpr int32 active_entities_by_type_begin{1};
-inline constexpr int32 active_entities_by_team_and_type_begin{
-    active_entities_by_type_begin + FLevelTelemetryTickSeries::entity_type_count};
-inline constexpr int32 spawned_entities_bit{active_entities_by_team_and_type_begin +
-                                            FLevelTelemetryTickSeries::team_count *
-                                                FLevelTelemetryTickSeries::entity_type_count};
-inline constexpr int32 destroyed_entities_bit{spawned_entities_bit + 1};
-inline constexpr int32 kills_bit{destroyed_entities_bit + 1};
-inline constexpr int32 registry_slot_count_bit{kills_bit + 1};
-inline constexpr int32 active_lasers_bit{registry_slot_count_bit + 1};
-inline constexpr int32 lasers_fired_bit{active_lasers_bit + 1};
-inline constexpr int32 occupied_spatial_cell_count_bit{lasers_fired_bit + 1};
-inline constexpr int32 grid_rebuild_count_bit{occupied_spatial_cell_count_bit + 1};
-inline constexpr int32 range_query_count_bit{grid_rebuild_count_bit + 1};
-inline constexpr int32 line_trace_count_bit{range_query_count_bit + 1};
-inline constexpr int32 sweep_trace_count_bit{line_trace_count_bit + 1};
-inline constexpr int32 requested_time_scale_bit{sweep_trace_count_bit + 1};
-inline constexpr int32 series_count{requested_time_scale_bit + 1};
-
-static_assert(series_count == 48);
-static_assert(series_count <= 64);
-
-constexpr auto bit(int32 const index) -> uint64 {
-    return uint64{1} << index;
-}
+using Field = ml::level_telemetry::EHistoryField;
+using FieldMask = ml::level_telemetry::FHistoryFieldMask;
 
 auto sum(FTestEntityRegistry::EntityCounts const& entity_counts) -> int32 {
     int32 total{};
@@ -265,11 +241,11 @@ void FLevelTelemetryManager::sample_live_series() {
     constexpr auto entity_type_count{FLevelTelemetryTickSeries::entity_type_count};
     FTestEntityRegistry::EntityTypeCounts active_entities_by_type{};
     FTestEntityRegistry::EntityTypeCounts last_active_entities_by_type{};
-    uint64 mask{};
+    FieldMask mask;
 
     if (!has_sampled_state_ ||
         current_state_.active_entities != last_sampled_state_.active_entities) {
-        mask |= bit(active_entities_bit);
+        mask.set(Field::ActiveEntities);
     }
 
     for (int32 entity_type_index{}; entity_type_index < entity_type_count; ++entity_type_index) {
@@ -282,60 +258,59 @@ void FLevelTelemetryManager::sample_live_series() {
             active_entities_by_type[entity_type_index] += value;
             last_active_entities_by_type[entity_type_index] += last_value;
             if (!has_sampled_state_ || value != last_value) {
-                auto const field_index{active_entities_by_team_and_type_begin +
-                                       team_index * entity_type_count + entity_type_index};
-                mask |= bit(field_index);
+                mask.set(FieldMask::active_entities_by_team_and_type_field(team_index,
+                                                                           entity_type_index));
             }
         }
         if (!has_sampled_state_ || active_entities_by_type[entity_type_index] !=
                                        last_active_entities_by_type[entity_type_index]) {
-            mask |= bit(active_entities_by_type_begin + entity_type_index);
+            mask.set(FieldMask::active_entities_by_type_field(entity_type_index));
         }
     }
 
     if (!has_sampled_state_ || current_state_.kills != last_sampled_state_.kills) {
-        mask |= bit(kills_bit);
+        mask.set(Field::Kills);
     }
     auto const time_scale{clock_.get_time_scale()};
     if (!has_sampled_state_ || time_scale != last_sampled_time_scale_) {
-        mask |= bit(requested_time_scale_bit);
+        mask.set(Field::RequestedTimeScale);
     }
-    if (mask == 0) {
+    if (mask.is_empty()) {
         return;
     }
 
     auto const tick{clock_.get_completed_ticks()};
     auto columns{append_history_row(tick)};
     constexpr int32 row{};
-    columns.validity_masks[row] |= mask;
+    columns.validity_masks[row].set(mask);
 
-    if ((mask & bit(active_entities_bit)) != 0) {
+    if (mask.has(Field::ActiveEntities)) {
         columns.active_entities[row] = current_state_.active_entities;
         active_entity_count_data_.add(tick, current_state_.active_entities);
     }
     for (int32 entity_type_index{}; entity_type_index < entity_type_count; ++entity_type_index) {
-        if ((mask & bit(active_entities_by_type_begin + entity_type_index)) != 0) {
+        if (mask.has(FieldMask::active_entities_by_type_field(entity_type_index))) {
             columns.active_entities_by_type[row][entity_type_index] =
                 active_entities_by_type[entity_type_index];
         }
         for (int32 team_index{}; team_index < team_count; ++team_index) {
-            auto const field_index{active_entities_by_team_and_type_begin +
-                                   team_index * entity_type_count + entity_type_index};
-            if ((mask & bit(field_index)) != 0) {
+            auto const field{
+                FieldMask::active_entities_by_team_and_type_field(team_index, entity_type_index)};
+            if (mask.has(field)) {
                 columns.active_entities_by_team_and_type[row][team_index][entity_type_index] =
                     current_state_.active_entities_by_team_and_type[team_index][entity_type_index];
             }
         }
     }
-    if ((mask & bit(kills_bit)) != 0) {
+    if (mask.has(Field::Kills)) {
         columns.kills[row] = current_state_.kills;
         cumulative_kill_count_data_.add(tick, current_state_.kills);
     }
-    if ((mask & bit(requested_time_scale_bit)) != 0) {
+    if (mask.has(Field::RequestedTimeScale)) {
         columns.requested_time_scale[row] = time_scale;
     }
 
-    payload_write_count_ += std::popcount(mask);
+    payload_write_count_ += std::popcount(mask.value());
     last_sampled_state_.active_entities = current_state_.active_entities;
     last_sampled_state_.active_entities_by_team_and_type =
         current_state_.active_entities_by_team_and_type;
@@ -347,77 +322,77 @@ void FLevelTelemetryManager::sample_series() {
     using namespace level_telemetry_detail;
     sample_live_series();
 
-    uint64 mask{};
+    FieldMask mask;
     auto const mark_changed{
-        [this, &mask](int32 const field, auto const value, auto const previous) {
+        [this, &mask](Field const field, auto const value, auto const previous) {
             if (!has_sampled_state_ || value != previous) {
-                mask |= bit(field);
+                mask.set(field);
             }
         }};
-    mark_changed(spawned_entities_bit,
+    mark_changed(Field::SpawnedEntities,
                  current_state_.spawned_entities,
                  last_sampled_state_.spawned_entities);
-    mark_changed(destroyed_entities_bit,
+    mark_changed(Field::DestroyedEntities,
                  current_state_.destroyed_entities,
                  last_sampled_state_.destroyed_entities);
-    mark_changed(registry_slot_count_bit,
+    mark_changed(Field::RegistrySlotCount,
                  current_state_.registry_slot_count,
                  last_sampled_state_.registry_slot_count);
     mark_changed(
-        active_lasers_bit, current_state_.active_lasers, last_sampled_state_.active_lasers);
-    mark_changed(lasers_fired_bit, current_state_.lasers_fired, last_sampled_state_.lasers_fired);
-    mark_changed(occupied_spatial_cell_count_bit,
+        Field::ActiveLasers, current_state_.active_lasers, last_sampled_state_.active_lasers);
+    mark_changed(Field::LasersFired, current_state_.lasers_fired, last_sampled_state_.lasers_fired);
+    mark_changed(Field::OccupiedSpatialCellCount,
                  current_state_.occupied_spatial_cell_count,
                  last_sampled_state_.occupied_spatial_cell_count);
-    mark_changed(grid_rebuild_count_bit,
+    mark_changed(Field::GridRebuildCount,
                  current_state_.grid_rebuild_count,
                  last_sampled_state_.grid_rebuild_count);
-    mark_changed(range_query_count_bit,
+    mark_changed(Field::RangeQueryCount,
                  current_state_.range_query_count,
                  last_sampled_state_.range_query_count);
-    mark_changed(line_trace_count_bit,
+    mark_changed(Field::LineTraceCount,
                  current_state_.line_trace_count,
                  last_sampled_state_.line_trace_count);
-    mark_changed(sweep_trace_count_bit,
+    mark_changed(Field::SweepTraceCount,
                  current_state_.sweep_trace_count,
                  last_sampled_state_.sweep_trace_count);
 
-    if (mask != 0) {
+    if (!mask.is_empty()) {
         auto columns{append_history_row(clock_.get_completed_ticks())};
         constexpr int32 row{};
-        columns.validity_masks[row] |= mask;
+        columns.validity_masks[row].set(mask);
 
-        if ((mask & bit(spawned_entities_bit)) != 0) {
+        if (mask.has(Field::SpawnedEntities)) {
             columns.spawned_entities[row] = current_state_.spawned_entities;
         }
-        if ((mask & bit(destroyed_entities_bit)) != 0) {
+        if (mask.has(Field::DestroyedEntities)) {
             columns.destroyed_entities[row] = current_state_.destroyed_entities;
         }
-        if ((mask & bit(registry_slot_count_bit)) != 0) {
+        if (mask.has(Field::RegistrySlotCount)) {
             columns.registry_slot_count[row] = current_state_.registry_slot_count;
         }
-        if ((mask & bit(active_lasers_bit)) != 0) {
+        if (mask.has(Field::ActiveLasers)) {
             columns.active_lasers[row] = current_state_.active_lasers;
         }
-        if ((mask & bit(lasers_fired_bit)) != 0) {
+        if (mask.has(Field::LasersFired)) {
             columns.lasers_fired[row] = current_state_.lasers_fired;
         }
-        if ((mask & bit(occupied_spatial_cell_count_bit)) != 0) {
+        if (mask.has(Field::OccupiedSpatialCellCount)) {
             columns.occupied_spatial_cell_count[row] = current_state_.occupied_spatial_cell_count;
         }
-        if ((mask & bit(grid_rebuild_count_bit)) != 0) {
+        if (mask.has(Field::GridRebuildCount)) {
             columns.grid_rebuild_count[row] = current_state_.grid_rebuild_count;
         }
-        if ((mask & bit(range_query_count_bit)) != 0) {
+        if (mask.has(Field::RangeQueryCount)) {
             columns.range_query_count[row] = current_state_.range_query_count;
         }
-        if ((mask & bit(line_trace_count_bit)) != 0) {
+        if (mask.has(Field::LineTraceCount)) {
             columns.line_trace_count[row] = current_state_.line_trace_count;
         }
-        if ((mask & bit(sweep_trace_count_bit)) != 0) {
+        if (mask.has(Field::SweepTraceCount)) {
             columns.sweep_trace_count[row] = current_state_.sweep_trace_count;
         }
-        payload_write_count_ += std::popcount(mask);
+        payload_write_count_ += std::popcount(mask.value());
     }
 
     last_sampled_state_.spawned_entities = current_state_.spawned_entities;
@@ -446,7 +421,7 @@ auto FLevelTelemetryManager::append_history_row(tick_type const completed_tick)
 
     auto columns{history_.append_uninitialized().columns()};
     columns.completed_ticks[0] = completed_tick;
-    columns.validity_masks[0] = 0;
+    columns.validity_masks[0] = {};
     return columns;
 }
 
@@ -472,11 +447,11 @@ auto FLevelTelemetryManager::get_history_stats() const noexcept -> FLevelTelemet
 
 auto FLevelTelemetryManager::materialize_tick_series() const -> FLevelTelemetryTickSeries {
     using namespace level_telemetry_detail;
-    TStaticArray<int32, series_count> sample_counts{};
+    TStaticArray<int32, FieldMask::field_count> sample_counts{};
     history_.for_each_block([&sample_counts](auto const block) {
         auto const rows{block.columns()};
         for (auto const mask : rows.validity_masks) {
-            auto remaining{mask};
+            auto remaining{mask.value()};
             while (remaining != 0) {
                 auto const field{static_cast<int32>(std::countr_zero(remaining))};
                 ++sample_counts[field];
@@ -486,31 +461,32 @@ auto FLevelTelemetryManager::materialize_tick_series() const -> FLevelTelemetryT
     });
 
     FLevelTelemetryTickSeries result;
-    result.active_entities.reserve(sample_counts[active_entities_bit]);
+    result.active_entities.reserve(sample_counts[FieldMask::index(Field::ActiveEntities)]);
     constexpr auto team_count{FLevelTelemetryTickSeries::team_count};
     constexpr auto entity_type_count{FLevelTelemetryTickSeries::entity_type_count};
     for (int32 entity_type_index{}; entity_type_index < entity_type_count; ++entity_type_index) {
-        result.active_entities_by_type[entity_type_index].reserve(
-            sample_counts[active_entities_by_type_begin + entity_type_index]);
+        result.active_entities_by_type[entity_type_index].reserve(sample_counts[FieldMask::index(
+            FieldMask::active_entities_by_type_field(entity_type_index))]);
         for (int32 team_index{}; team_index < team_count; ++team_index) {
-            auto const field{active_entities_by_team_and_type_begin +
-                             team_index * entity_type_count + entity_type_index};
+            auto const field{
+                FieldMask::active_entities_by_team_and_type_field(team_index, entity_type_index)};
             result.active_entities_by_team_and_type[team_index][entity_type_index].reserve(
-                sample_counts[field]);
+                sample_counts[FieldMask::index(field)]);
         }
     }
-    result.spawned_entities.reserve(sample_counts[spawned_entities_bit]);
-    result.destroyed_entities.reserve(sample_counts[destroyed_entities_bit]);
-    result.kills.reserve(sample_counts[kills_bit]);
-    result.registry_slot_count.reserve(sample_counts[registry_slot_count_bit]);
-    result.active_lasers.reserve(sample_counts[active_lasers_bit]);
-    result.lasers_fired.reserve(sample_counts[lasers_fired_bit]);
-    result.occupied_spatial_cell_count.reserve(sample_counts[occupied_spatial_cell_count_bit]);
-    result.grid_rebuild_count.reserve(sample_counts[grid_rebuild_count_bit]);
-    result.range_query_count.reserve(sample_counts[range_query_count_bit]);
-    result.line_trace_count.reserve(sample_counts[line_trace_count_bit]);
-    result.sweep_trace_count.reserve(sample_counts[sweep_trace_count_bit]);
-    result.requested_time_scale.reserve(sample_counts[requested_time_scale_bit]);
+    result.spawned_entities.reserve(sample_counts[FieldMask::index(Field::SpawnedEntities)]);
+    result.destroyed_entities.reserve(sample_counts[FieldMask::index(Field::DestroyedEntities)]);
+    result.kills.reserve(sample_counts[FieldMask::index(Field::Kills)]);
+    result.registry_slot_count.reserve(sample_counts[FieldMask::index(Field::RegistrySlotCount)]);
+    result.active_lasers.reserve(sample_counts[FieldMask::index(Field::ActiveLasers)]);
+    result.lasers_fired.reserve(sample_counts[FieldMask::index(Field::LasersFired)]);
+    result.occupied_spatial_cell_count.reserve(
+        sample_counts[FieldMask::index(Field::OccupiedSpatialCellCount)]);
+    result.grid_rebuild_count.reserve(sample_counts[FieldMask::index(Field::GridRebuildCount)]);
+    result.range_query_count.reserve(sample_counts[FieldMask::index(Field::RangeQueryCount)]);
+    result.line_trace_count.reserve(sample_counts[FieldMask::index(Field::LineTraceCount)]);
+    result.sweep_trace_count.reserve(sample_counts[FieldMask::index(Field::SweepTraceCount)]);
+    result.requested_time_scale.reserve(sample_counts[FieldMask::index(Field::RequestedTimeScale)]);
 
     history_.for_each_block([&result](auto const block) {
         auto const rows{block.columns()};
@@ -518,20 +494,20 @@ auto FLevelTelemetryManager::materialize_tick_series() const -> FLevelTelemetryT
         for (int32 row{}; row < row_count; ++row) {
             auto const tick{rows.completed_ticks[row]};
             auto const mask{rows.validity_masks[row]};
-            if ((mask & bit(active_entities_bit)) != 0) {
+            if (mask.has(Field::ActiveEntities)) {
                 result.active_entities.add(tick, rows.active_entities[row]);
             }
             for (int32 entity_type_index{}; entity_type_index < entity_type_count;
                  ++entity_type_index) {
-                auto const type_field{active_entities_by_type_begin + entity_type_index};
-                if ((mask & bit(type_field)) != 0) {
+                auto const type_field{FieldMask::active_entities_by_type_field(entity_type_index)};
+                if (mask.has(type_field)) {
                     result.active_entities_by_type[entity_type_index].add(
                         tick, rows.active_entities_by_type[row][entity_type_index]);
                 }
                 for (int32 team_index{}; team_index < team_count; ++team_index) {
-                    auto const field{active_entities_by_team_and_type_begin +
-                                     team_index * entity_type_count + entity_type_index};
-                    if ((mask & bit(field)) != 0) {
+                    auto const field{FieldMask::active_entities_by_team_and_type_field(
+                        team_index, entity_type_index)};
+                    if (mask.has(field)) {
                         result.active_entities_by_team_and_type[team_index][entity_type_index].add(
                             tick,
                             rows.active_entities_by_team_and_type[row][team_index]
@@ -539,40 +515,40 @@ auto FLevelTelemetryManager::materialize_tick_series() const -> FLevelTelemetryT
                     }
                 }
             }
-            if ((mask & bit(spawned_entities_bit)) != 0) {
+            if (mask.has(Field::SpawnedEntities)) {
                 result.spawned_entities.add(tick, rows.spawned_entities[row]);
             }
-            if ((mask & bit(destroyed_entities_bit)) != 0) {
+            if (mask.has(Field::DestroyedEntities)) {
                 result.destroyed_entities.add(tick, rows.destroyed_entities[row]);
             }
-            if ((mask & bit(kills_bit)) != 0) {
+            if (mask.has(Field::Kills)) {
                 result.kills.add(tick, rows.kills[row]);
             }
-            if ((mask & bit(registry_slot_count_bit)) != 0) {
+            if (mask.has(Field::RegistrySlotCount)) {
                 result.registry_slot_count.add(tick, rows.registry_slot_count[row]);
             }
-            if ((mask & bit(active_lasers_bit)) != 0) {
+            if (mask.has(Field::ActiveLasers)) {
                 result.active_lasers.add(tick, rows.active_lasers[row]);
             }
-            if ((mask & bit(lasers_fired_bit)) != 0) {
+            if (mask.has(Field::LasersFired)) {
                 result.lasers_fired.add(tick, rows.lasers_fired[row]);
             }
-            if ((mask & bit(occupied_spatial_cell_count_bit)) != 0) {
+            if (mask.has(Field::OccupiedSpatialCellCount)) {
                 result.occupied_spatial_cell_count.add(tick, rows.occupied_spatial_cell_count[row]);
             }
-            if ((mask & bit(grid_rebuild_count_bit)) != 0) {
+            if (mask.has(Field::GridRebuildCount)) {
                 result.grid_rebuild_count.add(tick, rows.grid_rebuild_count[row]);
             }
-            if ((mask & bit(range_query_count_bit)) != 0) {
+            if (mask.has(Field::RangeQueryCount)) {
                 result.range_query_count.add(tick, rows.range_query_count[row]);
             }
-            if ((mask & bit(line_trace_count_bit)) != 0) {
+            if (mask.has(Field::LineTraceCount)) {
                 result.line_trace_count.add(tick, rows.line_trace_count[row]);
             }
-            if ((mask & bit(sweep_trace_count_bit)) != 0) {
+            if (mask.has(Field::SweepTraceCount)) {
                 result.sweep_trace_count.add(tick, rows.sweep_trace_count[row]);
             }
-            if ((mask & bit(requested_time_scale_bit)) != 0) {
+            if (mask.has(Field::RequestedTimeScale)) {
                 result.requested_time_scale.add(tick, rows.requested_time_scale[row]);
             }
         }
