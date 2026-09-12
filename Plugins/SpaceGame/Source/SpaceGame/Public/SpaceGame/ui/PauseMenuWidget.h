@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"
+#include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGamePresentation/entities/TeamColours.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipHudKillData.h"
 #include "SpaceGameSimulation/entities/TestEntityRegistry.h"
@@ -50,6 +51,7 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     // State and opening
     /* **************************************** */
     [[nodiscard]] auto get_active_tab() const noexcept -> EPauseMenuTab { return active_tab; }
+    [[nodiscard]] auto get_options_widget() const -> UOptionsWidget* { return options_widget; }
     void prepare_for_open(UInputAction& toggle_action, FPauseMenuData data);
 
     FPauseReturnToLevelSelectRequested return_to_level_select_requested;
@@ -63,6 +65,7 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     void NativeOnActivated() override;
     void NativeOnDeactivated() override;
     auto NativeGetDesiredFocusTarget() const -> UWidget* override;
+    auto NativeOnHandleBackAction() -> bool override;
     void ReleaseSlateResources(bool release_children) override;
 
     /* **************************************** */
@@ -82,7 +85,9 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     UPROPERTY(meta = (BindWidget))
     UMenuButtonWidget* telemetry_button{nullptr};
     UPROPERTY(meta = (BindWidget))
-    UMenuButtonWidget* options_button{nullptr};
+    UMenuButtonWidget* audio_button{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UMenuButtonWidget* controls_button{nullptr};
     UPROPERTY(meta = (BindWidget))
     UMenuButtonWidget* return_to_level_select_button{nullptr};
     UPROPERTY(meta = (BindWidget))
@@ -95,7 +100,7 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     UPROPERTY(meta = (BindWidget))
     UWidgetSwitcher* page_switcher{nullptr};
     UPROPERTY(meta = (BindWidget))
-    UTextBlock* options_placeholder{nullptr};
+    UOptionsWidget* options_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UBorder* overview_summary_panel{nullptr};
@@ -163,7 +168,8 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     void handle_forces();
     void handle_combat();
     void handle_telemetry();
-    void handle_options();
+    void handle_audio();
+    void handle_controls();
     void handle_return_to_level_select();
     void handle_quit();
     void handle_toggle_action();
@@ -171,6 +177,15 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     /* **************************************** */
     // View state and presentation
     /* **************************************** */
+    void request_tab(EPauseMenuTab tab);
+    void show_options_tab(EOptionsTab tab);
+    void request_close(FSimpleDelegate continuation);
+    void complete_resume();
+    void complete_return_to_level_select();
+    void complete_quit();
+    void complete_tab_change(EPauseMenuTab tab);
+    void handle_options_modal_state_changed(bool visible);
+    void set_navigation_enabled(bool enabled);
     void set_active_tab(EPauseMenuTab tab);
     void apply_ui_style();
     void update_views();
@@ -180,12 +195,15 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     // State
     /* **************************************** */
     EPauseMenuTab active_tab{EPauseMenuTab::Overview};
+    EOptionsTab active_options_tab_{EOptionsTab::Audio};
     FPauseMenuData data_;
     TSharedPtr<SGraphPlot> telemetry_graph_;
     FLinearColor active_entity_series_color_{0.15f, 0.75f, 1.0f, 1.0f};
     FLinearColor kills_series_color_{1.0f, 0.35f, 0.15f, 1.0f};
     TWeakObjectPtr<UInputAction> toggle_action_;
     FUIActionBindingHandle toggle_action_binding_;
+    bool options_open_{};
+    bool options_modal_visible_{};
     bool terminal_action_requested_{false};
 };
 }

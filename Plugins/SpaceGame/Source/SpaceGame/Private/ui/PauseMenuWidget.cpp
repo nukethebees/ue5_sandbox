@@ -30,16 +30,17 @@ void UPauseMenuWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
     if (!IsValid(resume_button) || !IsValid(overview_button) || !IsValid(forces_button) ||
-        !IsValid(combat_button) || !IsValid(telemetry_button) || !IsValid(options_button) ||
+        !IsValid(combat_button) || !IsValid(telemetry_button) || !IsValid(audio_button) ||
+        !IsValid(controls_button) || !IsValid(options_widget) ||
         !IsValid(return_to_level_select_button) || !IsValid(quit_button) ||
         !IsValid(page_heading) || !IsValid(paused_heading) || !IsValid(page_switcher) ||
-        !IsValid(options_placeholder) || !IsValid(overview_summary_panel) ||
-        !IsValid(overview_summary_heading) || !IsValid(overview_label_elapsed_time) ||
-        !IsValid(overview_label_entities_spawned) || !IsValid(overview_label_entities_active) ||
-        !IsValid(overview_label_entities_destroyed) || !IsValid(overview_label_kills) ||
-        !IsValid(elapsed_time_value) || !IsValid(entities_spawned_value) ||
-        !IsValid(entities_active_value) || !IsValid(entities_destroyed_value) ||
-        !IsValid(kills_value) || !IsValid(forces_counts_heading) || !IsValid(forces_table) ||
+        !IsValid(overview_summary_panel) || !IsValid(overview_summary_heading) ||
+        !IsValid(overview_label_elapsed_time) || !IsValid(overview_label_entities_spawned) ||
+        !IsValid(overview_label_entities_active) || !IsValid(overview_label_entities_destroyed) ||
+        !IsValid(overview_label_kills) || !IsValid(elapsed_time_value) ||
+        !IsValid(entities_spawned_value) || !IsValid(entities_active_value) ||
+        !IsValid(entities_destroyed_value) || !IsValid(kills_value) ||
+        !IsValid(forces_counts_heading) || !IsValid(forces_table) ||
         !IsValid(combat_top_killers_heading) || !IsValid(combat_top_killers_table) ||
         !IsValid(combat_team_kills_heading) || !IsValid(combat_team_kills_table) ||
         !IsValid(telemetry_summary_panel) || !IsValid(telemetry_summary_heading) ||
@@ -59,10 +60,13 @@ void UPauseMenuWidget::NativeOnInitialized() {
     forces_button->OnClicked().AddUObject(this, &ThisClass::handle_forces);
     combat_button->OnClicked().AddUObject(this, &ThisClass::handle_combat);
     telemetry_button->OnClicked().AddUObject(this, &ThisClass::handle_telemetry);
-    options_button->OnClicked().AddUObject(this, &ThisClass::handle_options);
+    audio_button->OnClicked().AddUObject(this, &ThisClass::handle_audio);
+    controls_button->OnClicked().AddUObject(this, &ThisClass::handle_controls);
     return_to_level_select_button->OnClicked().AddUObject(
         this, &ThisClass::handle_return_to_level_select);
     quit_button->OnClicked().AddUObject(this, &ThisClass::handle_quit);
+    options_widget->modal_state_changed.AddUObject(this,
+                                                   &ThisClass::handle_options_modal_state_changed);
 
     auto* const game_instance{GetGameInstance()};
     auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>()
@@ -73,14 +77,19 @@ void UPauseMenuWidget::NativeOnInitialized() {
                                forces_button,
                                combat_button,
                                telemetry_button,
-                               options_button,
+                               audio_button,
+                               controls_button,
                                return_to_level_select_button,
                                quit_button}) {
         button->set_audio(audio);
     }
 
-    for (auto* const button :
-         {overview_button, forces_button, combat_button, telemetry_button, options_button}) {
+    for (auto* const button : {overview_button,
+                               forces_button,
+                               combat_button,
+                               telemetry_button,
+                               audio_button,
+                               controls_button}) {
         button->SetIsSelectable(true);
         button->SetIsToggleable(true);
     }
@@ -110,6 +119,10 @@ void UPauseMenuWidget::prepare_for_open(UInputAction& toggle_action, FPauseMenuD
     toggle_action_ = &toggle_action;
     data_ = MoveTemp(data);
     terminal_action_requested_ = false;
+    options_open_ = false;
+    options_modal_visible_ = false;
+    active_options_tab_ = EOptionsTab::Audio;
+    set_navigation_enabled(true);
     update_views();
     set_active_tab(EPauseMenuTab::Overview);
 }
@@ -138,6 +151,11 @@ auto UPauseMenuWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
     return resume_button;
 }
 
+auto UPauseMenuWidget::NativeOnHandleBackAction() -> bool {
+    handle_toggle_action();
+    return true;
+}
+
 void UPauseMenuWidget::ReleaseSlateResources(bool const release_children) {
     Super::ReleaseSlateResources(release_children);
     telemetry_graph_.Reset();
@@ -147,50 +165,133 @@ void UPauseMenuWidget::ReleaseSlateResources(bool const release_children) {
 // Navigation callbacks
 /* **************************************** */
 void UPauseMenuWidget::handle_resume() {
-    if (!terminal_action_requested_) {
-        DeactivateWidget();
-    }
+    request_close(FSimpleDelegate::CreateUObject(this, &ThisClass::complete_resume));
 }
 
 void UPauseMenuWidget::handle_overview() {
-    set_active_tab(EPauseMenuTab::Overview);
+    request_tab(EPauseMenuTab::Overview);
 }
 
 void UPauseMenuWidget::handle_forces() {
-    set_active_tab(EPauseMenuTab::Forces);
+    request_tab(EPauseMenuTab::Forces);
 }
 
 void UPauseMenuWidget::handle_combat() {
-    set_active_tab(EPauseMenuTab::Combat);
+    request_tab(EPauseMenuTab::Combat);
 }
 
 void UPauseMenuWidget::handle_telemetry() {
-    set_active_tab(EPauseMenuTab::Telemetry);
+    request_tab(EPauseMenuTab::Telemetry);
 }
 
-void UPauseMenuWidget::handle_options() {
-    set_active_tab(EPauseMenuTab::Options);
+void UPauseMenuWidget::handle_audio() {
+    show_options_tab(EOptionsTab::Audio);
+}
+
+void UPauseMenuWidget::handle_controls() {
+    show_options_tab(EOptionsTab::Controls);
 }
 
 void UPauseMenuWidget::handle_return_to_level_select() {
-    if (terminal_action_requested_) {
-        return;
-    }
-    terminal_action_requested_ = true;
-    return_to_level_select_requested.Broadcast();
+    request_close(
+        FSimpleDelegate::CreateUObject(this, &ThisClass::complete_return_to_level_select));
 }
 
 void UPauseMenuWidget::handle_quit() {
-    if (terminal_action_requested_) {
-        return;
-    }
-    terminal_action_requested_ = true;
-    quit_requested.Broadcast();
+    request_close(FSimpleDelegate::CreateUObject(this, &ThisClass::complete_quit));
 }
 
 void UPauseMenuWidget::handle_toggle_action() {
+    request_close(FSimpleDelegate::CreateUObject(this, &ThisClass::complete_resume));
+}
+
+void UPauseMenuWidget::request_tab(EPauseMenuTab const tab) {
+    if (terminal_action_requested_ || options_modal_visible_) {
+        return;
+    }
+    if (options_open_ && tab != EPauseMenuTab::Options) {
+        options_widget->request_leave(
+            FSimpleDelegate::CreateUObject(this, &ThisClass::complete_tab_change, tab));
+        return;
+    }
+    set_active_tab(tab);
+}
+
+void UPauseMenuWidget::show_options_tab(EOptionsTab const tab) {
+    if (terminal_action_requested_ || options_modal_visible_ || !IsValid(options_widget)) {
+        return;
+    }
+    if (!options_open_) {
+        options_open_ = true;
+        options_widget->prepare_for_open();
+    }
+    active_options_tab_ = tab;
+    options_widget->select_tab(tab);
+    set_active_tab(EPauseMenuTab::Options);
+    options_widget->focus_content();
+}
+
+void UPauseMenuWidget::request_close(FSimpleDelegate continuation) {
+    if (terminal_action_requested_) {
+        return;
+    }
+    if (options_modal_visible_) {
+        if (IsValid(options_widget)) {
+            options_widget->request_back();
+        }
+        return;
+    }
+    if (options_open_ && IsValid(options_widget)) {
+        options_widget->request_leave(MoveTemp(continuation));
+        return;
+    }
+    continuation.ExecuteIfBound();
+}
+
+void UPauseMenuWidget::complete_resume() {
+    options_open_ = false;
+    DeactivateWidget();
+}
+
+void UPauseMenuWidget::complete_return_to_level_select() {
     if (!terminal_action_requested_) {
-        DeactivateWidget();
+        options_open_ = false;
+        terminal_action_requested_ = true;
+        return_to_level_select_requested.Broadcast();
+    }
+}
+
+void UPauseMenuWidget::complete_quit() {
+    if (!terminal_action_requested_) {
+        options_open_ = false;
+        terminal_action_requested_ = true;
+        quit_requested.Broadcast();
+    }
+}
+
+void UPauseMenuWidget::complete_tab_change(EPauseMenuTab const tab) {
+    options_open_ = false;
+    set_active_tab(tab);
+}
+
+void UPauseMenuWidget::handle_options_modal_state_changed(bool const visible) {
+    options_modal_visible_ = visible;
+    set_navigation_enabled(!visible);
+}
+
+void UPauseMenuWidget::set_navigation_enabled(bool const enabled) {
+    for (auto* const button : {resume_button,
+                               overview_button,
+                               forces_button,
+                               combat_button,
+                               telemetry_button,
+                               audio_button,
+                               controls_button,
+                               return_to_level_select_button,
+                               quit_button}) {
+        if (IsValid(button)) {
+            button->SetIsEnabled(enabled);
+        }
     }
 }
 
@@ -200,7 +301,7 @@ void UPauseMenuWidget::handle_toggle_action() {
 void UPauseMenuWidget::set_active_tab(EPauseMenuTab const tab) {
     if (!IsValid(page_heading) || !IsValid(page_switcher) || !IsValid(overview_button) ||
         !IsValid(forces_button) || !IsValid(combat_button) || !IsValid(telemetry_button) ||
-        !IsValid(options_button)) {
+        !IsValid(audio_button) || !IsValid(controls_button)) {
         UE_LOG(LogSandboxUI,
                Error,
                TEXT("UPauseMenuWidget::set_active_tab: One or more bound widgets are invalid."));
@@ -245,7 +346,10 @@ void UPauseMenuWidget::set_active_tab(EPauseMenuTab const tab) {
     forces_button->SetIsSelected(tab == EPauseMenuTab::Forces);
     combat_button->SetIsSelected(tab == EPauseMenuTab::Combat);
     telemetry_button->SetIsSelected(tab == EPauseMenuTab::Telemetry);
-    options_button->SetIsSelected(tab == EPauseMenuTab::Options);
+    audio_button->SetIsSelected(tab == EPauseMenuTab::Options &&
+                                active_options_tab_ == EOptionsTab::Audio);
+    controls_button->SetIsSelected(tab == EPauseMenuTab::Options &&
+                                   active_options_tab_ == EOptionsTab::Controls);
 }
 
 void UPauseMenuWidget::apply_ui_style() {
@@ -262,7 +366,6 @@ void UPauseMenuWidget::apply_ui_style() {
 
     apply_text_style(*paused_heading, style.text(EGameTextStyle::Heading1));
     apply_text_style(*page_heading, style.text(EGameTextStyle::Heading1));
-    apply_text_style(*options_placeholder, style.text(EGameTextStyle::BodySecondary));
     for (auto* const heading : {overview_summary_heading,
                                 forces_counts_heading,
                                 combat_top_killers_heading,

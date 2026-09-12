@@ -52,6 +52,7 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
     void handle_confirm_display();
     void handle_revert_display();
     void handle_display_confirmation_changed(bool visible);
+    void handle_interaction_modal_changed(bool visible);
     void refresh_view();
     auto active_category() const -> TOptional<EGameSettingCategory>;
     void complete_leave();

@@ -11,6 +11,7 @@
 #include <SpaceGame/ui/LevelCompletionWidget.h>
 #include <SpaceGame/ui/main_menu/MainMenuGameMode.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
+#include <SpaceGame/ui/main_menu/OptionsWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
 #include <SpaceGame/ui/save_game/SaveGameViewerWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/BattleViewerHudWidget.h>
@@ -340,7 +341,8 @@ auto generate_pause_menu_widget(UClass& button_class) -> UClass* {
     make_menu_button(tree, *actions, button_class, TEXT("forces_button"), TEXT("Forces"));
     make_menu_button(tree, *actions, button_class, TEXT("combat_button"), TEXT("Combat"));
     make_menu_button(tree, *actions, button_class, TEXT("telemetry_button"), TEXT("Telemetry"));
-    make_menu_button(tree, *actions, button_class, TEXT("options_button"), TEXT("Options"));
+    make_menu_button(tree, *actions, button_class, TEXT("audio_button"), TEXT("Audio"));
+    make_menu_button(tree, *actions, button_class, TEXT("controls_button"), TEXT("Controls"));
     make_menu_button(tree,
                      *actions,
                      button_class,
@@ -483,9 +485,7 @@ auto generate_pause_menu_widget(UClass& button_class) -> UClass* {
     graph_size->SetContent(graph_host);
     telemetry_contents->AddChildToVerticalBox(graph_size)->SetHorizontalAlignment(HAlign_Fill);
 
-    auto* const options{make_widget<UTextBlock>(tree, TEXT("options_placeholder"))};
-    options->SetText(FText::FromString(TEXT("Options placeholder content")));
-    options->SetAutoWrapText(true);
+    auto* const options{make_widget<ml::ioj::UOptionsWidget>(tree, TEXT("options_widget"))};
     switcher->AddChild(options);
 
     tree.RootWidget = root;

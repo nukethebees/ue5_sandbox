@@ -1,6 +1,7 @@
 #include <SandboxTests/support/test_setup.h>
 
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
+#include <SpaceGame/ui/main_menu/OptionsWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/TeamEntityTableWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/TopKillersWidget.h>
@@ -83,8 +84,10 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
             Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("combat_button")))};
         auto* const telemetry_button{
             Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("telemetry_button")))};
-        auto* const options_button{
-            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("options_button")))};
+        auto* const audio_button{
+            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("audio_button")))};
+        auto* const controls_button{
+            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("controls_button")))};
         auto* const return_button{Cast<ml::ioj::UMenuButtonWidget>(
             widget->GetWidgetFromName(TEXT("return_to_level_select_button")))};
         auto* const quit_button{
@@ -92,6 +95,7 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
         auto* const page_heading{Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("page_heading")))};
         auto* const page_switcher{
             Cast<UWidgetSwitcher>(widget->GetWidgetFromName(TEXT("page_switcher")))};
+        auto* const options_widget{widget->get_options_widget()};
         auto* const elapsed_time_value{
             Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("elapsed_time_value")))};
         auto* const entities_spawned_value{
@@ -116,12 +120,12 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
 
         auto const bindings_valid{
             IsValid(resume_button) && IsValid(overview_button) && IsValid(forces_button) &&
-            IsValid(combat_button) && IsValid(telemetry_button) && IsValid(options_button) &&
-            IsValid(return_button) && IsValid(quit_button) && IsValid(page_heading) &&
-            IsValid(page_switcher) && IsValid(elapsed_time_value) &&
-            IsValid(entities_spawned_value) && IsValid(entities_active_value) &&
-            IsValid(entities_destroyed_value) && IsValid(kills_value) &&
-            IsValid(lasers_fired_value) && IsValid(lasers_active_value) &&
+            IsValid(combat_button) && IsValid(telemetry_button) && IsValid(audio_button) &&
+            IsValid(controls_button) && IsValid(return_button) && IsValid(quit_button) &&
+            IsValid(page_heading) && IsValid(page_switcher) && IsValid(options_widget) &&
+            IsValid(elapsed_time_value) && IsValid(entities_spawned_value) &&
+            IsValid(entities_active_value) && IsValid(entities_destroyed_value) &&
+            IsValid(kills_value) && IsValid(lasers_fired_value) && IsValid(lasers_active_value) &&
             IsValid(telemetry_graph_host) && IsValid(forces_table) && IsValid(top_killers_table) &&
             IsValid(team_kills_table)};
         if (!TestRunner->TestTrue(TEXT("All required pause menu bindings are valid"),
@@ -248,9 +252,16 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Opening with no telemetry clears previous graph data"),
                              telemetry_graph->get_series().IsEmpty());
 
-        options_button->OnClicked().Broadcast();
-        TestRunner->TestTrue(TEXT("Options button activates Options"),
+        audio_button->OnClicked().Broadcast();
+        TestRunner->TestTrue(TEXT("Audio button activates Options"),
                              widget->get_active_tab() == ml::ioj::EPauseMenuTab::Options);
+        TestRunner->TestTrue(TEXT("Audio opens the shared options widget on its Audio tab"),
+                             options_widget->get_active_tab() == ml::ioj::EOptionsTab::Audio);
+        controls_button->OnClicked().Broadcast();
+        TestRunner->TestTrue(TEXT("Controls uses the shared options page"),
+                             widget->get_active_tab() == ml::ioj::EPauseMenuTab::Options);
+        TestRunner->TestTrue(TEXT("Controls selects the Controls options tab"),
+                             options_widget->get_active_tab() == ml::ioj::EOptionsTab::Controls);
         overview_button->OnClicked().Broadcast();
         TestRunner->TestTrue(TEXT("Overview button returns to Overview"),
                              widget->get_active_tab() == ml::ioj::EPauseMenuTab::Overview);

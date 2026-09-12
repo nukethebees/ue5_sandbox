@@ -138,6 +138,7 @@ void SGameOptionsView::Construct(FArguments const& args) {
     on_dirty_stay_ = args._OnDirtyStay;
     on_confirm_display_ = args._OnConfirmDisplay;
     on_revert_display_ = args._OnRevertDisplay;
+    on_interaction_modal_changed_ = args._OnInteractionModalChanged;
     page_focus_actions_.SetNum(static_cast<int32>(EOptionsTab::System) + 1);
 
     auto header{build_header()};
@@ -247,6 +248,14 @@ void SGameOptionsView::hide_dirty_prompt() {
 
 auto SGameOptionsView::is_dirty_prompt_visible() const -> bool {
     return dirty_prompt_visible_;
+}
+
+auto SGameOptionsView::dismiss_interaction_modal() -> bool {
+    if (!captured_binding_.IsSet()) {
+        return false;
+    }
+    close_binding_prompt();
+    return true;
 }
 
 /* **************************************** */
@@ -854,6 +863,7 @@ void SGameOptionsView::begin_binding_capture(FControlBindingAddress const& addre
     captured_key_ = EKeys::Invalid;
     capture_prompt_->SetVisibility(EVisibility::Visible);
     FSlateApplication::Get().SetKeyboardFocus(SharedThis(this), EFocusCause::SetDirectly);
+    on_interaction_modal_changed_.ExecuteIfBound(true);
 }
 
 void SGameOptionsView::begin_chord_capture(FControlBindingView const& binding) {
@@ -876,6 +886,7 @@ void SGameOptionsView::begin_chord_capture(FControlBindingView const& binding) {
     clear_chord_capture();
     capture_prompt_->SetVisibility(EVisibility::Visible);
     FSlateApplication::Get().SetKeyboardFocus(SharedThis(this), EFocusCause::SetDirectly);
+    on_interaction_modal_changed_.ExecuteIfBound(true);
 }
 
 auto SGameOptionsView::accept_binding_key(FKey const key) -> FReply {
@@ -972,6 +983,7 @@ auto SGameOptionsView::confirm_chord_capture() -> FReply {
 }
 
 void SGameOptionsView::close_binding_prompt() {
+    auto const was_open{captured_binding_.IsSet()};
     if (capture_prompt_.IsValid()) {
         capture_prompt_->SetVisibility(EVisibility::Collapsed);
     }
@@ -984,6 +996,9 @@ void SGameOptionsView::close_binding_prompt() {
     captured_key_ = EKeys::Invalid;
     captured_chord_dependent_count_ = 0;
     restore_focus();
+    if (was_open) {
+        on_interaction_modal_changed_.ExecuteIfBound(false);
+    }
 }
 
 /* **************************************** */

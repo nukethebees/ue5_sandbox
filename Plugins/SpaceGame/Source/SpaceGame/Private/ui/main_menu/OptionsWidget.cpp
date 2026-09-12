@@ -64,7 +64,9 @@ auto UOptionsWidget::RebuildWidget() -> TSharedRef<SWidget> {
         .OnDirtyDiscard(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_dirty_discard))
         .OnDirtyStay(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_dirty_stay))
         .OnConfirmDisplay(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_confirm_display))
-        .OnRevertDisplay(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_revert_display));
+        .OnRevertDisplay(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_revert_display))
+        .OnInteractionModalChanged(FOnOptionsInteractionModalChanged::CreateUObject(
+            this, &ThisClass::handle_interaction_modal_changed));
 }
 
 void UOptionsWidget::ReleaseSlateResources(bool const release_children) {
@@ -121,6 +123,9 @@ void UOptionsWidget::request_leave(FSimpleDelegate continuation) {
 }
 
 void UOptionsWidget::request_back() {
+    if (options_view_.IsValid() && options_view_->dismiss_interaction_modal()) {
+        return;
+    }
     if (options_view_.IsValid() && options_view_->is_dirty_prompt_visible()) {
         options_view_->hide_dirty_prompt();
         cancel_leave();
@@ -222,6 +227,10 @@ void UOptionsWidget::handle_display_confirmation_changed(bool const visible) {
         complete_leave();
         return;
     }
+    modal_state_changed.Broadcast(visible);
+}
+
+void UOptionsWidget::handle_interaction_modal_changed(bool const visible) {
     modal_state_changed.Broadcast(visible);
 }
 

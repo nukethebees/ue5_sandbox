@@ -22,6 +22,7 @@ class UGameSettingsSubsystem;
 struct FGameCapabilities;
 
 DECLARE_DELEGATE_OneParam(FOnOptionsTabChanged, EOptionsTab);
+DECLARE_DELEGATE_OneParam(FOnOptionsInteractionModalChanged, bool);
 
 class SGameOptionsView final : public SCompoundWidget {
     friend struct ::SlateGenerated::ml::ioj::SGameOptionsViewBuilder;
@@ -45,6 +46,7 @@ class SGameOptionsView final : public SCompoundWidget {
     SLATE_EVENT(FSimpleDelegate, OnDirtyStay)
     SLATE_EVENT(FSimpleDelegate, OnConfirmDisplay)
     SLATE_EVENT(FSimpleDelegate, OnRevertDisplay)
+    SLATE_EVENT(FOnOptionsInteractionModalChanged, OnInteractionModalChanged)
     SLATE_END_ARGS()
 
     /* **************************************** */
@@ -58,6 +60,7 @@ class SGameOptionsView final : public SCompoundWidget {
     void show_dirty_prompt();
     void hide_dirty_prompt();
     auto is_dirty_prompt_visible() const -> bool;
+    auto dismiss_interaction_modal() -> bool;
 
     /* **************************************** */
     // Input handling
@@ -141,6 +144,7 @@ class SGameOptionsView final : public SCompoundWidget {
     FSimpleDelegate on_dirty_stay_{};
     FSimpleDelegate on_confirm_display_{};
     FSimpleDelegate on_revert_display_{};
+    FOnOptionsInteractionModalChanged on_interaction_modal_changed_{};
 
     TSharedPtr<SGameButton> apply_button_{};
     TSharedPtr<SGameButton> reset_button_{};
