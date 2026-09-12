@@ -74,6 +74,9 @@ Commands:
 d=  reset-devs        Hard reset locally checkoutable devN branches to dev.
 
 Unreal build commands:
+  cbuild [config]          Build the project with a CMake workflow.
+                           Config may be debug, debug-game, development, shipping, or test;
+                           default is debug-game.
   csetup [config]          Prepare this worktree for supported development configurations.
                            Config may be all, debug-game, or development; default is all.
   cprojectfiles [config]   Regenerate Unreal project files without building dependencies.

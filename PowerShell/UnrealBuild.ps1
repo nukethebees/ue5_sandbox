@@ -181,6 +181,25 @@ function reset-ubt-build-state {
     Write-Host "Stopped $($orphaned_workers.Count) orphaned UE MSBuild worker(s)."
 }
 
+function cbuild {
+    param(
+        [ValidateSet('debug', 'debug-game', 'development', 'shipping', 'test')]
+        [string]$configuration = 'debug-game'
+    )
+
+    Push-Location -LiteralPath $script:dev_project_root
+    try {
+        Write-Host "Building the project with CMake workflow '$configuration'."
+        & cmake --workflow --preset $configuration
+
+        if ($LASTEXITCODE -ne 0) {
+            throw "CMake workflow '$configuration' exited with code $LASTEXITCODE."
+        }
+    } finally {
+        Pop-Location
+    }
+}
+
 function csetup {
     param(
         [ValidateSet('all', 'debug-game', 'development')]
