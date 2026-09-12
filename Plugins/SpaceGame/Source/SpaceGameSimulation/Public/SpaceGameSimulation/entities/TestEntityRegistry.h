@@ -1,7 +1,7 @@
 #pragma once
 
 #include <sandbox/simulation/entity_registry_bookkeeping.h>
-#include <sandbox/simulation/entity_telemetry.h>
+#include <sandbox/simulation/entity_registry_statistics.h>
 
 #include "SpaceGameSimulation/entities/TestEntityRegistryData.h"
 
@@ -151,7 +151,7 @@ struct SPACEGAMESIMULATION_API FTestEntityRegistry {
     auto count_alive_per_team_and_type() const noexcept -> EntityCounts;
     auto count_alive_not_on_team(ETestTeam const team) const noexcept -> int32;
     auto get_combat_telemetry() const noexcept -> CombatTelemetryCounters const& {
-        return combat_telemetry_;
+        return statistics_.combat_telemetry();
     }
 
     /* **************************************** */
@@ -196,10 +196,6 @@ struct SPACEGAMESIMULATION_API FTestEntityRegistry {
                                  int32 slot_index,
                                  TestEntityUniqueId unique_id) -> FRegistryEntityHandle;
 
-    /* **************************************** */
-    // Live state and alive counts
-    /* **************************************** */
-    void adjust_alive_count(ETestTeam team, ETestEntityType type, int32 delta);
     void apply_live_state_transition(int32 slot_index, ETestTeam team, uint8 alive);
 
     /* **************************************** */
@@ -233,11 +229,7 @@ struct SPACEGAMESIMULATION_API FTestEntityRegistry {
     // Queued damage events
     DirectDamageEvents queued_direct_damage_events;
 
-    // Per-tick entity changes
-    EntityCounts alive_counts_{};
-    int32 alive_count_{};
-    int32 cumulative_kill_count_{};
-    CombatTelemetryCounters combat_telemetry_{};
+    ml::simulation::EntityRegistryStatistics statistics_;
 };
 
 inline auto FTestEntityRegistry::is_valid_handle(FRegistryEntityHandle const handle) const -> bool {

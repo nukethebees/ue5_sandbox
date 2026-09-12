@@ -10,7 +10,6 @@
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 
-#include <numeric>
 #include <utility>
 
 /* **************************************** */
@@ -39,11 +38,7 @@ void FTestEntityRegistry::reset() {
               queued_death_infos,
               queued_direct_damage_events);
     bookkeeping_.reset();
-
-    alive_counts_ = {};
-    alive_count_ = 0;
-    cumulative_kill_count_ = 0;
-    combat_telemetry_ = {};
+    statistics_.reset();
 }
 void FTestEntityRegistry::begin_tick() {
     bookkeeping_.begin_tick();
@@ -141,10 +136,7 @@ FORCEINLINE auto FTestEntityRegistry::register_spawned_entity(EntityData::ConstV
     unique_entities.entity_types[unique_id.id] = ml::to_native(type);
     unique_entities.teams[unique_id.id] = ml::to_native(team);
 
-    ++combat_telemetry_.spawned[std::to_underlying(team)][std::to_underlying(type)];
-    if (alive != 0) {
-        adjust_alive_count(team, type, 1);
-    }
+    statistics_.record_spawn(ml::to_native(team), ml::to_native(type), alive != 0);
     return {slot_index, generation};
 }
 
@@ -229,43 +221,22 @@ FORCEINLINE void FTestEntityRegistry::record_entity_death(TestEntityUniqueId con
     auto const unique_entities{unique_entity_history_.get_view().columns()};
     unique_entities.alive[victim_id.id] = 0;
     unique_entities.death_reason[victim_id.id] = reason;
-    auto const team_index{std::to_underlying(unique_entities.teams[victim_id.id])};
-    auto const type_index{std::to_underlying(unique_entities.entity_types[victim_id.id])};
-    ++combat_telemetry_.destroyed[team_index][type_index];
-    ++combat_telemetry_.losses[team_index][type_index];
+    statistics_.record_destroyed(unique_entities.teams[victim_id.id],
+                                 unique_entities.entity_types[victim_id.id]);
 }
 FORCEINLINE void FTestEntityRegistry::credit_entity_kill(TestEntityUniqueId const killer_id,
                                                          TestEntityUniqueId const victim_id) {
     auto const unique_entities{unique_entity_history_.get_view().columns()};
     unique_entities.killed_by[victim_id.id] = killer_id;
     ++unique_entities.kills[killer_id.id];
-    ++cumulative_kill_count_;
-    auto const killer_team{std::to_underlying(unique_entities.teams[killer_id.id])};
-    auto const killer_type{std::to_underlying(unique_entities.entity_types[killer_id.id])};
-    auto const victim_team{std::to_underlying(unique_entities.teams[victim_id.id])};
-    ++combat_telemetry_.kills[killer_team][killer_type];
-    ++combat_telemetry_.kill_matrix[killer_team][victim_team];
+    statistics_.record_kill(unique_entities.teams[killer_id.id],
+                            unique_entities.entity_types[killer_id.id],
+                            unique_entities.teams[victim_id.id]);
 }
 
 /* **************************************** */
 // Live state and alive counts
 /* **************************************** */
-void FTestEntityRegistry::adjust_alive_count(ETestTeam const team,
-                                             ETestEntityType const type,
-                                             int32 const delta) {
-    auto const team_index{std::to_underlying(team)};
-    auto const type_index{std::to_underlying(type)};
-    constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};
-    constexpr auto type_count{ml::EnumCountTrait<ETestEntityType>::count_value};
-    check(team_index >= 0 && team_index < team_count);
-    check(type_index >= 0 && type_index < type_count);
-
-    auto& count{alive_counts_[team_index][type_index]};
-    count += delta;
-    alive_count_ += delta;
-    check(count >= 0);
-    check(alive_count_ >= 0);
-}
 FORCEINLINE void FTestEntityRegistry::apply_live_state_transition(int32 const slot_index,
                                                                   ETestTeam const team,
                                                                   uint8 const alive) {
@@ -273,12 +244,8 @@ FORCEINLINE void FTestEntityRegistry::apply_live_state_transition(int32 const sl
     auto const new_alive{alive != 0};
     auto const old_team{entity_data.teams[slot_index]};
     auto const type{entity_data.entity_types[slot_index]};
-    if (old_alive && (!new_alive || old_team != team)) {
-        adjust_alive_count(old_team, type, -1);
-    }
-    if (new_alive && (!old_alive || old_team != team)) {
-        adjust_alive_count(team, type, 1);
-    }
+    statistics_.apply_alive_transition(
+        ml::to_native(old_team), ml::to_native(team), ml::to_native(type), old_alive, new_alive);
 
     entity_data.teams[slot_index] = team;
     entity_data.alive[slot_index] = alive;
@@ -304,19 +271,14 @@ void FTestEntityRegistry::queue_direct_damage_events(
         auto const victim_team{unique_entities.teams[victim_id.id]};
         auto const victim_type{unique_entities.entity_types[victim_id.id]};
         auto const damage{static_cast<double>(damage_events.damage_amounts[index])};
-        combat_telemetry_
-            .damage_received[std::to_underlying(victim_team)][std::to_underlying(victim_type)] +=
-            damage;
+        statistics_.record_damage_received(victim_team, victim_type, damage);
 
         auto const instigator{damage_events.instigators[index]};
         if (instigator.is_valid()) {
             auto const attacker_id{find_unique_id(instigator)};
             auto const attacker_team{unique_entities.teams[attacker_id.id]};
             auto const attacker_type{unique_entities.entity_types[attacker_id.id]};
-            ++combat_telemetry_
-                  .hits[std::to_underlying(attacker_team)][std::to_underlying(attacker_type)];
-            combat_telemetry_.damage_dealt[std::to_underlying(attacker_team)]
-                                          [std::to_underlying(attacker_type)] += damage;
+            statistics_.record_hit(attacker_team, attacker_type, damage);
         }
     }
 
@@ -331,7 +293,7 @@ void FTestEntityRegistry::record_shots(TConstArrayView<FRegistryEntityHandle> co
         auto const attacker_id{find_unique_id(instigator)};
         auto const team{unique_entities.teams[attacker_id.id]};
         auto const type{unique_entities.entity_types[attacker_id.id]};
-        ++combat_telemetry_.shots[std::to_underlying(team)][std::to_underlying(type)];
+        statistics_.record_shot(team, type);
     }
 }
 auto FTestEntityRegistry::get_direct_damage_queue_view() const -> DirectDamageEvents const& {
@@ -516,44 +478,25 @@ auto FTestEntityRegistry::get_num_elements() const noexcept -> int32 {
     return entity_data.num();
 }
 auto FTestEntityRegistry::get_num_alive_active_entities() const noexcept -> int32 {
-    return alive_count_;
+    return statistics_.alive_count();
 }
 auto FTestEntityRegistry::count_kills() const noexcept -> int32 {
-    return cumulative_kill_count_;
+    return statistics_.cumulative_kill_count();
 }
 auto FTestEntityRegistry::count_alive() const noexcept -> int32 {
-    return alive_count_;
+    return statistics_.alive_count();
 }
 auto FTestEntityRegistry::count_alive(ETestEntityType const type) const noexcept -> int32 {
-    int32 total{0};
-    auto const type_index{std::to_underlying(type)};
-    for (auto const& team_counts : alive_counts_) {
-        total += team_counts[type_index];
-    }
-
-    return total;
+    return statistics_.count_alive(ml::to_native(type));
 }
 auto FTestEntityRegistry::count_alive_per_team() const noexcept -> TeamCounts {
-    TeamCounts out{};
-
-    constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};
-    for (int32 team_index{}; team_index < team_count; ++team_index) {
-        auto const& counts{alive_counts_[team_index]};
-        out[team_index] = std::accumulate(counts.begin(), counts.end(), int32{});
-    }
-
-    return out;
+    return statistics_.count_alive_per_team();
 }
 auto FTestEntityRegistry::count_alive_per_team_and_type() const noexcept -> EntityCounts {
-    return alive_counts_;
+    return statistics_.count_alive_per_team_and_type();
 }
 auto FTestEntityRegistry::count_alive_not_on_team(ETestTeam const team) const noexcept -> int32 {
-    auto const team_index{std::to_underlying(team)};
-    if (team_index >= TEAM_COUNT) {
-        return alive_count_;
-    }
-    auto const& counts{alive_counts_[team_index]};
-    return alive_count_ - std::accumulate(counts.begin(), counts.end(), int32{});
+    return statistics_.count_alive_not_on_team(ml::to_native(team));
 }
 
 /* **************************************** */
