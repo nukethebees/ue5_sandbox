@@ -145,10 +145,12 @@ struct SPACEGAMESIMULATION_API Simulation {
 
     TSpaceShipFlightModel<float> forward_flight_model{};
     TSpaceShipFlightModel<FVector> planar_flight_model{};
+    TSpaceShipFlightModel<float> planar_boost_flight_model{};
     ETestSpaceShipFlightMode flight_mode{ETestSpaceShipFlightMode::ForwardSpeed};
     ETestSpaceShipControlMode control_mode{ETestSpaceShipControlMode::Velocity};
     FVector velocity{FVector::ZeroVector};
     FVector planar_velocity{FVector::ZeroVector};
+    float planar_boost_speed{0.f};
     float target_speed{0.f};
     FVector2D target_local_planar_velocity_scale{FVector2D::ZeroVector};
     FVector target_local_planar_velocity{FVector::ZeroVector};

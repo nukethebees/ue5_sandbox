@@ -70,6 +70,9 @@ struct SPACEGAMEPRESENTATION_API FPlayerShipConfig {
     float boost_speed{30000.f};
 
     UPROPERTY(EditAnywhere, Category = "Movement")
+    float boost_forward_speed_addition_multiplier{2.f};
+
+    UPROPERTY(EditAnywhere, Category = "Movement")
     float brake_depletion_time{6.f};
 
     UPROPERTY(EditAnywhere, Category = "Movement")

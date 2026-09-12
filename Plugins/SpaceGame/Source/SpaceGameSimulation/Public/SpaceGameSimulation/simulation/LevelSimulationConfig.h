@@ -19,6 +19,7 @@ struct SPACEGAMESIMULATION_API FPlayerSimulationConfig {
     float thrust_recharge_time{7.f};
     float boost_depletion_time{4.f};
     float boost_speed{30000.f};
+    float boost_forward_speed_addition_multiplier{2.f};
     float brake_depletion_time{6.f};
     float brake_speed{1000.f};
     float rotation_speed{60.f};

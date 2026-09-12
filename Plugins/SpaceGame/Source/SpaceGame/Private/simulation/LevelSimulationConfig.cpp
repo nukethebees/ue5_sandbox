@@ -17,6 +17,7 @@ auto make_simulation_config(FPlayerShipConfig const& source) -> FPlayerSimulatio
     result.thrust_recharge_time = source.thrust_recharge_time;
     result.boost_depletion_time = source.boost_depletion_time;
     result.boost_speed = source.boost_speed;
+    result.boost_forward_speed_addition_multiplier = source.boost_forward_speed_addition_multiplier;
     result.brake_depletion_time = source.brake_depletion_time;
     result.brake_speed = source.brake_speed;
     result.rotation_speed = source.rotation_speed;

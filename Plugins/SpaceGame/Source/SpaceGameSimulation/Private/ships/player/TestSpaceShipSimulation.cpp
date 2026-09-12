@@ -174,7 +174,8 @@ void Simulation::integrate_velocity(float const dt) {
         }
         case ETestSpaceShipFlightMode::PlanarVelocity: {
             planar_velocity = planar_flight_model.update(dt);
-            velocity = planar_velocity;
+            planar_boost_speed = planar_boost_flight_model.update(dt);
+            velocity = planar_velocity + transform.GetUnitAxis(EAxis::X) * planar_boost_speed;
             break;
         }
     }
@@ -265,6 +266,11 @@ void Simulation::set_boost_brake_state(EBoostBrakeState const state) {
     }
 
     forward_flight_model.set_new_impulse(response, current_speed, target_speed);
+    auto const planar_boost_target{state == EBoostBrakeState::Boost
+                                       ? config.cruise_speed *
+                                             config.boost_forward_speed_addition_multiplier
+                                       : 0.f};
+    planar_boost_flight_model.set_new_impulse(response, planar_boost_speed, planar_boost_target);
     boost_brake_state = state;
 }
 
