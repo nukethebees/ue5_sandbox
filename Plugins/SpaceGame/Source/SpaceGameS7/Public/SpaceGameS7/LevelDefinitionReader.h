@@ -19,7 +19,12 @@ struct SPACEGAMES7_API FLevelDefinitionReadResult {
 
 class SPACEGAMES7_API FLevelDefinitionReader final {
   public:
+    FLevelDefinitionReader() = default;
+    explicit FLevelDefinitionReader(FString script_library_root);
+
     [[nodiscard]] auto read_source(FStringView source) const -> FLevelDefinitionReadResult;
     [[nodiscard]] auto read_file(FStringView path) const -> FLevelDefinitionReadResult;
+  private:
+    FString script_library_root_{};
 };
 }

@@ -162,7 +162,7 @@ void discover_campaigns(FLevelScriptCatalogResult& result) {
         return lhs.Compare(rhs, ESearchCase::IgnoreCase) < 0;
     });
 
-    FCampaignDefinitionReader reader;
+    FCampaignDefinitionReader reader{FPaths::Combine(result.directory, TEXT("Libraries"))};
     TMap<FCampaignId, int32> indices_by_id;
     indices_by_id.Reserve(filenames.Num());
     result.campaigns.Reserve(filenames.Num());
@@ -263,7 +263,7 @@ auto discover_level_scripts(FStringView const directory) -> FLevelScriptCatalogR
         return lhs.Compare(rhs, ESearchCase::IgnoreCase) < 0;
     });
 
-    FLevelDefinitionReader reader;
+    FLevelDefinitionReader reader{FPaths::Combine(result.directory, TEXT("Libraries"))};
     result.entries.Reserve(filenames.Num());
     TMap<FLevelId, int32> entry_indices_by_id;
     entry_indices_by_id.Reserve(filenames.Num());

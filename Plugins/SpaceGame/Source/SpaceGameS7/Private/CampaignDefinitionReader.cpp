@@ -6,6 +6,7 @@
 #include <Containers/Set.h>
 #include <Containers/StringConv.h>
 #include <Misc/FileHelper.h>
+#include <Misc/Paths.h>
 
 #include <string_view>
 
@@ -199,9 +200,18 @@ class FCampaignDecoder final {
 };
 }
 
+FCampaignDefinitionReader::FCampaignDefinitionReader(FString script_library_root)
+    : script_library_root_{MoveTemp(script_library_root)} {}
+
 auto FCampaignDefinitionReader::read_source(FStringView const source) const
     -> FCampaignDefinitionReadResult {
-    s7_native::Interpreter interpreter;
+    s7_native::InterpreterOptions options;
+    if (!script_library_root_.IsEmpty()) {
+        auto const converted_root{FTCHARToUTF8{*script_library_root_}};
+        options.script_library_root_utf8 =
+            std::string{converted_root.Get(), static_cast<std::size_t>(converted_root.Length())};
+    }
+    s7_native::Interpreter interpreter{MoveTemp(options)};
     FString expression{TEXT("(begin\n")};
     expression.Append(campaign_prelude);
     expression.AppendChars(source.GetData(), source.Len());
@@ -229,6 +239,11 @@ auto FCampaignDefinitionReader::read_file(FStringView const path) const
     if (!FFileHelper::LoadFileToString(source, *owned_path)) {
         return {.script_error =
                     FString::Printf(TEXT("Could not read campaign script '%s'."), *owned_path)};
+    }
+    if (script_library_root_.IsEmpty()) {
+        auto const level_script_root{FPaths::GetPath(FPaths::GetPath(owned_path))};
+        return FCampaignDefinitionReader{FPaths::Combine(level_script_root, TEXT("Libraries"))}
+            .read_source(source);
     }
     return read_source(source);
 }

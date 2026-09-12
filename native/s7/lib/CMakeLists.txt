@@ -11,7 +11,7 @@ set(SANDBOX_S7_DEFINITIONS
 
 add_library(sandbox-s7-third-party OBJECT)
 target_sources(sandbox-s7-third-party PRIVATE
-  ../ThirdParty/s7/s7.cpp
+  src/s7_sandbox.cpp
 )
 target_compile_features(sandbox-s7-third-party PRIVATE cxx_std_23)
 target_compile_definitions(sandbox-s7-third-party PRIVATE ${SANDBOX_S7_DEFINITIONS})

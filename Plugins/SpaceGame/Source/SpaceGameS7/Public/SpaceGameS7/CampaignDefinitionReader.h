@@ -18,7 +18,12 @@ struct SPACEGAMES7_API FCampaignDefinitionReadResult {
 
 class SPACEGAMES7_API FCampaignDefinitionReader final {
   public:
+    FCampaignDefinitionReader() = default;
+    explicit FCampaignDefinitionReader(FString script_library_root);
+
     [[nodiscard]] auto read_source(FStringView source) const -> FCampaignDefinitionReadResult;
     [[nodiscard]] auto read_file(FStringView path) const -> FCampaignDefinitionReadResult;
+  private:
+    FString script_library_root_{};
 };
 }

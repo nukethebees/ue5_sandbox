@@ -121,6 +121,51 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
                              !result.entries[2].error.IsEmpty());
     }
 
+    TEST_METHOD(LoadsHelpersFromTheCatalogLibraryDirectory)
+    {
+        FTemporaryScriptDirectory directory;
+        auto const library_directory{FPaths::Combine(directory.path, TEXT("Libraries"))};
+        IFileManager::Get().MakeDirectory(*library_directory, true);
+
+        auto const helper_source{TEXT("(define (shared-title suffix) "
+                                      "  (string-append \"Shared \" suffix))\n"
+                                      "(define-macro (shared-description text) "
+                                      "  `(description ,text))\n")};
+        auto const level_source{TEXT("(load-script \"level-helpers.scm\")\n"
+                                     "(level (id 'library-level) "
+                                     "       (title (shared-title \"Level\")) "
+                                     "       (shared-description \"From library\") "
+                                     "       (teams (team 'blue)) "
+                                     "       (player 'player) "
+                                     "       (entities (entity 'player 'player-fighter 'blue "
+                                     "                         (position 0 0 0) "
+                                     "                         (rotation 0 0 0))))")};
+        auto const files_written{
+            FFileHelper::SaveStringToFile(
+                helper_source, *FPaths::Combine(library_directory, TEXT("level-helpers.scm"))) &&
+            FFileHelper::SaveStringToFile(level_source,
+                                          *FPaths::Combine(directory.path, TEXT("level.scm")))};
+        if (!TestRunner->TestTrue(TEXT("Library fixtures are written"), files_written)) {
+            return;
+        }
+
+        auto const result{ml::s7::discover_level_scripts(directory.path)};
+        if (!TestRunner->TestTrue(TEXT("Library-backed catalog is valid"),
+                                  result.error.IsEmpty()) ||
+            !TestRunner->TestEqual(TEXT("Only the level is catalogued"), result.entries.Num(), 1) ||
+            !TestRunner->TestTrue(TEXT("Library-backed level is valid"),
+                                  static_cast<bool>(result.entries[0]))) {
+            return;
+        }
+
+        TestRunner->TestEqual(TEXT("Library function supplies the title"),
+                              result.entries[0].definition->metadata.title,
+                              FString{TEXT("Shared Level")});
+        TestRunner->TestEqual(TEXT("Library macro supplies the description"),
+                              result.entries[0].definition->metadata.description,
+                              FString{TEXT("From library")});
+    }
+
     TEST_METHOD(RejectsDuplicateLevelIds)
     {
         FTemporaryScriptDirectory directory;

@@ -5,6 +5,7 @@
 
 #include <Containers/StringConv.h>
 #include <Misc/FileHelper.h>
+#include <Misc/Paths.h>
 
 #include <cmath>
 #include <limits>
@@ -692,9 +693,18 @@ class FDefinitionDecoder final {
 };
 }
 
+FLevelDefinitionReader::FLevelDefinitionReader(FString script_library_root)
+    : script_library_root_{MoveTemp(script_library_root)} {}
+
 auto FLevelDefinitionReader::read_source(FStringView const source) const
     -> FLevelDefinitionReadResult {
-    s7_native::Interpreter interpreter;
+    s7_native::InterpreterOptions options;
+    if (!script_library_root_.IsEmpty()) {
+        auto const converted_root{FTCHARToUTF8{*script_library_root_}};
+        options.script_library_root_utf8 =
+            std::string{converted_root.Get(), static_cast<std::size_t>(converted_root.Length())};
+    }
+    s7_native::Interpreter interpreter{MoveTemp(options)};
     FString expression{TEXT("(begin\n")};
     expression.Append(level_prelude);
     expression.AppendChars(source.GetData(), source.Len());
@@ -723,6 +733,10 @@ auto FLevelDefinitionReader::read_file(FStringView const path) const -> FLevelDe
                     FString::Printf(TEXT("Could not read level script '%s'."), *owned_path)};
     }
 
+    if (script_library_root_.IsEmpty()) {
+        auto const library_root{FPaths::Combine(FPaths::GetPath(owned_path), TEXT("Libraries"))};
+        return FLevelDefinitionReader{library_root}.read_source(source);
+    }
     return read_source(source);
 }
 }
