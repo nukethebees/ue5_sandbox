@@ -495,7 +495,7 @@
       "configurePreset": "debug-game",
       "filter": {
         "include": {
-          "label": "level"
+          "label": "^level$"
         }
       }
     },
