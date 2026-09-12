@@ -20,29 +20,6 @@
     (member hit_items array int32)
     (member instigators array @registry_handle)))
 
-(soa-module entity_death_info
-  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/EntityDeathInfo.h"
-  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/EntityDeathInfo.cpp"
-  :header-include "SpaceGameSimulation/entities/EntityDeathInfo.h"
-  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  (struct EntityDeathInfo
-    :operations (all)
-    :export-specifier SPACEGAMESIMULATION_API
-    (member reasons array @death_reason)
-    (member victims array @registry_handle)
-    (member killers array @registry_handle)
-    (function add void
-      :body ("reasons.Add(reason);" "victims.Add(victim);" "killers.Add(killer);")
-      :definition-in-source true
-      (parameter reason (type-ref @death_reason :suffix " const"))
-      (parameter victim (type-ref @registry_handle :suffix " const"))
-      (parameter killer (type-ref @registry_handle :suffix " const")))
-    (function add void
-      :body ("add(reason, victim, FRegistryEntityHandle{});")
-      :inline true
-      (parameter reason (type-ref @death_reason :suffix " const"))
-      (parameter victim (type-ref @registry_handle :suffix " const")))))
-
 (soa-module test_entity_unique_entity_data_soa
   :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/TestEntityUniqueEntityDataSoA.h"
   :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/TestEntityUniqueEntityDataSoA.cpp"
@@ -97,29 +74,3 @@
       :dependencies (array_fill)
       :definition-in-source true
       (parameter value (type-ref @entity_type :suffix " const")))))
-
-(soa-module registry_entity_handles_soa
-  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/RegistryEntityHandles.h"
-  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/RegistryEntityHandles.cpp"
-  :header-include "SpaceGameSimulation/entities/RegistryEntityHandles.h"
-  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  (struct FRegistryEntityHandles
-    :operations (all)
-    :export-specifier SPACEGAMESIMULATION_API
-    :equivalent-type @registry_handle
-    (member registry_indices array int32)
-    (member generations array int32)
-    (function add void
-      :body ("registry_indices.Add(index);" "generations.Add(generation);")
-      :definition-in-source true
-      (parameter index "int32 const")
-      (parameter generation "int32 const"))
-    (function append_to void
-      :body ("auto const count{num()};" "out.Reserve(out.Num() + count);" "for (int32 i{0}; i < count; ++i) {" "    out.Emplace(registry_indices[i], generations[i]);" "}")
-      :const true
-      :definition-in-source true
-      (parameter out (type-ref @registry_handle_array :suffix "&")))
-    (function to_array @registry_handle_array
-      :body ("TArray<FRegistryEntityHandle> out;" "append_to(out);" "return out;")
-      :const true
-      :definition-in-source true)))

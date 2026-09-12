@@ -163,7 +163,7 @@ void FTestEntityRegistry::queue_entity_updates(ConstView const view,
     queued_entity_update_handles.Append(view.indices);
 
     death_info.validate_array_sizes();
-    queued_death_infos.append_from(death_info);
+    queued_death_infos.append_from(death_info.get_const_view());
 }
 void FTestEntityRegistry::commit_entity_updates() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::commit_entity_updates);

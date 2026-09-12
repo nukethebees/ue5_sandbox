@@ -64,11 +64,10 @@ void TestSimulationDriver::queue_damage(TConstArrayView<FRegistryEntityHandle> c
     auto const n{targets.Num()};
 
     DirectDamageEvents damage_events;
-    damage_events.add_uninitialised(n);
-
-    damage_events.damaged_entities = targets;
-    ml::fill(damage_events.damage_amounts, damage);
-    ml::fill(damage_events.instigators, instigator);
+    damage_events.reserve(n);
+    for (auto const target : targets) {
+        damage_events.add(target, damage, instigator);
+    }
 
     get_registry().queue_direct_damage_events(damage_events);
 }

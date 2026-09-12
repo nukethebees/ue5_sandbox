@@ -189,9 +189,10 @@
   :header "sandbox/simulation/entity_handle.h"
   :pass-by value)
 
-(type registry_handle_array
-  :spelling "TArray<FRegistryEntityHandle>"
-  :header "Containers/Array.h")
+(type native_death_reason
+  :spelling "ml::simulation::DeathReason"
+  :header "sandbox/simulation/entity_types.h"
+  :pass-by value)
 
 (type rotator_3f
   :spelling "FRotator3f"

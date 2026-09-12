@@ -1389,8 +1389,9 @@ void Simulation::commit_spawns() {
     data.integral_biases.AddUninitialized(n_new);
     data.float_biases.AddUninitialized(n_new);
     ml::make_deterministic_biases(
-        TConstArrayView<int32>{new_spawn_entity_handles.registry_handles.registry_indices},
-        TConstArrayView<int32>{new_spawn_entity_handles.registry_handles.generations},
+        TConstArrayView<int32>{new_spawn_entity_handles.registry_handles.registry_indices.data(),
+                               n_new},
+        TConstArrayView<int32>{new_spawn_entity_handles.registry_handles.generations.data(), n_new},
         TArrayView<uint32>{data.integral_biases}.Slice(n_cur, n_new),
         TArrayView<float>{data.float_biases}.Slice(n_cur, n_new));
     auto const navigation_tick_period{get_navigation_tick_period(NavigationRiskTier::Nearby)};

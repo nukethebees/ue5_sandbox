@@ -155,7 +155,7 @@ struct FTraceFixture {
         EntityDeathInfo death_info;
         for (int32 i{}; i < count; ++i) {
             if (alive[i] == 0 && registry.get_alive(handles[i])) {
-                death_info.add(ETestDeathReason::Unknown, handles[i]);
+                death_info.add(ETestDeathReason::Unknown, handles[i], {});
             }
         }
         registry.queue_entity_updates(updates, death_info);

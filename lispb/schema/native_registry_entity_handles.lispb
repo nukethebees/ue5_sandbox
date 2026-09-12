@@ -1,0 +1,7 @@
+(soa-module native_registry_entity_handles
+  :header "native/simulation/include/sandbox/simulation/registry_entity_handles.h"
+  :backend standard-library
+  (struct RegistryEntityHandles
+    :operations (all)
+    (member registry_indices array int32)
+    (member generations array int32)))

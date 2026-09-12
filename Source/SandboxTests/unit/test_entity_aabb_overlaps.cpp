@@ -76,7 +76,7 @@ struct FOverlapFixture {
             updates.entity_types.Add(current.entity_types[handle.index]);
             updates.alive.Add(entity_alive);
             if (entity_alive == 0) {
-                deaths.add(ETestDeathReason::Unknown, handle);
+                deaths.add(ETestDeathReason::Unknown, handle, {});
             }
         }
 

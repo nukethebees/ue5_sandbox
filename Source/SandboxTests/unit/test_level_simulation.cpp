@@ -135,9 +135,9 @@ void prepare_mission(FLevelSimulation& simulation) {
 
 void kill_enemy(FLevelSimulation& simulation) {
     DirectDamageEvents events;
-    events.damaged_entities.Add(simulation.get_capital_ships().get_handle(1));
-    events.instigators.Add(simulation.get_capital_ships().get_handle(0));
-    events.damage_amounts.Add(100);
+    events.add(simulation.get_capital_ships().get_handle(1),
+               100,
+               simulation.get_capital_ships().get_handle(0));
     simulation.get_entity_registry().queue_direct_damage_events(events);
 }
 }
@@ -688,9 +688,9 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     simulation.on_end_tick = [](FLevelSimulation& level) {
         if (level.get_clock().get_completed_ticks() == 3) {
             DirectDamageEvents damage;
-            damage.damaged_entities.Add(level.get_capital_ships().get_handle(1));
-            damage.instigators.Add(level.get_capital_ships().get_handle(0));
-            damage.damage_amounts.Add(MAX_int32);
+            damage.add(level.get_capital_ships().get_handle(1),
+                       MAX_int32,
+                       level.get_capital_ships().get_handle(0));
             level.get_entity_registry().queue_direct_damage_events(damage);
         }
     };
@@ -759,9 +759,9 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     deaths.on_end_tick = [](FLevelSimulation& level) {
         if (level.get_clock().get_completed_ticks() <= 2) {
             DirectDamageEvents damage;
-            damage.damaged_entities.Add(level.get_capital_ships().get_handle(0));
-            damage.instigators.Add(level.get_capital_ships().get_handle(0));
-            damage.damage_amounts.Add(MAX_int32);
+            damage.add(level.get_capital_ships().get_handle(0),
+                       MAX_int32,
+                       level.get_capital_ships().get_handle(0));
             level.get_entity_registry().queue_direct_damage_events(damage);
         }
     };

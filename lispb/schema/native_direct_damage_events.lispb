@@ -1,0 +1,8 @@
+(soa-module native_direct_damage_events
+  :header "native/simulation/include/sandbox/simulation/direct_damage_events.h"
+  :backend standard-library
+  (struct DirectDamageEvents
+    :operations (all)
+    (member damaged_entities array @native_registry_handle)
+    (member damage_amounts array int32)
+    (member instigators array @native_registry_handle)))

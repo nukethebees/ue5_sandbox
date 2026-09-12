@@ -70,10 +70,10 @@ void FWorldlessSimulationTest::queue_damage(TConstArrayView<FRegistryEntityHandl
                                             FRegistryEntityHandle const instigator) {
     auto const count{targets.Num()};
     DirectDamageEvents events;
-    events.add_uninitialised(count);
-    events.damaged_entities = targets;
-    ml::fill(events.damage_amounts, damage);
-    ml::fill(events.instigators, instigator);
+    events.reserve(count);
+    for (auto const target : targets) {
+        events.add(target, damage, instigator);
+    }
     get_registry().queue_direct_damage_events(events);
 }
 
@@ -81,11 +81,10 @@ void FWorldlessSimulationTest::queue_kills(TConstArrayView<FRegistryEntityHandle
                                            FRegistryEntityHandle const instigator) {
     DirectDamageEvents events;
     auto const count{targets.Num()};
-    events.add_uninitialised(count);
-    events.damaged_entities = targets;
-    ml::fill(events.instigators, instigator);
-    for (int32 i{}; i < count; ++i) {
-        events.damage_amounts[i] = FMath::Max(1, get_registry().get_health(targets[i]));
+    events.reserve(count);
+    for (auto const target : targets) {
+        auto const damage{FMath::Max(1, get_registry().get_health(target))};
+        events.add(target, damage, instigator);
     }
     get_registry().queue_direct_damage_events(events);
 }

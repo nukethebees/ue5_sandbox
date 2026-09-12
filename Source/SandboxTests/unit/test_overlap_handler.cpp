@@ -32,7 +32,7 @@ void mark_dead(FTestEntityRegistry& registry, FRegistryEntityHandle const handle
     update.entity_types.Add(current.entity_types[handle.index]);
     update.alive.Add(uint8{0});
     EntityDeathInfo death;
-    death.add(ETestDeathReason::Unknown, handle);
+    death.add(ETestDeathReason::Unknown, handle, {});
     registry.queue_entity_updates({TArray{handle}, update.get_const_view()}, death);
     registry.commit_updates();
 }

@@ -614,7 +614,7 @@ TEST(Generator, RendersCompleteProductionManifest) {
     auto const manifest{load_sources(project.root / target.types, sources)};
     auto const files{render_modules(lower_modules(manifest))};
 
-    EXPECT_EQ(files.size(), 101);
+    EXPECT_EQ(files.size(), 98);
     EXPECT_EQ(files.front().path,
               "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/countdown_timers.h");
     EXPECT_EQ(files.back().path,

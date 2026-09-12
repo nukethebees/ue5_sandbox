@@ -2,6 +2,9 @@
 
 #include <CQTest.h>
 
+#include <algorithm>
+#include <array>
+
 namespace ml::registry_tests {
 auto make_entities(int32 const count, int32 const offset = 0) -> FTestEntityRegistry::EntityData {
     FTestEntityRegistry::EntityData data;
@@ -131,7 +134,7 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
         initial.alive[2] = 0;
         EntityDeathInfo deaths;
         deaths.add(ETestDeathReason::Combat, old_handles[0], old_handles[1]);
-        deaths.add(ETestDeathReason::Unknown, old_handles[2]);
+        deaths.add(ETestDeathReason::Unknown, old_handles[2], {});
         registry_.queue_entity_updates({old_handles, view_of(initial)}, deaths);
         registry_.commit_updates();
         check_counts();
@@ -321,7 +324,7 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
 
         data.alive[0] = 0;
         EntityDeathInfo deaths;
-        deaths.add(ETestDeathReason::Unknown, old_handle);
+        deaths.add(ETestDeathReason::Unknown, old_handle, {});
         registry_.queue_entity_updates({TArray{old_handle}, view_of(data)}, deaths);
         registry_.commit_updates();
         TestRunner->TestEqual(TEXT("Destruction without transform change is not movement"),
@@ -386,7 +389,7 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
         auto const first{registry_.add_entities(view_of(data)).registry_handles.to_array()[0]};
         check_counts();
         EntityDeathInfo deaths;
-        deaths.add(ETestDeathReason::Unknown, first);
+        deaths.add(ETestDeathReason::Unknown, first, {});
         registry_.queue_entity_updates({{}, view_of(data, 0, 0)}, deaths);
         registry_.commit_updates();
         data.alive[0] = 1;
@@ -401,7 +404,7 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
                              reused == FRegistryEntityHandle{0, 1});
         data.alive[0] = 0;
         deaths.reset();
-        deaths.add(ETestDeathReason::Unknown, reused);
+        deaths.add(ETestDeathReason::Unknown, reused, {});
         registry_.queue_entity_updates({TArray{reused}, view_of(data)}, deaths);
         registry_.commit_updates();
         registry_.end_tick();
@@ -498,7 +501,7 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
         data.alive[1] = 0;
         EntityDeathInfo deaths;
         deaths.add(ETestDeathReason::Combat, handles[1], handles[0]);
-        deaths.add(ETestDeathReason::Unknown, handles[0]);
+        deaths.add(ETestDeathReason::Unknown, handles[0], {});
         registry_.queue_entity_updates({handles, view_of(data)}, deaths);
         registry_.commit_updates();
         auto const dead{registry_.get_dead_entities_this_frame()};
@@ -547,14 +550,14 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
                              registry_.analyse_handle({0, 1}) == ERegistryHandleState::Invalid);
         data.alive[0] = 0;
         EntityDeathInfo deaths;
-        deaths.add(ETestDeathReason::Unknown, handles[0]);
+        deaths.add(ETestDeathReason::Unknown, handles[0], {});
         registry_.queue_entity_updates({handles, view_of(data)}, deaths);
         registry_.commit_updates();
         registry_.end_tick();
         registry_.add_entities(view_of(data, 1, 1));
         data.alive[1] = 0;
         deaths.reset();
-        deaths.add(ETestDeathReason::Unknown, handles[1]);
+        deaths.add(ETestDeathReason::Unknown, handles[1], {});
         registry_.queue_entity_updates({TArray{handles[1]}, view_of(data, 1, 1)}, deaths);
         registry_.commit_updates();
         TArray refreshed{FRegistryEntityHandle{}, handles[0], handles[1], handles[2]};
@@ -607,13 +610,16 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
         first.damage_amounts[0] = 999;
         auto const& queued{registry_.get_direct_damage_queue_view()};
         TestRunner->TestEqual(TEXT("Damage batches append"), queued.num(), 3);
-        TestRunner->TestTrue(TEXT("Damage order and values preserved"),
-                             queued.damage_amounts == TArray<int32>{5, 8, 13});
+        TestRunner->TestTrue(
+            TEXT("Damage order and values preserved"),
+            std::ranges::equal(queued.damage_amounts, std::array<int32, 3>{5, 8, 13}));
         TestRunner->TestTrue(TEXT("Damage victims preserved"),
-                             queued.damaged_entities == TArray{handles[1], handles[0], handles[1]});
-        TestRunner->TestTrue(TEXT("Damage instigators preserved"),
-                             queued.instigators ==
-                                 TArray{handles[0], FRegistryEntityHandle{}, handles[0]});
+                             std::ranges::equal(queued.damaged_entities,
+                                                std::array{handles[1], handles[0], handles[1]}));
+        TestRunner->TestTrue(
+            TEXT("Damage instigators preserved"),
+            std::ranges::equal(queued.instigators,
+                               std::array{handles[0], FRegistryEntityHandle{}, handles[0]}));
         registry_.commit_updates();
         TestRunner->TestEqual(TEXT("Commit retains damage queue"), queued.num(), 3);
         registry_.end_tick();
