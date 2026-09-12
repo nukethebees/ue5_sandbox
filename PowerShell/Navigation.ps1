@@ -74,6 +74,8 @@ Commands:
 d=  reset-devs        Hard reset locally checkoutable devN branches to dev.
 
 Unreal build commands:
+  csetup [config]          Prepare this worktree for supported development configurations.
+                           Config may be all, debug-game, or development; default is all.
   Loading dev.ps1 disables MSBuild node reuse for the current user and shell.
   enable-ubt-build-safety  Persist disabled MSBuild node reuse for the current user.
   get-ubt-build-state      List Sandbox CMake, UBT, and UE MSBuild processes.

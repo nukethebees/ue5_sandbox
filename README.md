@@ -57,7 +57,7 @@ the root script:
 
 The leading dot matters: it loads the project's functions into the current session.
 Use `.\dev.ps1 --help` to discover commands without loading them. The initial commands
-are `croot`, `cwt <name>`, `cwb [branch]`, `cplugin <name>`, and `ctests`; `dev-help`
+are `croot`, `cwt <name>`, `cwb [branch]`, `cplugin <name>`, `ctests`, and `csetup`; `dev-help`
 repeats the help after loading. Run `cwb` without a branch to list checked-out branches
 and their worktree directories.
 
@@ -87,14 +87,8 @@ Use that explicit form rather than bare `vcpkg` if a Visual Studio Developer she
 vcpkg copy earlier on `PATH`. To make bare `vcpkg` reliable too, put `C:\\dev\\vcpkg` before the Visual
 Studio vcpkg directory in your user `PATH`.
 
-For a new or reset worktree, install the manifest before the first build:
-
-```powershell
-& "$env:VCPKG_ROOT\\vcpkg.exe" install --x-manifest-root $PWD --triplet x64-windows
-cmake --workflow --preset debug-game
-```
-
-`vcpkg_installed` is generated per worktree and ignored by Git. If a worktree retains a CMake cache
+`vcpkg_installed` is generated per worktree and ignored by Git. CMake installs the required manifest
+dependencies when configuring a preset. If a worktree retains a CMake cache
 from a previous vcpkg location, delete only that worktree's `out/build/<preset>` directory and rerun
 the workflow.
 
@@ -129,6 +123,55 @@ matching Unreal configuration and build `dev-core` (`editor`, `core-tests`, and
 `native-tests`). Each also has a workflow preset, for example `cmake --workflow --preset development`, that
 configures and builds it in one command. The `game` target remains available through a build preset, for example
 `cmake --build --preset development --target game`.
+
+### Preparing a worktree
+
+After setting `VCPKG_ROOT` and `UE_ROOT`, load the development commands and prepare a new or
+reset worktree with:
+
+```powershell
+. .\dev.ps1
+csetup
+```
+
+By default, `csetup` prepares DebugGame and Development. Pass `debug-game` or `development` to
+prepare only one configuration, for example `csetup debug-game`. Each variant configures its build
+tree and installs per-worktree vcpkg dependencies, builds every first-party
+non-Unreal dependency consumed by the Unreal project, and generates Visual Studio project files.
+The Development variant does not build an Unreal target. DebugGame also performs the shared audio
+import described below. Both are safe to rerun after switching branches or changing project
+definitions.
+
+The configuration-specific workflows can also be run directly:
+
+```powershell
+cmake --workflow --preset setup-worktree-debug-game
+cmake --workflow --preset setup-worktree-development
+```
+
+The explicit `worktree-dependencies` build step prepares:
+
+| Dependency | Consumer |
+| --- | --- |
+| `native-memory` | Game and Editor targets through the `NativeMemory` Unreal module |
+| `sandbox-image` | The Editor's `GenLab` module |
+| `sandbox-material-gen` | The `SandboxEditor` module |
+| Generated C++, kernel, and Slate checks | Game and Editor source compilation |
+| Compiled UI-glow material IR | Editor material generation |
+
+Configuration also provisions the manifest's `cpu-features`, `mimalloc`, `gtest`, and
+`nlohmann-json` packages under the worktree's ignored `vcpkg_installed` directory.
+
+Creating audio `.uasset` files requires an Editor commandlet, so the DebugGame setup imports the
+shared audio assets once and may build the project Editor if needed. Set `BEE_AUDIO_ROOT` to the
+directory containing the `sci-fi_ds_2220mb` audio pack. The import can also be run separately with:
+
+```powershell
+cmake --workflow --preset import-game-audio
+```
+
+That workflow builds the DebugGame Editor if needed. When the variable or expected source files are
+unavailable, the commandlet succeeds without creating or replacing the generated audio assets.
 
 To resave project assets and fix redirectors, build `editor` and then run the
 `ResavePackages` commandlet through:
