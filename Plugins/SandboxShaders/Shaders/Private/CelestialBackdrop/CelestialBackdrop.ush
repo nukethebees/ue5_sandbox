@@ -27,6 +27,11 @@ float sbx_celestial_stylise(float value, float const steps) {
     return floor(saturate(value) * intervals + 0.5) / intervals;
 }
 
+float3 sbx_celestial_soft_limit(float3 const colour, float const knee) {
+    float const peak = max(colour.r, max(colour.g, colour.b));
+    return colour / (1.0 + max(peak, 0.0) * max(knee, 0.0));
+}
+
 float sbx_celestial_hive_edges(float3 const direction, float const scale) {
     float3 const weights = pow(abs(direction), 6.0);
     float2 coordinates;
@@ -177,8 +182,9 @@ float3 sbx_celestial_surface(float3 normal_local,
         normal_local, detail_noise, pattern, emission_pattern, emission_scale);
     float const emission_mask = smoothstep(
         saturate(emission_threshold), saturate(emission_threshold + 0.12), emission_source);
-    colour +=
-        emission_colour * emission_mask * max(emission_intensity, 0.0) * (1.0 - daylight * 0.88);
+    float3 const emission = emission_colour * emission_mask * max(emission_intensity, 0.0) *
+                            (1.0 - daylight * 0.88);
+    colour += sbx_celestial_soft_limit(emission, 0.12);
     return colour;
 }
 
@@ -197,14 +203,18 @@ float4 sbx_celestial_rings(float2 const uv,
     float const inner_radius = clamp(inner_radius_fraction, 0.05, 0.98);
     float const ring_width = max(1.0 - inner_radius, 0.001);
     float const radial_position = saturate((radius - inner_radius) / ring_width);
-    float const softness = max(edge_softness, 0.001);
+    float const radial_footprint = max(fwidth(radius), 0.00001);
+    float const softness = max(max(edge_softness, 0.001), radial_footprint * 1.5);
     float const annulus = smoothstep(inner_radius, inner_radius + softness, radius) *
                           (1.0 - smoothstep(1.0 - softness, 1.0, radius));
 
     float const broad_noise = sbx_value_noise(centred * 3.7 + pattern_seed * 0.013);
     float const fine_noise = sbx_value_noise(centred * 17.3 + pattern_seed * 0.031 + 8.4);
-    float const bands = 0.5 + 0.5 * sin(radial_position * max(band_count, 1.0) * 6.2831853 +
-                                        (broad_noise - 0.5) * 4.0);
+    float const band_phase = radial_position * max(band_count, 1.0) * 6.2831853 +
+                             (broad_noise - 0.5) * 4.0;
+    float const band_footprint = fwidth(band_phase);
+    float const band_amplitude = saturate(1.0 - band_footprint / 3.14159265);
+    float const bands = 0.5 + 0.5 * sin(band_phase) * band_amplitude;
     float const band_mask = lerp(1.0, smoothstep(0.18, 0.82, bands), saturate(band_strength));
     float const breakup_mask = lerp(1.0, smoothstep(0.22, 0.78, fine_noise), saturate(breakup));
     float const mask = annulus * band_mask * breakup_mask;

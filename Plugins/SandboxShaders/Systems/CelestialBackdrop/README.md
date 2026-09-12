@@ -53,6 +53,17 @@ under the unusually close camera positions this game can produce.
 6. Enable rings when needed and set their tilt independently. Clouds rotate around world Z; a
    negative speed reverses them and zero pauses them.
 
+Author apparent size by the ratio between radius and camera distance, not by either number alone:
+
+```text
+angular diameter = 2 * atan(body radius / camera distance)
+```
+
+Useful starting points are 5 degrees for a distant secondary body, 15 degrees for a prominent moon,
+and 30--40 degrees for a hero planet that dominates the sky. For example, a 100 km radius at 322 km
+from the combat origin occupies about 34.5 degrees. Increasing radius and distance by the same factor
+preserves its screen size while making the authored scale relationship larger.
+
 Changes made in the Details panel update through the construction path. Runtime code may change the
 public `settings` struct and call `apply_settings()`. Profiles contain appearance only: body radius,
 sun direction, transform, and close-approach policy always remain per actor. Enable `Override Profile
@@ -82,14 +93,24 @@ cmake --build --preset debug-game --target generate-celestial-analytic-material
 - **Clouds:** enablement, day/night colours, altitude, coverage, opacity, breakup, phase, and signed
   degrees-per-second rotation speed.
 - **Atmosphere:** enablement, colour, shell thickness, density, limb intensity, and limb falloff.
-- **Rings:** inner/outer radius, tilt, two-colour gradient, banding, breakup, edge softness,
-  emission, and a cheap aligned surface-shadow approximation.
+- **Rings:** inner/outer radius, tilt, two-colour gradient, derivative-filtered banding, breakup,
+  edge softness, emission, and a cheap aligned surface-shadow approximation.
 - **Close Approach:** enablement and the minimum camera-distance ratio.
 
 The shader showcase uses all four supplied profiles. Earth-like and gas giant use Layered mode;
 Hive world and dark alien use Analytic mode for direct A/B inspection. The real `GameRuntime` map
-uses the analytic path for its distant Hive homeworld. Profiles remain independent of render mode,
-body size, and lighting direction.
+uses the analytic path for its distant Hive homeworld and contains an Earth-like hero scale
+reference: 200 km in diameter, centred about 322 km from the world origin. It occupies approximately
+34.5 degrees from the origin, making its scale unmistakable beside ships. The four bodies in the
+shader showcase are intentionally much smaller from its overview camera so they fit side by side for
+profile comparison. Profiles remain independent of render mode, body size, and lighting direction.
+
+World-space scale alone does not make rendering more expensive: the proxy retains the same vertex
+count and draw count. Cost primarily follows covered screen pixels and overdraw. A 35-degree analytic
+body therefore costs more than a 5-degree body because it shades more pixels, while moving a planet
+farther away and increasing its radius proportionally has essentially the same rendering cost.
+Layered bodies add separate surface, cloud, atmosphere, and ring draws; use Analytic mode for large
+hero bodies unless opaque depth behaviour is required.
 
 ## Close approach
 
