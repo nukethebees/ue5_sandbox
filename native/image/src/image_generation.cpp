@@ -711,10 +711,10 @@ auto make_energy_filaments_request() -> GenerationRequest {
                                             .warp_octave_count = 3,
                                             .persistence = 0.55f,
                                             .tileable = true};
-    energy_filaments.post_process = {.contrast = 1.8f,
+    energy_filaments.post_process = {.contrast = 1.5f,
                                      .threshold_enabled = true,
-                                     .threshold = 0.53f,
-                                     .threshold_softness = 0.22f};
+                                     .threshold = 0.72f,
+                                     .threshold_softness = 0.16f};
     return energy_filaments;
 }
 
