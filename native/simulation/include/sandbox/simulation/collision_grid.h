@@ -1,16 +1,9 @@
 #pragma once
 
-#include <cstddef>
+#include "sandbox/simulation/vector_types.h"
 
 namespace ml::simulation::collision {
-struct Vec3f {
-    float x{};
-    float y{};
-    float z{};
-
-    auto operator[](std::size_t index) noexcept -> float&;
-    auto operator[](std::size_t index) const noexcept -> float;
-};
+using Vec3f = Vector3f;
 
 struct CellCoord {
     int x{};

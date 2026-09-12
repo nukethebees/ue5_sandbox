@@ -74,24 +74,6 @@ auto clip_segment(Vec3f const start,
 }
 }
 
-auto Vec3f::operator[](std::size_t const index) noexcept -> float& {
-    if (index == 0) {
-        return x;
-    }
-    if (index == 1) {
-        return y;
-    }
-    return z;
-}
-auto Vec3f::operator[](std::size_t const index) const noexcept -> float {
-    if (index == 0) {
-        return x;
-    }
-    if (index == 1) {
-        return y;
-    }
-    return z;
-}
 auto CellCoord::operator[](std::size_t const index) noexcept -> int& {
     if (index == 0) {
         return x;

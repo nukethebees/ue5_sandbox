@@ -51,7 +51,8 @@ void render_arguments(std::ostringstream& out, FixedLayout const& layout) {
 auto lower_native_soa(SoaSchema const& schema,
                       std::map<std::string, SoaSchema const*> const& schemas,
                       std::map<std::string, CppType> const& types,
-                      bool const allow_equivalent_type) -> LoweredSoa {
+                      bool const allow_equivalent_type,
+                      std::span<std::string const> const equivalent_members) -> LoweredSoa {
     if (schema.fixed || !schema.functions.empty() || !schema.mutable_view_functions.empty() ||
         !schema.using_declarations.empty() ||
         (schema.equivalent_type.has_value() && !allow_equivalent_type)) {
@@ -62,6 +63,10 @@ auto lower_native_soa(SoaSchema const& schema,
     auto const equivalent_type{schema.equivalent_type.has_value()
                                    ? std::optional{resolve_type(*schema.equivalent_type, types)}
                                    : std::nullopt};
+    if (equivalent_type.has_value() && equivalent_members.size() != layout.members.size()) {
+        throw std::invalid_argument{
+            "Standard-library SoA equivalent members must match its columns"};
+    }
     for (auto const& leaf : layout.leaves) {
         if (leaf.type.spelling == "bool") {
             throw std::invalid_argument{"Standard-library SoA requires contiguous columns; "
@@ -171,7 +176,7 @@ auto lower_native_soa(SoaSchema const& schema,
                 out << "void set(size_type const index, equivalent_type const value) const { "
                        "set(index";
                 for (std::size_t index{}; index < layout.members.size(); ++index) {
-                    out << ", value." << layout.members[index].schema->name.front();
+                    out << ", value." << equivalent_members[index];
                 }
                 out << "); }\n";
             }

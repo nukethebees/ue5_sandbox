@@ -3,6 +3,9 @@
 #include "lowered_soa.h"
 #include "resolved_member.h"
 
+#include <span>
+#include <string>
+
 namespace codegen::detail {
 
 auto resolve_members(SoaSchema const& schema, std::map<std::string, CppType> const& types)
@@ -51,6 +54,7 @@ auto lower_single_allocation_nodes(SoaSchema const& schema,
 auto lower_native_soa(SoaSchema const& schema,
                       std::map<std::string, SoaSchema const*> const& schemas,
                       std::map<std::string, CppType> const& types,
-                      bool allow_equivalent_type = false) -> LoweredSoa;
+                      bool allow_equivalent_type = false,
+                      std::span<std::string const> equivalent_members = {}) -> LoweredSoa;
 
 } // namespace codegen::detail

@@ -93,4 +93,5 @@ native/simulation/include/sandbox/simulation/entity_overlaps.h
 native/simulation/include/sandbox/simulation/fighter_order_queue.h
 native/simulation/include/sandbox/simulation/fighter_reassignment.h
 native/simulation/include/sandbox/simulation/registry_entity_handles.h
+native/simulation/include/sandbox/simulation/rotators3f.h
 native/simulation/include/sandbox/simulation/vectors3f.h

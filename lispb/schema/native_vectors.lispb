@@ -5,4 +5,5 @@
   :storage-name Vectors3f
   :value-type float
   :components (xs ys zs)
+  :equivalent-members (x y z)
   :equivalent-type @native_vector_3f)

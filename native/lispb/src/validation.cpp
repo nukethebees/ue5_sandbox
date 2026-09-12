@@ -884,6 +884,22 @@ void validate_vector(VectorModuleSchema const& module,
                                         "' components must have unique initials"};
         }
     }
+    if (!module.equivalent_members.empty()) {
+        if (module.equivalent_members.size() != module.components.size()) {
+            throw std::invalid_argument{"Vector module '" + module.settings.name +
+                                        "' equivalent members must match its components"};
+        }
+        require_unique_names(module.equivalent_members,
+                             "Vector module '" + module.settings.name + "' equivalent members");
+        for (auto const& member : module.equivalent_members) {
+            require_identifier(member,
+                               "Vector module '" + module.settings.name + "' equivalent member");
+        }
+    }
+    if (module.backend == SoaBackend::standard_library && module.equivalent_members.empty()) {
+        throw std::invalid_argument{"Standard-library vector module '" + module.settings.name +
+                                    "' must declare equivalent members"};
+    }
     validate_type(module.value_type, types, "Vector module '" + module.settings.name + "' value");
     validate_type(
         module.equivalent_type, types, "Vector module '" + module.settings.name + "' equivalent");

@@ -11,9 +11,12 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/level_telemetry_snapshot.h
   include/sandbox/simulation/line_traces.h
   include/sandbox/simulation/registry_entity_handles.h
+  include/sandbox/simulation/rotator_types.h
+  include/sandbox/simulation/rotators3f.h
   include/sandbox/simulation/simulation_config.h
   include/sandbox/simulation/trace_hits.h
   include/sandbox/simulation/vector_types.h
+  include/sandbox/simulation/vector_math.h
   include/sandbox/simulation/vectors3f.h
   src/collision_grid.cpp
   src/deterministic_bias.cpp

@@ -21,7 +21,7 @@ auto lower_vector_module(VectorModuleSchema const& module,
             .copy_element_memberwise = true,
         };
         std::map<std::string, SoaSchema const*> const schemas{{schema.name, &schema}};
-        auto lowered{lower_native_soa(schema, schemas, types, true)};
+        auto lowered{lower_native_soa(schema, schemas, types, true, module.equivalent_members)};
         auto definitions{std::move(lowered.header)};
         if (module.settings.namespace_name.has_value()) {
             definitions = {Namespace{*module.settings.namespace_name, std::move(definitions)}};
@@ -72,8 +72,10 @@ auto lower_vector_module(VectorModuleSchema const& module,
     std::vector<std::string> set_body;
     std::vector<std::string> data_pointers;
     static std::vector<std::string> const axes{"X", "Y", "Z"};
+    auto const& equivalent_members{module.equivalent_members.empty() ? axes
+                                                                     : module.equivalent_members};
     for (std::size_t index{0}; index < module.components.size(); ++index) {
-        equivalent_arguments.push_back("value." + axes[index]);
+        equivalent_arguments.push_back("value." + equivalent_members[index]);
         set_body.push_back(module.components[index] +
                            "[i] = " + std::string(1, module.components[index].front()) + ";");
         data_pointers.push_back(module.components[index] + ".GetData()");
