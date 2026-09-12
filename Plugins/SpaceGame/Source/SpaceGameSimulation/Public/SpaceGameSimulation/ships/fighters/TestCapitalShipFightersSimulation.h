@@ -1,4 +1,6 @@
 #pragma once
+#include <sandbox/simulation/navigation_telemetry.h>
+
 #include <SpaceGameSimulation/simulation/SystemReadViews.h>
 
 #include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>
@@ -41,19 +43,7 @@ namespace ml::test_capital_ship_fighters {
 class CommandInterface;
 class PhaseInterface;
 
-struct FNavigationTelemetrySnapshot {
-    int32 separating_fighter_count{};
-    int32 avoiding_fighter_count{};
-    int32 clear_risk_count{};
-    int32 nearby_risk_count{};
-    int32 active_risk_count{};
-    int32 immediate_risk_count{};
-    int32 separation_query_count{};
-    int32 separation_candidate_count{};
-    int32 dense_direction_selection_count{};
-    int32 steering_memory_fighter_count{};
-    int32 hard_trace_count{};
-};
+using FNavigationTelemetrySnapshot = simulation::fighters::NavigationTelemetrySnapshot;
 
 struct SPACEGAMESIMULATION_API Simulation {
     using RegistryEntityData = ml::entity_registry::EntityData;
