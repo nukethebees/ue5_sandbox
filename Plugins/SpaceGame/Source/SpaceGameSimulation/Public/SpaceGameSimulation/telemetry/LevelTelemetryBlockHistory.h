@@ -1,29 +1,12 @@
 #pragma once
 
+#include <sandbox/simulation/level_telemetry_block_history_types.h>
+
 #include "SpaceGameSimulation/memory/GameMemory.h"
 #include "SpaceGameSimulation/telemetry/LevelTelemetryHistory.h"
 
-struct FLevelTelemetryHistoryConfig {
-    inline static constexpr SIZE_T default_block_bytes{10u * 1024u * 1024u};
-
-    SIZE_T block_bytes{default_block_bytes};
-};
-
-struct FLevelTelemetryBlockHistoryStats {
-    SIZE_T configured_block_bytes{};
-    SIZE_T layout_bytes_per_block{};
-    int32 rows_per_block{};
-    int32 acquired_block_count{};
-    int32 retained_block_count{};
-    int32 peak_block_count{};
-    int32 total_sample_capacity{};
-    SIZE_T total_byte_capacity{};
-    int32 used_sample_count{};
-    SIZE_T used_payload_bytes{};
-    int32 unused_samples_in_final_block{};
-    SIZE_T unused_payload_bytes_in_final_block{};
-    SIZE_T fixed_layout_overhead_bytes{};
-};
+using FLevelTelemetryHistoryConfig = ml::simulation::LevelTelemetryHistoryConfig;
+using FLevelTelemetryBlockHistoryStats = ml::simulation::LevelTelemetryBlockHistoryStats;
 
 class SPACEGAMESIMULATION_API FLevelTelemetryBlockHistory {
   public:

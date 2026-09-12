@@ -23,6 +23,7 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/frame_trace_hits.h
   include/sandbox/simulation/frame_vectors3f.h
   include/sandbox/simulation/laser_source.h
+  include/sandbox/simulation/level_telemetry_block_history_types.h
   include/sandbox/simulation/level_telemetry_current_state.h
   include/sandbox/simulation/level_telemetry_history_stats.h
   include/sandbox/simulation/level_telemetry_run_data.h
