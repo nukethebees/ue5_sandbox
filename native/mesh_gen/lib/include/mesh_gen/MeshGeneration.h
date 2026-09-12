@@ -97,11 +97,17 @@ struct HexTileParameters {
     bool pointy_top{};
 };
 
+enum class HexFrameUvMode : std::uint8_t {
+    per_face,
+    perimeter,
+};
+
 struct HexFrameParameters {
     float outer_radius{50.0f};
     float wall_thickness{10.0f};
     float depth{20.0f};
     bool pointy_top{};
+    HexFrameUvMode uv_mode{HexFrameUvMode::per_face};
 };
 
 struct HoneycombPanelParameters {

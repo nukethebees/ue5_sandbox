@@ -122,6 +122,8 @@ auto kind_name(material_synth::NodeKind const kind) -> std::string_view {
             return "saturate";
         case sample:
             return "sample";
+        case time:
+            return "time";
         case custom:
             return "custom";
         case vector_constructor:
@@ -184,7 +186,11 @@ void dump_ir(std::ostream& stream, material_synth::MaterialIR const& material) {
         stream << "  [" << index << "] " << parameter.name << ' ' << type_name(parameter.type)
                << " node=" << parameter.node.index;
         if (parameter.type == material_synth::ValueType::texture) {
-            stream << " default=" << parameter.texture_path;
+            auto const sampler{parameter.texture_sampler_type ==
+                                       material_synth::TextureSamplerType::linear_grayscale
+                                   ? "linear-grayscale"
+                                   : "linear-color"};
+            stream << " default=" << parameter.texture_path << " sampler=" << sampler;
         } else {
             stream << " default=[";
             auto const components{material_synth::component_count(parameter.type)};

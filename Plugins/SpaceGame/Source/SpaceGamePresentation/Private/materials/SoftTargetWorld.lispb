@@ -7,14 +7,90 @@
   (disable-depth-test true)
   (usage instanced-static-meshes)
 
+  (parameter texture PlasmaMask
+    "/SpaceGame/UI/InGame/WorldMarkers/soft_target_mask"
+    :sampler linear-grayscale)
+  (parameter scalar FarEmissive 0.6)
+  (parameter scalar NearEmissive 6.0)
+  (parameter scalar LockedEmissive 24.0)
+  (parameter scalar FlashEmissive 45.0)
+  (parameter scalar FarOpacityScale 0.22)
+  (parameter scalar PlasmaSpeed 0.08)
+  (parameter scalar PlasmaStrength 0.30)
+  (parameter scalar SegmentGap 0.08)
+
   (let red (per-instance-custom-data 0))
   (let green (per-instance-custom-data 1))
   (let blue (per-instance-custom-data 2))
   (let opacity (per-instance-custom-data 3))
-  (let intensity (per-instance-custom-data 4))
+  (let pulse (per-instance-custom-data 4))
   (let range_alpha (per-instance-custom-data 5))
-  (let colour (float3 red green blue))
-  (let range_intensity (lerp 1.0 2.0 (saturate range_alpha)))
+  (let uv (texcoord 0))
+  (let game_time (time))
 
-  (emissive (* colour intensity range_intensity 2.0))
-  (opacity opacity))
+  (emissive
+    (custom float3
+      ((Plasma texture PlasmaMask)
+       (UV float2 uv)
+       (GameTime float game_time)
+       (Red float red)
+       (Green float green)
+       (Blue float blue)
+       (Pulse float pulse)
+       (RangeAlpha float range_alpha)
+       (FarEnergy float FarEmissive)
+       (NearEnergy float NearEmissive)
+       (LockedEnergy float LockedEmissive)
+       (FlashEnergy float FlashEmissive)
+       (Speed float PlasmaSpeed)
+       (MaximumPlasmaStrength float PlasmaStrength)
+       (Gap float SegmentGap))
+      :description "Segmented soft-target plasma emissive"
+      "float range = saturate(RangeAlpha);\n"
+      "float smooth_range = range * range * (3.0 - 2.0 * range);\n"
+      "float buildup = smooth_range * smooth_range;\n"
+      "float locked = step(0.999, range);\n"
+      "float energy = lerp(FarEnergy, NearEnergy, buildup);\n"
+      "energy = lerp(energy, LockedEnergy, locked);\n"
+      "energy = lerp(energy, FlashEnergy, saturate(Pulse) * locked);\n"
+      "float side_u = frac(UV.x * 6.0);\n"
+      "float corner_distance = min(side_u, 1.0 - side_u);\n"
+      "float segment = smoothstep(Gap * 0.5, Gap, corner_distance);\n"
+      "float front_surface = step(0.099, UV.y) * step(UV.y, 0.901);\n"
+      "float front_v = saturate((UV.y - 0.1) / 0.8);\n"
+      "float ribbon_edge = min(front_v, 1.0 - front_v);\n"
+      "float body = smoothstep(0.0, 0.12, ribbon_edge);\n"
+      "float core = 1.0 - smoothstep(0.04, 0.30, abs(front_v - 0.5));\n"
+      "float side_surface = 1.0 - front_surface;\n"
+      "float surface_profile = front_surface * (0.35 * body + 0.65 * core);\n"
+      "surface_profile += side_surface * 0.18;\n"
+      "float2 plasma_uv_a = float2(frac(UV.x * 2.0 + GameTime * Speed),\n"
+      "                            frac(UV.y * 1.75 + GameTime * 0.025));\n"
+      "float2 plasma_uv_b = float2(frac(UV.x * 3.0 - GameTime * Speed * 0.625 + 0.37),\n"
+      "                            frac(1.0 - UV.y * 2.25 + GameTime * 0.017));\n"
+      "float plasma_a = Texture2DSample(Plasma, PlasmaSampler, plasma_uv_a).r;\n"
+      "float plasma_b = Texture2DSample(Plasma, PlasmaSampler, plasma_uv_b).r;\n"
+      "float plasma = saturate(plasma_a * 0.65 + plasma_b * 0.55 - 0.20);\n"
+      "float plasma_strength = lerp(0.05, MaximumPlasmaStrength, buildup);\n"
+      "float shimmer = lerp(1.0 - plasma_strength, 1.0 + plasma_strength, plasma);\n"
+      "return float3(Red, Green, Blue) * energy * segment * surface_profile * shimmer;\n"))
+  (opacity
+    (custom float
+      ((UV float2 uv)
+       (Opacity float opacity)
+       (RangeAlpha float range_alpha)
+       (FarScale float FarOpacityScale)
+       (Gap float SegmentGap))
+      :description "Segmented soft-target range opacity"
+      "float range = saturate(RangeAlpha);\n"
+      "float smooth_range = range * range * (3.0 - 2.0 * range);\n"
+      "float buildup = smooth_range * smooth_range;\n"
+      "float side_u = frac(UV.x * 6.0);\n"
+      "float corner_distance = min(side_u, 1.0 - side_u);\n"
+      "float segment = smoothstep(Gap * 0.5, Gap, corner_distance);\n"
+      "float front_surface = step(0.099, UV.y) * step(UV.y, 0.901);\n"
+      "float front_v = saturate((UV.y - 0.1) / 0.8);\n"
+      "float ribbon_edge = min(front_v, 1.0 - front_v);\n"
+      "float body = smoothstep(0.0, 0.12, ribbon_edge);\n"
+      "float surface_profile = front_surface * body + (1.0 - front_surface) * 0.35;\n"
+      "return saturate(Opacity * lerp(FarScale, 1.0, buildup) * segment * surface_profile);\n")))

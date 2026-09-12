@@ -175,6 +175,10 @@ auto validate_request(GenerationRequest const& request) -> std::string {
             if (request.hex_frame.wall_thickness >= request.hex_frame.outer_radius) {
                 return "Hex-frame wall thickness must be less than its outer radius.";
             }
+            if (request.hex_frame.uv_mode < HexFrameUvMode::per_face ||
+                request.hex_frame.uv_mode > HexFrameUvMode::perimeter) {
+                return "Hex-frame UV mode is invalid.";
+            }
             break;
         case Shape::honeycomb_panel:
             if (request.honeycomb_panel.rows < 1 || request.honeycomb_panel.columns < 1 ||
@@ -282,7 +286,10 @@ auto describe_request(GenerationRequest const& request) -> std::string {
                         << format_number(request.hex_frame.outer_radius)
                         << ";wall_thickness=" << format_number(request.hex_frame.wall_thickness)
                         << ";depth=" << format_number(request.hex_frame.depth)
-                        << ";pointy_top=" << (request.hex_frame.pointy_top ? "true" : "false");
+                        << ";pointy_top=" << (request.hex_frame.pointy_top ? "true" : "false")
+                        << ";uv_mode="
+                        << (request.hex_frame.uv_mode == HexFrameUvMode::perimeter ? "perimeter"
+                                                                                   : "per_face");
             break;
         case Shape::honeycomb_panel:
             description << "honeycomb_panel;rows=" << request.honeycomb_panel.rows

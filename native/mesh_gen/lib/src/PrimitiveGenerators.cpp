@@ -25,20 +25,35 @@ inline constexpr auto pi{std::numbers::pi_v<float>};
 inline constexpr auto two_pi{2.0f * pi};
 inline constexpr std::int32_t hex_side_count{6};
 
+void append_quad_with_uvs(MeshData& mesh_data,
+                          Vec3f const first,
+                          Vec3f const second,
+                          Vec3f const third,
+                          Vec3f const fourth,
+                          Vec3f const normal,
+                          std::array<Vec2f, 4> const& uvs) {
+    auto const base_index{static_cast<std::uint32_t>(mesh_data.positions.size())};
+    mesh_data.positions.insert(mesh_data.positions.end(), {first, second, third, fourth});
+    mesh_data.normals.insert(mesh_data.normals.end(), {normal, normal, normal, normal});
+    mesh_data.uvs.insert(mesh_data.uvs.end(), uvs.begin(), uvs.end());
+    mesh_data.indices.insert(
+        mesh_data.indices.end(),
+        {base_index, base_index + 2, base_index + 1, base_index, base_index + 3, base_index + 2});
+}
+
 void append_quad(MeshData& mesh_data,
                  Vec3f const first,
                  Vec3f const second,
                  Vec3f const third,
                  Vec3f const fourth,
                  Vec3f const normal) {
-    auto const base_index{static_cast<std::uint32_t>(mesh_data.positions.size())};
-    mesh_data.positions.insert(mesh_data.positions.end(), {first, second, third, fourth});
-    mesh_data.normals.insert(mesh_data.normals.end(), {normal, normal, normal, normal});
-    mesh_data.uvs.insert(mesh_data.uvs.end(),
-                         {{0.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, 0.0f}, {0.0f, 0.0f}});
-    mesh_data.indices.insert(
-        mesh_data.indices.end(),
-        {base_index, base_index + 2, base_index + 1, base_index, base_index + 3, base_index + 2});
+    append_quad_with_uvs(mesh_data,
+                         first,
+                         second,
+                         third,
+                         fourth,
+                         normal,
+                         {{{0.0f, 1.0f}, {1.0f, 1.0f}, {1.0f, 0.0f}, {0.0f, 0.0f}}});
 }
 
 void add_box_face(MeshData& mesh_data,
@@ -747,6 +762,49 @@ auto generate_hex_frame(HexFrameParameters const& parameters) -> MeshData {
         auto face_normal{normalize(outer_front[current] + outer_front[next])};
         face_normal.z = 0.0f;
         face_normal = normalize(face_normal);
+        if (parameters.uv_mode == HexFrameUvMode::perimeter) {
+            auto const u0{static_cast<float>(side_index) / static_cast<float>(hex_side_count)};
+            auto const u1{static_cast<float>(side_index + 1) / static_cast<float>(hex_side_count)};
+            constexpr float front_outer_v{0.1f};
+            constexpr float front_inner_v{0.9f};
+            append_quad_with_uvs(mesh_data,
+                                 outer_front[current],
+                                 outer_front[next],
+                                 inner_front[next],
+                                 inner_front[current],
+                                 z_axis,
+                                 {{{u0, front_outer_v},
+                                   {u1, front_outer_v},
+                                   {u1, front_inner_v},
+                                   {u0, front_inner_v}}});
+            append_quad_with_uvs(mesh_data,
+                                 outer_back[current],
+                                 inner_back[current],
+                                 inner_back[next],
+                                 outer_back[next],
+                                 -z_axis,
+                                 {{{u0, front_outer_v},
+                                   {u0, front_inner_v},
+                                   {u1, front_inner_v},
+                                   {u1, front_outer_v}}});
+            append_quad_with_uvs(
+                mesh_data,
+                outer_back[current],
+                outer_back[next],
+                outer_front[next],
+                outer_front[current],
+                face_normal,
+                {{{u0, 0.0f}, {u1, 0.0f}, {u1, front_outer_v}, {u0, front_outer_v}}});
+            append_quad_with_uvs(
+                mesh_data,
+                inner_back[current],
+                inner_front[current],
+                inner_front[next],
+                inner_back[next],
+                -face_normal,
+                {{{u0, 1.0f}, {u0, front_inner_v}, {u1, front_inner_v}, {u1, 1.0f}}});
+            continue;
+        }
         append_quad(mesh_data,
                     outer_front[current],
                     outer_front[next],

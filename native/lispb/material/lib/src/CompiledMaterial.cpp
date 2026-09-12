@@ -154,6 +154,7 @@ void write_node(Writer& writer, Node const& node) {
     writer.write_size(node.parameter_index);
     writer.write_u32(node.coordinate_index);
     writer.write_u32(node.instance_data_index);
+    writer.write_u8(static_cast<std::uint8_t>(node.texture_sampler_type));
     writer.write_string(node.description);
     writer.write_string(node.code);
     writer.write_size(node.custom_inputs.size());
@@ -178,6 +179,14 @@ auto read_value_type(Reader& reader) -> std::expected<ValueType, std::string> {
         return std::unexpected{"invalid material value type"};
     }
     return static_cast<ValueType>(*value);
+}
+
+auto read_texture_sampler_type(Reader& reader) -> std::expected<TextureSamplerType, std::string> {
+    auto const value{reader.read_u8()};
+    if (!value || *value > static_cast<std::uint8_t>(TextureSamplerType::linear_grayscale)) {
+        return std::unexpected{"invalid texture sampler type"};
+    }
+    return static_cast<TextureSamplerType>(*value);
 }
 
 auto read_node(Reader& reader) -> std::expected<Node, std::string> {
@@ -214,17 +223,19 @@ auto read_node(Reader& reader) -> std::expected<Node, std::string> {
     auto const parameter{reader.read_size(maximum_collection_size)};
     auto const coordinate{reader.read_u32()};
     auto const instance_data{reader.read_u32()};
+    auto const texture_sampler{read_texture_sampler_type(reader)};
     auto description{reader.read_string()};
     auto code{reader.read_string()};
     auto const custom_input_count{reader.read_size(maximum_collection_size)};
-    if (!components || !parameter || !coordinate || !instance_data || !description || !code ||
-        !custom_input_count) {
+    if (!components || !parameter || !coordinate || !instance_data || !texture_sampler ||
+        !description || !code || !custom_input_count) {
         return std::unexpected{"malformed material node payload"};
     }
     node.component_count = *components;
     node.parameter_index = *parameter;
     node.coordinate_index = *coordinate;
     node.instance_data_index = *instance_data;
+    node.texture_sampler_type = *texture_sampler;
     node.description = std::move(*description);
     node.code = std::move(*code);
     node.custom_inputs.reserve(*custom_input_count);
@@ -315,6 +326,7 @@ auto serialize(CompiledMaterial const& compiled)
     for (auto const& parameter : compiled.material.parameters) {
         writer.write_string(parameter.name);
         writer.write_u8(static_cast<std::uint8_t>(parameter.type));
+        writer.write_u8(static_cast<std::uint8_t>(parameter.texture_sampler_type));
         for (double const value : parameter.default_value) {
             writer.write_double(value);
         }
@@ -401,10 +413,13 @@ auto deserialize(std::span<std::uint8_t const> const bytes)
     for (std::size_t index{}; index < *parameter_count; ++index) {
         auto parameter_name{reader.read_string()};
         auto const type{read_value_type(reader)};
-        if (!parameter_name || !type) {
+        auto const texture_sampler{read_texture_sampler_type(reader)};
+        if (!parameter_name || !type || !texture_sampler) {
             return std::unexpected{"malformed material parameter"};
         }
-        Parameter parameter{.name = std::move(*parameter_name), .type = *type};
+        Parameter parameter{.name = std::move(*parameter_name),
+                            .type = *type,
+                            .texture_sampler_type = *texture_sampler};
         for (double& value : parameter.default_value) {
             auto const stored{reader.read_double()};
             if (!stored) {

@@ -88,6 +88,8 @@ sampling, and output routing remain visible as native expressions.
 backend lowers them to binary expression chains. `float2`, `float3`, and `float4` accept scalar
 expressions as components while literal-only forms remain compact constant nodes. `(time)` returns
 pause-respecting game time in seconds, and `(sin value)` / `(cos value)` use radians.
+Texture parameters may select `:sampler linear-color` or `:sampler linear-grayscale`; linear colour
+remains the default.
 
 See
 `Plugins/SandboxUI/Source/SandboxUI/Private/materials/UiGlowComposite.lispb` for the

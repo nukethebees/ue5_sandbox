@@ -127,7 +127,11 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
             !valid_handle(material, parameter.node) ||
             material.nodes[parameter.node.index].kind != NodeKind::parameter ||
             material.nodes[parameter.node.index].parameter_index != index ||
-            material.nodes[parameter.node.index].type != parameter.type) {
+            material.nodes[parameter.node.index].type != parameter.type ||
+            parameter.texture_sampler_type < TextureSamplerType::linear_color ||
+            parameter.texture_sampler_type > TextureSamplerType::linear_grayscale ||
+            material.nodes[parameter.node.index].texture_sampler_type !=
+                parameter.texture_sampler_type) {
             report(diagnostics,
                    parameter.span,
                    "malformed parameter node for '" + parameter.name + "'");
@@ -228,8 +232,14 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
                 !valid_handle(material, node.inputs[1]) ||
                 material.nodes[node.inputs[0].index].type != ValueType::texture ||
                 material.nodes[node.inputs[1].index].type != ValueType::float2 ||
-                node.type != ValueType::float4) {
+                node.type != ValueType::float4 ||
+                node.texture_sampler_type !=
+                    material.nodes[node.inputs[0].index].texture_sampler_type) {
                 report(diagnostics, node.span, "malformed texture sample node");
+            }
+        } else if (node.kind == NodeKind::time) {
+            if (node.type != ValueType::float1 || !node.inputs.empty()) {
+                report(diagnostics, node.span, "malformed time node");
             }
         } else if (node.kind == NodeKind::custom) {
             std::set<std::string> input_names;

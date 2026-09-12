@@ -707,7 +707,10 @@ void FHUDManager::add_world_soft_target(FRegistryEntityHandle const handle,
         return;
     }
 
-    auto const color{FMath::Lerp(neutral_color, in_range_color, clamped_range_alpha)};
+    auto const smooth_range{clamped_range_alpha * clamped_range_alpha *
+                            (3.0f - 2.0f * clamped_range_alpha)};
+    auto const color_alpha{smooth_range * smooth_range};
+    auto const color{FMath::Lerp(neutral_color, in_range_color, color_alpha)};
     auto const opacity{
         FMath::Clamp((entity_overlay_settings_.soft_target.opacity +
                       pulse * entity_overlay_settings_.soft_target.pulse_opacity_boost) *
@@ -720,8 +723,7 @@ void FHUDManager::add_world_soft_target(FRegistryEntityHandle const handle,
     instance_custom_data[ml::soft_target_world::color_green_index] = color.G;
     instance_custom_data[ml::soft_target_world::color_blue_index] = color.B;
     instance_custom_data[ml::soft_target_world::opacity_index] = opacity;
-    instance_custom_data[ml::soft_target_world::intensity_index] =
-        1.0f + FMath::Clamp(pulse, 0.0f, 1.0f);
+    instance_custom_data[ml::soft_target_world::pulse_index] = FMath::Clamp(pulse, 0.0f, 1.0f);
     instance_custom_data[ml::soft_target_world::range_alpha_index] = clamped_range_alpha;
     custom_data.Append(instance_custom_data, ml::soft_target_world::custom_data_count);
 }
