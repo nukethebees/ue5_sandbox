@@ -1,0 +1,11 @@
+(material M_SpaceEnergyFieldDisplay
+  (asset "/SandboxShaders/Experiments/SpaceEnergyField/M_SpaceEnergyFieldDisplay")
+  (adopt-existing true)
+  (domain surface)
+  (blend opaque)
+  (shading unlit)
+  (two-sided true)
+
+  (parameter texture FieldTexture "/Engine/EngineResources/DefaultTexture")
+
+  (emissive (sample FieldTexture (texcoord 0))))

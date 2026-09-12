@@ -9,15 +9,13 @@
   (parameter scalar PreserveCorePixels 0.0)
 
   (let uv (texcoord 0))
+  (let core_alpha (swizzle (sample CoreTexture uv) a))
+  (let energy (swizzle (sample GlowEnergy uv) r))
+  (let preserve_mask
+    (custom float
+      ((Preserve float PreserveCorePixels)
+       (CoreAlpha float core_alpha))
+      :description "Strict core-pixel preservation mask"
+      "return Preserve > 0.5 && CoreAlpha > 0.0 ? 0.0 : 1.0;"))
 
-  (emissive
-    (custom float3
-      ((Energy texture GlowEnergy)
-       (Core texture CoreTexture)
-       (UV float2 uv)
-       (Color float4 GlowColor)
-       (Preserve float PreserveCorePixels))
-      :description "Additive glow with optional strict core-pixel preservation"
-      "float core_alpha = Texture2DSample(Core, CoreSampler, UV).a;\n"
-      "float energy = Texture2DSample(Energy, EnergySampler, UV).r;\n"
-      "return Preserve > 0.5 && core_alpha > 0.0 ? float3(0, 0, 0) : energy * Color.rgb;\n")))
+  (emissive (* energy (swizzle GlowColor rgb) preserve_mask)))

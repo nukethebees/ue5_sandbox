@@ -1,0 +1,42 @@
+(material M_EnergyShield
+  (asset "/SandboxShaders/Experiments/EnergyShield/M_EnergyShield")
+  (adopt-existing true)
+  (domain surface)
+  (blend translucent)
+  (shading unlit)
+  (two-sided true)
+
+  (parameter color BaseColour 0.0 0.12 0.45 1.0)
+  (parameter color EdgeColour 0.05 0.95 1.0 1.0)
+  (parameter scalar HexScale 18.0)
+  (parameter scalar GridWidth 0.08)
+  (parameter scalar FresnelPower 3.2)
+  (parameter scalar ScanSpeed 0.55)
+  (parameter scalar ScanWidth 0.12)
+  (parameter scalar Distortion 0.2)
+  (parameter scalar AnimationSpeed 1.0)
+  (parameter scalar EmissiveIntensity 14.0)
+  (parameter scalar ShieldOpacity 0.55)
+
+  (let local_position (* (- (world-position) (object-position)) 0.01))
+  (let animation_time (* (time) AnimationSpeed))
+  (let shield
+    (shader-call float4 "/Plugin/SandboxShaders/Private/EnergyShield/EnergyShield.ush"
+      sbx_energy_shield
+      ((local_position float3 local_position)
+       (normal_ws float3 (pixel-normal))
+       (camera_vector_ws float3 (camera-vector))
+       (time_seconds float animation_time)
+       (base_colour float3 (swizzle BaseColour rgb))
+       (edge_colour float3 (swizzle EdgeColour rgb))
+       (hex_scale float HexScale)
+       (grid_width float GridWidth)
+       (fresnel_power float FresnelPower)
+       (scan_speed float ScanSpeed)
+       (scan_width float ScanWidth)
+       (distortion float Distortion)
+       (emissive_intensity float EmissiveIntensity)
+       (shield_opacity float ShieldOpacity))))
+
+  (emissive (swizzle shield rgb))
+  (opacity (swizzle shield a)))

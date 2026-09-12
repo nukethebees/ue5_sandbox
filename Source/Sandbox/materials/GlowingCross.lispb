@@ -1,0 +1,12 @@
+(material M_GlowingCross
+  (asset "/Game/Common/Materials/M_GlowingCross")
+  (adopt-existing true)
+  (domain surface)
+  (blend opaque)
+  (shading default-lit)
+
+  (parameter color CrossColour 1.0 0.0 0.0 1.0)
+
+  (let icon (sample (texture "/Game/Common/Textures/Icons/T_CentreCross") (texcoord 0)))
+  (base-color (float3 0.0 0.0 0.0))
+  (emissive (* (swizzle icon rgb) (swizzle CrossColour rgb))))

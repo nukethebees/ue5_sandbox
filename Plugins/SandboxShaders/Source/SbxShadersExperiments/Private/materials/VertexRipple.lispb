@@ -1,0 +1,47 @@
+(material M_VertexRipple
+  (asset "/SandboxShaders/Experiments/VertexRipple/M_VertexRipple")
+  (adopt-existing true)
+  (domain surface)
+  (blend opaque)
+  (shading unlit)
+  (two-sided true)
+
+  (parameter color RippleOrigin 0.5 0.5 0.0 0.0)
+  (parameter scalar WaveSpeed 0.32)
+  (parameter scalar Wavelength 9.0)
+  (parameter scalar WaveWidth 0.18)
+  (parameter scalar Falloff 1.2)
+  (parameter scalar Amplitude 85.0)
+  (parameter color BaseColour 0.005 0.06 0.09 1.0)
+  (parameter color CrestColour 0.0 0.9 0.65 1.0)
+  (parameter scalar EmissiveIntensity 8.0)
+
+  (let uv (texcoord 0))
+  (let time_seconds (time))
+  (let origin (swizzle RippleOrigin rg))
+
+  (world-position-offset
+    (shader-call float3 "/Plugin/SandboxShaders/Private/VertexRipple/VertexRipple.ush"
+      sbx_vertex_ripple_offset
+      ((uv float2 uv)
+       (normal_ws float3 (vertex-normal))
+       (time_seconds float time_seconds)
+       (origin_uv float2 origin)
+       (amplitude float Amplitude)
+       (wave_speed float WaveSpeed)
+       (wavelength float Wavelength)
+       (wave_width float WaveWidth)
+       (falloff float Falloff))))
+  (emissive
+    (shader-call float3 "/Plugin/SandboxShaders/Private/VertexRipple/VertexRipple.ush"
+      sbx_vertex_ripple_colour
+      ((uv float2 uv)
+       (time_seconds float time_seconds)
+       (origin_uv float2 origin)
+       (wave_speed float WaveSpeed)
+       (wavelength float Wavelength)
+       (wave_width float WaveWidth)
+       (falloff float Falloff)
+       (base_colour float3 (swizzle BaseColour rgb))
+       (crest_colour float3 (swizzle CrestColour rgb))
+       (emissive_intensity float EmissiveIntensity)))))

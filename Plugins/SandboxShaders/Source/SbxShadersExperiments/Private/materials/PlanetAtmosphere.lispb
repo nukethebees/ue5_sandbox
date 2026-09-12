@@ -1,0 +1,29 @@
+(material M_PlanetAtmosphere
+  (asset "/SandboxShaders/Experiments/PlanetAtmosphere/M_PlanetAtmosphere")
+  (adopt-existing true)
+  (domain surface)
+  (blend additive)
+  (shading unlit)
+  (two-sided true)
+
+  (parameter color SunDirection 0.35 -0.45 0.82 1.0)
+  (parameter color AtmosphereColour 0.05 0.45 1.0 1.0)
+  (parameter scalar Density 2.2)
+  (parameter scalar LimbPower 3.4)
+  (parameter scalar ScaleHeight 0.18)
+  (parameter scalar EmissiveIntensity 8.0)
+
+  (let atmosphere
+    (shader-call float4 "/Plugin/SandboxShaders/Private/PlanetAtmosphere/PlanetAtmosphere.ush"
+      sbx_planet_atmosphere
+      ((normal_ws float3 (vertex-normal))
+       (camera_vector_ws float3 (camera-vector))
+       (sun_direction float3 (swizzle SunDirection rgb))
+       (atmosphere_colour float3 (swizzle AtmosphereColour rgb))
+       (density float Density)
+       (limb_power float LimbPower)
+       (scale_height float ScaleHeight)
+       (emissive_intensity float EmissiveIntensity))))
+
+  (emissive (swizzle atmosphere rgb))
+  (opacity (swizzle atmosphere a)))

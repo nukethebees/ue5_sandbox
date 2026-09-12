@@ -7,6 +7,8 @@
 #include "Materials/Material.h"
 #include "Materials/MaterialExpressionAdd.h"
 #include "Materials/MaterialExpressionAppendVector.h"
+#include "Materials/MaterialExpressionCameraVectorWS.h"
+#include "Materials/MaterialExpressionComponentMask.h"
 #include "Materials/MaterialExpressionConstant.h"
 #include "Materials/MaterialExpressionConstant2Vector.h"
 #include "Materials/MaterialExpressionConstant3Vector.h"
@@ -16,16 +18,24 @@
 #include "Materials/MaterialExpressionDivide.h"
 #include "Materials/MaterialExpressionLinearInterpolate.h"
 #include "Materials/MaterialExpressionMultiply.h"
+#include "Materials/MaterialExpressionObjectPositionWS.h"
 #include "Materials/MaterialExpressionPerInstanceCustomData.h"
+#include "Materials/MaterialExpressionPixelNormalWS.h"
 #include "Materials/MaterialExpressionSaturate.h"
 #include "Materials/MaterialExpressionScalarParameter.h"
+#include "Materials/MaterialExpressionSceneTexture.h"
 #include "Materials/MaterialExpressionSine.h"
 #include "Materials/MaterialExpressionSubtract.h"
+#include "Materials/MaterialExpressionTextureBase.h"
 #include "Materials/MaterialExpressionTextureCoordinate.h"
+#include "Materials/MaterialExpressionTextureObject.h"
 #include "Materials/MaterialExpressionTextureObjectParameter.h"
 #include "Materials/MaterialExpressionTextureSample.h"
 #include "Materials/MaterialExpressionTime.h"
+#include "Materials/MaterialExpressionTransformPosition.h"
 #include "Materials/MaterialExpressionVectorParameter.h"
+#include "Materials/MaterialExpressionVertexNormalWS.h"
+#include "Materials/MaterialExpressionWorldPosition.h"
 #include "Misc/PackageName.h"
 #include "ShaderCompiler.h"
 #include "UObject/Package.h"
@@ -60,6 +70,14 @@ auto custom_output_type(ValueType const type) -> ECustomMaterialOutputType {
         default:
             return CMOT_MAX;
     }
+}
+
+auto position_space(PositionSpace const space) -> EMaterialPositionTransformSource {
+    return space == PositionSpace::world ? TRANSFORMPOSSOURCE_World : TRANSFORMPOSSOURCE_Local;
+}
+
+auto sampler_type(UTexture const* const texture) -> EMaterialSamplerType {
+    return texture != nullptr && texture->SRGB ? SAMPLERTYPE_Color : SAMPLERTYPE_LinearColor;
 }
 
 struct ExpressionValue {
@@ -118,8 +136,9 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
         result.errors.Add(TEXT("Refusing to replace an existing non-material object."));
         return result;
     }
-    if (material != nullptr && FString{material->GetOutermost()->GetMetaData().GetValue(
-                                   material, ownership_key)} != generator_version) {
+    if (material != nullptr && !ir.settings.adopt_existing &&
+        FString{material->GetOutermost()->GetMetaData().GetValue(material, ownership_key)} !=
+            generator_version) {
         result.errors.Add(TEXT("Refusing to modify a material not owned by MaterialSynth."));
         return result;
     }
@@ -138,14 +157,24 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
         return result;
     }
 
+    GShaderCompilingManager->FinishAllCompilation();
+
     material->Modify();
     TArray<UMaterialExpression*> const previous_expressions{material->GetExpressions()};
     for (auto* const expression : previous_expressions) {
+        if (expression->IsRooted()) {
+            expression->RemoveFromRoot();
+        }
         UMaterialEditingLibrary::DeleteMaterialExpression(material, expression);
     }
-    material->MaterialDomain = ir.settings.domain == MaterialDomain::ui ? MD_UI : MD_Surface;
-    material->BlendMode =
-        ir.settings.blend_mode == BlendMode::additive ? BLEND_Additive : BLEND_Translucent;
+    material->MaterialDomain = ir.settings.domain == MaterialDomain::ui      ? MD_UI
+                             : ir.settings.domain == MaterialDomain::surface ? MD_Surface
+                                                                             : MD_PostProcess;
+    material->BlendMode = ir.settings.blend_mode == BlendMode::additive    ? BLEND_Additive
+                        : ir.settings.blend_mode == BlendMode::translucent ? BLEND_Translucent
+                        : ir.settings.blend_mode == BlendMode::opaque      ? BLEND_Opaque
+                                                                           : BLEND_Masked;
+    material->OpacityMaskClipValue = static_cast<float>(ir.settings.opacity_mask_clip_value);
     material->SetShadingModel(ir.settings.shading_model == ShadingModel::unlit ? MSM_Unlit
                                                                                : MSM_DefaultLit);
     material->TwoSided = ir.settings.two_sided;
@@ -218,7 +247,7 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
                                              UTF8_TO_TCHAR(parameter.texture_path.c_str()),
                                              nullptr,
                                              LOAD_NoWarn);
-                    value->SamplerType = SAMPLERTYPE_LinearColor;
+                    value->SamplerType = sampler_type(value->Texture);
                     expression = value;
                 } else if (parameter.type == ValueType::float1) {
                     auto* const value{CastChecked<UMaterialExpressionScalarParameter>(
@@ -283,7 +312,10 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
             case NodeKind::sample: {
                 auto* const sample{CastChecked<UMaterialExpressionTextureSample>(
                     create_expression(UMaterialExpressionTextureSample::StaticClass()))};
-                sample->SamplerType = SAMPLERTYPE_LinearColor;
+                auto const* const texture_expression{Cast<UMaterialExpressionTextureBase>(
+                    expressions[node.inputs[0].index].expression)};
+                sample->SamplerType = sampler_type(
+                    texture_expression != nullptr ? texture_expression->Texture : nullptr);
                 expression = sample;
                 break;
             }
@@ -298,6 +330,80 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
                     auto& custom_input{custom->Inputs.AddDefaulted_GetRef()};
                     custom_input.InputName = FName{UTF8_TO_TCHAR(input.name.c_str())};
                 }
+                expression = custom;
+                break;
+            }
+            case NodeKind::texture_object: {
+                auto* const texture{CastChecked<UMaterialExpressionTextureObject>(
+                    create_expression(UMaterialExpressionTextureObject::StaticClass()))};
+                texture->Texture = LoadObject<UTexture>(
+                    nullptr, UTF8_TO_TCHAR(node.texture_path.c_str()), nullptr, LOAD_NoWarn);
+                texture->SamplerType = sampler_type(texture->Texture);
+                expression = texture;
+                break;
+            }
+            case NodeKind::component_mask: {
+                auto* const mask{CastChecked<UMaterialExpressionComponentMask>(
+                    create_expression(UMaterialExpressionComponentMask::StaticClass()))};
+                mask->R = node.component_mask.find('r') != std::string::npos;
+                mask->G = node.component_mask.find('g') != std::string::npos;
+                mask->B = node.component_mask.find('b') != std::string::npos;
+                mask->A = node.component_mask.find('a') != std::string::npos;
+                expression = mask;
+                break;
+            }
+            case NodeKind::world_position:
+                expression = create_expression(UMaterialExpressionWorldPosition::StaticClass());
+                break;
+            case NodeKind::object_position:
+                expression = create_expression(UMaterialExpressionObjectPositionWS::StaticClass());
+                break;
+            case NodeKind::pixel_normal:
+                expression = create_expression(UMaterialExpressionPixelNormalWS::StaticClass());
+                break;
+            case NodeKind::vertex_normal:
+                expression = create_expression(UMaterialExpressionVertexNormalWS::StaticClass());
+                break;
+            case NodeKind::camera_vector:
+                expression = create_expression(UMaterialExpressionCameraVectorWS::StaticClass());
+                break;
+            case NodeKind::transform_position: {
+                auto* const transform{CastChecked<UMaterialExpressionTransformPosition>(
+                    create_expression(UMaterialExpressionTransformPosition::StaticClass()))};
+                transform->TransformSourceType = position_space(node.source_space);
+                transform->TransformType = position_space(node.destination_space);
+                expression = transform;
+                break;
+            }
+            case NodeKind::scene_texture: {
+                auto* const scene_texture{CastChecked<UMaterialExpressionSceneTexture>(
+                    create_expression(UMaterialExpressionSceneTexture::StaticClass()))};
+                scene_texture->SceneTextureId = node.scene_texture == SceneTexture::scene_depth
+                                                  ? PPI_SceneDepth
+                                                  : PPI_PostProcessInput0;
+                expression = scene_texture;
+                break;
+            }
+            case NodeKind::shader_call: {
+                auto* const custom{CastChecked<UMaterialExpressionCustom>(
+                    create_expression(UMaterialExpressionCustom::StaticClass()))};
+                custom->OutputType = custom_output_type(node.type);
+                custom->Description = UTF8_TO_TCHAR(node.shader_function.c_str());
+                custom->IncludeFilePaths.Add(UTF8_TO_TCHAR(node.shader_path.c_str()));
+                custom->Inputs.Empty();
+
+                FString arguments;
+                for (auto const& input : node.custom_inputs) {
+                    auto& custom_input{custom->Inputs.AddDefaulted_GetRef()};
+                    custom_input.InputName = FName{UTF8_TO_TCHAR(input.name.c_str())};
+                    if (!arguments.IsEmpty()) {
+                        arguments += TEXT(", ");
+                    }
+                    arguments += custom_input.InputName.ToString();
+                }
+                custom->Code = FString::Printf(TEXT("return %s(%s);"),
+                                               UTF8_TO_TCHAR(node.shader_function.c_str()),
+                                               *arguments);
                 expression = custom;
                 break;
             }
@@ -368,6 +474,15 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
                               *input_name,
                               index);
             }
+        } else if (node.kind == NodeKind::shader_call) {
+            auto* const custom{CastChecked<UMaterialExpressionCustom>(expression)};
+            for (auto const& input : node.custom_inputs) {
+                auto const input_name{FString{UTF8_TO_TCHAR(input.name.c_str())}};
+                connect_input(expressions[input.node.index], custom, *input_name, index);
+            }
+        } else if (node.kind == NodeKind::component_mask ||
+                   node.kind == NodeKind::transform_position) {
+            connect_input(expressions[node.inputs[0].index], expression, TEXT(""), index);
         } else if (node.kind == NodeKind::sine || node.kind == NodeKind::cosine) {
             connect_input(expressions[node.inputs[0].index], expression, TEXT(""), index);
         }
@@ -389,6 +504,21 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
                 expressions[output.node.index].expression,
                 expressions[output.node.index].output_name,
                 MP_Opacity);
+        } else if (output.name == "base-color") {
+            connected = UMaterialEditingLibrary::ConnectMaterialProperty(
+                expressions[output.node.index].expression,
+                expressions[output.node.index].output_name,
+                MP_BaseColor);
+        } else if (output.name == "opacity-mask") {
+            connected = UMaterialEditingLibrary::ConnectMaterialProperty(
+                expressions[output.node.index].expression,
+                expressions[output.node.index].output_name,
+                MP_OpacityMask);
+        } else if (output.name == "world-position-offset") {
+            connected = UMaterialEditingLibrary::ConnectMaterialProperty(
+                expressions[output.node.index].expression,
+                expressions[output.node.index].output_name,
+                MP_WorldPositionOffset);
         }
         if (!connected) {
             result.errors.Add(FString::Printf(TEXT("Failed to connect material output %s."),

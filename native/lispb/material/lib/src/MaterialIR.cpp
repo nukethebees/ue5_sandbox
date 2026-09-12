@@ -26,14 +26,17 @@ auto valid_identifier(std::string_view const value) -> bool {
     });
 }
 
-auto valid_generated_path(MaterialSettings const& settings) -> bool {
+auto valid_asset_path(MaterialSettings const& settings) -> bool {
     auto const& path{settings.package_path};
     auto const generated{path.find("/Generated/Materials/")};
     auto const leaf_position{path.rfind('/')};
-    return !path.empty() && path.front() == '/' && generated != std::string::npos &&
-           generated != 0 && path.find('/', 1) == generated && leaf_position != std::string::npos &&
-           path.substr(leaf_position + 1) == settings.name &&
-           path.find('.', leaf_position) == std::string::npos;
+    auto const structurally_valid{
+        !path.empty() && path.front() == '/' && path.find('/', 1) != std::string::npos &&
+        leaf_position != std::string::npos && path.substr(leaf_position + 1) == settings.name &&
+        path.find('.', leaf_position) == std::string::npos};
+    auto const generated_path{generated != std::string::npos && generated != 0 &&
+                              path.find('/', 1) == generated};
+    return structurally_valid && (generated_path || settings.adopt_existing);
 }
 
 auto promoted(ValueType const left, ValueType const right) -> ValueType {
@@ -69,17 +72,25 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
     std::vector<Diagnostic> diagnostics;
     std::set<std::string> names;
 
-    if (!valid_identifier(material.settings.name) || !valid_generated_path(material.settings) ||
+    if (!valid_identifier(material.settings.name) || !valid_asset_path(material.settings) ||
         material.settings.domain < MaterialDomain::ui ||
-        material.settings.domain > MaterialDomain::surface ||
+        material.settings.domain > MaterialDomain::post_process ||
         material.settings.blend_mode < BlendMode::additive ||
-        material.settings.blend_mode > BlendMode::translucent ||
+        material.settings.blend_mode > BlendMode::masked ||
         material.settings.shading_model < ShadingModel::default_lit ||
         material.settings.shading_model > ShadingModel::unlit ||
+        !std::isfinite(material.settings.opacity_mask_clip_value) ||
+        material.settings.opacity_mask_clip_value < 0.0 ||
+        material.settings.opacity_mask_clip_value > 1.0 ||
         (material.settings.domain == MaterialDomain::ui &&
          (material.settings.blend_mode != BlendMode::additive ||
           material.settings.shading_model != ShadingModel::default_lit ||
           material.settings.two_sided || material.settings.disable_depth_test ||
+          material.settings.used_with_instanced_static_meshes)) ||
+        (material.settings.domain == MaterialDomain::post_process &&
+         (material.settings.blend_mode != BlendMode::opaque ||
+          material.settings.shading_model != ShadingModel::unlit || material.settings.two_sided ||
+          material.settings.disable_depth_test ||
           material.settings.used_with_instanced_static_meshes)) ||
         (material.settings.disable_depth_test &&
          material.settings.blend_mode != BlendMode::translucent)) {
@@ -128,13 +139,16 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
 
     names.clear();
     for (auto const& output : material.outputs) {
-        validate_named(output, "output");
+        if (!valid_handle(material, output.node)) {
+            report(
+                diagnostics, output.span, "invalid node handle for output '" + output.name + "'");
+        }
     }
 
     auto const node_count{material.nodes.size()};
     for (std::size_t index{}; index < node_count; ++index) {
         auto const& node{material.nodes[index]};
-        if (node.kind < NodeKind::constant || node.kind > NodeKind::cosine ||
+        if (node.kind < NodeKind::constant || node.kind > NodeKind::shader_call ||
             node.type == ValueType::invalid) {
             report(diagnostics, node.span, "invalid material node kind or type");
             continue;
@@ -254,6 +268,77 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
                  material.nodes[node.inputs[0].index].type != ValueType::float1)) {
                 report(diagnostics, node.span, "malformed trigonometric node");
             }
+        } else if (node.kind == NodeKind::texture_object) {
+            if (node.type != ValueType::texture || node.texture_path.empty() ||
+                !node.inputs.empty()) {
+                report(diagnostics, node.span, "malformed texture-object node");
+            }
+        } else if (node.kind == NodeKind::component_mask) {
+            auto const input_valid{node.inputs.size() == 1 &&
+                                   valid_handle(material, node.inputs[0])};
+            auto const input_components{
+                input_valid ? component_count(material.nodes[node.inputs[0].index].type) : 0};
+            std::size_t previous_component{};
+            bool mask_valid{!node.component_mask.empty() && node.component_mask.size() <= 4};
+            for (std::size_t component_index{};
+                 mask_valid && component_index < node.component_mask.size();
+                 ++component_index) {
+                auto const component{
+                    std::string_view{"rgba"}.find(node.component_mask[component_index])};
+                mask_valid = component < input_components &&
+                             (component_index == 0 || component > previous_component);
+                previous_component = component;
+            }
+            if (!input_valid || !mask_valid ||
+                component_count(node.type) != node.component_mask.size()) {
+                report(diagnostics, node.span, "malformed component-mask node");
+            }
+        } else if (node.kind == NodeKind::world_position ||
+                   node.kind == NodeKind::object_position || node.kind == NodeKind::pixel_normal ||
+                   node.kind == NodeKind::vertex_normal || node.kind == NodeKind::camera_vector) {
+            if (node.type != ValueType::float3 || !node.inputs.empty()) {
+                report(diagnostics, node.span, "malformed standard material-value node");
+            }
+        } else if (node.kind == NodeKind::transform_position) {
+            if (node.type != ValueType::float3 || node.inputs.size() != 1 ||
+                !valid_handle(material, node.inputs[0]) ||
+                (valid_handle(material, node.inputs[0]) &&
+                 material.nodes[node.inputs[0].index].type != ValueType::float3) ||
+                node.source_space > PositionSpace::local ||
+                node.destination_space > PositionSpace::local ||
+                node.source_space == node.destination_space) {
+                report(diagnostics, node.span, "malformed position-transform node");
+            }
+        } else if (node.kind == NodeKind::scene_texture) {
+            auto const expected_type{node.scene_texture == SceneTexture::scene_depth
+                                         ? ValueType::float1
+                                         : ValueType::float4};
+            if (material.settings.domain != MaterialDomain::post_process ||
+                node.scene_texture > SceneTexture::scene_depth || node.type != expected_type ||
+                !node.inputs.empty()) {
+                report(diagnostics, node.span, "malformed scene-texture node");
+            }
+        } else if (node.kind == NodeKind::shader_call) {
+            std::set<std::string> input_names;
+            auto const valid_path{
+                !node.shader_path.empty() && node.shader_path.front() == '/' &&
+                (node.shader_path.ends_with(".ush") || node.shader_path.ends_with(".usf"))};
+            if (!is_numeric(node.type) || !valid_path || !valid_identifier(node.shader_function) ||
+                node.custom_inputs.size() != node.inputs.size()) {
+                report(diagnostics, node.span, "malformed shader-call node");
+            }
+            for (std::size_t input_index{}; input_index < node.custom_inputs.size();
+                 ++input_index) {
+                auto const& input{node.custom_inputs[input_index]};
+                if (!valid_identifier(input.name) || !input_names.insert(input.name).second ||
+                    input.type == ValueType::invalid || !valid_handle(material, input.node) ||
+                    input.node != node.inputs[input_index] ||
+                    (valid_handle(material, input.node) &&
+                     material.nodes[input.node.index].type != input.type)) {
+                    report(
+                        diagnostics, node.span, "malformed shader-call input '" + input.name + "'");
+                }
+            }
         }
     }
 
@@ -265,7 +350,7 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
     }
 
     std::size_t emissive_count{};
-    std::size_t opacity_count{};
+    std::set<std::string> output_names;
     for (auto const& output : material.outputs) {
         auto const type{valid_handle(material, output.node) ? material.nodes[output.node.index].type
                                                             : ValueType::invalid};
@@ -276,17 +361,37 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
             }
         } else if (output.name == "opacity" &&
                    material.settings.domain == MaterialDomain::surface &&
-                   material.settings.blend_mode == BlendMode::translucent) {
-            ++opacity_count;
+                   (material.settings.blend_mode == BlendMode::translucent ||
+                    material.settings.blend_mode == BlendMode::additive)) {
             if (type != ValueType::float1) {
                 report(diagnostics, output.span, "opacity output requires float");
+            }
+        } else if (output.name == "base-color" &&
+                   material.settings.domain == MaterialDomain::surface) {
+            if (type != ValueType::float3 && type != ValueType::float4) {
+                report(diagnostics, output.span, "base-color output requires float3 or float4");
+            }
+        } else if (output.name == "opacity-mask" &&
+                   material.settings.domain == MaterialDomain::surface &&
+                   material.settings.blend_mode == BlendMode::masked) {
+            if (type != ValueType::float1) {
+                report(diagnostics, output.span, "opacity-mask output requires float");
+            }
+        } else if (output.name == "world-position-offset" &&
+                   material.settings.domain == MaterialDomain::surface) {
+            if (type != ValueType::float3) {
+                report(diagnostics, output.span, "world-position-offset output requires float3");
             }
         } else {
             report(diagnostics, output.span, "output is not supported by the material domain");
         }
+        if (!output_names.insert(output.name).second) {
+            report(diagnostics, output.span, "duplicate material output");
+        }
     }
-    if (emissive_count != 1 || opacity_count > 1 ||
-        (material.settings.domain == MaterialDomain::ui && material.outputs.size() != 1)) {
+    if (emissive_count != 1 || ((material.settings.domain == MaterialDomain::ui ||
+                                 material.settings.domain == MaterialDomain::post_process) &&
+                                material.outputs.size() != 1)) {
         diagnostics.push_back({{}, 1, 1, "material outputs do not match the material domain"});
     }
     return diagnostics;

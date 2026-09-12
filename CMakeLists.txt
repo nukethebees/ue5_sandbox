@@ -353,6 +353,55 @@ add_custom_target(compile-world-soft-target-material
   DEPENDS "${WORLD_SOFT_TARGET_MATERIAL_ARTIFACT}"
 )
 
+set(MIGRATED_MATERIAL_ARTIFACTS)
+function(add_migrated_material_ir name target source artifact_name)
+  set(source_path "${CMAKE_CURRENT_SOURCE_DIR}/${source}")
+  set(artifact_path
+    "${CMAKE_CURRENT_SOURCE_DIR}/Intermediate/MaterialGen/${artifact_name}.smat"
+  )
+  set(depfile_path "${CMAKE_CURRENT_BINARY_DIR}/${artifact_name}.smat.d")
+  add_custom_command(
+    OUTPUT "${artifact_path}"
+    COMMAND "${CMAKE_COMMAND}" -E make_directory
+      "${CMAKE_CURRENT_SOURCE_DIR}/Intermediate/MaterialGen"
+    COMMAND $<TARGET_FILE:lispb> generate
+      --project "${CMAKE_CURRENT_SOURCE_DIR}/lispb/project.lispb"
+      --build-root "${CMAKE_BINARY_DIR}"
+      --target "${target}"
+      --depfile "${depfile_path}"
+    DEPENDS lispb "${CMAKE_CURRENT_SOURCE_DIR}/lispb/project.lispb" "${source_path}"
+    DEPFILE "${depfile_path}"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    COMMENT "Compiling ${name} material IR"
+    VERBATIM
+  )
+  list(APPEND MIGRATED_MATERIAL_ARTIFACTS "${artifact_path}")
+  set(MIGRATED_MATERIAL_ARTIFACTS "${MIGRATED_MATERIAL_ARTIFACTS}" PARENT_SCOPE)
+endfunction()
+
+set(SHADER_MATERIAL_SOURCE_ROOT
+  "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials"
+)
+add_migrated_material_ir("radar display" radar-display-material
+  "${SHADER_MATERIAL_SOURCE_ROOT}/RadarDisplay.lispb" RadarDisplay)
+add_migrated_material_ir("energy shield" energy-shield-material
+  "${SHADER_MATERIAL_SOURCE_ROOT}/EnergyShield.lispb" EnergyShield)
+add_migrated_material_ir("space energy field" space-energy-field-material
+  "${SHADER_MATERIAL_SOURCE_ROOT}/SpaceEnergyFieldDisplay.lispb" SpaceEnergyField)
+add_migrated_material_ir("glowing cross" glowing-cross-material
+  "Source/Sandbox/materials/GlowingCross.lispb" GlowingCross)
+add_migrated_material_ir("vertex ripple" vertex-ripple-material
+  "${SHADER_MATERIAL_SOURCE_ROOT}/VertexRipple.lispb" VertexRipple)
+add_migrated_material_ir("construction spawn" construction-spawn-material
+  "${SHADER_MATERIAL_SOURCE_ROOT}/ConstructionSpawn.lispb" ConstructionSpawn)
+add_migrated_material_ir("planet atmosphere" planet-atmosphere-material
+  "${SHADER_MATERIAL_SOURCE_ROOT}/PlanetAtmosphere.lispb" PlanetAtmosphere)
+add_migrated_material_ir("planet surface" planet-surface-material
+  "${SHADER_MATERIAL_SOURCE_ROOT}/PlanetSurface.lispb" PlanetSurface)
+add_migrated_material_ir("tactical scan" tactical-scan-material
+  "${SHADER_MATERIAL_SOURCE_ROOT}/TacticalScan.lispb" TacticalScan)
+add_custom_target(compile-migrated-materials DEPENDS ${MIGRATED_MATERIAL_ARTIFACTS})
+
 add_unreal_target(editor SandboxEditor)
 add_unreal_target(game Sandbox)
 add_custom_target(check-space-game-layers
@@ -376,6 +425,7 @@ add_dependencies(editor
   check-generated-slate-code
   compile-ui-glow-material
   compile-world-soft-target-material
+  compile-migrated-materials
   sandbox-material-gen
 )
 add_dependencies(game check-space-game-layers)
@@ -709,6 +759,19 @@ add_custom_target(generate-world-soft-target-assets
     -run=GenerateWorldSoftTargetAssets -RenderOffscreen -AllowCommandletRendering
     -unattended -nop4 -nosplash -nosound -stdout
   DEPENDS editor
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  USES_TERMINAL
+  VERBATIM
+)
+
+add_custom_target(generate-migrated-materials
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    -run=MaterialSynth
+    "-ArtifactDirectory=${CMAKE_CURRENT_SOURCE_DIR}/Intermediate/MaterialGen"
+    "-ArtifactList=UiGlowComposite,RadarDisplay,EnergyShield,SpaceEnergyField,GlowingCross,VertexRipple,ConstructionSpawn,PlanetAtmosphere,PlanetSurface,TacticalScan"
+    -GenerateAll -RenderOffscreen -AllowCommandletRendering
+    -unattended -nop4 -nosplash -nosound -stdout
+  DEPENDS editor compile-migrated-materials
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   USES_TERMINAL
   VERBATIM

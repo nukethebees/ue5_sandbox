@@ -68,12 +68,21 @@ cmake --build --preset debug-game --target generate-ui-glow-material
 
 ## Language
 
-A source contains one `material` definition with an owned generated asset path. UI/additive and
-surface/additive or surface/translucent materials are supported. Surface materials may select
-`unlit` shading, two-sided rendering, disabled depth testing, instanced-static-mesh usage, and an
-opacity output. Expressions support numeric literals, symbols, `float2`, `float3`, `float4`, `+`,
-`-`, `*`, `/`, `lerp`, `saturate`, `time`, `sin`, `cos`, `texcoord`,
-`per-instance-custom-data`, `sample`, and `custom` HLSL.
+A source contains one `material` definition. New assets are restricted to generated material
+directories. `(adopt-existing true)` explicitly permits replacing an existing material at another
+path and then records MaterialGen ownership metadata. UI, surface, and post-process domains are
+supported, together with additive, translucent, opaque, and masked blends where valid. Surface
+materials may select shading, two-sided rendering, disabled depth testing,
+instanced-static-mesh usage, and Base Color, Emissive, Opacity, Opacity Mask, or World Position
+Offset outputs.
+
+Expressions support numeric literals, symbols, `float2`, `float3`, `float4`, `+`, `-`, `*`, `/`,
+`lerp`, `saturate`, `time`, `sin`, `cos`, `texcoord`, `per-instance-custom-data`, texture parameters
+and constants, `sample`, `swizzle`, common world-space values, world/local position transforms,
+scene textures, and `custom` HLSL. `shader-call` is the typed hybrid boundary: it records a virtual
+`.ush`/`.usf` include, function name, typed result, and typed semantic inputs while Unreal emits a
+single Custom expression for the procedural function body. The surrounding arithmetic, masks,
+sampling, and output routing remain visible as native expressions.
 
 `+` and `*` accept two or more operands and remain n-ary operations in the material IR; the Unreal
 backend lowers them to binary expression chains. `float2`, `float3`, and `float4` accept scalar
@@ -85,6 +94,11 @@ See
 canonical example.
 The world-space per-instance example is
 `Plugins/SpaceGame/Source/SpaceGamePresentation/Private/materials/SoftTargetWorld.lispb`.
+Existing non-tutorial materials can be regenerated together with:
+
+```powershell
+cmake --build --preset debug-game --target generate-migrated-materials
+```
 
 ## Unreal Engine 5.8 backend
 

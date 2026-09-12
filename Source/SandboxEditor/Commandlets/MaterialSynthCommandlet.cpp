@@ -49,9 +49,37 @@ UMaterialSynthCommandlet::UMaterialSynthCommandlet() {
 int32 UMaterialSynthCommandlet::Main(FString const& parameters) {
     bool const validate_only{FParse::Param(*parameters, TEXT("Validate"))};
     if (FParse::Param(*parameters, TEXT("GenerateAll"))) {
-        UE_LOG(LogTemp, Error, TEXT("MaterialSynth -GenerateAll is not implemented."));
-        print_result(false, validate_only, {}, 1);
-        return 1;
+        FString artifact_directory;
+        FString artifact_list;
+        if (!FParse::Value(*parameters, TEXT("ArtifactDirectory="), artifact_directory, false) ||
+            !FParse::Value(*parameters, TEXT("ArtifactList="), artifact_list, false)) {
+            UE_LOG(LogTemp,
+                   Error,
+                   TEXT("MaterialSynth -GenerateAll requires -ArtifactDirectory and "
+                        "-ArtifactList."));
+            print_result(false, validate_only, {}, 1);
+            return 1;
+        }
+
+        TArray<FString> artifact_names;
+        artifact_list.ParseIntoArray(artifact_names, TEXT(","), true);
+        if (artifact_names.IsEmpty()) {
+            UE_LOG(LogTemp, Error, TEXT("MaterialSynth -ArtifactList must not be empty."));
+            print_result(false, validate_only, {}, 1);
+            return 1;
+        }
+
+        int32 failures{};
+        for (auto const& artifact_name : artifact_names) {
+            auto const artifact_path{
+                FPaths::Combine(artifact_directory, artifact_name + TEXT(".smat"))};
+            auto const artifact_parameters{
+                FString::Printf(TEXT("-Artifact=\"%s\" %s"),
+                                *artifact_path,
+                                validate_only ? TEXT("-Validate") : TEXT("-Generate"))};
+            failures += Main(artifact_parameters) == 0 ? 0 : 1;
+        }
+        return failures == 0 ? 0 : 1;
     }
     FString artifact_path;
     if (!FParse::Value(*parameters, TEXT("Artifact="), artifact_path) || artifact_path.IsEmpty()) {

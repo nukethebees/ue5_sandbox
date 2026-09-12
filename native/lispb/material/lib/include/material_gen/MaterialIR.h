@@ -9,9 +9,11 @@
 namespace material_synth {
 
 enum class ValueType { invalid, float1, float2, float3, float4, texture };
-enum class MaterialDomain { ui, surface };
-enum class BlendMode { additive, translucent };
+enum class MaterialDomain { ui, surface, post_process };
+enum class BlendMode { additive, translucent, opaque, masked };
 enum class ShadingModel { default_lit, unlit };
+enum class PositionSpace { world, local };
+enum class SceneTexture { post_process_input0, scene_depth };
 enum class NodeKind {
     constant,
     parameter,
@@ -29,6 +31,16 @@ enum class NodeKind {
     time,
     sine,
     cosine,
+    texture_object,
+    component_mask,
+    world_position,
+    object_position,
+    pixel_normal,
+    vertex_normal,
+    camera_vector,
+    transform_position,
+    scene_texture,
+    shader_call,
 };
 
 struct NodeHandle {
@@ -70,6 +82,13 @@ struct Node {
     std::string description;
     std::string code;
     std::vector<CustomInput> custom_inputs;
+    std::string texture_path;
+    std::string component_mask;
+    PositionSpace source_space{PositionSpace::world};
+    PositionSpace destination_space{PositionSpace::local};
+    SceneTexture scene_texture{SceneTexture::post_process_input0};
+    std::string shader_path;
+    std::string shader_function;
 };
 
 struct Parameter {
@@ -96,6 +115,8 @@ struct MaterialSettings {
     bool two_sided{};
     bool disable_depth_test{};
     bool used_with_instanced_static_meshes{};
+    bool adopt_existing{};
+    double opacity_mask_clip_value{0.3333};
 };
 
 struct MaterialIR {

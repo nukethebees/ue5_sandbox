@@ -101,6 +101,33 @@
   (material world-soft-target-material
     :source "Plugins/SpaceGame/Source/SpaceGamePresentation/Private/materials/SoftTargetWorld.lispb"
     :artifact (project-path "Intermediate/MaterialGen/SoftTargetWorld.smat"))
+  (material radar-display-material
+    :source "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/RadarDisplay.lispb"
+    :artifact (project-path "Intermediate/MaterialGen/RadarDisplay.smat"))
+  (material energy-shield-material
+    :source "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/EnergyShield.lispb"
+    :artifact (project-path "Intermediate/MaterialGen/EnergyShield.smat"))
+  (material space-energy-field-material
+    :source "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/SpaceEnergyFieldDisplay.lispb"
+    :artifact (project-path "Intermediate/MaterialGen/SpaceEnergyField.smat"))
+  (material glowing-cross-material
+    :source "Source/Sandbox/materials/GlowingCross.lispb"
+    :artifact (project-path "Intermediate/MaterialGen/GlowingCross.smat"))
+  (material vertex-ripple-material
+    :source "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/VertexRipple.lispb"
+    :artifact (project-path "Intermediate/MaterialGen/VertexRipple.smat"))
+  (material construction-spawn-material
+    :source "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/ConstructionSpawn.lispb"
+    :artifact (project-path "Intermediate/MaterialGen/ConstructionSpawn.smat"))
+  (material planet-atmosphere-material
+    :source "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/PlanetAtmosphere.lispb"
+    :artifact (project-path "Intermediate/MaterialGen/PlanetAtmosphere.smat"))
+  (material planet-surface-material
+    :source "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/PlanetSurface.lispb"
+    :artifact (project-path "Intermediate/MaterialGen/PlanetSurface.smat"))
+  (material tactical-scan-material
+    :source "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/TacticalScan.lispb"
+    :artifact (project-path "Intermediate/MaterialGen/TacticalScan.smat"))
 
   (group slate-production
     :targets (
@@ -118,4 +145,15 @@
   (group committed-code
     :targets (sandbox-code slate-production kernel-unreal kernel-native-core kernel-avx2-lab))
   (group materials
-    :targets (ui-glow-material world-soft-target-material)))
+    :targets (
+      ui-glow-material
+      world-soft-target-material
+      radar-display-material
+      energy-shield-material
+      space-energy-field-material
+      glowing-cross-material
+      vertex-ripple-material
+      construction-spawn-material
+      planet-atmosphere-material
+      planet-surface-material
+      tactical-scan-material)))

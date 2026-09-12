@@ -45,6 +45,10 @@ auto resolve_texture(void const* const context, std::string_view const requested
     }
     auto const mount{package_path.substr(1, mount_end - 1)};
     auto const relative_package{package_path.substr(mount_end + 1)};
+    if (mount == "Engine") {
+        auto const leaf_position{package_path.rfind('/')};
+        return package_path + "." + package_path.substr(leaf_position + 1);
+    }
     auto asset_file{mount == "Game"
                         ? resolver.project_root / "Content" / relative_package
                         : resolver.project_root / "Plugins" / mount / "Content" / relative_package};
@@ -128,16 +132,40 @@ auto kind_name(material_synth::NodeKind const kind) -> std::string_view {
             return "sine";
         case cosine:
             return "cosine";
+        case texture_object:
+            return "texture";
+        case component_mask:
+            return "swizzle";
+        case world_position:
+            return "world-position";
+        case object_position:
+            return "object-position";
+        case pixel_normal:
+            return "pixel-normal";
+        case vertex_normal:
+            return "vertex-normal";
+        case camera_vector:
+            return "camera-vector";
+        case transform_position:
+            return "transform-position";
+        case scene_texture:
+            return "scene-texture";
+        case shader_call:
+            return "shader-call";
     }
     return "unknown";
 }
 
 void dump_ir(std::ostream& stream, material_synth::MaterialIR const& material) {
     auto const domain{material.settings.domain == material_synth::MaterialDomain::ui ? "ui"
-                                                                                     : "surface"};
-    auto const blend{material.settings.blend_mode == material_synth::BlendMode::additive
-                         ? "additive"
-                         : "translucent"};
+                      : material.settings.domain == material_synth::MaterialDomain::surface
+                          ? "surface"
+                          : "post-process"};
+    auto const blend{
+        material.settings.blend_mode == material_synth::BlendMode::additive      ? "additive"
+        : material.settings.blend_mode == material_synth::BlendMode::translucent ? "translucent"
+        : material.settings.blend_mode == material_synth::BlendMode::opaque      ? "opaque"
+                                                                                 : "masked"};
     auto const shading{material.settings.shading_model == material_synth::ShadingModel::unlit
                            ? "unlit"
                            : "default-lit"};
@@ -146,7 +174,9 @@ void dump_ir(std::ostream& stream, material_synth::MaterialIR const& material) {
            << "domain " << domain << "\nblend " << blend << "\nshading " << shading << '\n'
            << "two-sided " << material.settings.two_sided << "\ndisable-depth-test "
            << material.settings.disable_depth_test << "\nused-with-instanced-static-meshes "
-           << material.settings.used_with_instanced_static_meshes << '\n';
+           << material.settings.used_with_instanced_static_meshes << "\nadopt-existing "
+           << material.settings.adopt_existing << "\nopacity-mask-clip "
+           << material.settings.opacity_mask_clip_value << '\n';
 
     stream << "parameters " << material.parameters.size() << '\n';
     for (std::size_t index{}; index < material.parameters.size(); ++index) {
@@ -190,6 +220,13 @@ void dump_ir(std::ostream& stream, material_synth::MaterialIR const& material) {
         } else if (node.kind == material_synth::NodeKind::custom) {
             stream << " description=" << std::quoted(node.description)
                    << " code=" << std::quoted(node.code);
+        } else if (node.kind == material_synth::NodeKind::texture_object) {
+            stream << " texture=" << std::quoted(node.texture_path);
+        } else if (node.kind == material_synth::NodeKind::component_mask) {
+            stream << " mask=" << node.component_mask;
+        } else if (node.kind == material_synth::NodeKind::shader_call) {
+            stream << " include=" << std::quoted(node.shader_path)
+                   << " function=" << node.shader_function;
         }
         stream << " @ " << node.span.path << ':' << node.span.line << ':' << node.span.column
                << '\n';
@@ -237,6 +274,34 @@ auto lispb::compile_material(fs::path const& input_path,
         throw std::runtime_error{diagnostics.str()};
     }
 
+    std::vector<fs::path> shader_dependencies;
+    for (auto const& node : analysis.material->nodes) {
+        if (node.kind != material_synth::NodeKind::shader_call) {
+            continue;
+        }
+        fs::path shader_file;
+        constexpr std::string_view plugin_prefix{"/Plugin/"};
+        constexpr std::string_view project_prefix{"/Project/"};
+        if (node.shader_path.starts_with(plugin_prefix)) {
+            auto const remaining{std::string_view{node.shader_path}.substr(plugin_prefix.size())};
+            auto const separator{remaining.find('/')};
+            if (separator != std::string_view::npos) {
+                shader_file = project_root / "Plugins" / remaining.substr(0, separator) /
+                              "Shaders" / remaining.substr(separator + 1);
+            }
+        } else if (node.shader_path.starts_with(project_prefix)) {
+            shader_file = project_root / "Shaders" /
+                          std::string_view{node.shader_path}.substr(project_prefix.size());
+        }
+        std::error_code shader_error;
+        if (shader_file.empty() || !fs::is_regular_file(shader_file, shader_error) ||
+            shader_error) {
+            throw std::runtime_error{"Unable to resolve material shader include: " +
+                                     node.shader_path};
+        }
+        shader_dependencies.push_back(std::move(shader_file));
+    }
+
     std::ostringstream debug_dump;
     dump_ir(debug_dump, *analysis.material);
 
@@ -257,5 +322,8 @@ auto lispb::compile_material(fs::path const& input_path,
     result.dependencies.insert(result.dependencies.end(),
                                std::make_move_iterator(resolver.dependencies.begin()),
                                std::make_move_iterator(resolver.dependencies.end()));
+    result.dependencies.insert(result.dependencies.end(),
+                               std::make_move_iterator(shader_dependencies.begin()),
+                               std::make_move_iterator(shader_dependencies.end()));
     return result;
 }

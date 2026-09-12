@@ -159,7 +159,8 @@ class Analyzer {
                 continue;
             }
             if (head == "asset" || head == "domain" || head == "blend" || head == "shading" ||
-                head == "two-sided" || head == "disable-depth-test" || head == "usage") {
+                head == "two-sided" || head == "disable-depth-test" || head == "usage" ||
+                head == "adopt-existing" || head == "opacity-mask-clip") {
                 if (!clauses.insert(std::string{head}).second) {
                     fail(clause.token.span,
                          "duplicate material setting '" + std::string{head} + "'");
@@ -181,6 +182,10 @@ class Analyzer {
                     clause, "disable-depth-test", material_.settings.disable_depth_test);
             } else if (head == "usage") {
                 parse_usage(clause);
+            } else if (head == "adopt-existing") {
+                parse_boolean_setting(clause, "adopt-existing", material_.settings.adopt_existing);
+            } else if (head == "opacity-mask-clip") {
+                parse_opacity_mask_clip(clause);
             } else if (head == "parameter") {
                 parse_parameter(clause);
             } else if (head == "let") {
@@ -189,6 +194,12 @@ class Analyzer {
                 parse_output(clause, "emissive");
             } else if (head == "opacity") {
                 parse_output(clause, "opacity");
+            } else if (head == "base-color") {
+                parse_output(clause, "base-color");
+            } else if (head == "opacity-mask") {
+                parse_output(clause, "opacity-mask");
+            } else if (head == "world-position-offset") {
+                parse_output(clause, "world-position-offset");
             } else {
                 fail(clause.token.span, "unknown material clause '" + std::string{head} + "'");
             }
@@ -206,15 +217,12 @@ class Analyzer {
             return;
         }
         auto const& path{form.children[1].token.text};
-        auto const generated{path.find("/Generated/Materials/")};
         auto const leaf_position{path.rfind('/')};
-        if (path.empty() || path.front() != '/' || generated == std::string::npos ||
-            generated == 0 || path.find('/', 1) != generated ||
-            leaf_position == std::string::npos ||
+        if (path.empty() || path.front() != '/' || path.find('/', 1) == std::string::npos ||
+            leaf_position == std::string::npos || leaf_position == path.size() - 1 ||
             path.substr(leaf_position + 1) != material_.settings.name ||
             path.find('.', leaf_position) != std::string::npos) {
-            fail(form.children[1].token.span,
-                 "asset path must be /<mount>/Generated/Materials/<material-name>");
+            fail(form.children[1].token.span, "asset path must be /<mount>/<path>/<material-name>");
             return;
         }
         material_.settings.package_path = path;
@@ -238,6 +246,8 @@ class Analyzer {
             material_.settings.domain = MaterialDomain::ui;
         } else if (*value == "surface") {
             material_.settings.domain = MaterialDomain::surface;
+        } else if (*value == "post-process") {
+            material_.settings.domain = MaterialDomain::post_process;
         } else {
             fail(form.children[1].token.span,
                  "unknown material domain '" + std::string{*value} + "'");
@@ -253,6 +263,10 @@ class Analyzer {
             material_.settings.blend_mode = BlendMode::additive;
         } else if (*value == "translucent") {
             material_.settings.blend_mode = BlendMode::translucent;
+        } else if (*value == "opaque") {
+            material_.settings.blend_mode = BlendMode::opaque;
+        } else if (*value == "masked") {
+            material_.settings.blend_mode = BlendMode::masked;
         } else {
             fail(form.children[1].token.span, "unknown blend mode '" + std::string{*value} + "'");
         }
@@ -298,6 +312,20 @@ class Analyzer {
             fail(form.children[1].token.span,
                  "unknown material usage '" + std::string{*value} + "'");
         }
+    }
+
+    void parse_opacity_mask_clip(Form const& form) {
+        if (form.children.size() != 2) {
+            fail(form.token.span, "opacity-mask-clip requires one numeric value");
+            return;
+        }
+        auto const value{parse_number(form.children[1])};
+        if (!value || *value < 0.0 || *value > 1.0) {
+            fail(form.children[1].token.span,
+                 "opacity-mask-clip must be a finite value from 0 to 1");
+            return;
+        }
+        material_.settings.opacity_mask_clip_value = *value;
     }
 
     void parse_parameter(Form const& form) {
@@ -468,6 +496,36 @@ class Analyzer {
         }
         if (head == "sample") {
             return sample(form);
+        }
+        if (head == "texture") {
+            return texture(form);
+        }
+        if (head == "swizzle") {
+            return swizzle(form);
+        }
+        if (head == "world-position") {
+            return standard_value(form, NodeKind::world_position, ValueType::float3);
+        }
+        if (head == "object-position") {
+            return standard_value(form, NodeKind::object_position, ValueType::float3);
+        }
+        if (head == "pixel-normal") {
+            return standard_value(form, NodeKind::pixel_normal, ValueType::float3);
+        }
+        if (head == "vertex-normal") {
+            return standard_value(form, NodeKind::vertex_normal, ValueType::float3);
+        }
+        if (head == "camera-vector") {
+            return standard_value(form, NodeKind::camera_vector, ValueType::float3);
+        }
+        if (head == "transform-position") {
+            return transform_position(form);
+        }
+        if (head == "scene-texture") {
+            return scene_texture(form);
+        }
+        if (head == "shader-call") {
+            return shader_call(form);
         }
         if (head == "custom") {
             return custom(form);
@@ -671,6 +729,218 @@ class Analyzer {
                              .type = ValueType::float4,
                              .inputs = {*texture, *coordinates},
                              .span = material_span(form.token.span)});
+    }
+
+    auto resolve_texture(Form const& path_form) -> std::optional<std::string> {
+        if (path_form.token.kind != TokenKind::string) {
+            fail(path_form.token.span, "texture path must be quoted");
+            return std::nullopt;
+        }
+        auto const resolved{resolver_.resolve == nullptr
+                                ? std::nullopt
+                                : resolver_.resolve(resolver_.context, path_form.token.text)};
+        if (!resolved) {
+            fail(path_form.token.span, "unresolved texture asset '" + path_form.token.text + "'");
+            return std::nullopt;
+        }
+        if (std::ranges::find(material_.texture_dependencies, *resolved) ==
+            material_.texture_dependencies.end()) {
+            material_.texture_dependencies.push_back(*resolved);
+        }
+        return resolved;
+    }
+
+    auto texture(Form const& form) -> std::optional<NodeHandle> {
+        if (form.children.size() != 2) {
+            fail(form.token.span, "texture requires one quoted asset path");
+            return std::nullopt;
+        }
+        auto texture_path{resolve_texture(form.children[1])};
+        if (!texture_path) {
+            return std::nullopt;
+        }
+        return add_node(Node{.kind = NodeKind::texture_object,
+                             .type = ValueType::texture,
+                             .span = material_span(form.token.span),
+                             .texture_path = std::move(*texture_path)});
+    }
+
+    auto swizzle(Form const& form) -> std::optional<NodeHandle> {
+        if (form.children.size() != 3) {
+            fail(form.token.span, "swizzle requires an expression and component mask");
+            return std::nullopt;
+        }
+        auto const input{expression(form.children[1])};
+        auto const mask{atom(form.children[2], "component mask")};
+        if (!input || !mask) {
+            return std::nullopt;
+        }
+        auto const input_components{component_count(material_.nodes[input->index].type)};
+        auto const valid_mask{!mask->empty() && mask->size() <= 4 &&
+                              std::ranges::all_of(*mask, [](char const component) {
+                                  return component == 'r' || component == 'g' || component == 'b' ||
+                                         component == 'a';
+                              })};
+        std::size_t previous_component{};
+        bool ordered{true};
+        for (std::size_t index{}; valid_mask && index < mask->size(); ++index) {
+            auto const component{std::string_view{"rgba"}.find((*mask)[index])};
+            if (component >= input_components || (index != 0 && component <= previous_component)) {
+                ordered = false;
+                break;
+            }
+            previous_component = component;
+        }
+        if (!valid_mask || !ordered) {
+            fail(form.children[2].token.span,
+                 "component mask must select ordered, unique components present in the input");
+            return std::nullopt;
+        }
+        auto const result_type{static_cast<ValueType>(static_cast<unsigned>(ValueType::float1) +
+                                                      static_cast<unsigned>(mask->size() - 1))};
+        return add_node(Node{.kind = NodeKind::component_mask,
+                             .type = result_type,
+                             .inputs = {*input},
+                             .span = material_span(form.token.span),
+                             .component_mask = std::string{*mask}});
+    }
+
+    auto standard_value(Form const& form, NodeKind const kind, ValueType const type)
+        -> std::optional<NodeHandle> {
+        if (form.children.size() != 1) {
+            fail(form.token.span, "standard material value requires no operands");
+            return std::nullopt;
+        }
+        return add_node(Node{.kind = kind, .type = type, .span = material_span(form.token.span)});
+    }
+
+    auto transform_position(Form const& form) -> std::optional<NodeHandle> {
+        if (form.children.size() != 4) {
+            fail(form.token.span,
+                 "transform-position requires source space, destination space, and value");
+            return std::nullopt;
+        }
+        auto const source{atom(form.children[1], "source position space")};
+        auto const destination{atom(form.children[2], "destination position space")};
+        auto const input{expression(form.children[3])};
+        if (!source || !destination || !input) {
+            return std::nullopt;
+        }
+        auto parse_space{[](std::string_view const space) -> std::optional<PositionSpace> {
+            if (space == "world") {
+                return PositionSpace::world;
+            }
+            if (space == "local") {
+                return PositionSpace::local;
+            }
+            return std::nullopt;
+        }};
+        auto const source_space{parse_space(*source)};
+        auto const destination_space{parse_space(*destination)};
+        if (!source_space || !destination_space || *source_space == *destination_space) {
+            fail(form.token.span, "transform-position requires two distinct supported spaces");
+            return std::nullopt;
+        }
+        if (material_.nodes[input->index].type != ValueType::float3) {
+            fail(form.children[3].token.span, "transform-position value must be float3");
+            return std::nullopt;
+        }
+        return add_node(Node{.kind = NodeKind::transform_position,
+                             .type = ValueType::float3,
+                             .inputs = {*input},
+                             .span = material_span(form.token.span),
+                             .source_space = *source_space,
+                             .destination_space = *destination_space});
+    }
+
+    auto scene_texture(Form const& form) -> std::optional<NodeHandle> {
+        auto const name{setting_value(form, "scene-texture")};
+        if (!name) {
+            return std::nullopt;
+        }
+        if (*name == "post-process-input0") {
+            return add_node(Node{.kind = NodeKind::scene_texture,
+                                 .type = ValueType::float4,
+                                 .span = material_span(form.token.span),
+                                 .scene_texture = SceneTexture::post_process_input0});
+        }
+        if (*name == "scene-depth") {
+            return add_node(Node{.kind = NodeKind::scene_texture,
+                                 .type = ValueType::float1,
+                                 .span = material_span(form.token.span),
+                                 .scene_texture = SceneTexture::scene_depth});
+        }
+        fail(form.children[1].token.span, "unsupported scene texture '" + std::string{*name} + "'");
+        return std::nullopt;
+    }
+
+    auto shader_call(Form const& form) -> std::optional<NodeHandle> {
+        if (form.children.size() != 5) {
+            fail(form.token.span,
+                 "shader-call requires result type, include path, function, and input list");
+            return std::nullopt;
+        }
+        auto const result_name{atom(form.children[1], "shader-call result type")};
+        auto const result_type{result_name ? parse_type(*result_name) : ValueType::invalid};
+        auto const function{atom(form.children[3], "shader function")};
+        auto const& path_form{form.children[2]};
+        auto const& declarations{form.children[4]};
+        if (!is_numeric(result_type)) {
+            fail(form.children[1].token.span,
+                 "shader-call result type must be float, float2, float3, or float4");
+            return std::nullopt;
+        }
+        if (path_form.token.kind != TokenKind::string || path_form.token.text.empty() ||
+            path_form.token.text.front() != '/' ||
+            !(path_form.token.text.ends_with(".ush") || path_form.token.text.ends_with(".usf"))) {
+            fail(path_form.token.span,
+                 "shader-call requires an absolute virtual .ush or .usf path");
+            return std::nullopt;
+        }
+        if (!function || !is_identifier(*function)) {
+            fail(form.children[3].token.span, "invalid shader function name");
+            return std::nullopt;
+        }
+        if (!declarations.is_list()) {
+            fail(declarations.token.span, "shader-call inputs must be a list");
+            return std::nullopt;
+        }
+
+        Node node{.kind = NodeKind::shader_call,
+                  .type = result_type,
+                  .span = material_span(form.token.span),
+                  .shader_path = path_form.token.text,
+                  .shader_function = std::string{*function}};
+        std::set<std::string> input_names;
+        for (auto const& declaration : declarations.children) {
+            if (!declaration.is_list() || declaration.children.size() != 3) {
+                fail(declaration.token.span, "shader-call input must be (name type expression)");
+                continue;
+            }
+            auto const name{atom(declaration.children[0], "shader-call input name")};
+            auto const type_name{atom(declaration.children[1], "shader-call input type")};
+            auto const type{type_name ? parse_type(*type_name) : ValueType::invalid};
+            if (!name || !is_identifier(*name) || type == ValueType::invalid ||
+                !input_names.insert(std::string{*name}).second) {
+                fail(declaration.token.span, "invalid or duplicate shader-call input declaration");
+                continue;
+            }
+            auto const input{expression(declaration.children[2])};
+            if (!input) {
+                continue;
+            }
+            if (material_.nodes[input->index].type != type) {
+                fail(declaration.token.span,
+                     "shader-call input expression does not match its declared type");
+                continue;
+            }
+            node.inputs.push_back(*input);
+            node.custom_inputs.push_back({std::string{*name}, type, *input});
+        }
+        if (node.custom_inputs.size() != declarations.children.size()) {
+            return std::nullopt;
+        }
+        return add_node(std::move(node));
     }
 
     auto per_instance_custom_data(Form const& form) -> std::optional<NodeHandle> {

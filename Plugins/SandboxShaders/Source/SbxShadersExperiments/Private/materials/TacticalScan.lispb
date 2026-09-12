@@ -1,0 +1,38 @@
+(material M_TacticalScan
+  (asset "/SandboxShaders/Experiments/TacticalScan/M_TacticalScan")
+  (adopt-existing true)
+  (domain post-process)
+  (blend opaque)
+  (shading unlit)
+
+  (parameter color ScanOrigin 0.0 0.0 0.0 1.0)
+  (parameter color ScanDirection 1.0 0.0 0.0 1.0)
+  (parameter color GridAxisU 0.0 1.0 0.0 1.0)
+  (parameter color GridAxisV 0.0 0.0 1.0 1.0)
+  (parameter color ScanColour 0.0 1.0 0.45 1.0)
+  (parameter scalar AnimationTime 0.0)
+  (parameter scalar ScanRange 450.0)
+  (parameter scalar ScanSpeed 0.22)
+  (parameter scalar ScanWidth 35.0)
+  (parameter scalar ScanIntensity 5.0)
+  (parameter scalar ScanFalloff 180.0)
+  (parameter scalar GridScale 75.0)
+
+  (emissive
+    (shader-call float3 "/Plugin/SandboxShaders/Private/TacticalScan/TacticalScan.ush"
+      sbx_tactical_scan
+      ((scene_colour float3 (swizzle (scene-texture post-process-input0) rgb))
+       (world_position float3 (world-position))
+       (scene_depth float (scene-texture scene-depth))
+       (scan_origin float3 (swizzle ScanOrigin rgb))
+       (scan_direction float3 (swizzle ScanDirection rgb))
+       (grid_axis_u float3 (swizzle GridAxisU rgb))
+       (grid_axis_v float3 (swizzle GridAxisV rgb))
+       (animation_time float AnimationTime)
+       (scan_range float ScanRange)
+       (scan_speed float ScanSpeed)
+       (scan_width float ScanWidth)
+       (scan_intensity float ScanIntensity)
+       (scan_falloff float ScanFalloff)
+       (grid_scale float GridScale)
+       (scan_colour float3 (swizzle ScanColour rgb))))))

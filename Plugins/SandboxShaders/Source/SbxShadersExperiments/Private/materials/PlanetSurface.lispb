@@ -1,0 +1,20 @@
+(material M_PlanetSurface
+  (asset "/SandboxShaders/Experiments/PlanetAtmosphere/M_PlanetSurface")
+  (adopt-existing true)
+  (domain surface)
+  (blend opaque)
+  (shading unlit)
+
+  (parameter color SunDirection 0.35 -0.45 0.82 1.0)
+  (parameter color DayColour 0.04 0.16 0.24 1.0)
+  (parameter color NightColour 0.002 0.006 0.018 1.0)
+  (parameter scalar NightFloor 0.08)
+
+  (emissive
+    (shader-call float3 "/Plugin/SandboxShaders/Private/PlanetAtmosphere/PlanetAtmosphere.ush"
+      sbx_planet_surface
+      ((normal_ws float3 (vertex-normal))
+       (sun_direction float3 (swizzle SunDirection rgb))
+       (day_colour float3 (swizzle DayColour rgb))
+       (night_colour float3 (swizzle NightColour rgb))
+       (night_floor float NightFloor)))))

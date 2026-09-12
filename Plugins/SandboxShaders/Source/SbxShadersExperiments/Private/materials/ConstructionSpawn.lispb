@@ -1,0 +1,33 @@
+(material M_ConstructionSpawn
+  (asset "/SandboxShaders/Experiments/ConstructionSpawn/M_ConstructionSpawn")
+  (adopt-existing true)
+  (domain surface)
+  (blend masked)
+  (shading unlit)
+  (opacity-mask-clip 0.333)
+
+  (parameter scalar Progress 0.58)
+  (parameter scalar AnimationTime 0.0)
+  (parameter scalar EdgeWidth 0.075)
+  (parameter scalar GridScale 9.0)
+  (parameter scalar NoiseScale 2.8)
+  (parameter color BaseColour 0.015 0.1 0.16 1.0)
+  (parameter color EdgeColour 0.05 0.95 1.0 1.0)
+  (parameter scalar EmissiveIntensity 13.0)
+
+  (let local_position (transform-position world local (world-position)))
+  (let spawn
+    (shader-call float4 "/Plugin/SandboxShaders/Private/ConstructionSpawn/ConstructionSpawn.ush"
+      sbx_construction_spawn
+      ((local_position float3 local_position)
+       (progress float Progress)
+       (animation_time float AnimationTime)
+       (edge_width float EdgeWidth)
+       (grid_scale float GridScale)
+       (noise_scale float NoiseScale)
+       (base_colour float3 (swizzle BaseColour rgb))
+       (edge_colour float3 (swizzle EdgeColour rgb))
+       (emissive_intensity float EmissiveIntensity))))
+
+  (emissive (swizzle spawn rgb))
+  (opacity-mask (swizzle spawn a)))

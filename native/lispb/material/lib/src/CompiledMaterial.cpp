@@ -162,6 +162,13 @@ void write_node(Writer& writer, Node const& node) {
         writer.write_u8(static_cast<std::uint8_t>(input.type));
         writer.write_handle(input.node);
     }
+    writer.write_string(node.texture_path);
+    writer.write_string(node.component_mask);
+    writer.write_u8(static_cast<std::uint8_t>(node.source_space));
+    writer.write_u8(static_cast<std::uint8_t>(node.destination_space));
+    writer.write_u8(static_cast<std::uint8_t>(node.scene_texture));
+    writer.write_string(node.shader_path);
+    writer.write_string(node.shader_function);
 }
 
 auto read_value_type(Reader& reader) -> std::expected<ValueType, std::string> {
@@ -177,7 +184,8 @@ auto read_node(Reader& reader) -> std::expected<Node, std::string> {
     auto const kind{reader.read_u8()};
     auto const type{read_value_type(reader)};
     auto const input_count{reader.read_size(maximum_collection_size)};
-    if (!kind || *kind > static_cast<std::uint8_t>(NodeKind::cosine) || !type || !input_count) {
+    if (!kind || *kind > static_cast<std::uint8_t>(NodeKind::shader_call) || !type ||
+        !input_count) {
         return std::unexpected{"invalid material node header"};
     }
 
@@ -229,6 +237,27 @@ auto read_node(Reader& reader) -> std::expected<Node, std::string> {
         }
         node.custom_inputs.push_back({std::move(*name), *input_type, *input_node});
     }
+    auto texture_path{reader.read_string()};
+    auto component_mask{reader.read_string()};
+    auto const source_space{reader.read_u8()};
+    auto const destination_space{reader.read_u8()};
+    auto const scene_texture{reader.read_u8()};
+    auto shader_path{reader.read_string()};
+    auto shader_function{reader.read_string()};
+    if (!texture_path || !component_mask || !source_space || !destination_space || !scene_texture ||
+        !shader_path || !shader_function ||
+        *source_space > static_cast<std::uint8_t>(PositionSpace::local) ||
+        *destination_space > static_cast<std::uint8_t>(PositionSpace::local) ||
+        *scene_texture > static_cast<std::uint8_t>(SceneTexture::scene_depth)) {
+        return std::unexpected{"malformed extended material node payload"};
+    }
+    node.texture_path = std::move(*texture_path);
+    node.component_mask = std::move(*component_mask);
+    node.source_space = static_cast<PositionSpace>(*source_space);
+    node.destination_space = static_cast<PositionSpace>(*destination_space);
+    node.scene_texture = static_cast<SceneTexture>(*scene_texture);
+    node.shader_path = std::move(*shader_path);
+    node.shader_function = std::move(*shader_function);
     return node;
 }
 
@@ -279,6 +308,8 @@ auto serialize(CompiledMaterial const& compiled)
     writer.write_u8(compiled.material.settings.two_sided ? 1 : 0);
     writer.write_u8(compiled.material.settings.disable_depth_test ? 1 : 0);
     writer.write_u8(compiled.material.settings.used_with_instanced_static_meshes ? 1 : 0);
+    writer.write_u8(compiled.material.settings.adopt_existing ? 1 : 0);
+    writer.write_double(compiled.material.settings.opacity_mask_clip_value);
 
     writer.write_size(compiled.material.parameters.size());
     for (auto const& parameter : compiled.material.parameters) {
@@ -335,12 +366,15 @@ auto deserialize(std::span<std::uint8_t const> const bytes)
     auto const two_sided{reader.read_u8()};
     auto const disable_depth_test{reader.read_u8()};
     auto const used_with_instances{reader.read_u8()};
+    auto const adopt_existing{reader.read_u8()};
+    auto const opacity_mask_clip_value{reader.read_double()};
     if (!source_path || !source_hash || !name || !package_path || !domain || !blend_mode ||
         !shading_model || !two_sided || !disable_depth_test || !used_with_instances ||
-        *domain > static_cast<std::uint8_t>(MaterialDomain::surface) ||
-        *blend_mode > static_cast<std::uint8_t>(BlendMode::translucent) ||
+        !adopt_existing || !opacity_mask_clip_value ||
+        *domain > static_cast<std::uint8_t>(MaterialDomain::post_process) ||
+        *blend_mode > static_cast<std::uint8_t>(BlendMode::masked) ||
         *shading_model > static_cast<std::uint8_t>(ShadingModel::unlit) || *two_sided > 1 ||
-        *disable_depth_test > 1 || *used_with_instances > 1) {
+        *disable_depth_test > 1 || *used_with_instances > 1 || *adopt_existing > 1) {
         return std::unexpected{"malformed compiled material settings"};
     }
     compiled.source_path = std::move(*source_path);
@@ -352,7 +386,9 @@ auto deserialize(std::span<std::uint8_t const> const bytes)
                                   .shading_model = static_cast<ShadingModel>(*shading_model),
                                   .two_sided = *two_sided != 0,
                                   .disable_depth_test = *disable_depth_test != 0,
-                                  .used_with_instanced_static_meshes = *used_with_instances != 0};
+                                  .used_with_instanced_static_meshes = *used_with_instances != 0,
+                                  .adopt_existing = *adopt_existing != 0,
+                                  .opacity_mask_clip_value = *opacity_mask_clip_value};
     if (compiled.source_path.empty() || !valid_source_hash(compiled.source_hash)) {
         return std::unexpected{"invalid compiled material source metadata"};
     }
