@@ -1,17 +1,18 @@
 #include <SpaceGameS7/LevelDefinitionReader.h>
 
-#include <S7Lab/Interpreter.h>
-#include <S7Lab/NativeApi.h>
+#include <native/s7/interpreter.h>
+#include <native/s7/value.h>
 
 #include <Containers/StringConv.h>
 #include <Misc/FileHelper.h>
 
 #include <cmath>
 #include <limits>
+#include <string_view>
 
 namespace ml::s7 {
 namespace {
-namespace s7_native = S7Lab::native;
+namespace s7_native = ::ml::s7;
 
 constexpr TCHAR level_prelude[]{LR"(
 (define (level . clauses) (cons 'level clauses))
@@ -49,14 +50,14 @@ constexpr TCHAR level_prelude[]{LR"(
 (define (spawn-at seconds) (list 'spawn-at seconds))
 )"};
 
-auto to_fstring(ANSICHAR const* const value) -> FString {
-    auto const converted{FUTF8ToTCHAR{value}};
+auto to_fstring(std::string_view const value) -> FString {
+    auto const converted{FUTF8ToTCHAR{value.data(), static_cast<int32>(value.size())}};
     return FString{converted.Length(), converted.Get()};
 }
 
 class FDefinitionDecoder final {
   public:
-    FDefinitionDecoder(s7_scheme& scheme, s7_native::FValue const root)
+    FDefinitionDecoder(s7_native::Scheme& scheme, s7_native::Value const root)
         : scheme_{scheme}
         , root_{root} {}
 
@@ -192,15 +193,15 @@ class FDefinitionDecoder final {
         return result;
     }
   private:
-    auto list_length(s7_native::FValue const value) const -> int64 {
+    auto list_length(s7_native::Value const value) const -> int64 {
         return s7_native::list_length(scheme_, value);
     }
 
-    auto list_value(s7_native::FValue const value, int64 const index) const -> s7_native::FValue {
+    auto list_value(s7_native::Value const value, int64 const index) const -> s7_native::Value {
         return s7_native::list_value(scheme_, value, index);
     }
 
-    auto is_non_empty_list(s7_native::FValue const value) const -> bool {
+    auto is_non_empty_list(s7_native::Value const value) const -> bool {
         return s7_native::is_list(scheme_, value) && list_length(value) > 0;
     }
 
@@ -208,7 +209,7 @@ class FDefinitionDecoder final {
         errors_.Add(FLevelDefinitionDecodeError{.path = path, .message = MoveTemp(message)});
     }
 
-    auto expect_length(s7_native::FValue const value, int64 const expected, FString const& path)
+    auto expect_length(s7_native::Value const value, int64 const expected, FString const& path)
         -> bool {
         if (!s7_native::is_list(scheme_, value)) {
             add_error(path, TEXT("Expected a list"));
@@ -225,7 +226,7 @@ class FDefinitionDecoder final {
         return true;
     }
 
-    auto expect_tagged_list(s7_native::FValue const value,
+    auto expect_tagged_list(s7_native::Value const value,
                             FString const& expected_tag,
                             FString const& path) -> bool {
         if (!is_non_empty_list(value)) {
@@ -241,7 +242,7 @@ class FDefinitionDecoder final {
         return true;
     }
 
-    auto read_symbol(s7_native::FValue const value, FString const& path, FName& output) -> bool {
+    auto read_symbol(s7_native::Value const value, FString const& path, FName& output) -> bool {
         if (!s7_native::is_symbol(value)) {
             add_error(path, TEXT("Expected a symbol"));
             return false;
@@ -250,7 +251,7 @@ class FDefinitionDecoder final {
         return true;
     }
 
-    auto read_string(s7_native::FValue const value, FString const& path, FString& output) -> bool {
+    auto read_string(s7_native::Value const value, FString const& path, FString& output) -> bool {
         if (!s7_native::is_string(value)) {
             add_error(path, TEXT("Expected a string"));
             return false;
@@ -259,7 +260,7 @@ class FDefinitionDecoder final {
         return true;
     }
 
-    auto read_number(s7_native::FValue const value, FString const& path, double& output) -> bool {
+    auto read_number(s7_native::Value const value, FString const& path, double& output) -> bool {
         if (!s7_native::is_real(value)) {
             add_error(path, TEXT("Expected a real number"));
             return false;
@@ -268,7 +269,7 @@ class FDefinitionDecoder final {
         return true;
     }
 
-    auto read_int32(s7_native::FValue const value, FString const& path, int32& output) -> bool {
+    auto read_int32(s7_native::Value const value, FString const& path, int32& output) -> bool {
         double number{0.0};
         if (!read_number(value, path, number)) {
             return false;
@@ -283,13 +284,13 @@ class FDefinitionDecoder final {
         return true;
     }
 
-    void read_text_clause(s7_native::FValue const clause, FString const& path, FString& output) {
+    void read_text_clause(s7_native::Value const clause, FString const& path, FString& output) {
         if (expect_length(clause, 2, path)) {
             read_string(list_value(clause, 1), path + TEXT(".value"), output);
         }
     }
 
-    void read_unlock(s7_native::FValue const clause, FString const& path, FLevelBuilder& builder) {
+    void read_unlock(s7_native::Value const clause, FString const& path, FLevelBuilder& builder) {
         auto const count{list_length(clause) - 1};
         if (count == 0) {
             add_error(path, TEXT("Unlock clause must contain at least one criterion"));
@@ -329,7 +330,7 @@ class FDefinitionDecoder final {
         }
     }
 
-    void read_teams(s7_native::FValue const clause, FString const& path, FLevelBuilder& builder) {
+    void read_teams(s7_native::Value const clause, FString const& path, FLevelBuilder& builder) {
         auto const count{list_length(clause) - 1};
         for (int64 i{0}; i < count; ++i) {
             auto const value{list_value(clause, i + 1)};
@@ -346,7 +347,7 @@ class FDefinitionDecoder final {
         }
     }
 
-    void read_camera(s7_native::FValue const clause, FString const& path, FLevelBuilder& builder) {
+    void read_camera(s7_native::Value const clause, FString const& path, FLevelBuilder& builder) {
         if (!expect_length(clause, 4, path)) {
             return;
         }
@@ -397,7 +398,7 @@ class FDefinitionDecoder final {
         }
     }
 
-    auto read_mission_mode(s7_native::FValue const value,
+    auto read_mission_mode(s7_native::Value const value,
                            FString const& path,
                            ELevelMissionMode& output) -> bool {
         FName mode;
@@ -417,7 +418,7 @@ class FDefinitionDecoder final {
         return true;
     }
 
-    void read_entity_id_list(s7_native::FValue const value,
+    void read_entity_id_list(s7_native::Value const value,
                              FString const& tag,
                              FString const& path,
                              TArray<FLevelEntityId>& output) {
@@ -437,7 +438,7 @@ class FDefinitionDecoder final {
         }
     }
 
-    void read_mission(s7_native::FValue const clause, FString const& path, FLevelBuilder& builder) {
+    void read_mission(s7_native::Value const clause, FString const& path, FLevelBuilder& builder) {
         FLevelMissionDefinition mission;
         bool has_mode{false};
         bool has_time_limit{false};
@@ -524,7 +525,7 @@ class FDefinitionDecoder final {
         builder.set_mission(mission);
     }
 
-    void read_mission_events(s7_native::FValue const clause,
+    void read_mission_events(s7_native::Value const clause,
                              FString const& path,
                              FLevelBuilder& builder) {
         auto const event_count{list_length(clause) - 1};
@@ -592,7 +593,7 @@ class FDefinitionDecoder final {
         }
     }
 
-    auto read_vector(s7_native::FValue const value,
+    auto read_vector(s7_native::Value const value,
                      FString const& tag,
                      FString const& path,
                      double (&components)[3]) -> bool {
@@ -610,8 +611,7 @@ class FDefinitionDecoder final {
         return valid;
     }
 
-    void
-        read_entities(s7_native::FValue const clause, FString const& path, FLevelBuilder& builder) {
+    void read_entities(s7_native::Value const clause, FString const& path, FLevelBuilder& builder) {
         auto const count{list_length(clause) - 1};
         for (int64 i{0}; i < count; ++i) {
             auto const value{list_value(clause, i + 1)};
@@ -673,27 +673,31 @@ class FDefinitionDecoder final {
         }
     }
 
-    s7_scheme& scheme_;
-    s7_native::FValue root_{};
+    s7_native::Scheme& scheme_;
+    s7_native::Value root_{};
     TArray<FLevelDefinitionDecodeError> errors_{};
 };
 }
 
 auto FLevelDefinitionReader::read_source(FStringView const source) const
     -> FLevelDefinitionReadResult {
-    S7Lab::FInterpreter interpreter;
+    s7_native::Interpreter interpreter;
     FString expression{TEXT("(begin\n")};
     expression.Append(level_prelude);
     expression.AppendChars(source.GetData(), source.Len());
     expression.Append(TEXT("\n)"));
 
+    auto const converted{FTCHARToUTF8{*expression, expression.Len()}};
+    auto const utf8_expression{
+        std::string_view{converted.Get(), static_cast<std::size_t>(converted.Length())}};
+
     FLevelDefinitionReadResult decoded;
     auto const evaluation{interpreter.evaluate_value(
-        expression, [&decoded](s7_scheme& scheme, s7_native::FValue const value) {
+        utf8_expression, [&decoded](s7_native::Scheme& scheme, s7_native::Value const value) {
             decoded = FDefinitionDecoder{scheme, value}.decode();
         })};
     if (!evaluation.succeeded) {
-        return {.script_error = evaluation.error};
+        return {.script_error = to_fstring(evaluation.error)};
     }
     return decoded;
 }

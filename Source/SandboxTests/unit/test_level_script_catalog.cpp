@@ -47,6 +47,26 @@ auto valid_camera_level_script(FStringView const id, FStringView const title) ->
 
 TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
 {
+    TEST_METHOD(LoadsCheckedInLevelsAndCampaigns)
+    {
+        auto const result{ml::s7::discover_level_scripts()};
+        TestRunner->TestTrue(TEXT("Checked-in script catalog has no errors"),
+                             result.error.IsEmpty());
+        TestRunner->TestTrue(TEXT("Checked-in script catalog contains levels"),
+                             !result.entries.IsEmpty());
+        TestRunner->TestTrue(TEXT("Checked-in script catalog contains campaigns"),
+                             !result.campaigns.IsEmpty());
+
+        for (auto const& entry : result.entries) {
+            TestRunner->TestTrue(*FString::Printf(TEXT("Level '%s' loads"), *entry.filename),
+                                 static_cast<bool>(entry));
+        }
+        for (auto const& campaign : result.campaigns) {
+            TestRunner->TestTrue(*FString::Printf(TEXT("Campaign '%s' loads"), *campaign.filename),
+                                 static_cast<bool>(campaign));
+        }
+    }
+
     TEST_METHOD(DiscoversAndEvaluatesFlatSchemeFiles)
     {
         FTemporaryScriptDirectory directory;

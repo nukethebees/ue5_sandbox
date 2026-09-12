@@ -1,0 +1,22 @@
+function(configure_sandbox_s7_abi target)
+  if(WIN32)
+    set_property(TARGET ${target} PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
+    target_compile_definitions(${target} PRIVATE _ITERATOR_DEBUG_LEVEL=0)
+
+    if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+      target_compile_options(${target} PRIVATE /permissive-)
+      if(UE_CONFIGURATION MATCHES "^(Development|Shipping|Test)$")
+        target_compile_options(${target} PRIVATE /O2)
+      endif()
+    elseif(UE_CONFIGURATION MATCHES "^(Development|Shipping|Test)$")
+      target_compile_options(${target} PRIVATE -O2)
+    endif()
+  endif()
+
+  if(UE_CONFIGURATION MATCHES "^(Shipping|Test)$")
+    target_compile_definitions(${target} PRIVATE NDEBUG)
+  endif()
+endfunction()
+
+add_subdirectory(lib)
+add_subdirectory(tests)

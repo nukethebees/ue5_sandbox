@@ -9,6 +9,7 @@ add_subdirectory(cmake/compiler_warnings)
 option(SANDBOX_CODEGEN_ONLY "Configure only the standalone code generator" OFF)
 option(SANDBOX_NATIVE_MEMORY_ONLY "Configure only the standalone native memory library" OFF)
 option(SANDBOX_NATIVE_MESH_ONLY "Configure only the standalone native mesh generator" OFF)
+option(SANDBOX_NATIVE_S7_ONLY "Configure only the standalone native S7 library" OFF)
 option(SANDBOX_KERNEL_BENCHMARKS "Build native generated-kernel benchmarks" OFF)
 option(SANDBOX_NATIVE_SOA_BENCHMARKS "Build standalone experimental SoA benchmarks" OFF)
 option(SANDBOX_KERNEL_BENCHMARK_PLOTS "Generate native kernel benchmark plots" OFF)
@@ -42,6 +43,11 @@ if(SANDBOX_NATIVE_MESH_ONLY)
   return()
 endif()
 
+if(SANDBOX_NATIVE_S7_ONLY)
+  add_subdirectory(native/s7)
+  return()
+endif()
+
 add_subdirectory(Codegen)
 
 if(SANDBOX_CODEGEN_ONLY)
@@ -55,6 +61,7 @@ set(CACHE{UE_ROOT}
 )
 
 add_subdirectory(native/memory)
+add_subdirectory(native/s7)
 
 set(CACHE{SANDBOX_TEST_SUITE}
   TYPE STRING
@@ -360,6 +367,7 @@ add_dependencies(game check-generated-code)
 add_custom_target(worktree-dependencies
   DEPENDS
     native-memory
+    sandbox-s7
     sandbox-image
     sandbox-material-gen
     check-generated-code
@@ -370,11 +378,6 @@ add_custom_target(worktree-dependencies
 add_unreal_commandlet_target(generate-lab-images
   COMMANDLET GenerateSandboxImages
   COMMENT "Regenerating SandboxImages Lab PNGs"
-)
-
-add_unreal_commandlet_target(generate-s7lab-assets
-  COMMANDLET GenerateS7LabAssets
-  COMMENT "Generating S7Lab Editor Utility Widget assets"
 )
 
 add_unreal_commandlet_target(generate-slate-dsl-smoke-asset
@@ -443,7 +446,6 @@ set(SANDBOX_UNIT_AUTOMATION_FILTERS
   SandboxCoreEngine.UnitTests
   SandboxGpuTutorials.UnitTests
   SandboxImages.UnitTests
-  S7Lab.UnitTests
   SandboxISMC.UnitTests
   SandboxMesh.UnitTests
   SandboxUI.UnitTests
@@ -563,6 +565,7 @@ add_custom_target(dev-core
     codegen-tests
     kernel-codegen-tests
     native-memory-tests
+    sandbox-s7-tests
     slate-codegen-tests
 )
 

@@ -473,10 +473,6 @@
 			"Enabled": true
 		},
 		{
-			"Name": "SbxLangLab",
-			"Enabled": true
-		},
-		{
 			"Name": "SandboxMesh",
 			"Enabled": true
 		},

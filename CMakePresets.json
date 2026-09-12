@@ -147,6 +147,16 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "SANDBOX_NATIVE_MESH_ONLY": true
       }
+    },
+    {
+      "name": "native-s7",
+      "displayName": "Native S7 runtime",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "SANDBOX_NATIVE_S7_ONLY": true,
+        "UE_CONFIGURATION": "DebugGame"
+      }
     }
   ],
   "buildPresets": [
@@ -309,6 +319,11 @@
       "name": "native-mesh",
       "configurePreset": "native-mesh",
       "targets": ["mesh-gen-tests"]
+    },
+    {
+      "name": "native-s7",
+      "configurePreset": "native-s7",
+      "targets": ["sandbox-s7-tests"]
     }
   ],
   "testPresets": [
@@ -527,6 +542,16 @@
       },
       "execution": {
         "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "native-s7",
+      "inherits": "test-base",
+      "configurePreset": "native-s7",
+      "filter": {
+        "include": {
+          "label": "native-s7"
+        }
       }
     }
   ],
@@ -810,6 +835,14 @@
         { "type": "configure", "name": "native-memory" },
         { "type": "build", "name": "native-memory" },
         { "type": "test", "name": "native-memory" }
+      ]
+    },
+    {
+      "name": "native-s7",
+      "steps": [
+        { "type": "configure", "name": "native-s7" },
+        { "type": "build", "name": "native-s7" },
+        { "type": "test", "name": "native-s7" }
       ]
     }
   ]

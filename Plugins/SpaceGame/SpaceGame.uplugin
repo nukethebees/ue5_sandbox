@@ -45,10 +45,6 @@
 		{
 			"Name": "SandboxUI",
 			"Enabled": true
-		},
-		{
-			"Name": "SbxLangLab",
-			"Enabled": true
 		}
 	],
 	"Modules": [

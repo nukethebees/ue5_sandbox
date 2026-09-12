@@ -1,15 +1,17 @@
 #include <SpaceGameS7/CampaignDefinitionReader.h>
 
-#include <S7Lab/Interpreter.h>
-#include <S7Lab/NativeApi.h>
+#include <native/s7/interpreter.h>
+#include <native/s7/value.h>
 
 #include <Containers/Set.h>
 #include <Containers/StringConv.h>
 #include <Misc/FileHelper.h>
 
+#include <string_view>
+
 namespace ml::s7 {
 namespace {
-namespace s7_native = S7Lab::native;
+namespace s7_native = ::ml::s7;
 
 constexpr TCHAR campaign_prelude[]{LR"(
 (define (campaign . clauses) (cons 'campaign clauses))
@@ -18,14 +20,14 @@ constexpr TCHAR campaign_prelude[]{LR"(
 (define (levels . values) (cons 'levels values))
 )"};
 
-auto campaign_to_fstring(ANSICHAR const* const value) -> FString {
-    auto const converted{FUTF8ToTCHAR{value}};
+auto campaign_to_fstring(std::string_view const value) -> FString {
+    auto const converted{FUTF8ToTCHAR{value.data(), static_cast<int32>(value.size())}};
     return FString{converted.Length(), converted.Get()};
 }
 
 class FCampaignDecoder final {
   public:
-    FCampaignDecoder(s7_scheme& scheme, s7_native::FValue const root)
+    FCampaignDecoder(s7_native::Scheme& scheme, s7_native::Value const root)
         : scheme_{scheme}
         , root_{root} {}
 
@@ -104,15 +106,15 @@ class FCampaignDecoder final {
         return result;
     }
   private:
-    auto list_length(s7_native::FValue const value) const -> int64 {
+    auto list_length(s7_native::Value const value) const -> int64 {
         return s7_native::list_length(scheme_, value);
     }
 
-    auto list_value(s7_native::FValue const value, int64 const index) const -> s7_native::FValue {
+    auto list_value(s7_native::Value const value, int64 const index) const -> s7_native::Value {
         return s7_native::list_value(scheme_, value, index);
     }
 
-    auto is_non_empty_list(s7_native::FValue const value) const -> bool {
+    auto is_non_empty_list(s7_native::Value const value) const -> bool {
         return s7_native::is_list(scheme_, value) && list_length(value) > 0;
     }
 
@@ -120,7 +122,7 @@ class FCampaignDecoder final {
         errors_.Add({.path = MoveTemp(path), .message = MoveTemp(message)});
     }
 
-    auto expect_length(s7_native::FValue const value, int64 const expected, FString const& path)
+    auto expect_length(s7_native::Value const value, int64 const expected, FString const& path)
         -> bool {
         if (!s7_native::is_list(scheme_, value)) {
             add_error(path, TEXT("Expected a list"));
@@ -136,7 +138,7 @@ class FCampaignDecoder final {
         return true;
     }
 
-    auto expect_tagged_list(s7_native::FValue const value,
+    auto expect_tagged_list(s7_native::Value const value,
                             FString const& expected_tag,
                             FString const& path) -> bool {
         if (!is_non_empty_list(value)) {
@@ -152,7 +154,7 @@ class FCampaignDecoder final {
         return true;
     }
 
-    auto read_symbol(s7_native::FValue const value, FString const& path, FName& output) -> bool {
+    auto read_symbol(s7_native::Value const value, FString const& path, FName& output) -> bool {
         if (!s7_native::is_symbol(value)) {
             add_error(path, TEXT("Expected a symbol"));
             return false;
@@ -161,7 +163,7 @@ class FCampaignDecoder final {
         return true;
     }
 
-    auto read_string(s7_native::FValue const value, FString const& path, FString& output) -> bool {
+    auto read_string(s7_native::Value const value, FString const& path, FString& output) -> bool {
         if (!s7_native::is_string(value)) {
             add_error(path, TEXT("Expected a string"));
             return false;
@@ -170,8 +172,7 @@ class FCampaignDecoder final {
         return true;
     }
 
-    void
-        read_levels(s7_native::FValue const clause, FString const& path, TArray<FLevelId>& output) {
+    void read_levels(s7_native::Value const clause, FString const& path, TArray<FLevelId>& output) {
         TSet<FLevelId> seen;
         auto const count{list_length(clause) - 1};
         output.Reserve(count);
@@ -192,27 +193,31 @@ class FCampaignDecoder final {
         }
     }
 
-    s7_scheme& scheme_;
-    s7_native::FValue root_{};
+    s7_native::Scheme& scheme_;
+    s7_native::Value root_{};
     TArray<FCampaignDefinitionDecodeError> errors_{};
 };
 }
 
 auto FCampaignDefinitionReader::read_source(FStringView const source) const
     -> FCampaignDefinitionReadResult {
-    S7Lab::FInterpreter interpreter;
+    s7_native::Interpreter interpreter;
     FString expression{TEXT("(begin\n")};
     expression.Append(campaign_prelude);
     expression.AppendChars(source.GetData(), source.Len());
     expression.Append(TEXT("\n)"));
 
+    auto const converted{FTCHARToUTF8{*expression, expression.Len()}};
+    auto const utf8_expression{
+        std::string_view{converted.Get(), static_cast<std::size_t>(converted.Length())}};
+
     FCampaignDefinitionReadResult decoded;
     auto const evaluation{interpreter.evaluate_value(
-        expression, [&decoded](s7_scheme& scheme, s7_native::FValue const value) {
+        utf8_expression, [&decoded](s7_native::Scheme& scheme, s7_native::Value const value) {
             decoded = FCampaignDecoder{scheme, value}.decode();
         })};
     if (!evaluation.succeeded) {
-        return {.script_error = evaluation.error};
+        return {.script_error = campaign_to_fstring(evaluation.error)};
     }
     return decoded;
 }
