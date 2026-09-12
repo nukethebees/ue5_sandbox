@@ -46,8 +46,10 @@ function(add_unreal_commandlet_target target_name)
       "add_unreal_commandlet_target(${target_name}) requires COMMENT.")
   endif()
 
+  sandbox_machine_activity_command(activity_command STANDARD
+    "Unreal commandlet: ${commandlet_COMMANDLET}")
   add_custom_target(${target_name}
-    COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    COMMAND ${activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
       "-run=${commandlet_COMMANDLET}"
       "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
       -ddc=NoZenLocalFallback
@@ -65,8 +67,30 @@ function(add_unreal_commandlet_target target_name)
   )
 endfunction()
 
+function(add_unreal_benchmark_commandlet_target target_name commandlet)
+  sandbox_machine_activity_command(activity_command BENCHMARK
+    "Unreal benchmark commandlet: ${commandlet}")
+  add_custom_target(${target_name}
+    COMMAND ${activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+      "-run=${commandlet}"
+      ${ARGN}
+      -AllowCommandletRendering
+      -RenderOffscreen
+      -unattended
+      -nop4
+      -nosplash
+      -nosound
+      -stdout
+    DEPENDS editor
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    COMMENT "Running ${commandlet} with exclusive benchmark access"
+    USES_TERMINAL
+    VERBATIM
+  )
+endfunction()
+
 function(add_unreal_editor_test test_name)
-  cmake_parse_arguments(PARSE_ARGV 1 editor_test "" "TIMEOUT" "ARGUMENTS;LABELS")
+  cmake_parse_arguments(PARSE_ARGV 1 editor_test "" "ACTIVITY;TIMEOUT" "ARGUMENTS;LABELS")
 
   if(editor_test_UNPARSED_ARGUMENTS)
     message(FATAL_ERROR
@@ -86,9 +110,19 @@ function(add_unreal_editor_test test_name)
     message(FATAL_ERROR "add_unreal_editor_test(${test_name}) requires TIMEOUT.")
   endif()
 
+  if(NOT editor_test_ACTIVITY)
+    set(editor_test_ACTIVITY STANDARD)
+  endif()
+  if(NOT editor_test_ACTIVITY MATCHES "^(STANDARD|BENCHMARK)$")
+    message(FATAL_ERROR
+      "add_unreal_editor_test(${test_name}) ACTIVITY must be STANDARD or BENCHMARK.")
+  endif()
+  sandbox_machine_activity_command(activity_command "${editor_test_ACTIVITY}"
+    "Unreal test: ${test_name}")
+
   add_test(
     NAME "${test_name}"
-    COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    COMMAND ${activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
       ${editor_test_ARGUMENTS}
       -unattended
       -nop4

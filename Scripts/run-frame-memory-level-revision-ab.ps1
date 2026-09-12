@@ -141,8 +141,18 @@ function Invoke-Benchmark {
         throw "Expected one $benchmarkName test in $SourceDirectory"
     }
     $command = @($tests[0].command)
-    Invoke-Checked -Executable $command[0] `
-        -Arguments @($command[1..($command.Count - 1)] + '-notraceserver' +
+    $activityModule = Join-Path $repo 'cmake/machine_activity.cmake'
+    $activityRunner = Join-Path $repo 'cmake/run_with_machine_activity.cmake'
+    $activityArguments = @(
+        "-DMACHINE_ACTIVITY_MODULE=$activityModule"
+        '-DMACHINE_ACTIVITY_MODE=benchmark'
+        "-DMACHINE_ACTIVITY_OPERATION=$benchmarkName revision comparison"
+        '-P'
+        $activityRunner
+        '--'
+    )
+    Invoke-Checked -Executable 'cmake' `
+        -Arguments @($activityArguments + $command + '-notraceserver' +
                      '-traceautostart=0') `
         -WorkingDirectory $SourceDirectory
 

@@ -247,4 +247,14 @@ function cprojectfiles {
     }
 }
 
+function get-machine-activity-state {
+    $module = Join-Path $script:dev_project_root 'cmake/machine_activity.cmake'
+    $runner = Join-Path $script:dev_project_root 'cmake/run_with_machine_activity.cmake'
+    & cmake "-DMACHINE_ACTIVITY_MODULE=$module" `
+        -DMACHINE_ACTIVITY_ACTION=status -P $runner
+    if ($LASTEXITCODE -ne 0) {
+        throw "Machine activity status exited with code $LASTEXITCODE."
+    }
+}
+
 enable-ubt-build-safety

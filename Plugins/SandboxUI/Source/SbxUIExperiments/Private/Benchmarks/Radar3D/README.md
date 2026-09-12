@@ -2,7 +2,13 @@
 
 This benchmark exercises the production radar renderer at a fixed 512x512 output size while
 scaling the synthetic contact array. It is available from the **Benchmark RDG contact scaling**
-button in `EUW_Radar3DShowcase`, and from the editor commandlet:
+button in `EUW_Radar3DShowcase`. The machine-coordinated command-line entry point is:
+
+```text
+cmake --build --preset debug-game --target radar-3d-benchmark
+```
+
+The underlying editor commandlet is:
 
 ```text
 UnrealEditor-Cmd.exe Sandbox.uproject -run=Radar3DBenchmark -AllowCommandletRendering \

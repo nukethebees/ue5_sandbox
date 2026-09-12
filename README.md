@@ -71,6 +71,13 @@ CMake invokes the source engine's `RunUBT.bat` and serializes Unreal builds that
 Visual Studio builds, Live Coding, and other Unreal builds launched outside CMake do not participate in that lock. Do
 not run one of those external builds at the same time as a CMake Unreal build.
 
+CMake-coordinated compiles, links, Unreal commandlets, and editor tests also participate in a
+per-user machine activity gate shared by every worktree. Requests are ordered FIFO. Standard work
+may overlap unless an older benchmark is waiting or running. A benchmark waits for every older
+request and then runs exclusively, while later work waits behind it. Inspect the gate with
+`get-machine-activity-state` after loading `dev.ps1`, or build the `machine-activity-status` target.
+The transparent ticket files live under `%TEMP%\SandboxUnrealBuild\activity\v1`.
+
 ### vcpkg dependencies
 
 The CMake presets use the root `vcpkg.json` manifest for native dependencies. Install a standalone

@@ -3,7 +3,8 @@ cmake_minimum_required(VERSION 4.4.2)
 foreach(required_variable
     UNREAL_LOCK_PATH
     UNREAL_ENGINE_ROOT
-    UNREAL_WORKING_DIRECTORY)
+    UNREAL_WORKING_DIRECTORY
+    MACHINE_ACTIVITY_MODULE)
   if(NOT DEFINED ${required_variable} OR "${${required_variable}}" STREQUAL "")
     message(FATAL_ERROR "${required_variable} is required.")
   endif()
@@ -43,11 +44,16 @@ endif()
 
 message(STATUS "Acquired Unreal build lock '${UNREAL_LOCK_PATH}'.")
 
+include("${MACHINE_ACTIVITY_MODULE}")
+sandbox_machine_activity_acquire(STANDARD
+  "Unreal build: ${unreal_command_display}")
+
 execute_process(
   COMMAND ${unreal_command}
   WORKING_DIRECTORY "${UNREAL_WORKING_DIRECTORY}"
   RESULT_VARIABLE command_result
 )
+sandbox_machine_activity_release()
 
 if(NOT command_result MATCHES "^[0-9]+$")
   message(FATAL_ERROR "Failed to run Unreal command: ${command_result}")

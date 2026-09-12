@@ -71,7 +71,8 @@ set_tests_properties(native-soa-plot-smoke PROPERTIES LABELS "native-soa" FIXTUR
 
 set(NATIVE_SOA_RESULTS "${CMAKE_BINARY_DIR}/native-soa-results.json")
 add_custom_target(native-soa-reserve-report
-  COMMAND native-soa-benchmarks --benchmark_filter=/reserve/ --benchmark_repetitions=9
+  COMMAND ${benchmark_activity_command} native-soa-benchmarks
+    --benchmark_filter=/reserve/ --benchmark_repetitions=9
     --benchmark_enable_random_interleaving=true --benchmark_min_time=0.1s
     "--benchmark_out=${NATIVE_SOA_RESULTS}" --benchmark_out_format=json
   COMMAND "${UV_EXECUTABLE}" run "${PROJECT_SOURCE_DIR}/Scripts/plot-native-soa-benchmarks.py"
@@ -79,7 +80,8 @@ add_custom_target(native-soa-reserve-report
   DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)
 
 add_custom_target(native-soa-reserve-matrix-report
-  COMMAND "${UV_EXECUTABLE}" run "${PROJECT_SOURCE_DIR}/Scripts/run-native-soa-reserve-matrix.py"
+  COMMAND ${benchmark_activity_command} "${UV_EXECUTABLE}" run
+    "${PROJECT_SOURCE_DIR}/Scripts/run-native-soa-reserve-matrix.py"
     --standard "$<TARGET_FILE:native-soa-reserve-matrix>"
     --mimalloc "$<TARGET_FILE:native-soa-reserve-matrix-mimalloc>"
     --output-dir "${CMAKE_BINARY_DIR}/native-soa-reserve-matrix"

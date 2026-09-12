@@ -4,7 +4,13 @@ This benchmark compares the experimental RDG heatmap with `SHeatmap2D`, the exis
 custom-vertex implementation. Both receive the same deterministic, already-binned scalar grids.
 
 The shared runner is available from the **Benchmark RDG vs Slate custom vertices** button in
-`EUW_HeatmapRDGShowcase`, and from the editor commandlet:
+`EUW_HeatmapRDGShowcase`. The machine-coordinated command-line entry point is:
+
+```text
+cmake --build --preset debug-game --target heatmap-benchmark
+```
+
+The underlying editor commandlet is:
 
 ```text
 UnrealEditor-Cmd.exe Sandbox.uproject -run=HeatmapBenchmark -AllowCommandletRendering \

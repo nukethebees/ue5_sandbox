@@ -2,7 +2,13 @@
 
 This benchmark exercises the experimental Scatter3D renderer at a fixed 512x512 output size with
 1, 64, 1,024, 16,384, and 65,536 points by default. Run it from the button in
-`EUW_Scatter3DShowcase` or through the editor commandlet with a real graphics RHI:
+`EUW_Scatter3DShowcase`. The machine-coordinated command-line entry point is:
+
+```text
+cmake --build --preset debug-game --target scatter-3d-benchmark
+```
+
+The underlying editor commandlet uses a real graphics RHI:
 
 ```text
 UnrealEditor-Cmd.exe Sandbox.uproject -run=Scatter3DBenchmark -AllowCommandletRendering \

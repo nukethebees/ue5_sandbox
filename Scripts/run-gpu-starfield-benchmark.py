@@ -3,12 +3,36 @@ from __future__ import annotations
 import argparse
 import csv
 import math
+import os
 import statistics
 import subprocess
 import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def run_with_benchmark_access() -> int | None:
+    if os.environ.get("SANDBOX_MACHINE_ACTIVITY_MODE") == "benchmark":
+        return None
+
+    module = ROOT / "cmake" / "machine_activity.cmake"
+    runner = ROOT / "cmake" / "run_with_machine_activity.cmake"
+    command = [
+        "cmake",
+        f"-DMACHINE_ACTIVITY_MODULE={module}",
+        "-DMACHINE_ACTIVITY_MODE=benchmark",
+        "-DMACHINE_ACTIVITY_OPERATION=GPU starfield benchmark",
+        "-P",
+        str(runner),
+        "--",
+        sys.executable,
+        str(Path(__file__).resolve()),
+        *sys.argv[1:],
+    ]
+    return subprocess.run(command, cwd=ROOT, check=False).returncode
 
 
 METRICS = {
@@ -636,6 +660,9 @@ def main() -> int:
 
 if __name__ == "__main__":
     try:
+        activity_result = run_with_benchmark_access()
+        if activity_result is not None:
+            raise SystemExit(activity_result)
         raise SystemExit(main())
     except (OSError, RuntimeError, ValueError, subprocess.TimeoutExpired) as error:
         print(f"GPU starfield benchmark failed: {error}", file=sys.stderr)

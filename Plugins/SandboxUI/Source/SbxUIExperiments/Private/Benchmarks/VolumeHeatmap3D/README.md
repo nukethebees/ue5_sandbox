@@ -4,7 +4,13 @@ This benchmark separates game-thread API submission (including the immutable den
 from GPU upload plus slice rasterization. It sweeps `16³` through `128³` at 96 slices, then 16
 through 256 slices at `64³`. The output is 512×512.
 
-Run with a real rendering backend:
+The machine-coordinated command-line entry point is:
+
+```text
+cmake --build --preset debug-game --target volume-heatmap-3d-benchmark
+```
+
+The underlying commandlet uses a real rendering backend:
 
 ```text
 UnrealEditor-Win64-DebugGame-Cmd.exe Sandbox.uproject -run=VolumeHeatmap3DBenchmark -AllowCommandletRendering -RenderOffscreen -d3d12 -unattended -nop4 -stdout
