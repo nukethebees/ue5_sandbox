@@ -42,6 +42,7 @@ target_sources(native-core-tests PRIVATE
   tests/projectile_intercept_tests.cpp
   tests/quantized_decimal_tests.cpp
   tests/rotation_tests.cpp
+  tests/static_string_view_tests.cpp
   tests/timing_tests.cpp
 )
 target_compile_features(native-core-tests PRIVATE cxx_std_23)
@@ -85,6 +86,24 @@ endif()
 
 include(GoogleTest)
 gtest_discover_tests(native-core-tests PROPERTIES LABELS "unit;all;native-core")
+
+add_library(native-core-static-string-view-reject-automatic OBJECT EXCLUDE_FROM_ALL)
+target_sources(native-core-static-string-view-reject-automatic PRIVATE
+  tests/static_string_view_reject_automatic_storage.cpp
+)
+target_compile_features(native-core-static-string-view-reject-automatic PRIVATE cxx_std_23)
+target_link_libraries(native-core-static-string-view-reject-automatic PRIVATE
+  native-core
+  sandbox::warnings_as_errors
+)
+add_test(NAME StaticStringViewRejectsAutomaticStorage
+  COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
+    --target native-core-static-string-view-reject-automatic
+)
+set_tests_properties(StaticStringViewRejectsAutomaticStorage PROPERTIES
+  LABELS "unit;all;native-core"
+  WILL_FAIL TRUE
+)
 
 set_property(TARGET native-core PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
 target_compile_definitions(native-core PRIVATE _ITERATOR_DEBUG_LEVEL=0)
