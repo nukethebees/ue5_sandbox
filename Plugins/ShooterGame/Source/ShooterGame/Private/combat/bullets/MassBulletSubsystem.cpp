@@ -22,8 +22,8 @@ void UMassBulletSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     collection.InitializeDependency(UMassArchetypeSubsystem::StaticClass());
     collection.InitializeDependency(UMassEntitySubsystem::StaticClass());
 
-    (void)spawn_queue.logged_init(n_queue_elements, "MassBulletSubsystem::SpawnQueue");
-    (void)destroy_queue.logged_init(n_queue_elements, "MassBulletSubsystem::DestroyQueue");
+    (void)ml::logged_init(spawn_queue, n_queue_elements, "MassBulletSubsystem::SpawnQueue");
+    (void)ml::logged_init(destroy_queue, n_queue_elements, "MassBulletSubsystem::DestroyQueue");
 
     auto world{GetWorld()};
     if (!world) {
@@ -126,10 +126,10 @@ void UMassBulletSubsystem::on_end_frame() {
     }
 
     auto spawns{spawn_queue.swap_and_consume()};
-    spawns.log_results(TEXT("UMassBulletSubsystem::spawns"));
+    ml::log_results(spawns, TEXT("UMassBulletSubsystem::spawns"));
 
     auto destroys{destroy_queue.swap_and_consume()};
-    destroys.log_results(TEXT("UMassBulletSubsystem::destroys"));
+    ml::log_results(destroys, TEXT("UMassBulletSubsystem::destroys"));
 
     consume_lifecycle_requests(spawns.view, destroys.view);
 }

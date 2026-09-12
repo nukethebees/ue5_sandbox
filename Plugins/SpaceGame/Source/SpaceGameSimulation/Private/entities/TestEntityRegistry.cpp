@@ -656,7 +656,7 @@ void FTestEntityRegistry::validate_unique_queued_entity_update_handles() const {
         check(is_valid_handle(handle));
         checkf(!seen_handles[handle.index],
                TEXT("Entity update handle %s was queued more than once in one tick"),
-               *handle.to_string());
+               *LexToString(handle));
         seen_handles[handle.index] = true;
     }
 #endif

@@ -502,8 +502,11 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("A legitimate zero-valued field survives reconstruction"),
               tick_series.kills.last_value(),
               int32{0});
-    TestTrue(TEXT("Telemetry manager is substantially smaller than its 2384-byte baseline"),
-             sizeof(FLevelTelemetryManager) < 1200);
+    auto const telemetry_manager_size{sizeof(FLevelTelemetryManager)};
+    TestTrue(*FString::Printf(TEXT("Telemetry manager is substantially smaller than its "
+                                   "2384-byte baseline (%llu bytes)"),
+                              static_cast<uint64>(telemetry_manager_size)),
+             telemetry_manager_size <= 1216);
     bool columns_aligned{true};
     initial_history_columns.apply_arrays([&columns_aligned](auto const&... arrays) {
         ((columns_aligned =

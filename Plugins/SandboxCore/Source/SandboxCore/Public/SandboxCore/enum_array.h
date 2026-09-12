@@ -1,7 +1,8 @@
 #pragma once
 
-#include <Containers/StaticArray.h>
 #include <CoreMinimal.h>
+
+#include <sandbox/core/enum_array.h>
 
 #include <type_traits>
 
@@ -11,18 +12,11 @@ struct TEnumTraits {
 };
 
 template <typename Enum, typename T>
-class TEnumArray {
+class TEnumArray
+    : public ml::EnumArray<Enum, T, static_cast<std::size_t>(TEnumTraits<Enum>::count)> {
     static_assert(std::is_enum_v<Enum>);
     static_assert(TEnumTraits<Enum>::count > 0,
                   "TEnumArray requires enum metadata generated with enum_array: true");
   public:
-    constexpr auto operator[](Enum const key) -> T& { return elems_[static_cast<int32>(key)]; }
-
-    constexpr auto operator[](Enum const key) const -> T const& {
-        return elems_[static_cast<int32>(key)];
-    }
-
     static constexpr auto size() -> int32 { return TEnumTraits<Enum>::count; }
-  private:
-    TStaticArray<T, TEnumTraits<Enum>::count> elems_{};
 };

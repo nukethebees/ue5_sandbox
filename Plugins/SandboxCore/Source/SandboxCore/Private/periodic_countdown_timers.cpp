@@ -1,9 +1,10 @@
 #include <SandboxCore/periodic_countdown_timers.h>
 
-#include <SandboxCore/array_math.h>
+#include <sandbox/core/countdown.h>
 
 void FPeriodicCountdownTimers::tick(float const dt) noexcept {
-    ml::subtract_in_place(TArrayView<float>{remaining_times}, dt);
+    ml::tick_countdowns(
+        std::span{remaining_times.GetData(), static_cast<std::size_t>(remaining_times.Num())}, dt);
 }
 
 void FPeriodicCountdownTimers::add_started(float const period) {

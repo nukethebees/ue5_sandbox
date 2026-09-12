@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 
+#include <sandbox/core/countdown.h>
+
 #include <concepts>
 #include <limits>
 #include <type_traits>
@@ -135,17 +137,10 @@ class TTickCountdown {
     }
 
     void tick() noexcept {
-        for (auto& counter : counters_) {
-            --counter;
-        }
-
-        ++cleaner_counter_;
-        if (cleaner_counter_ >= clean_interval_) {
-            cleaner_counter_ = 0;
-            for (auto& counter : counters_) {
-                counter = FMath::Max(counter, counter_type{0});
-            }
-        }
+        ml::tick_countdowns<counter_type>(
+            std::span{counters_.GetData(), static_cast<std::size_t>(counters_.Num())},
+            cleaner_counter_,
+            clean_interval_);
     }
 
     [[nodiscard]] auto is_ready(size_type const index) const noexcept -> bool {
@@ -175,11 +170,8 @@ class TTickCountdown {
     void consume(size_type const index) noexcept { (void)try_consume(index); }
 
     void consume() noexcept {
-        for (auto& counter : counters_) {
-            if (counter <= 0) {
-                counter = tick_value_;
-            }
-        }
+        ml::consume_ready_countdowns<counter_type>(
+            std::span{counters_.GetData(), static_cast<std::size_t>(counters_.Num())}, tick_value_);
     }
 
     void reset() {

@@ -1,46 +1,47 @@
 #include "SandboxCore/graph_plot.h"
 
-#include "HAL/PlatformMath.h"
 #include "Math/UnrealMathUtility.h"
 #include "Misc/AssertionMacros.h"
 
-#include <limits>
+#include <sandbox/core/graph_plot.h>
+
+#include <span>
+#include <vector>
 
 namespace {
-auto lower_bound_x(FGraphSeriesView const& series, double const value) -> int32 {
-    int32 first{0};
-    int32 count{series.y.Num()};
-    while (count > 0) {
-        auto const step{count / 2};
-        auto const index{first + step};
-        auto const x{series.x.IsEmpty() ? static_cast<double>(index)
-                                        : static_cast<double>(series.x[index])};
-        if (x < value) {
-            first = index + 1;
-            count -= step + 1;
-        } else {
-            count = step;
+auto to_native_axis(FGraphAxisSettings const axis) -> ml::graph::AxisSettings {
+    auto const range_mode{[&] {
+        switch (axis.range_mode) {
+            using enum EGraphRangeMode;
+            case Auto:
+                return ml::graph::RangeMode::Auto;
+            case AutoIncludeZero:
+                return ml::graph::RangeMode::AutoIncludeZero;
+            case Fixed:
+                return ml::graph::RangeMode::Fixed;
         }
-    }
-    return first;
+        return ml::graph::RangeMode::Auto;
+    }()};
+    return {.range_mode = range_mode,
+            .fixed_range = {.min = axis.fixed_range.min, .max = axis.fixed_range.max}};
 }
 
-auto upper_bound_x(FGraphSeriesView const& series, double const value) -> int32 {
-    int32 first{0};
-    int32 count{series.y.Num()};
-    while (count > 0) {
-        auto const step{count / 2};
-        auto const index{first + step};
-        auto const x{series.x.IsEmpty() ? static_cast<double>(index)
-                                        : static_cast<double>(series.x[index])};
-        if (x <= value) {
-            first = index + 1;
-            count -= step + 1;
-        } else {
-            count = step;
-        }
-    }
-    return first;
+auto to_native_series(FGraphSeriesView const& series) -> ml::graph::SeriesView {
+    return {
+        .x = {series.x.GetData(), static_cast<std::size_t>(series.x.Num())},
+        .y = {series.y.GetData(), static_cast<std::size_t>(series.y.Num())},
+    };
+}
+
+auto to_native_interpolation(EGraphSeriesInterpolation const interpolation)
+    -> ml::graph::Interpolation {
+    return interpolation == EGraphSeriesInterpolation::StepAfter
+             ? ml::graph::Interpolation::StepAfter
+             : ml::graph::Interpolation::Linear;
+}
+
+auto to_unreal_range(ml::graph::Range const range) -> FGraphRange {
+    return {.min = range.min, .max = range.max};
 }
 
 bool text_equal(FText const& lhs, FText const& rhs) {
@@ -74,9 +75,7 @@ bool FGraphRenderCache::set_series(TConstArrayView<FGraphSeriesView> const serie
         descriptors_changed = series_.Num() != series.Num();
         auto const count{series.Num()};
         for (int32 i{0}; i < count && !descriptors_changed; ++i) {
-            if (!descriptors_equal(series_[i], series[i])) {
-                descriptors_changed = true;
-            }
+            descriptors_changed = !descriptors_equal(series_[i], series[i]);
         }
     }
 
@@ -95,13 +94,8 @@ bool FGraphRenderCache::set_series(TConstArrayView<FGraphSeriesView> const serie
 
 bool FGraphRenderCache::set_axis_settings(FGraphAxisSettings const x_axis,
                                           FGraphAxisSettings const y_axis) {
-    auto const valid_fixed_range{[](FGraphAxisSettings const& axis) {
-        return axis.range_mode != EGraphRangeMode::Fixed ||
-               (FMath::IsFinite(axis.fixed_range.min) && FMath::IsFinite(axis.fixed_range.max) &&
-                axis.fixed_range.min < axis.fixed_range.max);
-    }};
-
-    if (!valid_fixed_range(x_axis) || !valid_fixed_range(y_axis)) {
+    if (!ml::graph::is_valid_fixed_range(to_native_axis(x_axis)) ||
+        !ml::graph::is_valid_fixed_range(to_native_axis(y_axis))) {
         ensureMsgf(false, TEXT("Fixed graph ranges must be finite and have min < max."));
         return false;
     }
@@ -127,7 +121,6 @@ bool FGraphRenderCache::update(FVector2f const plot_size) {
     }
 
     valid_series_.SetNumZeroed(series_.Num());
-
     stats_.source_sample_count = 0;
     stats_.emitted_point_count = 0;
     stats_.decimated = false;
@@ -162,241 +155,55 @@ bool FGraphRenderCache::update(FVector2f const plot_size) {
 
 bool FGraphRenderCache::validate_series(FGraphSeriesView const& series,
                                         int32 const series_index) const {
-    if (!series.x.IsEmpty() && series.x.Num() != series.y.Num()) {
-        ensureMsgf(false,
-                   TEXT("Graph series %d has mismatched X/Y counts (%d/%d)."),
-                   series_index,
-                   series.x.Num(),
-                   series.y.Num());
-        return false;
+    if (ml::graph::is_valid_series(to_native_series(series))) {
+        return true;
     }
 
-    auto const sample_count{series.y.Num()};
-    float previous_x{-std::numeric_limits<float>::infinity()};
-    for (int32 i{0}; i < sample_count; ++i) {
-        if (!FMath::IsFinite(series.y[i])) {
-            ensureMsgf(false, TEXT("Graph series %d contains non-finite Y data."), series_index);
-            return false;
-        }
-        if (!series.x.IsEmpty()) {
-            auto const x{series.x[i]};
-            if (!FMath::IsFinite(x) || x < previous_x) {
-                ensureMsgf(false,
-                           TEXT("Graph series %d X data must be finite and non-decreasing."),
-                           series_index);
-                return false;
-            }
-            previous_x = x;
-        }
-    }
-    return true;
+    ensureMsgf(false, TEXT("Graph series %d contains invalid X or Y data."), series_index);
+    return false;
 }
 
 void FGraphRenderCache::resolve_ranges(TConstArrayView<uint8> const valid_series) {
-    if (x_axis_.range_mode == EGraphRangeMode::Fixed) {
-        x_range_ = x_axis_.fixed_range;
-    } else {
-        auto min_x{std::numeric_limits<double>::infinity()};
-        auto max_x{-std::numeric_limits<double>::infinity()};
-        bool found_x{false};
-        auto const series_count{series_.Num()};
-        for (int32 series_index{0}; series_index < series_count; ++series_index) {
-            if (valid_series[series_index] == 0) {
-                continue;
-            }
-            auto const& series{series_[series_index]};
-            auto const sample_count{series.y.Num()};
-            if (sample_count == 0) {
-                continue;
-            }
-            min_x = FMath::Min(min_x, sample_x(series, 0));
-            max_x = FMath::Max(max_x, sample_x(series, sample_count - 1));
-            found_x = true;
-        }
-        if (found_x && x_axis_.range_mode == EGraphRangeMode::AutoIncludeZero) {
-            min_x = FMath::Min(min_x, 0.0);
-            max_x = FMath::Max(max_x, 0.0);
-        }
-        x_range_ = expanded_auto_range(min_x, max_x);
+    std::vector<ml::graph::SeriesView> native_series;
+    native_series.reserve(static_cast<std::size_t>(series_.Num()));
+    for (auto const& series : series_) {
+        native_series.push_back(to_native_series(series));
     }
 
-    if (y_axis_.range_mode == EGraphRangeMode::Fixed) {
-        y_range_ = y_axis_.fixed_range;
-        return;
-    }
-
-    auto min_y{std::numeric_limits<double>::infinity()};
-    auto max_y{-std::numeric_limits<double>::infinity()};
-    bool found_y{false};
-    auto const series_count{series_.Num()};
-    for (int32 series_index{0}; series_index < series_count; ++series_index) {
-        if (valid_series[series_index] == 0) {
-            continue;
-        }
-        auto const& series{series_[series_index]};
-        auto const begin{lower_bound_x(series, x_range_.min)};
-        auto const end{upper_bound_x(series, x_range_.max)};
-        for (int32 sample_index{begin}; sample_index < end; ++sample_index) {
-            auto const y{static_cast<double>(series.y[sample_index])};
-            min_y = FMath::Min(min_y, y);
-            max_y = FMath::Max(max_y, y);
-            found_y = true;
-        }
-    }
-    if (found_y && y_axis_.range_mode == EGraphRangeMode::AutoIncludeZero) {
-        min_y = FMath::Min(min_y, 0.0);
-        max_y = FMath::Max(max_y, 0.0);
-    }
-    y_range_ = expanded_auto_range(min_y, max_y);
+    auto const validity{
+        std::span{valid_series.GetData(), static_cast<std::size_t>(valid_series.Num())}};
+    auto const x_range{
+        ml::graph::resolve_x_range(native_series, validity, to_native_axis(x_axis_))};
+    auto const y_range{
+        ml::graph::resolve_y_range(native_series, validity, to_native_axis(y_axis_), x_range)};
+    x_range_ = to_unreal_range(x_range);
+    y_range_ = to_unreal_range(y_range);
 }
 
 void FGraphRenderCache::build_series(int32 const series_index, FVector2f const plot_size) {
     auto const& source{series_[series_index]};
     auto& cached{cached_series_[series_index]};
-    cached.data_points.Reset();
+    auto const x_range{ml::graph::Range{x_range_.min, x_range_.max}};
+    auto const y_range{ml::graph::Range{y_range_.min, y_range_.max}};
 
-    auto const sample_count{source.y.Num()};
-    if (sample_count == 0) {
-        cached.render_points.Reset();
-        return;
+    bool decimated{false};
+    auto const data_points{
+        ml::graph::build_data_points(to_native_series(source), x_range, plot_size.X, decimated)};
+    auto const render_points{
+        ml::graph::transform_points(data_points,
+                                    x_range,
+                                    y_range,
+                                    plot_size.X,
+                                    plot_size.Y,
+                                    to_native_interpolation(source.style.interpolation))};
+
+    cached.data_points.Reset(static_cast<int32>(data_points.size()));
+    for (auto const point : data_points) {
+        cached.data_points.Emplace(point.x, point.y);
     }
-
-    auto const first_inside{lower_bound_x(source, x_range_.min)};
-    auto const after_inside{upper_bound_x(source, x_range_.max)};
-    auto const candidate_begin{FMath::Max(first_inside - 1, 0)};
-    auto const candidate_end{FMath::Min(after_inside + 1, sample_count)};
-    auto const candidate_count{candidate_end - candidate_begin};
-    auto const bucket_count{FMath::Max(FMath::CeilToInt(plot_size.X), 1)};
-
-    int32 last_sample_index{INDEX_NONE};
-    auto append_sample{[&](int32 const sample_index) {
-        if (sample_index == last_sample_index || !source.y.IsValidIndex(sample_index)) {
-            return;
-        }
-        cached.data_points.Emplace(sample_x(source, sample_index),
-                                   static_cast<double>(source.y[sample_index]));
-        last_sample_index = sample_index;
-    }};
-
-    if (candidate_count <= bucket_count * 2) {
-        cached.data_points.Reserve(candidate_count);
-        for (int32 i{candidate_begin}; i < candidate_end; ++i) {
-            append_sample(i);
-        }
-    } else {
-        stats_.decimated = true;
-        cached.data_points.Reserve(bucket_count * 2 + 2);
-        if (first_inside > 0) {
-            append_sample(first_inside - 1);
-        }
-
-        auto const x_span{x_range_.max - x_range_.min};
-        int32 current_bucket{INDEX_NONE};
-        int32 min_index{INDEX_NONE};
-        int32 max_index{INDEX_NONE};
-        float min_y{0.0f};
-        float max_y{0.0f};
-
-        auto flush_bucket{[&] {
-            if (min_index == INDEX_NONE) {
-                return;
-            }
-            if (min_index <= max_index) {
-                append_sample(min_index);
-                append_sample(max_index);
-            } else {
-                append_sample(max_index);
-                append_sample(min_index);
-            }
-        }};
-
-        for (int32 i{first_inside}; i < after_inside; ++i) {
-            auto const normalized_x{(sample_x(source, i) - x_range_.min) / x_span};
-            auto const bucket{
-                FMath::Clamp(FMath::FloorToInt(normalized_x * static_cast<double>(bucket_count)),
-                             0,
-                             bucket_count - 1)};
-            if (bucket != current_bucket) {
-                flush_bucket();
-                current_bucket = bucket;
-                min_index = i;
-                max_index = i;
-                min_y = source.y[i];
-                max_y = source.y[i];
-                continue;
-            }
-            if (source.y[i] < min_y) {
-                min_y = source.y[i];
-                min_index = i;
-            }
-            if (source.y[i] > max_y) {
-                max_y = source.y[i];
-                max_index = i;
-            }
-        }
-        flush_bucket();
-
-        if (after_inside < sample_count) {
-            append_sample(after_inside);
-        }
+    cached.render_points.Reset(static_cast<int32>(render_points.size()));
+    for (auto const point : render_points) {
+        cached.render_points.Emplace(point.x, point.y);
     }
-
-    transform_series(cached, plot_size);
-}
-
-void FGraphRenderCache::transform_series(FGraphCachedSeries& series,
-                                         FVector2f const plot_size) const {
-    series.render_points.Reset(series.data_points.Num());
-    auto const point_count{series.data_points.Num()};
-    auto const render_point_count{
-        series.style.interpolation == EGraphSeriesInterpolation::StepAfter && point_count > 1
-            ? point_count * 2 - 1
-            : point_count};
-    series.render_points.Reserve(render_point_count);
-
-    auto const x_span{x_range_.max - x_range_.min};
-    auto const y_span{y_range_.max - y_range_.min};
-    auto const transform_point{[&](FVector2d const& point) {
-        auto const x_alpha{(point.X - x_range_.min) / x_span};
-        auto const y_alpha{(point.Y - y_range_.min) / y_span};
-        return FVector2f{static_cast<float>(x_alpha * plot_size.X),
-                         static_cast<float>((1.0 - y_alpha) * plot_size.Y)};
-    }};
-
-    if (series.style.interpolation == EGraphSeriesInterpolation::StepAfter && point_count > 1) {
-        series.render_points.Add(transform_point(series.data_points[0]));
-        for (int32 i{1}; i < point_count; ++i) {
-            auto const& previous{series.data_points[i - 1]};
-            auto const& current{series.data_points[i]};
-            series.render_points.Add(transform_point({current.X, previous.Y}));
-            series.render_points.Add(transform_point(current));
-        }
-        return;
-    }
-
-    for (auto const& point : series.data_points) {
-        series.render_points.Add(transform_point(point));
-    }
-}
-
-auto FGraphRenderCache::sample_x(FGraphSeriesView const& series, int32 const sample_index)
-    -> double {
-    return series.x.IsEmpty() ? static_cast<double>(sample_index)
-                              : static_cast<double>(series.x[sample_index]);
-}
-
-auto FGraphRenderCache::expanded_auto_range(double const min, double const max) -> FGraphRange {
-    if (!FMath::IsFinite(min) || !FMath::IsFinite(max)) {
-        return {};
-    }
-    if (min < max) {
-        return {min, max};
-    }
-    if (min == 0.0) {
-        return {-1.0, 1.0};
-    }
-
-    auto const padding{FMath::Max(FMath::Abs(min) * 0.05,
-                                  std::numeric_limits<double>::epsilon() * FMath::Abs(min) * 16.0)};
-    return {min - padding, max + padding};
+    stats_.decimated |= decimated;
 }

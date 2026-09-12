@@ -88,10 +88,6 @@ class SANDBOXCORE_API FGraphRenderCache {
     bool validate_series(FGraphSeriesView const& series, int32 series_index) const;
     void resolve_ranges(TConstArrayView<uint8> valid_series);
     void build_series(int32 series_index, FVector2f plot_size);
-    void transform_series(FGraphCachedSeries& series, FVector2f plot_size) const;
-
-    static auto sample_x(FGraphSeriesView const& series, int32 sample_index) -> double;
-    static auto expanded_auto_range(double min, double max) -> FGraphRange;
 
     TArray<FGraphSeriesView> series_;
     TArray<FGraphCachedSeries> cached_series_;

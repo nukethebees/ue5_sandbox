@@ -11,6 +11,8 @@ target_sources(native-core PRIVATE
   src/generated/array_math_kernels.cpp
   src/array_math.cpp
   src/array_utils.cpp
+  src/countdown.cpp
+  src/graph_plot.cpp
   src/projectile_intercept.cpp
   src/rotation.cpp
   src/test_timeline.cpp
@@ -42,14 +44,19 @@ target_sources(native-core-tests PRIVATE
   tests/generated/array_math_kernels_tests.cpp
   tests/array_utils_tests.cpp
   tests/container_tests.cpp
+  tests/countdown_tests.cpp
+  tests/enum_array_tests.cpp
+  tests/graph_plot_tests.cpp
   tests/interpolation_tests.cpp
   tests/invoke_tests.cpp
   tests/lock_free_mpsc_queue_tests.cpp
   tests/loop_bounds_tests.cpp
+  tests/monitored_lock_free_mpsc_queue_tests.cpp
   tests/projectile_intercept_tests.cpp
   tests/quantized_decimal_tests.cpp
   tests/rotation_tests.cpp
   tests/static_string_view_tests.cpp
+  tests/time_series_data_tests.cpp
   tests/timing_tests.cpp
   tests/test_timeline_tests.cpp
   tests/vector_math_tests.cpp

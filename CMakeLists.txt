@@ -11,6 +11,7 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 option(SANDBOX_CODEGEN_ONLY "Configure only the standalone code generator" OFF)
 option(SANDBOX_NATIVE_CORE_ONLY "Configure only the standalone native core library" OFF)
 option(SANDBOX_NATIVE_MEMORY_ONLY "Configure only the standalone native memory library" OFF)
+option(SANDBOX_NATIVE_SIMULATION_ONLY "Configure only the standalone native simulation library" OFF)
 option(SANDBOX_NATIVE_MESH_ONLY "Configure only the standalone native mesh generator" OFF)
 option(SANDBOX_NATIVE_S7_ONLY "Configure only the standalone native S7 library" OFF)
 option(SANDBOX_KERNEL_BENCHMARKS "Build native generated-kernel benchmarks" OFF)
@@ -46,6 +47,11 @@ if(SANDBOX_NATIVE_MEMORY_ONLY)
   return()
 endif()
 
+if(SANDBOX_NATIVE_SIMULATION_ONLY)
+  add_subdirectory(native/simulation)
+  return()
+endif()
+
 if(SANDBOX_NATIVE_MESH_ONLY)
   add_subdirectory(native/mesh_gen)
   return()
@@ -72,6 +78,7 @@ set(CACHE{UE_ROOT}
 add_subdirectory(native/memory)
 add_subdirectory(native/s7)
 add_subdirectory(native/core)
+add_subdirectory(native/simulation)
 
 set(CACHE{SANDBOX_TEST_SUITE}
   TYPE STRING
@@ -379,6 +386,7 @@ add_custom_target(worktree-dependencies
     native-core
     native-memory
     sbx-mimalloc
+    native-simulation
     sandbox-s7
     sandbox-image
     sandbox-material-gen

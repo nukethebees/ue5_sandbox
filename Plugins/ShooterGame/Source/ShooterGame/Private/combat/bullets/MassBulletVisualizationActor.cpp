@@ -72,7 +72,7 @@ int32 AMassBulletVisualizationActor::register_new_projectile(UBulletDataAsset& b
     to_be_hidden.Emplace(0);
 
     // Configure the other elements
-    (void)queue.logged_init(transform_queue_capacity, "MassBulletVisualizationActor");
+    (void)ml::logged_init(queue, transform_queue_capacity, "MassBulletVisualizationActor");
 
     return i;
 }
@@ -162,7 +162,7 @@ void AMassBulletVisualizationActor::on_phase_end(float delta_time) {
         auto const current_instance_count{current_instance_counts[i]};
 
         auto const transform_result{transform_queues[i].swap_and_consume()};
-        transform_result.log_results(queue_name);
+        ml::log_results(transform_result, queue_name);
         auto const n_to_hide{consume_killed_count(i)};
 
         auto const n_to_transform{static_cast<int32>(transform_result.view.size())};

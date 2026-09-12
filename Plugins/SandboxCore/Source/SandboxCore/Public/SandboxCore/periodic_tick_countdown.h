@@ -6,6 +6,8 @@
 #include <Containers/ArrayView.h>
 #include "CoreMinimal.h"
 
+#include <sandbox/core/countdown.h>
+
 #include <concepts>
 #include <type_traits>
 #include <utility>
@@ -120,26 +122,15 @@ class TPeriodicTickCountdown {
     }
 
     void tick() noexcept {
-        for (auto& remaining_tick : remaining_ticks) {
-            --remaining_tick;
-            remaining_tick = FMath::Max(remaining_tick, counter_type{0});
-        }
+        ml::tick_periodic_countdowns<counter_type>(
+            std::span{remaining_ticks.GetData(), static_cast<std::size_t>(remaining_ticks.Num())});
     }
 
     void tick(counter_type const num_ticks) noexcept {
         check(num_ticks >= counter_type{0});
-        if (num_ticks <= counter_type{0}) {
-            return;
-        }
-
-        for (auto& remaining_tick : remaining_ticks) {
-            if (remaining_tick <= num_ticks) {
-                remaining_tick = counter_type{0};
-                continue;
-            }
-
-            remaining_tick -= num_ticks;
-        }
+        ml::tick_periodic_countdowns<counter_type>(
+            std::span{remaining_ticks.GetData(), static_cast<std::size_t>(remaining_ticks.Num())},
+            num_ticks);
     }
 
     [[nodiscard]] auto is_ready(size_type const index) const noexcept -> bool {

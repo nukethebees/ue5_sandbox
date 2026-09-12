@@ -1683,8 +1683,8 @@ void Simulation::check_fighter_tasks() const {
         for (int32 i{0}; i < n_task_types; ++i) {
             message += FString::Printf(TEXT("\n    %s: Exp: %s, Got: %s"),
                                        *ml::to_string_without_type_prefix(static_cast<Task>(i)),
-                                       *task_spans[i].to_compact_string(),
-                                       *checked_task_spans[i].to_compact_string());
+                                       *to_compact_string(task_spans[i]),
+                                       *to_compact_string(checked_task_spans[i]));
         }
         UE_LOG(LogSandbox, Fatal, TEXT("%s"), *message);
     }

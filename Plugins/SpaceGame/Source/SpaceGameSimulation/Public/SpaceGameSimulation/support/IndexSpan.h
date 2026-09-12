@@ -1,27 +1,17 @@
 #pragma once
 
 #include <CoreMinimal.h>
-#include <HAL/Platform.h>
 
-#include <compare>
+#include <sandbox/simulation/index_span.h>
 
-struct FIndexSpan {
-    int32 offset{0};
-    int32 count{0};
+inline auto to_string(FIndexSpan const span) -> FString {
+    return FString::Printf(TEXT("IndexSpan(%d, %d)"), span.offset, span.count);
+}
 
-    auto operator<=>(FIndexSpan const&) const noexcept = default;
-
-    bool is_empty() const noexcept { return count == 0; }
-    auto start() const noexcept { return offset; }
-    auto end() const noexcept { return offset + count; }
-    auto to_string() const -> FString {
-        return FString::Printf(TEXT("IndexSpan(%d, %d)"), offset, count);
-    }
-    auto to_compact_string() const -> FString {
-        return FString::Printf(TEXT("(%d, %d)"), offset, count);
-    }
-};
+inline auto to_compact_string(FIndexSpan const span) -> FString {
+    return FString::Printf(TEXT("(%d, %d)"), span.offset, span.count);
+}
 
 inline auto LexToString(FIndexSpan const span) -> FString {
-    return span.to_string();
+    return to_string(span);
 }

@@ -2,6 +2,8 @@
 
 #include <SpaceGameSimulation/support/FixedTickLoop.h>
 
+#include <sandbox/simulation/simulation_clock.h>
+
 struct SPACEGAMESIMULATION_API FSimulationClock {
     using tick_type = uint64;
     using time_type = double;
@@ -14,15 +16,15 @@ struct SPACEGAMESIMULATION_API FSimulationClock {
 
     auto frequency_to_tick_period(time_type frequency) const noexcept -> tick_type {
         check(frequency > 0.0);
-        return static_cast<tick_type>(FMath::CeilToInt64(tick_loop.tick_rate / frequency));
+        return ml::simulation::frequency_to_tick_period(tick_loop.tick_rate, frequency);
     }
     auto duration_to_tick_period(time_type duration) const noexcept -> tick_type {
         check(duration >= 0.0);
-        return static_cast<tick_type>(FMath::CeilToInt64(duration * tick_loop.tick_rate));
+        return ml::simulation::duration_to_tick_period(tick_loop.tick_rate, duration);
     }
     auto get_completed_ticks() const noexcept -> tick_type { return completed_ticks; }
     auto get_simulation_time() const noexcept -> time_type {
-        return completed_ticks * tick_loop.tick_period;
+        return ml::simulation::simulation_time(completed_ticks, tick_loop.tick_period);
     }
     auto get_tick_rate() const noexcept -> time_type { return tick_loop.tick_rate; }
     auto get_tick_period() const noexcept -> time_type { return tick_loop.tick_period; }

@@ -118,7 +118,7 @@ void run_worldless_simultaneous_capital_reassignment(FAutomationTestBase& test,
     }
 
     auto const& before{samples.value_at(samples.nearest_index(0.5))};
-    auto const& after{samples.values().Last()};
+    auto const& after{samples.values().back()};
     checks.are_equal(4, before.capitals.Num(), TEXT("Two capitals per team spawn"));
     checks.are_equal(2, after.capitals.Num(), TEXT("Both killed capitals are removed"));
     checks.is_greater_than(before.fighters.Num(), 0, TEXT("One fighter wave spawns"));

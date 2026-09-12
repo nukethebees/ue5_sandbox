@@ -12,11 +12,12 @@ auto make_deterministic_biases(TConstArrayView<int32> const first,
     check(integral_out.Num() == count);
     check(floating_out.Num() == count);
 
-    for (int32 i{0}; i < count; ++i) {
-        auto const biases{make_deterministic_biases(first[i], second[i])};
-        integral_out[i] = biases.integral;
-        floating_out[i] = biases.floating;
-    }
+    auto const succeeded{make_deterministic_biases(
+        std::span{first.GetData(), static_cast<std::size_t>(first.Num())},
+        std::span{second.GetData(), static_cast<std::size_t>(second.Num())},
+        std::span{integral_out.GetData(), static_cast<std::size_t>(integral_out.Num())},
+        std::span{floating_out.GetData(), static_cast<std::size_t>(floating_out.Num())})};
+    check(succeeded);
 }
 
 auto make_deterministic_biases(TConstArrayView<FRegistryEntityHandle> const handles,
@@ -24,9 +25,9 @@ auto make_deterministic_biases(TConstArrayView<FRegistryEntityHandle> const hand
     auto const count{handles.Num()};
     check(integral_out.Num() == count);
 
-    for (int32 i{0}; i < count; ++i) {
-        auto const handle{handles[i]};
-        integral_out[i] = make_deterministic_integral_bias(handle.index, handle.generation);
-    }
+    auto const succeeded{make_deterministic_biases(
+        std::span{handles.GetData(), static_cast<std::size_t>(handles.Num())},
+        std::span{integral_out.GetData(), static_cast<std::size_t>(integral_out.Num())})};
+    check(succeeded);
 }
 }

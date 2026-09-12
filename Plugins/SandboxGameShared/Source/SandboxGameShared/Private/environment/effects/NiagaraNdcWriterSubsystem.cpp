@@ -21,7 +21,7 @@ auto UNiagaraNdcWriterSubsystem::register_asset(NdcAsset& asset, std::size_t que
     asset_lookup_.Add(asset_name, i);
 
     auto& queue{queues_.Emplace_GetRef()};
-    (void)queue.logged_init(queue_size, "UNiagaraNdcWriterSubsystem");
+    (void)ml::logged_init(queue, queue_size, "UNiagaraNdcWriterSubsystem");
 
     // Defer incrementing the count until we're fully initialised
     num_assets_ = i.get_value() + 1;
@@ -73,7 +73,7 @@ void UNiagaraNdcWriterSubsystem::flush_ndc_writes() {
         auto& asset{*asset_wptr.Get()};
 
         auto flushed_result{queue.swap_and_consume()};
-        flushed_result.log_results(writer_debug_source);
+        ml::log_results(flushed_result, writer_debug_source);
 
         if (flushed_result.is_empty()) {
             continue;

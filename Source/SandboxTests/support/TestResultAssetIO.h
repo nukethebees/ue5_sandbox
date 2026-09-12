@@ -5,6 +5,7 @@
 #include <Curves/SimpleCurve.h>
 #include <Engine/CurveTable.h>
 
+#include <ranges>
 #include <type_traits>
 
 class UObject;
@@ -12,16 +13,18 @@ class UClass;
 class FAutomationTestBase;
 
 namespace ml {
-template <typename T, typename TimeType>
-    requires std::is_convertible_v<T, float> && std::is_convertible_v<TimeType, float>
+template <std::ranges::random_access_range Values, std::ranges::random_access_range Times>
+    requires std::is_convertible_v<std::ranges::range_value_t<Values>, float> &&
+             std::is_convertible_v<std::ranges::range_value_t<Times>, float>
 void add_simple_curve_row(UCurveTable& curve_table,
                           FName const row_name,
-                          TConstArrayView<T> const values,
-                          TConstArrayView<TimeType> const times) {
-    check(values.Num() == times.Num());
+                          Values const values,
+                          Times const times) {
+    check(std::ranges::size(values) == std::ranges::size(times));
 
     auto& curve{curve_table.AddSimpleCurve(row_name)};
-    for (int32 i{0}; i < values.Num(); ++i) {
+    auto const count{static_cast<int32>(std::ranges::size(values))};
+    for (int32 i{0}; i < count; ++i) {
         curve.AddKey(static_cast<float>(times[i]), static_cast<float>(values[i]));
     }
 }

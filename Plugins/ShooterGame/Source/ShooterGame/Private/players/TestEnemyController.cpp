@@ -14,7 +14,6 @@
 #include "ShooterGame/players/TestEnemyBlackboardConstants.h"
 #include "SandboxGameShared/utilities/actor_utils.h"
 #include "SandboxGameShared/utilities/geometry.h"
-#include "SandboxNative/array.h"
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
@@ -147,14 +146,19 @@ void ATestEnemyController::visualise_vision_cone() {
     int32 const n_segments{8};
     int32 const n_lines{n_segments + 1};
 
-    constexpr auto map_fn{[](float x) { return FRotator{0.0f, x, 0.0f}; }};
     auto const angles{ml::subdivide_arc_into_segments(-angle_deg, angle_deg * 2.0f, n_segments)};
-    auto rots{ml::map_array<map_fn>(angles)};
+    TArray<FRotator> rots;
+    rots.Reserve(angles.Num());
+    for (auto const angle : angles) {
+        rots.Emplace(0.0f, angle, 0.0f);
+    }
 
     auto draw_vision{[&](float len, FColor col, float thickness) {
-        auto outs{ml::map_array(rots, [&](FRotator const& rot) {
-            return origin + rot.RotateVector(fwd).GetSafeNormal() * len;
-        })};
+        TArray<FVector> outs;
+        outs.Reserve(rots.Num());
+        for (auto const& rot : rots) {
+            outs.Add(origin + rot.RotateVector(fwd).GetSafeNormal() * len);
+        }
 
         auto draw_line{[&](FVector const& from, FVector const& to) -> void {
             DrawDebugLine(world, from, to, col, false, -1.f, 0, thickness);

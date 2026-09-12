@@ -19,10 +19,11 @@ TEST_CASE("SandboxNative.DeterministicBias.StableGeneration") {
     std::array const second_values{7, 8};
     std::array<uint32, 2> integral_out;
     std::array<float, 2> floating_out;
-    ml::make_deterministic_biases({first_values.data(), static_cast<int32>(first_values.size())},
-                                  {second_values.data(), static_cast<int32>(second_values.size())},
-                                  {integral_out.data(), static_cast<int32>(integral_out.size())},
-                                  {floating_out.data(), static_cast<int32>(floating_out.size())});
+    TConstArrayView<int32> const first_view{first_values.data(), static_cast<int32>(first_values.size())};
+    TConstArrayView<int32> const second_view{second_values.data(), static_cast<int32>(second_values.size())};
+    TArrayView<uint32> const integral_view{integral_out.data(), static_cast<int32>(integral_out.size())};
+    TArrayView<float> const floating_view{floating_out.data(), static_cast<int32>(floating_out.size())};
+    ml::make_deterministic_biases(first_view, second_view, integral_view, floating_view);
 
     for (int32 i{0}; i < static_cast<int32>(first_values.size()); ++i) {
         auto const expected{ml::make_deterministic_biases(first_values[i], second_values[i])};
