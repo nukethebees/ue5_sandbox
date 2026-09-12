@@ -1,5 +1,6 @@
 #include "test_fighter_attack.h"
 
+#include <sandbox/simulation/world_aabb_operations.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 
 #include <SandboxCore/soa_rotator_utils.h>
@@ -11,6 +12,7 @@
 #include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGameSimulation/simulation/EntityWorldBounds.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
@@ -43,8 +45,8 @@ void run_worldless_fighter_obstacle_avoidance(FAutomationTestBase& test,
     data.capital_ships.fighter_spawn_slots_relative_transforms = {
         FTransform{FVector{3000.f, 7000.f, 0.f}}};
     data.static_bounds.add_defaulted(1);
-    data.static_bounds.mins.set(0, obstacle_min);
-    data.static_bounds.maxes.set(0, obstacle_max);
+    simulation::collision::set(
+        data.static_bounds, 0, ml::to_native(obstacle_min), ml::to_native(obstacle_max));
     add_worldless_capital_spawn(
         data, FVector3f{source_x, -7000.f, 0.f}, ETestTeam::Green, 1, 0.f, 60.f, 100000);
     add_worldless_capital_spawn(
@@ -433,8 +435,8 @@ void run_worldless_fighter_hard_avoidance_authority(FAutomationTestBase& test,
         FVector3f{15000.f, 0.f, 0.f})};
     data.fighters.separation_strength = 3.f;
     data.static_bounds.add_defaulted(1);
-    data.static_bounds.mins.set(0, obstacle_min);
-    data.static_bounds.maxes.set(0, obstacle_max);
+    simulation::collision::set(
+        data.static_bounds, 0, ml::to_native(obstacle_min), ml::to_native(obstacle_max));
     auto const clearance{data.fighter_radius + data.fighters.avoidance_clearance_buffer};
     FVector3f const clearance_extent{clearance, clearance, clearance};
     auto const expanded_min{obstacle_min - clearance_extent};

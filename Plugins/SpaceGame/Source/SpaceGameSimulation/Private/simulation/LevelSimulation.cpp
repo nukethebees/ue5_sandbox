@@ -240,11 +240,12 @@ void FLevelSimulation::configure_player(ml::test_space_ship::FPlayerSpawnData co
     player.laser_fire_rate = spawn.laser_fire_rate;
     player.health = spawn.health;
 }
-void FLevelSimulation::initialise_spatial_queries(FLevelSimulationInitData const& data) {
+void FLevelSimulation::initialise_spatial_queries(FLevelSimulationInitData& data) {
     query_manager_.initialise(data.grid_dimensions, data.cell_size, data.entity_bounds);
     query_manager_.reserve_thread_buffers(
         FMath::Max(1, FPlatformMisc::NumberOfCoresIncludingHyperthreads()));
-    query_manager_.get_collision_system().get_uniform_grid().set_static_aabbs(data.static_bounds);
+    query_manager_.get_collision_system().get_uniform_grid().set_static_aabbs(
+        MoveTemp(data.static_bounds));
 }
 void FLevelSimulation::begin_subsystems(FLevelSimulationInitData const& data) {
     if (player_ship_simulation_.IsSet()) {

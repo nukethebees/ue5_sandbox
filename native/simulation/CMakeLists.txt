@@ -3,6 +3,9 @@ find_package(GTest CONFIG REQUIRED)
 add_library(native-simulation STATIC)
 target_sources(native-simulation PRIVATE
   include/sandbox/simulation/direct_damage_events.h
+  include/sandbox/simulation/entity_aabbs.h
+  include/sandbox/simulation/entity_cell_data.h
+  include/sandbox/simulation/entity_cell_data_operations.h
   include/sandbox/simulation/entity_death_info.h
   include/sandbox/simulation/entity_history.h
   include/sandbox/simulation/entity_overlaps.h
@@ -19,6 +22,8 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/vector_types.h
   include/sandbox/simulation/vector_math.h
   include/sandbox/simulation/vectors3f.h
+  include/sandbox/simulation/world_aabbs.h
+  include/sandbox/simulation/world_aabb_operations.h
   src/collision_grid.cpp
   src/deterministic_bias.cpp
   src/fixed_tick.cpp

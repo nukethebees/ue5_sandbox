@@ -1,5 +1,6 @@
 #include <NiagaraComponent.h>
 #include <NiagaraSystem.h>
+#include <sandbox/simulation/world_aabb_operations.h>
 #include <SandboxISMCComponent.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/test_setup.h>
@@ -466,8 +467,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 auto FLevelSimulationInitialQueriesTest::RunTest(FString const&) -> bool {
     auto data{make_battle()};
-    data.static_bounds.mins.add({-10.f, 490.f, -10.f});
-    data.static_bounds.maxes.add({10.f, 510.f, 10.f});
+    ml::simulation::collision::add(data.static_bounds, {-10.f, 490.f, -10.f}, {10.f, 510.f, 10.f});
     FLevelSimulation simulation{MoveTemp(data)};
     simulation.finish_initialisation();
     auto const& queries{simulation.get_spatial_query_manager()};

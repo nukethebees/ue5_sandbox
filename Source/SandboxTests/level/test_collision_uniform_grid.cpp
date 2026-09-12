@@ -1,5 +1,6 @@
 #include "test_collision_uniform_grid.h"
 
+#include <sandbox/simulation/world_aabb_operations.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
@@ -661,7 +662,7 @@ void FCollisionUniformGridTraceScenario::test_applies_aabb_centre() {
                      TEXT("Sweep expands rotated world bounds"));
     auto const cached{rotated.grid.get_entity_world_bounds()};
     checks.dist_zero(FVector3f{-5.f, 130.f, -10.f},
-                     cached.mins[0],
+                     ml::to_unreal(simulation::collision::min_at(cached, 0)),
                      0.001f,
                      TEXT("Visualisation reads the same rotated cached bounds"));
 
@@ -1887,8 +1888,8 @@ void FCollisionUniformGridTraceScenario::test_static_geometry() {
 
     auto set_static_aabb{[&fixture](FVector3f const min_point, FVector3f const max_point) {
         WorldAABBs static_aabbs;
-        static_aabbs.mins.add(min_point);
-        static_aabbs.maxes.add(max_point);
+        simulation::collision::add(
+            static_aabbs, ml::to_native(min_point), ml::to_native(max_point));
         fixture.grid.set_static_aabbs(MoveTemp(static_aabbs));
     }};
     TArray<FVector3f> const starts{{-200.f, 0.f, 0.f}};
@@ -1930,8 +1931,7 @@ void FCollisionUniformGridTraceScenario::test_static_geometry() {
     fighter_fixture.set_entity_aabb(
         ETestEntityType::CapitalShipFighter, FVector3f::ZeroVector, half_extents);
     WorldAABBs blocked_static_aabbs;
-    blocked_static_aabbs.mins.add({50.f, -10.f, -10.f});
-    blocked_static_aabbs.maxes.add({70.f, 10.f, 10.f});
+    simulation::collision::add(blocked_static_aabbs, {50.f, -10.f, -10.f}, {70.f, 10.f, 10.f});
     fighter_fixture.grid.set_static_aabbs(MoveTemp(blocked_static_aabbs));
 
     auto const fighter_masked_hits{

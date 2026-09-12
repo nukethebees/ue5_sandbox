@@ -1,30 +1,3 @@
-(soa-module world_aabbs
-  :header "Plugins/SpaceGame/Source/SGCollision/Public/SGCollision/world_aabbs.h"
-  :source "Plugins/SpaceGame/Source/SGCollision/Private/world_aabbs.cpp"
-  :header-include "SGCollision/world_aabbs.h"
-  :namespace ml
-  :include-order ("SGCollision/" "SandboxCore/")
-  (struct WorldAABBs
-    :operations (all)
-    :export-specifier SGCOLLISION_API
-    (member mins nested @vectors_3f)
-    (member maxes nested @vectors_3f)))
-
-(soa-module entity_cell_data
-  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/EntityCellData.h"
-  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/simulation/EntityCellData.cpp"
-  :header-include "SpaceGameSimulation/simulation/EntityCellData.h"
-  :namespace ml::ioj
-  :include-order ("SpaceGame/" "SandboxCore/" "SandboxNative/")
-  (struct FEntityCellData
-    :operations (all)
-    :export-specifier SPACEGAMESIMULATION_API
-    (member min_points nested @vectors_3f)
-    (member max_points nested @vectors_3f)
-    (member mins nested @vectors_3i32)
-    (member maxes nested @vectors_3i32)
-    (member handles array @registry_handle)))
-
 (soa-module static_collision_sources
   :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/StaticCollisionSources.h"
   :source "Plugins/SpaceGame/Source/SpaceGame/Private/simulation/StaticCollisionSources.cpp"
@@ -41,25 +14,3 @@
       :definition-in-source true
       (parameter component @primitive_component_ptr)
       (parameter original_collision_mode (type-ref @collision_enabled :suffix " const")))))
-
-(static-table-module entity_aabbs
-  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/EntityAABBs.h"
-  :namespace ml::ioj
-  :include-order ("SpaceGame/" "SandboxCore/")
-  (table FEntityAABBs
-    :export-specifier SPACEGAMESIMULATION_API
-    (row space_ship)
-    (row static_turret)
-    (row capital_ship)
-    (row fighter)
-    (row tube_spinner)
-    (column centre_xs float)
-    (column centre_ys float)
-    (column centre_zs float)
-    (column half_extent_xs float)
-    (column half_extent_ys float)
-    (column half_extent_zs float)
-    (group centre @vector_3f_value
-      :columns (centre_xs centre_ys centre_zs))
-    (group half_extents @vector_3f_value
-      :columns (half_extent_xs half_extent_ys half_extent_zs))))

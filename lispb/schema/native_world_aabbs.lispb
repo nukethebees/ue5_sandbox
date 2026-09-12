@@ -1,0 +1,13 @@
+(soa-module native_world_aabbs
+  :header "native/simulation/include/sandbox/simulation/world_aabbs.h"
+  :backend standard-library
+  :namespace ml::simulation::collision
+  (struct WorldAABBsColumns
+    :operations (all)
+    (member min_xs array float)
+    (member min_ys array float)
+    (member min_zs array float)
+    (member max_xs array float)
+    (member max_ys array float)
+    (member max_zs array float)
+    (single-allocation WorldAABBs)))

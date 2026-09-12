@@ -1,5 +1,6 @@
 #include "SpaceGame/simulation/LevelCollisionHost.h"
 
+#include <sandbox/simulation/world_aabb_operations.h>
 #include <SGCollision/mesh_data_extraction.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
@@ -237,8 +238,9 @@ void FLevelCollisionHost::initialise_static_geometry(UWorld& world,
                 continue;
             }
 
-            static_aabbs.mins.add(data->min_point);
-            static_aabbs.maxes.add(data->max_point);
+            simulation::collision::add(static_aabbs,
+                                       {data->min_point.X, data->min_point.Y, data->min_point.Z},
+                                       {data->max_point.X, data->max_point.Y, data->max_point.Z});
             static_collision_sources_.add(component, data->original_collision_mode);
         }
     }

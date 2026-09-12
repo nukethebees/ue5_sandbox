@@ -29,8 +29,6 @@ Plugins/SandboxCore/Tests/SandboxCoreTests/Private/fixed_soa_test_types.h
 Plugins/SandboxCore/Tests/SandboxCoreTests/Private/static_table_test_types.h
 Plugins/SandboxISMC/Source/SandboxISMC/Private/SandboxISMCInstanceData.cpp
 Plugins/SandboxISMC/Source/SandboxISMC/Public/SandboxISMCInstanceData.h
-Plugins/SpaceGame/Source/SGCollision/Private/world_aabbs.cpp
-Plugins/SpaceGame/Source/SGCollision/Public/SGCollision/world_aabbs.h
 Plugins/SpaceGame/Source/SpaceGame/Private/settings/GameSettings.generated.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/simulation/StaticCollisionSources.cpp
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/settings/GameSettings.generated.h
@@ -57,7 +55,6 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalS
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFightersPhaseInterface.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFightersSoA.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/player/TestSpaceShipPhaseInterface.cpp
-Plugins/SpaceGame/Source/SpaceGameSimulation/Private/simulation/EntityCellData.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/telemetry/LevelTelemetryHistory.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/telemetry/LevelTelemetryRunEndReason.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/combat/lasers/TestLasersPhaseInterface.h
@@ -81,11 +78,10 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fi
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFightersPhaseInterface.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSoA.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/player/TestSpaceShipPhaseInterface.h
-Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/EntityAABBs.h
-Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/simulation/EntityCellData.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/telemetry/LevelTelemetryHistory.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/telemetry/LevelTelemetryRunEndReason.h
 native/simulation/include/sandbox/simulation/direct_damage_events.h
+native/simulation/include/sandbox/simulation/entity_cell_data.h
 native/simulation/include/sandbox/simulation/entity_death_info.h
 native/simulation/include/sandbox/simulation/entity_history.h
 native/simulation/include/sandbox/simulation/entity_overlaps.h
@@ -94,3 +90,4 @@ native/simulation/include/sandbox/simulation/fighter_reassignment.h
 native/simulation/include/sandbox/simulation/registry_entity_handles.h
 native/simulation/include/sandbox/simulation/rotators3f.h
 native/simulation/include/sandbox/simulation/vectors3f.h
+native/simulation/include/sandbox/simulation/world_aabbs.h

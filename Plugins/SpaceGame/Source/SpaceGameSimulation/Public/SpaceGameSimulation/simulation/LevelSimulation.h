@@ -171,7 +171,7 @@ struct SPACEGAMESIMULATION_API FLevelSimulation {
     /* **************************************** */
     void configure_subsystems(FLevelSimulationInitData const& data);
     void configure_player(ml::test_space_ship::FPlayerSpawnData const& spawn);
-    void initialise_spatial_queries(FLevelSimulationInitData const& data);
+    void initialise_spatial_queries(FLevelSimulationInitData& data);
     void begin_subsystems(FLevelSimulationInitData const& data);
     void initialise_events(FLevelSimulationInitData& data);
 

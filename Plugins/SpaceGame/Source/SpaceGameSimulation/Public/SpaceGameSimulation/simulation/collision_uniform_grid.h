@@ -1,9 +1,9 @@
 #pragma once
 
+#include <sandbox/simulation/entity_cell_data.h>
 #include <SandboxNative/RegistryEntityHandle.h>
 #include <SGCollision/world_aabbs.h>
 #include <SpaceGameSimulation/simulation/EntityAABBs.h>
-#include <SpaceGameSimulation/simulation/EntityCellData.h>
 #include <SpaceGameSimulation/simulation/LineTraces.h>
 #include <SpaceGameSimulation/simulation/TraceHits.h>
 
@@ -88,9 +88,14 @@ struct SPACEGAMESIMULATION_API CollisionUniformGrid {
     auto get_runtime_telemetry() const noexcept -> FCollisionGridTelemetrySnapshot;
 
     auto get_static_aabbs() const noexcept -> WorldAABBs const& { return static_aabbs_; }
-    auto get_entity_world_bounds() const -> WorldAABBs::ConstView {
-        return {entities_buffer_.min_points.get_const_view(),
-                entities_buffer_.max_points.get_const_view()};
+    auto get_entity_world_bounds() const -> WorldAABBsConstView {
+        auto const cells{entities_buffer_.get_const_view().columns()};
+        return {cells.min_point_xs,
+                cells.min_point_ys,
+                cells.min_point_zs,
+                cells.max_point_xs,
+                cells.max_point_ys,
+                cells.max_point_zs};
     }
 
     // Appends exact overlaps. Multi-cell participants may be appended more than once.
@@ -146,7 +151,7 @@ struct SPACEGAMESIMULATION_API CollisionUniformGrid {
     TArray<FRegistryEntityHandle> entities_;
     WorldAABBs aabbs_;
 
-    FEntityCellData entities_buffer_;
+    simulation::collision::EntityCellData entities_buffer_;
 
     WorldAABBs static_aabbs_;
     TArray<int32> cell_static_range_indices_;

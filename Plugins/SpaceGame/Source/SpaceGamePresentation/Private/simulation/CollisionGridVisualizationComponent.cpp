@@ -1,6 +1,8 @@
 #include "SpaceGamePresentation/simulation/CollisionGridVisualizationComponent.h"
 
+#include <sandbox/simulation/world_aabb_operations.h>
 #include <SpaceGameSimulation/simulation/CollisionSystem.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <Engine/EngineTypes.h>
 #include <MeshElementCollector.h>
@@ -324,14 +326,18 @@ void UCollisionGridVisualizationComponent::update_collision_bounds(
     entity_bounds_.Reset();
     entity_bounds_.Reserve(entity_count);
     for (int32 i{}; i < entity_count; ++i) {
-        entity_bounds_.Emplace(entity_aabbs.mins[i], entity_aabbs.maxes[i]);
+        entity_bounds_.Emplace(ml::to_unreal(ml::simulation::collision::min_at(entity_aabbs, i)),
+                               ml::to_unreal(ml::simulation::collision::max_at(entity_aabbs, i)));
     }
 
     auto const& static_aabbs{collision_system.get_uniform_grid().get_static_aabbs()};
     auto const static_count{static_aabbs.num()};
+    auto const static_columns{static_aabbs.get_const_view().columns()};
     static_bounds_.SetNumUninitialized(static_count, EAllowShrinking::No);
     for (int32 i{}; i < static_count; ++i) {
-        static_bounds_[i] = FBox3f{static_aabbs.mins[i], static_aabbs.maxes[i]};
+        static_bounds_[i] =
+            FBox3f{ml::to_unreal(ml::simulation::collision::min_at(static_columns, i)),
+                   ml::to_unreal(ml::simulation::collision::max_at(static_columns, i))};
     }
 
     if (SceneProxy != nullptr) {

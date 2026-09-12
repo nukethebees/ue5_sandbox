@@ -1,5 +1,6 @@
 #include "test_laser_lifecycle.h"
 
+#include <sandbox/simulation/world_aabb_operations.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 
 #include <SandboxTests/support/test_setup.h>
@@ -57,8 +58,8 @@ void run_worldless_laser_lifecycle(FAutomationTestBase& test,
                                     : normal_target_health);
     if (scenario == ELaserLifecycleScenario::WorldBlocker) {
         data.static_bounds.add_defaulted(1);
-        data.static_bounds.mins.set(0, FVector3f{-1100.f, -100.f, -100.f});
-        data.static_bounds.maxes.set(0, FVector3f{-900.f, 100.f, 100.f});
+        simulation::collision::set(
+            data.static_bounds, 0, {-1100.f, -100.f, -100.f}, {-900.f, 100.f, 100.f});
     }
 
     FWorldlessSimulationTest harness{MoveTemp(data)};
