@@ -1,0 +1,194 @@
+#pragma once
+
+#include <atomic>
+#include <concepts>
+#include <cstddef>
+#include <cstdint>
+#include <expected>
+#include <memory>
+#include <span>
+#include <type_traits>
+#include <utility>
+
+#include <sandbox/core/lock_free_mpsc_queue_enums.h>
+
+namespace ml {
+template <typename T, typename... Args>
+concept queueable_from =
+    std::constructible_from<T, Args&&...> &&
+    (std::is_nothrow_constructible_v<T, Args&&...> || std::is_nothrow_move_constructible_v<T>);
+
+// Lock-free multi-producer single-consumer queue
+// Contract: The swap_and_{x}() functions must only be called when all enqueue() operations
+// are complete (e.g., at end of frame after all producers have finished)
+template <typename T, typename Allocator = std::allocator<T>>
+    requires (std::is_nothrow_constructible_v<T> || std::is_nothrow_move_constructible_v<T>)
+class LockFreeMPSCQueue {
+  public:
+    using AllocTraits = std::allocator_traits<Allocator>;
+    using value_type = typename AllocTraits::value_type;
+    using allocator_type = Allocator;
+    using size_type = typename AllocTraits::size_type;
+    using difference_type = typename AllocTraits::difference_type;
+    using pointer = typename AllocTraits::pointer;
+    using const_pointer = typename AllocTraits::const_pointer;
+    using reference = value_type&;
+    using const_reference = value_type const&;
+    using view_type = std::span<value_type>;
+
+    explicit LockFreeMPSCQueue(Allocator alloc = Allocator{}) noexcept
+        : allocator_{std::move(alloc)} {}
+
+    ~LockFreeMPSCQueue() {
+        if (data_ == nullptr) {
+            return;
+        }
+
+        if constexpr (!std::is_trivially_destructible_v<value_type>) {
+            auto* read_buffer_start{get_address(1 - write_buffer_index_.load(), 0)};
+            destroy_buffer(read_buffer_start, read_size_);
+
+            auto write_count{write_index_.load()};
+            auto* write_buffer_start{get_address(write_buffer_index_.load(), 0)};
+            destroy_buffer(write_buffer_start, write_count);
+        }
+
+        AllocTraits::deallocate(allocator_, data_, 2 * capacity_per_buffer_);
+    }
+
+    LockFreeMPSCQueue(LockFreeMPSCQueue const&) = delete;
+    LockFreeMPSCQueue& operator=(LockFreeMPSCQueue const&) = delete;
+    LockFreeMPSCQueue(LockFreeMPSCQueue&&) = delete;
+    LockFreeMPSCQueue& operator=(LockFreeMPSCQueue&&) = delete;
+
+    [[nodiscard]] auto full_capacity() const noexcept { return buffer_capacity() * 2; }
+    [[nodiscard]] auto buffer_capacity() const noexcept { return capacity_per_buffer_; }
+    [[nodiscard]] auto is_initialised() const noexcept { return capacity_per_buffer_ > 0; }
+
+    [[nodiscard]] auto init(size_type n) -> ELockFreeMPSCQueueInitResult {
+        if (n == 0) {
+            return ELockFreeMPSCQueueInitResult::Success;
+        }
+
+        if (is_initialised()) {
+            return ELockFreeMPSCQueueInitResult::AlreadyInitialised;
+        }
+
+#if 0
+        try {
+            capacity_per_buffer_ = n;
+            data_ = AllocTraits::allocate(allocator_, full_capacity());
+        } catch (std::bad_alloc const&) {
+            capacity_per_buffer_ = 0;
+            return ELockFreeMPSCQueueInitResult::AllocationFailed;
+        }
+#else
+        capacity_per_buffer_ = n;
+        data_ = AllocTraits::allocate(allocator_, full_capacity());
+#endif
+
+        return ELockFreeMPSCQueueInitResult::Success;
+    }
+
+    template <typename... Args>
+        requires queueable_from<value_type, Args&&...>
+    [[nodiscard]] auto
+        enqueue(Args&&... args) noexcept(std::is_nothrow_constructible_v<value_type, Args&&...>)
+            -> ELockFreeMPSCQueueEnqueueResult {
+        if constexpr (std::is_nothrow_constructible_v<value_type, Args&&...>) {
+            auto address{get_next_write_address()};
+            if (!address) {
+                return address.error();
+            }
+            new (*address) value_type{std::forward<Args>(args)...};
+        } else {
+            value_type local_value{std::forward<Args>(args)...};
+            auto address{get_next_write_address()};
+            if (!address) {
+                return address.error();
+            }
+            new (*address) value_type{std::move(local_value)};
+        }
+
+        return ELockFreeMPSCQueueEnqueueResult::Success;
+    }
+
+    [[nodiscard]] auto swap_and_consume() noexcept(std::is_nothrow_destructible_v<value_type>)
+        -> view_type {
+        if (!is_initialised()) {
+            return {};
+        }
+
+        // Swap the read/write buffers and destroy the objects in the new write buffer
+        auto const new_read_size{write_index_.exchange(0, std::memory_order_acquire)};
+        auto const old_read_size{read_size_};
+        read_size_ = new_read_size;
+
+        auto const old_write_buffer{write_buffer_index_.load(std::memory_order_acquire)};
+        write_buffer_index_.store(1 - old_write_buffer, std::memory_order_release);
+
+        auto* const new_write_buffer{get_address(1 - old_write_buffer, 0)};
+        auto* const new_read_buffer{get_address(old_write_buffer, 0)};
+
+        destroy_buffer(new_write_buffer, old_read_size);
+
+        return view_type{new_read_buffer, new_read_size};
+    }
+
+    // A safer way to access the read buffer by only using it once within a lambda
+    template <typename Callable>
+        requires std::invocable<Callable, view_type>
+    [[nodiscard]] decltype(auto) swap_and_visit(Callable&& callable) {
+        return std::forward<Callable>(callable)(swap_and_consume());
+    }
+  private:
+    [[nodiscard]] auto get_address(std::size_t buffer_index, std::size_t item_index) const noexcept
+        -> pointer {
+        auto const buffer_start_offset{buffer_index * buffer_capacity()};
+        auto* const buffer_start{data_ + buffer_start_offset};
+        return buffer_start + item_index;
+    }
+    void destroy_buffer(pointer ptr,
+                        size_type n) noexcept(std::is_nothrow_destructible_v<value_type>) {
+        if constexpr (!std::is_trivially_destructible_v<value_type>) {
+            std::destroy_n(ptr, n);
+        }
+    }
+    [[nodiscard]] auto get_next_write_address() noexcept
+        -> std::expected<pointer, ELockFreeMPSCQueueEnqueueResult> {
+        if (!is_initialised()) {
+            return std::unexpected(ELockFreeMPSCQueueEnqueueResult::Uninitialised);
+        }
+
+        // Perform a compare and swap until a valid index is found
+        auto i{write_index_.load(std::memory_order_relaxed)};
+        for (;;) {
+            if (i >= buffer_capacity()) {
+                return std::unexpected(ELockFreeMPSCQueueEnqueueResult::Full);
+            }
+
+            if (write_index_.compare_exchange_weak(
+                    i, i + 1, std::memory_order_release, std::memory_order_relaxed)) {
+                break;
+            }
+        }
+
+        auto* const address{get_address(write_buffer_index_.load(std::memory_order_relaxed), i)};
+        return address;
+    }
+
+    static constexpr std::size_t cache_line_size_bytes{64};
+
+    pointer data_{nullptr};
+    std::size_t capacity_per_buffer_{0};
+    std::size_t read_size_{0};
+#if defined(_MSC_VER)
+    [[msvc::no_unique_address]] Allocator allocator_{};
+#else
+    [[no_unique_address]] Allocator allocator_{};
+#endif
+    // Align to cache line to prevent false sharing
+    alignas(cache_line_size_bytes) std::atomic_size_t write_buffer_index_{0};
+    alignas(cache_line_size_bytes) std::atomic_size_t write_index_{0};
+};
+}

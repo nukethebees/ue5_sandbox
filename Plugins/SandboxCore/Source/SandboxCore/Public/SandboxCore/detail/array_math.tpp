@@ -1,62 +1,11 @@
 #pragma once
 
+#include <sandbox/core/array_math.h>
+
 #include "SandboxCore/array_checks.h"
 #include <SandboxCore/numeric.h>
 
 #include "CoreMinimal.h"
-
-namespace ml::kernel {
-/* ---------------------------------------------------------------------------------------------- */
-// Querying
-/* ---------------------------------------------------------------------------------------------- */
-template <ml::Numeric T>
-auto collect_indices_less_equal(T const* RESTRICT values,
-                                int32 const count,
-                                T const threshold,
-                                int32* RESTRICT out_indices) noexcept -> int32 {
-    int32 const* const RESTRICT original{out_indices};
-
-    for (int32 i{0}; i < count; ++i) {
-        if (values[i] <= threshold) {
-            *out_indices = i;
-            out_indices++;
-        }
-    }
-
-    return static_cast<int32>(out_indices - original);
-}
-
-template <typename T>
-auto collect_values_not_equal(T const* RESTRICT values,
-                              int32 const count,
-                              T const reference_value,
-                              T* const RESTRICT out_values) noexcept -> int32 {
-    int32 const* const RESTRICT original{out_values};
-
-    for (int32 i{0}; i < count; ++i) {
-        if (values[i] != reference_value) {
-            *out_values = values[i];
-            out_values++;
-        }
-    }
-
-    return static_cast<int32>(out_values - original);
-}
-
-/* ---------------------------------------------------------------------------------------------- */
-// Summation
-/* ---------------------------------------------------------------------------------------------- */
-template <typename T>
-auto sum(T const* RESTRICT values, int32 const count) noexcept -> T {
-    T out{};
-
-    for (int32 i{0}; i < count; ++i) {
-        out += values[i];
-    }
-
-    return out;
-}
-}
 
 namespace ml {
 // Replaces the output with ascending matching indices, retaining its capacity. Input and output

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sandbox/core/interpolation.h>
+
 #include "SandboxCore/array_checks.h"
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/numeric.h"
@@ -13,9 +15,7 @@ void lerp_1d(T* RESTRICT out,
              T const* RESTRICT to,
              T const* RESTRICT alpha,
              int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        out[i] = from[i] + alpha[i] * (to[i] - from[i]);
-    }
+    ml::native_kernel::lerp(out, from, to, alpha, count);
 }
 
 #define ML_EXTERN_FN(T)                                                      \
@@ -34,9 +34,7 @@ void lerp_1d(T* RESTRICT out,
              T const* RESTRICT to,
              T alpha,
              int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        out[i] = from[i] + alpha * (to[i] - from[i]);
-    }
+    ml::native_kernel::lerp(out, from, to, alpha, count);
 }
 
 template <Numeric T>
@@ -44,16 +42,12 @@ void lerp_1d_in_place(T* current,
                       T const* target,
                       T const* alpha,
                       int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        current[i] += alpha[i] * (target[i] - current[i]);
-    }
+    ml::native_kernel::lerp_in_place(current, target, alpha, count);
 }
 
 template <Numeric T>
 void lerp_1d_in_place(T* current, T const* target, T const alpha, int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        current[i] += alpha * (target[i] - current[i]);
-    }
+    ml::native_kernel::lerp_in_place(current, target, alpha, count);
 }
 
 template <Numeric T>
@@ -65,10 +59,8 @@ void lerp_2d(T* RESTRICT out_x,
              T const* RESTRICT to_y,
              T const* RESTRICT alpha,
              int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        out_x[i] = from_x[i] + alpha[i] * (to_x[i] - from_x[i]);
-        out_y[i] = from_y[i] + alpha[i] * (to_y[i] - from_y[i]);
-    }
+    ml::native_kernel::lerp(out_x, from_x, to_x, alpha, count);
+    ml::native_kernel::lerp(out_y, from_y, to_y, alpha, count);
 }
 
 template <Numeric T>
@@ -80,10 +72,8 @@ void lerp_2d(T* RESTRICT out_x,
              T const* RESTRICT to_y,
              T const alpha,
              int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        out_x[i] = from_x[i] + alpha * (to_x[i] - from_x[i]);
-        out_y[i] = from_y[i] + alpha * (to_y[i] - from_y[i]);
-    }
+    ml::native_kernel::lerp(out_x, from_x, to_x, alpha, count);
+    ml::native_kernel::lerp(out_y, from_y, to_y, alpha, count);
 }
 
 template <Numeric T>
@@ -93,10 +83,8 @@ void lerp_2d_in_place(T* current_x,
                       T const* target_y,
                       T const* alpha,
                       int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        current_x[i] += alpha[i] * (target_x[i] - current_x[i]);
-        current_y[i] += alpha[i] * (target_y[i] - current_y[i]);
-    }
+    ml::native_kernel::lerp_in_place(current_x, target_x, alpha, count);
+    ml::native_kernel::lerp_in_place(current_y, target_y, alpha, count);
 }
 
 template <Numeric T>
@@ -106,10 +94,8 @@ void lerp_2d_in_place(T* current_x,
                       T const* target_y,
                       T const alpha,
                       int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        current_x[i] += alpha * (target_x[i] - current_x[i]);
-        current_y[i] += alpha * (target_y[i] - current_y[i]);
-    }
+    ml::native_kernel::lerp_in_place(current_x, target_x, alpha, count);
+    ml::native_kernel::lerp_in_place(current_y, target_y, alpha, count);
 }
 
 template <Numeric T>
@@ -124,11 +110,9 @@ void lerp_3d(T* RESTRICT out_x,
              T const* RESTRICT to_z,
              T const* RESTRICT alpha,
              int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        out_x[i] = from_x[i] + alpha[i] * (to_x[i] - from_x[i]);
-        out_y[i] = from_y[i] + alpha[i] * (to_y[i] - from_y[i]);
-        out_z[i] = from_z[i] + alpha[i] * (to_z[i] - from_z[i]);
-    }
+    ml::native_kernel::lerp(out_x, from_x, to_x, alpha, count);
+    ml::native_kernel::lerp(out_y, from_y, to_y, alpha, count);
+    ml::native_kernel::lerp(out_z, from_z, to_z, alpha, count);
 }
 
 template <Numeric T>
@@ -143,11 +127,9 @@ void lerp_3d(T* RESTRICT out_x,
              T const* RESTRICT to_z,
              T const alpha,
              int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        out_x[i] = from_x[i] + alpha * (to_x[i] - from_x[i]);
-        out_y[i] = from_y[i] + alpha * (to_y[i] - from_y[i]);
-        out_z[i] = from_z[i] + alpha * (to_z[i] - from_z[i]);
-    }
+    ml::native_kernel::lerp(out_x, from_x, to_x, alpha, count);
+    ml::native_kernel::lerp(out_y, from_y, to_y, alpha, count);
+    ml::native_kernel::lerp(out_z, from_z, to_z, alpha, count);
 }
 
 template <Numeric T>
@@ -159,11 +141,9 @@ void lerp_3d_in_place(T* current_x,
                       T const* target_z,
                       T const* alpha,
                       int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        current_x[i] += alpha[i] * (target_x[i] - current_x[i]);
-        current_y[i] += alpha[i] * (target_y[i] - current_y[i]);
-        current_z[i] += alpha[i] * (target_z[i] - current_z[i]);
-    }
+    ml::native_kernel::lerp_in_place(current_x, target_x, alpha, count);
+    ml::native_kernel::lerp_in_place(current_y, target_y, alpha, count);
+    ml::native_kernel::lerp_in_place(current_z, target_z, alpha, count);
 }
 
 template <Numeric T>
@@ -175,11 +155,9 @@ void lerp_3d_in_place(T* current_x,
                       T const* target_z,
                       T const alpha,
                       int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        current_x[i] += alpha * (target_x[i] - current_x[i]);
-        current_y[i] += alpha * (target_y[i] - current_y[i]);
-        current_z[i] += alpha * (target_z[i] - current_z[i]);
-    }
+    ml::native_kernel::lerp_in_place(current_x, target_x, alpha, count);
+    ml::native_kernel::lerp_in_place(current_y, target_y, alpha, count);
+    ml::native_kernel::lerp_in_place(current_z, target_z, alpha, count);
 }
 }
 

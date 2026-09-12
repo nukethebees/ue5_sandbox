@@ -1,4 +1,4 @@
-#include "standard/array_math_kernels.h"
+#include <sandbox/core/generated/array_math_kernels.h>
 #include "standard/candidate_math_kernels.h"
 
 #include <gtest/gtest.h>

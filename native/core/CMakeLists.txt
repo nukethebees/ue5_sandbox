@@ -8,9 +8,12 @@ endif()
 
 add_library(native-core STATIC)
 target_sources(native-core PRIVATE
+  src/generated/array_math_kernels.cpp
+  src/array_math.cpp
   src/array_utils.cpp
   src/projectile_intercept.cpp
   src/rotation.cpp
+  src/test_timeline.cpp
 )
 target_compile_features(native-core PUBLIC cxx_std_23)
 target_include_directories(native-core PUBLIC include)
@@ -36,14 +39,20 @@ if(WIN32 AND DEFINED NATIVE_CORE_SAVED_VCPKG_APPLOCAL_DEPS)
 endif()
 
 target_sources(native-core-tests PRIVATE
+  tests/generated/array_math_kernels_tests.cpp
   tests/array_utils_tests.cpp
+  tests/container_tests.cpp
+  tests/interpolation_tests.cpp
   tests/invoke_tests.cpp
+  tests/lock_free_mpsc_queue_tests.cpp
   tests/loop_bounds_tests.cpp
   tests/projectile_intercept_tests.cpp
   tests/quantized_decimal_tests.cpp
   tests/rotation_tests.cpp
   tests/static_string_view_tests.cpp
   tests/timing_tests.cpp
+  tests/test_timeline_tests.cpp
+  tests/vector_math_tests.cpp
 )
 target_compile_features(native-core-tests PRIVATE cxx_std_23)
 target_link_libraries(native-core-tests PRIVATE native-core sandbox::warnings_as_errors)
