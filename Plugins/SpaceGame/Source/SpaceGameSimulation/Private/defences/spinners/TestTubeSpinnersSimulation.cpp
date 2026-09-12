@@ -168,21 +168,21 @@ void Simulation::fire_lasers() {
         auto const fire_point_location{offset.GetLocation()};
         new_lasers.locations.set(
             i,
-            FVector3f{
+            ml::to_native(FVector3f{
                 entities.locations.xs[index] + static_cast<float>(fire_point_location.X),
                 entities.locations.ys[index] + static_cast<float>(fire_point_location.Y),
                 entities.locations.zs[index] + static_cast<float>(fire_point_location.Z),
-            });
+            }));
 
         auto const fire_point_rotation{offset.Rotator()};
         new_lasers.rotations.set(
             i,
-            FRotator3f{
+            ml::to_native(FRotator3f{
                 static_cast<float>(fire_point_rotation.Pitch),
                 static_cast<float>(fire_point_rotation.Yaw) + entities.yaws[index],
                 static_cast<float>(fire_point_rotation.Roll),
-            });
-        new_lasers.base_velocities.set(i, FVector3f::ZeroVector);
+            }));
+        new_lasers.base_velocities.set(i, ml::to_native(FVector3f::ZeroVector));
 
         new_lasers.damages[i] = laser_damage;
         new_lasers.speeds[i] = laser_speed;

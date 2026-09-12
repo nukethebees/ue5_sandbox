@@ -16,6 +16,8 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/frame_collision_scratch.h
   include/sandbox/simulation/frame_direct_damage_events.h
   include/sandbox/simulation/frame_hit_details.h
+  include/sandbox/simulation/frame_laser_spawn_requests.h
+  include/sandbox/simulation/frame_rotators3f.h
   include/sandbox/simulation/frame_trace_hits.h
   include/sandbox/simulation/frame_vectors3f.h
   include/sandbox/simulation/laser_source.h
@@ -40,6 +42,8 @@ target_sources(native-simulation PRIVATE
   src/frame_collision_scratch.cpp
   src/frame_direct_damage_events.cpp
   src/frame_hit_details.cpp
+  src/frame_laser_spawn_requests.cpp
+  src/frame_rotators3f.cpp
   src/frame_trace_hits.cpp
   src/frame_vectors3f.cpp
   src/query_thread_buffer_pool.cpp

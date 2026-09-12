@@ -1570,9 +1570,10 @@ void Simulation::handle_firing(TaskView const& data) {
         auto const ship_index{can_fire[i]};
         auto const ship_location{ml::get_vector3f(data.locations, ship_index)};
         auto const direction{ml::get_vector3f(data.aim_directions, ship_index)};
-        new_lasers.locations.set(i, ship_location + direction * fire_point_distance);
-        new_lasers.rotations.set(i, direction.ToOrientationRotator());
-        new_lasers.base_velocities.set(i, ml::get_vector3f(data.velocities, ship_index));
+        new_lasers.locations.set(i, ml::to_native(ship_location + direction * fire_point_distance));
+        new_lasers.rotations.set(i, ml::to_native(direction.ToOrientationRotator()));
+        new_lasers.base_velocities.set(
+            i, ml::to_native(ml::get_vector3f(data.velocities, ship_index)));
         new_lasers.instigator_handles[i] = data.entity_handles[ship_index];
         new_lasers.sources[i] =
             ml::make_laser_source(data.teams[ship_index], ETestEntityType::CapitalShipFighter);
