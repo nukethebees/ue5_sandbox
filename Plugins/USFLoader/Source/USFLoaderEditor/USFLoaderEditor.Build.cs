@@ -28,6 +28,7 @@ public class USFLoaderEditor : ModuleRules
         PrivateDependencyModuleNames.AddRange(
             new string[]
             {
+                "CQTest",
                 "EditorSubsystem",
                 "RenderCore",
                 "RHI",

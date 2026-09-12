@@ -443,7 +443,7 @@ set(SANDBOX_UNIT_AUTOMATION_FILTERS
   Sandbox.geometry
   Sandbox.levels
   Sandbox.UnitTests
-  Sandbox.USFPathValidation
+  USFLoader.UnitTests
   SandboxShaders.UnitTests
   SandboxCoreEngine.UnitTests
   SandboxGpuTutorials.UnitTests

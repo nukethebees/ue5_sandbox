@@ -21,10 +21,10 @@
 		"Sandbox.UnitTests.SimulationConfig.DeepCopy",
 		"Sandbox.UnitTests.TestBatchOrchestratorSetup.SimulationClockConversions",
 		"Sandbox.UnitTests.TestBatchOrchestratorSetup.SpawnMissingActors",
-		"Sandbox.USFPathValidation.should be available in editor context",
-		"Sandbox.USFPathValidation.should reject empty path",
-		"Sandbox.USFPathValidation.should reject non-existent path",
-		"Sandbox.USFPathValidation.should reject path without leading slash",
-		"Sandbox.USFPathValidation.should validate plugin test shader"
+		"USFLoader.UnitTests.USFPathValidation.AcceptsPluginShaderPath",
+		"USFLoader.UnitTests.USFPathValidation.EditorSubsystemIsAvailable",
+		"USFLoader.UnitTests.USFPathValidation.RejectsEmptyPath",
+		"USFLoader.UnitTests.USFPathValidation.RejectsNonExistentPath",
+		"USFLoader.UnitTests.USFPathValidation.RejectsPathWithoutLeadingSlash"
 	]
 }

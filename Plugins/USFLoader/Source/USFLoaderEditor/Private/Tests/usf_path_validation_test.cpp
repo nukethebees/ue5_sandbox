@@ -1,38 +1,43 @@
 #include "USFPathValidationSubsystem.h"
 
-BEGIN_DEFINE_SPEC(FUSFPathValidationSpec,
-                  "Sandbox.USFPathValidation",
-                  EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-END_DEFINE_SPEC(FUSFPathValidationSpec)
+#include "CQTest.h"
+#include "Editor.h"
 
-void FUSFPathValidationSpec::Define() {
-    It("should be available in editor context", [this]() {
-        UUSFPathValidationSubsystem* Subsystem =
-            GEditor ? GEditor->GetEditorSubsystem<UUSFPathValidationSubsystem>() : nullptr;
-        TestNotNull("USF validation subsystem", Subsystem);
-    });
+TEST_CLASS(USFPathValidation, "USFLoader.UnitTests")
+{
+    TEST_METHOD(EditorSubsystemIsAvailable)
+    {
+        auto* const subsystem{GEditor != nullptr
+                                  ? GEditor->GetEditorSubsystem<UUSFPathValidationSubsystem>()
+                                  : nullptr};
+        TestRunner->TestNotNull(TEXT("USF validation subsystem"), subsystem);
+    }
 
-    It("should validate plugin test shader", [this]() {
-        FString const path = TEXT("/Plugin/USFLoader/TestDummy.usf");
-        bool const valid = UUSFPathValidationSubsystem::ValidateUSFPath(path);
-        TestTrue(*FString::Printf(TEXT("'%s' should be valid"), *path), valid);
-    });
+    TEST_METHOD(AcceptsPluginShaderPath)
+    {
+        FString const path{TEXT("/Plugin/USFLoader/TestDummy.usf")};
+        bool const valid{UUSFPathValidationSubsystem::ValidateUSFPath(path)};
+        TestRunner->TestTrue(TEXT("Plugin test shader path is valid"), valid);
+    }
 
-    It("should reject non-existent path", [this]() {
-        FString const path = TEXT("/NonExistent/Path/Missing.usf");
-        bool const valid = UUSFPathValidationSubsystem::ValidateUSFPath(path);
-        TestFalse(*FString::Printf(TEXT("'%s' should be invalid"), *path), valid);
-    });
+    TEST_METHOD(RejectsNonExistentPath)
+    {
+        FString const path{TEXT("/NonExistent/Path/Missing.usf")};
+        bool const valid{UUSFPathValidationSubsystem::ValidateUSFPath(path)};
+        TestRunner->TestFalse(TEXT("Non-existent shader path is invalid"), valid);
+    }
 
-    It("should reject path without leading slash", [this]() {
-        FString const path = TEXT("NoLeadingSlash.usf");
-        bool const valid = UUSFPathValidationSubsystem::ValidateUSFPath(path);
-        TestFalse(*FString::Printf(TEXT("'%s' should be invalid"), *path), valid);
-    });
+    TEST_METHOD(RejectsPathWithoutLeadingSlash)
+    {
+        FString const path{TEXT("NoLeadingSlash.usf")};
+        bool const valid{UUSFPathValidationSubsystem::ValidateUSFPath(path)};
+        TestRunner->TestFalse(TEXT("Shader path without a leading slash is invalid"), valid);
+    }
 
-    It("should reject empty path", [this]() {
-        FString const path = TEXT("");
-        bool const valid = UUSFPathValidationSubsystem::ValidateUSFPath(path);
-        TestFalse(*FString::Printf(TEXT("'%s' (empty path) should be invalid"), *path), valid);
-    });
-}
+    TEST_METHOD(RejectsEmptyPath)
+    {
+        FString const path{};
+        bool const valid{UUSFPathValidationSubsystem::ValidateUSFPath(path)};
+        TestRunner->TestFalse(TEXT("Empty shader path is invalid"), valid);
+    }
+};
