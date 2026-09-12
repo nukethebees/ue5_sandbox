@@ -203,6 +203,20 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
                               ml::s7::format_level_row_title(TEXT("Border Skirmish"),
                                                              ml::s7::ELevelRowState::Completed),
                               FString{TEXT("\u2713 Border Skirmish")});
+        TestRunner->TestEqual(TEXT("Meeting par adds a visible marker"),
+                              ml::s7::format_level_row_title(TEXT("Border Skirmish"),
+                                                             ml::s7::ELevelRowState::ParAchieved),
+                              FString{TEXT("\u2713 \u2605 Border Skirmish")});
+        TestRunner->TestTrue(TEXT("A faster best time achieves par"),
+                             ml::s7::level_par_is_achieved(70.0f, TOptional<float>{75.0f}));
+        TestRunner->TestFalse(TEXT("A slower best time does not achieve par"),
+                              ml::s7::level_par_is_achieved(80.0f, TOptional<float>{75.0f}));
+        TestRunner->TestFalse(TEXT("A completion without a par target has no par achievement"),
+                              ml::s7::level_par_is_achieved(70.0f, NullOpt));
+        TestRunner->TestEqual(TEXT("Unlocked rows remain concise"),
+                              ml::s7::format_level_row_title(TEXT("Border Skirmish"),
+                                                             ml::s7::ELevelRowState::Unlocked),
+                              FString{TEXT("\u25CB Border Skirmish")});
         TestRunner->TestTrue(
             TEXT("Locked level rows receive a visible marker"),
             ml::s7::format_level_row_title(TEXT("Border Skirmish"), ml::s7::ELevelRowState::Locked)

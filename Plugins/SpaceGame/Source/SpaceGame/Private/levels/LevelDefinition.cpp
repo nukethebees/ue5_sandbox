@@ -41,6 +41,19 @@ void validate_metadata(FLevelDefinition const& definition, FLevelValidationResul
         add_error(
             result, ELevelValidationErrorCode::MissingTitle, TEXT("Level definition has no title"));
     }
+    if (definition.metadata.par_time_seconds.IsSet()) {
+        auto const par_time{definition.metadata.par_time_seconds.GetValue()};
+        if (!FMath::IsFinite(par_time) || par_time <= 0.0f) {
+            add_error(result,
+                      ELevelValidationErrorCode::InvalidParTime,
+                      TEXT("Level par time must be finite and greater than zero"));
+        }
+        if (!definition.player_entity_id.is_set() || !definition.mission.IsSet()) {
+            add_error(result,
+                      ELevelValidationErrorCode::UnexpectedParTime,
+                      TEXT("Level par time requires a player-controlled mission"));
+        }
+    }
 }
 
 void validate_unlock_criteria(FLevelDefinition const& definition, FLevelValidationResult& result) {

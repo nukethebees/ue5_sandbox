@@ -43,7 +43,9 @@ void SLevelCompletionView::Construct(FArguments const& args) {
 
 void SLevelCompletionView::update_report(FString const& level_display_name,
                                          ETestMissionState const state,
-                                         FLevelTelemetrySnapshot const& snapshot) {
+                                         FLevelTelemetrySnapshot const& snapshot,
+                                         TOptional<float> const par_time_seconds,
+                                         bool const new_best_time) {
     check(state == ETestMissionState::Succeeded || state == ETestMissionState::Failed);
     auto const succeeded{state == ETestMissionState::Succeeded};
     mission_name_->SetText(level_display_name.IsEmpty()
@@ -59,8 +61,17 @@ void SLevelCompletionView::update_report(FString const& level_display_name,
             ? NSLOCTEXT("LevelCompletion", "ObjectiveSatisfied", "OBJECTIVE STATUS // SATISFIED")
             : NSLOCTEXT(
                   "LevelCompletion", "ObjectiveUnsatisfied", "OBJECTIVE STATUS // UNSATISFIED"));
+    auto const elapsed_time{
+        level_telemetry_presentation::format_elapsed_time(snapshot.elapsed_seconds)};
     elapsed_time_->SetText(
-        level_telemetry_presentation::format_elapsed_time(snapshot.elapsed_seconds));
+        par_time_seconds.IsSet()
+            ? FText::Format(
+                  NSLOCTEXT("LevelCompletion", "ElapsedTimeWithPar", "{0} (Par: {1})"),
+                  elapsed_time,
+                  level_telemetry_presentation::format_elapsed_time(par_time_seconds.GetValue()))
+            : elapsed_time);
+    new_best_time_->SetVisibility(succeeded && new_best_time ? EVisibility::HitTestInvisible
+                                                             : EVisibility::Collapsed);
     kills_->SetText(FText::AsNumber(snapshot.kills));
     destroyed_entities_->SetText(FText::AsNumber(snapshot.destroyed_entities));
     lasers_fired_->SetText(FText::AsNumber(snapshot.lasers_fired));
@@ -140,6 +151,15 @@ auto SLevelCompletionView::build_summary() -> TSharedRef<SWidget> {
                                               .TextStyle(&style_->text(EGameTextStyle::Heading3))];
     details->AddSlot().AutoHeight()[SAssignNew(objective_status_, STextBlock)
                                         .TextStyle(&style_->text(EGameTextStyle::Caption))];
+    details->AddSlot().AutoHeight().Padding(
+        FMargin{0.0f,
+                10.0f,
+                0.0f,
+                0.0f})[SAssignNew(new_best_time_, STextBlock)
+                           .Text(NSLOCTEXT("LevelCompletion", "NewBestTime", "NEW BEST TIME!"))
+                           .TextStyle(&style_->text(EGameTextStyle::Heading3))
+                           .ColorAndOpacity(style_->palette().success)
+                           .Visibility(EVisibility::Collapsed)];
     details->AddSlot().AutoHeight().Padding(FMargin{0.0f, 22.0f})[SNew(SBox).HeightOverride(
         2.0f)[SNew(SBorder).BorderImage(&style_->chrome().focus)]];
     details->AddSlot().AutoHeight().Padding(

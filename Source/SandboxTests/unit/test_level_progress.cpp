@@ -13,7 +13,7 @@ TEST_CLASS(LevelProgress, "Sandbox.UnitTests")
              .level_name = level_id.value,
              .end_state = ETestMissionState::Failed,
              .kills = 12,
-             .time_seconds = 90.0f},
+             .time_seconds = 30.0f},
             {.date = FDateTime{2026, 8, 21},
              .level_name = level_id.value,
              .end_state = ETestMissionState::Succeeded,
@@ -37,8 +37,9 @@ TEST_CLASS(LevelProgress, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Every matching attempt is counted"), summary.attempt_count, 3);
         TestRunner->TestEqual(TEXT("Successful attempts are counted"), summary.completion_count, 2);
         TestRunner->TestEqual(TEXT("Best kill count is retained"), summary.best_kills, 12);
-        TestRunner->TestEqual(
-            TEXT("Fastest completion is retained"), summary.best_completion_time_seconds, 60.0f);
+        TestRunner->TestEqual(TEXT("Fastest successful completion is retained"),
+                              summary.best_completion_time_seconds,
+                              60.0f);
         TestRunner->TestTrue(TEXT("Latest matching attempt is retained"),
                              summary.last_played_at == FDateTime{2026, 8, 22});
     }

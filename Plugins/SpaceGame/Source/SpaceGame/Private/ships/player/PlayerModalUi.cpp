@@ -134,8 +134,11 @@ auto FPlayerModalUi::show_completion(ASpaceGamePlayerController& owner,
         UE_LOG(LogSandboxController, Error, TEXT("FPlayerModalUi: UI root is invalid."));
         return false;
     }
-    completion_menu_ = root_->show_level_completion(
-        completion.level_display_name, completion.state, MoveTemp(snapshot));
+    completion_menu_ = root_->show_level_completion(completion.level_display_name,
+                                                    completion.state,
+                                                    MoveTemp(snapshot),
+                                                    completion.par_time_seconds,
+                                                    completion.new_best_time);
     if (!IsValid(completion_menu_)) {
         return false;
     }

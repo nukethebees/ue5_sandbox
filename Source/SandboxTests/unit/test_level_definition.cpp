@@ -52,6 +52,8 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
             TEXT("Definition has four entity rows"), definition.entities.num(), 4);
         TestRunner->TestEqual(
             TEXT("Title is preserved"), definition.metadata.title, FString{TEXT("Native Example")});
+        TestRunner->TestFalse(TEXT("Omitted par time remains unset"),
+                              definition.metadata.par_time_seconds.IsSet());
         TestRunner->TestTrue(TEXT("Stable level id is preserved"),
                              definition.metadata.id == ml::FLevelId{FName{TEXT("native-example")}});
         TestRunner->TestTrue(TEXT("Player id is preserved"),
@@ -111,6 +113,38 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Camera offset direction is preserved"),
                              camera.offset_direction.Equals(FVector{-1.0, -1.0, 0.5}));
         TestRunner->TestEqual(TEXT("Camera distance is preserved"), camera.distance, 10000.0);
+    }
+
+    TEST_METHOD(ParTimeRequiresAPositivePlayerMissionTarget)
+    {
+        auto valid{ml::example_levels::make_native_example()};
+        valid.metadata.par_time_seconds = 45.0f;
+        TestRunner->TestTrue(TEXT("Positive mission par time is valid"),
+                             static_cast<bool>(ml::validate_level(valid)));
+
+        auto zero{valid};
+        zero.metadata.par_time_seconds = 0.0f;
+        TestRunner->TestTrue(TEXT("Zero par time is rejected"),
+                             contains_error(ml::validate_level(zero),
+                                            ml::ELevelValidationErrorCode::InvalidParTime));
+
+        auto negative{valid};
+        negative.metadata.par_time_seconds = -1.0f;
+        TestRunner->TestTrue(TEXT("Negative par time is rejected"),
+                             contains_error(ml::validate_level(negative),
+                                            ml::ELevelValidationErrorCode::InvalidParTime));
+
+        auto non_finite{valid};
+        non_finite.metadata.par_time_seconds = std::numeric_limits<float>::infinity();
+        TestRunner->TestTrue(TEXT("Non-finite par time is rejected"),
+                             contains_error(ml::validate_level(non_finite),
+                                            ml::ELevelValidationErrorCode::InvalidParTime));
+
+        auto playerless{make_camera_level()};
+        playerless.metadata.par_time_seconds = 45.0f;
+        TestRunner->TestTrue(TEXT("Playerless level par time is rejected"),
+                             contains_error(ml::validate_level(playerless),
+                                            ml::ELevelValidationErrorCode::UnexpectedParTime));
     }
 
     TEST_METHOD(CameraCanTargetOneEntity)

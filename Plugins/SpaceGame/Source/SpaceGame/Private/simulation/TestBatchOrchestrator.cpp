@@ -1078,11 +1078,23 @@ void ATestBatchOrchestrator::process_mission_result() {
     if (!result.IsSet()) {
         return;
     }
+    auto const par_time_seconds{level_definition_.IsSet()
+                                    ? level_definition_->metadata.par_time_seconds
+                                    : TOptional<float>{}};
     bool persisted{};
+    bool new_best_time{};
     if (result->save_results) {
         auto* game_instance{GetGameInstance()};
         auto* saves{USpaceSaveSubsystem::get(game_instance)};
         if (IsValid(saves)) {
+            if (result->state == ETestMissionState::Succeeded) {
+                auto const previous_progress{
+                    saves->get_level_progress(ml::FLevelId{result->level_id})};
+                new_best_time =
+                    previous_progress.best_completion_time_seconds < 0.0f ||
+                    result->elapsed_seconds < previous_progress.best_completion_time_seconds;
+            }
+
             FScoreRecord const record{
                 .date = FDateTime::Now(),
                 .level_name = result->level_id,
@@ -1095,6 +1107,7 @@ void ATestBatchOrchestrator::process_mission_result() {
                 .target_completion_time = result->target_time,
             };
             persisted = saves->save_score_record(record);
+            new_best_time = persisted && new_best_time;
         } else {
             UE_LOG(LogSandbox,
                    Error,
@@ -1104,7 +1117,9 @@ void ATestBatchOrchestrator::process_mission_result() {
     on_mission_completed.Broadcast({.level_id = result->level_id,
                                     .level_display_name = result->level_display_name,
                                     .state = result->state,
-                                    .persisted = persisted});
+                                    .persisted = persisted,
+                                    .par_time_seconds = par_time_seconds,
+                                    .new_best_time = new_best_time});
 }
 void ATestBatchOrchestrator::process_battle_run_end() {
     if (!level_simulation_.IsSet() ||

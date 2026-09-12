@@ -15,19 +15,36 @@
 #include <Misc/FileHelper.h>
 
 namespace ml::s7 {
+auto level_par_is_achieved(float const best_completion_time_seconds,
+                           TOptional<float> const par_time_seconds) -> bool {
+    return par_time_seconds.IsSet() && best_completion_time_seconds >= 0.0f &&
+           best_completion_time_seconds <= par_time_seconds.GetValue();
+}
+
 auto format_level_row_title(FString title, ELevelRowState const state) -> FString {
+    FString prefix;
     switch (state) {
         case ELevelRowState::Invalid:
-            return TEXT("! ") + title;
+            prefix = TEXT("! ");
+            break;
         case ELevelRowState::Locked:
-            return TEXT("\U0001F512 ") + title;
+            prefix = TEXT("\U0001F512 ");
+            break;
         case ELevelRowState::Unlocked:
-            return TEXT("\u25CB ") + title;
+            prefix = TEXT("\u25CB ");
+            break;
         case ELevelRowState::Completed:
-            return TEXT("\u2713 ") + title;
+            prefix = TEXT("\u2713 ");
+            break;
+        case ELevelRowState::ParAchieved:
+            prefix = TEXT("\u2713 \u2605 ");
+            break;
+        default:
+            checkNoEntry();
+            return title;
     }
-    checkNoEntry();
-    return title;
+
+    return prefix + title;
 }
 
 namespace {
@@ -61,7 +78,20 @@ auto level_details(FLevelScriptEntry const& entry, ml::ioj::FLevelProgressSummar
                         definition.entities.num(),
                         definition.player_entity_id.is_set() ? TEXT("ASSIGNED") : TEXT("NONE"),
                         *progress_label(definition, progress).ToUpper())};
-    if (!definition.mission.IsSet() || progress.attempt_count == 0) {
+    if (!definition.mission.IsSet()) {
+        return details;
+    }
+
+    auto const par_time{definition.metadata.par_time_seconds};
+    if (par_time.IsSet()) {
+        details +=
+            FString::Printf(TEXT("\nPAR TIME  //  %.1f S    PAR STATUS  //  %s"),
+                            par_time.GetValue(),
+                            level_par_is_achieved(progress.best_completion_time_seconds, par_time)
+                                ? TEXT("ACHIEVED")
+                                : TEXT("NOT ACHIEVED"));
+    }
+    if (progress.attempt_count == 0) {
         return details;
     }
 
@@ -118,12 +148,17 @@ auto description_with_requirements(FLevelScriptEntry const& entry,
 }
 
 auto row_state(FLevelUnlockStatus const& unlock_status,
-               ml::ioj::FLevelProgressSummary const& progress) -> ELevelRowState {
+               ml::ioj::FLevelProgressSummary const& progress,
+               TOptional<float> const par_time) -> ELevelRowState {
     if (!unlock_status.unlocked) {
         return ELevelRowState::Locked;
     }
-    return progress.state == ml::ioj::ELevelProgressState::Completed ? ELevelRowState::Completed
-                                                                     : ELevelRowState::Unlocked;
+    if (progress.state != ml::ioj::ELevelProgressState::Completed) {
+        return ELevelRowState::Unlocked;
+    }
+    return level_par_is_achieved(progress.best_completion_time_seconds, par_time)
+             ? ELevelRowState::ParAchieved
+             : ELevelRowState::Completed;
 }
 
 auto entry_matches_category(FLevelScriptEntry const& entry, ELevelCatalogCategory const category)
@@ -295,7 +330,9 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
             auto const id{entry.definition->metadata.id};
             auto const progress{IsValid(save_subsystem) ? save_subsystem->get_level_progress(id)
                                                         : ml::ioj::FLevelProgressSummary{}};
-            state = row_state(evaluator.evaluate(entry.definition.GetValue()), progress);
+            state = row_state(evaluator.evaluate(entry.definition.GetValue()),
+                              progress,
+                              entry.definition->metadata.par_time_seconds);
             if (preferred_button_index == INDEX_NONE && !focus_level_id.IsNone() &&
                 id.value == focus_level_id) {
                 preferred_button_index = level_entry_indices_.Num();

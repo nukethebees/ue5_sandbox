@@ -23,6 +23,8 @@ struct SPACEGAMESIMULATION_API FTestMissionCompletion {
     FString level_display_name{};
     ETestMissionState state{ETestMissionState::NotStarted};
     bool persisted{false};
+    TOptional<float> par_time_seconds{};
+    bool new_best_time{false};
 };
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnTestMissionCompleted, FTestMissionCompletion const&);

@@ -19,6 +19,7 @@ constexpr TCHAR level_prelude[]{LR"(
 (define (id value) (list 'id value))
 (define (title value) (list 'title value))
 (define (description value) (list 'description value))
+(define (par-time seconds) (list 'par-time seconds))
 (define (unlock . criteria) (cons 'unlock criteria))
 (define (level-completed level-id) (list 'level-completed level-id))
 (define (teams . values) (cons 'teams values))
@@ -72,6 +73,7 @@ class FDefinitionDecoder final {
         bool has_id{false};
         bool has_title{false};
         bool has_description{false};
+        bool has_par_time{false};
         bool has_unlock{false};
         bool has_teams{false};
         bool has_player{false};
@@ -119,6 +121,17 @@ class FDefinitionDecoder final {
                 }
                 has_description = true;
                 read_text_clause(clause, path, metadata.description);
+            } else if (tag_name == TEXT("par-time")) {
+                if (has_par_time) {
+                    add_error(path, TEXT("Duplicate par-time clause"));
+                    continue;
+                }
+                has_par_time = true;
+                double seconds{};
+                if (expect_length(clause, 2, path) &&
+                    read_number(list_value(clause, 1), path + TEXT(".seconds"), seconds)) {
+                    metadata.par_time_seconds = static_cast<float>(seconds);
+                }
             } else if (tag_name == TEXT("unlock")) {
                 if (has_unlock) {
                     add_error(path, TEXT("Duplicate unlock clause"));

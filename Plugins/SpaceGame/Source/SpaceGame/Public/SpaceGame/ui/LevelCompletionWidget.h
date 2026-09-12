@@ -23,7 +23,9 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
 
     void prepare_for_open(FString level_display_name,
                           ETestMissionState state,
-                          FLevelTelemetrySnapshot snapshot);
+                          FLevelTelemetrySnapshot snapshot,
+                          TOptional<float> par_time_seconds = NullOpt,
+                          bool new_best_time = false);
     void request_return_to_mission_control();
     void request_keep_operating();
 
@@ -33,6 +35,10 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
     [[nodiscard]] auto get_stats_snapshot() const -> FLevelTelemetrySnapshot const& {
         return stats_snapshot_;
     }
+    [[nodiscard]] auto get_par_time_seconds() const -> TOptional<float> const& {
+        return par_time_seconds_;
+    }
+    [[nodiscard]] auto is_new_best_time() const -> bool { return new_best_time_; }
 
     FReturnToLevelSelectRequested return_to_level_select_requested;
   protected:
@@ -51,10 +57,12 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
     FString level_display_name_{};
     ETestMissionState mission_state_{ETestMissionState::Succeeded};
     FLevelTelemetrySnapshot stats_snapshot_{};
+    TOptional<float> par_time_seconds_{};
     TSharedPtr<SLevelCompletionView> view_{};
     FGameUiStyle fallback_style_{};
     UPROPERTY(Transient)
     UGameSubsystem* game_{nullptr};
+    bool new_best_time_{false};
     bool action_requested_{false};
 };
 }

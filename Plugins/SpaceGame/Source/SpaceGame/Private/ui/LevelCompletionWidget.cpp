@@ -16,10 +16,14 @@ ULevelCompletionWidget::ULevelCompletionWidget() {
 
 void ULevelCompletionWidget::prepare_for_open(FString level_display_name,
                                               ETestMissionState const state,
-                                              FLevelTelemetrySnapshot snapshot) {
+                                              FLevelTelemetrySnapshot snapshot,
+                                              TOptional<float> const par_time_seconds,
+                                              bool const new_best_time) {
     level_display_name_ = MoveTemp(level_display_name);
     mission_state_ = state;
     stats_snapshot_ = MoveTemp(snapshot);
+    par_time_seconds_ = par_time_seconds;
+    new_best_time_ = new_best_time;
     action_requested_ = false;
     publish_report();
 }
@@ -98,7 +102,11 @@ void ULevelCompletionWidget::request_keep_operating() {
 
 void ULevelCompletionWidget::publish_report() {
     if (view_.IsValid()) {
-        view_->update_report(level_display_name_, mission_state_, stats_snapshot_);
+        view_->update_report(level_display_name_,
+                             mission_state_,
+                             stats_snapshot_,
+                             par_time_seconds_,
+                             new_best_time_);
     }
 }
 }

@@ -2,6 +2,7 @@
   (id 'turret-trial-0)
   (title "Turret Trial 0")
   (description "Destroy a single isolated turret and survive.")
+  (par-time 15)
 
   (teams
     (team 'blue)

@@ -101,8 +101,9 @@ auto UGameUiRootLayout::show_pause_menu(UInputAction& toggle_action, FPauseMenuD
 
 auto UGameUiRootLayout::show_level_completion(FString level_display_name,
                                               ETestMissionState const state,
-                                              FLevelTelemetrySnapshot snapshot)
-    -> ULevelCompletionWidget* {
+                                              FLevelTelemetrySnapshot snapshot,
+                                              TOptional<float> const par_time_seconds,
+                                              bool const new_best_time) -> ULevelCompletionWidget* {
     auto* const ui_data{ui_data_.Get()};
     if (!IsValid(ui_data) || !IsValid(modal_stack)) {
         UE_LOG(LogSandboxUI,
@@ -124,9 +125,13 @@ auto UGameUiRootLayout::show_level_completion(FString level_display_name,
     auto const completion_class{ui_data->get_widget_class<ULevelCompletionWidget>()};
     auto* const completion{modal_stack->AddWidget<ULevelCompletionWidget>(
         completion_class,
-        [name = MoveTemp(level_display_name), state, snapshot = MoveTemp(snapshot)](
-            ULevelCompletionWidget& widget) mutable {
-            widget.prepare_for_open(MoveTemp(name), state, MoveTemp(snapshot));
+        [name = MoveTemp(level_display_name),
+         state,
+         snapshot = MoveTemp(snapshot),
+         par_time_seconds,
+         new_best_time](ULevelCompletionWidget& widget) mutable {
+            widget.prepare_for_open(
+                MoveTemp(name), state, MoveTemp(snapshot), par_time_seconds, new_best_time);
         })};
     if (!IsValid(completion)) {
         UE_LOG(LogSandboxUI,

@@ -32,7 +32,9 @@ class SLevelCompletionView final : public SCompoundWidget {
     void Construct(FArguments const& args);
     void update_report(FString const& level_display_name,
                        ETestMissionState state,
-                       FLevelTelemetrySnapshot const& snapshot);
+                       FLevelTelemetrySnapshot const& snapshot,
+                       TOptional<float> par_time_seconds,
+                       bool new_best_time);
     void focus_primary_action();
 
     auto SupportsKeyboardFocus() const -> bool override { return true; }
@@ -58,6 +60,7 @@ class SLevelCompletionView final : public SCompoundWidget {
     TSharedPtr<STextBlock> mission_name_{};
     TSharedPtr<STextBlock> mission_result_{};
     TSharedPtr<STextBlock> objective_status_{};
+    TSharedPtr<STextBlock> new_best_time_{};
     TSharedPtr<STextBlock> elapsed_time_{};
     TSharedPtr<STextBlock> kills_{};
     TSharedPtr<STextBlock> destroyed_entities_{};

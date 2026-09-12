@@ -12,6 +12,7 @@ struct SPACEGAME_API FLevelMetadata {
     FLevelId id{};
     FString title{};
     FString description{};
+    TOptional<float> par_time_seconds{NullOpt};
 };
 
 struct SPACEGAME_API FEntitySpawnDefinition {
@@ -82,6 +83,8 @@ class SPACEGAME_API FLevelBuilder {
 enum class ELevelValidationErrorCode : uint8 {
     MissingLevelId,
     MissingTitle,
+    InvalidParTime,
+    UnexpectedParTime,
     MissingViewpoint,
     ConflictingViewpoints,
     PlayerEntityNotFound,

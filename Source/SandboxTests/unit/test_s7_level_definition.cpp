@@ -8,6 +8,7 @@ constexpr TCHAR valid_level[]{LR"(
   (id 'scripted-example)
   (title "Scripted Example")
   (description "Built as ordinary Scheme data.")
+  (par-time 75.5)
   (teams (team 'blue) (team 'red))
   (player 'player)
   (mission
@@ -111,6 +112,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
                                  ml::FLevelId{FName{TEXT("scripted-example")}});
         TestRunner->TestEqual(
             TEXT("Title is decoded"), definition.metadata.title, FString{TEXT("Scripted Example")});
+        TestRunner->TestEqual(
+            TEXT("Par time is decoded"), definition.metadata.par_time_seconds.GetValue(), 75.5f);
         TestRunner->TestTrue(TEXT("Player id is decoded"),
                              definition.player_entity_id ==
                                  ml::FLevelEntityId{FName{TEXT("player")}});
@@ -164,6 +167,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         auto const& definition{result.definition.GetValue()};
         TestRunner->TestFalse(TEXT("Camera level has no player"),
                               definition.player_entity_id.is_set());
+        TestRunner->TestFalse(TEXT("Omitted par time remains unset"),
+                              definition.metadata.par_time_seconds.IsSet());
         if (!TestRunner->TestTrue(TEXT("Camera is decoded"), definition.camera.IsSet())) {
             return;
         }
@@ -254,6 +259,48 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         if (!result.decode_errors.IsEmpty()) {
             TestRunner->TestTrue(TEXT("Duplicate id clause is identified"),
                                  result.decode_errors[0].message.Contains(TEXT("Duplicate id")));
+        }
+    }
+
+    TEST_METHOD(ReportsMalformedAndDuplicateParTimes)
+    {
+        ml::s7::FLevelDefinitionReader reader;
+        auto const malformed{reader.read_source(LR"(
+(level
+  (id 'malformed-par)
+  (title "Malformed Par")
+  (par-time "fast")
+  (teams (team 'blue))
+  (player 'player)
+  (mission (mode 'kill-enemies) (heroes 'player))
+  (entities
+    (entity 'player 'player-fighter 'blue
+      (position 0 0 0) (rotation 0 0 0))))
+)")};
+        TestRunner->TestFalse(TEXT("Malformed par time is rejected"), static_cast<bool>(malformed));
+        TestRunner->TestFalse(TEXT("Malformed par time reports a decode error"),
+                              malformed.decode_errors.IsEmpty());
+
+        auto const duplicate{reader.read_source(LR"(
+(level
+  (id 'duplicate-par)
+  (title "Duplicate Par")
+  (par-time 30)
+  (par-time 45)
+  (teams (team 'blue))
+  (player 'player)
+  (mission (mode 'kill-enemies) (heroes 'player))
+  (entities
+    (entity 'player 'player-fighter 'blue
+      (position 0 0 0) (rotation 0 0 0))))
+)")};
+        TestRunner->TestFalse(TEXT("Duplicate par time is rejected"), static_cast<bool>(duplicate));
+        TestRunner->TestFalse(TEXT("Duplicate par time reports a decode error"),
+                              duplicate.decode_errors.IsEmpty());
+        if (!duplicate.decode_errors.IsEmpty()) {
+            TestRunner->TestTrue(
+                TEXT("Duplicate par-time clause is identified"),
+                duplicate.decode_errors[0].message.Contains(TEXT("Duplicate par-time")));
         }
     }
 

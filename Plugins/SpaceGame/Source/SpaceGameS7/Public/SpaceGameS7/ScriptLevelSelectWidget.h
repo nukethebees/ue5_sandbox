@@ -20,8 +20,11 @@ enum class ELevelRowState : uint8 {
     Locked,
     Unlocked,
     Completed,
+    ParAchieved,
 };
 
+SPACEGAMES7_API auto level_par_is_achieved(float best_completion_time_seconds,
+                                           TOptional<float> par_time_seconds) -> bool;
 SPACEGAMES7_API auto format_level_row_title(FString title, ELevelRowState state) -> FString;
 
 struct FLevelSelectViewRow {

@@ -43,8 +43,11 @@ TEST_CLASS(LevelCompletionWidget, "Sandbox.UnitTests")
                 snapshot.active_entity_count_data.add(4, 17);
                 snapshot.cumulative_kill_count_data.add(0, 0);
                 snapshot.cumulative_kill_count_data.add(4, 6);
-                widget->prepare_for_open(
-                    TEXT("Border Skirmish"), ETestMissionState::Succeeded, MoveTemp(snapshot));
+                widget->prepare_for_open(TEXT("Border Skirmish"),
+                                         ETestMissionState::Succeeded,
+                                         MoveTemp(snapshot),
+                                         TOptional<float>{3800.0f},
+                                         true);
                 widget->ActivateWidget();
             }
             return widget;
@@ -67,6 +70,11 @@ TEST_CLASS(LevelCompletionWidget, "Sandbox.UnitTests")
             TEXT("Completion report retains destroyed entities"), snapshot.destroyed_entities, 8);
         TestRunner->TestEqual(
             TEXT("Completion report retains laser count"), snapshot.lasers_fired, 120);
+        TestRunner->TestEqual(TEXT("Completion report retains the par time"),
+                              widget->get_par_time_seconds().GetValue(),
+                              3800.0f);
+        TestRunner->TestTrue(TEXT("Completion report retains the new-best result"),
+                             widget->is_new_best_time());
         TestRunner->TestTrue(TEXT("The report is the deterministic initial focus target"),
                              widget->GetDesiredFocusTarget() == widget);
 
