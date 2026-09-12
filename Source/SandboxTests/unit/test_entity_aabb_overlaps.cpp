@@ -40,6 +40,7 @@ struct FOverlapFixture {
         registry.commit_updates();
         query_manager.update();
         registry.end_tick();
+        query_manager.get_collision_system().reset_frame_events();
     }
 
     auto add_static(FVector3f const min_point, FVector3f const max_point) -> int32 {
@@ -55,6 +56,7 @@ struct FOverlapFixture {
         check(handles.Num() == rotations.Num());
         check(alive.IsEmpty() || handles.Num() == alive.Num());
 
+        query_manager.get_collision_system().reset_frame_events();
         registry.begin_tick();
 
         FTestEntityRegistry::EntityData updates;
@@ -86,6 +88,7 @@ struct FOverlapFixture {
 
     void run_quiet_tick() {
         end_tick();
+        query_manager.get_collision_system().reset_frame_events();
         registry.begin_tick();
         registry.commit_updates();
         query_manager.update();
@@ -100,11 +103,15 @@ struct FOverlapFixture {
     }
 
     auto get_entity_overlaps() const -> ml::ioj::FEntityEntityOverlaps::ConstView {
-        return query_manager.get_collision_system().get_entity_entity_overlaps();
+        return query_manager.get_collision_system()
+            .get_aabb_overlap_events()
+            .entity_entity_overlaps;
     }
 
     auto get_static_overlaps() const -> ml::ioj::FEntityStaticOverlaps::ConstView {
-        return query_manager.get_collision_system().get_entity_static_overlaps();
+        return query_manager.get_collision_system()
+            .get_aabb_overlap_events()
+            .entity_static_overlaps;
     }
 
     void set_bounds(int32 const type_index, FVector3f const centre, FVector3f const half_extents) {
@@ -530,6 +537,96 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
             TestRunner->TestTrue(TEXT("Moved entity retains its large-static identity"),
                                  found_large_static);
         }
+    }
+
+    TEST_METHOD(EventsMirrorAuthoritativeResults)
+    {
+        FOverlapFixture fixture;
+        auto const static_index{fixture.add_static({-10.f, -10.f, -10.f}, {10.f, 10.f, 10.f})};
+        auto const stationary{fixture.spawn({0.f, 0.f, 0.f})};
+        auto const moved{fixture.spawn({100.f, 0.f, 0.f})};
+        fixture.finish_spawning();
+
+        TArray const handles{moved};
+        TArray const locations{FVector3f{15.f, 0.f, 0.f}};
+        TArray const rotations{FRotator3f::ZeroRotator};
+        fixture.run_tick(handles, locations, rotations);
+
+        auto const& collision_system{fixture.query_manager.get_collision_system()};
+        check_single_pair(
+            TestRunner, collision_system.get_entity_entity_overlaps(), moved, stationary);
+        check_single_static_overlap(
+            TestRunner, collision_system.get_entity_static_overlaps(), moved, static_index);
+        check_single_pair(TestRunner, fixture.get_entity_overlaps(), moved, stationary);
+        check_single_static_overlap(TestRunner, fixture.get_static_overlaps(), moved, static_index);
+    }
+
+    TEST_METHOD(FrameEventResetRetainsStorageAndPassesAppend)
+    {
+        FOverlapFixture fixture;
+        auto const static_index{fixture.add_static({-10.f, -10.f, -10.f}, {10.f, 10.f, 10.f})};
+        auto const stationary{fixture.spawn({0.f, 0.f, 0.f})};
+        auto const moved{fixture.spawn({100.f, 0.f, 0.f})};
+        fixture.finish_spawning();
+
+        TArray const handles{moved};
+        TArray const locations{FVector3f{15.f, 0.f, 0.f}};
+        TArray const rotations{FRotator3f::ZeroRotator};
+        fixture.run_tick(handles, locations, rotations);
+
+        auto& collision_system{fixture.query_manager.get_collision_system()};
+        auto const first_events{collision_system.get_aabb_overlap_events()};
+        check_single_pair(TestRunner, first_events.entity_entity_overlaps, moved, stationary);
+        check_single_static_overlap(
+            TestRunner, first_events.entity_static_overlaps, moved, static_index);
+        auto const* const entity_storage{
+            first_events.entity_entity_overlaps.first_entities.GetData()};
+        auto const* const static_storage{first_events.entity_static_overlaps.entities.GetData()};
+
+        collision_system.reset_frame_events();
+
+        auto const reset_events{collision_system.get_aabb_overlap_events()};
+        TestRunner->TestEqual(TEXT("Frame reset clears dynamic events"),
+                              reset_events.entity_entity_overlaps.num(),
+                              0);
+        TestRunner->TestEqual(
+            TEXT("Frame reset clears static events"), reset_events.entity_static_overlaps.num(), 0);
+        TestRunner->TestTrue(TEXT("Dynamic event storage is retained across reset"),
+                             reset_events.entity_entity_overlaps.first_entities.GetData() ==
+                                 entity_storage);
+        TestRunner->TestTrue(TEXT("Static event storage is retained across reset"),
+                             reset_events.entity_static_overlaps.entities.GetData() ==
+                                 static_storage);
+
+        collision_system.update(handles);
+        auto const recaptured_events{collision_system.get_aabb_overlap_events()};
+        check_single_pair(TestRunner, recaptured_events.entity_entity_overlaps, moved, stationary);
+        check_single_static_overlap(
+            TestRunner, recaptured_events.entity_static_overlaps, moved, static_index);
+        TestRunner->TestTrue(TEXT("Dynamic event storage is reused after recapture"),
+                             recaptured_events.entity_entity_overlaps.first_entities.GetData() ==
+                                 entity_storage);
+        TestRunner->TestTrue(TEXT("Static event storage is reused after recapture"),
+                             recaptured_events.entity_static_overlaps.entities.GetData() ==
+                                 static_storage);
+
+        collision_system.update(handles);
+        auto const appended_events{collision_system.get_aabb_overlap_events()};
+        TestRunner->TestEqual(TEXT("Collision passes append dynamic events within a frame"),
+                              appended_events.entity_entity_overlaps.num(),
+                              2);
+        TestRunner->TestEqual(TEXT("Collision passes append static events within a frame"),
+                              appended_events.entity_static_overlaps.num(),
+                              2);
+
+        collision_system.reset_frame_events();
+        auto const next_frame_events{collision_system.get_aabb_overlap_events()};
+        TestRunner->TestEqual(TEXT("The next frame starts without dynamic events"),
+                              next_frame_events.entity_entity_overlaps.num(),
+                              0);
+        TestRunner->TestEqual(TEXT("The next frame starts without static events"),
+                              next_frame_events.entity_static_overlaps.num(),
+                              0);
     }
 
     TEST_METHOD(InvalidDeadAndStaleDirtyHandlesAreIgnored)

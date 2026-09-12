@@ -8,6 +8,11 @@
 struct FTestEntityRegistry;
 
 namespace ml::ioj {
+struct FAABBOverlapEventsView {
+    FEntityEntityOverlaps::ConstView entity_entity_overlaps;
+    FEntityStaticOverlaps::ConstView entity_static_overlaps;
+};
+
 struct SPACEGAMESIMULATION_API FCollisionSystem {
   public:
     explicit FCollisionSystem(FTestEntityRegistry const& registry) noexcept;
@@ -18,6 +23,12 @@ struct SPACEGAMESIMULATION_API FCollisionSystem {
 
     void initialise(FEntityAABBs const& bounds);
     void update(TConstArrayView<FRegistryEntityHandle> collision_dirty_entities);
+
+    void reset_frame_events();
+    auto get_aabb_overlap_events() const -> FAABBOverlapEventsView {
+        return {entity_entity_overlap_events_.get_const_view(),
+                entity_static_overlap_events_.get_const_view()};
+    }
 
     auto get_entity_aabbs() const noexcept -> FEntityAABBs const& { return entity_aabbs_; }
     auto get_entity_entity_overlaps() const -> FEntityEntityOverlaps::ConstView {
@@ -40,6 +51,9 @@ struct SPACEGAMESIMULATION_API FCollisionSystem {
     FEntityAABBs entity_aabbs_{};
     FEntityEntityOverlaps entity_entity_overlaps_;
     FEntityStaticOverlaps entity_static_overlaps_;
+
+    FEntityEntityOverlaps entity_entity_overlap_events_;
+    FEntityStaticOverlaps entity_static_overlap_events_;
 
     TArray<FRegistryEntityHandle> overlapping_entities_scratch_;
     TArray<int32> overlapping_static_geometry_indices_scratch_;

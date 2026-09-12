@@ -9,6 +9,7 @@ void FCollisionSystem::initialise(FEntityAABBs const& bounds) {
     entity_aabbs_ = bounds;
     entity_entity_overlaps_.reset();
     entity_static_overlaps_.reset();
+    reset_frame_events();
     overlapping_entities_scratch_.Reset();
     overlapping_static_geometry_indices_scratch_.Reset();
     overlap_sort_indices_scratch_.Reset();
@@ -18,6 +19,10 @@ void FCollisionSystem::update(
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCollisionSystem::update);
     rebuild_grid();
     collect_overlaps_for_moved_entities(collision_dirty_entities);
+}
+void FCollisionSystem::reset_frame_events() {
+    entity_entity_overlap_events_.reset();
+    entity_static_overlap_events_.reset();
 }
 FCollisionSystem::FCollisionSystem(FTestEntityRegistry const& registry) noexcept
     : entity_registry_{registry}
@@ -68,6 +73,9 @@ void FCollisionSystem::collect_overlaps_for_moved_entities(
     }
 
     sort_and_deduplicate_overlaps();
+
+    entity_entity_overlap_events_.append_from(entity_entity_overlaps_.get_const_view());
+    entity_static_overlap_events_.append_from(entity_static_overlaps_.get_const_view());
 }
 void FCollisionSystem::sort_and_deduplicate_overlaps() {
     auto const entity_pair_count{entity_entity_overlaps_.num()};

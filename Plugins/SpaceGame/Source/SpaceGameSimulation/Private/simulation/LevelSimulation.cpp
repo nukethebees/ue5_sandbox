@@ -319,6 +319,7 @@ void FLevelSimulation::advance(time_type const dt) {
     capital_ships_simulation_.reset_frame_output();
     turrets_simulation_.reset_frame_output();
     lasers_simulation_.reset_frame_output();
+    query_manager_.get_collision_system().reset_frame_events();
     level_telemetry_manager_.observe_frame(dt);
     clock_.tick_loop.add_time(dt);
 
