@@ -242,7 +242,7 @@ cmake --workflow --preset native-soa-reserve
 
 This compares both owners at 4,096, 65,536, and 1,048,576 rows, with nine randomly interleaved repetitions and a 0.1-second minimum measured duration per repetition. Results are saved to `out/build/native-soa/native-soa-results.json`; plots go to `out/build/native-soa/native-soa-plots/`. Google Benchmark JSON retains individual repetitions, aggregates, units, configuration context, and memory counters. The PNG plot shows means and min–max ranges across repetitions, not confidence intervals.
 
-The standalone executable is `out/build/native-soa/Codegen/native_soa/native-soa-benchmarks.exe`. It includes optimized debug symbols for profiling. To select cases directly in a profiler, use arguments such as:
+The standalone executable is `out/build/native-soa/native/lispb/native_soa/native-soa-benchmarks.exe`. It includes optimized debug symbols for profiling. To select cases directly in a profiler, use arguments such as:
 
 ```text
 --benchmark_filter=Vector/reserve/65536/ --benchmark_min_time=5s
@@ -251,7 +251,7 @@ The standalone executable is `out/build/native-soa/Codegen/native_soa/native-soa
 
 Use `--benchmark_list_tests=true` to list cases. Other operation names include `populated_growth`, `defaulted_append_1`, `defaulted_append_64`, `reserved_defaulted_append_1`, `reserved_defaulted_append_64`, `set_num`, `reset_refill_16`, `remove_swap`, `iterate`, and `views_4096`. `reserved_uninitialised_append_1` exists only for Single; standard vector has no equivalent operation. Ordinary defaulted append uses vector resize and the single owner uses value construction, including Handle's default -1 values.
 
-The generator accepts `experimental_stdlib: true` on an SoA module. It emits header-only vector owners and nested mutable/const span views. The native experiment's small generation driver reads the canonical Unreal experimental schema, projects integer names and leaf-type dependencies into standard C++, and selects this backend. Field order and nesting therefore come from the same source manifest. Generated output is under `out/build/native-soa/Codegen/native_soa/generated/native_soa_types.h`; edit the manifest or generator rather than this build artifact.
+The generator accepts `experimental_stdlib: true` on an SoA module. It emits header-only vector owners and nested mutable/const span views. The native experiment's small generation driver reads the canonical Unreal experimental schema, projects integer names and leaf-type dependencies into standard C++, and selects this backend. Field order and nesting therefore come from the same source manifest. Generated output is under `out/build/native-soa/native/lispb/native_soa/generated/native_soa_types.h`; edit the manifest or generator rather than this build artifact.
 
 Both backends use the existing flattened-layout generator and a shared standard-C++ layout/trait header. Capacity granularity remains 64; every column starts on at least a 64-byte boundary, raised for over-aligned leaves, and the base allocation satisfies the maximum alignment. Native runtime tests include alignments 32, 64, and 256, boundary capacities, non-overlap, data preservation, moves, default values, nested spans, removal, and checked arithmetic. The single owner retains the same trivial-copy/destruction and nothrow-default-construction restrictions and remains move-only. Native single growth uses 1.5x geometric growth rounded to 64; vector uses the standard-library implementation's growth policy.
 
@@ -323,7 +323,7 @@ This standalone mimalloc build has no Unreal poison proxy, does not intentionall
 To select a smaller native matrix or replot:
 
 ```powershell
-uv run Scripts/run-native-soa-reserve-matrix.py --standard out/build/native-soa/Codegen/native_soa/native-soa-reserve-matrix.exe --mimalloc out/build/native-soa/Codegen/native_soa/native-soa-reserve-matrix-mimalloc.exe --rows 65536 --owners 1 200 512 --output-dir .local/benchmarks/native-soa-matrix
+uv run Scripts/run-native-soa-reserve-matrix.py --standard out/build/native-soa/native/lispb/native_soa/native-soa-reserve-matrix.exe --mimalloc out/build/native-soa/native/lispb/native_soa/native-soa-reserve-matrix-mimalloc.exe --rows 65536 --owners 1 200 512 --output-dir .local/benchmarks/native-soa-matrix
 uv run Scripts/run-native-soa-reserve-matrix.py --plot-only --output-dir out/build/native-soa/native-soa-reserve-matrix
 ```
 
@@ -380,16 +380,16 @@ The normal production Unreal generator remains one TArray-backed implementation.
 
 | Concern | Repository location |
 |---|---|
-| Canonical fighter-equivalent schema and allocator variants | `Codegen/manifests/single_allocation_experiment.sbxgen`, `types.sbxgen` |
-| Normal Unreal owner and allocator expansion | `Codegen/src/soa_lowering.cpp` |
-| Single-allocation emission, shared by Unreal/native and allocator variants | `Codegen/src/single_allocation_soa_lowering.cpp` |
-| Reused nested flattening | `Codegen/src/fixed_soa_layout.cpp` |
-| Existing fixed lifetime design inspected for future extension | `Codegen/src/fixed_soa_storage_lowering.cpp`, `Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/fixed_storage.h` |
+| Canonical fighter-equivalent schema and allocator variants | `lispb/schema/single_allocation_experiment.lispb`, `types.lispb` |
+| Normal Unreal owner and allocator expansion | `native/lispb/src/soa_lowering.cpp` |
+| Single-allocation emission, shared by Unreal/native and allocator variants | `native/lispb/src/single_allocation_soa_lowering.cpp` |
+| Reused nested flattening | `native/lispb/src/fixed_soa_layout.cpp` |
+| Existing fixed lifetime design inspected for future extension | `native/lispb/src/fixed_soa_storage_lowering.cpp`, `Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/fixed_storage.h` |
 | Common runtime control flow and explicit FMemory allocator | `Public/SandboxCore/single_allocation/operations.h`, `Public/SandboxCore/single_allocation/allocators.h` |
 | DLL loading and direct mimalloc allocation/free | `Private/mimalloc_storage_allocator.cpp` |
 | TArray Malloc/Realloc/mimalloc adapters | `Public/SbxCoreExperiments/soa_reference_allocators.h` |
 | Generated Unreal owners and views | `Public/SbxCoreExperiments/soa_types.h`, `Private/soa_types.cpp` |
-| Native projection, runtime and benchmarks | `Codegen/native_soa/` |
+| Native projection, runtime and benchmarks | `native/lispb/native_soa/` |
 | Catch2 benchmark and separate CSV/diagnostics translation unit | `Plugins/SandboxCore/Tests/SandboxCoreBenchmarks/Private/single_allocation_soa_*.cpp` |
 
 Paths without a repository prefix in this table are relative to this experimental module. The existing FBlockAllocator was inspected, but its ownership model and large-page/VirtualAlloc2 experiments were not needed. No allocator refactor or large-page support was introduced.

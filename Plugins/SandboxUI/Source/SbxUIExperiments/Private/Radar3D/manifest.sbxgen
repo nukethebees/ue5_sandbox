@@ -1,4 +1,0 @@
-(slate-manifest
-  :schema-version 1
-  :include-directories ("../Widgets")
-  :entries ("Radar3DShowcase.sbxslate"))

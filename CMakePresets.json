@@ -178,7 +178,7 @@
     {
       "name": "codegen",
       "configurePreset": "codegen",
-      "targets": ["sandbox-codegen", "sandbox-slatec", "sandbox-kernelc", "codegen-tests", "slate-codegen-tests", "kernel-codegen-tests"]
+      "targets": ["lispb", "codegen-tests", "slate-codegen-tests", "kernel-codegen-tests"]
     },
     {
       "name": "kernel-benchmark",

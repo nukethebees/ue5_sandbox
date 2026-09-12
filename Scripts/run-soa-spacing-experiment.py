@@ -212,8 +212,8 @@ def main() -> None:
     (output / "working-tree.diff").write_text(command_output(["git", "diff", "HEAD"]), encoding="utf-8")
     for path in (Path(__file__), ROOT / "Plugins/SandboxCore/Tests/SandboxCoreBenchmarks/Private/single_allocation_soa_spacing.cpp"):
         (output / path.name).write_bytes(path.read_bytes())
-    for relative in ("Scripts/soa_spacing_confirmation.py", "Codegen/manifests/soa_spacing_shapes.sbxgen",
-                     "Codegen/manifests/single_allocation_experiment.sbxgen",
+    for relative in ("Scripts/soa_spacing_confirmation.py", "lispb/schema/soa_spacing_shapes.lispb",
+                     "lispb/schema/single_allocation_experiment.lispb",
                      "Plugins/SandboxCore/Tests/SandboxCoreBenchmarks/Private/single_allocation_soa_spacing_support.h",
                      "Plugins/SandboxCore/Tests/SandboxCoreBenchmarks/Private/single_allocation_soa_confirmation.cpp",
                      "Plugins/SandboxCore/Source/SbxCoreExperiments/Public/SbxCoreExperiments/soa_spacing_shapes.h"):

@@ -21,7 +21,7 @@ public class SandboxEditor : ModuleRules
         }
 
         string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", ".."));
-        string nativeMaterialGenRoot = Path.Combine(repositoryRoot, "native", "material_gen");
+        string nativeMaterialGenRoot = Path.Combine(repositoryRoot, "native", "lispb", "material");
         string nativeMaterialGenLibrary = Path.Combine(
             repositoryRoot,
             "Binaries",

@@ -1,3 +1,0 @@
-(kernel-manifest
-  :schema-version 1
-  :entries ("array_math.sbxkernel"))

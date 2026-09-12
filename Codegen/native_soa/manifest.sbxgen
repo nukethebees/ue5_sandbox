@@ -1,5 +1,0 @@
-(codegen-manifest
-  :schema-version 11
-  :types "../manifests/types.sbxgen"
-  :modules (
-    "../manifests/single_allocation_experiment.sbxgen"))

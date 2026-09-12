@@ -1,0 +1,116 @@
+(lispb-project
+  :language-version 1
+  :project-root ".."
+
+  (cpp-schema sandbox-code
+    :types "lispb/schema/types.lispb"
+    :sources (
+      "lispb/schema/dynamic_core.lispb"
+      "lispb/schema/core_layouts.lispb"
+      "lispb/schema/test_fixtures.lispb"
+      "lispb/schema/single_allocation_experiment.lispb"
+      "lispb/schema/level_telemetry_history.lispb"
+      "lispb/schema/soa_spacing_shapes.lispb"
+      "lispb/schema/collision.lispb"
+      "lispb/schema/dynamic_entities.lispb"
+      "lispb/schema/level_definition.lispb"
+      "lispb/schema/entity_registry.lispb"
+      "lispb/schema/batch_game.lispb"
+      "lispb/schema/enums.lispb"
+      "lispb/schema/sandbox_ismc.lispb"
+      "lispb/schema/facades.lispb"
+      "lispb/schema/settings.lispb")
+    :output-root (project-path "."))
+
+  (cpp-schema cpp-compile-fixture
+    :types "native/lispb/tests/compile_fixture/types.lispb"
+    :sources ("native/lispb/tests/compile_fixture/modules.lispb")
+    :output-root (build-path "native/lispb/generated_compile_fixture"))
+
+  (slate slate-core-widgets
+    :sources ("Plugins/SandboxUI/Source/SandboxUI/Private/widgets/CoreWidgets.lispb")
+    :output-root (project-path "Plugins/SandboxUI/Source/SandboxUI/Private/widgets/generated"))
+  (slate slate-ui-showcase
+    :sources ("Plugins/SandboxUI/Source/SandboxUIExamples/Private/SandboxUIShowcase.lispb")
+    :output-root (project-path "Plugins/SandboxUI/Source/SandboxUIExamples/Private/generated"))
+  (slate slate-heatmap-benchmark
+    :sources ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/Benchmarks/Heatmap/HeatmapBenchmarkSlate.lispb")
+    :output-root (project-path "Plugins/SandboxUI/Source/SbxUIExperiments/Private/Benchmarks/Heatmap/generated"))
+  (slate slate-experiment-widgets
+    :sources ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/Widgets/ExperimentPanels.lispb")
+    :output-root (project-path "Plugins/SandboxUI/Source/SbxUIExperiments/Private/Widgets/generated"))
+  (slate slate-radar
+    :sources ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/Radar3D/Radar3DShowcase.lispb")
+    :include-directories ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/Widgets")
+    :output-root (project-path "Plugins/SandboxUI/Source/SbxUIExperiments/Private/Radar3D/generated"))
+  (slate slate-heatmap-rdg
+    :sources ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/HeatmapRDG/HeatmapRDGShowcase.lispb")
+    :include-directories ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/Widgets")
+    :output-root (project-path "Plugins/SandboxUI/Source/SbxUIExperiments/Private/HeatmapRDG/generated"))
+  (slate slate-scatter
+    :sources ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/Scatter3D/Scatter3DShowcase.lispb")
+    :include-directories ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/Widgets")
+    :output-root (project-path "Plugins/SandboxUI/Source/SbxUIExperiments/Private/Scatter3D/generated"))
+  (slate slate-smoke
+    :sources ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/SlateDslSmoke/SlateDslSmokeWidget.lispb")
+    :output-root (project-path "Plugins/SandboxUI/Source/SbxUIExperiments/Private/SlateDslSmoke/generated"))
+  (slate slate-volume-heatmap
+    :sources ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/VolumeHeatmap3D/VolumeHeatmap3DShowcase.lispb")
+    :include-directories ("Plugins/SandboxUI/Source/SbxUIExperiments/Private/Widgets")
+    :output-root (project-path "Plugins/SandboxUI/Source/SbxUIExperiments/Private/VolumeHeatmap3D/generated"))
+  (slate slate-game-options
+    :sources ("Plugins/SpaceGame/Source/SpaceGame/Private/ui/main_menu/SGameOptionsView.lispb")
+    :output-root (project-path "Plugins/SpaceGame/Source/SpaceGame/Private/ui/main_menu/generated"))
+  (slate slate-level-select
+    :sources ("Plugins/SpaceGame/Source/SpaceGameS7/Private/SScriptLevelSelectView.lispb")
+    :output-root (project-path "Plugins/SpaceGame/Source/SpaceGameS7/Private/generated"))
+  (slate slate-compile-fixture
+    :sources ("native/lispb/slate/tests/compile/widgets.lispb")
+    :output-root (build-path "native/lispb/slate/compile-generated"))
+
+  (kernel sandbox-kernels
+    :sources (
+      "Plugins/SandboxCore/Source/SandboxCore/Kernels/array_math.lispb"
+      "Plugins/SandboxCore/Source/SandboxCore/Kernels/candidate_math.lispb")
+    (emission kernel-unreal
+      :profile unreal
+      :output-root (project-path "Plugins/SandboxCore/Source/SandboxCore"))
+    (emission kernel-standard
+      :profile standard
+      :output-root (build-path "native/lispb/kernel/standard-generated"))
+    (emission kernel-avx2-lab
+      :profile unreal-avx2-lab
+      :output-root (project-path "Plugins/SandboxCore/Tests/SandboxCoreBenchmarks/Private"))
+    (emission kernel-native-simd
+      :profile native-x86-simd-lab
+      :output-root (build-path "native/lispb/kernel/native-simd-generated")))
+  (kernel kernel-fixtures
+    :sources ("native/lispb/kernel/tests/compile/array_math.lispb")
+    (emission kernel-compile-fixture
+      :profile unreal
+      :output-root (build-path "native/lispb/kernel/compile-generated")))
+
+  (material ui-glow-material
+    :source "Plugins/SandboxUI/Source/SandboxUI/Private/materials/UiGlowComposite.lispb"
+    :artifact (project-path "Intermediate/MaterialGen/UiGlowComposite.smat"))
+  (material world-soft-target-material
+    :source "Plugins/SpaceGame/Source/SpaceGamePresentation/Private/materials/SoftTargetWorld.lispb"
+    :artifact (project-path "Intermediate/MaterialGen/SoftTargetWorld.smat"))
+
+  (group slate-production
+    :targets (
+      slate-core-widgets
+      slate-ui-showcase
+      slate-heatmap-benchmark
+      slate-experiment-widgets
+      slate-radar
+      slate-heatmap-rdg
+      slate-scatter
+      slate-smoke
+      slate-volume-heatmap
+      slate-game-options
+      slate-level-select))
+  (group committed-code
+    :targets (sandbox-code slate-production kernel-unreal kernel-avx2-lab))
+  (group materials
+    :targets (ui-glow-material world-soft-target-material)))

@@ -33,8 +33,9 @@ The project utilizes a custom plugin to extend the engine's capabilities:
 
 ## Code generation
 
-Generated C++ files are defined by the S-expression schemas in `Codegen/manifests`. The standalone
-C++ generator is built with CMake and regenerates the files from the repository root:
+The `lispb` native tool generates C++ schemas, Slate, kernels, and compiled material IR from
+`.lispb` inputs. Named targets and groups are defined in `lispb/project.lispb`; the general C++
+schemas live under `lispb/schema`. Regenerate committed files from the repository root with:
 
 ```bash
 cmake --workflow --preset generate-code

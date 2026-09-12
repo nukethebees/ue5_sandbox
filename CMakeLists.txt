@@ -48,7 +48,7 @@ if(SANDBOX_NATIVE_S7_ONLY)
   return()
 endif()
 
-add_subdirectory(Codegen)
+add_subdirectory(native/lispb)
 
 if(SANDBOX_CODEGEN_ONLY)
   return()
@@ -285,7 +285,7 @@ add_subdirectory(native/mesh_gen)
 add_dependencies(generate-project-files sandbox-mesh-gen)
 
 set(UI_GLOW_MATERIAL_SOURCE
-  "${CMAKE_CURRENT_SOURCE_DIR}/Plugins/SandboxUI/Source/SandboxUI/Private/materials/UiGlowComposite.material.scm"
+  "${CMAKE_CURRENT_SOURCE_DIR}/Plugins/SandboxUI/Source/SandboxUI/Private/materials/UiGlowComposite.lispb"
 )
 set(UI_GLOW_MATERIAL_ARTIFACT
   "${CMAKE_CURRENT_SOURCE_DIR}/Intermediate/MaterialGen/UiGlowComposite.smat"
@@ -297,11 +297,12 @@ add_custom_command(
   OUTPUT "${UI_GLOW_MATERIAL_ARTIFACT}"
   COMMAND "${CMAKE_COMMAND}" -E make_directory
     "${CMAKE_CURRENT_SOURCE_DIR}/Intermediate/MaterialGen"
-  COMMAND $<TARGET_FILE:materialc> compile
-    --input "${UI_GLOW_MATERIAL_SOURCE}"
-    --output "${UI_GLOW_MATERIAL_ARTIFACT}"
+  COMMAND $<TARGET_FILE:lispb> generate
+    --project "${CMAKE_CURRENT_SOURCE_DIR}/lispb/project.lispb"
+    --build-root "${CMAKE_BINARY_DIR}"
+    --target ui-glow-material
     --depfile "${UI_GLOW_MATERIAL_DEPFILE}"
-  DEPENDS materialc "${UI_GLOW_MATERIAL_SOURCE}"
+  DEPENDS lispb "${CMAKE_CURRENT_SOURCE_DIR}/lispb/project.lispb" "${UI_GLOW_MATERIAL_SOURCE}"
   DEPFILE "${UI_GLOW_MATERIAL_DEPFILE}"
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   COMMENT "Compiling UiGlow material IR"
@@ -310,7 +311,7 @@ add_custom_command(
 add_custom_target(compile-ui-glow-material DEPENDS "${UI_GLOW_MATERIAL_ARTIFACT}")
 
 set(WORLD_SOFT_TARGET_MATERIAL_SOURCE
-  "${CMAKE_CURRENT_SOURCE_DIR}/Plugins/SpaceGame/Source/SpaceGamePresentation/Private/materials/SoftTargetWorld.material.scm"
+  "${CMAKE_CURRENT_SOURCE_DIR}/Plugins/SpaceGame/Source/SpaceGamePresentation/Private/materials/SoftTargetWorld.lispb"
 )
 set(WORLD_SOFT_TARGET_MATERIAL_ARTIFACT
   "${CMAKE_CURRENT_SOURCE_DIR}/Intermediate/MaterialGen/SoftTargetWorld.smat"
@@ -322,11 +323,12 @@ add_custom_command(
   OUTPUT "${WORLD_SOFT_TARGET_MATERIAL_ARTIFACT}"
   COMMAND "${CMAKE_COMMAND}" -E make_directory
     "${CMAKE_CURRENT_SOURCE_DIR}/Intermediate/MaterialGen"
-  COMMAND $<TARGET_FILE:materialc> compile
-    --input "${WORLD_SOFT_TARGET_MATERIAL_SOURCE}"
-    --output "${WORLD_SOFT_TARGET_MATERIAL_ARTIFACT}"
+  COMMAND $<TARGET_FILE:lispb> generate
+    --project "${CMAKE_CURRENT_SOURCE_DIR}/lispb/project.lispb"
+    --build-root "${CMAKE_BINARY_DIR}"
+    --target world-soft-target-material
     --depfile "${WORLD_SOFT_TARGET_MATERIAL_DEPFILE}"
-  DEPENDS materialc "${WORLD_SOFT_TARGET_MATERIAL_SOURCE}"
+  DEPENDS lispb "${CMAKE_CURRENT_SOURCE_DIR}/lispb/project.lispb" "${WORLD_SOFT_TARGET_MATERIAL_SOURCE}"
   DEPFILE "${WORLD_SOFT_TARGET_MATERIAL_DEPFILE}"
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   COMMENT "Compiling world soft-target material IR"
@@ -668,10 +670,11 @@ add_custom_target(validate-ui-glow-material-unreal
 )
 
 add_custom_target(validate-ui-glow-material
-  COMMAND $<TARGET_FILE:materialc> validate
-    --input
-    "${UI_GLOW_MATERIAL_SOURCE}"
-  DEPENDS materialc
+  COMMAND $<TARGET_FILE:lispb> validate
+    --project "${CMAKE_CURRENT_SOURCE_DIR}/lispb/project.lispb"
+    --build-root "${CMAKE_BINARY_DIR}"
+    --target ui-glow-material
+  DEPENDS lispb
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   USES_TERMINAL
   VERBATIM
@@ -692,9 +695,11 @@ add_custom_target(generate-world-soft-target-assets
 )
 
 add_custom_target(validate-world-soft-target-material
-  COMMAND $<TARGET_FILE:materialc> validate
-    --input "${WORLD_SOFT_TARGET_MATERIAL_SOURCE}"
-  DEPENDS materialc
+  COMMAND $<TARGET_FILE:lispb> validate
+    --project "${CMAKE_CURRENT_SOURCE_DIR}/lispb/project.lispb"
+    --build-root "${CMAKE_BINARY_DIR}"
+    --target world-soft-target-material
+  DEPENDS lispb
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   USES_TERMINAL
   VERBATIM

@@ -8,10 +8,6 @@ indent_size = 2
 indent_style = space
 indent_size = 2
 
-[*.sbxslate]
-indent_style = space
-indent_size = 2
-
-[*.sbxgen]
+[*.lispb]
 indent_style = space
 indent_size = 2
