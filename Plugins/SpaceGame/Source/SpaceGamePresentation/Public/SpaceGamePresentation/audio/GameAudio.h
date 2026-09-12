@@ -68,11 +68,11 @@ struct SPACEGAMEPRESENTATION_API FGameAudio {
     TWeakObjectPtr<UGameInstance> game_instance_{};
     FExternalAudioLibraryResolution external_audio_;
     TStrongObjectPtr<USoundWave> menu_ambience_sound_;
-    TStrongObjectPtr<UAudioComponent> menu_ambience_component_;
+    TWeakObjectPtr<UAudioComponent> menu_ambience_component_;
     TStrongObjectPtr<USoundWave> menu_button_pressed_sound_;
-    TStrongObjectPtr<UAudioComponent> menu_button_pressed_component_;
+    TWeakObjectPtr<UAudioComponent> menu_button_pressed_component_;
     TStrongObjectPtr<USoundWave> player_ship_ambience_sound_;
-    TStrongObjectPtr<UAudioComponent> player_ship_ambience_component_;
+    TWeakObjectPtr<UAudioComponent> player_ship_ambience_component_;
     float music_volume_{1.0f};
     float sfx_volume_{1.0f};
     bool ambience_playback_warning_logged_{};

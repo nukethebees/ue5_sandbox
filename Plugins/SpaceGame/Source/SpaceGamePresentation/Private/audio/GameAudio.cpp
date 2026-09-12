@@ -155,7 +155,7 @@ void FGameAudio::start_menu_ambience() {
         return;
     }
 
-    menu_ambience_component_.Reset(component);
+    menu_ambience_component_ = component;
 }
 
 void FGameAudio::play_button_pressed() {
@@ -188,7 +188,7 @@ void FGameAudio::play_button_pressed() {
         return;
     }
 
-    menu_button_pressed_component_.Reset(component);
+    menu_button_pressed_component_ = component;
     component->Play(0.0f);
     component->StopDelayed(game_audio::menu_button_playback_seconds);
 }
@@ -229,7 +229,7 @@ void FGameAudio::start_player_ship_ambience() {
         return;
     }
 
-    player_ship_ambience_component_.Reset(component);
+    player_ship_ambience_component_ = component;
 }
 
 void FGameAudio::stop_menu_ambience() {
