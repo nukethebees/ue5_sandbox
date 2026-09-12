@@ -465,6 +465,19 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 if (!mappings_valid) {
                     return;
                 }
+                press_key(EKeys::Mouse2D, FVector{20.0, 0.0, 0.0});
+                release_wait_ticks_ = 0;
+            })
+            .Until(
+                [this] {
+                    ++release_wait_ticks_;
+                    return !checks.all_passed || release_wait_ticks_ > 2;
+                },
+                timeout)
+            .Then([this] {
+                checks.is_true(snapshot().turn.IsNearlyZero(),
+                               TEXT("Pointer displacement is ignored until RMB is held"));
+                release_key(EKeys::Mouse2D);
                 press_key(EKeys::RightMouseButton);
                 release_wait_ticks_ = 0;
             })
@@ -474,7 +487,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                     return !checks.all_passed || release_wait_ticks_ > 1;
                 },
                 timeout)
-            .Then([this] { press_key(EKeys::Mouse2D, FVector{400.0, 0.0, 0.0}); })
+            .Then([this] { press_key(EKeys::Mouse2D, FVector{20.0, 0.0, 0.0}); })
             .Until(
                 [this] {
                     auto const turn{snapshot().turn};
@@ -512,7 +525,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                     return !checks.all_passed || release_wait_ticks_ > 1;
                 },
                 timeout)
-            .Then([this] { press_key(EKeys::Mouse2D, FVector{0.0, 400.0, 0.0}); })
+            .Then([this] { press_key(EKeys::Mouse2D, FVector{0.0, 20.0, 0.0}); })
             .Until([this] { return !checks.all_passed || !FMath::IsNearlyZero(snapshot().turn.Y); },
                    timeout)
             .Then([this] {

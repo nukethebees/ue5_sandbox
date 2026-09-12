@@ -308,8 +308,20 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                            mapping.Action->GetFName() == action_name;
                 });
         };
-        TestRunner->TestTrue(TEXT("Mouse2D has pointer-turn displacement"),
-                             has_named_mapping(TEXT("IA_Ship_TurnPointerDelta"), EKeys::Mouse2D));
+        auto const* const pointer_turn_mapping{
+            mapping_context->GetMappings().FindByPredicate([](auto const& mapping) {
+                return mapping.Key == EKeys::Mouse2D && IsValid(mapping.Action) &&
+                       mapping.Action->GetFName() == TEXT("IA_Ship_TurnPointerDelta");
+            })};
+        if (TestRunner->TestNotNull(TEXT("Mouse2D has pointer-turn displacement"),
+                                    pointer_turn_mapping)) {
+            TestRunner->TestFalse(TEXT("Pointer displacement is not chord-gated in the mapping"),
+                                  pointer_turn_mapping->Triggers.ContainsByPredicate(
+                                      [](TObjectPtr<UInputTrigger> const& trigger) {
+                                          return IsValid(trigger) &&
+                                                 trigger->IsA<UInputTriggerChordAction>();
+                                      }));
+        }
         TestRunner->TestTrue(
             TEXT("Right mouse engages pointer turning"),
             has_named_mapping(TEXT("IA_Ship_EngagePointerTurn"), EKeys::RightMouseButton));

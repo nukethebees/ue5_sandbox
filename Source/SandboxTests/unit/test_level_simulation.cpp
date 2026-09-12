@@ -260,6 +260,55 @@ auto FLevelSimulationOverlapResponseTest::RunTest(FString const&) -> bool {
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FLevelSimulationPlanarMovementOffsetTest,
+    "Sandbox.UnitTests.LevelSimulation.PlanarMovementOffsetIsTemporary",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+auto FLevelSimulationPlanarMovementOffsetTest::RunTest(FString const&) -> bool {
+    auto data{make_battle()};
+    data.player.Emplace();
+    data.player->flight_mode = ETestSpaceShipFlightMode::PlanarVelocity;
+
+    FLevelSimulation simulation{MoveTemp(data)};
+    simulation.finish_initialisation();
+    simulation.start();
+
+    auto* const player{simulation.get_player_ship_simulation()};
+    if (!TestNotNull(TEXT("Planar movement fixture has a player"), player)) {
+        return false;
+    }
+
+    auto const dt{simulation.get_clock().get_tick_period()};
+    auto local_velocity = [player] {
+        return player->transform.InverseTransformVectorNoScale(player->velocity);
+    };
+
+    player->set_lateral_move_input(1.f);
+    simulation.advance(dt);
+    TestTrue(TEXT("Held lateral input adds the configured local offset"),
+             FMath::IsNearlyEqual(local_velocity().Y, 3000.0, 0.1));
+    TestTrue(TEXT("Lateral input does not change desired planar velocity"),
+             player->target_local_planar_velocity_scale.IsNearlyZero());
+
+    player->set_lateral_move_input(0.f);
+    player->set_vertical_move_input(1.f);
+    simulation.advance(dt);
+    TestTrue(TEXT("Held vertical input adds the configured local offset"),
+             FMath::IsNearlyEqual(local_velocity().Z, 3000.0, 0.1));
+    TestTrue(TEXT("Released lateral input removes its local offset"),
+             FMath::IsNearlyZero(local_velocity().Y, 0.1));
+
+    player->set_vertical_move_input(0.f);
+    simulation.advance(dt);
+    auto const released_velocity{local_velocity()};
+    TestTrue(TEXT("Released vertical input removes its local offset"),
+             FMath::IsNearlyZero(released_velocity.Z, 0.1));
+    TestTrue(TEXT("Movement offsets remain temporary"),
+             player->target_local_planar_velocity_scale.IsNearlyZero());
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FLevelSimulationReconstructionTest,
     "Sandbox.UnitTests.LevelSimulation.OptionalReconstructionClearsRuntime",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

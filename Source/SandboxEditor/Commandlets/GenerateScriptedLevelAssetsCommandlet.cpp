@@ -863,8 +863,7 @@ void configure_mapping(FEnhancedActionKeyMapping& mapping,
 
 void configure_mappings(TArray<FEnhancedActionKeyMapping>& mappings,
                         UInputMappingContext& owner,
-                        UInputAction& turn_pointer_delta_action,
-                        UInputAction& engage_pointer_turn_action) {
+                        UInputAction& turn_pointer_delta_action) {
     for (auto& mapping : mappings) {
         if (mapping.Key.IsAxis2D() && mapping_device_is_mouse(mapping) && IsValid(mapping.Action) &&
             mapping.Action->GetName().Contains(TEXT("Turn"), ESearchCase::IgnoreCase)) {
@@ -872,9 +871,6 @@ void configure_mappings(TArray<FEnhancedActionKeyMapping>& mappings,
             mapping.Triggers.RemoveAll([](TObjectPtr<UInputTrigger> const& trigger) {
                 return IsValid(trigger) && trigger->IsA<UInputTriggerChordAction>();
             });
-            auto* const chord{NewObject<UInputTriggerChordAction>(&owner)};
-            chord->ChordAction = &engage_pointer_turn_action;
-            mapping.Triggers.Add(chord);
         }
     }
 
@@ -902,8 +898,7 @@ auto set_profile_override(UInputMappingContext& destination,
                           FString const& profile_id,
                           UInputMappingContext const& source,
                           TConstArrayView<FEnhancedActionKeyMapping> const shared_mappings,
-                          UInputAction& turn_pointer_delta_action,
-                          UInputAction& engage_pointer_turn_action) -> bool {
+                          UInputAction& turn_pointer_delta_action) -> bool {
     auto* const property{FindFProperty<FMapProperty>(UInputMappingContext::StaticClass(),
                                                      TEXT("MappingProfileOverrides"))};
     if (property == nullptr) {
@@ -934,8 +929,7 @@ auto set_profile_override(UInputMappingContext& destination,
     for (auto& mapping : data->Mappings) {
         duplicate_instanced_mapping_data(mapping, destination);
     }
-    configure_mappings(
-        data->Mappings, destination, turn_pointer_delta_action, engage_pointer_turn_action);
+    configure_mappings(data->Mappings, destination, turn_pointer_delta_action);
     return true;
 }
 
@@ -972,27 +966,16 @@ auto generate_gameplay_input_assets() -> FGeneratedShipTurnActions {
     base->UnmapKey(actions.engage_pointer, EKeys::RightMouseButton);
     base->MapKey(actions.engage_pointer, EKeys::RightMouseButton);
     auto& default_mappings{const_cast<TArray<FEnhancedActionKeyMapping>&>(base->GetMappings())};
-    configure_mappings(default_mappings, *base, *actions.pointer_delta, *actions.engage_pointer);
+    configure_mappings(default_mappings, *base, *actions.pointer_delta);
 
     auto const profiles{ml::ioj::control_profile_definitions()};
-    auto const success{set_profile_override(*base,
-                                            profiles[1].id,
-                                            *aim_move,
-                                            default_mappings,
-                                            *actions.pointer_delta,
-                                            *actions.engage_pointer) &&
-                       set_profile_override(*base,
-                                            profiles[2].id,
-                                            *move_aim,
-                                            default_mappings,
-                                            *actions.pointer_delta,
-                                            *actions.engage_pointer) &&
-                       set_profile_override(*base,
-                                            profiles[3].id,
-                                            *z_roll_aim,
-                                            default_mappings,
-                                            *actions.pointer_delta,
-                                            *actions.engage_pointer)};
+    auto const success{
+        set_profile_override(
+            *base, profiles[1].id, *aim_move, default_mappings, *actions.pointer_delta) &&
+        set_profile_override(
+            *base, profiles[2].id, *move_aim, default_mappings, *actions.pointer_delta) &&
+        set_profile_override(
+            *base, profiles[3].id, *z_roll_aim, default_mappings, *actions.pointer_delta)};
     return success && save_asset(*actions.pointer_delta) && save_asset(*actions.engage_pointer) &&
                    save_asset(*base)
              ? actions

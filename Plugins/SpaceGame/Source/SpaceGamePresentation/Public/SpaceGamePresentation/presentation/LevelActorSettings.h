@@ -118,10 +118,10 @@ struct SPACEGAMEPRESENTATION_API FPlayerShipConfig {
     float vertical_adjustment_speed{5000.f};
 
     UPROPERTY(EditAnywhere, Category = "Movement")
-    float planar_lateral_trim_speed{1000.f};
+    float planar_lateral_trim_speed{3000.f};
 
     UPROPERTY(EditAnywhere, Category = "Movement")
-    float planar_vertical_trim_speed{1000.f};
+    float planar_vertical_trim_speed{3000.f};
 
     UPROPERTY(EditAnywhere, Category = "Combat")
     FLaserWeaponConfig laser{};

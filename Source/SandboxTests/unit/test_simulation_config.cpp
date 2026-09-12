@@ -24,6 +24,35 @@
 
 TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
 {
+    TEST_METHOD(PlanarMovementDefaults)
+    {
+        FPlayerShipConfig const presentation_defaults{};
+        FPlayerSimulationConfig const simulation_defaults{};
+        TestRunner->TestEqual(TEXT("Presentation lateral trim defaults to 3000"),
+                              presentation_defaults.planar_lateral_trim_speed,
+                              3000.f);
+        TestRunner->TestEqual(TEXT("Presentation vertical trim defaults to 3000"),
+                              presentation_defaults.planar_vertical_trim_speed,
+                              3000.f);
+        TestRunner->TestEqual(TEXT("Simulation lateral trim defaults to 3000"),
+                              simulation_defaults.planar_lateral_trim_speed,
+                              3000.f);
+        TestRunner->TestEqual(TEXT("Simulation vertical trim defaults to 3000"),
+                              simulation_defaults.planar_vertical_trim_speed,
+                              3000.f);
+
+        auto const* const source{ml::load_default_level_config()};
+        if (!TestRunner->TestNotNull(TEXT("Default level config loads"), source)) {
+            return;
+        }
+        TestRunner->TestEqual(TEXT("Authored lateral trim uses the current default"),
+                              source->player_ship.planar_lateral_trim_speed,
+                              3000.f);
+        TestRunner->TestEqual(TEXT("Authored vertical trim uses the current default"),
+                              source->player_ship.planar_vertical_trim_speed,
+                              3000.f);
+    }
+
     TEST_METHOD(RotatedWorldBoundsEncloseTransformedCorners)
     {
         ml::ioj::FEntityAABBs bounds{};
