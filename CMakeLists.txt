@@ -6,6 +6,8 @@ enable_testing()
 
 add_subdirectory(cmake/compiler_warnings)
 
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
 option(SANDBOX_CODEGEN_ONLY "Configure only the standalone code generator" OFF)
 option(SANDBOX_NATIVE_CORE_ONLY "Configure only the standalone native core library" OFF)
 option(SANDBOX_NATIVE_MEMORY_ONLY "Configure only the standalone native memory library" OFF)
@@ -54,6 +56,7 @@ if(SANDBOX_NATIVE_S7_ONLY)
   return()
 endif()
 
+add_subdirectory(native/sbx_mimalloc)
 add_subdirectory(native/lispb)
 
 if(SANDBOX_CODEGEN_ONLY)
@@ -253,8 +256,6 @@ set(SANDBOX_UPROJECT "${CMAKE_CURRENT_SOURCE_DIR}/Sandbox.uproject")
 set(SANDBOX_LOCAL_DDC_DIR "${CMAKE_CURRENT_BINARY_DIR}/local-derived-data-cache")
 file(MAKE_DIRECTORY "${SANDBOX_LOCAL_DDC_DIR}")
 
-find_package(Python3 REQUIRED COMPONENTS Interpreter)
-
 add_custom_target(format-code
   COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/format-cpp.py" --changed
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -377,6 +378,7 @@ add_custom_target(worktree-dependencies
   DEPENDS
     native-core
     native-memory
+    sbx-mimalloc
     sandbox-s7
     sandbox-image
     sandbox-material-gen
@@ -576,6 +578,7 @@ add_custom_target(dev-core
     codegen-tests
     kernel-codegen-tests
     native-memory-tests
+    sbx-mimalloc-tests
     sandbox-s7-tests
     slate-codegen-tests
 )

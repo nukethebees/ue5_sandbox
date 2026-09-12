@@ -68,17 +68,37 @@ public class SandboxCore : ModuleRules
 
             PublicAdditionalLibraries.Add(OneCoreLib);
         }
-        string packageRoot = Path.Combine(repositoryRoot, "vcpkg_installed", "x64-windows");
-        bool debugCrt = Target.Configuration == UnrealTargetConfiguration.Debug && Target.bDebugBuildsActuallyUseDebugCRT;
-        string variantRoot = debugCrt ? Path.Combine(packageRoot, "debug") : packageRoot;
-        string dllName = debugCrt ? "mimalloc-debug.dll" : "mimalloc.dll";
-        string dll = Path.Combine(variantRoot, "bin", dllName);
-        if (!File.Exists(dll))
+        string includeDirectory = Path.Combine(repositoryRoot, "native", "sbx_mimalloc", "include");
+        PrivateIncludePaths.Add(includeDirectory);
+        if (!Target.bGenerateProjectFiles)
         {
-            throw new BuildException("Configure an Unreal CMake preset to provision mimalloc: missing {0}", dll);
+            string libraryPath = Path.Combine(
+                repositoryRoot,
+                "Binaries",
+                "Native",
+                "SbxMimalloc",
+                Target.Platform.ToString(),
+                Target.Configuration.ToString(),
+                "SandboxMimalloc.lib");
+            if (!File.Exists(libraryPath))
+            {
+                throw new BuildException(
+                    "SandboxCore expected the private mimalloc library at '{0}'. " +
+                    "Build Unreal targets through a repository CMake workflow.",
+                    libraryPath);
+            }
+            PublicAdditionalLibraries.Add(libraryPath);
+            ExternalDependencies.Add(libraryPath);
         }
-        PrivateIncludePaths.Add(Path.Combine(packageRoot, "include"));
-        RuntimeDependencies.Add("$(TargetOutputDir)/sbx-mimalloc.dll", dll);
-        RuntimeDependencies.Add("$(TargetOutputDir)/mimalloc-redirect.dll", Path.Combine(variantRoot, "bin", "mimalloc-redirect.dll"));
+        PublicSystemLibraries.AddRange(
+            new string[]
+            {
+                "psapi.lib",
+                "shell32.lib",
+                "user32.lib",
+                "advapi32.lib",
+                "bcrypt.lib",
+            }
+            );
     }
 }

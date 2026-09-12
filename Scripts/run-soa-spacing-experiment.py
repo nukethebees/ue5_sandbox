@@ -219,10 +219,12 @@ def main() -> None:
                      "Plugins/SandboxCore/Source/SbxCoreExperiments/Public/SbxCoreExperiments/soa_spacing_shapes.h"):
         path = ROOT / relative
         (output / path.name).write_bytes(path.read_bytes())
-    binaries = ROOT / "Binaries/Win64/SandboxCoreBenchmarks"
+    binaries = {
+        "SandboxCoreBenchmarks.exe": ROOT / "Binaries/Win64/SandboxCoreBenchmarks/SandboxCoreBenchmarks.exe",
+        "SandboxMimalloc.lib": ROOT / "Binaries/Native/SbxMimalloc/Win64/Development/SandboxMimalloc.lib",
+    }
     binary_metadata: Record = {}
-    for name in ("SandboxCoreBenchmarks.exe", "sbx-mimalloc.dll"):
-        path = binaries / name
+    for name, path in binaries.items():
         binary_metadata[name] = {"sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "bytes": path.stat().st_size}
     (output / "binaries.json").write_text(json.dumps(binary_metadata, indent=2), encoding="utf-8")
     object_file = ROOT / "Intermediate/Build/Win64/x64/SandboxCoreBenchmarks/Development/SandboxCoreBenchmarks/single_allocation_soa_benchmarks.cpp.obj"

@@ -1,5 +1,4 @@
 find_package(benchmark CONFIG REQUIRED)
-find_package(mimalloc CONFIG REQUIRED)
 find_program(UV_EXECUTABLE NAMES uv REQUIRED)
 
 add_executable(native-soa-generate generate.cpp)
@@ -32,11 +31,11 @@ target_compile_definitions(native-soa-reserve-matrix PRIVATE NATIVE_SOA_MIMALLOC
 add_executable(native-soa-reserve-matrix-mimalloc reserve_matrix.cpp)
 target_compile_definitions(native-soa-reserve-matrix-mimalloc PRIVATE NATIVE_SOA_MIMALLOC=1)
 target_link_libraries(native-soa-reserve-matrix-mimalloc PRIVATE native-soa benchmark::benchmark_main
-  $<IF:$<TARGET_EXISTS:mimalloc-static>,mimalloc-static,mimalloc>)
+  sandbox::mimalloc)
 add_executable(native-soa-tests-mimalloc tests.cpp)
 target_compile_definitions(native-soa-tests-mimalloc PRIVATE NATIVE_SOA_MIMALLOC=1)
 target_link_libraries(native-soa-tests-mimalloc PRIVATE native-soa GTest::gtest_main
-  $<IF:$<TARGET_EXISTS:mimalloc-static>,mimalloc-static,mimalloc>)
+  sandbox::mimalloc)
 add_test(NAME native-soa-tests-mimalloc COMMAND native-soa-tests-mimalloc)
 set_tests_properties(native-soa-tests-mimalloc PROPERTIES LABELS "native-soa")
 

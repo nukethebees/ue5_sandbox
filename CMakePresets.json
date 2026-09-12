@@ -19,7 +19,7 @@
       "inherits": "base",
       "cacheVariables": {
         "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed",
-        "VCPKG_MANIFEST_FEATURES": "soa-mimalloc"
+        "VCPKG_MANIFEST_FEATURES": ""
       }
     },
     {
@@ -139,7 +139,7 @@
       "name": "native-soa",
       "inherits": "base",
       "cacheVariables": {
-        "VCPKG_MANIFEST_FEATURES": "kernel-benchmarks;soa-mimalloc",
+        "VCPKG_MANIFEST_FEATURES": "kernel-benchmarks",
         "SANDBOX_CODEGEN_ONLY": true,
         "CMAKE_BUILD_TYPE": "Release",
         "SANDBOX_NATIVE_SOA_BENCHMARKS": true

@@ -82,9 +82,17 @@ For scattered indices this can also differ from repeatedly removing one row in d
 
 ## Allocator integration
 
-Unreal single owners default to `ml::soa_storage::MimallocStorageAllocator`. SandboxCore stages vcpkg mimalloc as `sbx-mimalloc.dll`, loads its exports explicitly and retains the DLL for process lifetime. Allocation, reallocation and free use that DLL; Unreal's global allocator is unchanged. Explicit loading avoids collisions with Unreal's own mimalloc symbols. This integration currently requires Win64 x64 and the dynamic CRT, as enforced by the module rules.
+Unreal single owners default to `ml::soa_storage::MimallocStorageAllocator`. SandboxCore links a
+private static mimalloc implementation built from the repository's vendored source. Every
+externally visible mimalloc symbol is prefixed with `sbx_`, and game code reaches it only through
+the `sbx::memory` wrapper. Unreal's global allocator is unchanged and no allocator override or CRT
+redirection is enabled. This integration requires Win64 x64 and the dynamic release CRT, as
+enforced by the module rules. Restart the Editor after rebuilding SandboxCore; reloading a module
+while its private allocator still owns live storage is unsupported.
 
-Allocator variants select a type providing `allocate(bytes, alignment)` and `free(data)`. The FMemory comparison remains explicit. The native backend retains its standard/mimalloc configuration choices and uses the same layout and compact-view machinery without linking Unreal.
+Allocator variants select a type providing `allocate(bytes, alignment)` and `free(data)`. The
+FMemory comparison remains explicit. The native backend retains its standard/mimalloc
+configuration choices and uses the same private allocator library without linking Unreal.
 
 ## Validation and measurement
 

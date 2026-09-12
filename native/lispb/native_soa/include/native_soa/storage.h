@@ -20,7 +20,7 @@
 #include <vector>
 
 #if NATIVE_SOA_MIMALLOC
-#include <mimalloc.h>
+#include <sbx/memory.h>
 #endif
 
 namespace ml::native_soa {
@@ -36,9 +36,13 @@ struct MimallocAllocator {
         if (count > std::numeric_limits<std::size_t>::max() / sizeof(T)) {
             throw std::bad_array_new_length{};
         }
-        return static_cast<T*>(mi_new_aligned(count * sizeof(T), alignof(T)));
+        auto* const allocation{sbx::memory::allocate_aligned(count * sizeof(T), alignof(T))};
+        if (allocation == nullptr) {
+            throw std::bad_alloc{};
+        }
+        return static_cast<T*>(allocation);
     }
-    void deallocate(T* data, std::size_t) noexcept { mi_free(data); }
+    void deallocate(T* data, std::size_t) noexcept { sbx::memory::free(data); }
     friend auto operator==(MimallocAllocator const&, MimallocAllocator const&) -> bool = default;
 };
 template <typename T>
@@ -102,7 +106,10 @@ inline auto allocation_bytes(std::int32_t const capacity, std::size_t const bloc
 
 inline auto allocate(std::size_t const bytes, std::uint32_t const alignment) -> std::byte* {
 #if NATIVE_SOA_MIMALLOC
-    auto* const allocation{mi_new_aligned(bytes, alignment)};
+    auto* const allocation{sbx::memory::allocate_aligned(bytes, alignment)};
+    if (allocation == nullptr) {
+        throw std::bad_alloc{};
+    }
 #else
     auto* const allocation{::operator new(bytes, std::align_val_t{alignment})};
 #endif
@@ -113,7 +120,8 @@ inline auto allocate(std::size_t const bytes, std::uint32_t const alignment) -> 
 
 inline void free(std::byte* data, std::size_t alignment) noexcept {
 #if NATIVE_SOA_MIMALLOC
-    mi_free_aligned(data, alignment);
+    (void)alignment;
+    sbx::memory::free(data);
 #else
     ::operator delete(data, std::align_val_t{alignment});
 #endif

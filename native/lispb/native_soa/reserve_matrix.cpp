@@ -6,7 +6,7 @@
 #include <vector>
 
 #if NATIVE_SOA_MIMALLOC
-#include <mimalloc.h>
+#include <sbx/memory.h>
 #endif
 
 namespace ml::native_soa_reserve_matrix {
@@ -46,8 +46,8 @@ void raw_reserve(benchmark::State& state) {
         std::vector<void*> allocations(count);
         for (auto& allocation : allocations) {
 #if NATIVE_SOA_MIMALLOC
-            allocation = Realloc ? mi_realloc_aligned(nullptr, bytes, alignment)
-                                 : mi_malloc_aligned(bytes, alignment);
+            allocation = Realloc ? sbx::memory::reallocate_aligned(nullptr, bytes, alignment)
+                                 : sbx::memory::allocate_aligned(bytes, alignment);
 #else
             allocation = Realloc ? _aligned_realloc(nullptr, bytes, alignment)
                                  : _aligned_malloc(bytes, alignment);
@@ -60,7 +60,7 @@ void raw_reserve(benchmark::State& state) {
         benchmark::ClobberMemory();
         for (auto* const allocation : allocations) {
 #if NATIVE_SOA_MIMALLOC
-            mi_free(allocation);
+            sbx::memory::free(allocation);
 #else
             _aligned_free(allocation);
 #endif
@@ -73,7 +73,7 @@ inline auto const registered{[] {
 #if NATIVE_SOA_MIMALLOC
     benchmark::AddCustomContext(
         "allocator", "mimalloc (explicit SoA allocators; standard outer vector and harness)");
-    benchmark::AddCustomContext("mimalloc_version", std::to_string(mi_version()));
+    benchmark::AddCustomContext("mimalloc_version", std::to_string(sbx::memory::version()));
 #else
     benchmark::AddCustomContext("allocator", "standard C++ allocator / Windows aligned CRT");
 #endif

@@ -160,8 +160,9 @@ The explicit `worktree-dependencies` build step prepares:
 | Generated C++, kernel, and Slate checks | Game and Editor source compilation |
 | Compiled UI-glow material IR | Editor material generation |
 
-Configuration also provisions the manifest's `cpu-features`, `mimalloc`, `gtest`, and
-`nlohmann-json` packages under the worktree's ignored `vcpkg_installed` directory.
+Configuration also provisions the manifest's `cpu-features` and `gtest` packages under the
+worktree's ignored `vcpkg_installed` directory. SandboxCore builds its private, symbol-prefixed
+mimalloc implementation from the vendored source in this repository.
 
 Creating audio `.uasset` files requires an Editor commandlet, so the DebugGame setup imports the
 shared audio assets once and may build the project Editor if needed. Set `BEE_AUDIO_ROOT` to the

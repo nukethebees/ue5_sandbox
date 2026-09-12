@@ -1,10 +1,14 @@
 #include <SandboxCore/array_utils.h>
+#include <SandboxCore/mimalloc_storage_allocator.h>
 #include <SbxCoreExperiments/soa_test_support.h>
 #include <SbxCoreExperiments/soa_types.h>
 
 #include "TestHarness.h"
 
+#include <HAL/UnrealMemory.h>
+
 #include <array>
+#include <cstdint>
 #include <limits>
 #include <type_traits>
 
@@ -36,6 +40,20 @@ static_assert(std::is_nothrow_move_assignable_v<SingleAllocationEntityData>);
 static_assert(sizeof(SingleAllocationEntityData::View) == 16);
 static_assert(sizeof(SingleAllocationEntityData::ConstView) == 16);
 static_assert(sizeof(SingleAllocationEntityData) == sizeof(void*) + 2 * sizeof(int32));
+
+TEST_CASE("SandboxCore.SingleAllocation.Mimalloc ownership remains allocator-specific") {
+    auto* const mimalloc_data{MimallocStorageAllocator::allocate(1024, 256)};
+    REQUIRE(mimalloc_data != nullptr);
+    CHECK(reinterpret_cast<std::uintptr_t>(mimalloc_data) % 256 == 0);
+    CHECK(MimallocStorageAllocator::owns(mimalloc_data));
+
+    auto* const unreal_data{FMemory::Malloc(1024, 256)};
+    REQUIRE(unreal_data != nullptr);
+    CHECK_FALSE(MimallocStorageAllocator::owns(unreal_data));
+
+    FMemory::Free(unreal_data);
+    MimallocStorageAllocator::free(mimalloc_data);
+}
 
 TEST_CASE("SandboxCore.SingleAllocation.Empty and end views preserve column pointers") {
     SingleAllocationAlignmentData rows;
