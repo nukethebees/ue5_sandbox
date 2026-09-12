@@ -1,0 +1,5 @@
+<Project>
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Sandbox' and '$(Platform)' == 'x64' and $([System.String]::Copy('$(Configuration)').EndsWith('_Editor')) and Exists('$(MSBuildProjectDirectory)\..\..\Sandbox.uproject')">
+    <LocalDebuggerCommandArguments>$(LocalDebuggerCommandArguments) -ini:EditorPerProjectUserSettings:[/Script/LiveCoding.LiveCodingSettings]:bEnabled=False</LocalDebuggerCommandArguments>
+  </PropertyGroup>
+</Project>

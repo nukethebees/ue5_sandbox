@@ -58,9 +58,9 @@ the root script:
 
 The leading dot matters: it loads the project's functions into the current session.
 Use `.\dev.ps1 --help` to discover commands without loading them. The initial commands
-are `croot`, `cwt <name>`, `cwb [branch]`, `cplugin <name>`, `ctests`, and `csetup`; `dev-help`
-repeats the help after loading. Run `cwb` without a branch to list checked-out branches
-and their worktree directories.
+are `croot`, `cwt <name>`, `cwb [branch]`, `cplugin <name>`, `ctests`, `csetup`, and
+`cprojectfiles`; `dev-help` repeats the help after loading. Run `cwb` without a branch to list
+checked-out branches and their worktree directories.
 
 ## Command-line builds
 
@@ -143,11 +143,53 @@ The Development variant does not build an Unreal target. DebugGame also performs
 import described below. Both are safe to rerun after switching branches or changing project
 definitions.
 
+### Launching and debugging the Editor
+
+Live Coding is disabled by the project's tracked Unreal configuration. Worktree setup also
+normalizes an existing ignored Editor user setting without changing unrelated preferences, and
+generated Visual Studio Editor configurations receive the same explicit override automatically.
+Use the generated `Sandbox` project and the `DebugGame Editor | Win64` or
+`Development Editor | Win64` configuration for normal Visual Studio F5 debugging.
+
+To build and launch the Editor from the command line with Live Coding disabled:
+
+```powershell
+cmake --build --preset debug-game --target run-editor
+```
+
+To pause Editor startup until Visual Studio attaches:
+
+```powershell
+cmake --build --preset debug-game --target run-editor-debug
+```
+
+Attach Visual Studio to `UnrealEditor` and continue from the initial debugger break. Both launch
+targets remain attached to the invoking terminal until the Editor exits.
+
 The configuration-specific workflows can also be run directly:
 
 ```powershell
 cmake --workflow --preset setup-worktree-debug-game
 cmake --workflow --preset setup-worktree-development
+```
+
+To rebuild only the worktree dependencies for one configured preset:
+
+```powershell
+cmake --build --preset debug-game --target worktree-dependencies
+```
+
+To regenerate only the Unreal and Visual Studio project files, without building those dependencies:
+
+```powershell
+cprojectfiles
+```
+
+Pass `development` to use that configured build tree instead, or invoke the underlying target
+directly:
+
+```powershell
+cmake --build --preset debug-game --target generate-project-files
 ```
 
 The explicit `worktree-dependencies` build step prepares:
@@ -157,6 +199,7 @@ The explicit `worktree-dependencies` build step prepares:
 | `native-memory` | Game and Editor targets through the `NativeMemory` Unreal module |
 | `sandbox-image` | The Editor's `GenLab` module |
 | `sandbox-material-gen` | The `SandboxEditor` module |
+| `sandbox-mesh-gen` | The Editor's `SbxMeshGenLab` module |
 | Generated C++, kernel, and Slate checks | Game and Editor source compilation |
 | Compiled UI-glow material IR | Editor material generation |
 

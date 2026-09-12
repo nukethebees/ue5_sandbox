@@ -197,6 +197,8 @@ if(NOT CMAKE_HOST_WIN32)
     "It invokes Unreal's Engine/Build/BatchFiles/RunUBT.bat script.")
 endif()
 
+find_program(POWERSHELL_EXECUTABLE NAMES pwsh powershell REQUIRED)
+
 if(NOT UE_ROOT)
   message(FATAL_ERROR
     "UE_ROOT is required. Set the UE_ROOT environment variable, pass "
@@ -245,9 +247,20 @@ if(NOT EXISTS "${UE_GENERATE_PROJECT_FILES_SCRIPT}")
 endif()
 
 if(UE_CONFIGURATION STREQUAL "Development")
+  set(UE_EDITOR_NAME UnrealEditor.exe)
   set(UE_EDITOR_CMD_NAME UnrealEditor-Cmd.exe)
 else()
+  set(UE_EDITOR_NAME "UnrealEditor-Win64-${UE_CONFIGURATION}.exe")
   set(UE_EDITOR_CMD_NAME "UnrealEditor-Win64-${UE_CONFIGURATION}-Cmd.exe")
+endif()
+
+cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Binaries Win64 "${UE_EDITOR_NAME}"
+  OUTPUT_VARIABLE UE_EDITOR_EXE
+)
+if(NOT EXISTS "${UE_EDITOR_EXE}")
+  message(FATAL_ERROR
+    "UE_ROOT='${UE_ROOT_ABSOLUTE}' is not a usable Unreal Engine installation. "
+    "Expected to find '${UE_EDITOR_EXE}'.")
 endif()
 
 cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Binaries Win64 "${UE_EDITOR_CMD_NAME}"
@@ -261,6 +274,9 @@ endif()
 
 set(SANDBOX_UPROJECT "${CMAKE_CURRENT_SOURCE_DIR}/Sandbox.uproject")
 set(SANDBOX_LOCAL_DDC_DIR "${CMAKE_CURRENT_BINARY_DIR}/local-derived-data-cache")
+set(SANDBOX_LIVE_CODING_DISABLED_ARGUMENT
+  "-ini:EditorPerProjectUserSettings:[/Script/LiveCoding.LiveCodingSettings]:bEnabled=False"
+)
 file(MAKE_DIRECTORY "${SANDBOX_LOCAL_DDC_DIR}")
 
 add_custom_target(format-code
@@ -280,6 +296,10 @@ add_custom_target(format-all-code
 )
 
 add_custom_target(generate-project-files
+  COMMAND "${POWERSHELL_EXECUTABLE}" -NoProfile -File
+    "${CMAKE_CURRENT_SOURCE_DIR}/PowerShell/Set-LiveCodingDisabled.ps1"
+    -settings_path
+    "${CMAKE_CURRENT_SOURCE_DIR}/Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"
   COMMAND ${UE_LOCKED_COMMAND_PREFIX} "${UE_GENERATE_PROJECT_FILES_SCRIPT}"
     "-Project=${SANDBOX_UPROJECT}"
     -Game
@@ -289,15 +309,11 @@ add_custom_target(generate-project-files
   USES_TERMINAL
   VERBATIM
 )
-add_dependencies(generate-project-files sandbox-material-gen)
-
 include(cmake/unreal.cmake)
 include(cmake/catch2.cmake)
 
 add_subdirectory(native/image)
-add_dependencies(generate-project-files sandbox-image)
 add_subdirectory(native/mesh_gen)
-add_dependencies(generate-project-files sandbox-mesh-gen)
 
 set(UI_GLOW_MATERIAL_SOURCE
   "${CMAKE_CURRENT_SOURCE_DIR}/Plugins/SandboxUI/Source/SandboxUI/Private/materials/UiGlowComposite.lispb"
@@ -404,6 +420,25 @@ add_custom_target(compile-migrated-materials DEPENDS ${MIGRATED_MATERIAL_ARTIFAC
 
 add_unreal_target(editor SandboxEditor)
 add_unreal_target(game Sandbox)
+add_custom_target(run-editor
+  COMMAND "${UE_EDITOR_EXE}" "${SANDBOX_UPROJECT}"
+    "${SANDBOX_LIVE_CODING_DISABLED_ARGUMENT}"
+  DEPENDS editor
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  COMMENT "Launching ${SANDBOX_UPROJECT} with Live Coding disabled"
+  USES_TERMINAL
+  VERBATIM
+)
+add_custom_target(run-editor-debug
+  COMMAND "${UE_EDITOR_EXE}" "${SANDBOX_UPROJECT}"
+    "${SANDBOX_LIVE_CODING_DISABLED_ARGUMENT}"
+    -WaitForDebugger
+  DEPENDS editor
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  COMMENT "Launching ${SANDBOX_UPROJECT} with Live Coding disabled and waiting for a debugger"
+  USES_TERMINAL
+  VERBATIM
+)
 add_custom_target(check-space-game-layers
   COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/check_space_game_layers.py"
   COMMENT "Checking SpaceGame module boundaries"
@@ -413,7 +448,14 @@ add_test(NAME SpaceGame.Architecture
   COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/check_space_game_layers.py")
 add_test(NAME SpaceGame.ArchitectureChecker
   COMMAND "${Python3_EXECUTABLE}" -m unittest Scripts.test_space_game_layers)
-set_tests_properties(SpaceGame.Architecture SpaceGame.ArchitectureChecker PROPERTIES
+add_test(NAME Sandbox.LiveCodingConfig
+  COMMAND "${POWERSHELL_EXECUTABLE}" -NoProfile -File
+    "${CMAKE_CURRENT_SOURCE_DIR}/PowerShell/Set-LiveCodingDisabled.Tests.ps1")
+set_tests_properties(
+  SpaceGame.Architecture
+  SpaceGame.ArchitectureChecker
+  Sandbox.LiveCodingConfig
+  PROPERTIES
   LABELS "unit;all"
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
@@ -432,6 +474,10 @@ add_dependencies(game check-space-game-layers)
 add_dependencies(game check-generated-code)
 
 add_custom_target(worktree-dependencies
+  COMMAND "${POWERSHELL_EXECUTABLE}" -NoProfile -File
+    "${CMAKE_CURRENT_SOURCE_DIR}/PowerShell/Set-LiveCodingDisabled.ps1"
+    -settings_path
+    "${CMAKE_CURRENT_SOURCE_DIR}/Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"
   DEPENDS
     native-core
     native-memory
@@ -440,9 +486,12 @@ add_custom_target(worktree-dependencies
     sandbox-s7
     sandbox-image
     sandbox-material-gen
+    sandbox-mesh-gen
     check-generated-code
     check-generated-slate-code
     compile-ui-glow-material
+  COMMENT "Preparing worktree dependencies and disabling Live Coding"
+  VERBATIM
 )
 
 add_unreal_commandlet_target(generate-lab-images

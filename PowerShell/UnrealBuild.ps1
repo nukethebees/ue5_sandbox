@@ -209,4 +209,23 @@ function csetup {
     }
 }
 
+function cprojectfiles {
+    param(
+        [ValidateSet('debug-game', 'development')]
+        [string]$configuration = 'debug-game'
+    )
+
+    Push-Location -LiteralPath $script:dev_project_root
+    try {
+        Write-Host "Regenerating Unreal project files with CMake preset '$configuration'."
+        & cmake --build --preset $configuration --target generate-project-files
+
+        if ($LASTEXITCODE -ne 0) {
+            throw "Project-file generation for preset '$configuration' exited with code $LASTEXITCODE. Run 'csetup $configuration' first if the build tree has not been configured."
+        }
+    } finally {
+        Pop-Location
+    }
+}
+
 enable-ubt-build-safety
