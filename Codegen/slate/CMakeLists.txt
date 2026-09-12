@@ -11,7 +11,6 @@ target_include_directories(slate-codegen-lib PUBLIC include)
 target_link_libraries(slate-codegen-lib PRIVATE
   codegen-lib
   codegen-sexpr
-  nlohmann_json::nlohmann_json
   sandbox::codegen_warnings
 )
 
@@ -42,10 +41,10 @@ set(SLATE_COMPILE_HEADERS
 add_custom_command(
   OUTPUT ${SLATE_COMPILE_HEADERS}
   COMMAND sandbox-slatec
-    --manifest "${SLATE_COMPILE_FIXTURE}/manifest.json"
+    --manifest "${SLATE_COMPILE_FIXTURE}/manifest.sbxgen"
     --output-root "${SLATE_COMPILE_OUTPUT}"
   DEPENDS sandbox-slatec
-    "${SLATE_COMPILE_FIXTURE}/manifest.json"
+    "${SLATE_COMPILE_FIXTURE}/manifest.sbxgen"
     "${SLATE_COMPILE_FIXTURE}/widgets.sbxslate"
   VERBATIM
 )
@@ -89,7 +88,7 @@ set(SLATE_CODEGEN_CHECK_COMMANDS)
 set(SLATE_CODEGEN_DEPENDENCIES)
 foreach(document IN LISTS SLATE_CODEGEN_DOCUMENTS)
   get_filename_component(document_directory "${document}" DIRECTORY)
-  set(manifest "${PROJECT_SOURCE_DIR}/${document_directory}/manifest.json")
+  set(manifest "${PROJECT_SOURCE_DIR}/${document_directory}/manifest.sbxgen")
   list(APPEND SLATE_CODEGEN_GENERATE_COMMANDS
     COMMAND sandbox-slatec --manifest "${manifest}"
   )

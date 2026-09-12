@@ -1,14 +1,14 @@
 #include <slate_codegen/compiler.h>
 
-#include "syntax.h"
 #include "lexer.h"
+#include "syntax.h"
 
 #include <gtest/gtest.h>
 
 #include <filesystem>
 #include <fstream>
-#include <stdexcept>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 
@@ -46,21 +46,20 @@ class TemporaryProject {
         if (!input) {
             throw std::runtime_error{"Cannot read test file: " + path.string()};
         }
-        return std::string{std::istreambuf_iterator<char>{input},
-                           std::istreambuf_iterator<char>{}};
+        return std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
     }
 
     auto path(std::filesystem::path const& relative_path) const -> std::filesystem::path {
         return root_ / relative_path;
     }
-
   private:
     std::filesystem::path root_;
 };
 
 TEST(SlateCompiler, WritesMultipleOwnersAndQualifiedOutputPaths) {
     TemporaryProject project{"multiple-owners"};
-    project.write("manifest.json", R"({"entries":[{"input":"panels.sbxslate"}]})");
+    project.write("manifest.sbxgen",
+                  R"((slate-manifest :schema-version 1 :entries ("panels.sbxslate")))");
     project.write("panels.sbxslate", R"(
 (widget-class SFirstPanel
   (function Build
@@ -72,11 +71,10 @@ TEST(SlateCompiler, WritesMultipleOwnersAndQualifiedOutputPaths) {
     (SImage)))
 )");
 
-    ASSERT_EQ(compile_manifest(CompileOptions{.manifest = project.path("manifest.json")}), 0);
+    ASSERT_EQ(compile_manifest(CompileOptions{.manifest = project.path("manifest.sbxgen")}), 0);
     EXPECT_TRUE(project.read("generated/SFirstPanel.slate.generated.h")
                     .contains("struct SFirstPanelBuilder"));
-    auto const qualified_output{
-        project.read("generated/Example/SSecondPanel.slate.generated.h")};
+    auto const qualified_output{project.read("generated/Example/SSecondPanel.slate.generated.h")};
     EXPECT_TRUE(qualified_output.contains("namespace SlateGenerated::Example"));
     EXPECT_TRUE(qualified_output.contains("using ThisClass = ::Example::SSecondPanel;"));
 
@@ -87,14 +85,15 @@ TEST(SlateCompiler, WritesMultipleOwnersAndQualifiedOutputPaths) {
 
 TEST(SlateCompiler, CheckModeDetectsStaleAndMissingOutputs) {
     TemporaryProject project{"check-mode"};
-    project.write("manifest.json", R"({"entries":[{"input":"panel.sbxslate"}]})");
+    project.write("manifest.sbxgen",
+                  R"((slate-manifest :schema-version 1 :entries ("panel.sbxslate")))");
     project.write("panel.sbxslate", R"(
 (widget-class SPanel
   (function Build
     (params)
     (SButton)))
 )");
-    auto const options{CompileOptions{.manifest = project.path("manifest.json")}};
+    auto const options{CompileOptions{.manifest = project.path("manifest.sbxgen")}};
 
     ASSERT_EQ(compile_manifest(options), 0);
     EXPECT_EQ(compile_manifest(CompileOptions{.manifest = options.manifest, .check = true}), 0);
@@ -110,8 +109,8 @@ TEST(SlateCompiler, CheckModeDetectsStaleAndMissingOutputs) {
 TEST(SlateCompiler, RejectsDuplicateOwnersAcrossInputs) {
     TemporaryProject project{"duplicate-owners"};
     project.write(
-        "manifest.json",
-        R"({"entries":[{"input":"first.sbxslate"},{"input":"second.sbxslate"}]})");
+        "manifest.sbxgen",
+        R"((slate-manifest :schema-version 1 :entries ("first.sbxslate" "second.sbxslate")))");
     auto const source{R"(
 (widget-class SPanel
   (function Build
@@ -123,7 +122,7 @@ TEST(SlateCompiler, RejectsDuplicateOwnersAcrossInputs) {
 
     try {
         static_cast<void>(
-            compile_manifest(CompileOptions{.manifest = project.path("manifest.json")}));
+            compile_manifest(CompileOptions{.manifest = project.path("manifest.sbxgen")}));
         FAIL() << "Expected duplicate owner to be rejected";
     } catch (detail::SourceError const& error) {
         EXPECT_TRUE(std::string{error.what()}.contains("duplicate widget declaration 'SPanel'"));
@@ -132,14 +131,16 @@ TEST(SlateCompiler, RejectsDuplicateOwnersAcrossInputs) {
 
 TEST(SlateCompiler, ExpandsIncludedMacrosWithoutChangingGeneratedCpp) {
     TemporaryProject project{"macro-equivalence"};
-    project.write("manifest.json", R"({"include_directories":["shared"],"entries":[{"input":"panel.sbxslate"}]})");
+    project.write(
+        "manifest.sbxgen",
+        R"((slate-manifest :schema-version 1 :include-directories ("shared") :entries ("panel.sbxslate")))");
     project.write("panel.sbxslate", R"(
 (widget-class SPanel
   (function Build
     (params (value label))
     (vbox (auto :padding (0 0 0 10) (STextBlock :Text label)))))
 )");
-    auto const options{CompileOptions{.manifest = project.path("manifest.json")}};
+    auto const options{CompileOptions{.manifest = project.path("manifest.sbxgen")}};
     ASSERT_EQ(compile_manifest(options), 0);
     auto const without_line_directives{[](std::string const& text) {
         std::istringstream input{text};
@@ -152,7 +153,8 @@ TEST(SlateCompiler, ExpandsIncludedMacrosWithoutChangingGeneratedCpp) {
         }
         return result;
     }};
-    auto const expected{without_line_directives(project.read("generated/SPanel.slate.generated.h"))};
+    auto const expected{
+        without_line_directives(project.read("generated/SPanel.slate.generated.h"))};
     project.write("shared/Common/Widgets.sbxslate", R"(
 (include "Text.sbxslate")
 (defmacro padded (padding child)
@@ -171,7 +173,8 @@ TEST(SlateCompiler, ExpandsIncludedMacrosWithoutChangingGeneratedCpp) {
 (widget-class SPanel (builder Build))
 )");
     ASSERT_EQ(compile_manifest(options), 0);
-    EXPECT_EQ(without_line_directives(project.read("generated/SPanel.slate.generated.h")), expected);
+    EXPECT_EQ(without_line_directives(project.read("generated/SPanel.slate.generated.h")),
+              expected);
     project.write("shared/Common/Text.sbxslate", R"(
 (defmacro label-text (label) (SButton :Text $label))
 )");
@@ -180,7 +183,9 @@ TEST(SlateCompiler, ExpandsIncludedMacrosWithoutChangingGeneratedCpp) {
 
 TEST(SlateCompiler, ResolvesIncludesLocallyThenInDirectoryOrder) {
     TemporaryProject project{"include-order"};
-    project.write("manifest.json", R"({"include_directories":["first","second"],"entries":[{"input":"local/panel.sbxslate"}]})");
+    project.write(
+        "manifest.sbxgen",
+        R"((slate-manifest :schema-version 1 :include-directories ("first" "second") :entries ("local/panel.sbxslate")))");
     project.write("local/panel.sbxslate", R"(
 (include "Widgets.sbxslate")
 (widget-class SPanel (function Build (params) (content)))
@@ -188,7 +193,7 @@ TEST(SlateCompiler, ResolvesIncludesLocallyThenInDirectoryOrder) {
     project.write("local/Widgets.sbxslate", "(defmacro content () (STextBlock))");
     project.write("first/Widgets.sbxslate", "(defmacro content () (SButton))");
     project.write("second/Widgets.sbxslate", "(defmacro content () (SImage))");
-    auto const options{CompileOptions{.manifest = project.path("manifest.json")}};
+    auto const options{CompileOptions{.manifest = project.path("manifest.sbxgen")}};
     ASSERT_EQ(compile_manifest(options), 0);
     EXPECT_TRUE(project.read("generated/SPanel.slate.generated.h").contains("SNew(STextBlock)"));
     ASSERT_TRUE(std::filesystem::remove(project.path("local/Widgets.sbxslate")));
@@ -201,7 +206,8 @@ TEST(SlateCompiler, ResolvesIncludesLocallyThenInDirectoryOrder) {
 
 auto compile_error(TemporaryProject const& project) -> std::string {
     try {
-        static_cast<void>(compile_manifest(CompileOptions{.manifest = project.path("manifest.json")}));
+        static_cast<void>(
+            compile_manifest(CompileOptions{.manifest = project.path("manifest.sbxgen")}));
     } catch (std::exception const& error) {
         return error.what();
     }
@@ -210,7 +216,9 @@ auto compile_error(TemporaryProject const& project) -> std::string {
 
 TEST(SlateCompiler, ReportsMissingIncludesAndCycles) {
     TemporaryProject project{"include-errors"};
-    project.write("manifest.json", R"({"include_directories":["shared"],"entries":[{"input":"panel.sbxslate"}]})");
+    project.write(
+        "manifest.sbxgen",
+        R"((slate-manifest :schema-version 1 :include-directories ("shared") :entries ("panel.sbxslate")))");
     project.write("panel.sbxslate", "(include \"Missing.sbxslate\")");
     auto error{compile_error(project)};
     EXPECT_TRUE(error.contains("include not found"));
@@ -226,7 +234,8 @@ TEST(SlateCompiler, ReportsMissingIncludesAndCycles) {
 
 TEST(SlateCompiler, RejectsInvalidMacroDeclarationsAndInvocations) {
     TemporaryProject project{"macro-errors"};
-    project.write("manifest.json", R"({"entries":[{"input":"panel.sbxslate"}]})");
+    project.write("manifest.sbxgen",
+                  R"((slate-manifest :schema-version 1 :entries ("panel.sbxslate")))");
     struct Case {
         std::string_view source;
         std::string_view expected;
@@ -239,7 +248,8 @@ TEST(SlateCompiler, RejectsInvalidMacroDeclarationsAndInvocations) {
         {"(defmacro Thing () (SImage))", "lowercase letter"},
         {"(defmacro thing (x) $x) (thing)", "expects 1 arguments"},
         {"(defmacro thing () (thing)) (thing)", "recursive macro expansion"},
-        {"(defmacro first () (second)) (defmacro second () (first)) (first)", "recursive macro expansion"},
+        {"(defmacro first () (second)) (defmacro second () (first)) (first)",
+         "recursive macro expansion"},
         {"(widget-class SPanel (include \"Other.sbxslate\"))", "top-level source declarations"},
         {"$missing", "outside a template"},
     };
@@ -252,7 +262,8 @@ TEST(SlateCompiler, RejectsInvalidMacroDeclarationsAndInvocations) {
 
 TEST(SlateCompiler, ReportsMacroDefinitionAndInvocationForSemanticErrors) {
     TemporaryProject project{"macro-diagnostics"};
-    project.write("manifest.json", R"({"entries":[{"input":"panel.sbxslate"}]})");
+    project.write("manifest.sbxgen",
+                  R"((slate-manifest :schema-version 1 :entries ("panel.sbxslate")))");
     project.write("Common.sbxslate", R"(
 (defmacro broken (child) (vbox (auto :halign sideways $child)))
 )");
@@ -268,11 +279,14 @@ TEST(SlateCompiler, ReportsMacroDefinitionAndInvocationForSemanticErrors) {
 
 TEST(SlateCompiler, RestrictsIncludedFilesAndIsolatesMacrosBetweenInputs) {
     TemporaryProject project{"macro-isolation"};
-    project.write("manifest.json", R"({"entries":[{"input":"panel.sbxslate"}]})");
+    project.write("manifest.sbxgen",
+                  R"((slate-manifest :schema-version 1 :entries ("panel.sbxslate")))");
     project.write("panel.sbxslate", "(include \"Common.sbxslate\")");
     project.write("Common.sbxslate", "(widget-class SPanel (function Build (params) (SImage)))");
     EXPECT_TRUE(compile_error(project).contains("included files may contain only"));
-    project.write("manifest.json", R"({"entries":[{"input":"panel.sbxslate"},{"input":"other.sbxslate"}]})");
+    project.write(
+        "manifest.sbxgen",
+        R"((slate-manifest :schema-version 1 :entries ("panel.sbxslate" "other.sbxslate")))");
     project.write("panel.sbxslate", R"(
 (defmacro builder () (function Build (params) (SImage)))
 (widget-class SPanel (builder))
@@ -283,17 +297,21 @@ TEST(SlateCompiler, RestrictsIncludedFilesAndIsolatesMacrosBetweenInputs) {
 
 TEST(SlateCompiler, RejectsInvalidIncludeDirectories) {
     TemporaryProject project{"include-directories"};
-    for (auto const directories : {"null", "true", "1", "\"shared\"", "[1]", "[\"\"]"}) {
-        project.write("manifest.json", std::string{"{\"entries\":[{\"input\":\"panel.sbxslate\"}],\"include_directories\":"} + directories + "}");
+    for (auto const directories : {"nil", "true", "1", "\"shared\"", "(1)", "(\"\")"}) {
+        project.write("manifest.sbxgen",
+                      std::string{"(slate-manifest :schema-version 1 "
+                                  ":entries (\"panel.sbxslate\") :include-directories "} +
+                          directories + ")");
         EXPECT_FALSE(compile_error(project).empty());
     }
 }
 
 TEST(SlateCompiler, LibraryMigrationRemovesTheObsoleteOwnerHeader) {
     TemporaryProject project{"library-migration"};
-    project.write("manifest.json", R"({"entries":[{"input":"panel.sbxslate"}]})");
+    project.write("manifest.sbxgen",
+                  R"((slate-manifest :schema-version 1 :entries ("panel.sbxslate")))");
     project.write("panel.sbxslate", "(widget-class FOwner (function Build (params) (SImage)))");
-    auto const options{CompileOptions{.manifest = project.path("manifest.json")}};
+    auto const options{CompileOptions{.manifest = project.path("manifest.sbxgen")}};
     ASSERT_EQ(compile_manifest(options), 0);
     project.write("Common.sbxslate", "(defmacro image () (SImage))");
     project.write("panel.sbxslate", R"(
@@ -302,21 +320,25 @@ TEST(SlateCompiler, LibraryMigrationRemovesTheObsoleteOwnerHeader) {
 )");
     ASSERT_EQ(compile_manifest(options), 0);
     EXPECT_FALSE(std::filesystem::exists(project.path("generated/FOwner.slate.generated.h")));
-    EXPECT_TRUE(project.read("generated/Example/Images.slate.generated.h").contains("inline auto Build()"));
+    EXPECT_TRUE(
+        project.read("generated/Example/Images.slate.generated.h").contains("inline auto Build()"));
     EXPECT_EQ(compile_manifest(CompileOptions{.manifest = options.manifest, .check = true}), 0);
 }
 
 TEST(SlateCompiler, ExpansionResolvesIncludesAndNeverWritesGeneratedFiles) {
     TemporaryProject project{"expand-read-only"};
-    project.write("manifest.json", R"({"include_directories":["shared"],"entries":[{"input":"panel.sbxslate"}]})");
+    project.write(
+        "manifest.sbxgen",
+        R"((slate-manifest :schema-version 1 :include-directories ("shared") :entries ("panel.sbxslate")))");
     project.write("shared/Common.sbxslate", "(defmacro content () (SImage))");
     project.write("panel.sbxslate", R"(
 (include "Common.sbxslate")
 (widget-library Images (function Build (params) (content)))
 )");
-    auto const manifest{project.path("manifest.json")};
+    auto const manifest{project.path("manifest.sbxgen")};
     auto const expanded{expand_manifest(manifest)};
-    EXPECT_EQ(expanded, "(widget-library Images\n  (function Build\n    (params)\n    (SImage)))\n");
+    EXPECT_EQ(expanded,
+              "(widget-library Images\n  (function Build\n    (params)\n    (SImage)))\n");
     EXPECT_FALSE(std::filesystem::exists(project.path("generated")));
 
     ASSERT_EQ(compile_manifest(CompileOptions{.manifest = manifest}), 0);
@@ -330,7 +352,9 @@ TEST(SlateCompiler, ExpansionResolvesIncludesAndNeverWritesGeneratedFiles) {
 
 TEST(SlateCompiler, ExpansionPreservesStringsKeywordsAndManifestOrder) {
     TemporaryProject project{"expand-roundtrip"};
-    project.write("manifest.json", R"({"entries":[{"input":"first.sbxslate"},{"input":"second.sbxslate"}]})");
+    project.write(
+        "manifest.sbxgen",
+        R"((slate-manifest :schema-version 1 :entries ("first.sbxslate" "second.sbxslate")))");
     std::string const first{R"(
 (widget-library First
   (function Build (params)
@@ -340,7 +364,7 @@ TEST(SlateCompiler, ExpansionPreservesStringsKeywordsAndManifestOrder) {
     std::string const second{R"((widget-library Second (function Build (params) (SImage))))"};
     project.write("first.sbxslate", first);
     project.write("second.sbxslate", second);
-    auto const expanded{expand_manifest(project.path("manifest.json"))};
+    auto const expanded{expand_manifest(project.path("manifest.sbxgen"))};
     auto const expected{detail::lex("expected", first + second)};
     auto const actual{detail::lex("expanded", expanded)};
     ASSERT_EQ(actual.size(), expected.size());
@@ -353,12 +377,14 @@ TEST(SlateCompiler, ExpansionPreservesStringsKeywordsAndManifestOrder) {
 
 TEST(SlateCompiler, ExpansionCanInspectSemanticallyInvalidTrees) {
     TemporaryProject project{"expand-invalid-tree"};
-    project.write("manifest.json", R"({"entries":[{"input":"panel.sbxslate"}]})");
+    project.write("manifest.sbxgen",
+                  R"((slate-manifest :schema-version 1 :entries ("panel.sbxslate")))");
     project.write("panel.sbxslate", R"(
 (defmacro bad () (assign image_ SImage))
 (widget-library Images (function Build (params) (bad)))
 )");
-    EXPECT_TRUE(expand_manifest(project.path("manifest.json")).contains("(assign image_ SImage)"));
+    EXPECT_TRUE(
+        expand_manifest(project.path("manifest.sbxgen")).contains("(assign image_ SImage)"));
     EXPECT_TRUE(compile_error(project).contains("requires a widget-class host"));
 }
 

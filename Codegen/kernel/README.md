@@ -320,6 +320,16 @@ separate plot categories rather than mixed into one backend legend.
 
 ## Commands
 
+Kernel manifests explicitly order their input documents:
+
+```lisp
+(kernel-manifest
+  :schema-version 1
+  :entries ("array_math.sbxkernel" "candidate_math.sbxkernel"))
+```
+
+Manifest input paths are relative to the manifest and must use the `.sbxkernel` extension.
+
 ```text
 kernelc --manifest <path> --profile <unreal|standard|unreal-avx2-lab|native-x86-simd-lab> [--output-root <directory>] [--check]
 cmake --build --preset codegen --target generate-kernel-code

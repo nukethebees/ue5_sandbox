@@ -1,5 +1,5 @@
 execute_process(
-  COMMAND "${SLATEC}" --manifest "${FIXTURE}/manifest.json" --expand
+  COMMAND "${SLATEC}" --manifest "${FIXTURE}/manifest.sbxgen" --expand
   RESULT_VARIABLE result
   OUTPUT_VARIABLE output
   ERROR_VARIABLE error
@@ -22,7 +22,7 @@ foreach(extra IN ITEMS --check --output-root --expand)
     list(APPEND arguments "${CMAKE_CURRENT_BINARY_DIR}/expand-unused-output")
   endif()
   execute_process(
-    COMMAND "${SLATEC}" --manifest "${FIXTURE}/manifest.json" --expand ${arguments}
+    COMMAND "${SLATEC}" --manifest "${FIXTURE}/manifest.sbxgen" --expand ${arguments}
     RESULT_VARIABLE result
     OUTPUT_VARIABLE output
     ERROR_VARIABLE error

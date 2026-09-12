@@ -1,5 +1,4 @@
 find_package(GTest CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
 find_program(SANDBOX_CLANG_FORMAT_EXECUTABLE NAMES clang-format REQUIRED)
 if(SANDBOX_KERNEL_BENCHMARKS)
   find_package(benchmark CONFIG REQUIRED)

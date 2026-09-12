@@ -61,60 +61,57 @@ class TemporaryProject {
         if (!input) {
             throw std::runtime_error{"Cannot read test file: " + path.string()};
         }
-        return std::string{std::istreambuf_iterator<char>{input},
-                           std::istreambuf_iterator<char>{}};
+        return std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
     }
 
     auto path(std::filesystem::path const& relative_path) const -> std::filesystem::path {
         return root_ / relative_path;
     }
-
   private:
     std::filesystem::path root_;
 };
 
 TEST(KernelCompiler, WritesChecksAndDetectsStaleOutputs) {
     TemporaryProject project{"check-mode"};
-    project.write("manifest.json", R"({"entries":[{"input":"array_math.sbxkernel"}]})");
+    project.write("manifest.sbxgen",
+                  R"((kernel-manifest :schema-version 1 :entries ("array_math.sbxkernel")))");
     project.write("array_math.sbxkernel", kernel_source);
-    auto const options{CompileOptions{.manifest = project.path("manifest.json"),
+    auto const options{CompileOptions{.manifest = project.path("manifest.sbxgen"),
                                       .output_root = project.path("generated")}};
 
     ASSERT_EQ(compile_manifest(options), 0);
-    EXPECT_TRUE(project.read("generated/ArrayKernels.h").contains(
-        "void COMPILE_FIXTURE_API multiply("));
+    EXPECT_TRUE(
+        project.read("generated/ArrayKernels.h").contains("void COMPILE_FIXTURE_API multiply("));
     EXPECT_TRUE(project.read("generated/ArrayKernels.cpp").contains("lhs[i] * rhs"));
-    EXPECT_TRUE(project.read("generated/.sandbox-codegen-outputs")
-                    .contains("ArrayKernels.cpp"));
-    EXPECT_EQ(compile_manifest(CompileOptions{.manifest = options.manifest,
-                                               .output_root = options.output_root,
-                                               .check = true}),
+    EXPECT_TRUE(project.read("generated/.sandbox-codegen-outputs").contains("ArrayKernels.cpp"));
+    EXPECT_EQ(compile_manifest(CompileOptions{
+                  .manifest = options.manifest, .output_root = options.output_root, .check = true}),
               0);
 
     project.write("generated/ArrayKernels.h", "stale\n");
-    EXPECT_EQ(compile_manifest(CompileOptions{.manifest = options.manifest,
-                                               .output_root = options.output_root,
-                                               .check = true}),
+    EXPECT_EQ(compile_manifest(CompileOptions{
+                  .manifest = options.manifest, .output_root = options.output_root, .check = true}),
               1);
 }
 
 TEST(KernelCompiler, RejectsOutputCollisionsAcrossManifestEntries) {
     TemporaryProject project{"duplicate-outputs"};
     project.write(
-        "manifest.json",
-        R"({"entries":[{"input":"first.sbxkernel"},{"input":"second.sbxkernel"}]})");
+        "manifest.sbxgen",
+        R"((kernel-manifest :schema-version 1 :entries ("first.sbxkernel" "second.sbxkernel")))");
     project.write("first.sbxkernel", kernel_source);
     project.write("second.sbxkernel", kernel_source);
 
-    EXPECT_THROW(static_cast<void>(compile_manifest(CompileOptions{
-                     .manifest = project.path("manifest.json"),
-                     .output_root = project.path("generated")})),
+    EXPECT_THROW(static_cast<void>(
+                     compile_manifest(CompileOptions{.manifest = project.path("manifest.sbxgen"),
+                                                     .output_root = project.path("generated")})),
                  std::invalid_argument);
 }
 
 TEST(KernelCompiler, EmitsOnlyTheSelectedProfile) {
     TemporaryProject project{"profile-selection"};
-    project.write("manifest.json", R"({"entries":[{"input":"array_math.sbxkernel"}]})");
+    project.write("manifest.sbxgen",
+                  R"((kernel-manifest :schema-version 1 :entries ("array_math.sbxkernel")))");
     auto source{std::string{kernel_source}};
     auto const insertion{source.find("  (type-set")};
     source.insert(insertion,
@@ -126,9 +123,9 @@ TEST(KernelCompiler, EmitsOnlyTheSelectedProfile) {
                   "    (namespace ml))\n");
     project.write("array_math.sbxkernel", source);
 
-    ASSERT_EQ(compile_manifest(CompileOptions{.manifest = project.path("manifest.json"),
-                                               .output_root = project.path("generated"),
-                                               .profile = Profile::standard}),
+    ASSERT_EQ(compile_manifest(CompileOptions{.manifest = project.path("manifest.sbxgen"),
+                                              .output_root = project.path("generated"),
+                                              .profile = Profile::standard}),
               0);
     EXPECT_TRUE(project.read("generated/standard/Kernels.h").contains("std::span<float const>"));
     EXPECT_TRUE(project.read("generated/standard/KernelsTests.cpp").contains("TEST("));
@@ -137,7 +134,8 @@ TEST(KernelCompiler, EmitsOnlyTheSelectedProfile) {
 
 TEST(KernelCompiler, EmitsOnlyTheSelectedAvx2LabKernel) {
     TemporaryProject project{"avx2-lab-profile"};
-    project.write("manifest.json", R"({"entries":[{"input":"array_math.sbxkernel"}]})");
+    project.write("manifest.sbxgen",
+                  R"((kernel-manifest :schema-version 1 :entries ("array_math.sbxkernel")))");
     auto source{std::string{kernel_source}};
     source.replace(source.find("    (variants"), 0, "    (aliasing pairwise-disjoint)\n");
     auto const insertion{source.find("  (type-set")};
@@ -154,9 +152,9 @@ TEST(KernelCompiler, EmitsOnlyTheSelectedAvx2LabKernel) {
                   "      (variant out-of-place)))\n");
     project.write("array_math.sbxkernel", source);
 
-    ASSERT_EQ(compile_manifest(CompileOptions{.manifest = project.path("manifest.json"),
-                                               .output_root = project.path("generated"),
-                                               .profile = Profile::unreal_avx2_lab}),
+    ASSERT_EQ(compile_manifest(CompileOptions{.manifest = project.path("manifest.sbxgen"),
+                                              .output_root = project.path("generated"),
+                                              .profile = Profile::unreal_avx2_lab}),
               0);
     EXPECT_TRUE(project.read("generated/lab/Kernels.h").contains("multiply_avx2"));
     EXPECT_TRUE(project.read("generated/lab/Kernels.cpp").contains("_mm256_mul_ps"));
@@ -165,7 +163,8 @@ TEST(KernelCompiler, EmitsOnlyTheSelectedAvx2LabKernel) {
 
 TEST(KernelCompiler, EmitsIsolatedNativeSimdLabSources) {
     TemporaryProject project{"native-simd-lab-profile"};
-    project.write("manifest.json", R"({"entries":[{"input":"array_math.sbxkernel"}]})");
+    project.write("manifest.sbxgen",
+                  R"((kernel-manifest :schema-version 1 :entries ("array_math.sbxkernel")))");
     auto source{std::string{kernel_source}};
     source.replace(source.find("    (variants"), 0, "    (aliasing pairwise-disjoint)\n");
     auto const insertion{source.find("  (type-set")};
@@ -184,15 +183,15 @@ TEST(KernelCompiler, EmitsIsolatedNativeSimdLabSources) {
                   "      (variant out-of-place)))\n");
     project.write("array_math.sbxkernel", source);
 
-    ASSERT_EQ(compile_manifest(CompileOptions{.manifest = project.path("manifest.json"),
-                                               .output_root = project.path("generated"),
-                                               .profile = Profile::native_x86_simd_lab}),
+    ASSERT_EQ(compile_manifest(CompileOptions{.manifest = project.path("manifest.sbxgen"),
+                                              .output_root = project.path("generated"),
+                                              .profile = Profile::native_x86_simd_lab}),
               0);
     EXPECT_TRUE(project.read("generated/native/Kernels.h").contains("X86SimdBackend"));
     EXPECT_TRUE(project.read("generated/native/KernelsAvx2.cpp").contains("_mm256_mul_ps"));
     EXPECT_TRUE(project.read("generated/native/KernelsAvx512.cpp").contains("_mm512_mul_ps"));
-    EXPECT_TRUE(project.read("generated/native/KernelsDispatch.cpp")
-                    .contains("cpu_features::GetX86Info"));
+    EXPECT_TRUE(
+        project.read("generated/native/KernelsDispatch.cpp").contains("cpu_features::GetX86Info"));
 }
 
 }

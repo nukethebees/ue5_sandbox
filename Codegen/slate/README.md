@@ -158,11 +158,11 @@ Shared libraries contain only `defmacro` and `include` declarations:
 
 Configure search roots in the manifest:
 
-```json
-{
-  "include_directories": ["../Widgets"],
-  "entries": [{"input": "Radar3DShowcase.sbxslate"}]
-}
+```lisp
+(slate-manifest
+  :schema-version 1
+  :include-directories ("../Widgets")
+  :entries ("Radar3DShowcase.sbxslate"))
 ```
 
 Relative include directories are resolved against the manifest directory; absolute directories are
@@ -212,7 +212,7 @@ or `--output-root`.
 For example, from the repository root:
 
 ```text
-out/build/codegen/Codegen/slate/slatec.exe --manifest Plugins/SandboxUI/Source/SbxUIExperiments/Private/Radar3D/manifest.json --expand
+out/build/codegen/Codegen/slate/slatec.exe --manifest Plugins/SandboxUI/Source/SbxUIExperiments/Private/Radar3D/manifest.sbxgen --expand
 ```
 
 Manifest input paths are relative to the manifest. Output defaults to a `generated` directory beside

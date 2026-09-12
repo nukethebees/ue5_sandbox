@@ -1,7 +1,8 @@
 #include "manifest.h"
 
-#include <nlohmann/json.hpp>
+#include <codegen/sexpr/reader.h>
 
+#include <charconv>
 #include <fstream>
 #include <set>
 #include <stdexcept>
@@ -11,6 +12,53 @@
 
 namespace kernel_codegen::detail {
 namespace {
+
+using codegen::sexpr::Form;
+using codegen::sexpr::SourceError;
+using codegen::sexpr::SourceSpan;
+using codegen::sexpr::TokenKind;
+
+inline constexpr int manifest_schema_version{1};
+
+[[noreturn]] void fail(SourceSpan const& span, std::string const& message) {
+    throw SourceError{span.path, span, message};
+}
+
+auto read_document(std::filesystem::path const& path) -> std::vector<Form> {
+    return codegen::sexpr::read_forms(path.string(), read_file(path));
+}
+
+auto parse_version(Form const& form) -> int {
+    if (form.is_list() || form.token.kind != TokenKind::atom) {
+        fail(form.token.span, "Kernel manifest schema version must be an integer");
+    }
+
+    int result{};
+    auto const& value{form.token.text};
+    auto const [position,
+                error]{std::from_chars(value.data(), value.data() + value.size(), result)};
+    if (error != std::errc{} || position != value.data() + value.size()) {
+        fail(form.token.span, "Kernel manifest schema version must be an integer");
+    }
+    return result;
+}
+
+auto string_list(Form const& form, std::string_view const field) -> std::vector<std::string> {
+    if (!form.is_list()) {
+        fail(form.token.span, "Kernel manifest " + std::string{field} + " must be a list");
+    }
+
+    std::vector<std::string> result;
+    result.reserve(form.children.size());
+    for (auto const& child : form.children) {
+        if (child.is_list() || child.token.kind != TokenKind::string || child.token.text.empty()) {
+            fail(child.token.span,
+                 "Kernel manifest " + std::string{field} + " must contain nonempty strings");
+        }
+        result.push_back(child.token.text);
+    }
+    return result;
+}
 
 void validate_relative_path(std::filesystem::path const& path, std::string_view const field) {
     auto const normalized{path.lexically_normal()};
@@ -25,29 +73,6 @@ void validate_relative_path(std::filesystem::path const& path, std::string_view 
     }
 }
 
-auto parse_json(std::filesystem::path const& path) -> nlohmann::json {
-    try {
-        std::vector<std::set<std::string>> object_keys;
-        auto reject_duplicate = [&](int, nlohmann::json::parse_event_t const event,
-                                    nlohmann::json& parsed) {
-            if (event == nlohmann::json::parse_event_t::object_start) {
-                object_keys.emplace_back();
-            } else if (event == nlohmann::json::parse_event_t::key) {
-                auto const key{parsed.get<std::string>()};
-                if (!object_keys.back().insert(key).second) {
-                    throw std::invalid_argument{path.string() + ": duplicate field '" + key + "'"};
-                }
-            } else if (event == nlohmann::json::parse_event_t::object_end) {
-                object_keys.pop_back();
-            }
-            return true;
-        };
-        return nlohmann::json::parse(read_file(path), reject_duplicate);
-    } catch (nlohmann::json::exception const& error) {
-        throw std::invalid_argument{path.string() + ": " + error.what()};
-    }
-}
-
 }
 
 auto read_file(std::filesystem::path const& path) -> std::string {
@@ -59,33 +84,61 @@ auto read_file(std::filesystem::path const& path) -> std::string {
 }
 
 auto load_manifest(std::filesystem::path const& path) -> Manifest {
-    auto const document = parse_json(path);
-    if (!document.is_object()) {
-        throw std::invalid_argument{"Kernel manifest root must be an object"};
+    auto const forms{read_document(path)};
+    if (forms.size() != 1 || forms.front().head() != "kernel-manifest") {
+        auto const span{forms.empty() ? SourceSpan{.path = path.string()}
+                                      : forms.front().token.span};
+        fail(span, "manifest must contain exactly one 'kernel-manifest' form");
     }
-    for (auto const& [key, unused] : document.items()) {
-        static_cast<void>(unused);
-        if (key != "entries") {
-            throw std::invalid_argument{"Unknown Kernel manifest field: " + key};
+
+    auto const& form{forms.front()};
+    Form const* version{};
+    Form const* entries{};
+    std::set<std::string> properties;
+    for (std::size_t index{1}; index < form.children.size();) {
+        auto const& property{form.children[index]};
+        if (property.token.kind != TokenKind::keyword) {
+            fail(property.token.span, "expected a Kernel manifest property");
         }
+        if (index + 1 >= form.children.size() ||
+            form.children[index + 1].token.kind == TokenKind::keyword) {
+            fail(property.token.span, "property ':" + property.token.text + "' requires a value");
+        }
+        if (!properties.insert(property.token.text).second) {
+            fail(property.token.span, "duplicate property ':" + property.token.text + "'");
+        }
+
+        auto const* value{&form.children[index + 1]};
+        if (property.token.text == "schema-version") {
+            version = value;
+        } else if (property.token.text == "entries") {
+            entries = value;
+        } else {
+            fail(property.token.span, "unknown property ':" + property.token.text + "'");
+        }
+        index += 2;
     }
-    if (!document.contains("entries") || !document.at("entries").is_array()) {
-        throw std::invalid_argument{"Kernel manifest requires an entries array"};
+
+    if (version == nullptr) {
+        fail(form.token.span, "Kernel manifest requires ':schema-version'");
+    }
+    auto const parsed_version{parse_version(*version)};
+    if (parsed_version != manifest_schema_version) {
+        fail(version->token.span,
+             "unsupported Kernel manifest schema version " + std::to_string(parsed_version) +
+                 "; expected " + std::to_string(manifest_schema_version));
+    }
+    if (entries == nullptr) {
+        fail(form.token.span, "Kernel manifest requires ':entries'");
     }
 
     Manifest result;
     std::set<std::string> inputs;
-    for (auto const& item : document.at("entries")) {
-        if (!item.is_object() || item.size() != 1 || !item.contains("input") ||
-            !item.at("input").is_string()) {
-            throw std::invalid_argument{
-                "Each Kernel manifest entry requires only a string input field"};
-        }
-        ManifestEntry entry{item.at("input").get<std::string>()};
+    for (auto const& input : string_list(*entries, "entries")) {
+        ManifestEntry entry{input};
         validate_relative_path(entry.input, "Kernel manifest input");
         if (entry.input.extension() != ".sbxkernel") {
-            throw std::invalid_argument{
-                "Kernel manifest inputs must use the .sbxkernel extension"};
+            throw std::invalid_argument{"Kernel manifest inputs must use the .sbxkernel extension"};
         }
         if (!inputs.insert(entry.input.generic_string()).second) {
             throw std::invalid_argument{"Duplicate Kernel manifest input: " +

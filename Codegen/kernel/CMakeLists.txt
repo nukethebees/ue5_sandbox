@@ -15,7 +15,6 @@ target_include_directories(kernel-codegen-lib PUBLIC include)
 target_link_libraries(kernel-codegen-lib PRIVATE
   codegen-lib
   codegen-sexpr
-  nlohmann_json::nlohmann_json
   sandbox::codegen_warnings
 )
 
@@ -47,12 +46,12 @@ set(KERNEL_COMPILE_FILES
 add_custom_command(
   OUTPUT ${KERNEL_COMPILE_FILES}
   COMMAND sandbox-kernelc
-    --manifest "${KERNEL_COMPILE_FIXTURE}/manifest.json"
+    --manifest "${KERNEL_COMPILE_FIXTURE}/manifest.sbxgen"
     --output-root "${KERNEL_COMPILE_OUTPUT}"
     --profile unreal
   DEPENDS
     sandbox-kernelc
-    "${KERNEL_COMPILE_FIXTURE}/manifest.json"
+    "${KERNEL_COMPILE_FIXTURE}/manifest.sbxgen"
     "${KERNEL_COMPILE_FIXTURE}/array_math.sbxkernel"
   VERBATIM
 )
@@ -86,7 +85,7 @@ endforeach()
 set(KERNEL_PRODUCTION_ROOT
   "${PROJECT_SOURCE_DIR}/Plugins/SandboxCore/Source/SandboxCore"
 )
-set(KERNEL_PRODUCTION_MANIFEST "${KERNEL_PRODUCTION_ROOT}/Kernels/manifest.json")
+set(KERNEL_PRODUCTION_MANIFEST "${KERNEL_PRODUCTION_ROOT}/Kernels/manifest.sbxgen")
 set(KERNEL_PRODUCTION_DOCUMENT "${KERNEL_PRODUCTION_ROOT}/Kernels/array_math.sbxkernel")
 set(KERNEL_CANDIDATE_DOCUMENT "${KERNEL_PRODUCTION_ROOT}/Kernels/candidate_math.sbxkernel")
 

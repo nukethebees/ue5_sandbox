@@ -1,8 +1,0 @@
-{
-  "include_directories": ["../Widgets"],
-  "entries": [
-    {
-      "input": "Scatter3DShowcase.sbxslate"
-    }
-  ]
-}
