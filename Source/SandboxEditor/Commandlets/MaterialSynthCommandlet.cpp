@@ -2,8 +2,7 @@
 
 #include "SandboxEditor/material/MaterialEmitter.h"
 
-#include <material_gen/MaterialFrontend.h>
-#include <material_gen/SourceHash.h>
+#include <material_gen/CompiledMaterial.h>
 
 #include "Engine/Texture.h"
 #include "Misc/FileHelper.h"
@@ -54,56 +53,49 @@ int32 UMaterialSynthCommandlet::Main(FString const& parameters) {
         print_result(false, validate_only, {}, 1);
         return 1;
     }
-    FString input;
-    if (!FParse::Value(*parameters, TEXT("Input="), input) || input.IsEmpty()) {
-        UE_LOG(LogTemp, Error, TEXT("MaterialSynth requires -Input=<file>."));
+    FString artifact_path;
+    if (!FParse::Value(*parameters, TEXT("Artifact="), artifact_path) || artifact_path.IsEmpty()) {
+        UE_LOG(LogTemp, Error, TEXT("MaterialSynth requires -Artifact=<file>."));
         print_result(false, validate_only, {}, 1);
         return 1;
     }
 
-    auto const absolute_input{FPaths::ConvertRelativePathToFull(input)};
-    FString source;
-    TArray<uint8> source_bytes;
-    if (!FFileHelper::LoadFileToString(source, *absolute_input) ||
-        !FFileHelper::LoadFileToArray(source_bytes, *absolute_input)) {
-        UE_LOG(LogTemp, Error, TEXT("Unable to read material source: %s"), *absolute_input);
+    auto const absolute_artifact{FPaths::ConvertRelativePathToFull(artifact_path)};
+    TArray<uint8> artifact_bytes;
+    if (!FFileHelper::LoadFileToArray(artifact_bytes, *absolute_artifact)) {
+        UE_LOG(LogTemp, Error, TEXT("Unable to read compiled material: %s"), *absolute_artifact);
         print_result(false, validate_only, {}, 1);
         return 1;
     }
 
-    auto const utf8_source{StringCast<UTF8CHAR>(*source)};
-    auto const utf8_path{StringCast<UTF8CHAR>(*absolute_input)};
-    auto const analysis{material_synth::analyze(
-        reinterpret_cast<char const*>(utf8_path.Get()),
-        std::string_view{reinterpret_cast<char const*>(utf8_source.Get()),
-                         static_cast<std::size_t>(utf8_source.Length())},
-        {nullptr, [](void const*, std::string_view const requested) -> std::optional<std::string> {
-             auto const path{texture_object_path(requested)};
-             auto* const texture{LoadObject<UTexture>(nullptr, *path, nullptr, LOAD_NoWarn)};
-             if (texture == nullptr) {
-                 return std::nullopt;
-             }
-             auto const resolved{StringCast<UTF8CHAR>(*texture->GetPathName())};
-             return std::string{reinterpret_cast<char const*>(resolved.Get()),
-                                static_cast<std::size_t>(resolved.Length())};
-         }})};
-
-    FString asset;
-    if (analysis.material) {
-        asset = FString{UTF8_TO_TCHAR(analysis.material->settings.package_path.c_str())} +
-                TEXT(".") + UTF8_TO_TCHAR(analysis.material->settings.name.c_str());
-    }
-    for (auto const& diagnostic : analysis.diagnostics) {
+    auto const compiled{material_synth::deserialize(
+        std::span{artifact_bytes.GetData(), static_cast<std::size_t>(artifact_bytes.Num())})};
+    if (!compiled) {
         UE_LOG(LogTemp,
                Error,
-               TEXT("%s:%llu:%llu: %s"),
-               UTF8_TO_TCHAR(diagnostic.path.c_str()),
-               diagnostic.line,
-               diagnostic.column,
-               UTF8_TO_TCHAR(diagnostic.message.c_str()));
+               TEXT("Unable to load compiled material '%s': %s"),
+               *absolute_artifact,
+               UTF8_TO_TCHAR(compiled.error().c_str()));
+        print_result(false, validate_only, {}, 1);
+        return 1;
     }
-    if (!analysis.material) {
-        print_result(false, validate_only, asset, static_cast<int32>(analysis.diagnostics.size()));
+
+    auto const& material{compiled->material};
+    auto const asset{FString{UTF8_TO_TCHAR(material.settings.package_path.c_str())} + TEXT(".") +
+                     UTF8_TO_TCHAR(material.settings.name.c_str())};
+    int32 dependency_errors{};
+    for (auto const& dependency : material.texture_dependencies) {
+        auto const path{texture_object_path(dependency)};
+        if (LoadObject<UTexture>(nullptr, *path, nullptr, LOAD_NoWarn) == nullptr) {
+            UE_LOG(LogTemp,
+                   Error,
+                   TEXT("Compiled texture dependency is not a loadable texture: %s"),
+                   *path);
+            ++dependency_errors;
+        }
+    }
+    if (dependency_errors != 0) {
+        print_result(false, validate_only, asset, dependency_errors);
         return 1;
     }
     if (validate_only) {
@@ -116,14 +108,9 @@ int32 UMaterialSynthCommandlet::Main(FString const& parameters) {
         return 1;
     }
 
-    auto const source_hash_utf8{material_synth::sha256(
-        std::span{reinterpret_cast<std::uint8_t const*>(source_bytes.GetData()),
-                  static_cast<std::size_t>(source_bytes.Num())})};
-    auto const source_hash{FString{UTF8_TO_TCHAR(source_hash_utf8.c_str())}};
-    auto relative_input{absolute_input};
-    FPaths::MakePathRelativeTo(relative_input, *FPaths::ProjectDir());
-
-    auto const emitted{material_synth::emit(*analysis.material, relative_input, source_hash)};
+    auto const source_path{FString{UTF8_TO_TCHAR(compiled->source_path.c_str())}};
+    auto const source_hash{FString{UTF8_TO_TCHAR(compiled->source_hash.c_str())}};
+    auto const emitted{material_synth::emit(material, source_path, source_hash)};
     for (auto const& error : emitted.errors) {
         UE_LOG(LogTemp, Error, TEXT("%s"), *error);
     }

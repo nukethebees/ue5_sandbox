@@ -1,5 +1,8 @@
+#include <material_gen/CompiledMaterial.h>
 #include <material_gen/MaterialFrontend.h>
+#include <material_gen/SourceHash.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -8,6 +11,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace {
 
@@ -16,12 +20,16 @@ namespace fs = std::filesystem;
 struct Options {
     std::string_view command;
     fs::path input;
+    std::optional<fs::path> output;
+    std::optional<fs::path> depfile;
     std::optional<fs::path> project_root;
 };
 
 void print_usage(std::ostream& stream) {
     stream << "usage: materialc <validate|dump-ir> --input <file> "
-              "[--project-root <directory>]\n";
+              "[--project-root <directory>]\n"
+              "       materialc compile --input <file> --output <file> "
+              "[--depfile <file>] [--project-root <directory>]\n";
 }
 
 auto parse_options(int const argc, char const* const* const argv) -> std::optional<Options> {
@@ -34,13 +42,22 @@ auto parse_options(int const argc, char const* const* const argv) -> std::option
         std::string_view const argument{argv[index]};
         if (argument == "--input" && index + 1 < argc) {
             options.input = argv[++index];
+        } else if (argument == "--output" && index + 1 < argc) {
+            options.output = fs::path{argv[++index]};
+        } else if (argument == "--depfile" && index + 1 < argc) {
+            options.depfile = fs::path{argv[++index]};
         } else if (argument == "--project-root" && index + 1 < argc) {
             options.project_root = fs::path{argv[++index]};
         } else {
             return std::nullopt;
         }
     }
-    if ((options.command != "validate" && options.command != "dump-ir") || options.input.empty()) {
+    if ((options.command != "validate" && options.command != "dump-ir" &&
+         options.command != "compile") ||
+        options.input.empty() || (options.command == "compile") != options.output.has_value()) {
+        return std::nullopt;
+    }
+    if (options.command != "compile" && options.depfile) {
         return std::nullopt;
     }
     return options;
@@ -80,6 +97,7 @@ auto find_project_root(fs::path directory) -> std::optional<fs::path> {
 
 struct ProjectTextureResolver {
     fs::path project_root;
+    mutable std::vector<fs::path> dependencies;
 };
 
 auto resolve_texture(void const* const context, std::string_view const requested)
@@ -111,6 +129,9 @@ auto resolve_texture(void const* const context, std::string_view const requested
     if (!fs::is_regular_file(asset_file, error) || error) {
         return std::nullopt;
     }
+    if (std::ranges::find(resolver.dependencies, asset_file) == resolver.dependencies.end()) {
+        resolver.dependencies.push_back(asset_file);
+    }
     auto const leaf_position{package_path.rfind('/')};
     return package_path + "." + package_path.substr(leaf_position + 1);
 }
@@ -126,6 +147,41 @@ auto read_file(fs::path const& path) -> std::optional<std::string> {
         return std::nullopt;
     }
     return contents.str();
+}
+
+auto write_file(fs::path const& path, std::span<std::uint8_t const> const contents) -> bool {
+    std::ofstream stream{path, std::ios::binary | std::ios::trunc};
+    stream.write(reinterpret_cast<char const*>(contents.data()),
+                 static_cast<std::streamsize>(contents.size()));
+    return static_cast<bool>(stream);
+}
+
+auto depfile_path(fs::path const& path) -> std::string {
+    auto const source{path.generic_string()};
+    std::string escaped;
+    escaped.reserve(source.size());
+    for (char const value : source) {
+        if (value == ' ' || value == '#') {
+            escaped.push_back('\\');
+        } else if (value == '$') {
+            escaped.push_back('$');
+        }
+        escaped.push_back(value);
+    }
+    return escaped;
+}
+
+auto write_depfile(fs::path const& path,
+                   fs::path const& output,
+                   fs::path const& input,
+                   std::span<fs::path const> const dependencies) -> bool {
+    std::ofstream stream{path, std::ios::binary | std::ios::trunc};
+    stream << depfile_path(output) << ": " << depfile_path(input);
+    for (auto const& dependency : dependencies) {
+        stream << ' ' << depfile_path(dependency);
+    }
+    stream << '\n';
+    return static_cast<bool>(stream);
 }
 
 auto type_name(material_synth::ValueType const type) -> std::string_view {
@@ -272,9 +328,13 @@ int main(int const argc, char const* const* const argv) {
         return 1;
     }
 
+    std::error_code relative_error;
+    auto const relative_input{fs::relative(input, *project_root, relative_error)};
+    auto const source_path{relative_error ? input.generic_string()
+                                          : relative_input.generic_string()};
     ProjectTextureResolver resolver{.project_root = *project_root};
     auto const analysis{
-        material_synth::analyze(input.generic_string(), *source, {&resolver, resolve_texture})};
+        material_synth::analyze(source_path, *source, {&resolver, resolve_texture})};
     for (auto const& diagnostic : analysis.diagnostics) {
         std::cerr << diagnostic.path << ':' << diagnostic.line << ':' << diagnostic.column
                   << ": error: " << diagnostic.message << '\n';
@@ -287,6 +347,32 @@ int main(int const argc, char const* const* const argv) {
 
     if (options->command == "dump-ir") {
         dump_ir(*analysis.material);
+    } else if (options->command == "compile") {
+        auto const source_bytes{
+            std::span{reinterpret_cast<std::uint8_t const*>(source->data()), source->size()}};
+        auto const artifact{
+            material_synth::serialize({.source_path = source_path,
+                                       .source_hash = material_synth::sha256(source_bytes),
+                                       .material = std::move(*analysis.material)})};
+        if (!artifact) {
+            std::cerr << "materialc: unable to serialize compiled material: " << artifact.error()
+                      << '\n';
+            std::cout << "MATERIALC_RESULT status=failure command=compile errors=1\n";
+            return 1;
+        }
+        if (!write_file(*options->output, *artifact)) {
+            std::cerr << "materialc: unable to write output file '" << options->output->string()
+                      << "'\n";
+            std::cout << "MATERIALC_RESULT status=failure command=compile errors=1\n";
+            return 1;
+        }
+        if (options->depfile &&
+            !write_depfile(*options->depfile, *options->output, input, resolver.dependencies)) {
+            std::cerr << "materialc: unable to write depfile '" << options->depfile->string()
+                      << "'\n";
+            std::cout << "MATERIALC_RESULT status=failure command=compile errors=1\n";
+            return 1;
+        }
     }
     std::cout << "MATERIALC_RESULT status=success command=" << options->command
               << " asset=" << analysis.material->settings.package_path << " errors=0\n";

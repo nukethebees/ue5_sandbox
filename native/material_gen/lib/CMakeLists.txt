@@ -1,5 +1,6 @@
 add_library(material-gen STATIC)
 target_sources(material-gen PRIVATE
+  src/CompiledMaterial.cpp
   src/MaterialFrontend.cpp
   src/MaterialIR.cpp
   src/SourceHash.cpp
@@ -7,8 +8,9 @@ target_sources(material-gen PRIVATE
 target_compile_features(material-gen PUBLIC cxx_std_23)
 target_include_directories(material-gen PUBLIC include)
 target_link_libraries(material-gen
-  PUBLIC codegen-sexpr
-  PRIVATE sandbox::codegen_warnings
+  PRIVATE
+    codegen-sexpr
+    sandbox::codegen_warnings
 )
 
 if(NOT SANDBOX_CODEGEN_ONLY)
@@ -20,17 +22,12 @@ if(NOT SANDBOX_CODEGEN_ONLY)
 
   add_library(sandbox-material-gen STATIC)
   target_sources(sandbox-material-gen PRIVATE
-    src/MaterialFrontend.cpp
+    src/CompiledMaterial.cpp
     src/MaterialIR.cpp
     src/SourceHash.cpp
-    "${PROJECT_SOURCE_DIR}/Codegen/sexpr/src/lexer.cpp"
-    "${PROJECT_SOURCE_DIR}/Codegen/sexpr/src/reader.cpp"
   )
   target_compile_features(sandbox-material-gen PUBLIC cxx_std_23)
-  target_include_directories(sandbox-material-gen PUBLIC
-    include
-    "${PROJECT_SOURCE_DIR}/Codegen/sexpr/include"
-  )
+  target_include_directories(sandbox-material-gen PUBLIC include)
   target_link_libraries(sandbox-material-gen PRIVATE sandbox::codegen_warnings)
   set_target_properties(sandbox-material-gen PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY

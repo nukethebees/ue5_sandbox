@@ -1,6 +1,6 @@
 #include "SandboxEditor/material/MaterialEmitter.h"
 
-#include <material_gen/MaterialFrontend.h>
+#include <material_gen/CompiledMaterial.h>
 #include <material_gen/SourceHash.h>
 
 #include "CQTest.h"
@@ -17,33 +17,15 @@
 
 namespace {
 
-auto load_golden() -> material_synth::AnalysisResult {
-    auto const path{FPaths::ConvertRelativePathToFull(
-        FPaths::ProjectDir(),
-        TEXT("Plugins/SandboxUI/Source/SandboxUI/Private/materials/"
-             "UiGlowComposite.material.scm"))};
-    FString source;
-    if (!FFileHelper::LoadFileToString(source, *path)) {
-        return {{}, {{TCHAR_TO_UTF8(*path), 1, 1, "unable to load golden source"}}};
+auto load_golden() -> std::expected<material_synth::CompiledMaterial, std::string> {
+    auto const path{FPaths::ConvertRelativePathToFull(FPaths::ProjectIntermediateDir(),
+                                                      TEXT("MaterialGen/UiGlowComposite.smat"))};
+    TArray<uint8> bytes;
+    if (!FFileHelper::LoadFileToArray(bytes, *path)) {
+        return std::unexpected{"unable to load compiled golden material"};
     }
-    auto const utf8_source{StringCast<UTF8CHAR>(*source)};
-    auto const utf8_path{StringCast<UTF8CHAR>(*path)};
-    return material_synth::analyze(
-        reinterpret_cast<char const*>(utf8_path.Get()),
-        std::string_view{reinterpret_cast<char const*>(utf8_source.Get()),
-                         static_cast<std::size_t>(utf8_source.Length())},
-        {nullptr, [](void const*, std::string_view const requested) -> std::optional<std::string> {
-             auto package_path{FString{UTF8_TO_TCHAR(requested.data())}};
-             auto leaf{package_path};
-             int32 slash{};
-             leaf.FindLastChar(TEXT('/'), slash);
-             leaf.RightChopInline(slash + 1);
-             auto const object_path{package_path + TEXT(".") + leaf};
-             auto* const texture{LoadObject<UTexture>(nullptr, *object_path, nullptr, LOAD_NoWarn)};
-             return texture != nullptr
-                      ? std::optional<std::string>{TCHAR_TO_UTF8(*texture->GetPathName())}
-                      : std::nullopt;
-         }});
+    return material_synth::deserialize(
+        std::span{bytes.GetData(), static_cast<std::size_t>(bytes.Num())});
 }
 
 auto topology(UMaterial const& material) -> TArray<FString> {
@@ -71,17 +53,14 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
 
     TEST_METHOD(GeneratesCompilesSavesReloadsAndIsIdempotent)
     {
-        auto const analysis{load_golden()};
-        if (!TestRunner->TestTrue(TEXT("Golden source passes semantic analysis"),
-                                  analysis.material.has_value())) {
+        auto const compiled{load_golden()};
+        if (!TestRunner->TestTrue(TEXT("Compiled golden material loads"), compiled.has_value())) {
             return;
         }
 
-        auto const first{
-            material_synth::emit(*analysis.material,
-                                 TEXT("Plugins/SandboxUI/Source/SandboxUI/Private/materials/"
-                                      "UiGlowComposite.material.scm"),
-                                 TEXT("integration-test-sha256"))};
+        auto const source_path{FString{UTF8_TO_TCHAR(compiled->source_path.c_str())}};
+        auto const source_hash{FString{UTF8_TO_TCHAR(compiled->source_hash.c_str())}};
+        auto const first{material_synth::emit(compiled->material, source_path, source_hash)};
         if (!TestRunner->TestTrue(TEXT("First generation succeeds"),
                                   first.material != nullptr && first.errors.IsEmpty())) {
             return;
@@ -129,22 +108,17 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
         TestRunner->TestEqual(
             TEXT("Source metadata is recorded"),
             FString{metadata.GetValue(first.material, material_synth::source_key)},
-            FString{TEXT("Plugins/SandboxUI/Source/SandboxUI/Private/materials/"
-                         "UiGlowComposite.material.scm")});
+            source_path);
         TestRunner->TestEqual(
             TEXT("Source hash metadata is recorded"),
             FString{metadata.GetValue(first.material, material_synth::source_hash_key)},
-            FString{TEXT("integration-test-sha256")});
+            source_hash);
         TestRunner->TestEqual(
             TEXT("Generator version metadata is recorded"),
             FString{metadata.GetValue(first.material, material_synth::version_key)},
             FString{material_synth::generator_version});
 
-        auto const second{
-            material_synth::emit(*analysis.material,
-                                 TEXT("Plugins/SandboxUI/Source/SandboxUI/Private/materials/"
-                                      "UiGlowComposite.material.scm"),
-                                 TEXT("integration-test-sha256"))};
+        auto const second{material_synth::emit(compiled->material, source_path, source_hash)};
         if (TestRunner->TestTrue(TEXT("Second generation succeeds"),
                                  second.material != nullptr && second.errors.IsEmpty())) {
             TestRunner->TestTrue(TEXT("Regeneration preserves structural topology"),

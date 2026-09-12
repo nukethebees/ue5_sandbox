@@ -13,8 +13,12 @@ namespace material_synth {
 namespace {
 
 using codegen::sexpr::Form;
-using codegen::sexpr::SourceSpan;
+using ParserSourceSpan = codegen::sexpr::SourceSpan;
 using codegen::sexpr::TokenKind;
+
+auto material_span(ParserSourceSpan const& span) -> SourceSpan {
+    return {span.line, span.column, span.path, span.expansion};
+}
 
 auto is_identifier(std::string_view const value) -> bool {
     if (value.empty() ||
@@ -97,7 +101,7 @@ class Analyzer {
         }
 
         if (forms.size() != 1 || forms.front().head() != "material") {
-            fail(forms.empty() ? SourceSpan{1, 1, std::string{path_}, {}}
+            fail(forms.empty() ? ParserSourceSpan{1, 1, std::string{path_}, {}}
                                : forms.front().token.span,
                  "source must contain exactly one material definition");
             return {{}, std::move(diagnostics_)};
@@ -114,7 +118,7 @@ class Analyzer {
         return {std::move(material_), {}};
     }
   private:
-    void fail(SourceSpan const& span, std::string message) {
+    void fail(ParserSourceSpan const& span, std::string message) {
         diagnostics_.push_back({span.path.empty() ? std::string{path_} : span.path,
                                 span.line,
                                 span.column,
@@ -245,7 +249,8 @@ class Analyzer {
             return;
         }
 
-        Parameter parameter{.name = std::string{*name}, .type = type, .span = form.token.span};
+        Parameter parameter{
+            .name = std::string{*name}, .type = type, .span = material_span(form.token.span)};
         if (type == ValueType::texture) {
             if (form.children[3].token.kind != TokenKind::string) {
                 fail(form.children[3].token.span, "texture default must be a quoted asset path");
@@ -280,7 +285,7 @@ class Analyzer {
 
         parameter.node = add_node(Node{.kind = NodeKind::parameter,
                                        .type = type,
-                                       .span = form.token.span,
+                                       .span = material_span(form.token.span),
                                        .parameter_index = material_.parameters.size()});
         symbols_.emplace(parameter.name, parameter.node);
         material_.parameters.push_back(std::move(parameter));
@@ -308,7 +313,7 @@ class Analyzer {
             return;
         }
         symbols_.emplace(std::string{*name}, *node);
-        material_.bindings.push_back({std::string{*name}, *node, form.token.span});
+        material_.bindings.push_back({std::string{*name}, *node, material_span(form.token.span)});
     }
 
     void parse_output(Form const& form) {
@@ -324,7 +329,7 @@ class Analyzer {
         }
         auto const node{expression(form.children[1])};
         if (node) {
-            material_.outputs.push_back({"emissive", *node, form.token.span});
+            material_.outputs.push_back({"emissive", *node, material_span(form.token.span)});
         }
     }
 
@@ -333,7 +338,7 @@ class Analyzer {
             if (auto const value{parse_number(form)}) {
                 Node node{.kind = NodeKind::constant,
                           .type = ValueType::float1,
-                          .span = form.token.span,
+                          .span = material_span(form.token.span),
                           .component_count = 1};
                 node.constant[0] = *value;
                 return add_node(std::move(node));
@@ -387,7 +392,7 @@ class Analyzer {
         }
         Node node{.kind = NodeKind::constant,
                   .type = type,
-                  .span = form.token.span,
+                  .span = material_span(form.token.span),
                   .component_count = components};
         for (std::size_t index{}; index < components; ++index) {
             auto const value{parse_number(form.children[index + 1])};
@@ -422,8 +427,10 @@ class Analyzer {
                             : operation == "-" ? NodeKind::subtract
                             : operation == "*" ? NodeKind::multiply
                                                : NodeKind::divide};
-        return add_node(
-            Node{.kind = kind, .type = type, .inputs = {*left, *right}, .span = form.token.span});
+        return add_node(Node{.kind = kind,
+                             .type = type,
+                             .inputs = {*left, *right},
+                             .span = material_span(form.token.span)});
     }
 
     auto lerp(Form const& form) -> std::optional<NodeHandle> {
@@ -447,7 +454,7 @@ class Analyzer {
         return add_node(Node{.kind = NodeKind::lerp,
                              .type = type,
                              .inputs = {*first, *second, *alpha},
-                             .span = form.token.span});
+                             .span = material_span(form.token.span)});
     }
 
     auto saturate(Form const& form) -> std::optional<NodeHandle> {
@@ -464,8 +471,10 @@ class Analyzer {
             fail(form.token.span, "saturate requires a numeric operand");
             return std::nullopt;
         }
-        return add_node(Node{
-            .kind = NodeKind::saturate, .type = type, .inputs = {*input}, .span = form.token.span});
+        return add_node(Node{.kind = NodeKind::saturate,
+                             .type = type,
+                             .inputs = {*input},
+                             .span = material_span(form.token.span)});
     }
 
     auto texcoord(Form const& form) -> std::optional<NodeHandle> {
@@ -481,7 +490,7 @@ class Analyzer {
         }
         return add_node(Node{.kind = NodeKind::texture_coordinate,
                              .type = ValueType::float2,
-                             .span = form.token.span,
+                             .span = material_span(form.token.span),
                              .coordinate_index = static_cast<unsigned>(*value)});
     }
 
@@ -503,7 +512,7 @@ class Analyzer {
         return add_node(Node{.kind = NodeKind::sample,
                              .type = ValueType::float4,
                              .inputs = {*texture, *coordinates},
-                             .span = form.token.span});
+                             .span = material_span(form.token.span)});
     }
 
     auto custom(Form const& form) -> std::optional<NodeHandle> {
@@ -523,7 +532,8 @@ class Analyzer {
             fail(declarations.token.span, "custom inputs must be a list");
             return std::nullopt;
         }
-        Node node{.kind = NodeKind::custom, .type = result_type, .span = form.token.span};
+        Node node{
+            .kind = NodeKind::custom, .type = result_type, .span = material_span(form.token.span)};
         std::set<std::string> input_names;
         for (auto const& declaration : declarations.children) {
             if (!declaration.is_list() || declaration.children.size() != 3) {

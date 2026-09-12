@@ -269,6 +269,31 @@ include(cmake/catch2.cmake)
 add_subdirectory(native/image)
 add_dependencies(generate-project-files sandbox-image)
 
+set(UI_GLOW_MATERIAL_SOURCE
+  "${CMAKE_CURRENT_SOURCE_DIR}/Plugins/SandboxUI/Source/SandboxUI/Private/materials/UiGlowComposite.material.scm"
+)
+set(UI_GLOW_MATERIAL_ARTIFACT
+  "${CMAKE_CURRENT_SOURCE_DIR}/Intermediate/MaterialGen/UiGlowComposite.smat"
+)
+set(UI_GLOW_MATERIAL_DEPFILE
+  "${CMAKE_CURRENT_BINARY_DIR}/UiGlowComposite.smat.d"
+)
+add_custom_command(
+  OUTPUT "${UI_GLOW_MATERIAL_ARTIFACT}"
+  COMMAND "${CMAKE_COMMAND}" -E make_directory
+    "${CMAKE_CURRENT_SOURCE_DIR}/Intermediate/MaterialGen"
+  COMMAND $<TARGET_FILE:materialc> compile
+    --input "${UI_GLOW_MATERIAL_SOURCE}"
+    --output "${UI_GLOW_MATERIAL_ARTIFACT}"
+    --depfile "${UI_GLOW_MATERIAL_DEPFILE}"
+  DEPENDS materialc "${UI_GLOW_MATERIAL_SOURCE}"
+  DEPFILE "${UI_GLOW_MATERIAL_DEPFILE}"
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  COMMENT "Compiling UiGlow material IR"
+  VERBATIM
+)
+add_custom_target(compile-ui-glow-material DEPENDS "${UI_GLOW_MATERIAL_ARTIFACT}")
+
 add_unreal_target(editor SandboxEditor)
 add_unreal_target(game Sandbox)
 add_custom_target(check-space-game-layers
@@ -289,6 +314,7 @@ add_dependencies(editor
   check-space-game-layers
   check-generated-code
   check-generated-slate-code
+  compile-ui-glow-material
   sandbox-material-gen
 )
 add_dependencies(game check-space-game-layers)
@@ -835,7 +861,7 @@ add_custom_target(resave-assets
 add_custom_target(generate-ui-glow-material
   COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=MaterialSynth
-    "-Input=${CMAKE_CURRENT_SOURCE_DIR}/Plugins/SandboxUI/Source/SandboxUI/Private/materials/UiGlowComposite.material.scm"
+    "-Artifact=${UI_GLOW_MATERIAL_ARTIFACT}"
     -Generate -RenderOffscreen -AllowCommandletRendering
     -unattended -nop4 -nosplash -nosound -stdout
   DEPENDS editor
@@ -844,10 +870,21 @@ add_custom_target(generate-ui-glow-material
   VERBATIM
 )
 
+add_custom_target(validate-ui-glow-material-unreal
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    -run=MaterialSynth
+    "-Artifact=${UI_GLOW_MATERIAL_ARTIFACT}"
+    -Validate -unattended -nop4 -nosplash -nullrhi -nosound -stdout
+  DEPENDS editor compile-ui-glow-material
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  USES_TERMINAL
+  VERBATIM
+)
+
 add_custom_target(validate-ui-glow-material
   COMMAND $<TARGET_FILE:materialc> validate
     --input
-    "${CMAKE_CURRENT_SOURCE_DIR}/Plugins/SandboxUI/Source/SandboxUI/Private/materials/UiGlowComposite.material.scm"
+    "${UI_GLOW_MATERIAL_SOURCE}"
   DEPENDS materialc
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   USES_TERMINAL

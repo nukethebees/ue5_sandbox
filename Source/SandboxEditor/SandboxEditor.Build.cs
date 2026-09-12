@@ -31,7 +31,6 @@ public class SandboxEditor : ModuleRules
             Target.Configuration.ToString(),
             "sandbox_material_gen.lib");
         PublicSystemIncludePaths.Add(Path.Combine(nativeMaterialGenRoot, "lib", "include"));
-        PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "Codegen", "sexpr", "include"));
         if (File.Exists(nativeMaterialGenLibrary))
         {
             PublicAdditionalLibraries.Add(nativeMaterialGenLibrary);

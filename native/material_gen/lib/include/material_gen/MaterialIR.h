@@ -1,7 +1,5 @@
 #pragma once
 
-#include <codegen/sexpr/syntax.h>
-
 #include <array>
 #include <cstddef>
 #include <limits>
@@ -40,6 +38,13 @@ struct Diagnostic {
     std::string message;
 };
 
+struct SourceSpan {
+    std::size_t line{1};
+    std::size_t column{1};
+    std::string path;
+    std::string expansion;
+};
+
 struct CustomInput {
     std::string name;
     ValueType type{ValueType::invalid};
@@ -50,7 +55,7 @@ struct Node {
     NodeKind kind{NodeKind::constant};
     ValueType type{ValueType::invalid};
     std::vector<NodeHandle> inputs;
-    codegen::sexpr::SourceSpan span;
+    SourceSpan span;
     std::array<double, 4> constant{};
     std::size_t component_count{};
     std::size_t parameter_index{};
@@ -66,13 +71,13 @@ struct Parameter {
     std::array<double, 4> default_value{};
     std::string texture_path;
     NodeHandle node;
-    codegen::sexpr::SourceSpan span;
+    SourceSpan span;
 };
 
 struct NamedNode {
     std::string name;
     NodeHandle node;
-    codegen::sexpr::SourceSpan span;
+    SourceSpan span;
 };
 
 struct MaterialSettings {

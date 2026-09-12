@@ -1,3 +1,4 @@
+#include <material_gen/CompiledMaterial.h>
 #include <material_gen/MaterialFrontend.h>
 #include <material_gen/SourceHash.h>
 
@@ -54,6 +55,60 @@ TEST(MaterialFrontend, LowersUiGlowGoldenSourceWithStableHandles) {
     EXPECT_EQ(material.nodes[5].custom_inputs[2].name, "UV");
     EXPECT_EQ(material.texture_dependencies.size(), 1);
     EXPECT_TRUE(validate(material).empty());
+}
+
+TEST(CompiledMaterial, RoundTripsDeterministically) {
+    auto const source_path{std::filesystem::path{SANDBOX_PROJECT_SOURCE_DIR} /
+                           "Plugins/SandboxUI/Source/SandboxUI/Private/materials/"
+                           "UiGlowComposite.material.scm"};
+    auto const source{read(source_path)};
+    auto analysis{analyze(source_path.generic_string(), source, TextureResolver{nullptr, resolve})};
+    ASSERT_TRUE(analysis.material.has_value());
+    auto const source_bytes{
+        std::span{reinterpret_cast<std::uint8_t const*>(source.data()), source.size()}};
+    CompiledMaterial const compiled{.source_path =
+                                        "Plugins/SandboxUI/Source/SandboxUI/Private/materials/"
+                                        "UiGlowComposite.material.scm",
+                                    .source_hash = sha256(source_bytes),
+                                    .material = std::move(*analysis.material)};
+
+    auto const first{serialize(compiled)};
+    auto const second{serialize(compiled)};
+    ASSERT_TRUE(first.has_value()) << first.error();
+    ASSERT_TRUE(second.has_value()) << second.error();
+    EXPECT_EQ(*first, *second);
+
+    auto const decoded{deserialize(*first)};
+    ASSERT_TRUE(decoded.has_value()) << decoded.error();
+    EXPECT_EQ(decoded->source_path, compiled.source_path);
+    EXPECT_EQ(decoded->source_hash, compiled.source_hash);
+    EXPECT_EQ(decoded->material.settings.name, "M_UiGlowComposite");
+    EXPECT_EQ(decoded->material.parameters.size(), 4);
+    EXPECT_EQ(decoded->material.nodes.size(), 6);
+    EXPECT_EQ(decoded->material.nodes[5].custom_inputs[2].name, "UV");
+    EXPECT_TRUE(validate(decoded->material).empty());
+}
+
+TEST(CompiledMaterial, RejectsWrongVersionCorruptionAndTrailingData) {
+    std::vector<std::uint8_t> wrong_version{'S', 'B', 'X', 'M', 'A', 'T', 'I', 'R', 2, 0, 0, 0};
+    EXPECT_FALSE(deserialize(wrong_version).has_value());
+
+    std::vector<std::uint8_t> truncated{'S', 'B', 'X'};
+    EXPECT_FALSE(deserialize(truncated).has_value());
+
+    auto analysis{
+        analyze("source.scm",
+                "(material M (asset \"/Game/Generated/Materials/M\") (domain ui) (blend additive) "
+                "(emissive (float3 1 1 1)))",
+                TextureResolver{nullptr, resolve})};
+    ASSERT_TRUE(analysis.material.has_value());
+    auto artifact{serialize(
+        {.source_path = "source.scm",
+         .source_hash = "0000000000000000000000000000000000000000000000000000000000000000",
+         .material = std::move(*analysis.material)})};
+    ASSERT_TRUE(artifact.has_value());
+    artifact->push_back(0);
+    EXPECT_FALSE(deserialize(*artifact).has_value());
 }
 
 TEST(MaterialFrontend, SupportsEveryNumericExpressionAndPropagatesTypes) {

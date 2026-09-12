@@ -1,20 +1,39 @@
 #include <material_gen/MaterialIR.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <set>
 
 namespace material_synth {
 namespace {
 
-void report(std::vector<Diagnostic>& diagnostics,
-            codegen::sexpr::SourceSpan const& span,
-            std::string message) {
+void report(std::vector<Diagnostic>& diagnostics, SourceSpan const& span, std::string message) {
     diagnostics.push_back({span.path, span.line, span.column, std::move(message)});
 }
 
 auto valid_handle(MaterialIR const& material, NodeHandle const handle) -> bool {
     return handle.index < material.nodes.size();
+}
+
+auto valid_identifier(std::string_view const value) -> bool {
+    if (value.empty() ||
+        !(std::isalpha(static_cast<unsigned char>(value.front())) != 0 || value.front() == '_')) {
+        return false;
+    }
+    return std::ranges::all_of(value.substr(1), [](unsigned char const character) {
+        return std::isalnum(character) != 0 || character == '_';
+    });
+}
+
+auto valid_generated_path(MaterialSettings const& settings) -> bool {
+    auto const& path{settings.package_path};
+    auto const generated{path.find("/Generated/Materials/")};
+    auto const leaf_position{path.rfind('/')};
+    return !path.empty() && path.front() == '/' && generated != std::string::npos &&
+           generated != 0 && path.find('/', 1) == generated && leaf_position != std::string::npos &&
+           path.substr(leaf_position + 1) == settings.name &&
+           path.find('.', leaf_position) == std::string::npos;
 }
 
 auto promoted(ValueType const left, ValueType const right) -> ValueType {
@@ -50,8 +69,16 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
     std::vector<Diagnostic> diagnostics;
     std::set<std::string> names;
 
+    if (!valid_identifier(material.settings.name) || !valid_generated_path(material.settings) ||
+        material.settings.domain != MaterialDomain::ui ||
+        material.settings.blend_mode != BlendMode::additive) {
+        diagnostics.push_back({{}, 1, 1, "invalid or unsafe material settings"});
+    }
+
     auto validate_named{[&](NamedNode const& named, std::string_view const category) {
-        if (!names.insert(named.name).second) {
+        if (!valid_identifier(named.name)) {
+            report(diagnostics, named.span, "invalid " + std::string{category} + " name");
+        } else if (!names.insert(named.name).second) {
             report(diagnostics,
                    named.span,
                    "duplicate " + std::string{category} + " name '" + named.name + "'");
@@ -63,11 +90,19 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
 
     for (std::size_t index{}; index < material.parameters.size(); ++index) {
         auto const& parameter{material.parameters[index]};
-        if (!names.insert(parameter.name).second) {
+        if (!valid_identifier(parameter.name)) {
+            report(diagnostics, parameter.span, "invalid parameter name");
+        } else if (!names.insert(parameter.name).second) {
             report(
                 diagnostics, parameter.span, "duplicate parameter name '" + parameter.name + "'");
         }
-        if (!valid_handle(material, parameter.node) ||
+        if (parameter.type == ValueType::invalid ||
+            (parameter.type == ValueType::texture && parameter.texture_path.empty()) ||
+            (is_numeric(parameter.type) &&
+             !std::all_of(parameter.default_value.begin(),
+                          parameter.default_value.begin() + component_count(parameter.type),
+                          [](double const value) { return std::isfinite(value); })) ||
+            !valid_handle(material, parameter.node) ||
             material.nodes[parameter.node.index].kind != NodeKind::parameter ||
             material.nodes[parameter.node.index].parameter_index != index ||
             material.nodes[parameter.node.index].type != parameter.type) {
@@ -88,6 +123,11 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
     auto const node_count{material.nodes.size()};
     for (std::size_t index{}; index < node_count; ++index) {
         auto const& node{material.nodes[index]};
+        if (node.kind < NodeKind::constant || node.kind > NodeKind::custom ||
+            node.type == ValueType::invalid) {
+            report(diagnostics, node.span, "invalid material node kind or type");
+            continue;
+        }
         for (auto const input : node.inputs) {
             if (!valid_handle(material, input) || input.index >= index) {
                 report(diagnostics, node.span, "node input must reference an earlier valid node");
@@ -155,7 +195,8 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
             for (std::size_t input_index{}; input_index < node.custom_inputs.size();
                  ++input_index) {
                 auto const& input{node.custom_inputs[input_index]};
-                if (!input_names.insert(input.name).second || !valid_handle(material, input.node) ||
+                if (!valid_identifier(input.name) || !input_names.insert(input.name).second ||
+                    input.type == ValueType::invalid || !valid_handle(material, input.node) ||
                     input.node != node.inputs[input_index] ||
                     (valid_handle(material, input.node) &&
                      material.nodes[input.node.index].type != input.type)) {
