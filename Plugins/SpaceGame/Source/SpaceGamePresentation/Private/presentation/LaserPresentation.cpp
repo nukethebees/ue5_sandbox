@@ -1,6 +1,7 @@
 #include "SpaceGamePresentation/presentation/LaserPresentation.h"
 
 #include <SandboxGameShared/utilities/actor_utils.h>
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_checks.h>
@@ -82,14 +83,15 @@ void FLaserPresentation::configure_ismc() {
     instances->set_num_custom_data_floats(n_custom_ismc_floats);
 }
 
-auto FLaserPresentation::source_colour(FLaserSource const source) const -> FLinearColor {
+auto FLaserPresentation::source_colour(ml::simulation::LaserSource const source) const
+    -> FLinearColor {
     switch (source.type) {
-        case ETestEntityType::PlayerShip:
-            return player_colours_[source.team];
-        case ETestEntityType::CapitalShipFighter:
-            return fighter_colours_[source.team];
-        case ETestEntityType::Turret:
-            return turret_colours_[source.team];
+        case ml::simulation::EntityType::PlayerShip:
+            return player_colours_[ml::to_unreal(source.team)];
+        case ml::simulation::EntityType::CapitalShipFighter:
+            return fighter_colours_[ml::to_unreal(source.team)];
+        case ml::simulation::EntityType::Turret:
+            return turret_colours_[ml::to_unreal(source.team)];
         default:
             return FLinearColor::White;
     }

@@ -11,6 +11,7 @@
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGameSimulation/combat/lasers/TestLasersSimulation.h>
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 
 #include <SandboxCore/soa_rotator_utils.h>
@@ -114,7 +115,8 @@ void run_worldless_laser_lifecycle(FAutomationTestBase& test,
                                           ? miss_max_distance
                                           : collision_max_distance;
             requests.instigator_handles[i] = shooter;
-            requests.sources[i] = {ETestTeam::White, ETestEntityType::TubeSpinner};
+            requests.sources[i] =
+                ml::make_laser_source(ETestTeam::White, ETestEntityType::TubeSpinner);
         }
         lasers.queue_laser_spawns(requests);
     });

@@ -11,6 +11,7 @@
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
 #include <SpaceGamePresentation/presentation/LevelPresentation.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/levels/LevelEventManager.h>
 #include <SpaceGameSimulation/simulation/LevelSimulation.h>
 
@@ -906,7 +907,8 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
             requests.speeds[spawn] = 1000.0f;
             requests.max_distances[spawn] = requests.speeds[spawn] * initial_lifetime;
             requests.instigator_handles[spawn] = {};
-            requests.sources[spawn] = {ETestTeam::White, ETestEntityType::TubeSpinner};
+            requests.sources[spawn] =
+                ml::make_laser_source(ETestTeam::White, ETestEntityType::TubeSpinner);
             expected_material_data.Add(
                 {.colour = colour,
                  .initial_lifetime = initial_lifetime,
@@ -985,7 +987,8 @@ auto FLaserFrameOutputsTest::RunTest(FString const&) -> bool {
         requests.speeds[0] = 2000.f;
         requests.max_distances[0] = 10000.f;
         requests.instigator_handles[0] = level.get_capital_ships().get_handle(0);
-        requests.sources[0] = {ETestTeam::Green, ETestEntityType::CapitalShipFighter};
+        requests.sources[0] =
+            ml::make_laser_source(ETestTeam::Green, ETestEntityType::CapitalShipFighter);
         level.get_lasers().queue_laser_spawns(requests);
     };
     queue_shot(simulation);
@@ -1010,7 +1013,7 @@ auto FLaserFrameOutputsTest::RunTest(FString const&) -> bool {
                   uint64{2});
         TestTrue(TEXT("Neutral source is retained after removal"),
                  frame.lasers.hits.sources[0] ==
-                     FLaserSource{ETestTeam::Green, ETestEntityType::CapitalShipFighter});
+                     ml::make_laser_source(ETestTeam::Green, ETestEntityType::CapitalShipFighter));
     }
     simulation.advance(0.0);
     TestEqual(TEXT("Next frame does not repeat consumed impacts"),

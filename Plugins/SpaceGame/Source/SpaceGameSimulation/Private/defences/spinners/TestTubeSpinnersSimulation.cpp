@@ -1,6 +1,7 @@
 #include "SpaceGameSimulation/defences/spinners/TestTubeSpinnersSimulation.h"
 
 #include <SpaceGameSimulation/combat/lasers/TestLasersFrameScratch.h>
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>
 
@@ -187,7 +188,8 @@ void Simulation::fire_lasers() {
         new_lasers.speeds[i] = laser_speed;
         new_lasers.max_distances[i] = laser_max_distance;
         new_lasers.instigator_handles[i] = entities.handles[index];
-        new_lasers.sources[i] = {ETestTeam::White, ETestEntityType::TubeSpinner};
+        new_lasers.sources[i] =
+            ml::make_laser_source(ETestTeam::White, ETestEntityType::TubeSpinner);
 
         entities.next_fire_point_indices[index] = (fire_point_index + 1) % n_firing_points;
     }

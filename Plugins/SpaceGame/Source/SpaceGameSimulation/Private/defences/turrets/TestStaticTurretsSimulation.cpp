@@ -2,6 +2,7 @@
 
 #include <SpaceGameSimulation/combat/lasers/TestLasersFrameScratch.h>
 #include <SpaceGameSimulation/entities/BatchSimulation.h>
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>
 #include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
@@ -444,7 +445,7 @@ void Simulation::fire_at_enemies() {
                        laser_speed,
                        laser_max_distance,
                        entities.handles[i],
-                       FLaserSource{entities.teams[i], ETestEntityType::Turret});
+                       ml::make_laser_source(entities.teams[i], ETestEntityType::Turret));
     }
 
     laser_simulation.queue_laser_spawns(new_lasers.get_const_view());

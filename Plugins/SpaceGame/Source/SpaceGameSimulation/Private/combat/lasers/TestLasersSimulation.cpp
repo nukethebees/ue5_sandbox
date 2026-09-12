@@ -32,7 +32,7 @@ void SpawnRequests::set_max_distances(float const value) {
     ml::fill(max_distances, value);
 }
 
-void SpawnRequests::set_sources(FLaserSource const value) {
+void SpawnRequests::set_sources(simulation::LaserSource const value) {
     ml::fill(sources, value);
 }
 
@@ -230,10 +230,10 @@ void Simulation::handle_collisions(float const dt) {
         }
 
         auto const velocity{ml::get_vector3f(entities.velocities, entity_index)};
-        hit_details.add(ml::get_vector3f(
-                            collision_scratch.trace_hits.locations.get_const_view(), entity_index),
-                        -velocity.GetSafeNormal(UE_SMALL_NUMBER, FVector3f::UpVector),
-                        entities.sources[entity_index]);
+        hit_details.add(
+            ml::get_vector3f(collision_scratch.trace_hits.locations.get_const_view(), entity_index),
+            -velocity.GetSafeNormal(UE_SMALL_NUMBER, FVector3f::UpVector),
+            entities.sources[entity_index]);
     }
     entity_registry.queue_direct_damage_events(collision_damage_events.get_const_view());
 

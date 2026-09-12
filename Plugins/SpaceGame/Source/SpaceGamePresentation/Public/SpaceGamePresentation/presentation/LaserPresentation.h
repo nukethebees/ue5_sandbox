@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sandbox/simulation/laser_source.h>
+
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
 #include <SpaceGameSimulation/simulation/SystemReadViews.h>
@@ -61,5 +63,5 @@ struct SPACEGAMEPRESENTATION_API FLaserPresentation {
     FTeamColours player_colours_;
     FTeamColours fighter_colours_;
     FTeamColours turret_colours_;
-    auto source_colour(FLaserSource source) const -> FLinearColor;
+    auto source_colour(ml::simulation::LaserSource source) const -> FLinearColor;
 };

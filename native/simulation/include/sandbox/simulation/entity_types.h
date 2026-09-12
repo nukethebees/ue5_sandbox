@@ -4,6 +4,25 @@
 #include <limits>
 
 namespace ml::simulation {
+enum class Team : std::uint8_t {
+    White,
+    Red,
+    Green,
+    Blue,
+    Orange,
+    Yellow,
+    COUNT,
+};
+
+enum class EntityType : std::uint8_t {
+    PlayerShip,
+    Turret,
+    CapitalShip,
+    CapitalShipFighter,
+    TubeSpinner,
+    COUNT,
+};
+
 struct EntityOwnerId {
     using ThisClass = EntityOwnerId;
     using value_type = std::uint8_t;

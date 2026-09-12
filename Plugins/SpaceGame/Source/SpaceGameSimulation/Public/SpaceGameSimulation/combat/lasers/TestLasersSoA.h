@@ -15,7 +15,7 @@
 #include "Containers/ArrayView.h"
 #include "CoreMinimal.h"
 #include "SandboxNative/RegistryEntityHandle.h"
-#include "SpaceGameSimulation/combat/lasers/LaserSource.h"
+#include "sandbox/simulation/laser_source.h"
 
 #include <utility>
 
@@ -59,14 +59,14 @@ struct SPACEGAMESIMULATION_API SpawnRequestsConstView {
     TConstArrayView<float> speeds;
     TConstArrayView<float> max_distances;
     TConstArrayView<FRegistryEntityHandle> instigator_handles;
-    TConstArrayView<FLaserSource> sources;
+    TConstArrayView<ml::simulation::LaserSource> sources;
 };
 
 struct SPACEGAMESIMULATION_API SpawnRequestsView {
     using View = SpawnRequestsView;
     using ConstView = SpawnRequestsConstView;
 
-    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, FVectors3f::equivalent_type const new_base_velocities, int32 const new_damages, float const new_speeds, float const new_max_distances, FRegistryEntityHandle const new_instigator_handles, FLaserSource const new_sources) const {
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, FVectors3f::equivalent_type const new_base_velocities, int32 const new_damages, float const new_speeds, float const new_max_distances, FRegistryEntityHandle const new_instigator_handles, ml::simulation::LaserSource const new_sources) const {
         locations.set(index, new_locations);
         rotations.set(index, new_rotations);
         base_velocities.set(index, new_base_velocities);
@@ -114,7 +114,7 @@ struct SPACEGAMESIMULATION_API SpawnRequestsView {
     TArrayView<float> speeds;
     TArrayView<float> max_distances;
     TArrayView<FRegistryEntityHandle> instigator_handles;
-    TArrayView<FLaserSource> sources;
+    TArrayView<ml::simulation::LaserSource> sources;
 };
 
 struct SPACEGAMESIMULATION_API SpawnRequests {
@@ -127,9 +127,9 @@ struct SPACEGAMESIMULATION_API SpawnRequests {
 
     void set_max_distances(float const value);
 
-    void set_sources(FLaserSource const value);
+    void set_sources(ml::simulation::LaserSource const value);
 
-    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, FVectors3f::equivalent_type const new_base_velocities, int32 const new_damages, float const new_speeds, float const new_max_distances, FRegistryEntityHandle const new_instigator_handles, FLaserSource const new_sources) {
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, FVectors3f::equivalent_type const new_base_velocities, int32 const new_damages, float const new_speeds, float const new_max_distances, FRegistryEntityHandle const new_instigator_handles, ml::simulation::LaserSource const new_sources) {
         locations.set(index, new_locations);
         rotations.set(index, new_rotations);
         base_velocities.set(index, new_base_velocities);
@@ -140,7 +140,7 @@ struct SPACEGAMESIMULATION_API SpawnRequests {
         sources[index] = new_sources;
     }
 
-    auto add(FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, FVectors3f::equivalent_type const new_base_velocities, int32 const new_damages, float const new_speeds, float const new_max_distances, FRegistryEntityHandle const new_instigator_handles, FLaserSource const new_sources) -> int32 {
+    auto add(FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, FVectors3f::equivalent_type const new_base_velocities, int32 const new_damages, float const new_speeds, float const new_max_distances, FRegistryEntityHandle const new_instigator_handles, ml::simulation::LaserSource const new_sources) -> int32 {
         auto const index{num()};
         locations.add(new_locations);
         rotations.add(new_rotations);
@@ -298,7 +298,7 @@ struct SPACEGAMESIMULATION_API SpawnRequests {
     TArray<float> speeds;
     TArray<float> max_distances;
     TArray<FRegistryEntityHandle> instigator_handles;
-    TArray<FLaserSource> sources;
+    TArray<ml::simulation::LaserSource> sources;
 };
 
 struct EntitiesView;
@@ -334,7 +334,7 @@ struct SPACEGAMESIMULATION_API EntitiesConstView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TConstArrayView<FLaserSource> sources;
+    TConstArrayView<ml::simulation::LaserSource> sources;
     FVectors3f::ConstView locations;
     FRotatorsf::ConstView rotations;
     FVectors3f::ConstView velocities;
@@ -349,7 +349,7 @@ struct SPACEGAMESIMULATION_API EntitiesView {
     using View = EntitiesView;
     using ConstView = EntitiesConstView;
 
-    void set(int32 const index, FLaserSource const new_sources, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, FVectors3f::equivalent_type const new_velocities, int32 const new_damages, float const new_lifetimes_remaining, FRegistryEntityHandle const new_instigator_handles, float const new_initial_lifetimes, float const new_spawn_times) const {
+    void set(int32 const index, ml::simulation::LaserSource const new_sources, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, FVectors3f::equivalent_type const new_velocities, int32 const new_damages, float const new_lifetimes_remaining, FRegistryEntityHandle const new_instigator_handles, float const new_initial_lifetimes, float const new_spawn_times) const {
         sources[index] = new_sources;
         locations.set(index, new_locations);
         rotations.set(index, new_rotations);
@@ -392,7 +392,7 @@ struct SPACEGAMESIMULATION_API EntitiesView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArrayView<FLaserSource> sources;
+    TArrayView<ml::simulation::LaserSource> sources;
     FVectors3f::View locations;
     FRotatorsf::View rotations;
     FVectors3f::View velocities;
@@ -407,7 +407,7 @@ struct SPACEGAMESIMULATION_API Entities {
     using View = EntitiesView;
     using ConstView = EntitiesConstView;
 
-    void set(int32 const index, FLaserSource const new_sources, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, FVectors3f::equivalent_type const new_velocities, int32 const new_damages, float const new_lifetimes_remaining, FRegistryEntityHandle const new_instigator_handles, float const new_initial_lifetimes, float const new_spawn_times) {
+    void set(int32 const index, ml::simulation::LaserSource const new_sources, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, FVectors3f::equivalent_type const new_velocities, int32 const new_damages, float const new_lifetimes_remaining, FRegistryEntityHandle const new_instigator_handles, float const new_initial_lifetimes, float const new_spawn_times) {
         sources[index] = new_sources;
         locations.set(index, new_locations);
         rotations.set(index, new_rotations);
@@ -419,7 +419,7 @@ struct SPACEGAMESIMULATION_API Entities {
         spawn_times[index] = new_spawn_times;
     }
 
-    auto add(FLaserSource const new_sources, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, FVectors3f::equivalent_type const new_velocities, int32 const new_damages, float const new_lifetimes_remaining, FRegistryEntityHandle const new_instigator_handles, float const new_initial_lifetimes, float const new_spawn_times) -> int32 {
+    auto add(ml::simulation::LaserSource const new_sources, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, FVectors3f::equivalent_type const new_velocities, int32 const new_damages, float const new_lifetimes_remaining, FRegistryEntityHandle const new_instigator_handles, float const new_initial_lifetimes, float const new_spawn_times) -> int32 {
         auto const index{num()};
         sources.Add(new_sources);
         locations.add(new_locations);
@@ -577,7 +577,7 @@ struct SPACEGAMESIMULATION_API Entities {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArray<FLaserSource> sources;
+    TArray<ml::simulation::LaserSource> sources;
     FVectors3f locations;
     FRotatorsf rotations;
     FVectors3f velocities;
@@ -617,14 +617,14 @@ struct SPACEGAMESIMULATION_API HitDetailsConstView {
 
     FVectors3f::ConstView locations;
     FVectors3f::ConstView emission_directions;
-    TConstArrayView<FLaserSource> sources;
+    TConstArrayView<ml::simulation::LaserSource> sources;
 };
 
 struct SPACEGAMESIMULATION_API HitDetailsView {
     using View = HitDetailsView;
     using ConstView = HitDetailsConstView;
 
-    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FVectors3f::equivalent_type const new_emission_directions, FLaserSource const new_sources) const {
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FVectors3f::equivalent_type const new_emission_directions, ml::simulation::LaserSource const new_sources) const {
         locations.set(index, new_locations);
         emission_directions.set(index, new_emission_directions);
         sources[index] = new_sources;
@@ -657,20 +657,20 @@ struct SPACEGAMESIMULATION_API HitDetailsView {
 
     FVectors3f::View locations;
     FVectors3f::View emission_directions;
-    TArrayView<FLaserSource> sources;
+    TArrayView<ml::simulation::LaserSource> sources;
 };
 
 struct SPACEGAMESIMULATION_API HitDetails {
     using View = HitDetailsView;
     using ConstView = HitDetailsConstView;
 
-    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FVectors3f::equivalent_type const new_emission_directions, FLaserSource const new_sources) {
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FVectors3f::equivalent_type const new_emission_directions, ml::simulation::LaserSource const new_sources) {
         locations.set(index, new_locations);
         emission_directions.set(index, new_emission_directions);
         sources[index] = new_sources;
     }
 
-    auto add(FVectors3f::equivalent_type const new_locations, FVectors3f::equivalent_type const new_emission_directions, FLaserSource const new_sources) -> int32 {
+    auto add(FVectors3f::equivalent_type const new_locations, FVectors3f::equivalent_type const new_emission_directions, ml::simulation::LaserSource const new_sources) -> int32 {
         auto const index{num()};
         locations.add(new_locations);
         emission_directions.add(new_emission_directions);
@@ -788,7 +788,7 @@ struct SPACEGAMESIMULATION_API HitDetails {
 
     FVectors3f locations;
     FVectors3f emission_directions;
-    TArray<FLaserSource> sources;
+    TArray<ml::simulation::LaserSource> sources;
 };
 } // namespace ml::test_lasers
 // clang-format on

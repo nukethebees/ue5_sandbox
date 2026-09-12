@@ -26,7 +26,7 @@ auto SpawnRequestsConstView::get_view(int32 const offset, int32 const count) con
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<float>{max_distances}.Slice(offset, count),
         TConstArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
-        TConstArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TConstArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
     };
 }
 
@@ -43,7 +43,7 @@ auto SpawnRequestsConstView::get_const_view(int32 const offset, int32 const coun
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<float>{max_distances}.Slice(offset, count),
         TConstArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
-        TConstArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TConstArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
     };
 }
 
@@ -93,7 +93,7 @@ auto SpawnRequestsView::get_view(int32 const offset, int32 const count) -> View 
         TArrayView<float>{speeds}.Slice(offset, count),
         TArrayView<float>{max_distances}.Slice(offset, count),
         TArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
-        TArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
     };
 }
 
@@ -110,7 +110,7 @@ auto SpawnRequestsView::get_view(int32 const offset, int32 const count) const ->
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<float>{max_distances}.Slice(offset, count),
         TConstArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
-        TConstArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TConstArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
     };
 }
 
@@ -127,7 +127,7 @@ auto SpawnRequestsView::get_const_view(int32 const offset, int32 const count) co
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<float>{max_distances}.Slice(offset, count),
         TConstArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
-        TConstArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TConstArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
     };
 }
 
@@ -257,7 +257,7 @@ auto SpawnRequests::get_view(int32 const offset, int32 const count) -> View {
         TArrayView<float>{speeds}.Slice(offset, count),
         TArrayView<float>{max_distances}.Slice(offset, count),
         TArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
-        TArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
     };
 }
 
@@ -274,7 +274,7 @@ auto SpawnRequests::get_view(int32 const offset, int32 const count) const -> Con
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<float>{max_distances}.Slice(offset, count),
         TConstArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
-        TConstArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TConstArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
     };
 }
 
@@ -291,7 +291,7 @@ auto SpawnRequests::get_const_view(int32 const offset, int32 const count) const 
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<float>{max_distances}.Slice(offset, count),
         TConstArrayView<FRegistryEntityHandle>{instigator_handles}.Slice(offset, count),
-        TConstArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TConstArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
     };
 }
 
@@ -346,7 +346,7 @@ auto EntitiesConstView::get_view() const -> ConstView {
 
 auto EntitiesConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TConstArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
         locations.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -364,7 +364,7 @@ auto EntitiesConstView::get_const_view() const -> ConstView {
 
 auto EntitiesConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TConstArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
         locations.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -416,7 +416,7 @@ auto EntitiesView::get_view() -> View {
 
 auto EntitiesView::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        TArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
         locations.get_view(offset, count),
         rotations.get_view(offset, count),
         velocities.get_view(offset, count),
@@ -434,7 +434,7 @@ auto EntitiesView::get_view() const -> ConstView {
 
 auto EntitiesView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TConstArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
         locations.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -452,7 +452,7 @@ auto EntitiesView::get_const_view() const -> ConstView {
 
 auto EntitiesView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TConstArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
         locations.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -590,7 +590,7 @@ auto Entities::get_view() -> View {
 
 auto Entities::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        TArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
         locations.get_view(offset, count),
         rotations.get_view(offset, count),
         velocities.get_view(offset, count),
@@ -608,7 +608,7 @@ auto Entities::get_view() const -> ConstView {
 
 auto Entities::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TConstArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
         locations.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -626,7 +626,7 @@ auto Entities::get_const_view() const -> ConstView {
 
 auto Entities::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TConstArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
         locations.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -692,7 +692,7 @@ auto HitDetailsConstView::get_view(int32 const offset, int32 const count) const 
     return ConstView{
         locations.get_const_view(offset, count),
         emission_directions.get_const_view(offset, count),
-        TConstArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TConstArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
     };
 }
 
@@ -704,7 +704,7 @@ auto HitDetailsConstView::get_const_view(int32 const offset, int32 const count) 
     return ConstView{
         locations.get_const_view(offset, count),
         emission_directions.get_const_view(offset, count),
-        TConstArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TConstArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
     };
 }
 
@@ -744,7 +744,7 @@ auto HitDetailsView::get_view(int32 const offset, int32 const count) -> View {
     return View{
         locations.get_view(offset, count),
         emission_directions.get_view(offset, count),
-        TArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
     };
 }
 
@@ -756,7 +756,7 @@ auto HitDetailsView::get_view(int32 const offset, int32 const count) const -> Co
     return ConstView{
         locations.get_const_view(offset, count),
         emission_directions.get_const_view(offset, count),
-        TConstArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TConstArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
     };
 }
 
@@ -768,7 +768,7 @@ auto HitDetailsView::get_const_view(int32 const offset, int32 const count) const
     return ConstView{
         locations.get_const_view(offset, count),
         emission_directions.get_const_view(offset, count),
-        TConstArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TConstArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
     };
 }
 
@@ -858,7 +858,7 @@ auto HitDetails::get_view(int32 const offset, int32 const count) -> View {
     return View{
         locations.get_view(offset, count),
         emission_directions.get_view(offset, count),
-        TArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
     };
 }
 
@@ -870,7 +870,7 @@ auto HitDetails::get_view(int32 const offset, int32 const count) const -> ConstV
     return ConstView{
         locations.get_const_view(offset, count),
         emission_directions.get_const_view(offset, count),
-        TConstArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TConstArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
     };
 }
 
@@ -882,7 +882,7 @@ auto HitDetails::get_const_view(int32 const offset, int32 const count) const -> 
     return ConstView{
         locations.get_const_view(offset, count),
         emission_directions.get_const_view(offset, count),
-        TConstArrayView<FLaserSource>{sources}.Slice(offset, count),
+        TConstArrayView<ml::simulation::LaserSource>{sources}.Slice(offset, count),
     };
 }
 

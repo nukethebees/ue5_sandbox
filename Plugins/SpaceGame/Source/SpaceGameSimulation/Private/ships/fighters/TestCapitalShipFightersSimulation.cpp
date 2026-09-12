@@ -2,6 +2,7 @@
 
 #include <SpaceGameSimulation/combat/lasers/TestLasersFrameScratch.h>
 #include <SpaceGameSimulation/entities/BatchSimulation.h>
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/simulation/FighterDiagnostics.h>
 #include <SpaceGameSimulation/simulation/FrameTraceHits.h>
 #include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>
@@ -1572,7 +1573,8 @@ void Simulation::handle_firing(TaskView const& data) {
         new_lasers.rotations.set(i, direction.ToOrientationRotator());
         new_lasers.base_velocities.set(i, ml::get_vector3f(data.velocities, ship_index));
         new_lasers.instigator_handles[i] = data.entity_handles[ship_index];
-        new_lasers.sources[i] = {data.teams[ship_index], ETestEntityType::CapitalShipFighter};
+        new_lasers.sources[i] =
+            ml::make_laser_source(data.teams[ship_index], ETestEntityType::CapitalShipFighter);
         data.attack_cooldowns.restart_counter(ship_index);
     }
 

@@ -4,6 +4,7 @@
 #include <SpaceGameSimulation/combat/lasers/TestLasersSimulation.h>
 #include <SpaceGameSimulation/entities/DirectDamageEvents.h>
 #include <SpaceGameSimulation/entities/EntityDeathInfo.h>
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>
 #include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
@@ -505,7 +506,7 @@ void Simulation::fire_lasers_from(TConstArrayView<FTransform> const fire_points)
     new_lasers.set_damages(config.laser.damage);
     new_lasers.set_speeds(config.laser.projectile_speed);
     new_lasers.set_max_distances(config.laser.max_distance);
-    new_lasers.set_sources({team, ETestEntityType::PlayerShip});
+    new_lasers.set_sources(ml::make_laser_source(team, ETestEntityType::PlayerShip));
     ml::fill(new_lasers.instigator_handles, registry_handle);
     lasers.queue_laser_spawns(new_lasers);
 }

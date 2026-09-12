@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sandbox/simulation/laser_source.h>
+
 #include <SpaceGameSimulation/combat/lasers/TestLasersSoA.h>
 #include <SpaceGameSimulation/entities/DirectDamageEvents.h>
 #include <SpaceGameSimulation/simulation/FrameTraceHits.h>
@@ -86,7 +88,7 @@ struct FrameHitDetails {
     }
     void add(FVector3f const location,
              FVector3f const emission_direction,
-             FLaserSource const source) {
+             simulation::LaserSource const source) {
         locations.add(location);
         emission_directions.add(emission_direction);
         sources.add(source);
@@ -98,7 +100,7 @@ struct FrameHitDetails {
 
     FFrameVectors3f locations;
     FFrameVectors3f emission_directions;
-    TFrameArray<FLaserSource> sources;
+    TFrameArray<simulation::LaserSource> sources;
 };
 
 struct FrameSpawnRequests {
@@ -145,7 +147,7 @@ struct FrameSpawnRequests {
              float const speed,
              float const max_distance,
              FRegistryEntityHandle const instigator_handle,
-             FLaserSource const source) {
+             simulation::LaserSource const source) {
         locations.add(location);
         rotations.add(rotation);
         base_velocities.add(base_velocity);
@@ -191,6 +193,6 @@ struct FrameSpawnRequests {
     TFrameArray<float> speeds;
     TFrameArray<float> max_distances;
     TFrameArray<FRegistryEntityHandle> instigator_handles;
-    TFrameArray<FLaserSource> sources;
+    TFrameArray<simulation::LaserSource> sources;
 };
 } // namespace ml::test_lasers
