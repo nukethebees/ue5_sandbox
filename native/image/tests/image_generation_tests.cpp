@@ -433,7 +433,7 @@ TEST(DomainWarpedNoiseGenerator, DefaultExamplesHaveStableChecksums) {
         if (request.output_name == TEXT("nebula_soft")) {
             expected_checksum = 1376257265u;
         } else if (request.output_name == TEXT("energy_filaments")) {
-            expected_checksum = 2606448723u;
+            expected_checksum = 2302176986u;
         } else if (request.output_name == TEXT("shield_turbulence")) {
             expected_checksum = 3121887609u;
         }

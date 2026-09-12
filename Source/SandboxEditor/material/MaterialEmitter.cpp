@@ -80,6 +80,11 @@ auto sampler_type(UTexture const* const texture) -> EMaterialSamplerType {
     return texture != nullptr && texture->SRGB ? SAMPLERTYPE_Color : SAMPLERTYPE_LinearColor;
 }
 
+auto sampler_type(TextureSamplerType const type) -> EMaterialSamplerType {
+    return type == TextureSamplerType::linear_grayscale ? SAMPLERTYPE_LinearGrayscale
+                                                        : SAMPLERTYPE_LinearColor;
+}
+
 struct ExpressionValue {
     UMaterialExpression* expression{};
     FString output_name;
@@ -247,7 +252,7 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
                                              UTF8_TO_TCHAR(parameter.texture_path.c_str()),
                                              nullptr,
                                              LOAD_NoWarn);
-                    value->SamplerType = sampler_type(value->Texture);
+                    value->SamplerType = sampler_type(parameter.texture_sampler_type);
                     expression = value;
                 } else if (parameter.type == ValueType::float1) {
                     auto* const value{CastChecked<UMaterialExpressionScalarParameter>(
@@ -312,10 +317,7 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
             case NodeKind::sample: {
                 auto* const sample{CastChecked<UMaterialExpressionTextureSample>(
                     create_expression(UMaterialExpressionTextureSample::StaticClass()))};
-                auto const* const texture_expression{Cast<UMaterialExpressionTextureBase>(
-                    expressions[node.inputs[0].index].expression)};
-                sample->SamplerType = sampler_type(
-                    texture_expression != nullptr ? texture_expression->Texture : nullptr);
+                sample->SamplerType = sampler_type(node.texture_sampler_type);
                 expression = sample;
                 break;
             }

@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <filesystem>
 #include <fstream>
@@ -99,7 +100,7 @@ TEST(CompiledMaterial, RoundTripsDeterministically) {
 }
 
 TEST(CompiledMaterial, RejectsWrongVersionCorruptionAndTrailingData) {
-    std::vector<std::uint8_t> wrong_version{'S', 'B', 'X', 'M', 'A', 'T', 'I', 'R', 5, 0, 0, 0};
+    std::vector<std::uint8_t> wrong_version{'S', 'B', 'X', 'M', 'A', 'T', 'I', 'R', 6, 0, 0, 0};
     EXPECT_FALSE(deserialize(wrong_version).has_value());
 
     std::vector<std::uint8_t> truncated{'S', 'B', 'X'};
@@ -135,17 +136,29 @@ TEST(MaterialFrontend, LowersWorldSurfaceSettingsInstanceDataAndOpacity) {
     EXPECT_TRUE(material.settings.two_sided);
     EXPECT_TRUE(material.settings.disable_depth_test);
     EXPECT_TRUE(material.settings.used_with_instanced_static_meshes);
-    ASSERT_EQ(material.nodes.size(), 13);
-    EXPECT_EQ(material.nodes[0].kind, NodeKind::per_instance_custom_data);
-    EXPECT_EQ(material.nodes[0].instance_data_index, 0);
-    EXPECT_EQ(material.nodes[3].instance_data_index, 3);
-    EXPECT_EQ(material.nodes[6].kind, NodeKind::vector_constructor);
-    EXPECT_EQ(material.nodes[6].inputs.size(), 3);
-    EXPECT_EQ(material.nodes[10].kind, NodeKind::lerp);
-    EXPECT_EQ(material.nodes[12].kind, NodeKind::multiply);
-    EXPECT_EQ(material.nodes[12].inputs.size(), 4);
-    EXPECT_TRUE(std::ranges::none_of(
-        material.nodes, [](Node const& node) { return node.kind == NodeKind::custom; }));
+    ASSERT_EQ(material.parameters.size(), 15);
+    auto const filaments{
+        std::ranges::find(material.parameters, "EnergyFilaments", &Parameter::name)};
+    ASSERT_NE(filaments, material.parameters.end());
+    EXPECT_EQ(filaments->texture_sampler_type, TextureSamplerType::linear_grayscale);
+    auto const flow{std::ranges::find(material.parameters, "EnergyFlow", &Parameter::name)};
+    ASSERT_NE(flow, material.parameters.end());
+    EXPECT_EQ(flow->texture_sampler_type, TextureSamplerType::linear_color);
+    for (unsigned instance_data_index{}; instance_data_index < 6; ++instance_data_index) {
+        EXPECT_TRUE(std::ranges::any_of(material.nodes, [&](Node const& node) {
+            return node.kind == NodeKind::per_instance_custom_data &&
+                   node.instance_data_index == instance_data_index;
+        }));
+    }
+    EXPECT_TRUE(std::ranges::any_of(material.nodes,
+                                    [](Node const& node) { return node.kind == NodeKind::time; }));
+    EXPECT_TRUE(std::ranges::any_of(
+        material.nodes, [](Node const& node) { return node.kind == NodeKind::saturate; }));
+    EXPECT_TRUE(std::ranges::any_of(material.nodes,
+                                    [](Node const& node) { return node.kind == NodeKind::lerp; }));
+    EXPECT_EQ(std::ranges::count_if(material.nodes,
+                                    [](Node const& node) { return node.kind == NodeKind::custom; }),
+              3);
     ASSERT_EQ(material.outputs.size(), 2);
     EXPECT_EQ(material.outputs[1].name, "opacity");
     EXPECT_TRUE(validate(material).empty());
@@ -161,8 +174,9 @@ TEST(MaterialFrontend, LowersWorldSurfaceSettingsInstanceDataAndOpacity) {
     EXPECT_EQ(decoded->material.settings.domain, MaterialDomain::surface);
     EXPECT_EQ(decoded->material.settings.shading_model, ShadingModel::unlit);
     EXPECT_TRUE(decoded->material.settings.used_with_instanced_static_meshes);
-    EXPECT_EQ(decoded->material.nodes[3].instance_data_index, 3);
-    EXPECT_EQ(decoded->material.nodes[6].kind, NodeKind::vector_constructor);
+    EXPECT_EQ(decoded->material.parameters.size(), 15);
+    EXPECT_TRUE(std::ranges::any_of(decoded->material.nodes,
+                                    [](Node const& node) { return node.kind == NodeKind::time; }));
 }
 
 TEST(MaterialFrontend, LowersTimeTrigDynamicVectorsAndNaryArithmetic) {

@@ -199,6 +199,8 @@ struct GenerationRequest {
 [[nodiscard]] auto generate_cellular_noise(CellularNoiseParameters const& parameters)
     -> GeneratedImage;
 [[nodiscard]] auto generate_hex_grid(HexGridParameters const& parameters) -> GeneratedImage;
+[[nodiscard]] auto make_energy_filaments_request() -> GenerationRequest;
+[[nodiscard]] auto make_shield_distortion_flow_request() -> GenerationRequest;
 [[nodiscard]] auto generate_normal_map(GeneratedImage const& height_image,
                                        float strength,
                                        bool wrap) -> GeneratedImage;

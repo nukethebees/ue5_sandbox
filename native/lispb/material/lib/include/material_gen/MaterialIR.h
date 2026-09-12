@@ -9,6 +9,7 @@
 namespace material_synth {
 
 enum class ValueType { invalid, float1, float2, float3, float4, texture };
+enum class TextureSamplerType { linear_color, linear_grayscale };
 enum class MaterialDomain { ui, surface, post_process };
 enum class BlendMode { additive, translucent, opaque, masked };
 enum class ShadingModel { default_lit, unlit };
@@ -79,6 +80,7 @@ struct Node {
     std::size_t parameter_index{};
     unsigned coordinate_index{};
     unsigned instance_data_index{};
+    TextureSamplerType texture_sampler_type{TextureSamplerType::linear_color};
     std::string description;
     std::string code;
     std::vector<CustomInput> custom_inputs;
@@ -96,6 +98,7 @@ struct Parameter {
     ValueType type{ValueType::invalid};
     std::array<double, 4> default_value{};
     std::string texture_path;
+    TextureSamplerType texture_sampler_type{TextureSamplerType::linear_color};
     NodeHandle node;
     SourceSpan span;
 };

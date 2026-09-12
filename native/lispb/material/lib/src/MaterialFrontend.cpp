@@ -355,8 +355,11 @@ class Analyzer {
                  "duplicate parameter or binding '" + std::string{*name} + "'");
             return;
         }
-        auto const expected_size{type == ValueType::float4 ? 7U : 4U};
-        if (form.children.size() != expected_size) {
+        auto const valid_size{type == ValueType::float4 ? form.children.size() == 7
+                              : type == ValueType::texture
+                                  ? form.children.size() == 4 || form.children.size() == 6
+                                  : form.children.size() == 4};
+        if (!valid_size) {
             fail(form.token.span, "parameter default has the wrong arity");
             return;
         }
@@ -378,6 +381,27 @@ class Analyzer {
                 return;
             }
             parameter.texture_path = *resolved;
+            if (form.children.size() == 6) {
+                if (form.children[4].token.kind != TokenKind::keyword ||
+                    form.children[4].token.text != "sampler") {
+                    fail(form.children[4].token.span,
+                         "texture parameter supports only the :sampler option");
+                    return;
+                }
+                auto const sampler{atom(form.children[5], "texture sampler")};
+                if (!sampler) {
+                    return;
+                }
+                if (*sampler == "linear-color") {
+                    parameter.texture_sampler_type = TextureSamplerType::linear_color;
+                } else if (*sampler == "linear-grayscale") {
+                    parameter.texture_sampler_type = TextureSamplerType::linear_grayscale;
+                } else {
+                    fail(form.children[5].token.span,
+                         "unknown texture sampler '" + std::string{*sampler} + "'");
+                    return;
+                }
+            }
             if (std::ranges::find(material_.texture_dependencies, *resolved) ==
                 material_.texture_dependencies.end()) {
                 material_.texture_dependencies.push_back(*resolved);
@@ -398,7 +422,8 @@ class Analyzer {
         parameter.node = add_node(Node{.kind = NodeKind::parameter,
                                        .type = type,
                                        .span = material_span(form.token.span),
-                                       .parameter_index = material_.parameters.size()});
+                                       .parameter_index = material_.parameters.size(),
+                                       .texture_sampler_type = parameter.texture_sampler_type});
         symbols_.emplace(parameter.name, parameter.node);
         material_.parameters.push_back(std::move(parameter));
     }
@@ -725,10 +750,12 @@ class Analyzer {
             fail(form.token.span, "sample requires arguments (texture, float2)");
             return std::nullopt;
         }
-        return add_node(Node{.kind = NodeKind::sample,
-                             .type = ValueType::float4,
-                             .inputs = {*texture, *coordinates},
-                             .span = material_span(form.token.span)});
+        return add_node(
+            Node{.kind = NodeKind::sample,
+                 .type = ValueType::float4,
+                 .inputs = {*texture, *coordinates},
+                 .span = material_span(form.token.span),
+                 .texture_sampler_type = material_.nodes[texture->index].texture_sampler_type});
     }
 
     auto resolve_texture(Form const& path_form) -> std::optional<std::string> {
