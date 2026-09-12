@@ -139,8 +139,8 @@ void run_worldless_fighter_capital_obstruction(FAutomationTestBase& test,
     FRotator3f const obstacle_rotation{0.f, 35.f, 0.f};
     ml::assign(data.capital_spawns.rotations, 1, obstacle_rotation);
 
-    auto const obstacle_bounds{ioj::make_entity_world_bounds(
-        data.entity_bounds, ioj::FEntityAABBs::capital_ship_index, obstacle, obstacle_rotation)};
+    auto const obstacle_bounds{ioj::to_unreal(ioj::make_entity_world_bounds(
+        data.entity_bounds, ioj::FEntityAABBs::capital_ship_index, obstacle, obstacle_rotation))};
     auto const capital_half_extent{obstacle_bounds.GetExtent()};
     auto const clearance{data.fighter_radius + data.fighters.avoidance_clearance_buffer};
     FVector3f const clearance_extent{clearance, clearance, clearance};

@@ -88,7 +88,8 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
                                        (corner & 4) ? extent.Z : -extent.Z};
                 expected += position + rotation.RotateVector(centre + offset);
             }
-            auto const actual{ml::ioj::make_entity_world_bounds(bounds, index, position, rotation)};
+            auto const actual{ml::ioj::to_unreal(
+                ml::ioj::make_entity_world_bounds(bounds, index, position, rotation))};
             TestRunner->TestTrue(TEXT("World bounds match independently transformed corners"),
                                  actual.Min.Equals(expected.Min, 0.001f) &&
                                      actual.Max.Equals(expected.Max, 0.001f));

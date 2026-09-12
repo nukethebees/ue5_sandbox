@@ -79,8 +79,10 @@ void validate_world_fighter_spawn_slots(FLevelSimulationInitData const& data,
             auto const position{get_vector3f(locations, i)};
             auto const rotation{FRotator3f{get_rotator3d(rotations, i)}};
             auto const bounds{
-                ioj::make_entity_world_bounds(
-                    data.entity_bounds, ioj::FEntityAABBs::capital_ship_index, position, rotation)
+                ioj::to_unreal(ioj::make_entity_world_bounds(data.entity_bounds,
+                                                             ioj::FEntityAABBs::capital_ship_index,
+                                                             position,
+                                                             rotation))
                     .ExpandBy(clearance)};
             auto const slot_count{slots.Num()};
             for (int32 slot_index{}; slot_index < slot_count; ++slot_index) {

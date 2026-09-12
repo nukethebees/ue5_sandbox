@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sandbox/simulation/entity_cell_data.h>
+#include <sandbox/simulation/entity_world_bounds.h>
 #include <SandboxNative/RegistryEntityHandle.h>
 #include <SGCollision/world_aabbs.h>
 #include <SpaceGameSimulation/simulation/EntityAABBs.h>
@@ -99,7 +100,7 @@ struct SPACEGAMESIMULATION_API CollisionUniformGrid {
     }
 
     // Appends exact overlaps. Multi-cell participants may be appended more than once.
-    void append_overlaps(FBox3f const& query_bounds,
+    void append_overlaps(simulation::collision::WorldAABB const& query_bounds,
                          FRegistryEntityHandle ignored_entity,
                          TArray<FRegistryEntityHandle>& out_entities,
                          TArray<int32>& out_static_geometry_indices) const;

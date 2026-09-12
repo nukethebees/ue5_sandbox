@@ -236,6 +236,7 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
     auto const n_cells{num_cells()};
     auto const row_stride{grid_dims_.X};
     auto const plane_stride{row_stride * grid_dims_.Y};
+    auto const geometry{grid_geometry(grid_dims_, cell_dims_)};
 
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::prepare_counts);
@@ -272,16 +273,19 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
                                          aabb_index,
                                          entity_location,
                                          FRotator3f{ml::get_rotator3d(entity_data.rotations, i)})};
-            auto const min_point{bounds.Min};
-            auto const max_point{bounds.Max};
+            auto const min_point{bounds.min};
+            auto const max_point{bounds.max};
+            auto const [min_coord, max_coord]{
+                simulation::collision::to_cell_coord_bounds(geometry, min_point, max_point)};
 
-            auto const [min_coord, max_coord]{to_cell_coord_bounds(min_point, max_point)};
-
-            if (!is_cell_coord_in_bounds(min_coord, max_coord)) {
+            if (!simulation::collision::is_cell_coord_in_bounds(geometry, min_coord) ||
+                !simulation::collision::is_cell_coord_in_bounds(geometry, max_coord)) {
                 FVector3f const grid_dimensions{static_cast<float>(grid_dims_.X),
                                                 static_cast<float>(grid_dims_.Y),
                                                 static_cast<float>(grid_dims_.Z)};
                 auto const half_grid_size{grid_dimensions * cell_dims_ * 0.5f};
+                auto const unreal_min_point{ml::to_unreal(min_point)};
+                auto const unreal_max_point{ml::to_unreal(max_point)};
                 UE_LOG(
                     LogSandbox,
                     Fatal,
@@ -290,29 +294,25 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
                          "cell bounds %s through %s"),
                     *LexToString(FRegistryEntityHandle{i, gens[i]}),
                     LexToString(entity_type),
-                    *min_point.ToString(),
-                    *max_point.ToString(),
-                    *to_string(min_coord),
-                    *to_string(max_coord),
+                    *unreal_min_point.ToString(),
+                    *unreal_max_point.ToString(),
+                    *to_string(to_unreal(min_coord)),
+                    *to_string(to_unreal(max_coord)),
                     *(-half_grid_size).ToString(),
                     *half_grid_size.ToString(),
                     *to_string(FIntVector3::ZeroValue),
                     *to_string(grid_dims_ - FIntVector3{1, 1, 1}));
             }
 
-            simulation::collision::add(entities_buffer_,
-                                       ml::to_native(min_point),
-                                       ml::to_native(max_point),
-                                       to_native(min_coord),
-                                       to_native(max_coord),
-                                       {i, gens[i]});
+            simulation::collision::add(
+                entities_buffer_, min_point, max_point, min_coord, max_coord, {i, gens[i]});
 
-            auto plane_index{min_coord.X + min_coord.Y * row_stride + min_coord.Z * plane_stride};
-            for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
+            auto plane_index{min_coord.x + min_coord.y * row_stride + min_coord.z * plane_stride};
+            for (int32 z{min_coord.z}; z <= max_coord.z; ++z) {
                 auto row_index{plane_index};
-                for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
+                for (int32 y{min_coord.y}; y <= max_coord.y; ++y) {
                     auto cell_index{row_index};
-                    for (int32 x{min_coord.X}; x <= max_coord.X; ++x, ++cell_index) {
+                    for (int32 x{min_coord.x}; x <= max_coord.x; ++x, ++cell_index) {
                         auto& count{cell_entity_counts_[cell_index]};
                         if (count == 0) {
                             non_empty_cell_indices_.Add(cell_index);
@@ -414,36 +414,39 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
     }
 }
 
-void CollisionUniformGrid::append_overlaps(FBox3f const& query_bounds,
+void CollisionUniformGrid::append_overlaps(simulation::collision::WorldAABB const& query_bounds,
                                            FRegistryEntityHandle const ignored_entity,
                                            TArray<FRegistryEntityHandle>& out_entities,
                                            TArray<int32>& out_static_geometry_indices) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::append_overlaps);
 
-    auto const [min_coord, max_coord]{to_cell_coord_bounds(query_bounds.Min, query_bounds.Max)};
-    checkf(is_cell_coord_in_bounds(min_coord, max_coord),
+    auto const geometry{grid_geometry(grid_dims_, cell_dims_)};
+    auto const [min_coord, max_coord]{
+        simulation::collision::to_cell_coord_bounds(geometry, query_bounds.min, query_bounds.max)};
+    checkf(simulation::collision::is_cell_coord_in_bounds(geometry, min_coord) &&
+               simulation::collision::is_cell_coord_in_bounds(geometry, max_coord),
            TEXT("AABB query (%s) through (%s) is outside collision grid dimensions %s"),
-           *query_bounds.Min.ToString(),
-           *query_bounds.Max.ToString(),
+           *ml::to_unreal(query_bounds.min).ToString(),
+           *ml::to_unreal(query_bounds.max).ToString(),
            *to_string(grid_dims_));
 
     auto const overlaps_query{[&query_bounds](simulation::Vector3f const candidate_min,
                                               simulation::Vector3f const candidate_max) {
-        return query_bounds.Min.X <= candidate_max.X && query_bounds.Max.X >= candidate_min.X &&
-               query_bounds.Min.Y <= candidate_max.Y && query_bounds.Max.Y >= candidate_min.Y &&
-               query_bounds.Min.Z <= candidate_max.Z && query_bounds.Max.Z >= candidate_min.Z;
+        return query_bounds.min.X <= candidate_max.X && query_bounds.max.X >= candidate_min.X &&
+               query_bounds.min.Y <= candidate_max.Y && query_bounds.max.Y >= candidate_min.Y &&
+               query_bounds.min.Z <= candidate_max.Z && query_bounds.max.Z >= candidate_min.Z;
     }};
     auto const static_aabbs{static_aabbs_.get_const_view().columns()};
     auto const static_aabb_indices{TConstArrayView<int32>{static_aabb_indices_}};
     auto const row_stride{grid_dims_.X};
     auto const plane_stride{row_stride * grid_dims_.Y};
 
-    auto plane_index{min_coord.X + min_coord.Y * row_stride + min_coord.Z * plane_stride};
-    for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
+    auto plane_index{min_coord.x + min_coord.y * row_stride + min_coord.z * plane_stride};
+    for (int32 z{min_coord.z}; z <= max_coord.z; ++z) {
         auto row_index{plane_index};
-        for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
+        for (int32 y{min_coord.y}; y <= max_coord.y; ++y) {
             auto cell_index{row_index};
-            for (int32 x{min_coord.X}; x <= max_coord.X; ++x, ++cell_index) {
+            for (int32 x{min_coord.x}; x <= max_coord.x; ++x, ++cell_index) {
                 auto const entity_count{cell_entity_counts_[cell_index]};
                 if (entity_count > 0) {
                     auto const entity_offset{cell_entity_offsets_[cell_index]};

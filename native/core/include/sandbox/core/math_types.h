@@ -30,4 +30,10 @@ static_assert(std::is_standard_layout_v<Vector3f>);
     -> Vector3f {
     return Vector3f{{x, y, z}};
 }
+
+[[nodiscard]] inline auto
+    make_quaternion4f(float const x, float const y, float const z, float const w) noexcept
+    -> Quaternion4f {
+    return HMM_Q(x, y, z, w);
+}
 }

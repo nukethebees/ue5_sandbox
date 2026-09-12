@@ -269,7 +269,7 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
                                               FVector3f::ZeroVector,
                                               rotation)};
         TestRunner->TestTrue(TEXT("Rotated conservative bounds reach the stationary entity"),
-                             expected_bounds.Min.Y <= 55.f && expected_bounds.Max.Y >= 65.f);
+                             expected_bounds.min.Y <= 55.f && expected_bounds.max.Y >= 65.f);
 
         TArray const handles{rotated};
         TArray const locations{FVector3f::ZeroVector};
