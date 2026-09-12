@@ -13,6 +13,10 @@
 #include <InputMappingContext.h>
 #include <UserSettings/EnhancedInputUserSettings.h>
 
+namespace ship_control_constants {
+inline constexpr double pointer_turn_dead_zone{0.05};
+}
+
 auto FShipControlContext::initialise(ASpaceGamePlayerController& owner,
                                      UEnhancedInputComponent& input_component,
                                      IEnhancedInputSubsystemInterface& input_subsystem,
@@ -174,6 +178,10 @@ void FShipControlContext::bind_actions() {
 
     bind_value(input_->turn, Triggered, &FShipControlContext::turn);
     bind_no_value(input_->turn, Completed, &FShipControlContext::turn_completed);
+    bind_no_value(input_->engage_pointer_turn, Started, &FShipControlContext::engage_pointer_turn);
+    bind_value(input_->turn_pointer_delta, Triggered, &FShipControlContext::update_pointer_turn);
+    bind_no_value(
+        input_->engage_pointer_turn, Completed, &FShipControlContext::disengage_pointer_turn);
     bind_value(input_->roll, Started, &FShipControlContext::start_roll);
     bind_value(input_->roll, Triggered, &FShipControlContext::roll);
     bind_value(input_->roll, Completed, &FShipControlContext::stop_roll);
@@ -228,6 +236,10 @@ void FShipControlContext::remove_mapping_context() {
 }
 
 void FShipControlContext::neutralise_ship_input() {
+    turn_input_ = FVector2D::ZeroVector;
+    pointer_turn_position_ = FVector2D::ZeroVector;
+    pointer_turn_engaged_ = false;
+
     auto* const ship{ship_.Get()};
     if (!IsValid(ship) || !ship->has_simulation()) {
         return;
@@ -334,13 +346,47 @@ void FShipControlContext::stop_sampling() {
     }
 }
 void FShipControlContext::turn(FInputActionValue const& value) {
-    if (auto* const ship{get_ship()}) {
-        ship->turn(value.Get<FVector2D>());
-    }
+    turn_input_ = value.Get<FVector2D>();
+    publish_turn();
 }
 void FShipControlContext::turn_completed() {
+    turn_input_ = FVector2D::ZeroVector;
+    publish_turn();
+}
+void FShipControlContext::engage_pointer_turn() {
+    pointer_turn_position_ = FVector2D::ZeroVector;
+    pointer_turn_engaged_ = true;
+    publish_turn();
+}
+void FShipControlContext::update_pointer_turn(FInputActionValue const& value) {
+    if (!pointer_turn_engaged_) {
+        return;
+    }
+
+    pointer_turn_position_ =
+        (pointer_turn_position_ + value.Get<FVector2D>()).GetClampedToMaxSize(1.0);
+    publish_turn();
+}
+void FShipControlContext::disengage_pointer_turn() {
+    pointer_turn_position_ = FVector2D::ZeroVector;
+    pointer_turn_engaged_ = false;
+    publish_turn();
+}
+void FShipControlContext::publish_turn() {
     if (auto* const ship{get_ship()}) {
-        ship->turn(FVector2D::ZeroVector);
+        if (!pointer_turn_engaged_) {
+            ship->turn(turn_input_);
+            return;
+        }
+
+        auto const magnitude{pointer_turn_position_.Size()};
+        auto const pointer_turn{
+            magnitude <= ship_control_constants::pointer_turn_dead_zone
+                ? FVector2D::ZeroVector
+                : pointer_turn_position_.GetSafeNormal() *
+                      ((magnitude - ship_control_constants::pointer_turn_dead_zone) /
+                       (1.0 - ship_control_constants::pointer_turn_dead_zone))};
+        ship->turn(pointer_turn);
     }
 }
 void FShipControlContext::start_roll(FInputActionValue const& value) {

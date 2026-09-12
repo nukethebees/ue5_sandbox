@@ -8,7 +8,7 @@ namespace ml::ioj {
 
 UENUM()
 enum class ESpaceGameInputResponse : uint8 {
-    MouseTurn,
+    TurnPointerDelta,
     GamepadTurn,
     GamepadMove,
 };

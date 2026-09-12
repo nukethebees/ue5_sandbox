@@ -145,15 +145,15 @@
       :max 5
       :step 1))
   (setting mouse_turn_sensitivity "Mouse Sensitivity"
-    :tooltip "Mouse turning sensitivity."
+    :tooltip "Mouse virtual-stick sensitivity multiplier. 1.0 reaches full deflection after 400 mouse counts."
     :category controls
     :value-type float
     :backend enhanced_input_user_settings
     :apply immediate
     (control float-range
       :min 0.01
-      :max 0.2
-      :step 0.005))
+      :max 2.0
+      :step 0.01))
   (setting gamepad_turn_sensitivity "Controller Sensitivity"
     :tooltip "Controller turning sensitivity."
     :category controls

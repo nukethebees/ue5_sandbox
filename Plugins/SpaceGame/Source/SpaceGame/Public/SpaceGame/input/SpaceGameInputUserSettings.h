@@ -73,7 +73,7 @@ class SPACEGAME_API USpaceGameInputUserSettings final : public UEnhancedInputUse
     void restore_active_profile_id();
 
     UPROPERTY(SaveGame)
-    float mouse_turn_sensitivity_{0.07f};
+    float mouse_turn_sensitivity_{0.25f};
 
     UPROPERTY(SaveGame)
     float gamepad_turn_sensitivity_{1.0f};

@@ -133,6 +133,10 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         matches(TEXT("Runtime turn action matches the authored controller"),
                 runtime_input->turn,
                 source_input->turn);
+        TestRunner->TestTrue(TEXT("Runtime pointer-turn delta action is generated"),
+                             IsValid(runtime_input->turn_pointer_delta));
+        TestRunner->TestTrue(TEXT("Runtime pointer-turn engagement action is generated"),
+                             IsValid(runtime_input->engage_pointer_turn));
         matches(TEXT("Runtime fire action matches the authored controller"),
                 runtime_input->fire_laser,
                 source_input->fire_laser);
@@ -297,7 +301,18 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                              has_mapping(input->ship_1d_control_y, EKeys::S));
         TestRunner->TestTrue(TEXT("Mouse thumb 2 has sample-and-hold"),
                              has_mapping(input->sample_and_hold, EKeys::ThumbMouseButton2));
-        TestRunner->TestTrue(TEXT("Mouse2D has turn"), has_mapping(input->turn, EKeys::Mouse2D));
+        auto const has_named_mapping = [mapping_context](FName const action_name, FKey const key) {
+            return mapping_context->GetMappings().ContainsByPredicate(
+                [action_name, key](FEnhancedActionKeyMapping const& mapping) {
+                    return mapping.Key == key && IsValid(mapping.Action) &&
+                           mapping.Action->GetFName() == action_name;
+                });
+        };
+        TestRunner->TestTrue(TEXT("Mouse2D has pointer-turn displacement"),
+                             has_named_mapping(TEXT("IA_Ship_TurnPointerDelta"), EKeys::Mouse2D));
+        TestRunner->TestTrue(
+            TEXT("Right mouse engages pointer turning"),
+            has_named_mapping(TEXT("IA_Ship_EngagePointerTurn"), EKeys::RightMouseButton));
     }
 
     TEST_METHOD(ControlProfilesRegisterAndCycle)
@@ -894,6 +909,8 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         input.mapping_context = mapping_context;
         input.move = move_action;
         input.turn = move_action;
+        input.turn_pointer_delta = move_action;
+        input.engage_pointer_turn = move_action;
         input.fire_laser = move_action;
         input.boost = move_action;
         input.brake = move_action;

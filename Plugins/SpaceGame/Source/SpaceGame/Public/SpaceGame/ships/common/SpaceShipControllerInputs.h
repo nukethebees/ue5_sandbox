@@ -29,6 +29,10 @@ struct SPACEGAME_API FSpaceShipControllerInputs {
     UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* turn{nullptr};
     UPROPERTY(EditAnywhere, Category = "Input")
+    UInputAction* turn_pointer_delta{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Input")
+    UInputAction* engage_pointer_turn{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* fire_laser{nullptr};
     UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* boost{nullptr};

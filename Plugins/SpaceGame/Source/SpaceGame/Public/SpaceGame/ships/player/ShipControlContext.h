@@ -57,6 +57,10 @@ struct SPACEGAME_API FShipControlContext {
     void stop_sampling();
     void turn(FInputActionValue const& value);
     void turn_completed();
+    void engage_pointer_turn();
+    void update_pointer_turn(FInputActionValue const& value);
+    void disengage_pointer_turn();
+    void publish_turn();
     void start_roll(FInputActionValue const& value);
     void roll(FInputActionValue const& value);
     void stop_roll(FInputActionValue const& value);
@@ -80,6 +84,9 @@ struct SPACEGAME_API FShipControlContext {
     FSpaceShipControllerInputs const* input_{nullptr};
     TArray<uint32> binding_handles_;
     TWeakObjectPtr<UInputMappingContext> registered_mapping_;
+    FVector2D turn_input_{FVector2D::ZeroVector};
+    FVector2D pointer_turn_position_{FVector2D::ZeroVector};
+    bool pointer_turn_engaged_{false};
     bool initialised_{false};
     bool bound_{false};
 };

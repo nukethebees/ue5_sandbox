@@ -8,6 +8,10 @@
 #include "GameFramework/PlayerController.h"
 
 namespace ml::ioj {
+namespace input_constants {
+inline constexpr float virtual_stick_units_per_mouse_count{1.0f / 400.0f};
+}
+
 namespace {
 auto input_settings(UEnhancedPlayerInput const* const player_input)
     -> USpaceGameInputUserSettings const* {
@@ -93,9 +97,11 @@ auto USpaceGameInputModifier::ModifyRaw_Implementation(
     }
 
     switch (response) {
-        case ESpaceGameInputResponse::MouseTurn:
-            return scale_and_invert(
-                current_value, settings->mouse_turn_sensitivity(), settings->invert_mouse_pitch());
+        case ESpaceGameInputResponse::TurnPointerDelta:
+            return scale_and_invert(current_value,
+                                    input_constants::virtual_stick_units_per_mouse_count *
+                                        settings->mouse_turn_sensitivity(),
+                                    settings->invert_mouse_pitch());
         case ESpaceGameInputResponse::GamepadTurn:
             return scale_and_invert(
                 apply_dead_zone(current_value, settings->gamepad_turn_dead_zone()),

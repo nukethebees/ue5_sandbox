@@ -105,6 +105,7 @@ constexpr TCHAR benchmark_widget_object_path[]{
 constexpr TCHAR benchmark_widget_package_name[]{TEXT("/SpaceGame/UI/InGame/WBP_BenchmarkHud")};
 constexpr TCHAR observer_input_package_path[]{TEXT("/SpaceGame/Input/Observer/")};
 constexpr TCHAR benchmark_input_package_path[]{TEXT("/SpaceGame/Input/Benchmark/")};
+constexpr TCHAR ship_input_package_path[]{TEXT("/SpaceGame/Input/SpaceShip/")};
 constexpr TCHAR ship_base_mapping_object_path[]{
     TEXT("/SpaceGame/Input/SpaceShip/IMC_SpaceShip_Base.IMC_SpaceShip_Base")};
 constexpr TCHAR ship_aim_move_mapping_object_path[]{
@@ -787,6 +788,10 @@ auto mapping_device_is_gamepad(FEnhancedActionKeyMapping const& mapping) -> bool
     return mapping.Key.IsGamepadKey();
 }
 
+auto mapping_device_is_mouse(FEnhancedActionKeyMapping const& mapping) -> bool {
+    return mapping.Key.IsMouseButton();
+}
+
 void duplicate_instanced_mapping_data(FEnhancedActionKeyMapping& mapping,
                                       UInputMappingContext& destination) {
     for (auto& modifier : mapping.Modifiers) {
@@ -841,11 +846,13 @@ void configure_mapping(FEnhancedActionKeyMapping& mapping,
 
     auto* const response_modifier{NewObject<ml::ioj::USpaceGameInputModifier>(&owner)};
     auto const action_name{mapping.Action->GetName()};
-    if (!mapping_device_is_gamepad(mapping)) {
+    if (mapping_device_is_mouse(mapping)) {
         if (!action_name.Contains(TEXT("Turn"), ESearchCase::IgnoreCase)) {
             return;
         }
-        response_modifier->response = ml::ioj::ESpaceGameInputResponse::MouseTurn;
+        response_modifier->response = ml::ioj::ESpaceGameInputResponse::TurnPointerDelta;
+    } else if (!mapping_device_is_gamepad(mapping)) {
+        return;
     } else if (action_name.Contains(TEXT("Turn"), ESearchCase::IgnoreCase)) {
         response_modifier->response = ml::ioj::ESpaceGameInputResponse::GamepadTurn;
     } else {
@@ -854,7 +861,23 @@ void configure_mapping(FEnhancedActionKeyMapping& mapping,
     mapping.Modifiers.Add(response_modifier);
 }
 
-void configure_mappings(TArray<FEnhancedActionKeyMapping>& mappings, UInputMappingContext& owner) {
+void configure_mappings(TArray<FEnhancedActionKeyMapping>& mappings,
+                        UInputMappingContext& owner,
+                        UInputAction& turn_pointer_delta_action,
+                        UInputAction& engage_pointer_turn_action) {
+    for (auto& mapping : mappings) {
+        if (mapping.Key.IsAxis2D() && mapping_device_is_mouse(mapping) && IsValid(mapping.Action) &&
+            mapping.Action->GetName().Contains(TEXT("Turn"), ESearchCase::IgnoreCase)) {
+            mapping.Action = &turn_pointer_delta_action;
+            mapping.Triggers.RemoveAll([](TObjectPtr<UInputTrigger> const& trigger) {
+                return IsValid(trigger) && trigger->IsA<UInputTriggerChordAction>();
+            });
+            auto* const chord{NewObject<UInputTriggerChordAction>(&owner)};
+            chord->ChordAction = &engage_pointer_turn_action;
+            mapping.Triggers.Add(chord);
+        }
+    }
+
     auto mapping_group = [](FEnhancedActionKeyMapping const& mapping) {
         return FString::Printf(
             TEXT("%s:%s"),
@@ -878,8 +901,9 @@ void configure_mappings(TArray<FEnhancedActionKeyMapping>& mappings, UInputMappi
 auto set_profile_override(UInputMappingContext& destination,
                           FString const& profile_id,
                           UInputMappingContext const& source,
-                          TConstArrayView<FEnhancedActionKeyMapping> const shared_mappings)
-    -> bool {
+                          TConstArrayView<FEnhancedActionKeyMapping> const shared_mappings,
+                          UInputAction& turn_pointer_delta_action,
+                          UInputAction& engage_pointer_turn_action) -> bool {
     auto* const property{FindFProperty<FMapProperty>(UInputMappingContext::StaticClass(),
                                                      TEXT("MappingProfileOverrides"))};
     if (property == nullptr) {
@@ -910,11 +934,27 @@ auto set_profile_override(UInputMappingContext& destination,
     for (auto& mapping : data->Mappings) {
         duplicate_instanced_mapping_data(mapping, destination);
     }
-    configure_mappings(data->Mappings, destination);
+    configure_mappings(
+        data->Mappings, destination, turn_pointer_delta_action, engage_pointer_turn_action);
     return true;
 }
 
-auto generate_gameplay_input_assets() -> bool {
+struct FGeneratedShipTurnActions {
+    UInputAction* pointer_delta{nullptr};
+    UInputAction* engage_pointer{nullptr};
+
+    auto is_valid() const -> bool { return IsValid(pointer_delta) && IsValid(engage_pointer); }
+};
+
+auto generate_gameplay_input_assets() -> FGeneratedShipTurnActions {
+    FGeneratedShipTurnActions actions{
+        .pointer_delta = create_input_action(ship_input_package_path,
+                                             TEXT("IA_Ship_TurnPointerDelta"),
+                                             EInputActionValueType::Axis2D),
+        .engage_pointer = create_input_action(ship_input_package_path,
+                                              TEXT("IA_Ship_EngagePointerTurn"),
+                                              EInputActionValueType::Boolean),
+    };
     auto* const base{LoadObject<UInputMappingContext>(nullptr, ship_base_mapping_object_path)};
     auto* const aim_move{
         LoadObject<UInputMappingContext>(nullptr, ship_aim_move_mapping_object_path)};
@@ -922,20 +962,41 @@ auto generate_gameplay_input_assets() -> bool {
         LoadObject<UInputMappingContext>(nullptr, ship_move_aim_mapping_object_path)};
     auto* const z_roll_aim{
         LoadObject<UInputMappingContext>(nullptr, ship_z_roll_aim_mapping_object_path)};
-    if (!IsValid(base) || !IsValid(aim_move) || !IsValid(move_aim) || !IsValid(z_roll_aim)) {
+    if (!actions.is_valid() || !IsValid(base) || !IsValid(aim_move) || !IsValid(move_aim) ||
+        !IsValid(z_roll_aim)) {
         UE_LOG(LogTemp, Error, TEXT("Could not load ship input mapping contexts"));
-        return false;
+        return {};
     }
 
     base->Modify();
+    base->UnmapKey(actions.engage_pointer, EKeys::RightMouseButton);
+    base->MapKey(actions.engage_pointer, EKeys::RightMouseButton);
     auto& default_mappings{const_cast<TArray<FEnhancedActionKeyMapping>&>(base->GetMappings())};
-    configure_mappings(default_mappings, *base);
+    configure_mappings(default_mappings, *base, *actions.pointer_delta, *actions.engage_pointer);
 
     auto const profiles{ml::ioj::control_profile_definitions()};
-    auto const success{set_profile_override(*base, profiles[1].id, *aim_move, default_mappings) &&
-                       set_profile_override(*base, profiles[2].id, *move_aim, default_mappings) &&
-                       set_profile_override(*base, profiles[3].id, *z_roll_aim, default_mappings)};
-    return success && save_asset(*base);
+    auto const success{set_profile_override(*base,
+                                            profiles[1].id,
+                                            *aim_move,
+                                            default_mappings,
+                                            *actions.pointer_delta,
+                                            *actions.engage_pointer) &&
+                       set_profile_override(*base,
+                                            profiles[2].id,
+                                            *move_aim,
+                                            default_mappings,
+                                            *actions.pointer_delta,
+                                            *actions.engage_pointer) &&
+                       set_profile_override(*base,
+                                            profiles[3].id,
+                                            *z_roll_aim,
+                                            default_mappings,
+                                            *actions.pointer_delta,
+                                            *actions.engage_pointer)};
+    return success && save_asset(*actions.pointer_delta) && save_asset(*actions.engage_pointer) &&
+                   save_asset(*base)
+             ? actions
+             : FGeneratedShipTurnActions{};
 }
 
 auto configure_ui_data(UClass& root_class,
@@ -1019,7 +1080,8 @@ auto configure_control_context_inputs(UBlueprint& blueprint,
 
 auto configure_gameplay_inputs(UBlueprint& blueprint,
                                UBlueprint const& source,
-                               UInputMappingContext& mapping_context) -> bool {
+                               UInputMappingContext& mapping_context,
+                               FGeneratedShipTurnActions const& turn_actions) -> bool {
     auto* const controller{
         Cast<ASpaceGamePlayerController>(blueprint.GeneratedClass->GetDefaultObject())};
     auto const* const source_controller{
@@ -1045,8 +1107,11 @@ auto configure_gameplay_inputs(UBlueprint& blueprint,
     global_input_property->CopyCompleteValue(
         global_input_property->ContainerPtrToValuePtr<void>(controller),
         source_global_input_property->ContainerPtrToValuePtr<void>(source_controller));
-    input_property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(controller)
-        ->mapping_context = &mapping_context;
+    auto* const input{
+        input_property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(controller)};
+    input->mapping_context = &mapping_context;
+    input->turn_pointer_delta = turn_actions.pointer_delta;
+    input->engage_pointer_turn = turn_actions.engage_pointer;
     FPropertyChangedEvent property_changed{input_property, EPropertyChangeType::ValueSet};
     controller->PostEditChangeProperty(property_changed);
     blueprint.Modify();
@@ -1055,7 +1120,9 @@ auto configure_gameplay_inputs(UBlueprint& blueprint,
 }
 
 auto load_or_create_player_controller(FObserverControlInputs const& observer,
-                                      FBenchmarkControlInputs const& benchmark) -> UBlueprint* {
+                                      FBenchmarkControlInputs const& benchmark,
+                                      FGeneratedShipTurnActions const& turn_actions)
+    -> UBlueprint* {
     auto* const source{LoadObject<UBlueprint>(nullptr, source_player_controller_object_path)};
     auto* const mapping_context{
         LoadObject<UInputMappingContext>(nullptr, ship_base_mapping_object_path)};
@@ -1086,7 +1153,7 @@ auto load_or_create_player_controller(FObserverControlInputs const& observer,
         return nullptr;
     }
     if (!configure_control_context_inputs(*blueprint, observer, benchmark) ||
-        !configure_gameplay_inputs(*blueprint, *source, *mapping_context)) {
+        !configure_gameplay_inputs(*blueprint, *source, *mapping_context, turn_actions)) {
         return nullptr;
     }
 
@@ -1098,7 +1165,7 @@ auto load_or_create_player_controller(FObserverControlInputs const& observer,
         return nullptr;
     }
     if (!configure_control_context_inputs(*blueprint, observer, benchmark) ||
-        !configure_gameplay_inputs(*blueprint, *source, *mapping_context)) {
+        !configure_gameplay_inputs(*blueprint, *source, *mapping_context, turn_actions)) {
         return nullptr;
     }
     auto* const compiled_controller{
@@ -1176,8 +1243,10 @@ auto load_or_create_runtime_config(UClass& player_controller_class) -> USpaceGam
 }
 
 auto generate_runtime_map(FObserverControlInputs const& observer,
-                          FBenchmarkControlInputs const& benchmark) -> bool {
-    auto* const controller_blueprint{load_or_create_player_controller(observer, benchmark)};
+                          FBenchmarkControlInputs const& benchmark,
+                          FGeneratedShipTurnActions const& turn_actions) -> bool {
+    auto* const controller_blueprint{
+        load_or_create_player_controller(observer, benchmark, turn_actions)};
     auto* const controller_class{
         IsValid(controller_blueprint) ? controller_blueprint->GeneratedClass.Get() : nullptr};
     if (!IsValid(controller_class) || !configure_runtime_game_mode(*controller_class)) {
@@ -1252,10 +1321,12 @@ UGenerateScriptedLevelAssetsCommandlet::UGenerateScriptedLevelAssetsCommandlet()
 int32 UGenerateScriptedLevelAssetsCommandlet::Main(FString const&) {
     FObserverControlInputs observer_input;
     FBenchmarkControlInputs benchmark_input;
-    auto const input_generated{
+    auto const context_input_generated{
         generate_menu_input_assets() &&
-        generate_control_context_input_assets(observer_input, benchmark_input) &&
-        generate_gameplay_input_assets()};
+        generate_control_context_input_assets(observer_input, benchmark_input)};
+    auto const turn_actions{context_input_generated ? generate_gameplay_input_assets()
+                                                    : FGeneratedShipTurnActions{}};
+    auto const input_generated{turn_actions.is_valid()};
     auto* const button_class{generate_menu_button_widget()};
     auto* const root_class{generate_root_layout_widget()};
     auto* const pause_class{IsValid(button_class) ? generate_pause_menu_widget(*button_class)
@@ -1280,7 +1351,7 @@ int32 UGenerateScriptedLevelAssetsCommandlet::Main(FString const&) {
                                               *battle_viewer_class,
                                               *benchmark_class)};
     auto const map_generated{input_generated &&
-                             generate_runtime_map(observer_input, benchmark_input) &&
+                             generate_runtime_map(observer_input, benchmark_input, turn_actions) &&
                              generate_main_menu_map()};
     return input_generated && ui_generated && map_generated ? 0 : 1;
 }

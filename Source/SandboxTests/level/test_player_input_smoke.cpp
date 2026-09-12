@@ -432,7 +432,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
             });
     }
 
-    TEST_METHOD(MouseTurnAxesAndRelease)
+    TEST_METHOD(PointerVirtualStickTurn)
     {
         auto const default_profile{ml::ioj::control_profile_definitions()[0].id};
         TestCommandBuilder
@@ -445,43 +445,74 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
             .Then([this, default_profile] {
                 check_input_is_ready();
                 auto const& ship_input{FPlayerControllerTestAccess::ship_input(*controller_)};
-                if (!checks.is_true(
-                        has_ship_mapping(default_profile, ship_input.turn, EKeys::Mouse2D),
-                        TEXT("Default profile maps Mouse2D to turn"))) {
+                auto const mappings_valid{
+                    checks.is_true(has_ship_mapping(default_profile,
+                                                    ship_input.turn_pointer_delta,
+                                                    EKeys::Mouse2D),
+                                   TEXT("Default profile maps Mouse2D to pointer displacement")) &&
+                    checks.is_true(has_ship_mapping(default_profile,
+                                                    ship_input.engage_pointer_turn,
+                                                    EKeys::RightMouseButton),
+                                   TEXT("Default profile maps right mouse to pointer engagement"))};
+                if (!mappings_valid) {
                     return;
                 }
-                press_key(EKeys::Mouse2D, FVector{0.75, 0.0, 0.0});
+                press_key(EKeys::RightMouseButton);
+                release_wait_ticks_ = 0;
             })
             .Until(
                 [this] {
+                    ++release_wait_ticks_;
+                    return !checks.all_passed || release_wait_ticks_ > 1;
+                },
+                timeout)
+            .Then([this] { press_key(EKeys::Mouse2D, FVector{400.0, 0.0, 0.0}); })
+            .Until(
+                [this] {
                     auto const turn{snapshot().turn};
-                    return !checks.all_passed ||
-                           (!FMath::IsNearlyZero(turn.X) && FMath::IsNearlyZero(turn.Y));
+                    return !checks.all_passed || !FMath::IsNearlyZero(turn.X);
                 },
                 timeout)
             .Then([this] {
                 auto const turn{snapshot().turn};
-                checks.is_true(!FMath::IsNearlyZero(turn.X) && FMath::IsNearlyZero(turn.Y),
-                               TEXT("Horizontal mouse input reaches horizontal turn only"));
+                checks.is_true(turn.X > 0.0 && FMath::IsNearlyZero(turn.Y),
+                               TEXT("Horizontal pointer displacement produces horizontal turn"));
                 release_key(EKeys::Mouse2D);
+                release_wait_ticks_ = 0;
+            })
+            .Until(
+                [this] {
+                    ++release_wait_ticks_;
+                    return !checks.all_passed || release_wait_ticks_ > 1;
+                },
+                timeout)
+            .Then([this] {
+                checks.is_true(!FMath::IsNearlyZero(snapshot().turn.X),
+                               TEXT("Pointer displacement remains a held turn rate"));
+                release_key(EKeys::RightMouseButton);
             })
             .Until([this] { return !checks.all_passed || snapshot().turn.IsNearlyZero(); }, timeout)
             .Then([this] {
-                checks.is_true(snapshot().turn.IsNearlyZero(), TEXT("Mouse release clears turn"));
-                press_key(EKeys::Mouse2D, FVector{0.0, 0.75, 0.0});
+                checks.is_true(snapshot().turn.IsNearlyZero(),
+                               TEXT("Releasing pointer engagement clears turn"));
+                press_key(EKeys::RightMouseButton);
+                release_wait_ticks_ = 0;
             })
             .Until(
                 [this] {
-                    auto const turn{snapshot().turn};
-                    return !checks.all_passed ||
-                           (FMath::IsNearlyZero(turn.X) && !FMath::IsNearlyZero(turn.Y));
+                    ++release_wait_ticks_;
+                    return !checks.all_passed || release_wait_ticks_ > 1;
                 },
                 timeout)
+            .Then([this] { press_key(EKeys::Mouse2D, FVector{0.0, 400.0, 0.0}); })
+            .Until([this] { return !checks.all_passed || !FMath::IsNearlyZero(snapshot().turn.Y); },
+                   timeout)
             .Then([this] {
                 auto const turn{snapshot().turn};
-                checks.is_true(FMath::IsNearlyZero(turn.X) && !FMath::IsNearlyZero(turn.Y),
-                               TEXT("Vertical mouse input reaches vertical turn only"));
+                checks.is_true(FMath::IsNearlyZero(turn.X) && turn.Y > 0.0,
+                               TEXT("Vertical pointer displacement produces vertical turn"));
                 release_key(EKeys::Mouse2D);
+                release_key(EKeys::RightMouseButton);
             });
     }
 
