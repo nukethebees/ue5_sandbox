@@ -15,12 +15,13 @@
     :sampler linear-color)
   (parameter scalar FarEmissive 0.03)
   (parameter scalar NearEmissive 0.65)
-  (parameter scalar LockedEmissive 6.0)
-  (parameter scalar FilamentEmissive 34.0)
+  (parameter scalar LockedEmissive 2.0)
+  (parameter scalar FilamentEmissive 10.0)
+  (parameter scalar PacketEmissive 48.0)
   (parameter scalar FlashEmissive 45.0)
   (parameter scalar FarOpacityScale 0.035)
   (parameter scalar NearOpacityScale 0.16)
-  (parameter scalar LockedOpacityScale 0.82)
+  (parameter scalar LockedOpacityScale 0.38)
   (parameter scalar FilamentSpeed 0.22)
   (parameter scalar HotspotSpeed 0.32)
   (parameter scalar FlowSpeed 0.035)
@@ -47,6 +48,7 @@
   (let base_energy (lerp FarEmissive NearEmissive buildup))
   (let body_energy (lerp base_energy LockedEmissive locked))
   (let filament_energy (* FilamentEmissive locked))
+  (let packet_energy (* PacketEmissive locked))
   (let flash_alpha (* (saturate pulse) locked))
   (let flash_energy (* FlashEmissive flash_alpha))
   (let prelock_opacity_scale (lerp FarOpacityScale NearOpacityScale buildup))
@@ -64,6 +66,7 @@
        (Locked float locked)
        (BodyEnergy float body_energy)
        (FilamentEnergy float filament_energy)
+       (PacketEnergy float packet_energy)
        (FlashEnergy float flash_energy)
        (FilamentSpeed float FilamentSpeed)
        (HotspotSpeed float HotspotSpeed)
@@ -96,26 +99,34 @@
       "float ridge_a = 1.0 - smoothstep(0.08, 0.38, abs(filament_a - 0.5));\n"
       "float ridge_b = 1.0 - smoothstep(0.08, 0.38, abs(filament_b - 0.5));\n"
       "float filament = saturate(max(ridge_a, ridge_b * 0.85));\n"
-      "float hotspot_phase_a = abs(frac(UV.x - GameTime * HotspotSpeed) - 0.5);\n"
-      "float hotspot_phase_b = abs(frac(UV.x + GameTime * HotspotSpeed * 0.67 + 0.23) - 0.5);\n"
-      "float hotspot_a = 1.0 - smoothstep(0.025, 0.11, hotspot_phase_a);\n"
-      "float hotspot_b = 1.0 - smoothstep(0.035, 0.14, hotspot_phase_b);\n"
-      "float hotspot = max(hotspot_a, hotspot_b * 0.8);\n"
-      "float vein = filament * (0.28 + 0.72 * hotspot);\n"
+      "float packet_distance_a = abs(frac(UV.x - GameTime * HotspotSpeed) - 0.5);\n"
+      "float packet_distance_b = abs(frac(UV.x + GameTime * HotspotSpeed * 0.72 + 0.31) - 0.5);\n"
+      "float packet_core_a = 1.0 - smoothstep(0.018, 0.055, packet_distance_a);\n"
+      "float packet_halo_a = 1.0 - smoothstep(0.045, 0.115, packet_distance_a);\n"
+      "float packet_core_b = 1.0 - smoothstep(0.014, 0.042, packet_distance_b);\n"
+      "float packet_halo_b = 1.0 - smoothstep(0.035, 0.085, packet_distance_b);\n"
+      "float packet_a = packet_core_a + packet_halo_a * 0.22;\n"
+      "float packet_b = (packet_core_b + packet_halo_b * 0.18) * 0.72;\n"
+      "float packet = max(packet_a, packet_b);\n"
+      "float vein = filament * (0.38 + 0.62 * saturate(packet_halo_a + packet_halo_b));\n"
       "float3 instance_colour = max(float3(Red, Green, Blue), 0.0);\n"
       "float3 body_colour = lerp(instance_colour, float3(1.0, 0.42, 0.035), Locked);\n"
-      "float heat = saturate(vein * 0.75 + hotspot * 0.35);\n"
+      "float heat = saturate(vein * 0.65 + packet);\n"
       "float3 filament_colour = lerp(float3(1.0, 0.20, 0.01),\n"
       "                               float3(1.0, 0.92, 0.55), heat);\n"
       "float3 body_signal = body_colour * BodyEnergy * surface_profile;\n"
       "float3 filament_signal = filament_colour * FilamentEnergy * vein * surface_profile;\n"
+      "float3 packet_signal = filament_colour * PacketEnergy * packet * surface_profile;\n"
       "float3 flash_signal = filament_colour * FlashEnergy * surface_profile;\n"
-      "return segment * (body_signal + filament_signal + flash_signal);\n"))
+      "return segment * (body_signal + filament_signal + packet_signal + flash_signal);\n"))
   (opacity
     (custom float
       ((UV float2 uv)
+       (GameTime float game_time)
+       (Locked float locked)
        (Opacity float opacity)
        (OpacityScale float opacity_scale)
+       (PacketSpeed float HotspotSpeed)
        (Gap float SegmentGap))
       :description "Segmented soft-target range opacity"
       "float side_u = frac(UV.x * 6.0);\n"
@@ -126,4 +137,10 @@
       "float ribbon_edge = min(front_v, 1.0 - front_v);\n"
       "float body = smoothstep(0.0, 0.12, ribbon_edge);\n"
       "float surface_profile = front_surface * body + (1.0 - front_surface) * 0.35;\n"
-      "return saturate(Opacity * OpacityScale * segment * surface_profile);\n")))
+      "float packet_distance_a = abs(frac(UV.x - GameTime * PacketSpeed) - 0.5);\n"
+      "float packet_distance_b = abs(frac(UV.x + GameTime * PacketSpeed * 0.72 + 0.31) - 0.5);\n"
+      "float packet_a = 1.0 - smoothstep(0.045, 0.115, packet_distance_a);\n"
+      "float packet_b = 1.0 - smoothstep(0.035, 0.085, packet_distance_b);\n"
+      "float packet_opacity = Locked * max(packet_a, packet_b * 0.72) * 0.58;\n"
+      "float animated_scale = OpacityScale + packet_opacity;\n"
+      "return saturate(Opacity * animated_scale * segment * surface_profile);\n")))

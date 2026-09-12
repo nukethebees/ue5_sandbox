@@ -136,7 +136,7 @@ TEST(MaterialFrontend, LowersWorldSurfaceSettingsInstanceDataAndOpacity) {
     EXPECT_TRUE(material.settings.two_sided);
     EXPECT_TRUE(material.settings.disable_depth_test);
     EXPECT_TRUE(material.settings.used_with_instanced_static_meshes);
-    ASSERT_EQ(material.parameters.size(), 15);
+    ASSERT_EQ(material.parameters.size(), 16);
     auto const filaments{
         std::ranges::find(material.parameters, "EnergyFilaments", &Parameter::name)};
     ASSERT_NE(filaments, material.parameters.end());
@@ -174,7 +174,7 @@ TEST(MaterialFrontend, LowersWorldSurfaceSettingsInstanceDataAndOpacity) {
     EXPECT_EQ(decoded->material.settings.domain, MaterialDomain::surface);
     EXPECT_EQ(decoded->material.settings.shading_model, ShadingModel::unlit);
     EXPECT_TRUE(decoded->material.settings.used_with_instanced_static_meshes);
-    EXPECT_EQ(decoded->material.parameters.size(), 15);
+    EXPECT_EQ(decoded->material.parameters.size(), 16);
     EXPECT_TRUE(std::ranges::any_of(decoded->material.nodes,
                                     [](Node const& node) { return node.kind == NodeKind::time; }));
 }
