@@ -14,6 +14,10 @@ param(
 
     [switch] $SkipBuild,
 
+    [switch] $PrepareOnly,
+
+    [switch] $ValidateOnly,
+
     [switch] $KeepBaselineWorktree
 )
 
@@ -75,6 +79,21 @@ function Build-Editor {
         -WorkingDirectory $SourceDirectory
 }
 
+function Copy-BenchmarkHarness {
+    param([string] $Destination)
+
+    foreach ($relativePath in @(
+        'Source/SandboxTests/level/benchmark_frame_memory_level.cpp',
+        'LevelScripts/Benchmarks/Batch_benchmark.scm'
+    )) {
+        $source = Join-Path $repo $relativePath
+        $target = Join-Path $Destination $relativePath
+        $targetDirectory = Split-Path -Parent $target
+        New-Item -ItemType Directory -Force -Path $targetDirectory | Out-Null
+        Copy-Item -LiteralPath $source -Destination $target -Force
+    }
+}
+
 function Convert-BenchmarkLine {
     param(
         [string] $Line,
@@ -131,20 +150,30 @@ function Invoke-Benchmark {
         [string] $Commit
     )
 
-    $testDescription = (& ctest --preset frame-memory-level-benchmark -N -R $benchmarkPattern `
-        --show-only=json-v1 | Out-String | ConvertFrom-Json)
-    if ($LASTEXITCODE -ne 0) {
-        throw "Could not read the benchmark command in $SourceDirectory"
+    Push-Location $SourceDirectory
+    try {
+        $testDescription = (& ctest --preset frame-memory-level-benchmark -N `
+            -R $benchmarkPattern --show-only=json-v1 | Out-String | ConvertFrom-Json)
+        if ($LASTEXITCODE -ne 0) {
+            throw "Could not read the benchmark command in $SourceDirectory"
+        }
+    } finally {
+        Pop-Location
     }
     $tests = @($testDescription.tests)
     if ($tests.Count -ne 1) {
         throw "Expected one $benchmarkName test in $SourceDirectory"
     }
     $command = @($tests[0].command)
+    $arguments = @($command[1..($command.Count - 1)] | Where-Object {
+        $_ -notlike '-LocalDataCachePath=*'
+    })
+    $ddcPath = Join-Path $SourceDirectory '.local/ddc'
     Invoke-Checked -Executable $command[0] `
-        -Arguments @($command[1..($command.Count - 1)] + '-notraceserver' +
-                     '-traceautostart=0') `
-        -WorkingDirectory $SourceDirectory
+        -Arguments @($arguments + "-LocalDataCachePath=$ddcPath" + '-notraceserver' +
+                     '-traceautostart=0' +
+                     '-SandboxFrameMemoryLevelBenchmarkTicksPerAdvance=1') `
+        -WorkingDirectory $SourceDirectory | Out-Host
 
     $log = Join-Path $SourceDirectory 'Saved/Logs/Sandbox.log'
     $lines = @(Select-String -LiteralPath $log -SimpleMatch 'Frame memory level benchmark:' |
@@ -217,10 +246,26 @@ try {
     }
 
     if (!$SkipBuild) {
+        Copy-BenchmarkHarness -Destination $worktree
+
         Write-Host 'Building candidate working tree...'
         Build-Editor -SourceDirectory $repo
         Write-Host "Building baseline $baselineCommit..."
         Build-Editor -SourceDirectory $worktree
+    }
+
+    if ($PrepareOnly) {
+        Write-Host "Candidate and baseline benchmark builds are ready. Baseline: $worktree"
+        return
+    }
+
+    if ($ValidateOnly) {
+        Invoke-Benchmark -SourceDirectory $worktree -Pair 0 -Sequence 1 `
+            -State 'baseline' -Commit $baselineCommit | Out-Null
+        Invoke-Benchmark -SourceDirectory $repo -Pair 0 -Sequence 2 `
+            -State 'candidate' -Commit $candidateCommit | Out-Null
+        Write-Host 'Candidate and baseline benchmark dry runs passed.'
+        return
     }
 
     $sequence = 0
@@ -232,11 +277,6 @@ try {
             $sourceDirectory = $repo
             $commit = $candidateCommit
         }
-
-        Write-Host "Activating $state build..."
-        Invoke-Checked -Executable 'cmake' `
-            -Arguments @('--build', '--preset', 'debug-game', '--target', 'editor') `
-            -WorkingDirectory $sourceDirectory
 
         for ($warmup = 1; $warmup -le $WarmupIterations; ++$warmup) {
             ++$sequence
