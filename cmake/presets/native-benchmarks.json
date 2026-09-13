@@ -1,0 +1,162 @@
+{
+  "version": 9,
+  "include": ["native.json"],
+  "configurePresets": [
+    {
+      "name": "kernel-benchmark",
+      "displayName": "Native kernel benchmark",
+      "inherits": "native-release",
+      "cacheVariables": {
+        "SANDBOX_KERNEL_BENCHMARKS": true,
+        "VCPKG_MANIFEST_FEATURES": "kernel-benchmarks",
+        "UE_CONFIGURATION": "Development"
+      }
+    },
+    {
+      "name": "kernel-benchmark-plots",
+      "displayName": "Native kernel benchmark plots",
+      "inherits": "kernel-benchmark",
+      "cacheVariables": {
+        "SANDBOX_KERNEL_BENCHMARK_PLOTS": true
+      }
+    },
+    {
+      "name": "native-soa",
+      "inherits": "native-release",
+      "cacheVariables": {
+        "VCPKG_MANIFEST_FEATURES": "kernel-benchmarks",
+        "SANDBOX_NATIVE_SOA_BENCHMARKS": true,
+        "UE_CONFIGURATION": "Development"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "kernel-benchmark",
+      "configurePreset": "kernel-benchmark",
+      "targets": ["kernel-native-simd-tests", "kernel-native-benchmarks"]
+    },
+    {
+      "name": "kernel-benchmark-plots",
+      "configurePreset": "kernel-benchmark-plots",
+      "targets": ["kernel-native-simd-tests", "kernel-benchmark-report"]
+    },
+    {
+      "name": "kernel-benchmark-plots-full",
+      "configurePreset": "kernel-benchmark-plots",
+      "targets": ["kernel-native-simd-tests", "kernel-benchmark-report-full"]
+    },
+    {
+      "name": "kernel-vector-layout-benchmark-plots",
+      "configurePreset": "kernel-benchmark-plots",
+      "targets": ["kernel-native-simd-tests", "kernel-vector-layout-benchmark-report"]
+    },
+    {
+      "name": "native-soa",
+      "configurePreset": "native-soa",
+      "targets": ["native-soa-tests", "native-soa-tests-mimalloc", "native-soa-benchmarks", "native-soa-reserve-matrix", "native-soa-reserve-matrix-mimalloc", "codegen-tests"]
+    },
+    {
+      "name": "native-soa-reserve",
+      "configurePreset": "native-soa",
+      "targets": ["native-soa-reserve-report"]
+    },
+    {
+      "name": "native-soa-reserve-matrix",
+      "configurePreset": "native-soa",
+      "targets": ["native-soa-reserve-matrix-report"]
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "kernel-benchmark-tests",
+      "inherits": "test-base",
+      "configurePreset": "kernel-benchmark",
+      "filter": {
+        "include": {
+          "label": "native-kernel-benchmark"
+        }
+      }
+    },
+    {
+      "name": "kernel-benchmark-plot-tests",
+      "inherits": "test-base",
+      "configurePreset": "kernel-benchmark-plots",
+      "filter": {
+        "include": {
+          "label": "native-kernel-benchmark|kernel-benchmark-plot"
+        }
+      }
+    },
+    {
+      "name": "native-soa",
+      "inherits": "test-base",
+      "configurePreset": "native-soa",
+      "filter": {
+        "include": {
+          "name": "^(native-soa|SingleAllocationSoa\\.|Json\\.LoadsExperimentalStdlibSoa)"
+        }
+      }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "kernel-benchmark",
+      "steps": [
+        { "type": "configure", "name": "kernel-benchmark" },
+        { "type": "build", "name": "kernel-benchmark" },
+        { "type": "test", "name": "kernel-benchmark-tests" }
+      ]
+    },
+    {
+      "name": "kernel-benchmark-plots",
+      "steps": [
+        { "type": "configure", "name": "kernel-benchmark-plots" },
+        { "type": "build", "name": "kernel-benchmark-plots" },
+        { "type": "test", "name": "kernel-benchmark-plot-tests" }
+      ]
+    },
+    {
+      "name": "kernel-benchmark-plots-full",
+      "steps": [
+        { "type": "configure", "name": "kernel-benchmark-plots" },
+        { "type": "build", "name": "kernel-benchmark-plots-full" },
+        { "type": "test", "name": "kernel-benchmark-plot-tests" }
+      ]
+    },
+    {
+      "name": "kernel-vector-layout-benchmark-plots",
+      "steps": [
+        { "type": "configure", "name": "kernel-benchmark-plots" },
+        { "type": "build", "name": "kernel-vector-layout-benchmark-plots" },
+        { "type": "test", "name": "kernel-benchmark-plot-tests" }
+      ]
+    },
+    {
+      "name": "native-soa",
+      "steps": [
+        { "type": "configure", "name": "native-soa" },
+        { "type": "build", "name": "native-soa" },
+        { "type": "test", "name": "native-soa" }
+      ]
+    },
+    {
+      "name": "native-soa-reserve",
+      "steps": [
+        { "type": "configure", "name": "native-soa" },
+        { "type": "build", "name": "native-soa" },
+        { "type": "test", "name": "native-soa" },
+        { "type": "build", "name": "native-soa-reserve" }
+      ]
+    },
+    {
+      "name": "native-soa-reserve-matrix",
+      "steps": [
+        { "type": "configure", "name": "native-soa" },
+        { "type": "build", "name": "native-soa" },
+        { "type": "test", "name": "native-soa" },
+        { "type": "build", "name": "native-soa-reserve-matrix" }
+      ]
+    }
+  ]
+}

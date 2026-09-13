@@ -64,7 +64,7 @@ checked-out branches and their worktree directories.
 
 ## Command-line builds
 
-CMake 4.3 or newer and Ninja on `PATH` provide a small command-line wrapper around UnrealBuildTool (UBT). It does not
+CMake 4.4.2 or newer and Ninja on `PATH` provide a small command-line wrapper around UnrealBuildTool (UBT). It does not
 compile Unreal modules itself; `.Target.cs`, `.Build.cs`, and UBT remain authoritative.
 
 CMake invokes the source engine's `RunUBT.bat` and serializes Unreal builds that share the same engine checkout. Manual
@@ -131,6 +131,21 @@ matching Unreal configuration and build `dev-core` (`editor`, `core-tests`, and
 `native-tests`). Each also has a workflow preset, for example `cmake --workflow --preset development`, that
 configures and builds it in one command. The `game` target remains available through a build preset, for example
 `cmake --build --preset development --target game`.
+
+### Preset organisation
+
+The root `CMakePresets.json` includes category files under `cmake/presets/`, using preset
+schema version 9:
+
+- `base.json`: shared configure and test defaults.
+- `native.json`: native Debug/Release configuration, codegen and component build/test workflows.
+- `unreal.json`: Unreal configurations, builds, automation tests and development tooling.
+- `native-benchmarks.json`: native kernel and SOA benchmark presets.
+- `unreal-benchmarks.json`: Unreal-backed benchmark presets.
+
+Each category includes its prerequisites; shared definitions are not duplicated. Preset names,
+build directories and commands are unchanged by the split. Local overrides still belong in
+the root, Git-ignored `CMakeUserPresets.json`.
 
 ### Native-only development
 

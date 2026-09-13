@@ -1,0 +1,286 @@
+{
+  "version": 9,
+  "include": ["base.json"],
+  "configurePresets": [
+    {
+      "name": "unreal",
+      "hidden": true,
+      "inherits": "base",
+      "cacheVariables": {
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed",
+        "VCPKG_MANIFEST_FEATURES": "",
+        "SANDBOX_WITH_UNREAL": true
+      }
+    },
+    {
+      "name": "debug",
+      "displayName": "Debug",
+      "inherits": "unreal",
+      "cacheVariables": {
+        "UE_CONFIGURATION": "Debug"
+      }
+    },
+    {
+      "name": "debug-game",
+      "displayName": "DebugGame",
+      "inherits": "unreal",
+      "cacheVariables": {
+        "UE_CONFIGURATION": "DebugGame"
+      }
+    },
+    {
+      "name": "development",
+      "displayName": "Development",
+      "inherits": "unreal",
+      "cacheVariables": {
+        "UE_CONFIGURATION": "Development"
+      }
+    },
+    {
+      "name": "shipping",
+      "displayName": "Shipping",
+      "inherits": "unreal",
+      "cacheVariables": {
+        "UE_CONFIGURATION": "Shipping"
+      }
+    },
+    {
+      "name": "test",
+      "displayName": "Test",
+      "inherits": "unreal",
+      "cacheVariables": {
+        "UE_CONFIGURATION": "Test"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "worktree-dependencies-debug-game",
+      "configurePreset": "debug-game",
+      "targets": ["worktree-dependencies"]
+    },
+    {
+      "name": "worktree-dependencies-development",
+      "configurePreset": "development",
+      "targets": ["worktree-dependencies"]
+    },
+    {
+      "name": "debug",
+      "configurePreset": "debug",
+      "targets": ["dev-core"]
+    },
+    {
+      "name": "debug-game",
+      "configurePreset": "debug-game",
+      "targets": ["dev-core"]
+    },
+    {
+      "name": "development",
+      "configurePreset": "development",
+      "targets": ["dev-core"]
+    },
+    {
+      "name": "shipping",
+      "configurePreset": "shipping",
+      "targets": ["dev-core"]
+    },
+    {
+      "name": "test",
+      "configurePreset": "test",
+      "targets": ["dev-core"]
+    },
+    {
+      "name": "resave-assets",
+      "configurePreset": "debug-game",
+      "targets": ["resave-assets"]
+    },
+    {
+      "name": "generate-lab-mesh-assemblies",
+      "configurePreset": "debug-game",
+      "targets": ["generate-lab-mesh-assemblies"]
+    },
+    {
+      "name": "import-game-audio",
+      "configurePreset": "debug-game",
+      "targets": ["import-game-audio"]
+    },
+    {
+      "name": "generate-project-files",
+      "configurePreset": "debug-game",
+      "targets": ["generate-project-files"]
+    },
+    {
+      "name": "generate-project-files-development",
+      "configurePreset": "development",
+      "targets": ["generate-project-files"]
+    },
+    {
+      "name": "format-code",
+      "configurePreset": "debug-game",
+      "targets": ["format-code"]
+    },
+    {
+      "name": "format-all-code",
+      "configurePreset": "debug-game",
+      "targets": ["format-all-code"]
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "debug-game-tests",
+      "inherits": "test-base",
+      "configurePreset": "debug-game",
+      "filter": {
+        "include": {
+          "label": "^all$"
+        }
+      }
+    },
+    {
+      "name": "debug-game-input-smoke-tests",
+      "inherits": "test-base",
+      "configurePreset": "debug-game",
+      "filter": {
+        "include": {
+          "label": "input-smoke"
+        }
+      }
+    },
+    {
+      "name": "debug-game-level-tests",
+      "inherits": "test-base",
+      "configurePreset": "debug-game",
+      "filter": {
+        "include": {
+          "label": "^level$"
+        }
+      }
+    },
+    {
+      "name": "debug-game-unit-tests",
+      "inherits": "test-base",
+      "configurePreset": "debug-game",
+      "filter": {
+        "include": {
+          "label": "unit"
+        }
+      }
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "setup-worktree-debug-game",
+      "displayName": "Prepare a worktree for DebugGame development",
+      "description": "Build DebugGame dependencies, import optional audio, and generate project files",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "worktree-dependencies-debug-game" },
+        { "type": "build", "name": "import-game-audio" },
+        { "type": "build", "name": "generate-project-files" }
+      ]
+    },
+    {
+      "name": "setup-worktree-development",
+      "displayName": "Prepare a worktree for Development",
+      "description": "Build non-Unreal Development dependencies and generate project files",
+      "steps": [
+        { "type": "configure", "name": "development" },
+        { "type": "build", "name": "worktree-dependencies-development" },
+        { "type": "build", "name": "generate-project-files-development" }
+      ]
+    },
+    {
+      "name": "debug",
+      "steps": [
+        { "type": "configure", "name": "debug" },
+        { "type": "build", "name": "debug" }
+      ]
+    },
+    {
+      "name": "debug-game",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "debug-game" }
+      ]
+    },
+    {
+      "name": "development",
+      "steps": [
+        { "type": "configure", "name": "development" },
+        { "type": "build", "name": "development" }
+      ]
+    },
+    {
+      "name": "shipping",
+      "steps": [
+        { "type": "configure", "name": "shipping" },
+        { "type": "build", "name": "shipping" }
+      ]
+    },
+    {
+      "name": "test",
+      "steps": [
+        { "type": "configure", "name": "test" },
+        { "type": "build", "name": "test" }
+      ]
+    },
+    {
+      "name": "resave-assets",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "resave-assets" }
+      ]
+    },
+    {
+      "name": "generate-lab-mesh-assemblies",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "generate-lab-mesh-assemblies" }
+      ]
+    },
+    {
+      "name": "import-game-audio",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "import-game-audio" }
+      ]
+    },
+    {
+      "name": "generate-project-files",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "generate-project-files" }
+      ]
+    },
+    {
+      "name": "format-code",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "format-code" }
+      ]
+    },
+    {
+      "name": "format-all-code",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "format-all-code" }
+      ]
+    },
+    {
+      "name": "debug-game-tests",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "debug-game" },
+        { "type": "test", "name": "debug-game-tests" }
+      ]
+    },
+    {
+      "name": "debug-game-unit-tests",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "debug-game" },
+        { "type": "test", "name": "debug-game-unit-tests" }
+      ]
+    }
+  ]
+}
