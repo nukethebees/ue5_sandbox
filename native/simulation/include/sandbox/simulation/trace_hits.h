@@ -12,6 +12,13 @@
 #include <span>
 
 namespace ml::simulation {
+struct LineTraceResult {
+    Vector3f location{};
+    FRegistryEntityHandle entity;
+    std::int32_t static_geometry_index{-1};
+    bool hit{false};
+};
+
 struct TraceHitsView;
 
 struct TraceHitsConstView {

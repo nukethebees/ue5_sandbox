@@ -102,7 +102,7 @@ auto trace_impl(ml::FSpatialQueryManager const& manager, FTraceRequest const& re
 
     if constexpr (Mode == EQueryMode::ClosestHit) {
         return {
-            .location = ml::to_unreal(hits.locations[0]),
+            .location = hits.locations[0],
             .entity = hits.entities[0],
             .static_geometry_index = hits.static_geometry_indices[0],
             .hit = hits.hits[0] != 0,

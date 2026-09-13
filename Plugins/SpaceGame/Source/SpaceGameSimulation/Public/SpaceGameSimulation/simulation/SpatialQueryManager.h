@@ -44,13 +44,7 @@ class FThreadBufferLease {
 
 namespace ml {
 using FSpatialQueryTelemetrySnapshot = simulation::collision::SpatialQueryTelemetrySnapshot;
-
-struct FLineTraceResult {
-    FVector3f location{FVector3f::ZeroVector};
-    FRegistryEntityHandle entity;
-    int32 static_geometry_index{INDEX_NONE};
-    bool hit{false};
-};
+using FLineTraceResult = simulation::LineTraceResult;
 
 struct SPACEGAMESIMULATION_API FSpatialQueryManager {
   public:
