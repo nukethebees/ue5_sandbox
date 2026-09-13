@@ -7,6 +7,10 @@
       "hidden": true,
       "inherits": "windows-clang-cl",
       "cacheVariables": {
+        "CMAKE_C_FLAGS_RELEASE": "/O2 /DNDEBUG",
+        "CMAKE_C_FLAGS_RELWITHDEBINFO": "/O2 /Zi /DNDEBUG",
+        "CMAKE_CXX_FLAGS_RELEASE": "/O2 /DNDEBUG",
+        "CMAKE_CXX_FLAGS_RELWITHDEBINFO": "/O2 /Zi /DNDEBUG",
         "SANDBOX_WITH_UNREAL": true
       }
     },
@@ -15,6 +19,10 @@
       "hidden": true,
       "inherits": "windows-msvc",
       "cacheVariables": {
+        "CMAKE_C_FLAGS_RELEASE": "/O2 /DNDEBUG",
+        "CMAKE_C_FLAGS_RELWITHDEBINFO": "/O2 /Zi /DNDEBUG",
+        "CMAKE_CXX_FLAGS_RELEASE": "/O2 /DNDEBUG",
+        "CMAKE_CXX_FLAGS_RELWITHDEBINFO": "/O2 /Zi /DNDEBUG",
         "SANDBOX_WITH_UNREAL": true
       }
     },
@@ -23,6 +31,7 @@
       "displayName": "Debug",
       "inherits": "unreal",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
         "UE_CONFIGURATION": "Debug"
       }
     },
@@ -31,6 +40,7 @@
       "displayName": "DebugGame",
       "inherits": "unreal",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
         "UE_CONFIGURATION": "DebugGame"
       }
     },
@@ -39,6 +49,7 @@
       "displayName": "Development",
       "inherits": "unreal",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "UE_CONFIGURATION": "Development"
       }
     },
@@ -47,6 +58,7 @@
       "displayName": "Shipping",
       "inherits": "unreal",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
         "UE_CONFIGURATION": "Shipping"
       }
     },
@@ -55,6 +67,7 @@
       "displayName": "Test",
       "inherits": "unreal",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
         "UE_CONFIGURATION": "Test"
       }
     },
@@ -63,6 +76,7 @@
       "displayName": "Debug (MSVC native)",
       "inherits": "unreal-msvc",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
         "UE_CONFIGURATION": "Debug"
       }
     },
@@ -71,6 +85,7 @@
       "displayName": "DebugGame (MSVC native)",
       "inherits": "unreal-msvc",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
         "UE_CONFIGURATION": "DebugGame"
       }
     },
@@ -79,6 +94,7 @@
       "displayName": "Development (MSVC native)",
       "inherits": "unreal-msvc",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "UE_CONFIGURATION": "Development"
       }
     },
@@ -87,6 +103,7 @@
       "displayName": "Shipping (MSVC native)",
       "inherits": "unreal-msvc",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
         "UE_CONFIGURATION": "Shipping"
       }
     },
@@ -95,6 +112,7 @@
       "displayName": "Test (MSVC native)",
       "inherits": "unreal-msvc",
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
         "UE_CONFIGURATION": "Test"
       }
     }

@@ -1,9 +1,23 @@
 add_library(sandbox_arch_avx2 INTERFACE)
 add_library(sandbox::arch_avx2 ALIAS sandbox_arch_avx2)
 
+add_library(sandbox_release_optimization INTERFACE)
+add_library(sandbox::release_optimization ALIAS sandbox_release_optimization)
+
+set(sandbox_optimized_unreal_configuration OFF)
+if(UE_CONFIGURATION MATCHES "^(Development|Shipping|Test)$")
+  set(sandbox_optimized_unreal_configuration ON)
+endif()
+set(sandbox_release_configuration
+  "$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>,$<BOOL:${sandbox_optimized_unreal_configuration}>>"
+)
+
 add_library(sandbox_unreal_avx2 INTERFACE)
 add_library(sandbox::unreal_avx2 ALIAS sandbox_unreal_avx2)
-target_link_libraries(sandbox_unreal_avx2 INTERFACE sandbox::arch_avx2)
+target_link_libraries(sandbox_unreal_avx2 INTERFACE
+  sandbox::arch_avx2
+  sandbox::release_optimization
+)
 
 add_library(sandbox_arch_avx512 INTERFACE)
 add_library(sandbox::arch_avx512 ALIAS sandbox_arch_avx512)
@@ -21,6 +35,12 @@ add_library(sandbox_debug_symbols INTERFACE)
 add_library(sandbox::debug_symbols ALIAS sandbox_debug_symbols)
 
 if(SANDBOX_MSVC_FRONTEND)
+  target_compile_options(sandbox_release_optimization INTERFACE
+    "$<${sandbox_release_configuration}:/O2>"
+    "$<${sandbox_release_configuration}:/Ot>"
+    "$<${sandbox_release_configuration}:/Ob3>"
+  )
+
   target_compile_options(sandbox_arch_avx2 INTERFACE /arch:AVX2)
   target_compile_options(sandbox_arch_avx512 INTERFACE /arch:AVX512)
 
@@ -35,6 +55,10 @@ if(SANDBOX_MSVC_FRONTEND)
   target_compile_options(sandbox_debug_symbols INTERFACE /Zi)
   target_link_options(sandbox_debug_symbols INTERFACE /DEBUG)
 else()
+  target_compile_options(sandbox_release_optimization INTERFACE
+    "$<${sandbox_release_configuration}:-O3>"
+  )
+
   target_compile_options(sandbox_arch_avx2 INTERFACE -mavx2)
   target_compile_options(sandbox_arch_avx512 INTERFACE
     -mavx2
