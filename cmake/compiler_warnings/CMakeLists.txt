@@ -4,6 +4,7 @@ add_library(sandbox_warning_level INTERFACE)
 add_library(sandbox_warning_errors INTERFACE)
 add_library(sandbox_codegen_warning_exceptions INTERFACE)
 add_library(sandbox_msvc_strict INTERFACE)
+add_library(sandbox_clang_strict INTERFACE)
 
 if(SANDBOX_MSVC_FRONTEND)
   target_add_supported_options(sandbox_warning_level COMPILE /W4 /wd4324)
@@ -25,6 +26,42 @@ else()
     -Wno-missing-designated-field-initializers
     -Wno-missing-field-initializers
   )
+endif()
+
+if(SANDBOX_MSVC_FRONTEND AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  set(sandbox_clang_additional_warnings
+    /clang:-Wpedantic # Warn about language extensions outside the selected C++ standard.
+    /clang:-Wcast-align # Warn when a cast increases the required pointer alignment.
+    /clang:-Wcast-qual # Warn when a cast removes type qualifiers such as const.
+    /clang:-Wcomma # Warn about suspicious uses of the comma operator.
+    /clang:-Wconditional-uninitialized # Warn when a value may be uninitialized on some paths.
+    /clang:-Wdeprecated-copy-dtor # Warn about deprecated implicit copies caused by a destructor.
+    /clang:-Wformat=2 # Enable stricter format-string validation, including non-literal formats.
+    /clang:-Wheader-hygiene # Warn when headers leak using directives into includers.
+    /clang:-Wimplicit-fallthrough # Warn about unannotated switch fallthrough.
+    /clang:-Wmissing-declarations # Warn about definitions without prior declarations.
+    /clang:-Wmissing-noreturn # Warn when a function could be declared noreturn.
+    /clang:-Wnon-virtual-dtor # Warn when a polymorphic type has a non-virtual destructor.
+    /clang:-Wnull-dereference # Warn about statically evident null dereferences.
+    /clang:-Wold-style-cast # Warn about C-style casts in C++ code.
+    /clang:-Woverloaded-virtual # Warn when a declaration hides a base virtual overload.
+    /clang:-Wshadow-uncaptured-local # Warn when a lambda declaration shadows an uncaptured local.
+    /clang:-Wsuggest-destructor-override # Warn when a virtual destructor should use override.
+    /clang:-Wsuggest-override # Warn when a virtual function should use override.
+    /clang:-Wthread-safety # Enable attribute-driven thread-safety analysis.
+    /clang:-Wundef # Warn when an undefined macro is evaluated by #if.
+    /clang:-Wundefined-func-template # Warn when an instantiated function template lacks a definition.
+    /clang:-Wunreachable-code-aggressive # Warn about unreachable statements, returns, and breaks.
+    /clang:-Wunused-macros # Warn about macros unused in their defining translation unit.
+    /clang:-Wunused-member-function # Warn about unused members in internal-linkage classes.
+    /clang:-Wweak-vtables # Warn when a virtual table has no out-of-line key function.
+    /clang:-Wzero-as-null-pointer-constant # Warn when literal zero is used as a null pointer.
+  )
+  foreach(sandbox_clang_warning IN LISTS sandbox_clang_additional_warnings)
+    target_add_supported_options(sandbox_clang_strict COMPILE
+      "${sandbox_clang_warning}"
+    )
+  endforeach()
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
@@ -136,6 +173,7 @@ add_library(sandbox::warnings ALIAS sandbox_warnings)
 target_link_libraries(sandbox_warnings INTERFACE
   sandbox_warning_level
   sandbox_msvc_strict
+  sandbox_clang_strict
 )
 
 add_library(sandbox_warnings_as_errors INTERFACE)
