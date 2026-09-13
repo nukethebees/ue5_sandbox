@@ -34,7 +34,8 @@ auto make_cap_battle(TConstArrayView<ETestTeam> const capital_teams,
     data.capital_target_spawn_indices.SetNumUninitialized(capital_count);
     for (int32 capital_index{}; capital_index < capital_count; ++capital_index) {
         data.capital_spawns.locations.xs[capital_index] = capital_index * 1000.f;
-        data.capital_spawns.teams[capital_index] = capital_teams[capital_index];
+        data.capital_spawns.teams[capital_index] =
+            static_cast<ml::simulation::Team>(capital_teams[capital_index]);
         data.capital_spawns.healths[capital_index] = 100;
         data.capital_spawns.initial_spawn_delays[capital_index] = 0.f;
         data.capital_spawns.spawn_cooldowns[capital_index] = spawn_cooldown;

@@ -5,6 +5,7 @@
 #include <SpaceGameSimulation/combat/lasers/TestLasersSimulation.h>
 #include <SpaceGameSimulation/defences/turrets/TestStaticTurretsSimulation.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
@@ -35,8 +36,8 @@ void add_worldless_turrets(FLevelSimulationInitData& data,
         auto const health{blue_health != INDEX_NONE && teams[i] == ETestTeam::Blue
                               ? blue_health
                               : data.turrets.max_health};
-        data.turret_spawns.locations.set(i, locations[i]);
-        data.turret_spawns.teams[i] = teams[i];
+        data.turret_spawns.locations.set(i, ml::to_native(locations[i]));
+        data.turret_spawns.teams[i] = static_cast<ml::simulation::Team>(teams[i]);
         data.turret_spawns.healths[i] = health;
         data.turret_spawns.laser_damages[i] = laser_damage;
         data.turret_transforms[i].SetLocation(FVector{locations[i]});

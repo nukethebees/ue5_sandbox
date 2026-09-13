@@ -356,8 +356,8 @@ void run_worldless_collision_uniform_grid_membership(FAutomationTestBase& test,
                                 0.f,
                                 data.capital_ships.spawn_delay);
     data.turret_spawns.add_defaulted(1);
-    data.turret_spawns.locations.set(0, FVector3f{500.f, 500.f, 0.f});
-    data.turret_spawns.teams[0] = ETestTeam::Blue;
+    data.turret_spawns.locations.set(0, HMM_V3(500.f, 500.f, 0.f));
+    data.turret_spawns.teams[0] = ml::simulation::Team::Blue;
     data.turret_spawns.healths[0] = data.turrets.max_health;
     data.turret_spawns.laser_damages[0] = data.turrets.laser.damage;
     data.turret_transforms.Add(FTransform{FVector{500.f, 500.f, 0.f}});

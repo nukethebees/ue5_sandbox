@@ -1,4 +1,6 @@
 #include "SpaceGame/simulation/LevelSimulationBuilder.h"
+#include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 #include <SpaceGame/levels/CompileLevelEvents.h>
@@ -99,8 +101,8 @@ void validate_world_fighter_spawn_slots(FLevelSimulationInitData const& data,
             }
         }
     }};
-    validate(data.capital_spawns.locations.get_const_view(),
-             data.capital_spawns.rotations.get_const_view());
+    validate(ml::to_unreal(data.capital_spawns.locations.get_const_view()),
+             ml::to_unreal(data.capital_spawns.rotations.get_const_view()));
     auto const& initial{data.level_events.initial_spawns.capital_spawns};
     validate(initial.locations.get_const_view(), initial.rotations.get_const_view());
     auto const& scheduled{data.level_events.schedule.capital_spawns};

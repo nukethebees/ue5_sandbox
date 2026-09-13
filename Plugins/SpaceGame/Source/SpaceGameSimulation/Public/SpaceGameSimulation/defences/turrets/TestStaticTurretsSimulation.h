@@ -1,4 +1,5 @@
 #pragma once
+#include <SpaceGameSimulation/defences/turrets/TestStaticTurretsSpawnData.h>
 #include <SpaceGameSimulation/simulation/SystemReadViews.h>
 
 #include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>

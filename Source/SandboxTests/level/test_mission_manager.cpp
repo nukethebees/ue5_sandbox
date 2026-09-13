@@ -1,5 +1,6 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
@@ -26,8 +27,8 @@ auto add_worldless_capital(FLevelSimulationInitData& data,
                            ETestTeam const team = ETestTeam::White) -> int32 {
     auto const index{data.capital_spawns.num()};
     data.capital_spawns.add_defaulted(1);
-    ml::assign(data.capital_spawns.locations, index, location);
-    data.capital_spawns.teams[index] = team;
+    data.capital_spawns.locations.set(index, ml::to_native(FVector3f{location}));
+    data.capital_spawns.teams[index] = static_cast<ml::simulation::Team>(team);
     data.capital_spawns.healths[index] = data.capital_ships.max_health;
     data.capital_spawns.initial_spawn_delays[index] = 60.f;
     data.capital_spawns.spawn_cooldowns[index] = 60.f;

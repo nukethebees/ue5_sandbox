@@ -1,5 +1,6 @@
 #pragma once
 #include <sandbox/simulation/fighter_reassignment.h>
+#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSpawnData.h>
 
 #include <SpaceGameSimulation/simulation/SystemReadViews.h>
 
@@ -59,8 +60,11 @@ struct SPACEGAMESIMULATION_API Simulation {
     // Configuration
     /* **************************************** */
     auto get_read_view() const -> FCapitalReadView {
-        return {
-            entities.get_const_view(), &entity_registry, fighter_handles, frame_changes_, deaths_};
+        return {entities.get_const_view(),
+                &entity_registry,
+                get_fighter_handles(),
+                frame_changes_,
+                deaths_};
     }
     void reset_frame_output() {
         frame_changes_.Reset();
@@ -80,7 +84,7 @@ struct SPACEGAMESIMULATION_API Simulation {
     auto get_fighter_spawn_slots() const noexcept -> int32;
     auto get_fighters_spawned() const noexcept -> int32 { return fighters_spawned; }
     auto get_fighter_handles() const noexcept -> TConstArrayView<FRegistryEntityHandle> {
-        return fighter_handles;
+        return {fighter_handles.data(), static_cast<int32>(fighter_handles.size())};
     }
     auto get_capital_fighter_handle_spans() const noexcept -> auto const& {
         return entities.capital_fighter_handle_spans;
@@ -181,8 +185,8 @@ struct SPACEGAMESIMULATION_API Simulation {
     RegistryEntityData entity_update_data;
 
     ml::test_capital_ship_fighters::CommandInterface fighters_interface;
-    TArray<FRegistryEntityHandle> fighter_handles;
-    TArray<FRegistryEntityHandle> fighter_handles_scratch;
+    std::vector<FRegistryEntityHandle> fighter_handles;
+    std::vector<FRegistryEntityHandle> fighter_handles_scratch;
     FighterReassignment fighter_reassignment_queue;
     int32 fighters_spawned{0};
     int32 diagnostic_spawn_reports{};

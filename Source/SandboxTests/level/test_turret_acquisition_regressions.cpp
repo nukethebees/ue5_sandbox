@@ -34,8 +34,9 @@ void run_worldless_turret_acquisition_regression(
                    : (scenario == ETurretAcquisitionRegressionScenario::EnemyOutsideRadius
                           ? data.turrets.detection_radius + 1.f
                           : 1000.f)};
-        data.turret_spawns.locations.set(i, FVector3f{distance, 0.f, 0.f});
-        data.turret_spawns.teams[i] = friendly ? ETestTeam::Blue : ETestTeam::Red;
+        data.turret_spawns.locations.set(i, HMM_V3(distance, 0.f, 0.f));
+        data.turret_spawns.teams[i] =
+            friendly ? ml::simulation::Team::Blue : ml::simulation::Team::Red;
         data.turret_spawns.healths[i] = data.turrets.max_health;
         data.turret_spawns.laser_damages[i] = 0;
         data.turret_transforms[i].SetLocation(FVector{distance, 0.f, 0.f});

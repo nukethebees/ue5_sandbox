@@ -44,7 +44,7 @@ auto make_long_running_battle() -> FLevelSimulationInitData {
 
     data.capital_spawns.add_defaulted(2);
     data.capital_spawns.locations.xs = {-10000.f, 10000.f};
-    data.capital_spawns.teams = {ETestTeam::Green, ETestTeam::White};
+    data.capital_spawns.teams = {ml::simulation::Team::Green, ml::simulation::Team::White};
     data.capital_spawns.healths = {MAX_int32, MAX_int32};
     data.capital_spawns.initial_spawn_delays = {0.f, 0.f};
     data.capital_spawns.spawn_cooldowns = {10000.f, 10000.f};

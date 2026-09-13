@@ -1,4 +1,5 @@
 #pragma once
+#include <sandbox/simulation/spinner_firing.h>
 #include <SpaceGameSimulation/simulation/SystemReadViews.h>
 
 #include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>
@@ -10,6 +11,7 @@
 #include <CoreMinimal.h>
 
 #include <memory_resource>
+#include <vector>
 
 struct FLevelSimulation;
 struct FSpinnerSimulationConfig;
@@ -86,6 +88,7 @@ struct SPACEGAMESIMULATION_API Simulation {
 #endif
 
     FSpinnerSimulationConfig config{};
+    std::vector<ml::simulation::spinners::FirePoint> fire_points_;
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
     FTestEntityRegistry& entity_registry;
     ml::test_lasers::Simulation& laser_simulation;

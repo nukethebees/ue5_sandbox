@@ -1,5 +1,8 @@
 #include "SpaceGame/simulation/TestBatchOrchestrator.h"
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
+#include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include "SpaceGame/levels/LevelLoader.h"
 #include "SpaceGame/system/GameSubsystem.h"
@@ -512,9 +515,9 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
         ml::add_uninitialised(n_to_add, spawn_data);
         for (int32 i{0}; i < n_to_add; ++i) {
             auto const& proxy_transform{capital_proxies[i]->GetActorTransform()};
-            spawn_data.locations.set(i, FVector3f{proxy_transform.GetLocation()});
-            spawn_data.rotations.set(i, FRotator3f{proxy_transform.Rotator()});
-            spawn_data.teams[i] = capital_proxies[i]->get_team();
+            spawn_data.locations.set(i, ml::to_native(FVector3f{proxy_transform.GetLocation()}));
+            spawn_data.rotations.set(i, ml::to_native(FRotator3f{proxy_transform.Rotator()}));
+            spawn_data.teams[i] = ml::to_native(capital_proxies[i]->get_team());
             spawn_data.healths[i] =
                 capital_proxies[i]->get_health().Get(level_config->capital_ships.max_health);
             spawn_data.initial_spawn_delays[i] =
@@ -535,12 +538,12 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
         for (int32 i{0}; i < n_to_add; ++i) {
             auto const transform{turret_proxies[i]->GetActorTransform()};
             initial_transforms[i] = transform;
-            spawn_data.set(
-                i,
-                FVector3f{transform.GetLocation()},
-                turret_proxies[i]->get_team(),
-                turret_proxies[i]->get_health().Get(level_config->turrets.max_health),
-                turret_proxies[i]->get_laser_damage().Get(level_config->turrets.laser.damage));
+            spawn_data.locations.set(i, ml::to_native(FVector3f{transform.GetLocation()}));
+            spawn_data.teams[i] = ml::to_native(turret_proxies[i]->get_team());
+            spawn_data.healths[i] =
+                turret_proxies[i]->get_health().Get(level_config->turrets.max_health);
+            spawn_data.laser_damages[i] =
+                turret_proxies[i]->get_laser_damage().Get(level_config->turrets.laser.damage);
         }
         data.turret_spawns = MoveTemp(spawn_data);
         data.turret_transforms = MoveTemp(initial_transforms);

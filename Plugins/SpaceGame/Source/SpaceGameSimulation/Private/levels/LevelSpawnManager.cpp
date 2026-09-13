@@ -1,4 +1,7 @@
 #include "SpaceGameSimulation/levels/LevelSpawnManager.h"
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
+#include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <SpaceGameSimulation/defences/turrets/TestStaticTurretsSimulation.h>
 #include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
@@ -71,14 +74,19 @@ void FLevelSpawnManager::spawn_capitals(FLevelCapitalSpawnEventsConstView const 
         target_handles_scratch_[i].reset();
     }
 
+    auto const size{static_cast<std::size_t>(count)};
+    std::vector<simulation::Team> teams(size);
+    for (int32 i{}; i < count; ++i) {
+        teams[static_cast<std::size_t>(i)] = ml::to_native(events.teams[i]);
+    }
     test_capital_ships::SpawnDataConstView const spawn_data{
-        .target_handles = target_handles_scratch_,
-        .locations = events.locations,
-        .rotations = events.rotations,
-        .teams = events.teams,
-        .healths = events.healths,
-        .initial_spawn_delays = events.initial_fighter_spawn_delays,
-        .spawn_cooldowns = events.fighter_spawn_cooldowns,
+        .target_handles = {target_handles_scratch_.GetData(), size},
+        .locations = ml::to_native(events.locations),
+        .rotations = ml::to_native(events.rotations),
+        .teams = teams,
+        .healths = {events.healths.GetData(), size},
+        .initial_spawn_delays = {events.initial_fighter_spawn_delays.GetData(), size},
+        .spawn_cooldowns = {events.fighter_spawn_cooldowns.GetData(), size},
     };
     auto const handles{capital_ships_.register_ships(spawn_data)};
     for (int32 i{}; i < count; ++i) {
@@ -93,11 +101,16 @@ void FLevelSpawnManager::spawn_capitals(FLevelCapitalSpawnEventsConstView const 
 }
 
 void FLevelSpawnManager::spawn_turrets(FLevelTurretSpawnEventsConstView const events) {
+    auto const size{static_cast<std::size_t>(events.num())};
+    std::vector<simulation::Team> teams(size);
+    for (std::size_t index{}; index < size; ++index) {
+        teams[index] = ml::to_native(events.teams[static_cast<int32>(index)]);
+    }
     test_static_turrets::SpawnDataConstView const spawn_data{
-        .locations = events.locations,
-        .teams = events.teams,
-        .healths = events.healths,
-        .laser_damages = events.laser_damages,
+        .locations = ml::to_native(events.locations),
+        .teams = teams,
+        .healths = {events.healths.GetData(), size},
+        .laser_damages = {events.laser_damages.GetData(), size},
     };
     auto const handles{turrets_.register_turrets(spawn_data, events.rotations)};
     auto const count{events.num()};

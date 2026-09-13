@@ -23,4 +23,7 @@ void FrameHitDetails::add(Vector3f const location,
 auto FrameHitDetails::num() const noexcept -> std::int32_t {
     return locations.num();
 }
+auto FrameHitDetails::get_const_view() const -> LaserHitDetailsConstView {
+    return {locations.get_const_view(), emission_directions.get_const_view(), sources.view()};
+}
 } // namespace ml::simulation::lasers

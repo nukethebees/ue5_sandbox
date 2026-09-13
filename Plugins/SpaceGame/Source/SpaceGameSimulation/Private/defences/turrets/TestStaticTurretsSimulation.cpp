@@ -1,5 +1,7 @@
 #include "SpaceGameSimulation/defences/turrets/TestStaticTurretsSimulation.h"
 
+#include <sandbox/simulation/turret_firing.h>
+#include <sandbox/simulation/turret_spawn_initialization.h>
 #include <sandbox/simulation/turret_targeting.h>
 #include <SpaceGameSimulation/combat/lasers/TestLasersFrameScratch.h>
 #include <SpaceGameSimulation/entities/BatchSimulation.h>
@@ -11,11 +13,7 @@
 
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/fixed_array.h>
-#include <SandboxCore/frame_array.h>
 #include <SandboxCore/frame_memory_resource.h>
-#include <SandboxCore/frame_rotators.h>
-#include <SandboxCore/frame_vectors.h>
-#include <SandboxCore/projectile_intercept.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxNative/deterministic_bias.h>
@@ -65,41 +63,28 @@ auto Simulation::register_turrets(SpawnDataConstView const spawn_data,
         static_cast<FPeriodicTickCountdown16::counter_type>(target_refresh_tick_period_unsigned)};
 
     auto const first_new_index{entities.num()};
-    entities.add_uninitialised(n_to_add);
-    ml::assign_from(entities.locations.get_view(first_new_index, n_to_add), spawn_data.locations);
-    for (int32 local_index{}; local_index < n_to_add; ++local_index) {
-        auto const i{first_new_index + local_index};
-        entities.teams[i] = spawn_data.teams[local_index];
-        entities.healths[i] = spawn_data.healths[local_index];
-        entities.laser_damages[i] = spawn_data.laser_damages[local_index];
-    }
-    entities.target_refresh_countdowns.initialise_last(target_refresh_tick_period, n_to_add);
-    ml::fill(
-        TArrayView<FRegistryEntityHandle>{entities.target_handles}.Slice(first_new_index, n_to_add),
-        FRegistryEntityHandle{});
-    ml::fill(entities.target_locations.get_view(first_new_index, n_to_add), 0.f);
-    ml::fill(entities.target_velocities.get_view(first_new_index, n_to_add), 0.f);
-    entities.laser_cooldowns.zero_last(n_to_add);
-
-    FVector3f const fire_point_offset{config.fire_point_offset.GetLocation()};
-    for (int32 local_index{}; local_index < n_to_add; ++local_index) {
-        auto const i{first_new_index + local_index};
-        entities.fire_point_locations.set(i,
-                                          entities.locations.xs[i] + fire_point_offset.X,
-                                          entities.locations.ys[i] + fire_point_offset.Y,
-                                          entities.locations.zs[i] + fire_point_offset.Z);
-
-        entities.target_refresh_countdowns.remaining_ticks[i] =
-            static_cast<FPeriodicTickCountdown16::counter_type>(target_refresh_next_offset);
-        ++target_refresh_next_offset;
-        if (target_refresh_next_offset == target_refresh_tick_period) {
-            target_refresh_next_offset = 0;
-        }
-    }
+    entities.add_defaulted(n_to_add);
+    auto const new_entities_view{entities.get_view(first_new_index, n_to_add)};
+    auto const spawn_count{static_cast<std::size_t>(n_to_add)};
+    ml::simulation::turrets::initialize_spawned_turrets(
+        {.locations = ml::to_native(new_entities_view.locations),
+         .fire_point_locations = ml::to_native(new_entities_view.fire_point_locations),
+         .teams = std::as_writable_bytes(std::span{new_entities_view.teams.GetData(), spawn_count}),
+         .healths = {new_entities_view.healths.GetData(), spawn_count},
+         .laser_damages = {new_entities_view.laser_damages.GetData(), spawn_count},
+         .refresh_remaining_ticks = {entities.target_refresh_countdowns.remaining_ticks.GetData() +
+                                         first_new_index,
+                                     spawn_count},
+         .refresh_periods = {entities.target_refresh_countdowns.periods.GetData() + first_new_index,
+                             spawn_count}},
+        spawn_data,
+        ml::to_native(FVector3f{config.fire_point_offset.GetLocation()}),
+        target_refresh_tick_period,
+        target_refresh_next_offset);
 
     RegistryEntityData new_entity_data;
     new_entity_data.add_uninitialised(n_to_add);
-    ml::assign_from(new_entity_data.locations, spawn_data.locations);
+    ml::assign_from(new_entity_data.locations, ml::to_unreal(spawn_data.locations));
     for (int32 i{}; i < n_to_add; ++i) {
         auto const rotation{ml::get_rotator3d(rotations, i)};
         ml::assign(new_entity_data.rotations, i, rotation);
@@ -110,7 +95,7 @@ auto Simulation::register_turrets(SpawnDataConstView const spawn_data,
     new_entity_data.set_all_entity_types(ETestEntityType::Turret);
     for (int32 i{}; i < n_to_add; ++i) {
         new_entity_data.healths[i] = spawn_data.healths[i];
-        new_entity_data.teams[i] = spawn_data.teams[i];
+        new_entity_data.teams[i] = ml::to_unreal(spawn_data.teams[i]);
         new_entity_data.alive[i] = static_cast<uint8>(spawn_data.healths[i] > 0);
     }
     auto const new_entities{entity_registry.add_entities(new_entity_data.get_const_view())};
@@ -342,99 +327,39 @@ void Simulation::perform_search_on_slice(int32 const job_index,
 void Simulation::fire_at_enemies() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::fire_at_enemies);
 
-    TFrameArray<int32> candidate_indices{&frame_memory_resource};
-    TFrameArray<FRegistryEntityHandle> hit_entity_handles{&frame_memory_resource};
-    FFrameVectors3f start_locations{&frame_memory_resource};
-    FFrameVectors3f end_locations{&frame_memory_resource};
-    ml::test_lasers::FrameSpawnRequests new_lasers{&frame_memory_resource};
-    auto const n{get_num_instances()};
-    auto const laser_speed{config.laser.projectile_speed};
-    auto const laser_max_distance{config.laser.max_distance};
-
+    auto const count{static_cast<std::size_t>(get_num_instances())};
+    ml::simulation::turrets::FiringView const firing_view{
+        .locations = ml::to_native(entities.locations.get_const_view()),
+        .fire_point_locations = ml::to_native(entities.fire_point_locations.get_const_view()),
+        .target_locations = ml::to_native(entities.target_locations.get_const_view()),
+        .target_velocities = ml::to_native(entities.target_velocities.get_const_view()),
+        .handles = {entities.handles.GetData(), count},
+        .targets = {entities.target_handles.GetData(), count},
+        .laser_damages = {entities.laser_damages.GetData(), count},
+        .teams = std::as_bytes(std::span{entities.teams.GetData(), count}),
+        .cooldowns = entities.laser_cooldowns.get_view().native_view()};
+    ml::simulation::turrets::FiringScratch scratch{&frame_memory_resource};
     auto const disengage_radius{get_disengage_radius()};
-    auto const disengage_radius_sq{disengage_radius * disengage_radius};
-
-    candidate_indices.reserve(n);
-    start_locations.reserve(n);
-    end_locations.reserve(n);
-
-    for (int32 i{0}; i < n; ++i) {
-        auto const target_handle{entities.target_handles[i]};
-
-        if (target_handle.is_null()) {
-            continue;
-        }
-
-        if (!entity_registry.is_valid_alive(target_handle)) {
-            entities.target_handles[i].reset();
-            continue;
-        }
-
-        if (!entities.laser_cooldowns.is_ready(i)) {
-            continue;
-        }
-
-        auto const turret_location{ml::get_vector3f(entities.locations, i)};
-        auto const target_location{ml::get_vector3f(entities.target_locations, i)};
-
-        auto const distance_sq{FVector3f::DistSquared(turret_location, target_location)};
-        if (distance_sq >= disengage_radius_sq) {
-            entities.target_handles[i].reset();
-            continue;
-        }
-
-        candidate_indices.add(i);
-        start_locations.add(entities.fire_point_locations.xs[i],
-                            entities.fire_point_locations.ys[i],
-                            entities.fire_point_locations.zs[i]);
-        end_locations.add(target_location);
-
-        entities.laser_cooldowns.restart_counter(i);
-    }
-
-    auto const n_candidates{candidate_indices.num()};
-    if (n_candidates == 0) {
+    ml::simulation::turrets::prepare_firing(firing_view,
+                                            ml::make_native_query_view(entity_registry),
+                                            disengage_radius * disengage_radius,
+                                            scratch);
+    auto const candidate_count{scratch.candidate_indices.num()};
+    if (candidate_count == 0) {
         return;
     }
 
-    hit_entity_handles.set_num(n_candidates);
-    new_lasers.reserve(n_candidates);
-    spatial_query_manager.trace_line_of_sight(
-        start_locations.get_const_view(), end_locations.get_const_view(), hit_entity_handles);
+    spatial_query_manager.trace_line_of_sight(ml::to_unreal(scratch.starts.get_const_view()),
+                                              ml::to_unreal(scratch.ends.get_const_view()),
+                                              {scratch.hit_handles.data(), candidate_count});
 
-    for (int32 candidate_index{0}; candidate_index < n_candidates; ++candidate_index) {
-        auto const i{candidate_indices[candidate_index]};
-        if (hit_entity_handles[candidate_index] != entities.target_handles[i]) {
-            continue;
-        }
-
-        auto const target_location{ml::get_vector3f(entities.target_locations, i)};
-        auto const loc_x{entities.fire_point_locations.xs[i]};
-        auto const loc_y{entities.fire_point_locations.ys[i]};
-        auto const loc_z{entities.fire_point_locations.zs[i]};
-        FVector3f const laser_location{
-            loc_x,
-            loc_y,
-            loc_z,
-        };
-
-        auto const target_velocity{ml::get_vector3f(entities.target_velocities, i)};
-        auto const intercept_time{ml::solve_intercept_time(
-            laser_location, target_location, target_velocity, laser_speed)};
-
-        FVector3f const intercept_pos{target_location + target_velocity * intercept_time};
-        FVector3f const fire_dir{(intercept_pos - laser_location).GetSafeNormal()};
-
-        new_lasers.add(laser_location,
-                       fire_dir.ToOrientationRotator(),
-                       FVector3f::ZeroVector,
-                       entities.laser_damages[i],
-                       laser_speed,
-                       laser_max_distance,
-                       entities.handles[i],
-                       ml::make_laser_source(entities.teams[i], ETestEntityType::Turret));
-    }
-
+    ml::simulation::lasers::FrameSpawnRequests new_lasers{&frame_memory_resource};
+    ml::simulation::turrets::emit_lasers(firing_view,
+                                         scratch,
+                                         config.laser.projectile_speed,
+                                         config.laser.max_distance,
+                                         UE_SMALL_NUMBER,
+                                         new_lasers);
     laser_simulation.queue_laser_spawns(new_lasers.get_const_view());
 }
 auto Simulation::get_disengage_radius() const -> float {

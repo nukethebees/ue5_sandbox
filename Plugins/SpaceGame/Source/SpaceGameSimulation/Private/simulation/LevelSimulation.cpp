@@ -1,6 +1,9 @@
 #include <HAL/PlatformMisc.h>
 #include <HAL/PlatformTime.h>
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/simulation/LevelSimulation.h>
+#include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/soa_rotator_utils.h>
@@ -30,10 +33,10 @@ static void finalise_participating_teams(FLevelSimulationInitData& data) {
             include(data.player->team);
         }
         for (auto const team : data.capital_spawns.teams) {
-            include(team);
+            include(ml::to_unreal(team));
         }
         for (auto const team : data.turret_spawns.teams) {
-            include(team);
+            include(ml::to_unreal(team));
         }
         for (auto const team : data.level_events.initial_spawns.capital_spawns.teams) {
             include(team);
@@ -82,16 +85,15 @@ static auto make_legacy_level_initialisation(FLevelSimulationInitData const& dat
             target_index == FLevelSimulationInitData::player_target_spawn_index
                 ? initialisation.player_entity_index
                 : (target_index == INDEX_NONE ? INDEX_NONE : player_offset + target_index)};
-        initial_spawns.capital_spawns.set(
-            i,
-            entity_index,
-            target_entity_index,
-            data.capital_spawns.locations[i],
-            FRotator3f{ml::get_rotator3d(data.capital_spawns.rotations, i)},
-            data.capital_spawns.teams[i],
-            data.capital_spawns.healths[i],
-            data.capital_spawns.initial_spawn_delays[i],
-            data.capital_spawns.spawn_cooldowns[i]);
+        initial_spawns.capital_spawns.set(i,
+                                          entity_index,
+                                          target_entity_index,
+                                          ml::to_unreal(data.capital_spawns.locations[i]),
+                                          ml::to_unreal(data.capital_spawns.rotations[i]),
+                                          ml::to_unreal(data.capital_spawns.teams[i]),
+                                          data.capital_spawns.healths[i],
+                                          data.capital_spawns.initial_spawn_delays[i],
+                                          data.capital_spawns.spawn_cooldowns[i]);
     }
 
     initial_spawns.turret_spawns.add_uninitialised(turret_count);
@@ -102,9 +104,9 @@ static auto make_legacy_level_initialisation(FLevelSimulationInitData const& dat
                                 : FRotator::ZeroRotator};
         initial_spawns.turret_spawns.set(i,
                                          entity_index,
-                                         data.turret_spawns.locations[i],
+                                         ml::to_unreal(data.turret_spawns.locations[i]),
                                          FRotator3f{rotation},
-                                         data.turret_spawns.teams[i],
+                                         ml::to_unreal(data.turret_spawns.teams[i]),
                                          data.turret_spawns.healths[i],
                                          data.turret_spawns.laser_damages[i]);
     }

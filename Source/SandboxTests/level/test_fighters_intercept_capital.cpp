@@ -28,8 +28,9 @@ void run_worldless_fighters_intercept_capital(FAutomationTestBase& test,
     data.capital_spawns.locations.xs = {-61180.f, 77320.f, 3590.f};
     data.capital_spawns.locations.ys = {2170.f, 2170.f, 3240.f};
     data.capital_spawns.locations.zs = {4360.f, 4360.f, 4360.f};
-    data.capital_spawns.teams = {ETestTeam::Green, ETestTeam::Red, ETestTeam::Blue};
-    data.capital_spawns.healths.Init(fighters_intercept_test::collision_resilient_health, 3);
+    data.capital_spawns.teams = {
+        ml::simulation::Team::Green, ml::simulation::Team::Red, ml::simulation::Team::Blue};
+    data.capital_spawns.healths.assign(3, fighters_intercept_test::collision_resilient_health);
     data.capital_spawns.initial_spawn_delays = {0.f, 600.f, 600.f};
     data.capital_spawns.spawn_cooldowns = {60.f, 60.f, 60.f};
     data.capital_target_spawn_indices = {1, 0, 0};

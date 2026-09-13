@@ -3,6 +3,16 @@
 #include <algorithm>
 
 namespace ml::simulation::lasers {
+auto FrameSpawnRequests::get_const_view() const -> ml::simulation::lasers::SpawnRequestsConstView {
+    return {locations.get_const_view(),
+            rotations.get_const_view(),
+            base_velocities.get_const_view(),
+            damages.view(),
+            speeds.view(),
+            max_distances.view(),
+            instigator_handles.view(),
+            sources.view()};
+}
 FrameSpawnRequests::FrameSpawnRequests(std::pmr::memory_resource* const resource)
     : locations{resource}
     , rotations{resource}

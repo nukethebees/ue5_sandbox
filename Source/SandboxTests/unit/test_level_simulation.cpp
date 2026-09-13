@@ -15,6 +15,8 @@
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/levels/LevelEventManager.h>
 #include <SpaceGameSimulation/simulation/LevelSimulation.h>
+#include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <SandboxCore/soa_rotator_utils.h>
 
@@ -49,7 +51,7 @@ auto make_battle() -> FLevelSimulationInitData {
     data.lasers.n_preallocated_instances = 16;
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_spawns.add_defaulted(2);
-    data.capital_spawns.teams = {ETestTeam::Green, ETestTeam::White};
+    data.capital_spawns.teams = {ml::simulation::Team::Green, ml::simulation::Team::White};
     data.capital_spawns.healths = {100, 100};
     data.capital_spawns.initial_spawn_delays = {60.f, 60.f};
     data.capital_spawns.spawn_cooldowns = {60.f, 60.f};
@@ -401,7 +403,7 @@ auto FLevelSimulationLegacyInitialisationTest::RunTest(FString const&) -> bool {
         data.capital_target_spawn_indices = {1,
                                              FLevelSimulationInitData::player_target_spawn_index};
         data.turret_spawns.add_defaulted(2);
-        data.turret_spawns.teams = {ETestTeam::Green, ETestTeam::White};
+        data.turret_spawns.teams = {ml::simulation::Team::Green, ml::simulation::Team::White};
         data.turret_spawns.healths = {20, 30};
         data.turret_spawns.laser_damages = {5, 7};
         data.turret_spawns.locations.ys = {-1000.f, 1000.f};
@@ -895,7 +897,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
     expected_material_data.Reserve(tick_count * spawns_per_tick);
 
     for (int32 tick{}; tick < tick_count; ++tick) {
-        ml::test_lasers::SpawnRequests requests;
+        ml::simulation::lasers::SpawnRequests requests;
         requests.add_uninitialised(spawns_per_tick);
         for (int32 spawn{}; spawn < spawns_per_tick; ++spawn) {
             auto const id{expected_material_data.Num() + 1};
@@ -903,10 +905,10 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
                 static_cast<float>((spawn == 0 ? 0.5 : 2.0 + static_cast<double>(id % 45)) * dt)};
             auto const colour{FLinearColor::White};
 
-            ml::assign(
-                requests.locations, spawn, FVector3f{0.0f, static_cast<float>(id * 10), 100000.0f});
-            ml::assign(requests.rotations, spawn, FRotator3f::ZeroRotator);
-            ml::assign(requests.base_velocities, spawn, FVector3f::ZeroVector);
+            requests.locations.set(
+                spawn, ml::to_native(FVector3f{0.0f, static_cast<float>(id * 10), 100000.0f}));
+            requests.rotations.set(spawn, ml::to_native(FRotator3f::ZeroRotator));
+            requests.base_velocities.set(spawn, ml::to_native(FVector3f::ZeroVector));
             requests.damages[spawn] = 1;
             requests.speeds[spawn] = 1000.0f;
             requests.max_distances[spawn] = requests.speeds[spawn] * initial_lifetime;
@@ -919,7 +921,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
                  .spawn_time = static_cast<float>(simulation.get_clock().get_simulation_time())});
         }
 
-        lasers.queue_laser_spawns(requests);
+        lasers.queue_laser_spawns(requests.get_const_view());
         simulation.advance(dt);
         if ((tick % 3) != 2 && tick + 1 != tick_count) {
             continue;
@@ -982,18 +984,18 @@ auto FLaserFrameOutputsTest::RunTest(FString const&) -> bool {
     FLevelSimulation simulation{MoveTemp(data)};
     prepare_mission(simulation);
     auto queue_shot = [](FLevelSimulation& level) {
-        ml::test_lasers::SpawnRequests requests;
+        ml::simulation::lasers::SpawnRequests requests;
         requests.add_uninitialised(1);
-        requests.locations.set(0, FVector3f{700.f, 0.f, 0.f});
-        ml::assign(requests.rotations, 0, FRotator3f::ZeroRotator);
-        requests.base_velocities.set(0, FVector3f::ZeroVector);
+        requests.locations.set(0, ml::to_native(FVector3f{700.f, 0.f, 0.f}));
+        requests.rotations.set(0, ml::to_native(FRotator3f::ZeroRotator));
+        requests.base_velocities.set(0, ml::to_native(FVector3f::ZeroVector));
         requests.damages[0] = 1;
         requests.speeds[0] = 2000.f;
         requests.max_distances[0] = 10000.f;
         requests.instigator_handles[0] = level.get_capital_ships().get_handle(0);
         requests.sources[0] =
             ml::make_laser_source(ETestTeam::Green, ETestEntityType::CapitalShipFighter);
-        level.get_lasers().queue_laser_spawns(requests);
+        level.get_lasers().queue_laser_spawns(requests.get_const_view());
     };
     queue_shot(simulation);
     simulation.on_end_tick = [&](FLevelSimulation& level) {
@@ -1007,8 +1009,9 @@ auto FLaserFrameOutputsTest::RunTest(FString const&) -> bool {
     TestEqual(
         TEXT("Impacted lasers leave authoritative storage"), frame.lasers.get_num_instances(), 0);
     TestEqual(TEXT("Both impacts survive the final empty fixed tick"), frame.lasers.hits.num(), 2);
-    TestEqual(TEXT("Impact tick indices remain aligned"), frame.lasers.hit_ticks.Num(), 2);
-    if (frame.lasers.hit_ticks.Num() == 2) {
+    TestEqual(
+        TEXT("Impact tick indices remain aligned"), frame.lasers.hit_ticks.size(), std::size_t{2});
+    if (frame.lasers.hit_ticks.size() == 2) {
         TestEqual(TEXT("First impact keeps its deterministic tick"),
                   frame.lasers.hit_ticks[0],
                   uint64{1});

@@ -38,7 +38,7 @@ void run_worldless_simulation_core_regression(FAutomationTestBase& test,
         data.capital_ships.fighter_spawn_slots = 0;
         data.capital_ships.fighter_spawn_slots_relative_transforms.Reset();
         data.capital_spawns.add_defaulted(1);
-        data.capital_spawns.teams[0] = ETestTeam::White;
+        data.capital_spawns.teams[0] = static_cast<ml::simulation::Team>(ETestTeam::White);
         data.capital_spawns.healths[0] = initial_health;
         data.capital_spawns.initial_spawn_delays[0] = 60.f;
         data.capital_spawns.spawn_cooldowns[0] = 60.f;

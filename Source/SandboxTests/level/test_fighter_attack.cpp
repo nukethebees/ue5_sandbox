@@ -1,4 +1,6 @@
 #include "test_fighter_attack.h"
+#include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <sandbox/simulation/world_aabb_operations.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
@@ -137,7 +139,7 @@ void run_worldless_fighter_capital_obstruction(FAutomationTestBase& test,
     add_worldless_capital_spawn(data, obstacle, ETestTeam::Green, INDEX_NONE, 60.f, 60.f, 100000);
     add_worldless_capital_spawn(data, target, ETestTeam::Red, INDEX_NONE, 60.f, 60.f, 100000);
     FRotator3f const obstacle_rotation{0.f, 35.f, 0.f};
-    ml::assign(data.capital_spawns.rotations, 1, obstacle_rotation);
+    data.capital_spawns.rotations.set(1, ml::to_native(FRotator3f{obstacle_rotation}));
 
     auto const obstacle_bounds{ioj::to_unreal(ioj::make_entity_world_bounds(
         data.entity_bounds, ioj::FEntityAABBs::capital_ship_index, obstacle, obstacle_rotation))};

@@ -1,5 +1,6 @@
 #include "SpaceGameSimulation/ships/player/TestSpaceShipSimulation.h"
 
+#include <algorithm>
 #include <sandbox/simulation/player_thrust.h>
 #include <sandbox/simulation/ship_health.h>
 #include <SandboxCoreEngine/enums.h>
@@ -9,6 +10,8 @@
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>
+#include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 #include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
@@ -494,22 +497,22 @@ void Simulation::fire_laser() {
 }
 
 void Simulation::fire_lasers_from(TConstArrayView<FTransform> const fire_points) {
-    ml::test_lasers::SpawnRequests new_lasers;
+    ml::simulation::lasers::SpawnRequests new_lasers;
     auto const laser_count{fire_points.Num()};
-    ml::add_uninitialised(laser_count, new_lasers);
+    new_lasers.add_defaulted(laser_count);
 
     for (int32 i{0}; i < laser_count; ++i) {
-        new_lasers.locations.set(i, FVector3f{fire_points[i].GetLocation()});
-        new_lasers.rotations.set(i, FRotator3f{fire_points[i].Rotator()});
-        new_lasers.base_velocities.set(i, FVector3f{velocity});
+        new_lasers.locations.set(i, ml::to_native(FVector3f{fire_points[i].GetLocation()}));
+        new_lasers.rotations.set(i, ml::to_native(FRotator3f{fire_points[i].Rotator()}));
+        new_lasers.base_velocities.set(i, ml::to_native(FVector3f{velocity}));
     }
 
-    new_lasers.set_damages(config.laser.damage);
-    new_lasers.set_speeds(config.laser.projectile_speed);
-    new_lasers.set_max_distances(config.laser.max_distance);
-    new_lasers.set_sources(ml::make_laser_source(team, ETestEntityType::PlayerShip));
-    ml::fill(new_lasers.instigator_handles, registry_handle);
-    lasers.queue_laser_spawns(new_lasers);
+    std::ranges::fill(new_lasers.damages, config.laser.damage);
+    std::ranges::fill(new_lasers.speeds, config.laser.projectile_speed);
+    std::ranges::fill(new_lasers.max_distances, config.laser.max_distance);
+    std::ranges::fill(new_lasers.sources, ml::make_laser_source(team, ETestEntityType::PlayerShip));
+    std::ranges::fill(new_lasers.instigator_handles, registry_handle);
+    lasers.queue_laser_spawns(new_lasers.get_const_view());
 }
 
 void Simulation::upgrade_laser() noexcept {

@@ -14,6 +14,8 @@
 #include <SpaceGameSimulation/combat/lasers/TestLasersSimulation.h>
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
@@ -104,12 +106,12 @@ void run_worldless_laser_lifecycle(FAutomationTestBase& test,
         }
 
         auto const count{scenario == ELaserLifecycleScenario::SimultaneousLethalHits ? 2 : 1};
-        test_lasers::SpawnRequests requests;
+        simulation::lasers::SpawnRequests requests;
         requests.add_uninitialised(count);
         for (int32 i{}; i < count; ++i) {
-            requests.locations.set(i, start);
-            ml::assign(requests.rotations, i, fire_direction.Rotation());
-            requests.base_velocities.set(i, FVector3f::ZeroVector);
+            requests.locations.set(i, ml::to_native(start));
+            requests.rotations.set(i, ml::to_native(fire_direction.Rotation()));
+            requests.base_velocities.set(i, ml::to_native(FVector3f::ZeroVector));
             requests.damages[i] = projectile_damage;
             requests.speeds[i] = projectile_speed;
             requests.max_distances[i] = scenario == ELaserLifecycleScenario::Miss
@@ -119,7 +121,7 @@ void run_worldless_laser_lifecycle(FAutomationTestBase& test,
             requests.sources[i] =
                 ml::make_laser_source(ETestTeam::White, ETestEntityType::TubeSpinner);
         }
-        lasers.queue_laser_spawns(requests);
+        lasers.queue_laser_spawns(requests.get_const_view());
     });
     auto const end_time{scenario == ELaserLifecycleScenario::Miss ? expiry_test_end_time
                                                                   : collision_test_end_time};

@@ -21,7 +21,7 @@ void run_worldless_fighter_los_failure(FAutomationTestBase& test,
     data.capital_spawns.locations.xs = {-39600.f, 50180.f};
     data.capital_spawns.locations.ys = {2170.f, 2170.f};
     data.capital_spawns.locations.zs = {4360.f, 4360.f};
-    data.capital_spawns.teams = {ETestTeam::Blue, ETestTeam::Red};
+    data.capital_spawns.teams = {ml::simulation::Team::Blue, ml::simulation::Team::Red};
     data.capital_spawns.healths = {data.capital_ships.max_health, data.capital_ships.max_health};
     data.capital_spawns.initial_spawn_delays = {0.f, 10000.f};
     data.capital_spawns.spawn_cooldowns = {1000.f, 10000.f};

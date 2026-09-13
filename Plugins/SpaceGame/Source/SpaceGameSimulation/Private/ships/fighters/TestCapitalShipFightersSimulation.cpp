@@ -1134,7 +1134,7 @@ void Simulation::handle_firing(TaskView const& data) {
     new_lasers.set_damages(laser_damage);
     new_lasers.set_speeds(laser_speed);
     new_lasers.set_max_distances(laser_max_distance);
-    laser_simulation.queue_laser_spawns(test_lasers::make_spawn_requests_const_view(new_lasers));
+    laser_simulation.queue_laser_spawns(new_lasers.get_const_view());
 }
 
 /* **************************************** */

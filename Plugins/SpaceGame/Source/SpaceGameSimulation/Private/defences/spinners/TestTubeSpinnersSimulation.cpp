@@ -1,4 +1,6 @@
 #include "SpaceGameSimulation/defences/spinners/TestTubeSpinnersSimulation.h"
+#include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <SpaceGameSimulation/combat/lasers/TestLasersFrameScratch.h>
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
@@ -18,6 +20,12 @@ namespace ml::test_tube_spinners {
 /* **************************************** */
 void Simulation::set_config(FSpinnerSimulationConfig const& new_config) noexcept {
     config = new_config;
+    fire_points_.clear();
+    fire_points_.reserve(static_cast<std::size_t>(config.fire_point_offsets.Num()));
+    for (auto const& offset : config.fire_point_offsets) {
+        fire_points_.push_back({ml::to_native(FVector3f{offset.GetLocation()}),
+                                ml::to_native(FRotator3f{offset.Rotator()})});
+    }
 }
 Simulation::Simulation(FSimulationClock const& clock,
                        FTestEntityRegistry& in_entity_registry,
@@ -132,68 +140,24 @@ void Simulation::rotate_instances(float const dt) {
 void Simulation::fire_lasers() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_tube_spinners::Simulation::fire_lasers);
 
-    auto const n{get_num_instances()};
-    auto const& firing_point_offsets{config.fire_point_offsets};
-    auto const n_firing_points{firing_point_offsets.Num()};
-    auto const laser_damage{config.laser.damage};
-    auto const laser_speed{config.laser.projectile_speed};
-    auto const laser_max_distance{config.laser.max_distance};
-
-    if (n_firing_points < 1) {
+    if (fire_points_.empty()) {
         return;
     }
 
-    TFrameArray<int32> indices_ready_to_fire{&frame_memory_resource};
-    indices_ready_to_fire.reserve(n);
-
-    for (int32 i{0}; i < n; ++i) {
-        if (!entities.laser_cooldowns.is_ready(i)) {
-            continue;
-        }
-
-        indices_ready_to_fire.add(i);
-        entities.laser_cooldowns.restart_counter(i);
-    }
-
-    auto const n_ready_to_fire{indices_ready_to_fire.num()};
-    ml::test_lasers::FrameSpawnRequests new_lasers{&frame_memory_resource};
-    new_lasers.set_num(n_ready_to_fire);
-
-    for (int32 i{0}; i < n_ready_to_fire; ++i) {
-        auto const index{indices_ready_to_fire[i]};
-
-        auto const fire_point_index{entities.next_fire_point_indices[index]};
-        auto const& offset{firing_point_offsets[fire_point_index]};
-
-        auto const fire_point_location{offset.GetLocation()};
-        new_lasers.locations.set(
-            i,
-            ml::to_native(FVector3f{
-                entities.locations.xs[index] + static_cast<float>(fire_point_location.X),
-                entities.locations.ys[index] + static_cast<float>(fire_point_location.Y),
-                entities.locations.zs[index] + static_cast<float>(fire_point_location.Z),
-            }));
-
-        auto const fire_point_rotation{offset.Rotator()};
-        new_lasers.rotations.set(
-            i,
-            ml::to_native(FRotator3f{
-                static_cast<float>(fire_point_rotation.Pitch),
-                static_cast<float>(fire_point_rotation.Yaw) + entities.yaws[index],
-                static_cast<float>(fire_point_rotation.Roll),
-            }));
-        new_lasers.base_velocities.set(i, ml::to_native(FVector3f::ZeroVector));
-
-        new_lasers.damages[i] = laser_damage;
-        new_lasers.speeds[i] = laser_speed;
-        new_lasers.max_distances[i] = laser_max_distance;
-        new_lasers.instigator_handles[i] = entities.handles[index];
-        new_lasers.sources[i] =
-            ml::make_laser_source(ETestTeam::White, ETestEntityType::TubeSpinner);
-
-        entities.next_fire_point_indices[index] = (fire_point_index + 1) % n_firing_points;
-    }
-
+    auto const count{static_cast<std::size_t>(get_num_instances())};
+    ml::simulation::lasers::FrameSpawnRequests new_lasers{&frame_memory_resource};
+    ml::simulation::spinners::fire_lasers(
+        {.locations = ml::to_native(entities.locations.get_const_view()),
+         .yaws = {entities.yaws.GetData(), count},
+         .handles = {entities.handles.GetData(), count},
+         .next_fire_point_indices = {entities.next_fire_point_indices.GetData(), count},
+         .cooldowns = entities.laser_cooldowns.get_view().native_view()},
+        fire_points_,
+        {.damage = config.laser.damage,
+         .speed = config.laser.projectile_speed,
+         .maximum_distance = config.laser.max_distance},
+        frame_memory_resource,
+        new_lasers);
     laser_simulation.queue_laser_spawns(new_lasers.get_const_view());
 }
 

@@ -2,6 +2,22 @@ find_package(GTest CONFIG REQUIRED)
 
 add_library(native-simulation STATIC)
 target_sources(native-simulation PRIVATE
+  include/sandbox/simulation/laser_frame_output.h
+  src/laser_frame_output.cpp
+  include/sandbox/simulation/laser_lifecycle.h
+  src/laser_lifecycle.cpp
+  include/sandbox/simulation/laser_soa.h
+  include/sandbox/simulation/laser_hit_details.h
+  include/sandbox/simulation/turret_spawn_data.h
+  include/sandbox/simulation/capital_spawn_data.h
+  include/sandbox/simulation/capital_ship_spawning.h
+  src/capital_ship_spawning.cpp
+  include/sandbox/simulation/spinner_firing.h
+  src/spinner_firing.cpp
+  include/sandbox/simulation/turret_firing.h
+  include/sandbox/simulation/turret_spawn_initialization.h
+  src/turret_firing.cpp
+  src/turret_spawn_initialization.cpp
   include/sandbox/simulation/attack_distance_band.h
   include/sandbox/simulation/batch_damage.h
   include/sandbox/simulation/capital_death_event.h

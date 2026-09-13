@@ -3,8 +3,9 @@
 
 #include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>
 
+#include <sandbox/simulation/laser_frame_output.h>
+#include <sandbox/simulation/laser_soa.h>
 #include <SpaceGameSimulation/combat/lasers/TestLasersFrameScratch.h>
-#include <SpaceGameSimulation/combat/lasers/TestLasersSoA.h>
 #include <SpaceGameSimulation/simulation/SimulationClockInterface.h>
 
 #include <CoreMinimal.h>
@@ -22,9 +23,8 @@ namespace ml::test_lasers {
 class PhaseInterface;
 
 struct SPACEGAMESIMULATION_API Simulation {
-    using SpawnRequests = ml::test_lasers::SpawnRequests;
-    using Entities = ml::test_lasers::Entities;
-    using HitDetails = ml::test_lasers::HitDetails;
+    using SpawnRequests = ml::simulation::lasers::SpawnRequests;
+    using Entities = ml::simulation::lasers::Entities;
 
     /* **************************************** */
     // Construction and access
@@ -39,13 +39,12 @@ struct SPACEGAMESIMULATION_API Simulation {
     auto operator=(Simulation&&) -> Simulation& = delete;
 
     auto get_read_view() const -> FLaserReadView {
-        return {entities.get_const_view(), frame_hits_.get_const_view(), hit_ticks_, hit_ordinals_};
+        return {entities.get_const_view(),
+                frame_output_.hits.get_const_view(),
+                frame_output_.hit_ticks,
+                frame_output_.hit_ordinals};
     }
-    void reset_frame_output() {
-        frame_hits_.reset();
-        hit_ticks_.Reset();
-        hit_ordinals_.Reset();
-    }
+    void reset_frame_output() { frame_output_.reset(); }
     auto get_num_instances() const noexcept -> int32;
     auto get_entity_registry() const noexcept -> FTestEntityRegistry const& {
         return entity_registry;
@@ -55,7 +54,7 @@ struct SPACEGAMESIMULATION_API Simulation {
     /* **************************************** */
     // Spawning and configuration
     /* **************************************** */
-    void queue_laser_spawns(SpawnRequestsConstView spawn_data);
+    void queue_laser_spawns(ml::simulation::lasers::SpawnRequestsConstView spawn_data);
     void queue_laser_spawns(SpawnRequests const& spawn_data) {
         queue_laser_spawns(spawn_data.get_const_view());
     }
@@ -82,15 +81,7 @@ struct SPACEGAMESIMULATION_API Simulation {
     /* **************************************** */
     // Movement and collision
     /* **************************************** */
-    void update_locations(float dt);
     void handle_collisions(float dt);
-
-    /* **************************************** */
-    // Lifetime and removal
-    /* **************************************** */
-    void tick_lifetimes(float dt);
-    void collect_old_instance_indices(TFrameArray<int32>& indices);
-    void remove_instances(TConstArrayView<int32> indices);
 
     /* **************************************** */
     // Buffer cleanup
@@ -108,9 +99,7 @@ struct SPACEGAMESIMULATION_API Simulation {
     Entities entities;
     SpawnRequests pending_spawns;
 
-    HitDetails frame_hits_;
-    TArray<uint64> hit_ticks_;
-    TArray<int32> hit_ordinals_;
+    ml::simulation::lasers::FrameOutput frame_output_;
 
     int32 number_spawned{0};
 };

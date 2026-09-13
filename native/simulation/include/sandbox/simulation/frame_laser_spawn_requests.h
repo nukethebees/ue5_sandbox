@@ -4,6 +4,7 @@
 #include "sandbox/simulation/entity_handle.h"
 #include "sandbox/simulation/frame_rotators3f.h"
 #include "sandbox/simulation/frame_vectors3f.h"
+#include "sandbox/simulation/laser_soa.h"
 #include "sandbox/simulation/laser_source.h"
 
 #include <cstdint>
@@ -33,6 +34,7 @@ struct FrameSpawnRequests {
     void set_speeds(float value);
     void set_max_distances(float value);
     [[nodiscard]] auto num() const noexcept -> std::int32_t;
+    [[nodiscard]] auto get_const_view() const -> ml::simulation::lasers::SpawnRequestsConstView;
 
     FrameVectors3f locations;
     FrameRotators3f rotations;

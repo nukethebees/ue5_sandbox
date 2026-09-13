@@ -1,5 +1,6 @@
 #include "WorldlessSimulationTest.h"
 #include <SpaceGame/simulation/SimulationConfigConversion.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
@@ -41,8 +42,8 @@ auto add_worldless_capital_spawn(FLevelSimulationInitData& data,
                                  int32 const health) -> int32 {
     auto const index{data.capital_spawns.num()};
     data.capital_spawns.add_defaulted(1);
-    data.capital_spawns.locations.set(index, location);
-    data.capital_spawns.teams[index] = team;
+    data.capital_spawns.locations.set(index, ml::to_native(FVector3f{location}));
+    data.capital_spawns.teams[index] = static_cast<ml::simulation::Team>(team);
     data.capital_spawns.healths[index] =
         health == INDEX_NONE ? data.capital_ships.max_health : health;
     data.capital_spawns.initial_spawn_delays[index] = initial_spawn_delay;

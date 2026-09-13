@@ -1,7 +1,8 @@
 #pragma once
 #include <sandbox/simulation/capital_death_event.h>
+#include <sandbox/simulation/laser_hit_details.h>
 
-#include <SpaceGameSimulation/combat/lasers/TestLasersSoA.h>
+#include <sandbox/simulation/laser_soa.h>
 #include <SpaceGameSimulation/defences/spinners/TestTubeSpinnersSoA.h>
 #include <SpaceGameSimulation/defences/turrets/TestStaticTurretsSoA.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
@@ -51,9 +52,9 @@ struct FSpinnerReadView {
     auto get_num_instances() const -> int32 { return entities.num(); }
 };
 struct FLaserReadView {
-    ml::test_lasers::Entities::ConstView entities;
-    ml::test_lasers::HitDetails::ConstView hits;
-    TConstArrayView<uint64> hit_ticks;
-    TConstArrayView<int32> hit_ordinals;
+    ml::simulation::lasers::Entities::ConstView entities;
+    ml::simulation::LaserHitDetailsConstView hits;
+    std::span<uint64 const> hit_ticks;
+    std::span<int32 const> hit_ordinals;
     auto get_num_instances() const -> int32 { return entities.num(); }
 };

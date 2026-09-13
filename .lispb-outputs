@@ -36,7 +36,6 @@ Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/StaticCollisionSo
 Plugins/SpaceGame/Source/SpaceGamePresentation/Private/ui/style/GameUiStyleTypes.cpp
 Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/ui/style/GameUiStyleTypes.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/combat/lasers/TestLasersPhaseInterface.cpp
-Plugins/SpaceGame/Source/SpaceGameSimulation/Private/combat/lasers/TestLasersSoA.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/defences/spinners/TestTubeSpinnersPhaseInterface.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/defences/spinners/TestTubeSpinnersSoA.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/defences/turrets/TestStaticTurretsPhaseInterface.cpp
@@ -57,7 +56,6 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/player/TestSpaceShipP
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/telemetry/LevelTelemetryHistory.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/telemetry/LevelTelemetryRunEndReason.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/combat/lasers/TestLasersPhaseInterface.h
-Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/combat/lasers/TestLasersSoA.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/defences/spinners/TestTubeSpinnersPhaseInterface.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/defences/spinners/TestTubeSpinnersSoA.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/defences/turrets/TestStaticTurretsPhaseInterface.h
@@ -78,6 +76,7 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fi
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/player/TestSpaceShipPhaseInterface.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/telemetry/LevelTelemetryHistory.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/telemetry/LevelTelemetryRunEndReason.h
+native/simulation/include/sandbox/simulation/capital_spawn_data.h
 native/simulation/include/sandbox/simulation/direct_damage_events.h
 native/simulation/include/sandbox/simulation/entity_cell_data.h
 native/simulation/include/sandbox/simulation/entity_death_info.h
@@ -86,7 +85,10 @@ native/simulation/include/sandbox/simulation/entity_overlaps.h
 native/simulation/include/sandbox/simulation/fighter_order_queue.h
 native/simulation/include/sandbox/simulation/fighter_reassignment.h
 native/simulation/include/sandbox/simulation/fighter_spawn_queue.h
+native/simulation/include/sandbox/simulation/laser_hit_details.h
+native/simulation/include/sandbox/simulation/laser_soa.h
 native/simulation/include/sandbox/simulation/registry_entity_handles.h
 native/simulation/include/sandbox/simulation/rotators3f.h
+native/simulation/include/sandbox/simulation/turret_spawn_data.h
 native/simulation/include/sandbox/simulation/vectors3f.h
 native/simulation/include/sandbox/simulation/world_aabbs.h

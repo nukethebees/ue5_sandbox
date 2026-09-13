@@ -39,12 +39,12 @@ void run_worldless_entity_registry_scenario(FAutomationTestBase& test,
         for (int32 i{}; i < expected_team_counts[team_index]; ++i) {
             auto const index{data.capital_spawns.num()};
             data.capital_spawns.add_defaulted(1);
-            ml::assign(data.capital_spawns.locations,
-                       index,
-                       FVector{static_cast<float>(actor_index * 5000),
-                               static_cast<float>(team_index * 5000),
-                               4360.f});
-            data.capital_spawns.teams[index] = static_cast<ETestTeam>(team_index);
+            data.capital_spawns.locations.set(index,
+                                              HMM_V3(static_cast<float>(actor_index * 5000),
+                                                     static_cast<float>(team_index * 5000),
+                                                     4360.f));
+            data.capital_spawns.teams[index] =
+                static_cast<ml::simulation::Team>(static_cast<ETestTeam>(team_index));
             data.capital_spawns.healths[index] = data.capital_ships.max_health;
             data.capital_spawns.initial_spawn_delays[index] = 5.f;
             data.capital_spawns.spawn_cooldowns[index] = 60.f;

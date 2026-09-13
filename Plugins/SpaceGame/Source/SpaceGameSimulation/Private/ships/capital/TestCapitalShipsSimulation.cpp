@@ -3,6 +3,8 @@
 #include <sandbox/simulation/capital_fighter_orders.h>
 #include <sandbox/simulation/capital_fighter_reassignment.h>
 #include <sandbox/simulation/capital_ship_queries.h>
+#include <sandbox/simulation/capital_ship_spawning.h>
+#include <sandbox/simulation/entity_registry_refresh.h>
 #include <SpaceGameSimulation/entities/BatchSimulation.h>
 #include <SpaceGameSimulation/entities/NativeEntityRegistryView.h>
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
@@ -125,7 +127,7 @@ auto Simulation::get_fighter_handles(int32 const index) const noexcept
 }
 auto Simulation::get_fighter_handles(FIndexSpan const span) const noexcept
     -> TConstArrayView<FRegistryEntityHandle> {
-    return TConstArrayView<FRegistryEntityHandle>{fighter_handles}.Slice(span.offset, span.count);
+    return get_fighter_handles().Slice(span.offset, span.count);
 }
 auto Simulation::get_team(FRegistryEntityHandle const handle) const noexcept -> ETestTeam {
     auto const handles{
@@ -169,21 +171,22 @@ auto Simulation::register_ships(SpawnDataConstView const spawn_data)
     }
 
     auto const first_new_index{entities.num()};
-    entities.handles.AddDefaulted(n_to_add);
     spawn_ships(spawn_data);
 
     RegistryEntityData new_entity_data;
     new_entity_data.add_uninitialised(n_to_add);
-    ml::assign_from(new_entity_data.locations, spawn_data.locations);
+    ml::assign_from(new_entity_data.locations, ml::to_unreal(spawn_data.locations));
     for (int32 i{}; i < n_to_add; ++i) {
-        ml::assign(new_entity_data.rotations, i, ml::get_rotator3d(spawn_data.rotations, i));
+        ml::assign(new_entity_data.rotations,
+                   i,
+                   ml::get_rotator3d(ml::to_unreal(spawn_data.rotations), i));
     }
     ml::fill(new_entity_data.velocities, 0.f);
     ml::fill(new_entity_data.radii, entity_radius);
     new_entity_data.set_all_entity_types(ETestEntityType::CapitalShip);
     for (int32 i{}; i < n_to_add; ++i) {
         new_entity_data.healths[i] = spawn_data.healths[i];
-        new_entity_data.teams[i] = spawn_data.teams[i];
+        new_entity_data.teams[i] = ml::to_unreal(spawn_data.teams[i]);
         new_entity_data.alive[i] = spawn_data.healths[i] > 0;
     }
 
@@ -209,14 +212,18 @@ void Simulation::spawn_ships(SpawnDataConstView const spawn_data) {
     spawn_data.validate_array_sizes();
     auto const n_to_add{spawn_data.num()};
 
-    ml::append_from(entities.locations, spawn_data.locations);
-    ml::append_from(entities.rotations, spawn_data.rotations);
-    ml::append_from(entities.fighter_spawn_timers.remaining_times, spawn_data.initial_spawn_delays);
-    entities.fighter_spawn_cooldowns.Append(spawn_data.spawn_cooldowns);
-    entities.teams.Append(spawn_data.teams);
-    entities.healths.Append(spawn_data.healths);
-    entities.capital_fighter_handle_spans.AddZeroed(n_to_add);
-    entities.target_handles.Append(spawn_data.target_handles);
+    entities.add_defaulted(n_to_add);
+    auto const appended{entities.right(n_to_add)};
+    auto const count{static_cast<std::size_t>(n_to_add)};
+    ml::simulation::capitals::initialize_spawned_ships(
+        {.locations = ml::to_native(appended.locations),
+         .rotations = ml::to_native(appended.rotations),
+         .remaining_spawn_times = {appended.fighter_spawn_timers.remaining_times.GetData(), count},
+         .spawn_cooldowns = {appended.fighter_spawn_cooldowns.GetData(), count},
+         .teams = std::as_writable_bytes(std::span{appended.teams.GetData(), count}),
+         .healths = {appended.healths.GetData(), count},
+         .targets = {appended.target_handles.GetData(), count}},
+        spawn_data);
     validate_array_sizes();
 }
 
@@ -257,23 +264,13 @@ void Simulation::queue_fighter_spawns() {
     fighter_queue.reset();
 
     auto const n_capital_ships{get_num_instances()};
-    TFrameArray<int32> ships_ready_to_spawn_fighters_buffer{&frame_memory_resource};
-    ships_ready_to_spawn_fighters_buffer.set_num(n_capital_ships);
-    auto ships_ready_to_spawn_fighters_indices{ml::collect_indices_less_equal(
-        entities.fighter_spawn_timers.get_const_view().remaining_times,
-        0.f,
-        ships_ready_to_spawn_fighters_buffer.view())};
-    ships_ready_to_spawn_fighters_buffer.set_num(ships_ready_to_spawn_fighters_indices.Num());
-
-    auto const n_ready_to_spawn{ships_ready_to_spawn_fighters_indices.Num()};
-    for (int32 i{n_ready_to_spawn - 1}; i >= 0; --i) {
-        auto const capital_index{ships_ready_to_spawn_fighters_indices[i]};
-        if (entities.target_handles[capital_index].is_null()) {
-            ships_ready_to_spawn_fighters_buffer.remove_at_swap(i);
-        }
-    }
-    ships_ready_to_spawn_fighters_indices = ships_ready_to_spawn_fighters_buffer.view();
-    if (ships_ready_to_spawn_fighters_indices.IsEmpty()) {
+    ml::FrameArray<int32> ships_ready_to_spawn_fighters_indices{&frame_memory_resource};
+    ml::simulation::capitals::collect_ships_ready_to_spawn_fighters(
+        {entities.fighter_spawn_timers.remaining_times.GetData(),
+         static_cast<std::size_t>(n_capital_ships)},
+        {entities.target_handles.GetData(), static_cast<std::size_t>(n_capital_ships)},
+        ships_ready_to_spawn_fighters_indices);
+    if (ships_ready_to_spawn_fighters_indices.num() == 0) {
         return;
     }
 
@@ -319,9 +316,10 @@ void Simulation::queue_fighter_spawns() {
 void Simulation::refresh_fighter_handles() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ships::Simulation::refresh_fighter_handles);
 
-    fighter_handles_scratch.Reset();
     auto const& previous{tick_buffers.previous()};
-    entity_registry.refresh_handles(fighter_handles);
+    auto const invalid_index{ml::simulation::refresh_registry_handles(
+        ml::make_native_query_view(entity_registry), fighter_handles)};
+    check(invalid_index < 0);
 
     auto const& spawn_data{fighters_interface.get_new_spawn_entity_data()};
     spawn_data.validate_array_sizes();
@@ -345,19 +343,18 @@ void Simulation::refresh_fighter_handles() {
         fighters_interface.self_destruct_fighter(fighter);
     }
 
-    fighter_handles_scratch.SetNumUninitialized(fighter_handles.Num() +
-                                                fighter_reassignment_queue.num());
+    fighter_handles_scratch.resize(fighter_handles.size() +
+                                   static_cast<std::size_t>(fighter_reassignment_queue.num()));
     auto const fighter_count{ml::simulation::rebuild_capital_fighter_rosters(
         {entities.handles.GetData(), static_cast<std::size_t>(n_capitals)},
         {entities.capital_fighter_handle_spans.GetData(), static_cast<std::size_t>(n_capitals)},
-        {fighter_handles.GetData(), static_cast<std::size_t>(fighter_handles.Num())},
+        fighter_handles,
         fighter_reassignment_queue,
-        {fighter_handles_scratch.GetData(),
-         static_cast<std::size_t>(fighter_handles_scratch.Num())})};
-    fighter_handles_scratch.SetNum(fighter_count, EAllowShrinking::No);
+        fighter_handles_scratch)};
+    fighter_handles_scratch.resize(static_cast<std::size_t>(fighter_count));
 
-    check(fighter_handles_scratch.Num() >= surviving_spawn_count);
-    Swap(fighter_handles, fighter_handles_scratch);
+    check(fighter_handles_scratch.size() >= static_cast<std::size_t>(surviving_spawn_count));
+    fighter_handles.swap(fighter_handles_scratch);
 }
 
 /* **************************************** */
@@ -372,7 +369,7 @@ void Simulation::queue_fighter_orders() {
     ml::simulation::build_capital_fighter_orders(
         {entities.target_handles.GetData(), static_cast<std::size_t>(n_capitals)},
         {entities.capital_fighter_handle_spans.GetData(), static_cast<std::size_t>(n_capitals)},
-        {fighter_handles.GetData(), static_cast<std::size_t>(fighter_handles.Num())},
+        fighter_handles,
         {all_fighters.GetData(), static_cast<std::size_t>(all_fighters.Num())},
         {fighter_targets.GetData(), static_cast<std::size_t>(fighter_targets.Num())},
         ml::make_native_query_view(entity_registry),
@@ -427,7 +424,7 @@ void Simulation::reassign_fighter_handles_of_dying_capital() {
         {entities.handles.GetData(), static_cast<std::size_t>(n)},
         std::as_bytes(teams),
         {entities.capital_fighter_handle_spans.GetData(), static_cast<std::size_t>(n)},
-        {fighter_handles.GetData(), static_cast<std::size_t>(fighter_handles.Num())},
+        fighter_handles,
         {local_indices_to_remove.GetData(),
          static_cast<std::size_t>(local_indices_to_remove.Num())},
         fighter_reassignment_queue,
@@ -442,11 +439,8 @@ void Simulation::reassign_fighter_handles_of_dying_capital() {
 // Misc
 /* **************************************** */
 void Simulation::clear_tick_buffers() {
-    ml::reset(local_indices_to_remove,
-              tick_buffers.current(),
-              entity_update_data,
-              entity_death_info,
-              fighter_handles_scratch);
+    ml::reset(
+        local_indices_to_remove, tick_buffers.current(), entity_update_data, entity_death_info);
 }
 
 /* **************************************** */
