@@ -38,7 +38,7 @@ Unreal Engine 5.8 project.
   * all suites: `cmake --workflow --preset debug-game-tests`
   * unit suites: `cmake --workflow --preset debug-game-unit-tests`
   * level tests after building: `ctest --preset debug-game-level-tests`
-* Before starting a timed benchmark, complete all build and setup work, tell the user that the benchmark is ready, and wait for confirmation so they can stop competing work. Dry runs and correctness tests do not require this pause.
+* Before starting a timed benchmark, complete all build and setup work, then run it without asking the user for confirmation. Use the repository benchmark targets and scripts so the benchmark acquires a machine activity ticket, waits for older work, and runs exclusively. If a benchmark entry point does not acquire a benchmark ticket, fix or wrap it before collecting timings. Dry runs and correctness tests do not require benchmark access.
 * Run only the benchmark subset needed to answer the current question. Do not run a comprehensive benchmark matrix by default; reserve it for explicitly requested broad validation or when every dimension is materially affected.
 * For repeated Unreal level benchmark samples, run the iterations within one editor process rather than launching the editor once per sample. For revision comparisons, group each revision's samples into as few editor launches as practical.
 
