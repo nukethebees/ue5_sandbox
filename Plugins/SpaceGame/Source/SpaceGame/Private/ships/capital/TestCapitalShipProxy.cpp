@@ -22,7 +22,6 @@
 #if WITH_EDITOR
 #include <ScopedTransaction.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
-#include <SpaceGamePresentation/support/mesh.h>
 #include <SpaceGameSimulation/simulation/EntityWorldBounds.h>
 #endif
 
@@ -156,6 +155,7 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
 
     ml::ioj::FLevelCollisionHost::EntityMeshes meshes{};
     meshes[ETestEntityType::CapitalShip] = config->capital_ships.mesh;
+    meshes[ETestEntityType::CapitalShipFighter] = config->fighters.mesh;
     auto const local_bounds{ml::ioj::FLevelCollisionHost::extract_entity_bounds(meshes)};
     if (!local_bounds) {
         report_error(local_bounds.error().format());
@@ -175,34 +175,40 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
                                           ml::ioj::FEntityAABBs::capital_ship_index,
                                           FVector3f{GetActorLocation()},
                                           FRotator3f{GetActorRotation()}))};
-    auto const clearance{ml::get_mesh_sphere_bounds(*config->fighters.mesh) +
-                         config->fighters.avoidance_clearance_buffer};
-    auto const clearance_bounds{bounds.ExpandBy(clearance)};
+    auto const clearance{config->fighters.avoidance_clearance_buffer};
+    TArray<FBox3f> fighter_bounds;
+    fighter_bounds.SetNum(slot_count);
+    for (int32 i{}; i < slot_count; ++i) {
+        auto const* const arrow{fighter_spawn_slots[i].Get()};
+        fighter_bounds[i] = ml::ioj::to_unreal(
+            ml::ioj::make_entity_world_bounds(*local_bounds,
+                                              ml::ioj::FEntityAABBs::fighter_index,
+                                              FVector3f{arrow->GetComponentLocation()},
+                                              FRotator3f{arrow->GetComponentRotation()}));
+    }
+
     DrawDebugBox(
         world, FVector{bounds.GetCenter()}, FVector{bounds.GetExtent()}, FColor::Green, false, 0.f);
-    DrawDebugBox(world,
-                 FVector{clearance_bounds.GetCenter()},
-                 FVector{clearance_bounds.GetExtent()},
-                 FColor::Orange,
-                 false,
-                 0.f);
 
-    auto const minimum_spacing_sq{FMath::Square(clearance * 2.f)};
     for (int32 i{}; i < slot_count; ++i) {
         auto const* const arrow{fighter_spawn_slots[i].Get()};
         auto const position{arrow->GetComponentLocation()};
-        auto const blocked{clearance_bounds.IsInsideOrOn(FVector3f{position})};
+        auto const expanded_bounds{fighter_bounds[i].ExpandBy(clearance)};
+        auto const blocked{bounds.Intersect(expanded_bounds)};
         bool too_close{};
         for (int32 j{}; j < slot_count; ++j) {
-            auto const* const neighbour{fighter_spawn_slots[j].Get()};
-            if (i != j && IsValid(neighbour) &&
-                FVector::DistSquared(position, neighbour->GetComponentLocation()) <
-                    minimum_spacing_sq) {
+            if (i != j && expanded_bounds.Intersect(fighter_bounds[j].ExpandBy(clearance))) {
                 too_close = true;
                 break;
             }
         }
         auto const colour{blocked || too_close ? FColor::Red : FColor::Cyan};
+        DrawDebugBox(world,
+                     FVector{fighter_bounds[i].GetCenter()},
+                     FVector{fighter_bounds[i].GetExtent()},
+                     colour,
+                     false,
+                     0.f);
         DrawDebugSphere(world, position, 150.f, 12, colour, false, 0.f);
         DrawDebugDirectionalArrow(world,
                                   position,

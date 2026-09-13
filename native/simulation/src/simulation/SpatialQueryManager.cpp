@@ -4,6 +4,7 @@
 #include <cassert>
 #include <format>
 #include <sandbox/core/diagnostics.h>
+#include <sandbox/simulation/entity_world_bounds.h>
 #include <sandbox/simulation/rotator_math.h>
 #include <thread>
 
@@ -210,6 +211,12 @@ void FSpatialQueryManager::initialise(ml::simulation::collision::CellCoord const
     uniform_grid.set_cell_dims(cell_size);
 
     collision.initialise(entity_bounds);
+
+    auto const radius_count{static_cast<std::int32_t>(entity_radii_.size())};
+    for (std::int32_t type_index{}; type_index < radius_count; ++type_index) {
+        entity_radii_[static_cast<std::size_t>(type_index)] =
+            simulation::collision::get_entity_radius(entity_bounds, type_index);
+    }
 }
 
 /* **************************************** */
@@ -382,6 +389,34 @@ void FSpatialQueryManager::are_spheres_in_bounds(ml::simulation::Vectors3fConstV
                                                  float const radius,
                                                  std::span<std::uint8_t> const out_results) const {
     collision.get_uniform_grid().are_spheres_in_bounds(centres, radius, out_results);
+}
+
+auto FSpatialQueryManager::get_entity_type_radius(
+    simulation::EntityType const entity_type) const noexcept -> float {
+    auto const index{static_cast<std::size_t>(entity_type)};
+    assert(index < entity_radii_.size());
+    return entity_radii_[index];
+}
+
+auto FSpatialQueryManager::get_entity_type_radii() const noexcept -> std::span<float const> {
+    return entity_radii_;
+}
+
+void FSpatialQueryManager::copy_entity_radii(std::span<FRegistryEntityHandle const> const handles,
+                                             std::span<float> const out_radii) const {
+    assert(handles.size() == out_radii.size());
+
+    auto const count{handles.size()};
+    for (std::size_t index{}; index < count; ++index) {
+        auto const handle{handles[index]};
+        if (handle.is_null()) {
+            out_radii[index] = 0.0f;
+            continue;
+        }
+
+        assert(entity_registry.is_valid_alive(handle));
+        out_radii[index] = get_entity_type_radius(entity_registry.get_entity_type(handle));
+    }
 }
 
 /* **************************************** */

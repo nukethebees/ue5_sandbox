@@ -21,7 +21,6 @@ auto make_entities(std::int32_t const count, std::int32_t const offset = 0)
         data.locations.set(index, ml::make_vector3f(value, value + 1.f, value + 2.f));
         data.velocities.set(index, ml::make_vector3f(value + 3.f, value + 4.f, value + 5.f));
         data.rotations.set(index, {value + 6.f, value + 7.f, value + 8.f});
-        data.radii[index] = value + 9.f;
         data.healths[index] = offset + index + 100;
         data.teams[index] = index % 2 == 0 ? ml::simulation::Team::Red : ml::simulation::Team::Blue;
         data.entity_types[index] = index % 2 == 0 ? ml::simulation::EntityType::Turret
@@ -112,8 +111,6 @@ class EntityRegistry : public ::testing::Test {
             actual.rotations.yaws[slot], source.rotations.yaws[source_index], "Yaw");
         ml::simulation_tests::expect_equal(
             actual.rotations.rolls[slot], source.rotations.rolls[source_index], "Roll");
-        ml::simulation_tests::expect_equal(
-            actual.radii[slot], source.radii[source_index], "Radius");
         ml::simulation_tests::expect_equal(
             actual.healths[slot], source.healths[source_index], "Health");
         ml::simulation_tests::expect_true(actual.teams[slot] == source.teams[source_index], "Team");
@@ -226,8 +223,6 @@ TEST_F(EntityRegistry, QueuedUpdateBatchesConsolidateEachEntityAndOnlyChangeMuta
                                        first.rotations.yaws[0],
                                        "Rotation uses last update");
     for (std::int32_t index{}; index < 3; ++index) {
-        ml::simulation_tests::expect_equal(
-            registry_.get_entity_data().radii[index], initial.radii[index], "Radius is spawn data");
         ml::simulation_tests::expect_true(registry_.get_entity_type(handles[index]) ==
                                               initial.entity_types[index],
                                           "Type is spawn data");
@@ -599,9 +594,7 @@ TEST_F(EntityRegistry, RefreshDistinguishesNullStaleDeadAndLiveHandles) {
     ml::simulation::Vectors3f velocities;
     locations.add_defaulted(4);
     velocities.add_defaulted(4);
-    std::vector<float> radii{};
-    radii.assign(4, -1.f);
-    registry_.refresh_entity_data(refreshed, locations.get_view(), velocities.get_view(), radii);
+    registry_.refresh_entity_data(refreshed, locations.get_view(), velocities.get_view());
     for (std::int32_t index{}; index < 3; ++index) {
         ml::simulation_tests::expect_true(refreshed[index].is_null(),
                                           "Null, stale and dead become null");
@@ -609,17 +602,15 @@ TEST_F(EntityRegistry, RefreshDistinguishesNullStaleDeadAndLiveHandles) {
             locations[index], ml::make_vector3f(0.f, 0.f, 0.f), "Cleared location");
         ml::simulation_tests::expect_equal(
             velocities[index], ml::make_vector3f(0.f, 0.f, 0.f), "Cleared velocity");
-        ml::simulation_tests::expect_equal(radii[index], 0.f, "Cleared radius");
     }
     ml::simulation_tests::expect_true(refreshed[3] == handles[2], "Live handle retained");
     ml::simulation_tests::expect_equal(locations[3], data.locations[2], "Live location refreshed");
     ml::simulation_tests::expect_equal(
         velocities[3], data.velocities[2], "Live velocity refreshed");
-    ml::simulation_tests::expect_equal(radii[3], data.radii[2], "Live radius refreshed");
-    registry_.refresh_entity_data(refreshed, {}, {}, radii);
-    registry_.refresh_entity_data(refreshed, {}, velocities.get_view(), {});
-    registry_.refresh_entity_data(refreshed, locations.get_view(), {}, {});
-    registry_.refresh_entity_data({}, {}, {}, {});
+    registry_.refresh_entity_data(refreshed, {}, {});
+    registry_.refresh_entity_data(refreshed, {}, velocities.get_view());
+    registry_.refresh_entity_data(refreshed, locations.get_view(), {});
+    registry_.refresh_entity_data({}, {}, {});
     std::vector const location_handles{FRegistryEntityHandle{}, handles[1]};
     ml::simulation::Vectors3f dead_locations;
     dead_locations.add_defaulted(2);

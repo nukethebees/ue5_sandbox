@@ -64,10 +64,6 @@ auto make_simulation_data(SimulationFixture const& fixture) -> FLevelSimulationI
     data.grid_dimensions = fixture.data.grid_dimensions;
     data.cell_size = fixture.data.cell_size;
     data.frame_memory_capacity_bytes = fixture.data.frame_memory_capacity_bytes;
-    data.capital_radius = fixture.data.capital_radius;
-    data.fighter_radius = fixture.data.fighter_radius;
-    data.turret_radius = fixture.data.turret_radius;
-    data.spinner_radius = fixture.data.spinner_radius;
     data.fighter_fire_point_distance = fixture.data.fighter_fire_point_distance;
     return data;
 }

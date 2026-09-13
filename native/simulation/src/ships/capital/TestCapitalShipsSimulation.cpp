@@ -46,7 +46,6 @@ Simulation::Simulation(FTestEntityRegistry& in_entity_registry,
 // Simulation phases
 /* **************************************** */
 void Simulation::begin_play() {
-    assert(entity_radius > 0.f);
     assert(static_cast<std::size_t>(config.fighter_spawn_slots) ==
            config.fighter_spawn_slots_relative_transforms.size());
     validate_array_sizes();
@@ -166,7 +165,6 @@ auto Simulation::register_ships(SpawnDataConstView const spawn_data)
         new_entity_data.rotations.set(i, spawn_data.rotations[i]);
     }
     new_entity_data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
-    std::ranges::fill(new_entity_data.radii, entity_radius);
     std::ranges::fill(new_entity_data.entity_types, ml::simulation::EntityType::CapitalShip);
     for (std::int32_t i{}; i < n_to_add; ++i) {
         new_entity_data.healths[i] = spawn_data.healths[i];
@@ -224,7 +222,6 @@ void Simulation::prepare_entity_update_data() {
     entity_update_data.locations = entities.locations;
     entity_update_data.rotations = entities.rotations;
     entity_update_data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
-    std::ranges::fill(entity_update_data.radii, entity_radius);
     entity_update_data.healths = entities.healths;
     entity_update_data.teams = entities.teams;
     std::ranges::fill(entity_update_data.entity_types, ml::simulation::EntityType::CapitalShip);

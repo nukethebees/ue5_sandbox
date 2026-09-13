@@ -53,8 +53,6 @@ struct Simulation {
     // Checks
     /* **************************************** */
     void validate_array_sizes() const;
-
-    float entity_radius{0.f};
   private:
     /* **************************************** */
     // Simulation phases

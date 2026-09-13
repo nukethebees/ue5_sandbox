@@ -45,7 +45,6 @@ auto copy_registry_entity_data(EntityRegistryQueryView const registry,
     auto const count{static_cast<std::int32_t>(handles.size())};
     assert(is_unused_or_sized(outputs.locations.num(), count));
     assert(is_unused_or_sized(outputs.velocities.num(), count));
-    assert(outputs.radii.empty() || outputs.radii.size() == handles.size());
 
     std::int32_t first_inactive{-1};
     for (std::int32_t index{}; index < count; ++index) {
@@ -58,9 +57,6 @@ auto copy_registry_entity_data(EntityRegistryQueryView const registry,
             if (!outputs.velocities.is_empty()) {
                 outputs.velocities.set(index, make_vector3f(0.0f, 0.0f, 0.0f));
             }
-            if (!outputs.radii.empty()) {
-                outputs.radii[element] = 0.0f;
-            }
             continue;
         }
 
@@ -71,15 +67,11 @@ auto copy_registry_entity_data(EntityRegistryQueryView const registry,
             continue;
         }
 
-        auto const source{static_cast<std::size_t>(handle.index)};
         if (!outputs.locations.is_empty()) {
             outputs.locations.set(index, registry.locations[handle.index]);
         }
         if (!outputs.velocities.is_empty()) {
             outputs.velocities.set(index, registry.velocities[handle.index]);
-        }
-        if (!outputs.radii.empty()) {
-            outputs.radii[element] = registry.radii[source];
         }
     }
     return first_inactive;

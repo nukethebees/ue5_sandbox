@@ -34,7 +34,6 @@ Simulation::Simulation(FSimulationClock const& clock,
 // Simulation phases
 /* **************************************** */
 void Simulation::begin_play() {
-    assert(entity_radius > 0.f);
 
     auto const cooldown_tick_period{
         simulation_clock.duration_to_tick_period(config.laser.fire_cooldown)};
@@ -95,7 +94,6 @@ void Simulation::spawn_instances(ml::simulation::Vectors3fConstView const new_lo
         entity_data.rotations.set(i, {.pitch = 0.f, .yaw = new_yaws[i], .roll = 0.f});
     }
     entity_data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
-    std::ranges::fill(entity_data.radii, entity_radius);
     std::ranges::fill(entity_data.healths, 1000000);
     std::ranges::fill(entity_data.teams, ml::simulation::Team::White);
     std::ranges::fill(entity_data.entity_types, ml::simulation::EntityType::TubeSpinner);

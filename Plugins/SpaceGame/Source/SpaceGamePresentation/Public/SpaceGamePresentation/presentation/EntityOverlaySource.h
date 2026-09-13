@@ -6,6 +6,8 @@
 #include "SandboxNative/RegistryEntityHandle.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 
+#include <span>
+
 struct SPACEGAMEPRESENTATION_API FSoftTargetSelectionSettings {
     float acquisition_radius_pixels{72.0f};
     float retention_radius_pixels{96.0f};
@@ -55,6 +57,7 @@ struct SPACEGAMEPRESENTATION_API FEntityOverlayCollectionResult {
 
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto
     select_soft_target(ml::simulation::RegistryEntityData::ConstView entities,
+                       std::span<float const> entity_type_radii,
                        TConstArrayView<int> generations,
                        TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
                        FSoftTargetSelectionContext const& context,
@@ -63,6 +66,7 @@ struct SPACEGAMEPRESENTATION_API FEntityOverlayCollectionResult {
 
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto
     collect_entity_overlay_instances(ml::simulation::RegistryEntityData::ConstView entities,
+                                     std::span<float const> entity_type_radii,
                                      TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
                                      FEntityOverlayTeamColours const& team_colours,
                                      FEntityOverlayHealthMaximums const& maximum_health,

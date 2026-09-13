@@ -22,7 +22,6 @@ inline auto make_native_query_view(FTestEntityRegistry const& registry) noexcept
     return {
         .locations = data.locations.get_const_view(),
         .velocities = data.velocities.get_const_view(),
-        .radii = {data.radii.data(), count},
         .generations = {generations.data(), static_cast<std::size_t>(generations.size())},
         .alive = {data.alive.data(), count},
         .teams = std::as_bytes(teams),

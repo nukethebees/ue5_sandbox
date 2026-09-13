@@ -103,7 +103,8 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         data.entity_bounds.half_extent_xs[index] = 100.f;
         data.entity_bounds.half_extent_ys[index] = 20.f;
         data.entity_bounds.half_extent_zs[index] = 10.f;
-        data.fighter_radius = 5.f;
+        auto const fighter_index{ml::ioj::FEntityAABBs::fighter_index};
+        data.entity_bounds.half_extent_xs[fighter_index] = 5.f;
         data.fighters.avoidance_clearance_buffer = 1.f;
         data.capital_ships.fighter_spawn_slots_relative_transforms = {
             {.location = {0.0, 40.0, 0.0}}};

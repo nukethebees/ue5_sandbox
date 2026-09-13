@@ -12,8 +12,6 @@ auto make_cap_battle(std::span<ml::simulation::Team const> const capital_teams,
     data.grid_dimensions = {16, 16, 4};
     data.cell_size = {{1000.f, 1000.f, 1000.f}};
     data.lasers.n_preallocated_instances = 32;
-    data.capital_radius = 10.f;
-    data.fighter_radius = 1.f;
     data.fighters.max_live_fighters = max_live_fighters;
     for (auto const team : participating_teams) {
         data.participating_teams.add(team);

@@ -12,7 +12,6 @@
 
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGamePresentation/support/mesh.h>
 #include <SpaceGameSimulation/entities/TestEntityType.h>
 #include <SpaceGameSimulation/simulation/EntityWorldBounds.h>
 
@@ -22,55 +21,63 @@
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 
+#include <vector>
+
 namespace ml::level_simulation_builder {
+auto intersects(simulation::collision::WorldAABB const& first,
+                simulation::collision::WorldAABB const& second,
+                float const first_clearance,
+                float const second_clearance) noexcept -> bool {
+    return first.min.X - first_clearance <= second.max.X + second_clearance &&
+           first.max.X + first_clearance >= second.min.X - second_clearance &&
+           first.min.Y - first_clearance <= second.max.Y + second_clearance &&
+           first.max.Y + first_clearance >= second.min.Y - second_clearance &&
+           first.min.Z - first_clearance <= second.max.Z + second_clearance &&
+           first.max.Z + first_clearance >= second.min.Z - second_clearance;
+}
+
 void validate_fighter_spawn_slots(FCapitalSimulationConfig const& capital_config,
                                   FFighterSimulationConfig const& fighter_config,
                                   simulation::collision::EntityAABBs const& entity_bounds,
-                                  float const fighter_radius,
                                   FLevelStartErrors& errors) {
     auto const capital_index{ioj::FEntityAABBs::capital_ship_index};
-    auto const capital_centre{ml::to_unreal(entity_bounds.get_centre(capital_index))};
-    auto const fighter_clearance{fighter_radius + fighter_config.avoidance_clearance_buffer};
-    FVector3f const clearance_extent{fighter_clearance, fighter_clearance, fighter_clearance};
-    auto const capital_min{capital_centre -
-                           ml::to_unreal(entity_bounds.get_half_extents(capital_index)) -
-                           clearance_extent};
-    auto const capital_max{capital_centre +
-                           ml::to_unreal(entity_bounds.get_half_extents(capital_index)) +
-                           clearance_extent};
+    auto const fighter_index{ioj::FEntityAABBs::fighter_index};
+    auto const capital_bounds{simulation::collision::make_entity_world_bounds(
+        entity_bounds, capital_index, {}, ml::make_quaternion4f(0.0f, 0.0f, 0.0f, 1.0f))};
+    auto const clearance{fighter_config.avoidance_clearance_buffer};
     auto const& spawn_slots{capital_config.fighter_spawn_slots_relative_transforms};
     auto const slot_count{static_cast<int32>(spawn_slots.size())};
+    std::vector<simulation::collision::WorldAABB> fighter_bounds;
+    fighter_bounds.reserve(static_cast<std::size_t>(slot_count));
 
     for (int32 slot_index{}; slot_index < slot_count; ++slot_index) {
-        auto const location{
-            ml::to_unreal(ml::simulation::to_float(spawn_slots[slot_index].location))};
-        auto const inside_capital{location.X >= capital_min.X && location.X <= capital_max.X &&
-                                  location.Y >= capital_min.Y && location.Y <= capital_max.Y &&
-                                  location.Z >= capital_min.Z && location.Z <= capital_max.Z};
-        if (inside_capital) {
+        auto const& slot{spawn_slots[slot_index]};
+        auto const location{ml::simulation::to_float(slot.location)};
+        auto const orientation{ml::simulation::to_quaternion(
+            ml::simulation::to_float(ml::simulation::to_rotator(slot.rotation)))};
+        fighter_bounds.push_back(simulation::collision::make_entity_world_bounds(
+            entity_bounds, fighter_index, location, orientation));
+        if (intersects(capital_bounds, fighter_bounds.back(), 0.0f, clearance)) {
             errors.add(FString::Printf(
                 TEXT("fighter spawn slot %d at %s intersects the capital collision bounds plus "
                      "fighter clearance"),
                 slot_index,
-                *location.ToString()));
+                *ml::to_unreal(location).ToString()));
         }
     }
 
-    auto const minimum_spacing{fighter_clearance * 2.f};
-    auto const minimum_spacing_sq{minimum_spacing * minimum_spacing};
     for (int32 first_index{}; first_index < slot_count; ++first_index) {
-        auto const first_location{
-            ml::to_unreal(ml::simulation::to_float(spawn_slots[first_index].location))};
         for (int32 second_index{first_index + 1}; second_index < slot_count; ++second_index) {
-            auto const second_location{
-                ml::to_unreal(ml::simulation::to_float(spawn_slots[second_index].location))};
-            if (FVector3f::DistSquared(first_location, second_location) < minimum_spacing_sq) {
+            if (intersects(fighter_bounds[first_index],
+                           fighter_bounds[second_index],
+                           clearance,
+                           clearance)) {
                 errors.add(FString::Printf(
-                    TEXT("fighter spawn slots %d and %d are closer than the required %.1f cm "
-                         "fighter clearance"),
+                    TEXT("fighter spawn slots %d and %d have overlapping collision bounds plus "
+                         "%.1f cm clearance"),
                     first_index,
                     second_index,
-                    minimum_spacing));
+                    clearance));
             }
         }
     }
@@ -80,7 +87,9 @@ void validate_fighter_spawn_slots(FCapitalSimulationConfig const& capital_config
 namespace ml {
 void validate_world_fighter_spawn_slots(FLevelSimulationInitData const& data,
                                         FLevelStartErrors& errors) {
-    auto const clearance{data.fighter_radius + data.fighters.avoidance_clearance_buffer};
+    auto const capital_index{ioj::FEntityAABBs::capital_ship_index};
+    auto const fighter_index{ioj::FEntityAABBs::fighter_index};
+    auto const clearance{data.fighters.avoidance_clearance_buffer};
     auto const& slots{data.capital_ships.fighter_spawn_slots_relative_transforms};
     auto const validate{[&](ml::simulation::Vectors3fConstView const locations,
                             ml::simulation::Rotators3fConstView const rotations) {
@@ -88,18 +97,22 @@ void validate_world_fighter_spawn_slots(FLevelSimulationInitData const& data,
         for (int32 i{}; i < count; ++i) {
             auto const position{ml::to_unreal(locations[i])};
             auto const rotation{ml::to_unreal(rotations[i])};
-            auto const bounds{ioj::to_unreal(simulation::collision::make_entity_world_bounds(
-                                                 data.entity_bounds,
-                                                 ioj::FEntityAABBs::capital_ship_index,
-                                                 locations[i],
-                                                 simulation::to_quaternion(rotations[i])))
-                                  .ExpandBy(clearance)};
+            auto const capital_orientation{simulation::to_quaternion(rotations[i])};
+            auto const capital_bounds{simulation::collision::make_entity_world_bounds(
+                data.entity_bounds, capital_index, locations[i], capital_orientation)};
             auto const slot_count{static_cast<int32>(slots.size())};
             for (int32 slot_index{}; slot_index < slot_count; ++slot_index) {
-                auto const spawn{position +
-                                 rotation.RotateVector(ml::to_unreal(
-                                     ml::simulation::to_float(slots[slot_index].location)))};
-                if (bounds.IsInsideOrOn(spawn)) {
+                auto const& slot{slots[slot_index]};
+                auto const slot_location{ml::simulation::to_float(slot.location)};
+                auto const spawn{position + rotation.RotateVector(ml::to_unreal(slot_location))};
+                auto const slot_rotation{
+                    ml::simulation::to_float(ml::simulation::to_rotator(slot.rotation))};
+                auto const fighter_orientation{capital_orientation *
+                                               simulation::to_quaternion(slot_rotation)};
+                auto const fighter_bounds{simulation::collision::make_entity_world_bounds(
+                    data.entity_bounds, fighter_index, ml::to_native(spawn), fighter_orientation)};
+                if (level_simulation_builder::intersects(
+                        capital_bounds, fighter_bounds, 0.0f, clearance)) {
                     errors.add(FString::Printf(
                         TEXT("Capital at %s rotation %s: fighter spawn slot %d intersects world "
                              "collision bounds plus fighter clearance"),
@@ -156,10 +169,6 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     if (player.IsSet()) {
         data.player.emplace(MoveTemp(player.GetValue()));
     }
-    data.capital_radius = get_mesh_sphere_bounds(*config.capital_ships.mesh);
-    data.fighter_radius = get_mesh_sphere_bounds(*config.fighters.mesh);
-    data.turret_radius = get_mesh_sphere_bounds(*config.turrets.mesh);
-    data.spinner_radius = get_mesh_sphere_bounds(*config.tube_spinners.mesh);
     auto const* socket{config.fighters.mesh->FindSocket(TEXT("Gun"))};
     data.fighter_fire_point_distance =
         IsValid(socket) ? static_cast<float>(socket->RelativeLocation.Size()) : 0.f;
@@ -179,7 +188,7 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     }
     data.entity_bounds = MoveTemp(bounds.value());
     level_simulation_builder::validate_fighter_spawn_slots(
-        data.capital_ships, data.fighters, data.entity_bounds, data.fighter_radius, errors);
+        data.capital_ships, data.fighters, data.entity_bounds, errors);
     if (errors.has_errors()) {
         return FLevelSimulationBuildResult{std::unexpect, MoveTemp(errors)};
     }

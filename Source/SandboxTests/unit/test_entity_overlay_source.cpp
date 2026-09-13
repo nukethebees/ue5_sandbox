@@ -7,13 +7,25 @@
 
 #include <CQTest.h>
 
+#include <array>
+
 namespace {
+using EntityTypeRadii =
+    std::array<float, static_cast<std::size_t>(ml::simulation::EntityType::COUNT)>;
+
+auto make_entity_type_radii() -> EntityTypeRadii {
+    EntityTypeRadii radii{};
+    radii.fill(1.0f);
+    return radii;
+}
+
 auto make_view(ml::simulation::RegistryEntityData const& entities)
     -> ml::simulation::RegistryEntityData::ConstView {
     return entities.get_const_view();
 }
 
 void add_entity(ml::simulation::RegistryEntityData& entities,
+                EntityTypeRadii& entity_type_radii,
                 FVector3f const position,
                 int32 const health,
                 ETestEntityType const type,
@@ -23,7 +35,7 @@ void add_entity(ml::simulation::RegistryEntityData& entities,
     auto const index{entities.num()};
     entities.add_defaulted(1);
     entities.locations.set(index, ml::to_native(position));
-    entities.radii[index] = radius;
+    entity_type_radii[static_cast<std::size_t>(type)] = radius;
     entities.healths[index] = health;
     entities.teams[index] = ml::to_native(team);
     entities.entity_types[index] = ml::to_native(type);
@@ -44,6 +56,7 @@ auto make_forward_x_view() -> FEntityOverlayView {
 }
 
 auto select_target(ml::simulation::RegistryEntityData const& entities,
+                   EntityTypeRadii const& entity_type_radii,
                    FRegistryEntityHandle const current_target = {},
                    float const weapon_range = 1000.0f) -> FSoftTargetSelectionResult {
     TArray<int> generations;
@@ -51,6 +64,7 @@ auto select_target(ml::simulation::RegistryEntityData const& entities,
     TArray<EEntityOverlayObjectiveRole> objective_roles;
     objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
     return select_soft_target(make_view(entities),
+                              entity_type_radii,
                               generations,
                               objective_roles,
                               {.view = make_forward_x_view(),
@@ -71,19 +85,41 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
     TEST_METHOD(FiltersEligibilityRangeAndNormalizesHealth)
     {
         ml::simulation::RegistryEntityData entities;
-        add_entity(entities, {10.0f, 0.0f, 0.0f}, 10, ETestEntityType::Turret, 50.0f);
-        add_entity(entities, {20.0f, 0.0f, 0.0f}, 25, ETestEntityType::CapitalShipFighter, 100.0f);
-        add_entity(entities, {30.0f, 0.0f, 0.0f}, 2500, ETestEntityType::CapitalShip, 1000.0f);
-        add_entity(entities, {40.0f, 0.0f, 0.0f}, 20, ETestEntityType::Turret, 50.0f, false);
-        add_entity(entities, {50.0f, 0.0f, 0.0f}, 100, ETestEntityType::PlayerShip);
-        add_entity(entities, {60.0f, 0.0f, 0.0f}, 100, ETestEntityType::TubeSpinner);
-        add_entity(entities, {101.0f, 0.0f, 0.0f}, 20, ETestEntityType::Turret);
+        auto entity_type_radii{make_entity_type_radii()};
+        add_entity(
+            entities, entity_type_radii, {10.0f, 0.0f, 0.0f}, 10, ETestEntityType::Turret, 50.0f);
+        add_entity(entities,
+                   entity_type_radii,
+                   {20.0f, 0.0f, 0.0f},
+                   25,
+                   ETestEntityType::CapitalShipFighter,
+                   100.0f);
+        add_entity(entities,
+                   entity_type_radii,
+                   {30.0f, 0.0f, 0.0f},
+                   2500,
+                   ETestEntityType::CapitalShip,
+                   1000.0f);
+        add_entity(entities,
+                   entity_type_radii,
+                   {40.0f, 0.0f, 0.0f},
+                   20,
+                   ETestEntityType::Turret,
+                   50.0f,
+                   false);
+        add_entity(
+            entities, entity_type_radii, {50.0f, 0.0f, 0.0f}, 100, ETestEntityType::PlayerShip);
+        add_entity(
+            entities, entity_type_radii, {60.0f, 0.0f, 0.0f}, 100, ETestEntityType::TubeSpinner);
+        add_entity(
+            entities, entity_type_radii, {101.0f, 0.0f, 0.0f}, 20, ETestEntityType::Turret, 50.0f);
 
         FEntityOverlayCollector collector;
         TArray<FEntityOverlayInstance> output;
         TArray<EEntityOverlayObjectiveRole> objective_roles;
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
         auto const result{collect_entity_overlay_instances(make_view(entities),
+                                                           entity_type_radii,
                                                            objective_roles,
                                                            {},
                                                            {5000, 50, 20},
@@ -106,14 +142,17 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
     TEST_METHOD(ClampsHealthFromRegistry)
     {
         ml::simulation::RegistryEntityData entities;
-        add_entity(entities, FVector3f::ZeroVector, -10, ETestEntityType::Turret);
-        add_entity(entities, FVector3f::ZeroVector, 40, ETestEntityType::Turret);
+        auto entity_type_radii{make_entity_type_radii()};
+        add_entity(
+            entities, entity_type_radii, FVector3f::ZeroVector, -10, ETestEntityType::Turret);
+        add_entity(entities, entity_type_radii, FVector3f::ZeroVector, 40, ETestEntityType::Turret);
 
         FEntityOverlayCollector collector;
         TArray<FEntityOverlayInstance> output;
         TArray<EEntityOverlayObjectiveRole> objective_roles;
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
         static_cast<void>(collect_entity_overlay_instances(make_view(entities),
+                                                           entity_type_radii,
                                                            objective_roles,
                                                            {},
                                                            {5000, 50, 20},
@@ -129,7 +168,9 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
     TEST_METHOD(SelectsOnlyTheBestValidHostile)
     {
         ml::simulation::RegistryEntityData entities;
+        auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
+                   entity_type_radii,
                    {1000.0f, 0.0f, 0.0f},
                    20,
                    ETestEntityType::Turret,
@@ -137,6 +178,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
                    true,
                    ETestTeam::Green);
         add_entity(entities,
+                   entity_type_radii,
                    {1000.0f, 50.0f, 0.0f},
                    20,
                    ETestEntityType::Turret,
@@ -144,6 +186,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
                    true,
                    ETestTeam::Red);
         add_entity(entities,
+                   entity_type_radii,
                    {1000.0f, 80.0f, 0.0f},
                    20,
                    ETestEntityType::Turret,
@@ -151,6 +194,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
                    true,
                    ETestTeam::Blue);
         add_entity(entities,
+                   entity_type_radii,
                    {1000.0f, 0.0f, 0.0f},
                    20,
                    ETestEntityType::Turret,
@@ -158,14 +202,16 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
                    false,
                    ETestTeam::Red);
 
-        auto const selected{select_target(entities)};
+        auto const selected{select_target(entities, entity_type_radii)};
         TestRunner->TestEqual(TEXT("Nearest hostile is selected"), selected.handle.index, 1);
     }
 
     TEST_METHOD(RetainsAndSwitchesWithHysteresis)
     {
         ml::simulation::RegistryEntityData entities;
+        auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
+                   entity_type_radii,
                    {1000.0f, 65.0f, 0.0f},
                    20,
                    ETestEntityType::Turret,
@@ -173,6 +219,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
                    true,
                    ETestTeam::Red);
         add_entity(entities,
+                   entity_type_radii,
                    {1000.0f, 80.0f, 0.0f},
                    20,
                    ETestEntityType::Turret,
@@ -180,31 +227,33 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
                    true,
                    ETestTeam::Blue);
 
-        auto const retained{select_target(entities, {1, 0})};
+        auto const retained{select_target(entities, entity_type_radii, {1, 0})};
         TestRunner->TestEqual(TEXT("Small improvement does not switch"), retained.handle.index, 1);
 
         entities.locations.ys[0] = 50.0f;
-        auto const switched{select_target(entities, {1, 0})};
+        auto const switched{select_target(entities, entity_type_radii, {1, 0})};
         TestRunner->TestEqual(
             TEXT("Materially better candidate switches"), switched.handle.index, 0);
 
         entities.locations.ys[0] = 250.0f;
         entities.locations.ys[1] = 250.0f;
-        auto const cleared{select_target(entities, {1, 0})};
+        auto const cleared{select_target(entities, entity_type_radii, {1, 0})};
         TestRunner->TestFalse(TEXT("Target outside retention is cleared"),
                               cleared.handle.is_valid());
         TestRunner->TestTrue(TEXT("Valid on-screen lost target may fade"),
                              cleared.previous_target_can_fade);
 
         entities.alive[1] = 0;
-        auto const dead{select_target(entities, {1, 0})};
+        auto const dead{select_target(entities, entity_type_radii, {1, 0})};
         TestRunner->TestFalse(TEXT("Dead target may not fade"), dead.previous_target_can_fade);
     }
 
     TEST_METHOD(ProjectedSizeDoesNotLetARearTargetDominate)
     {
         ml::simulation::RegistryEntityData entities;
+        auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
+                   entity_type_radii,
                    {2000.0f, 80.0f, 0.0f},
                    20,
                    ETestEntityType::CapitalShip,
@@ -212,6 +261,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
                    true,
                    ETestTeam::Red);
         add_entity(entities,
+                   entity_type_radii,
                    {1000.0f, 20.0f, 0.0f},
                    20,
                    ETestEntityType::Turret,
@@ -219,14 +269,16 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
                    true,
                    ETestTeam::Blue);
 
-        auto const selected{select_target(entities)};
+        auto const selected{select_target(entities, entity_type_radii)};
         TestRunner->TestEqual(TEXT("Better-centred front target wins"), selected.handle.index, 1);
     }
 
     TEST_METHOD(NearestSurfaceResolvesCentredTargetsAndHysteresis)
     {
         ml::simulation::RegistryEntityData entities;
+        auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
+                   entity_type_radii,
                    {2000.0f, 0.0f, 0.0f},
                    20,
                    ETestEntityType::CapitalShip,
@@ -234,6 +286,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
                    true,
                    ETestTeam::Red);
         add_entity(entities,
+                   entity_type_radii,
                    {1000.0f, 0.0f, 0.0f},
                    20,
                    ETestEntityType::Turret,
@@ -241,10 +294,10 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
                    true,
                    ETestTeam::Blue);
 
-        auto const selected{select_target(entities)};
+        auto const selected{select_target(entities, entity_type_radii)};
         TestRunner->TestEqual(TEXT("Nearest tied centre wins"), selected.handle.index, 1);
 
-        auto const switched{select_target(entities, {0, 0})};
+        auto const switched{select_target(entities, entity_type_radii, {0, 0})};
         TestRunner->TestEqual(
             TEXT("Materially nearer tied target replaces rear target"), switched.handle.index, 1);
     }
@@ -252,7 +305,9 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
     TEST_METHOD(NormalizesRangeAlphaUsingTargetSurfaceDistance)
     {
         ml::simulation::RegistryEntityData entities;
+        auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
+                   entity_type_radii,
                    {5000.0f, 0.0f, 0.0f},
                    20,
                    ETestEntityType::Turret,
@@ -260,29 +315,29 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
                    true,
                    ETestTeam::Red);
 
-        auto const comfortably_out_of_range{select_target(entities)};
+        auto const comfortably_out_of_range{select_target(entities, entity_type_radii)};
         TestRunner->TestEqual(TEXT("Beyond transition start clamps to zero"),
                               comfortably_out_of_range.range_alpha,
                               0.0f);
 
         entities.locations.xs[0] = 2500.0f;
-        auto const approaching{select_target(entities)};
+        auto const approaching{select_target(entities, entity_type_radii)};
         TestRunner->TestEqual(
             TEXT("Mid-transition range alpha is linear"), approaching.range_alpha, 0.5f);
 
         entities.locations.xs[0] = 1100.0f;
-        entities.radii[0] = 100.0f;
-        auto const at_range_boundary{select_target(entities)};
+        entity_type_radii[static_cast<std::size_t>(ETestEntityType::Turret)] = 100.0f;
+        auto const at_range_boundary{select_target(entities, entity_type_radii)};
         TestRunner->TestEqual(TEXT("Surface at range boundary has full range alpha"),
                               at_range_boundary.range_alpha,
                               1.0f);
 
         entities.locations.xs[0] = 500.0f;
-        auto const inside_range{select_target(entities)};
+        auto const inside_range{select_target(entities, entity_type_radii)};
         TestRunner->TestEqual(
             TEXT("Inside range remains clamped to one"), inside_range.range_alpha, 1.0f);
 
-        auto const invalid_weapon_range{select_target(entities, {}, 0.0f)};
+        auto const invalid_weapon_range{select_target(entities, entity_type_radii, {}, 0.0f)};
         TestRunner->TestEqual(TEXT("Missing weapon range produces zero range alpha"),
                               invalid_weapon_range.range_alpha,
                               0.0f);
@@ -291,7 +346,9 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
     TEST_METHOD(RangeAlphaUsesTargetSurfaceRatherThanCentre)
     {
         ml::simulation::RegistryEntityData entities;
+        auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
+                   entity_type_radii,
                    {1100.0f, 0.0f, 0.0f},
                    20,
                    ETestEntityType::Turret,
@@ -299,7 +356,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
                    true,
                    ETestTeam::Red);
 
-        auto const selected{select_target(entities)};
+        auto const selected{select_target(entities, entity_type_radii)};
         TestRunner->TestEqual(TEXT("Target surface at weapon range has full range alpha"),
                               selected.range_alpha,
                               1.0f);
@@ -308,7 +365,9 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
     TEST_METHOD(ReportsWorldScaleSeparatelyFromClampedIndicatorRadius)
     {
         ml::simulation::RegistryEntityData entities;
+        auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
+                   entity_type_radii,
                    {1000.0f, 0.0f, 0.0f},
                    20,
                    ETestEntityType::Turret,
@@ -316,20 +375,20 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
                    true,
                    ETestTeam::Red);
 
-        auto const distant{select_target(entities)};
+        auto const distant{select_target(entities, entity_type_radii)};
         TestRunner->TestTrue(TEXT("Projection scale is available for world marker scaling"),
                              distant.world_units_per_pixel > 0.0f);
         TestRunner->TestTrue(TEXT("Small projected targets still use the minimum indicator"),
                              distant.indicator_radius_pixels >
                                  2.0f / distant.world_units_per_pixel);
 
-        entities.radii[0] = 0.0f;
-        auto const zero_radius{select_target(entities)};
+        entity_type_radii[static_cast<std::size_t>(ETestEntityType::Turret)] = 0.0f;
+        auto const zero_radius{select_target(entities, entity_type_radii)};
         TestRunner->TestTrue(TEXT("Zero-radius targets still have a usable projection scale"),
                              zero_radius.world_units_per_pixel > 0.0f);
 
         entities.locations.xs[0] = 500.0f;
-        auto const nearer{select_target(entities)};
+        auto const nearer{select_target(entities, entity_type_radii)};
         TestRunner->TestTrue(TEXT("World units per pixel shrink as the target approaches"),
                              nearer.world_units_per_pixel < distant.world_units_per_pixel);
     }

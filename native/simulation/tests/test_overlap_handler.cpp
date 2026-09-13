@@ -7,7 +7,6 @@ auto spawn_entity(FTestEntityRegistry& registry, ml::simulation::EntityType cons
     -> FRegistryEntityHandle {
     FTestEntityRegistry::EntityData data;
     data.add_defaulted(1);
-    data.radii[0] = 1.f;
     data.healths[0] = 100;
     data.teams[0] = ml::simulation::Team::Blue;
     data.entity_types[0] = type;

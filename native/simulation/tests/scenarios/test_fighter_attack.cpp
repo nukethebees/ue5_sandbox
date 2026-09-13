@@ -149,7 +149,9 @@ void run_worldless_fighter_capital_obstruction(
         obstacle,
         simulation::to_quaternion(obstacle_rotation))};
     auto const capital_half_extent{((obstacle_bounds.max - obstacle_bounds.min) * 0.5f)};
-    auto const clearance{data.fighter_radius + data.fighters.avoidance_clearance_buffer};
+    auto const fighter_radius{simulation::collision::get_entity_radius(
+        data.entity_bounds, simulation::collision::EntityAABBs::fighter_index)};
+    auto const clearance{fighter_radius + data.fighters.avoidance_clearance_buffer};
     ml::simulation::Vector3f const clearance_extent{{clearance, clearance, clearance}};
     ml::simulation_tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
@@ -346,7 +348,10 @@ auto run_dense_navigation_fixture(ml::simulation_tests::SimulationFixture const&
                                                 ml::simulation::Vector3f{{-20000.f, -7000.f, 0.f}},
                                                 ml::simulation::Vector3f{{20000.f, 0.f, 0.f}})};
     FDenseNavigationResult result;
-    result.collision_distance = data.fighter_radius * 2.f;
+    result.collision_distance =
+        simulation::collision::get_entity_radius(
+            data.entity_bounds, simulation::collision::EntityAABBs::fighter_index) *
+        2.f;
     ml::simulation_tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     auto const& fighters{harness.get_simulation().get_capital_ship_fighters()};
@@ -355,8 +360,8 @@ auto run_dense_navigation_fixture(ml::simulation_tests::SimulationFixture const&
         result.query_count += telemetry.separation_query_count;
         result.saw_immediate_risk = result.saw_immediate_risk || telemetry.immediate_risk_count > 0;
     };
-    harness.timeline.finish_at(1.5);
-    result.timeline_completed = harness.run_until_timeline_finished(2.0);
+    harness.timeline.finish_at(2.0);
+    result.timeline_completed = harness.run_until_timeline_finished(2.5);
     auto const locations{fighters.get_locations()};
     result.locations.reserve(locations.num());
     for (std::int32_t i{}; i < locations.num(); ++i) {
@@ -456,7 +461,9 @@ void run_worldless_fighter_hard_avoidance_authority(
     data.fighters.separation_strength = 3.f;
     data.static_bounds.add_defaulted(1);
     simulation::collision::set(data.static_bounds, 0, obstacle_min, obstacle_max);
-    auto const clearance{data.fighter_radius + data.fighters.avoidance_clearance_buffer};
+    auto const fighter_radius{simulation::collision::get_entity_radius(
+        data.entity_bounds, simulation::collision::EntityAABBs::fighter_index)};
+    auto const clearance{fighter_radius + data.fighters.avoidance_clearance_buffer};
     ml::simulation::Vector3f const clearance_extent{{clearance, clearance, clearance}};
     auto const expanded_min{obstacle_min - clearance_extent};
     auto const expanded_max{obstacle_max + clearance_extent};

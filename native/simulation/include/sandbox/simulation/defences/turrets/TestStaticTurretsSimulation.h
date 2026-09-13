@@ -71,7 +71,6 @@ struct Simulation {
     void validate_array_sizes() const;
     void validate_entity_handles() const;
 
-    float entity_radius{0.f};
     std::int32_t search_slice_size{64};
   private:
     /* **************************************** */

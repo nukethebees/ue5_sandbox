@@ -50,7 +50,6 @@ struct FPlayerSpawnData {
     ml::simulation::Transform3d left_socket{ml::simulation::Transform3d{}};
     ml::simulation::Transform3d right_socket{ml::simulation::Transform3d{}};
     ml::simulation::Transform3d middle_socket{ml::simulation::Transform3d{}};
-    float collision_radius{};
 
     ml::simulation::SpaceShipFlightMode flight_mode{
         ml::simulation::SpaceShipFlightMode::ForwardSpeed};
@@ -146,7 +145,6 @@ struct Simulation {
     ml::simulation::Transform3d left_socket{ml::simulation::Transform3d{}};
     ml::simulation::Transform3d right_socket{ml::simulation::Transform3d{}};
     ml::simulation::Transform3d middle_socket{ml::simulation::Transform3d{}};
-    float collision_radius{0.f};
 
     float thrust_energy{1.f};
     float thrust_change_rate{0.f};

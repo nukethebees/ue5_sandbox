@@ -15,4 +15,6 @@ struct WorldAABB {
                                             std::int32_t type_index,
                                             Vector3f position,
                                             Quaternion4f orientation) noexcept -> WorldAABB;
+[[nodiscard]] auto get_entity_radius(EntityAABBs const& bounds, std::int32_t type_index) noexcept
+    -> float;
 } // namespace ml::simulation::collision

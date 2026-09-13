@@ -18,7 +18,6 @@ void add_entity(simulation::RegistryEntityData& entities,
     auto const index{entities.num()};
     entities.add_defaulted(1);
     entities.locations.set(index, ml::to_native(location));
-    entities.radii[index] = 100.0f;
     entities.healths[index] = 100;
     entities.teams[index] = ml::to_native(team);
     entities.entity_types[index] = ml::to_native(type);

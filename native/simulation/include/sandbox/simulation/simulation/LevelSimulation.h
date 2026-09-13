@@ -64,10 +64,6 @@ struct FLevelSimulationInitData {
 
     std::size_t frame_memory_capacity_bytes{16 * 1024 * 1024};
 
-    float capital_radius{1.f};
-    float fighter_radius{1.f};
-    float turret_radius{1.f};
-    float spinner_radius{1.f};
     float fighter_fire_point_distance{};
 
     std::optional<FLevelTelemetryRunMetadata> telemetry_metadata{};

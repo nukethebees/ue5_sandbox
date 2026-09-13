@@ -10,7 +10,6 @@ namespace ml::simulation {
 struct EntityRegistryRefreshViews {
     Vectors3fView locations;
     Vectors3fView velocities;
-    std::span<float> radii;
 };
 
 // Returns the first invalid input offset, or -1 when every handle was refreshable.

@@ -42,7 +42,6 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     ml::FrameMemoryResource frame_memory{1024 * 1024};
     ml::test_lasers::Simulation lasers{clock, registry, queries, frame_memory};
     ml::test_tube_spinners::Simulation simulation{clock, registry, lasers, frame_memory};
-    simulation.entity_radius = 17.f;
     auto& entities{Access::entities(simulation)};
     Access::set_cooldown(simulation, 23);
 

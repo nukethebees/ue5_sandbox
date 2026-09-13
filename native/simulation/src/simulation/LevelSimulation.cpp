@@ -160,8 +160,8 @@ FLevelSimulation::FLevelSimulation(FLevelSimulationInitData data)
     telemetry_metadata_ = std::move(data.telemetry_metadata);
     ml::level_simulation::finalise_participating_teams(data);
 
-    configure_subsystems(data);
     initialise_spatial_queries(data);
+    configure_subsystems(data);
     begin_subsystems(data);
 
     initialise_events(data);
@@ -212,20 +212,16 @@ void FLevelSimulation::configure_subsystems(FLevelSimulationInitData const& data
     lasers_simulation_.collision_jobs = data.lasers.collision_jobs;
 
     capital_ships_simulation_.set_config(data.capital_ships);
-    capital_ships_simulation_.entity_radius = data.capital_radius;
-
     capital_ship_fighters_simulation_.set_config(data.fighters, data.participating_teams);
     capital_ship_fighters_simulation_.fire_dot_product_threshold =
         data.fighters.fire_dot_product_threshold;
-    capital_ship_fighters_simulation_.collision_radius = data.fighter_radius;
+    capital_ship_fighters_simulation_.collision_radius =
+        query_manager_.get_entity_type_radius(ml::simulation::EntityType::CapitalShipFighter);
     capital_ship_fighters_simulation_.fire_point_distance = data.fighter_fire_point_distance;
 
     turrets_simulation_.set_config(data.turrets);
     turrets_simulation_.search_slice_size = data.turrets.search_slice_size;
-    turrets_simulation_.entity_radius = data.turret_radius;
-
     spinners_simulation_.set_config(data.spinners);
-    spinners_simulation_.entity_radius = data.spinner_radius;
 }
 void FLevelSimulation::configure_player(ml::test_space_ship::FPlayerSpawnData const& spawn) {
     auto& player{player_ship_simulation_.emplace(
@@ -240,8 +236,6 @@ void FLevelSimulation::configure_player(ml::test_space_ship::FPlayerSpawnData co
     player.left_socket = spawn.left_socket;
     player.right_socket = spawn.right_socket;
     player.middle_socket = spawn.middle_socket;
-    player.collision_radius = spawn.collision_radius;
-
     player.flight_mode = spawn.flight_mode;
     player.control_mode = spawn.control_mode;
     player.laser_mode = spawn.laser_mode;

@@ -96,7 +96,6 @@ auto Simulation::register_turrets(SpawnDataConstView const spawn_data,
         entities.rotations.set(first_new_index + i, rotation);
     }
     new_entity_data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
-    std::ranges::fill(new_entity_data.radii, entity_radius);
     std::ranges::fill(new_entity_data.entity_types, ml::simulation::EntityType::Turret);
     for (std::int32_t i{}; i < n_to_add; ++i) {
         new_entity_data.healths[i] = spawn_data.healths[i];
@@ -155,7 +154,6 @@ void Simulation::handle_dead_entities() {
 // Simulation phases
 /* **************************************** */
 void Simulation::begin_play() {
-    assert(entity_radius > 0.f);
     assert(search_slice_size > 0);
 
     auto const cooldown_tick_period{
@@ -204,8 +202,7 @@ void Simulation::sync_from_registry() {
 
     entity_registry.refresh_entity_data(entities.target_handles,
                                         entities.target_locations.get_view(),
-                                        entities.target_velocities.get_view(),
-                                        {});
+                                        entities.target_velocities.get_view());
 
     handle_dead_entities();
 }
@@ -227,7 +224,6 @@ void Simulation::prepare_entity_update_data() {
     entity_update_data.locations = entities.locations;
     entity_update_data.rotations = entities.rotations;
     entity_update_data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
-    std::ranges::fill(entity_update_data.radii, entity_radius);
     entity_update_data.healths = entities.healths;
     entity_update_data.teams = entities.teams;
     std::ranges::fill(entity_update_data.entity_types, ml::simulation::EntityType::Turret);

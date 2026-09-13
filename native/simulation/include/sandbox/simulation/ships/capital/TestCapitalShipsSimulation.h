@@ -127,7 +127,6 @@ struct Simulation {
     void validate_entity_handles() const;
     void set_target_handle(FRegistryEntityHandle ship_handle, FRegistryEntityHandle target_handle);
 
-    float entity_radius{0.f};
     bool diagnostics_enabled{};
   private:
     /* **************************************** */

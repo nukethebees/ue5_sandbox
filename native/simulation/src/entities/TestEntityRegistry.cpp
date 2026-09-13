@@ -236,13 +236,12 @@ void FTestEntityRegistry::refresh_locations(std::span<FRegistryEntityHandle cons
     [[maybe_unused]] auto const inactive_index{ml::simulation::copy_registry_entity_data(
         ml::make_native_query_view(*this),
         {handles.data(), static_cast<std::size_t>(handles.size())},
-        {.locations = locations, .velocities = {}, .radii = {}})};
+        {.locations = locations, .velocities = {}})};
     assert(inactive_index < 0);
 }
 void FTestEntityRegistry::refresh_entity_data(std::span<FRegistryEntityHandle> handles,
                                               ml::simulation::Vectors3fView const& locations,
-                                              ml::simulation::Vectors3fView const& velocities,
-                                              std::span<float> const radii) {
+                                              ml::simulation::Vectors3fView const& velocities) {
     auto const n_handles{handles.size()};
     if (n_handles == 0) {
         return;
@@ -261,15 +260,11 @@ void FTestEntityRegistry::refresh_entity_data(std::span<FRegistryEntityHandle> h
 
     auto const update_locations{should_update_view(static_cast<std::size_t>(locations.num()))};
     auto const update_velocities{should_update_view(static_cast<std::size_t>(velocities.num()))};
-    auto const update_radii{should_update_view(radii.size())};
     [[maybe_unused]] auto const inactive_index{ml::simulation::copy_registry_entity_data(
         ml::make_native_query_view(*this),
         {handles.data(), static_cast<std::size_t>(handles.size())},
         {.locations = update_locations ? locations : ml::simulation::Vectors3fView{},
-         .velocities = update_velocities ? velocities : ml::simulation::Vectors3fView{},
-         .radii = update_radii
-                    ? std::span<float>{radii.data(), static_cast<std::size_t>(radii.size())}
-                    : std::span<float>{}})};
+         .velocities = update_velocities ? velocities : ml::simulation::Vectors3fView{}})};
     assert(inactive_index < 0);
 }
 

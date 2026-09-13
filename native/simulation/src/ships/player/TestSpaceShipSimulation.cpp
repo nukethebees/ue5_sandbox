@@ -145,7 +145,6 @@ auto Simulation::get_entity_update_data() const -> RegistryEntityData {
     entity_data.locations.add(ml::simulation::to_float(transform.location));
     entity_data.velocities.add(ml::simulation::to_float(velocity));
     entity_data.rotations.add(ml::simulation::to_float(transform.rotator()));
-    entity_data.radii.push_back(collision_radius);
     entity_data.healths.push_back(health.health);
     entity_data.teams.push_back(team);
     entity_data.alive.push_back(static_cast<std::uint8_t>(health.is_alive()));

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <sandbox/simulation/entity_types.h>
 #include <sandbox/simulation/line_traces.h>
@@ -114,6 +115,10 @@ struct FSpatialQueryManager {
     void are_spheres_in_bounds(ml::simulation::Vectors3fConstView centres,
                                float radius,
                                std::span<std::uint8_t> out_results) const;
+    auto get_entity_type_radius(simulation::EntityType entity_type) const noexcept -> float;
+    auto get_entity_type_radii() const noexcept -> std::span<float const>;
+    void copy_entity_radii(std::span<FRegistryEntityHandle const> handles,
+                           std::span<float> out_radii) const;
 
     /* **************************************** */
     // Collision state and telemetry
@@ -143,6 +148,7 @@ struct FSpatialQueryManager {
     mutable simulation::QueryThreadBufferPool thread_buffer_pool_;
 
     ioj::FCollisionSystem collision;
+    std::array<float, static_cast<std::size_t>(simulation::EntityType::COUNT)> entity_radii_{};
     simulation::collision::SpatialQueryTelemetry telemetry_;
 };
 }

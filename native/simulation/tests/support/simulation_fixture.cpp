@@ -92,10 +92,6 @@ auto make_fixture() -> SimulationFixture {
     player.config.speed_responses.slowing_to_cruise.damping_ratio = 5.000000000e-01f;
     player.config.speed_responses.accelerating_to_cruise.settling_time = 1.000000000e+00f;
     player.config.speed_responses.accelerating_to_cruise.damping_ratio = 7.500000000e-01f;
-    data.capital_radius = 9.514702148e+03f;
-    data.fighter_radius = 1.591244385e+03f;
-    data.turret_radius = 9.241118774e+02f;
-    data.spinner_radius = 2.549509735e+02f;
     data.fighter_fire_point_distance = 1.807294556e+03f;
     data.frame_memory_capacity_bytes = 16777216;
     data.clock_settings.tick_rate = 6.00000000000000000e+01;
@@ -112,7 +108,6 @@ auto make_fixture() -> SimulationFixture {
     data.cell_size.Z = 2.000000000e+04f;
     data.turrets.fire_point_offset.Z = 1.560000000e+03f;
     player.team = static_cast<decltype(player.team)>(0);
-    player.collision_radius = 2.442084503e+02f;
     player.flight_mode = static_cast<decltype(player.flight_mode)>(1);
     player.control_mode = static_cast<decltype(player.control_mode)>(0);
     player.laser_mode = static_cast<decltype(player.laser_mode)>(0);

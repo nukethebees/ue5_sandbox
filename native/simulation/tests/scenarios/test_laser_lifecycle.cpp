@@ -75,7 +75,9 @@ void run_worldless_laser_lifecycle(ml::simulation_tests::SimulationFixture const
     harness.timeline.at(projectile_queue_time, [&] {
         auto const shooter_location{harness.get_registry().get_location(shooter)};
         auto const target_location{harness.get_registry().get_location(target)};
-        auto const shooter_radius{harness.get_registry().get_entity_data().radii[shooter.index]};
+        auto const shooter_radius{
+            harness.get_simulation().get_spatial_query_manager().get_entity_type_radius(
+                harness.get_registry().get_entity_type(shooter))};
         auto const target_direction{HMM_NormV3(target_location - shooter_location)};
         auto start{shooter_location + target_direction * (shooter_radius + 100.f)};
         auto fire_direction{target_direction};

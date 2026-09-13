@@ -18,7 +18,10 @@
 namespace ml {
 auto make_worldless_simulation_test_data(USpaceGameLevelConfig const& config)
     -> FLevelSimulationInitData {
-    auto result{make_level_simulation_init_data(config)};
+    check(IsValid(config.classes.player_ship_class));
+    auto const* player{config.classes.player_ship_class->GetDefaultObject<ATestSpaceShip>()};
+    check(player);
+    auto result{make_level_simulation_init_data(config, {}, NullOpt, player->get_collision_mesh())};
     check(result);
     return MoveTemp(result.value());
 }

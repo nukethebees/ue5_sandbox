@@ -19,7 +19,6 @@ struct RegistryEntityDataConstView {
     Vectors3fConstView locations;
     Vectors3fConstView velocities;
     Rotators3fConstView rotations;
-    std::span<float const> radii;
     std::span<std::int32_t const> healths;
     std::span<ml::simulation::Team const> teams;
     std::span<ml::simulation::EntityType const> entity_types;
@@ -37,7 +36,6 @@ struct RegistryEntityDataConstView {
         fn(rotations.pitches);
         fn(rotations.yaws);
         fn(rotations.rolls);
-        fn(radii);
         fn(healths);
         fn(teams);
         fn(entity_types);
@@ -56,7 +54,6 @@ struct RegistryEntityDataConstView {
             locations.slice(offset, count),
             velocities.slice(offset, count),
             rotations.slice(offset, count),
-            radii.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             healths.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             teams.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             entity_types.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -73,7 +70,6 @@ struct RegistryEntityDataConstView {
             locations.get_const_view(),
             velocities.get_const_view(),
             rotations.get_const_view(),
-            radii,
             healths,
             teams,
             entity_types,
@@ -97,7 +93,6 @@ struct RegistryEntityDataView {
     Vectors3fView locations;
     Vectors3fView velocities;
     Rotators3fView rotations;
-    std::span<float> radii;
     std::span<std::int32_t> healths;
     std::span<ml::simulation::Team> teams;
     std::span<ml::simulation::EntityType> entity_types;
@@ -115,7 +110,6 @@ struct RegistryEntityDataView {
         fn(rotations.pitches);
         fn(rotations.yaws);
         fn(rotations.rolls);
-        fn(radii);
         fn(healths);
         fn(teams);
         fn(entity_types);
@@ -134,7 +128,6 @@ struct RegistryEntityDataView {
             locations.slice(offset, count),
             velocities.slice(offset, count),
             rotations.slice(offset, count),
-            radii.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             healths.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             teams.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             entity_types.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -150,7 +143,6 @@ struct RegistryEntityDataView {
             locations.get_const_view(),
             velocities.get_const_view(),
             rotations.get_const_view(),
-            radii,
             healths,
             teams,
             entity_types,
@@ -172,7 +164,6 @@ struct RegistryEntityData {
     Vectors3f locations;
     Vectors3f velocities;
     Rotators3f rotations;
-    ml::native_soa::Vector<float> radii;
     ml::native_soa::Vector<std::int32_t> healths;
     ml::native_soa::Vector<ml::simulation::Team> teams;
     ml::native_soa::Vector<ml::simulation::EntityType> entity_types;
@@ -190,7 +181,6 @@ struct RegistryEntityData {
         fn(rotations.pitches);
         fn(rotations.yaws);
         fn(rotations.rolls);
-        fn(radii);
         fn(healths);
         fn(teams);
         fn(entity_types);
@@ -207,7 +197,6 @@ struct RegistryEntityData {
         fn(rotations.pitches);
         fn(rotations.yaws);
         fn(rotations.rolls);
-        fn(radii);
         fn(healths);
         fn(teams);
         fn(entity_types);
@@ -225,7 +214,6 @@ struct RegistryEntityData {
         rotations.pitches.reserve(static_cast<std::size_t>(count));
         rotations.yaws.reserve(static_cast<std::size_t>(count));
         rotations.rolls.reserve(static_cast<std::size_t>(count));
-        radii.reserve(static_cast<std::size_t>(count));
         healths.reserve(static_cast<std::size_t>(count));
         teams.reserve(static_cast<std::size_t>(count));
         entity_types.reserve(static_cast<std::size_t>(count));
@@ -241,7 +229,6 @@ struct RegistryEntityData {
         rotations.pitches.clear();
         rotations.yaws.clear();
         rotations.rolls.clear();
-        radii.clear();
         healths.clear();
         teams.clear();
         entity_types.clear();
@@ -259,7 +246,6 @@ struct RegistryEntityData {
         rotations.pitches.resize(size);
         rotations.yaws.resize(size);
         rotations.rolls.resize(size);
-        radii.resize(size);
         healths.resize(size);
         teams.resize(size);
         entity_types.resize(size);
@@ -304,9 +290,6 @@ struct RegistryEntityData {
         }
         for (size_type i{}; i < moved; ++i) {
             rotations.rolls[index + i] = rotations.rolls[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            radii[index + i] = radii[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
             healths[index + i] = healths[source + i];
@@ -384,12 +367,6 @@ struct RegistryEntityData {
                                     address >= begin + rotations.rolls.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.radii.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(radii.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + radii.size() * sizeof(float));
-        }
-        {
             auto const address{reinterpret_cast<std::uintptr_t>(source.healths.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(healths.data())};
             ml::native_soa::require(address < begin ||
@@ -433,7 +410,6 @@ struct RegistryEntityData {
             rotations.yaws.end(), source.rotations.yaws.begin(), source.rotations.yaws.end());
         rotations.rolls.insert(
             rotations.rolls.end(), source.rotations.rolls.begin(), source.rotations.rolls.end());
-        radii.insert(radii.end(), source.radii.begin(), source.radii.end());
         healths.insert(healths.end(), source.healths.begin(), source.healths.end());
         teams.insert(teams.end(), source.teams.begin(), source.teams.end());
         entity_types.insert(
@@ -445,7 +421,6 @@ struct RegistryEntityData {
             locations.get_view(),
             velocities.get_view(),
             rotations.get_view(),
-            radii,
             healths,
             teams,
             entity_types,
@@ -457,7 +432,6 @@ struct RegistryEntityData {
             locations.get_view(),
             velocities.get_view(),
             rotations.get_view(),
-            radii,
             healths,
             teams,
             entity_types,
@@ -489,8 +463,6 @@ struct RegistryEntityData {
         locations.copy_element(dst_index, other.locations, src_index);
         velocities.copy_element(dst_index, other.velocities, src_index);
         rotations.copy_element(dst_index, other.rotations, src_index);
-        radii[static_cast<std::size_t>(dst_index)] =
-            other.radii[static_cast<std::size_t>(src_index)];
         healths[static_cast<std::size_t>(dst_index)] =
             other.healths[static_cast<std::size_t>(src_index)];
         teams[static_cast<std::size_t>(dst_index)] =

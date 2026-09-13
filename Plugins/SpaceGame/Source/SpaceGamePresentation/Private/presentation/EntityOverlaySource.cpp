@@ -110,12 +110,14 @@ auto team_colour(ETestEntityType const type,
 }
 
 auto select_soft_target(ml::simulation::RegistryEntityData::ConstView const entities,
+                        std::span<float const> const entity_type_radii,
                         TConstArrayView<int> const generations,
                         TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
                         FSoftTargetSelectionContext const& context,
                         FSoftTargetSelectionSettings const& settings,
                         FRegistryEntityHandle const current_target) -> FSoftTargetSelectionResult {
     entities.validate_array_sizes();
+    check(entity_type_radii.size() == static_cast<std::size_t>(ml::simulation::EntityType::COUNT));
     check(generations.Num() == entities.num());
     check(objective_roles.Num() == entities.num());
     if (!context.view.is_valid()) {
@@ -179,7 +181,8 @@ auto select_soft_target(ml::simulation::RegistryEntityData::ConstView const enti
             continue;
         }
 
-        auto const world_radius{FMath::Max(entities.radii[index], 0.0f)};
+        auto const type_index{static_cast<std::size_t>(entities.entity_types[index])};
+        auto const world_radius{FMath::Max(entity_type_radii[type_index], 0.0f)};
         float projected_radius{};
         FProjectedPosition projected_edge;
         if (project_to_overlay(
@@ -286,6 +289,7 @@ auto select_soft_target(ml::simulation::RegistryEntityData::ConstView const enti
 
 auto collect_entity_overlay_instances(
     ml::simulation::RegistryEntityData::ConstView const entities,
+    std::span<float const> const entity_type_radii,
     TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
     FEntityOverlayTeamColours const& team_colours,
     FEntityOverlayHealthMaximums const& maximum_health,
@@ -295,6 +299,7 @@ auto collect_entity_overlay_instances(
     FEntityOverlayCollector& collector) -> FEntityOverlayCollectionResult {
     TRACE_CPUPROFILER_EVENT_SCOPE(EntityOverlay::CollectRegistrySource);
     entities.validate_array_sizes();
+    check(entity_type_radii.size() == static_cast<std::size_t>(ml::simulation::EntityType::COUNT));
     check(objective_roles.Num() == entities.num());
     collector.begin(origin, FMath::Max(maximum_range, 0.0f), output_instances);
 
@@ -305,22 +310,22 @@ auto collect_entity_overlay_instances(
             continue;
         }
 
+        auto const entity_type{entities.entity_types[index]};
         auto const inverse_health{
-            inverse_maximum_health(ml::to_unreal(entities.entity_types[index]), maximum_health)};
+            inverse_maximum_health(ml::to_unreal(entity_type), maximum_health)};
         if (inverse_health <= 0.0f) {
             continue;
         }
 
         auto const objective_role{objective_roles[index]};
-        static_cast<void>(
-            collector.try_add_colored(ml::to_unreal(entities.locations[index]),
-                                      static_cast<float>(entities.healths[index]) * inverse_health,
-                                      entities.radii[index],
-                                      team_colour(ml::to_unreal(entities.entity_types[index]),
-                                                  ml::to_unreal(entities.teams[index]),
-                                                  team_colours),
-                                      objective_role,
-                                      objective_role != EEntityOverlayObjectiveRole::None));
+        static_cast<void>(collector.try_add_colored(
+            ml::to_unreal(entities.locations[index]),
+            static_cast<float>(entities.healths[index]) * inverse_health,
+            entity_type_radii[static_cast<std::size_t>(entity_type)],
+            team_colour(
+                ml::to_unreal(entity_type), ml::to_unreal(entities.teams[index]), team_colours),
+            objective_role,
+            objective_role != EEntityOverlayObjectiveRole::None));
     }
 
     return {.candidate_count = output_instances.Num(),

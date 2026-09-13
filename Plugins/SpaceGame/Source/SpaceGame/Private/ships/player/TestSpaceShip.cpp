@@ -3,7 +3,6 @@
 #include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
 
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
-#include <SpaceGamePresentation/support/mesh.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCoreEngine/uobject_utils.h>
@@ -66,7 +65,6 @@ auto ATestSpaceShip::make_spawn_data() const -> ml::test_space_ship::FPlayerSpaw
             ml::to_native(ship_mesh->GetSocketTransform(Sockets::right, RTS_Component));
         result.middle_socket =
             ml::to_native(ship_mesh->GetSocketTransform(Sockets::middle, RTS_Component));
-        result.collision_radius = ml::get_mesh_sphere_bounds(*ship_mesh);
     }
     return result;
 }

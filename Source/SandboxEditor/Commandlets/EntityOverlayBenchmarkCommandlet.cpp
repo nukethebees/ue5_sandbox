@@ -46,13 +46,12 @@ auto write_debug_frames(FString const& output_directory) -> bool {
         {-10.0f, -5.0f, -5.0f},
     };
     int32 const health[]{0, 25, 50, 75, 100, 75, 100, 100, 100, 50};
-    float const radii[]{
-        50.0f, 100.0f, 200.0f, 400.0f, 1000.0f, 200.0f, 200.0f, 200.0f, 200.0f, 400.0f};
+    std::array<float, static_cast<std::size_t>(ml::simulation::EntityType::COUNT)> const
+        entity_type_radii{200.0f, 200.0f, 200.0f, 200.0f, 200.0f};
     auto const count{UE_ARRAY_COUNT(positions)};
     entities.add_defaulted(count);
     for (int32 index{0}; index < count; ++index) {
         entities.locations.set(index, ml::to_native(positions[index]));
-        entities.radii[index] = radii[index];
         entities.healths[index] = health[index];
         entities.teams[index] = static_cast<ml::simulation::Team>(
             index % static_cast<int32>(ml::simulation::Team::COUNT));
@@ -84,6 +83,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
     objective_roles[8] = EEntityOverlayObjectiveRole::Destroy;
     auto& frame{frame_store->next()};
     static_cast<void>(collect_entity_overlay_instances(make_view(registry.get_entity_data()),
+                                                       entity_type_radii,
                                                        objective_roles,
                                                        make_team_colours(),
                                                        {100, 100, 100},
@@ -102,6 +102,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
     static_cast<void>(moved_registry.add_entities(make_view(entities)));
     auto& moved_frame{frame_store->next()};
     static_cast<void>(collect_entity_overlay_instances(make_view(moved_registry.get_entity_data()),
+                                                       entity_type_radii,
                                                        objective_roles,
                                                        make_team_colours(),
                                                        {100, 100, 100},

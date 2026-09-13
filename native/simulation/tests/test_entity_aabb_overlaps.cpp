@@ -33,7 +33,6 @@ struct FOverlapFixture {
         data.add_defaulted(1);
         data.locations.set(0, location);
         data.rotations.set(0, rotation);
-        data.radii[0] = 1.f;
         data.healths[0] = 100;
         data.teams[0] = ml::simulation::Team::Blue;
         data.entity_types[0] = type;

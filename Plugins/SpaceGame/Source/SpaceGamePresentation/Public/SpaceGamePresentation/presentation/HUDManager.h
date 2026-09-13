@@ -35,6 +35,9 @@ class UInstancedStaticMeshComponent;
 namespace ml::test_space_ship {
 struct Simulation;
 }
+namespace ml {
+struct FSpatialQueryManager;
+}
 
 enum class EHUDManagerState : uint8 {
     Disabled,
@@ -159,6 +162,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     void initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
                     FTestMissionManager const& new_mission_manager,
                     FTestEntityRegistry const& new_entity_registry,
+                    ml::FSpatialQueryManager const& new_spatial_query_manager,
                     double update_tick_rate,
                     ml::test_space_ship::Simulation const* new_player_ship,
                     FLevelVisualConfig const& level_config,
@@ -267,6 +271,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     ml::test_space_ship::Simulation const* player_ship{nullptr};
     FTestMissionManager const* mission_manager{nullptr};
     FTestEntityRegistry const* entity_registry{nullptr};
+    ml::FSpatialQueryManager const* spatial_query_manager{nullptr};
     FPeriodicTickCountdown8 update_timers;
 
     ml::MultiBuffer<ml::hud_manager::FMissionDataCache, 2> mission_data_buffers;

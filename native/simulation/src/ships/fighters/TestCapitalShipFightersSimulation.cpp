@@ -704,10 +704,9 @@ void Simulation::set_target_handle(FRegistryEntityHandle const fighter_handle,
 }
 void Simulation::refresh_target_data() {
     auto& data{entity_buffers.current()};
-    entity_registry.refresh_entity_data(data.target_handles,
-                                        data.target_locations.get_view(),
-                                        data.target_velocities.get_view(),
-                                        data.target_radii);
+    entity_registry.refresh_entity_data(
+        data.target_handles, data.target_locations.get_view(), data.target_velocities.get_view());
+    spatial_query_manager.copy_entity_radii(data.target_handles, data.target_radii);
     ml::simulation::distance_and_squared(data.target_distances,
                                          data.target_distance_sq,
                                          data.locations.get_const_view(),
@@ -859,7 +858,6 @@ void Simulation::commit_spawns() {
          .direct_choice = direct_movement_choice});
 
     new_spawn_entity_data.add_uninitialised(n_new);
-    std::ranges::fill(new_spawn_entity_data.radii, collision_radius);
     std::ranges::fill(new_spawn_entity_data.alive, std::uint8_t{1});
     for (std::int32_t i{0}; i < n_new; ++i) {
         auto const index{n_cur + i};

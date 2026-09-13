@@ -69,7 +69,7 @@ struct FTestEntityRegistry {
     /* **************************************** */
     // Queued updates
     /* **************************************** */
-    // Each handle may occur once per commit. Radius and entity type are spawn-only.
+    // Each handle may occur once per commit. Entity type is spawn-only.
     // Alive/team changes also update history and counts.
     void queue_entity_updates(ConstView const view, EntityDeathInfo const& death_info);
 
@@ -104,8 +104,7 @@ struct FTestEntityRegistry {
     // Empty views are considered to be unused parameters
     void refresh_entity_data(std::span<FRegistryEntityHandle> handles,
                              ml::simulation::Vectors3fView const& locations,
-                             ml::simulation::Vectors3fView const& velocities,
-                             std::span<float> radii);
+                             ml::simulation::Vectors3fView const& velocities);
 
     /* **************************************** */
     // Entity data queries

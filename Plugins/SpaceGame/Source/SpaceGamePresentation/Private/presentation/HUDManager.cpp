@@ -9,10 +9,10 @@
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include "sandbox/simulation/missions/TestMissionManager.h"
 #include "sandbox/simulation/ships/player/TestSpaceShipSimulation.h"
+#include "sandbox/simulation/simulation/SpatialQueryManager.h"
 #include "SpaceGamePresentation/entities/TestTeamVisualData.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipHudWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/SimulationHudWidget.h"
-#include "SpaceGamePresentation/support/mesh.h"
 #include "SpaceGameSimulation/entities/NativeEntityTypes.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
@@ -41,6 +41,7 @@ TRACE_DECLARE_INT_COUNTER(SandboxRadarUploadBytes, TEXT("Sandbox/Radar/UploadByt
 void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
                              FTestMissionManager const& new_mission_manager,
                              FTestEntityRegistry const& new_entity_registry,
+                             ml::FSpatialQueryManager const& new_spatial_query_manager,
                              double const update_tick_rate,
                              ml::test_space_ship::Simulation const* const new_player_ship,
                              FLevelVisualConfig const& level_config,
@@ -81,6 +82,7 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
 
     mission_manager = &new_mission_manager;
     entity_registry = &new_entity_registry;
+    spatial_query_manager = &new_spatial_query_manager;
     player_ship = new_player_ship;
     entity_overlay_settings_ = entity_overlay_settings;
     soft_target_instances_ = soft_target_instances;
@@ -96,8 +98,10 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     radar_style_.objective_size_multiplier = radar_settings_.objective_size_multiplier;
     radar_style_.objective_ring_padding_pixels = radar_settings_.objective_ring_padding_pixels;
     radar_style_.objective_ring_thickness_pixels = radar_settings_.objective_ring_thickness_pixels;
-    auto const fighter_radius{ml::get_mesh_sphere_bounds(*level_config.fighters.mesh)};
-    auto const capital_radius{ml::get_mesh_sphere_bounds(*level_config.capital_ships.mesh)};
+    auto const fighter_radius{spatial_query_manager->get_entity_type_radius(
+        ml::simulation::EntityType::CapitalShipFighter)};
+    auto const capital_radius{
+        spatial_query_manager->get_entity_type_radius(ml::simulation::EntityType::CapitalShip)};
     entity_overlay_style_ = {
         .bar_size_pixels = FVector2f{entity_overlay_settings.bar_size_pixels},
         .screen_offset_pixels = FVector2f{entity_overlay_settings.screen_offset_pixels},
@@ -220,6 +224,7 @@ void FHUDManager::deactivate() {
     player_ship = nullptr;
     mission_manager = nullptr;
     entity_registry = nullptr;
+    spatial_query_manager = nullptr;
     mission_data_buffers = {};
     entity_count_data_buffers = {};
     kill_data_buffers = {};
@@ -483,6 +488,7 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
         auto const camera_transform{FRotationMatrix{camera_rotation}};
         soft_target = select_soft_target(
             entity_registry->get_entity_data().get_const_view(),
+            spatial_query_manager->get_entity_type_radii(),
             TConstArrayView<int32>{entity_registry->get_generations().data(),
                                    static_cast<int32>(entity_registry->get_generations().size())},
             entity_overlay_objective_roles_,
@@ -596,6 +602,7 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
 
     auto const result{
         collect_entity_overlay_instances(entity_registry->get_entity_data().get_const_view(),
+                                         spatial_query_manager->get_entity_type_radii(),
                                          entity_overlay_objective_roles_,
                                          entity_overlay_team_colours_,
                                          entity_overlay_maximum_health_,

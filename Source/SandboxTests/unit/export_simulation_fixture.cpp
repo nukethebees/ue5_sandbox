@@ -255,10 +255,6 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
             out,
             "player.config.speed_responses.accelerating_to_cruise.damping_ratio",
             player.config.speed_responses.accelerating_to_cruise.damping_ratio);
-        ml::fixture_export::write(out, "data.capital_radius", data.capital_radius);
-        ml::fixture_export::write(out, "data.fighter_radius", data.fighter_radius);
-        ml::fixture_export::write(out, "data.turret_radius", data.turret_radius);
-        ml::fixture_export::write(out, "data.spinner_radius", data.spinner_radius);
         ml::fixture_export::write(
             out, "data.fighter_fire_point_distance", data.fighter_fire_point_distance);
         ml::fixture_export::write(
@@ -284,7 +280,6 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
         ml::fixture_export::write(
             out, "data.turrets.fire_point_offset.Z", data.turrets.fire_point_offset.Z);
         ml::fixture_export::write(out, "player.team", player.team);
-        ml::fixture_export::write(out, "player.collision_radius", player.collision_radius);
         ml::fixture_export::write(out, "player.flight_mode", player.flight_mode);
         ml::fixture_export::write(out, "player.control_mode", player.control_mode);
         ml::fixture_export::write(out, "player.laser_mode", player.laser_mode);

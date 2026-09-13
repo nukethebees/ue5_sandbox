@@ -766,6 +766,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         hud_manager.initialise(hud_update_frequencies,
                                get_mission_manager(),
                                get_entity_registry(),
+                               get_spatial_query_manager(),
                                hud_tick_loop.tick_rate,
                                get_player_ship_simulation(),
                                level_config->get_visual_config(),
