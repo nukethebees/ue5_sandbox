@@ -10,6 +10,7 @@
 #include <sandbox/simulation/fighter_navigation_schedule.h>
 #include <sandbox/simulation/fighter_orders.h>
 #include <sandbox/simulation/fighter_spawn_admission.h>
+#include <sandbox/simulation/fighter_targeting.h>
 #include <SpaceGameSimulation/combat/lasers/TestLasersFrameScratch.h>
 #include <SpaceGameSimulation/entities/BatchSimulation.h>
 #include <SpaceGameSimulation/entities/NativeEntityRegistryView.h>
@@ -246,6 +247,7 @@ void Simulation::make_decisions() {
     auto const n{data.num()};
     TStaticArray<FRegistryEntityHandle, 128> nearby_entities;
     auto const dot_threshold{config.minimum_opportunistic_intercept_deviation_dot_product};
+    auto const registry{ml::make_native_query_view(entity_registry)};
 
     for (int32 i{0}; i < n; ++i) {
         if (!data.awareness_scan_countdowns.try_consume(i)) {
@@ -262,15 +264,15 @@ void Simulation::make_decisions() {
         auto const n_nearby_entities{spatial_query_manager.collect_non_team_entities_in_range(
             fighter_location, data.teams[i], awareness_radius, nearby_entities)};
         auto const aim_direction{ml::get_vector3f(data.aim_directions, i)};
-        for (int32 j{0}; j < n_nearby_entities; ++j) {
-            auto const potential_target{nearby_entities[j]};
-            auto const potential_target_location{entity_registry.get_location(potential_target)};
-            auto const direction_to_target{
-                (potential_target_location - fighter_location).GetSafeNormal()};
-            if (FVector3f::DotProduct(aim_direction, direction_to_target) > dot_threshold) {
-                data.target_handles[i] = potential_target;
-                break;
-            }
+        auto const selected_target{ml::simulation::fighters::select_opportunistic_target(
+            ml::to_native(fighter_location),
+            ml::to_native(aim_direction),
+            {nearby_entities.GetData(), static_cast<std::size_t>(n_nearby_entities)},
+            registry,
+            dot_threshold,
+            UE_SMALL_NUMBER)};
+        if (!selected_target.is_null()) {
+            data.target_handles[i] = selected_target;
         }
     }
 }
