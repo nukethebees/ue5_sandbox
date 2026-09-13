@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <span>
+#include <vector>
 
 namespace ml::simulation::collision {
 struct DetectedOverlapsView {
@@ -29,5 +30,18 @@ struct AABBOverlapEventsView {
     std::span<AABBOverlapEventBatch const> batches;
 
     [[nodiscard]] auto get_batch(std::int32_t index) const -> AABBOverlapEventBatchView;
+};
+
+class AABBOverlapEventStorage {
+  public:
+    void reset() noexcept;
+    void append_batch(std::uint64_t tick,
+                      ioj::FEntityEntityOverlapsConstView entity_entity_overlaps,
+                      ioj::FEntityStaticOverlapsConstView entity_static_overlaps);
+    [[nodiscard]] auto get_view() const noexcept -> AABBOverlapEventsView;
+  private:
+    ioj::FEntityEntityOverlaps entity_entity_overlaps_;
+    ioj::FEntityStaticOverlaps entity_static_overlaps_;
+    std::vector<AABBOverlapEventBatch> batches_;
 };
 } // namespace ml::simulation::collision

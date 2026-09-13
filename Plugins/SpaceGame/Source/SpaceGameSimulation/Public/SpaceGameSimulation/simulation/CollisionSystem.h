@@ -31,9 +31,7 @@ struct SPACEGAMESIMULATION_API FCollisionSystem {
 
     void reset_frame_events();
     auto get_aabb_overlap_events() const -> FAABBOverlapEventsView {
-        return {entity_entity_overlap_events_.get_const_view(),
-                entity_static_overlap_events_.get_const_view(),
-                overlap_event_batches_};
+        return overlap_event_storage_.get_view();
     }
 
     auto get_entity_aabbs() const noexcept -> FEntityAABBs const& { return entity_aabbs_; }
@@ -57,9 +55,7 @@ struct SPACEGAMESIMULATION_API FCollisionSystem {
     FEntityEntityOverlaps entity_entity_overlaps_;
     FEntityStaticOverlaps entity_static_overlaps_;
 
-    FEntityEntityOverlaps entity_entity_overlap_events_;
-    FEntityStaticOverlaps entity_static_overlap_events_;
-    std::vector<FAABBOverlapEventBatch> overlap_event_batches_;
+    simulation::collision::AABBOverlapEventStorage overlap_event_storage_;
 
     std::vector<FRegistryEntityHandle> overlapping_entities_scratch_;
     std::vector<int32> overlapping_static_geometry_indices_scratch_;
