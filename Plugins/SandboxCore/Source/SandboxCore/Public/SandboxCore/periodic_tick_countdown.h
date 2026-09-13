@@ -7,6 +7,7 @@
 #include "CoreMinimal.h"
 
 #include <sandbox/core/countdown.h>
+#include <sandbox/core/periodic_tick_countdown.h>
 
 #include <concepts>
 #include <type_traits>
@@ -27,6 +28,16 @@ class TPeriodicTickCountdown {
         TView() = default;
 
         [[nodiscard]] auto num() const noexcept -> size_type { return length_; }
+
+        [[nodiscard]] auto native_view() const noexcept -> ml::PeriodicTickCountdownView<T> {
+            if (length_ == 0) {
+                return {};
+            }
+
+            auto const count{static_cast<std::size_t>(length_)};
+            return {{countdown_->remaining_ticks.GetData() + offset_, count},
+                    {countdown_->periods.GetData() + offset_, count}};
+        }
 
         [[nodiscard]] auto get_view() noexcept -> View { return {*countdown_, offset_, length_}; }
 
@@ -70,13 +81,7 @@ class TPeriodicTickCountdown {
             requires (!std::is_const_v<T>)
         {
             check_index(index);
-            auto const actual_index{offset_ + index};
-            if (countdown_->remaining_ticks[actual_index] > 0) {
-                return false;
-            }
-
-            countdown_->remaining_ticks[actual_index] = countdown_->periods[actual_index];
-            return true;
+            return native_view().try_consume(static_cast<std::size_t>(index));
         }
       private:
         using Countdown = std::
@@ -138,12 +143,7 @@ class TPeriodicTickCountdown {
     }
 
     [[nodiscard]] auto try_consume(size_type const index) noexcept -> bool {
-        if (!is_ready(index)) {
-            return false;
-        }
-
-        remaining_ticks[index] = periods[index];
-        return true;
+        return get_view().try_consume(index);
     }
 
     void reset() {

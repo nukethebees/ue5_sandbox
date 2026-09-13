@@ -3,6 +3,7 @@
 #include <sandbox/simulation/fighter_navigation.h>
 #include <sandbox/simulation/fighter_navigation_scratch.h>
 #include <sandbox/simulation/fighter_navigation_state.h>
+#include <sandbox/simulation/fighter_task_layout.h>
 #include <sandbox/simulation/navigation_telemetry.h>
 
 #include <SpaceGameSimulation/simulation/SystemReadViews.h>
@@ -54,8 +55,8 @@ struct SPACEGAMESIMULATION_API Simulation {
     using EntityBuffers = ml::MultiBuffer<EntityData, 2>;
     using Task = ETestCapitalShipFightersTask;
     static constexpr auto n_task_types{ml::EnumCountTrait<Task>::count_value};
-    using TaskSpans = TStaticArray<FIndexSpan, n_task_types>;
-    using TaskCounts = TStaticArray<int32, n_task_types>;
+    using TaskSpans = ml::simulation::fighters::TaskSpans;
+    using TaskCounts = ml::simulation::fighters::TaskCounts;
     using TaskView = EntityData::View;
     using ConstTaskView = EntityData::ConstView;
     using TaskViews = TStaticArray<TaskView, n_task_types>;

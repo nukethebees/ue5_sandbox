@@ -1,5 +1,6 @@
 #include "sandbox/simulation/fighter_firing.h"
 
+#include "sandbox/core/tick_countdown.h"
 #include "sandbox/core/vector_math.h"
 #include "sandbox/simulation/fighter_firing_scratch.h"
 
@@ -21,6 +22,8 @@ void prepare_firing(FiringPreparationView const fighters,
     assert(fighters.attack_cooldowns.size() == size);
     assert(parameters.retry_cooldown >= 0);
 
+    TickCountdownView<std::int16_t> const cooldowns{fighters.attack_cooldowns,
+                                                    parameters.retry_cooldown};
     auto& aiming_dot_products{scratch.aiming_dot_products};
     auto& can_fire{scratch.can_fire};
     auto& trace_starts{scratch.line_of_sight_starts};
@@ -40,13 +43,13 @@ void prepare_firing(FiringPreparationView const fighters,
     can_fire.reserve(count);
     for (std::int32_t index{}; index < count; ++index) {
         auto const element{static_cast<std::size_t>(index)};
-        if (fighters.attack_cooldowns[element] > 0) {
+        if (!cooldowns.is_ready(element)) {
             continue;
         }
         if (fighters.target_distance_squared[element] > parameters.maximum_distance_squared ||
             !fighters.targets[element].is_valid() ||
             aiming_dot_products[index] < parameters.aim_threshold) {
-            fighters.attack_cooldowns[element] = parameters.retry_cooldown;
+            cooldowns.restart_counter(element);
             continue;
         }
         can_fire.add(index);
@@ -81,6 +84,7 @@ void resolve_firing_visibility(Vectors3fConstView const locations,
     assert(visibility_results.size() == static_cast<std::size_t>(can_fire.num()));
     assert(retry_cooldown >= 0);
 
+    TickCountdownView<std::int16_t> const cooldowns{attack_cooldowns, retry_cooldown};
     auto const count{can_fire.num()};
     for (auto index{count - 1}; index >= 0; --index) {
         auto const fighter_index{can_fire[index]};
@@ -90,7 +94,7 @@ void resolve_firing_visibility(Vectors3fConstView const locations,
 
         can_fire.remove_at_swap(index);
         assert(fighter_index >= 0 && fighter_index < locations.num());
-        attack_cooldowns[static_cast<std::size_t>(fighter_index)] = retry_cooldown;
+        cooldowns.restart_counter(static_cast<std::size_t>(fighter_index));
         auto const offset{locations[fighter_index] - desired_move_locations[fighter_index]};
         auto const distance_squared{HMM_LenSqrV3(offset)};
         if (distance_squared <= arrival_distance_squared) {

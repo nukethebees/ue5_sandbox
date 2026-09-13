@@ -8,11 +8,9 @@
 
 namespace ml::simulation::fighters {
 void collect_navigation_updates(std::span<FIndexSpan const> const task_spans,
-                                std::span<std::int16_t> const remaining_ticks,
-                                std::span<std::int16_t const> const periods,
+                                PeriodicTickCountdownView<std::int16_t> const countdowns,
                                 NavigationScratch& scratch) {
-    assert(remaining_ticks.size() == periods.size());
-    auto const count{static_cast<std::int32_t>(remaining_ticks.size())};
+    auto const count{static_cast<std::int32_t>(countdowns.num())};
     scratch.ready_fighter_indices.reserve(count);
     scratch.observed_risk_tiers.set_num(count);
 
@@ -22,11 +20,10 @@ void collect_navigation_updates(std::span<FIndexSpan const> const task_spans,
         assert(end <= count);
         for (auto index{span.offset}; index < end; ++index) {
             auto const element{static_cast<std::size_t>(index)};
-            if (remaining_ticks[element] > 0) {
+            if (!countdowns.try_consume(element)) {
                 continue;
             }
 
-            remaining_ticks[element] = periods[element];
             scratch.ready_fighter_indices.add(index);
             scratch.observed_risk_tiers[index] =
                 static_cast<std::uint8_t>(NavigationRiskTier::Clear);

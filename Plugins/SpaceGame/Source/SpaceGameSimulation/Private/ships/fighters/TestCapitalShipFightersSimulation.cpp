@@ -8,6 +8,7 @@
 #include <sandbox/simulation/fighter_navigation_scans.h>
 #include <sandbox/simulation/fighter_navigation_schedule.h>
 #include <sandbox/simulation/fighter_orders.h>
+#include <sandbox/simulation/fighter_spawn_admission.h>
 #include <SpaceGameSimulation/combat/lasers/TestLasersFrameScratch.h>
 #include <SpaceGameSimulation/entities/BatchSimulation.h>
 #include <SpaceGameSimulation/entities/NativeEntityRegistryView.h>
@@ -458,14 +459,10 @@ void Simulation::update_navigation_steering() {
 }
 void Simulation::collect_navigation_updates(NavigationScratch& scratch) {
     auto& data{entity_buffers.current()};
-    auto const count{static_cast<std::size_t>(data.num())};
     std::array const active_spans{get_task_span(Task::MoveToDestination),
                                   get_task_span(Task::Attack)};
     ml::simulation::fighters::collect_navigation_updates(
-        active_spans,
-        {data.navigation_update_countdowns.remaining_ticks.GetData(), count},
-        {data.navigation_update_countdowns.periods.GetData(), count},
-        scratch);
+        active_spans, data.navigation_update_countdowns.get_view().native_view(), scratch);
 }
 void Simulation::update_separation_observations(NavigationScratch& scratch) {
     auto& data{entity_buffers.current()};
@@ -761,13 +758,9 @@ auto Simulation::get_task_spans() const -> TaskSpans {
     return task_spans;
 }
 auto Simulation::get_task_counts() const -> TaskCounts {
-    TaskCounts counts{};
     auto const& data{entity_buffers.current()};
-    auto const n_tasks{data.tasks.Num()};
-    for (int32 i{}; i < n_tasks; ++i) {
-        ++counts[std::to_underlying(data.tasks[i])];
-    }
-    return counts;
+    return ml::simulation::fighters::count_tasks(
+        {data.tasks.GetData(), static_cast<std::size_t>(data.tasks.Num())});
 }
 auto Simulation::get_task_view(Task const task) noexcept -> TaskView const& {
     return task_views[std::to_underlying(task)];
@@ -820,7 +813,7 @@ void Simulation::set_task(FRegistryEntityHandle const handle, Task const task) n
     set_task_unchecked(find_index(handle), task);
 }
 void Simulation::refresh_task_views() {
-    auto const n{task_spans.Num()};
+    auto const n{static_cast<int32>(task_spans.size())};
     auto& data{entity_buffers.current()};
     for (int32 i{0}; i < n; ++i) {
         auto const span{task_spans[i]};
@@ -859,44 +852,18 @@ bool Simulation::tasks_are_contiguous() const noexcept {
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::test_capital_ship_fighters::Simulation::tasks_are_contiguous);
 
-    auto current_task_group{Task::Standby};
     auto const& data{entity_buffers.current()};
-    auto const n_tasks{data.tasks.Num()};
-    for (int32 i{}; i < n_tasks; ++i) {
-        auto const task{data.tasks[i]};
-        if (task > current_task_group) {
-            current_task_group = task;
-        } else if (task < current_task_group) {
-            return false;
-        }
-    }
-
-    auto const task_counts{get_task_counts()};
-    int32 expected_offset{};
-    for (int32 i{}; i < n_task_types; ++i) {
-        auto const& span{task_spans[i]};
-        if (span.offset != expected_offset || span.count != task_counts[i]) {
-            return false;
-        }
-        expected_offset += task_counts[i];
-    }
-    return true;
+    return ml::simulation::fighters::tasks_are_contiguous(
+        {data.tasks.GetData(), static_cast<std::size_t>(data.tasks.Num())}, task_spans);
 }
 void Simulation::refresh_layout() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::refresh_layout);
 
     auto const task_counts{get_task_counts()};
     auto const n_fighters{get_num_instances()};
-    TaskCounts write_indexes{};
-    int32 offset{0};
-    for (int32 i{0}; i < n_task_types; ++i) {
-        auto const count{task_counts[i]};
-        write_indexes[i] = offset;
-        task_spans[i].offset = offset;
-        task_spans[i].count = count;
-        offset += count;
-    }
-    check(offset == n_fighters);
+    ml::simulation::fighters::TaskLayout layout{task_counts};
+    task_spans = layout.spans();
+    check(task_spans.back().end() == n_fighters);
 
     entity_buffers.cycle();
     auto const& old_data{entity_buffers.previous()};
@@ -906,8 +873,7 @@ void Simulation::refresh_layout() {
     check(old_data.num() == new_data.num());
 
     for (int32 i{0}; i < n_fighters; ++i) {
-        auto const task_value{std::to_underlying(old_data.tasks[i])};
-        auto const write_index{write_indexes[task_value]++};
+        auto const write_index{layout.next_index(old_data.tasks[i])};
         new_data.copy_element(write_index, old_data, i);
     }
     check_fighter_tasks();
@@ -919,34 +885,29 @@ void Simulation::refresh_layout() {
 auto Simulation::queue_spawns(TestCapitalShipFighterSpawnQueueConstView const new_spawns) -> int32 {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::queue_spawns);
     new_spawns.validate_array_sizes();
-    auto const requested_count{new_spawns.num()};
-    if (requested_count == 0) {
-        return 0;
-    }
-
-    auto const team{new_spawns.teams[0]};
-    auto const team_index{static_cast<int32>(team)};
-    if (team_index < 0 || team_index >= participant_mask.Num() ||
-        participant_mask[team_index] == 0) {
+    auto const admission{ml::simulation::fighters::admit_spawns(
+        std::as_bytes(
+            std::span{new_spawns.teams.GetData(), static_cast<std::size_t>(new_spawns.num())}),
+        {participant_mask.GetData(), static_cast<std::size_t>(participant_mask.Num())},
+        {remaining_team_capacity.GetData(),
+         static_cast<std::size_t>(remaining_team_capacity.Num())})};
+    if (admission.status == ml::simulation::fighters::SpawnAdmissionStatus::InvalidTeam) {
         UE_LOG(LogSandbox,
                Error,
                TEXT("Rejected fighter spawn request for invalid or non-participating team %d"),
-               team_index);
+               static_cast<int32>(new_spawns.teams[0]));
         return 0;
     }
 
-    for (auto const queued_team : new_spawns.teams) {
-        if (queued_team != team) {
-            UE_LOG(
-                LogSandbox, Error, TEXT("Rejected fighter spawn wave containing multiple teams"));
-            return 0;
-        }
+    if (admission.status == ml::simulation::fighters::SpawnAdmissionStatus::MixedTeams) {
+        UE_LOG(LogSandbox, Error, TEXT("Rejected fighter spawn wave containing multiple teams"));
+        return 0;
     }
 
-    auto const accepted_count{FMath::Min(requested_count, remaining_team_capacity[team_index])};
-    spawn_queue.append_from(new_spawns.left(accepted_count));
-    remaining_team_capacity[team_index] -= accepted_count;
-    return accepted_count;
+    if (admission.accepted_count > 0) {
+        spawn_queue.append_from(new_spawns.left(admission.accepted_count));
+    }
+    return admission.accepted_count;
 }
 void Simulation::commit_spawns() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::commit_spawns);

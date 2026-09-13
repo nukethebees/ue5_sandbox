@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 
 #include <sandbox/core/countdown.h>
+#include <sandbox/core/tick_countdown.h>
 
 #include <concepts>
 #include <limits>
@@ -36,6 +37,13 @@ class TTickCountdown {
                 return {};
             }
             return {countdown_->counters_.GetData() + offset_, static_cast<std::size_t>(length_)};
+        }
+
+        [[nodiscard]] auto native_view() const noexcept -> ml::TickCountdownView<T> {
+            if (length_ == 0) {
+                return {};
+            }
+            return {native_counters(), countdown_->tick_value()};
         }
 
         [[nodiscard]] auto get_view() noexcept -> View { return {*countdown_, offset_, length_}; }
@@ -75,35 +83,36 @@ class TTickCountdown {
 
         [[nodiscard]] auto is_ready(size_type const index) const noexcept -> bool {
             check_index(index);
-            return countdown_->is_ready(offset_ + index);
+            return native_view().is_ready(static_cast<std::size_t>(index));
         }
 
         [[nodiscard]] auto try_consume(size_type const index) const noexcept -> bool
             requires (!std::is_const_v<T>)
         {
             check_index(index);
-            return countdown_->try_consume(offset_ + index);
+            return native_view().try_consume(static_cast<std::size_t>(index));
         }
 
         void restart_counter(size_type const index) const noexcept
             requires (!std::is_const_v<T>)
         {
             check_index(index);
-            countdown_->restart_counter(offset_ + index);
+            native_view().restart_counter(static_cast<std::size_t>(index));
         }
 
         void set_counter(size_type const index, counter_type const value) const noexcept
             requires (!std::is_const_v<T>)
         {
             check_index(index);
-            countdown_->set_counter(offset_ + index, value);
+            check(value >= 0);
+            native_view().set_counter(static_cast<std::size_t>(index), value);
         }
 
         void zero_counter(size_type const index) const noexcept
             requires (!std::is_const_v<T>)
         {
             check_index(index);
-            countdown_->zero_counter(offset_ + index);
+            native_view().zero_counter(static_cast<std::size_t>(index));
         }
       private:
         using Countdown =
@@ -151,7 +160,7 @@ class TTickCountdown {
     }
 
     [[nodiscard]] auto is_ready(size_type const index) const noexcept -> bool {
-        return counters_[index] <= 0;
+        return get_view().is_ready(index);
     }
 
     template <std::integral TickType>
@@ -166,12 +175,7 @@ class TTickCountdown {
     }
 
     [[nodiscard]] auto try_consume(size_type const index) noexcept -> bool {
-        if (!is_ready(index)) {
-            return false;
-        }
-
-        restart_counter(index);
-        return true;
+        return get_view().try_consume(index);
     }
 
     void consume(size_type const index) noexcept { (void)try_consume(index); }
@@ -222,14 +226,13 @@ class TTickCountdown {
         tick_value_ = static_cast<counter_type>(value);
     }
 
-    void restart_counter(size_type const index) noexcept { counters_[index] = tick_value_; }
+    void restart_counter(size_type const index) noexcept { get_view().restart_counter(index); }
 
     void set_counter(size_type const index, counter_type const value) noexcept {
-        check(value >= 0);
-        counters_[index] = value;
+        get_view().set_counter(index, value);
     }
 
-    void zero_counter(size_type const index) noexcept { counters_[index] = 0; }
+    void zero_counter(size_type const index) noexcept { get_view().zero_counter(index); }
 
     void zero_last(size_type const count) noexcept {
         auto const total_count{num()};

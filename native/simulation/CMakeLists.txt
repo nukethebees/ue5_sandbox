@@ -47,6 +47,8 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/fighter_navigation_scratch.h
   include/sandbox/simulation/fighter_order_queue.h
   include/sandbox/simulation/fighter_reassignment.h
+  include/sandbox/simulation/fighter_spawn_admission.h
+  include/sandbox/simulation/fighter_task_layout.h
   include/sandbox/simulation/frame_collision_scratch.h
   include/sandbox/simulation/frame_direct_damage_events.h
   include/sandbox/simulation/frame_hit_details.h
@@ -116,6 +118,8 @@ target_sources(native-simulation PRIVATE
   src/fighter_navigation.cpp
   src/fighter_navigation_state.cpp
   src/fighter_orders.cpp
+  src/fighter_spawn_admission.cpp
+  src/fighter_task_layout.cpp
   src/fighter_navigation_application.cpp
   src/fighter_navigation_schedule.cpp
   src/fighter_navigation_scans.cpp
