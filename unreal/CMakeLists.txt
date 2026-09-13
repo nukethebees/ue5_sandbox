@@ -379,6 +379,12 @@ set(SANDBOX_LEVEL_AUTOMATION_FILTERS
 )
 
 add_unreal_automation_test(
+  Sandbox.ExportSimulationFixture
+  FILTERS Sandbox.FixtureTools.SimulationFixtureExport
+  LABELS fixture-tools
+)
+
+add_unreal_automation_test(
   Sandbox.UnitTests
   FILTERS ${SANDBOX_UNIT_AUTOMATION_FILTERS}
   LABELS unit
@@ -488,6 +494,7 @@ add_unreal_editor_test(SandboxISMC.RemoteBenchmark
 add_custom_target(dev-core
   DEPENDS
     native-core-tests
+    native-simulation-tests
     sandbox-image-tests
     mesh-gen-tests
     editor

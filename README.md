@@ -160,6 +160,8 @@ cmake --preset native-debug
 cmake --build --preset native-memory
 ctest --preset native-memory
 
+cmake --workflow --preset native-simulation
+
 cmake --build --preset codegen
 ctest --preset codegen-tests
 
@@ -168,11 +170,23 @@ cmake --build --preset native-core
 ctest --preset native-core
 ```
 
-The `codegen`, `generate-code`, `native-memory`, `native-mesh` and `native-s7` build presets
+The `codegen`, `generate-code`, `native-memory`, `native-simulation`, `native-mesh` and `native-s7` build presets
 use `native-debug`; `native-core` uses `native-release`. Their workflow presets still configure,
 build and test the selected targets. Component-specific configure presets and
 `SANDBOX_*_ONLY` switches have been removed. Existing build trees are not deleted, but those
 workflows now use `out/build/native-debug` or `out/build/native-release`.
+
+Simulation logic and worldless combat scenarios run in native GoogleTest tests under
+`native/simulation/tests/`. Unreal retains asset/configuration conversion, collision harvesting,
+HUD/presentation and memory-bootstrap integration coverage. `dev-core` also builds the native
+simulation tests, and the normal unit/all CTest presets include them.
+
+The native simulation fixture captures the converted feature-test level configuration, mesh
+bounds, socket transforms and player defaults. To refresh the capture, build `editor`, then run
+`ctest --test-dir out/build/debug-game -R '^Sandbox.ExportSimulationFixture$' --output-on-failure`.
+This writes `.local/simulation_fixture.cpp`; review it against
+`native/simulation/tests/support/simulation_fixture.cpp` before updating the checked-in snapshot.
+Native tests do not load Unreal assets or regenerate this fixture automatically.
 
 The benchmark feature presets remain separate because they enable additional dependencies
 or report tooling. Native configurations retain the existing Unreal-compatible CRT/ABI

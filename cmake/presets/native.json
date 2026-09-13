@@ -30,6 +30,11 @@
   ],
   "buildPresets": [
     {
+      "name": "native-simulation",
+      "configurePreset": "native-debug",
+      "targets": ["native-simulation-tests"]
+    },
+    {
       "name": "codegen",
       "configurePreset": "native-debug",
       "targets": ["lispb", "codegen-tests", "slate-codegen-tests", "kernel-codegen-tests"]
@@ -61,6 +66,13 @@
     }
   ],
   "testPresets": [
+    {
+      "name": "native-simulation",
+      "inherits": "test-base",
+      "configurePreset": "native-debug",
+      "filter": { "include": { "label": "native-simulation" } },
+      "execution": { "noTestsAction": "error" }
+    },
     {
       "name": "codegen-tests",
       "inherits": "test-base",
@@ -118,6 +130,14 @@
     }
   ],
   "workflowPresets": [
+    {
+      "name": "native-simulation",
+      "steps": [
+        { "type": "configure", "name": "native-debug" },
+        { "type": "build", "name": "native-simulation" },
+        { "type": "test", "name": "native-simulation" }
+      ]
+    },
     {
       "name": "codegen",
       "steps": [
