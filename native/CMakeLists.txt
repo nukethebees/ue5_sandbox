@@ -2,6 +2,7 @@ option(SANDBOX_KERNEL_BENCHMARKS "Build native generated-kernel benchmarks" OFF)
 option(SANDBOX_NATIVE_SOA_BENCHMARKS "Build standalone experimental SoA benchmarks" OFF)
 option(SANDBOX_KERNEL_BENCHMARK_PLOTS "Generate native kernel benchmark plots" OFF)
 
+add_subdirectory(third_party)
 add_subdirectory(third_party/handmade_math)
 add_subdirectory(sbx_mimalloc)
 add_subdirectory(lispb)

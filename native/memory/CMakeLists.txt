@@ -14,7 +14,7 @@ set_target_properties(native-memory PROPERTIES
 if(SANDBOX_WITH_UNREAL)
   set_target_properties(native-memory PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/NativeMemory/${UE_PLATFORM}/${UE_CONFIGURATION}"
+      "${PROJECT_SOURCE_DIR}/Binaries/NativeMemory/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
   )
 endif()
 

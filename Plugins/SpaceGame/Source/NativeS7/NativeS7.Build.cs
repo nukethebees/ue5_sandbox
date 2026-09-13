@@ -1,4 +1,5 @@
 using System.IO;
+using System;
 using UnrealBuildTool;
 
 public class NativeS7 : ModuleRules
@@ -23,6 +24,7 @@ public class NativeS7 : ModuleRules
 
         string repositoryRoot = Path.GetFullPath(
             Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
+        string nativeToolchain = Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN") ?? "clang-cl";
         string includeDirectory = Path.Combine(repositoryRoot, "native", "s7", "lib", "include");
         PublicSystemIncludePaths.Add(includeDirectory);
         if (!Target.bGenerateProjectFiles)
@@ -32,6 +34,7 @@ public class NativeS7 : ModuleRules
                 "Binaries",
                 "Native",
                 "S7",
+                nativeToolchain,
                 Target.Platform.ToString(),
                 Target.Configuration.ToString(),
                 "sandbox_s7.lib");

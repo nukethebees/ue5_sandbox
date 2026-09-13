@@ -5,7 +5,16 @@
     {
       "name": "native",
       "hidden": true,
-      "inherits": "base",
+      "inherits": "windows-clang-cl",
+      "cacheVariables": {
+        "SANDBOX_WITH_UNREAL": false,
+        "UE_CONFIGURATION": "DebugGame"
+      }
+    },
+    {
+      "name": "native-msvc",
+      "hidden": true,
+      "inherits": "windows-msvc",
       "cacheVariables": {
         "SANDBOX_WITH_UNREAL": false,
         "UE_CONFIGURATION": "DebugGame"
@@ -26,6 +35,22 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "native-debug-msvc",
+      "displayName": "Native Debug (MSVC)",
+      "inherits": "native-msvc",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "native-release-msvc",
+      "displayName": "Native Release (MSVC)",
+      "inherits": "native-msvc",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ],
   "buildPresets": [
@@ -36,6 +61,14 @@
     {
       "name": "native-release",
       "configurePreset": "native-release"
+    },
+    {
+      "name": "native-debug-msvc",
+      "configurePreset": "native-debug-msvc"
+    },
+    {
+      "name": "native-release-msvc",
+      "configurePreset": "native-release-msvc"
     },
     {
       "name": "codegen",
@@ -59,6 +92,18 @@
       "name": "native-release",
       "inherits": "test-base",
       "configurePreset": "native-release",
+      "filter": { "include": { "label": "all" } }
+    },
+    {
+      "name": "native-debug-msvc",
+      "inherits": "test-base",
+      "configurePreset": "native-debug-msvc",
+      "filter": { "include": { "label": "all" } }
+    },
+    {
+      "name": "native-release-msvc",
+      "inherits": "test-base",
+      "configurePreset": "native-release-msvc",
       "filter": { "include": { "label": "all" } }
     },
     {
@@ -87,6 +132,22 @@
         { "type": "configure", "name": "native-release" },
         { "type": "build", "name": "native-release" },
         { "type": "test", "name": "native-release" }
+      ]
+    },
+    {
+      "name": "native-debug-msvc",
+      "steps": [
+        { "type": "configure", "name": "native-debug-msvc" },
+        { "type": "build", "name": "native-debug-msvc" },
+        { "type": "test", "name": "native-debug-msvc" }
+      ]
+    },
+    {
+      "name": "native-release-msvc",
+      "steps": [
+        { "type": "configure", "name": "native-release-msvc" },
+        { "type": "build", "name": "native-release-msvc" },
+        { "type": "test", "name": "native-release-msvc" }
       ]
     },
     {

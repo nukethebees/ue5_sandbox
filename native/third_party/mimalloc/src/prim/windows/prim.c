@@ -870,9 +870,11 @@ static void NTAPI mi_win_main(PVOID module, DWORD reason, LPVOID reserved) {
 
   #if defined(_WIN64) && defined(_MSC_VER) // 64-bit
     #pragma comment(linker, "/INCLUDE:_tls_used")
+    #if !defined(SBX_MIMALLOC_PREFIXED_LINKER_INCLUDES)
     #pragma comment(linker, "/INCLUDE:_mi_tls_callback_pre")
     #pragma comment(linker, "/INCLUDE:_mi_tls_callback_post")
     #pragma comment(linker, "/INCLUDE:_mi_crt_callback_init")
+    #endif
     #pragma const_seg(".CRT$XLB")
       extern const PIMAGE_TLS_CALLBACK _mi_tls_callback_pre[];
       const PIMAGE_TLS_CALLBACK _mi_tls_callback_pre[] = { &mi_tls_attach };
@@ -887,9 +889,11 @@ static void NTAPI mi_win_main(PVOID module, DWORD reason, LPVOID reserved) {
     #pragma const_seg()
   #elif defined(_MSC_VER) // 32-bit
     #pragma comment(linker, "/INCLUDE:__tls_used")
+    #if !defined(SBX_MIMALLOC_PREFIXED_LINKER_INCLUDES)
     #pragma comment(linker, "/INCLUDE:__mi_tls_callback_pre")
     #pragma comment(linker, "/INCLUDE:__mi_tls_callback_post")
     #pragma comment(linker, "/INCLUDE:__mi_crt_callback_init")
+    #endif
     #pragma data_seg(".CRT$XLB")
       PIMAGE_TLS_CALLBACK _mi_tls_callback_pre[] = { &mi_tls_attach };
     #pragma data_seg()
@@ -1199,4 +1203,3 @@ static void NTAPI mi_win_main(PVOID module, DWORD reason, LPVOID reserved) {
     mi_allocator_done();
   }
 #endif
-

@@ -14,7 +14,7 @@ target_link_libraries(mesh-gen PRIVATE sandbox::warnings_as_errors)
 if(SANDBOX_WITH_UNREAL)
   foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
     file(MAKE_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/MeshGen/${UE_PLATFORM}/${configuration}"
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/MeshGen/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${configuration}"
     )
   endforeach()
 
@@ -27,7 +27,7 @@ if(SANDBOX_WITH_UNREAL)
   target_link_libraries(sandbox-mesh-gen PRIVATE sandbox::warnings_as_errors)
   set_target_properties(sandbox-mesh-gen PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/MeshGen/${UE_PLATFORM}/${UE_CONFIGURATION}"
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/MeshGen/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
     OUTPUT_NAME sandbox_mesh_gen
   )
 

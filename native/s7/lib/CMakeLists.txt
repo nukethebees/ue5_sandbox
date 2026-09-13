@@ -47,13 +47,13 @@ set_target_properties(sandbox-s7 PROPERTIES
 if(SANDBOX_WITH_UNREAL)
   foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
     file(MAKE_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/S7/${UE_PLATFORM}/${configuration}"
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/S7/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${configuration}"
     )
   endforeach()
 
   set_target_properties(sandbox-s7 PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/S7/${UE_PLATFORM}/${UE_CONFIGURATION}"
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/S7/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
   )
 endif()
 

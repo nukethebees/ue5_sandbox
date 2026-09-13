@@ -2,4 +2,4 @@
 
 #include "CoreMinimal.h"
 
-#define LowLevelFatalError(...) std::abort()
+#define LowLevelFatalError(...) ((void)0)

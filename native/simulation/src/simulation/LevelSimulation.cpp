@@ -328,6 +328,7 @@ void FLevelSimulation::advance(time_type const dt) {
     clock_.tick_loop.add_time(dt);
 
     while (clock_.tick_loop.try_tick()) {
+        auto const tick_period{static_cast<float>(clock_.tick_loop.tick_period)};
         auto const capture_detailed_timing{level_telemetry_manager_.detailed_timing_enabled() &&
                                            (clock_.completed_ticks % 16) == 0};
         auto const tick_started_at{capture_detailed_timing ? ml::monotonic_seconds() : 0.0};
@@ -415,17 +416,16 @@ void FLevelSimulation::advance(time_type const dt) {
 
             if (player_simulation_is_active()) {
                 measure(ESimulationTelemetryTimingSystem::Player,
-                        [&] { player_ship_phase_->update_timers(clock_.tick_loop.tick_period); });
+                        [&] { player_ship_phase_->update_timers(tick_period); });
             }
-            measure(ESimulationTelemetryTimingSystem::Fighters, [&] {
-                capital_ship_fighters_phase_.update_timers(clock_.tick_loop.tick_period);
-            });
+            measure(ESimulationTelemetryTimingSystem::Fighters,
+                    [&] { capital_ship_fighters_phase_.update_timers(tick_period); });
             measure(ESimulationTelemetryTimingSystem::Capitals,
-                    [&] { capital_ships_phase_.update_timers(clock_.tick_loop.tick_period); });
+                    [&] { capital_ships_phase_.update_timers(tick_period); });
             measure(ESimulationTelemetryTimingSystem::Turrets,
-                    [&] { turrets_phase_.update_timers(clock_.tick_loop.tick_period); });
+                    [&] { turrets_phase_.update_timers(tick_period); });
             measure(ESimulationTelemetryTimingSystem::Spinners,
-                    [&] { spinners_phase_.update_timers(clock_.tick_loop.tick_period); });
+                    [&] { spinners_phase_.update_timers(tick_period); });
         }
 
         {
@@ -447,13 +447,13 @@ void FLevelSimulation::advance(time_type const dt) {
 
             if (player_simulation_is_active()) {
                 measure(ESimulationTelemetryTimingSystem::Player,
-                        [&] { player_ship_phase_->move(clock_.tick_loop.tick_period); });
+                        [&] { player_ship_phase_->move(tick_period); });
             }
 
             measure(ESimulationTelemetryTimingSystem::Fighters,
-                    [&] { capital_ship_fighters_phase_.move(clock_.tick_loop.tick_period); });
+                    [&] { capital_ship_fighters_phase_.move(tick_period); });
             measure(ESimulationTelemetryTimingSystem::Spinners,
-                    [&] { spinners_phase_.move(clock_.tick_loop.tick_period); });
+                    [&] { spinners_phase_.move(tick_period); });
         }
         frame_memory_.reclaim();
 
@@ -479,7 +479,7 @@ void FLevelSimulation::advance(time_type const dt) {
             // Projectile simulation
 
             measure(ESimulationTelemetryTimingSystem::Lasers, [&] {
-                lasers_phase_.simulate(clock_.tick_loop.tick_period);
+                lasers_phase_.simulate(tick_period);
                 lasers_phase_.commit_spawns();
             });
         }

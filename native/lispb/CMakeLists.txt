@@ -1,9 +1,4 @@
-find_package(GTest CONFIG REQUIRED)
 find_program(SANDBOX_CLANG_FORMAT_EXECUTABLE NAMES clang-format REQUIRED)
-if(SANDBOX_KERNEL_BENCHMARKS)
-  find_package(benchmark CONFIG REQUIRED)
-  find_package(CpuFeatures CONFIG REQUIRED)
-endif()
 if(SANDBOX_KERNEL_BENCHMARK_PLOTS)
   if(NOT SANDBOX_KERNEL_BENCHMARKS)
     message(FATAL_ERROR

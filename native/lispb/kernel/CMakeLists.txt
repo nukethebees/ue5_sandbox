@@ -237,16 +237,10 @@ target_include_directories(kernel-generated-avx2-lab-tests PRIVATE
 )
 target_link_libraries(kernel-generated-avx2-lab-tests PRIVATE
   GTest::gtest_main
+  sandbox::arch_avx2
   sandbox::codegen_warnings
+  sandbox::fp_precise
 )
-if(SANDBOX_MSVC_FRONTEND)
-  target_compile_options(kernel-generated-avx2-lab-tests PRIVATE /arch:AVX2 /fp:precise)
-else()
-  target_compile_options(kernel-generated-avx2-lab-tests PRIVATE
-    -mavx2
-    -ffp-contract=off
-  )
-endif()
 add_dependencies(kernel-generated-avx2-lab-tests check-generated-kernel-avx2-lab)
 add_dependencies(kernel-codegen-tests kernel-generated-avx2-lab-tests)
 gtest_discover_tests(kernel-generated-avx2-lab-tests PROPERTIES LABELS "unit;all;codegen")
@@ -352,49 +346,22 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     target_include_directories(${TARGET} PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
     target_link_libraries(${TARGET} PRIVATE sandbox::codegen_warnings)
   endforeach()
-  if(SANDBOX_MSVC_FRONTEND)
-    target_compile_options(kernel-native-simd-avx2 PRIVATE /arch:AVX2 /fp:strict)
-    target_compile_options(kernel-native-simd-avx512 PRIVATE /arch:AVX512 /fp:strict)
-    target_compile_options(kernel-native-dot-relaxed-avx2 PRIVATE
-      /arch:AVX2 /fp:fast
-    )
-    target_compile_options(kernel-native-dot-relaxed-avx512 PRIVATE
-      /arch:AVX512 /fp:fast
-    )
-  else()
-    target_compile_options(kernel-native-simd-avx2 PRIVATE
-      -mavx2
-      -ffp-contract=off
-    )
-    target_compile_options(kernel-native-simd-avx512 PRIVATE
-      -mavx2
-      -mavx512f
-      -mavx512cd
-      -mavx512bw
-      -mavx512dq
-      -mavx512vl
-      -ffp-contract=off
-    )
-    target_compile_options(kernel-native-dot-relaxed-avx2 PRIVATE
-      -mavx2
-      -fno-signed-zeros
-      -fno-trapping-math
-      -fassociative-math
-      -ffp-contract=off
-    )
-    target_compile_options(kernel-native-dot-relaxed-avx512 PRIVATE
-      -mavx2
-      -mavx512f
-      -mavx512cd
-      -mavx512bw
-      -mavx512dq
-      -mavx512vl
-      -fno-signed-zeros
-      -fno-trapping-math
-      -fassociative-math
-      -ffp-contract=off
-    )
-  endif()
+  target_link_libraries(kernel-native-simd-avx2 PRIVATE
+    sandbox::arch_avx2
+    sandbox::fp_strict
+  )
+  target_link_libraries(kernel-native-simd-avx512 PRIVATE
+    sandbox::arch_avx512
+    sandbox::fp_strict
+  )
+  target_link_libraries(kernel-native-dot-relaxed-avx2 PRIVATE
+    sandbox::arch_avx2
+    sandbox::fp_fast
+  )
+  target_link_libraries(kernel-native-dot-relaxed-avx512 PRIVATE
+    sandbox::arch_avx512
+    sandbox::fp_fast
+  )
 
   set(KERNEL_NATIVE_SIMD_OBJECTS
     $<TARGET_OBJECTS:kernel-native-simd-avx2>
@@ -412,16 +379,10 @@ if(SANDBOX_KERNEL_BENCHMARKS)
   target_link_libraries(kernel-native-simd-tests PRIVATE
     CpuFeatures::cpu_features
     GTest::gtest_main
+    sandbox::arch_avx2
     sandbox::codegen_warnings
+    sandbox::fp_strict
   )
-  if(SANDBOX_MSVC_FRONTEND)
-    target_compile_options(kernel-native-simd-tests PRIVATE /arch:AVX2 /fp:strict)
-  else()
-    target_compile_options(kernel-native-simd-tests PRIVATE
-      -mavx2
-      -ffp-contract=off
-    )
-  endif()
   gtest_discover_tests(kernel-native-simd-tests
     PROPERTIES LABELS "unit;native-kernel-benchmark"
   )
@@ -440,16 +401,10 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     benchmark::benchmark
     benchmark::benchmark_main
     CpuFeatures::cpu_features
+    sandbox::arch_avx2
     sandbox::codegen_warnings
+    sandbox::fp_strict
   )
-  if(SANDBOX_MSVC_FRONTEND)
-    target_compile_options(kernel-native-benchmarks PRIVATE /arch:AVX2 /fp:strict)
-  else()
-    target_compile_options(kernel-native-benchmarks PRIVATE
-      -mavx2
-      -ffp-contract=off
-    )
-  endif()
   add_test(
     NAME KernelNativeBenchmarkDryRun
     COMMAND kernel-native-benchmarks --benchmark_dry_run

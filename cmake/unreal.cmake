@@ -1,6 +1,8 @@
 function(add_unreal_target target_name unreal_target)
   add_custom_target(${target_name}
     COMMAND ${UE_LOCKED_COMMAND_PREFIX}
+      "${CMAKE_COMMAND}" -E env
+      "SANDBOX_NATIVE_TOOLCHAIN=${SANDBOX_NATIVE_TOOLCHAIN}"
       "${UE_BUILD_SCRIPT}" ${unreal_target} ${UE_PLATFORM} ${UE_CONFIGURATION}
       "-Project=${SANDBOX_UPROJECT}" -WaitMutex
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
@@ -24,6 +26,9 @@ function(add_unreal_target target_name unreal_target)
   endif()
   if(TARGET native-core)
     add_dependencies(${target_name} native-core)
+  endif()
+  if(TARGET cpu_features)
+    add_dependencies(${target_name} cpu_features)
   endif()
 endfunction()
 

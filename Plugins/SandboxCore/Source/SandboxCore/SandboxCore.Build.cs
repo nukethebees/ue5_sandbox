@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 using Microsoft.Extensions.Logging;
+using System;
 using System.IO;
 using UnrealBuildTool;
 
@@ -29,6 +30,7 @@ public class SandboxCore : ModuleRules
         }
 
         string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
+        string nativeToolchain = Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN") ?? "clang-cl";
         PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "core", "include"));
         PublicSystemIncludePaths.Add(
             Path.Combine(repositoryRoot, "native", "third_party", "handmade_math"));
@@ -40,6 +42,7 @@ public class SandboxCore : ModuleRules
                 "Binaries",
                 "Native",
                 "Core",
+                nativeToolchain,
                 Target.Platform.ToString(),
                 Target.Configuration.ToString(),
                 "SandboxNativeCore.lib");
@@ -79,6 +82,7 @@ public class SandboxCore : ModuleRules
                 "Binaries",
                 "Native",
                 "SbxMimalloc",
+                nativeToolchain,
                 Target.Platform.ToString(),
                 Target.Configuration.ToString(),
                 "SandboxMimalloc.lib");

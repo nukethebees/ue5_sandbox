@@ -1,4 +1,3 @@
-find_package(benchmark CONFIG REQUIRED)
 find_program(UV_EXECUTABLE NAMES uv REQUIRED)
 
 add_executable(native-soa-generate generate.cpp)
@@ -41,28 +40,17 @@ add_test(NAME native-soa-tests-mimalloc COMMAND native-soa-tests-mimalloc)
 set_tests_properties(native-soa-tests-mimalloc PROPERTIES LABELS "native-soa")
 
 foreach(matrix_target IN ITEMS native-soa-reserve-matrix native-soa-reserve-matrix-mimalloc native-soa-tests-mimalloc)
-  if(SANDBOX_MSVC_FRONTEND)
-    target_compile_options(${matrix_target} PRIVATE /fp:precise /arch:AVX2 /Zi)
-    target_link_options(${matrix_target} PRIVATE /DEBUG)
-  else()
-    target_compile_options(${matrix_target} PRIVATE -mavx2 -ffp-contract=off -g)
-    if(WIN32)
-      target_compile_options(${matrix_target} PRIVATE -gcodeview)
-      target_link_options(${matrix_target} PRIVATE -Xlinker /DEBUG)
-    endif()
-  endif()
+  target_link_libraries(${matrix_target} PRIVATE
+    sandbox::arch_avx2
+    sandbox::debug_symbols
+    sandbox::fp_precise
+  )
 endforeach()
-if(SANDBOX_MSVC_FRONTEND)
-  target_compile_options(native-soa-benchmarks PRIVATE /fp:precise /arch:AVX2 /Zi)
-  target_link_options(native-soa-benchmarks PRIVATE /DEBUG)
-else()
-  target_compile_options(native-soa-benchmarks PRIVATE -mavx2 -ffp-contract=off)
-  target_compile_options(native-soa-benchmarks PRIVATE -g)
-  if(WIN32)
-    target_compile_options(native-soa-benchmarks PRIVATE -gcodeview)
-    target_link_options(native-soa-benchmarks PRIVATE -Xlinker /DEBUG)
-  endif()
-endif()
+target_link_libraries(native-soa-benchmarks PRIVATE
+  sandbox::arch_avx2
+  sandbox::debug_symbols
+  sandbox::fp_precise
+)
 add_test(NAME native-soa-dry-run COMMAND native-soa-benchmarks --benchmark_dry_run
   "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-dry-run.json" --benchmark_out_format=json)
 set_tests_properties(native-soa-dry-run PROPERTIES LABELS "native-soa" FIXTURES_SETUP native-soa-json)

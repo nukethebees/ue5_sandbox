@@ -209,7 +209,10 @@ add_custom_target(generate-project-files
     "${PROJECT_SOURCE_DIR}/PowerShell/Set-LiveCodingDisabled.ps1"
     -settings_path
     "${PROJECT_SOURCE_DIR}/Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"
-  COMMAND ${UE_LOCKED_COMMAND_PREFIX} "${UE_GENERATE_PROJECT_FILES_SCRIPT}"
+  COMMAND ${UE_LOCKED_COMMAND_PREFIX}
+    "${CMAKE_COMMAND}" -E env
+    "SANDBOX_NATIVE_TOOLCHAIN=${SANDBOX_NATIVE_TOOLCHAIN}"
+    "${UE_GENERATE_PROJECT_FILES_SCRIPT}"
     "-Project=${SANDBOX_UPROJECT}"
     -Game
     -WaitMutex
@@ -274,6 +277,7 @@ add_custom_target(worktree-dependencies
     native-memory
     sbx-mimalloc
     native-simulation
+    cpu_features
     sandbox-s7
     sandbox-image
     sandbox-material-gen

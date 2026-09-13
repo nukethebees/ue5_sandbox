@@ -8,7 +8,6 @@
       "inherits": "native-release",
       "cacheVariables": {
         "SANDBOX_KERNEL_BENCHMARKS": true,
-        "VCPKG_MANIFEST_FEATURES": "kernel-benchmarks",
         "UE_CONFIGURATION": "Development"
       }
     },
@@ -24,7 +23,6 @@
       "name": "native-soa",
       "inherits": "native-release",
       "cacheVariables": {
-        "VCPKG_MANIFEST_FEATURES": "kernel-benchmarks",
         "SANDBOX_NATIVE_SOA_BENCHMARKS": true,
         "UE_CONFIGURATION": "Development"
       }

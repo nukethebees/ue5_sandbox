@@ -1,5 +1,3 @@
-find_package(GTest CONFIG REQUIRED)
-
 set(SANDBOX_IMAGE_SOURCES
   src/image_generation.cpp
   src/image_generation_utilities.cpp
@@ -20,13 +18,13 @@ set_target_properties(sandbox-image PROPERTIES
 if(SANDBOX_WITH_UNREAL)
   foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
     file(MAKE_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/Image/${UE_PLATFORM}/${configuration}"
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/Image/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${configuration}"
     )
   endforeach()
 
   set_target_properties(sandbox-image PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/Image/${UE_PLATFORM}/${UE_CONFIGURATION}"
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/Image/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
   )
 endif()
 

@@ -1,4 +1,5 @@
 using UnrealBuildTool;
+using System;
 using System.IO;
 
 public class SandboxEditor : ModuleRules
@@ -21,12 +22,14 @@ public class SandboxEditor : ModuleRules
         }
 
         string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", ".."));
+        string nativeToolchain = Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN") ?? "clang-cl";
         string nativeMaterialGenRoot = Path.Combine(repositoryRoot, "native", "lispb", "material");
         string nativeMaterialGenLibrary = Path.Combine(
             repositoryRoot,
             "Binaries",
             "Native",
             "MaterialGen",
+            nativeToolchain,
             Target.Platform.ToString(),
             Target.Configuration.ToString(),
             "sandbox_material_gen.lib");

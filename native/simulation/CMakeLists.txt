@@ -303,7 +303,7 @@ set_target_properties(native-simulation PROPERTIES
 if(SANDBOX_WITH_UNREAL)
   set_target_properties(native-simulation PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/Simulation/${UE_PLATFORM}/${UE_CONFIGURATION}"
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/Simulation/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
   )
 endif()
 

@@ -37,6 +37,7 @@ public class SandboxNative : ModuleRules
         }
 
         string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", ".."));
+        string nativeToolchain = Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN") ?? "clang-cl";
         PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "simulation", "include"));
         PublicSystemIncludePaths.Add(
             Path.Combine(repositoryRoot, "native", "lispb", "native_soa", "include"));
@@ -49,6 +50,7 @@ public class SandboxNative : ModuleRules
                     "Binaries",
                     "Native",
                     "Simulation",
+                    nativeToolchain,
                     Target.Platform.ToString(),
                     Target.Configuration.ToString(),
                     "SandboxNativeSimulation.lib"),
@@ -57,6 +59,7 @@ public class SandboxNative : ModuleRules
                     "Binaries",
                     "Native",
                     "Core",
+                    nativeToolchain,
                     Target.Platform.ToString(),
                     Target.Configuration.ToString(),
                     "SandboxNativeCore.lib"),
@@ -64,6 +67,7 @@ public class SandboxNative : ModuleRules
                     repositoryRoot,
                     "Binaries",
                     "NativeMemory",
+                    nativeToolchain,
                     Target.Platform.ToString(),
                     Target.Configuration.ToString(),
                     "SandboxNativeMemory.lib"),

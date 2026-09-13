@@ -49,7 +49,6 @@ out/
 
 # Generated native benchmark results and plots
 /out/benchmarks/kernel/
-/vcpkg_installed/
 temp_notes/
 
 # Precompiled Assets
@@ -119,6 +118,3 @@ UltraDynamicSky/
 /Plugins/SpaceGame/Content/Audio/Generated/
 /Content/__ExternalActors__
 /Content/__ExternalObjects__
-
-# vcpkg
-vcpkg_installed/

@@ -272,19 +272,25 @@ def main() -> None:
         response = shape_object.with_suffix(".obj.rsp")
         if response.exists():
             (output / "shape-compiler-arguments.rsp").write_bytes(response.read_bytes())
-    for name in ("CMakeCache.txt", "vcpkg-manifest-install.log"):
-        source = ROOT / "out/build/benchmark" / name
-        if source.exists():
-            (output / name).write_bytes(source.read_bytes())
+    cache_source = ROOT / "out/build/benchmark/CMakeCache.txt"
+    if cache_source.exists():
+        (output / "CMakeCache.txt").write_bytes(cache_source.read_bytes())
     cache = (ROOT / "out/build/benchmark/CMakeCache.txt").read_text(encoding="utf-8")
     engine = re.search(r"^UE_ROOT:PATH=(.*)$", cache, re.MULTILINE)
     if engine:
         build_log = Path(engine.group(1).strip()) / "Engine/Programs/UnrealBuildTool/Log.txt"
         if build_log.exists():
             (output / "unreal-build.log").write_bytes(build_log.read_bytes())
-    installed = ROOT / "vcpkg_installed/vcpkg/status"
-    if installed.exists():
-        (output / "vcpkg-status.txt").write_bytes(installed.read_bytes())
+    submodule_status = command_output([
+        "git",
+        "submodule",
+        "status",
+        "--",
+        "native/third_party/googletest",
+        "native/third_party/cpu_features",
+        "native/third_party/benchmark",
+    ])
+    (output / "third-party-submodules.txt").write_text(submodule_status, encoding="utf-8")
     records: list[Record] = []
     def run_batch(batch: list[Record], samples: int, repetition: int) -> None:
         for item in batch:

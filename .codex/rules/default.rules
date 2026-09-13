@@ -61,13 +61,6 @@ prefix_rule(
     decision="allow"
 )
 
-# vcpkg
-# ---------------------------------------------
-prefix_rule(
-    pattern=["vcpkg"], 
-    decision="allow"
-)
-
 # Python
 # ---------------------------------------------
 prefix_rule(

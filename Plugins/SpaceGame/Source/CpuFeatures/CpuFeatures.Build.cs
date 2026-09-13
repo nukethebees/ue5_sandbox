@@ -1,4 +1,5 @@
 using UnrealBuildTool;
+using System;
 using System.IO;
 
 public class CpuFeatures : ModuleRules
@@ -19,25 +20,36 @@ public class CpuFeatures : ModuleRules
         {
             throw new BuildException(
                 "CpuFeatures does not support Unreal targets that use the static CRT. " +
-                "The repository provisions the x64-windows dynamic-CRT triplet.");
+                "The repository CMake target uses the dynamic release CRT.");
         }
 
         string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
-        string packageRoot = Path.Combine(repositoryRoot, "vcpkg_installed", "x64-windows");
-        bool useDebugLibrary = Target.Configuration == UnrealTargetConfiguration.Debug &&
-                               Target.bDebugBuildsActuallyUseDebugCRT;
-        string libraryDirectory = useDebugLibrary ? Path.Combine("debug", "lib") : "lib";
-        string libraryPath = Path.Combine(packageRoot, libraryDirectory, "cpu_features.lib");
-        if (!File.Exists(libraryPath))
-        {
-            throw new BuildException(
-                "CpuFeatures expected the vcpkg artifact at '{0}'. " +
-                "Configure an Unreal CMake preset to provision the repository install tree.",
-                libraryPath);
-        }
-
-        PublicSystemIncludePaths.Add(Path.Combine(packageRoot, "include", "cpu_features"));
+        string nativeToolchain = Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN") ?? "clang-cl";
+        PublicSystemIncludePaths.Add(
+            Path.Combine(repositoryRoot, "native", "third_party", "cpu_features", "include"));
         PublicDefinitions.Add("STACK_LINE_READER_BUFFER_SIZE=1024");
-        PublicAdditionalLibraries.Add(libraryPath);
+
+        if (!Target.bGenerateProjectFiles)
+        {
+            string libraryPath = Path.Combine(
+                repositoryRoot,
+                "Binaries",
+                "Native",
+                "CpuFeatures",
+                nativeToolchain,
+                Target.Platform.ToString(),
+                Target.Configuration.ToString(),
+                "cpu_features.lib");
+            if (!File.Exists(libraryPath))
+            {
+                throw new BuildException(
+                    "CpuFeatures expected the CMake-built library at '{0}'. " +
+                    "Build Unreal targets through a repository CMake workflow.",
+                    libraryPath);
+            }
+
+            PublicAdditionalLibraries.Add(libraryPath);
+            ExternalDependencies.Add(libraryPath);
+        }
     }
 }

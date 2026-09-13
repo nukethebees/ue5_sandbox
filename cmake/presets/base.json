@@ -6,11 +6,22 @@
       "hidden": true,
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/${presetName}",
-      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
       "cacheVariables": {
         "CMAKE_UNITY_BUILD": true,
         "CMAKE_UNITY_BUILD_BATCH_SIZE": "32"
       }
+    },
+    {
+      "name": "windows-clang-cl",
+      "hidden": true,
+      "inherits": "base",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/windows-clang-cl.cmake"
+    },
+    {
+      "name": "windows-msvc",
+      "hidden": true,
+      "inherits": "base",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/windows-msvc.cmake"
     }
   ],
   "testPresets": [

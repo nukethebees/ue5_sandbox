@@ -1,4 +1,5 @@
 using UnrealBuildTool;
+using System;
 using System.IO;
 
 public class NativeMemory : ModuleRules
@@ -23,6 +24,7 @@ public class NativeMemory : ModuleRules
 
         string repositoryRoot = Path.GetFullPath(
             Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
+        string nativeToolchain = Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN") ?? "clang-cl";
         string includeDirectory = Path.Combine(repositoryRoot, "native", "memory", "include");
         PublicSystemIncludePaths.Add(includeDirectory);
         if (!Target.bGenerateProjectFiles)
@@ -31,6 +33,7 @@ public class NativeMemory : ModuleRules
                 repositoryRoot,
                 "Binaries",
                 "NativeMemory",
+                nativeToolchain,
                 Target.Platform.ToString(),
                 Target.Configuration.ToString(),
                 "SandboxNativeMemory.lib");

@@ -14,7 +14,7 @@ include(cmake/precompiled_headers.cmake)
 
 enable_testing()
 
-add_subdirectory(cmake/compiler_warnings)
+add_subdirectory(cmake)
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 

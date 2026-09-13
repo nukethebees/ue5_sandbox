@@ -1,4 +1,5 @@
 using System.IO;
+using System;
 using UnrealBuildTool;
 
 public class GenLab : ModuleRules
@@ -19,12 +20,14 @@ public class GenLab : ModuleRules
         }
 
         string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
+        string nativeToolchain = Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN") ?? "clang-cl";
         string nativeImageRoot = Path.Combine(repositoryRoot, "native", "image");
         string nativeImageLibrary = Path.Combine(
             repositoryRoot,
             "Binaries",
             "Native",
             "Image",
+            nativeToolchain,
             Target.Platform.ToString(),
             Target.Configuration.ToString(),
             "sandbox_image.lib");

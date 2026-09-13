@@ -285,8 +285,8 @@ auto GridTraversal::create(GridGeometry const geometry,
     for (std::size_t axis{}; axis < axis_count; ++axis) {
         if (delta.Elements[axis] == 0.0f) {
             result.steps_[axis] = 0;
-            result.next_t_[axis] = std::numeric_limits<float>::max();
-            result.t_deltas_[axis] = std::numeric_limits<float>::max();
+            result.next_t_.Elements[axis] = std::numeric_limits<float>::max();
+            result.t_deltas_.Elements[axis] = std::numeric_limits<float>::max();
             continue;
         }
 

@@ -73,7 +73,7 @@ class FLevelTelemetryManager {
         return run_recording_ && metadata_.detailed_timing;
     }
     auto get_performance_window_count() const -> std::int32_t {
-        return performance_windows_.size();
+        return static_cast<std::int32_t>(performance_windows_.size());
     }
     auto take_finalized_run() -> std::optional<FLevelTelemetryRunRecord>;
 

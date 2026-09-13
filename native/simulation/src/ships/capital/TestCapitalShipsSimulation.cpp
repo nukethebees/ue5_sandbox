@@ -124,7 +124,6 @@ auto Simulation::get_team(FRegistryEntityHandle const handle) const noexcept
     }
 
     ml::fatal_error("Invalid capital ship handle passed");
-    return ml::simulation::Team::White;
 }
 auto Simulation::get_health(FRegistryEntityHandle const handle) const noexcept -> std::int32_t {
     auto const handles{
@@ -256,7 +255,8 @@ void Simulation::queue_fighter_spawns() {
 
     auto const& relative_transforms{config.fighter_spawn_slots_relative_transforms};
     ml::simulation::fighters::FrameSpawnQueue fighter_spawn_wave{&frame_memory_resource};
-    fighter_spawn_wave.reserve(relative_transforms.size());
+    assert(std::in_range<std::int32_t>(relative_transforms.size()));
+    fighter_spawn_wave.reserve(static_cast<std::int32_t>(relative_transforms.size()));
     for (auto const capital_index : ships_ready_to_spawn_fighters_indices) {
         fighter_spawn_wave.clear();
         auto const base_location{entities.locations[capital_index]};

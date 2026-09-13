@@ -1,4 +1,5 @@
 using System.IO;
+using System;
 using UnrealBuildTool;
 
 public class SbxMeshGenLab : ModuleRules
@@ -19,12 +20,14 @@ public class SbxMeshGenLab : ModuleRules
         }
 
         string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
+        string nativeToolchain = Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN") ?? "clang-cl";
         string nativeMeshRoot = Path.Combine(repositoryRoot, "native", "mesh_gen");
         string nativeMeshLibrary = Path.Combine(
             repositoryRoot,
             "Binaries",
             "Native",
             "MeshGen",
+            nativeToolchain,
             Target.Platform.ToString(),
             Target.Configuration.ToString(),
             "sandbox_mesh_gen.lib");

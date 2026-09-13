@@ -47,6 +47,9 @@ add_custom_target(sbx-mimalloc-prefix-header DEPENDS "${SBX_MIMALLOC_PREFIX_HEAD
 add_library(sbx-mimalloc-implementation OBJECT "${SBX_MIMALLOC_SOURCE}")
 set_target_properties(sbx-mimalloc-implementation PROPERTIES UNITY_BUILD OFF)
 configure_sbx_mimalloc_object(sbx-mimalloc-implementation)
+target_compile_definitions(sbx-mimalloc-implementation PRIVATE
+  SBX_MIMALLOC_PREFIXED_LINKER_INCLUDES=1
+)
 add_dependencies(sbx-mimalloc-implementation sbx-mimalloc-prefix-header)
 if(SANDBOX_MSVC_FRONTEND)
   target_compile_options(sbx-mimalloc-implementation PRIVATE
@@ -100,7 +103,7 @@ set_target_properties(sbx-mimalloc PROPERTIES
 if(SANDBOX_WITH_UNREAL)
   set_target_properties(sbx-mimalloc PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/SbxMimalloc/${UE_PLATFORM}/${UE_CONFIGURATION}"
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/SbxMimalloc/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
   )
 endif()
 

@@ -1,20 +1,18 @@
 include(add_supported_interface_options.cmake)
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR
-   CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
-  set(SANDBOX_MSVC_FRONTEND TRUE)
-else()
-  set(SANDBOX_MSVC_FRONTEND FALSE)
-endif()
-set(SANDBOX_MSVC_FRONTEND "${SANDBOX_MSVC_FRONTEND}" PARENT_SCOPE)
-
 add_library(sandbox_warning_level INTERFACE)
 add_library(sandbox_warning_errors INTERFACE)
 add_library(sandbox_codegen_warning_exceptions INTERFACE)
 
 if(SANDBOX_MSVC_FRONTEND)
-  target_add_supported_options(sandbox_warning_level COMPILE /W4)
+  target_add_supported_options(sandbox_warning_level COMPILE /W4 /wd4324)
   target_add_supported_options(sandbox_warning_errors COMPILE /WX)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_add_supported_options(sandbox_codegen_warning_exceptions COMPILE
+      /clang:-Wno-missing-designated-field-initializers
+      /clang:-Wno-missing-field-initializers
+    )
+  endif()
 else()
   target_add_supported_options(sandbox_warning_level COMPILE
     -Wall

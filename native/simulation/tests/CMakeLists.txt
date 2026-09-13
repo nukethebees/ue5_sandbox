@@ -1,5 +1,3 @@
-find_package(GTest CONFIG REQUIRED)
-
 add_executable(native-simulation-tests)
 target_sources(native-simulation-tests PRIVATE
   test_level_simulation.cpp
@@ -46,41 +44,7 @@ target_link_libraries(native-simulation-tests PRIVATE
   sandbox::warnings_as_errors
 )
 
-if(WIN32)
-  get_target_property(NATIVE_SIMULATION_GTEST_INCLUDE_DIRECTORIES
-    GTest::gtest INTERFACE_INCLUDE_DIRECTORIES)
-  get_target_property(NATIVE_SIMULATION_GTEST_LIBRARY GTest::gtest IMPORTED_IMPLIB_RELEASE)
-  get_target_property(NATIVE_SIMULATION_GTEST_MAIN_LIBRARY GTest::gtest_main IMPORTED_IMPLIB_RELEASE)
-  get_target_property(NATIVE_SIMULATION_GTEST_DLL GTest::gtest IMPORTED_LOCATION_RELEASE)
-  get_target_property(NATIVE_SIMULATION_GTEST_MAIN_DLL GTest::gtest_main IMPORTED_LOCATION_RELEASE)
-
-  foreach(required_property IN ITEMS
-      NATIVE_SIMULATION_GTEST_INCLUDE_DIRECTORIES
-      NATIVE_SIMULATION_GTEST_LIBRARY
-      NATIVE_SIMULATION_GTEST_MAIN_LIBRARY
-      NATIVE_SIMULATION_GTEST_DLL
-      NATIVE_SIMULATION_GTEST_MAIN_DLL)
-    if(NOT DEFINED ${required_property} OR "${${required_property}}" MATCHES "-NOTFOUND$")
-      message(FATAL_ERROR "GTest does not provide ${required_property} for the release CRT.")
-    endif()
-  endforeach()
-
-  target_include_directories(native-simulation-tests SYSTEM PRIVATE
-    ${NATIVE_SIMULATION_GTEST_INCLUDE_DIRECTORIES})
-  target_link_libraries(native-simulation-tests PRIVATE
-    "${NATIVE_SIMULATION_GTEST_MAIN_LIBRARY}"
-    "${NATIVE_SIMULATION_GTEST_LIBRARY}"
-  )
-  add_custom_command(TARGET native-simulation-tests POST_BUILD
-    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-      "${NATIVE_SIMULATION_GTEST_DLL}"
-      "${NATIVE_SIMULATION_GTEST_MAIN_DLL}"
-      "$<TARGET_FILE_DIR:native-simulation-tests>"
-    VERBATIM
-  )
-else()
-  target_link_libraries(native-simulation-tests PRIVATE GTest::gtest_main)
-endif()
+target_link_libraries(native-simulation-tests PRIVATE GTest::gtest_main)
 
 include(GoogleTest)
 gtest_discover_tests(native-simulation-tests PROPERTIES LABELS "unit;all;native-simulation")

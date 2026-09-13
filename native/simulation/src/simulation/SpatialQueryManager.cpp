@@ -36,13 +36,13 @@ struct FTraceRequest {
 template <EQueryMode Mode>
 auto trace_impl(ml::FSpatialQueryManager const& manager, FTraceRequest const& request)
     -> ml::FLineTraceResult {
-    auto const count{[](FTraceRequest const& trace_request) {
+    auto const count{[&] {
         if constexpr (Mode == EQueryMode::ClosestHit) {
             return 1;
         } else {
-            return trace_request.end_locations.num();
+            return request.end_locations.num();
         }
-    }(request)};
+    }()};
 
     if constexpr (Mode == EQueryMode::HitEntity) {
         assert(count == request.start_locations.num());

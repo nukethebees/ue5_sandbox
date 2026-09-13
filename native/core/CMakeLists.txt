@@ -1,5 +1,3 @@
-find_package(GTest CONFIG REQUIRED)
-
 if(WIN32 AND
    NOT CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" AND
    NOT CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC")
@@ -39,20 +37,11 @@ set_target_properties(native-core PROPERTIES
 if(SANDBOX_WITH_UNREAL)
   set_target_properties(native-core PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/Core/${UE_PLATFORM}/${UE_CONFIGURATION}"
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/Core/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
   )
 endif()
 
-if(WIN32 AND DEFINED VCPKG_APPLOCAL_DEPS)
-  set(NATIVE_CORE_SAVED_VCPKG_APPLOCAL_DEPS "${VCPKG_APPLOCAL_DEPS}")
-  set(VCPKG_APPLOCAL_DEPS OFF)
-endif()
-
 add_executable(native-core-tests)
-
-if(WIN32 AND DEFINED NATIVE_CORE_SAVED_VCPKG_APPLOCAL_DEPS)
-  set(VCPKG_APPLOCAL_DEPS "${NATIVE_CORE_SAVED_VCPKG_APPLOCAL_DEPS}")
-endif()
 
 target_sources(native-core-tests PRIVATE
   tests/generated/array_math_kernels_tests.cpp
@@ -78,41 +67,7 @@ target_sources(native-core-tests PRIVATE
 target_compile_features(native-core-tests PRIVATE cxx_std_23)
 target_link_libraries(native-core-tests PRIVATE native-core sandbox::warnings_as_errors)
 
-if(WIN32)
-  get_target_property(NATIVE_CORE_GTEST_INCLUDE_DIRECTORIES
-    GTest::gtest INTERFACE_INCLUDE_DIRECTORIES)
-  get_target_property(NATIVE_CORE_GTEST_LIBRARY GTest::gtest IMPORTED_IMPLIB_RELEASE)
-  get_target_property(NATIVE_CORE_GTEST_MAIN_LIBRARY GTest::gtest_main IMPORTED_IMPLIB_RELEASE)
-  get_target_property(NATIVE_CORE_GTEST_DLL GTest::gtest IMPORTED_LOCATION_RELEASE)
-  get_target_property(NATIVE_CORE_GTEST_MAIN_DLL GTest::gtest_main IMPORTED_LOCATION_RELEASE)
-
-  foreach(required_property IN ITEMS
-      NATIVE_CORE_GTEST_INCLUDE_DIRECTORIES
-      NATIVE_CORE_GTEST_LIBRARY
-      NATIVE_CORE_GTEST_MAIN_LIBRARY
-      NATIVE_CORE_GTEST_DLL
-      NATIVE_CORE_GTEST_MAIN_DLL)
-    if(NOT DEFINED ${required_property} OR "${${required_property}}" MATCHES "-NOTFOUND$")
-      message(FATAL_ERROR "GTest does not provide ${required_property} for the release CRT.")
-    endif()
-  endforeach()
-
-  target_include_directories(native-core-tests SYSTEM PRIVATE
-    ${NATIVE_CORE_GTEST_INCLUDE_DIRECTORIES})
-  target_link_libraries(native-core-tests PRIVATE
-    "${NATIVE_CORE_GTEST_MAIN_LIBRARY}"
-    "${NATIVE_CORE_GTEST_LIBRARY}"
-  )
-  add_custom_command(TARGET native-core-tests POST_BUILD
-    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-      "${NATIVE_CORE_GTEST_DLL}"
-      "${NATIVE_CORE_GTEST_MAIN_DLL}"
-      "$<TARGET_FILE_DIR:native-core-tests>"
-    VERBATIM
-  )
-else()
-  target_link_libraries(native-core-tests PRIVATE GTest::gtest_main)
-endif()
+target_link_libraries(native-core-tests PRIVATE GTest::gtest_main)
 
 include(GoogleTest)
 gtest_discover_tests(native-core-tests PROPERTIES LABELS "unit;all;native-core")

@@ -92,9 +92,10 @@ void Simulation::set_config(
         }
     }
 
-    per_team_limit = participating_teams.empty()
-                       ? 0
-                       : std::max(0, config.max_live_fighters) / participating_teams.size();
+    assert(std::in_range<std::int32_t>(participating_teams.size()));
+    auto const participant_count{static_cast<std::int32_t>(participating_teams.size())};
+    per_team_limit =
+        participant_count == 0 ? 0 : std::max(0, config.max_live_fighters) / participant_count;
 }
 Simulation::Simulation(FSimulationClock const& clock,
                        FTestEntityRegistry& in_entity_registry,
@@ -141,8 +142,8 @@ void Simulation::begin_play() {
         navigation_tick_periods[i] = static_cast<std::int16_t>(period);
     }
     auto const clear_update_interval{
-        static_cast<float>(get_navigation_tick_period(NavigationRiskTier::Clear)) *
-        simulation_clock.get_tick_period()};
+        static_cast<float>(get_navigation_tick_period(NavigationRiskTier::Clear) *
+                           simulation_clock.get_tick_period())};
     minimum_navigation_lookahead_time = clear_update_interval * 1.25f;
 
     auto const fire_cooldown_tick_period{
@@ -370,8 +371,8 @@ void Simulation::update_navigation_steering() {
     auto const avoidance_lookahead_time{
         std::max(config.avoidance_lookahead_time, minimum_navigation_lookahead_time)};
     auto const active_update_interval{
-        static_cast<float>(get_navigation_tick_period(NavigationRiskTier::Active)) *
-        simulation_clock.get_tick_period()};
+        static_cast<float>(get_navigation_tick_period(NavigationRiskTier::Active) *
+                           simulation_clock.get_tick_period())};
     auto const safe_progress_time{active_update_interval * 1.25f};
     navigation_telemetry = {};
     NavigationScratch scratch{&frame_memory_resource};

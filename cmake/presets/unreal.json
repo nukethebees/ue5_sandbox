@@ -5,10 +5,16 @@
     {
       "name": "unreal",
       "hidden": true,
-      "inherits": "base",
+      "inherits": "windows-clang-cl",
       "cacheVariables": {
-        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed",
-        "VCPKG_MANIFEST_FEATURES": "",
+        "SANDBOX_WITH_UNREAL": true
+      }
+    },
+    {
+      "name": "unreal-msvc",
+      "hidden": true,
+      "inherits": "windows-msvc",
+      "cacheVariables": {
         "SANDBOX_WITH_UNREAL": true
       }
     },
@@ -51,6 +57,46 @@
       "cacheVariables": {
         "UE_CONFIGURATION": "Test"
       }
+    },
+    {
+      "name": "debug-msvc",
+      "displayName": "Debug (MSVC native)",
+      "inherits": "unreal-msvc",
+      "cacheVariables": {
+        "UE_CONFIGURATION": "Debug"
+      }
+    },
+    {
+      "name": "debug-game-msvc",
+      "displayName": "DebugGame (MSVC native)",
+      "inherits": "unreal-msvc",
+      "cacheVariables": {
+        "UE_CONFIGURATION": "DebugGame"
+      }
+    },
+    {
+      "name": "development-msvc",
+      "displayName": "Development (MSVC native)",
+      "inherits": "unreal-msvc",
+      "cacheVariables": {
+        "UE_CONFIGURATION": "Development"
+      }
+    },
+    {
+      "name": "shipping-msvc",
+      "displayName": "Shipping (MSVC native)",
+      "inherits": "unreal-msvc",
+      "cacheVariables": {
+        "UE_CONFIGURATION": "Shipping"
+      }
+    },
+    {
+      "name": "test-msvc",
+      "displayName": "Test (MSVC native)",
+      "inherits": "unreal-msvc",
+      "cacheVariables": {
+        "UE_CONFIGURATION": "Test"
+      }
     }
   ],
   "buildPresets": [
@@ -87,6 +133,31 @@
     {
       "name": "test",
       "configurePreset": "test",
+      "targets": ["dev-core"]
+    },
+    {
+      "name": "debug-msvc",
+      "configurePreset": "debug-msvc",
+      "targets": ["dev-core"]
+    },
+    {
+      "name": "debug-game-msvc",
+      "configurePreset": "debug-game-msvc",
+      "targets": ["dev-core"]
+    },
+    {
+      "name": "development-msvc",
+      "configurePreset": "development-msvc",
+      "targets": ["dev-core"]
+    },
+    {
+      "name": "shipping-msvc",
+      "configurePreset": "shipping-msvc",
+      "targets": ["dev-core"]
+    },
+    {
+      "name": "test-msvc",
+      "configurePreset": "test-msvc",
       "targets": ["dev-core"]
     },
     {
@@ -165,6 +236,36 @@
           "label": "unit"
         }
       }
+    },
+    {
+      "name": "debug-game-msvc-tests",
+      "inherits": "test-base",
+      "configurePreset": "debug-game-msvc",
+      "filter": {
+        "include": {
+          "label": "^all$"
+        }
+      }
+    },
+    {
+      "name": "debug-game-msvc-level-tests",
+      "inherits": "test-base",
+      "configurePreset": "debug-game-msvc",
+      "filter": {
+        "include": {
+          "label": "^level$"
+        }
+      }
+    },
+    {
+      "name": "debug-game-msvc-unit-tests",
+      "inherits": "test-base",
+      "configurePreset": "debug-game-msvc",
+      "filter": {
+        "include": {
+          "label": "unit"
+        }
+      }
     }
   ],
   "workflowPresets": [
@@ -225,6 +326,41 @@
       ]
     },
     {
+      "name": "debug-msvc",
+      "steps": [
+        { "type": "configure", "name": "debug-msvc" },
+        { "type": "build", "name": "debug-msvc" }
+      ]
+    },
+    {
+      "name": "debug-game-msvc",
+      "steps": [
+        { "type": "configure", "name": "debug-game-msvc" },
+        { "type": "build", "name": "debug-game-msvc" }
+      ]
+    },
+    {
+      "name": "development-msvc",
+      "steps": [
+        { "type": "configure", "name": "development-msvc" },
+        { "type": "build", "name": "development-msvc" }
+      ]
+    },
+    {
+      "name": "shipping-msvc",
+      "steps": [
+        { "type": "configure", "name": "shipping-msvc" },
+        { "type": "build", "name": "shipping-msvc" }
+      ]
+    },
+    {
+      "name": "test-msvc",
+      "steps": [
+        { "type": "configure", "name": "test-msvc" },
+        { "type": "build", "name": "test-msvc" }
+      ]
+    },
+    {
       "name": "resave-assets",
       "steps": [
         { "type": "configure", "name": "debug-game" },
@@ -280,6 +416,22 @@
         { "type": "configure", "name": "debug-game" },
         { "type": "build", "name": "debug-game" },
         { "type": "test", "name": "debug-game-unit-tests" }
+      ]
+    },
+    {
+      "name": "debug-game-msvc-tests",
+      "steps": [
+        { "type": "configure", "name": "debug-game-msvc" },
+        { "type": "build", "name": "debug-game-msvc" },
+        { "type": "test", "name": "debug-game-msvc-tests" }
+      ]
+    },
+    {
+      "name": "debug-game-msvc-unit-tests",
+      "steps": [
+        { "type": "configure", "name": "debug-game-msvc" },
+        { "type": "build", "name": "debug-game-msvc" },
+        { "type": "test", "name": "debug-game-msvc-unit-tests" }
       ]
     }
   ]

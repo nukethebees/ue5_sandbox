@@ -77,27 +77,18 @@ request and then runs exclusively, while later work waits behind it. Inspect the
 `get-machine-activity-state` after loading `dev.ps1`, or build the `machine-activity-status` target.
 The transparent ticket files live under `%TEMP%\SandboxUnrealBuild\activity\v1`.
 
-### vcpkg dependencies
+### Native dependencies
 
-The CMake presets use the root `vcpkg.json` manifest for native dependencies. Install a standalone
-vcpkg copy outside Visual Studio (for example, `C:\\dev\\vcpkg`) and set the persistent user
-environment variable `VCPKG_ROOT` to that directory. Restart terminals, Visual Studio, and Codex
-after changing it.
-
-Verify the selected installation explicitly:
+Native dependencies are pinned Git submodules under `native/third_party`: GoogleTest 1.18.0,
+cpu_features 0.11.0, and Google Benchmark 1.9.5. Initialize them after cloning or creating a
+worktree:
 
 ```powershell
-& "$env:VCPKG_ROOT\\vcpkg.exe" version
+git submodule update --init native/third_party/googletest native/third_party/cpu_features native/third_party/benchmark
 ```
 
-Use that explicit form rather than bare `vcpkg` if a Visual Studio Developer shell places its embedded
-vcpkg copy earlier on `PATH`. To make bare `vcpkg` reliable too, put `C:\\dev\\vcpkg` before the Visual
-Studio vcpkg directory in your user `PATH`.
-
-`vcpkg_installed` is generated per worktree and ignored by Git. CMake installs the required manifest
-dependencies when configuring a preset. If a worktree retains a CMake cache
-from a previous vcpkg location, delete only that worktree's `out/build/<preset>` directory and rerun
-the workflow.
+CMake builds these dependencies from source. No package manager installation or environment
+variable is required.
 
 This initial wrapper supports Windows builds. Set `UE_ROOT` to the root of a
 usable Unreal Engine installation, either in the environment or in an untracked
@@ -131,6 +122,12 @@ matching Unreal configuration and build `dev-core` (`editor`, `core-tests`, and
 configures and builds it in one command. The `game` target remains available through a build preset, for example
 `cmake --build --preset development --target game`.
 
+The existing presets compile the standalone native libraries with clang-cl. Append `-msvc` to select
+MSVC instead, for example `debug-game-msvc` or `development-msvc`. UnrealBuildTool remains
+authoritative for Unreal compilation; the selected native compiler is passed to the Unreal module
+rules so they link the matching libraries. Each compiler uses a separate build tree and native
+artifact directory.
+
 ### Preset organisation
 
 The root `CMakePresets.json` includes category files under `cmake/presets/`, using preset
@@ -142,9 +139,8 @@ schema version 9:
 - `native-benchmarks.json`: native kernel and SOA benchmark presets.
 - `unreal-benchmarks.json`: Unreal-backed benchmark presets.
 
-Each category includes its prerequisites; shared definitions are not duplicated. Preset names,
-build directories and commands are unchanged by the split. Local overrides still belong in
-the root, Git-ignored `CMakeUserPresets.json`.
+Each category includes its prerequisites; shared definitions are not duplicated. Local overrides
+still belong in the root, Git-ignored `CMakeUserPresets.json`.
 
 ### Native-only development
 
@@ -158,15 +154,17 @@ respective build trees; only Unreal-enabled configurations publish libraries und
 ```powershell
 cmake --workflow --preset native-debug
 cmake --workflow --preset native-release
+cmake --workflow --preset native-debug-msvc
+cmake --workflow --preset native-release-msvc
 
 cmake --build --preset codegen
 ctest --preset codegen-tests
 ```
 
-The aggregate workflows use `out/build/native-debug` and `out/build/native-release`. The
-specialized `codegen` and `generate-code` presets use `native-debug`; native benchmark presets
-remain opt-in. To build an individual target, configure the desired native preset and pass the
-target explicitly to `cmake --build out/build/<preset> --target <target>`.
+The aggregate workflows use compiler-specific build trees. The specialized `codegen` and
+`generate-code` presets use `native-debug`; native benchmark presets remain opt-in and use
+clang-cl. To build an individual target, configure the desired native preset and pass the target
+explicitly to `cmake --build out/build/<preset> --target <target>`.
 
 Simulation logic and worldless combat scenarios run in native GoogleTest tests under
 `native/simulation/tests/`. Unreal retains asset/configuration conversion, collision harvesting,
@@ -191,8 +189,8 @@ clang-format, llvm-nm and llvm-readobj, even when building only one library.
 
 ### Preparing a worktree
 
-After setting `VCPKG_ROOT` and `UE_ROOT`, load the development commands and prepare a new or
-reset worktree with:
+After initializing the submodules and setting `UE_ROOT`, load the development commands and prepare
+a new or reset worktree with:
 
 ```powershell
 . .\dev.ps1
@@ -201,8 +199,8 @@ csetup
 
 By default, `csetup` prepares DebugGame and Development. Pass `debug-game` or `development` to
 prepare only one configuration, for example `csetup debug-game`. Each variant configures its build
-tree and installs per-worktree vcpkg dependencies, builds every first-party
-non-Unreal dependency consumed by the Unreal project, and generates Visual Studio project files.
+tree, builds the pinned third-party and first-party native dependencies consumed by the Unreal
+project, and generates Visual Studio project files.
 The Development variant does not build an Unreal target. DebugGame also performs the shared audio
 import described below. Both are safe to rerun after switching branches or changing project
 definitions.
@@ -264,12 +262,13 @@ The explicit `worktree-dependencies` build step prepares:
 | `sandbox-image` | The Editor's `GenLab` module |
 | `sandbox-material-gen` | The `SandboxEditor` module |
 | `sandbox-mesh-gen` | The Editor's `SbxMeshGenLab` module |
+| `cpu_features` | The `CpuFeatures` Unreal module |
 | Generated C++, kernel, and Slate checks | Game and Editor source compilation |
 | Compiled UI-glow material IR | Editor material generation |
 
-Configuration also provisions the manifest's `cpu-features` and `gtest` packages under the
-worktree's ignored `vcpkg_installed` directory. SandboxCore builds its private, symbol-prefixed
-mimalloc implementation from the vendored source in this repository.
+GoogleTest, cpu_features, and the optional Google Benchmark dependency build from the pinned
+submodules. SandboxCore builds its private, symbol-prefixed mimalloc implementation from the
+vendored source in this repository.
 
 Creating audio `.uasset` files requires an Editor commandlet, so the DebugGame setup imports the
 shared audio assets once and may build the project Editor if needed. Set `BEE_AUDIO_ROOT` to the
