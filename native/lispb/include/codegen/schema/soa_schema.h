@@ -29,6 +29,7 @@ struct SoaSchema {
     std::vector<std::string> using_declarations;
     std::optional<TypeRef> equivalent_type;
     bool copy_element_memberwise{false};
+    bool layout_only{false};
     std::optional<FixedSoaSchema> fixed;
     std::optional<std::string> single_allocation;
     std::optional<TypeRef> array_allocator;

@@ -231,6 +231,9 @@ auto lower_soa_module_impl(SoaModuleSchema const& module,
     std::vector<LoweredSoa> lowered_structs;
     lowered_structs.reserve(module.structs.size());
     for (auto const& schema : module.structs) {
+        if (schema.layout_only) {
+            continue;
+        }
         auto lowered{standard_library ? lower_native_soa(schema, schemas, types)
                                       : lower_soa_impl(schema, types, {})};
         if (schema.fixed.has_value()) {

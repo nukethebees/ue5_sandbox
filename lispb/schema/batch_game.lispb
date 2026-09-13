@@ -56,10 +56,6 @@
     (member healths array int32)
     (member initial_spawn_delays array float)
     (member spawn_cooldowns array float))
-  (struct EntityTickData
-    :operations (all)
-    :export-specifier SPACEGAMESIMULATION_API
-    (member fighter_queue nested @fighter_spawn_queue))
   (struct EntityData
     :operations (all)
     :export-specifier SPACEGAMESIMULATION_API
@@ -118,18 +114,26 @@
     (member sources array @laser_source)))
 
 (soa-module test_capital_ship_fighter_spawn_queue_soa
-  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFighterSpawnQueueSoA.h"
-  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFighterSpawnQueueSoA.cpp"
-  :header-include "SpaceGameSimulation/ships/fighters/TestCapitalShipFighterSpawnQueueSoA.h"
-  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
+  :header "native/simulation/include/sandbox/simulation/fighter_spawn_queue.h"
+  :backend standard-library
+  :namespace ml::simulation
+  (struct Vectors3f
+    :layout-only true
+    (member xs array float)
+    (member ys array float)
+    (member zs array float))
+  (struct Rotators3f
+    :layout-only true
+    (member pitches array float)
+    (member yaws array float)
+    (member rolls array float))
   (struct TestCapitalShipFighterSpawnQueue
     :operations (all)
-    :export-specifier SPACEGAMESIMULATION_API
-    (member locations nested @vectors_3f)
-    (member rotations nested @rotators_f)
-    (member teams array @team)
-    (member parents array @registry_handle)
-    (member targets array @registry_handle)))
+    (member locations nested @native_vectors_3f :nested-schema Vectors3f)
+    (member rotations nested @native_rotators_3f :nested-schema Rotators3f)
+    (member teams array @native_team)
+    (member parents array @native_registry_handle)
+    (member targets array @native_registry_handle)))
 
 (soa-module test_static_turrets_soa
   :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/defences/turrets/TestStaticTurretsSoA.h"

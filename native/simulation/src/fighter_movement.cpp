@@ -6,6 +6,26 @@
 #include <cstddef>
 
 namespace ml::simulation::fighters {
+void prepare_movement(Vectors3fView const directions,
+                      std::span<float> const distances,
+                      Vectors3fConstView const locations,
+                      Vectors3fConstView const destinations) noexcept {
+    auto const count{locations.num()};
+    assert(directions.num() == count && destinations.num() == count);
+    assert(distances.size() == static_cast<std::size_t>(count));
+    ml::native_math::direction_and_distance(directions.xs.data(),
+                                            directions.ys.data(),
+                                            directions.zs.data(),
+                                            distances.data(),
+                                            locations.xs.data(),
+                                            locations.ys.data(),
+                                            locations.zs.data(),
+                                            destinations.xs.data(),
+                                            destinations.ys.data(),
+                                            destinations.zs.data(),
+                                            count);
+}
+
 void move(MovementView const fighters, float const delta_time) noexcept {
     assert(delta_time > 0.0f);
     auto const count{fighters.locations.num()};

@@ -51,7 +51,6 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Private/missions/TestMissionMode.cp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/missions/TestMissionState.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/capital/TestCapitalShipsPhaseInterface.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/capital/TestCapitalShipsSoA.cpp
-Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFighterSpawnQueueSoA.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFightersPhaseInterface.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFightersSoA.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/player/TestSpaceShipPhaseInterface.cpp
@@ -73,7 +72,6 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionState.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/capital/TestCapitalShipsPhaseInterface.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/capital/TestCapitalShipsSoA.h
-Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFighterSpawnQueueSoA.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFightersCommandInterface.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFightersPhaseInterface.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSoA.h
@@ -87,6 +85,7 @@ native/simulation/include/sandbox/simulation/entity_history.h
 native/simulation/include/sandbox/simulation/entity_overlaps.h
 native/simulation/include/sandbox/simulation/fighter_order_queue.h
 native/simulation/include/sandbox/simulation/fighter_reassignment.h
+native/simulation/include/sandbox/simulation/fighter_spawn_queue.h
 native/simulation/include/sandbox/simulation/registry_entity_handles.h
 native/simulation/include/sandbox/simulation/rotators3f.h
 native/simulation/include/sandbox/simulation/vectors3f.h

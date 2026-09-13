@@ -16,6 +16,7 @@ target_sources(native-core PRIVATE
   src/array_math.cpp
   src/array_utils.cpp
   src/countdown.cpp
+  src/trigonometry.cpp
   src/frame_memory_resource.cpp
   src/graph_plot.cpp
   src/projectile_intercept.cpp

@@ -1,5 +1,6 @@
 #include "sandbox/simulation/fighter_attack_preparation.h"
 
+#include "sandbox/core/projectile_intercept.h"
 #include "sandbox/core/vector_normalization.h"
 
 #include <cassert>
@@ -16,6 +17,18 @@ void prepare_attack(AttackPreparationView const fighters,
     assert(fighters.target_directions.num() == count);
     assert(fighters.desired_move_locations.num() == count);
     assert(fighters.reposition_countdowns.num() == static_cast<std::size_t>(count));
+
+    ml::detail::solve_intercept_times_soa_loop::solve_intercept_times(
+        fighters.intercept_times.data(),
+        {fighters.locations.xs.data(), fighters.locations.ys.data(), fighters.locations.zs.data()},
+        {fighters.target_locations.xs.data(),
+         fighters.target_locations.ys.data(),
+         fighters.target_locations.zs.data()},
+        {fighters.target_velocities.xs.data(),
+         fighters.target_velocities.ys.data(),
+         fighters.target_velocities.zs.data()},
+        parameters.projectile_speed,
+        count);
 
     for (std::int32_t index{}; index < count; ++index) {
         auto const element{static_cast<std::size_t>(index)};

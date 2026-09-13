@@ -14,4 +14,8 @@ struct MovementView {
 };
 
 void move(MovementView fighters, float delta_time) noexcept;
+void prepare_movement(Vectors3fView directions,
+                      std::span<float> distances,
+                      Vectors3fConstView locations,
+                      Vectors3fConstView destinations) noexcept;
 } // namespace ml::simulation::fighters

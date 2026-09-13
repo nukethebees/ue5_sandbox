@@ -1,5 +1,6 @@
 #include "SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h"
 
+#include <sandbox/simulation/fighter_aiming.h>
 #include <sandbox/simulation/fighter_attack_preparation.h>
 #include <sandbox/simulation/fighter_damage_response.h>
 #include <sandbox/simulation/fighter_firing.h>
@@ -10,6 +11,7 @@
 #include <sandbox/simulation/fighter_navigation_schedule.h>
 #include <sandbox/simulation/fighter_orders.h>
 #include <sandbox/simulation/fighter_spawn_admission.h>
+#include <sandbox/simulation/fighter_spawn_initialization.h>
 #include <sandbox/simulation/fighter_targeting.h>
 #include <SpaceGameSimulation/combat/lasers/TestLasersFrameScratch.h>
 #include <SpaceGameSimulation/entities/BatchSimulation.h>
@@ -297,12 +299,6 @@ void Simulation::move(float const dt) {
     auto const outer_attack_distance{laser_max_distance * attack_distance_band.maximum_ratio};
 
     if (do_attack) {
-        ml::solve_intercept_times(attack_view.intercept_times,
-                                  attack_view.locations.get_const_view(),
-                                  attack_view.target_locations.get_const_view(),
-                                  attack_view.target_velocities.get_const_view(),
-                                  config.laser.projectile_speed);
-
         ml::simulation::fighters::prepare_attack(
             {.locations = ml::to_native(attack_view.locations.get_const_view()),
              .target_locations = ml::to_native(attack_view.target_locations.get_const_view()),
@@ -313,29 +309,32 @@ void Simulation::move(float const dt) {
              .target_directions = ml::to_native(attack_view.target_directions),
              .desired_move_locations = ml::to_native(attack_view.desired_move_locations),
              .reposition_countdowns = attack_view.attack_reposition_countdowns.native_view()},
-            {.desired_distance = desired_attack_distance,
+            {.projectile_speed = config.laser.projectile_speed,
+             .desired_distance = desired_attack_distance,
              .inner_distance = inner_attack_distance,
              .outer_distance = outer_attack_distance,
              .squared_normal_tolerance = UE_SMALL_NUMBER});
     }
 
-    ml::direction_and_distance(
-        data.movement_directions, data.move_distances, data.locations, data.desired_move_locations);
+    ml::simulation::fighters::prepare_movement(
+        ml::to_native(data.movement_directions.get_view()),
+        {data.move_distances.GetData(), static_cast<std::size_t>(data.num())},
+        ml::to_native(data.locations.get_const_view()),
+        ml::to_native(data.desired_move_locations.get_const_view()));
     update_navigation_steering();
     if (do_move) {
-        ml::lerp_in_place(move_view.aim_directions, move_view.movement_directions, d_turn);
+        ml::simulation::fighters::update_movement_aiming(
+            ml::to_native(move_view.aim_directions),
+            ml::to_native(move_view.movement_directions.get_const_view()),
+            d_turn);
     }
     if (do_attack) {
-        for (int32 i{}; i < n_attack; ++i) {
-            auto const desired_direction{
-                ml::simulation::fighters::is_avoidance_direction_choice(
-                    attack_view.avoidance_choice_indices[i])
-                    ? ml::get_vector3f(attack_view.movement_directions, i)
-                    : ml::get_vector3f(attack_view.desired_aiming_directions, i)};
-            auto const aim_direction{FMath::Lerp(
-                ml::get_vector3f(attack_view.aim_directions, i), desired_direction, d_turn)};
-            attack_view.aim_directions.set(i, aim_direction);
-        }
+        ml::simulation::fighters::update_attack_aiming(
+            ml::to_native(attack_view.aim_directions),
+            ml::to_native(attack_view.movement_directions.get_const_view()),
+            ml::to_native(attack_view.desired_aiming_directions.get_const_view()),
+            {attack_view.avoidance_choice_indices.GetData(), static_cast<std::size_t>(n_attack)},
+            d_turn);
     }
 
     move(dt, move_view);
@@ -873,8 +872,7 @@ auto Simulation::queue_spawns(TestCapitalShipFighterSpawnQueueConstView const ne
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::queue_spawns);
     new_spawns.validate_array_sizes();
     auto const admission{ml::simulation::fighters::admit_spawns(
-        std::as_bytes(
-            std::span{new_spawns.teams.GetData(), static_cast<std::size_t>(new_spawns.num())}),
+        std::as_bytes(new_spawns.teams),
         {participant_mask.GetData(), static_cast<std::size_t>(participant_mask.Num())},
         {remaining_team_capacity.GetData(),
          static_cast<std::size_t>(remaining_team_capacity.Num())})};
@@ -903,62 +901,43 @@ void Simulation::commit_spawns() {
         diagnostic_spawn_reports = 0;
     }
     ml::reset(new_spawn_entity_handles, new_spawn_entity_data);
-    auto const& new_locations{spawn_queue.locations};
-    auto const& new_rotations{spawn_queue.rotations};
-    auto const& new_teams{spawn_queue.teams};
-    auto const& new_parents{spawn_queue.parents};
-    auto const& new_targets{spawn_queue.targets};
     auto& data{entity_buffers.current()};
     auto const n_cur{get_num_instances()};
-    auto const n_new{ml::num(new_locations)};
+    auto const n_new{spawn_queue.num()};
 
-    ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(new_locations),
-        SANDBOX_NAMED_NUM(new_rotations),
-        SANDBOX_NAMED_NUM(new_teams),
-        SANDBOX_NAMED_NUM(new_parents),
-        SANDBOX_NAMED_NUM(new_targets),
-    });
+    spawn_queue.validate_array_sizes();
     if (n_new < 1) {
         return;
     }
 
-    ml::append_n(data.tasks, Task::Attack, n_new);
-    ml::append_from(data.locations, new_locations);
-    ml::append_from(data.desired_move_locations, new_locations);
-    data.movement_directions.add_zeroed(n_new);
-    data.velocities.add_zeroed(n_new);
-    data.move_distances.AddZeroed(n_new);
-    ml::add_uninitialised(data.aim_directions, n_new);
-    ml::append_n(data.speeds, config.speed, n_new);
-    data.teams.Append(new_teams);
-    ml::append_n(data.healths, config.health, n_new);
-    data.parent_handles.Append(new_parents);
-    data.awareness_scan_countdowns.add_zeroed(n_new);
-    data.navigation_update_countdowns.add_uninitialised(n_new);
-    data.separation_steering.add_zeroed(n_new);
-    ml::append_n(data.navigation_risk_tiers, static_cast<uint8>(NavigationRiskTier::Nearby), n_new);
-    data.navigation_lower_risk_scan_counts.AddZeroed(n_new);
-    ml::append_n(data.avoidance_choice_indices, direct_movement_choice, n_new);
-    data.avoidance_clear_scan_counts.AddZeroed(n_new);
-    data.attack_reposition_countdowns.add_zeroed(n_new);
-    data.target_handles.Append(new_targets);
-    data.target_locations.add_zeroed(n_new);
-    data.target_velocities.add_zeroed(n_new);
-    data.target_directions.add_zeroed(n_new);
-    data.intercept_times.AddZeroed(n_new);
-    data.desired_aiming_directions.add_zeroed(n_new);
-    data.target_distance_sq.AddZeroed(n_new);
-    data.target_distances.AddZeroed(n_new);
-    data.target_radii.AddZeroed(n_new);
-    data.attack_cooldowns.add_zeroed(n_new);
+    data.add_defaulted(n_new);
+    auto const new_data{data.get_view(n_cur, n_new)};
+    auto const count{static_cast<std::size_t>(n_new)};
+    ml::simulation::fighters::initialize_spawned_fighters(
+        {.tasks = {new_data.tasks.GetData(), count},
+         .locations = ml::to_native(new_data.locations),
+         .desired_move_locations = ml::to_native(new_data.desired_move_locations),
+         .aim_directions = ml::to_native(new_data.aim_directions),
+         .speeds = {new_data.speeds.GetData(), count},
+         .teams = std::as_writable_bytes(std::span{new_data.teams.GetData(), count}),
+         .healths = {new_data.healths.GetData(), count},
+         .parents = {new_data.parent_handles.GetData(), count},
+         .targets = {new_data.target_handles.GetData(), count},
+         .navigation_risk_tiers = {new_data.navigation_risk_tiers.GetData(), count},
+         .avoidance_choices = {new_data.avoidance_choice_indices.GetData(), count},
+         .navigation_periods = {data.navigation_update_countdowns.periods.GetData() + n_cur,
+                                count}},
+        spawn_queue.get_const_view(),
+        {.speed = config.speed,
+         .health = config.health,
+         .navigation_period = get_navigation_tick_period(NavigationRiskTier::Nearby),
+         .direct_choice = direct_movement_choice});
 
     new_spawn_entity_data.add_uninitialised(n_new);
     ml::fill(new_spawn_entity_data.radii, collision_radius);
     ml::fill(new_spawn_entity_data.alive, uint8{1});
     for (int32 i{0}; i < n_new; ++i) {
         auto const index{n_cur + i};
-        data.aim_directions.set(index, ml::get_vector3f(new_rotations, i));
         ml::assign_from(new_spawn_entity_data.locations, i, data.locations, index);
         ml::assign(new_spawn_entity_data.rotations,
                    i,
@@ -970,8 +949,11 @@ void Simulation::commit_spawns() {
     ml::fill(new_spawn_entity_data.velocities, 0.f);
 
     new_spawn_entity_handles = entity_registry.add_entities(new_spawn_entity_data.get_const_view());
-    ml::append_registry_entity_handles(new_spawn_entity_handles.registry_handles,
-                                       data.entity_handles);
+    auto const& registry_handles{new_spawn_entity_handles.registry_handles};
+    for (int32 i{}; i < n_new; ++i) {
+        data.entity_handles[n_cur + i] = {registry_handles.registry_indices[i],
+                                          registry_handles.generations[i]};
+    }
     if (fighter_diagnostics::enabled.GetValueOnGameThread() != 0) {
         for (int32 i{}; i < n_new; ++i) {
             if (!fighter_diagnostics::take_report(diagnostic_spawn_reports, 64)) {
@@ -988,17 +970,12 @@ void Simulation::commit_spawns() {
                    *ml::get_vector3f(data.locations, index).ToString());
         }
     }
-    data.integral_biases.AddUninitialized(n_new);
-    data.float_biases.AddUninitialized(n_new);
     ml::make_deterministic_biases(
         TConstArrayView<int32>{new_spawn_entity_handles.registry_handles.registry_indices.data(),
                                n_new},
         TConstArrayView<int32>{new_spawn_entity_handles.registry_handles.generations.data(), n_new},
         TArrayView<uint32>{data.integral_biases}.Slice(n_cur, n_new),
         TArrayView<float>{data.float_biases}.Slice(n_cur, n_new));
-    auto const navigation_tick_period{get_navigation_tick_period(NavigationRiskTier::Nearby)};
-    // A new fighter has no validated movement direction. Scan before its first movement.
-    data.navigation_update_countdowns.initialise_last(navigation_tick_period, n_new);
 
     validate_array_sizes();
 }

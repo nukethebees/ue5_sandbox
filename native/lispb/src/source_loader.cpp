@@ -267,6 +267,7 @@ auto parse_soa(Form const& form) -> SoaSchema {
                      "using-declarations",
                      "equivalent-type",
                      "copy-element-memberwise",
+                     "layout-only",
                      "field-mask-name",
                      "field-enum-name"},
                     {"member", "function", "fixed", "single-allocation"});
@@ -314,6 +315,7 @@ auto parse_soa(Form const& form) -> SoaSchema {
         .using_declarations = text_list_or(fields, "using-declarations"),
         .equivalent_type = std::move(equivalent_type),
         .copy_element_memberwise = boolean_or(fields, "copy-element-memberwise"),
+        .layout_only = boolean_or(fields, "layout-only"),
         .fixed = std::move(fixed),
         .single_allocation = std::move(single_allocation),
         .single_allocation_variants = std::move(variants),

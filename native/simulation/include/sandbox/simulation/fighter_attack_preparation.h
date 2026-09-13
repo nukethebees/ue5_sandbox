@@ -8,7 +8,7 @@ struct AttackPreparationView {
     Vectors3fConstView locations;
     Vectors3fConstView target_locations;
     Vectors3fConstView target_velocities;
-    std::span<float const> intercept_times;
+    std::span<float> intercept_times;
     Vectors3fView desired_aiming_directions;
     Vectors3fView target_directions;
     Vectors3fView desired_move_locations;
@@ -16,6 +16,7 @@ struct AttackPreparationView {
 };
 
 struct AttackPreparationParameters {
+    float projectile_speed;
     float desired_distance;
     float inner_distance;
     float outer_distance;

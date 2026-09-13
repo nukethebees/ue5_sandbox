@@ -35,6 +35,7 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/entity_world_bounds.h
   include/sandbox/simulation/fighter_damage_response.h
   include/sandbox/simulation/fighter_attack_preparation.h
+  include/sandbox/simulation/fighter_aiming.h
   include/sandbox/simulation/fighter_firing.h
   include/sandbox/simulation/fighter_firing_position.h
   include/sandbox/simulation/fighter_firing_scratch.h
@@ -49,6 +50,10 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/fighter_order_queue.h
   include/sandbox/simulation/fighter_reassignment.h
   include/sandbox/simulation/fighter_spawn_admission.h
+  include/sandbox/simulation/fighter_spawn_initialization.h
+  include/sandbox/simulation/rotator_math.h
+  include/sandbox/simulation/fighter_spawn_queue.h
+  include/sandbox/simulation/fighter_frame_spawn_queue.h
   include/sandbox/simulation/fighter_task_layout.h
   include/sandbox/simulation/fighter_targeting.h
   include/sandbox/simulation/frame_collision_scratch.h
@@ -114,6 +119,7 @@ target_sources(native-simulation PRIVATE
   src/fixed_tick.cpp
   src/fighter_damage_response.cpp
   src/fighter_attack_preparation.cpp
+  src/fighter_aiming.cpp
   src/fighter_firing.cpp
   src/fighter_firing_position.cpp
   src/fighter_firing_scratch.cpp
@@ -122,6 +128,9 @@ target_sources(native-simulation PRIVATE
   src/fighter_navigation_state.cpp
   src/fighter_orders.cpp
   src/fighter_spawn_admission.cpp
+  src/fighter_spawn_initialization.cpp
+  src/rotator_math.cpp
+  src/fighter_frame_spawn_queue.cpp
   src/fighter_task_layout.cpp
   src/fighter_targeting.cpp
   src/fighter_navigation_application.cpp

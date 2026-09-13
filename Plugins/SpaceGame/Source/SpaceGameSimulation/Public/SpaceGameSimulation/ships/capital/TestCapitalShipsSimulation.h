@@ -41,7 +41,7 @@ class PhaseInterface;
 struct SPACEGAMESIMULATION_API Simulation {
     using RegistryEntityData = ml::entity_registry::EntityData;
     using SpawnData = ml::test_capital_ships::SpawnData;
-    using EntityTickData = ml::test_capital_ships::EntityTickData;
+    using EntityTickData = TestCapitalShipFighterSpawnQueue;
     using EntityData = ml::test_capital_ships::EntityData;
     using FighterReassignment = ml::test_capital_ships::FighterReassignment;
     using EntityBuffers = ml::MultiBuffer<EntityTickData, 2>;

@@ -103,7 +103,7 @@ void Simulation::sync_from_registry() {
 void Simulation::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ships::Simulation::end_tick);
     TRACE_COUNTER_SET(SandboxTestCapitalShipCount, get_num_instances());
-    fighters_spawned += ml::num(tick_buffers.current().fighter_queue);
+    fighters_spawned += tick_buffers.current().num();
     validate_array_sizes();
 }
 
@@ -253,8 +253,7 @@ void Simulation::queue_fighter_spawns() {
     }
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ships::Simulation::queue_fighter_spawns);
 
-    auto& data{tick_buffers.current()};
-    auto& fighter_queue{data.fighter_queue};
+    auto& fighter_queue{tick_buffers.current()};
     fighter_queue.reset();
 
     auto const n_capital_ships{get_num_instances()};
@@ -304,9 +303,9 @@ void Simulation::queue_fighter_spawns() {
                        *relative_transform.ToHumanReadableString(),
                        *new_transform.ToHumanReadableString());
             }
-            fighter_spawn_wave.add(FVector3f{new_transform.GetLocation()},
-                                   FRotator3f{new_transform.Rotator()},
-                                   entities.teams[capital_index],
+            fighter_spawn_wave.add(ml::to_native(FVector3f{new_transform.GetLocation()}),
+                                   ml::to_native(FRotator3f{new_transform.Rotator()}),
+                                   ml::to_native(entities.teams[capital_index]),
                                    entities.handles[capital_index],
                                    entities.target_handles[capital_index]);
         }
@@ -326,19 +325,19 @@ void Simulation::refresh_fighter_handles() {
 
     auto const& spawn_data{fighters_interface.get_new_spawn_entity_data()};
     spawn_data.validate_array_sizes();
-    ensure(previous.fighter_queue.num() == spawn_data.num());
+    ensure(previous.num() == spawn_data.num());
 
     auto const& spawn_handles{fighters_interface.get_new_spawn_entity_handles()};
-    ensure(spawn_handles.registry_handles.num() == previous.fighter_queue.num());
+    ensure(spawn_handles.registry_handles.num() == previous.num());
     auto const n_capitals{get_num_instances()};
-    auto const queue_count{static_cast<std::size_t>(previous.fighter_queue.num())};
+    auto const queue_count{static_cast<std::size_t>(previous.num())};
     TFrameArray<FRegistryEntityHandle> fighters_to_self_destruct{&frame_memory_resource};
     auto const surviving_spawn_count{ml::simulation::assign_spawned_capital_fighters(
         {entities.handles.GetData(), static_cast<std::size_t>(n_capitals)},
         std::as_bytes(std::span{entities.teams.GetData(), static_cast<std::size_t>(n_capitals)}),
         spawn_handles,
-        {previous.fighter_queue.parents.GetData(), queue_count},
-        std::as_bytes(std::span{previous.fighter_queue.teams.GetData(), queue_count}),
+        {previous.parents.data(), queue_count},
+        std::as_bytes(std::span{previous.teams.data(), queue_count}),
         ml::make_native_query_view(entity_registry),
         fighter_reassignment_queue,
         fighters_to_self_destruct)};
