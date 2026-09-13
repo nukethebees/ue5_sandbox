@@ -70,25 +70,13 @@ auto CollisionUniformGrid::get_cell_entities(FIntVector3 const cell_coord) const
            *to_string(grid_dims_));
 
     auto const cell_index{to_index(cell_coord)};
-    auto const count{cell_entity_counts_[cell_index]};
-    if (count == 0) {
-        return {};
-    }
-
-    return std::span{entities_}.subspan(static_cast<std::size_t>(cell_entity_offsets_[cell_index]),
-                                        count);
+    return entity_storage_.entities_for_cell(cell_index);
 }
 
 void CollisionUniformGrid::reset() {
     grid_dims_ = FIntVector3::ZeroValue;
     cell_dims_ = FVector3f::ZeroVector;
-    cell_entity_offsets_.clear();
-    cell_entity_counts_.clear();
-    cell_entity_write_indexes_.clear();
-    non_empty_cell_indices_.clear();
-    entities_.clear();
-    aabbs_.reset();
-    entities_buffer_.reset();
+    entity_storage_.reset();
     static_aabbs_.reset();
     cell_static_range_indices_.clear();
     static_cell_range_offsets_.clear();
@@ -233,28 +221,8 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
     auto const entity_count{entity_registry_.get_num_elements()};
     auto const gens{entity_registry_.get_generations()};
 
-    auto const n_cells{num_cells()};
-    auto const row_stride{grid_dims_.X};
-    auto const plane_stride{row_stride * grid_dims_.Y};
     auto const geometry{grid_geometry(grid_dims_, cell_dims_)};
-
-    {
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::prepare_counts);
-        for (auto const cell_index : non_empty_cell_indices_) {
-            cell_entity_counts_[cell_index] = 0;
-        }
-
-        non_empty_cell_indices_.clear();
-
-        if (cell_entity_counts_.size() != static_cast<std::size_t>(n_cells)) {
-            cell_entity_counts_.assign(static_cast<std::size_t>(n_cells), std::uint16_t{});
-        }
-
-        cell_entity_offsets_.resize(static_cast<std::size_t>(n_cells));
-        cell_entity_write_indexes_.resize(static_cast<std::size_t>(n_cells));
-    }
-
-    entities_buffer_.reset();
+    entity_storage_.begin_rebuild(to_native(grid_dims_));
 
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::count_loop);
@@ -303,112 +271,12 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
                     *to_string(grid_dims_ - FIntVector3{1, 1, 1}));
             }
 
-            simulation::collision::add(
-                entities_buffer_, min_point, max_point, min_coord, max_coord, {i, gens[i]});
-
-            auto plane_index{min_coord.x + min_coord.y * row_stride + min_coord.z * plane_stride};
-            for (int32 z{min_coord.z}; z <= max_coord.z; ++z) {
-                auto row_index{plane_index};
-                for (int32 y{min_coord.y}; y <= max_coord.y; ++y) {
-                    auto cell_index{row_index};
-                    for (int32 x{min_coord.x}; x <= max_coord.x; ++x, ++cell_index) {
-                        auto& count{cell_entity_counts_[cell_index]};
-                        if (count == 0) {
-                            non_empty_cell_indices_.push_back(cell_index);
-                        }
-                        ++count;
-                    }
-                    row_index += row_stride;
-                }
-                plane_index += plane_stride;
-            }
+            entity_storage_.add(min_point, max_point, min_coord, max_coord, {i, gens[i]});
         }
     }
 
-    entities_buffer_.get_const_view().columns().validate_array_sizes();
-
-    auto const n_entries{[&] -> int32 {
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::count_entries);
-        int32 offset{0};
-
-        auto* RESTRICT offsets{cell_entity_offsets_.data()};
-        auto* RESTRICT write_indexes{cell_entity_write_indexes_.data()};
-        auto* RESTRICT counts{cell_entity_counts_.data()};
-
-        for (auto const cell_index : non_empty_cell_indices_) {
-            offsets[cell_index] = offset;
-            write_indexes[cell_index] = offset;
-            offset += counts[cell_index];
-        }
-        return offset;
-    }()};
-
-    {
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::prepare_arrays);
-
-        aabbs_.reset();
-        aabbs_.add_uninitialised(n_entries);
-
-        entities_.resize(static_cast<std::size_t>(n_entries));
-    }
-
-    auto const entity_cells{entities_buffer_.get_const_view().columns()};
-    auto const aabbs{aabbs_.get_view().columns()};
-    auto const buffer_count{entity_cells.num()};
-    {
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::build_loop);
-
-        for (int32 i{0}; i < buffer_count; ++i) {
-            auto const min_coord{to_unreal(simulation::collision::min_cell_at(entity_cells, i))};
-            auto const max_coord{to_unreal(simulation::collision::max_cell_at(entity_cells, i))};
-
-            auto const min_point{simulation::collision::min_point_at(entity_cells, i)};
-            auto const max_point{simulation::collision::max_point_at(entity_cells, i)};
-
-            auto plane_index{min_coord.X + min_coord.Y * row_stride + min_coord.Z * plane_stride};
-            for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
-                auto row_index{plane_index};
-                for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
-                    auto cell_index{row_index};
-                    for (int32 x{min_coord.X}; x <= max_coord.X; ++x, ++cell_index) {
-                        auto const write_index{cell_entity_write_indexes_[cell_index]++};
-
-                        entities_[write_index] = entity_cells.handles[i];
-
-                        aabbs.set(write_index,
-                                  min_point.X,
-                                  min_point.Y,
-                                  min_point.Z,
-                                  max_point.X,
-                                  max_point.Y,
-                                  max_point.Z);
-                    }
-                    row_index += row_stride;
-                }
-                plane_index += plane_stride;
-            }
-        }
-    }
-
-    {
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::index_check);
-
-        auto* RESTRICT write_indexes{cell_entity_write_indexes_.data()};
-        auto* RESTRICT offsets{cell_entity_offsets_.data()};
-        auto* RESTRICT counts{cell_entity_counts_.data()};
-
-        for (auto const cell_index : non_empty_cell_indices_) {
-            auto const write_index{write_indexes[cell_index]};
-            auto const expected{offsets[cell_index] + counts[cell_index]};
-
-            if (write_index != expected) {
-                UE_LOG(LogSandbox,
-                       Fatal,
-                       TEXT("Index incorrect. Got %d, should be %d"),
-                       write_index,
-                       expected);
-            }
-        }
+    if (!entity_storage_.finish_rebuild()) {
+        UE_LOG(LogSandbox, Fatal, TEXT("Collision grid entity membership index is inconsistent"));
     }
 }
 
@@ -445,12 +313,10 @@ void CollisionUniformGrid::append_overlaps(simulation::collision::WorldAABB cons
         for (int32 y{min_coord.y}; y <= max_coord.y; ++y) {
             auto cell_index{row_index};
             for (int32 x{min_coord.x}; x <= max_coord.x; ++x, ++cell_index) {
-                auto const entity_count{cell_entity_counts_[cell_index]};
+                auto const entities{entity_storage_.entities_for_cell(cell_index)};
+                auto const entity_count{static_cast<int32>(entities.size())};
                 if (entity_count > 0) {
-                    auto const entity_offset{cell_entity_offsets_[cell_index]};
-                    auto const entities{std::span{entities_}.subspan(
-                        static_cast<std::size_t>(entity_offset), entity_count)};
-                    auto const aabbs{aabbs_.get_const_view(entity_offset, entity_count).columns()};
+                    auto const aabbs{entity_storage_.aabbs_for_cell(cell_index)};
 
                     for (int32 entity_index{}; entity_index < entity_count; ++entity_index) {
                         auto const entity{entities[entity_index]};
@@ -633,13 +499,11 @@ void CollisionUniformGrid::trace_aabbs_impl(
             static_assert(false, "Unsupported ignored entity mode.");
         }
         auto const trace_cell{[&](int32 const cell_index) {
-            auto const entity_offset{cell_entity_offsets_[cell_index]};
-            auto const entity_count{cell_entity_counts_[cell_index]};
+            auto const entities{entity_storage_.entities_for_cell(cell_index)};
+            auto const entity_count{static_cast<int32>(entities.size())};
 
             if (entity_count > 0) {
-                auto const entities{std::span{entities_}.subspan(
-                    static_cast<std::size_t>(entity_offset), entity_count)};
-                auto const aabbs{aabbs_.get_const_view(entity_offset, entity_count).columns()};
+                auto const aabbs{entity_storage_.aabbs_for_cell(cell_index)};
 
                 for (int32 i_entity{0}; i_entity < entity_count; ++i_entity) {
                     if constexpr (IgnoredEntityMode == EIgnoredEntityMode::PerTrace) {

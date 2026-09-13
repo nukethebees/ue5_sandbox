@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sandbox/simulation/entity_cell_data.h>
+#include <sandbox/simulation/collision_grid_entity_storage.h>
 #include <sandbox/simulation/entity_world_bounds.h>
 #include <sandbox/simulation/spatial_query_telemetry.h>
 #include <SandboxNative/RegistryEntityHandle.h>
@@ -52,7 +52,7 @@ struct SPACEGAMESIMULATION_API CollisionUniformGrid {
 
     auto num_cells() const -> int32;
     auto get_non_empty_cell_count() const noexcept -> int32 {
-        return static_cast<int32>(non_empty_cell_indices_.size());
+        return entity_storage_.non_empty_cell_count();
     }
     auto get_cell_entities(FIntVector3 const cell_coord) const
         -> std::span<FRegistryEntityHandle const>;
@@ -90,13 +90,7 @@ struct SPACEGAMESIMULATION_API CollisionUniformGrid {
 
     auto get_static_aabbs() const noexcept -> WorldAABBs const& { return static_aabbs_; }
     auto get_entity_world_bounds() const -> WorldAABBsConstView {
-        auto const cells{entities_buffer_.get_const_view().columns()};
-        return {cells.min_point_xs,
-                cells.min_point_ys,
-                cells.min_point_zs,
-                cells.max_point_xs,
-                cells.max_point_ys,
-                cells.max_point_zs};
+        return entity_storage_.entity_world_bounds();
     }
 
     // Appends exact overlaps. Multi-cell participants may be appended more than once.
@@ -145,14 +139,7 @@ struct SPACEGAMESIMULATION_API CollisionUniformGrid {
     FIntVector3 grid_dims_{FIntVector3::ZeroValue};
     FVector3f cell_dims_{FVector3f::ZeroVector};
 
-    std::vector<std::int32_t> cell_entity_offsets_;
-    std::vector<std::uint16_t> cell_entity_counts_;
-    std::vector<std::int32_t> cell_entity_write_indexes_;
-    std::vector<std::int32_t> non_empty_cell_indices_;
-    std::vector<FRegistryEntityHandle> entities_;
-    WorldAABBs aabbs_;
-
-    simulation::collision::EntityCellData entities_buffer_;
+    simulation::collision::CollisionGridEntityStorage entity_storage_;
 
     WorldAABBs static_aabbs_;
     std::vector<std::int32_t> cell_static_range_indices_;
