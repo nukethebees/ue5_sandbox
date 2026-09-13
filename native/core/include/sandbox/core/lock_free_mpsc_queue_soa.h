@@ -21,6 +21,10 @@ concept is_soa_queue_view = std::is_void_v<View> || std::constructible_from<View
 namespace ml {
 // Lock-free multi-producer single-consumer queue with Structure of Arrays layout
 // Contract: swap_and_consume() must only be called when all enqueue() operations are complete
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4324)
+#endif
 template <typename View = void, typename... Ts>
     requires (((sizeof...(Ts) > 0) && (std::is_nothrow_move_constructible_v<Ts> && ...)) &&
               is_soa_queue_view<View, Ts...>)
@@ -255,5 +259,8 @@ class LockFreeMPSCQueueSoA {
     alignas(cache_line_size_bytes) std::atomic<size_type> write_buffer_index_{0};
     alignas(cache_line_size_bytes) std::atomic<size_type> write_index_{0};
 };
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 }

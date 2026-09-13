@@ -24,6 +24,11 @@ foreach(argument_index RANGE 0 ${last_argument_index})
   set(argument_variable "CMAKE_ARGV${argument_index}")
   set(argument "${${argument_variable}}")
   if(found_command_separator)
+    # A CMake list element cannot end in a backslash because it escapes the
+    # semicolon separating it from the next element.
+    if(WIN32 AND argument MATCHES "\\\\$")
+      string(REGEX REPLACE "\\\\$" "/" argument "${argument}")
+    endif()
     string(REPLACE ";" "\\;" escaped_argument "${argument}")
     list(APPEND activity_command "${escaped_argument}")
   elseif(argument STREQUAL "--")

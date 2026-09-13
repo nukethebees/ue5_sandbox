@@ -21,6 +21,10 @@ concept queueable_from =
 // Lock-free multi-producer single-consumer queue
 // Contract: The swap_and_{x}() functions must only be called when all enqueue() operations
 // are complete (e.g., at end of frame after all producers have finished)
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4324)
+#endif
 template <typename T, typename Allocator = std::allocator<T>>
     requires (std::is_nothrow_constructible_v<T> || std::is_nothrow_move_constructible_v<T>)
 class LockFreeMPSCQueue {
@@ -191,4 +195,7 @@ class LockFreeMPSCQueue {
     alignas(cache_line_size_bytes) std::atomic_size_t write_buffer_index_{0};
     alignas(cache_line_size_bytes) std::atomic_size_t write_index_{0};
 };
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 }
