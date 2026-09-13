@@ -1,5 +1,7 @@
 #pragma once
 
+#include "sandbox/simulation/entity_life_state.h"
+
 #include <cstdint>
 #include <limits>
 
@@ -61,9 +63,4 @@ enum class RegistryHandleState : std::uint8_t {
     Null,
 };
 
-enum class DeathReason : std::uint8_t {
-    Unset,
-    Unknown,
-    Combat,
-};
 }

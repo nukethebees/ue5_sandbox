@@ -40,6 +40,7 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/entities/EntityDeathInfo.h
   include/sandbox/simulation/entities/RegistryHandleState.h
   include/sandbox/simulation/entities/TestDeathReason.h
+  include/sandbox/simulation/entity_life_state.h
   include/sandbox/simulation/entities/TestEntityOwnerId.h
   include/sandbox/simulation/entities/TestEntityUniqueEntityData.h
   include/sandbox/simulation/entities/TestEntityUniqueId.h

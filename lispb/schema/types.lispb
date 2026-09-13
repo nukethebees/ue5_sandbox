@@ -194,6 +194,11 @@
   :header "sandbox/simulation/level_event_types.h"
   :pass-by value)
 
+(type native_uint8
+  :spelling "std::uint8_t"
+  :header "cstdint"
+  :pass-by value)
+
 (type native_level_mission_event_type
   :spelling "ml::simulation::LevelMissionEventType"
   :header "sandbox/simulation/level_event_types.h"
@@ -201,7 +206,12 @@
 
 (type native_death_reason
   :spelling "ml::simulation::DeathReason"
-  :header "sandbox/simulation/entity_types.h"
+  :header "sandbox/simulation/entity_life_state.h"
+  :pass-by value)
+
+(type native_life_state
+  :spelling "ml::simulation::LifeState"
+  :header "sandbox/simulation/entity_life_state.h"
   :pass-by value)
 
 (type native_entity_type

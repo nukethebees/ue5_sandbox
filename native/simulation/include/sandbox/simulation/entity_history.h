@@ -6,6 +6,7 @@
 #include "native_soa/storage.h"
 #include "sandbox/core/soa_permutation.h"
 #include "sandbox/simulation/entity_handle.h"
+#include "sandbox/simulation/entity_life_state.h"
 #include "sandbox/simulation/entity_types.h"
 
 #include <cstring>
@@ -24,9 +25,8 @@ struct EntityHistoryColumnsConstView {
     std::span<ml::simulation::EntityType const> entity_types;
     std::span<ml::simulation::Team const> teams;
     std::span<std::uint32_t const> kills;
-    std::span<std::uint8_t const> alive;
     std::span<ml::simulation::EntityUniqueId const> killed_by;
-    std::span<ml::simulation::DeathReason const> death_reason;
+    std::span<ml::simulation::LifeState const> life_state;
     auto num() const noexcept -> size_type {
         return static_cast<size_type>(registry_indices.size());
     }
@@ -38,9 +38,8 @@ struct EntityHistoryColumnsConstView {
         fn(entity_types);
         fn(teams);
         fn(kills);
-        fn(alive);
         fn(killed_by);
-        fn(death_reason);
+        fn(life_state);
     }
     void validate_array_sizes() const {
         auto const count{num()};
@@ -60,9 +59,8 @@ struct EntityHistoryColumnsConstView {
             entity_types.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             teams.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             kills.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            alive.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             killed_by.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            death_reason.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
+            life_state.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
         };
     }
     auto get_view() const -> EntityHistoryColumnsConstView { return *this; }
@@ -77,9 +75,8 @@ struct EntityHistoryColumnsConstView {
             entity_types,
             teams,
             kills,
-            alive,
             killed_by,
-            death_reason,
+            life_state,
         };
     }
     auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
@@ -101,9 +98,8 @@ struct EntityHistoryColumnsView {
     std::span<ml::simulation::EntityType> entity_types;
     std::span<ml::simulation::Team> teams;
     std::span<std::uint32_t> kills;
-    std::span<std::uint8_t> alive;
     std::span<ml::simulation::EntityUniqueId> killed_by;
-    std::span<ml::simulation::DeathReason> death_reason;
+    std::span<ml::simulation::LifeState> life_state;
     auto num() const noexcept -> size_type {
         return static_cast<size_type>(registry_indices.size());
     }
@@ -115,9 +111,8 @@ struct EntityHistoryColumnsView {
         fn(entity_types);
         fn(teams);
         fn(kills);
-        fn(alive);
         fn(killed_by);
-        fn(death_reason);
+        fn(life_state);
     }
     void validate_array_sizes() const {
         auto const count{num()};
@@ -136,9 +131,8 @@ struct EntityHistoryColumnsView {
             entity_types.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             teams.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             kills.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            alive.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             killed_by.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            death_reason.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
+            life_state.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
         };
     }
     auto get_view() const -> EntityHistoryColumnsView { return *this; }
@@ -152,9 +146,8 @@ struct EntityHistoryColumnsView {
             entity_types,
             teams,
             kills,
-            alive,
             killed_by,
-            death_reason,
+            life_state,
         };
     }
     auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
@@ -170,18 +163,16 @@ struct EntityHistoryColumnsView {
              ml::simulation::EntityType const new_entity_types,
              ml::simulation::Team const new_teams,
              std::uint32_t const new_kills,
-             std::uint8_t const new_alive,
              ml::simulation::EntityUniqueId const new_killed_by,
-             ml::simulation::DeathReason const new_death_reason) const {
+             ml::simulation::LifeState const new_life_state) const {
         ml::native_soa::require(index >= 0 && index < num());
         registry_indices[static_cast<std::size_t>(index)] = new_registry_indices;
         registry_generations[static_cast<std::size_t>(index)] = new_registry_generations;
         entity_types[static_cast<std::size_t>(index)] = new_entity_types;
         teams[static_cast<std::size_t>(index)] = new_teams;
         kills[static_cast<std::size_t>(index)] = new_kills;
-        alive[static_cast<std::size_t>(index)] = new_alive;
         killed_by[static_cast<std::size_t>(index)] = new_killed_by;
-        death_reason[static_cast<std::size_t>(index)] = new_death_reason;
+        life_state[static_cast<std::size_t>(index)] = new_life_state;
     }
 };
 struct EntityHistoryColumns {
@@ -193,9 +184,8 @@ struct EntityHistoryColumns {
     ml::native_soa::Vector<ml::simulation::EntityType> entity_types;
     ml::native_soa::Vector<ml::simulation::Team> teams;
     ml::native_soa::Vector<std::uint32_t> kills;
-    ml::native_soa::Vector<std::uint8_t> alive;
     ml::native_soa::Vector<ml::simulation::EntityUniqueId> killed_by;
-    ml::native_soa::Vector<ml::simulation::DeathReason> death_reason;
+    ml::native_soa::Vector<ml::simulation::LifeState> life_state;
     auto num() const noexcept -> size_type {
         return static_cast<size_type>(registry_indices.size());
     }
@@ -207,9 +197,8 @@ struct EntityHistoryColumns {
         fn(entity_types);
         fn(teams);
         fn(kills);
-        fn(alive);
         fn(killed_by);
-        fn(death_reason);
+        fn(life_state);
     }
     template <typename Fn>
     void each_column(Fn&& fn) const {
@@ -218,9 +207,8 @@ struct EntityHistoryColumns {
         fn(entity_types);
         fn(teams);
         fn(kills);
-        fn(alive);
         fn(killed_by);
-        fn(death_reason);
+        fn(life_state);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
     void reserve(size_type const count) {
@@ -230,9 +218,8 @@ struct EntityHistoryColumns {
         entity_types.reserve(static_cast<std::size_t>(count));
         teams.reserve(static_cast<std::size_t>(count));
         kills.reserve(static_cast<std::size_t>(count));
-        alive.reserve(static_cast<std::size_t>(count));
         killed_by.reserve(static_cast<std::size_t>(count));
-        death_reason.reserve(static_cast<std::size_t>(count));
+        life_state.reserve(static_cast<std::size_t>(count));
     }
     void reset() noexcept {
         registry_indices.clear();
@@ -240,9 +227,8 @@ struct EntityHistoryColumns {
         entity_types.clear();
         teams.clear();
         kills.clear();
-        alive.clear();
         killed_by.clear();
-        death_reason.clear();
+        life_state.clear();
     }
     void set_num(size_type const count) {
         ml::native_soa::require(count >= 0);
@@ -252,9 +238,8 @@ struct EntityHistoryColumns {
         entity_types.resize(size);
         teams.resize(size);
         kills.resize(size);
-        alive.resize(size);
         killed_by.resize(size);
-        death_reason.resize(size);
+        life_state.resize(size);
     }
     void add_uninitialised(size_type const count) {
         auto const old_num{num()};
@@ -285,13 +270,10 @@ struct EntityHistoryColumns {
             kills[index + i] = kills[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
-            alive[index + i] = alive[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
             killed_by[index + i] = killed_by[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
-            death_reason[index + i] = death_reason[source + i];
+            life_state[index + i] = life_state[source + i];
         }
         set_num(old_num - count);
     }
@@ -301,27 +283,24 @@ struct EntityHistoryColumns {
              ml::simulation::EntityType const new_entity_types,
              ml::simulation::Team const new_teams,
              std::uint32_t const new_kills,
-             std::uint8_t const new_alive,
              ml::simulation::EntityUniqueId const new_killed_by,
-             ml::simulation::DeathReason const new_death_reason) {
+             ml::simulation::LifeState const new_life_state) {
         get_view().set(index,
                        new_registry_indices,
                        new_registry_generations,
                        new_entity_types,
                        new_teams,
                        new_kills,
-                       new_alive,
                        new_killed_by,
-                       new_death_reason);
+                       new_life_state);
     }
     auto add(FRegistryEntityHandle::index_type const new_registry_indices,
              FRegistryEntityHandle::generation_type const new_registry_generations,
              ml::simulation::EntityType const new_entity_types,
              ml::simulation::Team const new_teams,
              std::uint32_t const new_kills,
-             std::uint8_t const new_alive,
              ml::simulation::EntityUniqueId const new_killed_by,
-             ml::simulation::DeathReason const new_death_reason) -> size_type {
+             ml::simulation::LifeState const new_life_state) -> size_type {
         auto const index{num()};
         add_defaulted(1);
         set(index,
@@ -330,9 +309,8 @@ struct EntityHistoryColumns {
             new_entity_types,
             new_teams,
             new_kills,
-            new_alive,
             new_killed_by,
-            new_death_reason);
+            new_life_state);
         return index;
     }
     void append_from(ConstView source) {
@@ -379,12 +357,6 @@ struct EntityHistoryColumns {
                                     address >= begin + kills.size() * sizeof(std::uint32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.alive.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(alive.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + alive.size() * sizeof(std::uint8_t));
-        }
-        {
             auto const address{reinterpret_cast<std::uintptr_t>(source.killed_by.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(killed_by.data())};
             ml::native_soa::require(address < begin ||
@@ -392,11 +364,11 @@ struct EntityHistoryColumns {
                                                            sizeof(ml::simulation::EntityUniqueId));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.death_reason.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(death_reason.data())};
+            auto const address{reinterpret_cast<std::uintptr_t>(source.life_state.data())};
+            auto const begin{reinterpret_cast<std::uintptr_t>(life_state.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + death_reason.size() *
-                                                           sizeof(ml::simulation::DeathReason));
+                                    address >= begin + life_state.size() *
+                                                           sizeof(ml::simulation::LifeState));
         }
         registry_indices.insert(
             registry_indices.end(), source.registry_indices.begin(), source.registry_indices.end());
@@ -407,10 +379,8 @@ struct EntityHistoryColumns {
             entity_types.end(), source.entity_types.begin(), source.entity_types.end());
         teams.insert(teams.end(), source.teams.begin(), source.teams.end());
         kills.insert(kills.end(), source.kills.begin(), source.kills.end());
-        alive.insert(alive.end(), source.alive.begin(), source.alive.end());
         killed_by.insert(killed_by.end(), source.killed_by.begin(), source.killed_by.end());
-        death_reason.insert(
-            death_reason.end(), source.death_reason.begin(), source.death_reason.end());
+        life_state.insert(life_state.end(), source.life_state.begin(), source.life_state.end());
     }
     auto get_view() -> View {
         return {
@@ -419,9 +389,8 @@ struct EntityHistoryColumns {
             entity_types,
             teams,
             kills,
-            alive,
             killed_by,
-            death_reason,
+            life_state,
         };
     }
     auto get_view() const -> ConstView {
@@ -431,9 +400,8 @@ struct EntityHistoryColumns {
             entity_types,
             teams,
             kills,
-            alive,
             killed_by,
-            death_reason,
+            life_state,
         };
     }
     auto get_const_view() const -> ConstView { return get_view(); }
@@ -468,12 +436,10 @@ struct EntityHistoryColumns {
             other.teams[static_cast<std::size_t>(src_index)];
         kills[static_cast<std::size_t>(dst_index)] =
             other.kills[static_cast<std::size_t>(src_index)];
-        alive[static_cast<std::size_t>(dst_index)] =
-            other.alive[static_cast<std::size_t>(src_index)];
         killed_by[static_cast<std::size_t>(dst_index)] =
             other.killed_by[static_cast<std::size_t>(src_index)];
-        death_reason[static_cast<std::size_t>(dst_index)] =
-            other.death_reason[static_cast<std::size_t>(src_index)];
+        life_state[static_cast<std::size_t>(dst_index)] =
+            other.life_state[static_cast<std::size_t>(src_index)];
     }
     template <typename Other>
     void copy_elements(size_type const dst_index,
@@ -528,9 +494,8 @@ struct EntityHistoryColumnsSingleLayout {
     inline static constexpr ColLayout<ml::simulation::EntityType> EntityTypes{RegistryGenerations};
     inline static constexpr ColLayout<ml::simulation::Team> Teams{EntityTypes};
     inline static constexpr ColLayout<std::uint32_t> Kills{Teams};
-    inline static constexpr ColLayout<std::uint8_t> Alive{Kills};
-    inline static constexpr ColLayout<ml::simulation::EntityUniqueId> KilledBy{Alive};
-    inline static constexpr ColLayout<ml::simulation::DeathReason> DeathReasonColumn{KilledBy};
+    inline static constexpr ColLayout<ml::simulation::EntityUniqueId> KilledBy{Kills};
+    inline static constexpr ColLayout<ml::simulation::LifeState> LifeStateColumn{KilledBy};
 
     inline static constexpr byte_size_type allocation_alignment{
         ml::native_soa::maximum_alignment(RegistryIndices,
@@ -538,19 +503,18 @@ struct EntityHistoryColumnsSingleLayout {
                                           EntityTypes,
                                           Teams,
                                           Kills,
-                                          Alive,
                                           KilledBy,
-                                          DeathReasonColumn)};
+                                          LifeStateColumn)};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::layout_align(DeathReasonColumn.block_end, allocation_alignment) +
-        7 * (column_gap + allocation_alignment - 1)};
+        ml::native_soa::layout_align(LifeStateColumn.block_end, allocation_alignment) +
+        6 * (column_gap + allocation_alignment - 1)};
     inline static constexpr size_type max_capacity{
         ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : DeathReasonColumn.data_end(blocks);
+        return blocks == 0 ? 0 : LifeStateColumn.data_end(blocks);
     }
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
@@ -575,16 +539,12 @@ struct EntityHistoryColumnsSingleLayout {
             "Single-allocation leaf kills requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::native_soa::supported_leaf<std::uint8_t>,
-            "Single-allocation leaf alive requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
             ml::native_soa::supported_leaf<ml::simulation::EntityUniqueId>,
             "Single-allocation leaf killed_by requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::native_soa::supported_leaf<ml::simulation::DeathReason>,
-            "Single-allocation leaf death_reason requires a non-cv, trivially "
+            ml::native_soa::supported_leaf<ml::simulation::LifeState>,
+            "Single-allocation leaf life_state requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
 
         static_assert(
@@ -601,17 +561,14 @@ struct EntityHistoryColumnsSingleLayout {
                       (max_allocation_size - Teams.block_offset) / capacity_granularity);
         static_assert(sizeof(std::uint32_t) <=
                       (max_allocation_size - Kills.block_offset) / capacity_granularity);
-        static_assert(sizeof(std::uint8_t) <=
-                      (max_allocation_size - Alive.block_offset) / capacity_granularity);
         static_assert(sizeof(ml::simulation::EntityUniqueId) <=
                       (max_allocation_size - KilledBy.block_offset) / capacity_granularity);
-        static_assert(sizeof(ml::simulation::DeathReason) <=
-                      (max_allocation_size - DeathReasonColumn.block_offset) /
-                          capacity_granularity);
-        static_assert(
-            7 <= (max_allocation_size -
-                  ml::native_soa::layout_align(DeathReasonColumn.block_end, allocation_alignment)) /
-                     (column_gap + allocation_alignment - 1));
+        static_assert(sizeof(ml::simulation::LifeState) <=
+                      (max_allocation_size - LifeStateColumn.block_offset) / capacity_granularity);
+        static_assert(6 <=
+                      (max_allocation_size - ml::native_soa::layout_align(LifeStateColumn.block_end,
+                                                                          allocation_alignment)) /
+                          (column_gap + allocation_alignment - 1));
         static_assert(max_capacity >= capacity_granularity);
         return true;
     };
@@ -654,9 +611,8 @@ struct EntityHistoryStorage
         Element<ml::simulation::EntityType>* entity_types{};
         Element<ml::simulation::Team>* teams{};
         Element<std::uint32_t>* kills{};
-        Element<std::uint8_t>* alive{};
         Element<ml::simulation::EntityUniqueId>* killed_by{};
-        Element<ml::simulation::DeathReason>* death_reason{};
+        Element<ml::simulation::LifeState>* life_state{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (registry_indices == nullptr) {
                 return {};
@@ -666,9 +622,8 @@ struct EntityHistoryStorage
                     entity_types + offset,
                     teams + offset,
                     kills + offset,
-                    alive + offset,
                     killed_by + offset,
-                    death_reason + offset};
+                    life_state + offset};
         }
     };
     template <typename Self>
@@ -703,9 +658,8 @@ struct EntityHistoryStorage
                 pointer_at(EntityTypes),
                 pointer_at(Teams),
                 pointer_at(Kills),
-                pointer_at(Alive),
                 pointer_at(KilledBy),
-                pointer_at(DeathReasonColumn)};
+                pointer_at(LifeStateColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -724,11 +678,9 @@ struct EntityHistoryStorage
                                                                           count);
         std::uninitialized_value_construct_n<ml::simulation::Team*>(columns.teams, count);
         std::uninitialized_value_construct_n<std::uint32_t*>(columns.kills, count);
-        std::uninitialized_value_construct_n<std::uint8_t*>(columns.alive, count);
         std::uninitialized_value_construct_n<ml::simulation::EntityUniqueId*>(columns.killed_by,
                                                                               count);
-        std::uninitialized_value_construct_n<ml::simulation::DeathReason*>(columns.death_reason,
-                                                                           count);
+        std::uninitialized_value_construct_n<ml::simulation::LifeState*>(columns.life_state, count);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -747,9 +699,8 @@ struct EntityHistoryStorage
         auto const entity_types_bytes{elements_to_move * sizeof(ml::simulation::EntityType)};
         auto const teams_bytes{elements_to_move * sizeof(ml::simulation::Team)};
         auto const kills_bytes{elements_to_move * sizeof(std::uint32_t)};
-        auto const alive_bytes{elements_to_move * sizeof(std::uint8_t)};
         auto const killed_by_bytes{elements_to_move * sizeof(ml::simulation::EntityUniqueId)};
-        auto const death_reason_bytes{elements_to_move * sizeof(ml::simulation::DeathReason)};
+        auto const life_state_bytes{elements_to_move * sizeof(ml::simulation::LifeState)};
         std::memcpy(columns.registry_indices + index,
                     columns.registry_indices + source,
                     registry_indices_bytes);
@@ -760,10 +711,8 @@ struct EntityHistoryStorage
             columns.entity_types + index, columns.entity_types + source, entity_types_bytes);
         std::memcpy(columns.teams + index, columns.teams + source, teams_bytes);
         std::memcpy(columns.kills + index, columns.kills + source, kills_bytes);
-        std::memcpy(columns.alive + index, columns.alive + source, alive_bytes);
         std::memcpy(columns.killed_by + index, columns.killed_by + source, killed_by_bytes);
-        std::memcpy(
-            columns.death_reason + index, columns.death_reason + source, death_reason_bytes);
+        std::memcpy(columns.life_state + index, columns.life_state + source, life_state_bytes);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -786,9 +735,8 @@ struct EntityHistoryStorage
         auto const entity_types_bytes{elements_to_copy * sizeof(ml::simulation::EntityType)};
         auto const teams_bytes{elements_to_copy * sizeof(ml::simulation::Team)};
         auto const kills_bytes{elements_to_copy * sizeof(std::uint32_t)};
-        auto const alive_bytes{elements_to_copy * sizeof(std::uint8_t)};
         auto const killed_by_bytes{elements_to_copy * sizeof(ml::simulation::EntityUniqueId)};
-        auto const death_reason_bytes{elements_to_copy * sizeof(ml::simulation::DeathReason)};
+        auto const life_state_bytes{elements_to_copy * sizeof(ml::simulation::LifeState)};
         std::memcpy(
             destination.registry_indices, source.registry_indices.data(), registry_indices_bytes);
         std::memcpy(destination.registry_generations,
@@ -797,9 +745,8 @@ struct EntityHistoryStorage
         std::memcpy(destination.entity_types, source.entity_types.data(), entity_types_bytes);
         std::memcpy(destination.teams, source.teams.data(), teams_bytes);
         std::memcpy(destination.kills, source.kills.data(), kills_bytes);
-        std::memcpy(destination.alive, source.alive.data(), alive_bytes);
         std::memcpy(destination.killed_by, source.killed_by.data(), killed_by_bytes);
-        std::memcpy(destination.death_reason, source.death_reason.data(), death_reason_bytes);
+        std::memcpy(destination.life_state, source.life_state.data(), life_state_bytes);
     }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::native_soa::allocate(
@@ -819,9 +766,8 @@ struct EntityHistoryStorage
             auto const entity_types_bytes{live_count * sizeof(ml::simulation::EntityType)};
             auto const teams_bytes{live_count * sizeof(ml::simulation::Team)};
             auto const kills_bytes{live_count * sizeof(std::uint32_t)};
-            auto const alive_bytes{live_count * sizeof(std::uint8_t)};
             auto const killed_by_bytes{live_count * sizeof(ml::simulation::EntityUniqueId)};
-            auto const death_reason_bytes{live_count * sizeof(ml::simulation::DeathReason)};
+            auto const life_state_bytes{live_count * sizeof(ml::simulation::LifeState)};
             std::memcpy(
                 destination.registry_indices, source.registry_indices, registry_indices_bytes);
             std::memcpy(destination.registry_generations,
@@ -830,9 +776,8 @@ struct EntityHistoryStorage
             std::memcpy(destination.entity_types, source.entity_types, entity_types_bytes);
             std::memcpy(destination.teams, source.teams, teams_bytes);
             std::memcpy(destination.kills, source.kills, kills_bytes);
-            std::memcpy(destination.alive, source.alive, alive_bytes);
             std::memcpy(destination.killed_by, source.killed_by, killed_by_bytes);
-            std::memcpy(destination.death_reason, source.death_reason, death_reason_bytes);
+            std::memcpy(destination.life_state, source.life_state, life_state_bytes);
         }
         ml::native_soa::free(data_, allocation_alignment);
         data_ = new_data;
@@ -877,19 +822,14 @@ struct EntityHistoryColumnsSingleConstView : ml::native_soa::CompactViewState<tr
                     EntityHistoryColumnsSingleLayout::Kills.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto alive() const -> std::span<std::uint8_t const> {
-        return {column_data<std::uint8_t>(
-                    EntityHistoryColumnsSingleLayout::Alive.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
     auto killed_by() const -> std::span<ml::simulation::EntityUniqueId const> {
         return {column_data<ml::simulation::EntityUniqueId>(
                     EntityHistoryColumnsSingleLayout::KilledBy.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto death_reason() const -> std::span<ml::simulation::DeathReason const> {
-        return {column_data<ml::simulation::DeathReason>(
-                    EntityHistoryColumnsSingleLayout::DeathReasonColumn.offset(capacity_blocks())),
+    auto life_state() const -> std::span<ml::simulation::LifeState const> {
+        return {column_data<ml::simulation::LifeState>(
+                    EntityHistoryColumnsSingleLayout::LifeStateColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto columns() const -> EntityHistoryColumnsConstView {
@@ -914,14 +854,11 @@ struct EntityHistoryColumnsSingleConstView : ml::native_soa::CompactViewState<tr
             {column_data_unchecked<std::uint32_t>(
                  EntityHistoryColumnsSingleLayout::Kills.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::uint8_t>(
-                 EntityHistoryColumnsSingleLayout::Alive.offset(blocks)),
-             static_cast<std::size_t>(count_)},
             {column_data_unchecked<ml::simulation::EntityUniqueId>(
                  EntityHistoryColumnsSingleLayout::KilledBy.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<ml::simulation::DeathReason>(
-                 EntityHistoryColumnsSingleLayout::DeathReasonColumn.offset(blocks)),
+            {column_data_unchecked<ml::simulation::LifeState>(
+                 EntityHistoryColumnsSingleLayout::LifeStateColumn.offset(blocks)),
              static_cast<std::size_t>(count_)}};
     }
     template <typename Func>
@@ -967,19 +904,14 @@ struct EntityHistoryColumnsSingleView : ml::native_soa::CompactViewState<false> 
                     EntityHistoryColumnsSingleLayout::Kills.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto alive() const -> std::span<std::uint8_t> {
-        return {column_data<std::uint8_t>(
-                    EntityHistoryColumnsSingleLayout::Alive.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
     auto killed_by() const -> std::span<ml::simulation::EntityUniqueId> {
         return {column_data<ml::simulation::EntityUniqueId>(
                     EntityHistoryColumnsSingleLayout::KilledBy.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto death_reason() const -> std::span<ml::simulation::DeathReason> {
-        return {column_data<ml::simulation::DeathReason>(
-                    EntityHistoryColumnsSingleLayout::DeathReasonColumn.offset(capacity_blocks())),
+    auto life_state() const -> std::span<ml::simulation::LifeState> {
+        return {column_data<ml::simulation::LifeState>(
+                    EntityHistoryColumnsSingleLayout::LifeStateColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto columns() const -> EntityHistoryColumnsView {
@@ -1004,14 +936,11 @@ struct EntityHistoryColumnsSingleView : ml::native_soa::CompactViewState<false> 
             {column_data_unchecked<std::uint32_t>(
                  EntityHistoryColumnsSingleLayout::Kills.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::uint8_t>(
-                 EntityHistoryColumnsSingleLayout::Alive.offset(blocks)),
-             static_cast<std::size_t>(count_)},
             {column_data_unchecked<ml::simulation::EntityUniqueId>(
                  EntityHistoryColumnsSingleLayout::KilledBy.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<ml::simulation::DeathReason>(
-                 EntityHistoryColumnsSingleLayout::DeathReasonColumn.offset(blocks)),
+            {column_data_unchecked<ml::simulation::LifeState>(
+                 EntityHistoryColumnsSingleLayout::LifeStateColumn.offset(blocks)),
              static_cast<std::size_t>(count_)}};
     }
     template <typename Func>

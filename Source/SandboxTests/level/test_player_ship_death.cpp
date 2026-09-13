@@ -102,7 +102,8 @@ void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
     samples.add(test_driver->get_time(),
                 FSimulationSample{test_driver->get_registry().is_valid_dead(player_ship_handle),
                                   IsValid(player_ship.Get()),
-                                  static_cast<bool>(unique_entities.alive[player_ship_id.id]),
+                                  unique_entities.life_state[player_ship_id.id] ==
+                                      ml::simulation::LifeState::Alive,
                                   IsValid(controller) && IsValid(controller->GetPawn()),
                                   IsValid(controller) && controller->get_active_control_context() ==
                                                              EPlayerControlContext::Player});

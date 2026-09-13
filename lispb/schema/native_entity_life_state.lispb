@@ -1,0 +1,12 @@
+(enum-module native_entity_life_state
+  :header "native/simulation/include/sandbox/simulation/entity_life_state.h"
+  :namespace ml::simulation
+  (enum LifeState @native_uint8
+    (value Alive)
+    (value Unknown)
+    (value Combat))
+  (enum DeathReason @native_uint8
+    (value Unknown
+      :value "static_cast<std::uint8_t>(LifeState::Unknown)")
+    (value Combat
+      :value "static_cast<std::uint8_t>(LifeState::Combat)")))

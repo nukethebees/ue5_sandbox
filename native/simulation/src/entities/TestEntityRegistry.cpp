@@ -469,10 +469,9 @@ void FTestEntityRegistry::validate_unique_entity_data() const {
         assert(handle_status != ml::simulation::RegistryHandleState::Invalid);
         assert(handle_status != ml::simulation::RegistryHandleState::Null);
 
-        if (unique_entities.alive[i]) {
-            continue;
-        }
-        assert(unique_entities.death_reason[i] != ml::simulation::DeathReason::Unset);
+        assert(unique_entities.life_state[i] == ml::simulation::LifeState::Alive ||
+               unique_entities.life_state[i] == ml::simulation::LifeState::Unknown ||
+               unique_entities.life_state[i] == ml::simulation::LifeState::Combat);
     }
 }
 void FTestEntityRegistry::validate_handles(std::span<FRegistryEntityHandle const> const handles) {

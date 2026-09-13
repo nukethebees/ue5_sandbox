@@ -32,8 +32,8 @@ auto record_entity_deaths(EntityRegistryBookkeeping& bookkeeping,
         bookkeeping.record_dead(victim_handle);
 
         auto const victim_element{static_cast<std::size_t>(victim_id->id)};
-        history.alive[victim_element] = 0;
-        history.death_reason[victim_element] = death_events.reasons[event_element];
+        history.life_state[victim_element] =
+            static_cast<LifeState>(death_events.reasons[event_element]);
         statistics.record_destroyed(history.teams[victim_element],
                                     history.entity_types[victim_element]);
 

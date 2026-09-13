@@ -60,6 +60,7 @@ native/simulation/include/sandbox/simulation/direct_damage_events.h
 native/simulation/include/sandbox/simulation/entity_cell_data.h
 native/simulation/include/sandbox/simulation/entity_death_info.h
 native/simulation/include/sandbox/simulation/entity_history.h
+native/simulation/include/sandbox/simulation/entity_life_state.h
 native/simulation/include/sandbox/simulation/entity_overlaps.h
 native/simulation/include/sandbox/simulation/fighter_entity_data.h
 native/simulation/include/sandbox/simulation/fighter_order_queue.h

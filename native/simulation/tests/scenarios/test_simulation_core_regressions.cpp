@@ -231,8 +231,8 @@ void run_worldless_collision_damage(ml::simulation_tests::SimulationFixture cons
     ml::simulation_tests::expect_equal(
         0, third.kill_count, "Collision death grants no combat kill");
     ml::simulation_tests::expect_true(
-        harness.get_registry().get_unique_entities().death_reason[capital_id.id] ==
-            ml::simulation::DeathReason::Unknown,
+        harness.get_registry().get_unique_entities().life_state[capital_id.id] ==
+            ml::simulation::LifeState::Unknown,
         "Collision death is environmental");
 }
 }
