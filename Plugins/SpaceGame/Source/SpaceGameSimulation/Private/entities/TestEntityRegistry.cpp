@@ -13,22 +13,6 @@
 #include <utility>
 
 /* **************************************** */
-// Spawned entity handles
-/* **************************************** */
-auto SpawnedEntityHandles::num() const -> int32 {
-    return registry_handles.num();
-}
-void SpawnedEntityHandles::reset() {
-    registry_handles.reset();
-}
-void SpawnedEntityHandles::add_defaulted(int32 const count) {
-    registry_handles.add_defaulted(count);
-}
-void SpawnedEntityHandles::add_uninitialised(int32 const count) {
-    registry_handles.add_uninitialised(count);
-}
-
-/* **************************************** */
 // Lifecycle
 /* **************************************** */
 void FTestEntityRegistry::reset() {

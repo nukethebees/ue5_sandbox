@@ -1371,7 +1371,8 @@ void Simulation::commit_spawns() {
     ml::fill(new_spawn_entity_data.velocities, 0.f);
 
     new_spawn_entity_handles = entity_registry.add_entities(new_spawn_entity_data.get_const_view());
-    new_spawn_entity_handles.registry_handles.append_to(data.entity_handles);
+    ml::append_registry_entity_handles(new_spawn_entity_handles.registry_handles,
+                                       data.entity_handles);
     if (fighter_diagnostics::enabled.GetValueOnGameThread() != 0) {
         for (int32 i{}; i < n_new; ++i) {
             if (!fighter_diagnostics::take_report(diagnostic_spawn_reports, 64)) {

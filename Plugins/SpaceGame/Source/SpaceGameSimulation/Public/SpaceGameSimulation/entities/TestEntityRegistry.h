@@ -2,6 +2,7 @@
 
 #include <sandbox/simulation/entity_registry_bookkeeping.h>
 #include <sandbox/simulation/entity_registry_statistics.h>
+#include <sandbox/simulation/spawned_entity_handles.h>
 
 #include "SpaceGameSimulation/entities/TestEntityRegistryData.h"
 
@@ -18,16 +19,7 @@
 
 #include "CoreMinimal.h"
 
-struct SpawnedEntityHandles {
-    FRegistryEntityHandles registry_handles;
-    // Handles retain input order; the ID at input index i is first_id + i.
-    TestEntityUniqueId first_id;
-
-    auto num() const -> int32;
-    void reset();
-    void add_defaulted(int32 const count);
-    void add_uninitialised(int32 const count);
-};
+using SpawnedEntityHandles = ml::simulation::SpawnedEntityHandles;
 
 struct SPACEGAMESIMULATION_API FTestEntityRegistry {
   public:

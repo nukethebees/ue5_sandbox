@@ -131,8 +131,8 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
     TEST_METHOD(MixedSlotReusePreservesDataAndHistoricalIdentity)
     {
         auto initial{ml::registry_tests::make_entities(4)};
-        auto const old_handles{
-            registry_.add_entities(view_of(initial)).registry_handles.to_array()};
+        auto const old_handles{ml::to_registry_entity_handle_array(
+            registry_.add_entities(view_of(initial)).registry_handles)};
         initial.alive[0] = 0;
         initial.alive[2] = 0;
         EntityDeathInfo deaths;
@@ -148,7 +148,7 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
 
         auto const added{ml::registry_tests::make_entities(3, 20)};
         auto const spawned{registry_.add_entities(view_of(added))};
-        auto const handles{spawned.registry_handles.to_array()};
+        auto const handles{ml::to_registry_entity_handle_array(spawned.registry_handles)};
         TestRunner->TestEqual(TEXT("New IDs start after history"), spawned.first_id.id, 4);
         TestRunner->TestEqual(TEXT("Only remainder appended"), registry_.get_num_elements(), 5);
         TestRunner->TestTrue(TEXT("Free slots are consumed from tail"),
@@ -188,7 +188,8 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
     {
         auto initial{ml::registry_tests::make_entities(3)};
         initial.alive[2] = 0;
-        auto const handles{registry_.add_entities(view_of(initial)).registry_handles.to_array()};
+        auto const handles{ml::to_registry_entity_handle_array(
+            registry_.add_entities(view_of(initial)).registry_handles)};
         check_counts();
         auto first{ml::registry_tests::make_entities(2, 30)};
         first.teams[1] = ETestTeam::Green;
@@ -242,7 +243,8 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
     TEST_METHOD(MovementReportsOnlyTransformChanges)
     {
         auto initial{ml::registry_tests::make_entities(4)};
-        auto const handles{registry_.add_entities(view_of(initial)).registry_handles.to_array()};
+        auto const handles{ml::to_registry_entity_handle_array(
+            registry_.add_entities(view_of(initial)).registry_handles)};
         TestRunner->TestEqual(
             TEXT("Spawn is not movement"), registry_.get_moved_entities_this_tick().Num(), 0);
 
@@ -283,7 +285,8 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
     TEST_METHOD(RepeatedLocalMovementProducesOneConsolidatedRegistryUpdate)
     {
         auto const initial{ml::registry_tests::make_entities(2)};
-        auto const handles{registry_.add_entities(view_of(initial)).registry_handles.to_array()};
+        auto const handles{ml::to_registry_entity_handle_array(
+            registry_.add_entities(view_of(initial)).registry_handles)};
 
         auto first{initial};
         first.locations.xs[0] += 20.f;
@@ -314,7 +317,7 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
     TEST_METHOD(MovementIsPerTickAndGenerationSafeAcrossSlotReuse)
     {
         auto data{ml::registry_tests::make_entities(1)};
-        auto const old_handle{registry_.add_entities(view_of(data)).registry_handles.to_array()[0]};
+        auto const old_handle{registry_.add_entities(view_of(data)).get_handle(0)};
 
         data.locations.ys[0] += 10.f;
         registry_.queue_entity_updates({TArray{old_handle}, view_of(data)}, {});
@@ -337,8 +340,7 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
         registry_.begin_tick();
 
         auto replacement_data{ml::registry_tests::make_entities(1, 20)};
-        auto const replacement{
-            registry_.add_entities(view_of(replacement_data)).registry_handles.to_array()[0]};
+        auto const replacement{registry_.add_entities(view_of(replacement_data)).get_handle(0)};
         TestRunner->TestTrue(TEXT("Replacement reuses the slot with a new generation"),
                              replacement.index == old_handle.index &&
                                  replacement.generation != old_handle.generation);
@@ -389,20 +391,19 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
     {
         auto data{ml::registry_tests::make_entities(1)};
         data.alive[0] = 0;
-        auto const first{registry_.add_entities(view_of(data)).registry_handles.to_array()[0]};
+        auto const first{registry_.add_entities(view_of(data)).get_handle(0)};
         check_counts();
         EntityDeathInfo deaths;
         deaths.add(ETestDeathReason::Unknown, first, {});
         registry_.queue_entity_updates({{}, view_of(data, 0, 0)}, deaths);
         registry_.commit_updates();
         data.alive[0] = 1;
-        auto const before_cleanup{
-            registry_.add_entities(view_of(data)).registry_handles.to_array()[0]};
+        auto const before_cleanup{registry_.add_entities(view_of(data)).get_handle(0)};
         TestRunner->TestTrue(TEXT("Dead slot is not free until cleanup"),
                              before_cleanup == FRegistryEntityHandle{1, 0});
         registry_.end_tick();
         registry_.add_entities(view_of(data, 0, 0));
-        auto const reused{registry_.add_entities(view_of(data)).registry_handles.to_array()[0]};
+        auto const reused{registry_.add_entities(view_of(data)).get_handle(0)};
         TestRunner->TestTrue(TEXT("Empty spawn did not consume free slot"),
                              reused == FRegistryEntityHandle{0, 1});
         data.alive[0] = 0;
@@ -412,7 +413,7 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
         registry_.commit_updates();
         registry_.end_tick();
         data.alive[0] = 1;
-        auto const next{registry_.add_entities(view_of(data)).registry_handles.to_array()[0]};
+        auto const next{registry_.add_entities(view_of(data)).get_handle(0)};
         TestRunner->TestTrue(TEXT("Second reuse increments again"),
                              next == FRegistryEntityHandle{0, 2});
         TestRunner->TestEqual(
@@ -443,7 +444,8 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
     TEST_METHOD(TeamChangesSynchronizeHistoryAndSubsequentCombatAttribution)
     {
         auto data{ml::registry_tests::make_entities(2)};
-        auto const handles{registry_.add_entities(view_of(data)).registry_handles.to_array()};
+        auto const handles{ml::to_registry_entity_handle_array(
+            registry_.add_entities(view_of(data)).registry_handles)};
         registry_.record_shots(TArray{handles[0]});
         data.teams[0] = ETestTeam::Green;
         data.teams[1] = ETestTeam::Yellow;
@@ -500,7 +502,8 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
     TEST_METHOD(StaleKillersRetainCreditAcrossTicksAndSlotReuse)
     {
         auto data{ml::registry_tests::make_entities(3)};
-        auto const handles{registry_.add_entities(view_of(data)).registry_handles.to_array()};
+        auto const handles{ml::to_registry_entity_handle_array(
+            registry_.add_entities(view_of(data)).registry_handles)};
         data.alive[0] = 0;
         data.alive[1] = 0;
         EntityDeathInfo deaths;
@@ -516,8 +519,8 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
             TEXT("Only attributed death counts as kill"), registry_.count_kills(), 1);
         registry_.end_tick();
         auto const replacement{ml::registry_tests::make_entities(2, 40)};
-        auto const replacements{
-            registry_.add_entities(view_of(replacement)).registry_handles.to_array()};
+        auto const replacements{ml::to_registry_entity_handle_array(
+            registry_.add_entities(view_of(replacement)).registry_handles)};
         TestRunner->TestTrue(TEXT("Killer handle is stale"), registry_.is_stale(handles[0]));
         auto update{ml::registry_tests::make_entities(1)};
         update.alive[0] = 0;
@@ -545,7 +548,8 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
     TEST_METHOD(RefreshDistinguishesNullStaleDeadAndLiveHandles)
     {
         auto data{ml::registry_tests::make_entities(3)};
-        auto const handles{registry_.add_entities(view_of(data)).registry_handles.to_array()};
+        auto const handles{ml::to_registry_entity_handle_array(
+            registry_.add_entities(view_of(data)).registry_handles)};
         TestRunner->TestTrue(TEXT("Default is null"),
                              registry_.analyse_handle({}) == ERegistryHandleState::Null);
         TestRunner->TestTrue(TEXT("Out of range is invalid"),
@@ -603,7 +607,8 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
     TEST_METHOD(DamageQueuesPreserveBatchesAndResetStartsANewIdentityLifetime)
     {
         auto const data{ml::registry_tests::make_entities(2)};
-        auto const handles{registry_.add_entities(view_of(data)).registry_handles.to_array()};
+        auto const handles{ml::to_registry_entity_handle_array(
+            registry_.add_entities(view_of(data)).registry_handles)};
         DirectDamageEvents first;
         first.add(handles[1], 5, handles[0]);
         first.add(handles[0], 8, {});
@@ -651,7 +656,8 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
         auto const spawned{registry_.add_entities(view_of(data))};
         TestRunner->TestEqual(TEXT("Reset restarts IDs"), spawned.first_id.id, 0);
         TestRunner->TestTrue(TEXT("Reset restarts generations"),
-                             spawned.registry_handles.to_array() == handles);
+                             ml::to_registry_entity_handle_array(spawned.registry_handles) ==
+                                 handles);
         registry_.commit_updates();
         check_row(data, 1, handles[1]);
         TestRunner->TestEqual(

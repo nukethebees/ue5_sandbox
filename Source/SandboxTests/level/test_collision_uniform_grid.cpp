@@ -95,7 +95,7 @@ struct FTraceFixture {
             .alive = alive,
         };
         auto const spawned{registry.add_entities(entity_data)};
-        handles = spawned.registry_handles.to_array();
+        handles = ml::to_registry_entity_handle_array(spawned.registry_handles);
 
         set_entity_aabb(ETestEntityType::CapitalShip, aabb_centre, half_extents);
 
@@ -190,7 +190,7 @@ struct FTraceFixture {
 
         auto const spawned{registry.add_entities(entity_data)};
         grid.rebuild_grid(aabbs);
-        return spawned.registry_handles[0];
+        return spawned.get_handle(0);
     }
 
     FTestEntityRegistry registry;

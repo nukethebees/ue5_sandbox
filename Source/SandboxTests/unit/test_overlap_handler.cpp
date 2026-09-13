@@ -15,7 +15,7 @@ auto spawn_entity(FTestEntityRegistry& registry, ETestEntityType const type)
     data.teams.Add(ETestTeam::Blue);
     data.entity_types.Add(type);
     data.alive.Add(uint8{1});
-    return registry.add_entities(data.get_const_view()).registry_handles[0];
+    return registry.add_entities(data.get_const_view()).get_handle(0);
 }
 
 void mark_dead(FTestEntityRegistry& registry, FRegistryEntityHandle const handle) {

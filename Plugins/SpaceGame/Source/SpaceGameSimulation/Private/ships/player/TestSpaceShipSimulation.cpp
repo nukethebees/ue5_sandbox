@@ -132,7 +132,7 @@ void Simulation::update_entity_registry() {
 void Simulation::register_with_entity_registry() {
     auto const new_entities{
         entity_registry.add_entities(get_entity_update_data().get_const_view())};
-    registry_handle = new_entities.registry_handles[0];
+    registry_handle = new_entities.get_handle(0);
     unique_entity_id = new_entities.first_id;
     check(entity_registry.is_valid_unique_id(unique_entity_id));
 

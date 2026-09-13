@@ -35,7 +35,7 @@ struct FOverlapFixture {
         data.teams.Add(ETestTeam::Blue);
         data.entity_types.Add(type);
         data.alive.Add(uint8{1});
-        return registry.add_entities(data.get_const_view()).registry_handles[0];
+        return registry.add_entities(data.get_const_view()).get_handle(0);
     }
 
     void finish_spawning() {

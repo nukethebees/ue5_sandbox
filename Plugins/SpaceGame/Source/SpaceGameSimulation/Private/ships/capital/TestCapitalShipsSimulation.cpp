@@ -187,7 +187,7 @@ auto Simulation::register_ships(SpawnDataConstView const spawn_data)
     }
 
     auto const new_entities{entity_registry.add_entities(new_entity_data.get_const_view())};
-    auto new_handles{new_entities.registry_handles.to_array()};
+    auto new_handles{ml::to_registry_entity_handle_array(new_entities.registry_handles)};
     for (int32 i{}; i < n_to_add; ++i) {
         entities.handles[first_new_index + i] = new_handles[i];
     }
@@ -333,7 +333,7 @@ void Simulation::refresh_fighter_handles() {
         FMath::Min(spawn_handles.registry_handles.num(), previous.fighter_queue.num())};
     int32 surviving_spawn_count{};
     for (int32 spawn_index{}; spawn_index < spawned_count; ++spawn_index) {
-        auto const fighter_handle{spawn_handles.registry_handles[spawn_index]};
+        auto const fighter_handle{spawn_handles.get_handle(spawn_index)};
         if (!entity_registry.is_valid_alive(fighter_handle)) {
             continue;
         }
@@ -344,8 +344,7 @@ void Simulation::refresh_fighter_handles() {
             auto const replacement{
                 find_first_handle_on_team(previous.fighter_queue.teams[spawn_index])};
             if (!replacement) {
-                fighters_interface.self_destruct_fighter(
-                    spawn_handles.registry_handles[spawn_index]);
+                fighters_interface.self_destruct_fighter(spawn_handles.get_handle(spawn_index));
                 continue;
             }
             destination_handle = *replacement;

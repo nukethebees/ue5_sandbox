@@ -113,7 +113,7 @@ auto Simulation::register_turrets(SpawnDataConstView const spawn_data,
         new_entity_data.alive[i] = static_cast<uint8>(spawn_data.healths[i] > 0);
     }
     auto const new_entities{entity_registry.add_entities(new_entity_data.get_const_view())};
-    auto new_handles{new_entities.registry_handles.to_array()};
+    auto new_handles{ml::to_registry_entity_handle_array(new_entities.registry_handles)};
     for (int32 local_index{}; local_index < n_to_add; ++local_index) {
         entities.handles[first_new_index + local_index] = new_handles[local_index];
     }

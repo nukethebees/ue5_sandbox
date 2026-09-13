@@ -108,7 +108,7 @@ void Simulation::spawn_instances(FVectors3f::ConstView const new_locations,
     auto new_entities{entity_registry.add_entities(entity_data.get_const_view())};
 
     for (int32 i{0}; i < n; ++i) {
-        appended.handles[i] = new_entities.registry_handles[i];
+        appended.handles[i] = new_entities.get_handle(i);
     }
 
     checkCode(validate_array_sizes());
