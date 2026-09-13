@@ -12,3 +12,7 @@
 	path = native/third_party/benchmark
 	url = https://github.com/google/benchmark.git
 	shallow = true
+[submodule "native/third_party/tracy"]
+	path = native/third_party/tracy
+	url = https://github.com/wolfpld/tracy.git
+	shallow = true
