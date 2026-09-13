@@ -12,6 +12,7 @@ public class SGCollision : ModuleRules
         {
             "Core",
             "SandboxCore",
+            "SandboxNative",
         });
         PrivateDependencyModuleNames.AddRange(new string[]
         {

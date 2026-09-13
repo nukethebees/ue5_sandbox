@@ -3,6 +3,7 @@
 #include <CoreMinimal.h>
 
 #include <sandbox/simulation/fixed_tick.h>
+#include <sandbox/simulation/fixed_tick_loop.h>
 
 #include "FixedTickLoop.generated.h"
 
@@ -31,3 +32,9 @@ struct SPACEGAMESIMULATION_API FFixedTickLoop {
     double tick_period{0.0};
     double accumulator{0.0};
 };
+
+namespace ml {
+inline auto to_native(FFixedTickLoop const& value) -> simulation::FixedTickLoop {
+    return {value.tick_rate, value.time_scale, value.tick_period, value.accumulator};
+}
+}

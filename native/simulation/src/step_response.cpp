@@ -18,7 +18,4 @@ auto DampedStepResponse::value_at(float const time) const noexcept -> float {
     return 1.0f - std::exp(-decay_rate_ * time) * oscillation;
 }
 
-auto clamp_health_to_max(int const health, int const max_health) noexcept -> int {
-    return max_health > health ? max_health : health;
-}
 }

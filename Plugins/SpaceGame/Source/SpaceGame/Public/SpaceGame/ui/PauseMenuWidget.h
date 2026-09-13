@@ -1,11 +1,11 @@
 #pragma once
 
+#include "sandbox/simulation/entities/TestEntityRegistry.h"
+#include "sandbox/simulation/simulation/LevelTelemetrySnapshot.h"
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGamePresentation/entities/TeamColours.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipHudKillData.h"
-#include "SpaceGameSimulation/entities/TestEntityRegistry.h"
-#include "SpaceGameSimulation/simulation/LevelTelemetrySnapshot.h"
 
 #include <Input/UIActionBindingHandle.h>
 

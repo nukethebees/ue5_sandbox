@@ -9,7 +9,7 @@
 #include <SpaceGamePresentation/presentation/TurretPresentation.h>
 #include <SpaceGameRendering/SparkEffects.h>
 
-#include <SpaceGameSimulation/simulation/LevelReadView.h>
+#include <sandbox/simulation/simulation/LevelReadView.h>
 
 struct SPACEGAMEPRESENTATION_API FLevelPresentationResources {
     USandboxISMCComponent* lasers{nullptr};

@@ -1,4 +1,7 @@
 #include <SpaceGame/simulation/SimulationConfigConversion.h>
+#include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
+#include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 auto make_simulation_config(FLaserWeaponConfig const& source) -> FSimulationLaserWeaponConfig {
     FSimulationLaserWeaponConfig result;
@@ -12,7 +15,7 @@ auto make_simulation_config(FLaserWeaponConfig const& source) -> FSimulationLase
 auto make_simulation_config(FPlayerShipConfig const& source) -> FPlayerSimulationConfig {
     FPlayerSimulationConfig result;
     result.thrust_energy_max = source.thrust_energy_max;
-    result.speed_responses = source.speed_responses;
+    result.speed_responses = ml::to_native(source.speed_responses);
     result.cruise_speed = source.cruise_speed;
     result.thrust_recharge_time = source.thrust_recharge_time;
     result.boost_depletion_time = source.boost_depletion_time;
@@ -29,7 +32,6 @@ auto make_simulation_config(FPlayerShipConfig const& source) -> FPlayerSimulatio
     result.turn_bank_speed = source.turn_bank_speed;
     result.manual_bank_angle_max = source.manual_bank_angle_max;
     result.manual_bank_speed = source.manual_bank_speed;
-    result.barrel_roll_config = source.barrel_roll_config;
     result.auto_level_speed = source.auto_level_speed;
     result.auto_level_roll_delay = source.auto_level_roll_delay;
     result.lateral_adjustment_speed = source.lateral_adjustment_speed;
@@ -54,7 +56,11 @@ auto make_simulation_config(FCapitalShipConfig const& source) -> FCapitalSimulat
     FCapitalSimulationConfig result;
     result.spawn_delay = source.spawn_delay;
     result.fighter_spawn_slots = source.fighter_spawn_slots;
-    result.fighter_spawn_slots_relative_transforms = source.fighter_spawn_slots_relative_transforms;
+    result.fighter_spawn_slots_relative_transforms.reserve(
+        source.fighter_spawn_slots_relative_transforms.Num());
+    for (auto const& transform : source.fighter_spawn_slots_relative_transforms) {
+        result.fighter_spawn_slots_relative_transforms.push_back(ml::to_native(transform));
+    }
     result.max_health = source.max_health;
     return result;
 }
@@ -79,7 +85,7 @@ auto make_simulation_config(FFighterConfig const& source) -> FFighterSimulationC
     result.attack_retry_cooldown = source.attack_retry_cooldown;
     result.attack_engagement_threshold = source.attack_engagement_threshold;
     result.attack_reposition_frequency = source.attack_reposition_frequency;
-    result.attack_distance_band = source.attack_distance_band;
+    result.attack_distance_band = source.attack_distance_band.to_native();
     result.arrival_distance = source.arrival_distance;
     result.los_check_buffer = source.los_check_buffer;
     result.awareness_radius = source.awareness_radius;
@@ -94,7 +100,7 @@ auto make_simulation_config(FTurretConfig const& source) -> FTurretSimulationCon
     result.search_slice_size = source.search_slice_size;
     result.detection_radius = source.detection_radius;
     result.target_refresh_frequency = source.target_refresh_frequency;
-    result.fire_point_offset = source.fire_point_offset;
+    result.fire_point_offset = ml::to_native(FVector3f{source.fire_point_offset.GetLocation()});
     result.laser = make_simulation_config(source.laser);
     result.max_health = source.max_health;
     return result;
@@ -102,7 +108,11 @@ auto make_simulation_config(FTurretConfig const& source) -> FTurretSimulationCon
 
 auto make_simulation_config(FTubeSpinnerConfig const& source) -> FSpinnerSimulationConfig {
     FSpinnerSimulationConfig result;
-    result.fire_point_offsets = source.fire_point_offsets;
+    result.fire_point_offsets.reserve(static_cast<std::size_t>(source.fire_point_offsets.Num()));
+    for (auto const& offset : source.fire_point_offsets) {
+        result.fire_point_offsets.push_back({ml::to_native(FVector3f{offset.GetLocation()}),
+                                             ml::to_native(FRotator3f{offset.Rotator()})});
+    }
     result.yaw_rotation_speed_degrees = source.yaw_rotation_speed_degrees;
     result.laser = make_simulation_config(source.laser);
     return result;

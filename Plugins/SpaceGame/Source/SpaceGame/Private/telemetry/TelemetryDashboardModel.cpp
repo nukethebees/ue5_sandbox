@@ -445,7 +445,8 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
             }
         };
 
-        auto type_total = [](FTestEntityRegistry::EntityCounts const& counts, int32 const type) {
+        auto type_total = [](ml::simulation::telemetry::EntityCounts const& counts,
+                             int32 const type) {
             int32 total{};
             for (auto const& team : counts) {
                 total += team[type];
@@ -616,7 +617,7 @@ auto FTelemetryRunCatalog::get_baseline_candidates() const -> TArray<FTelemetryR
     if (!selected_record_.IsSet()) {
         return result;
     }
-    auto const selected_level{selected_record_->metadata.level_id};
+    FName const selected_level{UTF8_TO_TCHAR(selected_record_->metadata.level_id.c_str())};
     for (auto const& run : all_) {
         if (run.run_id != selected_run_id_ && run.level_id == selected_level) {
             result.Add(run);

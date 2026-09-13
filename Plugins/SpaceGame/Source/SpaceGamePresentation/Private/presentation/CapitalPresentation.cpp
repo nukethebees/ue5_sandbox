@@ -1,10 +1,14 @@
 #include "SpaceGamePresentation/presentation/CapitalPresentation.h"
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
+#include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGamePresentation/presentation/DelayedNiagaraSpawns.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_checks.h>
@@ -77,9 +81,11 @@ void FCapitalPresentation::update_visual_data() {
         if (change.kind == EEntityFrameChange::RemoveSwap) {
             instances->RemoveInstance(change.index);
         } else {
-            auto const index{instances->AddInstance(change.transform, is_world_space)};
+            FTransform const transform{FRotator{ml::to_unreal(change.rotation)},
+                                       FVector{ml::to_unreal(change.location)}};
+            auto const index{instances->AddInstance(transform, is_world_space)};
             check(index == change.index);
-            auto const colour{colours[change.team]};
+            auto const colour{colours[ml::to_unreal(change.team)]};
             TArray<float> data{colour.R, colour.G, colour.B};
             instances->SetCustomData(index, data, false);
         }
@@ -128,15 +134,15 @@ void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 c
     custom_data.SetNumUninitialized(n_to_add * n_custom_ismc_floats, EAllowShrinking::No);
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const base{i * n_custom_ismc_floats};
-        auto const& colour{colour_cache[entities.teams[first_index + i]]};
+        auto const& colour{colour_cache[ml::to_unreal(entities.teams[first_index + i])]};
         custom_data[base + 0] = colour.R;
         custom_data[base + 1] = colour.G;
         custom_data[base + 2] = colour.B;
     }
 
-    auto const transforms{
-        ml::make_transforms(entities.locations.get_const_view(first_index, n_to_add),
-                            entities.rotations.get_const_view(first_index, n_to_add))};
+    auto const transforms{ml::make_transforms(
+        ml::to_unreal(entities.locations.get_const_view(first_index, n_to_add)),
+        ml::to_unreal(entities.rotations.get_const_view(first_index, n_to_add)))};
     constexpr bool return_indices{false};
     constexpr bool update_navigation{false};
     instances->AddInstances(transforms, return_indices, is_world_space, update_navigation);
@@ -147,7 +153,7 @@ void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 c
 
 void FCapitalPresentation::trigger_death_effects() {
     auto const deaths{view().deaths};
-    auto const n{deaths.Num()};
+    auto const n{static_cast<int32>(deaths.size())};
     auto* const small_death_explosion{actor_config->small_death_explosion.Get()};
     auto* const main_death_explosion{actor_config->main_death_explosion.Get()};
     auto const has_small_death_explosion{IsValid(small_death_explosion)};
@@ -187,7 +193,7 @@ void FCapitalPresentation::trigger_death_effects() {
             current_delay = 0.f;
             previous_batch = death.batch_index;
         }
-        FVector const base_location{death.location};
+        FVector const base_location{ml::to_unreal(death.location)};
         if (has_small_death_explosion) {
             for (int32 explosion_index{0}; explosion_index < n_small_explosions;
                  ++explosion_index) {
@@ -224,10 +230,11 @@ void FCapitalPresentation::draw_debugging_shapes() const {
     auto const n{capital_simulation.get_num_instances()};
     auto const text_offset{actor_config->debug_status_text_offset};
     for (int32 i{0}; i < n; ++i) {
-        auto const ship_location{ml::get_vector3d(entities.locations, i)};
+        FVector const ship_location{ml::to_unreal(entities.locations[i])};
         auto const target_handle{entities.target_handles[i]};
         if (entity_registry.is_valid_handle(target_handle)) {
-            FVector3d const target_location{entity_registry.get_location(target_handle)};
+            FVector3d const target_location{
+                ml::to_unreal(entity_registry.get_location(target_handle))};
             debug_drawer.draw_arrow(ship_location, target_location);
         }
 

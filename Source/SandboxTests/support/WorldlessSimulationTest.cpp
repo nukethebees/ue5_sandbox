@@ -1,14 +1,16 @@
 #include "WorldlessSimulationTest.h"
 #include <SpaceGame/simulation/SimulationConfigConversion.h>
+#include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
+#include <sandbox/simulation/entities/DirectDamageEvents.h>
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/simulation/LevelSimulationConfig.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGamePresentation/support/mesh.h>
-#include <SpaceGameSimulation/entities/DirectDamageEvents.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
-#include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>
 
 #include <Engine/StaticMesh.h>
 #include <Engine/StaticMeshSocket.h>
@@ -28,7 +30,7 @@ auto make_worldless_player_spawn(USpaceGameLevelConfig const& config, FTransform
     check(player);
     auto result{player->make_spawn_data()};
     result.config = make_simulation_config(config.player_ship);
-    result.transform = transform;
+    result.transform = ml::to_native(transform);
     return result;
 }
 
@@ -41,13 +43,13 @@ auto add_worldless_capital_spawn(FLevelSimulationInitData& data,
                                  int32 const health) -> int32 {
     auto const index{data.capital_spawns.num()};
     data.capital_spawns.add_defaulted(1);
-    data.capital_spawns.locations.set(index, location);
-    data.capital_spawns.teams[index] = team;
+    data.capital_spawns.locations.set(index, ml::to_native(FVector3f{location}));
+    data.capital_spawns.teams[index] = static_cast<ml::simulation::Team>(team);
     data.capital_spawns.healths[index] =
         health == INDEX_NONE ? data.capital_ships.max_health : health;
     data.capital_spawns.initial_spawn_delays[index] = initial_spawn_delay;
     data.capital_spawns.spawn_cooldowns[index] = spawn_cooldown;
-    data.capital_target_spawn_indices.Add(target_spawn_index);
+    data.capital_target_spawn_indices.push_back(target_spawn_index);
     return index;
 }
 
@@ -65,10 +67,10 @@ void FWorldlessSimulationTest::finish_initialisation() {
     simulation_.finish_initialisation();
 }
 
-void FWorldlessSimulationTest::queue_damage(TConstArrayView<FRegistryEntityHandle> const targets,
+void FWorldlessSimulationTest::queue_damage(std::span<FRegistryEntityHandle const> const targets,
                                             int32 const damage,
                                             FRegistryEntityHandle const instigator) {
-    auto const count{targets.Num()};
+    auto const count{static_cast<int32>(targets.size())};
     DirectDamageEvents events;
     events.reserve(count);
     for (auto const target : targets) {
@@ -77,10 +79,10 @@ void FWorldlessSimulationTest::queue_damage(TConstArrayView<FRegistryEntityHandl
     get_registry().queue_direct_damage_events(events);
 }
 
-void FWorldlessSimulationTest::queue_kills(TConstArrayView<FRegistryEntityHandle> const targets,
+void FWorldlessSimulationTest::queue_kills(std::span<FRegistryEntityHandle const> const targets,
                                            FRegistryEntityHandle const instigator) {
     DirectDamageEvents events;
-    auto const count{targets.Num()};
+    auto const count{static_cast<int32>(targets.size())};
     events.reserve(count);
     for (auto const target : targets) {
         auto const damage{FMath::Max(1, get_registry().get_health(target))};

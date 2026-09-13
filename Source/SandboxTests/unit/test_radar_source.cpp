@@ -1,33 +1,28 @@
 #include <SpaceGamePresentation/presentation/RadarSource.h>
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <CQTest.h>
 
 namespace ml::test_radar_source {
-auto make_view(entity_registry::EntityData const& entities)
-    -> entity_registry::EntityData::ConstView {
-    return {.locations = {entities.locations.xs, entities.locations.ys, entities.locations.zs},
-            .velocities = {entities.velocities.xs, entities.velocities.ys, entities.velocities.zs},
-            .rotations = entities.rotations.get_const_view(),
-            .radii = entities.radii,
-            .healths = entities.healths,
-            .teams = entities.teams,
-            .entity_types = entities.entity_types,
-            .alive = entities.alive};
+auto make_view(simulation::RegistryEntityData const& entities)
+    -> simulation::RegistryEntityData::ConstView {
+    return entities.get_const_view();
 }
 
-void add_entity(entity_registry::EntityData& entities,
+void add_entity(simulation::RegistryEntityData& entities,
                 FVector3f const location,
                 ETestTeam const team,
                 ETestEntityType const type,
                 bool const alive = true) {
-    entities.locations.add(location);
-    entities.velocities.add(FVector3f::ZeroVector);
-    entities.rotations.add_zeroed(1);
-    entities.radii.Add(100.0f);
-    entities.healths.Add(100);
-    entities.teams.Add(team);
-    entities.entity_types.Add(type);
-    entities.alive.Add(alive ? 1 : 0);
+    auto const index{entities.num()};
+    entities.add_defaulted(1);
+    entities.locations.set(index, ml::to_native(location));
+    entities.radii[index] = 100.0f;
+    entities.healths[index] = 100;
+    entities.teams[index] = ml::to_native(team);
+    entities.entity_types[index] = ml::to_native(type);
+    entities.alive[index] = alive ? 1 : 0;
 }
 
 auto glyph(FRadarInstance const& instance) -> ERadarGlyph {
@@ -65,7 +60,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 {
     TEST_METHOD(FiltersMapsAndOrdersContacts)
     {
-        ml::entity_registry::EntityData entities;
+        ml::simulation::RegistryEntityData entities;
         ml::test_radar_source::add_entity(
             entities, FVector3f::ZeroVector, ETestTeam::Blue, ETestEntityType::PlayerShip);
         ml::test_radar_source::add_entity(
@@ -87,9 +82,9 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
             entities, {101.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::CapitalShip);
 
         TArray<int32> generations;
-        generations.Init(7, entities.alive.Num());
+        generations.Init(7, entities.num());
         TArray<EEntityOverlayObjectiveRole> objective_roles;
-        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.alive.Num());
+        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
         objective_roles[2] = EEntityOverlayObjectiveRole::Defend;
         objective_roles[3] = EEntityOverlayObjectiveRole::Destroy;
         objective_roles[7] = EEntityOverlayObjectiveRole::Defend;
@@ -166,7 +161,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 
     TEST_METHOD(UsesPlayerRelativeContactColours)
     {
-        ml::entity_registry::EntityData entities;
+        ml::simulation::RegistryEntityData entities;
         ml::test_radar_source::add_entity(
             entities, FVector3f::ZeroVector, ETestTeam::Blue, ETestEntityType::PlayerShip);
         ml::test_radar_source::add_entity(
@@ -177,9 +172,9 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
             entities, {30.0f, 0.0f, 0.0f}, ETestTeam::White, ETestEntityType::Turret);
 
         TArray<int32> generations;
-        generations.Init(2, entities.alive.Num());
+        generations.Init(2, entities.num());
         TArray<EEntityOverlayObjectiveRole> objective_roles;
-        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.alive.Num());
+        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
         FRadarContactColours colours{
             .friendly = FLinearColor::Blue,
             .hostile = FLinearColor::Red,
@@ -215,15 +210,15 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         auto const world_contact{
             FVector3f{player_location + no_roll_rotation.RotateVector(FVector{local_contact})}};
 
-        ml::entity_registry::EntityData entities;
+        ml::simulation::RegistryEntityData entities;
         ml::test_radar_source::add_entity(
             entities, FVector3f{player_location}, ETestTeam::Blue, ETestEntityType::PlayerShip);
         ml::test_radar_source::add_entity(
             entities, world_contact, ETestTeam::Red, ETestEntityType::CapitalShipFighter);
         TArray<int32> generations;
-        generations.Init(3, entities.alive.Num());
+        generations.Init(3, entities.num());
         TArray<EEntityOverlayObjectiveRole> objective_roles;
-        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.alive.Num());
+        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
         FRadarContactColours colours;
         FRadarFrame no_roll_frame;
         FRadarFrame rolled_frame;
@@ -340,15 +335,15 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
     TEST_METHOD(ContactMappingDoesNotDependOnOtherContacts)
     {
         auto const settings{ml::test_radar_source::nonlinear_settings()};
-        ml::entity_registry::EntityData entities;
+        ml::simulation::RegistryEntityData entities;
         ml::test_radar_source::add_entity(
             entities, FVector3f::ZeroVector, ETestTeam::Blue, ETestEntityType::PlayerShip);
         ml::test_radar_source::add_entity(
             entities, {250.0f, -80.0f, 40.0f}, ETestTeam::Red, ETestEntityType::CapitalShipFighter);
         TArray<int32> generations;
-        generations.Init(1, entities.alive.Num());
+        generations.Init(1, entities.num());
         TArray<EEntityOverlayObjectiveRole> objective_roles;
-        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.alive.Num());
+        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
         FRadarContactColours colours;
         FRadarFrame frame;
 
@@ -390,7 +385,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
     TEST_METHOD(FixedMaximumRangeExcludesAllOutOfRangeContacts)
     {
         auto const settings{ml::test_radar_source::nonlinear_settings()};
-        ml::entity_registry::EntityData entities;
+        ml::simulation::RegistryEntityData entities;
         ml::test_radar_source::add_entity(
             entities, FVector3f::ZeroVector, ETestTeam::Blue, ETestEntityType::PlayerShip);
         ml::test_radar_source::add_entity(
@@ -400,9 +395,9 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         ml::test_radar_source::add_entity(
             entities, {1600.0f, 0.0f, 1200.0f}, ETestTeam::Red, ETestEntityType::Turret);
         TArray<int32> generations;
-        generations.Init(1, entities.alive.Num());
+        generations.Init(1, entities.num());
         TArray<EEntityOverlayObjectiveRole> objective_roles;
-        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.alive.Num());
+        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
         objective_roles[2] = EEntityOverlayObjectiveRole::Destroy;
         objective_roles[3] = EEntityOverlayObjectiveRole::Defend;
         FRadarFrame frame;

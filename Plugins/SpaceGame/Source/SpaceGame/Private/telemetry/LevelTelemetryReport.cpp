@@ -4,10 +4,11 @@ FLevelTelemetryReport::FLevelTelemetryReport(FLevelTelemetryRunRecord record)
     : loaded_schema_version{record.loaded_schema_version}
     , completion{MoveTemp(record.completion)}
     , tick_series{MoveTemp(record.tick_series)}
-    , completed_ticks_by_real_time{MoveTemp(record.completed_ticks_by_real_time)}
-    , battle_samples{MoveTemp(record.battle_samples)} {
+    , completed_ticks_by_real_time{MoveTemp(record.completed_ticks_by_real_time)} {
+    battle_samples.Append(record.battle_samples.data(),
+                          static_cast<int32>(record.battle_samples.size()));
     static_cast<FLevelTelemetryRunMetadata&>(metadata) = MoveTemp(record.metadata);
-    performance_windows.Reserve(record.performance_windows.Num());
+    performance_windows.Reserve(static_cast<int32>(record.performance_windows.size()));
     for (auto const& source : record.performance_windows) {
         FLevelTelemetryPerformanceWindow window;
         window.real_elapsed_seconds = source.real_elapsed_seconds;

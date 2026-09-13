@@ -1,7 +1,7 @@
 #include "level_checks.h"
 
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistryData.h>
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/registry_entity_data.h>
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
@@ -44,6 +44,7 @@ void check_radii(TestSimulationDriver const& driver,
                  FSoftTestAssertions& checks,
                  float const threshold) {
     auto const& entity_data{driver.get_registry().get_entity_data()};
-    check_radii(TConstArrayView<float>{entity_data.radii}, checks, threshold);
+    check_radii(
+        TConstArrayView<float>{entity_data.radii.data(), entity_data.num()}, checks, threshold);
 }
 }

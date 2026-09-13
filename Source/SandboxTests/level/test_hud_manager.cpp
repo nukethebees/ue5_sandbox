@@ -10,6 +10,9 @@
 #include <SandboxCore/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/missions/TestMissionManager.h>
+#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
 #include <SandboxCoreEngine/enums.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
@@ -18,14 +21,13 @@
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGamePresentation/presentation/HUDManager.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudWidget.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
-#include <SpaceGameSimulation/missions/TestMissionManager.h>
-#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
 
+#include <array>
 #include <Engine/World.h>
 #include <GameFramework/PlayerController.h>
 #include <Kismet/GameplayStatics.h>
 #include <Misc/Optional.h>
+#include <SpaceGameSimulation/missions/NativeMissionTypes.h>
 
 namespace ml {
 namespace {
@@ -47,13 +49,13 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     check(scenario != EHUDManagerScenario::LateHUDRegistrationSynchronisesAndUnregisters);
     auto data{make_worldless_simulation_test_data(config)};
     data.capital_ships.fighter_spawn_slots = 0;
-    data.capital_ships.fighter_spawn_slots_relative_transforms.Reset();
+    data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     auto const needs_defence{
         scenario == EHUDManagerScenario::MissionAndDefenceDataUpdateWithoutHUD ||
         scenario == EHUDManagerScenario::MissionTimeUsesSimulationClockWithoutHUD};
     auto const needs_player{scenario == EHUDManagerScenario::PlayerStateAndKillsUpdateWithoutHUD};
     if (needs_player) {
-        data.player.Emplace(make_worldless_player_spawn(config));
+        data.player.emplace(make_worldless_player_spawn(config));
     }
     int32 first_capital_index{INDEX_NONE};
     int32 second_capital_index{INDEX_NONE};
@@ -79,12 +81,12 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
                                   : capitals.get_handle(second_capital_index)};
     if (needs_defence) {
         mission.set_save_mission_results(false);
-        mission.set_mission_mode(ETestMissionMode::SurviveTime);
+        mission.set_mission_mode(simulation::MissionMode::SurviveTime);
         mission.set_target_time(10.f);
         mission.add_entity_that_must_survive(first_capital);
         mission.add_entity_required_to_kill(second_capital);
     } else {
-        mission.set_mission_mode(ETestMissionMode::None);
+        mission.set_mission_mode(simulation::MissionMode::None);
         mission.set_save_mission_results(true);
     }
     harness.finish_initialisation();
@@ -103,7 +105,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     checks.are_equal(harness.get_registry().get_num_alive_active_entities(),
                      count_worldless_hud_entities(hud),
                      TEXT("Initial entity cache matches registry"));
-    checks.are_equal(mission.get_mission_state(),
+    checks.are_equal(ml::to_unreal(mission.get_mission_state()),
                      hud.get_mission_data().status_data.mission_state,
                      TEXT("Mission state is cached"));
     if (scenario == EHUDManagerScenario::InitialCachesPopulateWithoutHUD) {
@@ -112,16 +114,16 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
 
     auto const initial_count{count_worldless_hud_entities(hud)};
     if (scenario == EHUDManagerScenario::EntityCountPollingContinuesWithoutHUD) {
-        harness.timeline.then_after(0.1, [&] { harness.queue_kills(TArray{first_capital}); });
+        harness.timeline.then_after(0.1, [&] { harness.queue_kills(std::array{first_capital}); });
     } else if (scenario == EHUDManagerScenario::MissionAndDefenceDataUpdateWithoutHUD) {
         harness.timeline.then_after(0.1, [&] {
-            harness.queue_kills(TArray{second_capital});
-            harness.queue_kills(TArray{first_capital});
+            harness.queue_kills(std::array{second_capital});
+            harness.queue_kills(std::array{first_capital});
         });
     } else if (needs_player) {
         auto const player_handle{simulation.get_player_ship_simulation()->registry_handle};
         harness.timeline.then_after(
-            0.1, [&] { harness.queue_kills(TArray{first_capital}, player_handle); });
+            0.1, [&] { harness.queue_kills(std::array{first_capital}, player_handle); });
     }
     harness.on_end_tick = [&](FLevelSimulation&) { hud.force_sample(); };
     harness.timeline.finish_at(0.35);
@@ -202,7 +204,7 @@ void FTestHUDManagerScenario::initial_caches_process_samples() {
                      TEXT("Initial entity count cache matches the registry"));
 
     auto const& mission_data{hud_manager.get_mission_data()};
-    checks.are_equal(mission_manager.get_mission_state(),
+    checks.are_equal(ml::to_unreal(mission_manager.get_mission_state()),
                      mission_data.status_data.mission_state,
                      TEXT("Mission state is cached"));
     checks.are_equal(mission_manager.get_mission_stopwatch(),
@@ -295,10 +297,10 @@ void FTestHUDManagerScenario::defence_begin() {
 
     auto const handles{
         test_driver->orchestrator.get_mission_manager().get_entity_handles_that_must_survive()};
-    check(handles.Num() == 1);
+    check(handles.size() == 1);
     auto const required_handles{
         test_driver->orchestrator.get_mission_manager().get_entity_handles_required_to_kill()};
-    check(required_handles.Num() == 1);
+    check(required_handles.size() == 1);
     test_driver->timeline.then_after(damage_queue_time, [this, handles, required_handles] {
         test_driver->queue_kills(required_handles);
         test_driver->queue_kills(handles);
@@ -431,7 +433,7 @@ void FTestHUDManagerScenario::player_kill_begin() {
     auto const& capitals{test_driver->get_capital_ships()};
     check(capitals.get_num_instances() == 1);
 
-    TArray<FRegistryEntityHandle> const targets{capitals.get_handle(0)};
+    std::array<FRegistryEntityHandle, 1> const targets{capitals.get_handle(0)};
     auto const instigator{player_ship->get_entity_handle()};
     test_driver->timeline.then_after(damage_queue_time, [this, targets, instigator] {
         test_driver->queue_kills(targets, instigator);
@@ -584,7 +586,7 @@ void FTestHUDManagerScenario::entity_count_begin() {
 
     auto const& capitals{test_driver->get_capital_ships()};
     check(capitals.get_num_instances() == 1);
-    TArray<FRegistryEntityHandle> const targets{capitals.get_handle(0)};
+    std::array<FRegistryEntityHandle, 1> const targets{capitals.get_handle(0)};
     test_driver->timeline.then_after(damage_queue_time,
                                      [this, targets] { test_driver->queue_kills(targets); });
     ml::reset_and_reserve_time_series(

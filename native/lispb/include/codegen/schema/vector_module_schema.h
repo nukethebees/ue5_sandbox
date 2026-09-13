@@ -2,6 +2,7 @@
 
 #include <codegen/schema/fixed_soa_schema.h>
 #include <codegen/schema/module_settings.h>
+#include <codegen/schema/soa_backend.h>
 #include <codegen/schema/type_ref.h>
 
 #include <optional>
@@ -12,9 +13,12 @@ namespace codegen {
 
 struct VectorModuleSchema {
     ModuleSettings settings;
+    SoaBackend backend{SoaBackend::unreal};
     std::string storage_name;
     TypeRef value_type;
     std::vector<std::string> components;
+    std::vector<std::string> equivalent_members;
+    std::optional<std::string> equivalent_constructor;
     TypeRef equivalent_type;
     std::optional<std::string> export_specifier;
     std::optional<FixedSoaSchema> fixed;

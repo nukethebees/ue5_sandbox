@@ -1,7 +1,7 @@
 #pragma once
 
+#include "sandbox/simulation/simulation/LevelTelemetrySnapshot.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
-#include "SpaceGameSimulation/simulation/LevelTelemetrySnapshot.h"
 
 class SGraphPlot;
 

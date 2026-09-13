@@ -1,7 +1,7 @@
 #pragma once
 
+#include <sandbox/simulation/entities/TestEntityUniqueId.h>
 #include <SpaceGameSimulation/entities/TestEntityType.h>
-#include <SpaceGameSimulation/entities/TestEntityUniqueId.h>
 #include <SpaceGameSimulation/ships/common/ShipHealth.h>
 
 #include <Blueprint/UserWidget.h>

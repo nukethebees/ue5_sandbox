@@ -1,7 +1,7 @@
 #pragma once
 
-#include "SpaceGameSimulation/memory/GameMemoryBacking.h"
-#include "SpaceGameSimulation/memory/GameMemoryConfig.h"
+#include "sandbox/simulation/memory/GameMemoryBacking.h"
+#include "sandbox/simulation/memory/GameMemoryConfig.h"
 
 #include "EditorSubsystem.h"
 
@@ -14,11 +14,11 @@ class SANDBOXEDITOR_API USandboxEditorGameMemorySubsystem : public UEditorSubsys
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
     virtual void Deinitialize() override;
 
-    auto acquire_backing() -> TOptional<FGameMemoryBackingLease>;
+    auto acquire_backing() -> std::optional<FGameMemoryBackingLease>;
     auto backing_address() const noexcept -> std::byte*;
   private:
     void handle_editor_pre_exit();
     void end_active_pie_if_leased();
 
-    TUniquePtr<FGameMemoryBacking> backing_{};
+    std::unique_ptr<FGameMemoryBacking> backing_{};
 };

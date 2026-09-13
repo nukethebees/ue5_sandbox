@@ -1,5 +1,6 @@
 #include "lowering_utils.h"
 
+#include <array>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
@@ -56,6 +57,25 @@ auto output_path_key(std::filesystem::path const& path) -> std::string {
     });
 #endif
     return result;
+}
+
+auto native_spelling(std::string const& spelling) -> std::string {
+    constexpr std::array integer_types{
+        std::pair{"int8", "std::int8_t"},
+        std::pair{"uint8", "std::uint8_t"},
+        std::pair{"int16", "std::int16_t"},
+        std::pair{"uint16", "std::uint16_t"},
+        std::pair{"int32", "std::int32_t"},
+        std::pair{"uint32", "std::uint32_t"},
+        std::pair{"int64", "std::int64_t"},
+        std::pair{"uint64", "std::uint64_t"},
+    };
+    for (auto const& [source, destination] : integer_types) {
+        if (spelling == source) {
+            return destination;
+        }
+    }
+    return spelling;
 }
 
 auto column_apply_arrays_function(std::vector<std::string> const& columns) -> Node {

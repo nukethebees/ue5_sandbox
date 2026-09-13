@@ -54,14 +54,20 @@ auto mask_index_expression(SoaMemberSchema const& member) -> std::string {
     return join(terms, " + ");
 }
 
-auto field_mask_nodes(SoaSchema const& schema) -> Nodes {
+auto field_mask_nodes(SoaSchema const& schema, bool const standard_library = false) -> Nodes {
     if (!schema.field_mask_name.has_value()) {
         return {};
     }
 
+    std::string const uint8_type{standard_library ? "std::uint8_t" : "uint8"};
+    std::string const uint16_type{standard_library ? "std::uint16_t" : "uint16"};
+    std::string const uint32_type{standard_library ? "std::uint32_t" : "uint32"};
+    std::string const uint64_type{standard_library ? "std::uint64_t" : "uint64"};
+    std::string const int32_type{standard_library ? "std::int32_t" : "int32"};
+
     auto const& mask_name{*schema.field_mask_name};
     auto const& enum_name{*schema.field_enum_name};
-    std::string output{"enum class " + enum_name + " : uint8 {\n"};
+    std::string output{"enum class " + enum_name + " : " + uint8_type + " {\n"};
     std::string previous_name;
     std::string previous_width;
     for (auto const& member : schema.members) {
@@ -70,28 +76,34 @@ auto field_mask_nodes(SoaSchema const& schema) -> Nodes {
         }
         auto const name{title_case_identifier(member.name)};
         auto const initializer{previous_name.empty() ? "0"
-                                                     : "static_cast<uint8>(" + previous_name +
-                                                           ") + " + previous_width};
+                                                     : "static_cast<" + uint8_type + ">(" +
+                                                           previous_name + ") + " + previous_width};
         output += "    " + name + " = " + initializer + ",\n";
         previous_name = name;
         previous_width = mask_field_width(member);
     }
-    output +=
-        "    Count = static_cast<uint8>(" + previous_name + ") + " + previous_width + ",\n};\n\n";
+    output += "    Count = static_cast<" + uint8_type + ">(" + previous_name + ") + " +
+              previous_width + ",\n};\n\n";
 
     output +=
         "struct " + mask_name +
         " {\n"
-        "    inline static constexpr int32 field_count{static_cast<int32>(" +
-        enum_name +
+        "    inline static constexpr " +
+        int32_type + " field_count{static_cast<" + int32_type + ">(" + enum_name +
         "::Count)};\n"
         "    static_assert(field_count <= 64, \"Field mask exceeds 64 bits.\");\n"
         "    using storage_type = std::conditional_t<\n"
         "        field_count <= 8,\n"
-        "        uint8,\n"
+        "        " +
+        uint8_type +
+        ",\n"
         "        std::conditional_t<field_count <= 16,\n"
-        "                           uint16,\n"
-        "                           std::conditional_t<field_count <= 32, uint32, uint64>>>;\n\n"
+        "                           " +
+        uint16_type +
+        ",\n"
+        "                           std::conditional_t<field_count <= 32, " +
+        uint32_type + ", " + uint64_type +
+        ">>>;\n\n"
         "    constexpr " +
         mask_name +
         "() noexcept = default;\n"
@@ -108,9 +120,11 @@ auto field_mask_nodes(SoaSchema const& schema) -> Nodes {
         "        return (value_ & bit(field)) != 0;\n"
         "    }\n"
         "    [[nodiscard]] static constexpr auto index(" +
-        enum_name +
-        " const field) noexcept -> int32 {\n"
-        "        return static_cast<int32>(field);\n"
+        enum_name + " const field) noexcept -> " + int32_type +
+        " {\n"
+        "        return static_cast<" +
+        int32_type +
+        ">(field);\n"
         "    }\n"
         "    constexpr void set(" +
         enum_name +
@@ -133,12 +147,12 @@ auto field_mask_nodes(SoaSchema const& schema) -> Nodes {
             if (index > 0) {
                 output += ", ";
             }
-            output += "int32 const " + member.mask_dimensions[index].index_name;
+            output += "" + int32_type + " const " + member.mask_dimensions[index].index_name;
         }
         output += ") noexcept -> " + enum_name +
                   " {\n"
                   "        return static_cast<" +
-                  enum_name + ">(static_cast<int32>(" + enum_name +
+                  enum_name + ">(static_cast<" + int32_type + ">(" + enum_name +
                   "::" + title_case_identifier(member.name) + ") + " +
                   mask_index_expression(member) +
                   ");\n"
@@ -149,7 +163,9 @@ auto field_mask_nodes(SoaSchema const& schema) -> Nodes {
               "    [[nodiscard]] static constexpr auto bit(" +
               enum_name +
               " const field) noexcept -> storage_type {\n"
-              "        return static_cast<storage_type>(uint64{1} << static_cast<uint8>(field));\n"
+              "        return static_cast<storage_type>(" +
+              uint64_type + "{1} << static_cast<" + uint8_type +
+              ">(field));\n"
               "    }\n\n"
               "    storage_type value_{};\n"
               "};\n"
@@ -159,7 +175,9 @@ auto field_mask_nodes(SoaSchema const& schema) -> Nodes {
               "static_assert(std::is_trivially_copyable_v<" +
               mask_name + ">);";
 
-    return {raw(std::move(output), {TypeDependency{"std::conditional_t", "type_traits", {}}})};
+    return {raw(std::move(output),
+                {TypeDependency{"std::conditional_t", "type_traits", {}},
+                 TypeDependency{"std::uint64_t", "cstdint", {}}})};
 }
 
 auto lower_soa_impl(SoaSchema const& schema,
@@ -231,8 +249,18 @@ auto lower_soa_module_impl(SoaModuleSchema const& module,
     std::vector<LoweredSoa> lowered_structs;
     lowered_structs.reserve(module.structs.size());
     for (auto const& schema : module.structs) {
+        if (schema.layout_only) {
+            continue;
+        }
         auto lowered{standard_library ? lower_native_soa(schema, schemas, types)
                                       : lower_soa_impl(schema, types, {})};
+        if (standard_library && schema.field_mask_name.has_value()) {
+            NodeListBuilder header;
+            header.append(field_mask_nodes(schema, true))
+                .new_lines(2)
+                .append(std::move(lowered.header));
+            lowered.header = header.build();
+        }
         if (schema.fixed.has_value()) {
             NodeListBuilder header;
             header.append(std::move(lowered.header))

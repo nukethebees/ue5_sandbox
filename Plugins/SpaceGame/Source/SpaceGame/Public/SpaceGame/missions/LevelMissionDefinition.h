@@ -1,8 +1,9 @@
 #pragma once
+#include <SpaceGameSimulation/missions/TestMissionMode.h>
 
 #include <GameFramework/Actor.h>
+#include <sandbox/simulation/missions/TestMissionManager.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
-#include <SpaceGameSimulation/missions/TestMissionManager.h>
 
 #include "LevelMissionDefinition.generated.h"
 

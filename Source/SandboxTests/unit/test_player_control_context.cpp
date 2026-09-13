@@ -2,7 +2,12 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestEnhancedInputSubsystem.h>
+#include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
 
+#include <sandbox/simulation/combat/lasers/TestLasersSimulation.h>
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/simulation/SimulationClock.h>
+#include <sandbox/simulation/simulation/SpatialQueryManager.h>
 #include <SpaceGame/input/ControlProfiles.h>
 #include <SpaceGame/input/SpaceGameInputUserSettings.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
@@ -14,11 +19,7 @@
 #include <SpaceGame/ui/main_menu/ControlChordCapture.h>
 #include <SpaceGame/ui/main_menu/MainMenuGameMode.h>
 #include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
-#include <SpaceGameSimulation/combat/lasers/TestLasersSimulation.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/ships/common/LaserFiringState.h>
-#include <SpaceGameSimulation/simulation/SimulationClock.h>
-#include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
 
 #include <SandboxCore/frame_memory_resource.h>
 
@@ -762,18 +763,18 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         simulation.set_ship_1d_control_y(1.0f);
         simulation.stop_sampling();
         TestRunner->TestEqual(TEXT("Released sample retains the committed direction"),
-                              simulation.target_local_planar_velocity_scale,
+                              ml::to_unreal(simulation.target_local_planar_velocity_scale),
                               FVector2D{0.0f, 1.0f});
 
         simulation.start_sampling();
         TestRunner->TestEqual(TEXT("New sample starts from neutral"),
-                              simulation.target_local_planar_velocity_scale,
+                              ml::to_unreal(simulation.target_local_planar_velocity_scale),
                               FVector2D::ZeroVector);
 
         simulation.set_ship_1d_control_x(1.0f);
         simulation.start_sampling();
         TestRunner->TestEqual(TEXT("Starting a second axis does not reset the active sample"),
-                              simulation.target_local_planar_velocity_scale,
+                              ml::to_unreal(simulation.target_local_planar_velocity_scale),
                               FVector2D{1.0f, 0.0f});
     }
 
@@ -789,57 +790,62 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         config.cruise_speed = 1000.f;
         config.forward_velocity_trim_fraction = 0.1f;
         simulation.set_config(config);
-        simulation.set_flight_mode(ETestSpaceShipFlightMode::PlanarVelocity);
+        simulation.set_flight_mode(ml::simulation::SpaceShipFlightMode::PlanarVelocity);
 
         simulation.start_sampling();
-        simulation.set_ship_2d_control(FVector2D{0.25, -0.5});
+        simulation.set_ship_2d_control({0.25, -0.5});
         simulation.stop_sampling();
-        TestRunner->TestTrue(
-            TEXT("Sample establishes a reverse persistent target"),
-            simulation.target_local_planar_velocity.Equals(FVector{-500.0, 250.0, 0.0}));
+        TestRunner->TestTrue(TEXT("Sample establishes a reverse persistent target"),
+                             ml::to_unreal(simulation.target_local_planar_velocity)
+                                 .Equals(FVector{-500.0, 250.0, 0.0}));
 
         simulation.adjust_desired_forward_velocity(1.f);
-        TestRunner->TestTrue(
-            TEXT("Increasing makes reverse velocity less negative"),
-            simulation.target_local_planar_velocity.Equals(FVector{-400.0, 250.0, 0.0}));
+        TestRunner->TestTrue(TEXT("Increasing makes reverse velocity less negative"),
+                             ml::to_unreal(simulation.target_local_planar_velocity)
+                                 .Equals(FVector{-400.0, 250.0, 0.0}));
 
-        simulation.transform.SetRotation(FRotator{0.0, 90.0, 0.0}.Quaternion());
+        simulation.transform = ml::to_native(FTransform{FRotator{0.0, 90.0, 0.0}});
         simulation.adjust_desired_forward_velocity(1.f);
-        TestRunner->TestTrue(
-            TEXT("Trim follows the current ship forward axis"),
-            simulation.target_local_planar_velocity.Equals(FVector{-400.0, 350.0, 0.0}, 0.01));
+        TestRunner->TestTrue(TEXT("Trim follows the current ship forward axis"),
+                             ml::to_unreal(simulation.target_local_planar_velocity)
+                                 .Equals(FVector{-400.0, 350.0, 0.0}, 0.01));
 
         for (int32 adjustment{}; adjustment < 20; ++adjustment) {
             simulation.adjust_desired_forward_velocity(-1.f);
         }
-        auto const forward{simulation.transform.GetUnitAxis(EAxis::X)};
+        auto const forward{ml::to_unreal(simulation.transform.forward())};
         TestRunner->TestTrue(
             TEXT("Reverse trim clamps to the configured velocity limit"),
             FMath::IsNearlyEqual(
-                FVector::DotProduct(simulation.target_local_planar_velocity, forward),
+                FVector::DotProduct(ml::to_unreal(simulation.target_local_planar_velocity),
+                                    forward),
                 -config.cruise_speed,
                 0.01));
 
         auto const persistent_target{simulation.target_local_planar_velocity};
-        simulation.control_mode = ETestSpaceShipControlMode::Power;
+        simulation.control_mode = ml::simulation::SpaceShipControlMode::Power;
         simulation.adjust_desired_forward_velocity(1.f);
         TestRunner->TestTrue(TEXT("Power mode leaves the persistent target unchanged"),
-                             simulation.target_local_planar_velocity.Equals(persistent_target));
-        simulation.control_mode = ETestSpaceShipControlMode::Velocity;
-        simulation.set_flight_mode(ETestSpaceShipFlightMode::ForwardSpeed);
+                             ml::to_unreal(simulation.target_local_planar_velocity)
+                                 .Equals(ml::to_unreal(persistent_target)));
+        simulation.control_mode = ml::simulation::SpaceShipControlMode::Velocity;
+        simulation.set_flight_mode(ml::simulation::SpaceShipFlightMode::ForwardSpeed);
         simulation.adjust_desired_forward_velocity(1.f);
         TestRunner->TestTrue(TEXT("Forward-speed flight leaves the planar target unchanged"),
-                             simulation.target_local_planar_velocity.Equals(persistent_target));
-        simulation.set_flight_mode(ETestSpaceShipFlightMode::PlanarVelocity);
+                             ml::to_unreal(simulation.target_local_planar_velocity)
+                                 .Equals(ml::to_unreal(persistent_target)));
+        simulation.set_flight_mode(ml::simulation::SpaceShipFlightMode::PlanarVelocity);
         simulation.start_boost();
         simulation.stop_boost();
         TestRunner->TestTrue(TEXT("Boost preserves the persistent planar target"),
-                             simulation.target_local_planar_velocity.Equals(persistent_target));
+                             ml::to_unreal(simulation.target_local_planar_velocity)
+                                 .Equals(ml::to_unreal(persistent_target)));
 
         simulation.start_sampling();
         simulation.adjust_desired_forward_velocity(1.f);
         TestRunner->TestTrue(TEXT("Trim does not alter an active sample"),
-                             simulation.target_local_planar_velocity.Equals(persistent_target));
+                             ml::to_unreal(simulation.target_local_planar_velocity)
+                                 .Equals(ml::to_unreal(persistent_target)));
     }
 
     TEST_METHOD(ConfiguredObserverAndBenchmarkMappingsAreComplete)

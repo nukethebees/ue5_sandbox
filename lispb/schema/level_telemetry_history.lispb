@@ -1,12 +1,10 @@
 (soa-module level_telemetry_history
-  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/telemetry/LevelTelemetryHistory.h"
-  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/telemetry/LevelTelemetryHistory.cpp"
-  :header-include "SpaceGameSimulation/telemetry/LevelTelemetryHistory.h"
+  :header "native/simulation/include/sandbox/simulation/telemetry/LevelTelemetryHistory.h"
+  :backend standard-library
   :namespace ml::level_telemetry
   :include-order ("SpaceGameSimulation/" "SandboxCore/")
   (struct FHistoryRows
     :operations (all)
-    :export-specifier SPACEGAMESIMULATION_API
     :field-mask-name FHistoryFieldMask
     :field-enum-name EHistoryField
     (member completed_ticks array uint64)
@@ -15,12 +13,12 @@
       :mask-field true)
     (member active_entities_by_type array @level_telemetry_entity_type_counts
       :mask-field true
-      :mask-dimensions ((entity_type_index "ml::EnumCountTrait<ETestEntityType>::count_value")))
+      :mask-dimensions ((entity_type_index "ml::simulation::telemetry::entity_type_count")))
     (member active_entities_by_team_and_type array @level_telemetry_entity_counts
       :mask-field true
       :mask-dimensions (
-        (team_index "ml::EnumCountTrait<ETestTeam>::count_value")
-        (entity_type_index "ml::EnumCountTrait<ETestEntityType>::count_value")))
+        (team_index "ml::simulation::telemetry::team_count")
+        (entity_type_index "ml::simulation::telemetry::entity_type_count")))
     (member spawned_entities array int32
       :mask-field true)
     (member destroyed_entities array int32

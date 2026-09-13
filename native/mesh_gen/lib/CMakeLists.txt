@@ -11,7 +11,7 @@ target_include_directories(mesh-gen
 )
 target_link_libraries(mesh-gen PRIVATE sandbox::warnings_as_errors)
 
-if(NOT SANDBOX_NATIVE_MESH_ONLY)
+if(SANDBOX_WITH_UNREAL)
   foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
     file(MAKE_DIRECTORY
       "${PROJECT_SOURCE_DIR}/Binaries/Native/MeshGen/${UE_PLATFORM}/${configuration}"

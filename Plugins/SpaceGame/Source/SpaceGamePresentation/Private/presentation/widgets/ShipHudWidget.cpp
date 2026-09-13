@@ -3,6 +3,7 @@
 
 #include <SpaceGamePresentation/presentation/HUDManager.h>
 
+#include "sandbox/simulation/entities/TestEntityRegistry.h"
 #include "SandboxGameShared/ui/widgets/ValueWidget.h"
 #include "SandboxUI/Radar/SRadarWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/DebugGraphWidget.h"
@@ -14,7 +15,6 @@
 #include "SpaceGamePresentation/presentation/widgets/ShipThrusterEnergyWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/Vector2DWidget.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
-#include "SpaceGameSimulation/entities/TestEntityRegistry.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <Blueprint/WidgetTree.h>

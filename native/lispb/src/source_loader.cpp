@@ -267,6 +267,7 @@ auto parse_soa(Form const& form) -> SoaSchema {
                      "using-declarations",
                      "equivalent-type",
                      "copy-element-memberwise",
+                     "layout-only",
                      "field-mask-name",
                      "field-enum-name"},
                     {"member", "function", "fixed", "single-allocation"});
@@ -314,6 +315,7 @@ auto parse_soa(Form const& form) -> SoaSchema {
         .using_declarations = text_list_or(fields, "using-declarations"),
         .equivalent_type = std::move(equivalent_type),
         .copy_element_memberwise = boolean_or(fields, "copy-element-memberwise"),
+        .layout_only = boolean_or(fields, "layout-only"),
         .fixed = std::move(fixed),
         .single_allocation = std::move(single_allocation),
         .single_allocation_variants = std::move(variants),
@@ -707,8 +709,11 @@ auto parse_module(Form const& form) -> ModuleSchema {
                          "storage-name",
                          "value-type",
                          "components",
+                         "equivalent-members",
+                         "equivalent-constructor",
                          "equivalent-type",
-                         "export-specifier"},
+                         "export-specifier",
+                         "backend"},
                         {"fixed"});
         std::optional<FixedSoaSchema> fixed;
         if (!fields.declarations().empty()) {
@@ -717,11 +722,25 @@ auto parse_module(Form const& form) -> ModuleSchema {
             }
             fixed = parse_fixed(*fields.declarations().front());
         }
+        auto backend{SoaBackend::unreal};
+        if (auto const value{optional_text(fields, "backend")}) {
+            if (*value == "unreal") {
+                backend = SoaBackend::unreal;
+            } else if (*value == "standard-library") {
+                backend = SoaBackend::standard_library;
+            } else {
+                fail(fields.required("backend").token.span,
+                     "vector SOA backend must be unreal or standard-library");
+            }
+        }
         return VectorModuleSchema{
             .settings = parse_module_settings(fields),
+            .backend = backend,
             .storage_name = text(fields.required("storage-name"), "vector storage name"),
             .value_type = parse_type_ref(fields.required("value-type")),
             .components = text_list(fields.required("components"), "vector components"),
+            .equivalent_members = text_list_or(fields, "equivalent-members"),
+            .equivalent_constructor = optional_text(fields, "equivalent-constructor"),
             .equivalent_type = parse_type_ref(fields.required("equivalent-type")),
             .export_specifier = optional_text(fields, "export-specifier"),
             .fixed = std::move(fixed),

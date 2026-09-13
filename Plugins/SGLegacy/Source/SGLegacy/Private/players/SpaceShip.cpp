@@ -171,7 +171,8 @@ void ASpaceShip::set(EBoostBrakeState s) {
         }
     }
 
-    flight_model.set_new_impulse(response, cur_speed, target_speed);
+    flight_model.set_new_impulse(
+        response.settling_time, response.damping_ratio, cur_speed, target_speed);
     boost_brake_state = s;
 }
 void ASpaceShip::set_laser_mode(ELaserFiringState new_laser_mode) {

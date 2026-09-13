@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sandbox/simulation/ship_flight_model.h>
 #include "SandboxCoreEngine/SpeedResponse.h"
 #include "SGLegacy/combat/DamageableShip.h"
 #include "SGLegacy/players/ShipHealthComponent.h"
@@ -7,7 +8,6 @@
 #include "SpaceGameSimulation/ships/common/LaserFiringState.h"
 #include "SpaceGameSimulation/ships/common/ShipLaserMode.h"
 #include "SpaceGameSimulation/ships/common/SpaceShipCommon.h"
-#include "SpaceGameSimulation/ships/common/SpaceShipFlightModel.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
@@ -151,7 +151,7 @@ class ASpaceShip
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Energy")
     float thrust_change_rate{0.f};
 
-    TSpaceShipFlightModel<float> flight_model{};
+    ml::simulation::ShipFlightModel<float> flight_model{};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     FSpeedResponses speed_responses{};
 

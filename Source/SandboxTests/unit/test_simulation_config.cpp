@@ -88,7 +88,8 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
                                        (corner & 4) ? extent.Z : -extent.Z};
                 expected += position + rotation.RotateVector(centre + offset);
             }
-            auto const actual{ml::ioj::make_entity_world_bounds(bounds, index, position, rotation)};
+            auto const actual{ml::ioj::to_unreal(
+                ml::ioj::make_entity_world_bounds(bounds, index, position, rotation))};
             TestRunner->TestTrue(TEXT("World bounds match independently transformed corners"),
                                  actual.Min.Equals(expected.Min, 0.001f) &&
                                      actual.Max.Equals(expected.Max, 0.001f));
@@ -105,12 +106,12 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         data.fighter_radius = 5.f;
         data.fighters.avoidance_clearance_buffer = 1.f;
         data.capital_ships.fighter_spawn_slots_relative_transforms = {
-            FTransform{FVector{0.f, 40.f, 0.f}}};
+            {.location = {0.0, 40.0, 0.0}}};
         data.capital_spawns.add_defaulted(1);
         ml::FLevelStartErrors clear_errors;
         ml::validate_world_fighter_spawn_slots(data, clear_errors);
         TestRunner->TestFalse(TEXT("Unrotated slot clears capital"), clear_errors.has_errors());
-        ml::assign(data.capital_spawns.rotations, 0, FRotator3f{0.f, 45.f, 0.f});
+        data.capital_spawns.rotations.set(0, {0.f, 45.f, 0.f});
         ml::FLevelStartErrors rotated_errors;
         ml::validate_world_fighter_spawn_slots(data, rotated_errors);
         TestRunner->TestTrue(

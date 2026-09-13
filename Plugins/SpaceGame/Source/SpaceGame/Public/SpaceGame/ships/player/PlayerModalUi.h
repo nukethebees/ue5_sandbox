@@ -1,6 +1,7 @@
 #pragma once
 
 #include <CoreMinimal.h>
+#include <sandbox/simulation/simulation/LevelTelemetrySnapshot.h>
 #include <SpaceGame/ships/player/PlayerControlContext.h>
 #include "PlayerModalUi.generated.h"
 
@@ -8,7 +9,6 @@ class ASpaceGamePlayerController;
 class UTestBatchGameUiData;
 class UInputAction;
 struct FTestMissionCompletion;
-struct FLevelTelemetrySnapshot;
 namespace ml::ioj {
 class UGameUiRootLayout;
 class UPauseMenuWidget;

@@ -15,4 +15,7 @@ enum class LevelMissionEventType : std::uint8_t {
     RequiredKill,
     IncreaseKillTarget,
 };
+
+[[nodiscard]] auto try_to_level_event_count(std::int32_t count, LevelEventCount& result) noexcept
+    -> bool;
 }

@@ -1,5 +1,7 @@
 #include "test_entity_interface_scenario.h"
 
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
@@ -7,9 +9,7 @@
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/entities/TestTeam.h>
-#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
 
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/TestActorSpawning.h>
@@ -137,7 +137,8 @@ void FEntityInterfaceScenario::sample_values() {
 
     auto const* const capitals{test_driver->orchestrator.get_capital_ships()};
     TArray<FRegistryEntityHandle> target_handles;
-    target_handles.Append(capitals->get_target_handles());
+    auto const handles{capitals->get_target_handles()};
+    target_handles.Append(handles.data(), static_cast<int32>(handles.size()));
     capital_target_handles.add(time, MoveTemp(target_handles));
 
     TArray<uint8> target_alive;

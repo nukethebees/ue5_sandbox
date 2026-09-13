@@ -1,10 +1,14 @@
 #pragma once
+#include <sandbox/simulation/entities/TestEntityUniqueId.h>
 #include <SpaceGamePresentation/presentation/PlayerPresentation.h>
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
+#include <SpaceGameSimulation/ships/common/NativeShipHealth.h>
+#include <SpaceGameSimulation/ships/player/NativePlayerTypes.h>
 
+#include <sandbox/simulation/ships/player/TestSpaceShipSimulation.h>
 #include <SpaceGame/entities/TestEntity.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGamePresentation/support/logging/ActorLoggingConfig.h>
-#include <SpaceGameSimulation/ships/player/TestSpaceShipSimulation.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Pawn.h>
@@ -117,7 +121,7 @@ class SPACEGAME_API ATestSpaceShip
     /* **************************************** */
     // Diagnostics
     /* **************************************** */
-    auto get_speed_samples() const noexcept -> TConstArrayView<FVector2d>;
+    auto get_speed_samples() const noexcept -> std::span<ml::Vector2d const>;
     auto get_speed_sample_index() const noexcept -> int32;
 #endif
 

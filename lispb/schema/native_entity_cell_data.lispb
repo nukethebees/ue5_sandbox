@@ -1,0 +1,20 @@
+(soa-module native_entity_cell_data
+  :header "native/simulation/include/sandbox/simulation/entity_cell_data.h"
+  :backend standard-library
+  :namespace ml::simulation::collision
+  (struct EntityCellDataColumns
+    :operations (all)
+    (member min_point_xs array float)
+    (member min_point_ys array float)
+    (member min_point_zs array float)
+    (member max_point_xs array float)
+    (member max_point_ys array float)
+    (member max_point_zs array float)
+    (member min_cell_xs array int32)
+    (member min_cell_ys array int32)
+    (member min_cell_zs array int32)
+    (member max_cell_xs array int32)
+    (member max_cell_ys array int32)
+    (member max_cell_zs array int32)
+    (member handles array @native_registry_handle)
+    (single-allocation EntityCellData)))

@@ -2,6 +2,7 @@
 
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_checks.h>
@@ -148,13 +149,13 @@ void FLaserPresentation::queue_hit_sparks() {
     auto const count{ml::num(hit_details)};
     auto const& style{actor_config->impact_sparks};
     for (int32 index{0}; index < count; ++index) {
-        auto const location{ml::get_vector3f(hit_details.locations, index)};
+        auto const location{ml::to_unreal(hit_details.locations[index])};
         auto const colour{source_colour(hit_details.sources[index])};
         spark_effects_->queue_burst({
             .emission =
                 {
                     .location = location,
-                    .direction = ml::get_vector3f(hit_details.emission_directions, index),
+                    .direction = ml::to_unreal(hit_details.emission_directions[index]),
                     .colour = FVector3f{colour.R, colour.G, colour.B},
                     .seed = SpaceGame::LaserPresentation::Private::make_seed(
                         view().hit_ticks[index], location, view().hit_ordinals[index]),

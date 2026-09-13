@@ -8,39 +8,43 @@
 
 namespace {
 struct InterceptCase {
-    ml::NativeVector3f shooter_position;
-    ml::NativeVector3f target_position;
-    ml::NativeVector3f target_velocity;
+    ml::Vector3f shooter_position;
+    ml::Vector3f target_position;
+    ml::Vector3f target_velocity;
     float projectile_speed;
     float expected_time;
 };
 
+constexpr auto v3(float const x, float const y, float const z) noexcept -> ml::Vector3f {
+    return ml::make_vector3f(x, y, z);
+}
+
 void expect_intercept_geometry(InterceptCase const& test_case, float const intercept_time) {
-    auto const target_x{test_case.target_position.x + test_case.target_velocity.x * intercept_time};
-    auto const target_y{test_case.target_position.y + test_case.target_velocity.y * intercept_time};
-    auto const target_z{test_case.target_position.z + test_case.target_velocity.z * intercept_time};
-    auto const dx{target_x - test_case.shooter_position.x};
-    auto const dy{target_y - test_case.shooter_position.y};
-    auto const dz{target_z - test_case.shooter_position.z};
+    auto const target_x{test_case.target_position.X + test_case.target_velocity.X * intercept_time};
+    auto const target_y{test_case.target_position.Y + test_case.target_velocity.Y * intercept_time};
+    auto const target_z{test_case.target_position.Z + test_case.target_velocity.Z * intercept_time};
+    auto const dx{target_x - test_case.shooter_position.X};
+    auto const dy{target_y - test_case.shooter_position.Y};
+    auto const dz{target_z - test_case.shooter_position.Z};
     auto const target_distance{std::sqrt(dx * dx + dy * dy + dz * dz)};
     EXPECT_NEAR(test_case.projectile_speed * intercept_time, target_distance, 1e-4f);
 }
 
 using BatchSolver = void (*)(float*,
-                             ml::NativeVector3fSoAView,
-                             ml::NativeVector3fSoAView,
-                             ml::NativeVector3fSoAView,
+                             ml::Vector3fSoAView,
+                             ml::Vector3fSoAView,
+                             ml::Vector3fSoAView,
                              float,
                              std::int32_t) noexcept;
 }
 
 TEST(NativeCoreProjectileIntercept, SolvesScalarCases) {
     constexpr InterceptCase cases[]{
-        {{0.0f, 0.0f, 0.0f}, {10.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, 5.0f, 2.0f},
-        {{0.0f, 0.0f, 0.0f}, {10.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, 5.0f, 2.5f},
-        {{0.0f, 0.0f, 0.0f}, {10.0f, 0.0f, 0.0f}, {-5.0f, 0.0f, 0.0f}, 5.0f, 1.0f},
-        {{0.0f, 0.0f, 0.0f}, {10.0f, 0.0f, 0.0f}, {-5.0f, 5.0f, 0.0f}, 5.0f, 2.0f},
-        {{0.0f, 0.0f, 0.0f}, {10.0f, 0.0f, 0.0f}, {-10.0f, 0.0f, 0.0f}, 5.0f, 2.0f / 3.0f},
+        {v3(0.0f, 0.0f, 0.0f), v3(10.0f, 0.0f, 0.0f), v3(0.0f, 0.0f, 0.0f), 5.0f, 2.0f},
+        {v3(0.0f, 0.0f, 0.0f), v3(10.0f, 0.0f, 0.0f), v3(1.0f, 0.0f, 0.0f), 5.0f, 2.5f},
+        {v3(0.0f, 0.0f, 0.0f), v3(10.0f, 0.0f, 0.0f), v3(-5.0f, 0.0f, 0.0f), 5.0f, 1.0f},
+        {v3(0.0f, 0.0f, 0.0f), v3(10.0f, 0.0f, 0.0f), v3(-5.0f, 5.0f, 0.0f), 5.0f, 2.0f},
+        {v3(0.0f, 0.0f, 0.0f), v3(10.0f, 0.0f, 0.0f), v3(-10.0f, 0.0f, 0.0f), 5.0f, 2.0f / 3.0f},
     };
 
     for (auto const& test_case : cases) {
@@ -55,9 +59,9 @@ TEST(NativeCoreProjectileIntercept, SolvesScalarCases) {
 
 TEST(NativeCoreProjectileIntercept, RejectsDegenerateAndEscapingTargets) {
     constexpr InterceptCase cases[]{
-        {{0.0f, 0.0f, 0.0f}, {10.0f, 0.0f, 0.0f}, {5.0f, 0.0f, 0.0f}, 5.0f, 0.0f},
-        {{0.0f, 0.0f, 0.0f}, {10.0f, 0.0f, 0.0f}, {0.0f, 10.0f, 0.0f}, 5.0f, 0.0f},
-        {{3.0f, 4.0f, 5.0f}, {3.0f, 4.0f, 5.0f}, {1.0f, 2.0f, 3.0f}, 20.0f, 0.0f},
+        {v3(0.0f, 0.0f, 0.0f), v3(10.0f, 0.0f, 0.0f), v3(5.0f, 0.0f, 0.0f), 5.0f, 0.0f},
+        {v3(0.0f, 0.0f, 0.0f), v3(10.0f, 0.0f, 0.0f), v3(0.0f, 10.0f, 0.0f), 5.0f, 0.0f},
+        {v3(3.0f, 4.0f, 5.0f), v3(3.0f, 4.0f, 5.0f), v3(1.0f, 2.0f, 3.0f), 20.0f, 0.0f},
     };
 
     for (auto const& test_case : cases) {
@@ -81,12 +85,10 @@ TEST(NativeCoreProjectileIntercept, BatchImplementationsMatchExpectedResults) {
     std::array<float, 5> const velocity_z{};
     std::array<float, 5> const expected{2.0f, 1.0f, 2.0f, 0.0f, 0.0f};
 
-    auto const shooters{
-        ml::NativeVector3fSoAView{shooter_x.data(), shooter_y.data(), shooter_z.data()}};
-    auto const targets{
-        ml::NativeVector3fSoAView{target_x.data(), target_y.data(), target_z.data()}};
+    auto const shooters{ml::Vector3fSoAView{shooter_x.data(), shooter_y.data(), shooter_z.data()}};
+    auto const targets{ml::Vector3fSoAView{target_x.data(), target_y.data(), target_z.data()}};
     auto const velocities{
-        ml::NativeVector3fSoAView{velocity_x.data(), velocity_y.data(), velocity_z.data()}};
+        ml::Vector3fSoAView{velocity_x.data(), velocity_y.data(), velocity_z.data()}};
     constexpr BatchSolver solvers[]{
         ml::detail::solve_intercept_times_aos::solve_intercept_times,
         ml::detail::solve_intercept_times_struct_loop::solve_intercept_times,

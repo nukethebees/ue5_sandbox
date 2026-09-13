@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sandbox/simulation/simulation/LevelTelemetrySnapshot.h>
 #include <SpaceGameSimulation/missions/TestMissionState.h>
 
 #include <CommonActivatableWidget.h>
@@ -9,7 +10,6 @@
 class UCommonActivatableWidgetStack;
 class UInputAction;
 class UTestBatchGameUiData;
-struct FLevelTelemetrySnapshot;
 
 namespace ml::ioj {
 struct FPauseMenuData;

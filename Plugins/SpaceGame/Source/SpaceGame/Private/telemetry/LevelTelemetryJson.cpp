@@ -1,4 +1,7 @@
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
+#include <SpaceGameSimulation/missions/NativeMissionTypes.h>
+#include <SpaceGameSimulation/telemetry/LevelTelemetryRunEndReason.h>
 
 #include <SandboxCore/container_ops.h>
 
@@ -11,9 +14,11 @@
 
 namespace {
 
-void set_optional_number(FJsonObject& object, FString const& name, TOptional<double> const value) {
-    if (value.IsSet()) {
-        object.SetNumberField(name, value.GetValue());
+void set_optional_number(FJsonObject& object,
+                         FString const& name,
+                         std::optional<double> const value) {
+    if (value.has_value()) {
+        object.SetNumberField(name, value.value());
     } else {
         object.SetField(name, MakeShared<FJsonValueNull>());
     }
@@ -118,7 +123,7 @@ auto make_timing(FLevelTelemetryTimingAggregate const& source) -> TSharedRef<FJs
     return result;
 }
 
-auto make_combat(FTestEntityRegistry::CombatTelemetryCounters const& source)
+auto make_combat(ml::simulation::telemetry::CombatTelemetryCounters const& source)
     -> TSharedRef<FJsonObject> {
     auto result{MakeShared<FJsonObject>()};
     result->SetArrayField(TEXT("spawned"), make_flat_counts(source.spawned));
@@ -216,6 +221,15 @@ auto required_string(FJsonObject const& source, TCHAR const* const field, FStrin
     return result;
 }
 
+auto required_native_string(FJsonObject const& source, TCHAR const* field, FString const& path)
+    -> std::expected<std::string, FString> {
+    auto result{required_string(source, field, path)};
+    if (!result) {
+        return std::unexpected{result.error()};
+    }
+    return std::string{TCHAR_TO_UTF8(**result)};
+}
+
 auto required_bool(FJsonObject const& source, TCHAR const* const field, FString const& path)
     -> std::expected<bool, FString> {
     bool result{};
@@ -265,7 +279,7 @@ auto parse_flat_counts(FJsonObject const& source,
     }
     int32 expected_count{};
     for (auto const& row : output) {
-        expected_count += row.Num();
+        expected_count += static_cast<int32>(row.size());
     }
     if (values->Num() != expected_count) {
         return std::unexpected{error_at(path, TEXT("array has the wrong number of values"))};
@@ -309,7 +323,7 @@ auto parse_timing(FJsonObject const& source,
 }
 
 auto parse_combat(FJsonObject const& source,
-                  FTestEntityRegistry::CombatTelemetryCounters& output,
+                  ml::simulation::telemetry::CombatTelemetryCounters& output,
                   FString const& path) -> std::expected<void, FString> {
 #define PARSE_COMBAT_COUNTS(field)                                                           \
     do {                                                                                     \
@@ -504,7 +518,8 @@ auto deserialize_level_telemetry_run(FString const& json)
         destination = MoveTemp(*parsed_value);            \
     } while (false)
 
-    READ_REQUIRED(result.metadata.run_id, required_string(*root, TEXT("run_id"), TEXT("run_id")));
+    READ_REQUIRED(result.metadata.run_id,
+                  required_native_string(*root, TEXT("run_id"), TEXT("run_id")));
     auto const level{required_object(*root, TEXT("level"), TEXT("level"))};
     auto const timestamps{required_object(*root, TEXT("timestamps"), TEXT("timestamps"))};
     auto const environment{required_object(*root, TEXT("environment"), TEXT("environment"))};
@@ -521,18 +536,19 @@ auto deserialize_level_telemetry_run(FString const& json)
     }
 
     READ_REQUIRED(result.metadata.map_name,
-                  required_string(**level, TEXT("map_name"), TEXT("level.map_name")));
+                  required_native_string(**level, TEXT("map_name"), TEXT("level.map_name")));
     FString level_id;
     READ_REQUIRED(level_id, required_string(**level, TEXT("level_id"), TEXT("level.level_id")));
-    result.metadata.level_id = FName{level_id};
-    READ_REQUIRED(result.metadata.level_display_name,
-                  required_string(**level, TEXT("display_name"), TEXT("level.display_name")));
+    result.metadata.level_id = TCHAR_TO_UTF8(*level_id);
     READ_REQUIRED(
-        result.metadata.launched_utc,
-        required_string(**timestamps, TEXT("launched_utc"), TEXT("timestamps.launched_utc")));
-    READ_REQUIRED(
-        result.completion.completed_utc,
-        required_string(**timestamps, TEXT("completed_utc"), TEXT("timestamps.completed_utc")));
+        result.metadata.level_display_name,
+        required_native_string(**level, TEXT("display_name"), TEXT("level.display_name")));
+    READ_REQUIRED(result.metadata.launched_utc,
+                  required_native_string(
+                      **timestamps, TEXT("launched_utc"), TEXT("timestamps.launched_utc")));
+    READ_REQUIRED(result.completion.completed_utc,
+                  required_native_string(
+                      **timestamps, TEXT("completed_utc"), TEXT("timestamps.completed_utc")));
 
 #define READ_ENV(field)                              \
     READ_REQUIRED(result.metadata.environment.field, \
@@ -585,9 +601,9 @@ auto deserialize_level_telemetry_run(FString const& json)
                                 TEXT("presentation_enabled"),
                                 TEXT("simulation.presentation_enabled")));
     if (*schema >= 2) {
-        READ_REQUIRED(
-            result.metadata.source_sha256,
-            required_string(**simulation, TEXT("source_sha256"), TEXT("simulation.source_sha256")));
+        READ_REQUIRED(result.metadata.source_sha256,
+                      required_native_string(
+                          **simulation, TEXT("source_sha256"), TEXT("simulation.source_sha256")));
         READ_REQUIRED(
             result.metadata.launch_state,
             required_string(**simulation, TEXT("launch_state"), TEXT("simulation.launch_state")));
@@ -638,13 +654,16 @@ auto deserialize_level_telemetry_run(FString const& json)
     FString reason_name;
     READ_REQUIRED(reason_name,
                   required_string(**completion, TEXT("reason"), TEXT("completion.reason")));
+    ELevelTelemetryRunEndReason parsed_reason{};
     READ_REQUIRED(
-        result.completion.reason,
+        parsed_reason,
         parse_serialized_enum<ELevelTelemetryRunEndReason>(reason_name, TEXT("completion.reason")));
+    result.completion.reason =
+        static_cast<ml::simulation::LevelTelemetryRunEndReason>(parsed_reason);
     READ_REQUIRED(result.completion.interrupted,
                   required_bool(**completion, TEXT("interrupted"), TEXT("completion.interrupted")));
     READ_REQUIRED(result.completion.world_end_reason,
-                  required_string(
+                  required_native_string(
                       **completion, TEXT("world_end_reason"), TEXT("completion.world_end_reason")));
     READ_REQUIRED(result.completion.completed_ticks,
                   required_integer<uint64>(
@@ -672,7 +691,7 @@ auto deserialize_level_telemetry_run(FString const& json)
             READ_REQUIRED(
                 team,
                 parse_serialized_enum<ETestTeam>(winner_name, TEXT("completion.winning_team")));
-            result.completion.winning_team = team;
+            result.completion.winning_team = ml::to_native(team);
         }
     }
 
@@ -713,9 +732,9 @@ auto deserialize_level_telemetry_run(FString const& json)
         READ_REQUIRED(fail,
                       parse_serialized_enum<ETestMissionFailReason>(
                           fail_name, TEXT("completion.mission_fail_reason")));
-        result.completion.mission_mode = mode;
-        result.completion.mission_state = state;
-        result.completion.mission_fail_reason = fail;
+        result.completion.mission_mode = ml::to_native(mode);
+        result.completion.mission_state = ml::to_native(state);
+        result.completion.mission_fail_reason = ml::to_native(fail);
     }
     auto const* mission_elapsed{(*completion)->Values.Find(TEXT("mission_elapsed_seconds"))};
     if (mission_elapsed && (*mission_elapsed)->Type != EJson::Null) {
@@ -979,17 +998,20 @@ auto deserialize_level_telemetry_run(FString const& json)
 auto serialize_level_telemetry_run(FLevelTelemetryReport const& record) -> FString {
     auto root{MakeShared<FJsonObject>()};
     root->SetNumberField(TEXT("schema_version"), FLevelTelemetryReport::schema_version);
-    root->SetStringField(TEXT("run_id"), record.metadata.run_id);
+    root->SetStringField(TEXT("run_id"), UTF8_TO_TCHAR(record.metadata.run_id.c_str()));
 
     auto level{MakeShared<FJsonObject>()};
-    level->SetStringField(TEXT("map_name"), record.metadata.map_name);
-    level->SetStringField(TEXT("level_id"), record.metadata.level_id.ToString());
-    level->SetStringField(TEXT("display_name"), record.metadata.level_display_name);
+    level->SetStringField(TEXT("map_name"), UTF8_TO_TCHAR(record.metadata.map_name.c_str()));
+    level->SetStringField(TEXT("level_id"), UTF8_TO_TCHAR(record.metadata.level_id.c_str()));
+    level->SetStringField(TEXT("display_name"),
+                          UTF8_TO_TCHAR(record.metadata.level_display_name.c_str()));
     root->SetObjectField(TEXT("level"), level);
 
     auto timestamps{MakeShared<FJsonObject>()};
-    timestamps->SetStringField(TEXT("launched_utc"), record.metadata.launched_utc);
-    timestamps->SetStringField(TEXT("completed_utc"), record.completion.completed_utc);
+    timestamps->SetStringField(TEXT("launched_utc"),
+                               UTF8_TO_TCHAR(record.metadata.launched_utc.c_str()));
+    timestamps->SetStringField(TEXT("completed_utc"),
+                               UTF8_TO_TCHAR(record.completion.completed_utc.c_str()));
     root->SetObjectField(TEXT("timestamps"), timestamps);
 
     auto environment{MakeShared<FJsonObject>()};
@@ -1021,7 +1043,8 @@ auto serialize_level_telemetry_run(FLevelTelemetryReport const& record) -> FStri
     simulation->SetNumberField(TEXT("initial_requested_time_scale"),
                                record.metadata.initial_requested_time_scale);
     simulation->SetBoolField(TEXT("presentation_enabled"), record.metadata.presentation_enabled);
-    simulation->SetStringField(TEXT("source_sha256"), record.metadata.source_sha256);
+    simulation->SetStringField(TEXT("source_sha256"),
+                               UTF8_TO_TCHAR(record.metadata.source_sha256.c_str()));
     simulation->SetStringField(TEXT("launch_state"), record.metadata.launch_state);
     simulation->SetStringField(TEXT("presentation_mode"), record.metadata.presentation_mode);
     simulation->SetBoolField(TEXT("stop_when_battle_resolved"),
@@ -1040,18 +1063,22 @@ auto serialize_level_telemetry_run(FLevelTelemetryReport const& record) -> FStri
     root->SetObjectField(TEXT("simulation"), simulation);
 
     auto completion{MakeShared<FJsonObject>()};
-    completion->SetStringField(TEXT("reason"), LexToSerializedString(record.completion.reason));
+    completion->SetStringField(
+        TEXT("reason"),
+        LexToSerializedString(static_cast<ELevelTelemetryRunEndReason>(record.completion.reason)));
     completion->SetBoolField(TEXT("interrupted"), record.completion.interrupted);
-    completion->SetStringField(TEXT("world_end_reason"), record.completion.world_end_reason);
-    if (record.completion.mission_mode.IsSet()) {
+    completion->SetStringField(TEXT("world_end_reason"),
+                               UTF8_TO_TCHAR(record.completion.world_end_reason.c_str()));
+    if (record.completion.mission_mode.has_value()) {
         completion->SetStringField(
-            TEXT("mission_mode"), LexToSerializedString(record.completion.mission_mode.GetValue()));
+            TEXT("mission_mode"),
+            LexToSerializedString(ml::to_unreal(record.completion.mission_mode.value())));
         completion->SetStringField(
             TEXT("mission_state"),
-            LexToSerializedString(record.completion.mission_state.GetValue()));
+            LexToSerializedString(ml::to_unreal(record.completion.mission_state.value())));
         completion->SetStringField(
             TEXT("mission_fail_reason"),
-            LexToSerializedString(record.completion.mission_fail_reason.GetValue()));
+            LexToSerializedString(ml::to_unreal(record.completion.mission_fail_reason.value())));
     } else {
         completion->SetField(TEXT("mission_mode"), MakeShared<FJsonValueNull>());
         completion->SetField(TEXT("mission_state"), MakeShared<FJsonValueNull>());
@@ -1065,9 +1092,10 @@ auto serialize_level_telemetry_run(FLevelTelemetryReport const& record) -> FStri
                                record.completion.simulated_elapsed_seconds);
     completion->SetNumberField(TEXT("wall_elapsed_seconds"),
                                record.completion.wall_elapsed_seconds);
-    if (record.completion.winning_team.IsSet()) {
+    if (record.completion.winning_team.has_value()) {
         completion->SetStringField(
-            TEXT("winning_team"), LexToSerializedString(record.completion.winning_team.GetValue()));
+            TEXT("winning_team"),
+            LexToSerializedString(ml::to_unreal(record.completion.winning_team.value())));
     } else {
         completion->SetField(TEXT("winning_team"), MakeShared<FJsonValueNull>());
     }
@@ -1098,12 +1126,13 @@ auto write_level_telemetry_run(FLevelTelemetryReport const& record, FString cons
             FString::Printf(TEXT("Could not create output directory '%s'"), *output_directory)};
     }
 
-    auto timestamp{record.metadata.launched_utc};
+    FString timestamp{UTF8_TO_TCHAR(record.metadata.launched_utc.c_str())};
     timestamp.ReplaceCharInline(TEXT(':'), TEXT('-'));
-    auto level_name{record.metadata.level_id.IsNone() ? record.metadata.map_name
-                                                      : record.metadata.level_id.ToString()};
+    FString level_name{UTF8_TO_TCHAR(
+        (record.metadata.level_id.empty() ? record.metadata.map_name : record.metadata.level_id)
+            .c_str())};
     level_name = FPaths::MakeValidFileName(level_name);
-    auto const short_run_id{record.metadata.run_id.Left(8)};
+    auto const short_run_id{FString{UTF8_TO_TCHAR(record.metadata.run_id.c_str())}.Left(8)};
     auto const filename{
         FString::Printf(TEXT("%s_%s_%s.json"), *timestamp, *level_name, *short_run_id)};
     auto const path{FPaths::Combine(output_directory, filename)};

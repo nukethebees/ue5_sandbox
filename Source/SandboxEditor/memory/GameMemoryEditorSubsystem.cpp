@@ -23,9 +23,9 @@ void USandboxEditorGameMemorySubsystem::Deinitialize() {
 
     FEditorDelegates::OnEditorPreExit.RemoveAll(this);
     end_active_pie_if_leased();
-    checkf(!backing_.IsValid() || !backing_->is_leased(),
+    checkf(!static_cast<bool>(backing_) || !backing_->is_leased(),
            TEXT("Editor game-memory backing is still leased during subsystem teardown."));
-    backing_.Reset();
+    backing_.reset();
 
     Super::Deinitialize();
 }
@@ -35,7 +35,7 @@ void USandboxEditorGameMemorySubsystem::handle_editor_pre_exit() {
 }
 
 void USandboxEditorGameMemorySubsystem::end_active_pie_if_leased() {
-    if (!backing_.IsValid() || !backing_->is_leased()) {
+    if (!static_cast<bool>(backing_) || !backing_->is_leased()) {
         return;
     }
 
@@ -44,10 +44,11 @@ void USandboxEditorGameMemorySubsystem::end_active_pie_if_leased() {
     }
 }
 
-auto USandboxEditorGameMemorySubsystem::acquire_backing() -> TOptional<FGameMemoryBackingLease> {
-    return backing_.IsValid() ? backing_->try_acquire_lease() : NullOpt;
+auto USandboxEditorGameMemorySubsystem::acquire_backing()
+    -> std::optional<FGameMemoryBackingLease> {
+    return static_cast<bool>(backing_) ? backing_->try_acquire_lease() : std::nullopt;
 }
 
 auto USandboxEditorGameMemorySubsystem::backing_address() const noexcept -> std::byte* {
-    return backing_.IsValid() ? backing_->data() : nullptr;
+    return static_cast<bool>(backing_) ? backing_->data() : nullptr;
 }

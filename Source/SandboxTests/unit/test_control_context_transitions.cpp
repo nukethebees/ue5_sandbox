@@ -3,14 +3,14 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestEnhancedInputSubsystem.h>
 
+#include <sandbox/simulation/combat/lasers/TestLasersSimulation.h>
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/simulation/SimulationClock.h>
+#include <sandbox/simulation/simulation/SpatialQueryManager.h>
 #include <SpaceGame/ships/player/PlayerControlContexts.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGameSimulation/combat/lasers/TestLasersSimulation.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
-#include <SpaceGameSimulation/simulation/SimulationClock.h>
-#include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
 
 #include <SandboxCore/frame_memory_resource.h>
 

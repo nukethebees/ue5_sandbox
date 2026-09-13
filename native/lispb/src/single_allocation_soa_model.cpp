@@ -223,7 +223,8 @@ auto build_single_allocation_model(SoaSchema const& schema,
 
     std::set<std::string> type_identifiers;
     for (auto const& leaf : layout.leaves) {
-        auto const identifiers{collect_cpp_identifiers(leaf.type.spelling)};
+        auto const spelling{native ? native_spelling(leaf.type.spelling) : leaf.type.spelling};
+        auto const identifiers{collect_cpp_identifiers(spelling)};
         type_identifiers.insert(identifiers.begin(), identifiers.end());
     }
 
@@ -232,6 +233,10 @@ auto build_single_allocation_model(SoaSchema const& schema,
     std::map<std::string, std::size_t> unique_type_indices;
     result.columns.reserve(layout.leaves.size());
     for (auto const& leaf : layout.leaves) {
+        auto type{leaf.type};
+        if (native) {
+            type.spelling = native_spelling(type.spelling);
+        }
         auto const flattened{fixed_leaf_argument(leaf)};
         validate_flattened_name(flattened);
         if (!flattened_names.insert(flattened).second) {
@@ -244,16 +249,16 @@ auto build_single_allocation_model(SoaSchema const& schema,
                                         layout_identifier};
         }
 
-        auto [type_position, inserted]{
-            unique_type_indices.emplace(leaf.type.spelling, result.unique_types.size())};
+        auto [type_position,
+              inserted]{unique_type_indices.emplace(type.spelling, result.unique_types.size())};
         if (inserted) {
-            result.unique_types.push_back({leaf.type, leaf.path, flattened});
+            result.unique_types.push_back({type, leaf.path, flattened});
         }
         auto const& byte_count_identifier{
             result.unique_types[type_position->second].byte_count_identifier};
         result.column_indices.emplace(flattened, result.columns.size());
         result.columns.push_back(
-            {flattened, layout_identifier, leaf.type, leaf.path, byte_count_identifier});
+            {flattened, layout_identifier, type, leaf.path, byte_count_identifier});
         result.dependencies.insert(result.dependencies.end(),
                                    leaf.type.dependencies.begin(),
                                    leaf.type.dependencies.end());

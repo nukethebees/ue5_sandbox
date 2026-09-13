@@ -45,6 +45,7 @@ public class SandboxEditor : ModuleRules
         PublicDependencyModuleNames.AddRange(new string[]
         {
             "SandboxCore",
+            "NativeMemory",
             "Core",
             "CoreUObject",
             "Engine",
@@ -77,6 +78,7 @@ public class SandboxEditor : ModuleRules
             "RHI",
             "Sandbox", // Reference to runtime module
             "SandboxGameShared",
+            "SandboxNative",
             "SandboxUI",
             "SandboxShaders",
             "SbxMeshGenLab",

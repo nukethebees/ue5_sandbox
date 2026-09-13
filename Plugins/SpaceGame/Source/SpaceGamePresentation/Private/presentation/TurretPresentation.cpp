@@ -1,9 +1,12 @@
 #include "SpaceGamePresentation/presentation/TurretPresentation.h"
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
+#include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_checks.h>
@@ -60,8 +63,8 @@ void FTurretPresentation::begin_play_presentation(TArray<FTransform> initial_tra
     auto const count{entities.num()};
     for (auto i{ismc_transforms.Num()}; i < count; ++i) {
         auto const index{entities.handles[i].index};
-        ismc_transforms.Emplace(ml::get_rotator3d(registry.rotations, index),
-                                ml::get_vector3d(entities.locations, i));
+        ismc_transforms.Emplace(FRotator{ml::to_unreal(registry.rotations[index])},
+                                FVector{ml::to_unreal(entities.locations[i])});
     }
     add_initial_visual_instances();
     validate_array_sizes();
@@ -75,10 +78,12 @@ void FTurretPresentation::update_visual_data() {
             ismc_transforms.RemoveAtSwap(change.index, EAllowShrinking::No);
             instances->RemoveInstance(change.index);
         } else {
-            auto const index{instances->AddInstance(change.transform, is_world_space)};
+            FTransform const transform{FRotator{ml::to_unreal(change.rotation)},
+                                       FVector{ml::to_unreal(change.location)}};
+            auto const index{instances->AddInstance(transform, is_world_space)};
             check(index == change.index);
-            ismc_transforms.Add(change.transform);
-            auto const colour{colours[change.team]};
+            ismc_transforms.Add(transform);
+            auto const colour{colours[ml::to_unreal(change.team)]};
             TArray<float> data{colour.R, colour.G, colour.B};
             instances->SetCustomData(index, data, false);
         }
@@ -128,7 +133,7 @@ void FTurretPresentation::add_visual_instances(TArray<FTransform> const& transfo
     custom_data.SetNumUninitialized(n_to_add * n_custom_ismc_floats, EAllowShrinking::No);
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const base{i * n_custom_ismc_floats};
-        auto const& colour{colour_cache[entities.teams[first_entity_index + i]]};
+        auto const& colour{colour_cache[ml::to_unreal(entities.teams[first_entity_index + i])]};
         custom_data[base + 0] = colour.R;
         custom_data[base + 1] = colour.G;
         custom_data[base + 2] = colour.B;
@@ -141,7 +146,7 @@ void FTurretPresentation::add_visual_instances(TArray<FTransform> const& transfo
 
 void FTurretPresentation::trigger_death_effects() {
     auto const& death_locations{view().death_locations};
-    auto const n{death_locations.Num()};
+    auto const n{static_cast<int32>(death_locations.size())};
     auto* world{instances->GetWorld()};
     auto* explosion_system{actor_config->death_effect.Get()};
 
@@ -159,7 +164,7 @@ void FTurretPresentation::trigger_death_effects() {
 
         UNiagaraFunctionLibrary::SpawnSystemAtLocation(world,
                                                        explosion_system,
-                                                       FVector{death_locations[i]} +
+                                                       FVector{ml::to_unreal(death_locations[i])} +
                                                            location_offset,
                                                        FRotator::ZeroRotator,
                                                        scale,
@@ -189,13 +194,13 @@ void FTurretPresentation::draw_debugging_shapes() const {
 
     auto& drawer{debug_drawer};
     for (int32 i{0}; i < n; ++i) {
-        auto const turret_location{ml::get_vector3d(entities.locations, i)};
+        auto const turret_location{FVector{ml::to_unreal(entities.locations[i])}};
 
         if (draw_target_arrows_enabled) {
             auto const target_handle{entities.target_handles[i]};
 
             if (entity_registry.is_valid_handle(target_handle)) {
-                auto const target_location{ml::get_vector3d(entities.target_locations, i)};
+                auto const target_location{FVector{ml::to_unreal(entities.target_locations[i])}};
                 drawer.draw_line(turret_location, target_location);
             }
         }

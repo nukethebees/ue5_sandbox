@@ -64,7 +64,7 @@ checked-out branches and their worktree directories.
 
 ## Command-line builds
 
-CMake 4.3 or newer and Ninja on `PATH` provide a small command-line wrapper around UnrealBuildTool (UBT). It does not
+CMake 4.4.2 or newer and Ninja on `PATH` provide a small command-line wrapper around UnrealBuildTool (UBT). It does not
 compile Unreal modules itself; `.Target.cs`, `.Build.cs`, and UBT remain authoritative.
 
 CMake invokes the source engine's `RunUBT.bat` and serializes Unreal builds that share the same engine checkout. Manual
@@ -131,6 +131,71 @@ matching Unreal configuration and build `dev-core` (`editor`, `core-tests`, and
 `native-tests`). Each also has a workflow preset, for example `cmake --workflow --preset development`, that
 configures and builds it in one command. The `game` target remains available through a build preset, for example
 `cmake --build --preset development --target game`.
+
+### Preset organisation
+
+The root `CMakePresets.json` includes category files under `cmake/presets/`, using preset
+schema version 9:
+
+- `base.json`: shared configure and test defaults.
+- `native.json`: native Debug/Release configuration, codegen and component build/test workflows.
+- `unreal.json`: Unreal configurations, builds, automation tests and development tooling.
+- `native-benchmarks.json`: native kernel and SOA benchmark presets.
+- `unreal-benchmarks.json`: Unreal-backed benchmark presets.
+
+Each category includes its prerequisites; shared definitions are not duplicated. Preset names,
+build directories and commands are unchanged by the split. Local overrides still belong in
+the root, Git-ignored `CMakeUserPresets.json`.
+
+### Native-only development
+
+All native libraries and tools are configured together through `native/CMakeLists.txt`.
+Use `native-debug` or `native-release` to select the build configuration; use build presets
+or explicit targets to choose what to compile. These configure presets set
+`SANDBOX_WITH_UNREAL=OFF`, so no Unreal installation or `UE_ROOT` is required.
+The Unreal configure presets enable that option.
+
+```powershell
+cmake --preset native-debug
+cmake --build --preset native-memory
+ctest --preset native-memory
+
+cmake --workflow --preset native-simulation
+
+cmake --build --preset codegen
+ctest --preset codegen-tests
+
+cmake --preset native-release
+cmake --build --preset native-core
+ctest --preset native-core
+```
+
+The `codegen`, `generate-code`, `native-memory`, `native-simulation`, `native-mesh` and `native-s7` build presets
+use `native-debug`; `native-core` uses `native-release`. Their workflow presets still configure,
+build and test the selected targets. Component-specific configure presets and
+`SANDBOX_*_ONLY` switches have been removed. Existing build trees are not deleted, but those
+workflows now use `out/build/native-debug` or `out/build/native-release`.
+
+Simulation logic and worldless combat scenarios run in native GoogleTest tests under
+`native/simulation/tests/`. Unreal retains asset/configuration conversion, collision harvesting,
+HUD/presentation and memory-bootstrap integration coverage. `dev-core` also builds the native
+simulation tests, and the normal unit/all CTest presets include them.
+
+The native simulation fixture captures the converted feature-test level configuration, mesh
+bounds, socket transforms and player defaults. To refresh the capture, build `editor`, then run
+`ctest --test-dir out/build/debug-game -R '^Sandbox.ExportSimulationFixture$' --output-on-failure`.
+This writes `.local/simulation_fixture.cpp`; review it against
+`native/simulation/tests/support/simulation_fixture.cpp` before updating the checked-in snapshot.
+Native tests do not load Unreal assets or regenerate this fixture automatically.
+
+The benchmark feature presets remain separate because they enable additional dependencies
+or report tooling. Native configurations retain the existing Unreal-compatible CRT/ABI
+settings; `UE_CONFIGURATION` still controls native artifact configuration and some compiler
+flags even when Unreal integration is off. The general native presets use `DebugGame`
+for that setting and select Debug/Release through `CMAKE_BUILD_TYPE`.
+
+Configuring all native targets also requires their configuration tools, including Python,
+clang-format, llvm-nm and llvm-readobj, even when building only one library.
 
 ### Preparing a worktree
 

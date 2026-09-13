@@ -884,12 +884,41 @@ void validate_vector(VectorModuleSchema const& module,
                                         "' components must have unique initials"};
         }
     }
+    if (!module.equivalent_members.empty()) {
+        if (module.equivalent_members.size() != module.components.size()) {
+            throw std::invalid_argument{"Vector module '" + module.settings.name +
+                                        "' equivalent members must match its components"};
+        }
+        require_unique_names(module.equivalent_members,
+                             "Vector module '" + module.settings.name + "' equivalent members");
+        for (auto const& member : module.equivalent_members) {
+            require_identifier(member,
+                               "Vector module '" + module.settings.name + "' equivalent member");
+        }
+    }
+    if (module.backend == SoaBackend::standard_library && module.equivalent_members.empty()) {
+        throw std::invalid_argument{"Standard-library vector module '" + module.settings.name +
+                                    "' must declare equivalent members"};
+    }
+    if (module.equivalent_constructor.has_value()) {
+        require_qualified_identifier(*module.equivalent_constructor,
+                                     "Vector module '" + module.settings.name +
+                                         "' equivalent constructor");
+    }
     validate_type(module.value_type, types, "Vector module '" + module.settings.name + "' value");
     validate_type(
         module.equivalent_type, types, "Vector module '" + module.settings.name + "' equivalent");
     validate_export_specifier(module.export_specifier,
                               "Vector module '" + module.settings.name + "' export specifier");
-    if (!module.settings.source.has_value()) {
+    if (module.backend == SoaBackend::standard_library && module.fixed.has_value()) {
+        throw std::invalid_argument{"Standard-library vector module '" + module.settings.name +
+                                    "' does not support fixed storage"};
+    }
+    if (module.backend == SoaBackend::standard_library && module.settings.source.has_value()) {
+        throw std::invalid_argument{"Standard-library vector module '" + module.settings.name +
+                                    "' must be header-only"};
+    }
+    if (module.backend == SoaBackend::unreal && !module.settings.source.has_value()) {
         throw std::invalid_argument{"Vector module '" + module.settings.name +
                                     "' must have a source output"};
     }
@@ -920,7 +949,11 @@ void validate_facade(FacadeModuleSchema const& module,
     }
     require_unique_names(facade.friends, "Facade '" + facade.name + "' friends");
     for (auto const& friend_name : facade.friends) {
-        require_qualified_identifier(friend_name, "Facade '" + facade.name + "' friend");
+        auto name{std::string_view{friend_name}};
+        if (name.starts_with("::")) {
+            name.remove_prefix(2);
+        }
+        require_qualified_identifier(name, "Facade '" + facade.name + "' friend");
     }
     validate_export_specifier(facade.export_specifier,
                               "Facade '" + facade.name + "' export specifier");

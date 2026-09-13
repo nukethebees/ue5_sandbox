@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sandbox/simulation/attack_distance_band.h>
+
 #include <CoreMinimal.h>
 
 #include "AttackDistanceBand.generated.h"
@@ -8,9 +10,14 @@ USTRUCT(BlueprintType)
 struct FAttackDistanceBand {
     GENERATED_BODY()
 
-    bool values_are_valid() const {
-        return minimum_ratio >= 0.f && minimum_ratio <= desired_ratio &&
-               desired_ratio <= maximum_ratio && maximum_ratio <= 1.f;
+    bool values_are_valid() const { return to_native().values_are_valid(); }
+
+    auto to_native() const noexcept -> ml::simulation::AttackDistanceBand {
+        return {
+            .minimum_ratio = minimum_ratio,
+            .desired_ratio = desired_ratio,
+            .maximum_ratio = maximum_ratio,
+        };
     }
 
     UPROPERTY(EditAnywhere,

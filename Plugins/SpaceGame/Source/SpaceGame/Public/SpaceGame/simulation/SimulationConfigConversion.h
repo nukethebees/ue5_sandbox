@@ -1,6 +1,6 @@
 #pragma once
+#include <sandbox/simulation/simulation/LevelSimulationConfig.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
-#include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>
 auto SPACEGAME_API make_simulation_config(FLaserWeaponConfig const& source)
     -> FSimulationLaserWeaponConfig;
 auto SPACEGAME_API make_simulation_config(FPlayerShipConfig const& source)

@@ -1,0 +1,15 @@
+(soa-module native_entity_history
+  :header "native/simulation/include/sandbox/simulation/entity_history.h"
+  :backend standard-library
+  :namespace ml::simulation
+  (struct EntityHistoryColumns
+    :operations (all)
+    (member registry_indices array (type-ref @native_registry_handle :nested "index_type"))
+    (member registry_generations array (type-ref @native_registry_handle :nested "generation_type"))
+    (member entity_types array @native_entity_type)
+    (member teams array @native_team)
+    (member kills array uint32)
+    (member alive array uint8)
+    (member killed_by array @native_unique_id)
+    (member death_reason array @native_death_reason)
+    (single-allocation EntityHistory)))

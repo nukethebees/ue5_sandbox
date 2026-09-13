@@ -22,20 +22,20 @@ auto FGameMemoryEditorSubsystemTest::RunTest(FString const&) -> bool {
              delegate.IsBoundToObject(subsystem));
 
     auto first_lease{subsystem->acquire_backing()};
-    TestTrue(TEXT("The first editor lease succeeds"), first_lease.IsSet());
+    TestTrue(TEXT("The first editor lease succeeds"), first_lease.has_value());
     auto* const persistent_address{first_lease->get().data()};
     TestEqual(TEXT("The lease uses the subsystem's persistent backing"),
               persistent_address,
               subsystem->backing_address());
-    TestFalse(TEXT("A simultaneous editor lease fails"), subsystem->acquire_backing().IsSet());
+    TestFalse(TEXT("A simultaneous editor lease fails"), subsystem->acquire_backing().has_value());
 
     auto fallback{FGameMemoryBootstrap::create_game_memory({.root_capacity_bytes = 1024})};
     TestTrue(TEXT("Bootstrap uses local memory while the editor backing is occupied"),
              fallback->owns_backing_locally());
 
-    first_lease.Reset();
+    first_lease.reset();
     auto second_lease{subsystem->acquire_backing()};
-    TestTrue(TEXT("A sequential editor lease succeeds"), second_lease.IsSet());
+    TestTrue(TEXT("A sequential editor lease succeeds"), second_lease.has_value());
     TestEqual(TEXT("Sequential editor leases reuse the backing address"),
               second_lease->get().data(),
               persistent_address);

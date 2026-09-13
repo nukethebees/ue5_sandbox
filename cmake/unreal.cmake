@@ -3,7 +3,7 @@ function(add_unreal_target target_name unreal_target)
     COMMAND ${UE_LOCKED_COMMAND_PREFIX}
       "${UE_BUILD_SCRIPT}" ${unreal_target} ${UE_PLATFORM} ${UE_CONFIGURATION}
       "-Project=${SANDBOX_UPROJECT}" -WaitMutex
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     COMMENT "Building ${unreal_target} ${UE_PLATFORM} ${UE_CONFIGURATION} through UnrealBuildTool"
     USES_TERMINAL
     VERBATIM
@@ -60,7 +60,7 @@ function(add_unreal_commandlet_target target_name)
       -nosound
       -stdout
     DEPENDS editor
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     COMMENT "${commandlet_COMMENT}"
     USES_TERMINAL
     VERBATIM
@@ -82,7 +82,7 @@ function(add_unreal_benchmark_commandlet_target target_name commandlet)
       -nosound
       -stdout
     DEPENDS editor
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     COMMENT "Running ${commandlet} with exclusive benchmark access"
     USES_TERMINAL
     VERBATIM
@@ -136,7 +136,7 @@ function(add_unreal_editor_test test_name)
   set_tests_properties("${test_name}" PROPERTIES
     LABELS "${editor_test_LABELS}"
     TIMEOUT "${editor_test_TIMEOUT}"
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   )
 endfunction()
 

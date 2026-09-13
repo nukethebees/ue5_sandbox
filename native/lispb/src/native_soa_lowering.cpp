@@ -1,7 +1,6 @@
 #include "fixed_soa_internal.h"
 #include "lowering_utils.h"
 
-#include <array>
 #include <ranges>
 #include <sstream>
 #include <stdexcept>
@@ -9,25 +8,6 @@
 
 namespace codegen::detail {
 namespace {
-auto native_spelling(std::string const& spelling) -> std::string {
-    constexpr std::array integer_types{
-        std::pair{"int8", "std::int8_t"},
-        std::pair{"uint8", "std::uint8_t"},
-        std::pair{"int16", "std::int16_t"},
-        std::pair{"uint16", "std::uint16_t"},
-        std::pair{"int32", "std::int32_t"},
-        std::pair{"uint32", "std::uint32_t"},
-        std::pair{"int64", "std::int64_t"},
-        std::pair{"uint64", "std::uint64_t"},
-    };
-    for (auto const& [source, destination] : integer_types) {
-        if (spelling == source) {
-            return destination;
-        }
-    }
-    return spelling;
-}
-
 auto all_members_are_arrays(FixedLayout const& layout) -> bool {
     return std::ranges::all_of(layout.members, [](auto const& member) {
         return member.schema->kind == SoaMemberKind::array;
@@ -50,13 +30,24 @@ void render_arguments(std::ostringstream& out, FixedLayout const& layout) {
 
 auto lower_native_soa(SoaSchema const& schema,
                       std::map<std::string, SoaSchema const*> const& schemas,
-                      std::map<std::string, CppType> const& types) -> LoweredSoa {
+                      std::map<std::string, CppType> const& types,
+                      bool const allow_equivalent_type,
+                      std::span<std::string const> const equivalent_members,
+                      std::string_view const equivalent_constructor) -> LoweredSoa {
     if (schema.fixed || !schema.functions.empty() || !schema.mutable_view_functions.empty() ||
-        schema.equivalent_type || !schema.using_declarations.empty()) {
+        !schema.using_declarations.empty() ||
+        (schema.equivalent_type.has_value() && !allow_equivalent_type)) {
         throw std::invalid_argument{"Standard-library SoA does not support custom functions, "
-                                    "fixed storage or equivalent types"};
+                                    "fixed storage, using declarations or equivalent types"};
     }
     auto const layout{build_soa_layout(schema, schemas, types, false)};
+    auto const equivalent_type{schema.equivalent_type.has_value()
+                                   ? std::optional{resolve_type(*schema.equivalent_type, types)}
+                                   : std::nullopt};
+    if (equivalent_type.has_value() && equivalent_members.size() != layout.members.size()) {
+        throw std::invalid_argument{
+            "Standard-library SoA equivalent members must match its columns"};
+    }
     for (auto const& leaf : layout.leaves) {
         if (leaf.type.spelling == "bool") {
             throw std::invalid_argument{"Standard-library SoA requires contiguous columns; "
@@ -70,6 +61,11 @@ auto lower_native_soa(SoaSchema const& schema,
         {"native_storage", "native_soa/storage.h", {}},
         {"soa_permutation", "sandbox/core/soa_permutation.h", {}},
     };
+    if (equivalent_type.has_value()) {
+        dependencies.insert(dependencies.end(),
+                            equivalent_type->dependencies.begin(),
+                            equivalent_type->dependencies.end());
+    }
     std::ostringstream out;
 
     out << "struct " << view << ";\n"
@@ -81,6 +77,22 @@ auto lower_native_soa(SoaSchema const& schema,
             << "using View = " << view << ";\n"
             << "using ConstView = " << const_view << ";\n"
             << "using size_type = std::int32_t;\n";
+        if (equivalent_type.has_value()) {
+            out << "using equivalent_type = " << native_spelling(equivalent_type->spelling) << ";\n"
+                << "auto operator[](size_type const index) const -> equivalent_type { return ";
+            if (equivalent_constructor.empty()) {
+                out << "{";
+            } else {
+                out << equivalent_constructor << "(";
+            }
+            for (std::size_t index{}; index < layout.members.size(); ++index) {
+                if (index > 0) {
+                    out << ", ";
+                }
+                out << layout.members[index].schema->name << "[static_cast<std::size_t>(index)]";
+            }
+            out << (equivalent_constructor.empty() ? "}; }\n" : "); }\n");
+        }
         for (auto const& member : layout.members) {
             auto const& resolved{member.member};
             if (member.schema->kind == SoaMemberKind::array) {
@@ -146,6 +158,14 @@ auto lower_native_soa(SoaSchema const& schema,
                     << member.schema->name << ";\n";
             }
             out << "}\n";
+            if (equivalent_type.has_value()) {
+                out << "void set(size_type const index, equivalent_type const value) const { "
+                       "set(index";
+                for (std::size_t index{}; index < layout.members.size(); ++index) {
+                    out << ", value." << equivalent_members[index];
+                }
+                out << "); }\n";
+            }
         }
         out << "};\n";
     }
@@ -154,6 +174,11 @@ auto lower_native_soa(SoaSchema const& schema,
         << "using View = " << view << ";\n"
         << "using ConstView = " << const_view << ";\n"
         << "using size_type = std::int32_t;\n";
+    if (equivalent_type.has_value()) {
+        out << "using equivalent_type = " << native_spelling(equivalent_type->spelling) << ";\n"
+            << "auto operator[](size_type const index) const -> equivalent_type { return "
+               "get_const_view()[index]; }\n";
+    }
     for (auto const& member : layout.members) {
         auto const& type{member.member.element_type};
         dependencies.insert(dependencies.end(), type.dependencies.begin(), type.dependencies.end());
@@ -225,6 +250,12 @@ auto lower_native_soa(SoaSchema const& schema,
         out << ") -> size_type { auto const index{num()}; add_defaulted(1); set(index";
         render_arguments(out, layout);
         out << "); return index; }\n";
+        if (equivalent_type.has_value()) {
+            out << "void set(size_type const index, equivalent_type const value) { "
+                   "get_view().set(index, value); }\n"
+                << "auto add(equivalent_type const value) -> size_type { auto const index{num()}; "
+                   "add_defaulted(1); set(index, value); return index; }\n";
+        }
     }
 
     out << "void append_from(ConstView source) { auto const count{source.num()};\n"

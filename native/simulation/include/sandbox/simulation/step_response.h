@@ -13,5 +13,4 @@ class DampedStepResponse {
     float magnitude_{};
 };
 
-[[nodiscard]] auto clamp_health_to_max(int health, int max_health) noexcept -> int;
 }

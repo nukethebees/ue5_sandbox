@@ -1,4 +1,6 @@
 #include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include "SpaceGameSimulation/entities/TestEntityType.h"
 
@@ -107,7 +109,7 @@ auto team_colour(ETestEntityType const type,
 }
 }
 
-auto select_soft_target(ml::entity_registry::EntityData::ConstView const entities,
+auto select_soft_target(ml::simulation::RegistryEntityData::ConstView const entities,
                         TConstArrayView<int> const generations,
                         TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
                         FSoftTargetSelectionContext const& context,
@@ -146,12 +148,13 @@ auto select_soft_target(ml::entity_registry::EntityData::ConstView const entitie
 
     auto const count{entities.num()};
     for (int32 index{0}; index < count; ++index) {
-        if (entities.alive[index] == 0 || entities.teams[index] == context.player_team ||
-            !is_supported_entity_type(entities.entity_types[index])) {
+        if (entities.alive[index] == 0 ||
+            entities.teams[index] == ml::to_native(context.player_team) ||
+            !is_supported_entity_type(ml::to_unreal(entities.entity_types[index]))) {
             continue;
         }
 
-        auto const position{entities.locations[index]};
+        auto const position{ml::to_unreal(entities.locations[index])};
         auto const objective{objective_roles[index] != EEntityOverlayObjectiveRole::None};
         if (!objective && FVector3f::DistSquared(context.view.camera_origin, position) >
                               maximum_overlay_range_squared) {
@@ -282,7 +285,7 @@ auto select_soft_target(ml::entity_registry::EntityData::ConstView const entitie
 }
 
 auto collect_entity_overlay_instances(
-    ml::entity_registry::EntityData::ConstView const entities,
+    ml::simulation::RegistryEntityData::ConstView const entities,
     TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
     FEntityOverlayTeamColours const& team_colours,
     FEntityOverlayHealthMaximums const& maximum_health,
@@ -303,19 +306,21 @@ auto collect_entity_overlay_instances(
         }
 
         auto const inverse_health{
-            inverse_maximum_health(entities.entity_types[index], maximum_health)};
+            inverse_maximum_health(ml::to_unreal(entities.entity_types[index]), maximum_health)};
         if (inverse_health <= 0.0f) {
             continue;
         }
 
         auto const objective_role{objective_roles[index]};
-        static_cast<void>(collector.try_add_colored(
-            entities.locations[index],
-            static_cast<float>(entities.healths[index]) * inverse_health,
-            entities.radii[index],
-            team_colour(entities.entity_types[index], entities.teams[index], team_colours),
-            objective_role,
-            objective_role != EEntityOverlayObjectiveRole::None));
+        static_cast<void>(
+            collector.try_add_colored(ml::to_unreal(entities.locations[index]),
+                                      static_cast<float>(entities.healths[index]) * inverse_health,
+                                      entities.radii[index],
+                                      team_colour(ml::to_unreal(entities.entity_types[index]),
+                                                  ml::to_unreal(entities.teams[index]),
+                                                  team_colours),
+                                      objective_role,
+                                      objective_role != EEntityOverlayObjectiveRole::None));
     }
 
     return {.candidate_count = output_instances.Num(),

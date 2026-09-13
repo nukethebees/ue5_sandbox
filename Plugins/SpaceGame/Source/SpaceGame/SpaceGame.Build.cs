@@ -19,6 +19,7 @@ public class SpaceGame : ModuleRules
             "SandboxGameShared",
             "SandboxISMC",
             "SandboxNative",
+            "NativeMemory",
             "SandboxUI",
             "CommonInput",
             "CommonUI",

@@ -170,10 +170,11 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
     }
     spawn_preview_error.Reset();
     // Runtime uses the actor pivot/rotation, not the preview mesh component's relative transform.
-    auto const bounds{ml::ioj::make_entity_world_bounds(*local_bounds,
-                                                        ml::ioj::FEntityAABBs::capital_ship_index,
-                                                        FVector3f{GetActorLocation()},
-                                                        FRotator3f{GetActorRotation()})};
+    auto const bounds{ml::ioj::to_unreal(
+        ml::ioj::make_entity_world_bounds(*local_bounds,
+                                          ml::ioj::FEntityAABBs::capital_ship_index,
+                                          FVector3f{GetActorLocation()},
+                                          FRotator3f{GetActorRotation()}))};
     auto const clearance{ml::get_mesh_sphere_bounds(*config->fighters.mesh) +
                          config->fighters.avoidance_clearance_buffer};
     auto const clearance_bounds{bounds.ExpandBy(clearance)};

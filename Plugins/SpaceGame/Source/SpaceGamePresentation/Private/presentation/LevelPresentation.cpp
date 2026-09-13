@@ -21,8 +21,8 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     auto const& config{config_};
     resources.sparks->initialise(config.sparks);
     sparks.clear();
-    if (resources.player.IsSet() && view.player.IsSet()) {
-        player_.Emplace(resources.player.GetValue(), config.player_ship, view.player.GetValue());
+    if (resources.player.IsSet() && view.player.has_value()) {
+        player_.Emplace(resources.player.GetValue(), config.player_ship, view.player.value());
     }
 #if WITH_EDITORONLY_DATA
     lasers.debug_drawer = config.laser_debug_drawer;
@@ -86,8 +86,8 @@ void FLevelPresentation::tick(float const dt, FLevelReadView const& view) {
     last_frame_sequence_ = view.frame_sequence;
     last_completed_tick_ = view.clock->get_completed_ticks();
     ++tick_count_;
-    if (player_.IsSet() && view.player.IsSet()) {
-        player_->tick(view.player.GetValue());
+    if (player_.IsSet() && view.player.has_value()) {
+        player_->tick(view.player.value());
     }
     capital_ships.update_visual_data();
     capital_ship_fighters.update_visual_data();

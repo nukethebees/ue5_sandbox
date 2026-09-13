@@ -31,6 +31,11 @@ def get_file_extensions(format_hlsl: bool) -> set[str]:
     return extensions
 
 
+def is_excluded_path(file_path: Path) -> bool:
+    excluded_parts = {"generated", "thirdparty", "third_party"}
+    return any(part.casefold() in excluded_parts for part in file_path.parts)
+
+
 def find_files(directory: Path, extensions: set[str]) -> list[Path]:
     """Find all files with the given extensions recursively in the given directory."""
     files: list[Path] = []
@@ -40,7 +45,7 @@ def find_files(directory: Path, extensions: set[str]) -> list[Path]:
 
     try:
         for file_path in directory.rglob("*"):
-            if "generated" in file_path.parts or "ThirdParty" in file_path.parts:
+            if is_excluded_path(file_path):
                 continue
             if file_path.is_file() and file_path.suffix.lower() in extensions:
                 files.append(file_path.resolve())
@@ -94,7 +99,7 @@ def get_git_paths(repository_root: Path, arguments: list[str]) -> set[Path]:
 
 def is_format_candidate(file_path: Path, directories: list[Path], extensions: set[str]) -> bool:
     """Return whether a path is an existing in-scope file supported by clang-format."""
-    if "generated" in file_path.parts or "ThirdParty" in file_path.parts:
+    if is_excluded_path(file_path):
         return False
     if not file_path.is_file() or file_path.suffix.lower() not in extensions:
         return False

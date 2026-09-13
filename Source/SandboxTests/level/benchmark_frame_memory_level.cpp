@@ -3,14 +3,14 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
 
+#include <sandbox/simulation/combat/lasers/TestLasersSimulation.h>
+#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
+#include <sandbox/simulation/ships/fighters/TestCapitalShipFightersSimulation.h>
+#include <sandbox/simulation/simulation/LevelSimulation.h>
 #include <SpaceGame/levels/LevelLoader.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGameS7/LevelDefinitionReader.h>
-#include <SpaceGameSimulation/combat/lasers/TestLasersSimulation.h>
-#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
-#include <SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h>
-#include <SpaceGameSimulation/simulation/LevelSimulation.h>
 
 #include <SandboxCore/time_series_data.h>
 
