@@ -8,8 +8,10 @@ Unreal Engine 5.8 project.
 * Entity data is largely stored in cache-friendly arrays / SOA structures rather than represented entirely by Actors.
 * UI is a presentation layer over simulation state and must not own gameplay logic.
 * Determinism, debuggability, simple control flow, and performance are important.
-* For new code that does not require Unreal Engine, prefer designing it as a standalone component
-  under `native/` and integrate it with Unreal through a thin adapter.
+* Prefer implementing and testing work under `native/` until Unreal Engine integration is needed,
+  then integrate it with Unreal through a thin adapter.
+* Use the local native testing infrastructure where possible to keep iteration fast and avoid
+  clashes with the shared Unreal build mutex.
 * External standalone developer tools may live under `tools/`.
 
 # Builds
