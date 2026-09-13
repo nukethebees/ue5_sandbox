@@ -13,7 +13,7 @@ target_link_libraries(material-gen
     sandbox::codegen_warnings
 )
 
-if(NOT SANDBOX_CODEGEN_ONLY)
+if(SANDBOX_WITH_UNREAL)
   foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
     file(MAKE_DIRECTORY
       "${PROJECT_SOURCE_DIR}/Binaries/Native/MaterialGen/${UE_PLATFORM}/${configuration}"

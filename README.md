@@ -132,6 +132,42 @@ matching Unreal configuration and build `dev-core` (`editor`, `core-tests`, and
 configures and builds it in one command. The `game` target remains available through a build preset, for example
 `cmake --build --preset development --target game`.
 
+### Native-only development
+
+All native libraries and tools are configured together through `native/CMakeLists.txt`.
+Use `native-debug` or `native-release` to select the build configuration; use build presets
+or explicit targets to choose what to compile. These configure presets set
+`SANDBOX_WITH_UNREAL=OFF`, so no Unreal installation or `UE_ROOT` is required.
+The Unreal configure presets enable that option.
+
+```powershell
+cmake --preset native-debug
+cmake --build --preset native-memory
+ctest --preset native-memory
+
+cmake --build --preset codegen
+ctest --preset codegen-tests
+
+cmake --preset native-release
+cmake --build --preset native-core
+ctest --preset native-core
+```
+
+The `codegen`, `generate-code`, `native-memory`, `native-mesh` and `native-s7` build presets
+use `native-debug`; `native-core` uses `native-release`. Their workflow presets still configure,
+build and test the selected targets. Component-specific configure presets and
+`SANDBOX_*_ONLY` switches have been removed. Existing build trees are not deleted, but those
+workflows now use `out/build/native-debug` or `out/build/native-release`.
+
+The benchmark feature presets remain separate because they enable additional dependencies
+or report tooling. Native configurations retain the existing Unreal-compatible CRT/ABI
+settings; `UE_CONFIGURATION` still controls native artifact configuration and some compiler
+flags even when Unreal integration is off. The general native presets use `DebugGame`
+for that setting and select Debug/Release through `CMAKE_BUILD_TYPE`.
+
+Configuring all native targets also requires their configuration tools, including Python,
+clang-format, llvm-nm and llvm-readobj, even when building only one library.
+
 ### Preparing a worktree
 
 After setting `VCPKG_ROOT` and `UE_ROOT`, load the development commands and prepare a new or

@@ -19,27 +19,43 @@
       "inherits": "base",
       "cacheVariables": {
         "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed",
-        "VCPKG_MANIFEST_FEATURES": ""
+        "VCPKG_MANIFEST_FEATURES": "",
+        "SANDBOX_WITH_UNREAL": true
       }
     },
     {
-      "name": "codegen",
-      "displayName": "Code generator",
+      "name": "native",
+      "hidden": true,
       "inherits": "base",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "SANDBOX_CODEGEN_ONLY": true
+        "SANDBOX_WITH_UNREAL": false,
+        "UE_CONFIGURATION": "DebugGame"
+      }
+    },
+    {
+      "name": "native-debug",
+      "displayName": "Native Debug",
+      "inherits": "native",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "native-release",
+      "displayName": "Native Release",
+      "inherits": "native",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
       "name": "kernel-benchmark",
       "displayName": "Native kernel benchmark",
-      "inherits": "base",
+      "inherits": "native-release",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "SANDBOX_CODEGEN_ONLY": true,
         "SANDBOX_KERNEL_BENCHMARKS": true,
-        "VCPKG_MANIFEST_FEATURES": "kernel-benchmarks"
+        "VCPKG_MANIFEST_FEATURES": "kernel-benchmarks",
+        "UE_CONFIGURATION": "Development"
       }
     },
     {
@@ -137,51 +153,11 @@
     },
     {
       "name": "native-soa",
-      "inherits": "base",
+      "inherits": "native-release",
       "cacheVariables": {
         "VCPKG_MANIFEST_FEATURES": "kernel-benchmarks",
-        "SANDBOX_CODEGEN_ONLY": true,
-        "CMAKE_BUILD_TYPE": "Release",
-        "SANDBOX_NATIVE_SOA_BENCHMARKS": true
-      }
-    },
-    {
-      "name": "native-core",
-      "displayName": "Native core",
-      "inherits": "base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "SANDBOX_NATIVE_CORE_ONLY": true,
-        "UE_CONFIGURATION": "DebugGame"
-      }
-    },
-    {
-      "name": "native-memory",
-      "displayName": "Native memory",
-      "inherits": "base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "SANDBOX_NATIVE_MEMORY_ONLY": true,
-        "UE_CONFIGURATION": "DebugGame"
-      }
-    },
-    {
-      "name": "native-mesh",
-      "displayName": "Native mesh generation",
-      "inherits": "base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "SANDBOX_NATIVE_MESH_ONLY": true
-      }
-    },
-    {
-      "name": "native-s7",
-      "displayName": "Native S7 runtime",
-      "inherits": "base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "SANDBOX_NATIVE_S7_ONLY": true,
-        "UE_CONFIGURATION": "DebugGame"
+        "SANDBOX_NATIVE_SOA_BENCHMARKS": true,
+        "UE_CONFIGURATION": "Development"
       }
     }
   ],
@@ -203,7 +179,7 @@
     },
     {
       "name": "codegen",
-      "configurePreset": "codegen",
+      "configurePreset": "native-debug",
       "targets": ["lispb", "codegen-tests", "slate-codegen-tests", "kernel-codegen-tests"]
     },
     {
@@ -228,7 +204,7 @@
     },
     {
       "name": "generate-code",
-      "configurePreset": "codegen",
+      "configurePreset": "native-debug",
       "targets": ["generate-code"]
     },
     {
@@ -348,22 +324,22 @@
     },
     {
       "name": "native-core",
-      "configurePreset": "native-core",
+      "configurePreset": "native-release",
       "targets": ["native-core-tests"]
     },
     {
       "name": "native-memory",
-      "configurePreset": "native-memory",
+      "configurePreset": "native-debug",
       "targets": ["native-memory-tests"]
     },
     {
       "name": "native-mesh",
-      "configurePreset": "native-mesh",
+      "configurePreset": "native-debug",
       "targets": ["mesh-gen-tests"]
     },
     {
       "name": "native-s7",
-      "configurePreset": "native-s7",
+      "configurePreset": "native-debug",
       "targets": ["sandbox-s7-tests"]
     }
   ],
@@ -453,7 +429,7 @@
     {
       "name": "codegen-tests",
       "inherits": "test-base",
-      "configurePreset": "codegen",
+      "configurePreset": "native-debug",
       "filter": {
         "include": {
           "label": "codegen"
@@ -583,7 +559,7 @@
     {
       "name": "native-core",
       "inherits": "test-base",
-      "configurePreset": "native-core",
+      "configurePreset": "native-release",
       "filter": {
         "include": {
           "label": "native-core"
@@ -593,7 +569,7 @@
     {
       "name": "native-memory",
       "inherits": "test-base",
-      "configurePreset": "native-memory",
+      "configurePreset": "native-debug",
       "filter": {
         "include": {
           "name": "^native-memory-tests$"
@@ -602,7 +578,7 @@
     },
     {
       "name": "native-mesh",
-      "configurePreset": "native-mesh",
+      "configurePreset": "native-debug",
       "output": {
         "outputOnFailure": true
       },
@@ -618,7 +594,7 @@
     {
       "name": "native-s7",
       "inherits": "test-base",
-      "configurePreset": "native-s7",
+      "configurePreset": "native-debug",
       "filter": {
         "include": {
           "label": "native-s7"
@@ -700,7 +676,7 @@
     {
       "name": "codegen",
       "steps": [
-        { "type": "configure", "name": "codegen" },
+        { "type": "configure", "name": "native-debug" },
         { "type": "build", "name": "codegen" },
         { "type": "test", "name": "codegen-tests" }
       ]
@@ -708,7 +684,7 @@
     {
       "name": "generate-code",
       "steps": [
-        { "type": "configure", "name": "codegen" },
+        { "type": "configure", "name": "native-debug" },
         { "type": "build", "name": "generate-code" }
       ]
     },
@@ -885,7 +861,7 @@
     {
       "name": "native-mesh",
       "steps": [
-        { "type": "configure", "name": "native-mesh" },
+        { "type": "configure", "name": "native-debug" },
         { "type": "build", "name": "native-mesh" },
         { "type": "test", "name": "native-mesh" }
       ]
@@ -919,7 +895,7 @@
     {
       "name": "native-core",
       "steps": [
-        { "type": "configure", "name": "native-core" },
+        { "type": "configure", "name": "native-release" },
         { "type": "build", "name": "native-core" },
         { "type": "test", "name": "native-core" }
       ]
@@ -927,7 +903,7 @@
     {
       "name": "native-memory",
       "steps": [
-        { "type": "configure", "name": "native-memory" },
+        { "type": "configure", "name": "native-debug" },
         { "type": "build", "name": "native-memory" },
         { "type": "test", "name": "native-memory" }
       ]
@@ -935,7 +911,7 @@
     {
       "name": "native-s7",
       "steps": [
-        { "type": "configure", "name": "native-s7" },
+        { "type": "configure", "name": "native-debug" },
         { "type": "build", "name": "native-s7" },
         { "type": "test", "name": "native-s7" }
       ]

@@ -143,11 +143,12 @@ vcpkg_installed/x64-windows
 This repository-root tree is stable across Unreal configurations and is ignored by Git. UBT links
 from it without depending on a particular CMake build directory.
 
-The `codegen` and `kernel-benchmark` presets intentionally continue to inherit the base preset
-directly. Their vcpkg packages remain in their per-build install trees, such as:
+The `native-debug`, `native-release` and native benchmark configure presets inherit the base
+preset through the hidden `native` preset, not the `unreal` preset. Their vcpkg packages remain
+in their per-build install trees, such as:
 
 ```text
-out/build/codegen/vcpkg_installed/x64-windows
+out/build/native-debug/vcpkg_installed/x64-windows
 out/build/kernel-benchmark/vcpkg_installed/x64-windows
 ```
 
