@@ -399,7 +399,7 @@ auto FSpatialQueryManager::collect_non_team_entities_in_range(
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::FSpatialQueryManager::collect_non_team_entities_in_range);
 
-    range_query_count_.fetch_add(1, std::memory_order_relaxed);
+    telemetry_.record_range_query();
 
     query_manager::FThreadBufferLease const buffer_lease{*this};
     TRACE_CPUPROFILER_EVENT_SCOPE(
@@ -424,7 +424,7 @@ auto FSpatialQueryManager::collect_entities_of_type_in_range(
     TArrayView<FRegistryEntityHandle> const out_entities) const -> int32 {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpatialQueryManager::collect_entities_of_type_in_range);
 
-    range_query_count_.fetch_add(1, std::memory_order_relaxed);
+    telemetry_.record_range_query();
 
     query_manager::FThreadBufferLease const buffer_lease{*this};
     return collect_grid_entities_in_range(
@@ -498,7 +498,7 @@ auto FSpatialQueryManager::update(uint64 const tick) -> ioj::FDetectedOverlapsVi
 }
 
 void FSpatialQueryManager::reset_runtime_telemetry() noexcept {
-    range_query_count_.store(0, std::memory_order_relaxed);
+    telemetry_.reset();
     collision.get_uniform_grid().reset_runtime_telemetry();
 }
 
@@ -506,12 +506,6 @@ auto FSpatialQueryManager::get_runtime_telemetry() const noexcept
     -> FSpatialQueryTelemetrySnapshot {
     auto const& grid{collision.get_uniform_grid()};
     auto const grid_telemetry{grid.get_runtime_telemetry()};
-    return {
-        .grid_rebuild_count = grid_telemetry.rebuild_count,
-        .range_query_count = range_query_count_.load(std::memory_order_relaxed),
-        .line_trace_count = grid_telemetry.line_trace_count,
-        .sweep_trace_count = grid_telemetry.sweep_trace_count,
-        .occupied_dynamic_cell_count = grid.get_non_empty_cell_count(),
-    };
+    return telemetry_.snapshot(grid_telemetry, grid.get_non_empty_cell_count());
 }
 }

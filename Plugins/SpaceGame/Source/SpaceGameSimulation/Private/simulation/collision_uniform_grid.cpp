@@ -148,7 +148,7 @@ void CollisionUniformGrid::rebuild_static_grid() {
 void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid);
 
-    rebuild_count_.fetch_add(1, std::memory_order_relaxed);
+    telemetry_.record_rebuild();
 
     if (!is_configured()) {
         UE_LOG(LogSandbox,
@@ -290,7 +290,7 @@ void CollisionUniformGrid::append_overlaps(simulation::collision::WorldAABB cons
 
 void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
                                        FTraceHitsView const& hits) const {
-    line_trace_count_.fetch_add(static_cast<uint64>(traces.num()), std::memory_order_relaxed);
+    telemetry_.record_line_traces(static_cast<uint64>(traces.num()));
     trace_aabbs_impl<ETraceKind::Line, EIgnoredEntityMode::None, ETraceEntityFilter::None>(
         traces, hits, {}, FVector3f::ZeroVector);
 }
@@ -299,7 +299,7 @@ void CollisionUniformGrid::trace_aabbs(
     FLineTracesConstView const& traces,
     FTraceHitsView const& hits,
     TConstArrayView<FRegistryEntityHandle> const ignored_entities) const {
-    line_trace_count_.fetch_add(static_cast<uint64>(traces.num()), std::memory_order_relaxed);
+    telemetry_.record_line_traces(static_cast<uint64>(traces.num()));
     trace_aabbs_impl<ETraceKind::Line, EIgnoredEntityMode::PerTrace, ETraceEntityFilter::None>(
         traces, hits, ignored_entities, FVector3f::ZeroVector);
 }
@@ -310,8 +310,7 @@ void
                                       FTraceHitsView const& hits,
                                       TConstArrayView<FRegistryEntityHandle> const ignored_entities,
                                       ETraceEntityFilter const entity_filter) const {
-    sweep_trace_count_.fetch_add(static_cast<uint64>(centre_paths.num()),
-                                 std::memory_order_relaxed);
+    telemetry_.record_sweep_traces(static_cast<uint64>(centre_paths.num()));
     check(!moving_half_extent.ContainsNaN());
     check(moving_half_extent.X >= 0.f);
     check(moving_half_extent.Y >= 0.f);
@@ -350,18 +349,12 @@ void
 }
 
 void CollisionUniformGrid::reset_runtime_telemetry() noexcept {
-    rebuild_count_.store(0, std::memory_order_relaxed);
-    line_trace_count_.store(0, std::memory_order_relaxed);
-    sweep_trace_count_.store(0, std::memory_order_relaxed);
+    telemetry_.reset();
 }
 
 auto CollisionUniformGrid::get_runtime_telemetry() const noexcept
     -> FCollisionGridTelemetrySnapshot {
-    return {
-        .rebuild_count = rebuild_count_.load(std::memory_order_relaxed),
-        .line_trace_count = line_trace_count_.load(std::memory_order_relaxed),
-        .sweep_trace_count = sweep_trace_count_.load(std::memory_order_relaxed),
-    };
+    return telemetry_.snapshot();
 }
 
 template <CollisionUniformGrid::ETraceKind TraceKind,

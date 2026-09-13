@@ -69,6 +69,7 @@ target_sources(native-simulation PRIVATE
   src/query_thread_buffers.cpp
   src/simulation_clock.cpp
   src/spatial.cpp
+  src/spatial_query_telemetry.cpp
   src/step_response.cpp
 )
 target_compile_features(native-simulation PUBLIC cxx_std_23)

@@ -13,7 +13,6 @@
 #include <CoreMinimal.h>
 #include <SandboxCore/soa_vectors.h>
 
-#include <atomic>
 #include <cstdint>
 #include <span>
 #include <vector>
@@ -144,8 +143,6 @@ struct SPACEGAMESIMULATION_API CollisionUniformGrid {
 
     simulation::collision::CollisionGridStaticStorage static_storage_;
 
-    std::atomic<uint64> rebuild_count_{};
-    mutable std::atomic<uint64> line_trace_count_{};
-    mutable std::atomic<uint64> sweep_trace_count_{};
+    simulation::collision::CollisionGridTelemetry telemetry_;
 };
 }

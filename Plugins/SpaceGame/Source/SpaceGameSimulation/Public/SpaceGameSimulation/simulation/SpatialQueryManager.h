@@ -14,7 +14,6 @@
 #include <CoreMinimal.h>
 #include <SandboxCore/soa_vectors.h>
 
-#include <atomic>
 #include <utility>
 
 struct FTestEntityRegistry;
@@ -152,6 +151,6 @@ struct SPACEGAMESIMULATION_API FSpatialQueryManager {
     mutable simulation::QueryThreadBufferPool thread_buffer_pool_;
 
     ioj::FCollisionSystem collision;
-    mutable std::atomic<uint64> range_query_count_{};
+    simulation::collision::SpatialQueryTelemetry telemetry_;
 };
 }
