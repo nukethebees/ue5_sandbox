@@ -10,6 +10,7 @@
 #include <sandbox/core/periodic_tick_countdown.h>
 #include <sandbox/core/tick_countdown.h>
 #include <sandbox/core/vector_math.h>
+#include <sandbox/core/vector_normalization.h>
 #include <sandbox/simulation/deterministic_bias.h>
 #include <sandbox/simulation/rotator_math.h>
 #include <sandbox/simulation/vector_operations.h>
@@ -32,7 +33,6 @@
 #include <sandbox/simulation/fighter_orders.h>
 #include <sandbox/simulation/fighter_spawn_admission.h>
 #include <sandbox/simulation/fighter_spawn_initialization.h>
-#include <sandbox/simulation/fighter_targeting.h>
 #include <sandbox/simulation/laser_source.h>
 #include <sandbox/simulation/simulation/FighterDiagnostics.h>
 #include <sandbox/simulation/simulation/FrameTraceHits.h>
@@ -217,13 +217,21 @@ void Simulation::make_decisions() {
         auto const n_nearby_entities{spatial_query_manager.collect_non_team_entities_in_range(
             fighter_location, data.teams[i], awareness_radius, nearby_entities)};
         auto const aim_direction{data.aim_directions[i]};
-        auto const selected_target{ml::simulation::fighters::select_opportunistic_target(
-            fighter_location,
-            aim_direction,
-            {nearby_entities.data(), static_cast<std::size_t>(n_nearby_entities)},
-            registry,
-            dot_threshold,
-            1.e-8f)};
+        FRegistryEntityHandle selected_target{};
+        for (std::int32_t nearby_index{}; nearby_index < n_nearby_entities; ++nearby_index) {
+            auto const candidate{nearby_entities[nearby_index]};
+            assert(candidate.index >= 0 && candidate.index < registry.num());
+            assert(registry.generations[static_cast<std::size_t>(candidate.index)] ==
+                   candidate.generation);
+
+            auto const direction{ml::native_math::safe_normal(
+                registry.locations[candidate.index] - fighter_location, 1.e-8f)};
+            if (HMM_DotV3(aim_direction, direction) > dot_threshold) {
+                selected_target = candidate;
+                break;
+            }
+        }
+
         if (!selected_target.is_null()) {
             data.target_handles[i] = selected_target;
         }

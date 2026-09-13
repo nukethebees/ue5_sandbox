@@ -184,7 +184,6 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/fighter_spawn_queue.h
   include/sandbox/simulation/fighter_frame_spawn_queue.h
   include/sandbox/simulation/fighter_task_layout.h
-  include/sandbox/simulation/fighter_targeting.h
   include/sandbox/simulation/frame_collision_scratch.h
   include/sandbox/simulation/frame_direct_damage_events.h
   include/sandbox/simulation/frame_hit_details.h
@@ -261,7 +260,6 @@ target_sources(native-simulation PRIVATE
   src/rotator_math.cpp
   src/fighter_frame_spawn_queue.cpp
   src/fighter_task_layout.cpp
-  src/fighter_targeting.cpp
   src/fighter_navigation_application.cpp
   src/fighter_navigation_schedule.cpp
   src/fighter_navigation_scans.cpp
