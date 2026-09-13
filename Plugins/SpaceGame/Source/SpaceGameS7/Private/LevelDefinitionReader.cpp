@@ -1,728 +1,138 @@
 #include <SpaceGameS7/LevelDefinitionReader.h>
 
-#include <native/s7/interpreter.h>
-#include <native/s7/value.h>
+#include <sandbox/level_authoring/LevelDefinitionReader.h>
 
 #include <Containers/StringConv.h>
 #include <Misc/FileHelper.h>
 #include <Misc/Paths.h>
 
-#include <cmath>
-#include <limits>
 #include <string_view>
 
 namespace ml::s7 {
 namespace {
-namespace s7_native = ::ml::s7;
-
-constexpr TCHAR level_prelude[]{LR"(
-(define (level . clauses) (cons 'level clauses))
-(define (id value) (list 'id value))
-(define (title value) (list 'title value))
-(define (description value) (list 'description value))
-(define (par-time seconds) (list 'par-time seconds))
-(define (unlock . criteria) (cons 'unlock criteria))
-(define (level-completed level-id) (list 'level-completed level-id))
-(define (teams . values) (cons 'teams values))
-(define (team id) (list 'team id))
-(define (player id) (list 'player id))
-(define (camera targets camera-distance direction)
-  (list 'camera targets camera-distance direction))
-(define (look-at . ids) (cons 'look-at ids))
-(define (distance value) (list 'distance value))
-(define (offset-direction x y z) (list 'offset-direction x y z))
-(define (mission . clauses) (cons 'mission clauses))
-(define (mode value) (list 'mode value))
-(define (time-limit seconds) (list 'time-limit seconds))
-(define (kill-count value) (list 'kill-count value))
-(define (heroes . ids) (cons 'heroes ids))
-(define (must-survive . ids) (cons 'must-survive ids))
-(define (required-kills . ids) (cons 'required-kills ids))
-(define (mission-events . values) (cons 'mission-events values))
-(define (mission-event event-time . clauses) (cons 'mission-event (cons event-time clauses)))
-(define (at seconds) (list 'at seconds))
-(define (add-must-survive . ids) (cons 'add-must-survive ids))
-(define (add-required-kills . ids) (cons 'add-required-kills ids))
-(define (increase-kill-count value) (list 'increase-kill-count value))
-(define (entities . values) (cons 'entities values))
-(define (entity id archetype team position rotation . clauses)
-  (append (list 'entity id archetype team position rotation) clauses))
-(define (position x y z) (list 'position x y z))
-(define (rotation pitch yaw roll) (list 'rotation pitch yaw roll))
-(define (spawn-at seconds) (list 'spawn-at seconds))
-)"};
-
 auto to_fstring(std::string_view const value) -> FString {
     auto const converted{FUTF8ToTCHAR{value.data(), static_cast<int32>(value.size())}};
     return FString{converted.Length(), converted.Get()};
 }
 
-class FDefinitionDecoder final {
-  public:
-    FDefinitionDecoder(s7_native::Scheme& scheme, s7_native::Value const root)
-        : scheme_{scheme}
-        , root_{root} {}
+auto to_fname(std::string const& value) -> FName {
+    return FName{to_fstring(value)};
+}
 
-    auto decode() -> FLevelDefinitionReadResult {
-        if (!expect_tagged_list(root_, TEXT("level"), TEXT("level"))) {
-            return {.decode_errors = MoveTemp(errors_)};
-        }
-
-        FLevelBuilder builder;
-        FLevelMetadata metadata;
-        auto const clause_count{list_length(root_) - 1};
-        bool has_id{false};
-        bool has_title{false};
-        bool has_description{false};
-        bool has_par_time{false};
-        bool has_unlock{false};
-        bool has_teams{false};
-        bool has_player{false};
-        bool has_camera{false};
-        bool has_mission{false};
-        bool has_mission_events{false};
-        bool has_entities{false};
-        for (int64 i{0}; i < clause_count; ++i) {
-            auto const clause{list_value(root_, i + 1)};
-            auto const path{FString::Printf(TEXT("level[%lld]"), i)};
-            if (!is_non_empty_list(clause)) {
-                add_error(path, TEXT("Expected a level clause"));
-                continue;
-            }
-
-            auto const tag{list_value(clause, 0)};
-            if (!s7_native::is_symbol(tag)) {
-                add_error(path, TEXT("Level clause tag must be a symbol"));
-                continue;
-            }
-
-            auto const tag_name{to_fstring(s7_native::symbol_name(tag))};
-            if (tag_name == TEXT("id")) {
-                if (has_id) {
-                    add_error(path, TEXT("Duplicate id clause"));
-                    continue;
-                }
-                has_id = true;
-                FName id;
-                if (expect_length(clause, 2, path) &&
-                    read_symbol(list_value(clause, 1), path + TEXT(".value"), id)) {
-                    metadata.id = FLevelId{id};
-                }
-            } else if (tag_name == TEXT("title")) {
-                if (has_title) {
-                    add_error(path, TEXT("Duplicate title clause"));
-                    continue;
-                }
-                has_title = true;
-                read_text_clause(clause, path, metadata.title);
-            } else if (tag_name == TEXT("description")) {
-                if (has_description) {
-                    add_error(path, TEXT("Duplicate description clause"));
-                    continue;
-                }
-                has_description = true;
-                read_text_clause(clause, path, metadata.description);
-            } else if (tag_name == TEXT("par-time")) {
-                if (has_par_time) {
-                    add_error(path, TEXT("Duplicate par-time clause"));
-                    continue;
-                }
-                has_par_time = true;
-                double seconds{};
-                if (expect_length(clause, 2, path) &&
-                    read_number(list_value(clause, 1), path + TEXT(".seconds"), seconds)) {
-                    metadata.par_time_seconds = static_cast<float>(seconds);
-                }
-            } else if (tag_name == TEXT("unlock")) {
-                if (has_unlock) {
-                    add_error(path, TEXT("Duplicate unlock clause"));
-                    continue;
-                }
-                has_unlock = true;
-                read_unlock(clause, path, builder);
-            } else if (tag_name == TEXT("teams")) {
-                if (has_teams) {
-                    add_error(path, TEXT("Duplicate teams clause"));
-                    continue;
-                }
-                has_teams = true;
-                read_teams(clause, path, builder);
-            } else if (tag_name == TEXT("player")) {
-                if (has_player) {
-                    add_error(path, TEXT("Duplicate player clause"));
-                    continue;
-                }
-                has_player = true;
-                FName id;
-                if (expect_length(clause, 2, path) &&
-                    read_symbol(list_value(clause, 1), path + TEXT(".id"), id)) {
-                    builder.set_player_entity(FLevelEntityId{id});
-                }
-            } else if (tag_name == TEXT("camera")) {
-                if (has_camera) {
-                    add_error(path, TEXT("Duplicate camera clause"));
-                    continue;
-                }
-                has_camera = true;
-                read_camera(clause, path, builder);
-            } else if (tag_name == TEXT("mission")) {
-                if (has_mission) {
-                    add_error(path, TEXT("Duplicate mission clause"));
-                    continue;
-                }
-                has_mission = true;
-                read_mission(clause, path, builder);
-            } else if (tag_name == TEXT("mission-events")) {
-                if (has_mission_events) {
-                    add_error(path, TEXT("Duplicate mission-events clause"));
-                    continue;
-                }
-                has_mission_events = true;
-                read_mission_events(clause, path, builder);
-            } else if (tag_name == TEXT("entities")) {
-                if (has_entities) {
-                    add_error(path, TEXT("Duplicate entities clause"));
-                    continue;
-                }
-                has_entities = true;
-                read_entities(clause, path, builder);
-            } else {
-                add_error(path, FString::Printf(TEXT("Unknown level clause '%s'"), *tag_name));
-            }
-        }
-
-        builder.set_metadata(metadata);
-        if (!errors_.IsEmpty()) {
-            return {.decode_errors = MoveTemp(errors_)};
-        }
-
-        auto definition{builder.finish()};
-        auto validation{validate_level(definition)};
-        if (!validation) {
-            return {.validation_errors = MoveTemp(validation.errors)};
-        }
-
-        FLevelDefinitionReadResult result;
-        result.definition.Emplace(MoveTemp(definition));
-        return result;
+template <typename Id>
+auto to_ids(std::vector<std::string> const& source) -> TArray<Id> {
+    TArray<Id> result;
+    result.Reserve(static_cast<int32>(source.size()));
+    for (auto const& id : source) {
+        result.Add(Id{to_fname(id)});
     }
-  private:
-    auto list_length(s7_native::Value const value) const -> int64 {
-        return s7_native::list_length(scheme_, value);
+    return result;
+}
+
+auto to_unreal(level_authoring::LevelDefinition definition) -> FLevelDefinition {
+    FLevelBuilder builder;
+    FLevelMetadata metadata{
+        .id = FLevelId{to_fname(definition.metadata.id)},
+        .title = to_fstring(definition.metadata.title),
+        .description = to_fstring(definition.metadata.description),
+    };
+    if (definition.metadata.par_time_seconds) {
+        metadata.par_time_seconds = *definition.metadata.par_time_seconds;
+    }
+    builder.set_metadata(metadata);
+
+    for (auto const& level_id : definition.unlock_level_ids) {
+        builder.add_unlock_criterion(FLevelUnlockCriterion{
+            TInPlaceType<FLevelCompletedUnlockCriterion>{},
+            FLevelCompletedUnlockCriterion{.level_id = FLevelId{to_fname(level_id)}}});
+    }
+    for (auto const& team : definition.teams) {
+        builder.add_team(FLevelTeamId{to_fname(team)});
+    }
+    if (!definition.player_entity_id.empty()) {
+        builder.set_player_entity(FLevelEntityId{to_fname(definition.player_entity_id)});
     }
 
-    auto list_value(s7_native::Value const value, int64 const index) const -> s7_native::Value {
-        return s7_native::list_value(scheme_, value, index);
+    if (definition.camera) {
+        auto& camera{*definition.camera};
+        builder.set_camera(FLevelCameraDefinition{
+            .target_entity_ids = to_ids<FLevelEntityId>(camera.target_entity_ids),
+            .offset_direction = FVector{camera.offset_direction.x,
+                                        camera.offset_direction.y,
+                                        camera.offset_direction.z},
+            .distance = camera.distance,
+        });
     }
-
-    auto is_non_empty_list(s7_native::Value const value) const -> bool {
-        return s7_native::is_list(scheme_, value) && list_length(value) > 0;
-    }
-
-    void add_error(FString const& path, FString message) {
-        errors_.Add(FLevelDefinitionDecodeError{.path = path, .message = MoveTemp(message)});
-    }
-
-    auto expect_length(s7_native::Value const value, int64 const expected, FString const& path)
-        -> bool {
-        if (!s7_native::is_list(scheme_, value)) {
-            add_error(path, TEXT("Expected a list"));
-            return false;
+    if (definition.mission) {
+        auto& source{*definition.mission};
+        FLevelMissionDefinition mission{
+            .mode = source.mode,
+            .hero_entity_ids = to_ids<FLevelEntityId>(source.hero_entity_ids),
+            .must_survive_entity_ids = to_ids<FLevelEntityId>(source.must_survive_entity_ids),
+            .required_kill_entity_ids = to_ids<FLevelEntityId>(source.required_kill_entity_ids),
+        };
+        if (source.time_limit_seconds) {
+            mission.time_limit_seconds = *source.time_limit_seconds;
         }
-
-        auto const actual{list_length(value)};
-        if (actual != expected) {
-            add_error(
-                path,
-                FString::Printf(TEXT("Expected %lld values but found %lld"), expected, actual));
-            return false;
+        if (source.kill_count) {
+            mission.kill_count = *source.kill_count;
         }
-        return true;
-    }
-
-    auto expect_tagged_list(s7_native::Value const value,
-                            FString const& expected_tag,
-                            FString const& path) -> bool {
-        if (!is_non_empty_list(value)) {
-            add_error(path, TEXT("Expected a non-empty list"));
-            return false;
-        }
-
-        auto const tag{list_value(value, 0)};
-        if (!s7_native::is_symbol(tag) || to_fstring(s7_native::symbol_name(tag)) != expected_tag) {
-            add_error(path, FString::Printf(TEXT("Expected a '%s' value"), *expected_tag));
-            return false;
-        }
-        return true;
-    }
-
-    auto read_symbol(s7_native::Value const value, FString const& path, FName& output) -> bool {
-        if (!s7_native::is_symbol(value)) {
-            add_error(path, TEXT("Expected a symbol"));
-            return false;
-        }
-        output = FName{to_fstring(s7_native::symbol_name(value))};
-        return true;
-    }
-
-    auto read_string(s7_native::Value const value, FString const& path, FString& output) -> bool {
-        if (!s7_native::is_string(value)) {
-            add_error(path, TEXT("Expected a string"));
-            return false;
-        }
-        output = to_fstring(s7_native::string_value(value));
-        return true;
-    }
-
-    auto read_number(s7_native::Value const value, FString const& path, double& output) -> bool {
-        if (!s7_native::is_real(value)) {
-            add_error(path, TEXT("Expected a real number"));
-            return false;
-        }
-        output = s7_native::number_to_real(scheme_, value);
-        return true;
-    }
-
-    auto read_int32(s7_native::Value const value, FString const& path, int32& output) -> bool {
-        double number{0.0};
-        if (!read_number(value, path, number)) {
-            return false;
-        }
-        if (!FMath::IsFinite(number) || std::trunc(number) != number ||
-            number < std::numeric_limits<int32>::min() ||
-            number > std::numeric_limits<int32>::max()) {
-            add_error(path, TEXT("Expected a 32-bit integer"));
-            return false;
-        }
-        output = static_cast<int32>(number);
-        return true;
-    }
-
-    void read_text_clause(s7_native::Value const clause, FString const& path, FString& output) {
-        if (expect_length(clause, 2, path)) {
-            read_string(list_value(clause, 1), path + TEXT(".value"), output);
-        }
-    }
-
-    void read_unlock(s7_native::Value const clause, FString const& path, FLevelBuilder& builder) {
-        auto const count{list_length(clause) - 1};
-        if (count == 0) {
-            add_error(path, TEXT("Unlock clause must contain at least one criterion"));
-            return;
-        }
-
-        for (int64 i{0}; i < count; ++i) {
-            auto const value{list_value(clause, i + 1)};
-            auto const criterion_path{FString::Printf(TEXT("%s[%lld]"), *path, i)};
-            if (!is_non_empty_list(value)) {
-                add_error(criterion_path, TEXT("Expected an unlock criterion"));
-                continue;
-            }
-
-            auto const tag_value{list_value(value, 0)};
-            if (!s7_native::is_symbol(tag_value)) {
-                add_error(criterion_path, TEXT("Unlock criterion tag must be a symbol"));
-                continue;
-            }
-
-            auto const tag{to_fstring(s7_native::symbol_name(tag_value))};
-            if (tag != TEXT("level-completed")) {
-                add_error(criterion_path,
-                          FString::Printf(TEXT("Unknown unlock criterion '%s'"), *tag));
-                continue;
-            }
-            if (!expect_length(value, 2, criterion_path)) {
-                continue;
-            }
-
-            FName level_id;
-            if (read_symbol(list_value(value, 1), criterion_path + TEXT(".level-id"), level_id)) {
-                builder.add_unlock_criterion(FLevelUnlockCriterion{
-                    TInPlaceType<FLevelCompletedUnlockCriterion>{},
-                    FLevelCompletedUnlockCriterion{.level_id = FLevelId{level_id}}});
-            }
-        }
-    }
-
-    void read_teams(s7_native::Value const clause, FString const& path, FLevelBuilder& builder) {
-        auto const count{list_length(clause) - 1};
-        for (int64 i{0}; i < count; ++i) {
-            auto const value{list_value(clause, i + 1)};
-            auto const team_path{FString::Printf(TEXT("%s[%lld]"), *path, i)};
-            if (!expect_tagged_list(value, TEXT("team"), team_path) ||
-                !expect_length(value, 2, team_path)) {
-                continue;
-            }
-
-            FName id;
-            if (read_symbol(list_value(value, 1), team_path + TEXT(".id"), id)) {
-                builder.add_team(FLevelTeamId{id});
-            }
-        }
-    }
-
-    void read_camera(s7_native::Value const clause, FString const& path, FLevelBuilder& builder) {
-        if (!expect_length(clause, 4, path)) {
-            return;
-        }
-
-        auto const targets{list_value(clause, 1)};
-        auto const targets_path{path + TEXT(".look-at")};
-        if (!expect_tagged_list(targets, TEXT("look-at"), targets_path)) {
-            return;
-        }
-
-        TArray<FLevelEntityId> target_ids;
-        auto const target_count{list_length(targets) - 1};
-        target_ids.Reserve(target_count);
-        bool valid{true};
-        for (int64 i{0}; i < target_count; ++i) {
-            FName id;
-            auto const target_path{FString::Printf(TEXT("%s[%lld]"), *targets_path, i)};
-            auto const target_valid{read_symbol(list_value(targets, i + 1), target_path, id)};
-            valid = target_valid && valid;
-            if (target_valid) {
-                target_ids.Add(FLevelEntityId{id});
-            }
-        }
-
-        auto const distance_value{list_value(clause, 2)};
-        auto const distance_path{path + TEXT(".distance")};
-        double camera_distance{0.0};
-        auto distance_valid{expect_tagged_list(distance_value, TEXT("distance"), distance_path)};
-        distance_valid = expect_length(distance_value, 2, distance_path) && distance_valid;
-        if (distance_valid) {
-            distance_valid = read_number(
-                list_value(distance_value, 1), distance_path + TEXT(".value"), camera_distance);
-        }
-        valid = distance_valid && valid;
-
-        double direction[3]{};
-        valid = read_vector(list_value(clause, 3),
-                            TEXT("offset-direction"),
-                            path + TEXT(".offset-direction"),
-                            direction) &&
-                valid;
-        if (valid) {
-            builder.set_camera(FLevelCameraDefinition{
-                .target_entity_ids = MoveTemp(target_ids),
-                .offset_direction = FVector{direction[0], direction[1], direction[2]},
-                .distance = camera_distance,
-            });
-        }
-    }
-
-    auto read_mission_mode(s7_native::Value const value,
-                           FString const& path,
-                           ELevelMissionMode& output) -> bool {
-        FName mode;
-        if (!read_symbol(value, path, mode)) {
-            return false;
-        }
-        if (mode == FName{TEXT("survive-time")}) {
-            output = ELevelMissionMode::SurviveTime;
-        } else if (mode == FName{TEXT("kill-enemies")}) {
-            output = ELevelMissionMode::KillEnemies;
-        } else if (mode == FName{TEXT("kill-enemies-within-time")}) {
-            output = ELevelMissionMode::KillEnemiesWithinTime;
-        } else {
-            add_error(path, FString::Printf(TEXT("Unknown mission mode '%s'"), *mode.ToString()));
-            return false;
-        }
-        return true;
-    }
-
-    void read_entity_id_list(s7_native::Value const value,
-                             FString const& tag,
-                             FString const& path,
-                             TArray<FLevelEntityId>& output) {
-        if (!expect_tagged_list(value, tag, path)) {
-            return;
-        }
-
-        auto const count{list_length(value) - 1};
-        output.Reserve(count);
-        for (int64 i{0}; i < count; ++i) {
-            FName id;
-            auto const id_valid{read_symbol(
-                list_value(value, i + 1), FString::Printf(TEXT("%s[%lld]"), *path, i), id)};
-            if (id_valid) {
-                output.Add(FLevelEntityId{id});
-            }
-        }
-    }
-
-    void read_mission(s7_native::Value const clause, FString const& path, FLevelBuilder& builder) {
-        FLevelMissionDefinition mission;
-        bool has_mode{false};
-        bool has_time_limit{false};
-        bool has_kill_count{false};
-        bool has_heroes{false};
-        bool has_must_survive{false};
-        bool has_required_kills{false};
-        auto const clause_count{list_length(clause) - 1};
-        for (int64 i{0}; i < clause_count; ++i) {
-            auto const value{list_value(clause, i + 1)};
-            auto const clause_path{FString::Printf(TEXT("%s[%lld]"), *path, i)};
-            if (!is_non_empty_list(value)) {
-                add_error(clause_path, TEXT("Expected a mission clause"));
-                continue;
-            }
-
-            auto const tag_value{list_value(value, 0)};
-            if (!s7_native::is_symbol(tag_value)) {
-                add_error(clause_path, TEXT("Mission clause tag must be a symbol"));
-                continue;
-            }
-
-            auto const tag{to_fstring(s7_native::symbol_name(tag_value))};
-            if (tag == TEXT("mode")) {
-                if (has_mode) {
-                    add_error(clause_path, TEXT("Duplicate mission mode clause"));
-                    continue;
-                }
-                has_mode = true;
-                if (expect_length(value, 2, clause_path)) {
-                    read_mission_mode(
-                        list_value(value, 1), clause_path + TEXT(".value"), mission.mode);
-                }
-            } else if (tag == TEXT("time-limit")) {
-                if (has_time_limit) {
-                    add_error(clause_path, TEXT("Duplicate mission time-limit clause"));
-                    continue;
-                }
-                has_time_limit = true;
-                double seconds{0.0};
-                if (expect_length(value, 2, clause_path) &&
-                    read_number(list_value(value, 1), clause_path + TEXT(".seconds"), seconds)) {
-                    mission.time_limit_seconds = static_cast<float>(seconds);
-                }
-            } else if (tag == TEXT("kill-count")) {
-                if (has_kill_count) {
-                    add_error(clause_path, TEXT("Duplicate mission kill-count clause"));
-                    continue;
-                }
-                has_kill_count = true;
-                int32 count{0};
-                if (expect_length(value, 2, clause_path) &&
-                    read_int32(list_value(value, 1), clause_path + TEXT(".value"), count)) {
-                    mission.kill_count = count;
-                }
-            } else if (tag == TEXT("heroes")) {
-                if (has_heroes) {
-                    add_error(clause_path, TEXT("Duplicate mission heroes clause"));
-                    continue;
-                }
-                has_heroes = true;
-                read_entity_id_list(value, TEXT("heroes"), clause_path, mission.hero_entity_ids);
-            } else if (tag == TEXT("must-survive")) {
-                if (has_must_survive) {
-                    add_error(clause_path, TEXT("Duplicate mission must-survive clause"));
-                    continue;
-                }
-                has_must_survive = true;
-                read_entity_id_list(
-                    value, TEXT("must-survive"), clause_path, mission.must_survive_entity_ids);
-            } else if (tag == TEXT("required-kills")) {
-                if (has_required_kills) {
-                    add_error(clause_path, TEXT("Duplicate mission required-kills clause"));
-                    continue;
-                }
-                has_required_kills = true;
-                read_entity_id_list(
-                    value, TEXT("required-kills"), clause_path, mission.required_kill_entity_ids);
-            } else {
-                add_error(clause_path, FString::Printf(TEXT("Unknown mission clause '%s'"), *tag));
-            }
-        }
-
         builder.set_mission(mission);
     }
 
-    void read_mission_events(s7_native::Value const clause,
-                             FString const& path,
-                             FLevelBuilder& builder) {
-        auto const event_count{list_length(clause) - 1};
-        for (int64 event_index{}; event_index < event_count; ++event_index) {
-            auto const value{list_value(clause, event_index + 1)};
-            auto const event_path{FString::Printf(TEXT("%s[%lld]"), *path, event_index)};
-            if (!expect_tagged_list(value, TEXT("mission-event"), event_path) ||
-                list_length(value) < 2) {
-                continue;
-            }
-
-            FLevelMissionObjectiveEvent event;
-            auto const time{list_value(value, 1)};
-            if (!expect_tagged_list(time, TEXT("at"), event_path + TEXT(".at")) ||
-                !expect_length(time, 2, event_path + TEXT(".at")) ||
-                !read_number(
-                    list_value(time, 1), event_path + TEXT(".at.seconds"), event.time_seconds)) {
-                continue;
-            }
-
-            bool valid{true};
-            auto const clause_count{list_length(value) - 2};
-            for (int64 i{}; i < clause_count; ++i) {
-                auto const event_clause{list_value(value, i + 2)};
-                auto const clause_path{FString::Printf(TEXT("%s[%lld]"), *event_path, i)};
-                if (!is_non_empty_list(event_clause)) {
-                    add_error(clause_path, TEXT("Expected a mission event clause"));
-                    valid = false;
-                    continue;
-                }
-                auto const tag_value{list_value(event_clause, 0)};
-                if (!s7_native::is_symbol(tag_value)) {
-                    add_error(clause_path, TEXT("Mission event clause tag must be a symbol"));
-                    valid = false;
-                    continue;
-                }
-                auto const tag{to_fstring(s7_native::symbol_name(tag_value))};
-                if (tag == TEXT("add-must-survive")) {
-                    read_entity_id_list(event_clause,
-                                        TEXT("add-must-survive"),
-                                        clause_path,
-                                        event.must_survive_entity_ids);
-                } else if (tag == TEXT("add-required-kills")) {
-                    read_entity_id_list(event_clause,
-                                        TEXT("add-required-kills"),
-                                        clause_path,
-                                        event.required_kill_entity_ids);
-                } else if (tag == TEXT("increase-kill-count")) {
-                    valid = expect_length(event_clause, 2, clause_path) && valid;
-                    if (valid) {
-                        valid = read_int32(list_value(event_clause, 1),
-                                           clause_path + TEXT(".value"),
-                                           event.kill_target_increase) &&
-                                valid;
-                    }
-                } else {
-                    add_error(clause_path,
-                              FString::Printf(TEXT("Unknown mission event clause '%s'"), *tag));
-                    valid = false;
-                }
-            }
-            if (valid) {
-                builder.add_mission_event(event);
-            }
-        }
+    for (auto& source : definition.mission_events) {
+        builder.add_mission_event(FLevelMissionObjectiveEvent{
+            .time_seconds = source.time_seconds,
+            .must_survive_entity_ids = to_ids<FLevelEntityId>(source.must_survive_entity_ids),
+            .required_kill_entity_ids = to_ids<FLevelEntityId>(source.required_kill_entity_ids),
+            .kill_target_increase = source.kill_target_increase,
+        });
     }
-
-    auto read_vector(s7_native::Value const value,
-                     FString const& tag,
-                     FString const& path,
-                     double (&components)[3]) -> bool {
-        if (!expect_tagged_list(value, tag, path) || !expect_length(value, 4, path)) {
-            return false;
-        }
-
-        bool valid{true};
-        for (int64 i{0}; i < 3; ++i) {
-            valid = read_number(list_value(value, i + 1),
-                                FString::Printf(TEXT("%s[%lld]"), *path, i),
-                                components[i]) &&
-                    valid;
-        }
-        return valid;
+    for (auto const& source : definition.entities) {
+        builder.add_entity(FEntitySpawnDefinition{
+            .id = FLevelEntityId{to_fname(source.id)},
+            .archetype = FEntityArchetypeId{to_fname(source.archetype)},
+            .team = FLevelTeamId{to_fname(source.team)},
+            .position = FVector{source.position.x, source.position.y, source.position.z},
+            .rotation = FRotator{source.rotation.pitch, source.rotation.yaw, source.rotation.roll},
+            .spawn_time_seconds = source.spawn_time_seconds,
+        });
     }
-
-    void read_entities(s7_native::Value const clause, FString const& path, FLevelBuilder& builder) {
-        auto const count{list_length(clause) - 1};
-        for (int64 i{0}; i < count; ++i) {
-            auto const value{list_value(clause, i + 1)};
-            auto const entity_path{FString::Printf(TEXT("%s[%lld]"), *path, i)};
-            if (!expect_tagged_list(value, TEXT("entity"), entity_path)) {
-                continue;
-            }
-            auto const entity_length{list_length(value)};
-            if (entity_length != 6 && entity_length != 7) {
-                add_error(entity_path, TEXT("Expected an entity with zero or one spawn clause"));
-                continue;
-            }
-
-            FName id;
-            FName archetype;
-            FName team;
-            double position[3]{};
-            double rotation[3]{};
-            double spawn_time_seconds{};
-            auto valid{read_symbol(list_value(value, 1), entity_path + TEXT(".id"), id)};
-            valid =
-                read_symbol(list_value(value, 2), entity_path + TEXT(".archetype"), archetype) &&
-                valid;
-            valid = read_symbol(list_value(value, 3), entity_path + TEXT(".team"), team) && valid;
-            valid = read_vector(list_value(value, 4),
-                                TEXT("position"),
-                                entity_path + TEXT(".position"),
-                                position) &&
-                    valid;
-            valid = read_vector(list_value(value, 5),
-                                TEXT("rotation"),
-                                entity_path + TEXT(".rotation"),
-                                rotation) &&
-                    valid;
-            if (entity_length == 7) {
-                auto const spawn_at{list_value(value, 6)};
-                auto const spawn_path{entity_path + TEXT(".spawn-at")};
-                valid = expect_tagged_list(spawn_at, TEXT("spawn-at"), spawn_path) && valid;
-                valid = expect_length(spawn_at, 2, spawn_path) && valid;
-                if (valid) {
-                    valid = read_number(list_value(spawn_at, 1),
-                                        spawn_path + TEXT(".seconds"),
-                                        spawn_time_seconds) &&
-                            valid;
-                }
-            }
-            if (!valid) {
-                continue;
-            }
-
-            builder.add_entity(FEntitySpawnDefinition{
-                .id = FLevelEntityId{id},
-                .archetype = FEntityArchetypeId{archetype},
-                .team = FLevelTeamId{team},
-                .position = FVector{position[0], position[1], position[2]},
-                .rotation = FRotator{rotation[0], rotation[1], rotation[2]},
-                .spawn_time_seconds = spawn_time_seconds,
-            });
-        }
-    }
-
-    s7_native::Scheme& scheme_;
-    s7_native::Value root_{};
-    TArray<FLevelDefinitionDecodeError> errors_{};
-};
+    return builder.finish();
 }
+
+auto to_unreal(level_authoring::LevelDefinitionReadResult native) -> FLevelDefinitionReadResult {
+    FLevelDefinitionReadResult result;
+    result.script_error = to_fstring(native.script_error);
+    result.decode_errors.Reserve(static_cast<int32>(native.decode_errors.size()));
+    for (auto& error : native.decode_errors) {
+        result.decode_errors.Add(
+            {.path = to_fstring(error.path), .message = to_fstring(error.message)});
+    }
+    result.validation_errors.Reserve(static_cast<int32>(native.validation_errors.size()));
+    for (auto& error : native.validation_errors) {
+        result.validation_errors.Add({.code = error.code, .message = to_fstring(error.message)});
+    }
+    if (native.definition) {
+        result.definition.Emplace(to_unreal(std::move(*native.definition)));
+    }
+    return result;
+}
+} // namespace
 
 FLevelDefinitionReader::FLevelDefinitionReader(FString script_library_root)
     : script_library_root_{MoveTemp(script_library_root)} {}
 
 auto FLevelDefinitionReader::read_source(FStringView const source) const
     -> FLevelDefinitionReadResult {
-    s7_native::InterpreterOptions options;
-    if (!script_library_root_.IsEmpty()) {
-        auto const converted_root{FTCHARToUTF8{*script_library_root_}};
-        options.script_library_root_utf8 =
-            std::string{converted_root.Get(), static_cast<std::size_t>(converted_root.Length())};
-    }
-    s7_native::Interpreter interpreter{MoveTemp(options)};
-    FString expression{TEXT("(begin\n")};
-    expression.Append(level_prelude);
-    expression.AppendChars(source.GetData(), source.Len());
-    expression.Append(TEXT("\n)"));
+    auto const converted_source{FTCHARToUTF8{source.GetData(), source.Len()}};
+    auto const utf8_source{std::string_view{converted_source.Get(),
+                                            static_cast<std::size_t>(converted_source.Length())}};
 
-    auto const converted{FTCHARToUTF8{*expression, expression.Len()}};
-    auto const utf8_expression{
-        std::string_view{converted.Get(), static_cast<std::size_t>(converted.Length())}};
-
-    FLevelDefinitionReadResult decoded;
-    auto const evaluation{interpreter.evaluate_value(
-        utf8_expression, [&decoded](s7_native::Scheme& scheme, s7_native::Value const value) {
-            decoded = FDefinitionDecoder{scheme, value}.decode();
-        })};
-    if (!evaluation.succeeded) {
-        return {.script_error = to_fstring(evaluation.error)};
-    }
-    return decoded;
+    auto const converted_root{FTCHARToUTF8{*script_library_root_}};
+    auto const utf8_root{
+        std::string{converted_root.Get(), static_cast<std::size_t>(converted_root.Length())}};
+    return to_unreal(level_authoring::LevelDefinitionReader{utf8_root}.read_source(utf8_source));
 }
 
 auto FLevelDefinitionReader::read_file(FStringView const path) const -> FLevelDefinitionReadResult {
@@ -739,4 +149,4 @@ auto FLevelDefinitionReader::read_file(FStringView const path) const -> FLevelDe
     }
     return read_source(source);
 }
-}
+} // namespace ml::s7

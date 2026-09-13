@@ -277,6 +277,7 @@ add_custom_target(worktree-dependencies
     native-memory
     sbx-mimalloc
     native-simulation
+    native-level-authoring
     cpu_features
     sandbox-s7
     sandbox-image

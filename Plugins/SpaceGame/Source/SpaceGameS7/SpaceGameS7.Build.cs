@@ -24,7 +24,7 @@ public class SpaceGameS7 : ModuleRules
         {
             "Engine",
             "InputCore",
-            "NativeS7",
+            "NativeLevelAuthoring",
             "PlatformCrypto",
             "PlatformCryptoContext",
             "Slate",

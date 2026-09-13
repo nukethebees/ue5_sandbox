@@ -48,6 +48,7 @@ add_subdirectory(memory)
 add_subdirectory(s7)
 add_subdirectory(core)
 add_subdirectory(simulation)
+add_subdirectory(level_authoring)
 add_subdirectory(image)
 add_subdirectory(mesh_gen)
 
