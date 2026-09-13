@@ -86,7 +86,7 @@ auto CollisionUniformGrid::add_static_aabb(simulation::Vector3f const min_point,
                                            simulation::Vector3f const max_point) -> std::int32_t {
 
     assert(is_configured());
-    auto const [min_coord, max_coord]{to_cell_coord_bounds(min_point, max_point)};
+    [[maybe_unused]] auto const [min_coord, max_coord]{to_cell_coord_bounds(min_point, max_point)};
     assert(is_cell_coord_in_bounds(min_coord, max_coord));
     assert(std::isfinite(min_point.X) && std::isfinite(min_point.Y) && std::isfinite(min_point.Z));
     assert(std::isfinite(max_point.X) && std::isfinite(max_point.Y) && std::isfinite(max_point.Z));
@@ -165,7 +165,7 @@ void CollisionUniformGrid::append_overlaps(
     std::vector<std::int32_t>& out_static_geometry_indices) const {
 
     auto const geometry{geometry_};
-    auto const [min_coord, max_coord]{
+    [[maybe_unused]] auto const [min_coord, max_coord]{
         simulation::collision::to_cell_coord_bounds(geometry, query_bounds.min, query_bounds.max)};
     assert(is_cell_coord_in_bounds(min_coord, max_coord));
 

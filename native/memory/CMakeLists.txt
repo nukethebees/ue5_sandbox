@@ -8,13 +8,15 @@ target_compile_features(native-memory PUBLIC cxx_std_23)
 target_include_directories(native-memory PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(native-memory PRIVATE sandbox::warnings_as_errors)
 
-set(NATIVE_MEMORY_LIBRARY_DIRECTORY
-  "${PROJECT_SOURCE_DIR}/Binaries/NativeMemory/${UE_PLATFORM}/${UE_CONFIGURATION}"
-)
 set_target_properties(native-memory PROPERTIES
   OUTPUT_NAME SandboxNativeMemory
-  ARCHIVE_OUTPUT_DIRECTORY "${NATIVE_MEMORY_LIBRARY_DIRECTORY}"
 )
+if(SANDBOX_WITH_UNREAL)
+  set_target_properties(native-memory PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY
+      "${PROJECT_SOURCE_DIR}/Binaries/NativeMemory/${UE_PLATFORM}/${UE_CONFIGURATION}"
+  )
+endif()
 
 add_executable(native-memory-tests)
 target_sources(native-memory-tests PRIVATE tests/root_arena_tests.cpp)

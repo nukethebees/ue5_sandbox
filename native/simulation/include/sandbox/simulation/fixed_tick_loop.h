@@ -7,7 +7,8 @@
 namespace ml::simulation {
 struct FixedTickLoop {
     void initialise() {
-        auto const succeeded{initialise_tick_loop(tick_rate, time_scale, tick_period, accumulator)};
+        [[maybe_unused]] auto const succeeded{
+            initialise_tick_loop(tick_rate, time_scale, tick_period, accumulator)};
         assert(succeeded);
     }
 

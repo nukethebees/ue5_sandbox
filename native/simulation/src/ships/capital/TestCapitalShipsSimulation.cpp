@@ -298,7 +298,7 @@ void Simulation::queue_fighter_spawns() {
 void Simulation::refresh_fighter_handles() {
 
     auto const& previous{tick_buffers.previous()};
-    auto const invalid_index{ml::simulation::refresh_registry_handles(
+    [[maybe_unused]] auto const invalid_index{ml::simulation::refresh_registry_handles(
         ml::make_native_query_view(entity_registry), fighter_handles)};
     assert(invalid_index < 0);
 
@@ -311,15 +311,16 @@ void Simulation::refresh_fighter_handles() {
     auto const n_capitals{get_num_instances()};
     auto const queue_count{static_cast<std::size_t>(previous.num())};
     FrameArray<FRegistryEntityHandle> fighters_to_self_destruct{&frame_memory_resource};
-    auto const surviving_spawn_count{ml::simulation::assign_spawned_capital_fighters(
-        {entities.handles.data(), static_cast<std::size_t>(n_capitals)},
-        std::as_bytes(std::span{entities.teams.data(), static_cast<std::size_t>(n_capitals)}),
-        spawn_handles,
-        {previous.parents.data(), queue_count},
-        std::as_bytes(std::span{previous.teams.data(), queue_count}),
-        ml::make_native_query_view(entity_registry),
-        fighter_reassignment_queue,
-        fighters_to_self_destruct)};
+    [[maybe_unused]] auto const surviving_spawn_count{
+        ml::simulation::assign_spawned_capital_fighters(
+            {entities.handles.data(), static_cast<std::size_t>(n_capitals)},
+            std::as_bytes(std::span{entities.teams.data(), static_cast<std::size_t>(n_capitals)}),
+            spawn_handles,
+            {previous.parents.data(), queue_count},
+            std::as_bytes(std::span{previous.teams.data(), queue_count}),
+            ml::make_native_query_view(entity_registry),
+            fighter_reassignment_queue,
+            fighters_to_self_destruct)};
     for (auto const fighter : fighters_to_self_destruct) {
         fighters_interface.self_destruct_fighter(fighter);
     }

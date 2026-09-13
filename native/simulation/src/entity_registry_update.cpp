@@ -11,8 +11,8 @@ auto enum_at(std::span<std::byte const> const values, std::size_t const index) n
     return static_cast<Enum>(std::to_integer<std::uint8_t>(values[index]));
 }
 
-auto arrays_have_size(EntityRegistryUpdateView const view, std::size_t const size) noexcept
-    -> bool {
+[[maybe_unused]] auto arrays_have_size(EntityRegistryUpdateView const view,
+                                       std::size_t const size) noexcept -> bool {
     return view.locations.num() == static_cast<std::int32_t>(size) &&
            view.velocities.num() == static_cast<std::int32_t>(size) &&
            view.rotations.num() == static_cast<std::int32_t>(size) && view.healths.size() == size &&
@@ -20,8 +20,8 @@ auto arrays_have_size(EntityRegistryUpdateView const view, std::size_t const siz
            view.alive.size() == size;
 }
 
-auto arrays_have_size(EntityRegistryUpdateConstView const view, std::size_t const size) noexcept
-    -> bool {
+[[maybe_unused]] auto arrays_have_size(EntityRegistryUpdateConstView const view,
+                                       std::size_t const size) noexcept -> bool {
     return view.locations.num() == static_cast<std::int32_t>(size) &&
            view.velocities.num() == static_cast<std::int32_t>(size) &&
            view.rotations.num() == static_cast<std::int32_t>(size) && view.healths.size() == size &&
@@ -35,7 +35,7 @@ auto apply_entity_updates(EntityRegistryBookkeeping& bookkeeping,
                           EntityRegistryUpdateView const entities,
                           EntityRegistryUpdateConstView const updates) noexcept -> std::int32_t {
     auto const count{updates.num()};
-    auto const size{static_cast<std::size_t>(count)};
+    [[maybe_unused]] auto const size{static_cast<std::size_t>(count)};
     assert(count >= 0);
     assert(arrays_have_size(updates, size));
     assert(arrays_have_size(entities, bookkeeping.generations.size()));

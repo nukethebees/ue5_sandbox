@@ -40,17 +40,21 @@ target_include_directories(sandbox-s7
 target_link_libraries(sandbox-s7 PRIVATE sandbox::warnings_as_errors)
 configure_sandbox_s7_abi(sandbox-s7)
 
-foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
-  file(MAKE_DIRECTORY
-    "${PROJECT_SOURCE_DIR}/Binaries/Native/S7/${UE_PLATFORM}/${configuration}"
-  )
-endforeach()
-
 set_target_properties(sandbox-s7 PROPERTIES
-  ARCHIVE_OUTPUT_DIRECTORY
-    "${PROJECT_SOURCE_DIR}/Binaries/Native/S7/${UE_PLATFORM}/${UE_CONFIGURATION}"
   OUTPUT_NAME sandbox_s7
 )
+if(SANDBOX_WITH_UNREAL)
+  foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
+    file(MAKE_DIRECTORY
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/S7/${UE_PLATFORM}/${configuration}"
+    )
+  endforeach()
+
+  set_target_properties(sandbox-s7 PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/S7/${UE_PLATFORM}/${UE_CONFIGURATION}"
+  )
+endif()
 
 if(WIN32 AND
    NOT CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" AND

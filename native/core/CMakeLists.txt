@@ -33,13 +33,15 @@ target_link_libraries(native-core
   PRIVATE sandbox::warnings_as_errors
 )
 
-set(NATIVE_CORE_LIBRARY_DIRECTORY
-  "${PROJECT_SOURCE_DIR}/Binaries/Native/Core/${UE_PLATFORM}/${UE_CONFIGURATION}"
-)
 set_target_properties(native-core PROPERTIES
   OUTPUT_NAME SandboxNativeCore
-  ARCHIVE_OUTPUT_DIRECTORY "${NATIVE_CORE_LIBRARY_DIRECTORY}"
 )
+if(SANDBOX_WITH_UNREAL)
+  set_target_properties(native-core PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/Core/${UE_PLATFORM}/${UE_CONFIGURATION}"
+  )
+endif()
 
 if(WIN32 AND DEFINED VCPKG_APPLOCAL_DEPS)
   set(NATIVE_CORE_SAVED_VCPKG_APPLOCAL_DEPS "${VCPKG_APPLOCAL_DEPS}")

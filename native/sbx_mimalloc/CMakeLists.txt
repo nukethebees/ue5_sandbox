@@ -93,9 +93,13 @@ add_dependencies(sbx-mimalloc sbx-mimalloc-symbol-audit)
 
 set_target_properties(sbx-mimalloc PROPERTIES
   OUTPUT_NAME SandboxMimalloc
-  ARCHIVE_OUTPUT_DIRECTORY
-    "${PROJECT_SOURCE_DIR}/Binaries/Native/SbxMimalloc/${UE_PLATFORM}/${UE_CONFIGURATION}"
 )
+if(SANDBOX_WITH_UNREAL)
+  set_target_properties(sbx-mimalloc PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/SbxMimalloc/${UE_PLATFORM}/${UE_CONFIGURATION}"
+  )
+endif()
 
 add_executable(sbx-mimalloc-tests tests/memory_tests.cpp)
 target_link_libraries(sbx-mimalloc-tests PRIVATE
