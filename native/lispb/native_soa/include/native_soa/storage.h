@@ -19,6 +19,10 @@
 #include <utility>
 #include <vector>
 
+#ifndef NATIVE_SOA_MIMALLOC
+#define NATIVE_SOA_MIMALLOC 0
+#endif
+
 #if NATIVE_SOA_MIMALLOC
 #include <sbx/memory.h>
 #endif

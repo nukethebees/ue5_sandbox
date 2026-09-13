@@ -23,6 +23,10 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     -Wno-constant-logical-operand
     -Wno-inconsistent-dllimport
   )
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+  target_compile_options(sandbox-s7-third-party PRIVATE
+    /wd4273 # s7 redeclares the CRT's __p__environ without its dllimport annotation.
+  )
 endif()
 configure_sandbox_s7_abi(sandbox-s7-third-party)
 
@@ -34,11 +38,19 @@ target_sources(sandbox-s7 PRIVATE
 )
 target_compile_features(sandbox-s7 PUBLIC cxx_std_23)
 target_compile_definitions(sandbox-s7 PRIVATE ${SANDBOX_S7_DEFINITIONS})
-target_include_directories(sandbox-s7
-  PUBLIC include
-  PRIVATE ../ThirdParty/s7
+target_include_directories(sandbox-s7 PUBLIC include)
+target_include_directories(sandbox-s7 SYSTEM PRIVATE ../ThirdParty/s7)
+
+add_library(sandbox-s7-warning-exceptions INTERFACE)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+  target_compile_options(sandbox-s7-warning-exceptions INTERFACE
+    /wd5039 # The third-party s7 C callback typedefs cannot express noexcept.
+  )
+endif()
+target_link_libraries(sandbox-s7 PRIVATE
+  sandbox::warnings_as_errors
+  sandbox-s7-warning-exceptions
 )
-target_link_libraries(sandbox-s7 PRIVATE sandbox::warnings_as_errors)
 configure_sandbox_s7_abi(sandbox-s7)
 
 set_target_properties(sandbox-s7 PROPERTIES

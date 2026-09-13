@@ -319,7 +319,8 @@ void run_worldless_collision_uniform_grid_membership(
         grid.get_grid_dims() ==
             simulation::collision::CellCoord{grid_dims.x, grid_dims.y, grid_dims.z},
         "Collision grid uses the production dimensions");
-    ml::simulation_tests::expect_true(grid.get_cell_dims() == cell_dims,
+    auto const cell_dimensions_match{grid.get_cell_dims() == cell_dims};
+    ml::simulation_tests::expect_true(cell_dimensions_match != 0,
                                       "Collision grid uses the production cell size");
 
     auto const handle_count{static_cast<std::int32_t>(expected_handles.size())};
