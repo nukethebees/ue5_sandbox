@@ -62,6 +62,10 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/entities/NativeEntityRegistryView.h
   include/sandbox/simulation/simulation/SystemReadViews.h
   include/sandbox/simulation/levels/LevelRuntimeEvents.h
+  include/sandbox/simulation/levels/LevelDefinition.h
+  src/levels/LevelDefinition.cpp
+  include/sandbox/simulation/levels/LevelCompilation.h
+  src/levels/LevelCompilation.cpp
   include/sandbox/simulation/levels/LevelMissionMode.h
   include/sandbox/simulation/levels/LevelMissionEventType.h
   include/sandbox/simulation/levels/LevelEventGroupCounts.h

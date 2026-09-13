@@ -1,4 +1,5 @@
 #pragma once
+#include <sandbox/simulation/levels/LevelDefinition.h>
 #include <sandbox/simulation/levels/LevelMissionMode.h>
 
 #include <sandbox/simulation/levels/LevelRuntimeEvents.h>
@@ -81,51 +82,7 @@ class SPACEGAME_API FLevelBuilder {
     FLevelDefinition definition_{};
 };
 
-enum class ELevelValidationErrorCode : uint8 {
-    MissingLevelId,
-    MissingTitle,
-    InvalidParTime,
-    UnexpectedParTime,
-    MissingViewpoint,
-    ConflictingViewpoints,
-    PlayerEntityNotFound,
-    MismatchedEntityColumns,
-    EmptyTeamId,
-    DuplicateTeamId,
-    UnsupportedTeamId,
-    UnknownTeamReference,
-    EmptyArchetypeId,
-    UnsupportedArchetype,
-    ArchetypeRoleMismatch,
-    DuplicateEntityId,
-    InvalidPlacement,
-    InvalidSpawnTime,
-    DelayedPlayerSpawn,
-    MissingCameraTarget,
-    DuplicateCameraTarget,
-    CameraTargetNotFound,
-    InvalidCameraDistance,
-    InvalidCameraOffsetDirection,
-    MissingMissionMode,
-    UnsupportedMissionMode,
-    InvalidMissionTimeLimit,
-    UnexpectedMissionTimeLimit,
-    InvalidMissionKillCount,
-    UnexpectedMissionKillCount,
-    MissingMissionHeroes,
-    MissingMissionSurvivors,
-    MissionEntityNotFound,
-    DuplicateMissionEntityReference,
-    ConflictingMissionEntityRoles,
-    AmbiguousAutomaticKillTeams,
-    MissingUnlockLevelId,
-    DuplicateUnlockCriterion,
-    SelfUnlockDependency,
-    UnexpectedMissionEvent,
-    InvalidMissionEventTime,
-    InvalidMissionKillIncrease,
-    MissionEventBeforeEntitySpawn,
-};
+using ELevelValidationErrorCode = level_authoring::LevelValidationErrorCode;
 
 struct SPACEGAME_API FLevelValidationError {
     ELevelValidationErrorCode code{};
