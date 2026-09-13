@@ -34,6 +34,7 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/entity_telemetry.h
   include/sandbox/simulation/entity_world_bounds.h
   include/sandbox/simulation/fighter_damage_response.h
+  include/sandbox/simulation/fighter_attack_preparation.h
   include/sandbox/simulation/fighter_firing.h
   include/sandbox/simulation/fighter_firing_position.h
   include/sandbox/simulation/fighter_firing_scratch.h
@@ -111,6 +112,7 @@ target_sources(native-simulation PRIVATE
   src/entity_world_bounds.cpp
   src/fixed_tick.cpp
   src/fighter_damage_response.cpp
+  src/fighter_attack_preparation.cpp
   src/fighter_firing.cpp
   src/fighter_firing_position.cpp
   src/fighter_firing_scratch.cpp

@@ -1,5 +1,6 @@
 #include "sandbox/simulation/fighter_navigation.h"
 
+#include "sandbox/core/vector_normalization.h"
 #include "sandbox/simulation/deterministic_bias.h"
 #include "sandbox/simulation/entity_registry_bookkeeping.h"
 
@@ -10,6 +11,7 @@
 #include <limits>
 
 namespace ml::simulation::fighters {
+using ml::native_math::safe_normal;
 namespace {
 inline constexpr float half_weight{0.5f};
 inline constexpr float sqrt_three_over_two{0.8660254f};
@@ -28,17 +30,6 @@ auto is_nearly_zero(Vector3f const vector) noexcept -> bool {
     return std::abs(vector.X) <= nearly_zero_tolerance &&
            std::abs(vector.Y) <= nearly_zero_tolerance &&
            std::abs(vector.Z) <= nearly_zero_tolerance;
-}
-
-auto safe_normal(Vector3f const vector) noexcept -> Vector3f {
-    auto const length_squared{HMM_DotV3(vector, vector)};
-    if (length_squared == 1.0f) {
-        return vector;
-    }
-    if (length_squared < safe_normal_tolerance) {
-        return make_vector3f(0.0f, 0.0f, 0.0f);
-    }
-    return vector * (1.0f / std::sqrt(length_squared));
 }
 
 auto clamp_to_unit_size(Vector3f const vector) noexcept -> Vector3f {

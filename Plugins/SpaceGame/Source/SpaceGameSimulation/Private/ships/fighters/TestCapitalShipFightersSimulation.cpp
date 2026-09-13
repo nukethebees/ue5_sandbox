@@ -1,5 +1,6 @@
 #include "SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h"
 
+#include <sandbox/simulation/fighter_attack_preparation.h>
 #include <sandbox/simulation/fighter_damage_response.h>
 #include <sandbox/simulation/fighter_firing.h>
 #include <sandbox/simulation/fighter_firing_scratch.h>
@@ -300,36 +301,20 @@ void Simulation::move(float const dt) {
                                   attack_view.target_velocities.get_const_view(),
                                   config.laser.projectile_speed);
 
-        for (int32 i{0}; i < n_attack; ++i) {
-            auto const intercept_location{ml::get_vector3f(attack_view.target_locations, i) +
-                                          ml::get_vector3f(attack_view.target_velocities, i) *
-                                              attack_view.intercept_times[i]};
-            auto const desired_firing_direction{
-                (intercept_location - ml::get_vector3f(attack_view.locations, i)).GetSafeNormal()};
-            attack_view.desired_aiming_directions.set(i, desired_firing_direction);
-
-            if (!attack_view.attack_reposition_countdowns.try_consume(i)) {
-                continue;
-            }
-
-            auto const target_to_move_distance{
-                FVector3f::Dist(ml::get_vector3f(attack_view.target_locations, i),
-                                ml::get_vector3f(attack_view.desired_move_locations, i))};
-            auto const is_valid_attack_position{target_to_move_distance >= inner_attack_distance &&
-                                                target_to_move_distance <= outer_attack_distance};
-            if (is_valid_attack_position) {
-                continue;
-            }
-
-            auto const target_direction{(ml::get_vector3f(attack_view.target_locations, i) -
-                                         ml::get_vector3f(attack_view.locations, i))
-                                            .GetSafeNormal()};
-            attack_view.target_directions.set(i, target_direction);
-            attack_view.desired_move_locations.set(
-                i,
-                ml::get_vector3f(attack_view.target_locations, i) -
-                    target_direction * desired_attack_distance);
-        }
+        ml::simulation::fighters::prepare_attack(
+            {.locations = ml::to_native(attack_view.locations.get_const_view()),
+             .target_locations = ml::to_native(attack_view.target_locations.get_const_view()),
+             .target_velocities = ml::to_native(attack_view.target_velocities.get_const_view()),
+             .intercept_times = {attack_view.intercept_times.GetData(),
+                                 static_cast<std::size_t>(n_attack)},
+             .desired_aiming_directions = ml::to_native(attack_view.desired_aiming_directions),
+             .target_directions = ml::to_native(attack_view.target_directions),
+             .desired_move_locations = ml::to_native(attack_view.desired_move_locations),
+             .reposition_countdowns = attack_view.attack_reposition_countdowns.native_view()},
+            {.desired_distance = desired_attack_distance,
+             .inner_distance = inner_attack_distance,
+             .outer_distance = outer_attack_distance,
+             .squared_normal_tolerance = UE_SMALL_NUMBER});
     }
 
     ml::direction_and_distance(
