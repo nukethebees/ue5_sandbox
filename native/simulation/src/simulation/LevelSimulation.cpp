@@ -6,6 +6,7 @@
 #include <optional>
 #include <sandbox/core/diagnostics.h>
 #include <sandbox/core/monotonic_clock.h>
+#include <sandbox/simulation/profiling.h>
 #include <sandbox/simulation/simulation/LevelSimulation.h>
 #include <span>
 #include <thread>
@@ -314,6 +315,7 @@ auto FLevelSimulation::take_mission_result() -> std::optional<FLevelMissionResul
 // Simulation
 /* **************************************** */
 void FLevelSimulation::advance(time_type const dt) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FLevelSimulation::advance");
 
     if (state_ != EOrchestratorState::Running) {
         return;
@@ -370,6 +372,7 @@ void FLevelSimulation::advance(time_type const dt) {
                    player_ship_simulation_->health.is_alive();
         }};
         auto const publish_entity_state{[&] {
+            SANDBOX_PROFILE_SCOPE("Sandbox::FLevelSimulation::advance::update_entity_registry");
             if (player_simulation_is_active()) {
                 player_ship_phase_->update_entity_registry();
             }
@@ -388,6 +391,7 @@ void FLevelSimulation::advance(time_type const dt) {
         {
             // Clear transient data
             // Assume registry data is stable here
+            SANDBOX_PROFILE_SCOPE("Sandbox::FLevelSimulation::advance::begin_tick");
 
             entity_registry_.begin_tick();
             capital_ships_phase_.begin_tick();
@@ -413,6 +417,7 @@ void FLevelSimulation::advance(time_type const dt) {
         // Queue projectile spawns
 
         {
+            SANDBOX_PROFILE_SCOPE("Sandbox::FLevelSimulation::advance::update_timers");
 
             if (player_simulation_is_active()) {
                 measure(ESimulationTelemetryTimingSystem::Player,
@@ -429,6 +434,7 @@ void FLevelSimulation::advance(time_type const dt) {
         }
 
         {
+            SANDBOX_PROFILE_SCOPE("Sandbox::FLevelSimulation::advance::make_decisions");
             measure(ESimulationTelemetryTimingSystem::Turrets,
                     [&] { turrets_phase_.make_decisions(); });
             measure(ESimulationTelemetryTimingSystem::Capitals,
@@ -444,6 +450,7 @@ void FLevelSimulation::advance(time_type const dt) {
         /* -------------------------------------------------------------------------------- */
         {
             // Movement
+            SANDBOX_PROFILE_SCOPE("Sandbox::FLevelSimulation::advance::movement");
 
             if (player_simulation_is_active()) {
                 measure(ESimulationTelemetryTimingSystem::Player,
@@ -460,6 +467,7 @@ void FLevelSimulation::advance(time_type const dt) {
         {
             // Queue commands
             // e.g. spawning lasers for the next frame
+            SANDBOX_PROFILE_SCOPE("Sandbox::FLevelSimulation::advance::queue_commands");
 
             if (player_simulation_is_active()) {
                 measure(ESimulationTelemetryTimingSystem::Player,
@@ -477,6 +485,7 @@ void FLevelSimulation::advance(time_type const dt) {
 
         {
             // Projectile simulation
+            SANDBOX_PROFILE_SCOPE("Sandbox::FLevelSimulation::advance::projectile_simulation");
 
             measure(ESimulationTelemetryTimingSystem::Lasers, [&] {
                 lasers_phase_.simulate(tick_period);
@@ -500,6 +509,7 @@ void FLevelSimulation::advance(time_type const dt) {
         /* -------------------------------------------------------------------------------- */
         {
             // Resolve hit events
+            SANDBOX_PROFILE_SCOPE("Sandbox::FLevelSimulation::advance::resolve_damage_events");
 
             if (player_simulation_is_active()) {
                 player_ship_phase_->resolve_damage_events();
@@ -517,6 +527,7 @@ void FLevelSimulation::advance(time_type const dt) {
 
         {
             // Apply changes from the registry e.g. destroyed targets
+            SANDBOX_PROFILE_SCOPE("Sandbox::FLevelSimulation::advance::sync_from_registry");
 
             capital_ships_phase_.sync_from_registry();
             capital_ship_fighters_phase_.sync_from_registry();
@@ -533,6 +544,7 @@ void FLevelSimulation::advance(time_type const dt) {
         // End phase
         /* -------------------------------------------------------------------------------- */
         {
+            SANDBOX_PROFILE_SCOPE("Sandbox::FLevelSimulation::advance::end_tick");
 
             capital_ships_phase_.end_tick();
             capital_ship_fighters_phase_.end_tick();
@@ -568,6 +580,7 @@ void FLevelSimulation::advance(time_type const dt) {
         }
 
         frame_memory_.reset();
+        ml::profiling::mark_frame("Simulation");
 
         if (state_ != EOrchestratorState::Running) {
             break;

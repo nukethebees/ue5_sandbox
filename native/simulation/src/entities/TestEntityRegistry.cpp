@@ -1,6 +1,7 @@
 #include "sandbox/simulation/entities/TestEntityRegistry.h"
 #include <cstdint>
 #include <optional>
+#include <sandbox/simulation/profiling.h>
 #include <span>
 #include <vector>
 
@@ -53,6 +54,7 @@ void FTestEntityRegistry::begin_tick() {
     bookkeeping_.begin_tick();
 }
 void FTestEntityRegistry::commit_updates() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FTestEntityRegistry::commit_updates");
 
     validate_unique_queued_entity_update_handles();
     commit_entity_updates();
@@ -65,11 +67,13 @@ void FTestEntityRegistry::commit_updates() {
     validate_array_sizes();
 }
 void FTestEntityRegistry::refresh_free_indices() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FTestEntityRegistry::refresh_free_indices");
 
     bookkeeping_.refresh_free_indices(
         std::span{entity_data.alive.data(), static_cast<std::size_t>(entity_data.alive.size())});
 }
 void FTestEntityRegistry::end_tick() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FTestEntityRegistry::end_tick");
 
     refresh_free_indices();
 
@@ -85,6 +89,7 @@ void FTestEntityRegistry::end_tick() {
 // Entity creation
 /* **************************************** */
 auto FTestEntityRegistry::add_entities(EntityData::ConstView const view) -> SpawnedEntityHandles {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FTestEntityRegistry::add_entities");
 
     view.validate_array_sizes();
 
@@ -146,6 +151,7 @@ auto FTestEntityRegistry::add_entities(EntityData::ConstView const view) -> Spaw
 /* **************************************** */
 void FTestEntityRegistry::queue_entity_updates(ConstView const view,
                                                EntityDeathInfo const& death_info) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FTestEntityRegistry::queue_entity_updates");
 
     assert(view.indices.size() == static_cast<std::size_t>(view.data.num()));
     queued_entity_data.append_from(view.data);
@@ -156,6 +162,7 @@ void FTestEntityRegistry::queue_entity_updates(ConstView const view,
     queued_death_infos.append_from(death_info.get_const_view());
 }
 void FTestEntityRegistry::commit_entity_updates() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FTestEntityRegistry::commit_entity_updates");
 
     [[maybe_unused]] auto const count{queued_entity_data.num()};
     assert(static_cast<std::int32_t>(bookkeeping_.queued_update_handles.size()) == count);
@@ -169,6 +176,7 @@ void FTestEntityRegistry::commit_entity_updates() {
     assert(invalid_update < 0);
 }
 void FTestEntityRegistry::commit_death_updates() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FTestEntityRegistry::commit_death_updates");
 
     queued_death_infos.validate_array_sizes();
     auto const unique_entities{unique_entity_history_.get_view().columns()};
@@ -397,6 +405,7 @@ auto FTestEntityRegistry::collect_entities_in_range(
     ml::simulation::Vector3f const& origin,
     float const radius,
     std::span<FRegistryEntityHandle> const out_entities) const -> std::int32_t {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FTestEntityRegistry::collect_entities_in_range");
 
     return ml::simulation::collect_entities_in_range(
         ml::make_native_query_view(*this),
@@ -436,6 +445,7 @@ void FTestEntityRegistry::validate_array_sizes() const {
 #endif
 }
 void FTestEntityRegistry::validate_unique_ids() const {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FTestEntityRegistry::validate_unique_ids");
 
     // Development-time validation for the unique id system
     [[maybe_unused]] auto const unique_entities{unique_entity_history_.get_const_view().columns()};
@@ -451,6 +461,7 @@ void FTestEntityRegistry::validate_unique_ids() const {
     }
 }
 void FTestEntityRegistry::validate_unique_entity_data() const {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FTestEntityRegistry::validate_unique_entity_data");
 
     auto const unique_entities{unique_entity_history_.get_const_view().columns()};
     auto const n{unique_entities.num()};

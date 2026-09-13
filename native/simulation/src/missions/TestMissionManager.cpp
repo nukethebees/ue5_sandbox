@@ -5,6 +5,7 @@
 #include <format>
 #include <optional>
 #include <sandbox/core/diagnostics.h>
+#include <sandbox/simulation/profiling.h>
 #include <span>
 #include <string>
 #include <utility>
@@ -298,6 +299,7 @@ void FTestMissionManager::objective_event_dispatched() {
 // Tick and state transitions
 /* **************************************** */
 void FTestMissionManager::mission_tick() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FTestMissionManager::mission_tick");
 
     switch (mission_state) {
         case ml::simulation::MissionState::NotStarted: {

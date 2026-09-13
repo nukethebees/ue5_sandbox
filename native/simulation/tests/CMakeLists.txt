@@ -44,6 +44,17 @@ target_link_libraries(native-simulation-tests PRIVATE
   sandbox::warnings_as_errors
 )
 
+if(SANDBOX_WITH_TRACY AND SANDBOX_WITH_UNREAL)
+  target_sources(native-simulation-tests PRIVATE tracy_lifetime.cpp)
+  target_link_libraries(native-simulation-tests PRIVATE Tracy::TracyClient)
+  add_custom_command(TARGET native-simulation-tests POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+      "$<TARGET_FILE:TracyClient>"
+      "$<TARGET_FILE_DIR:native-simulation-tests>"
+    VERBATIM
+  )
+endif()
+
 target_link_libraries(native-simulation-tests PRIVATE GTest::gtest_main)
 
 include(GoogleTest)

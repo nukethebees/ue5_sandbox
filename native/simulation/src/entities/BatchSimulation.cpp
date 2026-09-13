@@ -4,6 +4,7 @@
 #include <sandbox/simulation/entities/DirectDamageEvents.h>
 #include <sandbox/simulation/entities/EntityDeathInfo.h>
 #include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/profiling.h>
 
 namespace ml::batch {
 void sort_and_deduplicate_removal_indices(std::vector<std::int32_t>& local_indices_to_remove) {
@@ -18,6 +19,7 @@ void resolve_damage_events(FTestEntityRegistry const& registry,
                            std::span<std::int32_t> healths,
                            std::vector<std::int32_t>& local_indices_to_remove,
                            EntityDeathInfo& entity_death_info) {
+    SANDBOX_PROFILE_SCOPE("ml::batch::resolve_damage_events");
 
     auto const& direct_view{registry.get_direct_damage_queue_view()};
     auto const n_direct_events{direct_view.num()};

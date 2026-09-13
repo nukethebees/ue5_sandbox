@@ -34,6 +34,7 @@
 #include <sandbox/simulation/fighter_spawn_admission.h>
 #include <sandbox/simulation/fighter_spawn_initialization.h>
 #include <sandbox/simulation/laser_source.h>
+#include <sandbox/simulation/profiling.h>
 #include <sandbox/simulation/simulation/FighterDiagnostics.h>
 #include <sandbox/simulation/simulation/FrameTraceHits.h>
 #include <sandbox/simulation/simulation/SpatialQueryManager.h>
@@ -112,6 +113,19 @@ Simulation::Simulation(FSimulationClock const& clock,
 // Simulation phases
 /* **************************************** */
 void Simulation::begin_play() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ship_fighters::Simulation::begin_play");
+    ml::profiling::plot("Sandbox/TestFighterCount", 0);
+    ml::profiling::plot("Sandbox/FightersAvoiding", 0);
+    ml::profiling::plot("Sandbox/FighterNavigationTraces", 0);
+    ml::profiling::plot("Sandbox/FightersSeparating", 0);
+    ml::profiling::plot("Sandbox/FighterSeparationQueries", 0);
+    ml::profiling::plot("Sandbox/FighterSeparationCandidates", 0);
+    ml::profiling::plot("Sandbox/FighterDenseDirectionSelections", 0);
+    ml::profiling::plot("Sandbox/FighterSteeringMemory", 0);
+    ml::profiling::plot("Sandbox/FighterNavigationClear", 0);
+    ml::profiling::plot("Sandbox/FighterNavigationNearby", 0);
+    ml::profiling::plot("Sandbox/FighterNavigationActive", 0);
+    ml::profiling::plot("Sandbox/FighterNavigationImmediate", 0);
     awareness_cleaner_ = 0;
     reposition_cleaner_ = 0;
     attack_cleaner_ = 0;
@@ -161,6 +175,7 @@ void Simulation::begin_play() {
     assert(config.attack_distance_band.values_are_valid());
 }
 void Simulation::begin_tick() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ship_fighters::Simulation::begin_tick");
 
     auto& data{entity_buffers.current()};
     ml::tick_countdowns<std::int8_t>(data.awareness_scan_countdowns, awareness_cleaner_, 64);
@@ -186,10 +201,12 @@ void Simulation::begin_tick() {
     }
 }
 void Simulation::update_timers(float const) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ship_fighters::Simulation::update_timers");
     ml::tick_countdowns<std::int16_t>(
         entity_buffers.current().attack_cooldowns, attack_cleaner_, 16384);
 }
 void Simulation::make_decisions() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ship_fighters::Simulation::make_decisions");
 
     auto& data{entity_buffers.current()};
     auto const awareness_radius{config.awareness_radius};
@@ -239,6 +256,7 @@ void Simulation::make_decisions() {
     }
 }
 void Simulation::move(float const dt) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ship_fighters::Simulation::move");
 
     auto const d_turn{std::min(1.f, config.turn_speed_unitless * dt)};
     auto& data{entity_buffers.current()};
@@ -304,9 +322,11 @@ void Simulation::move(float const dt) {
                                          attack_view.target_locations.get_const_view());
 }
 void Simulation::queue_commands() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ship_fighters::Simulation::queue_commands");
     handle_firing(get_task_view(Task::Attack));
 }
 void Simulation::resolve_damage_events() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ship_fighters::Simulation::resolve_damage_events");
 
     auto& data{entity_buffers.current()};
     ml::batch::resolve_damage_events(entity_registry,
@@ -327,12 +347,15 @@ void Simulation::resolve_damage_events() {
     validate_array_sizes();
 }
 void Simulation::update_entity_registry() {
+    SANDBOX_PROFILE_SCOPE(
+        "Sandbox::test_capital_ship_fighters::Simulation::update_entity_registry");
     prepare_entity_update_data();
     FTestEntityRegistry::ConstView const view{entity_buffers.current().entity_handles,
                                               registry_update_data.get_const_view()};
     entity_registry.queue_entity_updates(view, entity_death_info);
 }
 void Simulation::sync_from_registry() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ship_fighters::Simulation::sync_from_registry");
 
     tasks_are_contiguous();
     remove_dead_entities();
@@ -345,6 +368,8 @@ void Simulation::sync_from_registry() {
     validate_array_sizes();
 }
 void Simulation::end_tick() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ship_fighters::Simulation::end_tick");
+    ml::profiling::plot("Sandbox/TestFighterCount", get_num_instances());
     validate_array_sizes();
 }
 
@@ -365,6 +390,8 @@ void Simulation::move(float const dt, TaskView const& fighters) {
         dt);
 }
 void Simulation::update_navigation_steering() {
+    SANDBOX_PROFILE_SCOPE(
+        "Sandbox::test_capital_ship_fighters::Simulation::update_navigation_steering");
 
     auto const clearance{collision_radius + config.avoidance_clearance_buffer};
     auto const minimum_lookahead_distance{collision_radius * 2.f};
@@ -637,7 +664,25 @@ void Simulation::apply_navigation_choices(NavigationScratch const& scratch) {
         scratch,
         navigation_telemetry);
 }
-void Simulation::publish_navigation_telemetry() const {}
+void Simulation::publish_navigation_telemetry() const {
+    ml::profiling::plot("Sandbox/FightersAvoiding", navigation_telemetry.avoiding_fighter_count);
+    ml::profiling::plot("Sandbox/FighterNavigationTraces", navigation_telemetry.hard_trace_count);
+    ml::profiling::plot("Sandbox/FightersSeparating",
+                        navigation_telemetry.separating_fighter_count);
+    ml::profiling::plot("Sandbox/FighterSeparationQueries",
+                        navigation_telemetry.separation_query_count);
+    ml::profiling::plot("Sandbox/FighterSeparationCandidates",
+                        navigation_telemetry.separation_candidate_count);
+    ml::profiling::plot("Sandbox/FighterDenseDirectionSelections",
+                        navigation_telemetry.dense_direction_selection_count);
+    ml::profiling::plot("Sandbox/FighterSteeringMemory",
+                        navigation_telemetry.steering_memory_fighter_count);
+    ml::profiling::plot("Sandbox/FighterNavigationClear", navigation_telemetry.clear_risk_count);
+    ml::profiling::plot("Sandbox/FighterNavigationNearby", navigation_telemetry.nearby_risk_count);
+    ml::profiling::plot("Sandbox/FighterNavigationActive", navigation_telemetry.active_risk_count);
+    ml::profiling::plot("Sandbox/FighterNavigationImmediate",
+                        navigation_telemetry.immediate_risk_count);
+}
 
 /* **************************************** */
 // Accessors
@@ -752,6 +797,8 @@ void Simulation::refresh_task_views() {
 // Entity data
 /* **************************************** */
 void Simulation::prepare_entity_update_data() {
+    SANDBOX_PROFILE_SCOPE(
+        "Sandbox::test_capital_ship_fighters::Simulation::prepare_entity_update_data");
 
     auto const& data{entity_buffers.current()};
     auto const n{get_num_instances()};
@@ -773,12 +820,14 @@ void Simulation::prepare_entity_update_data() {
     registry_update_data.validate_array_sizes();
 }
 bool Simulation::tasks_are_contiguous() const noexcept {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ship_fighters::Simulation::tasks_are_contiguous");
 
     auto const& data{entity_buffers.current()};
     return ml::simulation::fighters::tasks_are_contiguous(
         {data.tasks.data(), static_cast<std::size_t>(data.tasks.size())}, task_spans);
 }
 void Simulation::refresh_layout() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ship_fighters::Simulation::refresh_layout");
 
     auto const task_counts{get_task_counts()};
     auto const n_fighters{get_num_instances()};
@@ -805,6 +854,7 @@ void Simulation::refresh_layout() {
 /* **************************************** */
 auto Simulation::queue_spawns(
     ml::simulation::TestCapitalShipFighterSpawnQueueConstView const new_spawns) -> std::int32_t {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ship_fighters::Simulation::queue_spawns");
     new_spawns.validate_array_sizes();
     auto const admission{ml::simulation::fighters::admit_spawns(
         std::as_bytes(new_spawns.teams),
@@ -829,6 +879,7 @@ auto Simulation::queue_spawns(
     return admission.accepted_count;
 }
 void Simulation::commit_spawns() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ship_fighters::Simulation::commit_spawns");
 
     if (!diagnostics_enabled) {
         diagnostic_spawn_reports = 0;
@@ -928,6 +979,7 @@ void Simulation::self_destruct_fighter(FRegistryEntityHandle const handle) {
     }
 }
 void Simulation::remove_dead_entities() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ship_fighters::Simulation::remove_dead_entities");
     auto& data{entity_buffers.current()};
     ml::batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
     for (auto const index : local_indices_to_remove) {
@@ -940,6 +992,7 @@ void Simulation::remove_dead_entities() {
 // Combat
 /* **************************************** */
 void Simulation::handle_firing(TaskView const& data) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ship_fighters::Simulation::handle_firing");
 
     auto const n_ships{data.num()};
     auto const aim_threshold{fire_dot_product_threshold};
@@ -1074,9 +1127,11 @@ void Simulation::handle_firing(TaskView const& data) {
 // Orders
 /* **************************************** */
 void Simulation::queue_orders(TestCapitalShipFighterOrderQueue const& queue) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ship_fighters::Simulation::queue_orders");
     order_queue.append_from(queue.get_const_view());
 }
 void Simulation::commit_orders() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ship_fighters::Simulation::commit_orders");
 
     auto& data{entity_buffers.current()};
     auto const n_orders{order_queue.num()};
@@ -1116,6 +1171,7 @@ void Simulation::validate_array_sizes() const {
     entity_buffers.current().validate_array_sizes();
 }
 void Simulation::check_fighter_tasks() const {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ship_fighters::Simulation::check_fighter_tasks");
 
     auto current_task_group{Task::Standby};
     TaskSpans checked_task_spans{};

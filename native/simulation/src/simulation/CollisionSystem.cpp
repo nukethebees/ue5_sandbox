@@ -4,6 +4,7 @@
 #include <cassert>
 #include <format>
 #include <sandbox/core/diagnostics.h>
+#include <sandbox/simulation/profiling.h>
 #include <sandbox/simulation/rotator_math.h>
 #include <thread>
 
@@ -19,6 +20,7 @@ void FCollisionSystem::initialise(simulation::collision::EntityAABBs const& boun
 }
 auto FCollisionSystem::update(std::span<FRegistryEntityHandle const> const collision_dirty_entities,
                               simulation::SimTick const tick) -> FDetectedOverlapsView {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FCollisionSystem::update");
     rebuild_grid();
     collect_overlaps_for_moved_entities(collision_dirty_entities);
 
@@ -34,10 +36,12 @@ FCollisionSystem::FCollisionSystem(FTestEntityRegistry const& registry) noexcept
     : entity_registry_{registry}
     , uniform_grid_{registry} {}
 void FCollisionSystem::rebuild_grid() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FCollisionSystem::rebuild_grid");
     uniform_grid_.rebuild_grid(entity_aabbs_);
 }
 void FCollisionSystem::collect_overlaps_for_moved_entities(
     std::span<FRegistryEntityHandle const> const collision_dirty_entities) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FCollisionSystem::collect_overlaps_for_moved_entities");
 
     overlap_storage_.clear();
 

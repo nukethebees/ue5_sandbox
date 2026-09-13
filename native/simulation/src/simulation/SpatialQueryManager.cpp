@@ -5,6 +5,7 @@
 #include <format>
 #include <sandbox/core/diagnostics.h>
 #include <sandbox/simulation/entity_world_bounds.h>
+#include <sandbox/simulation/profiling.h>
 #include <sandbox/simulation/rotator_math.h>
 #include <thread>
 
@@ -226,6 +227,7 @@ void FSpatialQueryManager::trace_line_of_sight(
     ml::simulation::Vectors3fConstView const start_locations,
     ml::simulation::Vectors3fConstView const end_locations,
     std::span<FRegistryEntityHandle> const out_entity_handles) const {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FSpatialQueryManager::trace_line_of_sight");
 
     trace_impl<EQueryMode::HitEntity>(*this,
                                       {.start_locations = start_locations,
@@ -238,6 +240,7 @@ void FSpatialQueryManager::has_line_of_sight_to_targets(
     ml::simulation::Vectors3fConstView const end_locations,
     std::span<FRegistryEntityHandle const> const targets,
     std::span<std::uint8_t> const has_los) const {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FSpatialQueryManager::has_line_of_sight_to_targets");
 
     trace_impl<EQueryMode::TargetLineOfSight>(*this,
                                               {.end_locations = end_locations,
@@ -263,6 +266,7 @@ void FSpatialQueryManager::trace_closest_lines(
     ml::simulation::Vectors3fConstView const end_locations,
     FTraceHitsView const out_hits,
     std::span<FRegistryEntityHandle const> const ignored_entities) const {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FSpatialQueryManager::trace_closest_lines");
 
     [[maybe_unused]] auto const count{start_locations.num()};
     assert(end_locations.num() == count);
@@ -284,6 +288,7 @@ void FSpatialQueryManager::sweep_closest_aabbs(
     FTraceHitsView const out_hits,
     std::span<FRegistryEntityHandle const> const ignored_entities,
     ioj::ETraceEntityFilter const entity_filter) const {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FSpatialQueryManager::sweep_closest_aabbs");
 
     [[maybe_unused]] auto const count{start_locations.num()};
     assert(end_locations.num() == count);
@@ -324,6 +329,7 @@ auto FSpatialQueryManager::collect_non_team_entities_in_range(
     simulation::Team const team,
     float const radius,
     std::span<FRegistryEntityHandle> const out_entities) const -> std::int32_t {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FSpatialQueryManager::collect_non_team_entities_in_range");
 
     telemetry_.record_range_query();
 
@@ -334,15 +340,19 @@ auto FSpatialQueryManager::collect_non_team_entities_in_range(
     auto const& grid{collision.get_uniform_grid()};
     validate_grid_for_range_query(grid, origin, radius);
     query_manager::FThreadBufferLease const buffer_lease{*this};
-    return simulation::collect_non_team_entities_in_range(
-        grid.get_native_geometry(),
-        grid.get_native_entity_storage(),
-        make_native_query_view(entity_registry),
-        buffer_lease.get(),
-        origin,
-        radius,
-        team,
-        {out_entities.data(), static_cast<std::size_t>(out_entities.size())});
+    {
+        SANDBOX_PROFILE_SCOPE(
+            "Sandbox::FSpatialQueryManager::collect_non_team_entities_in_range::loop");
+        return simulation::collect_non_team_entities_in_range(
+            grid.get_native_geometry(),
+            grid.get_native_entity_storage(),
+            make_native_query_view(entity_registry),
+            buffer_lease.get(),
+            origin,
+            radius,
+            team,
+            {out_entities.data(), static_cast<std::size_t>(out_entities.size())});
+    }
 }
 
 auto FSpatialQueryManager::collect_entities_of_type_in_range(
@@ -351,6 +361,7 @@ auto FSpatialQueryManager::collect_entities_of_type_in_range(
     float const radius,
     FRegistryEntityHandle const ignored_entity,
     std::span<FRegistryEntityHandle> const out_entities) const -> std::int32_t {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FSpatialQueryManager::collect_entities_of_type_in_range");
 
     telemetry_.record_range_query();
 
@@ -423,6 +434,7 @@ void FSpatialQueryManager::copy_entity_radii(std::span<FRegistryEntityHandle con
 // Collision state and telemetry
 /* **************************************** */
 auto FSpatialQueryManager::update(simulation::SimTick const tick) -> ioj::FDetectedOverlapsView {
+    SANDBOX_PROFILE_SCOPE("Sandbox::FSpatialQueryManager::update");
 
     return collision.update(entity_registry.get_moved_entities_this_tick(), tick);
 }

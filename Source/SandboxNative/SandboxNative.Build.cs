@@ -1,9 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
-using System.Net.NetworkInformation;
 using UnrealBuildTool;
 
 public class SandboxNative : ModuleRules
@@ -41,6 +39,25 @@ public class SandboxNative : ModuleRules
         PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "simulation", "include"));
         PublicSystemIncludePaths.Add(
             Path.Combine(repositoryRoot, "native", "lispb", "native_soa", "include"));
+
+        bool withTracy = Target.Configuration == UnrealTargetConfiguration.Debug ||
+                         Target.Configuration == UnrealTargetConfiguration.DebugGame ||
+                         Target.Configuration == UnrealTargetConfiguration.Development;
+        if (withTracy)
+        {
+            PrivateIncludePaths.Add(
+                Path.Combine(repositoryRoot, "native", "third_party", "tracy", "public"));
+            PrivateDefinitions.AddRange(new string[] {
+                "SANDBOX_WITH_TRACY",
+                "TRACY_ENABLE",
+                "TRACY_IMPORTS",
+                "TRACY_MANUAL_LIFETIME",
+                "TRACY_NO_BROADCAST",
+                "TRACY_NO_CRASH_HANDLER",
+                "TRACY_ON_DEMAND",
+                "TRACY_ONLY_LOCALHOST",
+            });
+        }
 
         if (!Target.bGenerateProjectFiles)
         {
@@ -85,6 +102,34 @@ public class SandboxNative : ModuleRules
 
                 PublicAdditionalLibraries.Add(nativeLibrary);
                 ExternalDependencies.Add(nativeLibrary);
+            }
+            if (withTracy)
+            {
+                string tracyDirectory = Path.Combine(
+                    repositoryRoot,
+                    "Binaries",
+                    "Native",
+                    "Tracy",
+                    nativeToolchain,
+                    Target.Platform.ToString(),
+                    Target.Configuration.ToString());
+                string tracyLibrary = Path.Combine(tracyDirectory, "SandboxTracyClient.lib");
+                string tracyRuntime = Path.Combine(tracyDirectory, "SandboxTracyClient.dll");
+                if (!File.Exists(tracyLibrary) || !File.Exists(tracyRuntime))
+                {
+                    throw new BuildException(
+                        "SandboxNative expected the CMake-built Tracy library and runtime under '{0}'. " +
+                        "Build Unreal targets through a repository CMake workflow.",
+                        tracyDirectory);
+                }
+
+                PublicAdditionalLibraries.Add(tracyLibrary);
+                PublicDelayLoadDLLs.Add("SandboxTracyClient.dll");
+                RuntimeDependencies.Add(
+                    "$(TargetOutputDir)/SandboxTracyClient.dll",
+                    tracyRuntime);
+                ExternalDependencies.Add(tracyLibrary);
+                ExternalDependencies.Add(tracyRuntime);
             }
         }
     }

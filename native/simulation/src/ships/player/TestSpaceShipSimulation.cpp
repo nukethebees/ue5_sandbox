@@ -5,6 +5,7 @@
 #include <optional>
 #include <sandbox/core/diagnostics.h>
 #include <sandbox/core/vector2d.h>
+#include <sandbox/simulation/profiling.h>
 #include <sandbox/simulation/ship_health.h>
 #include <sandbox/simulation/transform3d.h>
 #include <span>
@@ -57,6 +58,7 @@ Simulation::Simulation(FSimulationClock const& clock,
 // Tick phases
 /* **************************************** */
 void Simulation::begin_play() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::PlayerShipSimulation::begin_play");
 
     velocity = ml::Vector3d{};
     thrust_energy = config.thrust_energy_max;
@@ -72,6 +74,7 @@ void Simulation::begin_play() {
 }
 
 void Simulation::update_timers(float const dt) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::PlayerShipSimulation::update_timers");
 
     laser_shot_cooldown -= dt;
     time_since_rotation_input += dt;
@@ -86,6 +89,7 @@ void Simulation::update_timers(float const dt) {
 }
 
 void Simulation::move(float const dt) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::PlayerShipSimulation::move");
 
     update_boost_brake(dt);
     update_rotation(dt);
@@ -109,10 +113,12 @@ void Simulation::move(float const dt) {
 }
 
 void Simulation::queue_commands() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::PlayerShipSimulation::queue_commands");
     update_laser_firing();
 }
 
 void Simulation::resolve_damage_events() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::PlayerShipSimulation::resolve_damage_events");
 
     auto const& direct_damage{entity_registry.get_direct_damage_queue_view()};
     auto const result{ml::simulation::apply_direct_damage(
@@ -124,6 +130,7 @@ void Simulation::resolve_damage_events() {
 }
 
 void Simulation::update_entity_registry() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::PlayerShipSimulation::update_entity_registry");
     queue_entity_update(EntityDeathInfo{});
 }
 

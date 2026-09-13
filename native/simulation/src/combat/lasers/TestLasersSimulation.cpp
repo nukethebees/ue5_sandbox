@@ -8,6 +8,7 @@
 #include <sandbox/simulation/laser_collision_response.h>
 #include <sandbox/simulation/laser_lifecycle.h>
 #include <sandbox/simulation/laser_spawn_initialization.h>
+#include <sandbox/simulation/profiling.h>
 #include <sandbox/simulation/simulation/SpatialQueryManager.h>
 
 #include <algorithm>
@@ -29,20 +30,26 @@ Simulation::Simulation(FSimulationClock const& clock,
     , simulation_clock{clock} {}
 
 void Simulation::begin_play() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_lasers::Simulation::begin_play");
+    ml::profiling::plot("Sandbox/TestLaserCount", 0);
 
     number_spawned = 0;
     preallocate_instances();
     validate_array_sizes();
 }
 
-void Simulation::begin_tick() {}
+void Simulation::begin_tick() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_lasers::Simulation::begin_tick");
+}
 
 void Simulation::commit_spawns() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_lasers::Simulation::commit_spawns");
     process_pending_spawns();
     clear_spawn_buffers();
 }
 
 void Simulation::simulate(float const dt) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_lasers::Simulation::simulate");
 
     ml::simulation::lasers::expire_instances(entities, dt, frame_memory_resource);
 
@@ -51,6 +58,8 @@ void Simulation::simulate(float const dt) {
 }
 
 void Simulation::end_tick() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_lasers::Simulation::end_tick");
+    ml::profiling::plot("Sandbox/TestLaserCount", get_num_instances());
     validate_array_sizes();
 }
 
@@ -63,6 +72,7 @@ auto Simulation::get_num_instances() const noexcept -> std::int32_t {
 /* **************************************** */
 void Simulation::queue_laser_spawns(
     ml::simulation::lasers::SpawnRequestsConstView const spawn_data) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_lasers::Simulation::queue_laser_spawns");
 
     spawn_data.validate_array_sizes();
     pending_spawns.append_from(spawn_data);
@@ -73,6 +83,7 @@ void Simulation::preallocate_instances() {
 }
 
 void Simulation::process_pending_spawns() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_lasers::Simulation::process_pending_spawns");
 
     pending_spawns.validate_array_sizes();
     auto const n_to_add{pending_spawns.num()};
@@ -96,6 +107,7 @@ void Simulation::process_pending_spawns() {
 // Movement and collision
 /* **************************************** */
 void Simulation::handle_collisions(float const dt) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_lasers::Simulation::handle_collisions");
 
     auto const n{get_num_instances()};
     if (n < 1) {

@@ -20,6 +20,7 @@
 #include <sandbox/simulation/entities/BatchSimulation.h>
 #include <sandbox/simulation/entities/NativeEntityRegistryView.h>
 #include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/profiling.h>
 #include <sandbox/simulation/simulation/LevelSimulationConfig.h>
 #include <sandbox/simulation/simulation/SpatialQueryManager.h>
 #include <sandbox/simulation/turret_firing.h>
@@ -52,6 +53,7 @@ Simulation::Simulation(FSimulationClock const& clock,
 auto Simulation::register_turrets(SpawnDataConstView const spawn_data,
                                   ml::simulation::Rotators3fConstView const rotations)
     -> std::vector<FRegistryEntityHandle> {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_static_turrets::Simulation::register_turrets");
     spawn_data.validate_array_sizes();
     auto const n_to_add{spawn_data.num()};
     if (n_to_add == 0) {
@@ -132,6 +134,7 @@ auto Simulation::register_turrets(SpawnDataConstView const spawn_data,
 // Death handling
 /* **************************************** */
 void Simulation::handle_dead_entities() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_static_turrets::Simulation::handle_dead_entities");
     if (local_indices_to_remove.empty()) {
         return;
     }
@@ -154,6 +157,8 @@ void Simulation::handle_dead_entities() {
 // Simulation phases
 /* **************************************** */
 void Simulation::begin_play() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_static_turrets::Simulation::begin_play");
+    ml::profiling::plot("Sandbox/TestStaticTurretCount", 0);
     assert(search_slice_size > 0);
 
     auto const cooldown_tick_period{
@@ -164,21 +169,26 @@ void Simulation::begin_play() {
     validate_array_sizes();
 }
 void Simulation::begin_tick() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_static_turrets::Simulation::begin_tick");
     clear_tick_buffers();
 }
 void Simulation::update_timers(float const) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_static_turrets::Simulation::update_timers");
 
     ml::tick_countdowns<std::int16_t>(entities.laser_cooldowns, cooldown_cleaner_, 16384);
     ml::tick_periodic_countdowns<std::int16_t>(entities.target_refresh_countdowns_remaining_ticks);
 }
 void Simulation::make_decisions() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_static_turrets::Simulation::make_decisions");
     perform_search();
 }
 void Simulation::queue_commands() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_static_turrets::Simulation::queue_commands");
 
     fire_at_enemies();
 }
 void Simulation::resolve_damage_events() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_static_turrets::Simulation::resolve_damage_events");
 
     ml::batch::resolve_damage_events(entity_registry,
                                      entities.handles,
@@ -188,6 +198,7 @@ void Simulation::resolve_damage_events() {
     validate_array_sizes();
 }
 void Simulation::update_entity_registry() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_static_turrets::Simulation::update_entity_registry");
 
     prepare_entity_update_data();
 
@@ -199,6 +210,7 @@ void Simulation::update_entity_registry() {
         entity_death_info);
 }
 void Simulation::sync_from_registry() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_static_turrets::Simulation::sync_from_registry");
 
     entity_registry.refresh_entity_data(entities.target_handles,
                                         entities.target_locations.get_view(),
@@ -207,6 +219,8 @@ void Simulation::sync_from_registry() {
     handle_dead_entities();
 }
 void Simulation::end_tick() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_static_turrets::Simulation::end_tick");
+    ml::profiling::plot("Sandbox/TestStaticTurretCount", get_num_instances());
 
     validate_array_sizes();
 }
@@ -215,6 +229,7 @@ void Simulation::end_tick() {
 // Entity data
 /* **************************************** */
 void Simulation::prepare_entity_update_data() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_static_turrets::Simulation::prepare_entity_update_data");
     entity_update_data.reset();
 
     auto const n{get_num_instances()};
@@ -247,6 +262,7 @@ auto Simulation::get_target_handles() const -> std::span<FRegistryEntityHandle c
 // Searching
 /* **************************************** */
 void Simulation::perform_search() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_static_turrets::Simulation::perform_search");
 
     auto const n_turrets{get_num_instances()};
     if (n_turrets == 0) {
@@ -335,6 +351,7 @@ void Simulation::perform_search_on_slice(std::int32_t const job_index,
 // Attacking
 /* **************************************** */
 void Simulation::fire_at_enemies() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_static_turrets::Simulation::fire_at_enemies");
 
     auto const count{static_cast<std::size_t>(get_num_instances())};
     ml::simulation::turrets::FiringView const firing_view{

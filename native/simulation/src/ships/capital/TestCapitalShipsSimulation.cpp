@@ -19,6 +19,7 @@
 #include <sandbox/simulation/entities/TestEntityRegistry.h>
 #include <sandbox/simulation/entity_registry_refresh.h>
 #include <sandbox/simulation/fighter_frame_spawn_queue.h>
+#include <sandbox/simulation/profiling.h>
 #include <sandbox/simulation/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <sandbox/simulation/simulation/FighterDiagnostics.h>
 #include <sandbox/simulation/simulation/SpatialQueryManager.h>
@@ -46,18 +47,23 @@ Simulation::Simulation(FTestEntityRegistry& in_entity_registry,
 // Simulation phases
 /* **************************************** */
 void Simulation::begin_play() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ships::Simulation::begin_play");
+    ml::profiling::plot("Sandbox/TestCapitalShipCount", 0);
     assert(static_cast<std::size_t>(config.fighter_spawn_slots) ==
            config.fighter_spawn_slots_relative_transforms.size());
     validate_array_sizes();
 }
 void Simulation::begin_tick() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ships::Simulation::begin_tick");
     tick_buffers.cycle();
     clear_tick_buffers();
 }
 void Simulation::update_timers(float const dt) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ships::Simulation::update_timers");
     ml::tick_countdowns(entities.fighter_spawn_timers, dt);
 }
 void Simulation::make_decisions() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ships::Simulation::make_decisions");
 
     queue_fighter_spawns();
     refresh_fighter_handles();
@@ -75,6 +81,7 @@ void Simulation::make_decisions() {
     queue_fighter_orders();
 }
 void Simulation::resolve_damage_events() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ships::Simulation::resolve_damage_events");
     ml::batch::resolve_damage_events(entity_registry,
                                      entities.handles,
                                      entities.healths,
@@ -82,14 +89,18 @@ void Simulation::resolve_damage_events() {
                                      entity_death_info);
 }
 void Simulation::update_entity_registry() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ships::Simulation::update_entity_registry");
     prepare_entity_update_data();
     entity_registry.queue_entity_updates({entities.handles, entity_update_data.get_const_view()},
                                          entity_death_info);
 }
 void Simulation::sync_from_registry() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ships::Simulation::sync_from_registry");
     handle_dead_entities();
 }
 void Simulation::end_tick() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ships::Simulation::end_tick");
+    ml::profiling::plot("Sandbox/TestCapitalShipCount", get_num_instances());
     fighters_spawned += tick_buffers.current().num();
     validate_array_sizes();
 }
@@ -149,6 +160,7 @@ auto Simulation::find_first_handle_on_team(ml::simulation::Team const team) cons
 /* **************************************** */
 auto Simulation::register_ships(SpawnDataConstView const spawn_data)
     -> std::vector<FRegistryEntityHandle> {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ships::Simulation::register_ships");
     auto const n_to_add{spawn_data.num()};
     if (n_to_add == 0) {
         return {};
@@ -193,6 +205,7 @@ auto Simulation::register_ships(SpawnDataConstView const spawn_data)
     return new_handles;
 }
 void Simulation::spawn_ships(SpawnDataConstView const spawn_data) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ships::Simulation::spawn_ships");
     spawn_data.validate_array_sizes();
     auto const n_to_add{spawn_data.num()};
 
@@ -215,6 +228,7 @@ void Simulation::spawn_ships(SpawnDataConstView const spawn_data) {
 // Entity data
 /* **************************************** */
 void Simulation::prepare_entity_update_data() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ships::Simulation::prepare_entity_update_data");
     entity_update_data.reset();
     auto const n{get_num_instances()};
     entity_update_data.add_uninitialised(n);
@@ -236,6 +250,7 @@ auto Simulation::get_fighter_spawn_slots() const noexcept -> std::int32_t {
     return config.fighter_spawn_slots;
 }
 void Simulation::queue_fighter_spawns() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ships::Simulation::queue_fighter_spawns");
     if (!diagnostics_enabled) {
         diagnostic_spawn_reports = 0;
     }
@@ -293,6 +308,7 @@ void Simulation::queue_fighter_spawns() {
     }
 }
 void Simulation::refresh_fighter_handles() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ships::Simulation::refresh_fighter_handles");
 
     auto const& previous{tick_buffers.previous()};
     [[maybe_unused]] auto const invalid_index{ml::simulation::refresh_registry_handles(
@@ -340,6 +356,7 @@ void Simulation::refresh_fighter_handles() {
 // Orders
 /* **************************************** */
 void Simulation::queue_fighter_orders() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ships::Simulation::queue_fighter_orders");
 
     auto const n_capitals{get_num_instances()};
     auto const all_fighters{fighters_interface.get_handles()};
@@ -375,6 +392,7 @@ void Simulation::set_target_handle(FRegistryEntityHandle const ship_handle,
 // Death handling
 /* **************************************** */
 void Simulation::handle_dead_entities() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_capital_ships::Simulation::handle_dead_entities");
     if (local_indices_to_remove.empty()) {
         return;
     }

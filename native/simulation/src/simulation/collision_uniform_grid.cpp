@@ -11,6 +11,7 @@
 #include <cmath>
 #include <format>
 #include <sandbox/core/diagnostics.h>
+#include <sandbox/simulation/profiling.h>
 #include <sandbox/simulation/rotator_math.h>
 #include <utility>
 
@@ -72,6 +73,7 @@ void CollisionUniformGrid::reset() {
 }
 
 void CollisionUniformGrid::set_static_aabbs(simulation::collision::WorldAABBs static_aabbs) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::CollisionUniformGrid::set_static_aabbs");
 
     if (!is_configured()) {
         ml::fatal_error("Cannot build static geometry for an unconfigured grid");
@@ -84,6 +86,7 @@ void CollisionUniformGrid::set_static_aabbs(simulation::collision::WorldAABBs st
 
 auto CollisionUniformGrid::add_static_aabb(simulation::Vector3f const min_point,
                                            simulation::Vector3f const max_point) -> std::int32_t {
+    SANDBOX_PROFILE_SCOPE("Sandbox::CollisionUniformGrid::add_static_aabb");
 
     assert(is_configured());
     [[maybe_unused]] auto const [min_coord, max_coord]{to_cell_coord_bounds(min_point, max_point)};
@@ -110,6 +113,7 @@ void CollisionUniformGrid::rebuild_static_grid() {
 }
 
 void CollisionUniformGrid::rebuild_grid(simulation::collision::EntityAABBs const& entity_aabbs) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::CollisionUniformGrid::rebuild_grid");
     telemetry_.record_rebuild();
     if (!is_configured()) {
         ml::fatal_error("Cannot rebuild an unconfigured collision grid");
@@ -121,37 +125,41 @@ void CollisionUniformGrid::rebuild_grid(simulation::collision::EntityAABBs const
     auto const geometry{geometry_};
     entity_storage_.begin_rebuild(geometry.dimensions);
 
-    for (std::int32_t index{}; index < entity_count; ++index) {
-        if (entity_data.alive[index] == 0) {
-            continue;
-        }
-        auto const entity_type{entity_data.entity_types[index]};
-        auto const bounds{simulation::collision::make_entity_world_bounds(
-            entity_aabbs,
-            std::to_underlying(entity_type),
-            entity_data.locations[index],
-            simulation::to_quaternion(entity_data.rotations[index]))};
-        auto const [min_coord, max_coord]{
-            simulation::collision::to_cell_coord_bounds(geometry, bounds.min, bounds.max)};
-        if (!is_cell_coord_in_bounds(min_coord, max_coord)) {
-            ml::fatal_error(std::format(
-                "Collision-grid entity {}:{} type {} has world AABB ({}, {}, {}) through "
-                "({}, {}, {}), cell AABB {} through {}, outside grid dimensions {}",
-                index,
-                generations[index],
+    {
+        SANDBOX_PROFILE_SCOPE("Sandbox::CollisionUniformGrid::rebuild_grid::count_loop");
+
+        for (std::int32_t index{}; index < entity_count; ++index) {
+            if (entity_data.alive[index] == 0) {
+                continue;
+            }
+            auto const entity_type{entity_data.entity_types[index]};
+            auto const bounds{simulation::collision::make_entity_world_bounds(
+                entity_aabbs,
                 std::to_underlying(entity_type),
-                bounds.min.X,
-                bounds.min.Y,
-                bounds.min.Z,
-                bounds.max.X,
-                bounds.max.Y,
-                bounds.max.Z,
-                to_string(min_coord),
-                to_string(max_coord),
-                to_string(geometry.dimensions)));
+                entity_data.locations[index],
+                simulation::to_quaternion(entity_data.rotations[index]))};
+            auto const [min_coord, max_coord]{
+                simulation::collision::to_cell_coord_bounds(geometry, bounds.min, bounds.max)};
+            if (!is_cell_coord_in_bounds(min_coord, max_coord)) {
+                ml::fatal_error(std::format(
+                    "Collision-grid entity {}:{} type {} has world AABB ({}, {}, {}) through "
+                    "({}, {}, {}), cell AABB {} through {}, outside grid dimensions {}",
+                    index,
+                    generations[index],
+                    std::to_underlying(entity_type),
+                    bounds.min.X,
+                    bounds.min.Y,
+                    bounds.min.Z,
+                    bounds.max.X,
+                    bounds.max.Y,
+                    bounds.max.Z,
+                    to_string(min_coord),
+                    to_string(max_coord),
+                    to_string(geometry.dimensions)));
+            }
+            entity_storage_.add(
+                bounds.min, bounds.max, min_coord, max_coord, {index, generations[index]});
         }
-        entity_storage_.add(
-            bounds.min, bounds.max, min_coord, max_coord, {index, generations[index]});
     }
     if (!entity_storage_.finish_rebuild()) {
         ml::fatal_error("Collision grid entity membership index is inconsistent");
@@ -163,6 +171,7 @@ void CollisionUniformGrid::append_overlaps(
     FRegistryEntityHandle const ignored_entity,
     std::vector<FRegistryEntityHandle>& out_entities,
     std::vector<std::int32_t>& out_static_geometry_indices) const {
+    SANDBOX_PROFILE_SCOPE("Sandbox::CollisionUniformGrid::append_overlaps");
 
     auto const geometry{geometry_};
     [[maybe_unused]] auto const [min_coord, max_coord]{

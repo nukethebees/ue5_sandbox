@@ -1,5 +1,6 @@
 add_library(native-simulation STATIC)
 target_sources(native-simulation PRIVATE
+  include/sandbox/simulation/profiling.h
   include/sandbox/simulation/transform3d.h
   src/transform3d.cpp
   include/sandbox/simulation/rotator3d.h
@@ -301,6 +302,10 @@ target_link_libraries(native-simulation
   PUBLIC sandbox::handmade_math native-memory native-core
   PRIVATE sandbox::warnings_as_errors
 )
+if(SANDBOX_WITH_TRACY)
+  target_compile_definitions(native-simulation PRIVATE SANDBOX_WITH_TRACY)
+  target_link_libraries(native-simulation PRIVATE Tracy::TracyClient)
+endif()
 
 set_target_properties(native-simulation PROPERTIES
   OUTPUT_NAME SandboxNativeSimulation

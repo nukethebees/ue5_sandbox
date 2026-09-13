@@ -11,6 +11,7 @@
 
 #include <sandbox/simulation/combat/lasers/TestLasersFrameScratch.h>
 #include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/profiling.h>
 #include <sandbox/simulation/simulation/LevelSimulationConfig.h>
 
 namespace ml::test_tube_spinners {
@@ -34,6 +35,7 @@ Simulation::Simulation(FSimulationClock const& clock,
 // Simulation phases
 /* **************************************** */
 void Simulation::begin_play() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_tube_spinners::Simulation::begin_play");
 
     auto const cooldown_tick_period{
         simulation_clock.duration_to_tick_period(config.laser.fire_cooldown)};
@@ -43,18 +45,23 @@ void Simulation::begin_play() {
     validate_array_sizes();
 }
 void Simulation::update_timers(float const) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_tube_spinners::Simulation::update_timers");
 
     ml::tick_countdowns<std::int16_t>(entities.laser_cooldowns, cooldown_cleaner_, 16384);
 }
 void Simulation::move(float const dt) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_tube_spinners::Simulation::move");
 
     rotate_instances(dt);
 }
 void Simulation::queue_commands() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_tube_spinners::Simulation::queue_commands");
 
     fire_lasers();
 }
-void Simulation::end_tick() {}
+void Simulation::end_tick() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_tube_spinners::Simulation::end_tick");
+}
 
 /* **************************************** */
 // Accessors
@@ -69,6 +76,7 @@ auto Simulation::get_num_instances() const noexcept -> std::int32_t {
 void Simulation::spawn_instances(ml::simulation::Vectors3fConstView const new_locations,
                                  std::span<float const> const new_yaws,
                                  std::span<std::int32_t const> const new_fire_point_indices) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_tube_spinners::Simulation::spawn_instances");
 
     auto const n{new_locations.num()};
 
@@ -113,6 +121,7 @@ void Simulation::spawn_instances(ml::simulation::Vectors3fConstView const new_lo
 // Movement
 /* **************************************** */
 void Simulation::rotate_instances(float const dt) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_tube_spinners::Simulation::rotate_instances");
 
     auto const speed{config.yaw_rotation_speed_degrees};
     auto const delta_yaw_degrees{dt * speed};
@@ -126,6 +135,7 @@ void Simulation::rotate_instances(float const dt) {
 // Firing
 /* **************************************** */
 void Simulation::fire_lasers() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::test_tube_spinners::Simulation::fire_lasers");
 
     if (config.fire_point_offsets.empty()) {
         return;
