@@ -137,7 +137,7 @@ struct FOverlapFixture {
     FTestEntityRegistry registry;
     ml::FSpatialQueryManager query_manager;
     ml::simulation::collision::EntityAABBs entity_bounds;
-    std::uint64_t current_tick{};
+    ml::simulation::SimTick current_tick{};
     bool tick_is_open{};
 };
 

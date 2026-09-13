@@ -7,7 +7,7 @@ void FrameOutput::reset() {
     hit_ordinals.clear();
 }
 
-void FrameOutput::append_hits(LaserHitDetailsConstView const new_hits, std::uint64_t const tick) {
+void FrameOutput::append_hits(LaserHitDetailsConstView const new_hits, SimTick const tick) {
     hits.append_from(new_hits);
 
     auto const count{new_hits.num()};

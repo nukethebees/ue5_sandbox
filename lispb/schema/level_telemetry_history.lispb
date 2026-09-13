@@ -7,7 +7,7 @@
     :operations (all)
     :field-mask-name FHistoryFieldMask
     :field-enum-name EHistoryField
-    (member completed_ticks array uint64)
+    (member completed_ticks array @native_sim_tick)
     (member validity_masks array FHistoryFieldMask)
     (member active_entities array int32
       :mask-field true)

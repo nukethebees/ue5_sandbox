@@ -17,7 +17,8 @@
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserISMCCount, TEXT("Sandbox/TestLaserISMCCount"));
 
 namespace SpaceGame::LaserPresentation::Private {
-auto make_seed(uint64 const tick, FVector3f const location, int32 const ordinal) -> uint32 {
+auto make_seed(ml::simulation::SimTick const tick, FVector3f const location, int32 const ordinal)
+    -> uint32 {
     auto seed{HashCombineFast(GetTypeHash(static_cast<uint32>(tick)),
                               GetTypeHash(static_cast<uint32>(tick >> 32)))};
     seed = HashCombineFast(seed, GetTypeHash(location));

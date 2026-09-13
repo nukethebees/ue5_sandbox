@@ -60,7 +60,7 @@ void FLevelEventManager::initialise(FCompiledLevelEvents data,
     mission_manager_.set_pending_objective_events(mission_tick_count);
 }
 
-auto FLevelEventManager::dispatch_tick(std::uint64_t const tick) -> bool {
+auto FLevelEventManager::dispatch_tick(simulation::SimTick const tick) -> bool {
     auto const event_tick_count{schedule_.execution_ticks.size()};
     if (static_cast<std::size_t>(next_event_index_) == event_tick_count) {
         return false;

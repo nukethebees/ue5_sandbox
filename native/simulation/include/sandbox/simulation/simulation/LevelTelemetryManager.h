@@ -6,6 +6,7 @@
 
 #include <sandbox/simulation/level_telemetry_current_state.h>
 #include <sandbox/simulation/level_telemetry_history_stats.h>
+#include <sandbox/simulation/sim_tick.h>
 
 #include "sandbox/simulation/simulation/LevelTelemetrySnapshot.h"
 
@@ -31,7 +32,7 @@ struct Simulation;
 
 class FLevelTelemetryManager {
   public:
-    using tick_type = std::uint64_t;
+    using tick_type = ml::simulation::SimTick;
     using ActiveEntityCountData = FLevelTelemetrySnapshot::ActiveEntityCountData;
     using CumulativeKillCountData = FLevelTelemetrySnapshot::CumulativeKillCountData;
 
@@ -89,7 +90,7 @@ class FLevelTelemetryManager {
         return cumulative_kill_count_data_;
     }
     auto get_completed_ticks_by_real_time() const noexcept
-        -> ml::TimeSeriesData<std::uint64_t> const& {
+        -> ml::TimeSeriesData<ml::simulation::SimTick> const& {
         return completed_ticks_by_real_time_;
     }
     auto get_current_state() const noexcept -> FLevelTelemetryCurrentState const& {
@@ -134,7 +135,7 @@ class FLevelTelemetryManager {
 
     FLevelTelemetryRunMetadata metadata_{};
     FLevelTelemetryRunCompletion completion_{};
-    ml::TimeSeriesData<std::uint64_t> completed_ticks_by_real_time_{};
+    ml::TimeSeriesData<ml::simulation::SimTick> completed_ticks_by_real_time_{};
     std::vector<FLevelTelemetryBattleSample> battle_samples_{};
     std::vector<FSimulationTelemetryPerformanceWindow> performance_windows_{};
     ActiveEntityCountData active_entity_count_data_{};

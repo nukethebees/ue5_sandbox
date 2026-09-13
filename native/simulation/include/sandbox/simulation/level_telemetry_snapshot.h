@@ -1,13 +1,14 @@
 #pragma once
 
 #include "sandbox/core/time_series_data.h"
+#include "sandbox/simulation/sim_tick.h"
 
 #include <cstdint>
 
 namespace ml::simulation {
 struct LevelTelemetrySnapshot {
-    using ActiveEntityCountData = ml::XYSeriesData<std::uint64_t, std::int32_t>;
-    using CumulativeKillCountData = ml::XYSeriesData<std::uint64_t, std::int32_t>;
+    using ActiveEntityCountData = ml::XYSeriesData<SimTick, std::int32_t>;
+    using CumulativeKillCountData = ml::XYSeriesData<SimTick, std::int32_t>;
 
     double elapsed_seconds{0.0};
     double tick_period{0.0};

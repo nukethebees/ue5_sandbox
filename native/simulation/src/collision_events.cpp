@@ -24,7 +24,7 @@ void AABBOverlapEventStorage::reset() noexcept {
 }
 
 void AABBOverlapEventStorage::append_batch(
-    std::uint64_t const tick,
+    SimTick const tick,
     ioj::FEntityEntityOverlapsConstView const entity_entity_overlaps,
     ioj::FEntityStaticOverlapsConstView const entity_static_overlaps) {
     auto const entity_entity_offset{entity_entity_overlaps_.num()};

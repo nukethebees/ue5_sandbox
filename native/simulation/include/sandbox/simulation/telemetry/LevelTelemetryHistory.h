@@ -6,6 +6,7 @@
 #include "native_soa/storage.h"
 #include "sandbox/core/soa_permutation.h"
 #include "sandbox/simulation/entity_telemetry.h"
+#include "sandbox/simulation/sim_tick.h"
 
 #include <cstdint>
 #include <cstring>
@@ -96,7 +97,7 @@ struct FHistoryRowsConstView {
     using View = FHistoryRowsView;
     using ConstView = FHistoryRowsConstView;
     using size_type = std::int32_t;
-    std::span<std::uint64_t const> completed_ticks;
+    std::span<ml::simulation::SimTick const> completed_ticks;
     std::span<FHistoryFieldMask const> validity_masks;
     std::span<std::int32_t const> active_entities;
     std::span<ml::simulation::telemetry::EntityTypeCounts const> active_entities_by_type;
@@ -218,7 +219,7 @@ struct FHistoryRowsView {
     using View = FHistoryRowsView;
     using ConstView = FHistoryRowsConstView;
     using size_type = std::int32_t;
-    std::span<std::uint64_t> completed_ticks;
+    std::span<ml::simulation::SimTick> completed_ticks;
     std::span<FHistoryFieldMask> validity_masks;
     std::span<std::int32_t> active_entities;
     std::span<ml::simulation::telemetry::EntityTypeCounts> active_entities_by_type;
@@ -336,7 +337,7 @@ struct FHistoryRowsView {
         return slice(num() - count, count);
     }
     void set(size_type const index,
-             std::uint64_t const new_completed_ticks,
+             ml::simulation::SimTick const new_completed_ticks,
              FHistoryFieldMask const new_validity_masks,
              std::int32_t const new_active_entities,
              ml::simulation::telemetry::EntityTypeCounts const new_active_entities_by_type,
@@ -379,7 +380,7 @@ struct FHistoryRows {
     using View = FHistoryRowsView;
     using ConstView = FHistoryRowsConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<std::uint64_t> completed_ticks;
+    ml::native_soa::Vector<ml::simulation::SimTick> completed_ticks;
     ml::native_soa::Vector<FHistoryFieldMask> validity_masks;
     ml::native_soa::Vector<std::int32_t> active_entities;
     ml::native_soa::Vector<ml::simulation::telemetry::EntityTypeCounts> active_entities_by_type;
@@ -570,7 +571,7 @@ struct FHistoryRows {
         set_num(old_num - count);
     }
     void set(size_type const index,
-             std::uint64_t const new_completed_ticks,
+             ml::simulation::SimTick const new_completed_ticks,
              FHistoryFieldMask const new_validity_masks,
              std::int32_t const new_active_entities,
              ml::simulation::telemetry::EntityTypeCounts const new_active_entities_by_type,
@@ -606,7 +607,7 @@ struct FHistoryRows {
                        new_sweep_trace_count,
                        new_requested_time_scale);
     }
-    auto add(std::uint64_t const new_completed_ticks,
+    auto add(ml::simulation::SimTick const new_completed_ticks,
              FHistoryFieldMask const new_validity_masks,
              std::int32_t const new_active_entities,
              ml::simulation::telemetry::EntityTypeCounts const new_active_entities_by_type,
@@ -656,8 +657,8 @@ struct FHistoryRows {
             auto const address{reinterpret_cast<std::uintptr_t>(source.completed_ticks.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(completed_ticks.data())};
             ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + completed_ticks.size() * sizeof(std::uint64_t));
+                                    address >= begin + completed_ticks.size() *
+                                                           sizeof(ml::simulation::SimTick));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.validity_masks.data())};
@@ -960,7 +961,7 @@ struct FHistoryRowsSingleLayout {
     inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{
         capacity_granularity, column_gap, 64};
 
-    inline static constexpr ColLayout<std::uint64_t> CompletedTicks{LayoutStart};
+    inline static constexpr ColLayout<ml::simulation::SimTick> CompletedTicks{LayoutStart};
     inline static constexpr ColLayout<FHistoryFieldMask> ValidityMasks{CompletedTicks};
     inline static constexpr ColLayout<std::int32_t> ActiveEntities{ValidityMasks};
     inline static constexpr ColLayout<ml::simulation::telemetry::EntityTypeCounts>
@@ -1012,7 +1013,7 @@ struct FHistoryRowsSingleLayout {
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
         static_assert(
-            ml::native_soa::supported_leaf<std::uint64_t>,
+            ml::native_soa::supported_leaf<ml::simulation::SimTick>,
             "Single-allocation leaf completed_ticks requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
@@ -1032,6 +1033,10 @@ struct FHistoryRowsSingleLayout {
             "Single-allocation leaf active_entities_by_team_and_type requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
+            ml::native_soa::supported_leaf<std::uint64_t>,
+            "Single-allocation leaf grid_rebuild_count requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
             ml::native_soa::supported_leaf<double>,
             "Single-allocation leaf requested_time_scale requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
@@ -1039,7 +1044,7 @@ struct FHistoryRowsSingleLayout {
         static_assert(
             allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
             "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
-        static_assert(sizeof(std::uint64_t) <=
+        static_assert(sizeof(ml::simulation::SimTick) <=
                       (max_allocation_size - CompletedTicks.block_offset) / capacity_granularity);
         static_assert(sizeof(FHistoryFieldMask) <=
                       (max_allocation_size - ValidityMasks.block_offset) / capacity_granularity);
@@ -1121,7 +1126,7 @@ struct FSingleAllocationHistoryRowsStorage
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<std::uint64_t>* completed_ticks{};
+        Element<ml::simulation::SimTick>* completed_ticks{};
         Element<FHistoryFieldMask>* validity_masks{};
         Element<std::int32_t>* active_entities{};
         Element<ml::simulation::telemetry::EntityTypeCounts>* active_entities_by_type{};
@@ -1215,7 +1220,8 @@ struct FSingleAllocationHistoryRowsStorage
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        std::uninitialized_value_construct_n<std::uint64_t*>(columns.completed_ticks, count);
+        std::uninitialized_value_construct_n<ml::simulation::SimTick*>(columns.completed_ticks,
+                                                                       count);
         std::uninitialized_value_construct_n<FHistoryFieldMask*>(columns.validity_masks, count);
         std::uninitialized_value_construct_n<std::int32_t*>(columns.active_entities, count);
         std::uninitialized_value_construct_n<ml::simulation::telemetry::EntityTypeCounts*>(
@@ -1246,13 +1252,14 @@ struct FSingleAllocationHistoryRowsStorage
                              size_type source,
                              size_type move_count) {
         auto const elements_to_move{static_cast<byte_size_type>(move_count)};
-        auto const completed_ticks_bytes{elements_to_move * sizeof(std::uint64_t)};
+        auto const completed_ticks_bytes{elements_to_move * sizeof(ml::simulation::SimTick)};
         auto const validity_masks_bytes{elements_to_move * sizeof(FHistoryFieldMask)};
         auto const active_entities_bytes{elements_to_move * sizeof(std::int32_t)};
         auto const active_entities_by_type_bytes{
             elements_to_move * sizeof(ml::simulation::telemetry::EntityTypeCounts)};
         auto const active_entities_by_team_and_type_bytes{
             elements_to_move * sizeof(ml::simulation::telemetry::EntityCounts)};
+        auto const grid_rebuild_count_bytes{elements_to_move * sizeof(std::uint64_t)};
         auto const requested_time_scale_bytes{elements_to_move * sizeof(double)};
         std::memcpy(columns.completed_ticks + index,
                     columns.completed_ticks + source,
@@ -1287,16 +1294,16 @@ struct FSingleAllocationHistoryRowsStorage
                     active_entities_bytes);
         std::memcpy(columns.grid_rebuild_count + index,
                     columns.grid_rebuild_count + source,
-                    completed_ticks_bytes);
+                    grid_rebuild_count_bytes);
         std::memcpy(columns.range_query_count + index,
                     columns.range_query_count + source,
-                    completed_ticks_bytes);
+                    grid_rebuild_count_bytes);
         std::memcpy(columns.line_trace_count + index,
                     columns.line_trace_count + source,
-                    completed_ticks_bytes);
+                    grid_rebuild_count_bytes);
         std::memcpy(columns.sweep_trace_count + index,
                     columns.sweep_trace_count + source,
-                    completed_ticks_bytes);
+                    grid_rebuild_count_bytes);
         std::memcpy(columns.requested_time_scale + index,
                     columns.requested_time_scale + source,
                     requested_time_scale_bytes);
@@ -1315,13 +1322,14 @@ struct FSingleAllocationHistoryRowsStorage
     void append_columns(Columns const& source, size_type first, size_type count) {
         auto const destination{get_data(first)};
         auto const elements_to_copy{static_cast<byte_size_type>(count)};
-        auto const completed_ticks_bytes{elements_to_copy * sizeof(std::uint64_t)};
+        auto const completed_ticks_bytes{elements_to_copy * sizeof(ml::simulation::SimTick)};
         auto const validity_masks_bytes{elements_to_copy * sizeof(FHistoryFieldMask)};
         auto const active_entities_bytes{elements_to_copy * sizeof(std::int32_t)};
         auto const active_entities_by_type_bytes{
             elements_to_copy * sizeof(ml::simulation::telemetry::EntityTypeCounts)};
         auto const active_entities_by_team_and_type_bytes{
             elements_to_copy * sizeof(ml::simulation::telemetry::EntityCounts)};
+        auto const grid_rebuild_count_bytes{elements_to_copy * sizeof(std::uint64_t)};
         auto const requested_time_scale_bytes{elements_to_copy * sizeof(double)};
         std::memcpy(
             destination.completed_ticks, source.completed_ticks.data(), completed_ticks_bytes);
@@ -1350,13 +1358,15 @@ struct FSingleAllocationHistoryRowsStorage
                     active_entities_bytes);
         std::memcpy(destination.grid_rebuild_count,
                     source.grid_rebuild_count.data(),
-                    completed_ticks_bytes);
+                    grid_rebuild_count_bytes);
+        std::memcpy(destination.range_query_count,
+                    source.range_query_count.data(),
+                    grid_rebuild_count_bytes);
         std::memcpy(
-            destination.range_query_count, source.range_query_count.data(), completed_ticks_bytes);
-        std::memcpy(
-            destination.line_trace_count, source.line_trace_count.data(), completed_ticks_bytes);
-        std::memcpy(
-            destination.sweep_trace_count, source.sweep_trace_count.data(), completed_ticks_bytes);
+            destination.line_trace_count, source.line_trace_count.data(), grid_rebuild_count_bytes);
+        std::memcpy(destination.sweep_trace_count,
+                    source.sweep_trace_count.data(),
+                    grid_rebuild_count_bytes);
         std::memcpy(destination.requested_time_scale,
                     source.requested_time_scale.data(),
                     requested_time_scale_bytes);
@@ -1372,13 +1382,14 @@ struct FSingleAllocationHistoryRowsStorage
                 make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
             auto const destination{make_data_unchecked(new_data, new_blocks)};
             auto const live_count{static_cast<byte_size_type>(num_)};
-            auto const completed_ticks_bytes{live_count * sizeof(std::uint64_t)};
+            auto const completed_ticks_bytes{live_count * sizeof(ml::simulation::SimTick)};
             auto const validity_masks_bytes{live_count * sizeof(FHistoryFieldMask)};
             auto const active_entities_bytes{live_count * sizeof(std::int32_t)};
             auto const active_entities_by_type_bytes{
                 live_count * sizeof(ml::simulation::telemetry::EntityTypeCounts)};
             auto const active_entities_by_team_and_type_bytes{
                 live_count * sizeof(ml::simulation::telemetry::EntityCounts)};
+            auto const grid_rebuild_count_bytes{live_count * sizeof(std::uint64_t)};
             auto const requested_time_scale_bytes{live_count * sizeof(double)};
             std::memcpy(destination.completed_ticks, source.completed_ticks, completed_ticks_bytes);
             std::memcpy(destination.validity_masks, source.validity_masks, validity_masks_bytes);
@@ -1401,14 +1412,15 @@ struct FSingleAllocationHistoryRowsStorage
             std::memcpy(destination.occupied_spatial_cell_count,
                         source.occupied_spatial_cell_count,
                         active_entities_bytes);
+            std::memcpy(destination.grid_rebuild_count,
+                        source.grid_rebuild_count,
+                        grid_rebuild_count_bytes);
             std::memcpy(
-                destination.grid_rebuild_count, source.grid_rebuild_count, completed_ticks_bytes);
+                destination.range_query_count, source.range_query_count, grid_rebuild_count_bytes);
             std::memcpy(
-                destination.range_query_count, source.range_query_count, completed_ticks_bytes);
+                destination.line_trace_count, source.line_trace_count, grid_rebuild_count_bytes);
             std::memcpy(
-                destination.line_trace_count, source.line_trace_count, completed_ticks_bytes);
-            std::memcpy(
-                destination.sweep_trace_count, source.sweep_trace_count, completed_ticks_bytes);
+                destination.sweep_trace_count, source.sweep_trace_count, grid_rebuild_count_bytes);
             std::memcpy(destination.requested_time_scale,
                         source.requested_time_scale,
                         requested_time_scale_bytes);
@@ -1430,8 +1442,8 @@ struct FHistoryRowsSingleConstView : ml::native_soa::CompactViewState<true> {
     auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return slice(offset, count);
     }
-    auto completed_ticks() const -> std::span<std::uint64_t const> {
-        return {column_data<std::uint64_t>(
+    auto completed_ticks() const -> std::span<ml::simulation::SimTick const> {
+        return {column_data<ml::simulation::SimTick>(
                     FHistoryRowsSingleLayout::CompletedTicks.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
@@ -1525,7 +1537,7 @@ struct FHistoryRowsSingleConstView : ml::native_soa::CompactViewState<true> {
         }
         auto const blocks{capacity_blocks()};
         return FHistoryRowsConstView{
-            {column_data_unchecked<std::uint64_t>(
+            {column_data_unchecked<ml::simulation::SimTick>(
                  FHistoryRowsSingleLayout::CompletedTicks.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<FHistoryFieldMask>(
@@ -1593,8 +1605,8 @@ struct FHistoryRowsSingleView : ml::native_soa::CompactViewState<false> {
     auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return slice(offset, count);
     }
-    auto completed_ticks() const -> std::span<std::uint64_t> {
-        return {column_data<std::uint64_t>(
+    auto completed_ticks() const -> std::span<ml::simulation::SimTick> {
+        return {column_data<ml::simulation::SimTick>(
                     FHistoryRowsSingleLayout::CompletedTicks.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
@@ -1687,7 +1699,7 @@ struct FHistoryRowsSingleView : ml::native_soa::CompactViewState<false> {
         }
         auto const blocks{capacity_blocks()};
         return FHistoryRowsView{
-            {column_data_unchecked<std::uint64_t>(
+            {column_data_unchecked<ml::simulation::SimTick>(
                  FHistoryRowsSingleLayout::CompletedTicks.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<FHistoryFieldMask>(

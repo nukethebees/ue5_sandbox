@@ -194,6 +194,11 @@
   :header "sandbox/simulation/level_event_types.h"
   :pass-by value)
 
+(type native_sim_tick
+  :spelling "ml::simulation::SimTick"
+  :header "sandbox/simulation/sim_tick.h"
+  :pass-by value)
+
 (type native_uint8
   :spelling "std::uint8_t"
   :header "cstdint"

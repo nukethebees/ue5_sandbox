@@ -2,13 +2,14 @@
 
 #include "sandbox/core/time_series_data.h"
 #include "sandbox/simulation/entity_telemetry.h"
+#include "sandbox/simulation/sim_tick.h"
 
 #include <array>
 #include <cstdint>
 
 namespace ml::simulation {
 struct LevelTelemetryBattleSample {
-    std::uint64_t completed_tick{};
+    SimTick completed_tick{};
     double simulated_elapsed_seconds{};
     telemetry::CombatTelemetryCounters combat{};
     telemetry::EntityCounts alive{};
@@ -59,7 +60,7 @@ struct SimulationTelemetryPerformanceWindow {
         static_cast<std::int32_t>(LevelTelemetryTimingPhase::COUNT)};
 
     double real_elapsed_seconds{};
-    std::uint64_t completed_tick{};
+    SimTick completed_tick{};
     LevelTelemetryTimingAggregate frame{};
     LevelTelemetryTimingAggregate game_thread{};
     LevelTelemetryTimingAggregate simulation_tick{};
@@ -73,9 +74,9 @@ struct LevelTelemetryTickSeries {
     static constexpr std::int32_t entity_type_count{
         static_cast<std::int32_t>(telemetry::entity_type_count)};
 
-    using Int32Data = ml::XYSeriesData<std::uint64_t, std::int32_t>;
-    using Uint64Data = ml::XYSeriesData<std::uint64_t, std::uint64_t>;
-    using DoubleData = ml::XYSeriesData<std::uint64_t, double>;
+    using Int32Data = ml::XYSeriesData<SimTick, std::int32_t>;
+    using Uint64Data = ml::XYSeriesData<SimTick, std::uint64_t>;
+    using DoubleData = ml::XYSeriesData<SimTick, double>;
     using ActiveEntitiesByTypeData = std::array<Int32Data, entity_type_count>;
     using ActiveEntitiesByTeamAndTypeData = std::array<ActiveEntitiesByTypeData, team_count>;
 

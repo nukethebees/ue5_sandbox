@@ -70,6 +70,7 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/levels/LevelInitialisationData.h
   include/sandbox/simulation/levels/CompiledLevelEvents.h
   include/sandbox/simulation/fixed_tick_loop.h
+  include/sandbox/simulation/sim_tick.h
   include/sandbox/simulation/simulation/SimulationClock.h
   include/sandbox/simulation/ships/capital/TestCapitalShipsPhaseInterface.h
   src/ships/capital/TestCapitalShipsPhaseInterface.cpp

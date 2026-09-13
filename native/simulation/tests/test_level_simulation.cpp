@@ -556,7 +556,7 @@ TEST(NativeSimulation, FLevelTelemetryRunRecordTest) {
     ml::simulation_tests::expect_true(
         realtime.num() >= 3, "Recorder emits start, periodic, and final realtime mappings");
     ml::simulation_tests::expect_equal(
-        realtime.value_at(0), std::uint64_t{0}, "Realtime mapping starts at tick zero");
+        realtime.value_at(0), ml::simulation::SimTick{0}, "Realtime mapping starts at tick zero");
     ml::simulation_tests::expect_equal(realtime.last_value(),
                                        simulation.get_clock().get_completed_ticks(),
                                        "Realtime mapping ends at the completed tick");

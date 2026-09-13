@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <sandbox/simulation/entity_types.h>
 #include <sandbox/simulation/line_traces.h>
+#include <sandbox/simulation/sim_tick.h>
 #include <span>
 
 #include <sandbox/simulation/collision_events.h>
@@ -30,8 +31,8 @@ struct FCollisionSystem {
     auto operator=(FCollisionSystem&&) -> FCollisionSystem& = delete;
 
     void initialise(simulation::collision::EntityAABBs const& bounds);
-    auto update(std::span<FRegistryEntityHandle const> collision_dirty_entities, std::uint64_t tick)
-        -> FDetectedOverlapsView;
+    auto update(std::span<FRegistryEntityHandle const> collision_dirty_entities,
+                simulation::SimTick tick) -> FDetectedOverlapsView;
 
     void reset_frame_events();
     auto get_aabb_overlap_events() const -> FAABBOverlapEventsView {

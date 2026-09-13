@@ -18,7 +18,7 @@ void FCollisionSystem::initialise(simulation::collision::EntityAABBs const& boun
     overlapping_static_geometry_indices_scratch_.clear();
 }
 auto FCollisionSystem::update(std::span<FRegistryEntityHandle const> const collision_dirty_entities,
-                              std::uint64_t const tick) -> FDetectedOverlapsView {
+                              simulation::SimTick const tick) -> FDetectedOverlapsView {
     rebuild_grid();
     collect_overlaps_for_moved_entities(collision_dirty_entities);
 

@@ -7,6 +7,7 @@
 #include <span>
 
 #include <sandbox/simulation/query_thread_buffer_pool.h>
+#include <sandbox/simulation/sim_tick.h>
 #include <sandbox/simulation/spatial_query_telemetry.h>
 
 #include <sandbox/simulation/simulation/CollisionSystem.h>
@@ -126,7 +127,7 @@ struct FSpatialQueryManager {
     auto get_collision_system() noexcept -> ioj::FCollisionSystem& { return collision; }
     auto get_collision_system() const noexcept -> ioj::FCollisionSystem const& { return collision; }
 
-    auto update(std::uint64_t tick) -> ioj::FDetectedOverlapsView;
+    auto update(simulation::SimTick tick) -> ioj::FDetectedOverlapsView;
     void reset_runtime_telemetry() noexcept;
     auto get_runtime_telemetry() const noexcept -> FSpatialQueryTelemetrySnapshot;
   private:

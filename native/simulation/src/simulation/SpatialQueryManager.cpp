@@ -422,7 +422,7 @@ void FSpatialQueryManager::copy_entity_radii(std::span<FRegistryEntityHandle con
 /* **************************************** */
 // Collision state and telemetry
 /* **************************************** */
-auto FSpatialQueryManager::update(std::uint64_t const tick) -> ioj::FDetectedOverlapsView {
+auto FSpatialQueryManager::update(simulation::SimTick const tick) -> ioj::FDetectedOverlapsView {
 
     return collision.update(entity_registry.get_moved_entities_this_tick(), tick);
 }

@@ -15,7 +15,7 @@ TEST(NativeSimulation, FLevelTelemetryBlockHistoryTest) {
     FGameMemory memory{{.root_capacity_bytes = block_bytes * 8}};
     FLevelTelemetryBlockHistory history{memory, {.block_bytes = block_bytes}};
 
-    for (std::uint64_t tick{}; tick < 64; ++tick) {
+    for (ml::simulation::SimTick tick{}; tick < 64; ++tick) {
         auto columns{history.append_uninitialized().columns()};
         columns.completed_ticks[0] = tick;
         columns.validity_masks[0] = active_entities_mask;
@@ -43,7 +43,7 @@ TEST(NativeSimulation, FLevelTelemetryBlockHistoryTest) {
                                        first_value,
                                        "Growth keeps the first payload intact");
 
-    std::uint64_t expected_tick{};
+    ml::simulation::SimTick expected_tick{};
     history.for_each_block([&expected_tick](auto const block) {
         for (auto const tick : block.completed_ticks()) {
             ml::simulation_tests::expect_equal(
@@ -52,11 +52,11 @@ TEST(NativeSimulation, FLevelTelemetryBlockHistoryTest) {
         }
     });
     ml::simulation_tests::expect_equal(
-        expected_tick, std::uint64_t{65}, "Chronological iteration visits every row");
+        expected_tick, ml::simulation::SimTick{65}, "Chronological iteration visits every row");
 
     history.reset();
     ml::simulation_tests::expect_equal(history.num(), std::int32_t{0}, "Reset clears logical rows");
-    for (std::uint64_t tick{}; tick < 65; ++tick) {
+    for (ml::simulation::SimTick tick{}; tick < 65; ++tick) {
         auto columns{history.append_uninitialized().columns()};
         columns.completed_ticks[0] = tick;
     }

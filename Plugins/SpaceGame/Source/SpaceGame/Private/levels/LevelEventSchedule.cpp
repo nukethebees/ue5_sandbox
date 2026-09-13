@@ -12,7 +12,7 @@
 namespace ml {
 namespace {
 struct FLevelEventSource {
-    uint64 execution_tick{};
+    ml::simulation::SimTick execution_tick{};
     int32 source_index{};
 };
 

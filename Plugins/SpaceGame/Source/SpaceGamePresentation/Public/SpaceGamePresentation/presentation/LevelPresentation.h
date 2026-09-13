@@ -34,7 +34,7 @@ struct SPACEGAMEPRESENTATION_API FLevelPresentation {
 
     void tick(float dt, FLevelReadView const& view);
     auto get_tick_count() const -> uint64 { return tick_count_; }
-    auto get_last_completed_tick() const -> uint64 { return last_completed_tick_; }
+    auto get_last_completed_tick() const -> ml::simulation::SimTick { return last_completed_tick_; }
   private:
     FLevelVisualConfig config_;
   public:
@@ -49,6 +49,6 @@ struct SPACEGAMEPRESENTATION_API FLevelPresentation {
     TOptional<FPlayerPresentation> player_;
     uint64 last_frame_sequence_{};
     uint64 tick_count_{};
-    uint64 last_completed_tick_{};
+    ml::simulation::SimTick last_completed_tick_{};
     void update_views(FLevelReadView const& view, bool consume_changes);
 };

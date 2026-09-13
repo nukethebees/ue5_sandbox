@@ -3,6 +3,7 @@
 #include <sandbox/simulation/laser_hit_details.h>
 
 #include <sandbox/simulation/laser_soa.h>
+#include <sandbox/simulation/sim_tick.h>
 #include <sandbox/simulation/spinner_entity_data.h>
 #include <sandbox/simulation/turret_entity_data.h>
 struct FTestEntityRegistry;
@@ -55,7 +56,7 @@ struct FSpinnerReadView {
 struct FLaserReadView {
     ml::simulation::lasers::Entities::ConstView entities;
     ml::simulation::LaserHitDetailsConstView hits;
-    std::span<std::uint64_t const> hit_ticks;
+    std::span<ml::simulation::SimTick const> hit_ticks;
     std::span<std::int32_t const> hit_ordinals;
     auto get_num_instances() const -> std::int32_t { return entities.num(); }
 };

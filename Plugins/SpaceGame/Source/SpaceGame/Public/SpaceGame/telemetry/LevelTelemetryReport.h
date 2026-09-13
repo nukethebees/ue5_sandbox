@@ -52,7 +52,7 @@ struct FLevelTelemetryPerformanceWindow {
     static constexpr int32 system_count{static_cast<int32>(ELevelTelemetryTimingSystem::COUNT)};
     static constexpr int32 phase_count{static_cast<int32>(ELevelTelemetryTimingPhase::COUNT)};
     double real_elapsed_seconds{};
-    uint64 completed_tick{};
+    ml::simulation::SimTick completed_tick{};
     FLevelTelemetryTimingAggregate frame{};
     FLevelTelemetryTimingAggregate game_thread{};
     FLevelTelemetryTimingAggregate render_thread{};
@@ -72,7 +72,7 @@ struct SPACEGAME_API FLevelTelemetryReport {
     FLevelTelemetryReportMetadata metadata;
     FLevelTelemetryRunCompletion completion;
     FLevelTelemetryTickSeries tick_series;
-    ml::TimeSeriesData<uint64> completed_ticks_by_real_time;
+    ml::TimeSeriesData<ml::simulation::SimTick> completed_ticks_by_real_time;
     TArray<FLevelTelemetryBattleSample> battle_samples;
     TArray<FLevelTelemetryPerformanceWindow> performance_windows;
 };

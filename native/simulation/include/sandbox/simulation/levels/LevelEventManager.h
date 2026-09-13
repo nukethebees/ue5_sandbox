@@ -6,6 +6,7 @@
 
 #include <sandbox/simulation/levels/CompiledLevelEvents.h>
 #include <sandbox/simulation/levels/LevelSpawnManager.h>
+#include <sandbox/simulation/sim_tick.h>
 
 struct FTestMissionManager;
 
@@ -21,7 +22,7 @@ class FLevelEventManager {
     auto operator=(FLevelEventManager&&) -> FLevelEventManager& = delete;
 
     void initialise(FCompiledLevelEvents data, FRegistryEntityHandle player_handle = {});
-    auto dispatch_tick(std::uint64_t tick) -> bool;
+    auto dispatch_tick(simulation::SimTick tick) -> bool;
     void configure_mission();
     auto get_entity_handle(std::int32_t entity_index) const -> FRegistryEntityHandle;
     auto has_future_spawns() const noexcept -> bool;

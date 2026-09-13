@@ -41,7 +41,7 @@ UCLASS()
 class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     GENERATED_BODY()
   public:
-    using tick_type = uint64;
+    using tick_type = ml::simulation::SimTick;
     using time_type = double;
 
     /* **************************************** */

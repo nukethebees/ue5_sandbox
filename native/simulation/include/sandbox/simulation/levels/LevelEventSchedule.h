@@ -7,6 +7,7 @@
 #include <sandbox/simulation/levels/LevelEventGroupCounts.h>
 #include <sandbox/simulation/levels/LevelMissionEvents.h>
 #include <sandbox/simulation/levels/LevelRuntimeEvents.h>
+#include <sandbox/simulation/sim_tick.h>
 
 namespace ml {
 struct FLevelEventSchedule {
@@ -14,7 +15,7 @@ struct FLevelEventSchedule {
     FLevelCapitalSpawnEvents capital_spawns{};
     FLevelTurretSpawnEvents turret_spawns{};
     FLevelMissionEvents mission_events{};
-    std::vector<std::uint64_t> execution_ticks{};
+    std::vector<simulation::SimTick> execution_ticks{};
     std::vector<FLevelEventGroupCounts> event_group_counts{};
 
     auto add_spawn_group(ml::simulation::EntityType type, std::int32_t offset, std::int32_t count)

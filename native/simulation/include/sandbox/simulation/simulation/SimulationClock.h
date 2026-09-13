@@ -5,7 +5,7 @@
 #include <sandbox/simulation/simulation_clock.h>
 
 struct FSimulationClock {
-    using tick_type = std::uint64_t;
+    using tick_type = ml::simulation::SimTick;
     using time_type = double;
 
     void initialise(ml::simulation::FixedTickLoop const& settings) {

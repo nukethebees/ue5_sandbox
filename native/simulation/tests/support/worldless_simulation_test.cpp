@@ -41,8 +41,9 @@ auto WorldlessSimulationTest::run_until_timeline_finished(time_type const maximu
     assert(simulation_.get_state() == EOrchestratorState::Paused);
     simulation_.start();
     auto const tick_period{simulation_.get_clock().get_tick_period()};
-    auto const maximum_ticks{static_cast<std::uint64_t>(std::ceil(maximum_time / tick_period))};
-    for (std::uint64_t tick{}; tick < maximum_ticks && !timeline.is_finished(); ++tick) {
+    auto const maximum_ticks{
+        static_cast<ml::simulation::SimTick>(std::ceil(maximum_time / tick_period))};
+    for (ml::simulation::SimTick tick{}; tick < maximum_ticks && !timeline.is_finished(); ++tick) {
         simulation_.advance(tick_period);
     }
     simulation_.pause();

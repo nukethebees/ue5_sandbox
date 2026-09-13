@@ -6,6 +6,7 @@
 #include <sandbox/simulation/missions/mission_fail_reason.h>
 #include <sandbox/simulation/missions/mission_mode.h>
 #include <sandbox/simulation/missions/mission_state.h>
+#include <sandbox/simulation/sim_tick.h>
 #include <sandbox/simulation/telemetry/LevelTelemetryRunEndReason.h>
 
 #include <cstdint>
@@ -41,7 +42,7 @@ struct FLevelTelemetryRunCompletion {
     std::optional<ml::simulation::MissionState> mission_state{};
     std::optional<ml::simulation::MissionFailReason> mission_fail_reason{};
     std::optional<double> mission_elapsed_seconds{};
-    std::uint64_t completed_ticks{};
+    ml::simulation::SimTick completed_ticks{};
     double simulated_elapsed_seconds{};
     double wall_elapsed_seconds{};
     std::optional<ml::simulation::Team> winning_team{};
@@ -61,7 +62,7 @@ struct FLevelTelemetryRunRecord {
     FLevelTelemetryRunMetadata metadata{};
     FLevelTelemetryRunCompletion completion{};
     FLevelTelemetryTickSeries tick_series{};
-    ml::TimeSeriesData<std::uint64_t> completed_ticks_by_real_time{};
+    ml::TimeSeriesData<ml::simulation::SimTick> completed_ticks_by_real_time{};
     std::vector<FLevelTelemetryBattleSample> battle_samples{};
     std::vector<FSimulationTelemetryPerformanceWindow> performance_windows{};
 };
