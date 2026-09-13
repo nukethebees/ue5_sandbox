@@ -6,7 +6,7 @@
 #include "native_soa/storage.h"
 #include "sandbox/core/soa_permutation.h"
 #include "sandbox/simulation/entity_handle.h"
-#include "sandbox/simulation/entity_types.h"
+#include "sandbox/simulation/entity_life_state.h"
 
 struct EntityDeathInfoView;
 struct EntityDeathInfoConstView;

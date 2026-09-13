@@ -126,8 +126,10 @@ class EntityRegistry : public ::testing::Test {
             history.registry_indices[id.id], slot, "Historical slot");
         ml::simulation_tests::expect_equal(
             history.registry_generations[id.id], handle.generation, "Historical generation");
-        ml::simulation_tests::expect_equal(
-            history.alive[id.id], actual.alive[slot], "Historical alive");
+        ml::simulation_tests::expect_equal(history.life_state[id.id] ==
+                                               ml::simulation::LifeState::Alive,
+                                           actual.alive[slot] != 0,
+                                           "Historical alive");
         ml::simulation_tests::expect_true(history.entity_types[id.id] == actual.entity_types[slot],
                                           "Historical type");
         ml::simulation_tests::expect_true(history.teams[id.id] == actual.teams[slot],
@@ -178,14 +180,13 @@ TEST_F(EntityRegistry, MixedSlotReusePreservesDataAndHistoricalIdentity) {
                                            "Old handle resolves historical ID");
     }
     auto const& history{registry_.get_unique_entities()};
-    ml::simulation_tests::expect_true(history.death_reason[0] ==
-                                          ml::simulation::DeathReason::Combat,
+    ml::simulation_tests::expect_true(history.life_state[0] == ml::simulation::LifeState::Combat,
                                       "Death reason survives reuse");
     ml::simulation_tests::expect_equal(history.killed_by[0].id, 1, "Killer survives reuse");
     ml::simulation_tests::expect_false(history.killed_by[2].is_valid(),
                                        "Unattributed death has no killer");
-    ml::simulation_tests::expect_equal(
-        history.alive[0], std::uint8_t{0}, "Historical victim stays dead");
+    ml::simulation_tests::expect_true(history.life_state[0] != ml::simulation::LifeState::Alive,
+                                      "Historical victim stays dead");
     check_row(initial, 1, old_handles[1]);
     check_row(initial, 3, old_handles[3]);
     check_counts();
@@ -230,8 +231,9 @@ TEST_F(EntityRegistry, QueuedUpdateBatchesConsolidateEachEntityAndOnlyChangeMuta
         ml::simulation_tests::expect_true(registry_.get_entity_type(handles[index]) ==
                                               initial.entity_types[index],
                                           "Type is spawn data");
-        ml::simulation_tests::expect_equal(
-            registry_.get_unique_entities().alive[index], std::uint8_t{1}, "Alive synchronized");
+        ml::simulation_tests::expect_true(registry_.get_unique_entities().life_state[index] ==
+                                              ml::simulation::LifeState::Alive,
+                                          "Alive synchronized");
     }
     check_counts();
     registry_.end_tick();

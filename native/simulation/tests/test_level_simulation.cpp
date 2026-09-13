@@ -437,8 +437,8 @@ TEST(NativeSimulation, FLevelSimulationOverlapResponseTest) {
     ml::simulation_tests::expect_equal(registry.get_health(capital),
                                        4850,
                                        "The capital receives one contribution per detected tick");
-    ml::simulation_tests::expect_true(registry.get_unique_entities().death_reason[player_id.id] ==
-                                          ml::simulation::DeathReason::Unknown,
+    ml::simulation_tests::expect_true(registry.get_unique_entities().life_state[player_id.id] ==
+                                          ml::simulation::LifeState::Unknown,
                                       "Overlap death uses the environmental death path");
     ml::simulation_tests::expect_equal(
         registry.count_kills(), 0, "Environmental overlap death gives no combat kill");

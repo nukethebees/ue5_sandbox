@@ -74,7 +74,11 @@ auto apply_entity_updates(EntityRegistryBookkeeping& bookkeeping,
         entities.alive[slot_element] = updates.alive[update_element];
         auto const unique_id{bookkeeping.unique_ids[slot_element]};
         auto const history_element{static_cast<std::size_t>(unique_id.id)};
-        history.alive[history_element] = updates.alive[update_element];
+        if (new_alive) {
+            history.life_state[history_element] = LifeState::Alive;
+        } else if (old_alive) {
+            history.life_state[history_element] = LifeState::Unknown;
+        }
         if (old_team != new_team) {
             history.teams[history_element] = new_team;
         }

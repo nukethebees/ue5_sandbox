@@ -9,7 +9,6 @@
     (member entity_types array @native_entity_type)
     (member teams array @native_team)
     (member kills array uint32)
-    (member alive array uint8)
     (member killed_by array @native_unique_id)
-    (member death_reason array @native_death_reason)
+    (member life_state array @native_life_state)
     (single-allocation EntityHistory)))

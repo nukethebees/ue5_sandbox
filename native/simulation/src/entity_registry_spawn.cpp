@@ -23,7 +23,7 @@ auto register_spawned_entity(EntityRegistryBookkeeping& bookkeeping,
     bookkeeping.unique_ids[slot_element] = unique_id;
     history.registry_indices[unique_element] = slot_index;
     history.registry_generations[unique_element] = generation;
-    history.alive[unique_element] = alive;
+    history.life_state[unique_element] = alive != 0 ? LifeState::Alive : LifeState::Unknown;
     history.entity_types[unique_element] = type;
     history.teams[unique_element] = team;
 
