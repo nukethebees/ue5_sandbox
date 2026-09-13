@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sandbox/simulation/collision_grid.h>
 #include <sandbox/simulation/collision_grid_entity_storage.h>
 #include <sandbox/simulation/collision_grid_static_storage.h>
 #include <sandbox/simulation/entity_world_bounds.h>
@@ -136,8 +137,7 @@ struct SPACEGAMESIMULATION_API CollisionUniformGrid {
 
     FTestEntityRegistry const& entity_registry_;
 
-    FIntVector3 grid_dims_{FIntVector3::ZeroValue};
-    FVector3f cell_dims_{FVector3f::ZeroVector};
+    simulation::collision::GridGeometry geometry_{};
 
     simulation::collision::CollisionGridEntityStorage entity_storage_;
 

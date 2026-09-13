@@ -1,6 +1,9 @@
 #include "sandbox/simulation/collision_grid.h"
 
+#include "sandbox/simulation/vectors3f.h"
+
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <limits>
 #include <utility>
@@ -24,7 +27,7 @@ auto to_closed_max_cell(float const value,
     return to_cell(value, cell_dimension, half_grid_extent);
 }
 
-auto half_grid_size(GridGeometry const geometry) noexcept -> Vec3f {
+auto grid_half_size(GridGeometry const geometry) noexcept -> Vec3f {
     return make_vector3f(
         static_cast<float>(geometry.dimensions.x) * geometry.cell_dimensions.X * 0.5f,
         static_cast<float>(geometry.dimensions.y) * geometry.cell_dimensions.Y * 0.5f,
@@ -108,6 +111,15 @@ auto is_configured(GridGeometry const geometry) noexcept -> bool {
     return xy_cell_count <= std::numeric_limits<int>::max() / geometry.dimensions.z;
 }
 
+auto num_cells(GridGeometry const geometry) noexcept -> int {
+    return geometry.dimensions.x * geometry.dimensions.y * geometry.dimensions.z;
+}
+
+auto to_index(GridGeometry const geometry, CellCoord const coordinate) noexcept -> int {
+    return coordinate.x + coordinate.y * geometry.dimensions.x +
+           coordinate.z * geometry.dimensions.x * geometry.dimensions.y;
+}
+
 auto to_cell_coord(float const value, float const cell_dimension, int const grid_dimension) noexcept
     -> int {
     auto const half_extent{static_cast<float>(grid_dimension) * cell_dimension * 0.5f};
@@ -122,7 +134,7 @@ auto to_cell_min(int const coordinate,
 }
 
 auto to_cell_coord(GridGeometry const geometry, Vec3f const position) noexcept -> CellCoord {
-    auto const half_size{half_grid_size(geometry)};
+    auto const half_size{grid_half_size(geometry)};
     return {
         to_cell(position.X, geometry.cell_dimensions.X, half_size.X),
         to_cell(position.Y, geometry.cell_dimensions.Y, half_size.Y),
@@ -131,7 +143,7 @@ auto to_cell_coord(GridGeometry const geometry, Vec3f const position) noexcept -
 }
 
 auto to_max_cell_coord(GridGeometry const geometry, Vec3f const position) noexcept -> CellCoord {
-    auto const half_size{half_grid_size(geometry)};
+    auto const half_size{grid_half_size(geometry)};
     return {
         to_closed_max_cell(
             position.X, geometry.cell_dimensions.X, geometry.dimensions.x, half_size.X),
@@ -149,7 +161,7 @@ auto to_cell_coord_bounds(GridGeometry const geometry,
 }
 
 auto to_cell_min(GridGeometry const geometry, CellCoord const coordinate) noexcept -> Vec3f {
-    auto const half_size{half_grid_size(geometry)};
+    auto const half_size{grid_half_size(geometry)};
     return make_vector3f(
         static_cast<float>(coordinate.x) * geometry.cell_dimensions.X - half_size.X,
         static_cast<float>(coordinate.y) * geometry.cell_dimensions.Y - half_size.Y,
@@ -169,6 +181,33 @@ auto is_cell_coord_in_bounds(GridGeometry const geometry, CellCoord const coordi
     return coordinate.x >= 0 && coordinate.x < geometry.dimensions.x && coordinate.y >= 0 &&
            coordinate.y < geometry.dimensions.y && coordinate.z >= 0 &&
            coordinate.z < geometry.dimensions.z;
+}
+
+void are_spheres_in_bounds(GridGeometry const geometry,
+                           Vectors3fConstView const centres,
+                           float const radius,
+                           std::span<std::uint8_t> const results) noexcept {
+    assert(centres.xs.size() == centres.ys.size());
+    assert(centres.xs.size() == centres.zs.size());
+    assert(centres.xs.size() == results.size());
+    assert(std::isfinite(radius));
+    assert(radius >= 0.0f);
+
+    auto const half_size{grid_half_size(geometry)};
+    auto const min_x{-half_size.X + radius};
+    auto const min_y{-half_size.Y + radius};
+    auto const min_z{-half_size.Z + radius};
+    auto const max_x{half_size.X - radius};
+    auto const max_y{half_size.Y - radius};
+    auto const max_z{half_size.Z - radius};
+
+    auto const count{centres.xs.size()};
+    for (std::size_t index{}; index < count; ++index) {
+        auto const is_in_bounds{centres.xs[index] >= min_x && centres.xs[index] <= max_x &&
+                                centres.ys[index] >= min_y && centres.ys[index] <= max_y &&
+                                centres.zs[index] >= min_z && centres.zs[index] <= max_z};
+        results[index] = static_cast<std::uint8_t>(is_in_bounds);
+    }
 }
 
 auto trace_aabb(Vec3f const trace_start,
@@ -215,7 +254,7 @@ auto GridTraversal::create(GridGeometry const geometry,
         return false;
     }
 
-    auto const half_size{half_grid_size(geometry)};
+    auto const half_size{grid_half_size(geometry)};
     auto const bounds_min{make_vector3f(-half_size.X, -half_size.Y, -half_size.Z)};
     Vec3f bounds_max_inside{half_size};
     for (std::size_t axis{}; axis < axis_count; ++axis) {

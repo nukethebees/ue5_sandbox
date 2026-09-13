@@ -2,6 +2,13 @@
 
 #include "sandbox/simulation/vector_types.h"
 
+#include <cstdint>
+#include <span>
+
+namespace ml::simulation {
+struct Vectors3fConstView;
+}
+
 namespace ml::simulation::collision {
 using Vec3f = Vector3f;
 
@@ -26,6 +33,8 @@ struct GridGeometry {
 };
 
 [[nodiscard]] auto is_configured(GridGeometry geometry) noexcept -> bool;
+[[nodiscard]] auto num_cells(GridGeometry geometry) noexcept -> int;
+[[nodiscard]] auto to_index(GridGeometry geometry, CellCoord coordinate) noexcept -> int;
 [[nodiscard]] auto to_cell_coord(float value, float cell_dimension, int grid_dimension) noexcept
     -> int;
 [[nodiscard]] auto to_cell_min(int coordinate, float cell_dimension, int grid_dimension) noexcept
@@ -39,6 +48,10 @@ struct GridGeometry {
 [[nodiscard]] auto to_cell_centre(GridGeometry geometry, CellCoord coordinate) noexcept -> Vec3f;
 [[nodiscard]] auto is_cell_coord_in_bounds(GridGeometry geometry, CellCoord coordinate) noexcept
     -> bool;
+void are_spheres_in_bounds(GridGeometry geometry,
+                           Vectors3fConstView centres,
+                           float radius,
+                           std::span<std::uint8_t> results) noexcept;
 
 [[nodiscard]] auto trace_aabb(Vec3f trace_start,
                               Vec3f inverse_trace_delta,
