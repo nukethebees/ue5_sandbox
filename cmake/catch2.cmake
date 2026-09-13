@@ -10,11 +10,11 @@ function(add_low_level_test_suite target_name unreal_target test_name_prefix)
 
   if(UE_CONFIGURATION STREQUAL "Development")
     set(test_executable
-      "${CMAKE_CURRENT_SOURCE_DIR}/Binaries/${UE_PLATFORM}/${unreal_target}/${unreal_target}.exe"
+      "${PROJECT_SOURCE_DIR}/Binaries/${UE_PLATFORM}/${unreal_target}/${unreal_target}.exe"
     )
   else()
     set(test_executable
-      "${CMAKE_CURRENT_SOURCE_DIR}/Binaries/${UE_PLATFORM}/${unreal_target}/${unreal_target}-${UE_PLATFORM}-${UE_CONFIGURATION}.exe"
+      "${PROJECT_SOURCE_DIR}/Binaries/${UE_PLATFORM}/${unreal_target}/${unreal_target}-${UE_PLATFORM}-${UE_CONFIGURATION}.exe"
     )
   endif()
 
@@ -34,6 +34,6 @@ function(add_low_level_test_suite target_name unreal_target test_name_prefix)
     TEST_PROPERTIES
     LABELS "unit;all;${test_suite_LABELS}"
     SKIP_REGULAR_EXPRESSION "SKIPPED:"
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   )
 endfunction()
