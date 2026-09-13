@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sandbox/simulation/collision_grid_entity_storage.h>
+#include <sandbox/simulation/collision_grid_static_storage.h>
 #include <sandbox/simulation/entity_world_bounds.h>
 #include <sandbox/simulation/spatial_query_telemetry.h>
 #include <SandboxNative/RegistryEntityHandle.h>
@@ -88,7 +89,7 @@ struct SPACEGAMESIMULATION_API CollisionUniformGrid {
     void reset_runtime_telemetry() noexcept;
     auto get_runtime_telemetry() const noexcept -> FCollisionGridTelemetrySnapshot;
 
-    auto get_static_aabbs() const noexcept -> WorldAABBs const& { return static_aabbs_; }
+    auto get_static_aabbs() const noexcept -> WorldAABBs const& { return static_storage_.aabbs(); }
     auto get_entity_world_bounds() const -> WorldAABBsConstView {
         return entity_storage_.entity_world_bounds();
     }
@@ -141,11 +142,7 @@ struct SPACEGAMESIMULATION_API CollisionUniformGrid {
 
     simulation::collision::CollisionGridEntityStorage entity_storage_;
 
-    WorldAABBs static_aabbs_;
-    std::vector<std::int32_t> cell_static_range_indices_;
-    std::vector<std::uint32_t> static_cell_range_offsets_;
-    std::vector<std::uint16_t> static_cell_range_counts_;
-    std::vector<std::int32_t> static_aabb_indices_;
+    simulation::collision::CollisionGridStaticStorage static_storage_;
 
     std::atomic<uint64> rebuild_count_{};
     mutable std::atomic<uint64> line_trace_count_{};

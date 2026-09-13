@@ -6,6 +6,7 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/capital_death_event.h
   include/sandbox/simulation/collision_events.h
   include/sandbox/simulation/collision_grid_entity_storage.h
+  include/sandbox/simulation/collision_grid_static_storage.h
   include/sandbox/simulation/direct_damage_events.h
   include/sandbox/simulation/entity_aabbs.h
   include/sandbox/simulation/entity_cell_data.h
@@ -51,6 +52,7 @@ target_sources(native-simulation PRIVATE
   src/collision_events.cpp
   src/collision_grid.cpp
   src/collision_grid_entity_storage.cpp
+  src/collision_grid_static_storage.cpp
   src/deterministic_bias.cpp
   src/entity_registry_bookkeeping.cpp
   src/entity_registry_statistics.cpp
