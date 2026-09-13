@@ -42,6 +42,7 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
         if (mesh == nullptr || material == nullptr) {
             return;
         }
+        material->EnsureIsComplete();
         FAssetCompilingManager::Get().FinishAllCompilation();
         if (GShaderCompilingManager != nullptr) {
             GShaderCompilingManager->FinishAllCompilation();
