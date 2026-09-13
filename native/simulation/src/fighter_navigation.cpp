@@ -208,7 +208,7 @@ auto make_separation_steering_direction(Vector3f const goal_direction,
 }
 
 auto observe_separation(Vectors3fConstView const registry_locations,
-                        std::span<std::int32_t const> const registry_generations,
+                        [[maybe_unused]] std::span<std::int32_t const> const registry_generations,
                         Vector3f const fighter_location,
                         FRegistryEntityHandle const fighter_handle,
                         Vector3f const goal_direction,

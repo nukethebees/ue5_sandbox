@@ -52,7 +52,7 @@ void process_collision_hits(TraceHitsConstView const trace_hits,
     trace_hits.validate_array_sizes();
     velocities.validate_array_sizes();
     auto const entity_count{trace_hits.num()};
-    auto const storage_count{static_cast<std::size_t>(entity_count)};
+    [[maybe_unused]] auto const storage_count{static_cast<std::size_t>(entity_count)};
     assert(velocities.num() == entity_count);
     assert(damages.size() == storage_count);
     assert(instigators.size() == storage_count);

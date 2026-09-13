@@ -29,7 +29,7 @@ void prepare_movement(Vectors3fView const directions,
 void move(MovementView const fighters, float const delta_time) noexcept {
     assert(delta_time > 0.0f);
     auto const count{fighters.locations.num()};
-    auto const size{static_cast<std::size_t>(count)};
+    [[maybe_unused]] auto const size{static_cast<std::size_t>(count)};
     assert(fighters.directions.num() == count);
     assert(fighters.velocities.num() == count);
     assert(fighters.move_distances.size() == size);

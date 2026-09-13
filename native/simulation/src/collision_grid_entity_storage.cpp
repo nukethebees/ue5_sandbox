@@ -43,7 +43,7 @@ void CollisionGridEntityStorage::add(Vector3f const min_point,
                                      CellCoord const min_cell,
                                      CellCoord const max_cell,
                                      FRegistryEntityHandle const handle) {
-    auto const in_bounds{[this](CellCoord const cell) {
+    [[maybe_unused]] auto const in_bounds{[this](CellCoord const cell) {
         return cell.x >= 0 && cell.x < grid_dimensions_.x && cell.y >= 0 &&
                cell.y < grid_dimensions_.y && cell.z >= 0 && cell.z < grid_dimensions_.z;
     }};

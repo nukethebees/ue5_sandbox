@@ -5,7 +5,8 @@
 
 namespace ml::simulation {
 namespace {
-auto is_unused_or_sized(std::int32_t const size, std::int32_t const expected) noexcept -> bool {
+[[maybe_unused]] auto is_unused_or_sized(std::int32_t const size,
+                                         std::int32_t const expected) noexcept -> bool {
     return size == 0 || size == expected;
 }
 }

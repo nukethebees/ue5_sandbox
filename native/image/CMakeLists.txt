@@ -1,11 +1,5 @@
 find_package(GTest CONFIG REQUIRED)
 
-foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
-  file(MAKE_DIRECTORY
-    "${PROJECT_SOURCE_DIR}/Binaries/Native/Image/${UE_PLATFORM}/${configuration}"
-  )
-endforeach()
-
 set(SANDBOX_IMAGE_SOURCES
   src/image_generation.cpp
   src/image_generation_utilities.cpp
@@ -21,10 +15,20 @@ target_include_directories(sandbox-image
 )
 target_link_libraries(sandbox-image PRIVATE sandbox::warnings_as_errors)
 set_target_properties(sandbox-image PROPERTIES
-  ARCHIVE_OUTPUT_DIRECTORY
-    "${PROJECT_SOURCE_DIR}/Binaries/Native/Image/${UE_PLATFORM}/${UE_CONFIGURATION}"
   OUTPUT_NAME sandbox_image
 )
+if(SANDBOX_WITH_UNREAL)
+  foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
+    file(MAKE_DIRECTORY
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/Image/${UE_PLATFORM}/${configuration}"
+    )
+  endforeach()
+
+  set_target_properties(sandbox-image PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/Image/${UE_PLATFORM}/${UE_CONFIGURATION}"
+  )
+endif()
 
 if(WIN32)
   if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" AND

@@ -278,7 +278,7 @@ void FSpatialQueryManager::sweep_closest_aabbs(
     std::span<FRegistryEntityHandle const> const ignored_entities,
     ioj::ETraceEntityFilter const entity_filter) const {
 
-    auto const count{start_locations.num()};
+    [[maybe_unused]] auto const count{start_locations.num()};
     assert(end_locations.num() == count);
     assert(out_hits.num() == count);
     assert(ignored_entities.empty() || ignored_entities.size() == static_cast<std::size_t>(count));

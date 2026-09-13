@@ -138,7 +138,7 @@ The root `CMakePresets.json` includes category files under `cmake/presets/`, usi
 schema version 9:
 
 - `base.json`: shared configure and test defaults.
-- `native.json`: native Debug/Release configuration, codegen and component build/test workflows.
+- `native.json`: complete native Debug/Release and specialized codegen workflows.
 - `unreal.json`: Unreal configurations, builds, automation tests and development tooling.
 - `native-benchmarks.json`: native kernel and SOA benchmark presets.
 - `unreal-benchmarks.json`: Unreal-backed benchmark presets.
@@ -150,31 +150,24 @@ the root, Git-ignored `CMakeUserPresets.json`.
 ### Native-only development
 
 All native libraries and tools are configured together through `native/CMakeLists.txt`.
-Use `native-debug` or `native-release` to select the build configuration; use build presets
-or explicit targets to choose what to compile. These configure presets set
+Use the `native-debug` or `native-release` workflows to configure, build and test all default
+native targets. These configure presets set
 `SANDBOX_WITH_UNREAL=OFF`, so no Unreal installation or `UE_ROOT` is required.
-The Unreal configure presets enable that option.
+The Unreal configure presets enable that option. Standalone native libraries remain in their
+respective build trees; only Unreal-enabled configurations publish libraries under `Binaries/`.
 
 ```powershell
-cmake --preset native-debug
-cmake --build --preset native-memory
-ctest --preset native-memory
-
-cmake --workflow --preset native-simulation
+cmake --workflow --preset native-debug
+cmake --workflow --preset native-release
 
 cmake --build --preset codegen
 ctest --preset codegen-tests
-
-cmake --preset native-release
-cmake --build --preset native-core
-ctest --preset native-core
 ```
 
-The `codegen`, `generate-code`, `native-memory`, `native-simulation`, `native-mesh` and `native-s7` build presets
-use `native-debug`; `native-core` uses `native-release`. Their workflow presets still configure,
-build and test the selected targets. Component-specific configure presets and
-`SANDBOX_*_ONLY` switches have been removed. Existing build trees are not deleted, but those
-workflows now use `out/build/native-debug` or `out/build/native-release`.
+The aggregate workflows use `out/build/native-debug` and `out/build/native-release`. The
+specialized `codegen` and `generate-code` presets use `native-debug`; native benchmark presets
+remain opt-in. To build an individual target, configure the desired native preset and pass the
+target explicitly to `cmake --build out/build/<preset> --target <target>`.
 
 Simulation logic and worldless combat scenarios run in native GoogleTest tests under
 `native/simulation/tests/`. Unreal retains asset/configuration conversion, collision harvesting,

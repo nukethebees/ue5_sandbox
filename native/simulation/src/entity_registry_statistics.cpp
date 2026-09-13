@@ -10,7 +10,7 @@ constexpr auto is_valid(Team const team) noexcept -> bool {
     return std::to_underlying(team) < telemetry::team_count;
 }
 
-constexpr auto is_valid(EntityType const type) noexcept -> bool {
+[[maybe_unused]] constexpr auto is_valid(EntityType const type) noexcept -> bool {
     return std::to_underlying(type) < telemetry::entity_type_count;
 }
 } // namespace

@@ -38,8 +38,8 @@ void FLevelEventManager::initialise(FCompiledLevelEvents data,
     mission_manager_.bind_level_event_data(schedule_.mission_events.values,
                                            spawn_manager_.get_entity_handles());
 
-    std::int32_t spawn_group_count{};
-    std::int32_t mission_group_count{};
+    [[maybe_unused]] std::int32_t spawn_group_count{};
+    [[maybe_unused]] std::int32_t mission_group_count{};
     std::int32_t mission_tick_count{};
     for (std::int32_t event_index{}; static_cast<std::size_t>(event_index) < event_tick_count;
          ++event_index) {

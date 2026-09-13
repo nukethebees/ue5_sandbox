@@ -157,7 +157,7 @@ void FTestEntityRegistry::queue_entity_updates(ConstView const view,
 }
 void FTestEntityRegistry::commit_entity_updates() {
 
-    auto const count{queued_entity_data.num()};
+    [[maybe_unused]] auto const count{queued_entity_data.num()};
     assert(static_cast<std::int32_t>(bookkeeping_.queued_update_handles.size()) == count);
     auto const unique_entities{unique_entity_history_.get_view().columns()};
     [[maybe_unused]] auto const invalid_update{ml::simulation::apply_entity_updates(
@@ -443,7 +443,7 @@ void FTestEntityRegistry::validate_array_sizes() const {
 void FTestEntityRegistry::validate_unique_ids() const {
 
     // Development-time validation for the unique id system
-    auto const unique_entities{unique_entity_history_.get_const_view().columns()};
+    [[maybe_unused]] auto const unique_entities{unique_entity_history_.get_const_view().columns()};
     auto const n{static_cast<std::int32_t>(bookkeeping_.unique_ids.size())};
 
     for (std::int32_t i{0}; i < n; ++i) {
@@ -465,7 +465,7 @@ void FTestEntityRegistry::validate_unique_entity_data() const {
             unique_entities.registry_indices[i],
             unique_entities.registry_generations[i],
         };
-        auto const handle_status{analyse_handle(handle)};
+        [[maybe_unused]] auto const handle_status{analyse_handle(handle)};
         assert(handle_status != ml::simulation::RegistryHandleState::Invalid);
         assert(handle_status != ml::simulation::RegistryHandleState::Null);
 

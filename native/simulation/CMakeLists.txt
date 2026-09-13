@@ -298,13 +298,15 @@ target_link_libraries(native-simulation
   PRIVATE sandbox::warnings_as_errors
 )
 
-set(NATIVE_SIMULATION_LIBRARY_DIRECTORY
-  "${PROJECT_SOURCE_DIR}/Binaries/Native/Simulation/${UE_PLATFORM}/${UE_CONFIGURATION}"
-)
 set_target_properties(native-simulation PROPERTIES
   OUTPUT_NAME SandboxNativeSimulation
-  ARCHIVE_OUTPUT_DIRECTORY "${NATIVE_SIMULATION_LIBRARY_DIRECTORY}"
 )
+if(SANDBOX_WITH_UNREAL)
+  set_target_properties(native-simulation PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/Simulation/${UE_PLATFORM}/${UE_CONFIGURATION}"
+  )
+endif()
 
 add_subdirectory(tests)
 
