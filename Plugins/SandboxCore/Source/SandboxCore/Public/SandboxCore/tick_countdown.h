@@ -31,6 +31,13 @@ class TTickCountdown {
 
         [[nodiscard]] auto num() const noexcept -> size_type { return length_; }
 
+        [[nodiscard]] auto native_counters() const noexcept -> std::span<T> {
+            if (length_ == 0) {
+                return {};
+            }
+            return {countdown_->counters_.GetData() + offset_, static_cast<std::size_t>(length_)};
+        }
+
         [[nodiscard]] auto get_view() noexcept -> View { return {*countdown_, offset_, length_}; }
 
         [[nodiscard]] auto get_view(size_type const offset, size_type const count) noexcept

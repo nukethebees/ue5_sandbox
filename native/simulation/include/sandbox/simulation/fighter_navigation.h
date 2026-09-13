@@ -11,6 +11,7 @@
 
 namespace ml::simulation::fighters {
 inline constexpr std::int8_t avoidance_direction_count{8};
+inline constexpr std::int32_t separation_neighbour_limit{32};
 
 enum class NavigationRiskTier : std::uint8_t {
     Clear,
@@ -31,6 +32,23 @@ struct AvoidanceFrame {
 struct NavigationRiskUpdate {
     NavigationRiskTier tier;
     std::uint8_t lower_risk_scan_count;
+};
+
+struct SeparationObservationParameters {
+    float separation_radius;
+    float immediate_distance_squared;
+    float close_distance_squared;
+    float memory_retention;
+    float separation_strength;
+    std::int32_t dense_traffic_neighbour_threshold;
+    std::uint32_t integral_bias;
+    float float_bias;
+};
+
+struct SeparationObservation {
+    Vector3f steering_memory;
+    NavigationRiskTier risk_tier;
+    bool dense_direction_selected;
 };
 
 [[nodiscard]] constexpr auto is_avoidance_direction_choice(std::int8_t choice) noexcept -> bool {
@@ -65,6 +83,15 @@ void make_avoidance_choice_order(
                                                       Vector3f separation_steering,
                                                       float separation_strength) noexcept
     -> std::optional<Vector3f>;
+[[nodiscard]] auto observe_separation(Vectors3fConstView registry_locations,
+                                      std::span<std::int32_t const> registry_generations,
+                                      Vector3f fighter_location,
+                                      FRegistryEntityHandle fighter_handle,
+                                      Vector3f goal_direction,
+                                      Vector3f previous_memory,
+                                      std::span<FRegistryEntityHandle const> neighbours,
+                                      SeparationObservationParameters parameters) noexcept
+    -> SeparationObservation;
 [[nodiscard]] auto choose_navigation_alternative(Vector3f fighter_location,
                                                  float safe_progress_distance,
                                                  std::span<std::int8_t const> choices,

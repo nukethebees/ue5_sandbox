@@ -29,6 +29,20 @@ inline auto make_hit_details_const_view(FrameHitDetails const& details) -> HitDe
     };
 }
 
+inline auto make_spawn_requests_const_view(simulation::lasers::FrameSpawnRequests const& requests)
+    -> SpawnRequestsConstView {
+    return {
+        ml::to_unreal(requests.locations.get_const_view()),
+        ml::to_unreal(requests.rotations.get_const_view()),
+        ml::to_unreal(requests.base_velocities.get_const_view()),
+        {requests.damages.data(), requests.damages.num()},
+        {requests.speeds.data(), requests.speeds.num()},
+        {requests.max_distances.data(), requests.max_distances.num()},
+        {requests.instigator_handles.data(), requests.instigator_handles.num()},
+        {requests.sources.data(), requests.sources.num()},
+    };
+}
+
 struct FrameSpawnRequests : simulation::lasers::FrameSpawnRequests {
     using Base = simulation::lasers::FrameSpawnRequests;
 
@@ -59,16 +73,7 @@ struct FrameSpawnRequests : simulation::lasers::FrameSpawnRequests {
                   source);
     }
     auto get_const_view() const -> SpawnRequestsConstView {
-        return {
-            ml::to_unreal(locations.get_const_view()),
-            ml::to_unreal(rotations.get_const_view()),
-            ml::to_unreal(base_velocities.get_const_view()),
-            {damages.data(), damages.num()},
-            {speeds.data(), speeds.num()},
-            {max_distances.data(), max_distances.num()},
-            {instigator_handles.data(), instigator_handles.num()},
-            {sources.data(), sources.num()},
-        };
+        return make_spawn_requests_const_view(*this);
     }
 };
 } // namespace ml::test_lasers

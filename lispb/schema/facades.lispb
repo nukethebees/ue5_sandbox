@@ -18,10 +18,12 @@
     (method get_num_instances int32
       :const true
       :noexcept true)
-    (method get_target_handle @registry_handle
+    (method get_handles "TConstArrayView<FRegistryEntityHandle>"
       :const true
-      :noexcept true
-      (parameter fighter_handle (type-ref @registry_handle :suffix " const")))))
+      :noexcept true)
+    (method get_target_handles "TConstArrayView<FRegistryEntityHandle>"
+      :const true
+      :noexcept true)))
 
 (facade-module test_space_ship_phase_interface
   :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/player/TestSpaceShipPhaseInterface.h"

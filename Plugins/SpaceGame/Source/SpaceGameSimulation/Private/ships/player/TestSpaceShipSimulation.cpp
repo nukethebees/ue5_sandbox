@@ -1,5 +1,7 @@
 #include "SpaceGameSimulation/ships/player/TestSpaceShipSimulation.h"
 
+#include <sandbox/simulation/player_thrust.h>
+#include <sandbox/simulation/ship_health.h>
 #include <SandboxCoreEngine/enums.h>
 #include <SpaceGameSimulation/combat/lasers/TestLasersSimulation.h>
 #include <SpaceGameSimulation/entities/DirectDamageEvents.h>
@@ -13,6 +15,7 @@
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 
+#include <array>
 #include <limits>
 #include <utility>
 
@@ -100,24 +103,12 @@ void Simulation::queue_commands() {
 void Simulation::resolve_damage_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::PlayerShipSimulation::resolve_damage_events);
 
-    auto const original_health{health.health};
-    FRegistryEntityHandle killer{};
     auto const& direct_damage{entity_registry.get_direct_damage_queue_view()};
-    auto const damage_count{direct_damage.num()};
-    for (int32 i{0}; i < damage_count; ++i) {
-        if (direct_damage.damaged_entities[i] != registry_handle) {
-            continue;
-        }
-
-        auto const was_alive{health.is_alive()};
-        health.health -= direct_damage.damage_amounts[i];
-        if (was_alive && !health.is_alive()) {
-            killer = direct_damage.instigators[i];
-        }
-    }
-
-    if (original_health > 0 && !health.is_alive()) {
-        die(killer);
+    auto const result{ml::simulation::apply_direct_damage(
+        registry_handle, health.health, direct_damage.get_const_view())};
+    health.health = result.health;
+    if (result.died) {
+        die(result.killer);
     }
 }
 
@@ -224,53 +215,57 @@ void Simulation::set_desired_planar_velocity(FVector const desired_velocity) {
     auto const local_velocity{transform.InverseTransformVectorNoScale(desired_velocity)};
     target_local_planar_velocity_scale =
         FVector2D{local_velocity.Y / config.cruise_speed, local_velocity.X / config.cruise_speed};
-    planar_flight_model.set_new_impulse(config.speed_responses.accelerating_to_cruise,
+    auto const response{config.speed_responses.accelerating_to_cruise};
+    planar_flight_model.set_new_impulse(response.settling_time,
+                                        response.damping_ratio,
                                         planar_velocity,
                                         target_local_planar_velocity);
 }
 
 void Simulation::set_boost_brake_state(EBoostBrakeState const state) {
+    using NativeState = ml::simulation::player::BoostBrakeState;
+    static_assert(static_cast<uint8>(EBoostBrakeState::None) ==
+                  static_cast<uint8>(NativeState::None));
+    static_assert(static_cast<uint8>(EBoostBrakeState::Boost) ==
+                  static_cast<uint8>(NativeState::Boost));
+    static_assert(static_cast<uint8>(EBoostBrakeState::Brake) ==
+                  static_cast<uint8>(NativeState::Brake));
+
     if (state == EBoostBrakeState::Boost && boost_brake_state != state) {
         ++boost_start_sequence_;
     }
 
     auto const current_speed{get_speed()};
     auto const& speed_responses{config.speed_responses};
-    FSpeedResponse response{speed_responses.accelerating_to_cruise};
-
-    switch (state) {
-        case EBoostBrakeState::Boost: {
-            target_speed = config.boost_speed;
-            thrust_change_rate = -(1.f / config.boost_depletion_time);
-            response = speed_responses.boost;
-            break;
-        }
-        case EBoostBrakeState::Brake: {
-            target_speed = config.brake_speed;
-            thrust_change_rate = -(1.f / config.brake_depletion_time);
-            response = speed_responses.brake;
-            break;
-        }
-        default: {
-            UE_LOG(LogSandbox, Error, TEXT("Unhandled player boost/brake state."));
-            [[fallthrough]];
-        }
-        case EBoostBrakeState::None: {
-            target_speed = config.cruise_speed;
-            thrust_change_rate = 1.f / config.thrust_recharge_time;
-            if (target_speed < current_speed) {
-                response = speed_responses.slowing_to_cruise;
-            }
-            break;
-        }
+    if (state != EBoostBrakeState::None && state != EBoostBrakeState::Boost &&
+        state != EBoostBrakeState::Brake) {
+        UE_LOG(LogSandbox, Error, TEXT("Unhandled player boost/brake state."));
     }
 
-    forward_flight_model.set_new_impulse(response, current_speed, target_speed);
-    auto const planar_boost_target{state == EBoostBrakeState::Boost
-                                       ? config.cruise_speed *
-                                             config.boost_forward_speed_addition_multiplier
-                                       : 0.f};
-    planar_boost_flight_model.set_new_impulse(response, planar_boost_speed, planar_boost_target);
+    auto const transition{ml::simulation::player::make_thrust_transition(
+        {.cruise_speed = config.cruise_speed,
+         .boost_speed = config.boost_speed,
+         .brake_speed = config.brake_speed,
+         .thrust_recharge_time = config.thrust_recharge_time,
+         .boost_depletion_time = config.boost_depletion_time,
+         .brake_depletion_time = config.brake_depletion_time,
+         .boost_forward_speed_addition_multiplier = config.boost_forward_speed_addition_multiplier},
+        static_cast<NativeState>(state),
+        current_speed)};
+    std::array const responses{&speed_responses.accelerating_to_cruise,
+                               &speed_responses.slowing_to_cruise,
+                               &speed_responses.boost,
+                               &speed_responses.brake};
+    auto const response{*responses[static_cast<std::size_t>(transition.speed_response)]};
+    target_speed = transition.target_speed;
+    thrust_change_rate = transition.energy_change_rate;
+
+    forward_flight_model.set_new_impulse(
+        response.settling_time, response.damping_ratio, current_speed, target_speed);
+    planar_boost_flight_model.set_new_impulse(response.settling_time,
+                                              response.damping_ratio,
+                                              planar_boost_speed,
+                                              transition.planar_boost_target);
     boost_brake_state = state;
 }
 

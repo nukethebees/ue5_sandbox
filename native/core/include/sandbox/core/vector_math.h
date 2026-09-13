@@ -6,6 +6,11 @@
 #include <numbers>
 
 namespace ml::native_math {
+template <std::floating_point T>
+auto is_nearly_zero(T const x, T const y, T const z, T const tolerance) noexcept -> bool {
+    return std::abs(x) <= tolerance && std::abs(y) <= tolerance && std::abs(z) <= tolerance;
+}
+
 template <typename T>
 auto size_squared(T const x, T const y, T const z) noexcept -> T {
     return x * x + y * y + z * z;

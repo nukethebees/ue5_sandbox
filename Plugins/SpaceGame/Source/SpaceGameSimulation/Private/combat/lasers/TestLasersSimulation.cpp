@@ -1,7 +1,10 @@
 #include "SpaceGameSimulation/combat/lasers/TestLasersSimulation.h"
 
+#include <sandbox/simulation/laser_collision_response.h>
+#include <sandbox/simulation/laser_spawn_initialization.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/simulation/LineTraces.h>
+#include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 #include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
 
@@ -13,7 +16,6 @@
 
 #include <Async/ParallelFor.h>
 #include <ProfilingDebugging/CountersTrace.h>
-#include <Templates/Greater.h>
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserCount, TEXT("Sandbox/TestLaserCount"));
 
@@ -132,27 +134,22 @@ void Simulation::process_pending_spawns() {
                           entities.spawn_times);
 
     auto const time{static_cast<float>(simulation_clock.get_simulation_time())};
-    for (int32 i{0}; i < n_to_add; ++i) {
-        auto const speed{pending_spawns.speeds[i]};
-        auto const max_distance{pending_spawns.max_distances[i]};
-        auto const lifetime{max_distance / speed};
-        auto const index{offset + i};
-
-        auto const forward_direction{ml::get_rotator3f(entities.rotations, index).Vector()};
-        auto const forward_velocity{forward_direction * speed};
-        auto const base_velocity{ml::get_vector3f(pending_spawns.base_velocities, i)};
-        auto const velocity{base_velocity + forward_velocity};
-        auto const base_spawn_location{ml::get_vector3f(entities.locations, index)};
-        auto const spawn_location{base_spawn_location + forward_velocity * tick_period +
-                                  forward_direction * fixed_spawn_offset};
-
-        entities.locations.set(index, spawn_location);
-        entities.velocities.set(index, velocity);
-        entities.lifetimes_remaining[index] = lifetime;
-
-        entities.initial_lifetimes[index] = lifetime;
-        entities.spawn_times[index] = time;
-    }
+    ml::simulation::lasers::initialise_spawns(
+        ml::to_native(entities.locations.get_view()),
+        ml::to_native(entities.velocities.get_view()),
+        ml::to_native(entities.rotations.get_const_view()),
+        ml::to_native(pending_spawns.base_velocities.get_const_view()),
+        {pending_spawns.speeds.GetData(), static_cast<std::size_t>(n_to_add)},
+        {pending_spawns.max_distances.GetData(), static_cast<std::size_t>(n_to_add)},
+        {entities.lifetimes_remaining.GetData(),
+         static_cast<std::size_t>(entities.lifetimes_remaining.Num())},
+        {entities.initial_lifetimes.GetData(),
+         static_cast<std::size_t>(entities.initial_lifetimes.Num())},
+        {entities.spawn_times.GetData(), static_cast<std::size_t>(entities.spawn_times.Num())},
+        offset,
+        tick_period,
+        time,
+        fixed_spawn_offset);
 
     number_spawned += n_to_add;
     validate_array_sizes();
@@ -176,6 +173,8 @@ void Simulation::handle_collisions(float const dt) {
 
     FrameCollisionScratch collision_scratch{&frame_memory_resource};
     collision_scratch.set_num(n);
+    auto const locations{ml::to_native(entities.locations.get_const_view())};
+    auto const velocities{ml::to_native(entities.velocities.get_const_view())};
     auto const updates_per_slice{FMath::DivideAndRoundUp(n, collision_jobs)};
     ParallelFor(collision_jobs, [=, this, &collision_scratch](int32 const job_index) {
         auto const i_start{job_index * updates_per_slice};
@@ -185,12 +184,12 @@ void Simulation::handle_collisions(float const dt) {
             return;
         }
 
-        for (int32 trace_index{i_start}; trace_index < i_end; ++trace_index) {
-            auto const start{ml::get_vector3f(entities.locations, trace_index)};
-            auto const velocity{ml::get_vector3f(entities.velocities, trace_index)};
-            collision_scratch.trace_starts.set(trace_index, ml::to_native(start));
-            collision_scratch.trace_ends.set(trace_index, ml::to_native(start + dt * velocity));
-        }
+        ml::simulation::lasers::prepare_collision_traces(
+            locations.slice(i_start, trace_count),
+            velocities.slice(i_start, trace_count),
+            dt,
+            collision_scratch.trace_starts.get_view().slice(i_start, trace_count),
+            collision_scratch.trace_ends.get_view().slice(i_start, trace_count));
 
         auto const traces{make_line_traces_const_view(
             collision_scratch.trace_starts.get_const_view().slice(i_start, trace_count),
@@ -206,38 +205,17 @@ void Simulation::handle_collisions(float const dt) {
     TFrameArray<int32> to_remove{&frame_memory_resource};
     FrameHitDetails hit_details{&frame_memory_resource};
     FrameDirectDamageEvents collision_damage_events{&frame_memory_resource};
-
-    int32 detected_hit_count{};
-    for (auto const hit : collision_scratch.trace_hits.hits) {
-        detected_hit_count += hit != 0 ? 1 : 0;
-    }
-    to_remove.reserve(detected_hit_count);
-    hit_details.reserve(detected_hit_count);
-    collision_damage_events.reserve(detected_hit_count);
-
-    for (int32 entity_index{}; entity_index < n; ++entity_index) {
-        if (collision_scratch.trace_hits.hits[entity_index] == 0) {
-            continue;
-        }
-
-        to_remove.add(entity_index);
-
-        auto const damaged_entity{collision_scratch.trace_hits.entities[entity_index]};
-        if (damaged_entity.is_valid()) {
-            collision_damage_events.add(damaged_entity,
-                                        entities.damages[entity_index],
-                                        entities.instigator_handles[entity_index]);
-        }
-
-        auto const velocity{ml::get_vector3f(entities.velocities, entity_index)};
-        hit_details.add(
-            collision_scratch.trace_hits.locations.get_const_view()[entity_index],
-            ml::to_native(-velocity.GetSafeNormal(UE_SMALL_NUMBER, FVector3f::UpVector)),
-            entities.sources[entity_index]);
-    }
+    ml::simulation::lasers::process_collision_hits(
+        collision_scratch.trace_hits.get_const_view(),
+        ml::to_native(entities.velocities.get_const_view()),
+        {entities.damages.GetData(), static_cast<std::size_t>(n)},
+        {entities.instigator_handles.GetData(), static_cast<std::size_t>(n)},
+        {entities.sources.GetData(), static_cast<std::size_t>(n)},
+        to_remove,
+        collision_damage_events,
+        hit_details);
     entity_registry.queue_direct_damage_events(collision_damage_events.get_const_view());
 
-    to_remove.view().Sort(TGreater<int32>{});
     remove_instances(to_remove);
 
     frame_hits_.append_from(make_hit_details_const_view(hit_details));

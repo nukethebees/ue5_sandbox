@@ -42,8 +42,12 @@ class SPACEGAMESIMULATION_API CommandInterface {
         return fighters.get_num_instances();
     }
 
-    FRegistryEntityHandle get_target_handle(FRegistryEntityHandle const fighter_handle) const noexcept {
-        return fighters.get_target_handle(fighter_handle);
+    TConstArrayView<FRegistryEntityHandle> get_handles() const noexcept {
+        return fighters.get_handles();
+    }
+
+    TConstArrayView<FRegistryEntityHandle> get_target_handles() const noexcept {
+        return fighters.get_target_handles();
     }
 
     private:

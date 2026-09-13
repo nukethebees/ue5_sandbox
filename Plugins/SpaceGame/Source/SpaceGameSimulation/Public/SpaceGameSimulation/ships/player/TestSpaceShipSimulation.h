@@ -3,6 +3,7 @@
 
 #include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>
 
+#include <sandbox/simulation/ship_flight_model.h>
 #include <SandboxNative/RegistryEntityHandle.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistryData.h>
 #include <SpaceGameSimulation/entities/TestEntityUniqueId.h>
@@ -11,7 +12,6 @@
 #include <SpaceGameSimulation/ships/common/ShipHealth.h>
 #include <SpaceGameSimulation/ships/common/ShipLaserMode.h>
 #include <SpaceGameSimulation/ships/common/SpaceShipCommon.h>
-#include <SpaceGameSimulation/ships/common/SpaceShipFlightModel.h>
 #include <SpaceGameSimulation/ships/player/TestShipFireRate.h>
 #include <SpaceGameSimulation/ships/player/TestSpaceShipControlMode.h>
 #include <SpaceGameSimulation/ships/player/TestSpaceShipFlightMode.h>
@@ -143,9 +143,9 @@ struct SPACEGAMESIMULATION_API Simulation {
     float thrust_energy{1.f};
     float thrust_change_rate{0.f};
 
-    TSpaceShipFlightModel<float> forward_flight_model{};
-    TSpaceShipFlightModel<FVector> planar_flight_model{};
-    TSpaceShipFlightModel<float> planar_boost_flight_model{};
+    ml::simulation::ShipFlightModel<float> forward_flight_model{};
+    ml::simulation::ShipFlightModel<FVector> planar_flight_model{};
+    ml::simulation::ShipFlightModel<float> planar_boost_flight_model{};
     ETestSpaceShipFlightMode flight_mode{ETestSpaceShipFlightMode::ForwardSpeed};
     ETestSpaceShipControlMode control_mode{ETestSpaceShipControlMode::Velocity};
     FVector velocity{FVector::ZeroVector};

@@ -1,11 +1,13 @@
 #include "sandbox/simulation/fighter_navigation.h"
 
 #include "sandbox/simulation/deterministic_bias.h"
+#include "sandbox/simulation/entity_registry_bookkeeping.h"
 
 #include <algorithm>
 #include <bit>
 #include <cassert>
 #include <cmath>
+#include <limits>
 
 namespace ml::simulation::fighters {
 namespace {
@@ -19,6 +21,8 @@ inline constexpr float half_pi{1.57079632679489661923f};
 inline constexpr float inverse_pi{0.31830988618379067154f};
 inline constexpr float safe_normal_tolerance{1.e-8f};
 inline constexpr float nearly_zero_tolerance{1.e-4f};
+inline constexpr float crowd_goal_score_weight{0.35f};
+inline constexpr float steering_memory_score_weight{0.25f};
 
 auto is_nearly_zero(Vector3f const vector) noexcept -> bool {
     return std::abs(vector.X) <= nearly_zero_tolerance &&
@@ -35,6 +39,14 @@ auto safe_normal(Vector3f const vector) noexcept -> Vector3f {
         return make_vector3f(0.0f, 0.0f, 0.0f);
     }
     return vector * (1.0f / std::sqrt(length_squared));
+}
+
+auto clamp_to_unit_size(Vector3f const vector) noexcept -> Vector3f {
+    auto const length_squared{HMM_DotV3(vector, vector)};
+    if (length_squared > 1.0f) {
+        return vector * (1.0f / std::sqrt(length_squared));
+    }
+    return vector;
 }
 
 constexpr auto hash_entity_handle(FRegistryEntityHandle const handle) noexcept -> std::uint32_t {
@@ -241,6 +253,98 @@ auto make_separation_steering_direction(Vector3f const goal_direction,
         preferred_direction = safe_normal(separation_steering);
     }
     return preferred_direction;
+}
+
+auto observe_separation(Vectors3fConstView const registry_locations,
+                        std::span<std::int32_t const> const registry_generations,
+                        Vector3f const fighter_location,
+                        FRegistryEntityHandle const fighter_handle,
+                        Vector3f const goal_direction,
+                        Vector3f const previous_memory,
+                        std::span<FRegistryEntityHandle const> const neighbours,
+                        SeparationObservationParameters const parameters) noexcept
+    -> SeparationObservation {
+    assert(neighbours.size() <= static_cast<std::size_t>(separation_neighbour_limit));
+    assert(parameters.separation_radius > 0.0f);
+    assert(static_cast<std::size_t>(registry_locations.num()) == registry_generations.size());
+
+    std::array<Vector3f, separation_neighbour_limit> directions_to_neighbours;
+    std::array<float, separation_neighbour_limit> neighbour_weights;
+    auto separation_observation{make_vector3f(0.0f, 0.0f, 0.0f)};
+    auto closest_distance_squared{std::numeric_limits<float>::max()};
+    auto const neighbour_count{static_cast<std::int32_t>(neighbours.size())};
+    for (std::int32_t neighbour_index{}; neighbour_index < neighbour_count; ++neighbour_index) {
+        auto const element{static_cast<std::size_t>(neighbour_index)};
+        auto const neighbour_handle{neighbours[element]};
+        assert(analyse_handle(registry_generations, neighbour_handle) ==
+               RegistryHandleState::Active);
+        auto const neighbour_location{registry_locations[neighbour_handle.index]};
+        auto const offset{fighter_location - neighbour_location};
+        auto const distance_squared{HMM_DotV3(offset, offset)};
+        closest_distance_squared = std::min(closest_distance_squared, distance_squared);
+
+        float distance{};
+        Vector3f away_direction;
+        if (distance_squared <= safe_normal_tolerance) {
+            away_direction = make_coincident_separation_direction(fighter_handle, neighbour_handle);
+        } else {
+            distance = std::sqrt(distance_squared);
+            away_direction = offset / distance;
+        }
+        auto weight{1.0f - std::clamp(distance / parameters.separation_radius, 0.0f, 1.0f)};
+        weight *= weight;
+        separation_observation += away_direction * weight;
+        directions_to_neighbours[element] = -away_direction;
+        neighbour_weights[element] = weight;
+    }
+
+    auto const retained_memory{previous_memory * parameters.memory_retention};
+    auto const dense_traffic{neighbour_count >= parameters.dense_traffic_neighbour_threshold &&
+                             parameters.separation_strength > safe_normal_tolerance};
+    if (dense_traffic) {
+        auto const frame{make_avoidance_frame(goal_direction, parameters.float_bias)};
+        std::array<Vector3f, avoidance_direction_count> candidates;
+        make_avoidance_directions(frame, candidates);
+        auto const memory_direction{safe_normal(retained_memory)};
+        auto const memory_strength{std::sqrt(HMM_DotV3(retained_memory, retained_memory))};
+        auto const candidate_score{[&](Vector3f const candidate) {
+            float crowd_penalty{};
+            for (std::int32_t neighbour_index{}; neighbour_index < neighbour_count;
+                 ++neighbour_index) {
+                auto const element{static_cast<std::size_t>(neighbour_index)};
+                auto const towards_dot{
+                    std::max(0.0f, HMM_DotV3(candidate, directions_to_neighbours[element]))};
+                crowd_penalty += neighbour_weights[element] * towards_dot * towards_dot;
+            }
+            return HMM_DotV3(candidate, goal_direction) * crowd_goal_score_weight -
+                   crowd_penalty * parameters.separation_strength +
+                   HMM_DotV3(candidate, memory_direction) * memory_strength *
+                       steering_memory_score_weight;
+        }};
+
+        auto best_direction{goal_direction};
+        auto best_score{candidate_score(best_direction)};
+        std::array<std::int8_t, avoidance_direction_count> choice_order;
+        make_avoidance_choice_order(parameters.integral_bias, -1, choice_order);
+        for (auto const choice : choice_order) {
+            auto const candidate{candidates[static_cast<std::size_t>(choice)]};
+            auto const score{candidate_score(candidate)};
+            if (score > best_score) {
+                best_score = score;
+                best_direction = candidate;
+            }
+        }
+
+        separation_observation = (best_direction - goal_direction) / parameters.separation_strength;
+    }
+
+    separation_observation = clamp_to_unit_size(separation_observation);
+    auto const steering_memory{clamp_to_unit_size(retained_memory + separation_observation)};
+    auto const risk_tier{classify_navigation_risk(closest_distance_squared,
+                                                  parameters.immediate_distance_squared,
+                                                  parameters.close_distance_squared,
+                                                  neighbour_count)};
+    return {steering_memory, risk_tier, dense_traffic};
 }
 
 auto choose_navigation_alternative(Vector3f const fighter_location,

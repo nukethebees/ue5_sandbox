@@ -1,5 +1,8 @@
 #pragma once
+#include <sandbox/simulation/fighter_firing_position.h>
 #include <sandbox/simulation/fighter_navigation.h>
+#include <sandbox/simulation/fighter_navigation_scratch.h>
+#include <sandbox/simulation/fighter_navigation_state.h>
 #include <sandbox/simulation/navigation_telemetry.h>
 
 #include <SpaceGameSimulation/simulation/SystemReadViews.h>
@@ -120,17 +123,8 @@ struct SPACEGAMESIMULATION_API Simulation {
     float fire_point_distance{0.f};
     float fire_dot_product_threshold{0.95f};
   private:
-    using AvoidanceFrame = ml::simulation::fighters::AvoidanceFrame;
-    struct FirePointAngleOffset {
-        float yaw;
-        float pitch;
-    };
-    struct FirePointCandidate {
-        FVector3f location;
-        FVector3f trace_start;
-        FVector3f trace_end;
-    };
-    struct NavigationScratch;
+    using FirePointCandidate = ml::simulation::fighters::FirePointCandidate;
+    using NavigationScratch = ml::simulation::fighters::NavigationScratch;
     using NavigationRiskTier = ml::simulation::fighters::NavigationRiskTier;
 
     inline static constexpr int8 direct_movement_choice{-1};
@@ -139,44 +133,15 @@ struct SPACEGAMESIMULATION_API Simulation {
         ml::simulation::fighters::avoidance_direction_count};
     inline static constexpr uint8 clear_scans_to_end_avoidance{2};
     inline static constexpr uint8 lower_risk_scans_to_demote{2};
-    inline static constexpr int32 max_separation_neighbours{32};
-    inline static constexpr float crowd_goal_score_weight{0.35f};
-    inline static constexpr float steering_memory_score_weight{0.25f};
-    inline static constexpr std::array<FirePointAngleOffset, 16> fire_point_angle_offsets{{
-        {0.f, 0.f},
-        {45.f, 0.f},
-        {-45.f, 0.f},
-        {90.f, 0.f},
-        {-90.f, 0.f},
-        {135.f, 0.f},
-        {-135.f, 0.f},
-        {180.f, 0.f},
-        {0.f, 35.f},
-        {90.f, 35.f},
-        {180.f, 35.f},
-        {-90.f, 35.f},
-        {45.f, -35.f},
-        {135.f, -35.f},
-        {-135.f, -35.f},
-        {-45.f, -35.f},
-    }};
+    inline static constexpr int32 max_separation_neighbours{
+        simulation::fighters::separation_neighbour_limit};
 
     /* **************************************** */
     // Navigation
     /* **************************************** */
-    static auto is_avoidance_direction_choice(int8 choice) -> bool;
-    static auto make_avoidance_frame(FVector3f preferred_direction, float float_bias)
-        -> AvoidanceFrame;
-    static auto make_avoidance_direction(AvoidanceFrame const& frame, int8 choice) -> FVector3f;
-    static auto make_avoidance_directions(AvoidanceFrame const& frame)
-        -> TStaticArray<FVector3f, n_avoidance_choices>;
-    static auto make_avoidance_choice_order(uint32 integral_bias, int8 previous_choice)
-        -> TStaticArray<int8, n_avoidance_choices>;
-    static auto make_coincident_separation_direction(FRegistryEntityHandle self,
-                                                     FRegistryEntityHandle other) -> FVector3f;
     auto get_navigation_tick_period(NavigationRiskTier tier) const
         -> FPeriodicTickCountdown16::counter_type;
-    void update_navigation_risk(int32 fighter_index, NavigationRiskTier observed_tier);
+    auto get_native_navigation_state() -> ml::simulation::fighters::NavigationStateView;
     void reset_navigation_state(int32 fighter_index, NavigationRiskTier initial_tier);
 
     /* **************************************** */

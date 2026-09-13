@@ -1,7 +1,9 @@
 #include "SpaceGameSimulation/defences/turrets/TestStaticTurretsSimulation.h"
 
+#include <sandbox/simulation/turret_targeting.h>
 #include <SpaceGameSimulation/combat/lasers/TestLasersFrameScratch.h>
 #include <SpaceGameSimulation/entities/BatchSimulation.h>
+#include <SpaceGameSimulation/entities/NativeEntityRegistryView.h>
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>
@@ -13,7 +15,6 @@
 #include <SandboxCore/frame_memory_resource.h>
 #include <SandboxCore/frame_rotators.h>
 #include <SandboxCore/frame_vectors.h>
-#include <SandboxCore/loop_bounds.h>
 #include <SandboxCore/projectile_intercept.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
@@ -290,6 +291,7 @@ void Simulation::perform_search_on_slice(int32 const job_index,
                                          float const radius) {
     auto const begin{job_index * turrets_per_job};
     auto const end{FMath::Min(begin + turrets_per_job, n_turrets)};
+    auto const registry_view{ml::make_native_query_view(entity_registry)};
     TFixedVectors3f<128> candidate_locations;
     ml::TFixedArray<uint8, 128> has_line_of_sight;
 
@@ -324,28 +326,13 @@ void Simulation::perform_search_on_slice(int32 const job_index,
                 target_handles,
                 has_line_of_sight);
 
-            auto const target_offset{target_count == 0
-                                         ? 0
-                                         : static_cast<int32>(entities.integral_biases[i] %
-                                                              static_cast<uint32>(target_count))};
-            auto const loop_bounds{ml::make_rotated_loop_bounds(0, target_count, target_offset)};
-            for (auto const bounds : loop_bounds) {
-                for (int32 target_index{bounds.begin}; target_index < bounds.end; ++target_index) {
-                    auto const target_handle{target_handles[target_index]};
-                    if (has_line_of_sight[target_index] == 0) {
-                        continue;
-                    }
-                    if (this_team == entity_registry.get_team(target_handle)) {
-                        continue;
-                    }
-
-                    entities.target_handles[i] = target_handle;
-                    goto target_found;
-                }
-            }
+            entities.target_handles[i] = ml::simulation::select_turret_target(
+                {target_handles.data(), static_cast<std::size_t>(target_count)},
+                {has_line_of_sight.data(), static_cast<std::size_t>(target_count)},
+                registry_view.teams,
+                ml::to_native(this_team),
+                entities.integral_biases[i]);
         }
-
-    target_found:;
     }
 }
 
