@@ -18,6 +18,7 @@ public class SandboxCoreTests : TestModuleRules
 	{
         CppStandard = CppStandardVersion.Latest;
         bAllowUETypesInNamespaces = true;
+        MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{

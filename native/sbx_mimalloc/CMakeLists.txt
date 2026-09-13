@@ -101,6 +101,9 @@ set_target_properties(sbx-mimalloc PROPERTIES
   OUTPUT_NAME SandboxMimalloc
 )
 if(SANDBOX_WITH_UNREAL)
+  target_link_libraries(sbx-mimalloc-prefix-probe PRIVATE sandbox::unreal_avx2)
+  target_link_libraries(sbx-mimalloc-implementation PRIVATE sandbox::unreal_avx2)
+  target_link_libraries(sbx-mimalloc PRIVATE sandbox::unreal_avx2)
   set_target_properties(sbx-mimalloc PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
       "${PROJECT_SOURCE_DIR}/Binaries/Native/SbxMimalloc/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"

@@ -6,6 +6,7 @@ public class SandboxImages : ModuleRules
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         CppStandard = CppStandardVersion.Latest;
+        MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
 
         PublicDependencyModuleNames.Add("Core");
     }

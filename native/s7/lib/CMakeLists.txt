@@ -57,6 +57,8 @@ set_target_properties(sandbox-s7 PROPERTIES
   OUTPUT_NAME sandbox_s7
 )
 if(SANDBOX_WITH_UNREAL)
+  target_link_libraries(sandbox-s7-third-party PRIVATE sandbox::unreal_avx2)
+  target_link_libraries(sandbox-s7 PRIVATE sandbox::unreal_avx2)
   foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
     file(MAKE_DIRECTORY
       "${PROJECT_SOURCE_DIR}/Binaries/Native/S7/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${configuration}"

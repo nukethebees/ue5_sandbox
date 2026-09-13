@@ -12,6 +12,7 @@ set_target_properties(native-memory PROPERTIES
   OUTPUT_NAME SandboxNativeMemory
 )
 if(SANDBOX_WITH_UNREAL)
+  target_link_libraries(native-memory PRIVATE sandbox::unreal_avx2)
   set_target_properties(native-memory PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
       "${PROJECT_SOURCE_DIR}/Binaries/NativeMemory/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"

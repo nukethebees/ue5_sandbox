@@ -1,6 +1,10 @@
 add_library(sandbox_arch_avx2 INTERFACE)
 add_library(sandbox::arch_avx2 ALIAS sandbox_arch_avx2)
 
+add_library(sandbox_unreal_avx2 INTERFACE)
+add_library(sandbox::unreal_avx2 ALIAS sandbox_unreal_avx2)
+target_link_libraries(sandbox_unreal_avx2 INTERFACE sandbox::arch_avx2)
+
 add_library(sandbox_arch_avx512 INTERFACE)
 add_library(sandbox::arch_avx512 ALIAS sandbox_arch_avx512)
 

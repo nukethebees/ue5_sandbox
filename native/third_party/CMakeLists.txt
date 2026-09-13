@@ -15,6 +15,7 @@ add_subdirectory(cpu_features)
 set_property(TARGET cpu_features PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
 
 if(SANDBOX_WITH_UNREAL)
+  target_link_libraries(cpu_features PRIVATE sandbox::unreal_avx2)
   set_target_properties(cpu_features PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
       "${PROJECT_SOURCE_DIR}/Binaries/Native/CpuFeatures/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"

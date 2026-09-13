@@ -28,7 +28,10 @@ if(SANDBOX_WITH_UNREAL)
   )
   target_compile_features(sandbox-material-gen PUBLIC cxx_std_23)
   target_include_directories(sandbox-material-gen PUBLIC include)
-  target_link_libraries(sandbox-material-gen PRIVATE sandbox::codegen_warnings)
+  target_link_libraries(sandbox-material-gen PRIVATE
+    sandbox::codegen_warnings
+    sandbox::unreal_avx2
+  )
   set_target_properties(sandbox-material-gen PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
       "${PROJECT_SOURCE_DIR}/Binaries/Native/MaterialGen/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"

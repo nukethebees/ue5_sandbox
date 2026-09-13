@@ -35,6 +35,7 @@ set_target_properties(native-core PROPERTIES
   OUTPUT_NAME SandboxNativeCore
 )
 if(SANDBOX_WITH_UNREAL)
+  target_link_libraries(native-core PRIVATE sandbox::unreal_avx2)
   set_target_properties(native-core PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
       "${PROJECT_SOURCE_DIR}/Binaries/Native/Core/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"

@@ -25,6 +25,7 @@ if(SANDBOX_WITH_UNREAL)
     PRIVATE src
   )
   target_link_libraries(sandbox-mesh-gen PRIVATE sandbox::warnings_as_errors)
+  target_link_libraries(sandbox-mesh-gen PRIVATE sandbox::unreal_avx2)
   set_target_properties(sandbox-mesh-gen PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
       "${PROJECT_SOURCE_DIR}/Binaries/Native/MeshGen/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"

@@ -7,6 +7,7 @@ public class SandboxMaterialExprs : ModuleRules
 	public SandboxMaterialExprs(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
+		MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
 		
 		PublicIncludePaths.AddRange(
 			new string[] {

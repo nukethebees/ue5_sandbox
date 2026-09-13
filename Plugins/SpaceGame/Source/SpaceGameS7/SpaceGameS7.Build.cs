@@ -7,6 +7,7 @@ public class SpaceGameS7 : ModuleRules
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         CppStandard = CppStandardVersion.Latest;
         bAllowUETypesInNamespaces = true;
+        MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
 
         PublicDependencyModuleNames.AddRange(new string[]
         {

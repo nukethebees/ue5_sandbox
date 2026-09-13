@@ -8,6 +8,7 @@ public class SbxMeshGenLab : ModuleRules
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         CppStandard = CppStandardVersion.Latest;
+        MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
 
         if (Target.Platform != UnrealTargetPlatform.Win64 ||
             Target.Architecture != UnrealArch.X64 ||

@@ -16,6 +16,7 @@ set_target_properties(sandbox-image PROPERTIES
   OUTPUT_NAME sandbox_image
 )
 if(SANDBOX_WITH_UNREAL)
+  target_link_libraries(sandbox-image PRIVATE sandbox::unreal_avx2)
   foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
     file(MAKE_DIRECTORY
       "${PROJECT_SOURCE_DIR}/Binaries/Native/Image/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${configuration}"
