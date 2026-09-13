@@ -93,118 +93,46 @@ struct FFiringScratch {
 // Navigation helpers
 /* **************************************** */
 auto Simulation::is_avoidance_direction_choice(int8 const choice) -> bool {
-    return choice >= 0 && choice < n_avoidance_choices;
+    return ml::simulation::fighters::is_avoidance_direction_choice(choice);
 }
 auto Simulation::make_avoidance_frame(FVector3f const preferred_direction, float const float_bias)
     -> AvoidanceFrame {
-    auto const reference_axis{FMath::Abs(preferred_direction.Z) < 0.9f ? FVector3f::UpVector
-                                                                       : FVector3f::RightVector};
-    auto const first_lateral{
-        FVector3f::CrossProduct(reference_axis, preferred_direction).GetSafeNormal()};
-    auto const second_lateral{
-        FVector3f::CrossProduct(preferred_direction, first_lateral).GetSafeNormal()};
-
-    float roll_sin;
-    float roll_cos;
-    FMath::SinCos(&roll_sin, &roll_cos, float_bias * 2.f * UE_PI);
-
-    return {
-        preferred_direction,
-        first_lateral,
-        second_lateral,
-        roll_sin,
-        roll_cos,
-    };
+    return ml::simulation::fighters::make_avoidance_frame(ml::to_native(preferred_direction),
+                                                          float_bias);
 }
 auto Simulation::make_avoidance_direction(AvoidanceFrame const& frame, int8 const choice)
     -> FVector3f {
     check(is_avoidance_direction_choice(choice));
-
-    auto const ring{choice / 4};
-    auto const ring_index{choice % 4};
-    FVector3f lateral_direction;
-    switch (ring_index) {
-        case 0:
-            lateral_direction =
-                frame.first_lateral * frame.roll_cos + frame.second_lateral * frame.roll_sin;
-            break;
-        case 1:
-            lateral_direction =
-                frame.first_lateral * -frame.roll_sin + frame.second_lateral * frame.roll_cos;
-            break;
-        case 2:
-            lateral_direction =
-                frame.first_lateral * -frame.roll_cos + frame.second_lateral * -frame.roll_sin;
-            break;
-        default:
-            lateral_direction =
-                frame.first_lateral * frame.roll_sin + frame.second_lateral * -frame.roll_cos;
-            break;
-    }
-
-    auto const forward_weight{ring == 0 ? sqrt_three_over_two : escape_forward_weight};
-    auto const lateral_weight{ring == 0 ? half_weight : escape_lateral_weight};
-    return frame.preferred_direction * forward_weight + lateral_direction * lateral_weight;
+    return ml::to_unreal(ml::simulation::fighters::make_avoidance_direction(frame, choice));
 }
 auto Simulation::make_avoidance_directions(AvoidanceFrame const& frame)
     -> TStaticArray<FVector3f, n_avoidance_choices> {
-    TStaticArray<FVector3f, 4> const lateral_directions{
-        frame.first_lateral * frame.roll_cos + frame.second_lateral * frame.roll_sin,
-        frame.first_lateral * -frame.roll_sin + frame.second_lateral * frame.roll_cos,
-        frame.first_lateral * -frame.roll_cos + frame.second_lateral * -frame.roll_sin,
-        frame.first_lateral * frame.roll_sin + frame.second_lateral * -frame.roll_cos,
-    };
-    auto const shallow_forward{frame.preferred_direction * sqrt_three_over_two};
-    auto const escape_forward{frame.preferred_direction * escape_forward_weight};
-
+    std::array<ml::simulation::Vector3f, ml::simulation::fighters::avoidance_direction_count>
+        native_directions;
+    ml::simulation::fighters::make_avoidance_directions(frame, native_directions);
     TStaticArray<FVector3f, n_avoidance_choices> directions;
-    for (int32 ring_index{}; ring_index < 4; ++ring_index) {
-        directions[ring_index] = shallow_forward + lateral_directions[ring_index] * half_weight;
-        directions[ring_index + 4] =
-            escape_forward + lateral_directions[ring_index] * escape_lateral_weight;
+    for (int32 index{}; index < n_avoidance_choices; ++index) {
+        directions[index] = ml::to_unreal(native_directions[index]);
     }
     return directions;
 }
 auto Simulation::make_avoidance_choice_order(uint32 const integral_bias, int8 const previous_choice)
     -> TStaticArray<int8, n_avoidance_choices> {
+    std::array<int8, ml::simulation::fighters::avoidance_direction_count> native_order;
+    ml::simulation::fighters::make_avoidance_choice_order(
+        integral_bias, previous_choice, native_order);
     TStaticArray<int8, n_avoidance_choices> result;
-    int32 write_index{};
-    if (is_avoidance_direction_choice(previous_choice)) {
-        result[write_index++] = previous_choice;
+    for (int32 index{}; index < n_avoidance_choices; ++index) {
+        result[index] = native_order[index];
     }
-
-    auto const first_ring_index{static_cast<int32>(integral_bias % 4)};
-    auto const direction{(integral_bias & 4u) == 0 ? 1 : -1};
-    for (int32 ring{}; ring < 2; ++ring) {
-        for (int32 offset{}; offset < 4; ++offset) {
-            auto const ring_index{(first_ring_index + direction * offset + 4) % 4};
-            auto const choice{static_cast<int8>(ring * 4 + ring_index)};
-            if (choice != previous_choice) {
-                result[write_index++] = choice;
-            }
-        }
-    }
-    check(write_index == n_avoidance_choices);
     return result;
 }
 auto Simulation::make_coincident_separation_direction(FRegistryEntityHandle const self,
                                                       FRegistryEntityHandle const other)
     -> FVector3f {
     check(self != other);
-    auto const first{self < other ? self : other};
-    auto const second{self < other ? other : self};
-    auto const pair_hash{HashCombineFast(GetTypeHash(first), GetTypeHash(second))};
-    auto const biases{ml::make_deterministic_biases(static_cast<int32>(pair_hash),
-                                                    static_cast<int32>(pair_hash ^ 0x9e3779b9u))};
-    auto const z{biases.floating * 2.f - 1.f};
-    auto const radial{FMath::Sqrt(FMath::Max(0.f, 1.f - z * z))};
-    float angle_sin;
-    float angle_cos;
-    FMath::SinCos(&angle_sin,
-                  &angle_cos,
-                  static_cast<float>(biases.integral & 0x00ffffffu) * (2.f * UE_PI / 16'777'216.f));
-    FVector3f const direction{radial * angle_cos, radial * angle_sin, z};
-    return self == first ? direction : -direction;
+    return ml::to_unreal(
+        ml::simulation::fighters::make_coincident_separation_direction(self, other));
 }
 auto Simulation::get_navigation_tick_period(NavigationRiskTier const tier) const
     -> FPeriodicTickCountdown16::counter_type {
@@ -215,21 +143,15 @@ auto Simulation::get_navigation_tick_period(NavigationRiskTier const tier) const
 void Simulation::update_navigation_risk(int32 const fighter_index,
                                         NavigationRiskTier const observed_tier) {
     auto& data{entity_buffers.current()};
-    auto current_tier{static_cast<NavigationRiskTier>(data.navigation_risk_tiers[fighter_index])};
-    auto& lower_risk_scans{data.navigation_lower_risk_scan_counts[fighter_index]};
-    if (observed_tier >= current_tier) {
-        current_tier = observed_tier;
-        lower_risk_scans = 0;
-    } else {
-        ++lower_risk_scans;
-        if (lower_risk_scans >= lower_risk_scans_to_demote) {
-            current_tier = observed_tier;
-            lower_risk_scans = 0;
-        }
-    }
+    auto const update{simulation::fighters::update_navigation_risk(
+        static_cast<NavigationRiskTier>(data.navigation_risk_tiers[fighter_index]),
+        observed_tier,
+        data.navigation_lower_risk_scan_counts[fighter_index],
+        lower_risk_scans_to_demote)};
 
-    data.navigation_risk_tiers[fighter_index] = static_cast<uint8>(current_tier);
-    auto const period{get_navigation_tick_period(current_tier)};
+    data.navigation_risk_tiers[fighter_index] = static_cast<uint8>(update.tier);
+    data.navigation_lower_risk_scan_counts[fighter_index] = update.lower_risk_scan_count;
+    auto const period{get_navigation_tick_period(update.tier)};
     data.navigation_update_countdowns.periods[fighter_index] = period;
     data.navigation_update_countdowns.remaining_ticks[fighter_index] = period;
 }
@@ -764,14 +686,8 @@ void Simulation::update_separation_observations(NavigationScratch& scratch) {
             (retained_memory + separation_observation).GetClampedToMaxSize(1.f)};
         ml::assign(data.separation_steering, fighter_index, steering_memory);
 
-        auto observed_tier{NavigationRiskTier::Clear};
-        if (closest_distance_sq <= immediate_distance_sq) {
-            observed_tier = NavigationRiskTier::Immediate;
-        } else if (closest_distance_sq <= close_distance_sq) {
-            observed_tier = NavigationRiskTier::Active;
-        } else if (n_nearby > 0) {
-            observed_tier = NavigationRiskTier::Nearby;
-        }
+        auto const observed_tier{simulation::fighters::classify_navigation_risk(
+            closest_distance_sq, immediate_distance_sq, close_distance_sq, n_nearby)};
         scratch.observed_risk_tiers[fighter_index] = static_cast<uint8>(observed_tier);
     }
 }
@@ -781,20 +697,16 @@ void Simulation::apply_separation_steering() {
         auto const span{get_task_span(task)};
         for (int32 local_index{}; local_index < span.count; ++local_index) {
             auto const fighter_index{span.offset + local_index};
-            auto const separation_steering{
-                ml::get_vector3f(data.separation_steering, fighter_index)};
-            if (separation_steering.IsNearlyZero()) {
+            auto const preferred_direction{simulation::fighters::make_separation_steering_direction(
+                ml::to_native(ml::get_vector3f(data.movement_directions, fighter_index)),
+                ml::to_native(ml::get_vector3f(data.separation_steering, fighter_index)),
+                config.separation_strength)};
+            if (!preferred_direction) {
                 continue;
             }
 
-            auto const goal_direction{ml::get_vector3f(data.movement_directions, fighter_index)};
-            auto preferred_direction{
-                (goal_direction + separation_steering * config.separation_strength)
-                    .GetSafeNormal()};
-            if (preferred_direction.IsNearlyZero()) {
-                preferred_direction = separation_steering.GetSafeNormal();
-            }
-            ml::assign(data.movement_directions, fighter_index, preferred_direction);
+            ml::assign(
+                data.movement_directions, fighter_index, ml::to_unreal(*preferred_direction));
         }
     }};
     apply_separation(Task::MoveToDestination);
@@ -930,32 +842,21 @@ void Simulation::select_navigation_alternatives(NavigationScratch& scratch,
     for (int32 blocked_index{}; blocked_index < n_blocked_fighters; ++blocked_index) {
         auto const fighter_index{scratch.blocked_fighter_indices[blocked_index]};
         auto const fighter_location{ml::get_vector3f(data.locations, fighter_index)};
-        auto chosen_choice{stop_movement_choice};
         // Partial progress must leave room until the next active scan, including its margin.
         auto const safe_progress_distance{data.speeds[fighter_index] * safe_progress_time};
-        auto best_distance_sq{safe_progress_distance * safe_progress_distance};
 
         auto const candidate_begin{blocked_index * n_avoidance_choices};
         auto const candidate_end{candidate_begin + n_avoidance_choices};
-        for (int32 candidate_trace_index{candidate_begin}; candidate_trace_index < candidate_end;
-             ++candidate_trace_index) {
-            auto const choice{scratch.trace_choice_indices[candidate_trace_index]};
-            if (scratch.line_of_sight_results[candidate_trace_index] == 0) {
-                continue;
-            }
-            // Traces are already in held-choice/bias order. The first clear one wins outright.
-            if (scratch.trace_hits.hits[candidate_trace_index] == 0) {
-                chosen_choice = choice;
-                break;
-            }
-            auto const hit_location{ml::to_unreal(
-                scratch.trace_hits.locations.get_const_view()[candidate_trace_index])};
-            auto const distance_sq{FVector3f::DistSquared(fighter_location, hit_location)};
-            if (distance_sq > best_distance_sq) {
-                best_distance_sq = distance_sq;
-                chosen_choice = choice;
-            }
-        }
+        auto const candidate_count{static_cast<std::size_t>(n_avoidance_choices)};
+        auto const chosen_choice{simulation::fighters::choose_navigation_alternative(
+            ml::to_native(fighter_location),
+            safe_progress_distance,
+            {scratch.trace_choice_indices.data() + candidate_begin, candidate_count},
+            {scratch.line_of_sight_results.data() + candidate_begin, candidate_count},
+            scratch.trace_hits.hits.view().subspan(candidate_begin, candidate_count),
+            scratch.trace_hits.locations.get_const_view().slice(candidate_begin,
+                                                                n_avoidance_choices),
+            stop_movement_choice)};
 
         data.avoidance_choice_indices[fighter_index] = chosen_choice;
         if (chosen_choice == stop_movement_choice &&

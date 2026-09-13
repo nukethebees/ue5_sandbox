@@ -8,6 +8,9 @@
 #include <vector>
 
 namespace ml::simulation {
+[[nodiscard]] auto analyse_handle(std::span<std::int32_t const> generations,
+                                  FRegistryEntityHandle handle) noexcept -> RegistryHandleState;
+
 struct EntityRegistryBookkeeping {
     using size_type = std::int32_t;
 

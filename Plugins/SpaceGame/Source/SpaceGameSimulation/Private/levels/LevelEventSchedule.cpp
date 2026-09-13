@@ -1,14 +1,6 @@
 #include <SpaceGameSimulation/levels/LevelEventSchedule.h>
 
 namespace ml {
-auto try_to_level_event_count(int32 const count, FLevelEventCount& result) -> bool {
-    if (count < 0 || count > TNumericLimits<FLevelEventCount>::Max()) {
-        return false;
-    }
-    result = static_cast<FLevelEventCount>(count);
-    return true;
-}
-
 auto FLevelEventSchedule::add_spawn_group(ETestEntityType const type,
                                           int32 const offset,
                                           int32 const count) -> bool {
@@ -21,8 +13,8 @@ auto FLevelEventSchedule::add_spawn_group(ETestEntityType const type,
     FLevelEventCount payload_count;
     auto& tick_counts{event_group_counts.Last()};
     FLevelEventCount group_count;
-    if (!try_to_level_event_count(count, payload_count) ||
-        !try_to_level_event_count(tick_counts.spawn_groups + 1, group_count)) {
+    if (!simulation::try_to_level_event_count(count, payload_count) ||
+        !simulation::try_to_level_event_count(tick_counts.spawn_groups + 1, group_count)) {
         return false;
     }
 
@@ -43,8 +35,8 @@ auto FLevelEventSchedule::add_mission_group(ELevelMissionEventType const type,
     FLevelEventCount payload_count;
     auto& tick_counts{event_group_counts.Last()};
     FLevelEventCount group_count;
-    if (!try_to_level_event_count(count, payload_count) ||
-        !try_to_level_event_count(tick_counts.mission_groups + 1, group_count)) {
+    if (!simulation::try_to_level_event_count(count, payload_count) ||
+        !simulation::try_to_level_event_count(tick_counts.mission_groups + 1, group_count)) {
         return false;
     }
 

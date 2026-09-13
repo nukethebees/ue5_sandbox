@@ -181,23 +181,11 @@ struct SPACEGAMESIMULATION_API FTestEntityRegistry {
     void refresh_free_indices();
 
     /* **************************************** */
-    // Slot allocation and identity registration
-    /* **************************************** */
-    auto register_spawned_entity(EntityData::ConstView const& view,
-                                 int32 source_index,
-                                 int32 slot_index,
-                                 TestEntityUniqueId unique_id) -> FRegistryEntityHandle;
-
-    void apply_live_state_transition(int32 slot_index, ETestTeam team, uint8 alive);
-
-    /* **************************************** */
     // Queued updates
     /* **************************************** */
     void commit_entity_updates();
     // Death events annotate history; live-state transitions own alive-count changes.
     void commit_death_updates();
-    void record_entity_death(TestEntityUniqueId victim_id, ETestDeathReason reason);
-    void credit_entity_kill(TestEntityUniqueId killer_id, TestEntityUniqueId victim_id);
 
     /* **************************************** */
     // Validation

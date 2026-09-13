@@ -11,6 +11,8 @@
 #include <SpaceGameSimulation/telemetry/LevelTelemetryBlockHistory.h>
 #include <SpaceGameSimulation/telemetry/LevelTelemetryRunRecord.h>
 
+#include <Containers/StaticArray.h>
+
 using FLevelTelemetryCurrentState = ml::simulation::LevelTelemetryCurrentState;
 using FLevelTelemetryHistoryStats = ml::simulation::LevelTelemetryHistoryStats;
 

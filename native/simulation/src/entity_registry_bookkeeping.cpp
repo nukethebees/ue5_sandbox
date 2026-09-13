@@ -5,6 +5,25 @@
 #include <cstddef>
 
 namespace ml::simulation {
+auto analyse_handle(std::span<std::int32_t const> const generations,
+                    FRegistryEntityHandle const handle) noexcept -> RegistryHandleState {
+    if (handle.is_null()) {
+        return RegistryHandleState::Null;
+    }
+    if (handle.index < 0 || static_cast<std::size_t>(handle.index) >= generations.size()) {
+        return RegistryHandleState::Invalid;
+    }
+
+    auto const current_generation{generations[static_cast<std::size_t>(handle.index)]};
+    if (current_generation == handle.generation) {
+        return RegistryHandleState::Active;
+    }
+    if (current_generation > handle.generation) {
+        return RegistryHandleState::Stale;
+    }
+    return RegistryHandleState::Invalid;
+}
+
 void EntityRegistryBookkeeping::reset() noexcept {
     generations.clear();
     unique_ids.clear();
@@ -71,21 +90,7 @@ void EntityRegistryBookkeeping::record_moved(FRegistryEntityHandle const handle)
 
 auto EntityRegistryBookkeeping::analyse_handle(FRegistryEntityHandle const handle) const noexcept
     -> RegistryHandleState {
-    if (handle.is_null()) {
-        return RegistryHandleState::Null;
-    }
-    if (handle.index < 0 || static_cast<std::size_t>(handle.index) >= generations.size()) {
-        return RegistryHandleState::Invalid;
-    }
-
-    auto const current_generation{generations[static_cast<std::size_t>(handle.index)]};
-    if (current_generation == handle.generation) {
-        return RegistryHandleState::Active;
-    }
-    if (current_generation > handle.generation) {
-        return RegistryHandleState::Stale;
-    }
-    return RegistryHandleState::Invalid;
+    return ml::simulation::analyse_handle(generations, handle);
 }
 
 auto EntityRegistryBookkeeping::is_valid_handle(FRegistryEntityHandle const handle) const noexcept

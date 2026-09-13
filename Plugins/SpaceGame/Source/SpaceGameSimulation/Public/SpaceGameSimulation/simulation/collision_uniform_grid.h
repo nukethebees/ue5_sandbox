@@ -2,6 +2,7 @@
 
 #include <sandbox/simulation/collision_grid.h>
 #include <sandbox/simulation/collision_grid_entity_storage.h>
+#include <sandbox/simulation/collision_grid_queries.h>
 #include <sandbox/simulation/collision_grid_static_storage.h>
 #include <sandbox/simulation/entity_world_bounds.h>
 #include <sandbox/simulation/spatial_query_telemetry.h>
@@ -22,10 +23,7 @@ class UStaticMesh;
 struct FTestEntityRegistry;
 
 namespace ml::ioj {
-enum class ETraceEntityFilter : uint8 {
-    None,
-    ExcludeCapitalShipFighters,
-};
+using ETraceEntityFilter = simulation::collision::TraceEntityFilter;
 
 struct FCellCoordBounds {
     FIntVector3 min;
@@ -54,6 +52,13 @@ struct SPACEGAMESIMULATION_API CollisionUniformGrid {
     auto num_cells() const -> int32;
     auto get_non_empty_cell_count() const noexcept -> int32 {
         return entity_storage_.non_empty_cell_count();
+    }
+    auto get_native_geometry() const noexcept -> simulation::collision::GridGeometry {
+        return geometry_;
+    }
+    auto get_native_entity_storage() const noexcept
+        -> simulation::collision::CollisionGridEntityStorage const& {
+        return entity_storage_;
     }
     auto get_cell_entities(FIntVector3 const cell_coord) const
         -> std::span<FRegistryEntityHandle const>;
@@ -109,24 +114,6 @@ struct SPACEGAMESIMULATION_API CollisionUniformGrid {
                      TConstArrayView<FRegistryEntityHandle> ignored_entities = {},
                      ETraceEntityFilter entity_filter = ETraceEntityFilter::None) const;
   private:
-    enum class ETraceKind : uint8 {
-        Line,
-        Sweep,
-    };
-
-    enum class EIgnoredEntityMode : uint8 {
-        None,
-        PerTrace,
-    };
-
-    template <ETraceKind TraceKind,
-              EIgnoredEntityMode IgnoredEntityMode,
-              ETraceEntityFilter EntityFilter>
-    void trace_aabbs_impl(FLineTracesConstView const& traces,
-                          FTraceHitsView const& hits,
-                          TConstArrayView<FRegistryEntityHandle> ignored_entities,
-                          FVector3f moving_half_extent) const;
-
     auto to_cell_x(float value) const -> int32;
     auto to_cell_y(float value) const -> int32;
     auto to_cell_z(float value) const -> int32;

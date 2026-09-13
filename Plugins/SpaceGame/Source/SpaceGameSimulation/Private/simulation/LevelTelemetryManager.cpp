@@ -4,6 +4,8 @@
 #include <SpaceGameSimulation/missions/TestMissionManager.h>
 #include <SpaceGameSimulation/simulation/SimulationClock.h>
 
+#include <sandbox/simulation/telemetry_statistics.h>
+
 #include <HAL/PlatformTime.h>
 #include <Misc/DateTime.h>
 
@@ -12,17 +14,6 @@
 namespace level_telemetry_detail {
 using Field = ml::level_telemetry::EHistoryField;
 using FieldMask = ml::level_telemetry::FHistoryFieldMask;
-
-auto sum(FTestEntityRegistry::EntityCounts const& entity_counts) -> int32 {
-    int32 total{};
-    for (auto const& team_counts : entity_counts) {
-        for (auto const count : team_counts) {
-            total += count;
-        }
-    }
-
-    return total;
-}
 
 template <typename Data>
 auto snapshot_with_terminal_sample(Data const& source,
@@ -47,22 +38,8 @@ bool contains_only_nonnegative_values(Data const& data) {
 }
 
 auto aggregate_timings(TArray<double> samples) -> FLevelTelemetryTimingAggregate {
-    FLevelTelemetryTimingAggregate result;
-    result.sample_count = samples.Num();
-    if (samples.IsEmpty()) {
-        return result;
-    }
-    double total{};
-    for (auto const sample : samples) {
-        total += sample;
-        result.max_ms = FMath::Max(result.max_ms, sample * 1000.0);
-    }
-    samples.Sort();
-    auto const p95_index{
-        FMath::Clamp(FMath::CeilToInt(samples.Num() * 0.95) - 1, 0, samples.Num() - 1)};
-    result.mean_ms = total * 1000.0 / samples.Num();
-    result.p95_ms = samples[p95_index] * 1000.0;
-    return result;
+    return ml::simulation::telemetry::aggregate_timings(
+        {samples.GetData(), static_cast<std::size_t>(samples.Num())});
 }
 
 }
@@ -70,7 +47,6 @@ auto aggregate_timings(TArray<double> samples) -> FLevelTelemetryTimingAggregate
 using level_telemetry_detail::aggregate_timings;
 using level_telemetry_detail::contains_only_nonnegative_values;
 using level_telemetry_detail::snapshot_with_terminal_sample;
-using level_telemetry_detail::sum;
 
 /* **************************************** */
 // Construction and lifecycle
@@ -218,7 +194,7 @@ void FLevelTelemetryManager::update_current_state() {
     auto const spatial{spatial_queries_.get_runtime_telemetry()};
     current_state_.active_entities_by_team_and_type =
         entity_registry_.count_alive_per_team_and_type();
-    current_state_.active_entities = sum(current_state_.active_entities_by_team_and_type);
+    current_state_.active_entities = entity_registry_.count_alive();
     current_state_.spawned_entities = entity_registry_.get_num_unique_ids_issued();
     current_state_.destroyed_entities =
         current_state_.spawned_entities - current_state_.active_entities;

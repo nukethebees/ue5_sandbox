@@ -1,9 +1,10 @@
 #include "SpaceGameSimulation/simulation/collision_uniform_grid.h"
 
 #include <sandbox/simulation/collision_grid.h>
+#include <sandbox/simulation/collision_grid_overlap_query.h>
 #include <sandbox/simulation/entity_cell_data_operations.h>
-#include <sandbox/simulation/world_aabb_operations.h>
 #include <SandboxCore/soa_rotator_utils.h>
+#include <SpaceGameSimulation/entities/NativeEntityRegistryView.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/entities/TestEntityType.h>
 #include <SpaceGameSimulation/simulation/EntityWorldBounds.h>
@@ -12,9 +13,6 @@
 #include <SpaceGameSimulation/simulation/TraceHits.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
-#include <algorithm>
-#include <cmath>
-#include <limits>
 #include <utility>
 
 namespace ml::ioj {
@@ -238,59 +236,25 @@ void CollisionUniformGrid::append_overlaps(simulation::collision::WorldAABB cons
            *ml::to_unreal(query_bounds.max).ToString(),
            *to_string(get_grid_dims()));
 
-    auto const overlaps_query{[&query_bounds](simulation::Vector3f const candidate_min,
-                                              simulation::Vector3f const candidate_max) {
-        return query_bounds.min.X <= candidate_max.X && query_bounds.max.X >= candidate_min.X &&
-               query_bounds.min.Y <= candidate_max.Y && query_bounds.max.Y >= candidate_min.Y &&
-               query_bounds.min.Z <= candidate_max.Z && query_bounds.max.Z >= candidate_min.Z;
-    }};
-    auto const static_aabbs{static_storage_.aabbs().get_const_view().columns()};
-    auto const row_stride{geometry_.dimensions.x};
-    auto const plane_stride{row_stride * geometry_.dimensions.y};
-
-    auto plane_index{min_coord.x + min_coord.y * row_stride + min_coord.z * plane_stride};
-    for (int32 z{min_coord.z}; z <= max_coord.z; ++z) {
-        auto row_index{plane_index};
-        for (int32 y{min_coord.y}; y <= max_coord.y; ++y) {
-            auto cell_index{row_index};
-            for (int32 x{min_coord.x}; x <= max_coord.x; ++x, ++cell_index) {
-                auto const entities{entity_storage_.entities_for_cell(cell_index)};
-                auto const entity_count{static_cast<int32>(entities.size())};
-                if (entity_count > 0) {
-                    auto const aabbs{entity_storage_.aabbs_for_cell(cell_index)};
-
-                    for (int32 entity_index{}; entity_index < entity_count; ++entity_index) {
-                        auto const entity{entities[entity_index]};
-                        if (entity == ignored_entity || !entity_registry_.is_valid_alive(entity)) {
-                            continue;
-                        }
-
-                        if (overlaps_query(simulation::collision::min_at(aabbs, entity_index),
-                                           simulation::collision::max_at(aabbs, entity_index))) {
-                            out_entities.push_back(entity);
-                        }
-                    }
-                }
-
-                auto const static_indices{static_storage_.aabb_indices_for_cell(cell_index)};
-                for (auto const static_index : static_indices) {
-                    if (overlaps_query(simulation::collision::min_at(static_aabbs, static_index),
-                                       simulation::collision::max_at(static_aabbs, static_index))) {
-                        out_static_geometry_indices.push_back(static_index);
-                    }
-                }
-            }
-            row_index += row_stride;
-        }
-        plane_index += plane_stride;
-    }
+    simulation::collision::append_grid_overlaps(geometry_,
+                                                entity_storage_,
+                                                static_storage_,
+                                                ml::make_native_query_view(entity_registry_),
+                                                query_bounds,
+                                                ignored_entity,
+                                                out_entities,
+                                                out_static_geometry_indices);
 }
 
 void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
                                        FTraceHitsView const& hits) const {
     telemetry_.record_line_traces(static_cast<uint64>(traces.num()));
-    trace_aabbs_impl<ETraceKind::Line, EIgnoredEntityMode::None, ETraceEntityFilter::None>(
-        traces, hits, {}, FVector3f::ZeroVector);
+    simulation::collision::trace_grid_lines(geometry_,
+                                            entity_storage_,
+                                            static_storage_,
+                                            ml::make_native_query_view(entity_registry_),
+                                            traces,
+                                            hits);
 }
 
 void CollisionUniformGrid::trace_aabbs(
@@ -298,8 +262,14 @@ void CollisionUniformGrid::trace_aabbs(
     FTraceHitsView const& hits,
     TConstArrayView<FRegistryEntityHandle> const ignored_entities) const {
     telemetry_.record_line_traces(static_cast<uint64>(traces.num()));
-    trace_aabbs_impl<ETraceKind::Line, EIgnoredEntityMode::PerTrace, ETraceEntityFilter::None>(
-        traces, hits, ignored_entities, FVector3f::ZeroVector);
+    simulation::collision::trace_grid_lines_ignoring_entities(
+        geometry_,
+        entity_storage_,
+        static_storage_,
+        ml::make_native_query_view(entity_registry_),
+        traces,
+        hits,
+        {ignored_entities.GetData(), static_cast<std::size_t>(ignored_entities.Num())});
 }
 
 void
@@ -313,37 +283,16 @@ void
     check(moving_half_extent.X >= 0.f);
     check(moving_half_extent.Y >= 0.f);
     check(moving_half_extent.Z >= 0.f);
-
-    switch (entity_filter) {
-        case ETraceEntityFilter::None:
-            if (ignored_entities.IsEmpty()) {
-                trace_aabbs_impl<ETraceKind::Sweep,
-                                 EIgnoredEntityMode::None,
-                                 ETraceEntityFilter::None>(
-                    centre_paths, hits, ignored_entities, moving_half_extent);
-            } else {
-                trace_aabbs_impl<ETraceKind::Sweep,
-                                 EIgnoredEntityMode::PerTrace,
-                                 ETraceEntityFilter::None>(
-                    centre_paths, hits, ignored_entities, moving_half_extent);
-            }
-            return;
-        case ETraceEntityFilter::ExcludeCapitalShipFighters:
-            if (ignored_entities.IsEmpty()) {
-                trace_aabbs_impl<ETraceKind::Sweep,
-                                 EIgnoredEntityMode::None,
-                                 ETraceEntityFilter::ExcludeCapitalShipFighters>(
-                    centre_paths, hits, ignored_entities, moving_half_extent);
-            } else {
-                trace_aabbs_impl<ETraceKind::Sweep,
-                                 EIgnoredEntityMode::PerTrace,
-                                 ETraceEntityFilter::ExcludeCapitalShipFighters>(
-                    centre_paths, hits, ignored_entities, moving_half_extent);
-            }
-            return;
-    }
-
-    checkNoEntry();
+    simulation::collision::sweep_grid_aabbs(
+        geometry_,
+        entity_storage_,
+        static_storage_,
+        ml::make_native_query_view(entity_registry_),
+        centre_paths,
+        ml::to_native(moving_half_extent),
+        hits,
+        {ignored_entities.GetData(), static_cast<std::size_t>(ignored_entities.Num())},
+        entity_filter);
 }
 
 void CollisionUniformGrid::reset_runtime_telemetry() noexcept {
@@ -353,245 +302,6 @@ void CollisionUniformGrid::reset_runtime_telemetry() noexcept {
 auto CollisionUniformGrid::get_runtime_telemetry() const noexcept
     -> FCollisionGridTelemetrySnapshot {
     return telemetry_.snapshot();
-}
-
-template <CollisionUniformGrid::ETraceKind TraceKind,
-          CollisionUniformGrid::EIgnoredEntityMode IgnoredEntityMode,
-          ETraceEntityFilter EntityFilter>
-void CollisionUniformGrid::trace_aabbs_impl(
-    FLineTracesConstView const& traces,
-    FTraceHitsView const& hits,
-    TConstArrayView<FRegistryEntityHandle> const ignored_entities,
-    FVector3f const moving_half_extent) const {
-    auto const n{traces.num()};
-    check(n == hits.num());
-    if constexpr (IgnoredEntityMode == EIgnoredEntityMode::PerTrace) {
-        check(ignored_entities.Num() == n);
-    } else if constexpr (IgnoredEntityMode != EIgnoredEntityMode::None) {
-        static_assert(false, "Unsupported ignored entity mode.");
-    }
-
-    auto const grid_width{geometry_.dimensions.x};
-    auto const grid_plane_stride{geometry_.dimensions.x * geometry_.dimensions.y};
-    FIntVector3 const max_cell_coord{
-        geometry_.dimensions.x - 1, geometry_.dimensions.y - 1, geometry_.dimensions.z - 1};
-    auto const geometry{geometry_};
-    auto const to_linear_index{[grid_width, grid_plane_stride](FIntVector3 const cell) {
-        return cell.X + cell.Y * grid_width + cell.Z * grid_plane_stride;
-    }};
-    auto const static_aabbs{static_storage_.aabbs().get_const_view().columns()};
-    FIntVector3 cell_padding{};
-    if constexpr (TraceKind == ETraceKind::Sweep) {
-        cell_padding = {
-            FMath::CeilToInt(moving_half_extent.X / geometry_.cell_dimensions.X),
-            FMath::CeilToInt(moving_half_extent.Y / geometry_.cell_dimensions.Y),
-            FMath::CeilToInt(moving_half_extent.Z / geometry_.cell_dimensions.Z),
-        };
-    } else if constexpr (TraceKind != ETraceKind::Line) {
-        static_assert(false, "Unsupported collision trace kind.");
-    }
-
-    for (int32 i_test{0}; i_test < n; ++i_test) {
-        hits.hits[i_test] = 0;
-        hits.entities[i_test] = FRegistryEntityHandle{};
-        hits.static_geometry_indices[i_test] = INDEX_NONE;
-
-        auto const p0{traces.starts[i_test]};
-        auto const p1{traces.ends[i_test]};
-        auto const delta{p1 - p0};
-        simulation::collision::GridTraversal traversal;
-        if (!simulation::collision::GridTraversal::create(geometry, p0, p1, traversal)) {
-            continue;
-        }
-        auto current_cell{to_unreal(traversal.current_cell())};
-        simulation::Vector3f inv_delta{};
-        for (int32 axis{}; axis < 3; ++axis) {
-            if (delta.Elements[axis] != 0.0f) {
-                inv_delta.Elements[axis] = 1.0f / delta.Elements[axis];
-            }
-        }
-        auto const native_expansion{ml::to_native(moving_half_extent)};
-
-        auto nearest_t{std::numeric_limits<float>::infinity()};
-        FRegistryEntityHandle nearest_entity;
-        int32 nearest_static_index{INDEX_NONE};
-        FRegistryEntityHandle ignored_entity{};
-        if constexpr (IgnoredEntityMode == EIgnoredEntityMode::PerTrace) {
-            ignored_entity = ignored_entities[i_test];
-        } else if constexpr (IgnoredEntityMode != EIgnoredEntityMode::None) {
-            static_assert(false, "Unsupported ignored entity mode.");
-        }
-        auto const trace_cell{[&](int32 const cell_index) {
-            auto const entities{entity_storage_.entities_for_cell(cell_index)};
-            auto const entity_count{static_cast<int32>(entities.size())};
-
-            if (entity_count > 0) {
-                auto const aabbs{entity_storage_.aabbs_for_cell(cell_index)};
-
-                for (int32 i_entity{0}; i_entity < entity_count; ++i_entity) {
-                    if constexpr (IgnoredEntityMode == EIgnoredEntityMode::PerTrace) {
-                        if (entities[i_entity] == ignored_entity) {
-                            continue;
-                        }
-                    } else if constexpr (IgnoredEntityMode != EIgnoredEntityMode::None) {
-                        static_assert(false, "Unsupported ignored entity mode.");
-                    }
-                    if constexpr (EntityFilter == ETraceEntityFilter::ExcludeCapitalShipFighters) {
-                        if (entity_registry_.get_entity_type(entities[i_entity]) ==
-                            ETestEntityType::CapitalShipFighter) {
-                            continue;
-                        }
-                    } else if constexpr (EntityFilter != ETraceEntityFilter::None) {
-                        static_assert(false, "Unsupported trace entity filter.");
-                    }
-
-                    auto const hit_t{simulation::collision::trace_aabb(
-                        p0,
-                        inv_delta,
-                        delta,
-                        simulation::collision::min_at(aabbs, i_entity),
-                        simulation::collision::max_at(aabbs, i_entity),
-                        native_expansion)};
-                    if (hit_t < nearest_t) {
-                        nearest_t = hit_t;
-                        nearest_entity = entities[i_entity];
-                        nearest_static_index = INDEX_NONE;
-                    }
-                }
-            }
-
-            auto const static_indices{static_storage_.aabb_indices_for_cell(cell_index)};
-
-            for (auto const static_index : static_indices) {
-                auto const hit_t{simulation::collision::trace_aabb(
-                    p0,
-                    inv_delta,
-                    delta,
-                    simulation::collision::min_at(static_aabbs, static_index),
-                    simulation::collision::max_at(static_aabbs, static_index),
-                    native_expansion)};
-                if (hit_t < nearest_t) {
-                    nearest_t = hit_t;
-                    nearest_entity = FRegistryEntityHandle{};
-                    nearest_static_index = static_index;
-                }
-            }
-        }};
-
-        auto const try_advance_traversal{[&] {
-            if (!traversal.advance()) {
-                return false;
-            }
-            current_cell = to_unreal(traversal.current_cell());
-            return true;
-        }};
-
-        if constexpr (TraceKind == ETraceKind::Sweep) {
-            auto const trace_z_range{
-                [&](int32 const x, int32 const y, int32 const min_z, int32 const max_z) {
-                    auto cell_index{x + y * grid_width + min_z * grid_plane_stride};
-                    for (int32 z{min_z}; z <= max_z; ++z) {
-                        trace_cell(cell_index);
-                        cell_index += grid_plane_stride;
-                    }
-                }};
-            auto const trace_yz_plane{
-                [&](int32 const x, FIntVector3 const min_cell, FIntVector3 const max_cell) {
-                    for (int32 y{min_cell.Y}; y <= max_cell.Y; ++y) {
-                        trace_z_range(x, y, min_cell.Z, max_cell.Z);
-                    }
-                }};
-            auto const trace_x_range{[&](int32 const min_x,
-                                         int32 const max_x,
-                                         FIntVector3 const min_cell,
-                                         FIntVector3 const max_cell) {
-                for (int32 x{min_x}; x <= max_x; ++x) {
-                    trace_yz_plane(x, min_cell, max_cell);
-                }
-            }};
-            auto const trace_y_range{[&](int32 const x,
-                                         int32 const min_y,
-                                         int32 const max_y,
-                                         int32 const min_z,
-                                         int32 const max_z) {
-                for (int32 y{min_y}; y <= max_y; ++y) {
-                    trace_z_range(x, y, min_z, max_z);
-                }
-            }};
-            auto const get_padded_cell_range{[&](FIntVector3 const centre_cell) {
-                auto min_cell{centre_cell - cell_padding};
-                auto max_cell{centre_cell + cell_padding};
-                for (int32 axis{}; axis < 3; ++axis) {
-                    min_cell[axis] = FMath::Max(min_cell[axis], 0);
-                    max_cell[axis] = FMath::Min(max_cell[axis], max_cell_coord[axis]);
-                }
-                return FCellCoordBounds{min_cell, max_cell};
-            }};
-
-            auto [previous_min_cell, previous_max_cell]{get_padded_cell_range(current_cell)};
-            trace_x_range(
-                previous_min_cell.X, previous_max_cell.X, previous_min_cell, previous_max_cell);
-
-            while (try_advance_traversal()) {
-                auto const [min_cell, max_cell]{get_padded_cell_range(current_cell)};
-
-                // Consecutive padded DDA boxes overlap heavily. Partition the current box into
-                // disjoint X planes, Y columns, and Z ends outside the previous box so each cell
-                // is traced only when it first enters the swept region.
-                trace_x_range(min_cell.X,
-                              FMath::Min(max_cell.X, previous_min_cell.X - 1),
-                              min_cell,
-                              max_cell);
-
-                auto const overlap_min_x{FMath::Max(min_cell.X, previous_min_cell.X)};
-                auto const overlap_max_x{FMath::Min(max_cell.X, previous_max_cell.X)};
-                for (int32 x{overlap_min_x}; x <= overlap_max_x; ++x) {
-                    trace_y_range(x,
-                                  min_cell.Y,
-                                  FMath::Min(max_cell.Y, previous_min_cell.Y - 1),
-                                  min_cell.Z,
-                                  max_cell.Z);
-
-                    auto const overlap_min_y{FMath::Max(min_cell.Y, previous_min_cell.Y)};
-                    auto const overlap_max_y{FMath::Min(max_cell.Y, previous_max_cell.Y)};
-                    for (int32 y{overlap_min_y}; y <= overlap_max_y; ++y) {
-                        trace_z_range(
-                            x, y, min_cell.Z, FMath::Min(max_cell.Z, previous_min_cell.Z - 1));
-                        trace_z_range(
-                            x, y, FMath::Max(min_cell.Z, previous_max_cell.Z + 1), max_cell.Z);
-                    }
-
-                    trace_y_range(x,
-                                  FMath::Max(min_cell.Y, previous_max_cell.Y + 1),
-                                  max_cell.Y,
-                                  min_cell.Z,
-                                  max_cell.Z);
-                }
-
-                trace_x_range(FMath::Max(min_cell.X, previous_max_cell.X + 1),
-                              max_cell.X,
-                              min_cell,
-                              max_cell);
-
-                previous_min_cell = min_cell;
-                previous_max_cell = max_cell;
-            }
-        } else if constexpr (TraceKind == ETraceKind::Line) {
-            while (true) {
-                trace_cell(to_linear_index(current_cell));
-                if (!try_advance_traversal()) {
-                    break;
-                }
-            }
-        } else {
-            static_assert(false, "Unsupported collision trace kind.");
-        }
-
-        if (std::isfinite(nearest_t)) {
-            hits.set(
-                i_test, p0 + delta * nearest_t, nearest_entity, nearest_static_index, uint8{1});
-        }
-    }
 }
 
 auto CollisionUniformGrid::to_cell_x(float const value) const -> int32 {

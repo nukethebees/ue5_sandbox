@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sandbox/simulation/collision_events.h>
+#include <sandbox/simulation/collision_overlap_storage.h>
 
 #include <SpaceGameSimulation/entities/TestEntityType.h>
 #include <SpaceGameSimulation/simulation/collision_uniform_grid.h>
@@ -36,10 +37,10 @@ struct SPACEGAMESIMULATION_API FCollisionSystem {
 
     auto get_entity_aabbs() const noexcept -> FEntityAABBs const& { return entity_aabbs_; }
     auto get_entity_entity_overlaps() const -> FEntityEntityOverlaps::ConstView {
-        return entity_entity_overlaps_.get_const_view();
+        return overlap_storage_.entity_entity_overlaps();
     }
     auto get_entity_static_overlaps() const -> FEntityStaticOverlaps::ConstView {
-        return entity_static_overlaps_.get_const_view();
+        return overlap_storage_.entity_static_overlaps();
     }
     auto get_uniform_grid() noexcept -> CollisionUniformGrid& { return uniform_grid_; }
     auto get_uniform_grid() const noexcept -> CollisionUniformGrid const& { return uniform_grid_; }
@@ -52,13 +53,11 @@ struct SPACEGAMESIMULATION_API FCollisionSystem {
     CollisionUniformGrid uniform_grid_;
 
     FEntityAABBs entity_aabbs_{};
-    FEntityEntityOverlaps entity_entity_overlaps_;
-    FEntityStaticOverlaps entity_static_overlaps_;
+    simulation::collision::CollisionOverlapStorage overlap_storage_;
 
     simulation::collision::AABBOverlapEventStorage overlap_event_storage_;
 
     std::vector<FRegistryEntityHandle> overlapping_entities_scratch_;
     std::vector<int32> overlapping_static_geometry_indices_scratch_;
-    std::vector<int32> overlap_sort_indices_scratch_;
 };
 }

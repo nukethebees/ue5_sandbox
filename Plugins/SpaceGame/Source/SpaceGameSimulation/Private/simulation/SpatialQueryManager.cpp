@@ -1,5 +1,6 @@
 #include "SpaceGameSimulation/simulation/SpatialQueryManager.h"
 
+#include <SpaceGameSimulation/entities/NativeEntityRegistryView.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
@@ -127,19 +128,9 @@ auto trace_impl(ml::FSpatialQueryManager const& manager, FTraceRequest const& re
     }
 }
 
-template <typename Predicate>
-auto collect_grid_entities_in_range(ml::ioj::CollisionUniformGrid const& grid,
-                                    FTestEntityRegistry const& entity_registry,
-                                    ml::query_manager::FThreadBuffers& buffers,
-                                    FVector3f const& origin,
-                                    float const radius,
-                                    TArrayView<FRegistryEntityHandle> const out_entities,
-                                    Predicate&& include_entity) -> int32 {
-    auto const n_out_limit{out_entities.Num()};
-    if (n_out_limit == 0) {
-        return 0;
-    }
-
+void validate_grid_for_range_query(ml::ioj::CollisionUniformGrid const& grid,
+                                   FVector3f const& origin,
+                                   float const radius) {
     if (!grid.is_configured()) {
         auto const grid_dims{grid.get_grid_dims()};
         auto const cell_dims{grid.get_cell_dims()};
@@ -154,64 +145,6 @@ auto collect_grid_entities_in_range(ml::ioj::CollisionUniformGrid const& grid,
                cell_dims.Z,
                *ml::ioj::CollisionUniformGrid::to_string(grid_dims));
     }
-
-    auto const abs_radius{FMath::Abs(radius)};
-    FVector3f const radius_extent{abs_radius, abs_radius, abs_radius};
-    auto [min_coord,
-          max_coord]{grid.to_cell_coord_bounds(origin - radius_extent, origin + radius_extent)};
-    auto const grid_dims{grid.get_grid_dims()};
-    auto const max_grid_coord{grid_dims - FIntVector3{1, 1, 1}};
-    if (max_coord.X < 0 || max_coord.Y < 0 || max_coord.Z < 0 || min_coord.X > max_grid_coord.X ||
-        min_coord.Y > max_grid_coord.Y || min_coord.Z > max_grid_coord.Z) {
-        return 0;
-    }
-
-    min_coord.X = FMath::Max(min_coord.X, 0);
-    min_coord.Y = FMath::Max(min_coord.Y, 0);
-    min_coord.Z = FMath::Max(min_coord.Z, 0);
-    max_coord.X = FMath::Min(max_coord.X, max_grid_coord.X);
-    max_coord.Y = FMath::Min(max_coord.Y, max_grid_coord.Y);
-    max_coord.Z = FMath::Min(max_coord.Z, max_grid_coord.Z);
-
-    auto& entity_stamps{buffers.range_query_entity_stamps};
-    auto const entity_count{entity_registry.get_num_elements()};
-    buffers.ensure_entity_stamp_count(entity_count);
-    auto const query_stamp{buffers.advance_range_query_stamp()};
-    auto const radius_squared{radius * radius};
-    auto const& entity_data{entity_registry.get_entity_data()};
-    int32 count{};
-
-    for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
-        for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
-            for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
-                for (auto const handle : grid.get_cell_entities({x, y, z})) {
-                    auto const entity_index{static_cast<std::size_t>(handle.index)};
-                    if (!entity_registry.is_valid_alive(handle) ||
-                        entity_stamps[entity_index] == query_stamp) {
-                        continue;
-                    }
-                    entity_stamps[entity_index] = query_stamp;
-
-                    if (!include_entity(handle, entity_data)) {
-                        continue;
-                    }
-
-                    auto const dist_sq{ml::dist_sq(
-                        entity_data.locations, handle.index, origin.X, origin.Y, origin.Z)};
-                    if (dist_sq > radius_squared) {
-                        continue;
-                    }
-
-                    out_entities[count++] = handle;
-                    if (count >= n_out_limit) {
-                        return count;
-                    }
-                }
-            }
-        }
-    }
-
-    return count;
 }
 }
 
@@ -401,19 +334,24 @@ auto FSpatialQueryManager::collect_non_team_entities_in_range(
 
     telemetry_.record_range_query();
 
+    if (out_entities.IsEmpty()) {
+        return 0;
+    }
+
+    auto const& grid{collision.get_uniform_grid()};
+    validate_grid_for_range_query(grid, origin, radius);
     query_manager::FThreadBufferLease const buffer_lease{*this};
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::FSpatialQueryManager::collect_non_team_entities_in_range::loop);
-    return collect_grid_entities_in_range(
-        collision.get_uniform_grid(),
-        entity_registry,
+    return simulation::collect_non_team_entities_in_range(
+        grid.get_native_geometry(),
+        grid.get_native_entity_storage(),
+        make_native_query_view(entity_registry),
         buffer_lease.get(),
-        origin,
+        to_native(origin),
         radius,
-        out_entities,
-        [team](FRegistryEntityHandle const handle, auto const& entity_data) {
-            return entity_data.teams[handle.index] != team;
-        });
+        to_native(team),
+        {out_entities.GetData(), static_cast<std::size_t>(out_entities.Num())});
 }
 
 auto FSpatialQueryManager::collect_entities_of_type_in_range(
@@ -426,60 +364,36 @@ auto FSpatialQueryManager::collect_entities_of_type_in_range(
 
     telemetry_.record_range_query();
 
+    if (out_entities.IsEmpty()) {
+        return 0;
+    }
+
+    auto const& grid{collision.get_uniform_grid()};
+    validate_grid_for_range_query(grid, origin, radius);
     query_manager::FThreadBufferLease const buffer_lease{*this};
-    return collect_grid_entities_in_range(
-        collision.get_uniform_grid(),
-        entity_registry,
+    return simulation::collect_entities_of_type_in_range(
+        grid.get_native_geometry(),
+        grid.get_native_entity_storage(),
+        make_native_query_view(entity_registry),
         buffer_lease.get(),
-        origin,
+        to_native(origin),
         radius,
-        out_entities,
-        [entity_type, ignored_entity](FRegistryEntityHandle const handle, auto const& entity_data) {
-            return handle != ignored_entity &&
-                   entity_data.entity_types[handle.index] == entity_type;
-        });
+        to_native(entity_type),
+        ignored_entity,
+        {out_entities.GetData(), static_cast<std::size_t>(out_entities.Num())});
 }
 
 auto FSpatialQueryManager::get_any_non_team_entity(ETestTeam const team) const
     -> FRegistryEntityHandle {
-    auto const& entity_data{entity_registry.get_entity_data()};
-    auto const generations{entity_registry.get_generations()};
-    auto const n{entity_registry.get_num_elements()};
-
-    for (int32 i{0}; i < n; ++i) {
-        if (!entity_data.alive[i]) {
-            continue;
-        }
-        if (entity_data.teams[i] != team) {
-            return {i, generations[i]};
-        }
-    }
-
-    return {};
+    return simulation::find_any_non_team_entity(make_native_query_view(entity_registry),
+                                                to_native(team));
 }
 
 auto FSpatialQueryManager::get_any_non_team_entity(ETestTeam const team,
                                                    ETestEntityType const entity_type) const
     -> FRegistryEntityHandle {
-    auto const& entity_data{entity_registry.get_entity_data()};
-    auto const generations{entity_registry.get_generations()};
-    auto const n{entity_registry.get_num_elements()};
-
-    for (int32 i{0}; i < n; ++i) {
-        if (!entity_data.alive[i]) {
-            continue;
-        }
-        if (entity_data.teams[i] == team) {
-            continue;
-        }
-        if (entity_data.entity_types[i] != entity_type) {
-            continue;
-        }
-
-        return {i, generations[i]};
-    }
-
-    return {};
+    return simulation::find_any_non_team_entity(
+        make_native_query_view(entity_registry), to_native(team), to_native(entity_type));
 }
 
 void FSpatialQueryManager::are_spheres_in_bounds(FVectors3f::ConstView const centres,

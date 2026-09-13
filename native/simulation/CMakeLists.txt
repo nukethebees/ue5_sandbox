@@ -6,20 +6,31 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/capital_death_event.h
   include/sandbox/simulation/collision_events.h
   include/sandbox/simulation/collision_grid_entity_storage.h
+  include/sandbox/simulation/collision_grid_overlap_query.h
+  include/sandbox/simulation/collision_grid_queries.h
   include/sandbox/simulation/collision_grid_static_storage.h
+  include/sandbox/simulation/collision_overlap_storage.h
   include/sandbox/simulation/direct_damage_events.h
   include/sandbox/simulation/entity_aabbs.h
   include/sandbox/simulation/entity_cell_data.h
   include/sandbox/simulation/entity_cell_data_operations.h
+  include/sandbox/simulation/entity_combat_accounting.h
+  include/sandbox/simulation/entity_death_accounting.h
   include/sandbox/simulation/entity_death_info.h
   include/sandbox/simulation/entity_history.h
   include/sandbox/simulation/entity_overlap_operations.h
   include/sandbox/simulation/entity_overlaps.h
   include/sandbox/simulation/entity_registry_bookkeeping.h
+  include/sandbox/simulation/entity_registry_history.h
+  include/sandbox/simulation/entity_registry_query.h
+  include/sandbox/simulation/entity_registry_refresh.h
+  include/sandbox/simulation/entity_registry_spawn.h
   include/sandbox/simulation/entity_registry_statistics.h
+  include/sandbox/simulation/entity_registry_update.h
   include/sandbox/simulation/entity_telemetry.h
   include/sandbox/simulation/entity_world_bounds.h
   include/sandbox/simulation/fighter_order_queue.h
+  include/sandbox/simulation/fighter_navigation.h
   include/sandbox/simulation/fighter_reassignment.h
   include/sandbox/simulation/frame_collision_scratch.h
   include/sandbox/simulation/frame_direct_damage_events.h
@@ -29,6 +40,7 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/frame_trace_hits.h
   include/sandbox/simulation/frame_vectors3f.h
   include/sandbox/simulation/laser_source.h
+  include/sandbox/simulation/level_event_types.h
   include/sandbox/simulation/level_telemetry_block_history_types.h
   include/sandbox/simulation/level_telemetry_current_state.h
   include/sandbox/simulation/level_telemetry_history_stats.h
@@ -44,6 +56,7 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/simulation_config.h
   include/sandbox/simulation/spatial_query_telemetry.h
   include/sandbox/simulation/spawned_entity_handles.h
+  include/sandbox/simulation/telemetry_statistics.h
   include/sandbox/simulation/trace_hits.h
   include/sandbox/simulation/vector_types.h
   include/sandbox/simulation/vectors3f.h
@@ -53,13 +66,24 @@ target_sources(native-simulation PRIVATE
   src/collision_events.cpp
   src/collision_grid.cpp
   src/collision_grid_entity_storage.cpp
+  src/collision_grid_overlap_query.cpp
+  src/collision_grid_queries.cpp
   src/collision_grid_static_storage.cpp
+  src/collision_overlap_storage.cpp
   src/deterministic_bias.cpp
+  src/entity_combat_accounting.cpp
+  src/entity_death_accounting.cpp
   src/entity_overlap_operations.cpp
   src/entity_registry_bookkeeping.cpp
+  src/entity_registry_history.cpp
+  src/entity_registry_query.cpp
+  src/entity_registry_refresh.cpp
+  src/entity_registry_spawn.cpp
   src/entity_registry_statistics.cpp
+  src/entity_registry_update.cpp
   src/entity_world_bounds.cpp
   src/fixed_tick.cpp
+  src/fighter_navigation.cpp
   src/frame_collision_scratch.cpp
   src/frame_direct_damage_events.cpp
   src/frame_hit_details.cpp
@@ -67,12 +91,14 @@ target_sources(native-simulation PRIVATE
   src/frame_rotators3f.cpp
   src/frame_trace_hits.cpp
   src/frame_vectors3f.cpp
+  src/level_event_types.cpp
   src/query_thread_buffer_pool.cpp
   src/query_thread_buffers.cpp
   src/simulation_clock.cpp
   src/spatial.cpp
   src/spatial_query_telemetry.cpp
   src/step_response.cpp
+  src/telemetry_statistics.cpp
 )
 target_compile_features(native-simulation PUBLIC cxx_std_23)
 target_include_directories(native-simulation PUBLIC

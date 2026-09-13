@@ -1,4 +1,5 @@
 #pragma once
+#include <sandbox/simulation/fighter_navigation.h>
 #include <sandbox/simulation/navigation_telemetry.h>
 
 #include <SpaceGameSimulation/simulation/SystemReadViews.h>
@@ -119,13 +120,7 @@ struct SPACEGAMESIMULATION_API Simulation {
     float fire_point_distance{0.f};
     float fire_dot_product_threshold{0.95f};
   private:
-    struct AvoidanceFrame {
-        FVector3f preferred_direction;
-        FVector3f first_lateral;
-        FVector3f second_lateral;
-        float roll_sin;
-        float roll_cos;
-    };
+    using AvoidanceFrame = ml::simulation::fighters::AvoidanceFrame;
     struct FirePointAngleOffset {
         float yaw;
         float pitch;
@@ -136,26 +131,17 @@ struct SPACEGAMESIMULATION_API Simulation {
         FVector3f trace_end;
     };
     struct NavigationScratch;
-    enum class NavigationRiskTier : uint8 {
-        Clear,
-        Nearby,
-        Active,
-        Immediate,
-        Count,
-    };
+    using NavigationRiskTier = ml::simulation::fighters::NavigationRiskTier;
 
     inline static constexpr int8 direct_movement_choice{-1};
     inline static constexpr int8 stop_movement_choice{-2};
-    inline static constexpr int32 n_avoidance_choices{8};
+    inline static constexpr int32 n_avoidance_choices{
+        ml::simulation::fighters::avoidance_direction_count};
     inline static constexpr uint8 clear_scans_to_end_avoidance{2};
     inline static constexpr uint8 lower_risk_scans_to_demote{2};
     inline static constexpr int32 max_separation_neighbours{32};
     inline static constexpr float crowd_goal_score_weight{0.35f};
     inline static constexpr float steering_memory_score_weight{0.25f};
-    inline static constexpr float half_weight{0.5f};
-    inline static constexpr float sqrt_three_over_two{0.8660254f};
-    inline static constexpr float escape_forward_weight{-0.1736482f};
-    inline static constexpr float escape_lateral_weight{0.9848078f};
     inline static constexpr std::array<FirePointAngleOffset, 16> fire_point_angle_offsets{{
         {0.f, 0.f},
         {45.f, 0.f},

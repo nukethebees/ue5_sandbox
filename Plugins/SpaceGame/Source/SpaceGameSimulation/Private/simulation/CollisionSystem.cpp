@@ -1,6 +1,5 @@
 #include "SpaceGameSimulation/simulation/CollisionSystem.h"
 
-#include <sandbox/simulation/entity_overlap_operations.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/simulation/EntityWorldBounds.h>
@@ -8,12 +7,10 @@
 namespace ml::ioj {
 void FCollisionSystem::initialise(FEntityAABBs const& bounds) {
     entity_aabbs_ = bounds;
-    entity_entity_overlaps_.reset();
-    entity_static_overlaps_.reset();
+    overlap_storage_.reset();
     reset_frame_events();
     overlapping_entities_scratch_.clear();
     overlapping_static_geometry_indices_scratch_.clear();
-    overlap_sort_indices_scratch_.clear();
 }
 auto FCollisionSystem::update(TConstArrayView<FRegistryEntityHandle> const collision_dirty_entities,
                               uint64 const tick) -> FDetectedOverlapsView {
@@ -22,9 +19,9 @@ auto FCollisionSystem::update(TConstArrayView<FRegistryEntityHandle> const colli
     collect_overlaps_for_moved_entities(collision_dirty_entities);
 
     overlap_event_storage_.append_batch(
-        tick, entity_entity_overlaps_.get_const_view(), entity_static_overlaps_.get_const_view());
+        tick, overlap_storage_.entity_entity_overlaps(), overlap_storage_.entity_static_overlaps());
 
-    return {entity_entity_overlaps_.get_const_view(), entity_static_overlaps_.get_const_view()};
+    return overlap_storage_.get_view();
 }
 void FCollisionSystem::reset_frame_events() {
     overlap_event_storage_.reset();
@@ -40,8 +37,7 @@ void FCollisionSystem::collect_overlaps_for_moved_entities(
     TConstArrayView<FRegistryEntityHandle> const collision_dirty_entities) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCollisionSystem::collect_overlaps_for_moved_entities);
 
-    entity_entity_overlaps_.reset();
-    entity_static_overlaps_.reset();
+    overlap_storage_.clear();
 
     auto const& entity_data{entity_registry_.get_entity_data()};
     for (auto const dirty_entity : collision_dirty_entities) {
@@ -65,21 +61,14 @@ void FCollisionSystem::collect_overlaps_for_moved_entities(
                                       overlapping_static_geometry_indices_scratch_);
 
         for (auto const overlapping_entity : overlapping_entities_scratch_) {
-            if (overlapping_entity < dirty_entity) {
-                entity_entity_overlaps_.add(overlapping_entity, dirty_entity);
-            } else {
-                entity_entity_overlaps_.add(dirty_entity, overlapping_entity);
-            }
+            overlap_storage_.add_entity_overlap(dirty_entity, overlapping_entity);
         }
 
         for (auto const static_geometry_index : overlapping_static_geometry_indices_scratch_) {
-            entity_static_overlaps_.add(dirty_entity, static_geometry_index);
+            overlap_storage_.add_static_overlap(dirty_entity, static_geometry_index);
         }
     }
 
-    simulation::collision::sort_and_deduplicate(entity_entity_overlaps_,
-                                                overlap_sort_indices_scratch_);
-    simulation::collision::sort_and_deduplicate(entity_static_overlaps_,
-                                                overlap_sort_indices_scratch_);
+    overlap_storage_.finalize();
 }
 }
