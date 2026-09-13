@@ -49,7 +49,6 @@ struct SPACEGAMESIMULATION_API FCollisionSystem {
     void rebuild_grid();
     void collect_overlaps_for_moved_entities(
         TConstArrayView<FRegistryEntityHandle> collision_dirty_entities);
-    void sort_and_deduplicate_overlaps();
 
     FTestEntityRegistry const& entity_registry_;
     CollisionUniformGrid uniform_grid_;

@@ -13,6 +13,7 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/entity_cell_data_operations.h
   include/sandbox/simulation/entity_death_info.h
   include/sandbox/simulation/entity_history.h
+  include/sandbox/simulation/entity_overlap_operations.h
   include/sandbox/simulation/entity_overlaps.h
   include/sandbox/simulation/entity_registry_bookkeeping.h
   include/sandbox/simulation/entity_registry_statistics.h
@@ -54,6 +55,7 @@ target_sources(native-simulation PRIVATE
   src/collision_grid_entity_storage.cpp
   src/collision_grid_static_storage.cpp
   src/deterministic_bias.cpp
+  src/entity_overlap_operations.cpp
   src/entity_registry_bookkeeping.cpp
   src/entity_registry_statistics.cpp
   src/entity_world_bounds.cpp

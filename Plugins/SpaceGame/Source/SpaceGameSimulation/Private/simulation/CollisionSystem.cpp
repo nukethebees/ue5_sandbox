@@ -1,5 +1,6 @@
 #include "SpaceGameSimulation/simulation/CollisionSystem.h"
 
+#include <sandbox/simulation/entity_overlap_operations.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/simulation/EntityWorldBounds.h>
@@ -93,68 +94,9 @@ void FCollisionSystem::collect_overlaps_for_moved_entities(
         }
     }
 
-    sort_and_deduplicate_overlaps();
-}
-void FCollisionSystem::sort_and_deduplicate_overlaps() {
-    auto const entity_pair_count{entity_entity_overlaps_.num()};
-    if (entity_pair_count > 1) {
-        overlap_sort_indices_scratch_.resize(static_cast<std::size_t>(entity_pair_count));
-        entity_entity_overlaps_.sort(
-            [](FEntityEntityOverlaps const& overlaps, int32 const lhs, int32 const rhs) {
-                auto const lhs_first{overlaps.first_entities[lhs]};
-                auto const rhs_first{overlaps.first_entities[rhs]};
-                return lhs_first < rhs_first ||
-                       (lhs_first == rhs_first &&
-                        overlaps.second_entities[lhs] < overlaps.second_entities[rhs]);
-            },
-            std::span{overlap_sort_indices_scratch_});
-
-        int32 write_index{1};
-        for (int32 read_index{1}; read_index < entity_pair_count; ++read_index) {
-            if (entity_entity_overlaps_.first_entities[read_index] ==
-                    entity_entity_overlaps_.first_entities[write_index - 1] &&
-                entity_entity_overlaps_.second_entities[read_index] ==
-                    entity_entity_overlaps_.second_entities[write_index - 1]) {
-                continue;
-            }
-
-            entity_entity_overlaps_.set(write_index,
-                                        entity_entity_overlaps_.first_entities[read_index],
-                                        entity_entity_overlaps_.second_entities[read_index]);
-            ++write_index;
-        }
-        entity_entity_overlaps_.set_num(write_index);
-    }
-
-    auto const entity_static_count{entity_static_overlaps_.num()};
-    if (entity_static_count > 1) {
-        overlap_sort_indices_scratch_.resize(static_cast<std::size_t>(entity_static_count));
-        entity_static_overlaps_.sort(
-            [](FEntityStaticOverlaps const& overlaps, int32 const lhs, int32 const rhs) {
-                auto const lhs_entity{overlaps.entities[lhs]};
-                auto const rhs_entity{overlaps.entities[rhs]};
-                return lhs_entity < rhs_entity ||
-                       (lhs_entity == rhs_entity && overlaps.static_geometry_indices[lhs] <
-                                                        overlaps.static_geometry_indices[rhs]);
-            },
-            std::span{overlap_sort_indices_scratch_});
-
-        int32 write_index{1};
-        for (int32 read_index{1}; read_index < entity_static_count; ++read_index) {
-            if (entity_static_overlaps_.entities[read_index] ==
-                    entity_static_overlaps_.entities[write_index - 1] &&
-                entity_static_overlaps_.static_geometry_indices[read_index] ==
-                    entity_static_overlaps_.static_geometry_indices[write_index - 1]) {
-                continue;
-            }
-
-            entity_static_overlaps_.set(
-                write_index,
-                entity_static_overlaps_.entities[read_index],
-                entity_static_overlaps_.static_geometry_indices[read_index]);
-            ++write_index;
-        }
-        entity_static_overlaps_.set_num(write_index);
-    }
+    simulation::collision::sort_and_deduplicate(entity_entity_overlaps_,
+                                                overlap_sort_indices_scratch_);
+    simulation::collision::sort_and_deduplicate(entity_static_overlaps_,
+                                                overlap_sort_indices_scratch_);
 }
 }
