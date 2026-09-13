@@ -6,6 +6,12 @@ sandbox_configure_machine_activity()
 project(SandboxUnrealBuild LANGUAGES CXX)
 sandbox_add_machine_activity_status_target()
 
+if(CMAKE_UNITY_BUILD)
+  set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+endif()
+
+include(cmake/precompiled_headers.cmake)
+
 enable_testing()
 
 add_subdirectory(cmake/compiler_warnings)

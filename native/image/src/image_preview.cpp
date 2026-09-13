@@ -6,7 +6,7 @@
 
 namespace sandbox::image {
 namespace {
-auto round_to_int(float const value) -> std::int32_t {
+auto round_preview_to_int(float const value) -> std::int32_t {
     return static_cast<std::int32_t>(std::floor(value + 0.5f));
 }
 
@@ -78,8 +78,9 @@ auto scale_request_for_preview(GenerationRequest request,
     auto const scale{std::min(1.0f,
                               static_cast<float>(maximum_source_dimension) /
                                   static_cast<float>(std::max(width, height)))};
-    auto const preview_width{std::max(1, round_to_int(static_cast<float>(width) * scale))};
-    auto const preview_height{std::max(1, round_to_int(static_cast<float>(height) * scale))};
+    auto const preview_width{std::max(1, round_preview_to_int(static_cast<float>(width) * scale))};
+    auto const preview_height{
+        std::max(1, round_preview_to_int(static_cast<float>(height) * scale))};
     switch (request.generator) {
         case GeneratorType::RadialGradient:
             request.radial_gradient.width = preview_width;
@@ -94,8 +95,8 @@ auto scale_request_for_preview(GenerationRequest request,
         case GeneratorType::Starfield:
             request.starfield.width = preview_width;
             request.starfield.height = preview_height;
-            request.starfield.star_count =
-                round_to_int(static_cast<float>(request.starfield.star_count) * scale * scale);
+            request.starfield.star_count = round_preview_to_int(
+                static_cast<float>(request.starfield.star_count) * scale * scale);
             request.starfield.minimum_radius *= scale;
             request.starfield.maximum_radius *= scale;
             break;
@@ -154,7 +155,7 @@ auto make_preview_image(GeneratedImage const& source,
                                                                       : std::uint8_t{80}};
                 auto const alpha{static_cast<float>(source_pixel.alpha) / 255.0f};
                 auto const blend = [checker_value, alpha](std::uint8_t const value) {
-                    return static_cast<std::uint8_t>(round_to_int(
+                    return static_cast<std::uint8_t>(round_preview_to_int(
                         static_cast<float>(checker_value) +
                         (static_cast<float>(value) - static_cast<float>(checker_value)) * alpha));
                 };

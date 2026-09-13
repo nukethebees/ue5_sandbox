@@ -10,6 +10,7 @@ set(SANDBOX_S7_DEFINITIONS
 )
 
 add_library(sandbox-s7-third-party OBJECT)
+set_target_properties(sandbox-s7-third-party PROPERTIES UNITY_BUILD OFF)
 target_sources(sandbox-s7-third-party PRIVATE
   src/s7_sandbox.cpp
 )

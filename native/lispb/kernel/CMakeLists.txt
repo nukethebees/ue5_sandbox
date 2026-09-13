@@ -9,6 +9,7 @@ add_library(kernel-codegen-lib
   src/test_renderer.cpp
   src/unreal_renderer.cpp
 )
+set_target_properties(kernel-codegen-lib PROPERTIES UNITY_BUILD OFF)
 target_compile_features(kernel-codegen-lib PUBLIC cxx_std_23)
 target_include_directories(kernel-codegen-lib PUBLIC include)
 target_link_libraries(kernel-codegen-lib
@@ -22,6 +23,7 @@ add_executable(kernel-codegen-tests
   tests/compiler_io_tests.cpp
   tests/compiler_tests.cpp
 )
+set_target_properties(kernel-codegen-tests PROPERTIES UNITY_BUILD OFF)
 target_include_directories(kernel-codegen-tests PRIVATE src)
 target_link_libraries(kernel-codegen-tests PRIVATE
   codegen-lib
@@ -55,6 +57,7 @@ add_executable(kernel-generated-compile-tests
   tests/compile/main.cpp
   ${KERNEL_COMPILE_FILES}
 )
+set_target_properties(kernel-generated-compile-tests PROPERTIES UNITY_BUILD OFF)
 target_compile_features(kernel-generated-compile-tests PRIVATE cxx_std_23)
 target_compile_definitions(kernel-generated-compile-tests PRIVATE CODEGEN_CHECK_EXIT)
 target_include_directories(kernel-generated-compile-tests PRIVATE
@@ -111,6 +114,7 @@ add_executable(kernel-generated-standard-tests
   tests/standard_anchor_tests.cpp
   ${KERNEL_STANDARD_FILES}
 )
+set_target_properties(kernel-generated-standard-tests PROPERTIES UNITY_BUILD OFF)
 target_compile_features(kernel-generated-standard-tests PRIVATE cxx_std_23)
 target_include_directories(kernel-generated-standard-tests PRIVATE
   "${KERNEL_STANDARD_OUTPUT}"
@@ -225,6 +229,7 @@ add_executable(kernel-generated-avx2-lab-tests
   tests/avx2_lab_tests.cpp
   ${KERNEL_AVX2_LAB_FILES}
 )
+set_target_properties(kernel-generated-avx2-lab-tests PROPERTIES UNITY_BUILD OFF)
 target_compile_features(kernel-generated-avx2-lab-tests PRIVATE cxx_std_23)
 target_include_directories(kernel-generated-avx2-lab-tests PRIVATE
   "${KERNEL_AVX2_LAB_ROOT}"
@@ -342,6 +347,7 @@ if(SANDBOX_KERNEL_BENCHMARKS)
       kernel-native-simd-avx512
       kernel-native-dot-relaxed-avx2
       kernel-native-dot-relaxed-avx512)
+    set_target_properties(${TARGET} PROPERTIES UNITY_BUILD OFF)
     target_compile_features(${TARGET} PRIVATE cxx_std_23)
     target_include_directories(${TARGET} PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
     target_link_libraries(${TARGET} PRIVATE sandbox::codegen_warnings)
@@ -426,6 +432,7 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     benchmarks/dot_product_3d_benchmarks.cpp
     ${KERNEL_NATIVE_SIMD_OBJECTS}
   )
+  set_target_properties(kernel-native-benchmarks PROPERTIES UNITY_BUILD OFF)
   add_dependencies(kernel-native-benchmarks kernel-native-generated-sources)
   target_compile_features(kernel-native-benchmarks PRIVATE cxx_std_23)
   target_include_directories(kernel-native-benchmarks PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")

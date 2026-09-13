@@ -6,7 +6,11 @@
       "hidden": true,
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/${presetName}",
-      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "CMAKE_UNITY_BUILD": true,
+        "CMAKE_UNITY_BUILD_BATCH_SIZE": "32"
+      }
     }
   ],
   "testPresets": [

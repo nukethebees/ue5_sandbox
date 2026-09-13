@@ -4,9 +4,9 @@
 
 namespace ml::simulation {
 namespace {
-auto make_error(UniqueIdLookupError const code,
-                FRegistryEntityHandle const handle,
-                std::int32_t const event_index) noexcept
+auto make_combat_accounting_error(UniqueIdLookupError const code,
+                                  FRegistryEntityHandle const handle,
+                                  std::int32_t const event_index) noexcept
     -> std::unexpected<EntityCombatAccountingError> {
     return std::unexpected{EntityCombatAccountingError{code, handle, event_index}};
 }
@@ -25,7 +25,7 @@ auto record_damage_events(EntityRegistryStatistics& statistics,
         auto const victim_id{
             find_entity_unique_id(generations, current_unique_ids, history, victim_handle)};
         if (!victim_id) {
-            return make_error(victim_id.error(), victim_handle, index);
+            return make_combat_accounting_error(victim_id.error(), victim_handle, index);
         }
 
         auto const victim_element{static_cast<std::size_t>(victim_id->id)};
@@ -40,7 +40,7 @@ auto record_damage_events(EntityRegistryStatistics& statistics,
         auto const attacker_id{
             find_entity_unique_id(generations, current_unique_ids, history, instigator)};
         if (!attacker_id) {
-            return make_error(attacker_id.error(), instigator, index);
+            return make_combat_accounting_error(attacker_id.error(), instigator, index);
         }
 
         auto const attacker_element{static_cast<std::size_t>(attacker_id->id)};
@@ -66,7 +66,7 @@ auto record_shots(EntityRegistryStatistics& statistics,
         auto const attacker_id{
             find_entity_unique_id(generations, current_unique_ids, history, instigator)};
         if (!attacker_id) {
-            return make_error(attacker_id.error(), instigator, index);
+            return make_combat_accounting_error(attacker_id.error(), instigator, index);
         }
 
         auto const attacker_element{static_cast<std::size_t>(attacker_id->id)};

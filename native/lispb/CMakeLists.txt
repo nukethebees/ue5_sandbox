@@ -61,6 +61,7 @@ add_library(codegen-lib
   src/validation.cpp
   src/vector_lowering.cpp
 )
+set_target_properties(codegen-lib PROPERTIES UNITY_BUILD OFF)
 target_compile_features(codegen-lib PUBLIC cxx_std_23)
 target_include_directories(codegen-lib PUBLIC include)
 target_link_libraries(codegen-lib
@@ -131,6 +132,7 @@ add_executable(codegen-generated-compile-tests
   ${CODEGEN_COMPILE_FIXTURE_HEADERS}
   ${CODEGEN_COMPILE_FIXTURE_SOURCES}
 )
+set_target_properties(codegen-generated-compile-tests PROPERTIES UNITY_BUILD OFF)
 target_compile_features(codegen-generated-compile-tests PRIVATE cxx_std_23)
 target_include_directories(codegen-generated-compile-tests PRIVATE
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}"
@@ -152,6 +154,7 @@ add_executable(codegen-tests
   tests/static_table_lowering_tests.cpp
   tests/validation_tests.cpp
 )
+set_target_properties(codegen-tests PROPERTIES UNITY_BUILD OFF)
 add_dependencies(codegen-tests
   codegen-generated-compile-tests
   lispb-syntax-tests

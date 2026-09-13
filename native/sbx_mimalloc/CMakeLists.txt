@@ -28,6 +28,7 @@ function(configure_sbx_mimalloc_object target)
 endfunction()
 
 add_library(sbx-mimalloc-prefix-probe OBJECT "${SBX_MIMALLOC_SOURCE}")
+set_target_properties(sbx-mimalloc-prefix-probe PROPERTIES UNITY_BUILD OFF)
 configure_sbx_mimalloc_object(sbx-mimalloc-prefix-probe)
 
 add_custom_command(
@@ -44,6 +45,7 @@ add_custom_command(
 add_custom_target(sbx-mimalloc-prefix-header DEPENDS "${SBX_MIMALLOC_PREFIX_HEADER}")
 
 add_library(sbx-mimalloc-implementation OBJECT "${SBX_MIMALLOC_SOURCE}")
+set_target_properties(sbx-mimalloc-implementation PROPERTIES UNITY_BUILD OFF)
 configure_sbx_mimalloc_object(sbx-mimalloc-implementation)
 add_dependencies(sbx-mimalloc-implementation sbx-mimalloc-prefix-header)
 if(SANDBOX_MSVC_FRONTEND)
@@ -74,6 +76,7 @@ add_custom_target(sbx-mimalloc-symbol-audit DEPENDS "${SBX_MIMALLOC_AUDIT_STAMP}
 
 add_library(sbx-mimalloc STATIC)
 add_library(sandbox::mimalloc ALIAS sbx-mimalloc)
+set_target_properties(sbx-mimalloc PROPERTIES UNITY_BUILD OFF)
 target_sources(sbx-mimalloc PRIVATE
   src/memory.cpp
   $<TARGET_OBJECTS:sbx-mimalloc-implementation>

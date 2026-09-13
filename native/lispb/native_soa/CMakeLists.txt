@@ -24,6 +24,7 @@ add_test(NAME native-soa-tests COMMAND native-soa-tests)
 set_tests_properties(native-soa-tests PROPERTIES LABELS "native-soa")
 
 add_executable(native-soa-benchmarks benchmarks.cpp bulk_benchmarks.cpp)
+set_target_properties(native-soa-benchmarks PROPERTIES UNITY_BUILD OFF)
 target_link_libraries(native-soa-benchmarks PRIVATE native-soa benchmark::benchmark_main)
 add_executable(native-soa-reserve-matrix reserve_matrix.cpp)
 target_link_libraries(native-soa-reserve-matrix PRIVATE native-soa benchmark::benchmark_main)

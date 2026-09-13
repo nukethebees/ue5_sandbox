@@ -43,23 +43,45 @@ public class SandboxNative : ModuleRules
 
         if (!Target.bGenerateProjectFiles)
         {
-            string nativeSimulationLibrary = Path.Combine(
-                repositoryRoot,
-                "Binaries",
-                "Native",
-                "Simulation",
-                Target.Platform.ToString(),
-                Target.Configuration.ToString(),
-                "SandboxNativeSimulation.lib");
-            if (!File.Exists(nativeSimulationLibrary))
+            string[] nativeLibraries = new string[] {
+                Path.Combine(
+                    repositoryRoot,
+                    "Binaries",
+                    "Native",
+                    "Simulation",
+                    Target.Platform.ToString(),
+                    Target.Configuration.ToString(),
+                    "SandboxNativeSimulation.lib"),
+                Path.Combine(
+                    repositoryRoot,
+                    "Binaries",
+                    "Native",
+                    "Core",
+                    Target.Platform.ToString(),
+                    Target.Configuration.ToString(),
+                    "SandboxNativeCore.lib"),
+                Path.Combine(
+                    repositoryRoot,
+                    "Binaries",
+                    "NativeMemory",
+                    Target.Platform.ToString(),
+                    Target.Configuration.ToString(),
+                    "SandboxNativeMemory.lib"),
+            };
+
+            foreach (string nativeLibrary in nativeLibraries)
             {
-                throw new BuildException(
-                    "SandboxNative expected the CMake-built native simulation library at '{0}'. " +
-                    "Build Unreal targets through a repository CMake workflow.",
-                    nativeSimulationLibrary);
+                if (!File.Exists(nativeLibrary))
+                {
+                    throw new BuildException(
+                        "SandboxNative expected a CMake-built native library at '{0}'. " +
+                        "Build Unreal targets through a repository CMake workflow.",
+                        nativeLibrary);
+                }
+
+                PublicAdditionalLibraries.Add(nativeLibrary);
+                ExternalDependencies.Add(nativeLibrary);
             }
-            PublicAdditionalLibraries.Add(nativeSimulationLibrary);
-            ExternalDependencies.Add(nativeSimulationLibrary);
         }
     }
 }

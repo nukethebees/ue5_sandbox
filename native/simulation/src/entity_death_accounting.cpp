@@ -4,9 +4,9 @@
 
 namespace ml::simulation {
 namespace {
-auto make_error(UniqueIdLookupError const code,
-                FRegistryEntityHandle const handle,
-                std::int32_t const event_index) noexcept
+auto make_death_accounting_error(UniqueIdLookupError const code,
+                                 FRegistryEntityHandle const handle,
+                                 std::int32_t const event_index) noexcept
     -> std::unexpected<EntityDeathAccountingError> {
     return std::unexpected{EntityDeathAccountingError{code, handle, event_index}};
 }
@@ -26,7 +26,7 @@ auto record_entity_deaths(EntityRegistryBookkeeping& bookkeeping,
                                                    history.get_const_view(),
                                                    victim_handle)};
         if (!victim_id) {
-            return make_error(victim_id.error(), victim_handle, index);
+            return make_death_accounting_error(victim_id.error(), victim_handle, index);
         }
 
         bookkeeping.record_dead(victim_handle);
@@ -47,7 +47,7 @@ auto record_entity_deaths(EntityRegistryBookkeeping& bookkeeping,
                                                    history.get_const_view(),
                                                    killer_handle)};
         if (!killer_id) {
-            return make_error(killer_id.error(), killer_handle, index);
+            return make_death_accounting_error(killer_id.error(), killer_handle, index);
         }
 
         auto const killer_element{static_cast<std::size_t>(killer_id->id)};

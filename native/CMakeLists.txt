@@ -11,3 +11,24 @@ add_subdirectory(core)
 add_subdirectory(simulation)
 add_subdirectory(image)
 add_subdirectory(mesh_gen)
+
+sandbox_target_precompile_common_headers(
+  native-core
+  native-simulation
+  sandbox-image
+)
+sandbox_target_precompile_codegen_headers(
+  codegen-lib
+  kernel-codegen-lib
+  material-gen
+  sandbox-material-gen
+  slate-codegen-lib
+)
+sandbox_target_precompile_test_headers(
+  codegen-tests
+  kernel-codegen-tests
+  native-core-tests
+  native-simulation-tests
+  sandbox-image-tests
+  slate-codegen-tests
+)
