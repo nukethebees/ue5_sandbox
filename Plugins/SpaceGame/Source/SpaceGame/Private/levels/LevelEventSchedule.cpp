@@ -1,6 +1,6 @@
 #include <SpaceGame/levels/CompileLevelEvents.h>
 
-#include "NativeLevelDefinitionConversion.h"
+#include <SpaceGame/levels/NativeLevelDefinitionConversion.h>
 
 #include <Containers/StringConv.h>
 #include <sandbox/simulation/levels/LevelCompilation.h>

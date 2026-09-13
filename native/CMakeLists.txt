@@ -68,6 +68,7 @@ sandbox_target_precompile_test_headers(
   codegen-tests
   kernel-codegen-tests
   native-core-tests
+  native-level-authoring-tests
   native-simulation-tests
   sandbox-image-tests
   slate-codegen-tests

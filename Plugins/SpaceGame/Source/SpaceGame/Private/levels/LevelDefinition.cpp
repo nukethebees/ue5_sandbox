@@ -1,7 +1,7 @@
 #include "SpaceGame/levels/LevelDefinition.h"
 
+#include <SpaceGame/levels/NativeLevelDefinitionConversion.h>
 #include "LevelEntityTableOperations.h"
-#include "NativeLevelDefinitionConversion.h"
 
 #include <Containers/StringConv.h>
 
