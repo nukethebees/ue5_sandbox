@@ -2,7 +2,7 @@
 
 #include <SandboxTests/support/SimulationTestScenario.h>
 
-#include <SpaceGameSimulation/entities/TestEntityUniqueId.h>
+#include <sandbox/simulation/entities/TestEntityUniqueId.h>
 
 #include <SandboxCore/time_series_data.h>
 #include <SandboxNative/RegistryEntityHandle.h>

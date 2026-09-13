@@ -11,11 +11,11 @@
 namespace {
 auto make_catalog_record(FString run_id, FString level, FString launch) -> FLevelTelemetryReport {
     FLevelTelemetryReport record;
-    record.metadata.run_id = MoveTemp(run_id);
-    record.metadata.map_name = level;
-    record.metadata.level_id = FName{level};
-    record.metadata.level_display_name = MoveTemp(level);
-    record.metadata.launched_utc = MoveTemp(launch);
+    record.metadata.run_id = TCHAR_TO_UTF8(*run_id);
+    record.metadata.map_name = TCHAR_TO_UTF8(*level);
+    record.metadata.level_id = TCHAR_TO_UTF8(*level);
+    record.metadata.level_display_name = TCHAR_TO_UTF8(*level);
+    record.metadata.launched_utc = TCHAR_TO_UTF8(*launch);
     record.metadata.tick_rate_hz = 60.0;
     record.metadata.tick_period_seconds = 1.0 / 60.0;
     record.completion.completed_utc = record.metadata.launched_utc;

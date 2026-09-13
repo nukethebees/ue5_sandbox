@@ -1,5 +1,6 @@
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 
+#include <sandbox/simulation/missions/TestMissionManager.h>
 #include <SandboxCoreEngine/actor_utils.h>
 #include <SpaceGame/input/ControlProfiles.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
@@ -8,7 +9,6 @@
 #include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
-#include <SpaceGameSimulation/missions/TestMissionManager.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <Camera/CameraActor.h>
@@ -613,7 +613,7 @@ void ASpaceGamePlayerController::return_to_level_select() {
 
     return_to_level_select_pending_ = true;
     auto const preferred_level_id{orchestrator->get_mission_manager().get_level_id()};
-    if (!subsystem->return_to_level_select(preferred_level_id)) {
+    if (!subsystem->return_to_level_select(FName{UTF8_TO_TCHAR(preferred_level_id.c_str())})) {
         return_to_level_select_pending_ = false;
         return;
     }

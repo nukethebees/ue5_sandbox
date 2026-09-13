@@ -1,12 +1,13 @@
 #include "test_capital_command_fighters.h"
+#include <array>
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
 #include <SandboxCoreEngine/enums.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
-#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
 
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/time_series_test_data.h>
@@ -33,26 +34,27 @@ void run_worldless_capital_command_fighters(FAutomationTestBase& test,
                         checks.are_equal(first_target,
                                          capitals.get_target_handle(0),
                                          TEXT("Capital initially retains its configured target"));
-                        checks.is_greater_than(capitals.get_fighter_handles(0).Num(),
-                                               int32{0},
-                                               TEXT("Main capital spawned fighters"));
-                        harness.queue_kills(TArray{first_target});
+                        checks.is_greater_than(
+                            static_cast<int32>(capitals.get_fighter_handles(0).size()),
+                            int32{0},
+                            TEXT("Main capital spawned fighters"));
+                        harness.queue_kills(std::array{first_target});
                     })
-        .then_after(2.0 / 60.0,
-                    [&] {
-                        second_target = capitals.get_target_handle(0);
-                        checks.is_true(second_target.is_valid() && second_target != first_target,
-                                       TEXT("Capital retargets after its first target dies"));
-                        for (auto const fighter_handle : capitals.get_fighter_handles(0)) {
-                            checks.are_equal(
-                                second_target,
-                                fighters.get_target_handle(fighter_handle),
-                                TEXT("Fighter follows the replacement capital target"));
-                        }
-                        auto const enemies{
-                            harness.get_registry().get_handles_not_in_team(ETestTeam::Green)};
-                        harness.queue_kills(enemies);
-                    })
+        .then_after(
+            2.0 / 60.0,
+            [&] {
+                second_target = capitals.get_target_handle(0);
+                checks.is_true(second_target.is_valid() && second_target != first_target,
+                               TEXT("Capital retargets after its first target dies"));
+                for (auto const fighter_handle : capitals.get_fighter_handles(0)) {
+                    checks.are_equal(second_target,
+                                     fighters.get_target_handle(fighter_handle),
+                                     TEXT("Fighter follows the replacement capital target"));
+                }
+                auto const enemies{
+                    harness.get_registry().get_handles_not_in_team(ml::simulation::Team::Green)};
+                harness.queue_kills(enemies);
+            })
         .then_after(2.0 / 60.0,
                     [&] {
                         for (auto const task : fighters.get_tasks()) {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
 #include <SandboxCore/multi_buffer.h>
 #include <SandboxCore/periodic_tick_countdown.h>
 #include <SandboxUI/EntityOverlay/EntityOverlayFrameStore.h>
@@ -12,7 +13,6 @@
 #include <SpaceGamePresentation/presentation/RadarSource.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudKillData.h>
 #include <SpaceGamePresentation/presentation/WorldSoftTargetMaterialData.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/entities/TestEntityType.h>
 #include <SpaceGameSimulation/missions/TestMissionMode.h>
 #include <SpaceGameSimulation/missions/TestMissionState.h>

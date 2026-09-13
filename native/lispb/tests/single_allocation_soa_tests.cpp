@@ -350,32 +350,43 @@ TEST(SingleAllocationSoa, BenchmarkSchemaTracksFighterLeafOrderAndWidths) {
         sources.push_back(project.root / source);
     }
     auto const manifest{load_sources(project.root / target.types, sources)};
-    auto find_struct = [&](std::string_view const module_name) -> SoaSchema const& {
+    auto find_struct = [&](std::string_view const module_name,
+                           std::string_view const struct_name) -> SoaSchema const& {
         for (auto const& module : manifest.modules) {
             auto const* soa{std::get_if<SoaModuleSchema>(&module)};
             if (soa == nullptr || soa->settings.name != module_name) {
                 continue;
             }
             auto const found{std::ranges::find_if(
-                soa->structs, [](SoaSchema const& schema) { return schema.name == "EntityData"; })};
+                soa->structs, [&](SoaSchema const& schema) { return schema.name == struct_name; })};
             if (found != soa->structs.end()) {
                 return *found;
             }
         }
-        throw std::runtime_error{"Missing EntityData schema in module " + std::string{module_name}};
+        throw std::runtime_error{"Missing " + std::string{struct_name} + " schema in module " +
+                                 std::string{module_name}};
     };
 
-    auto const& fighter{find_struct("test_capital_ship_fighters_soa").members};
-    auto const& experiment{find_struct("single_allocation_experiment").members};
+    auto const& fighter{find_struct("test_capital_ship_fighters_soa", "FighterEntityData").members};
+    std::vector<SoaMemberSchema> experiment;
+    for (auto const& member : find_struct("single_allocation_experiment", "EntityData").members) {
+        if (member.type.name != "Countdown8" && member.type.name != "Countdown16" &&
+            member.type.name != "PeriodicCountdown16") {
+            experiment.push_back(member);
+            continue;
+        }
+        auto const& countdown{find_struct("single_allocation_experiment", *member.nested_schema)};
+        for (auto leaf : countdown.members) {
+            leaf.name = leaf.name == "counters" ? member.name : member.name + "_" + leaf.name;
+            experiment.push_back(std::move(leaf));
+        }
+    }
     ASSERT_EQ(fighter.size(), experiment.size());
     std::map<std::string, std::string> const equivalents{
-        {"@registry_handle", "@soa_experiment_Handle"},
-        {"@fighter_task", "@soa_experiment_Task"},
-        {"@team", "@soa_experiment_Team"},
-        {"@vectors_3f", "Vectors"},
-        {"@tick_countdown_8", "Countdown8"},
-        {"@tick_countdown_16", "Countdown16"},
-        {"@periodic_tick_countdown_16", "PeriodicCountdown16"}};
+        {"@native_registry_handle", "@soa_experiment_Handle"},
+        {"@native_fighter_task", "@soa_experiment_Task"},
+        {"@native_team", "@soa_experiment_Team"},
+        {"@native_vectors_3f", "Vectors"}};
     for (std::size_t index{}; index < fighter.size(); ++index) {
         EXPECT_EQ(fighter[index].name, experiment[index].name);
         EXPECT_EQ(fighter[index].kind, experiment[index].kind);

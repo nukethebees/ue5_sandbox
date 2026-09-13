@@ -1,7 +1,7 @@
 #pragma once
 
+#include "sandbox/simulation/registry_entity_data.h"
 #include "SpaceGamePresentation/entities/TeamColours.h"
-#include "SpaceGameSimulation/entities/TestEntityRegistryData.h"
 
 #include "SandboxNative/RegistryEntityHandle.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
@@ -54,7 +54,7 @@ struct SPACEGAMEPRESENTATION_API FEntityOverlayCollectionResult {
 };
 
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto
-    select_soft_target(ml::entity_registry::EntityData::ConstView entities,
+    select_soft_target(ml::simulation::RegistryEntityData::ConstView entities,
                        TConstArrayView<int> generations,
                        TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
                        FSoftTargetSelectionContext const& context,
@@ -62,7 +62,7 @@ struct SPACEGAMEPRESENTATION_API FEntityOverlayCollectionResult {
                        FRegistryEntityHandle current_target) -> FSoftTargetSelectionResult;
 
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto
-    collect_entity_overlay_instances(ml::entity_registry::EntityData::ConstView entities,
+    collect_entity_overlay_instances(ml::simulation::RegistryEntityData::ConstView entities,
                                      TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
                                      FEntityOverlayTeamColours const& team_colours,
                                      FEntityOverlayHealthMaximums const& maximum_health,

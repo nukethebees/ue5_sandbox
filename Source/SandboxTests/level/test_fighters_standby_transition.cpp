@@ -1,10 +1,12 @@
+#include <array>
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
+#include <sandbox/simulation/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/entities/TestTeam.h>
-#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
-#include <SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
@@ -58,13 +60,14 @@ void run_worldless_fighters_standby_transition(FAutomationTestBase& test,
     TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](FLevelSimulation&) {
         Sample sample{.capital_count = capitals.get_num_instances()};
-        sample.tasks.Append(fighters.get_tasks());
+        auto const tasks{fighters.get_tasks()};
+        sample.tasks.Append(tasks.data(), static_cast<int32>(tasks.size()));
         for (auto const handle : fighters.get_handles()) {
-            sample.velocities.Add(harness.get_registry().get_velocity(handle));
+            sample.velocities.Add(ml::to_unreal(harness.get_registry().get_velocity(handle)));
         }
         samples.add(harness.get_time(), MoveTemp(sample));
     };
-    harness.timeline.then_after(8.0, [&] { harness.queue_kills(TArray{enemy}); })
+    harness.timeline.then_after(8.0, [&] { harness.queue_kills(std::array{enemy}); })
         .then_after(0.1, [] {})
         .finish_after(0.0);
     test.TestTrue(TEXT("Standby-transition timeline completes"),

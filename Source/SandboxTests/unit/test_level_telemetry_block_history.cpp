@@ -1,5 +1,5 @@
-#include <SpaceGameSimulation/memory/GameMemory.h>
-#include <SpaceGameSimulation/telemetry/LevelTelemetryBlockHistory.h>
+#include <sandbox/simulation/memory/GameMemory.h>
+#include <sandbox/simulation/telemetry/LevelTelemetryBlockHistory.h>
 
 #include <Misc/AutomationTest.h>
 

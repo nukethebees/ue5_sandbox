@@ -28,6 +28,9 @@ struct TestDisplayTraits {
             return FStringFormatArg{value};
         } else if constexpr (supports_lex_to_string<T>) {
             return FStringFormatArg{LexToString(value)};
+        } else if constexpr (std::is_enum_v<T> && !is_uenum<T>) {
+            return TestDisplayTraits<std::underlying_type_t<T>>::format_arg(
+                std::to_underlying(value));
         } else {
             static_assert(is_uenum<T>, "Test display formatting is not defined for this type.");
             return FStringFormatArg{ml::to_string_without_type_prefix(value)};

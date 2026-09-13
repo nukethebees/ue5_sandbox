@@ -106,7 +106,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         data.fighter_radius = 5.f;
         data.fighters.avoidance_clearance_buffer = 1.f;
         data.capital_ships.fighter_spawn_slots_relative_transforms = {
-            FTransform{FVector{0.f, 40.f, 0.f}}};
+            {.location = {0.0, 40.0, 0.0}}};
         data.capital_spawns.add_defaulted(1);
         ml::FLevelStartErrors clear_errors;
         ml::validate_world_fighter_spawn_slots(data, clear_errors);

@@ -1,4 +1,5 @@
 #include "test_simulation_core_regressions.h"
+#include <array>
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 
@@ -7,12 +8,12 @@
 #include <SandboxTests/support/time_series_test_data.h>
 #include <SandboxTests/support/WorldlessSimulationTest.h>
 
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
+#include <sandbox/simulation/ships/player/TestSpaceShipSimulation.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
-#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
-#include <SpaceGameSimulation/ships/player/TestSpaceShipSimulation.h>
 
 namespace ml {
 namespace {
@@ -36,7 +37,7 @@ void run_worldless_simulation_core_regression(FAutomationTestBase& test,
     auto data{make_worldless_simulation_test_data(config)};
     if (scenario == ESimulationCoreRegressionScenario::DamageLifecycle) {
         data.capital_ships.fighter_spawn_slots = 0;
-        data.capital_ships.fighter_spawn_slots_relative_transforms.Reset();
+        data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
         data.capital_spawns.add_defaulted(1);
         data.capital_spawns.teams[0] = static_cast<ml::simulation::Team>(ETestTeam::White);
         data.capital_spawns.healths[0] = initial_health;
@@ -106,9 +107,9 @@ void run_worldless_simulation_core_regression(FAutomationTestBase& test,
                     });
     };
     harness.timeline.at(nonlethal_damage_time,
-                        [&] { harness.queue_damage(TArray{damaged_handle}, 25); });
+                        [&] { harness.queue_damage(std::array{damaged_handle}, 25); });
     harness.timeline.at(lethal_damage_time,
-                        [&] { harness.queue_damage(TArray{damaged_handle}, 75); });
+                        [&] { harness.queue_damage(std::array{damaged_handle}, 75); });
     harness.timeline.finish_at(damage_test_end_time);
     test.TestTrue(TEXT("Damage lifecycle timeline completes"),
                   harness.run_until_timeline_finished(1.0));
@@ -151,12 +152,12 @@ void run_worldless_collision_damage(FAutomationTestBase& test,
     auto data{make_worldless_simulation_test_data(config)};
     data.overlap_response.damage_per_overlap_detection = collision_damage_test::overlap_damage;
     data.capital_ships.fighter_spawn_slots = 0;
-    data.capital_ships.fighter_spawn_slots_relative_transforms.Reset();
+    data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     data.player = make_worldless_player_spawn(config);
     data.player->config.lateral_adjustment_speed = 1.f;
     data.player->health = {collision_damage_test::player_health,
                            collision_damage_test::player_health};
-    auto const player_bounds_index{ml::ioj::FEntityAABBs::space_ship_index};
+    auto const player_bounds_index{ml::simulation::collision::EntityAABBs::space_ship_index};
     data.entity_bounds.half_extent_xs[player_bounds_index] = 1.f;
     data.entity_bounds.half_extent_ys[player_bounds_index] = 1.f;
     data.entity_bounds.half_extent_zs[player_bounds_index] = 1.f;
@@ -232,7 +233,7 @@ void run_worldless_collision_damage(FAutomationTestBase& test,
                    TEXT("Capital death commits in the third overlap tick"));
     checks.are_equal(0, third.kill_count, TEXT("Collision death grants no combat kill"));
     checks.is_true(harness.get_registry().get_unique_entities().death_reason[capital_id.id] ==
-                       ETestDeathReason::Unknown,
+                       ml::simulation::DeathReason::Unknown,
                    TEXT("Collision death is environmental"));
 }
 }

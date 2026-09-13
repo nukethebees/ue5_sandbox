@@ -1,9 +1,9 @@
 #pragma once
 
 #include <cstdint>
+#include <sandbox/simulation/ships/common/SpaceShipCommon.h>
 
 namespace ml::simulation::player {
-enum class BoostBrakeState : std::uint8_t { None, Boost, Brake };
 enum class SpeedResponseKind : std::uint8_t { AcceleratingToCruise, SlowingToCruise, Boost, Brake };
 
 struct ThrustSettings {

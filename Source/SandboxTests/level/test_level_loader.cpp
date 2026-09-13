@@ -1,8 +1,12 @@
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
+#include <SpaceGameSimulation/missions/NativeMissionTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 #include "test_level_loader_scenario.h"
 
 #include <SandboxTests/support/PlayerControllerTestAccess.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/levels/ExampleLevels.h>
 #include <SpaceGame/levels/LevelDefinition.h>
@@ -15,7 +19,6 @@
 #include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudWidget.h>
 #include <SpaceGameS7/LevelDefinitionReader.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/entities/TestEntityType.h>
 
 #include <SandboxCore/soa_vector_utils.h>
@@ -441,22 +444,24 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
         .blue_capitals = counts[blue][capital_type],
         .red_capitals = counts[red][capital_type],
         .red_turrets = counts[red][turret_type],
-        .mission_mode = mission.get_mission_mode(),
-        .mission_state = mission.get_mission_state(),
+        .mission_mode = ml::to_unreal(mission.get_mission_mode()),
+        .mission_state = ml::to_unreal(mission.get_mission_state()),
         .mission_kill_target = mission.get_kill_target(),
-        .mission_heroes = mission.get_hero_entity_handles().Num(),
-        .mission_survivors = mission.get_entity_handles_that_must_survive().Num(),
-        .mission_required_kills = mission.get_entity_handles_required_to_kill().Num(),
-        .mission_level_name = mission.get_level_id(),
-        .mission_level_display_name = mission.get_level_display_name(),
+        .mission_heroes = static_cast<int32>(mission.get_hero_entity_handles().size()),
+        .mission_survivors =
+            static_cast<int32>(mission.get_entity_handles_that_must_survive().size()),
+        .mission_required_kills =
+            static_cast<int32>(mission.get_entity_handles_required_to_kill().size()),
+        .mission_level_name = FName{UTF8_TO_TCHAR(mission.get_level_id().c_str())},
+        .mission_level_display_name = UTF8_TO_TCHAR(mission.get_level_display_name().c_str()),
         .saves_mission_results = mission.should_save_mission_results(),
     };
     auto const& entity_data{registry.get_entity_data()};
-    auto const entity_count{entity_data.teams.Num()};
+    auto const entity_count{entity_data.num()};
     for (int32 i{0}; i < entity_count; ++i) {
-        auto const position{get_vector3f(entity_data.locations, i)};
-        auto const team{entity_data.teams[i]};
-        auto const type{entity_data.entity_types[i]};
+        auto const position{ml::to_unreal(entity_data.locations[i])};
+        auto const team{ml::to_unreal(entity_data.teams[i])};
+        auto const type{ml::to_unreal(entity_data.entity_types[i])};
         if (type == ETestEntityType::CapitalShip && team == ETestTeam::Blue) {
             sample.blue_capital_position = position;
         } else if (type == ETestEntityType::CapitalShip && team == ETestTeam::Red) {

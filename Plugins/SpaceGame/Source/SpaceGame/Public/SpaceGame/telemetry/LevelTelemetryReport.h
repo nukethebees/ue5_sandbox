@@ -1,5 +1,6 @@
 #pragma once
-#include <SpaceGameSimulation/telemetry/LevelTelemetryRunRecord.h>
+#include <CoreMinimal.h>
+#include <sandbox/simulation/telemetry/LevelTelemetryRunRecord.h>
 
 #include <array>
 

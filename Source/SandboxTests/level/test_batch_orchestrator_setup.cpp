@@ -4,19 +4,18 @@
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 
+#include <sandbox/simulation/combat/lasers/TestLasersSimulation.h>
+#include <sandbox/simulation/defences/spinners/TestTubeSpinnersSimulation.h>
+#include <sandbox/simulation/defences/turrets/TestStaticTurretsSimulation.h>
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/missions/TestMissionManager.h>
+#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
+#include <sandbox/simulation/ships/fighters/TestCapitalShipFightersSimulation.h>
+#include <sandbox/simulation/simulation/LevelTelemetryManager.h>
+#include <sandbox/simulation/simulation/SimulationClock.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameSimulation/combat/lasers/TestLasersSimulation.h>
-#include <SpaceGameSimulation/defences/spinners/TestTubeSpinnersSimulation.h>
-#include <SpaceGameSimulation/defences/turrets/TestStaticTurretsSimulation.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
-#include <SpaceGameSimulation/missions/TestMissionManager.h>
-#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
-#include <SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h>
-#include <SpaceGameSimulation/simulation/LevelTelemetryManager.h>
-#include <SpaceGameSimulation/simulation/SimulationClock.h>
-#include <SpaceGameSimulation/simulation/SimulationClockInterface.h>
 
 #include <SandboxCore/frame_memory_resource.h>
 #include <SandboxCoreEngine/actor_utils.h>
@@ -103,7 +102,7 @@ void FTestBatchOrchestratorSetupScenario::simulation_clock_conversions() {
                              orchestrator->get_state() == EOrchestratorState::Uninitialised);
 
         FSimulationClock clock;
-        clock.initialise(FFixedTickLoop{});
+        clock.initialise(ml::simulation::FixedTickLoop{});
 
         TestRunner->TestEqual(TEXT("Tick-rate frequency has a one-tick period"),
                               clock.frequency_to_tick_period(60.0),
@@ -138,7 +137,7 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
             return;
         }
         orchestrator.get_level_telemetry_manager().begin_run(
-            FLevelTelemetryRunMetadata{.run_id = TEXT("frame-ordering"), .detailed_timing = true});
+            FLevelTelemetryRunMetadata{.run_id = "frame-ordering", .detailed_timing = true});
         struct FFrameObservation {
             uint64 completed_ticks{};
             uint64 presentation_count{};
@@ -155,7 +154,7 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
                 }
                 if (owner.get_completed_ticks() == 6) {
                     owner.get_level_simulation()->complete_telemetry_run(
-                        ELevelTelemetryRunEndReason::DurationReached);
+                        ml::simulation::LevelTelemetryRunEndReason::DurationReached);
                 }
             }));
         auto const dt{orchestrator.get_level_simulation()->get_clock().get_tick_period()};
@@ -504,15 +503,19 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               tick_series.kills.last_value(),
               int32{0});
     auto const telemetry_manager_size{sizeof(FLevelTelemetryManager)};
-    TestTrue(*FString::Printf(TEXT("Telemetry manager is substantially smaller than its "
-                                   "2384-byte baseline (%llu bytes)"),
+    // Account for the migrated container headers, not additional history or sample storage.
+    constexpr auto migrated_vector_count{5 + FSimulationTelemetryPerformanceWindow::system_count +
+                                         FSimulationTelemetryPerformanceWindow::phase_count};
+    constexpr auto native_header_overhead{
+        migrated_vector_count * (sizeof(std::vector<double>) - sizeof(TArray<double>)) +
+        7 * (sizeof(std::string) - sizeof(FString)) + sizeof(std::string) - sizeof(FName)};
+    TestTrue(*FString::Printf(TEXT("Telemetry manager stays within its compact storage budget "
+                                   "plus native container headers (%llu bytes)"),
                               static_cast<uint64>(telemetry_manager_size)),
-             telemetry_manager_size <= 1216);
+             telemetry_manager_size <= 1216 + native_header_overhead);
     bool columns_aligned{true};
-    initial_history_columns.apply_arrays([&columns_aligned](auto const&... arrays) {
-        ((columns_aligned =
-              columns_aligned && reinterpret_cast<UPTRINT>(arrays.GetData()) % 64 == 0),
-         ...);
+    initial_history_columns.each_column([&columns_aligned](auto const column) {
+        columns_aligned = columns_aligned && reinterpret_cast<UPTRINT>(column.data()) % 64 == 0;
     });
     TestTrue(TEXT("Every generated telemetry column is at least 64-byte aligned"), columns_aligned);
 
@@ -588,32 +591,19 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               active_count_data.last_time(),
               uint64{0});
 
-    TArray<float> const locations_x{0.f, 0.f, 0.f};
-    TArray<float> const locations_y{0.f, 0.f, 0.f};
-    TArray<float> const locations_z{0.f, 0.f, 0.f};
-    TArray<float> const velocities_x{0.f, 0.f, 0.f};
-    TArray<float> const velocities_y{0.f, 0.f, 0.f};
-    TArray<float> const velocities_z{0.f, 0.f, 0.f};
-    TArray<float> const radii{0.f, 0.f, 0.f};
-    TArray<int32> const healths{100, 100, 100};
-    TArray<ETestTeam> const teams{ETestTeam::Green, ETestTeam::Red, ETestTeam::Red};
-    TArray<ETestEntityType> const entity_types{
-        ETestEntityType::PlayerShip,
-        ETestEntityType::CapitalShip,
-        ETestEntityType::CapitalShipFighter,
-    };
-    TArray<uint8> const alive{1u, 1u, 1u};
-    FTestEntityRegistry::EntityData::ConstView const fixture_entity_data{
-        .locations = FVectors3fConstView{locations_x, locations_y, locations_z},
-        .velocities = FVectors3fConstView{velocities_x, velocities_y, velocities_z},
-        .rotations = {velocities_x, velocities_y, velocities_z},
-        .radii = radii,
-        .healths = healths,
-        .teams = teams,
-        .entity_types = entity_types,
-        .alive = alive,
-    };
-    entity_registry.add_entities(fixture_entity_data);
+    ml::simulation::RegistryEntityData fixture_entity_data;
+    constexpr int32 fixture_count{3};
+    fixture_entity_data.add_defaulted(fixture_count);
+    for (int32 i{}; i < fixture_count; ++i) {
+        fixture_entity_data.healths[i] = 100;
+        fixture_entity_data.alive[i] = 1;
+        fixture_entity_data.teams[i] = ml::simulation::Team::Red;
+    }
+    fixture_entity_data.teams[0] = ml::simulation::Team::Green;
+    fixture_entity_data.entity_types[0] = ml::simulation::EntityType::PlayerShip;
+    fixture_entity_data.entity_types[1] = ml::simulation::EntityType::CapitalShip;
+    fixture_entity_data.entity_types[2] = ml::simulation::EntityType::CapitalShipFighter;
+    entity_registry.add_entities(fixture_entity_data.get_const_view());
 
     clock.completed_ticks = 2;
     telemetry_manager.tick();

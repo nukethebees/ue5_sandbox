@@ -3,7 +3,7 @@
 #include <CoreMinimal.h>
 
 namespace ml {
-struct SPACEGAMESIMULATION_API FLevelStartErrors {
+struct FLevelStartErrors {
     void add(FString message) { messages_.Add(MoveTemp(message)); }
 
     void append(TArray<FString> messages) {

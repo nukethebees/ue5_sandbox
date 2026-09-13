@@ -1,14 +1,19 @@
 #include "SpaceGamePresentation/presentation/HUDManager.h"
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
+#include <SpaceGameSimulation/missions/NativeMissionTypes.h>
+#include <SpaceGameSimulation/ships/common/NativeShipHealth.h>
+#include <SpaceGameSimulation/ships/player/NativePlayerTypes.h>
+#include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
+#include "sandbox/simulation/missions/TestMissionManager.h"
+#include "sandbox/simulation/ships/player/TestSpaceShipSimulation.h"
 #include "SpaceGamePresentation/entities/TestTeamVisualData.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipHudWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/SimulationHudWidget.h"
 #include "SpaceGamePresentation/support/mesh.h"
 #include "SpaceGameSimulation/entities/NativeEntityTypes.h"
-#include "SpaceGameSimulation/missions/TestMissionManager.h"
-#include "SpaceGameSimulation/ships/player/TestSpaceShipSimulation.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <SandboxCore/timing.h>
@@ -402,7 +407,7 @@ void FHUDManager::update_entity_overlay_objective_roles() {
         return;
     }
 
-    auto const assign_role = [this](TConstArrayView<FRegistryEntityHandle> const handles,
+    auto const assign_role = [this](std::span<FRegistryEntityHandle const> const handles,
                                     EEntityOverlayObjectiveRole const role) {
         for (auto const handle : handles) {
             if (!entity_registry->is_valid_alive(handle)) {
@@ -476,20 +481,21 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
     if (registration.ship_hud.IsValid() && validate_player_ship_for_collection()) {
         auto const firing_transform{player_ship->get_middle_socket()};
         auto const camera_transform{FRotationMatrix{camera_rotation}};
-        soft_target =
-            select_soft_target(entity_registry->get_entity_data().get_const_view(),
-                               entity_registry->get_generations(),
-                               entity_overlay_objective_roles_,
-                               {.view = overlay_view,
-                                .aim_origin = FVector3f{firing_transform.GetLocation()},
-                                .aim_direction = FVector3f{firing_transform.GetUnitAxis(EAxis::X)},
-                                .camera_right = FVector3f{camera_transform.GetUnitAxis(EAxis::Y)},
-                                .camera_up = FVector3f{camera_transform.GetUnitAxis(EAxis::Z)},
-                                .player_team = player_ship->team,
-                                .effective_weapon_range = player_ship->get_laser_effective_range(),
-                                .maximum_overlay_range = entity_overlay_settings_.maximum_range},
-                               soft_target_selection_settings_,
-                               registration.soft_target);
+        soft_target = select_soft_target(
+            entity_registry->get_entity_data().get_const_view(),
+            TConstArrayView<int32>{entity_registry->get_generations().data(),
+                                   static_cast<int32>(entity_registry->get_generations().size())},
+            entity_overlay_objective_roles_,
+            {.view = overlay_view,
+             .aim_origin = FVector3f{ml::to_unreal(firing_transform.location)},
+             .aim_direction = FVector3f{ml::to_unreal(firing_transform.forward())},
+             .camera_right = FVector3f{camera_transform.GetUnitAxis(EAxis::Y)},
+             .camera_up = FVector3f{camera_transform.GetUnitAxis(EAxis::Z)},
+             .player_team = ml::to_unreal(player_ship->team),
+             .effective_weapon_range = player_ship->get_laser_effective_range(),
+             .maximum_overlay_range = entity_overlay_settings_.maximum_range},
+            soft_target_selection_settings_,
+            registration.soft_target);
     }
 
     auto const elapsed_seconds{FMath::Max(delta_seconds, 0.0f)};
@@ -694,7 +700,7 @@ void FHUDManager::add_world_soft_target(FRegistryEntityHandle const handle,
         return;
     }
 
-    FVector const location{entities.locations[handle.index]};
+    FVector const location{ml::to_unreal(entities.locations[handle.index])};
     auto const facing_direction{(camera_location - location).GetSafeNormal()};
     if (facing_direction.IsNearlyZero()) {
         return;
@@ -764,16 +770,18 @@ void FHUDManager::update_radar(FRegisteredHud& registration) {
     }
 
     check(entity_registry);
-    auto const result{collect_radar_instances(entity_registry->get_entity_data().get_const_view(),
-                                              entity_registry->get_generations(),
-                                              entity_overlay_objective_roles_,
-                                              radar_contact_colours_,
-                                              player_ship->transform,
-                                              player_ship->registry_handle,
-                                              player_ship->lock_on_target,
-                                              player_ship->team,
-                                              radar_settings_,
-                                              frame)};
+    auto const result{collect_radar_instances(
+        entity_registry->get_entity_data().get_const_view(),
+        TConstArrayView<int32>{entity_registry->get_generations().data(),
+                               static_cast<int32>(entity_registry->get_generations().size())},
+        entity_overlay_objective_roles_,
+        radar_contact_colours_,
+        ml::to_unreal(player_ship->transform),
+        player_ship->registry_handle,
+        player_ship->lock_on_target,
+        ml::to_unreal(player_ship->team),
+        radar_settings_,
+        frame)};
     registration.radar_frame_store->publish();
 
     TRACE_COUNTER_SET(SandboxRadarCandidateCount, result.candidate_count);
@@ -799,19 +807,37 @@ void FHUDManager::read_mission_data(ml::hud_manager::FMissionDataCache& out) con
     check(mission_manager);
 
     auto& static_data{out.static_data};
-    static_data.mission_mode = mission_manager->get_mission_mode();
-    static_data.surviving_entity_ids = mission_manager->get_entity_ids_that_must_survive();
-    static_data.surviving_entity_types = mission_manager->get_entity_types_that_must_survive();
-    static_data.required_kill_entity_ids = mission_manager->get_entity_ids_required_to_kill();
-    static_data.required_kill_entity_types = mission_manager->get_entity_types_required_to_kill();
+    static_data.mission_mode = ml::to_unreal(mission_manager->get_mission_mode());
+    static_data.surviving_entity_ids.Reset();
+    for (auto const value : mission_manager->get_entity_ids_that_must_survive()) {
+        static_data.surviving_entity_ids.Add(value);
+    }
+    static_data.surviving_entity_types.Reset();
+    for (auto const value : mission_manager->get_entity_types_that_must_survive()) {
+        static_data.surviving_entity_types.Add(ml::to_unreal(value));
+    }
+    static_data.required_kill_entity_ids.Reset();
+    for (auto const value : mission_manager->get_entity_ids_required_to_kill()) {
+        static_data.required_kill_entity_ids.Add(value);
+    }
+    static_data.required_kill_entity_types.Reset();
+    for (auto const value : mission_manager->get_entity_types_required_to_kill()) {
+        static_data.required_kill_entity_types.Add(ml::to_unreal(value));
+    }
 
     auto& status_data{out.status_data};
-    status_data.mission_state = mission_manager->get_mission_state();
+    status_data.mission_state = ml::to_unreal(mission_manager->get_mission_state());
     status_data.mission_stopwatch = mission_manager->get_mission_stopwatch();
     status_data.time_remaining = mission_manager->get_time_remaining();
     status_data.enemies_remaining = mission_manager->get_kills_remaining();
-    status_data.surviving_entity_health = mission_manager->get_entity_health_that_must_survive();
-    status_data.required_kill_entity_health = mission_manager->get_entity_health_required_to_kill();
+    status_data.surviving_entity_health.Reset();
+    for (auto const value : mission_manager->get_entity_health_that_must_survive()) {
+        status_data.surviving_entity_health.Add(ml::to_unreal(value));
+    }
+    status_data.required_kill_entity_health.Reset();
+    for (auto const value : mission_manager->get_entity_health_required_to_kill()) {
+        status_data.required_kill_entity_health.Add(ml::to_unreal(value));
+    }
 }
 bool FHUDManager::collect_entity_count_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_entity_count_data);
@@ -884,16 +910,16 @@ bool FHUDManager::collect_player_status_data() {
 
     if (validate_player_ship_for_collection()) {
         next_data.has_player_ship = true;
-        next_data.health = player_ship->health;
+        next_data.health = ml::to_unreal(player_ship->health);
         next_data.speed = player_ship->get_speed();
         next_data.target_speed = player_ship->target_speed;
         next_data.energy = player_ship->get_energy();
         next_data.points = player_ship->get_kills();
-        next_data.fire_rate = player_ship->laser_fire_rate;
+        next_data.fire_rate = ml::to_unreal(player_ship->laser_fire_rate);
 
         auto const firing_mode{player_ship->laser_firing_mode};
-        if (firing_mode == ELaserFiringState::lock_on_searching ||
-            firing_mode == ELaserFiringState::lock_on_acquired) {
+        if (firing_mode == ml::simulation::LaserFiringState::lock_on_searching ||
+            firing_mode == ml::simulation::LaserFiringState::lock_on_acquired) {
             next_data.crosshair_targeting = true;
         }
     }
@@ -912,19 +938,20 @@ bool FHUDManager::collect_player_flight_data() {
         auto const lock_on_target{player_ship->lock_on_target};
 
         next_data.has_player_ship = true;
-        next_data.turning = player_ship->rotation_input;
-        next_data.moving = player_ship->planar_movement_direction;
-        next_data.desired_velocity_scale = player_ship->target_local_planar_velocity_scale;
-        next_data.ship_velocity = player_ship->velocity;
-        next_data.target_velocity = player_ship->target_local_planar_velocity;
-        next_data.control_mode = player_ship->control_mode;
-        next_data.flight_mode = player_ship->flight_mode;
-        next_data.crosshair_origin = ship_socket.GetLocation();
-        next_data.crosshair_direction = ship_socket.GetUnitAxis(EAxis::X);
+        next_data.turning = ml::to_unreal(player_ship->rotation_input);
+        next_data.moving = ml::to_unreal(player_ship->planar_movement_direction);
+        next_data.desired_velocity_scale =
+            ml::to_unreal(player_ship->target_local_planar_velocity_scale);
+        next_data.ship_velocity = ml::to_unreal(player_ship->velocity);
+        next_data.target_velocity = ml::to_unreal(player_ship->target_local_planar_velocity);
+        next_data.control_mode = ml::to_unreal(player_ship->control_mode);
+        next_data.flight_mode = ml::to_unreal(player_ship->flight_mode);
+        next_data.crosshair_origin = ml::to_unreal(ship_socket.location);
+        next_data.crosshair_direction = ml::to_unreal(ship_socket.forward());
         next_data.has_lock_on_target = entity_registry->is_valid_handle(lock_on_target);
         if (next_data.has_lock_on_target) {
             next_data.lock_on_target_position =
-                FVector{entity_registry->get_location(lock_on_target)};
+                FVector{ml::to_unreal(entity_registry->get_location(lock_on_target))};
         }
     }
 
@@ -938,7 +965,10 @@ bool FHUDManager::collect_sampled_speed_data() {
     next_data = {};
     if (player_ship) {
         auto const& samples{player_ship->speed_samples};
-        next_data.samples.Append(samples.GetData(), samples.Num());
+        next_data.samples.Reserve(static_cast<int32>(samples.size()));
+        for (auto const sample : samples) {
+            next_data.samples.Add(ml::to_unreal(sample));
+        }
         next_data.oldest_index = player_ship->speed_sample_index;
         has_sampled_speed_data = true;
     }

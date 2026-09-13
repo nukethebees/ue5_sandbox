@@ -1,13 +1,15 @@
 #include "test_capital_fighter_handles.h"
+#include <array>
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
+#include <sandbox/simulation/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/entities/TestTeam.h>
-#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
-#include <SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h>
 
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
@@ -77,15 +79,18 @@ void run_worldless_simultaneous_capital_reassignment(FAutomationTestBase& test,
         for (int32 i{}; i < count; ++i) {
             auto const handle{capitals.get_handle(i)};
             sample.capitals.Add(handle);
-            sample.capital_teams.Add(registry.get_team(handle));
+            sample.capital_teams.Add(ml::to_unreal(registry.get_team(handle)));
             sample.span_starts.Add(capitals.get_capital_fighter_handle_span(i).start());
-            sample.owned_fighters.Emplace(capitals.get_fighter_handles(i));
+            auto const owned{capitals.get_fighter_handles(i)};
+            sample.owned_fighters.Emplace(owned.data(), static_cast<int32>(owned.size()));
             for (auto const fighter : capitals.get_fighter_handles(i)) {
-                sample.fighter_teams.Add(registry.get_team(fighter));
+                sample.fighter_teams.Add(ml::to_unreal(registry.get_team(fighter)));
             }
         }
-        sample.all_owned_fighters.Append(capitals.get_fighter_handles());
-        sample.fighters.Append(simulation.get_capital_ship_fighters().get_handles());
+        auto const owned{capitals.get_fighter_handles()};
+        sample.all_owned_fighters.Append(owned.data(), static_cast<int32>(owned.size()));
+        auto const live{simulation.get_capital_ship_fighters().get_handles()};
+        sample.fighters.Append(live.data(), static_cast<int32>(live.size()));
         samples.add(harness.get_time(), MoveTemp(sample));
     };
     harness.timeline.at(1.0, [&] {
@@ -96,7 +101,7 @@ void run_worldless_simultaneous_capital_reassignment(FAutomationTestBase& test,
             auto const count{capitals.get_num_instances()};
             for (int32 i{}; i < count; ++i) {
                 auto const handle{capitals.get_handle(i)};
-                if (registry.get_team(handle) == team) {
+                if (registry.get_team(handle) == ml::to_native(team)) {
                     victim = handle;
                     if (team == ETestTeam::Red) {
                         break;
@@ -107,7 +112,8 @@ void run_worldless_simultaneous_capital_reassignment(FAutomationTestBase& test,
                 killed_capitals.Add(victim);
             }
         }
-        harness.queue_kills(killed_capitals);
+        harness.queue_kills(std::span<FRegistryEntityHandle const>{
+            killed_capitals.GetData(), static_cast<std::size_t>(killed_capitals.Num())});
     });
     harness.timeline.finish_at(2.0);
     test.TestTrue(TEXT("Capital reassignment timeline completes"),
@@ -200,7 +206,7 @@ void run_worldless_capital_fighter_handles(FAutomationTestBase& test,
                          fighters.get_num_instances(),
                          TEXT("Every capital spawns its fighter slots"));
         checks.are_equal(expected_fighters,
-                         capitals.get_fighter_handles().Num(),
+                         static_cast<int32>(capitals.get_fighter_handles().size()),
                          TEXT("Capital-owned and simulation fighter counts match"));
         for (int32 i{}; i < capitals.get_num_instances(); ++i) {
             checks.not_equal(capitals.get_handle(i),
@@ -218,10 +224,11 @@ void run_worldless_capital_fighter_handles(FAutomationTestBase& test,
     if (scenario != ECapitalFighterHandlesScenario::KillCapital) {
         harness.timeline.at(next_time, [&] {
             auto const handles{capitals.get_fighter_handles()};
-            for (int32 i{}; i < handles.Num(); ++i) {
+            for (int32 i{}; i < static_cast<int32>(handles.size()); ++i) {
                 (i % 2 == 0 ? destroyed : kept).Add(handles[i]);
             }
-            harness.queue_kills(destroyed);
+            harness.queue_kills(std::span<FRegistryEntityHandle const>{
+                destroyed.GetData(), static_cast<std::size_t>(destroyed.Num())});
         });
         next_time += 0.2;
         harness.timeline.at(next_time, [&] {
@@ -229,7 +236,7 @@ void run_worldless_capital_fighter_handles(FAutomationTestBase& test,
                              fighters.get_num_instances(),
                              TEXT("Killed fighters are removed from the simulation"));
             checks.are_equal(kept.Num(),
-                             capitals.get_fighter_handles().Num(),
+                             static_cast<int32>(capitals.get_fighter_handles().size()),
                              TEXT("Killed fighters are removed from capital ownership"));
             for (auto const handle : destroyed) {
                 checks.is_true(harness.get_registry().is_valid_dead(handle),
@@ -242,23 +249,24 @@ void run_worldless_capital_fighter_handles(FAutomationTestBase& test,
     if (scenario != ECapitalFighterHandlesScenario::KillFightersOnly) {
         next_time += 0.2;
         harness.timeline.at(next_time, [&] {
-            auto const main_index{capitals.find_first_index_on_team(ETestTeam::Green)};
+            auto const main_index{capitals.find_first_index_on_team(ml::simulation::Team::Green)};
             check(main_index.has_value());
+            auto const owned{capitals.get_fighter_handles(*main_index)};
             green_fighters_before_capital_kill =
-                TArray<FRegistryEntityHandle>{capitals.get_fighter_handles(*main_index)};
-            harness.queue_kills(TArray{capitals.get_target_handle(*main_index)});
+                TArray<FRegistryEntityHandle>{owned.data(), static_cast<int32>(owned.size())};
+            harness.queue_kills(std::array{capitals.get_target_handle(*main_index)});
         });
         next_time += 0.5;
         harness.timeline.at(next_time, [&] {
             checks.are_equal(2,
                              capitals.get_num_instances(),
                              TEXT("Killed capital is removed from the simulation"));
-            auto const main_index{capitals.find_first_index_on_team(ETestTeam::Green)};
+            auto const main_index{capitals.find_first_index_on_team(ml::simulation::Team::Green)};
             checks.is_true(main_index.has_value(), TEXT("Green capital survives"));
             if (main_index.has_value()) {
                 auto const remaining{capitals.get_fighter_handles(*main_index)};
                 checks.are_equal(green_fighters_before_capital_kill.Num(),
-                                 remaining.Num(),
+                                 static_cast<int32>(remaining.size()),
                                  TEXT("Surviving capital keeps its fighters"));
                 for (auto const handle : remaining) {
                     checks.is_true(green_fighters_before_capital_kill.Contains(handle),

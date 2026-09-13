@@ -1,4 +1,4 @@
-#include <SpaceGameSimulation/memory/GameMemory.h>
+#include <sandbox/simulation/memory/GameMemory.h>
 #include <SpaceGameSimulation/memory/GameMemoryBootstrap.h>
 
 #include <Misc/AutomationTest.h>
@@ -36,35 +36,34 @@ auto FGameMemoryTest::RunTest(FString const&) -> bool {
 
     auto backing{FGameMemoryBacking::create(1024)};
     auto first_lease{backing->try_acquire_lease()};
-    TestTrue(TEXT("The first backing lease succeeds"), first_lease.IsSet());
-    TestFalse(TEXT("A simultaneous backing lease fails"), backing->try_acquire_lease().IsSet());
+    TestTrue(TEXT("The first backing lease succeeds"), first_lease.has_value());
+    TestFalse(TEXT("A simultaneous backing lease fails"), backing->try_acquire_lease().has_value());
     auto* const backing_address{first_lease->get().data()};
 
-    auto moved_lease{MoveTemp(first_lease.GetValue())};
-    TestFalse(TEXT("A moved-from lease is empty"), static_cast<bool>(first_lease.GetValue()));
-    first_lease.Reset();
+    auto moved_lease{MoveTemp(first_lease.value())};
+    TestFalse(TEXT("A moved-from lease is empty"), static_cast<bool>(first_lease.value()));
+    first_lease.reset();
     TestTrue(TEXT("The moved lease keeps the backing occupied"), backing->is_leased());
     moved_lease = {};
 
     auto second_lease{backing->try_acquire_lease()};
-    TestTrue(TEXT("A sequential backing lease succeeds"), second_lease.IsSet());
+    TestTrue(TEXT("A sequential backing lease succeeds"), second_lease.has_value());
     TestEqual(TEXT("Sequential leases expose the persistent address"),
               second_lease->get().data(),
               backing_address);
 
     auto& delegate{FGameMemoryBootstrap::acquire_backing_delegate()};
-    delegate.BindLambda([backing = backing.Get()] { return backing->try_acquire_lease(); });
+    delegate.BindLambda([backing = backing.get()] { return backing->try_acquire_lease(); });
     auto local_fallback{FGameMemoryBootstrap::create_game_memory({.root_capacity_bytes = 256})};
     TestTrue(TEXT("Bootstrap falls back locally while the editor-style backing is occupied"),
              local_fallback->owns_backing_locally());
     delegate.Unbind();
 
-    second_lease.Reset();
+    second_lease.reset();
     {
         auto external_lease{backing->try_acquire_lease()};
-        TestTrue(TEXT("A lease for external game memory succeeds"), external_lease.IsSet());
-        FGameMemory external_memory{MoveTemp(external_lease.GetValue()),
-                                    {.root_capacity_bytes = 256}};
+        TestTrue(TEXT("A lease for external game memory succeeds"), external_lease.has_value());
+        FGameMemory external_memory{MoveTemp(external_lease.value()), {.root_capacity_bytes = 256}};
         TestFalse(TEXT("External game memory does not own its backing locally"),
                   external_memory.owns_backing_locally());
         TestEqual(TEXT("External game memory uses the leased backing"),

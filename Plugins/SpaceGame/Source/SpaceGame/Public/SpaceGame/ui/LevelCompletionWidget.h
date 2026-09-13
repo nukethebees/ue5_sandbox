@@ -1,9 +1,9 @@
 #pragma once
 
+#include "sandbox/simulation/simulation/LevelTelemetrySnapshot.h"
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 #include "SpaceGameSimulation/missions/TestMissionState.h"
-#include "SpaceGameSimulation/simulation/LevelTelemetrySnapshot.h"
 
 #include "LevelCompletionWidget.generated.h"
 

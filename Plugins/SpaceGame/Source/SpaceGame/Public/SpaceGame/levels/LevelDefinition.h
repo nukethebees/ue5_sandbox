@@ -1,6 +1,7 @@
 #pragma once
-#include <SpaceGameSimulation/levels/LevelMissionMode.h>
+#include <sandbox/simulation/levels/LevelMissionMode.h>
 
+#include <sandbox/simulation/levels/LevelRuntimeEvents.h>
 #include <SpaceGameSimulation/levels/LevelDefinitionSoA.h>
 #include <SpaceGameSimulation/levels/LevelTypes.h>
 

@@ -1,4 +1,5 @@
 #include "SpaceGamePresentation/presentation/SpinnerPresentation.h"
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>
@@ -74,7 +75,7 @@ void FSpinnerPresentation::update_ismc_transforms() {
     for (int32 i{0}; i < n; ++i) {
         ismc_transforms[i] = FTransform{
             FRotator{0.0, static_cast<double>(entities.yaws[i]), 0.0},
-            ml::get_vector3d(entities.locations, i),
+            FVector{ml::to_unreal(entities.locations[i])},
         };
     }
 }

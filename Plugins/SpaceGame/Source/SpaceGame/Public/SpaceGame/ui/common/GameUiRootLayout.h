@@ -1,7 +1,7 @@
 #pragma once
 
+#include <sandbox/simulation/simulation/LevelTelemetrySnapshot.h>
 #include <SpaceGameSimulation/missions/TestMissionState.h>
-#include <SpaceGameSimulation/simulation/LevelTelemetrySnapshot.h>
 
 #include <CommonActivatableWidget.h>
 

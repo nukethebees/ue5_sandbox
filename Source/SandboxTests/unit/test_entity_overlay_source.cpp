@@ -1,3 +1,5 @@
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 #include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
 
 #include "SpaceGameSimulation/entities/TestEntityType.h"
@@ -6,33 +8,26 @@
 #include <CQTest.h>
 
 namespace {
-auto make_view(ml::entity_registry::EntityData const& entities)
-    -> ml::entity_registry::EntityData::ConstView {
-    return {.locations = {entities.locations.xs, entities.locations.ys, entities.locations.zs},
-            .velocities = {entities.velocities.xs, entities.velocities.ys, entities.velocities.zs},
-            .rotations = entities.rotations.get_const_view(),
-            .radii = entities.radii,
-            .healths = entities.healths,
-            .teams = entities.teams,
-            .entity_types = entities.entity_types,
-            .alive = entities.alive};
+auto make_view(ml::simulation::RegistryEntityData const& entities)
+    -> ml::simulation::RegistryEntityData::ConstView {
+    return entities.get_const_view();
 }
 
-void add_entity(ml::entity_registry::EntityData& entities,
+void add_entity(ml::simulation::RegistryEntityData& entities,
                 FVector3f const position,
                 int32 const health,
                 ETestEntityType const type,
                 float const radius = 1.0f,
                 bool const alive = true,
                 ETestTeam const team = ETestTeam::White) {
-    entities.locations.add(position);
-    entities.velocities.add(FVector3f::ZeroVector);
-    entities.rotations.add_zeroed(1);
-    entities.radii.Add(radius);
-    entities.healths.Add(health);
-    entities.teams.Add(team);
-    entities.entity_types.Add(type);
-    entities.alive.Add(alive ? 1 : 0);
+    auto const index{entities.num()};
+    entities.add_defaulted(1);
+    entities.locations.set(index, ml::to_native(position));
+    entities.radii[index] = radius;
+    entities.healths[index] = health;
+    entities.teams[index] = ml::to_native(team);
+    entities.entity_types[index] = ml::to_native(type);
+    entities.alive[index] = alive ? 1 : 0;
 }
 
 auto make_forward_x_view() -> FEntityOverlayView {
@@ -48,13 +43,13 @@ auto make_forward_x_view() -> FEntityOverlayView {
             .output_size = {1000, 1000}};
 }
 
-auto select_target(ml::entity_registry::EntityData const& entities,
+auto select_target(ml::simulation::RegistryEntityData const& entities,
                    FRegistryEntityHandle const current_target = {},
                    float const weapon_range = 1000.0f) -> FSoftTargetSelectionResult {
     TArray<int> generations;
-    generations.Init(0, entities.alive.Num());
+    generations.Init(0, entities.num());
     TArray<EEntityOverlayObjectiveRole> objective_roles;
-    objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.alive.Num());
+    objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
     return select_soft_target(make_view(entities),
                               generations,
                               objective_roles,
@@ -75,7 +70,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 {
     TEST_METHOD(FiltersEligibilityRangeAndNormalizesHealth)
     {
-        ml::entity_registry::EntityData entities;
+        ml::simulation::RegistryEntityData entities;
         add_entity(entities, {10.0f, 0.0f, 0.0f}, 10, ETestEntityType::Turret, 50.0f);
         add_entity(entities, {20.0f, 0.0f, 0.0f}, 25, ETestEntityType::CapitalShipFighter, 100.0f);
         add_entity(entities, {30.0f, 0.0f, 0.0f}, 2500, ETestEntityType::CapitalShip, 1000.0f);
@@ -87,7 +82,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
         FEntityOverlayCollector collector;
         TArray<FEntityOverlayInstance> output;
         TArray<EEntityOverlayObjectiveRole> objective_roles;
-        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.alive.Num());
+        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
         auto const result{collect_entity_overlay_instances(make_view(entities),
                                                            objective_roles,
                                                            {},
@@ -110,14 +105,14 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 
     TEST_METHOD(ClampsHealthFromRegistry)
     {
-        ml::entity_registry::EntityData entities;
+        ml::simulation::RegistryEntityData entities;
         add_entity(entities, FVector3f::ZeroVector, -10, ETestEntityType::Turret);
         add_entity(entities, FVector3f::ZeroVector, 40, ETestEntityType::Turret);
 
         FEntityOverlayCollector collector;
         TArray<FEntityOverlayInstance> output;
         TArray<EEntityOverlayObjectiveRole> objective_roles;
-        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.alive.Num());
+        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
         static_cast<void>(collect_entity_overlay_instances(make_view(entities),
                                                            objective_roles,
                                                            {},
@@ -133,7 +128,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 
     TEST_METHOD(SelectsOnlyTheBestValidHostile)
     {
-        ml::entity_registry::EntityData entities;
+        ml::simulation::RegistryEntityData entities;
         add_entity(entities,
                    {1000.0f, 0.0f, 0.0f},
                    20,
@@ -169,7 +164,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 
     TEST_METHOD(RetainsAndSwitchesWithHysteresis)
     {
-        ml::entity_registry::EntityData entities;
+        ml::simulation::RegistryEntityData entities;
         add_entity(entities,
                    {1000.0f, 65.0f, 0.0f},
                    20,
@@ -208,7 +203,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 
     TEST_METHOD(ProjectedSizeDoesNotLetARearTargetDominate)
     {
-        ml::entity_registry::EntityData entities;
+        ml::simulation::RegistryEntityData entities;
         add_entity(entities,
                    {2000.0f, 80.0f, 0.0f},
                    20,
@@ -230,7 +225,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 
     TEST_METHOD(NearestSurfaceResolvesCentredTargetsAndHysteresis)
     {
-        ml::entity_registry::EntityData entities;
+        ml::simulation::RegistryEntityData entities;
         add_entity(entities,
                    {2000.0f, 0.0f, 0.0f},
                    20,
@@ -256,7 +251,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 
     TEST_METHOD(NormalizesRangeAlphaUsingTargetSurfaceDistance)
     {
-        ml::entity_registry::EntityData entities;
+        ml::simulation::RegistryEntityData entities;
         add_entity(entities,
                    {5000.0f, 0.0f, 0.0f},
                    20,
@@ -295,7 +290,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 
     TEST_METHOD(RangeAlphaUsesTargetSurfaceRatherThanCentre)
     {
-        ml::entity_registry::EntityData entities;
+        ml::simulation::RegistryEntityData entities;
         add_entity(entities,
                    {1100.0f, 0.0f, 0.0f},
                    20,
@@ -312,7 +307,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 
     TEST_METHOD(ReportsWorldScaleSeparatelyFromClampedIndicatorRadius)
     {
-        ml::entity_registry::EntityData entities;
+        ml::simulation::RegistryEntityData entities;
         add_entity(entities,
                    {1000.0f, 0.0f, 0.0f},
                    20,

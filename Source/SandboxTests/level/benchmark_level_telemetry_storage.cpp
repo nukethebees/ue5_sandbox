@@ -1,6 +1,7 @@
-#include <SpaceGameSimulation/simulation/LevelTelemetryManager.h>
-#include <SpaceGameSimulation/telemetry/LevelTelemetryBlockHistory.h>
+#include <sandbox/simulation/simulation/LevelTelemetryManager.h>
+#include <sandbox/simulation/telemetry/LevelTelemetryBlockHistory.h>
 
+#include <Containers/StaticArray.h>
 #include <SandboxCore/mimalloc_storage_allocator.h>
 #include <SandboxCore/time_series_data.h>
 
@@ -422,11 +423,11 @@ struct FPageStats {
 };
 
 template <typename T>
-auto page_stats(TConstArrayView<T> const values, int32 const capacity) -> FPageStats {
+auto page_stats(std::span<T const> const values, std::size_t const capacity) -> FPageStats {
     SYSTEM_INFO system_info;
     GetSystemInfo(&system_info);
     auto const page_size{static_cast<SIZE_T>(system_info.dwPageSize)};
-    auto const begin{reinterpret_cast<UPTRINT>(values.GetData())};
+    auto const begin{reinterpret_cast<UPTRINT>(values.data())};
     auto const end{begin + static_cast<SIZE_T>(capacity) * sizeof(T)};
     auto const page_begin{begin & ~(page_size - 1)};
     auto const page_end{Align(end, page_size)};
@@ -455,14 +456,11 @@ auto owner_page_stats(ml::level_telemetry::FSingleAllocationHistoryRows const& h
     -> FPageStats {
     auto const columns{history.get_const_view().columns()};
     FPageStats total;
-    columns.apply_arrays([&](auto const&... arrays) {
-        (([&] {
-             auto const stats{page_stats(arrays, history.capacity())};
-             total.committed_bytes += stats.committed_bytes;
-             total.resident_bytes += stats.resident_bytes;
-             total.private_resident_bytes += stats.private_resident_bytes;
-         }()),
-         ...);
+    columns.each_column([&](auto const arrays) {
+        auto const stats{page_stats(arrays, history.capacity())};
+        total.committed_bytes += stats.committed_bytes;
+        total.resident_bytes += stats.resident_bytes;
+        total.private_resident_bytes += stats.private_resident_bytes;
     });
     return total;
 }
@@ -491,20 +489,17 @@ void log_column_page_stats(FAutomationTestBase& test,
     };
     auto const columns{history.get_const_view().columns()};
     int32 column_index{};
-    columns.apply_arrays([&](auto const&... arrays) {
-        (([&] {
-             auto const stats{page_stats(arrays, history.capacity())};
-             test.AddInfo(FString::Printf(
-                 TEXT("telemetry_column_pages phase=%s column=%s committed_bytes=%llu "
-                      "resident_bytes=%llu private_resident_bytes=%llu"),
-                 phase,
-                 names[column_index],
-                 stats.committed_bytes,
-                 stats.resident_bytes,
-                 stats.private_resident_bytes));
-             ++column_index;
-         }()),
-         ...);
+    columns.each_column([&](auto const arrays) {
+        auto const stats{page_stats(arrays, history.capacity())};
+        test.AddInfo(
+            FString::Printf(TEXT("telemetry_column_pages phase=%s column=%s committed_bytes=%llu "
+                                 "resident_bytes=%llu private_resident_bytes=%llu"),
+                            phase,
+                            names[column_index],
+                            stats.committed_bytes,
+                            stats.resident_bytes,
+                            stats.private_resident_bytes));
+        ++column_index;
     });
 }
 
@@ -590,8 +585,8 @@ void run_chunk_zero_probe(FAutomationTestBase& token,
         ++chunk_count;
     }
     auto const pages_after{
-        page_stats(TConstArrayView<std::byte>{data, static_cast<int32>(allocation_bytes)},
-                   static_cast<int32>(allocation_bytes))};
+        page_stats(std::span<std::byte const>{data, static_cast<std::size_t>(allocation_bytes)},
+                   static_cast<std::size_t>(allocation_bytes))};
 
     token.AddInfo(FString::Printf(
         TEXT("telemetry_chunk_zero chunk_bytes=%llu chunk_rows=%d chunks=%d allocation_bytes=%llu "
@@ -626,9 +621,10 @@ void run_chunk_zero_probes(FAutomationTestBase& token) {
     for (int32 index{}; index < allocations.Num(); ++index) {
         allocations[index] = ml::soa_storage::MimallocStorageAllocator::allocate(
             allocation_bytes, static_cast<uint32>(Layout::allocation_alignment));
-        pages_before[index] = page_stats(
-            TConstArrayView<std::byte>{allocations[index], static_cast<int32>(allocation_bytes)},
-            static_cast<int32>(allocation_bytes));
+        pages_before[index] =
+            page_stats(std::span<std::byte const>{allocations[index],
+                                                  static_cast<std::size_t>(allocation_bytes)},
+                       static_cast<std::size_t>(allocation_bytes));
     }
 
     for (int32 index{}; index < allocations.Num(); ++index) {

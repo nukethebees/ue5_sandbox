@@ -1,16 +1,17 @@
 #include "test_turret_acquisition_regressions.h"
+#include <array>
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/WorldlessSimulationTest.h>
 
+#include <sandbox/simulation/combat/lasers/TestLasersSimulation.h>
+#include <sandbox/simulation/defences/turrets/TestStaticTurretsSimulation.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsConfig.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameSimulation/combat/lasers/TestLasersSimulation.h>
-#include <SpaceGameSimulation/defences/turrets/TestStaticTurretsSimulation.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 
@@ -22,10 +23,10 @@ void run_worldless_turret_acquisition_regression(
     ETurretAcquisitionRegressionScenario const scenario) {
     auto data{make_worldless_simulation_test_data(config)};
     data.capital_ships.fighter_spawn_slots = 0;
-    data.capital_ships.fighter_spawn_slots_relative_transforms.Reset();
+    data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     auto const count{scenario == ETurretAcquisitionRegressionScenario::NoOtherEntity ? 1 : 2};
     data.turret_spawns.add_defaulted(count);
-    data.turret_transforms.SetNum(count);
+    data.turret_transforms.resize(static_cast<std::size_t>(count));
     for (int32 i{}; i < count; ++i) {
         auto const friendly{scenario == ETurretAcquisitionRegressionScenario::FriendlyOnly ||
                             i == 0};
@@ -39,7 +40,7 @@ void run_worldless_turret_acquisition_regression(
             friendly ? ml::simulation::Team::Blue : ml::simulation::Team::Red;
         data.turret_spawns.healths[i] = data.turrets.max_health;
         data.turret_spawns.laser_damages[i] = 0;
-        data.turret_transforms[i].SetLocation(FVector{distance, 0.f, 0.f});
+        data.turret_transforms[i].location = {distance, 0.0, 0.0};
     }
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();

@@ -1,8 +1,9 @@
 #include "SandboxEditor/Commandlets/EntityOverlayBenchmarkCommandlet.h"
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
+#include "sandbox/simulation/entities/TestEntityRegistry.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayBenchmark.h"
 #include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
-#include "SpaceGameSimulation/entities/TestEntityRegistry.h"
 
 #include "HAL/FileManager.h"
 #include "Misc/FileHelper.h"
@@ -15,14 +16,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogEntityOverlayBenchmark, Log, All);
 namespace {
 auto make_view(FTestEntityRegistry::EntityData const& entities)
     -> FTestEntityRegistry::EntityData::ConstView {
-    return {.locations = {entities.locations.xs, entities.locations.ys, entities.locations.zs},
-            .velocities = {entities.velocities.xs, entities.velocities.ys, entities.velocities.zs},
-            .rotations = entities.rotations.get_const_view(),
-            .radii = entities.radii,
-            .healths = entities.healths,
-            .teams = entities.teams,
-            .entity_types = entities.entity_types,
-            .alive = entities.alive};
+    return entities.get_const_view();
 }
 
 auto make_team_colours() -> FEntityOverlayTeamColours {
@@ -55,15 +49,15 @@ auto write_debug_frames(FString const& output_directory) -> bool {
     float const radii[]{
         50.0f, 100.0f, 200.0f, 400.0f, 1000.0f, 200.0f, 200.0f, 200.0f, 200.0f, 400.0f};
     auto const count{UE_ARRAY_COUNT(positions)};
+    entities.add_defaulted(count);
     for (int32 index{0}; index < count; ++index) {
-        entities.locations.add(positions[index]);
-        entities.velocities.add(FVector3f::ZeroVector);
-        entities.rotations.add_zeroed(1);
-        entities.radii.Add(radii[index]);
-        entities.healths.Add(health[index]);
-        entities.teams.Add(static_cast<ETestTeam>(index % static_cast<int32>(ETestTeam::COUNT)));
-        entities.entity_types.Add(ETestEntityType::Turret);
-        entities.alive.Add(1);
+        entities.locations.set(index, ml::to_native(positions[index]));
+        entities.radii[index] = radii[index];
+        entities.healths[index] = health[index];
+        entities.teams[index] = static_cast<ml::simulation::Team>(
+            index % static_cast<int32>(ml::simulation::Team::COUNT));
+        entities.entity_types[index] = ml::simulation::EntityType::Turret;
+        entities.alive[index] = 1;
     }
     static_cast<void>(registry.add_entities(make_view(entities)));
 

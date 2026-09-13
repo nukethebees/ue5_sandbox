@@ -1,14 +1,18 @@
 #include "test_player_ship_vs_capital.h"
+#include <SandboxCore/soa_vector_utils.h>
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
+#include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
+#include <sandbox/simulation/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersConfig.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
-#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
-#include <SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h>
 
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/TestActorSpawning.h>
@@ -31,7 +35,7 @@ void run_worldless_player_ship_vs_capital(FAutomationTestBase& test,
     data.fighters.health = player_vs_capital_test::collision_resilient_health;
     data.fighters.laser.projectile_speed = 20000.f;
     data.fighters.laser.max_distance = 1.f;
-    data.player.Emplace(make_worldless_player_spawn(
+    data.player.emplace(make_worldless_player_spawn(
         config, FTransform{FRotator{0.f, -90.f, 0.f}, FVector{19850.f, 1300.f, 980.f}}));
     data.player->health.health = player_vs_capital_test::collision_resilient_health;
     add_worldless_capital_spawn(data,
@@ -46,7 +50,7 @@ void run_worldless_player_ship_vs_capital(FAutomationTestBase& test,
     auto* const player{harness.get_simulation().get_player_ship_simulation()};
     auto const& fighters{harness.get_simulation().get_capital_ship_fighters()};
     check(player);
-    player->set_flight_mode(ETestSpaceShipFlightMode::ForwardSpeed);
+    player->set_flight_mode(ml::simulation::SpaceShipFlightMode::ForwardSpeed);
     player->start_boost();
     auto const player_handle{player->registry_handle};
     struct Sample {
@@ -57,11 +61,12 @@ void run_worldless_player_ship_vs_capital(FAutomationTestBase& test,
     };
     TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](FLevelSimulation&) {
-        Sample sample{.player_location = player->transform.GetLocation(),
-                      .registry_location =
-                          FVector{harness.get_registry().get_location(player_handle)}};
-        sample.fighter_target_locations = to_vector3f_array(fighters.get_target_locations());
-        sample.fighter_locations = to_vector3f_array(fighters.get_locations());
+        Sample sample{.player_location = ml::to_unreal(player->transform.location),
+                      .registry_location = FVector{
+                          ml::to_unreal(harness.get_registry().get_location(player_handle))}};
+        sample.fighter_target_locations =
+            to_vector3f_array(ml::to_unreal(fighters.get_target_locations()));
+        sample.fighter_locations = to_vector3f_array(ml::to_unreal(fighters.get_locations()));
         samples.add(harness.get_time(), MoveTemp(sample));
     };
     harness.timeline.finish_at(5.6);

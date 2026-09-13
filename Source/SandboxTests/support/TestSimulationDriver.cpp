@@ -3,13 +3,13 @@
 #include <SandboxTests/SandboxTestLogCategories.h>
 #include <SandboxTests/support/SpaceGameTestSettings.h>
 
+#include <sandbox/simulation/entities/DirectDamageEvents.h>
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
+#include <sandbox/simulation/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameSimulation/entities/DirectDamageEvents.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
-#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
-#include <SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 
@@ -58,10 +58,10 @@ auto TestSimulationDriver::get_capital_ship_fighters() const
     return *simulation;
 }
 
-void TestSimulationDriver::queue_damage(TConstArrayView<FRegistryEntityHandle> const targets,
+void TestSimulationDriver::queue_damage(std::span<FRegistryEntityHandle const> const targets,
                                         int32 const damage,
                                         FRegistryEntityHandle const instigator) {
-    auto const n{targets.Num()};
+    auto const n{static_cast<int32>(targets.size())};
 
     DirectDamageEvents damage_events;
     damage_events.reserve(n);
@@ -71,7 +71,7 @@ void TestSimulationDriver::queue_damage(TConstArrayView<FRegistryEntityHandle> c
 
     get_registry().queue_direct_damage_events(damage_events);
 }
-void TestSimulationDriver::queue_kills(TConstArrayView<FRegistryEntityHandle> const targets,
+void TestSimulationDriver::queue_kills(std::span<FRegistryEntityHandle const> const targets,
                                        FRegistryEntityHandle const instigator) {
     queue_damage(targets, std::numeric_limits<int32>::max(), instigator);
 }

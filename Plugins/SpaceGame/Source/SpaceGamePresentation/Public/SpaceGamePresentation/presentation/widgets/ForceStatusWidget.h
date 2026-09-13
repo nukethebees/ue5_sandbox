@@ -1,8 +1,8 @@
 #pragma once
 
+#include "sandbox/simulation/entities/TestEntityRegistry.h"
 #include "SpaceGamePresentation/entities/TestTeamVisualData.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
-#include "SpaceGameSimulation/entities/TestEntityRegistry.h"
 
 #include <Blueprint/UserWidget.h>
 

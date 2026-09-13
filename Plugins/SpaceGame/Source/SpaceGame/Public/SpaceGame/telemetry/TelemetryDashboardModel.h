@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SpaceGame/telemetry/LevelTelemetryReport.h>
+#include <SpaceGameSimulation/telemetry/LevelTelemetryRunEndReason.h>
 
 #include <expected>
 

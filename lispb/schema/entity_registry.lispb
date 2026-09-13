@@ -21,38 +21,26 @@
     (member instigators array @registry_handle)))
 
 (soa-module test_entity_registry_data_soa
-  :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/TestEntityRegistryData.h"
-  :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/TestEntityRegistryData.cpp"
-  :header-include "SpaceGameSimulation/entities/TestEntityRegistryData.h"
-  :namespace ml::entity_registry
-  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  (struct EntityData
+  :header "native/simulation/include/sandbox/simulation/registry_entity_data.h"
+  :backend standard-library
+  :namespace ml::simulation
+  (struct Vectors3f
+    :layout-only true
+    (member xs array float)
+    (member ys array float)
+    (member zs array float))
+  (struct Rotators3f
+    :layout-only true
+    (member pitches array float)
+    (member yaws array float)
+    (member rolls array float))
+  (struct RegistryEntityData
     :operations (all)
-    :export-specifier SPACEGAMESIMULATION_API
-    (member locations nested @vectors_3f)
-    (member velocities nested @vectors_3f)
-    (member rotations nested @rotators_f)
+    (member locations nested @native_vectors_3f :nested-schema Vectors3f)
+    (member velocities nested @native_vectors_3f :nested-schema Vectors3f)
+    (member rotations nested @native_rotators_3f :nested-schema Rotators3f)
     (member radii array float)
     (member healths array int32)
-    (member teams array @team)
-    (member entity_types array @entity_type)
-    (member alive array uint8)
-    (function add_disabled void
-      :body ("add_uninitialised(count);" "auto view{get_view()};" "auto slice{view.right(count)};" "" "ml::fill(slice.locations, 0.f);" "ml::fill(slice.velocities, 0.f);" "ml::fill(slice.rotations.pitches, 0.f);" "ml::fill(slice.rotations.yaws, 0.f);" "ml::fill(slice.rotations.rolls, 0.f);" "ml::fill(slice.radii, 0.f);" "ml::fill(slice.healths, 0);" "ml::fill(slice.teams, ETestTeam::White);" "ml::fill(slice.entity_types, ETestEntityType::COUNT);" "ml::fill(slice.alive, uint8{0u});")
-      :dependencies (array_fill soa_vector_fill)
-      :definition-in-source true
-      (parameter count "int32 const"))
-    (function set_all_alive void
-      :body ("ml::fill(alive, uint8{1});")
-      :dependencies (array_fill)
-      :definition-in-source true)
-    (function set_all_velocities void
-      :body ("ml::fill(velocities, value);")
-      :dependencies (soa_vector_fill)
-      :definition-in-source true
-      (parameter value "float const"))
-    (function set_all_entity_types void
-      :body ("ml::fill(entity_types, value);")
-      :dependencies (array_fill)
-      :definition-in-source true
-      (parameter value (type-ref @entity_type :suffix " const")))))
+    (member teams array @native_team)
+    (member entity_types array @native_entity_type)
+    (member alive array uint8)))

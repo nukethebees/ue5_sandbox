@@ -1,6 +1,6 @@
 #pragma once
+#include <sandbox/simulation/ships/player/PlayerReadView.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
-#include <SpaceGameSimulation/ships/player/PlayerReadView.h>
 #include <UObject/WeakObjectPtrTemplates.h>
 
 class USceneComponent;
@@ -24,6 +24,7 @@ struct SPACEGAMEPRESENTATION_API FPlayerPresentation {
   private:
     FPlayerPresentationResources resources_;
     FPlayerShipConfig config_;
-    EBoostBrakeState boost_brake_state_{EBoostBrakeState::None};
+    ml::simulation::player::BoostBrakeState boost_brake_state_{
+        ml::simulation::player::BoostBrakeState::None};
     uint64 boost_start_sequence_{};
 };

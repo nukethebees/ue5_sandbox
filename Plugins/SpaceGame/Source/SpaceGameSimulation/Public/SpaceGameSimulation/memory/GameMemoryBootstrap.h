@@ -1,8 +1,10 @@
 #pragma once
 
-#include "SpaceGameSimulation/memory/GameMemory.h"
+#include <CoreMinimal.h>
 
-DECLARE_DELEGATE_RetVal(TOptional<FGameMemoryBackingLease>, FAcquireGameMemoryBackingDelegate);
+#include "sandbox/simulation/memory/GameMemory.h"
+
+DECLARE_DELEGATE_RetVal(std::optional<FGameMemoryBackingLease>, FAcquireGameMemoryBackingDelegate);
 
 class SPACEGAMESIMULATION_API FGameMemoryBootstrap {
   public:

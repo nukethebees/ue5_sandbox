@@ -77,10 +77,10 @@ auto make_level_telemetry_run_metadata(UWorld const& world,
                                        FLevelMissionDefinition const& mission_definition)
     -> FLevelTelemetryRunMetadata {
     return {
-        .run_id = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphensLower),
-        .map_name = UGameplayStatics::GetCurrentLevelName(&world),
-        .level_id = mission_definition.level_id,
-        .level_display_name = mission_definition.level_display_name,
-        .launched_utc = FDateTime::UtcNow().ToIso8601(),
+        .run_id = TCHAR_TO_UTF8(*FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphensLower)),
+        .map_name = TCHAR_TO_UTF8(*UGameplayStatics::GetCurrentLevelName(&world)),
+        .level_id = TCHAR_TO_UTF8(*mission_definition.level_id.ToString()),
+        .level_display_name = TCHAR_TO_UTF8(*mission_definition.level_display_name),
+        .launched_utc = TCHAR_TO_UTF8(*FDateTime::UtcNow().ToIso8601()),
     };
 }

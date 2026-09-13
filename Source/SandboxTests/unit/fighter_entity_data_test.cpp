@@ -1,7 +1,8 @@
-#include "SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h"
+#include "sandbox/simulation/ships/fighters/TestCapitalShipFightersSimulation.h"
 
 #include "Misc/AutomationTest.h"
 
+#include <sandbox/core/multi_buffer.h>
 #include <type_traits>
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFighterEntityBiasPackedDataTest,
@@ -10,7 +11,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FFighterEntityBiasPackedDataTest,
                                      EAutomationTestFlags::EngineFilter)
 
 auto FFighterEntityBiasPackedDataTest::RunTest(FString const&) -> bool {
-    using EntityData = ml::test_capital_ship_fighters::EntityData;
+    using EntityData = ml::simulation::FighterEntityData;
 
     EntityData source;
     source.add_defaulted(3);
@@ -24,15 +25,15 @@ auto FFighterEntityBiasPackedDataTest::RunTest(FString const&) -> bool {
     source.validate_array_sizes();
 
     auto view{source.get_view(1, 2)};
-    static_assert(std::is_same_v<decltype(view.integral_biases), TArrayView<uint32>>);
-    static_assert(std::is_same_v<decltype(view.float_biases), TArrayView<float>>);
+    static_assert(std::is_same_v<decltype(view.integral_biases), std::span<uint32>>);
+    static_assert(std::is_same_v<decltype(view.float_biases), std::span<float>>);
     TestEqual(TEXT("Mutable view integral bias"), view.integral_biases[0], 200u);
     TestEqual(TEXT("Mutable view float bias"), view.float_biases[1], 0.3f);
 
     EntityData const& const_source{source};
     auto const_view{const_source.get_const_view(1, 2)};
-    static_assert(std::is_same_v<decltype(const_view.integral_biases), TConstArrayView<uint32>>);
-    static_assert(std::is_same_v<decltype(const_view.float_biases), TConstArrayView<float>>);
+    static_assert(std::is_same_v<decltype(const_view.integral_biases), std::span<uint32 const>>);
+    static_assert(std::is_same_v<decltype(const_view.float_biases), std::span<float const>>);
     TestEqual(TEXT("Const view integral bias"), const_view.integral_biases[1], 300u);
     TestEqual(TEXT("Const view float bias"), const_view.float_biases[0], 0.2f);
 
@@ -54,7 +55,7 @@ auto FFighterEntityBiasPackedDataTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("Buffered copy integral bias"), reordered.integral_biases[0], 300u);
     TestEqual(TEXT("Buffered copy float bias"), reordered.float_biases[0], 0.3f);
 
-    reordered.remove_at_swap(0, 1, EAllowShrinking::No);
+    reordered.remove_at_swap(0, 1);
     reordered.validate_array_sizes();
     TestTrue(TEXT("Swap removal keeps handle paired with integral bias"),
              reordered.entity_handles[0] == FRegistryEntityHandle{20, 2});

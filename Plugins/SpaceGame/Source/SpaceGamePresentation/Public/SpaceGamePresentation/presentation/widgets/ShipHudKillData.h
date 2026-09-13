@@ -1,8 +1,8 @@
 #pragma once
 
+#include <sandbox/simulation/entities/TestEntityUniqueId.h>
 #include <SandboxCoreEngine/enums.h>
 #include <SpaceGameSimulation/entities/TestEntityType.h>
-#include <SpaceGameSimulation/entities/TestEntityUniqueId.h>
 #include <SpaceGameSimulation/entities/TestTeam.h>
 
 #include <SandboxCore/soa_array_mixin.h>

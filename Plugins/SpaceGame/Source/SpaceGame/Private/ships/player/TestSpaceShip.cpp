@@ -1,5 +1,6 @@
 #include "SpaceGame/ships/player/TestSpaceShip.h"
 #include <SpaceGame/simulation/SimulationConfigConversion.h>
+#include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
 
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGamePresentation/support/mesh.h>
@@ -45,22 +46,26 @@ ATestSpaceShip::ATestSpaceShip()
 
 auto ATestSpaceShip::make_spawn_data() const -> ml::test_space_ship::FPlayerSpawnData {
     ml::test_space_ship::FPlayerSpawnData result;
-    result.team = team;
-    result.transform = GetActorTransform();
-    result.body_transform = ship_mesh ? ship_mesh->GetRelativeTransform() : FTransform::Identity;
-    result.flight_mode = flight_mode;
-    result.control_mode = control_mode;
-    result.laser_mode = laser_mode;
-    result.laser_fire_rate = laser_fire_rate;
-    result.health = health;
+    result.team = ml::to_native(team);
+    result.transform = ml::to_native(GetActorTransform());
+    result.body_transform =
+        ml::to_native(ship_mesh ? ship_mesh->GetRelativeTransform() : FTransform::Identity);
+    result.flight_mode = ml::to_native(flight_mode);
+    result.control_mode = ml::to_native(control_mode);
+    result.laser_mode = ml::to_native(laser_mode);
+    result.laser_fire_rate = ml::to_native(laser_fire_rate);
+    result.health = ml::to_native(health);
 
     if (actor_config) {
         result.config = make_simulation_config(*actor_config);
     }
     if (ship_mesh) {
-        result.left_socket = ship_mesh->GetSocketTransform(Sockets::left, RTS_Component);
-        result.right_socket = ship_mesh->GetSocketTransform(Sockets::right, RTS_Component);
-        result.middle_socket = ship_mesh->GetSocketTransform(Sockets::middle, RTS_Component);
+        result.left_socket =
+            ml::to_native(ship_mesh->GetSocketTransform(Sockets::left, RTS_Component));
+        result.right_socket =
+            ml::to_native(ship_mesh->GetSocketTransform(Sockets::right, RTS_Component));
+        result.middle_socket =
+            ml::to_native(ship_mesh->GetSocketTransform(Sockets::middle, RTS_Component));
         result.collision_radius = ml::get_mesh_sphere_bounds(*ship_mesh);
     }
     return result;
@@ -68,6 +73,9 @@ auto ATestSpaceShip::make_spawn_data() const -> ml::test_space_ship::FPlayerSpaw
 
 void ATestSpaceShip::bind_simulation(ml::test_space_ship::Simulation& new_simulation) {
     bound_simulation = &new_simulation;
+#if WITH_EDITOR
+    bound_simulation->speed_sampling_enabled = true;
+#endif
 }
 
 void ATestSpaceShip::unbind_simulation() {
@@ -107,13 +115,13 @@ auto ATestSpaceShip::get_unique_id() const -> TestEntityUniqueId {
 }
 
 auto ATestSpaceShip::get_team() const noexcept -> ETestTeam {
-    return bound_simulation ? bound_simulation->team : team;
+    return bound_simulation ? ml::to_unreal(bound_simulation->team) : team;
 }
 
 void ATestSpaceShip::set_team(ETestTeam const new_team) noexcept {
     team = new_team;
     if (bound_simulation) {
-        bound_simulation->team = new_team;
+        bound_simulation->team = ml::to_native(new_team);
     }
 }
 
@@ -132,7 +140,7 @@ auto ATestSpaceShip::get_kills() const -> int32 {
 // Flight controls
 /* **************************************** */
 void ATestSpaceShip::set_move_input(FVector2D const input) {
-    simulation().set_move_input(input);
+    simulation().set_move_input(ml::to_native(input));
 }
 
 void ATestSpaceShip::set_lateral_move_input(float const input) {
@@ -144,7 +152,7 @@ void ATestSpaceShip::set_vertical_move_input(float const input) {
 }
 
 void ATestSpaceShip::set_ship_2d_control(FVector2D const input) {
-    simulation().set_ship_2d_control(input);
+    simulation().set_ship_2d_control(ml::to_native(input));
 }
 
 void ATestSpaceShip::set_ship_1d_control_x(float const input) {
@@ -181,7 +189,7 @@ void ATestSpaceShip::turn(FVector2D const direction) {
         UE_LOG(LogSandbox, Verbose, TEXT("Turning: %s"), *direction.ToString());
     }
 #endif
-    simulation().turn(direction);
+    simulation().turn(ml::to_native(direction));
 }
 
 void ATestSpaceShip::start_boost() {
@@ -201,7 +209,7 @@ void ATestSpaceShip::stop_brake() {
 }
 
 auto ATestSpaceShip::get_velocity() const -> FVector {
-    return bound_simulation ? bound_simulation->velocity : FVector::ZeroVector;
+    return bound_simulation ? ml::to_unreal(bound_simulation->velocity) : FVector::ZeroVector;
 }
 
 auto ATestSpaceShip::GetVelocity() const -> FVector {
@@ -221,26 +229,26 @@ auto ATestSpaceShip::get_target_speed() const -> float {
 }
 
 auto ATestSpaceShip::get_move_input() const -> FVector2D {
-    return simulation().planar_movement_direction;
+    return ml::to_unreal(simulation().planar_movement_direction);
 }
 
 auto ATestSpaceShip::get_control_mode() const -> ETestSpaceShipControlMode {
-    return simulation().control_mode;
+    return ml::to_unreal(simulation().control_mode);
 }
 
 auto ATestSpaceShip::get_flight_mode() const -> ETestSpaceShipFlightMode {
-    return simulation().flight_mode;
+    return ml::to_unreal(simulation().flight_mode);
 }
 
 void ATestSpaceShip::set_flight_mode(ETestSpaceShipFlightMode const new_flight_mode) noexcept {
     flight_mode = new_flight_mode;
     if (bound_simulation) {
-        bound_simulation->set_flight_mode(new_flight_mode);
+        bound_simulation->set_flight_mode(ml::to_native(new_flight_mode));
     }
 }
 
 auto ATestSpaceShip::get_target_local_planar_velocity_scale() const -> FVector2D {
-    return simulation().target_local_planar_velocity_scale;
+    return ml::to_unreal(simulation().target_local_planar_velocity_scale);
 }
 
 auto ATestSpaceShip::is_sampling() const -> bool {
@@ -248,11 +256,11 @@ auto ATestSpaceShip::is_sampling() const -> bool {
 }
 
 auto ATestSpaceShip::get_target_local_planar_velocity() const -> FVector {
-    return simulation().target_local_planar_velocity;
+    return ml::to_unreal(simulation().target_local_planar_velocity);
 }
 
 auto ATestSpaceShip::get_turn_input() const -> FVector2D {
-    return simulation().rotation_input;
+    return ml::to_unreal(simulation().rotation_input);
 }
 
 /* **************************************** */
@@ -283,11 +291,11 @@ void ATestSpaceShip::upgrade_laser() {
 }
 
 auto ATestSpaceShip::get_laser_fire_rate() const noexcept -> ETestShipFireRate {
-    return simulation().laser_fire_rate;
+    return ml::to_unreal(simulation().laser_fire_rate);
 }
 
 auto ATestSpaceShip::get_laser_firing_mode() const noexcept -> ELaserFiringState {
-    return simulation().laser_firing_mode;
+    return ml::to_unreal(simulation().laser_firing_mode);
 }
 
 void ATestSpaceShip::select_next_laser_fire_rate() noexcept {
@@ -301,7 +309,7 @@ void ATestSpaceShip::select_previous_laser_fire_rate() noexcept {
 void ATestSpaceShip::set_laser_fire_rate(ETestShipFireRate const value) noexcept {
     laser_fire_rate = value;
     if (bound_simulation) {
-        bound_simulation->set_laser_fire_rate(value);
+        bound_simulation->set_laser_fire_rate(ml::to_native(value));
     }
 }
 
@@ -316,7 +324,7 @@ void ATestSpaceShip::add_health(int32 const added_health) {
 }
 
 auto ATestSpaceShip::get_health_info() const -> FShipHealth {
-    return bound_simulation ? bound_simulation->health : health;
+    return bound_simulation ? ml::to_unreal(bound_simulation->health) : health;
 }
 
 auto ATestSpaceShip::is_alive() const noexcept -> bool {
@@ -328,14 +336,14 @@ auto ATestSpaceShip::get_collision_mesh() const -> UStaticMesh const* {
 }
 
 auto ATestSpaceShip::get_middle_socket() const -> FTransform {
-    return simulation().get_middle_socket();
+    return ml::to_unreal(simulation().get_middle_socket());
 }
 
 #if WITH_EDITOR
 /* **************************************** */
 // Diagnostics
 /* **************************************** */
-auto ATestSpaceShip::get_speed_samples() const noexcept -> TConstArrayView<FVector2d> {
+auto ATestSpaceShip::get_speed_samples() const noexcept -> std::span<ml::Vector2d const> {
     return simulation().speed_samples;
 }
 

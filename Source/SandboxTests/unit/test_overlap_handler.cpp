@@ -1,39 +1,32 @@
-#include <SpaceGameSimulation/combat/OverlapHandler.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <array>
+#include <sandbox/simulation/combat/OverlapHandler.h>
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
 
 #include <CQTest.h>
 
 namespace {
-auto spawn_entity(FTestEntityRegistry& registry, ETestEntityType const type)
+auto spawn_entity(FTestEntityRegistry& registry, ml::simulation::EntityType const type)
     -> FRegistryEntityHandle {
     FTestEntityRegistry::EntityData data;
-    data.locations.add(FVector3f::ZeroVector);
-    data.velocities.add(FVector3f::ZeroVector);
-    data.rotations.add(0.f, 0.f, 0.f);
-    data.radii.Add(1.f);
-    data.healths.Add(100);
-    data.teams.Add(ETestTeam::Blue);
-    data.entity_types.Add(type);
-    data.alive.Add(uint8{1});
+    data.add_defaulted(1);
+    data.radii[0] = 1.f;
+    data.healths[0] = 100;
+    data.teams[0] = ml::simulation::Team::Blue;
+    data.entity_types[0] = type;
+    data.alive[0] = 1;
     return registry.add_entities(data.get_const_view()).get_handle(0);
 }
 
 void mark_dead(FTestEntityRegistry& registry, FRegistryEntityHandle const handle) {
     auto const& current{registry.get_entity_data()};
     FTestEntityRegistry::EntityData update;
-    update.locations.add(current.locations[handle.index]);
-    update.velocities.add(current.velocities[handle.index]);
-    update.rotations.add(current.rotations.pitches[handle.index],
-                         current.rotations.yaws[handle.index],
-                         current.rotations.rolls[handle.index]);
-    update.radii.Add(current.radii[handle.index]);
-    update.healths.Add(0);
-    update.teams.Add(current.teams[handle.index]);
-    update.entity_types.Add(current.entity_types[handle.index]);
-    update.alive.Add(uint8{0});
+    update.add_defaulted(1);
+    update.copy_element(0, current, handle.index);
+    update.healths[0] = 0;
+    update.alive[0] = 0;
     EntityDeathInfo death;
-    death.add(ETestDeathReason::Unknown, handle, {});
-    registry.queue_entity_updates({TArray{handle}, update.get_const_view()}, death);
+    death.add(ml::simulation::DeathReason::Unknown, handle, {});
+    registry.queue_entity_updates({std::array{handle}, update.get_const_view()}, death);
     registry.commit_updates();
 }
 }
@@ -43,9 +36,9 @@ TEST_CLASS(OverlapHandler, "Sandbox.UnitTests")
     TEST_METHOD(QueuesEnvironmentalDamageForEachSupportedOverlapParticipant)
     {
         FTestEntityRegistry registry;
-        auto const capital{spawn_entity(registry, ETestEntityType::CapitalShip)};
-        auto const fighter{spawn_entity(registry, ETestEntityType::CapitalShipFighter)};
-        auto const turret{spawn_entity(registry, ETestEntityType::Turret)};
+        auto const capital{spawn_entity(registry, ml::simulation::EntityType::CapitalShip)};
+        auto const fighter{spawn_entity(registry, ml::simulation::EntityType::CapitalShipFighter)};
+        auto const turret{spawn_entity(registry, ml::simulation::EntityType::Turret)};
 
         ml::ioj::FEntityEntityOverlaps entity_overlaps;
         entity_overlaps.add(capital, fighter);
@@ -76,17 +69,18 @@ TEST_CLASS(OverlapHandler, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Turret receives its pair contribution"), turret_count, 1);
         TestRunner->TestEqual(
             TEXT("Environmental damage gives no combat hits"),
-            registry.get_combat_telemetry().hits[std::to_underlying(ETestTeam::Blue)]
-                                                [std::to_underlying(ETestEntityType::CapitalShip)],
+            registry.get_combat_telemetry()
+                .hits[std::to_underlying(ml::simulation::Team::Blue)]
+                     [std::to_underlying(ml::simulation::EntityType::CapitalShip)],
             uint64{0});
     }
 
     TEST_METHOD(SkipsUnsupportedDeadInvalidAndStaleRecipients)
     {
         FTestEntityRegistry registry;
-        auto const fighter{spawn_entity(registry, ETestEntityType::CapitalShipFighter)};
-        auto const spinner{spawn_entity(registry, ETestEntityType::TubeSpinner)};
-        auto const doomed{spawn_entity(registry, ETestEntityType::Turret)};
+        auto const fighter{spawn_entity(registry, ml::simulation::EntityType::CapitalShipFighter)};
+        auto const spinner{spawn_entity(registry, ml::simulation::EntityType::TubeSpinner)};
+        auto const doomed{spawn_entity(registry, ml::simulation::EntityType::Turret)};
         mark_dead(registry, doomed);
 
         ml::ioj::FEntityEntityOverlaps first_pairs;
@@ -105,7 +99,7 @@ TEST_CLASS(OverlapHandler, "Sandbox.UnitTests")
         }
 
         registry.end_tick();
-        auto const replacement{spawn_entity(registry, ETestEntityType::Turret)};
+        auto const replacement{spawn_entity(registry, ml::simulation::EntityType::Turret)};
         TestRunner->TestTrue(TEXT("Dead slot reuse makes the old handle stale"),
                              registry.is_stale(doomed));
 

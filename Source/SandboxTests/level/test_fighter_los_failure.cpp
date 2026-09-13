@@ -1,11 +1,12 @@
 #include "test_fighter_los_failure.h"
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 
+#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
+#include <sandbox/simulation/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
-#include <SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h>
 
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/TestActorSpawning.h>
@@ -36,7 +37,9 @@ void run_worldless_fighter_los_failure(FAutomationTestBase& test,
     TArray<TArray<ETestTeam>> fighter_team_samples;
     harness.on_end_tick = [&](FLevelSimulation&) {
         TArray<ETestTeam> teams;
-        teams.Append(fighters.get_teams());
+        for (auto const team : fighters.get_teams()) {
+            teams.Add(ml::to_unreal(team));
+        }
         fighter_team_samples.Add(MoveTemp(teams));
     };
     harness.timeline.finish_at(30.0);

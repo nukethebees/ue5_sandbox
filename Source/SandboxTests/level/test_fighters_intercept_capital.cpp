@@ -2,11 +2,11 @@
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 
+#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
+#include <sandbox/simulation/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGameSimulation/entities/TestTeam.h>
-#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
-#include <SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h>
 
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestFightersInterceptCapitalResults.h>

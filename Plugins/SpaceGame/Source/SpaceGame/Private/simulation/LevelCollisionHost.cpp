@@ -1,9 +1,11 @@
 #include "SpaceGame/simulation/LevelCollisionHost.h"
+#include <SGCollision/world_aabbs.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
 #include <sandbox/simulation/world_aabb_operations.h>
 #include <SGCollision/mesh_data_extraction.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/entities/TestEntityType.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
@@ -132,7 +134,8 @@ auto extract_static_collision_component(UPrimitiveComponent& component,
 
     FVector3f const min_point{aabb.Min};
     FVector3f const max_point{aabb.Max};
-    auto const [min_coord, max_coord]{uniform_grid.to_cell_coord_bounds(min_point, max_point)};
+    auto const [min_coord, max_coord]{
+        uniform_grid.to_cell_coord_bounds(ml::to_native(min_point), ml::to_native(max_point))};
     if (min_point.ContainsNaN() || max_point.ContainsNaN() ||
         !uniform_grid.is_cell_coord_in_bounds(min_coord, max_coord)) {
         rejection_reason = TEXT("world AABB is invalid or outside the collision grid");
@@ -285,7 +288,8 @@ auto FLevelCollisionHost::add_static_geometry(UPrimitiveComponent& component,
         return reject_component(rejection_reason);
     }
 
-    auto const static_index{uniform_grid_.add_static_aabb(data->min_point, data->max_point)};
+    auto const static_index{uniform_grid_.add_static_aabb(ml::to_native(data->min_point),
+                                                          ml::to_native(data->max_point))};
     check(static_index == static_collision_sources_.num());
     static_collision_sources_.add(&component, data->original_collision_mode);
     component.SetCollisionEnabled(ECollisionEnabled::NoCollision);

@@ -2,6 +2,120 @@ find_package(GTest CONFIG REQUIRED)
 
 add_library(native-simulation STATIC)
 target_sources(native-simulation PRIVATE
+  include/sandbox/simulation/transform3d.h
+  src/transform3d.cpp
+  include/sandbox/simulation/rotator3d.h
+  src/rotator3d.cpp
+  include/sandbox/simulation/ships/player/PlayerReadView.h
+  include/sandbox/simulation/simulation/LevelReadView.h
+  include/sandbox/simulation/simulation/FighterDiagnostics.h
+  include/sandbox/simulation/entities/TeamList.h
+  include/sandbox/simulation/combat/OverlapHandler.h
+  src/combat/OverlapHandler.cpp
+  include/sandbox/simulation/vector_operations.h
+  include/sandbox/simulation/entities/BatchSimulation.h
+  src/entities/BatchSimulation.cpp
+  include/sandbox/simulation/memory/GameMemory.h
+  include/sandbox/simulation/memory/GameMemoryBacking.h
+  include/sandbox/simulation/memory/GameMemoryBackingLease.h
+  include/sandbox/simulation/memory/GameMemoryBlock.h
+  src/memory/GameMemory.cpp
+  include/sandbox/simulation/telemetry/LevelTelemetryBlockHistory.h
+  src/telemetry/LevelTelemetryBlockHistory.cpp
+  include/sandbox/simulation/simulation/CollisionSystem.h
+  src/simulation/CollisionSystem.cpp
+  include/sandbox/simulation/simulation/SpatialQueryManager.h
+  src/simulation/SpatialQueryManager.cpp
+  include/sandbox/simulation/simulation/collision_uniform_grid.h
+  src/simulation/collision_uniform_grid.cpp
+  include/sandbox/simulation/simulation/LevelSimulationConfig.h
+  include/sandbox/simulation/telemetry/LevelTelemetryHistory.h
+  include/sandbox/simulation/telemetry/LevelTelemetryRunRecord.h
+  include/sandbox/simulation/telemetry/LevelTelemetryRunEndReason.h
+  include/sandbox/simulation/ships/common/SpaceShipCommon.h
+  include/sandbox/simulation/ships/common/LaserFiringState.h
+  include/sandbox/simulation/ships/common/ShipLaserMode.h
+  include/sandbox/simulation/ships/player/TestShipFireRate.h
+  include/sandbox/simulation/ships/player/TestSpaceShipControlMode.h
+  include/sandbox/simulation/ships/player/TestSpaceShipFlightMode.h
+  include/sandbox/simulation/entities/DirectDamageEvents.h
+  include/sandbox/simulation/entities/EntityDeathInfo.h
+  include/sandbox/simulation/entities/RegistryHandleState.h
+  include/sandbox/simulation/entities/TestDeathReason.h
+  include/sandbox/simulation/entities/TestEntityOwnerId.h
+  include/sandbox/simulation/entities/TestEntityUniqueEntityData.h
+  include/sandbox/simulation/entities/TestEntityUniqueId.h
+  include/sandbox/simulation/memory/GameMemoryConfig.h
+  include/sandbox/simulation/ships/fighters/TestCapitalShipFighterFrameSpawnQueue.h
+  include/sandbox/simulation/ships/fighters/TestCapitalShipFighterOrder.h
+  include/sandbox/simulation/ships/fighters/TestCapitalShipFighterSpawnQueue.h
+  include/sandbox/simulation/simulation/EntityOverlaps.h
+  include/sandbox/simulation/simulation/FrameTraceHits.h
+  include/sandbox/simulation/simulation/LevelSimulationState.h
+  include/sandbox/simulation/simulation/TraceHits.h
+  include/sandbox/simulation/missions/mission_state.h
+  include/sandbox/simulation/missions/mission_mode.h
+  include/sandbox/simulation/missions/mission_fail_reason.h
+  include/sandbox/simulation/ships/capital/TestCapitalShipsSpawnData.h
+  include/sandbox/simulation/defences/turrets/TestStaticTurretsSpawnData.h
+  include/sandbox/simulation/combat/lasers/TestLasersFrameScratch.h
+  include/sandbox/simulation/simulation/LevelTelemetrySnapshot.h
+  include/sandbox/simulation/entities/NativeEntityRegistryView.h
+  include/sandbox/simulation/simulation/SystemReadViews.h
+  include/sandbox/simulation/levels/LevelRuntimeEvents.h
+  include/sandbox/simulation/levels/LevelMissionMode.h
+  include/sandbox/simulation/levels/LevelMissionEventType.h
+  include/sandbox/simulation/levels/LevelEventGroupCounts.h
+  include/sandbox/simulation/levels/LevelMissionEvents.h
+  include/sandbox/simulation/levels/LevelMissionInitialisationData.h
+  include/sandbox/simulation/levels/LevelInitialisationData.h
+  include/sandbox/simulation/levels/CompiledLevelEvents.h
+  include/sandbox/simulation/fixed_tick_loop.h
+  include/sandbox/simulation/simulation/SimulationClock.h
+  include/sandbox/simulation/ships/capital/TestCapitalShipsPhaseInterface.h
+  src/ships/capital/TestCapitalShipsPhaseInterface.cpp
+  include/sandbox/simulation/ships/fighters/TestCapitalShipFightersPhaseInterface.h
+  src/ships/fighters/TestCapitalShipFightersPhaseInterface.cpp
+  include/sandbox/simulation/ships/player/TestSpaceShipPhaseInterface.h
+  src/ships/player/TestSpaceShipPhaseInterface.cpp
+  include/sandbox/simulation/defences/turrets/TestStaticTurretsPhaseInterface.h
+  src/defences/turrets/TestStaticTurretsPhaseInterface.cpp
+  include/sandbox/simulation/defences/spinners/TestTubeSpinnersPhaseInterface.h
+  src/defences/spinners/TestTubeSpinnersPhaseInterface.cpp
+  include/sandbox/simulation/combat/lasers/TestLasersPhaseInterface.h
+  src/combat/lasers/TestLasersPhaseInterface.cpp
+  include/sandbox/simulation/ships/fighters/TestCapitalShipFightersCommandInterface.h
+  include/sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h
+  src/ships/capital/TestCapitalShipsSimulation.cpp
+  include/sandbox/simulation/ships/fighters/TestCapitalShipFightersSimulation.h
+  src/ships/fighters/TestCapitalShipFightersSimulation.cpp
+  include/sandbox/simulation/ships/player/TestSpaceShipSimulation.h
+  src/ships/player/TestSpaceShipSimulation.cpp
+  include/sandbox/simulation/defences/turrets/TestStaticTurretsSimulation.h
+  src/defences/turrets/TestStaticTurretsSimulation.cpp
+  include/sandbox/simulation/defences/spinners/TestTubeSpinnersSimulation.h
+  src/defences/spinners/TestTubeSpinnersSimulation.cpp
+  include/sandbox/simulation/combat/lasers/TestLasersSimulation.h
+  src/combat/lasers/TestLasersSimulation.cpp
+  include/sandbox/simulation/entities/TestEntityRegistry.h
+  src/entities/TestEntityRegistry.cpp
+  include/sandbox/simulation/missions/TestMissionManager.h
+  src/missions/TestMissionManager.cpp
+  include/sandbox/simulation/levels/LevelSpawnManager.h
+  src/levels/LevelSpawnManager.cpp
+  include/sandbox/simulation/levels/LevelEventManager.h
+  src/levels/LevelEventManager.cpp
+  include/sandbox/simulation/levels/LevelEventSchedule.h
+  src/levels/LevelEventSchedule.cpp
+  include/sandbox/simulation/simulation/LevelTelemetryManager.h
+  src/simulation/LevelTelemetryManager.cpp
+  include/sandbox/simulation/simulation/LevelSimulation.h
+  src/simulation/LevelSimulation.cpp
+  include/sandbox/simulation/fighter_entity_data.h
+  include/sandbox/simulation/capital_entity_data.h
+  include/sandbox/simulation/turret_entity_data.h
+  include/sandbox/simulation/spinner_entity_data.h
+  include/sandbox/simulation/registry_entity_data.h
   include/sandbox/simulation/laser_frame_output.h
   src/laser_frame_output.cpp
   include/sandbox/simulation/laser_lifecycle.h
@@ -182,7 +296,7 @@ target_include_directories(native-simulation PUBLIC
   "${PROJECT_SOURCE_DIR}/native/lispb/native_soa/include"
 )
 target_link_libraries(native-simulation
-  PUBLIC sandbox::handmade_math
+  PUBLIC sandbox::handmade_math native-memory native-core
   PRIVATE sandbox::warnings_as_errors
 )
 

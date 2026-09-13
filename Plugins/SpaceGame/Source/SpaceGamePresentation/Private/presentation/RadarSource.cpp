@@ -1,4 +1,6 @@
 #include "SpaceGamePresentation/presentation/RadarSource.h"
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include "SpaceGameSimulation/entities/TestEntityType.h"
 
@@ -146,7 +148,7 @@ auto sanitize_radar_settings(FRadarSettings settings) -> FRadarSettings {
     return settings;
 }
 
-auto collect_radar_instances(ml::entity_registry::EntityData::ConstView const entities,
+auto collect_radar_instances(ml::simulation::RegistryEntityData::ConstView const entities,
                              TConstArrayView<int32> const generations,
                              TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
                              FRadarContactColours const& contact_colours,
@@ -183,7 +185,7 @@ auto collect_radar_instances(ml::entity_registry::EntityData::ConstView const en
 
             FRegistryEntityHandle const handle{index, generations[index]};
             if (handle == player_handle ||
-                entities.entity_types[index] == ETestEntityType::PlayerShip) {
+                entities.entity_types[index] == ml::simulation::EntityType::PlayerShip) {
                 continue;
             }
             if (priority == 0) {
@@ -196,16 +198,16 @@ auto collect_radar_instances(ml::entity_registry::EntityData::ConstView const en
                 continue;
             }
 
-            auto const world_delta{entities.locations[index] - player_origin};
+            auto const world_delta{ml::to_unreal(entities.locations[index]) - player_origin};
             if (world_delta.SizeSquared() >= range_squared) {
                 continue;
             }
             auto const local_delta{
                 FVector3f{no_roll_transform.InverseTransformVectorNoScale(FVector{world_delta})}};
-            auto const entity_type{entities.entity_types[index]};
+            auto const entity_type{ml::to_unreal(entities.entity_types[index])};
             auto heading_radians{0.0f};
             if (entity_type == ETestEntityType::CapitalShipFighter) {
-                auto const world_velocity{entities.velocities[index]};
+                auto const world_velocity{ml::to_unreal(entities.velocities[index])};
                 auto const local_velocity{FVector3f{
                     no_roll_transform.InverseTransformVectorNoScale(FVector{world_velocity})}};
                 if (FVector2f{local_velocity.X, local_velocity.Y}.SizeSquared() > UE_SMALL_NUMBER) {
@@ -215,8 +217,8 @@ auto collect_radar_instances(ml::entity_registry::EntityData::ConstView const en
             output_frame.instances.Add({
                 .radar_position = ml::radar_source::to_radar_position(local_delta, settings, curve),
                 .size_scale = ml::radar_source::size_scale(entity_type),
-                .packed_color = pack_radar_color(
-                    ml::radar_source::colour(entities.teams[index], player_team, contact_colours)),
+                .packed_color = pack_radar_color(ml::radar_source::colour(
+                    ml::to_unreal(entities.teams[index]), player_team, contact_colours)),
                 .packed_glyph_and_flags = pack_radar_display(
                     ml::radar_source::glyph(entity_type), contact_flags, heading_radians),
             });

@@ -1,4 +1,5 @@
 #pragma once
+#include <span>
 
 #include <SandboxNative/RegistryEntityHandle.h>
 
@@ -35,10 +36,10 @@ struct TestSimulationDriver {
     auto get_capital_ships() const -> test_capital_ships::Simulation const&;
     auto get_capital_ship_fighters() const -> test_capital_ship_fighters::Simulation const&;
 
-    void queue_damage(TConstArrayView<FRegistryEntityHandle> targets,
+    void queue_damage(std::span<FRegistryEntityHandle const> targets,
                       int32 damage,
                       FRegistryEntityHandle instigator = {});
-    void queue_kills(TConstArrayView<FRegistryEntityHandle> targets,
+    void queue_kills(std::span<FRegistryEntityHandle const> targets,
                      FRegistryEntityHandle instigator = {});
     bool should_export_results() const;
 

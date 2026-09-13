@@ -1,9 +1,9 @@
 #pragma once
 
+#include <sandbox/simulation/simulation/SystemReadViews.h>
 #include <SpaceGamePresentation/entities/TeamColours.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
-#include <SpaceGameSimulation/simulation/SystemReadViews.h>
 
 #include <CoreMinimal.h>
 

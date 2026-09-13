@@ -1,6 +1,8 @@
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/simulation/SpatialQueryManager.h>
 #include <SpaceGameSimulation/simulation/EntityWorldBounds.h>
-#include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
+#include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
+#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <CQTest.h>
 
@@ -24,17 +26,17 @@ struct FOverlapFixture {
     }
 
     auto spawn(FVector3f const location,
-               ETestEntityType const type = ETestEntityType::CapitalShip,
+               ml::simulation::EntityType const type = ml::simulation::EntityType::CapitalShip,
                FRotator3f const rotation = FRotator3f::ZeroRotator) -> FRegistryEntityHandle {
         FTestEntityRegistry::EntityData data;
-        data.locations.add(location);
-        data.velocities.add(FVector3f::ZeroVector);
-        data.rotations.add(rotation.Pitch, rotation.Yaw, rotation.Roll);
-        data.radii.Add(1.f);
-        data.healths.Add(100);
-        data.teams.Add(ETestTeam::Blue);
-        data.entity_types.Add(type);
-        data.alive.Add(uint8{1});
+        data.add_defaulted(1);
+        data.locations.set(0, ml::to_native(location));
+        data.rotations.set(0, ml::to_native(rotation));
+        data.radii[0] = 1.f;
+        data.healths[0] = 100;
+        data.teams[0] = ml::simulation::Team::Blue;
+        data.entity_types[0] = type;
+        data.alive[0] = 1;
         return registry.add_entities(data.get_const_view()).get_handle(0);
     }
 
@@ -46,8 +48,8 @@ struct FOverlapFixture {
     }
 
     auto add_static(FVector3f const min_point, FVector3f const max_point) -> int32 {
-        return query_manager.get_collision_system().get_uniform_grid().add_static_aabb(min_point,
-                                                                                       max_point);
+        return query_manager.get_collision_system().get_uniform_grid().add_static_aabb(
+            ml::to_native(min_point), ml::to_native(max_point));
     }
 
     void run_tick(TConstArrayView<FRegistryEntityHandle> const handles,
@@ -68,21 +70,21 @@ struct FOverlapFixture {
         for (int32 index{}; index < count; ++index) {
             auto const handle{handles[index]};
             auto const entity_alive{alive.IsEmpty() ? uint8{1} : alive[index]};
-            updates.locations.add(locations[index]);
-            updates.velocities.add(current.velocities[handle.index]);
-            updates.rotations.add(
-                rotations[index].Pitch, rotations[index].Yaw, rotations[index].Roll);
-            updates.radii.Add(current.radii[handle.index]);
-            updates.healths.Add(current.healths[handle.index]);
-            updates.teams.Add(current.teams[handle.index]);
-            updates.entity_types.Add(current.entity_types[handle.index]);
-            updates.alive.Add(entity_alive);
+            updates.add_defaulted(1);
+            updates.copy_element(index, current, handle.index);
+            updates.locations.set(index, ml::to_native(locations[index]));
+            updates.rotations.set(index, ml::to_native(rotations[index]));
+            updates.alive[index] = entity_alive;
             if (entity_alive == 0) {
-                deaths.add(ETestDeathReason::Unknown, handle, {});
+                deaths.add(ml::simulation::DeathReason::Unknown, handle, {});
             }
         }
 
-        registry.queue_entity_updates({handles, updates.get_const_view()}, deaths);
+        registry.queue_entity_updates(
+            {std::span<FRegistryEntityHandle const>{handles.GetData(),
+                                                    static_cast<std::size_t>(handles.Num())},
+             updates.get_const_view()},
+            deaths);
         registry.commit_updates();
         query_manager.update(++current_tick);
         tick_is_open = true;
@@ -258,7 +260,7 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
     {
         FOverlapFixture fixture{{40.f, 5.f, 5.f}, {30.f, 0.f, 0.f}, {5.f, 5.f, 5.f}};
         auto const rotated{fixture.spawn({0.f, 0.f, 0.f})};
-        auto const stationary{fixture.spawn({0.f, 60.f, 0.f}, ETestEntityType::Turret)};
+        auto const stationary{fixture.spawn({0.f, 60.f, 0.f}, ml::simulation::EntityType::Turret)};
         fixture.finish_spawning();
 
         auto const rotation{FRotator3f{0.f, 90.f, 0.f}};
@@ -436,7 +438,7 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
         FOverlapFixture fixture{{40.f, 5.f, 5.f}, {30.f, 0.f, 0.f}, {5.f, 5.f, 5.f}};
         auto const static_index{fixture.add_static({-5.f, 55.f, -5.f}, {5.f, 65.f, 5.f})};
         auto const rotated{fixture.spawn({0.f, 0.f, 0.f})};
-        auto const stationary{fixture.spawn({0.f, 60.f, 0.f}, ETestEntityType::Turret)};
+        auto const stationary{fixture.spawn({0.f, 60.f, 0.f}, ml::simulation::EntityType::Turret)};
         fixture.finish_spawning();
 
         TArray const handles{rotated};
@@ -612,7 +614,10 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Static event storage is retained across reset"),
                              reset_events.entity_static_overlaps.entities.data() == static_storage);
 
-        collision_system.update(handles, ++fixture.current_tick);
+        collision_system.update(
+            std::span<FRegistryEntityHandle const>{handles.GetData(),
+                                                   static_cast<std::size_t>(handles.Num())},
+            ++fixture.current_tick);
         auto const recaptured_events{collision_system.get_aabb_overlap_events()};
         check_single_pair(TestRunner, recaptured_events.entity_entity_overlaps, moved, stationary);
         check_single_static_overlap(
@@ -624,7 +629,10 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
                              recaptured_events.entity_static_overlaps.entities.data() ==
                                  static_storage);
 
-        collision_system.update(handles, ++fixture.current_tick);
+        collision_system.update(
+            std::span<FRegistryEntityHandle const>{handles.GetData(),
+                                                   static_cast<std::size_t>(handles.Num())},
+            ++fixture.current_tick);
         auto const appended_events{collision_system.get_aabb_overlap_events()};
         TestRunner->TestEqual(TEXT("Collision passes append dynamic events within a frame"),
                               appended_events.entity_entity_overlaps.num(),
@@ -681,7 +689,10 @@ TEST_CLASS(EntityAABBOverlaps, "Sandbox.UnitTests")
 
         TArray const dirty_entities{
             FRegistryEntityHandle{}, FRegistryEntityHandle{999, 0}, removed, live};
-        fixture.query_manager.get_collision_system().update(dirty_entities, ++fixture.current_tick);
+        fixture.query_manager.get_collision_system().update(
+            std::span<FRegistryEntityHandle const>{dirty_entities.GetData(),
+                                                   static_cast<std::size_t>(dirty_entities.Num())},
+            ++fixture.current_tick);
 
         check_single_pair(TestRunner, fixture.get_entity_overlaps(), live, replacement);
         check_single_static_overlap(TestRunner, fixture.get_static_overlaps(), live, static_index);

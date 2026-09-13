@@ -14,15 +14,15 @@ FVector2f const default_bar_size{18.0f, 104.0f};
 constexpr float default_bar_spacing{4.0f};
 
 struct FForceCategory {
-    ETestEntityType type;
+    ml::simulation::EntityType type;
     FText label;
 };
 
 auto force_categories() -> TConstArrayView<FForceCategory> {
     static FForceCategory const categories[]{
-        {ETestEntityType::CapitalShipFighter, INVTEXT("F")},
-        {ETestEntityType::CapitalShip, INVTEXT("CS")},
-        {ETestEntityType::Turret, INVTEXT("T")},
+        {ml::simulation::EntityType::CapitalShipFighter, INVTEXT("F")},
+        {ml::simulation::EntityType::CapitalShip, INVTEXT("CS")},
+        {ml::simulation::EntityType::Turret, INVTEXT("T")},
     };
     return categories;
 }

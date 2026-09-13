@@ -1,6 +1,7 @@
+#include <sandbox/simulation/entities/DirectDamageEvents.h>
+#include <sandbox/simulation/simulation/LevelSimulation.h>
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
-#include <SpaceGameSimulation/entities/DirectDamageEvents.h>
-#include <SpaceGameSimulation/simulation/LevelSimulation.h>
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 
 #include <SandboxCore/soa_vector_utils.h>
 
@@ -21,17 +22,17 @@ auto make_cap_battle(TConstArrayView<ETestTeam> const capital_teams,
     data.fighter_radius = 1.f;
     data.fighters.max_live_fighters = max_live_fighters;
     for (auto const team : participating_teams) {
-        data.participating_teams.add(team);
+        data.participating_teams.add(ml::to_native(team));
     }
     data.capital_ships.fighter_spawn_slots = spawn_slots;
     for (int32 slot_index{}; slot_index < spawn_slots; ++slot_index) {
-        data.capital_ships.fighter_spawn_slots_relative_transforms.Emplace(
-            FVector{100.f + slot_index * 10.f, 0.f, 0.f});
+        data.capital_ships.fighter_spawn_slots_relative_transforms.push_back(
+            {.location = {100.0 + slot_index * 10.0, 0.0, 0.0}});
     }
 
     auto const capital_count{capital_teams.Num()};
     data.capital_spawns.add_defaulted(capital_count);
-    data.capital_target_spawn_indices.SetNumUninitialized(capital_count);
+    data.capital_target_spawn_indices.resize(static_cast<std::size_t>(capital_count));
     for (int32 capital_index{}; capital_index < capital_count; ++capital_index) {
         data.capital_spawns.locations.xs[capital_index] = capital_index * 1000.f;
         data.capital_spawns.teams[capital_index] =
@@ -42,7 +43,7 @@ auto make_cap_battle(TConstArrayView<ETestTeam> const capital_teams,
         data.capital_target_spawn_indices[capital_index] = capital_index;
     }
 
-    auto const bounds_count{ml::ioj::FEntityAABBs::num()};
+    auto const bounds_count{data.entity_bounds.num()};
     for (int32 index{}; index < bounds_count; ++index) {
         data.entity_bounds.half_extent_xs[index] = 10.f;
         data.entity_bounds.half_extent_ys[index] = 10.f;
@@ -60,7 +61,7 @@ void start_and_tick(FLevelSimulation& simulation) {
 auto count_team(FLevelSimulation const& simulation, ETestTeam const team) -> int32 {
     int32 count{};
     for (auto const fighter_team : simulation.get_capital_ship_fighters().get_teams()) {
-        count += fighter_team == team ? 1 : 0;
+        count += fighter_team == ml::to_native(team) ? 1 : 0;
     }
     return count;
 }
@@ -145,10 +146,10 @@ TEST_CLASS(FighterLiveCap, "Sandbox.UnitTests")
         simulation.advance(simulation.get_clock().get_tick_period());
         auto const& capital_simulation{simulation.get_capital_ships()};
         TestRunner->TestEqual(TEXT("First capital owns its full accepted wave"),
-                              capital_simulation.get_fighter_handles(0).Num(),
+                              static_cast<int32>(capital_simulation.get_fighter_handles(0).size()),
                               4);
         TestRunner->TestEqual(TEXT("Second capital owns only its accepted prefix"),
-                              capital_simulation.get_fighter_handles(1).Num(),
+                              static_cast<int32>(capital_simulation.get_fighter_handles(1).size()),
                               2);
 
         auto parent_death_data{make_cap_battle(capitals, participants, 2, 1)};
@@ -166,7 +167,8 @@ TEST_CLASS(FighterLiveCap, "Sandbox.UnitTests")
         parent_death_simulation.advance(parent_death_simulation.get_clock().get_tick_period());
         TestRunner->TestEqual(
             TEXT("A surviving same-team capital adopts a new fighter from a dead parent"),
-            parent_death_simulation.get_capital_ships().get_fighter_handles(0).Num(),
+            static_cast<int32>(
+                parent_death_simulation.get_capital_ships().get_fighter_handles(0).size()),
             2);
     }
 
@@ -209,10 +211,6 @@ TEST_CLASS(FighterLiveCap, "Sandbox.UnitTests")
         TArray<ETestTeam> const participants{ETestTeam::White};
         auto data{make_cap_battle(capitals, participants, 10, 1)};
         FLevelSimulation simulation{MoveTemp(data)};
-        TestRunner->AddExpectedError(
-            TEXT("Rejected fighter spawn request for invalid or non-participating team"),
-            EAutomationExpectedErrorFlags::Contains,
-            1);
         start_and_tick(simulation);
         TestRunner->TestEqual(TEXT("Unknown team creates no fighter"),
                               simulation.get_capital_ship_fighters().get_num_instances(),

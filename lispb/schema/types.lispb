@@ -1,10 +1,10 @@
 (type level_telemetry_entity_type_counts
-  :spelling "FTestEntityRegistry::EntityTypeCounts"
-  :header "SpaceGameSimulation/entities/TestEntityRegistry.h")
+  :spelling "ml::simulation::telemetry::EntityTypeCounts"
+  :header "sandbox/simulation/entity_telemetry.h")
 
 (type level_telemetry_entity_counts
-  :spelling "FTestEntityRegistry::EntityCounts"
-  :header "SpaceGameSimulation/entities/TestEntityRegistry.h")
+  :spelling "ml::simulation::telemetry::EntityCounts"
+  :header "sandbox/simulation/entity_telemetry.h")
 
 (type soa_experiment_MimallocArrayAllocator
   :spelling "MimallocArrayAllocator"
@@ -79,7 +79,7 @@
 
 (type death_reason
   :spelling "ETestDeathReason"
-  :header "SpaceGameSimulation/entities/TestDeathReason.h"
+  :header "sandbox/simulation/entities/TestDeathReason.h"
   :pass-by value)
 
 (type collision_enabled
@@ -94,31 +94,31 @@
 
 (type level_event_count
   :spelling "ml::FLevelEventCount"
-  :header "SpaceGameSimulation/levels/LevelEventGroupCounts.h"
+  :header "sandbox/simulation/levels/LevelEventGroupCounts.h"
   :pass-by value)
 
 (type level_mission_event_type
   :spelling "ml::ELevelMissionEventType"
-  :header "SpaceGameSimulation/levels/LevelMissionEventType.h"
+  :header "sandbox/simulation/levels/LevelMissionEventType.h"
   :pass-by value)
 
 (type fighter_order
   :spelling "TestCapitalShipFighterOrder"
-  :header "SpaceGameSimulation/ships/fighters/TestCapitalShipFighterOrder.h")
+  :header "sandbox/simulation/ships/fighters/TestCapitalShipFighterOrder.h")
 
 (type fighter_order_queue
   :spelling "TestCapitalShipFighterOrderQueue"
-  :header "SpaceGameSimulation/ships/fighters/TestCapitalShipFighterOrderQueue.h"
+  :header "sandbox/simulation/fighter_order_queue.h"
   (operation remove-at-swap remove_at_swap))
 
 (type fighter_spawn_queue
   :spelling "TestCapitalShipFighterSpawnQueue"
-  :header "SpaceGameSimulation/ships/fighters/TestCapitalShipFighterSpawnQueue.h"
+  :header "sandbox/simulation/ships/fighters/TestCapitalShipFighterSpawnQueue.h"
   (operation remove-at-swap remove_at_swap))
 
 (type fighter_spawn_queue_const_view
-  :spelling "TestCapitalShipFighterSpawnQueueConstView"
-  :header "SpaceGameSimulation/ships/fighters/TestCapitalShipFighterSpawnQueue.h"
+  :spelling "ml::simulation::TestCapitalShipFighterSpawnQueueConstView"
+  :header "sandbox/simulation/fighter_spawn_queue.h"
   :pass-by value)
 
 (type fighter_task
@@ -189,6 +189,16 @@
   :header "sandbox/simulation/entity_handle.h"
   :pass-by value)
 
+(type native_level_event_count
+  :spelling "ml::simulation::LevelEventCount"
+  :header "sandbox/simulation/level_event_types.h"
+  :pass-by value)
+
+(type native_level_mission_event_type
+  :spelling "ml::simulation::LevelMissionEventType"
+  :header "sandbox/simulation/level_event_types.h"
+  :pass-by value)
+
 (type native_death_reason
   :spelling "ml::simulation::DeathReason"
   :header "sandbox/simulation/entity_types.h"
@@ -222,6 +232,11 @@
 (type native_vector_3f
   :spelling "ml::simulation::Vector3f"
   :header "sandbox/simulation/vector_types.h"
+  :pass-by value)
+
+(type native_index_span
+  :spelling "FIndexSpan"
+  :header "sandbox/simulation/index_span.h"
   :pass-by value)
 
 (type native_vectors_3f
@@ -289,7 +304,7 @@
 
 (type unique_id
   :spelling "TestEntityUniqueId"
-  :header "SpaceGameSimulation/entities/TestEntityUniqueId.h"
+  :header "sandbox/simulation/entities/TestEntityUniqueId.h"
   :pass-by value)
 
 (type vector_2f
@@ -389,31 +404,31 @@
 
 (type test_fighters
   :spelling "ml::test_capital_ship_fighters::Simulation"
-  :header "SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h")
+  :header "sandbox/simulation/ships/fighters/TestCapitalShipFightersSimulation.h")
 
 (type spawned_entity_handles
-  :spelling "SpawnedEntityHandles"
-  :header "SpaceGameSimulation/entities/TestEntityRegistry.h")
+  :spelling "ml::simulation::SpawnedEntityHandles"
+  :header "sandbox/simulation/spawned_entity_handles.h")
 
 (type test_space_ship
   :spelling "ml::test_space_ship::Simulation"
-  :header "SpaceGameSimulation/ships/player/TestSpaceShipSimulation.h")
+  :header "sandbox/simulation/ships/player/TestSpaceShipSimulation.h")
 
 (type test_lasers
   :spelling "ml::test_lasers::Simulation"
-  :header "SpaceGameSimulation/combat/lasers/TestLasersSimulation.h")
+  :header "sandbox/simulation/combat/lasers/TestLasersSimulation.h")
 
 (type test_capital_ships
   :spelling "ml::test_capital_ships::Simulation"
-  :header "SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h")
+  :header "sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h")
 
 (type test_static_turrets
   :spelling "ml::test_static_turrets::Simulation"
-  :header "SpaceGameSimulation/defences/turrets/TestStaticTurretsSimulation.h")
+  :header "sandbox/simulation/defences/turrets/TestStaticTurretsSimulation.h")
 
 (type test_tube_spinners
   :spelling "ml::test_tube_spinners::Simulation"
-  :header "SpaceGameSimulation/defences/spinners/TestTubeSpinnersSimulation.h")
+  :header "sandbox/simulation/defences/spinners/TestTubeSpinnersSimulation.h")
 
 (type laser_source
   :spelling "ml::simulation::LaserSource"

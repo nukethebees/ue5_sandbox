@@ -949,7 +949,11 @@ void validate_facade(FacadeModuleSchema const& module,
     }
     require_unique_names(facade.friends, "Facade '" + facade.name + "' friends");
     for (auto const& friend_name : facade.friends) {
-        require_qualified_identifier(friend_name, "Facade '" + facade.name + "' friend");
+        auto name{std::string_view{friend_name}};
+        if (name.starts_with("::")) {
+            name.remove_prefix(2);
+        }
+        require_qualified_identifier(name, "Facade '" + facade.name + "' friend");
     }
     validate_export_specifier(facade.export_specifier,
                               "Facade '" + facade.name + "' export specifier");

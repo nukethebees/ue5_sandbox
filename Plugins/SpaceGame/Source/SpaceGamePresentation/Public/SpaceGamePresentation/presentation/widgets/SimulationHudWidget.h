@@ -1,9 +1,9 @@
 #pragma once
 
+#include "sandbox/simulation/entities/TestEntityRegistry.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayFrameStore.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 #include "SpaceGamePresentation/entities/TestTeamVisualData.h"
-#include "SpaceGameSimulation/entities/TestEntityRegistry.h"
 
 #include <Blueprint/UserWidget.h>
 #include <CoreMinimal.h>

@@ -2,15 +2,15 @@
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 
+#include <sandbox/simulation/registry_entity_data.h>
+#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
 #include <SandboxCoreEngine/enums.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistryData.h>
 #include <SpaceGameSimulation/entities/TestTeam.h>
-#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
 
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/TestActorSpawning.h>
@@ -30,9 +30,9 @@ void run_worldless_entity_registry_scenario(FAutomationTestBase& test,
                                             EEntityRegistryScenario const scenario) {
     auto data{make_worldless_simulation_test_data(config)};
     data.capital_ships.fighter_spawn_slots = 0;
-    data.capital_ships.fighter_spawn_slots_relative_transforms.Reset();
+    data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     if (scenario != EEntityRegistryScenario::TeamCounts) {
-        data.player.Emplace(make_worldless_player_spawn(config));
+        data.player.emplace(make_worldless_player_spawn(config));
     }
     int32 actor_index{};
     for (int32 team_index{}; team_index < expected_team_counts.Num(); ++team_index) {
@@ -95,11 +95,11 @@ void run_worldless_entity_registry_scenario(FAutomationTestBase& test,
     auto const player_handle{player->registry_handle};
     auto const initial_alive_count{harness.get_registry().count_alive()};
     auto const available_targets{harness.get_registry().get_handles_not_in_team(player->team)};
-    checks.is_greater_than(available_targets.Num(),
+    checks.is_greater_than(static_cast<int32>(available_targets.size()),
                            expected_kills - 1,
                            TEXT("Enough non-player-team targets are available"));
-    TArray<FRegistryEntityHandle> targets;
-    targets.Append(available_targets.GetData(), expected_kills);
+    auto const targets{std::span<FRegistryEntityHandle const>{available_targets}.first(
+        static_cast<std::size_t>(expected_kills))};
     struct Sample {
         int32 player_kills{};
         int32 total_kills{};

@@ -1,5 +1,7 @@
 #include <NiagaraComponent.h>
 #include <NiagaraSystem.h>
+#include <sandbox/simulation/levels/LevelEventManager.h>
+#include <sandbox/simulation/simulation/LevelSimulation.h>
 #include <sandbox/simulation/world_aabb_operations.h>
 #include <SandboxISMCComponent.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
@@ -13,9 +15,8 @@
 #include <SpaceGamePresentation/presentation/LevelPresentation.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
-#include <SpaceGameSimulation/levels/LevelEventManager.h>
-#include <SpaceGameSimulation/simulation/LevelSimulation.h>
 #include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
+#include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <SandboxCore/soa_rotator_utils.h>
@@ -56,7 +57,7 @@ auto make_battle() -> FLevelSimulationInitData {
     data.capital_spawns.initial_spawn_delays = {60.f, 60.f};
     data.capital_spawns.spawn_cooldowns = {60.f, 60.f};
     data.capital_spawns.locations.xs = {-1000.f, 1000.f};
-    auto const count{ml::ioj::FEntityAABBs::num()};
+    auto const count{ml::simulation::collision::EntityAABBs::num()};
     for (int32 index{}; index < count; ++index) {
         data.entity_bounds.half_extent_xs[index] = 10.f;
         data.entity_bounds.half_extent_ys[index] = 10.f;
@@ -69,20 +70,23 @@ auto make_overlap_response_battle() -> FLevelSimulationInitData {
     auto data{make_battle()};
     data.overlap_response.damage_per_overlap_detection = 50;
     data.capital_spawns.healths = {5000, 5000};
-    data.player.Emplace();
-    data.player->transform.SetLocation(FVector{-1000.0, 0.0, 0.0});
+    data.player.emplace();
+    data.player->transform.location = {-1000.0, 0.0, 0.0};
     data.player->config.lateral_adjustment_speed = 1.f;
     data.player->health = {150, 150};
-    data.entity_bounds.half_extent_xs[ml::ioj::FEntityAABBs::capital_ship_index] = 100.f;
-    data.entity_bounds.half_extent_ys[ml::ioj::FEntityAABBs::capital_ship_index] = 100.f;
-    data.entity_bounds.half_extent_zs[ml::ioj::FEntityAABBs::capital_ship_index] = 100.f;
+    data.entity_bounds.half_extent_xs[ml::simulation::collision::EntityAABBs::capital_ship_index] =
+        100.f;
+    data.entity_bounds.half_extent_ys[ml::simulation::collision::EntityAABBs::capital_ship_index] =
+        100.f;
+    data.entity_bounds.half_extent_zs[ml::simulation::collision::EntityAABBs::capital_ship_index] =
+        100.f;
     return data;
 }
 
 auto make_scheduled_battle() -> FLevelSimulationInitData {
     auto data{make_battle()};
     data.capital_spawns.reset();
-    data.capital_target_spawn_indices.Reset();
+    data.capital_target_spawn_indices.clear();
     data.clock_settings.tick_rate = 10.0;
 
     ml::FLevelBuilder builder;
@@ -129,7 +133,7 @@ auto make_scheduled_battle() -> FLevelSimulationInitData {
 
 void prepare_mission(FLevelSimulation& simulation) {
     auto& mission{simulation.get_mission_manager()};
-    mission.set_mission_mode(ETestMissionMode::KillEnemies);
+    mission.set_mission_mode(ml::simulation::MissionMode::KillEnemies);
     mission.set_kill_target(1);
     mission.set_save_mission_results(false);
     mission.add_hero_entity(simulation.get_capital_ships().get_handle(0));
@@ -190,13 +194,15 @@ auto FWorldlessLevelSimulationTest::RunTest(FString const&) -> bool {
     TestEqual(
         TEXT("Other battle is unaffected"), second.get_capital_ships().get_num_instances(), 2);
     auto result{first.get_mission_manager().take_result()};
-    TestTrue(TEXT("Worldless mission produces a result"), result.IsSet());
-    if (result.IsSet()) {
-        TestEqual(TEXT("Worldless battle succeeds"), result->state, ETestMissionState::Succeeded);
+    TestTrue(TEXT("Worldless mission produces a result"), result.has_value());
+    if (result.has_value()) {
+        TestEqual(TEXT("Worldless battle succeeds"),
+                  result->state,
+                  ml::simulation::MissionState::Succeeded);
         TestEqual(TEXT("Worldless battle attributes the kill"), result->kills, 1);
     }
     TestFalse(TEXT("Mission result is delivered once"),
-              first.get_mission_manager().take_result().IsSet());
+              first.get_mission_manager().take_result().has_value());
     first.pause();
     auto const paused_ticks{first.get_clock().get_completed_ticks()};
     first.advance(dt);
@@ -258,7 +264,7 @@ auto FLevelSimulationOverlapResponseTest::RunTest(FString const&) -> bool {
               4850);
     TestTrue(TEXT("Overlap death uses the environmental death path"),
              registry.get_unique_entities().death_reason[player_id.id] ==
-                 ETestDeathReason::Unknown);
+                 ml::simulation::DeathReason::Unknown);
     TestEqual(TEXT("Environmental overlap death gives no combat kill"), registry.count_kills(), 0);
     return true;
 }
@@ -270,8 +276,8 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 auto FLevelSimulationPlanarMovementOffsetTest::RunTest(FString const&) -> bool {
     auto data{make_battle()};
-    data.player.Emplace();
-    data.player->flight_mode = ETestSpaceShipFlightMode::PlanarVelocity;
+    data.player.emplace();
+    data.player->flight_mode = ml::simulation::SpaceShipFlightMode::PlanarVelocity;
 
     FLevelSimulation simulation{MoveTemp(data)};
     simulation.finish_initialisation();
@@ -284,7 +290,7 @@ auto FLevelSimulationPlanarMovementOffsetTest::RunTest(FString const&) -> bool {
 
     auto const dt{simulation.get_clock().get_tick_period()};
     auto local_velocity = [player] {
-        return player->transform.InverseTransformVectorNoScale(player->velocity);
+        return ml::to_unreal(player->transform.inverse_transform_vector_no_scale(player->velocity));
     };
 
     player->set_lateral_move_input(1.f);
@@ -292,7 +298,7 @@ auto FLevelSimulationPlanarMovementOffsetTest::RunTest(FString const&) -> bool {
     TestTrue(TEXT("Held lateral input adds the configured local offset"),
              FMath::IsNearlyEqual(local_velocity().Y, 3000.0, 0.1));
     TestTrue(TEXT("Lateral input does not change desired planar velocity"),
-             player->target_local_planar_velocity_scale.IsNearlyZero());
+             ml::to_unreal(player->target_local_planar_velocity_scale).IsNearlyZero());
 
     player->set_lateral_move_input(0.f);
     player->set_vertical_move_input(1.f);
@@ -308,7 +314,7 @@ auto FLevelSimulationPlanarMovementOffsetTest::RunTest(FString const&) -> bool {
     TestTrue(TEXT("Released vertical input removes its local offset"),
              FMath::IsNearlyZero(released_velocity.Z, 0.1));
     TestTrue(TEXT("Movement offsets remain temporary"),
-             player->target_local_planar_velocity_scale.IsNearlyZero());
+             ml::to_unreal(player->target_local_planar_velocity_scale).IsNearlyZero());
     return true;
 }
 
@@ -339,7 +345,7 @@ auto FLevelSimulationReconstructionTest::RunTest(FString const&) -> bool {
               simulation->get_entity_registry().get_num_unique_ids_issued(),
               2);
     TestFalse(TEXT("No pending result survives reconstruction"),
-              simulation->get_mission_manager().take_result().IsSet());
+              simulation->get_mission_manager().take_result().has_value());
     return true;
 }
 
@@ -379,7 +385,8 @@ auto FLevelSimulationScheduledEventsTest::RunTest(FString const&) -> bool {
               simulation.get_capital_ships().get_num_instances(),
               2);
     TestEqual(TEXT("The same-tick objective resolves the spawned entity handle"),
-              simulation.get_mission_manager().get_entity_handles_required_to_kill().Num(),
+              static_cast<int32>(
+                  simulation.get_mission_manager().get_entity_handles_required_to_kill().size()),
               1);
     TestFalse(TEXT("All authored objective events have been dispatched"),
               simulation.get_mission_manager().has_pending_objective_events());
@@ -398,7 +405,7 @@ auto FLevelSimulationLegacyInitialisationTest::RunTest(FString const&) -> bool {
     for (auto const with_player : {false, true}) {
         auto data{make_battle()};
         if (with_player) {
-            data.player.Emplace();
+            data.player.emplace();
         }
         data.capital_target_spawn_indices = {1,
                                              FLevelSimulationInitData::player_target_spawn_index};
@@ -407,7 +414,7 @@ auto FLevelSimulationLegacyInitialisationTest::RunTest(FString const&) -> bool {
         data.turret_spawns.healths = {20, 30};
         data.turret_spawns.laser_damages = {5, 7};
         data.turret_spawns.locations.ys = {-1000.f, 1000.f};
-        data.turret_transforms.Emplace(FRotator{0.0, 90.0, 0.0});
+        data.turret_transforms.push_back(ml::to_native(FTransform{FRotator{0.0, 90.0, 0.0}}));
         FLevelSimulation simulation{MoveTemp(data)};
         simulation.finish_initialisation();
         auto const& capitals{simulation.get_capital_ships()};
@@ -421,11 +428,11 @@ auto FLevelSimulationLegacyInitialisationTest::RunTest(FString const&) -> bool {
                   simulation.get_entity_registry().get_num_alive_active_entities(),
                   with_player ? 5 : 4);
         auto const& entities{simulation.get_entity_registry().get_entity_data()};
-        auto const entity_count{entities.entity_types.Num()};
+        auto const entity_count{entities.num()};
         int32 turret_count{};
         for (int32 i{}; i < entity_count; ++i) {
-            if (entities.entity_types[i] == ETestEntityType::Turret) {
-                auto const explicit_rotation{entities.teams[i] == ETestTeam::Green};
+            if (entities.entity_types[i] == ml::simulation::EntityType::Turret) {
+                auto const explicit_rotation{entities.teams[i] == ml::simulation::Team::Green};
                 TestEqual(TEXT("Legacy turret health survives conversion"),
                           entities.healths[i],
                           explicit_rotation ? 20 : 30);
@@ -449,7 +456,7 @@ auto FLevelSimulationAuthoredInitialisationTest::RunTest(FString const&) -> bool
     for (auto const with_mission : {false, true}) {
         auto data{make_battle()};
         if (with_mission) {
-            data.level_events.initialisation.mission.Emplace();
+            data.level_events.initialisation.mission.emplace();
         } else {
             data.level_events.initialisation.entity_count = 1;
         }
@@ -498,16 +505,15 @@ auto FLevelSimulationSpawnQueriesTest::RunTest(FString const&) -> bool {
     auto data{make_scheduled_battle()};
     data.turrets.target_refresh_frequency = 10.f;
     // Keep the muzzle outside the turret's collision bounds so it cannot block its own query.
-    data.turrets.fire_point_offset.SetLocation(FVector{20.f, 0.f, 0.f});
+    data.turrets.fire_point_offset = ml::make_vector3f(20.f, 0.f, 0.f);
     auto& initial{data.level_events.initial_spawns.turret_spawns};
     initial.add_uninitialised(1);
-    initial.set(0,
-                data.level_events.initialisation.entity_count++,
-                FVector3f{-1000.f, 1000.f, 0.f},
-                FRotator3f::ZeroRotator,
-                ETestTeam::Blue,
-                100,
-                0);
+    initial.entity_indices[0] = data.level_events.initialisation.entity_count++;
+    initial.locations.set(0, ml::make_vector3f(-1000.f, 1000.f, 0.f));
+    initial.rotations.set(0, {});
+    initial.teams[0] = ml::simulation::Team::Blue;
+    initial.healths[0] = 100;
+    initial.laser_damages[0] = 0;
     FLevelSimulation simulation{MoveTemp(data)};
     simulation.finish_initialisation();
     simulation.start();
@@ -638,8 +644,8 @@ auto FLevelSimulationPresentationEquivalenceTest::RunTest(FString const&) -> boo
     }
     auto const a{headless.get_mission_manager().take_result()};
     auto const b{visible.get_mission_manager().take_result()};
-    TestTrue(TEXT("Both executions complete the mission"), a.IsSet() && b.IsSet());
-    if (a.IsSet() && b.IsSet()) {
+    TestTrue(TEXT("Both executions complete the mission"), a.has_value() && b.has_value());
+    if (a.has_value() && b.has_value()) {
         TestEqual(TEXT("Mission outcomes match"), a->state, b->state);
         TestEqual(TEXT("Mission kill totals match"), a->kills, b->kills);
         TestEqual(TEXT("Mission completion times match"), a->elapsed_seconds, b->elapsed_seconds);
@@ -704,8 +710,10 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
               uint64{4});
     TestEqual(
         TEXT("Simulation never ticks presentation"), presentation.get_tick_count(), uint64{0});
-    TestEqual(TEXT("Spawn and death survive later fixed ticks"), frame.capitals.changes.Num(), 2);
-    if (frame.capitals.changes.Num() == 2) {
+    TestEqual(TEXT("Spawn and death survive later fixed ticks"),
+              static_cast<int32>(frame.capitals.changes.size()),
+              2);
+    if (static_cast<int32>(frame.capitals.changes.size()) == 2) {
         TestEqual(TEXT("Spawn is recorded first"),
                   frame.capitals.changes[0].kind,
                   EEntityFrameChange::Spawn);
@@ -732,8 +740,9 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
 
     simulation.advance(0.0);
     auto const idle_frame{simulation.get_read_view()};
-    TestEqual(
-        TEXT("Zero-step frame has no previous changes"), idle_frame.capitals.changes.Num(), 0);
+    TestEqual(TEXT("Zero-step frame has no previous changes"),
+              static_cast<int32>(idle_frame.capitals.changes.size()),
+              0);
     TestEqual(TEXT("Zero-step frame has no previous deaths"),
               static_cast<int32>(idle_frame.capitals.deaths.size()),
               0);
@@ -844,7 +853,7 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     auto const frame{player->get_read_view()};
     TestEqual(TEXT("Boost has already ended after multiple fixed ticks"),
               frame.boost_brake_state,
-              EBoostBrakeState::None);
+              ml::simulation::player::BoostBrakeState::None);
     TestEqual(TEXT("Boost start remains observable without a consumer"),
               frame.boost_start_sequence,
               uint64{1});
@@ -1037,11 +1046,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FLevelTelemetryRunRecordTest,
 auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     auto data{make_battle()};
     data.telemetry_metadata = FLevelTelemetryRunMetadata{
-        .run_id = TEXT("12345678-1234-1234-1234-123456789abc"),
-        .map_name = TEXT("TelemetryTest"),
-        .level_id = TEXT("telemetry-test"),
-        .level_display_name = TEXT("Telemetry Test"),
-        .launched_utc = TEXT("2026-09-06T12:00:00Z"),
+        .run_id = "12345678-1234-1234-1234-123456789abc",
+        .map_name = "TelemetryTest",
+        .level_id = "telemetry-test",
+        .level_display_name = "Telemetry Test",
+        .launched_utc = "2026-09-06T12:00:00Z",
     };
     FLevelSimulation simulation{MoveTemp(data)};
     TestFalse(TEXT("Construction does not start telemetry recording"),
@@ -1060,20 +1069,20 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     auto const time_scale_change_tick{simulation.get_clock().get_completed_ticks() + 1};
     simulation.set_time_scale(4.0);
     simulation.advance(simulation.get_clock().get_tick_period());
-    simulation.finalize_telemetry_run(ELevelTelemetryRunEndReason::WorldEnd, TEXT("test"));
+    simulation.finalize_telemetry_run(ml::simulation::LevelTelemetryRunEndReason::WorldEnd, "test");
     TestEqual(TEXT("Interrupted telemetry finalization does not pause simulation"),
               simulation.get_state(),
               EOrchestratorState::Running);
 
     auto record{telemetry.take_finalized_run()};
-    if (!TestTrue(TEXT("Finalized manager yields one run record"), record.IsSet())) {
+    if (!TestTrue(TEXT("Finalized manager yields one run record"), record.has_value())) {
         return false;
     }
     TestFalse(TEXT("A finalized run record is yielded only once"),
-              telemetry.take_finalized_run().IsSet());
+              telemetry.take_finalized_run().has_value());
     TestEqual(TEXT("Completion preserves its end reason"),
               record->completion.reason,
-              ELevelTelemetryRunEndReason::WorldEnd);
+              ml::simulation::LevelTelemetryRunEndReason::WorldEnd);
     TestEqual(TEXT("Completion preserves completed ticks"),
               record->completion.completed_ticks,
               simulation.get_clock().get_completed_ticks());
@@ -1098,7 +1107,8 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
               series.requested_time_scale.last_value(),
               4.0);
 
-    auto const json{serialize_level_telemetry_run(*record)};
+    FLevelTelemetryReport report{*record};
+    auto const json{serialize_level_telemetry_run(report)};
     TSharedPtr<FJsonObject> root;
     auto reader{TJsonReaderFactory<>::Create(json)};
     if (!TestTrue(TEXT("Serialized run is valid JSON"),
@@ -1132,13 +1142,13 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
                  round_trip.has_value())) {
         TestEqual(TEXT("Round trip preserves the run id"),
                   round_trip->metadata.run_id,
-                  record->metadata.run_id);
+                  report.metadata.run_id);
         TestEqual(TEXT("Round trip preserves realtime mappings"),
                   round_trip->completed_ticks_by_real_time.num(),
                   realtime.num());
         TestEqual(TEXT("Round trip preserves battle workload counters"),
                   round_trip->battle_samples.Last().range_query_count,
-                  record->battle_samples.Last().range_query_count);
+                  report.battle_samples.Last().range_query_count);
     }
     root->SetNumberField(TEXT("schema_version"), 1);
     FString legacy_json;
@@ -1240,7 +1250,7 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     ON_SCOPE_EXIT {
         IFileManager::Get().DeleteDirectory(*output_directory, false, true);
     };
-    auto const output_path{write_level_telemetry_run(*record, output_directory)};
+    auto const output_path{write_level_telemetry_run(report, output_directory)};
     if (!TestTrue(TEXT("Run writer creates an output file"), output_path.has_value())) {
         return false;
     }
@@ -1261,9 +1271,9 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FLevelTelemetryMissionCompletionTest,
 auto FLevelTelemetryMissionCompletionTest::RunTest(FString const&) -> bool {
     auto data{make_battle()};
     data.telemetry_metadata = FLevelTelemetryRunMetadata{
-        .run_id = TEXT("12345678-1234-1234-1234-123456789abc"),
-        .map_name = TEXT("TelemetryMissionTest"),
-        .launched_utc = TEXT("2026-09-06T12:00:00Z"),
+        .run_id = "12345678-1234-1234-1234-123456789abc",
+        .map_name = "TelemetryMissionTest",
+        .launched_utc = "2026-09-06T12:00:00Z",
     };
     FLevelSimulation simulation{MoveTemp(data)};
     prepare_mission(simulation);
@@ -1278,22 +1288,22 @@ auto FLevelTelemetryMissionCompletionTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("Taking the mission result does not pause simulation"),
               simulation.get_state(),
               EOrchestratorState::Running);
-    if (!TestTrue(TEXT("Simulation yields the completed mission"), mission_result.IsSet())) {
+    if (!TestTrue(TEXT("Simulation yields the completed mission"), mission_result.has_value())) {
         return false;
     }
 
     auto record{simulation.get_level_telemetry_manager().take_finalized_run()};
-    if (!TestTrue(TEXT("Taking the mission result finalizes telemetry"), record.IsSet())) {
+    if (!TestTrue(TEXT("Taking the mission result finalizes telemetry"), record.has_value())) {
         return false;
     }
     TestEqual(TEXT("Mission success selects the telemetry completion reason"),
               record->completion.reason,
-              ELevelTelemetryRunEndReason::MissionSucceeded);
+              ml::simulation::LevelTelemetryRunEndReason::MissionSucceeded);
     TestFalse(TEXT("Mission completion is not interrupted"), record->completion.interrupted);
-    if (TestTrue(TEXT("Mission state is present"), record->completion.mission_state.IsSet())) {
+    if (TestTrue(TEXT("Mission state is present"), record->completion.mission_state.has_value())) {
         TestEqual(TEXT("Mission state is retained"),
-                  record->completion.mission_state.GetValue(),
-                  ETestMissionState::Succeeded);
+                  record->completion.mission_state.value(),
+                  ml::simulation::MissionState::Succeeded);
     }
     return true;
 }
@@ -1308,15 +1318,15 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 auto FLevelSimulationTelemetryCompletionTest::RunTest(FString const&) -> bool {
     auto data{make_battle()};
-    data.telemetry_metadata.Emplace();
-    data.telemetry_metadata->run_id = TEXT("completion-test");
+    data.telemetry_metadata.emplace();
+    data.telemetry_metadata->run_id = "completion-test";
     FLevelSimulation simulation{MoveTemp(data)};
     simulation.finish_initialisation();
     int32 end_tick_calls{};
     simulation.on_end_tick = [&](FLevelSimulation& level) {
         ++end_tick_calls;
-        level.complete_telemetry_run(ELevelTelemetryRunEndReason::DurationReached,
-                                     ETestTeam::Green);
+        level.complete_telemetry_run(ml::simulation::LevelTelemetryRunEndReason::DurationReached,
+                                     ml::simulation::Team::Green);
     };
     simulation.start();
     auto const dt{simulation.get_clock().get_tick_period()};
@@ -1328,18 +1338,18 @@ auto FLevelSimulationTelemetryCompletionTest::RunTest(FString const&) -> bool {
               uint64{1});
     auto& telemetry{simulation.get_level_telemetry_manager()};
     auto const record{telemetry.take_finalized_run()};
-    if (TestTrue(TEXT("Completion yields a telemetry record"), record.IsSet())) {
+    if (TestTrue(TEXT("Completion yields a telemetry record"), record.has_value())) {
         TestEqual(TEXT("Completion reason is retained"),
                   record->completion.reason,
-                  ELevelTelemetryRunEndReason::DurationReached);
+                  ml::simulation::LevelTelemetryRunEndReason::DurationReached);
         TestFalse(TEXT("Explicit completion is not interruption"), record->completion.interrupted);
         TestTrue(TEXT("Winning team is retained"),
-                 record->completion.winning_team == TOptional<ETestTeam>{ETestTeam::Green});
+                 record->completion.winning_team == std::optional{ml::simulation::Team::Green});
         TestEqual(TEXT("Completion records the current tick"),
                   record->completion.completed_ticks,
                   uint64{1});
     }
-    TestFalse(TEXT("Completion is consumed once"), telemetry.take_finalized_run().IsSet());
+    TestFalse(TEXT("Completion is consumed once"), telemetry.take_finalized_run().has_value());
     simulation.advance(dt * 10.0);
     TestEqual(TEXT("Completed simulation ignores paused time"),
               simulation.get_clock().get_completed_ticks(),

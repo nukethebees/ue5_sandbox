@@ -1,5 +1,6 @@
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
-#include <SpaceGameSimulation/simulation/LevelSimulation.h>
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/simulation/LevelSimulation.h>
+#include <SandboxNative/RegistryEntityHandle.h>
 
 #include <CQTest.h>
 
@@ -38,8 +39,8 @@ auto make_long_running_battle() -> FLevelSimulationInitData {
     data.capital_ships.fighter_spawn_slots = 8;
     for (int32 slot{}; slot < data.capital_ships.fighter_spawn_slots; ++slot) {
         auto const y{static_cast<float>(slot - 4) * 300.f};
-        data.capital_ships.fighter_spawn_slots_relative_transforms.Emplace(
-            FTransform{FVector{1000.f, y, 0.f}});
+        data.capital_ships.fighter_spawn_slots_relative_transforms.push_back(
+            {.location = {1000.0, y, 0.0}});
     }
 
     data.capital_spawns.add_defaulted(2);
@@ -50,7 +51,7 @@ auto make_long_running_battle() -> FLevelSimulationInitData {
     data.capital_spawns.spawn_cooldowns = {10000.f, 10000.f};
     data.capital_target_spawn_indices = {1, 0};
 
-    auto const entity_type_count{ml::ioj::FEntityAABBs::num()};
+    auto const entity_type_count{data.entity_bounds.num()};
     for (int32 type_index{}; type_index < entity_type_count; ++type_index) {
         data.entity_bounds.half_extent_xs[type_index] = 10.f;
         data.entity_bounds.half_extent_ys[type_index] = 10.f;
@@ -72,7 +73,7 @@ TEST_CLASS(MovedEntitiesBattle, "Sandbox.UnitTests")
             previous_transforms.Reset();
             auto const& data{registry.get_entity_data()};
             auto const generations{registry.get_generations()};
-            auto const count{generations.Num()};
+            auto const count{static_cast<int32>(generations.size())};
             for (int32 index{}; index < count; ++index) {
                 FRegistryEntityHandle const handle{index, generations[index]};
                 previous_transforms.Add(handle, get_transform_snapshot(data, index));
@@ -87,7 +88,7 @@ TEST_CLASS(MovedEntitiesBattle, "Sandbox.UnitTests")
             auto const& registry{level.get_entity_registry()};
             auto const& data{registry.get_entity_data()};
             auto const generations{registry.get_generations()};
-            auto const count{generations.Num()};
+            auto const count{static_cast<int32>(generations.size())};
 
             TSet<FRegistryEntityHandle> expected_moved;
             for (int32 index{}; index < count; ++index) {
@@ -110,15 +111,16 @@ TEST_CLASS(MovedEntitiesBattle, "Sandbox.UnitTests")
                 TestRunner->TestTrue(
                     TEXT("Moved handle changed from the prior committed transform"),
                     expected_moved.Contains(handle));
-                if (registry.get_entity_type(handle) == ETestEntityType::CapitalShipFighter) {
+                if (registry.get_entity_type(handle) ==
+                    ml::simulation::EntityType::CapitalShipFighter) {
                     ++observed_moved_fighters;
                 }
             }
             TestRunner->TestEqual(
                 TEXT("Movement list exactly matches this tick's transform changes"),
-                moved.Num(),
+                static_cast<int32>(moved.size()),
                 expected_moved.Num());
-            observed_empty_tick = observed_empty_tick || moved.IsEmpty();
+            observed_empty_tick = observed_empty_tick || moved.empty();
             ++observed_ticks;
             capture_current_transforms(registry);
         };

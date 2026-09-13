@@ -122,6 +122,19 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
     EXPECT_NE(header.find("matrix_field(int32 const row_index, int32 const column_index)"),
               std::string::npos);
     EXPECT_NE(header.find("TArray<FFieldMask> masks;"), std::string::npos);
+
+    auto native_manifest{manifest};
+    auto& native_module{std::get<SoaModuleSchema>(native_manifest.modules.front())};
+    native_module.backend = SoaBackend::standard_library;
+    native_module.settings.source.reset();
+    auto const native_header{render_modules(lower_modules(native_manifest)).front().content};
+    EXPECT_NE(native_header.find("enum class EField : std::uint8_t"), std::string::npos);
+    EXPECT_NE(native_header.find("Last = static_cast<std::uint8_t>(Matrix) + (2) * (3)"),
+              std::string::npos);
+    EXPECT_NE(native_header.find("ml::native_soa::Vector<FFieldMask> masks;"), std::string::npos);
+    EXPECT_NE(native_header.find("std::int32_t const row_index"), std::string::npos);
+    EXPECT_NE(native_header.find("std::int32_t const column_index"), std::string::npos);
+    EXPECT_EQ(native_header.find("CoreMinimal.h"), std::string::npos);
 }
 
 TEST(Generator, RejectsDuplicateOutputPaths) {
@@ -614,7 +627,7 @@ TEST(Generator, RendersCompleteProductionManifest) {
     auto const manifest{load_sources(project.root / target.types, sources)};
     auto const files{render_modules(lower_modules(manifest))};
 
-    EXPECT_EQ(files.size(), 93);
+    EXPECT_EQ(files.size(), 88);
     EXPECT_EQ(files.front().path,
               "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/countdown_timers.h");
     EXPECT_EQ(files.back().path,

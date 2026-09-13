@@ -1,3 +1,4 @@
+#include <array>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
@@ -9,11 +10,11 @@
 
 #include <SandboxCore/time_series_data.h>
 
+#include <sandbox/simulation/missions/TestMissionManager.h>
+#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameSimulation/missions/TestMissionManager.h>
-#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 
@@ -43,7 +44,7 @@ void run_worldless_mission_manager_scenario(FAutomationTestBase& test,
 
     auto data{make_worldless_simulation_test_data(config)};
     data.capital_ships.fighter_spawn_slots = 0;
-    data.capital_ships.fighter_spawn_slots_relative_transforms.Reset();
+    data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     auto const hero_index{add_worldless_capital(
         data,
         FVector{-2000.f, 0.f, 0.f},
@@ -78,17 +79,17 @@ void run_worldless_mission_manager_scenario(FAutomationTestBase& test,
     manager.set_save_mission_results(false);
     switch (scenario) {
         case EScenario::SurviveTime:
-            manager.set_mission_mode(ETestMissionMode::SurviveTime);
+            manager.set_mission_mode(ml::simulation::MissionMode::SurviveTime);
             manager.set_target_time(0.1f);
             manager.add_entity_that_must_survive(hero);
             break;
         case EScenario::KillEnemies:
-            manager.set_mission_mode(ETestMissionMode::KillEnemies);
+            manager.set_mission_mode(ml::simulation::MissionMode::KillEnemies);
             manager.set_kill_target(1);
             manager.add_hero_entity(hero);
             break;
         case EScenario::KillEnemiesWithinTime:
-            manager.set_mission_mode(ETestMissionMode::KillEnemiesWithinTime);
+            manager.set_mission_mode(ml::simulation::MissionMode::KillEnemiesWithinTime);
             manager.set_target_time(0.1f);
             manager.set_kill_target(1);
             manager.add_hero_entity(hero);
@@ -96,24 +97,24 @@ void run_worldless_mission_manager_scenario(FAutomationTestBase& test,
         case EScenario::DefenceObjective:
         case EScenario::SuccessIsTerminal:
         case EScenario::ExplicitCompletionIsLatched:
-            manager.set_mission_mode(ETestMissionMode::SurviveTime);
+            manager.set_mission_mode(ml::simulation::MissionMode::SurviveTime);
             manager.set_target_time(scenario == EScenario::SuccessIsTerminal ? 0.1f : 10.f);
             manager.add_entity_that_must_survive(hero);
             break;
         case EScenario::RequiredKillsObjective:
-            manager.set_mission_mode(ETestMissionMode::KillEnemies);
+            manager.set_mission_mode(ml::simulation::MissionMode::KillEnemies);
             manager.set_kill_target(1);
             manager.add_hero_entity(hero);
             manager.add_entity_required_to_kill(required_enemy);
             break;
         case EScenario::RequiredKillsTimeElapsed:
-            manager.set_mission_mode(ETestMissionMode::SurviveTime);
+            manager.set_mission_mode(ml::simulation::MissionMode::SurviveTime);
             manager.set_target_time(0.1f);
             manager.add_entity_that_must_survive(hero);
             manager.add_entity_required_to_kill(required_enemy);
             break;
         case EScenario::AutomaticKillTarget:
-            manager.set_mission_mode(ETestMissionMode::KillEnemies);
+            manager.set_mission_mode(ml::simulation::MissionMode::KillEnemies);
             manager.set_kill_target(0);
             manager.add_hero_entity(hero);
             break;
@@ -124,8 +125,8 @@ void run_worldless_mission_manager_scenario(FAutomationTestBase& test,
     harness.finish_initialisation();
 
     struct Sample {
-        ETestMissionState state{ETestMissionState::NotStarted};
-        ETestMissionFailReason fail_reason{ETestMissionFailReason::None};
+        ml::simulation::MissionState state{ml::simulation::MissionState::NotStarted};
+        ml::simulation::MissionFailReason fail_reason{ml::simulation::MissionFailReason::None};
         int32 kills{};
         int32 kill_target{};
         bool survivor_alive{};
@@ -141,11 +142,11 @@ void run_worldless_mission_manager_scenario(FAutomationTestBase& test,
         sample.kill_target = manager.get_kill_target();
         auto const survivors{manager.get_entity_handles_that_must_survive()};
         sample.survivor_alive =
-            !survivors.IsEmpty() && harness.get_registry().is_valid_alive(survivors[0]);
+            !survivors.empty() && harness.get_registry().is_valid_alive(survivors[0]);
         auto const survivor_health{manager.get_entity_health_that_must_survive()};
-        sample.survivor_health = survivor_health.IsEmpty() ? 0 : survivor_health[0].health;
+        sample.survivor_health = survivor_health.empty() ? 0 : survivor_health[0].health;
         auto const required_health{manager.get_entity_health_required_to_kill()};
-        sample.required_health = required_health.IsEmpty() ? 0 : required_health[0].health;
+        sample.required_health = required_health.empty() ? 0 : required_health[0].health;
         samples.add(harness.get_time(), sample);
     };
 
@@ -153,22 +154,22 @@ void run_worldless_mission_manager_scenario(FAutomationTestBase& test,
     auto duplicate_completion_result{true};
     if (scenario == EScenario::KillEnemies) {
         harness.timeline.then_after(0.01,
-                                    [&] { harness.queue_kills(TArray{ordinary_enemy}, hero); });
+                                    [&] { harness.queue_kills(std::array{ordinary_enemy}, hero); });
     } else if (scenario == EScenario::DefenceObjective) {
-        harness.timeline.then_after(0.01, [&] { harness.queue_kills(TArray{hero}); });
+        harness.timeline.then_after(0.01, [&] { harness.queue_kills(std::array{hero}); });
     } else if (scenario == EScenario::RequiredKillsObjective) {
         harness.timeline
-            .then_after(0.01, [&] { harness.queue_kills(TArray{ordinary_enemy}, hero); })
-            .then_after(0.19, [&] { harness.queue_kills(TArray{required_enemy}); });
+            .then_after(0.01, [&] { harness.queue_kills(std::array{ordinary_enemy}, hero); })
+            .then_after(0.19, [&] { harness.queue_kills(std::array{required_enemy}); });
     } else if (scenario == EScenario::AutomaticKillTarget) {
         harness.timeline
-            .then_after(0.01, [&] { harness.queue_kills(TArray{ordinary_enemy}, hero); })
+            .then_after(0.01, [&] { harness.queue_kills(std::array{ordinary_enemy}, hero); })
             .then_after(0.19, [&] {
                 auto const second_enemy{simulation.get_capital_ships().get_handle(1)};
-                harness.queue_kills(TArray{second_enemy}, hero);
+                harness.queue_kills(std::array{second_enemy}, hero);
             });
     } else if (scenario == EScenario::SuccessIsTerminal) {
-        harness.timeline.at(0.15, [&] { harness.queue_kills(TArray{hero}); });
+        harness.timeline.at(0.15, [&] { harness.queue_kills(std::array{hero}); });
     } else if (scenario == EScenario::ExplicitCompletionIsLatched) {
         harness.timeline.then_after(0.01, [&] {
             first_completion_result = manager.complete_mission();
@@ -181,8 +182,9 @@ void run_worldless_mission_manager_scenario(FAutomationTestBase& test,
                             : 0.25};
     harness.timeline.finish_at(end_time);
 
-    test.TestEqual(
-        TEXT("Mission starts running"), manager.get_mission_state(), ETestMissionState::Running);
+    test.TestEqual(TEXT("Mission starts running"),
+                   manager.get_mission_state(),
+                   ml::simulation::MissionState::Running);
     test.TestFalse(TEXT("Mission result saving is disabled"),
                    manager.should_save_mission_results());
     test.TestTrue(TEXT("Mission timeline completes within its simulation-time limit"),
@@ -195,31 +197,34 @@ void run_worldless_mission_manager_scenario(FAutomationTestBase& test,
     auto const& final{samples.last_value()};
     switch (scenario) {
         case EScenario::SurviveTime:
-            test.TestEqual(
-                TEXT("Survive-time mission succeeds"), final.state, ETestMissionState::Succeeded);
+            test.TestEqual(TEXT("Survive-time mission succeeds"),
+                           final.state,
+                           ml::simulation::MissionState::Succeeded);
             test.TestEqual(TEXT("Successful mission has no failure reason"),
                            final.fail_reason,
-                           ETestMissionFailReason::None);
+                           ml::simulation::MissionFailReason::None);
             break;
         case EScenario::KillEnemies:
-            test.TestEqual(
-                TEXT("Kill mission succeeds"), final.state, ETestMissionState::Succeeded);
+            test.TestEqual(TEXT("Kill mission succeeds"),
+                           final.state,
+                           ml::simulation::MissionState::Succeeded);
             test.TestEqual(TEXT("Hero kill contributes to mission"), final.kills, 1);
             break;
         case EScenario::KillEnemiesWithinTime:
-            test.TestEqual(
-                TEXT("Timed kill mission fails"), final.state, ETestMissionState::Failed);
+            test.TestEqual(TEXT("Timed kill mission fails"),
+                           final.state,
+                           ml::simulation::MissionState::Failed);
             test.TestEqual(TEXT("Timed mission reports elapsed time"),
                            final.fail_reason,
-                           ETestMissionFailReason::TimeElapsed);
+                           ml::simulation::MissionFailReason::TimeElapsed);
             break;
         case EScenario::DefenceObjective:
             test.TestEqual(TEXT("Defence objective failure fails mission"),
                            final.state,
-                           ETestMissionState::Failed);
+                           ml::simulation::MissionState::Failed);
             test.TestEqual(TEXT("Defence failure reason is retained"),
                            final.fail_reason,
-                           ETestMissionFailReason::DefenceObjectiveFailed);
+                           ml::simulation::MissionFailReason::DefenceObjectiveFailed);
             test.TestEqual(
                 TEXT("Destroyed defence objective reports zero health"), final.survivor_health, 0);
             break;
@@ -227,12 +232,13 @@ void run_worldless_mission_manager_scenario(FAutomationTestBase& test,
             auto const& gated{samples.nearest_value(0.1)};
             test.TestEqual(TEXT("Normal kill target does not bypass required kill"),
                            gated.state,
-                           ETestMissionState::Running);
+                           ml::simulation::MissionState::Running);
             test.TestEqual(TEXT("Normal kill target is met before required kill"), gated.kills, 1);
             test.TestTrue(TEXT("Required target remains healthy while mission is gated"),
                           gated.required_health > 0);
-            test.TestEqual(
-                TEXT("Required-kill mission succeeds"), final.state, ETestMissionState::Succeeded);
+            test.TestEqual(TEXT("Required-kill mission succeeds"),
+                           final.state,
+                           ml::simulation::MissionState::Succeeded);
             test.TestEqual(
                 TEXT("Uncredited required kill preserves mission kills"), final.kills, 1);
             test.TestEqual(
@@ -242,10 +248,10 @@ void run_worldless_mission_manager_scenario(FAutomationTestBase& test,
         case EScenario::RequiredKillsTimeElapsed:
             test.TestEqual(TEXT("Incomplete required kill fails survive-time mission"),
                            final.state,
-                           ETestMissionState::Failed);
+                           ml::simulation::MissionState::Failed);
             test.TestEqual(TEXT("Incomplete required kill reports elapsed time"),
                            final.fail_reason,
-                           ETestMissionFailReason::TimeElapsed);
+                           ml::simulation::MissionFailReason::TimeElapsed);
             test.TestTrue(TEXT("Required target remains alive at timeout"),
                           final.required_health > 0);
             break;
@@ -255,21 +261,21 @@ void run_worldless_mission_manager_scenario(FAutomationTestBase& test,
                 TEXT("Automatic target counts both initial enemies"), one_remaining.kill_target, 2);
             test.TestEqual(TEXT("Mission remains running with one enemy left"),
                            one_remaining.state,
-                           ETestMissionState::Running);
+                           ml::simulation::MissionState::Running);
             test.TestEqual(TEXT("First enemy kill is credited"), one_remaining.kills, 1);
             test.TestEqual(TEXT("Last enemy completes automatic kill target"),
                            final.state,
-                           ETestMissionState::Succeeded);
+                           ml::simulation::MissionState::Succeeded);
             test.TestEqual(TEXT("Both enemy kills are credited"), final.kills, 2);
             break;
         }
         case EScenario::SuccessIsTerminal:
             test.TestEqual(TEXT("Mission remains successful after later destruction"),
                            final.state,
-                           ETestMissionState::Succeeded);
+                           ml::simulation::MissionState::Succeeded);
             test.TestEqual(TEXT("Later destruction does not add a failure reason"),
                            final.fail_reason,
-                           ETestMissionFailReason::None);
+                           ml::simulation::MissionFailReason::None);
             test.TestFalse(TEXT("Defended entity is destroyed after success"),
                            final.survivor_alive);
             break;
@@ -279,7 +285,7 @@ void run_worldless_mission_manager_scenario(FAutomationTestBase& test,
             test.TestFalse(TEXT("Duplicate completion is ignored"), duplicate_completion_result);
             test.TestEqual(TEXT("Explicit completion leaves the mission succeeded"),
                            final.state,
-                           ETestMissionState::Succeeded);
+                           ml::simulation::MissionState::Succeeded);
             break;
         default:
             checkNoEntry();

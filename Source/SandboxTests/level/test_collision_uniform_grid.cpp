@@ -8,22 +8,25 @@
 #include <SandboxTests/support/TestCollisionActor.h>
 #include <SandboxTests/support/WorldlessSimulationTest.h>
 
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
+#include <sandbox/simulation/ships/fighters/TestCapitalShipFightersSimulation.h>
+#include <sandbox/simulation/simulation/collision_uniform_grid.h>
+#include <sandbox/simulation/simulation/CollisionSystem.h>
+#include <sandbox/simulation/simulation/SpatialQueryManager.h>
+#include <sandbox/simulation/simulation/TraceHits.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/entities/TestEntity.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
+#include <SpaceGameSimulation/entities/RegistryEntityHandles.h>
 #include <SpaceGameSimulation/entities/TestEntityType.h>
 #include <SpaceGameSimulation/entities/TestTeam.h>
-#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
-#include <SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h>
-#include <SpaceGameSimulation/simulation/collision_uniform_grid.h>
-#include <SpaceGameSimulation/simulation/CollisionSystem.h>
 #include <SpaceGameSimulation/simulation/LineTraces.h>
-#include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
-#include <SpaceGameSimulation/simulation/TraceHits.h>
+#include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
 
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCoreEngine/actor_utils.h>
@@ -52,55 +55,27 @@ struct FTraceFixture {
                   FVector3f const fixture_cell_dims = trace_cell_dims,
                   TConstArrayView<ETestEntityType> const fixture_entity_types = {},
                   FRotator3f const rotation = FRotator3f::ZeroRotator) {
-        FVectors3f registry_locations;
-        FVectors3f velocities;
         auto const count{locations.Num()};
-        FRotatorsf rotations;
-        rotations.add_zeroed(count);
+        check(fixture_entity_types.IsEmpty() || fixture_entity_types.Num() == count);
+        simulation::RegistryEntityData entity_data;
+        entity_data.add_defaulted(count);
         for (int32 i{}; i < count; ++i) {
-            ml::assign(rotations, i, rotation);
+            entity_data.locations.set(i, ml::to_native(locations[i]));
+            entity_data.rotations.set(i, ml::to_native(rotation));
+            entity_data.healths[i] = 1;
+            entity_data.teams[i] = simulation::Team::Blue;
+            entity_data.entity_types[i] = fixture_entity_types.IsEmpty()
+                                            ? simulation::EntityType::CapitalShip
+                                            : ml::to_native(fixture_entity_types[i]);
+            entity_data.alive[i] = 1;
         }
-        registry_locations.reserve(count);
-        velocities.reserve(count);
-
-        for (auto const location : locations) {
-            registry_locations.add(location);
-            velocities.add(FVector3f::ZeroVector);
-        }
-
-        TArray<float> radii;
-        TArray<int32> healths;
-        TArray<ETestTeam> teams;
-        TArray<ETestEntityType> entity_types;
-        TArray<uint8> alive;
-        radii.Init(0.f, count);
-        healths.Init(1, count);
-        teams.Init(ETestTeam::Blue, count);
-        if (fixture_entity_types.IsEmpty()) {
-            entity_types.Init(ETestEntityType::CapitalShip, count);
-        } else {
-            check(fixture_entity_types.Num() == count);
-            entity_types.Append(fixture_entity_types);
-        }
-        alive.Init(uint8{1}, count);
-
-        FTestEntityRegistry::EntityData::ConstView const entity_data{
-            .locations = registry_locations.get_const_view(),
-            .velocities = velocities.get_const_view(),
-            .rotations = rotations.get_const_view(),
-            .radii = radii,
-            .healths = healths,
-            .teams = teams,
-            .entity_types = entity_types,
-            .alive = alive,
-        };
-        auto const spawned{registry.add_entities(entity_data)};
+        auto const spawned{registry.add_entities(entity_data.get_const_view())};
         handles = ml::to_registry_entity_handle_array(spawned.registry_handles);
 
         set_entity_aabb(ETestEntityType::CapitalShip, aabb_centre, half_extents);
 
-        grid.set_grid_dims(fixture_grid_dims);
-        grid.set_cell_dims(fixture_cell_dims);
+        grid.set_grid_dims({fixture_grid_dims.X, fixture_grid_dims.Y, fixture_grid_dims.Z});
+        grid.set_cell_dims(ml::to_native(fixture_cell_dims));
         grid.rebuild_grid(aabbs);
     }
 
@@ -122,42 +97,23 @@ struct FTraceFixture {
         check(locations.Num() == count);
         check(alive.Num() == count);
 
-        FVectors3f registry_locations;
-        FVectors3f velocities;
-        registry_locations.reserve(count);
-        velocities.reserve(count);
-        for (auto const location : locations) {
-            registry_locations.add(location);
-            velocities.add(FVector3f::ZeroVector);
+        simulation::RegistryEntityData entity_data;
+        entity_data.add_defaulted(count);
+        for (int32 i{}; i < count; ++i) {
+            entity_data.locations.set(i, ml::to_native(locations[i]));
+            entity_data.healths[i] = 1;
+            entity_data.teams[i] = simulation::Team::Blue;
+            entity_data.entity_types[i] = simulation::EntityType::CapitalShip;
+            entity_data.alive[i] = alive[i];
         }
-
-        TArray<float> radii;
-        TArray<int32> healths;
-        TArray<ETestTeam> teams;
-        TArray<ETestEntityType> entity_types;
-        radii.Init(0.f, count);
-        healths.Init(1, count);
-        teams.Init(ETestTeam::Blue, count);
-        entity_types.Init(ETestEntityType::CapitalShip, count);
-
-        FTestEntityRegistry::EntityData::ConstView const entity_data{
-            .locations = registry_locations.get_const_view(),
-            .velocities = velocities.get_const_view(),
-            .rotations = {velocities.xs, velocities.ys, velocities.zs},
-            .radii = radii,
-            .healths = healths,
-            .teams = teams,
-            .entity_types = entity_types,
-            .alive = alive,
-        };
         FTestEntityRegistry::ConstView const updates{
-            .indices = handles,
-            .data = entity_data,
+            .indices = {handles.GetData(), static_cast<std::size_t>(count)},
+            .data = entity_data.get_const_view(),
         };
         EntityDeathInfo death_info;
         for (int32 i{}; i < count; ++i) {
             if (alive[i] == 0 && registry.get_alive(handles[i])) {
-                death_info.add(ETestDeathReason::Unknown, handles[i], {});
+                death_info.add(simulation::DeathReason::Unknown, handles[i], {});
             }
         }
         registry.queue_entity_updates(updates, death_info);
@@ -167,28 +123,15 @@ struct FTraceFixture {
     }
 
     auto add_entity(FVector3f const location) -> FRegistryEntityHandle {
-        FVectors3f registry_locations;
-        FVectors3f velocities;
-        registry_locations.add(location);
-        velocities.add(FVector3f::ZeroVector);
+        simulation::RegistryEntityData entity_data;
+        entity_data.add_defaulted(1);
+        entity_data.locations.set(0, ml::to_native(location));
+        entity_data.healths[0] = 1;
+        entity_data.teams[0] = simulation::Team::Blue;
+        entity_data.entity_types[0] = simulation::EntityType::CapitalShip;
+        entity_data.alive[0] = 1;
 
-        TArray<float> const radii{0.f};
-        TArray<int32> const healths{1};
-        TArray<ETestTeam> const teams{ETestTeam::Blue};
-        TArray<ETestEntityType> const entity_types{ETestEntityType::CapitalShip};
-        TArray<uint8> const alive{uint8{1}};
-        FTestEntityRegistry::EntityData::ConstView const entity_data{
-            .locations = registry_locations.get_const_view(),
-            .velocities = velocities.get_const_view(),
-            .rotations = {velocities.xs, velocities.ys, velocities.zs},
-            .radii = radii,
-            .healths = healths,
-            .teams = teams,
-            .entity_types = entity_types,
-            .alive = alive,
-        };
-
-        auto const spawned{registry.add_entities(entity_data)};
+        auto const spawned{registry.add_entities(entity_data.get_const_view())};
         grid.rebuild_grid(aabbs);
         return spawned.get_handle(0);
     }
@@ -259,7 +202,10 @@ auto run_traces(FTraceFixture const& fixture,
     if (ignored_entities.IsEmpty()) {
         fixture.grid.trace_aabbs(traces.get_const_view(), hits.get_view());
     } else {
-        fixture.grid.trace_aabbs(traces.get_const_view(), hits.get_view(), ignored_entities);
+        fixture.grid.trace_aabbs(
+            traces.get_const_view(),
+            hits.get_view(),
+            {ignored_entities.GetData(), static_cast<std::size_t>(ignored_entities.Num())});
     }
     return hits;
 }
@@ -275,11 +221,12 @@ auto run_sweeps(FTraceFixture const& fixture,
 
     FTraceHits hits;
     hits.add_defaulted(traces.num());
-    fixture.grid.sweep_aabbs(traces.get_const_view(),
-                             moving_half_extent,
-                             hits.get_view(),
-                             ignored_entities,
-                             entity_filter);
+    fixture.grid.sweep_aabbs(
+        traces.get_const_view(),
+        ml::to_native(moving_half_extent),
+        hits.get_view(),
+        {ignored_entities.GetData(), static_cast<std::size_t>(ignored_entities.Num())},
+        entity_filter);
     return hits;
 }
 
@@ -360,10 +307,10 @@ void run_worldless_collision_uniform_grid_membership(FAutomationTestBase& test,
     data.turret_spawns.teams[0] = ml::simulation::Team::Blue;
     data.turret_spawns.healths[0] = data.turrets.max_health;
     data.turret_spawns.laser_damages[0] = data.turrets.laser.damage;
-    data.turret_transforms.Add(FTransform{FVector{500.f, 500.f, 0.f}});
-    data.spinner_locations.add(FVector3f{1500.f, 1500.f, 0.f});
-    data.spinner_yaws.Add(0.f);
-    data.spinner_fire_points.Add(0);
+    data.turret_transforms.push_back({.location = {500., 500., 0.}});
+    data.spinner_locations.add(HMM_V3(1500.f, 1500.f, 0.f));
+    data.spinner_yaws.push_back(0.f);
+    data.spinner_fire_points.push_back(0);
 
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();
@@ -375,7 +322,7 @@ void run_worldless_collision_uniform_grid_membership(FAutomationTestBase& test,
     auto const* const player{simulation.get_player_ship_simulation()};
     auto const fighter_handles{simulation.get_capital_ship_fighters().get_handles()};
     checks.not_nullptr(player, TEXT("Collision-grid player ship is available"));
-    checks.is_true(!fighter_handles.IsEmpty(), TEXT("Collision-grid fighter is placed"));
+    checks.is_true(!fighter_handles.empty(), TEXT("Collision-grid fighter is placed"));
     if (!checks.all_passed) {
         return;
     }
@@ -391,9 +338,10 @@ void run_worldless_collision_uniform_grid_membership(FAutomationTestBase& test,
     auto& collision{simulation.get_spatial_query_manager().get_collision_system()};
     auto& grid{collision.get_uniform_grid()};
     auto const& entity_aabbs{collision.get_entity_aabbs()};
-    checks.is_true(grid.get_grid_dims() == grid_dims,
+    checks.is_true(grid.get_grid_dims() ==
+                       simulation::collision::CellCoord{grid_dims.X, grid_dims.Y, grid_dims.Z},
                    TEXT("Collision grid uses the production dimensions"));
-    checks.is_true(grid.get_cell_dims() == cell_dims,
+    checks.is_true(ml::to_unreal(grid.get_cell_dims()) == cell_dims,
                    TEXT("Collision grid uses the production cell size"));
 
     auto const handle_count{expected_handles.Num()};
@@ -422,9 +370,9 @@ void run_worldless_collision_uniform_grid_membership(FAutomationTestBase& test,
 
         int32 expected_cell_count{};
         int32 found_cell_count{};
-        for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
-            for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
-                for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
+        for (int32 x{min_coord.x}; x <= max_coord.x; ++x) {
+            for (int32 y{min_coord.y}; y <= max_coord.y; ++y) {
+                for (int32 z{min_coord.z}; z <= max_coord.z; ++z) {
                     ++expected_cell_count;
                     found_cell_count += count_handle(grid.get_cell_entities({x, y, z}), handle);
                 }
@@ -1311,8 +1259,7 @@ void FCollisionUniformGridTraceScenario::test_varied_grid_geometry() {
     checks.are_equal(
         1, single_cell_fixture.grid.num_cells(), TEXT("Single-cell grid has one cell"));
     checks.are_equal(1,
-                     static_cast<int32>(
-                         single_cell_fixture.grid.get_cell_entities(FIntVector3::ZeroValue).size()),
+                     static_cast<int32>(single_cell_fixture.grid.get_cell_entities({}).size()),
                      TEXT("Single-cell grid contains its entity"));
 
     TArray<FExpectedTrace> const single_cell_cases{
@@ -1796,7 +1743,7 @@ void FCollisionUniformGridTraceScenario::test_dense_and_wide_aabbs() {
     TArray<FVector3f> dense_locations;
     dense_locations.Init(dense_location, dense_entity_count);
     FTraceFixture const dense_fixture{dense_locations, dense_half_extents};
-    auto const dense_cell{dense_fixture.grid.to_cell_coord(dense_location)};
+    auto const dense_cell{dense_fixture.grid.to_cell_coord(ml::to_native(dense_location))};
     checks.are_equal(dense_entity_count,
                      static_cast<int32>(dense_fixture.grid.get_cell_entities(dense_cell).size()),
                      TEXT("Dense cell retains every entity"));
@@ -1813,12 +1760,12 @@ void FCollisionUniformGridTraceScenario::test_dense_and_wide_aabbs() {
     FVector3f const wide_half_extents{160.f, 160.f, 160.f};
     TArray<FVector3f> const wide_locations{FVector3f::ZeroVector};
     FTraceFixture const wide_fixture{wide_locations, wide_half_extents};
-    auto const [min_coord, max_coord]{
-        wide_fixture.grid.to_cell_coord_bounds(-wide_half_extents, wide_half_extents)};
+    auto const [min_coord, max_coord]{wide_fixture.grid.to_cell_coord_bounds(
+        ml::to_native(-wide_half_extents), ml::to_native(wide_half_extents))};
     int32 membership_count{};
-    for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
-        for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
-            for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
+    for (int32 x{min_coord.x}; x <= max_coord.x; ++x) {
+        for (int32 y{min_coord.y}; y <= max_coord.y; ++y) {
+            for (int32 z{min_coord.z}; z <= max_coord.z; ++z) {
                 membership_count += count_handle(wide_fixture.grid.get_cell_entities({x, y, z}),
                                                  wide_fixture.handles[0]);
             }
@@ -1889,7 +1836,7 @@ void FCollisionUniformGridTraceScenario::test_static_geometry() {
     FTraceFixture fixture{dynamic_locations, half_extents};
 
     auto set_static_aabb{[&fixture](FVector3f const min_point, FVector3f const max_point) {
-        WorldAABBs static_aabbs;
+        simulation::collision::WorldAABBs static_aabbs;
         simulation::collision::add(
             static_aabbs, ml::to_native(min_point), ml::to_native(max_point));
         fixture.grid.set_static_aabbs(MoveTemp(static_aabbs));
@@ -1932,7 +1879,7 @@ void FCollisionUniformGridTraceScenario::test_static_geometry() {
                                   fighter_types};
     fighter_fixture.set_entity_aabb(
         ETestEntityType::CapitalShipFighter, FVector3f::ZeroVector, half_extents);
-    WorldAABBs blocked_static_aabbs;
+    simulation::collision::WorldAABBs blocked_static_aabbs;
     simulation::collision::add(blocked_static_aabbs, {50.f, -10.f, -10.f}, {70.f, 10.f, 10.f});
     fighter_fixture.grid.set_static_aabbs(MoveTemp(blocked_static_aabbs));
 
@@ -2036,8 +1983,9 @@ void FCollisionUniformGridTraceScenario::test_static_harvesting() {
     FTestEntityRegistry registry;
     ioj::FCollisionSystem collision{registry};
     auto& grid{collision.get_uniform_grid()};
-    grid.set_grid_dims(config.calculate_grid_dimensions());
-    grid.set_cell_dims(config.cell_size);
+    auto const configured_dims{config.calculate_grid_dimensions()};
+    grid.set_grid_dims({configured_dims.X, configured_dims.Y, configured_dims.Z});
+    grid.set_cell_dims(ml::to_native(config.cell_size));
     ioj::FLevelCollisionHost collision_host;
     collision_host.initialise_static_geometry(*world, config, collision);
 

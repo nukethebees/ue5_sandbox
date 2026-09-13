@@ -1,7 +1,10 @@
 #pragma once
+#include <CoreMinimal.h>
+#include <SpaceGameSimulation/entities/TestTeam.h>
+#include <span>
 
+#include <sandbox/simulation/simulation/LevelSimulation.h>
 #include <SandboxCore/test_timeline.h>
-#include <SpaceGameSimulation/simulation/LevelSimulation.h>
 
 #include <Misc/Optional.h>
 
@@ -44,10 +47,10 @@ class FWorldlessSimulationTest {
     auto get_time() const -> time_type { return simulation_.get_clock().get_simulation_time(); }
 
     void finish_initialisation();
-    void queue_damage(TConstArrayView<FRegistryEntityHandle> targets,
+    void queue_damage(std::span<FRegistryEntityHandle const> targets,
                       int32 damage,
                       FRegistryEntityHandle instigator = {});
-    void queue_kills(TConstArrayView<FRegistryEntityHandle> targets,
+    void queue_kills(std::span<FRegistryEntityHandle const> targets,
                      FRegistryEntityHandle instigator = {});
     auto run_until_timeline_finished(time_type maximum_time) -> bool;
 

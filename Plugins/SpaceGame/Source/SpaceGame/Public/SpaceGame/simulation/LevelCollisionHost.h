@@ -1,7 +1,10 @@
 #pragma once
+#include <sandbox/simulation/simulation/CollisionSystem.h>
+#include <SandboxCore/enum_array.h>
 #include <SpaceGame/simulation/StaticCollisionSources.h>
+#include <SpaceGameSimulation/entities/TestEntityType.h>
 #include <SpaceGameSimulation/levels/LevelStartErrors.h>
-#include <SpaceGameSimulation/simulation/CollisionSystem.h>
+#include <SpaceGameSimulation/simulation/EntityAABBs.h>
 
 #include <expected>
 

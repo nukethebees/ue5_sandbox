@@ -1,18 +1,21 @@
 #include "test_fighter_attack.h"
+#include <sandbox/simulation/rotator_math.h>
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
+#include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <sandbox/simulation/world_aabb_operations.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/registry_entity_data.h>
+#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
+#include <sandbox/simulation/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistryData.h>
-#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
-#include <SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGameSimulation/simulation/EntityWorldBounds.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
@@ -45,7 +48,7 @@ void run_worldless_fighter_obstacle_avoidance(FAutomationTestBase& test,
     data.fighters.avoidance_clearance_buffer = 100.f;
     data.capital_ships.fighter_spawn_slots = 1;
     data.capital_ships.fighter_spawn_slots_relative_transforms = {
-        FTransform{FVector{3000.f, 7000.f, 0.f}}};
+        {.location = {3000.0, 7000.0, 0.0}}};
     data.static_bounds.add_defaulted(1);
     simulation::collision::set(
         data.static_bounds, 0, ml::to_native(obstacle_min), ml::to_native(obstacle_max));
@@ -72,7 +75,7 @@ void run_worldless_fighter_obstacle_avoidance(FAutomationTestBase& test,
         }
 
         fighter_spawned = true;
-        auto const location{ml::get_vector3f(locations, 0)};
+        auto const location{ml::to_unreal(locations[0])};
         maximum_lateral_distance =
             FMath::Max(maximum_lateral_distance, FVector2f{location.Y, location.Z}.Length());
         maximum_x = FMath::Max(maximum_x, location.X);
@@ -110,7 +113,11 @@ auto make_fighter_navigation_test_data(USpaceGameLevelConfig const& config,
     data.fighters.separation_radius = 1500.f;
     data.fighters.separation_strength = 1.5f;
     data.capital_ships.fighter_spawn_slots = spawn_slots.Num();
-    data.capital_ships.fighter_spawn_slots_relative_transforms = MoveTemp(spawn_slots);
+    data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
+    for (auto const& transform : spawn_slots) {
+        data.capital_ships.fighter_spawn_slots_relative_transforms.push_back(
+            ml::to_native(transform));
+    }
     add_worldless_capital_spawn(data, source_location, ETestTeam::Green, 1, 0.f, 60.f, 100000);
     add_worldless_capital_spawn(
         data, target_location, ETestTeam::Red, INDEX_NONE, 60.f, 60.f, 100000);
@@ -134,15 +141,18 @@ void run_worldless_fighter_capital_obstruction(FAutomationTestBase& test,
     data.fighters.attack_distance_band.maximum_ratio = 0.f;
     data.capital_ships.fighter_spawn_slots = 1;
     data.capital_ships.fighter_spawn_slots_relative_transforms = {
-        FTransform{FVector{3000.f, 7000.f, 0.f}}};
+        {.location = {3000.0, 7000.0, 0.0}}};
     add_worldless_capital_spawn(data, source, ETestTeam::Green, 2, 0.f, 60.f, 100000);
     add_worldless_capital_spawn(data, obstacle, ETestTeam::Green, INDEX_NONE, 60.f, 60.f, 100000);
     add_worldless_capital_spawn(data, target, ETestTeam::Red, INDEX_NONE, 60.f, 60.f, 100000);
     FRotator3f const obstacle_rotation{0.f, 35.f, 0.f};
     data.capital_spawns.rotations.set(1, ml::to_native(FRotator3f{obstacle_rotation}));
 
-    auto const obstacle_bounds{ioj::to_unreal(ioj::make_entity_world_bounds(
-        data.entity_bounds, ioj::FEntityAABBs::capital_ship_index, obstacle, obstacle_rotation))};
+    auto const obstacle_bounds{ioj::to_unreal(simulation::collision::make_entity_world_bounds(
+        data.entity_bounds,
+        simulation::collision::EntityAABBs::capital_ship_index,
+        ml::to_native(obstacle),
+        simulation::to_quaternion(ml::to_native(obstacle_rotation))))};
     auto const capital_half_extent{obstacle_bounds.GetExtent()};
     auto const clearance{data.fighter_radius + data.fighters.avoidance_clearance_buffer};
     FVector3f const clearance_extent{clearance, clearance, clearance};
@@ -160,7 +170,7 @@ void run_worldless_fighter_capital_obstruction(FAutomationTestBase& test,
         if (locations.num() == 0) {
             return;
         }
-        auto const location{ml::get_vector3f(locations, 0)};
+        auto const location{ml::to_unreal(locations[0])};
         entered_obstacle =
             entered_obstacle || (location.X >= expanded_min.X && location.X <= expanded_max.X &&
                                  location.Y >= expanded_min.Y && location.Y <= expanded_max.Y &&
@@ -203,7 +213,7 @@ void run_worldless_fighter_clear_navigation(FAutomationTestBase& test,
         if (locations.num() == 0) {
             return;
         }
-        last_location = ml::get_vector3f(locations, 0);
+        last_location = ml::to_unreal(locations[0]);
         if (!recorded_first) {
             first_location = last_location;
             recorded_first = true;
@@ -250,8 +260,7 @@ void run_worldless_fighter_separation(FAutomationTestBase& test,
         if (locations.num() != 2) {
             return;
         }
-        final_distance =
-            FVector3f::Dist(ml::get_vector3f(locations, 0), ml::get_vector3f(locations, 1));
+        final_distance = FVector3f::Dist(ml::to_unreal(locations[0]), ml::to_unreal(locations[1]));
         if (initial_distance == 0.f) {
             initial_distance = final_distance;
         }
@@ -350,7 +359,7 @@ auto run_dense_navigation_fixture(USpaceGameLevelConfig const& config, int32 con
     auto const locations{fighters.get_locations()};
     result.locations.Reserve(locations.num());
     for (int32 i{}; i < locations.num(); ++i) {
-        result.locations.Add(ml::get_vector3f(locations, i));
+        result.locations.Add(ml::to_unreal(locations[i]));
     }
     return result;
 }
@@ -456,7 +465,7 @@ void run_worldless_fighter_hard_avoidance_authority(FAutomationTestBase& test,
     harness.on_end_tick = [&](FLevelSimulation&) {
         auto const locations{fighters.get_locations()};
         for (int32 i{}; i < locations.num(); ++i) {
-            auto const location{ml::get_vector3f(locations, i)};
+            auto const location{ml::to_unreal(locations[i])};
             entered_obstacle =
                 entered_obstacle || (location.X >= expanded_min.X && location.X <= expanded_max.X &&
                                      location.Y >= expanded_min.Y && location.Y <= expanded_max.Y &&
@@ -535,7 +544,9 @@ void run_worldless_fighter_attack(FAutomationTestBase& test,
     TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](FLevelSimulation&) {
         Sample sample{.enemy_health = capitals.get_health(enemy)};
-        sample.fighter_teams.Append(fighters.get_teams());
+        for (auto const team : fighters.get_teams()) {
+            sample.fighter_teams.Add(ml::to_unreal(team));
+        }
         samples.add(harness.get_time(), MoveTemp(sample));
     };
     harness.timeline.finish_at(11.0);

@@ -1,7 +1,7 @@
 #include "SpaceGamePresentation/simulation/CollisionGridVisualizationComponent.h"
 
+#include <sandbox/simulation/simulation/CollisionSystem.h>
 #include <sandbox/simulation/world_aabb_operations.h>
-#include <SpaceGameSimulation/simulation/CollisionSystem.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <Engine/EngineTypes.h>

@@ -8,11 +8,11 @@
 
 #include <SandboxCore/time_series_data.h>
 
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 
 #include <Engine/GameInstance.h>
 #include <Engine/LocalPlayer.h>
@@ -78,7 +78,7 @@ void FTestPlayerShipDeathScenario::queue_player_ship_death() {
 
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
-    TArray<FRegistryEntityHandle> const targets{player_ship_handle};
+    std::vector<FRegistryEntityHandle> const targets{player_ship_handle};
     test_driver->timeline
         .then_after(kill_time, [this, targets] { test_driver->queue_kills(targets); })
         .finish_after(post_kill_time);

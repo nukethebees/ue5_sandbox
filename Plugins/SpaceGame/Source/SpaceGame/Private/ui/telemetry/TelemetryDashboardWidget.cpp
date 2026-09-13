@@ -1,5 +1,6 @@
 #include "SpaceGame/ui/telemetry/TelemetryDashboardWidget.h"
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 
 #include "SpaceGame/system/GameSubsystem.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
@@ -130,28 +131,29 @@ void UTelemetryDashboardWidget::rebuild_state() {
     if (!record) {
         return;
     }
-    auto const level{FTelemetryRunSummary{.map_name = record->metadata.map_name,
-                                          .level_id = record->metadata.level_id,
-                                          .level_display_name = record->metadata.level_display_name}
+    auto const level{FTelemetryRunSummary{
+        .map_name = UTF8_TO_TCHAR(record->metadata.map_name.c_str()),
+        .level_id = FName{UTF8_TO_TCHAR(record->metadata.level_id.c_str())},
+        .level_display_name = UTF8_TO_TCHAR(record->metadata.level_display_name.c_str())}
                          .level_label()};
     state_.header = FText::FromString(FString::Printf(
         TEXT("%s\nLAUNCHED // %s    END // %s\nREQUESTED // "
              "%.3gx    MODE // %s    DURATION // %s\nBUILD // %s    "
              "PLATFORM // %s\nSOURCE SHA-256 // %s\nRUN // %s"),
         *level,
-        *record->metadata.launched_utc,
-        LexToSerializedString(record->completion.reason),
+        UTF8_TO_TCHAR(record->metadata.launched_utc.c_str()),
+        LexToSerializedString(static_cast<ELevelTelemetryRunEndReason>(record->completion.reason)),
         record->metadata.initial_requested_time_scale,
         *record->metadata.presentation_mode,
-        record->metadata.requested_duration_seconds.IsSet()
-            ? *FString::Printf(TEXT("%.3fs"),
-                               record->metadata.requested_duration_seconds.GetValue())
+        record->metadata.requested_duration_seconds.has_value()
+            ? *FString::Printf(TEXT("%.3fs"), record->metadata.requested_duration_seconds.value())
             : TEXT("unlimited"),
         *record->metadata.environment.build_configuration,
         *record->metadata.environment.platform,
-        record->metadata.source_sha256.IsEmpty() ? TEXT("unavailable")
-                                                 : *record->metadata.source_sha256,
-        *record->metadata.run_id));
+        record->metadata.source_sha256.empty()
+            ? TEXT("unavailable")
+            : UTF8_TO_TCHAR(record->metadata.source_sha256.c_str()),
+        UTF8_TO_TCHAR(record->metadata.run_id.c_str())));
     state_.analysis = analyze_level_telemetry_run(*record);
     auto const* const baseline{catalog_.get_baseline_record()};
     if (baseline) {
@@ -230,12 +232,13 @@ void UTelemetryDashboardWidget::rebuild_state() {
         };
         auto const& battle{record->battle_samples.Last()};
         auto const& combat{battle.combat};
-        auto const winner{
-            record->completion.reason == ELevelTelemetryRunEndReason::BattleResolved
-                ? (record->completion.winning_team.IsSet()
-                       ? FString{LexToSerializedString(record->completion.winning_team.GetValue())}
-                       : FString{TEXT("draw")})
-                : FString{TEXT("—")}};
+        auto const winner{static_cast<ELevelTelemetryRunEndReason>(record->completion.reason) ==
+                                  ELevelTelemetryRunEndReason::BattleResolved
+                              ? (record->completion.winning_team.has_value()
+                                     ? FString{LexToSerializedString(
+                                           ml::to_unreal(record->completion.winning_team.value()))}
+                                     : FString{TEXT("draw")})
+                              : FString{TEXT("—")}};
         summary += FString::Printf(
             TEXT("\nBATTLE RESULT  //  %s    SAMPLES // %d\nCOMBAT  //  SHOTS %llu  HITS %llu  "
                  "DAMAGE %.0f  KILLS %llu  LOSSES %llu\nPERFORMANCE WINDOWS  //  %d    "

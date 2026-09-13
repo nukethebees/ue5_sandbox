@@ -1,8 +1,8 @@
 #pragma once
 
+#include <sandbox/simulation/simulation/SystemReadViews.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
-#include <SpaceGameSimulation/simulation/SystemReadViews.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <CoreMinimal.h>

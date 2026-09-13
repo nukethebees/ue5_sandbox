@@ -1,13 +1,16 @@
 #pragma once
+#include <SpaceGame/missions/MissionCompletion.h>
 #include <SpaceGame/telemetry/LevelTelemetryReport.h>
+#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
+#include <SpaceGameSimulation/support/FixedTickLoop.h>
 
+#include <sandbox/simulation/simulation/LevelSimulation.h>
 #include <SpaceGame/missions/LevelMissionDefinition.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGamePresentation/presentation/HUDManager.h>
 #include <SpaceGamePresentation/presentation/LevelPresentation.h>
-#include <SpaceGameSimulation/simulation/LevelSimulation.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
@@ -163,7 +166,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         return level_simulation_->get_level_telemetry_manager();
     }
     auto get_entity_type(FRegistryEntityHandle const handle) const -> ETestEntityType {
-        return get_entity_registry().get_entity_type(handle);
+        return ml::to_unreal(get_entity_registry().get_entity_type(handle));
     }
     auto get_spatial_query_manager() noexcept -> ml::FSpatialQueryManager& {
         check(level_simulation_.IsSet());

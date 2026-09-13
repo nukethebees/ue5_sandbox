@@ -9,11 +9,11 @@
 #include <SandboxTests/support/time_series_test_data.h>
 #include <SandboxTests/support/WorldlessSimulationTest.h>
 
+#include <sandbox/simulation/combat/lasers/TestLasersSimulation.h>
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameSimulation/combat/lasers/TestLasersSimulation.h>
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 #include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
@@ -41,7 +41,7 @@ void run_worldless_laser_lifecycle(FAutomationTestBase& test,
                                    ELaserLifecycleScenario const scenario) {
     auto data{make_worldless_simulation_test_data(config)};
     data.capital_ships.fighter_spawn_slots = 0;
-    data.capital_ships.fighter_spawn_slots_relative_transforms.Reset();
+    data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     add_worldless_capital_spawn(data,
                                 FVector3f{-4000.f, 0.f, 0.f},
                                 ETestTeam::Blue,
@@ -91,8 +91,8 @@ void run_worldless_laser_lifecycle(FAutomationTestBase& test,
                            harness.get_registry().count_kills()});
     };
     harness.timeline.at(projectile_queue_time, [&] {
-        auto const shooter_location{harness.get_registry().get_location(shooter)};
-        auto const target_location{harness.get_registry().get_location(target)};
+        auto const shooter_location{ml::to_unreal(harness.get_registry().get_location(shooter))};
+        auto const target_location{ml::to_unreal(harness.get_registry().get_location(target))};
         auto const shooter_radius{harness.get_registry().get_entity_data().radii[shooter.index]};
         auto const target_direction{(target_location - shooter_location).GetSafeNormal()};
         auto start{shooter_location + target_direction * (shooter_radius + 100.f)};

@@ -1,12 +1,17 @@
 #include "SpaceGame/simulation/TestBatchOrchestrator.h"
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
+#include <SpaceGameSimulation/missions/NativeMissionTypes.h>
+#include <SpaceGameSimulation/simulation/FighterDiagnostics.h>
 #include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
+#include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include "SpaceGame/levels/LevelLoader.h"
 #include "SpaceGame/system/GameSubsystem.h"
 
+#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <sandbox/simulation/missions/TestMissionManager.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
@@ -19,8 +24,6 @@
 #include <SpaceGamePresentation/presentation/HUDManager.h>
 #include <SpaceGamePresentation/simulation/CollisionGridVisualizationComponent.h>
 #include <SpaceGamePresentation/support/mesh.h>
-#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
-#include <SpaceGameSimulation/missions/TestMissionManager.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_utils.h>
@@ -188,8 +191,9 @@ void ATestBatchOrchestrator::BeginPlay() {
 }
 void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason) {
     if (level_simulation_.IsSet()) {
-        level_simulation_->finalize_telemetry_run(ELevelTelemetryRunEndReason::WorldEnd,
-                                                  end_play_reason_name(end_play_reason));
+        level_simulation_->finalize_telemetry_run(
+            ml::simulation::LevelTelemetryRunEndReason::WorldEnd,
+            TCHAR_TO_UTF8(*end_play_reason_name(end_play_reason)));
     }
     hud_manager.deactivate();
     if (IsValid(player_ship)) {
@@ -227,8 +231,8 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::reset_for_new_level);
 
     if (level_simulation_.IsSet()) {
-        level_simulation_->finalize_telemetry_run(ELevelTelemetryRunEndReason::OrchestratorReset,
-                                                  TEXT("reset"));
+        level_simulation_->finalize_telemetry_run(
+            ml::simulation::LevelTelemetryRunEndReason::OrchestratorReset, "reset");
     }
 
     auto* const world{GetWorld()};
@@ -476,11 +480,15 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
         }
 
         result->telemetry_metadata = make_level_telemetry_run_metadata(world, mission_definition);
-        result->telemetry_metadata->level_id = level_definition_->metadata.id.value;
-        result->telemetry_metadata->level_display_name = level_definition_->metadata.title;
-        result->telemetry_metadata->source_sha256 = level_source_sha256_;
-        result->telemetry_metadata->requested_duration_seconds =
-            launch_options_.simulated_duration_seconds;
+        result->telemetry_metadata->level_id =
+            TCHAR_TO_UTF8(*level_definition_->metadata.id.value.ToString());
+        result->telemetry_metadata->level_display_name =
+            TCHAR_TO_UTF8(*level_definition_->metadata.title);
+        result->telemetry_metadata->source_sha256 = TCHAR_TO_UTF8(*level_source_sha256_);
+        if (launch_options_.simulated_duration_seconds.IsSet()) {
+            result->telemetry_metadata->requested_duration_seconds =
+                launch_options_.simulated_duration_seconds.GetValue();
+        }
         result->telemetry_metadata->detailed_timing = launch_options_.detailed_timing;
         result->telemetry_metadata->stop_when_battle_resolved =
             launch_options_.stop_when_battle_resolved;
@@ -489,7 +497,12 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
             result->game_memory = &game_subsystem->get_game_memory();
         }
 
-        initial_turret_transforms_ = result->turret_transforms;
+        initial_turret_transforms_.Reset();
+        for (auto const& transform : result->turret_transforms) {
+            initial_turret_transforms_.Add(ml::to_unreal(transform));
+        }
+        result->fighter_diagnostics_enabled =
+            ml::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;
         level_simulation_.Emplace(MoveTemp(result.value()));
         validate_entity_handles();
         return true;
@@ -533,11 +546,11 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
 
         ml::test_static_turrets::SpawnData spawn_data;
         spawn_data.add_uninitialised(n_to_add);
-        TArray<FTransform> initial_transforms;
-        initial_transforms.SetNumUninitialized(n_to_add, EAllowShrinking::No);
+        std::vector<ml::simulation::Transform3d> initial_transforms(
+            static_cast<std::size_t>(n_to_add));
         for (int32 i{0}; i < n_to_add; ++i) {
             auto const transform{turret_proxies[i]->GetActorTransform()};
-            initial_transforms[i] = transform;
+            initial_transforms[i] = ml::to_native(transform);
             spawn_data.locations.set(i, ml::to_native(FVector3f{transform.GetLocation()}));
             spawn_data.teams[i] = ml::to_native(turret_proxies[i]->get_team());
             spawn_data.healths[i] =
@@ -551,17 +564,16 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
     {
         auto const n_to_add{spinner_proxies.Num()};
 
-        FVectors3f new_locations;
-        TArray<float> new_yaws;
-        TArray<int32> new_fire_point_indices;
-
-        ml::add_uninitialised(n_to_add, new_locations, new_yaws, new_fire_point_indices);
+        ml::simulation::Vectors3f new_locations;
+        new_locations.add_uninitialised(n_to_add);
+        std::vector<float> new_yaws(static_cast<std::size_t>(n_to_add));
+        std::vector<int32> new_fire_point_indices(static_cast<std::size_t>(n_to_add));
 
         for (int32 i{0}; i < n_to_add; ++i) {
             auto* proxy{spinner_proxies[i]};
             auto const& transform{proxy->GetActorTransform()};
 
-            new_locations.set(i, FVector3f{transform.GetLocation()});
+            new_locations.set(i, ml::to_native(FVector3f{transform.GetLocation()}));
             new_yaws[i] = transform.Rotator().Yaw;
             new_fire_point_indices[i] = proxy->get_initial_active_fire_point();
         }
@@ -587,7 +599,11 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
         return false;
     }
 
-    initial_turret_transforms_ = data.turret_transforms;
+    initial_turret_transforms_.Reset();
+    for (auto const& transform : data.turret_transforms) {
+        initial_turret_transforms_.Add(ml::to_unreal(transform));
+    }
+    data.fighter_diagnostics_enabled = ml::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;
     level_simulation_.Emplace(MoveTemp(data));
 
     auto const capital_count{capital_proxies.Num()};
@@ -950,6 +966,11 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
     auto const detailed_timing{get_level_telemetry_manager().detailed_timing_enabled()};
     auto const timing_window{get_level_telemetry_manager().get_performance_window_count()};
 
+    auto const fighter_diagnostics_enabled{
+        ml::fighter_diagnostics::enabled.GetValueOnGameThread() != 0};
+    level_simulation_->get_capital_ships().diagnostics_enabled = fighter_diagnostics_enabled;
+    level_simulation_->get_capital_ship_fighters().diagnostics_enabled =
+        fighter_diagnostics_enabled;
     level_simulation_->advance(dt);
     update_collision_bounds_visualization();
 
@@ -1077,7 +1098,7 @@ auto ATestBatchOrchestrator::add_static_geometry(UPrimitiveComponent& component)
 /* **************************************** */
 void ATestBatchOrchestrator::process_mission_result() {
     auto result{level_simulation_->take_mission_result()};
-    if (!result.IsSet()) {
+    if (!result.has_value()) {
         return;
     }
     auto const par_time_seconds{level_definition_.IsSet()
@@ -1089,9 +1110,9 @@ void ATestBatchOrchestrator::process_mission_result() {
         auto* game_instance{GetGameInstance()};
         auto* saves{USpaceSaveSubsystem::get(game_instance)};
         if (IsValid(saves)) {
-            if (result->state == ETestMissionState::Succeeded) {
-                auto const previous_progress{
-                    saves->get_level_progress(ml::FLevelId{result->level_id})};
+            if (result->state == ml::simulation::MissionState::Succeeded) {
+                auto const previous_progress{saves->get_level_progress(
+                    ml::FLevelId{FName{UTF8_TO_TCHAR(result->level_id.c_str())}})};
                 new_best_time =
                     previous_progress.best_completion_time_seconds < 0.0f ||
                     result->elapsed_seconds < previous_progress.best_completion_time_seconds;
@@ -1099,10 +1120,10 @@ void ATestBatchOrchestrator::process_mission_result() {
 
             FScoreRecord const record{
                 .date = FDateTime::Now(),
-                .level_name = result->level_id,
-                .mission_mode = result->mode,
-                .end_state = result->state,
-                .fail_reason = result->fail_reason,
+                .level_name = FName{UTF8_TO_TCHAR(result->level_id.c_str())},
+                .mission_mode = ml::to_unreal(result->mode),
+                .end_state = ml::to_unreal(result->state),
+                .fail_reason = ml::to_unreal(result->fail_reason),
                 .kills = result->kills,
                 .time_seconds = result->elapsed_seconds,
                 .target_kills = result->target_kills,
@@ -1116,12 +1137,13 @@ void ATestBatchOrchestrator::process_mission_result() {
                    TEXT("Cannot persist mission result: save subsystem is unavailable"));
         }
     }
-    on_mission_completed.Broadcast({.level_id = result->level_id,
-                                    .level_display_name = result->level_display_name,
-                                    .state = result->state,
-                                    .persisted = persisted,
-                                    .par_time_seconds = par_time_seconds,
-                                    .new_best_time = new_best_time});
+    on_mission_completed.Broadcast(
+        {.level_id = FName{UTF8_TO_TCHAR(result->level_id.c_str())},
+         .level_display_name = UTF8_TO_TCHAR(result->level_display_name.c_str()),
+         .state = ml::to_unreal(result->state),
+         .persisted = persisted,
+         .par_time_seconds = par_time_seconds,
+         .new_best_time = new_best_time});
 }
 void ATestBatchOrchestrator::process_battle_run_end() {
     if (!level_simulation_.IsSet() ||
@@ -1133,25 +1155,26 @@ void ATestBatchOrchestrator::process_battle_run_end() {
         !level_simulation_->has_future_authored_spawns()) {
         auto const alive_by_team{get_entity_registry().count_alive_per_team()};
         int32 living_team_count{};
-        TOptional<ETestTeam> winner;
+        std::optional<ml::simulation::Team> winner;
         constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};
         for (int32 team_index{}; team_index < team_count; ++team_index) {
             if (alive_by_team[team_index] > 0) {
                 ++living_team_count;
-                winner = static_cast<ETestTeam>(team_index);
+                winner = static_cast<ml::simulation::Team>(team_index);
             }
         }
         if (living_team_count <= 1) {
             level_simulation_->complete_telemetry_run(
-                ELevelTelemetryRunEndReason::BattleResolved,
-                living_team_count == 1 ? winner : TOptional<ETestTeam>{});
+                ml::simulation::LevelTelemetryRunEndReason::BattleResolved,
+                living_team_count == 1 ? winner : std::nullopt);
             return;
         }
     }
 
     if (launch_options_.simulated_duration_seconds.IsSet() &&
         get_simulation_time() >= launch_options_.simulated_duration_seconds.GetValue()) {
-        level_simulation_->complete_telemetry_run(ELevelTelemetryRunEndReason::DurationReached);
+        level_simulation_->complete_telemetry_run(
+            ml::simulation::LevelTelemetryRunEndReason::DurationReached);
     }
 }
 void ATestBatchOrchestrator::handle_telemetry_persisted(FString run_id, FString error) {
@@ -1173,10 +1196,10 @@ auto ATestBatchOrchestrator::take_finalized_telemetry_report() -> TOptional<FLev
         return {};
     }
     auto record{get_level_telemetry_manager().take_finalized_run()};
-    if (!record.IsSet()) {
+    if (!record.has_value()) {
         return {};
     }
-    FLevelTelemetryReport report{MoveTemp(record.GetValue())};
+    FLevelTelemetryReport report{std::move(record.value())};
     report.metadata.environment = telemetry_environment_;
     report.metadata.launch_state = launch_options_.launch_mode == ml::ioj::ELevelLaunchMode::Paused
                                      ? TEXT("paused")
@@ -1205,10 +1228,10 @@ void ATestBatchOrchestrator::persist_finalized_telemetry_run() {
     auto const path{write_level_telemetry_run(report, level_telemetry_runs_directory())};
     if (path) {
         UE_LOG(LogSandbox, Display, TEXT("Wrote level telemetry run to '%s'"), **path);
-        handle_telemetry_persisted(run_id, {});
+        handle_telemetry_persisted(UTF8_TO_TCHAR(run_id.c_str()), {});
     } else {
         UE_LOG(LogSandbox, Error, TEXT("Failed to write level telemetry run: %s"), *path.error());
-        handle_telemetry_persisted(run_id, path.error());
+        handle_telemetry_persisted(UTF8_TO_TCHAR(run_id.c_str()), path.error());
     }
 }
 void ATestBatchOrchestrator::record_external_timing(int32 const window_index,
