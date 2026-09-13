@@ -27,8 +27,7 @@ The project utilizes a custom plugin to extend the engine's capabilities:
 | --- | --- | 
 | Sandbox | Main game code |
 | SandboxEditor | Editor code |
-| SandboxNative | Editor/engine independent code |
-| SandboxNativeTests | Tests for `SandboxNative` |
+| SandboxNative | Unreal adapters for the standalone native libraries |
 | SandboxTests | Tests for `Sandbox` |
 
 ## Code generation
@@ -300,10 +299,10 @@ To build and run the CTest suites, including Catch2 low-level unit tests and the
 cmake --workflow --preset debug-game-tests
 ```
 
-CTest discovers individual tests from the `SandboxCoreTests` and `SandboxNativeTests`
-executables at test time and runs Unreal Automation Test groups through the configured
-Editor. Low-level tests use the `unit` label and Unreal level tests use the `level`
-label. To rerun the level group without rebuilding:
+CTest discovers individual Catch2 tests from `SandboxCoreTests`, GoogleTests from the
+standalone native test executables, and Unreal Automation Test groups through the configured
+Editor. Low-level tests use the `unit` label and Unreal level tests use the `level` label. To
+rerun the level group without rebuilding:
 
 ```powershell
 cd out/build/debug-game

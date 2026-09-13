@@ -45,6 +45,34 @@ TEST(DeterministicBias, ValidFloatRange) {
     }
 }
 
+TEST(DeterministicBias, BothInputsAffectResults) {
+    constexpr auto base{ml::make_deterministic_biases(42, 7)};
+    constexpr auto changed_first{ml::make_deterministic_biases(43, 7)};
+    constexpr auto changed_second{ml::make_deterministic_biases(42, 8)};
+
+    EXPECT_NE(changed_first.integral, base.integral);
+    EXPECT_NE(changed_first.floating, base.floating);
+    EXPECT_NE(changed_second.integral, base.integral);
+    EXPECT_NE(changed_second.floating, base.floating);
+}
+
+TEST(DeterministicBias, AcceptsEmptyBatches) {
+    std::array<std::int32_t, 0> const inputs{};
+    std::array<std::uint32_t, 0> integral_out{};
+    std::array<float, 0> floating_out{};
+
+    EXPECT_TRUE(ml::make_deterministic_biases(inputs, inputs, integral_out, floating_out));
+}
+
+TEST(DeterministicBias, GeneratesIntegralBiasesFromEntityHandles) {
+    std::array const handles{FRegistryEntityHandle{42, 7}, FRegistryEntityHandle{43, 8}};
+    std::array<std::uint32_t, 2> integral_out{};
+
+    ASSERT_TRUE(ml::make_deterministic_biases(handles, integral_out));
+    EXPECT_EQ(integral_out[0], ml::make_deterministic_integral_bias(42, 7));
+    EXPECT_EQ(integral_out[1], ml::make_deterministic_integral_bias(43, 8));
+}
+
 TEST(DeterministicBias, RejectsMismatchedBatchSizes) {
     std::array const first{1, 2};
     std::array const second{3};

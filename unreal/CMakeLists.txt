@@ -556,8 +556,9 @@ if(SANDBOX_TEST_SUITE STREQUAL "benchmark")
 elseif(SANDBOX_TEST_SUITE STREQUAL "default")
   add_low_level_test_suite(core-tests SandboxCoreTests SandboxCore
     LABELS low-level-core)
-  add_low_level_test_suite(native-tests SandboxNativeTests SandboxNative
-    LABELS low-level-native)
+  add_custom_target(native-tests
+    DEPENDS native-simulation-tests
+  )
 
   add_dependencies(core-tests check-generated-code)
   add_dependencies(native-tests check-generated-code)
