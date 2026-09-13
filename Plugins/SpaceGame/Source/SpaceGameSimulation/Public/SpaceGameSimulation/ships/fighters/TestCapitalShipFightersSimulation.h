@@ -32,7 +32,6 @@
 #include <memory_resource>
 
 struct FLevelSimulation;
-struct FFighterSimulationConfig;
 struct FTestEntityRegistry;
 
 namespace ml {

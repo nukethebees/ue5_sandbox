@@ -3,12 +3,12 @@
 #include <CoreMinimal.h>
 #include <sandbox/simulation/simulation_config.h>
 #include <SandboxCoreEngine/SpeedResponse.h>
-#include <SpaceGameSimulation/combat/lasers/AttackDistanceBand.h>
 #include <SpaceGameSimulation/ships/common/BarrelRoll.h>
 
 using FSimulationLaserWeaponConfig = ml::simulation::LaserWeaponConfig;
 using FLaserSimulationConfig = ml::simulation::LaserSimulationConfig;
 using FOverlapResponseConfig = ml::simulation::OverlapResponseConfig;
+using FFighterSimulationConfig = ml::simulation::FighterSimulationConfig;
 
 struct SPACEGAMESIMULATION_API FPlayerSimulationConfig {
     float thrust_energy_max{1.f};
@@ -47,34 +47,6 @@ struct SPACEGAMESIMULATION_API FCapitalSimulationConfig {
     int32 fighter_spawn_slots{0};
     TArray<FTransform> fighter_spawn_slots_relative_transforms;
     int32 max_health{5000};
-};
-
-struct SPACEGAMESIMULATION_API FFighterSimulationConfig {
-    int32 max_live_fighters{2000};
-    float fire_dot_product_threshold{0.95f};
-    float speed{2000.f};
-    float turn_speed_unitless{1.f};
-    float avoidance_clear_update_frequency{2.f};
-    float avoidance_update_frequency{5.f};
-    float avoidance_active_update_frequency{12.f};
-    float avoidance_immediate_update_frequency{30.f};
-    float avoidance_lookahead_time{1.f};
-    float avoidance_clearance_buffer{100.f};
-    float separation_radius{2000.f};
-    float separation_strength{1.f};
-    float steering_memory_duration{0.75f};
-    int32 dense_traffic_neighbour_threshold{4};
-    FSimulationLaserWeaponConfig laser{};
-    int32 health{50};
-    float attack_retry_cooldown{0.15f};
-    float attack_engagement_threshold{5000.f};
-    float attack_reposition_frequency{10.f};
-    FAttackDistanceBand attack_distance_band;
-    float arrival_distance{500.f};
-    float los_check_buffer{100.f};
-    float awareness_radius{10000.f};
-    float awareness_scan_frequency{6.f};
-    float minimum_opportunistic_intercept_deviation_dot_product{0.5f};
 };
 
 struct SPACEGAMESIMULATION_API FTurretSimulationConfig {

@@ -79,7 +79,7 @@ auto make_simulation_config(FFighterConfig const& source) -> FFighterSimulationC
     result.attack_retry_cooldown = source.attack_retry_cooldown;
     result.attack_engagement_threshold = source.attack_engagement_threshold;
     result.attack_reposition_frequency = source.attack_reposition_frequency;
-    result.attack_distance_band = source.attack_distance_band;
+    result.attack_distance_band = source.attack_distance_band.to_native();
     result.arrival_distance = source.arrival_distance;
     result.los_check_buffer = source.los_check_buffer;
     result.awareness_radius = source.awareness_radius;

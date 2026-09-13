@@ -2,6 +2,7 @@ find_package(GTest CONFIG REQUIRED)
 
 add_library(native-simulation STATIC)
 target_sources(native-simulation PRIVATE
+  include/sandbox/simulation/attack_distance_band.h
   include/sandbox/simulation/capital_death_event.h
   include/sandbox/simulation/collision_events.h
   include/sandbox/simulation/direct_damage_events.h
@@ -45,6 +46,7 @@ target_sources(native-simulation PRIVATE
   include/sandbox/simulation/vectors3f.h
   include/sandbox/simulation/world_aabbs.h
   include/sandbox/simulation/world_aabb_operations.h
+  src/attack_distance_band.cpp
   src/collision_events.cpp
   src/collision_grid.cpp
   src/deterministic_bias.cpp
