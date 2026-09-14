@@ -5,6 +5,16 @@ param(
     [string[]]$RemainingArguments
 )
 
+if ([string]::IsNullOrWhiteSpace($env:UE_ROOT)) {
+    Write-Warning 'UE_ROOT should be defined and point to the Unreal Engine installation root.'
+} else {
+    $unreal_binary_path = Join-Path $env:UE_ROOT 'Engine\Binaries\Win64'
+
+    if ($env:PATH -split [System.IO.Path]::PathSeparator -notcontains $unreal_binary_path) {
+        $env:PATH = $unreal_binary_path + [System.IO.Path]::PathSeparator + $env:PATH
+    }
+}
+
 $navigation_path = Join-Path $PSScriptRoot 'PowerShell\Navigation.ps1'
 $unreal_build_path = Join-Path $PSScriptRoot 'PowerShell\UnrealBuild.ps1'
 

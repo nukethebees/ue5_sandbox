@@ -1,3 +1,7 @@
+add_library(sandbox_cxx_standard INTERFACE)
+add_library(sandbox::cxx_standard ALIAS sandbox_cxx_standard)
+target_compile_features(sandbox_cxx_standard INTERFACE cxx_std_23)
+
 add_library(sandbox_arch_avx2 INTERFACE)
 add_library(sandbox::arch_avx2 ALIAS sandbox_arch_avx2)
 

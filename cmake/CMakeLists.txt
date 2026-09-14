@@ -6,5 +6,5 @@ else()
 endif()
 set(SANDBOX_MSVC_FRONTEND "${SANDBOX_MSVC_FRONTEND}" PARENT_SCOPE)
 
-add_subdirectory(compiler_warnings)
 add_subdirectory(compiler_options)
+add_subdirectory(compiler_warnings)

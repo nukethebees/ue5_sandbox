@@ -171,6 +171,7 @@ endif()
 add_library(sandbox_warnings INTERFACE)
 add_library(sandbox::warnings ALIAS sandbox_warnings)
 target_link_libraries(sandbox_warnings INTERFACE
+  sandbox::cxx_standard
   sandbox_warning_level
   sandbox_msvc_strict
   sandbox_clang_strict

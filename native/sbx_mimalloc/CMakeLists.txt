@@ -13,7 +13,7 @@ set(SBX_MIMALLOC_SYMBOL_SCRIPT
 set_source_files_properties("${SBX_MIMALLOC_SOURCE}" PROPERTIES LANGUAGE CXX)
 
 function(configure_sbx_mimalloc_object target)
-  target_compile_features(${target} PRIVATE cxx_std_17)
+  target_link_libraries(${target} PRIVATE sandbox::cxx_standard)
   target_include_directories(${target} PRIVATE "${SBX_MIMALLOC_ROOT}/include")
   target_compile_definitions(${target} PRIVATE
     MI_BUILD_RELEASE=1
@@ -84,13 +84,13 @@ target_sources(sbx-mimalloc PRIVATE
   src/memory.cpp
   $<TARGET_OBJECTS:sbx-mimalloc-implementation>
 )
-target_compile_features(sbx-mimalloc PUBLIC cxx_std_17)
 target_include_directories(sbx-mimalloc
   PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
-  PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated" "${SBX_MIMALLOC_ROOT}/include"
+  PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated"
 )
+target_include_directories(sbx-mimalloc SYSTEM PRIVATE "${SBX_MIMALLOC_ROOT}/include")
 target_link_libraries(sbx-mimalloc
-  PUBLIC psapi shell32 user32 advapi32 bcrypt
+  PUBLIC sandbox::cxx_standard psapi shell32 user32 advapi32 bcrypt
   PRIVATE sandbox::warnings_as_errors
 )
 set_property(TARGET sbx-mimalloc PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
