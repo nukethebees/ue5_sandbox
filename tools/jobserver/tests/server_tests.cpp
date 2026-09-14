@@ -12,7 +12,9 @@
 #include <filesystem>
 #include <fstream>
 #include <future>
+#include <iterator>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <thread>
 #include <vector>
@@ -102,6 +104,58 @@ auto test_request(std::string name, jobserver::ClaimMode const mode) -> jobserve
     };
 }
 
+auto submit_request(std::string name,
+                    std::vector<jobserver::ResourceClaim> resources,
+                    std::vector<std::string> arguments,
+                    std::optional<std::chrono::milliseconds> timeout = std::nullopt)
+    -> jobserver::SubmitRequest {
+    return {
+        .metadata = {.name = std::move(name), .kind = "test", .worktree = {}},
+        .command = {.executable = JOBSERVER_TEST_HELPER_PATH,
+                    .arguments = std::move(arguments),
+                    .working_directory =
+                        std::filesystem::path{JOBSERVER_TEST_HELPER_PATH}.parent_path(),
+                    .environment = {}},
+        .resources = std::move(resources),
+        .timeout = timeout,
+        .suspect_after = std::nullopt,
+        .disconnect_policy = jobserver::DisconnectPolicy::continue_job,
+    };
+}
+
+auto raw_submit_message(std::string name, std::vector<std::string> arguments) -> Json {
+    auto message = Json::object();
+    message["type"] = "submit";
+    message["metadata"] = Json{{"name", std::move(name)}, {"kind", "test"}, {"worktree", ""}};
+    message["resources"] = Json::array();
+    message["command"] = Json{
+        {"executable", jobserver::path_to_utf8(std::filesystem::path{JOBSERVER_TEST_HELPER_PATH})},
+        {"arguments", std::move(arguments)},
+        {"working_directory",
+         jobserver::path_to_utf8(std::filesystem::path{JOBSERVER_TEST_HELPER_PATH}.parent_path())},
+        {"environment", Json::array()},
+    };
+    message["disconnect_policy"] = "continue";
+    return message;
+}
+
+auto connect_and_handshake_raw_pipe() -> HANDLE {
+    auto pipe{connect_raw_pipe()};
+    if (pipe == INVALID_HANDLE_VALUE) {
+        return pipe;
+    }
+    auto const hello = Json{{"type", "hello"},
+                            {"protocol",
+                             {{"major", jobserver::protocol::major_version},
+                              {"minor", jobserver::protocol::minor_version}}}};
+    if (!jobserver::transport::write_message(pipe, hello.dump()) ||
+        !jobserver::transport::read_message(pipe)) {
+        CloseHandle(pipe);
+        return INVALID_HANDLE_VALUE;
+    }
+    return pipe;
+}
+
 auto find_job(std::string const& name) -> std::optional<Json> {
     for (auto attempt{0}; attempt != 100; ++attempt) {
         auto status{jobserver::Client::status()};
@@ -109,6 +163,22 @@ auto find_job(std::string const& name) -> std::optional<Json> {
             auto const json = Json::parse(*status);
             for (auto const& job : json.value("jobs", Json::array())) {
                 if (job.value("name", "") == name) {
+                    return job;
+                }
+            }
+        }
+        std::this_thread::sleep_for(10ms);
+    }
+    return std::nullopt;
+}
+
+auto find_job_in_state(std::string const& name, std::string const& state) -> std::optional<Json> {
+    for (auto attempt{0}; attempt != 100; ++attempt) {
+        auto status{jobserver::Client::status()};
+        if (status) {
+            auto const json = Json::parse(*status);
+            for (auto const& job : json.value("jobs", Json::array())) {
+                if (job.value("name", "") == name && job.value("state", "") == state) {
                     return job;
                 }
             }
@@ -345,7 +415,7 @@ TEST_F(JobserverIntegration, IndependentWorktreeProcessesShareOneQueue) {
     ASSERT_NE(first.process, nullptr);
     auto const first_job{find_job("worktree-one")};
     ASSERT_TRUE(first_job.has_value());
-    EXPECT_EQ(first_job->value("worktree", ""), first_worktree.string());
+    EXPECT_EQ(first_job->value("worktree", ""), jobserver::path_to_utf8(first_worktree));
 
     auto second{launch(JOBSERVER_TEST_CLIENT_PATH,
                        L"lease-hold worktree-two cross-worktree-resource 50",
@@ -354,7 +424,7 @@ TEST_F(JobserverIntegration, IndependentWorktreeProcessesShareOneQueue) {
     auto const second_job{find_job("worktree-two")};
     ASSERT_TRUE(second_job.has_value());
     EXPECT_EQ(second_job->value("state", ""), "QUEUED");
-    EXPECT_EQ(second_job->value("worktree", ""), second_worktree.string());
+    EXPECT_EQ(second_job->value("worktree", ""), jobserver::path_to_utf8(second_worktree));
 
     auto const first_exit{wait_for_exit(first, 3s)};
     auto const second_exit{wait_for_exit(second, 3s)};
@@ -532,6 +602,250 @@ TEST_F(JobserverIntegration, DaemonCrashKillsDescendantProcessTree) {
     EXPECT_FALSE(run_future.get().has_value());
     std::this_thread::sleep_for(1700ms);
     EXPECT_FALSE(std::filesystem::exists(marker));
+}
+
+TEST_F(JobserverIntegration, DaemonCrashDrainsMixedWorkloadAndRestartsCleanly) {
+    auto const first_marker{data_path_ / "mixed-crash-first.txt"};
+    auto const second_marker{data_path_ / "mixed-crash-second.txt"};
+    auto const queued_marker{data_path_ / "mixed-crash-queued.txt"};
+    std::filesystem::remove(first_marker);
+    std::filesystem::remove(second_marker);
+    std::filesystem::remove(queued_marker);
+
+    auto run = [](jobserver::SubmitRequest request) {
+        return std::async(std::launch::async, [request = std::move(request)] {
+            return jobserver::Client::run(request, [](std::string const&, std::string const&) {});
+        });
+    };
+    auto first{run(
+        submit_request("mixed crash first",
+                       {{.name = "mixed-crash-resource", .mode = jobserver::ClaimMode::exclusive}},
+                       {"spawn-marker", first_marker.string(), "1500"}))};
+    auto const first_job{find_job_in_state("mixed crash first", "RUNNING")};
+    ASSERT_TRUE(first_job.has_value());
+
+    auto second{run(submit_request(
+        "mixed crash second",
+        {{.name = "mixed-crash-independent", .mode = jobserver::ClaimMode::exclusive}},
+        {"spawn-marker", second_marker.string(), "1500"}))};
+    auto const second_job{find_job_in_state("mixed crash second", "RUNNING")};
+    ASSERT_TRUE(second_job.has_value());
+
+    auto queued{run(
+        submit_request("mixed crash queued",
+                       {{.name = "mixed-crash-resource", .mode = jobserver::ClaimMode::exclusive}},
+                       {"marker-after", queued_marker.string(), "10"}))};
+    auto const queued_job{find_job_in_state("mixed crash queued", "QUEUED")};
+    ASSERT_TRUE(queued_job.has_value());
+
+    ASSERT_TRUE(TerminateProcess(daemon_.process, 78));
+    ASSERT_TRUE(wait_for_exit(daemon_, 2s).has_value());
+    close(daemon_);
+    ASSERT_EQ(first.wait_for(2s), std::future_status::ready);
+    ASSERT_EQ(second.wait_for(2s), std::future_status::ready);
+    ASSERT_EQ(queued.wait_for(2s), std::future_status::ready);
+    EXPECT_FALSE(first.get().has_value());
+    EXPECT_FALSE(second.get().has_value());
+    EXPECT_FALSE(queued.get().has_value());
+    std::this_thread::sleep_for(1700ms);
+    EXPECT_FALSE(std::filesystem::exists(first_marker));
+    EXPECT_FALSE(std::filesystem::exists(second_marker));
+    EXPECT_FALSE(std::filesystem::exists(queued_marker));
+
+    start_daemon();
+    auto status{jobserver::Client::status()};
+    ASSERT_TRUE(status.has_value());
+    EXPECT_TRUE(Json::parse(*status).value("jobs", Json::array()).empty());
+    auto lease{jobserver::Client::acquire(
+        test_request("post-crash lease", jobserver::ClaimMode::exclusive))};
+    ASSERT_TRUE(lease.has_value());
+    EXPECT_TRUE(lease->release().has_value());
+    auto run_result{jobserver::Client::run(submit_request("post-crash command", {}, {"exit", "0"}),
+                                           [](std::string const&, std::string const&) {})};
+    ASSERT_TRUE(run_result.has_value());
+    EXPECT_EQ(*run_result, 0);
+}
+
+TEST_F(JobserverIntegration, MixedClientSoakDrainsWithoutLeakingHandles) {
+    DWORD handles_before{};
+    ASSERT_TRUE(GetProcessHandleCount(daemon_.process, &handles_before));
+
+    constexpr auto job_count{48};
+    std::vector<std::future<std::expected<int, jobserver::Error>>> futures;
+    futures.reserve(job_count);
+    std::vector<int> expected_exit_codes;
+    expected_exit_codes.reserve(job_count);
+    for (auto index{0}; index != job_count; ++index) {
+        std::vector<jobserver::ResourceClaim> resources{
+            {.name = "cpu",
+             .mode = jobserver::ClaimMode::counted,
+             .units = static_cast<std::uint32_t>(index % 4 + 1)},
+            {.name = "machine",
+             .mode =
+                 index % 12 == 0 ? jobserver::ClaimMode::exclusive : jobserver::ClaimMode::shared},
+        };
+        if (index % 7 == 0) {
+            resources.push_back({.name = "soak-extra-" + std::to_string(index % 3),
+                                 .mode = jobserver::ClaimMode::exclusive});
+        }
+
+        auto arguments = std::vector<std::string>{"sleep", std::to_string(index % 5 + 2)};
+        auto timeout = std::optional<std::chrono::milliseconds>{};
+        auto expected{0};
+        if (index % 13 == 0) {
+            arguments = {"sleep", "100"};
+            timeout = 20ms;
+            expected = 124;
+        } else if (index % 17 == 0) {
+            arguments = {"crash"};
+            expected = -1;
+        } else if (index % 11 == 0) {
+            arguments = {"exit", "7"};
+            expected = 7;
+        } else if (index % 5 == 0) {
+            arguments = {"output", "2"};
+        }
+        expected_exit_codes.push_back(expected);
+        auto request{submit_request(
+            "soak-" + std::to_string(index), std::move(resources), std::move(arguments), timeout)};
+        futures.push_back(std::async(std::launch::async, [request = std::move(request)] {
+            return jobserver::Client::run(request, [](std::string const&, std::string const&) {});
+        }));
+    }
+
+    for (auto index{0}; index != job_count; ++index) {
+        ASSERT_EQ(futures[static_cast<std::size_t>(index)].wait_for(10s),
+                  std::future_status::ready);
+        auto result{futures[static_cast<std::size_t>(index)].get()};
+        ASSERT_TRUE(result.has_value()) << result.error().message;
+        auto const expected{expected_exit_codes[static_cast<std::size_t>(index)]};
+        if (expected < 0) {
+            EXPECT_NE(*result, 0);
+        } else {
+            EXPECT_EQ(*result, expected);
+        }
+    }
+
+    std::vector<ChildProcess> crashing_clients;
+    for (auto index{0}; index != 4; ++index) {
+        auto child{launch(JOBSERVER_TEST_CLIENT_PATH, L"lease-crash")};
+        ASSERT_NE(child.process, nullptr);
+        crashing_clients.push_back(child);
+    }
+    for (auto& child : crashing_clients) {
+        auto const exit_code{wait_for_exit(child, 5s)};
+        ASSERT_TRUE(exit_code.has_value());
+        EXPECT_EQ(*exit_code, 99U);
+        close(child);
+    }
+    auto crash_resource_lease{jobserver::Client::acquire({
+        .metadata = {.name = "post-soak crash lease", .kind = "test", .worktree = {}},
+        .resources = {{.name = "crash-resource", .mode = jobserver::ClaimMode::exclusive}},
+    })};
+    ASSERT_TRUE(crash_resource_lease.has_value());
+    ASSERT_TRUE(crash_resource_lease->release().has_value());
+
+    auto cancel_future{std::async(std::launch::async, [&] {
+        return jobserver::Client::run(submit_request("soak cancellation", {}, {"sleep", "60000"}),
+                                      [](std::string const&, std::string const&) {});
+    })};
+    auto const cancellation_job{find_job("soak cancellation")};
+    ASSERT_TRUE(cancellation_job.has_value());
+    ASSERT_TRUE(jobserver::Client::cancel(cancellation_job->value("id", ""), false).has_value());
+    ASSERT_EQ(cancel_future.wait_for(3s), std::future_status::ready);
+    auto cancel_result{cancel_future.get()};
+    ASSERT_TRUE(cancel_result.has_value());
+    EXPECT_EQ(*cancel_result, 130);
+
+    for (auto attempt{0}; attempt != 50; ++attempt) {
+        auto status{jobserver::Client::status()};
+        ASSERT_TRUE(status.has_value());
+        if (Json::parse(*status).value("jobs", Json::array()).empty()) {
+            break;
+        }
+        std::this_thread::sleep_for(20ms);
+    }
+    auto final_status{jobserver::Client::status()};
+    ASSERT_TRUE(final_status.has_value());
+    EXPECT_TRUE(Json::parse(*final_status).value("jobs", Json::array()).empty());
+
+    DWORD handles_after{};
+    ASSERT_TRUE(GetProcessHandleCount(daemon_.process, &handles_after));
+    EXPECT_LE(handles_after, handles_before + 16U);
+}
+
+TEST_F(JobserverIntegration, SlowAndAbandonedOutputClientsDoNotBlockControlPlane) {
+    std::mutex output_mutex;
+    std::string output;
+    output.reserve(1024U * 1024U);
+    auto slow_future{std::async(std::launch::async, [&] {
+        return jobserver::Client::run(
+            submit_request("slow output reader", {}, {"large-output", "1048576"}),
+            [&](std::string const&, std::string const& text) {
+                std::this_thread::sleep_for(1ms);
+                std::scoped_lock const lock{output_mutex};
+                output += text;
+            });
+    })};
+    auto const slow_job{find_job("slow output reader")};
+    ASSERT_TRUE(slow_job.has_value());
+    auto status_start{std::chrono::steady_clock::now()};
+    EXPECT_TRUE(jobserver::Client::status().has_value());
+    EXPECT_LT(std::chrono::steady_clock::now() - status_start, 1s);
+    auto slow_wait{slow_future.wait_for(10s)};
+    if (slow_wait != std::future_status::ready) {
+        static_cast<void>(jobserver::Client::cancel(slow_job->value("id", ""), true));
+        slow_wait = slow_future.wait_for(3s);
+    }
+    ASSERT_EQ(slow_wait, std::future_status::ready);
+    auto slow_result{slow_future.get()};
+    ASSERT_TRUE(slow_result.has_value());
+    EXPECT_EQ(*slow_result, 0);
+    EXPECT_EQ(output, std::string(1024U * 1024U, 'x'));
+
+    auto const id{slow_job->value("id", "")};
+    std::ifstream log{data_path_ / "logs" / (id + ".stdout.log"), std::ios::binary};
+    std::string const logged{std::istreambuf_iterator<char>{log}, std::istreambuf_iterator<char>{}};
+    EXPECT_EQ(logged, output);
+
+    auto pipe{connect_and_handshake_raw_pipe()};
+    ASSERT_NE(pipe, INVALID_HANDLE_VALUE);
+    auto const message =
+        raw_submit_message("abandoned output reader", {"large-output", "16777216"});
+    ASSERT_TRUE(message.is_object()) << message.dump();
+    auto const serialized_message{message.dump()};
+    ASSERT_TRUE(jobserver::transport::write_message(pipe, serialized_message).has_value());
+    auto const first_output{jobserver::transport::read_message(pipe)};
+    if (!first_output) {
+        CloseHandle(pipe);
+        FAIL() << "Abandoned output client did not receive initial output";
+        return;
+    }
+    EXPECT_EQ(Json::parse(*first_output).value("type", ""), "output") << *first_output;
+    auto const abandoned_job{find_job("abandoned output reader")};
+    if (!abandoned_job) {
+        CloseHandle(pipe);
+        FAIL() << "Abandoned output job was not observable";
+        return;
+    }
+    status_start = std::chrono::steady_clock::now();
+    EXPECT_TRUE(jobserver::Client::status().has_value());
+    EXPECT_LT(std::chrono::steady_clock::now() - status_start, 1s);
+    ASSERT_TRUE(jobserver::Client::cancel(abandoned_job->value("id", ""), true).has_value());
+    CloseHandle(pipe);
+
+    for (auto attempt{0}; attempt != 100; ++attempt) {
+        auto status{jobserver::Client::status()};
+        ASSERT_TRUE(status.has_value());
+        auto const jobs = Json::parse(*status).value("jobs", Json::array());
+        if (std::ranges::none_of(jobs, [](Json const& job) {
+                return job.value("name", "") == "abandoned output reader";
+            })) {
+            return;
+        }
+        std::this_thread::sleep_for(20ms);
+    }
+    FAIL() << "Abandoned output job did not drain";
 }
 
 TEST_F(JobserverIntegration, DisconnectPolicyControlsWhetherChildOutlivesClient) {
