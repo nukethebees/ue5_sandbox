@@ -11,6 +11,8 @@
 #include <vector>
 
 #include <ioj/sim/batch_operations.h>
+#include <ioj/sim/capital_fighter_orders.h>
+#include <ioj/sim/capital_fighter_reassignment.h>
 #include <ioj/sim/capital_ship_queries.h>
 #include <ioj/sim/capital_ship_spawning.h>
 #include <ioj/sim/entity_registry.h>
@@ -18,8 +20,6 @@
 #include <ioj/sim/entity_registry_view.h>
 #include <ioj/sim/fighter_diagnostics.h>
 #include <ioj/sim/fighter_frame_spawn_queue.h>
-#include <ioj/sim/fighter_orders.h>
-#include <ioj/sim/fighter_reassignment.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/spatial_query_manager.h>

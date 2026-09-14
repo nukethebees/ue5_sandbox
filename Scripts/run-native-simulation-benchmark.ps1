@@ -2,8 +2,11 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $Level,
     [Parameter(Mandatory = $true)]
-    [ValidateScript({ [double]::IsFinite($_) -and $_ -gt 0.0 })]
+    [ValidateScript({
+        ![double]::IsNaN($_) -and ![double]::IsInfinity($_) -and $_ -gt 0.0
+    })]
     [double] $Seconds,
+    [string] $BuildPreset = 'native-simulation-benchmark',
     [switch] $SkipBuild
 )
 
@@ -14,9 +17,9 @@ $levelPath = (Resolve-Path -LiteralPath $Level).Path
 if (-not $SkipBuild) {
     Push-Location $repo
     try {
-        & cmake --preset native-simulation-benchmark
+        & cmake --preset $BuildPreset
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-        & cmake --build --preset native-simulation-benchmark
+        & cmake --build --preset $BuildPreset
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     }
     finally {
@@ -34,11 +37,11 @@ if ($env:SANDBOX_MACHINE_ACTIVITY_MODE -ne 'benchmark') {
         '-DMACHINE_ACTIVITY_MODE=benchmark' `
         '-DMACHINE_ACTIVITY_OPERATION=native simulation benchmark' `
         -P $runner -- $powershell -NoProfile -File $PSCommandPath `
-        -Level $levelPath -Seconds $secondsText -SkipBuild
+        -Level $levelPath -Seconds $secondsText -BuildPreset $BuildPreset -SkipBuild
     exit $LASTEXITCODE
 }
 
-$executable = Join-Path $repo 'out/build/native-simulation-benchmark/bin/native-simulation-benchmark.exe'
+$executable = Join-Path $repo "out/build/$BuildPreset/bin/native-simulation-benchmark.exe"
 $secondsText = $Seconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
 & $executable --level $levelPath --seconds $secondsText
 exit $LASTEXITCODE

@@ -1,5 +1,6 @@
 option(SANDBOX_KERNEL_BENCHMARKS "Build native generated-kernel benchmarks" OFF)
 option(SANDBOX_NATIVE_SOA_BENCHMARKS "Build standalone experimental SoA benchmarks" OFF)
+option(SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK "Register the native frame-memory level benchmark" OFF)
 option(SANDBOX_KERNEL_BENCHMARK_PLOTS "Generate native kernel benchmark plots" OFF)
 
 add_subdirectory(third_party)

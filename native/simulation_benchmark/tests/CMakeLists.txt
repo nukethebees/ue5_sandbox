@@ -15,3 +15,16 @@ include(GoogleTest)
 gtest_discover_tests(native-simulation-benchmark-tests PROPERTIES
   LABELS "unit;all;native-simulation-benchmark"
 )
+
+if(SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK)
+  add_test(NAME native-frame-memory-level-benchmark
+    COMMAND powershell -NoProfile -File
+      "${PROJECT_SOURCE_DIR}/Scripts/run-frame-memory-level-benchmark.ps1"
+      -Seconds 20
+      -SkipBuild
+  )
+  set_tests_properties(native-frame-memory-level-benchmark PROPERTIES
+    LABELS "frame-memory-level-benchmark"
+    TIMEOUT 600
+  )
+endif()

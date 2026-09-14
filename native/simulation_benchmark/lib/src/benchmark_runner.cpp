@@ -1,10 +1,10 @@
 #include <sandbox/simulation_benchmark/benchmark_runner.hpp>
 
-#include <sandbox/level_authoring/LevelDefinitionReader.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/reference_level_simulation_data.h>
 #include <ioj/sim/rotator3d.h>
 #include <ioj/sim/sim_clock.h>
+#include <sandbox/level_authoring/LevelDefinitionReader.h>
 
 #include <algorithm>
 #include <chrono>
@@ -16,6 +16,14 @@
 
 namespace ml::simulation_benchmark {
 namespace {
+struct FrameMemorySummary {
+    std::size_t peak_claimed_bytes{};
+    std::size_t peak_payload_bytes{};
+    std::uint64_t total_padding_bytes{};
+    std::uint64_t total_root_claims{};
+    std::int32_t peak_fighters{};
+};
+
 auto read_error(ml::level_authoring::LevelDefinitionReadResult const& result) -> std::string {
     std::ostringstream output;
     if (!result.script_error.empty()) {
@@ -87,8 +95,7 @@ auto json_string(std::string_view const value) -> std::string {
 }
 } // namespace
 
-auto calculate_tick_count(double const seconds)
-    -> std::expected<ioj::sim::SimTick, std::string> {
+auto calculate_tick_count(double const seconds) -> std::expected<ioj::sim::SimTick, std::string> {
     if (!std::isfinite(seconds) || seconds <= 0.0) {
         return std::unexpected{"seconds must be positive and finite"};
     }
@@ -129,19 +136,16 @@ auto run_benchmark(BenchmarkOptions const& options) -> std::expected<BenchmarkRe
     if (level.player_entity_id.empty()) {
         data.player.reset();
     } else {
-        auto const player_definition{
-            std::ranges::find(level.entities,
-                              level.player_entity_id,
-                              &ml::level_authoring::EntitySpawnDefinition::id)};
+        auto const player_definition{std::ranges::find(
+            level.entities, level.player_entity_id, &ioj::sim::levels::EntitySpawnDefinition::id)};
         auto player{reference.player};
         player.team = ioj::sim::levels::to_simulation_team(player_definition->team);
         player.transform.location = {player_definition->position.x,
                                      player_definition->position.y,
                                      player_definition->position.z};
-        player.transform.rotation =
-            ioj::sim::to_quaternion({player_definition->rotation.pitch,
-                                     player_definition->rotation.yaw,
-                                     player_definition->rotation.roll});
+        player.transform.rotation = ioj::sim::to_quaternion({player_definition->rotation.pitch,
+                                                             player_definition->rotation.yaw,
+                                                             player_definition->rotation.roll});
         data.player = std::move(player);
     }
 
@@ -159,7 +163,21 @@ auto run_benchmark(BenchmarkOptions const& options) -> std::expected<BenchmarkRe
     data.level_events = std::move(*compiled);
 
     ioj::sim::LevelSim simulation{std::move(data)};
+    FrameMemorySummary frame_summary;
+    simulation.on_end_tick = [&frame_summary](ioj::sim::LevelSim& current_simulation) {
+        auto const stats{current_simulation.get_frame_memory_stats()};
+        frame_summary.peak_claimed_bytes =
+            std::max(frame_summary.peak_claimed_bytes, stats.current_frame_peak_claimed_bytes);
+        frame_summary.peak_payload_bytes =
+            std::max(frame_summary.peak_payload_bytes, stats.current_payload_bytes);
+        frame_summary.total_padding_bytes += stats.current_padding_bytes;
+        frame_summary.total_root_claims += stats.current_root_claim_count;
+        frame_summary.peak_fighters = std::max(
+            frame_summary.peak_fighters, current_simulation.get_fighters().get_num_instances());
+    };
     simulation.finish_initialisation();
+    auto const initial_capital_ships{simulation.get_capital_ships().get_num_instances()};
+    auto const initial_turrets{simulation.get_turrets().get_num_instances()};
     simulation.start();
 
     auto const tick_period{simulation.get_clock().get_tick_period()};
@@ -183,6 +201,8 @@ auto run_benchmark(BenchmarkOptions const& options) -> std::expected<BenchmarkRe
         .completed_ticks = completed_ticks,
         .completed_seconds = static_cast<double>(completed_ticks) / simulation_tick_rate_hz,
         .elapsed_seconds = elapsed,
+        .initial_capital_ships = initial_capital_ships,
+        .initial_turrets = initial_turrets,
         .alive_entities = simulation.get_entity_registry().get_num_alive_active_entities(),
         .capital_ships = simulation.get_capital_ships().get_num_instances(),
         .fighters = simulation.get_fighters().get_num_instances(),
@@ -190,9 +210,13 @@ auto run_benchmark(BenchmarkOptions const& options) -> std::expected<BenchmarkRe
         .spinners = simulation.get_spinners().get_num_instances(),
         .active_lasers = simulation.get_lasers().get_num_instances(),
         .lasers_spawned = simulation.get_lasers().get_number_spawned(),
+        .peak_fighters = frame_summary.peak_fighters,
         .mission_state = mission_state_name(simulation.get_mission_manager().get_mission_state()),
         .frame_memory_capacity_bytes = frame_memory.capacity_bytes,
-        .frame_memory_peak_claimed_bytes = frame_memory.peak_claimed_bytes,
+        .frame_memory_peak_claimed_bytes = frame_summary.peak_claimed_bytes,
+        .frame_memory_peak_payload_bytes = frame_summary.peak_payload_bytes,
+        .frame_memory_total_padding_bytes = frame_summary.total_padding_bytes,
+        .frame_memory_total_root_claims = frame_summary.total_root_claims,
         .frame_memory_overflow_count = frame_memory.overflow_count,
         .hardware_threads = std::thread::hardware_concurrency(),
         .compiler = SANDBOX_BENCHMARK_COMPILER_ID,
@@ -231,13 +255,19 @@ auto to_json(BenchmarkResult const& result) -> std::string {
            << ",\"ticks_per_second\":" << ticks_per_second
            << ",\"mean_tick_microseconds\":" << mean_tick_microseconds << "}"
            << ",\"final_state\":{\"mission_state\":" << json_string(result.mission_state)
+           << ",\"initial_capital_ships\":" << result.initial_capital_ships
+           << ",\"initial_turrets\":" << result.initial_turrets
            << ",\"alive_entities\":" << result.alive_entities
            << ",\"capital_ships\":" << result.capital_ships << ",\"fighters\":" << result.fighters
            << ",\"turrets\":" << result.turrets << ",\"spinners\":" << result.spinners
            << ",\"active_lasers\":" << result.active_lasers
-           << ",\"lasers_spawned\":" << result.lasers_spawned << "}"
+           << ",\"lasers_spawned\":" << result.lasers_spawned
+           << ",\"peak_fighters\":" << result.peak_fighters << "}"
            << ",\"memory\":{\"frame_capacity_bytes\":" << result.frame_memory_capacity_bytes
            << ",\"frame_peak_claimed_bytes\":" << result.frame_memory_peak_claimed_bytes
+           << ",\"frame_peak_payload_bytes\":" << result.frame_memory_peak_payload_bytes
+           << ",\"frame_total_padding_bytes\":" << result.frame_memory_total_padding_bytes
+           << ",\"frame_total_root_claims\":" << result.frame_memory_total_root_claims
            << ",\"frame_overflow_count\":" << result.frame_memory_overflow_count << "}"
            << ",\"environment\":{\"hardware_threads\":" << result.hardware_threads
            << ",\"compiler\":" << json_string(result.compiler)

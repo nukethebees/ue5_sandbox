@@ -239,6 +239,21 @@ def make_native_benchmark_document() -> dict[str, Any]:
                 "UE_CONFIGURATION": "Development",
             },
         },
+        {
+            "name": "native-simulation-benchmark",
+            "displayName": "Native simulation benchmark",
+            "inherits": BENCHMARK_CONFIGURATION,
+            "cacheVariables": {"UE_CONFIGURATION": "Development"},
+        },
+        {
+            "name": "frame-memory-level-benchmark",
+            "displayName": "Native frame-memory level benchmark",
+            "inherits": BENCHMARK_CONFIGURATION,
+            "cacheVariables": {
+                "SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK": True,
+                "UE_CONFIGURATION": "Development",
+            },
+        },
     ]
     document["buildPresets"] = [
         {
@@ -286,6 +301,22 @@ def make_native_benchmark_document() -> dict[str, Any]:
             "configurePreset": "native-soa",
             "targets": ["native-soa-reserve-matrix-report"],
         },
+        {
+            "name": "native-simulation-benchmark",
+            "configurePreset": "native-simulation-benchmark",
+            "targets": [
+                "native-simulation-benchmark",
+                "native-simulation-benchmark-tests",
+            ],
+        },
+        {
+            "name": "frame-memory-level-benchmark",
+            "configurePreset": "frame-memory-level-benchmark",
+            "targets": [
+                "native-simulation-benchmark",
+                "native-simulation-benchmark-tests",
+            ],
+        },
     ]
     document["testPresets"] = [
         {
@@ -313,6 +344,12 @@ def make_native_benchmark_document() -> dict[str, Any]:
                     "name": "^(native-soa|SingleAllocationSoa\\.|Json\\.LoadsExperimentalStdlibSoa)"
                 }
             },
+        },
+        {
+            "name": "frame-memory-level-benchmark",
+            "inherits": "test-base",
+            "configurePreset": "frame-memory-level-benchmark",
+            "filter": {"include": {"label": "^frame-memory-level-benchmark$"}},
         },
     ]
     document["workflowPresets"] = [
@@ -353,6 +390,18 @@ def make_native_benchmark_document() -> dict[str, Any]:
                 {"type": "build", "name": "native-soa-reserve-matrix"},
             ],
         },
+        {
+            "name": "native-simulation-benchmark",
+            "steps": [
+                {"type": "configure", "name": "native-simulation-benchmark"},
+                {"type": "build", "name": "native-simulation-benchmark"},
+            ],
+        },
+        _workflow(
+            "frame-memory-level-benchmark",
+            "frame-memory-level-benchmark",
+            "frame-memory-level-benchmark",
+        ),
     ]
     return document
 

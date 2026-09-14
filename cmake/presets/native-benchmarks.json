@@ -39,8 +39,17 @@
     {
       "name": "native-simulation-benchmark",
       "displayName": "Native simulation benchmark",
-      "inherits": "native-release",
+      "inherits": "win-x64-clangcl-release-unity",
       "cacheVariables": {
+        "UE_CONFIGURATION": "Development"
+      }
+    },
+    {
+      "name": "frame-memory-level-benchmark",
+      "displayName": "Native frame-memory level benchmark",
+      "inherits": "win-x64-clangcl-release-unity",
+      "cacheVariables": {
+        "SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK": true,
         "UE_CONFIGURATION": "Development"
       }
     }
@@ -91,11 +100,6 @@
       ]
     },
     {
-      "name": "native-simulation-benchmark",
-      "configurePreset": "native-simulation-benchmark",
-      "targets": ["native-simulation-benchmark", "native-simulation-benchmark-tests"]
-    },
-    {
       "name": "native-soa-reserve",
       "configurePreset": "native-soa",
       "targets": [
@@ -107,6 +111,22 @@
       "configurePreset": "native-soa",
       "targets": [
         "native-soa-reserve-matrix-report"
+      ]
+    },
+    {
+      "name": "native-simulation-benchmark",
+      "configurePreset": "native-simulation-benchmark",
+      "targets": [
+        "native-simulation-benchmark",
+        "native-simulation-benchmark-tests"
+      ]
+    },
+    {
+      "name": "frame-memory-level-benchmark",
+      "configurePreset": "frame-memory-level-benchmark",
+      "targets": [
+        "native-simulation-benchmark",
+        "native-simulation-benchmark-tests"
       ]
     }
   ],
@@ -138,6 +158,16 @@
       "filter": {
         "include": {
           "name": "^(native-soa|SingleAllocationSoa\\.|Json\\.LoadsExperimentalStdlibSoa)"
+        }
+      }
+    },
+    {
+      "name": "frame-memory-level-benchmark",
+      "inherits": "test-base",
+      "configurePreset": "frame-memory-level-benchmark",
+      "filter": {
+        "include": {
+          "label": "^frame-memory-level-benchmark$"
         }
       }
     }
@@ -229,13 +259,6 @@
       ]
     },
     {
-      "name": "native-simulation-benchmark",
-      "steps": [
-        { "type": "configure", "name": "native-simulation-benchmark" },
-        { "type": "build", "name": "native-simulation-benchmark" }
-      ]
-    },
-    {
       "name": "native-soa-reserve",
       "steps": [
         {
@@ -274,6 +297,36 @@
         {
           "type": "build",
           "name": "native-soa-reserve-matrix"
+        }
+      ]
+    },
+    {
+      "name": "native-simulation-benchmark",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "native-simulation-benchmark"
+        },
+        {
+          "type": "build",
+          "name": "native-simulation-benchmark"
+        }
+      ]
+    },
+    {
+      "name": "frame-memory-level-benchmark",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "frame-memory-level-benchmark"
+        },
+        {
+          "type": "build",
+          "name": "frame-memory-level-benchmark"
+        },
+        {
+          "type": "test",
+          "name": "frame-memory-level-benchmark"
         }
       ]
     }

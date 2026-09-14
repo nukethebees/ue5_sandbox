@@ -21,6 +21,8 @@ struct BenchmarkResult {
     ioj::sim::SimTick completed_ticks{};
     double completed_seconds{};
     double elapsed_seconds{};
+    std::int32_t initial_capital_ships{};
+    std::int32_t initial_turrets{};
     std::int32_t alive_entities{};
     std::int32_t capital_ships{};
     std::int32_t fighters{};
@@ -28,9 +30,13 @@ struct BenchmarkResult {
     std::int32_t spinners{};
     std::int32_t active_lasers{};
     std::int32_t lasers_spawned{};
+    std::int32_t peak_fighters{};
     std::string mission_state{};
     std::size_t frame_memory_capacity_bytes{};
     std::size_t frame_memory_peak_claimed_bytes{};
+    std::size_t frame_memory_peak_payload_bytes{};
+    std::uint64_t frame_memory_total_padding_bytes{};
+    std::uint64_t frame_memory_total_root_claims{};
     std::uint64_t frame_memory_overflow_count{};
     unsigned int hardware_threads{};
     std::string compiler{};

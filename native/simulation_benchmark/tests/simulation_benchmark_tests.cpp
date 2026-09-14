@@ -86,6 +86,8 @@ TEST(SimulationBenchmarkJson, EmitsStableSchemaAndEscapesStrings) {
     result.requested_ticks = 60;
     result.completed_ticks = 60;
     result.elapsed_seconds = 2.0;
+    result.frame_memory_peak_payload_bytes = 123;
+    result.frame_memory_total_root_claims = 456;
 
     auto const json{to_json(result)};
 
@@ -93,6 +95,8 @@ TEST(SimulationBenchmarkJson, EmitsStableSchemaAndEscapesStrings) {
     EXPECT_NE(json.find("quote\\\"test.scm"), std::string::npos);
     EXPECT_NE(json.find("line\\nbreak"), std::string::npos);
     EXPECT_NE(json.find("\"ticks_per_second\":30"), std::string::npos);
+    EXPECT_NE(json.find("\"frame_peak_payload_bytes\":123"), std::string::npos);
+    EXPECT_NE(json.find("\"frame_total_root_claims\":456"), std::string::npos);
 }
 
 TEST(SimulationBenchmarkRunner, LoadsCompilesAndAdvancesExistingLevel) {

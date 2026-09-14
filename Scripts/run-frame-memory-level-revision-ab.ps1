@@ -25,8 +25,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $repo = [IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
-$benchmarkName = 'SandboxBenchmarks.FrameMemoryLevel'
-$benchmarkPattern = '^SandboxBenchmarks\.FrameMemoryLevel$'
+$benchmarkName = 'NativeFrameMemoryLevel'
 $benchmarkRoot = Join-Path $repo '.local/benchmarks/frame-memory-revision-ab'
 $worktreeParent = Join-Path $repo '.local/abw'
 $runTimestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
@@ -69,9 +68,16 @@ function Resolve-GitCommit {
     return $commit.Trim()
 }
 
-function Build-Editor {
+function Build-NativeBenchmark {
     param([string] $SourceDirectory)
 
+    Invoke-Checked -Executable 'git' `
+        -Arguments @('-C', $SourceDirectory, 'submodule', 'update', '--init', '--depth', '1',
+                     'native/third_party/googletest',
+                     'native/third_party/cpu_features',
+                     'native/third_party/tracy',
+                     'native/third_party/cli11') `
+        -WorkingDirectory $SourceDirectory
     Invoke-Checked -Executable 'cmake' -Arguments @('--preset', 'frame-memory-level-benchmark') `
         -WorkingDirectory $SourceDirectory
     Invoke-Checked -Executable 'cmake' `
@@ -79,65 +85,26 @@ function Build-Editor {
         -WorkingDirectory $SourceDirectory
 }
 
-function Copy-BenchmarkHarness {
-    param([string] $Destination)
-
-    foreach ($relativePath in @(
-        'Source/SandboxTests/level/benchmark_frame_memory_level.cpp',
-        'LevelScripts/Benchmarks/Batch_benchmark.scm'
-    )) {
-        $source = Join-Path $repo $relativePath
-        $target = Join-Path $Destination $relativePath
-        $targetDirectory = Split-Path -Parent $target
-        New-Item -ItemType Directory -Force -Path $targetDirectory | Out-Null
-        Copy-Item -LiteralPath $source -Destination $target -Force
-    }
-}
-
-function Convert-BenchmarkLine {
+function Convert-BenchmarkResult {
     param(
-        [string] $Line,
+        [object] $Result,
         [int] $Pair,
         [int] $Sequence,
         [string] $State,
         [string] $Commit
     )
 
-    $marker = 'Frame memory level benchmark: '
-    $markerIndex = $Line.IndexOf($marker, [StringComparison]::Ordinal)
-    if ($markerIndex -lt 0) {
-        throw 'Benchmark result marker was missing from a matched log line.'
-    }
-
-    $fields = @{}
-    $payload = $Line.Substring($markerIndex + $marker.Length)
-    foreach ($part in $payload.Split(', ')) {
-        $separator = $part.IndexOf('=')
-        if ($separator -gt 0) {
-            $fields[$part.Substring(0, $separator)] = $part.Substring($separator + 1)
-        }
-    }
-
-    foreach ($required in @('mean_tick_us', 'peak_claimed_bytes',
-                             'peak_payload_bytes', 'total_padding_bytes',
-                             'total_root_claims')) {
-        if (!$fields.ContainsKey($required)) {
-            throw "Benchmark result did not contain '$required': $Line"
-        }
-    }
-
-    $culture = [Globalization.CultureInfo]::InvariantCulture
     return [PSCustomObject]@{
         pair = $Pair
         sequence = $Sequence
         state = $State
         commit = $Commit
-        variant = if ($fields.ContainsKey('variant')) { $fields.variant } else { 'direct_root' }
-        mean_tick_us = [double]::Parse($fields.mean_tick_us, $culture)
-        peak_claimed_bytes = [uint64]::Parse($fields.peak_claimed_bytes, $culture)
-        peak_payload_bytes = [uint64]::Parse($fields.peak_payload_bytes, $culture)
-        total_padding_bytes = [uint64]::Parse($fields.total_padding_bytes, $culture)
-        total_root_claims = [uint64]::Parse($fields.total_root_claims, $culture)
+        variant = 'native'
+        mean_tick_us = [double]$Result.timing.mean_tick_microseconds
+        peak_claimed_bytes = [uint64]$Result.memory.frame_peak_claimed_bytes
+        peak_payload_bytes = [uint64]$Result.memory.frame_peak_payload_bytes
+        total_padding_bytes = [uint64]$Result.memory.frame_total_padding_bytes
+        total_root_claims = [uint64]$Result.memory.frame_total_root_claims
     }
 }
 
@@ -150,25 +117,12 @@ function Invoke-Benchmark {
         [string] $Commit
     )
 
-    Push-Location $SourceDirectory
-    try {
-        $testDescription = (& ctest --preset frame-memory-level-benchmark -N `
-            -R $benchmarkPattern --show-only=json-v1 | Out-String | ConvertFrom-Json)
-        if ($LASTEXITCODE -ne 0) {
-            throw "Could not read the benchmark command in $SourceDirectory"
-        }
-    } finally {
-        Pop-Location
+    $executable = Join-Path $SourceDirectory `
+        'out/build/frame-memory-level-benchmark/bin/native-simulation-benchmark.exe'
+    if (!(Test-Path -LiteralPath $executable -PathType Leaf)) {
+        throw "Native simulation benchmark executable was not built: $executable"
     }
-    $tests = @($testDescription.tests)
-    if ($tests.Count -ne 1) {
-        throw "Expected one $benchmarkName test in $SourceDirectory"
-    }
-    $command = @($tests[0].command)
-    $arguments = @($command[1..($command.Count - 1)] | Where-Object {
-        $_ -notlike '-LocalDataCachePath=*'
-    })
-    $ddcPath = Join-Path $SourceDirectory '.local/ddc'
+    $level = Join-Path $SourceDirectory 'LevelScripts/Benchmarks/Batch_benchmark.scm'
     $activityModule = Join-Path $repo 'cmake/machine_activity.cmake'
     $activityRunner = Join-Path $repo 'cmake/run_with_machine_activity.cmake'
     $activityArguments = @(
@@ -179,32 +133,17 @@ function Invoke-Benchmark {
         $activityRunner
         '--'
     )
-    $benchmarkCommand = @($command[0]) + $arguments + @(
-        "-LocalDataCachePath=$ddcPath"
-        '-notraceserver'
-        '-traceautostart=0'
-        '-SandboxFrameMemoryLevelBenchmarkTicksPerAdvance=1'
-    )
-    Invoke-Checked -Executable 'cmake' `
+    $benchmarkCommand = @($executable, '--level', $level, '--seconds', '20')
+    $output = @(Invoke-Checked -Executable 'cmake' `
         -Arguments @($activityArguments + $benchmarkCommand) `
-        -WorkingDirectory $SourceDirectory | Out-Host
-
-    $log = Join-Path $SourceDirectory 'Saved/Logs/Sandbox.log'
-    $lines = @(Select-String -LiteralPath $log -SimpleMatch 'Frame memory level benchmark:' |
-        ForEach-Object { $_.Line })
-    if ($lines.Count -lt 1) {
-        throw "$benchmarkName did not produce a result line in $log"
+        -WorkingDirectory $SourceDirectory)
+    $jsonLines = @($output | Where-Object { $_.TrimStart().StartsWith('{') })
+    if ($jsonLines.Count -ne 1) {
+        throw "$benchmarkName produced $($jsonLines.Count) JSON results."
     }
-
-    $results = @($lines | ForEach-Object {
-        Convert-BenchmarkLine -Line $_ -Pair $Pair -Sequence $Sequence -State $State `
-            -Commit $Commit
-    })
-    $directRootResults = @($results | Where-Object variant -eq 'direct_root')
-    if ($directRootResults.Count -ne 1) {
-        throw "$benchmarkName produced $($directRootResults.Count) direct-root results in $log"
-    }
-    return $directRootResults
+    $result = $jsonLines[0] | ConvertFrom-Json
+    return Convert-BenchmarkResult -Result $result -Pair $Pair -Sequence $Sequence `
+        -State $State -Commit $Commit
 }
 
 function Get-Median {
@@ -260,12 +199,10 @@ try {
     }
 
     if (!$SkipBuild) {
-        Copy-BenchmarkHarness -Destination $worktree
-
         Write-Host 'Building candidate working tree...'
-        Build-Editor -SourceDirectory $repo
+        Build-NativeBenchmark -SourceDirectory $repo
         Write-Host "Building baseline $baselineCommit..."
-        Build-Editor -SourceDirectory $worktree
+        Build-NativeBenchmark -SourceDirectory $worktree
     }
 
     if ($PrepareOnly) {
@@ -315,7 +252,7 @@ try {
 
     $paired = [Collections.Generic.List[object]]::new()
     foreach ($pair in 1..$Iterations) {
-        foreach ($variant in @('direct_root')) {
+        foreach ($variant in @('native')) {
             $baselineResult = @($records | Where-Object {
                 $_.pair -eq $pair -and $_.state -eq 'baseline' -and $_.variant -eq $variant
             })
@@ -343,7 +280,7 @@ try {
 
     Write-Host ''
     Write-Host "Results written to $output"
-    foreach ($variant in @('direct_root')) {
+    foreach ($variant in @('native')) {
         $percentages = [double[]]@($paired | Where-Object variant -eq $variant |
             ForEach-Object { $_.delta_percent })
         $mean = ($percentages | Measure-Object -Average).Average

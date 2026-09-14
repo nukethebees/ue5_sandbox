@@ -103,12 +103,6 @@ set(CACHE{SANDBOX_TELEMETRY_BENCHMARK_SAMPLES}
   VALUE 7
 )
 
-set(CACHE{SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK_SECONDS}
-  TYPE STRING
-  HELP "Simulation duration of the frame-memory authored-level benchmark"
-  VALUE 20
-)
-
 set(CACHE{SANDBOX_SPACE_GAME_TEST_TIME_SCALE}
   TYPE STRING
   HELP "Optional positive time scale for level-backed SpaceGame automation"
@@ -459,17 +453,6 @@ add_unreal_editor_test(SandboxBenchmarks.LevelTelemetryIntegration
     "-ExecCmds=Automation RunTests SandboxBenchmarks.TelemetryBenchmark; Quit"
     -FullStdOutLogOutput
   LABELS telemetry-benchmark
-  TIMEOUT 1200
-)
-
-add_unreal_editor_test(SandboxBenchmarks.FrameMemoryLevel
-  ACTIVITY BENCHMARK
-  ARGUMENTS
-    "-ExecCmds=Automation RunTests SandboxBenchmarks.FrameMemoryLevel; Quit"
-    "-SandboxFrameMemoryLevelBenchmarkSeconds=${SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK_SECONDS}"
-    -nullrhi
-    -FullStdOutLogOutput
-  LABELS frame-memory-level-benchmark
   TIMEOUT 1200
 )
 

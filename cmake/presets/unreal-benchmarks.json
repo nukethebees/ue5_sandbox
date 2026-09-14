@@ -38,14 +38,6 @@
       "cacheVariables": {
         "SANDBOX_TEST_SUITE": "editor-only"
       }
-    },
-    {
-      "name": "frame-memory-level-benchmark",
-      "displayName": "SpaceGame frame-memory level benchmark",
-      "inherits": "development",
-      "cacheVariables": {
-        "SANDBOX_TEST_SUITE": "editor-only"
-      }
     }
   ],
   "buildPresets": [
@@ -87,11 +79,6 @@
     {
       "name": "telemetry-benchmark",
       "configurePreset": "telemetry-benchmark",
-      "targets": ["editor"]
-    },
-    {
-      "name": "frame-memory-level-benchmark",
-      "configurePreset": "frame-memory-level-benchmark",
       "targets": ["editor"]
     }
   ],
@@ -207,16 +194,6 @@
           "label": "^telemetry-benchmark$"
         }
       }
-    },
-    {
-      "name": "frame-memory-level-benchmark",
-      "inherits": "test-base",
-      "configurePreset": "frame-memory-level-benchmark",
-      "filter": {
-        "include": {
-          "label": "^frame-memory-level-benchmark$"
-        }
-      }
     }
   ],
   "workflowPresets": [
@@ -304,14 +281,6 @@
         { "type": "configure", "name": "telemetry-benchmark" },
         { "type": "build", "name": "telemetry-benchmark" },
         { "type": "test", "name": "telemetry-benchmark" }
-      ]
-    },
-    {
-      "name": "frame-memory-level-benchmark",
-      "steps": [
-        { "type": "configure", "name": "frame-memory-level-benchmark" },
-        { "type": "build", "name": "frame-memory-level-benchmark" },
-        { "type": "test", "name": "frame-memory-level-benchmark" }
       ]
     }
   ]

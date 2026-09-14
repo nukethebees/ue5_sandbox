@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ioj/sim/rotator_types.h"
-#include "sandbox/core/math_types.h"
+#include "ioj/sim/vector_types.h"
 
 namespace ioj::sim {
 [[nodiscard]] auto forward_direction(Rotator3f rotation) noexcept -> Vector3f;
