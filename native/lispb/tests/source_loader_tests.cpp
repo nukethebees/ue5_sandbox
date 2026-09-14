@@ -135,6 +135,51 @@ TEST(SourceLoader, ReadsSoaFieldMaskMetadata) {
     EXPECT_EQ(member.mask_dimensions[1].extent, "4");
 }
 
+TEST(SourceLoader, ReadsPackedValueModule) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(packed-value-module packed
+  :header "Packed.h"
+  :namespace project
+  (packed-value FighterState
+    :storage std::uint32_t
+    (field entity_index std::uint32_t :bits 24)
+    (field state State :bits 8 :kind enum)))
+)");
+
+    auto const manifest{files.load()};
+    auto const& module{std::get<PackedValueModuleSchema>(manifest.modules.front())};
+    ASSERT_EQ(module.values.size(), 1);
+    auto const& value{module.values.front()};
+    EXPECT_EQ(value.name, "FighterState");
+    EXPECT_EQ(value.storage_type.name, "std::uint32_t");
+    ASSERT_EQ(value.fields.size(), 2);
+    EXPECT_EQ(value.fields[0].bits, 24);
+    EXPECT_EQ(value.fields[0].kind, PackedFieldKind::unsigned_integer);
+    EXPECT_EQ(value.fields[1].bits, 8);
+    EXPECT_EQ(value.fields[1].kind, PackedFieldKind::enumeration);
+}
+
+TEST(SourceLoader, RejectsNonIntegerPackedFieldWidthWithSourceLocation) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(packed-value-module packed
+  :header "Packed.h"
+  (packed-value Value
+    :storage uint8
+    (field value uint8 :bits 1.5)))
+)");
+
+    try {
+        static_cast<void>(files.load());
+        FAIL() << "Expected manifest error";
+    } catch (ManifestError const& error) {
+        auto const message{std::string{error.what()}};
+        EXPECT_NE(message.find("modules.lispb:6:30"), std::string::npos);
+        EXPECT_NE(message.find("packed field bits must be an integer"), std::string::npos);
+    }
+}
+
 TEST(SourceLoader, ReportsSourceLocationForUnknownProperties) {
     TemporaryManifest files;
     files.write_root("(umbrella-module all\n  :header \"All.h\"\n  :headers ()\n  :typo true)\n");

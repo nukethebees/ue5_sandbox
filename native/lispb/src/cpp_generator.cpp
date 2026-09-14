@@ -43,6 +43,9 @@ auto lower_modules(Manifest const& manifest) -> std::vector<Module> {
                 using T = std::decay_t<decltype(module)>;
                 if constexpr (std::is_same_v<T, EnumModuleSchema>) {
                     result.push_back(detail::lower_enum_module(module, manifest.types));
+                } else if constexpr (std::is_same_v<T, PackedValueModuleSchema>) {
+                    result.push_back(detail::lower_packed_value_module(
+                        module, manifest.types, manifest.modules));
                 } else if constexpr (std::is_same_v<T, SoaModuleSchema>) {
                     result.push_back(detail::lower_soa_module(module, manifest.types));
                 } else if constexpr (std::is_same_v<T, StaticTableModuleSchema>) {

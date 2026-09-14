@@ -17,8 +17,27 @@ for repository-wide generation. Generated text files are tracked in `.lispb-outp
 
 Module files contain one or more top-level declarations. Supported declarations are `soa-module`,
 `vector-soa-module`, `homogeneous-soa-module`, `enum-module`, `static-table-module`,
-`facade-module`, `settings-module`, and `umbrella-module`. Declaration order is significant because
-it determines generated-file order. `;` introduces a line comment.
+`packed-value-module`, `facade-module`, `settings-module`, and `umbrella-module`. Declaration order
+is significant because it determines generated-file order. `;` introduces a line comment.
+
+Packed values are header-only wrappers around one unsigned integer. Fields occupy consecutive bits
+from least significant to most significant in declaration order; enum fields are marked explicitly
+because general C++ type references do not otherwise carry enum metadata:
+
+```lisp
+(packed-value-module fighter_values
+  :header "sandbox/simulation/fighter_state.h"
+  :namespace ml::simulation
+  (packed-value FighterState
+    :storage std::uint32_t
+    (field entity_index std::uint32_t :bits 24)
+    (field state @fighter_state :bits 8 :kind enum)))
+```
+
+Generated packed values provide raw construction/access, typed getters, checked and fallible
+setters, and raw-value three-way comparison. Supported storage and integer field types are the
+unsigned 8-, 16-, 32-, and 64-bit Unreal or standard-library types. `bool` fields use exactly one
+bit; signed fields, explicit offsets, and reserved interior ranges are not currently supported.
 
 Module names and domain identifiers are positional. Optional metadata uses kebab-case keyword
 properties, and owned declarations are nested forms:
@@ -106,4 +125,13 @@ Generate or check committed files from the repository root:
 ```text
 cmake --workflow --preset generate-code
 cmake --build --preset codegen --target check-generated-code
+```
+
+The generated C++ test fixture is committed under `tests/compile_fixture/generated` so it can be
+reviewed and analysed directly. Regeneration compares file contents and leaves unchanged files
+untouched:
+
+```text
+cmake --build --preset debug-game --target generate-codegen-compile-fixture
+cmake --build --preset debug-game --target check-generated-codegen-compile-fixture
 ```

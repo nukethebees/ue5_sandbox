@@ -51,6 +51,8 @@ add_library(codegen-lib
   src/single_allocation_soa_lowering.cpp
   src/single_allocation_soa_model.cpp
   src/native_soa_lowering.cpp
+  src/packed_value_internal.cpp
+  src/packed_value_lowering.cpp
   src/soa_view_lowering.cpp
   src/static_table_lowering.cpp
   src/validation.cpp
@@ -82,7 +84,7 @@ target_link_libraries(lispb PRIVATE
 )
 
 set(CODEGEN_COMPILE_FIXTURE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tests/compile_fixture")
-set(CODEGEN_COMPILE_FIXTURE_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated_compile_fixture")
+set(CODEGEN_COMPILE_FIXTURE_OUTPUT "${CODEGEN_COMPILE_FIXTURE_SOURCE}/generated")
 set(CODEGEN_COMPILE_FIXTURE_HEADERS
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Generated.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Homogeneous.h"
@@ -93,6 +95,8 @@ set(CODEGEN_COMPILE_FIXTURE_HEADERS
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/InlineFacade.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SourceFacade.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PlainEnums.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PackedEnums.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PackedValues.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/ReflectedEnums.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/StaticTables.h"
 )
@@ -106,36 +110,60 @@ set(CODEGEN_COMPILE_FIXTURE_SOURCES
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PlainEnums.cpp"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/ReflectedEnums.cpp"
 )
-add_custom_command(
-  OUTPUT
-    ${CODEGEN_COMPILE_FIXTURE_HEADERS}
-    ${CODEGEN_COMPILE_FIXTURE_SOURCES}
+add_custom_target(generate-codegen-compile-fixture
   COMMAND lispb generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target cpp-compile-fixture
-  DEPENDS
-    lispb
-    "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
-    "${CODEGEN_COMPILE_FIXTURE_SOURCE}/types.lispb"
-    "${CODEGEN_COMPILE_FIXTURE_SOURCE}/modules.lispb"
-  COMMENT "Generating compile-tested codegen fixture"
+  DEPENDS lispb
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+  COMMENT "Generating committed C++ codegen fixture"
+  USES_TERMINAL
   VERBATIM
 )
-add_executable(codegen-generated-compile-tests
-  tests/generated_compile_smoke.cpp
+add_custom_target(check-generated-codegen-compile-fixture
+  COMMAND lispb check
+    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
+    --build-root "${CMAKE_BINARY_DIR}"
+    --target cpp-compile-fixture
+  DEPENDS lispb
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+  COMMENT "Checking committed C++ codegen fixture"
+  USES_TERMINAL
+  VERBATIM
+)
+add_library(codegen-generated-compile-fixture OBJECT)
+target_sources(codegen-generated-compile-fixture PRIVATE
   ${CODEGEN_COMPILE_FIXTURE_HEADERS}
   ${CODEGEN_COMPILE_FIXTURE_SOURCES}
 )
-set_target_properties(codegen-generated-compile-tests PROPERTIES UNITY_BUILD OFF)
-target_compile_features(codegen-generated-compile-tests PRIVATE cxx_std_23)
-target_include_directories(codegen-generated-compile-tests PRIVATE
+set_target_properties(codegen-generated-compile-fixture PROPERTIES UNITY_BUILD OFF)
+target_compile_features(codegen-generated-compile-fixture PRIVATE cxx_std_23)
+target_include_directories(codegen-generated-compile-fixture PRIVATE
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}"
   "${CODEGEN_COMPILE_FIXTURE_SOURCE}/stubs"
   "${PROJECT_SOURCE_DIR}/native/core/include"
   "${PROJECT_SOURCE_DIR}/Plugins/SandboxCore/Source/SandboxCore/Public"
 )
-target_link_libraries(codegen-generated-compile-tests PRIVATE sandbox::codegen_warnings)
+target_link_libraries(codegen-generated-compile-fixture PRIVATE sandbox::codegen_warnings)
+
+add_executable(codegen-generated-tests)
+target_sources(codegen-generated-tests PRIVATE
+  tests/generated_tests.cpp
+  $<TARGET_OBJECTS:codegen-generated-compile-fixture>
+)
+set_target_properties(codegen-generated-tests PROPERTIES UNITY_BUILD OFF)
+target_compile_features(codegen-generated-tests PRIVATE cxx_std_23)
+target_include_directories(codegen-generated-tests PRIVATE
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}"
+  "${CODEGEN_COMPILE_FIXTURE_SOURCE}/stubs"
+  "${PROJECT_SOURCE_DIR}/native/core/include"
+  "${PROJECT_SOURCE_DIR}/Plugins/SandboxCore/Source/SandboxCore/Public"
+)
+target_link_libraries(codegen-generated-tests PRIVATE
+  GTest::gtest_main
+  sandbox::codegen_warnings
+)
 
 add_executable(codegen-tests
   tests/ast_tests.cpp
@@ -146,12 +174,13 @@ add_executable(codegen-tests
   tests/homogeneous_lowering_tests.cpp
   tests/source_loader_tests.cpp
   tests/lowering_tests.cpp
+  tests/packed_value_tests.cpp
   tests/static_table_lowering_tests.cpp
   tests/validation_tests.cpp
 )
 set_target_properties(codegen-tests PROPERTIES UNITY_BUILD OFF)
 add_dependencies(codegen-tests
-  codegen-generated-compile-tests
+  codegen-generated-tests
   lispb-syntax-tests
   material-gen-tests
 )
@@ -167,12 +196,11 @@ target_compile_definitions(codegen-tests PRIVATE
 
 include(GoogleTest)
 gtest_discover_tests(codegen-tests PROPERTIES LABELS "unit;all;codegen")
-add_test(NAME CodegenGeneratedCompileSmoke COMMAND codegen-generated-compile-tests)
-set_tests_properties(CodegenGeneratedCompileSmoke PROPERTIES LABELS "unit;all;codegen")
+gtest_discover_tests(codegen-generated-tests PROPERTIES LABELS "unit;all;codegen")
 foreach(restriction IN ITEMS COPY DESTRUCTOR DEFAULT)
   set(reject_target "codegen-reject-single-${restriction}")
   add_library(${reject_target} OBJECT EXCLUDE_FROM_ALL tests/compile_fixture/rejected_leaf.cpp)
-  add_dependencies(${reject_target} codegen-generated-compile-tests)
+  add_dependencies(${reject_target} codegen-generated-compile-fixture)
   target_compile_features(${reject_target} PRIVATE cxx_std_23)
   target_compile_definitions(${reject_target} PRIVATE "CODEGEN_BAD_${restriction}")
   target_include_directories(${reject_target} PRIVATE
@@ -251,6 +279,7 @@ add_custom_target(check-generated-code
   USES_TERMINAL
   VERBATIM
 )
+add_dependencies(check-generated-code check-generated-codegen-compile-fixture)
 
 add_subdirectory(slate)
 add_subdirectory(kernel)

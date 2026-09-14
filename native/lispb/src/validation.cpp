@@ -1,5 +1,6 @@
 #include "validation.h"
 #include "lowering_utils.h"
+#include "packed_value_internal.h"
 
 #include <algorithm>
 #include <cctype>
@@ -449,6 +450,109 @@ void validate_enum(EnumModuleSchema const& module, std::map<std::string, CppType
         if (!schema.conversions.empty() && !module.settings.source.has_value()) {
             throw std::invalid_argument{"Enum '" + schema.name +
                                         "' conversions require a source output"};
+        }
+    }
+}
+
+void validate_packed_values(PackedValueModuleSchema const& module,
+                            std::map<std::string, CppType> const& types,
+                            std::vector<ModuleSchema> const& modules) {
+    auto const module_context{"Packed-value module '" + module.settings.name + "'"};
+    if (module.settings.source.has_value()) {
+        throw std::invalid_argument{module_context + " must not have a source output"};
+    }
+    if (module.values.empty()) {
+        throw std::invalid_argument{module_context + " must have packed values"};
+    }
+
+    std::set<std::string> value_names;
+    for (auto const& value : module.values) {
+        auto const context{"Packed value '" + value.name + "'"};
+        require_identifier(value.name, "Packed value name");
+        if (!value_names.insert(value.name).second) {
+            throw std::invalid_argument{"Duplicate packed value name: " + value.name};
+        }
+        validate_export_specifier(value.export_specifier, context + " export specifier");
+        validate_type(value.storage_type, types, context + " storage");
+        auto const storage{resolve_type(value.storage_type, types)};
+        auto const storage_width{packed_unsigned_width(storage.spelling)};
+        if (!storage_width.has_value()) {
+            throw std::invalid_argument{context +
+                                        " has unsupported storage type: " + storage.spelling};
+        }
+        if (value.fields.empty()) {
+            throw std::invalid_argument{context + " must have fields"};
+        }
+
+        std::set<std::string> generated_names{value.name, "raw_value", "storage_type"};
+        int used_bits{};
+        for (auto const& field : value.fields) {
+            auto const field_context{context + " field '" + field.name + "'"};
+            require_identifier(field.name, context + " field name");
+            validate_type(field.type, types, field_context);
+            if (field.bits <= 0) {
+                throw std::invalid_argument{field_context + " bits must be greater than zero"};
+            }
+            if (field.bits > *storage_width - used_bits) {
+                throw std::invalid_argument{field_context + " does not fit in " +
+                                            std::to_string(*storage_width) + "-bit storage"};
+            }
+
+            auto const field_type{resolve_type(field.type, types)};
+            if (field.kind == PackedFieldKind::unsigned_integer) {
+                if (field_type.spelling == "bool") {
+                    if (field.bits != 1) {
+                        throw std::invalid_argument{field_context + " bool type must use one bit"};
+                    }
+                } else {
+                    auto const field_width{packed_unsigned_width(field_type.spelling)};
+                    if (!field_width.has_value()) {
+                        throw std::invalid_argument{field_context +
+                                                    " must use a supported unsigned integer type, "
+                                                    "bool, or ':kind enum'"};
+                    }
+                    if (field.bits > *field_width) {
+                        throw std::invalid_argument{field_context + " width exceeds its type"};
+                    }
+                }
+            } else if (packed_unsigned_width(field_type.spelling).has_value() ||
+                       field_type.spelling == "bool") {
+                throw std::invalid_argument{field_context +
+                                            " ':kind enum' type must not be an integer or bool"};
+            } else if (auto const* enum_schema{find_packed_enum(field.type, types, modules)}) {
+                auto const underlying{resolve_type(enum_schema->underlying_type, types)};
+                auto const underlying_width{packed_unsigned_width(underlying.spelling)};
+                if (!underlying_width.has_value()) {
+                    throw std::invalid_argument{field_context +
+                                                " enum must have an unsigned fixed-width "
+                                                "underlying type"};
+                }
+                if (field.bits > *underlying_width) {
+                    throw std::invalid_argument{field_context +
+                                                " width exceeds its enum underlying type"};
+                }
+            }
+
+            std::vector<std::string> names{
+                field.name,
+                "set_" + field.name,
+                "try_set_" + field.name,
+                field.name + "_offset",
+                field.name + "_bits",
+                field.name + "_value_mask",
+                field.name + "_mask",
+            };
+            if (field.kind == PackedFieldKind::enumeration) {
+                names.push_back(field.name + "_underlying_type");
+            }
+            for (auto const& name : names) {
+                if (!generated_names.insert(name).second) {
+                    throw std::invalid_argument{field_context +
+                                                " collides with generated API name: " + name};
+                }
+            }
+
+            used_bits += field.bits;
         }
     }
 }
@@ -1131,6 +1235,8 @@ void validate_manifest(Manifest const& manifest) {
                 using T = std::decay_t<decltype(module)>;
                 if constexpr (std::is_same_v<T, EnumModuleSchema>) {
                     validate_enum(module, manifest.types);
+                } else if constexpr (std::is_same_v<T, PackedValueModuleSchema>) {
+                    validate_packed_values(module, manifest.types, manifest.modules);
                 } else if constexpr (std::is_same_v<T, SoaModuleSchema>) {
                     validate_soa(module, manifest.types);
                 } else if constexpr (std::is_same_v<T, StaticTableModuleSchema>) {

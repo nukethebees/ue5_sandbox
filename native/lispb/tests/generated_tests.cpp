@@ -1,7 +1,11 @@
 #include "Generated.h"
 
-#include <stdexcept>
+#include <gtest/gtest.h>
+
 #include <utility>
+
+#undef check
+#define check(expression) EXPECT_TRUE(expression)
 
 namespace codegen_compile_fixture {
 
@@ -24,7 +28,7 @@ concept BorrowsConstOwner = requires(T&& owner) { std::forward<T>(owner).get_con
 template <typename T>
 concept SlicesOwner = requires(T&& owner) { std::forward<T>(owner).slice(0, 0); };
 
-void test_single_allocation_ownership() {
+TEST(GeneratedSingleAllocationSoa, Ownership) {
     using Owner = CountedParents;
     static_assert(BorrowsOwner<Owner&> && BorrowsOwner<Owner const&>);
     static_assert(!BorrowsOwner<Owner> && !BorrowsOwner<Owner const>);
@@ -83,7 +87,7 @@ void test_single_allocation_ownership() {
     check(CountingAllocator::allocations == 3 && CountingAllocator::frees == 3);
 }
 
-void test_homogeneous_storage() {
+TEST(GeneratedHomogeneousStorage, Operations) {
     FValuesf values;
     values.add(3.0f, 30.0f);
     values.add(FVector2f{1.0f, 10.0f});
@@ -117,7 +121,7 @@ void test_homogeneous_storage() {
     check(doubles.at(0).X == 4.0 && doubles.at(0).Y == 5.0);
 }
 
-void test_dynamic_soa() {
+TEST(GeneratedDynamicSoa, Operations) {
     FRows rows;
     check(rows.add(30, 3.0f) == 0);
     check(rows.add(10, 1.0f) == 1);
@@ -181,7 +185,7 @@ void test_dynamic_soa() {
     check(nested_copy.keys[1] == 2 && nested_copy.children.values[1] == 20);
 }
 
-void test_field_masks() {
+TEST(GeneratedFieldMask, Operations) {
     static_assert(FFieldMask8::field_count == 8);
     static_assert(sizeof(FFieldMask8) == sizeof(uint8));
     static_assert(FFieldMask9::field_count == 9);
@@ -209,7 +213,79 @@ void test_field_masks() {
     check(merged.has(EField9::Tail));
 }
 
-void test_fixed_soa_lifetimes() {
+TEST(GeneratedPackedValue, HasStorageLayoutProperties) {
+    static_assert(sizeof(FighterState) == sizeof(std::uint32_t));
+    static_assert(std::is_trivially_copyable_v<FighterState>);
+    static_assert(std::is_standard_layout_v<FighterState>);
+    static_assert([] {
+        FighterState value;
+        value.set_entity_index(0x123456u);
+        value.set_state(PackedState::AB);
+        return value.raw_value() == 0xAB123456u;
+    }());
+}
+
+TEST(GeneratedPackedValue, CombinesAndExtractsFields) {
+    FighterState value;
+    value.set_entity_index(0x123456u);
+    value.set_state(PackedState::AB);
+    EXPECT_EQ(value.raw_value(), 0xAB123456u);
+
+    auto const from_raw{FighterState{0xAB123456u}};
+    EXPECT_EQ(from_raw.entity_index(), 0x123456u);
+    EXPECT_EQ(from_raw.state(), PackedState::AB);
+}
+
+TEST(GeneratedPackedValue, SettersPreserveOtherFieldsAndRejectOverflow) {
+    FighterState value{0xAB123456u};
+    value.set_entity_index(0xffffffu);
+    EXPECT_EQ(value.raw_value(), 0xABffffffu);
+    value.set_state(PackedState::Zero);
+    EXPECT_EQ(value.raw_value(), 0x00ffffffu);
+    value.set_state(PackedState::Max);
+    EXPECT_EQ(value.raw_value(), 0xffffffffu);
+
+    auto const before_failure{value.raw_value()};
+    EXPECT_FALSE(value.try_set_entity_index(0x01000000u));
+    EXPECT_EQ(value.raw_value(), before_failure);
+}
+
+TEST(GeneratedPackedValue, ComparesByRawValue) {
+    EXPECT_LT(FighterState{1u}, FighterState{2u});
+    EXPECT_LE(FighterState{1u}, FighterState{2u});
+    EXPECT_GT(FighterState{2u}, FighterState{1u});
+    EXPECT_GE(FighterState{2u}, FighterState{1u});
+    EXPECT_EQ(FighterState{2u}, FighterState{2u});
+    EXPECT_NE(FighterState{1u}, FighterState{2u});
+}
+
+TEST(GeneratedPackedValue, ExhaustivelyRoundTripsUint8Storage) {
+    for (unsigned raw{}; raw <= 0xffu; ++raw) {
+        auto const packed{PackedByte{static_cast<std::uint8_t>(raw)}};
+        EXPECT_EQ(packed.low(), raw & 0x7u);
+        EXPECT_EQ(packed.flag(), (raw & 0x8u) != 0);
+        EXPECT_EQ(packed.high(), (raw >> 4u) & 0xfu);
+
+        PackedByte rebuilt;
+        rebuilt.set_low(static_cast<std::uint8_t>(raw & 0x7u));
+        rebuilt.set_flag((raw & 0x8u) != 0);
+        rebuilt.set_high(static_cast<std::uint8_t>((raw >> 4u) & 0xfu));
+        EXPECT_EQ(rebuilt.raw_value(), raw);
+
+        for (std::uint8_t low{}; low < 8; ++low) {
+            auto changed{packed};
+            changed.set_low(low);
+            EXPECT_EQ(changed.raw_value(), static_cast<std::uint8_t>((raw & 0xf8u) | low));
+        }
+        for (std::uint8_t high{}; high < 16; ++high) {
+            auto changed{packed};
+            changed.set_high(high);
+            EXPECT_EQ(changed.raw_value(), static_cast<std::uint8_t>((raw & 0x0fu) | (high << 4u)));
+        }
+    }
+}
+
+TEST(GeneratedFixedSoa, Lifetimes) {
     check(FTracked::alive == 0);
     {
         TFixedRows<4> rows;
@@ -254,7 +330,7 @@ void test_fixed_soa_lifetimes() {
     check(FTracked::alive == 0);
 }
 
-void test_vectors() {
+TEST(GeneratedVector, Operations) {
     FVectors1f scalar;
     scalar.add(FScalar1f{4.0f});
     check(scalar.at(0).X == 4.0f);
@@ -287,7 +363,7 @@ void test_vectors() {
     check(copied.num() == 1 && copied.at(0).X == 4.0f);
 }
 
-void test_facades() {
+TEST(GeneratedFacade, Operations) {
     FTarget target;
     target.value = 5;
 
@@ -315,7 +391,7 @@ void test_facades() {
     check(reference_facade.get() == 17);
 }
 
-void test_enums() {
+TEST(GeneratedEnum, ValuesAndConversions) {
     static_assert(TEnumTraits<EPlainFixture>::count == 2);
     static_assert(TEnumArray<EPlainFixture, float>::size() == 2);
 
@@ -355,7 +431,7 @@ void test_enums() {
           "<invalid EReflectedFixture>");
 }
 
-void test_static_tables() {
+TEST(GeneratedStaticTable, Operations) {
     static_assert(FStaticTableFixture::num() == 3);
     static_assert(FStaticTableFixture::first_index == 0);
     static_assert(FStaticTableFixture::third_index == 2);
@@ -407,43 +483,31 @@ void test_static_tables() {
     check(max_point.X == 4.0f && max_point.Y == 5.0f && max_point.Z == 6.0f);
 }
 
-} // namespace
+TEST(GeneratedSingleAllocationSoa, LayoutAndAccess) {
+    using SingleParents = codegen_compile_fixture::SingleParents;
+    static_assert(sizeof(SingleParents::View) == 16);
+    static_assert(!std::is_copy_constructible_v<SingleParents>);
+    using KeysColumn = std::remove_cvref_t<decltype(SingleParents::Keys)>;
+    static_assert(std::is_same_v<KeysColumn::pointer, int32*>);
+    static_assert(std::is_same_v<KeysColumn::const_pointer, int32 const*>);
+    static_assert(SingleParents::Keys.offset(1) == 0);
+    static_assert(SingleParents::ChildrenValues.offset(1) == 64 * sizeof(int32) + 192);
+    static_assert(SingleParents::ChildrenValues.capacity_granularity == 64);
+    static_assert(SingleParents::ChildrenValues.column_gap == 192);
+    static_assert(SingleParents::layout_bytes(1) == 128 * sizeof(int32) + 192);
 
-auto main() -> int {
-    try {
-        test_single_allocation_ownership();
-        using SingleParents = codegen_compile_fixture::SingleParents;
-        static_assert(sizeof(SingleParents::View) == 16);
-        static_assert(!std::is_copy_constructible_v<SingleParents>);
-        using KeysColumn = std::remove_cvref_t<decltype(SingleParents::Keys)>;
-        static_assert(std::is_same_v<KeysColumn::pointer, int32*>);
-        static_assert(std::is_same_v<KeysColumn::const_pointer, int32 const*>);
-        static_assert(SingleParents::Keys.offset(1) == 0);
-        static_assert(SingleParents::ChildrenValues.offset(1) == 64 * sizeof(int32) + 192);
-        static_assert(SingleParents::ChildrenValues.capacity_granularity == 64);
-        static_assert(SingleParents::ChildrenValues.column_gap == 192);
-        static_assert(SingleParents::layout_bytes(1) == 128 * sizeof(int32) + 192);
-        SingleParents parents;
-        check(parents.get_view().columns().keys.GetData() == nullptr);
-        parents.add_defaulted(65);
-        parents.get_view().columns().children.values[64] = 37;
-        parents.reserve(129);
-        check(parents.capacity() == 192);
-        check(parents.get_const_view().view_children().values[64] == 37);
-        SingleParents moved{std::move(parents)};
-        check(parents.capacity() == 0);
-        moved.remove_at_swap(0, 1);
-        check(moved.get_view().columns().children.values[0] == 37);
-        test_homogeneous_storage();
-        test_dynamic_soa();
-        test_field_masks();
-        test_fixed_soa_lifetimes();
-        test_vectors();
-        test_facades();
-        test_enums();
-        test_static_tables();
-        return 0;
-    } catch (std::exception const&) {
-        return 1;
-    }
+    SingleParents parents;
+    check(parents.get_view().columns().keys.GetData() == nullptr);
+    parents.add_defaulted(65);
+    parents.get_view().columns().children.values[64] = 37;
+    parents.reserve(129);
+    check(parents.capacity() == 192);
+    check(parents.get_const_view().view_children().values[64] == 37);
+
+    SingleParents moved{std::move(parents)};
+    check(parents.capacity() == 0);
+    moved.remove_at_swap(0, 1);
+    check(moved.get_view().columns().children.values[0] == 37);
 }
+
+} // namespace

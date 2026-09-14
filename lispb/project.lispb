@@ -36,7 +36,7 @@
   (cpp-schema cpp-compile-fixture
     :types "native/lispb/tests/compile_fixture/types.lispb"
     :sources ("native/lispb/tests/compile_fixture/modules.lispb")
-    :output-root (build-path "native/lispb/generated_compile_fixture"))
+    :output-root (project-path "native/lispb/tests/compile_fixture/generated"))
 
   (slate slate-core-widgets
     :sources ("Plugins/SandboxUI/Source/SandboxUI/Private/widgets/CoreWidgets.lispb")

@@ -3,6 +3,7 @@
 #include <codegen/schema/enum_module_schema.h>
 #include <codegen/schema/facade_module_schema.h>
 #include <codegen/schema/homogeneous_module_schema.h>
+#include <codegen/schema/packed_value_module_schema.h>
 #include <codegen/schema/settings_module_schema.h>
 #include <codegen/schema/soa_module_schema.h>
 #include <codegen/schema/static_table_module_schema.h>
@@ -17,6 +18,7 @@ using ModuleSchema = std::variant<EnumModuleSchema,
                                   SoaModuleSchema,
                                   StaticTableModuleSchema,
                                   HomogeneousModuleSchema,
+                                  PackedValueModuleSchema,
                                   VectorModuleSchema,
                                   FacadeModuleSchema,
                                   SettingsModuleSchema,

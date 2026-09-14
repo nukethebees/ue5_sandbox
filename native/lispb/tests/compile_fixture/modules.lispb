@@ -28,6 +28,27 @@
     (value COUNT
       :hidden true)))
 
+(enum-module packed_enum_fixture
+  :header "PackedEnums.h"
+  :namespace codegen_compile_fixture
+  (enum PackedState @standard_uint8
+    (value Zero :value "0x00")
+    (value AB :value "0xAB")
+    (value Max :value "0xFF")))
+
+(packed-value-module packed_value_fixture
+  :header "PackedValues.h"
+  :namespace codegen_compile_fixture
+  (packed-value FighterState
+    :storage std::uint32_t
+    (field entity_index std::uint32_t :bits 24)
+    (field state @packed_state :bits 8 :kind enum))
+  (packed-value PackedByte
+    :storage std::uint8_t
+    (field low std::uint8_t :bits 3)
+    (field flag bool :bits 1)
+    (field high std::uint8_t :bits 4)))
+
 (homogeneous-soa-module homogeneous_fixture
   :header "Homogeneous.h"
   :source "Homogeneous.cpp"
@@ -228,4 +249,4 @@
 
 (umbrella-module all_fixture
   :header "Generated.h"
-  :headers ("Homogeneous.h" "Soa.h" "Vector1.h" "Vector2.h" "Vector3.h" "InlineFacade.h" "SourceFacade.h" "ReferenceFacade.h" "PlainEnums.h" "ReflectedEnums.h" "StaticTables.h"))
+  :headers ("Homogeneous.h" "Soa.h" "Vector1.h" "Vector2.h" "Vector3.h" "InlineFacade.h" "SourceFacade.h" "ReferenceFacade.h" "PlainEnums.h" "ReflectedEnums.h" "PackedEnums.h" "PackedValues.h" "StaticTables.h"))

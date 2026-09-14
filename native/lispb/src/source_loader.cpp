@@ -53,6 +53,10 @@ auto number(Form const& form, std::string_view const purpose) -> double {
     return sexpr::number(form, purpose, fail);
 }
 
+auto integer(Form const& form, std::string_view const purpose) -> int {
+    return sexpr::integer(form, purpose, fail);
+}
+
 auto text_list(Form const& form, std::string_view const purpose) -> std::vector<std::string> {
     return sexpr::text_list(form, purpose, fail);
 }
@@ -373,6 +377,48 @@ auto parse_enum_conversion(Form const& form) -> EnumConversion {
     return found->second;
 }
 
+auto parse_packed_field(Form const& form) -> PackedFieldSchema {
+    Fields const fields{form, "field", 2};
+    fields.validate({"bits", "kind"});
+
+    auto kind{PackedFieldKind::unsigned_integer};
+    if (auto const* value{fields.optional("kind")}) {
+        auto const name{text(*value, "packed field kind")};
+        if (name == "unsigned") {
+            kind = PackedFieldKind::unsigned_integer;
+        } else if (name == "enum") {
+            kind = PackedFieldKind::enumeration;
+        } else {
+            fail(value->token.span, "packed field kind must be 'unsigned' or 'enum'");
+        }
+    }
+
+    return PackedFieldSchema{
+        .name = text(fields.positional(0), "packed field name"),
+        .type = parse_type_ref(fields.positional(1)),
+        .bits = integer(fields.required("bits"), "packed field bits"),
+        .kind = kind,
+    };
+}
+
+auto parse_packed_value(Form const& form) -> PackedValueSchema {
+    Fields const fields{form, "packed-value", 1};
+    fields.validate({"storage", "export-specifier"}, {"field"});
+
+    std::vector<PackedFieldSchema> packed_fields;
+    packed_fields.reserve(fields.declarations().size());
+    for (auto const* declaration : fields.declarations()) {
+        packed_fields.push_back(parse_packed_field(*declaration));
+    }
+
+    return PackedValueSchema{
+        .name = text(fields.positional(0), "packed value name"),
+        .storage_type = parse_type_ref(fields.required("storage")),
+        .fields = std::move(packed_fields),
+        .export_specifier = optional_text(fields, "export-specifier"),
+    };
+}
+
 auto parse_enum(Form const& form) -> EnumSchema {
     Fields const fields{form, "enum", 2};
     fields.validate({"reflection", "enum-array", "count", "conversions", "export-specifier"},
@@ -577,6 +623,18 @@ auto parse_setting(Form const& form) -> SettingSchema {
 
 auto parse_module(Form const& form) -> ModuleSchema {
     auto const head{form.head()};
+    if (head == "packed-value-module") {
+        Fields const fields{form, head, 1};
+        fields.validate(
+            {"header", "source", "header-include", "namespace", "include-order", "prelude"},
+            {"packed-value"});
+        std::vector<PackedValueSchema> values;
+        values.reserve(fields.declarations().size());
+        for (auto const* declaration : fields.declarations()) {
+            values.push_back(parse_packed_value(*declaration));
+        }
+        return PackedValueModuleSchema{parse_module_settings(fields), std::move(values)};
+    }
     if (head == "soa-module") {
         Fields const fields{form, head, 1};
         fields.validate({"header",

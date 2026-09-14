@@ -6,6 +6,9 @@ namespace codegen::detail {
 
 auto lower_enum_module(EnumModuleSchema const& module, std::map<std::string, CppType> const& types)
     -> Module;
+auto lower_packed_value_module(PackedValueModuleSchema const& module,
+                               std::map<std::string, CppType> const& types,
+                               std::vector<ModuleSchema> const& modules) -> Module;
 auto lower_soa_module(SoaModuleSchema const& module, std::map<std::string, CppType> const& types)
     -> Module;
 auto lower_static_table_module(StaticTableModuleSchema const& module,

@@ -16,6 +16,10 @@
 #include <codegen/schema/manifest.h>
 #include <codegen/schema/module_schema.h>
 #include <codegen/schema/module_settings.h>
+#include <codegen/schema/packed_field_kind.h>
+#include <codegen/schema/packed_field_schema.h>
+#include <codegen/schema/packed_value_module_schema.h>
+#include <codegen/schema/packed_value_schema.h>
 #include <codegen/schema/parameter_schema.h>
 #include <codegen/schema/schema_version.h>
 #include <codegen/schema/settings_module_schema.h>

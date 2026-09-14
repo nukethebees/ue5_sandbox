@@ -46,5 +46,15 @@
   :spelling "FChild"
   (operation remove-at-swap remove_at_swap))
 
+(type packed_state
+  :spelling "codegen_compile_fixture::PackedState"
+  :header "PackedEnums.h"
+  :pass-by value)
+
+(type standard_uint8
+  :spelling "std::uint8_t"
+  :header "cstdint"
+  :pass-by value)
+
 (type fixed_child
   :spelling "FFixedChild")
