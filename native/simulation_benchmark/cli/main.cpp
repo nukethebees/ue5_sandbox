@@ -15,7 +15,9 @@ auto main(int const argc, char const* const* argv) -> int {
         return command_line.exit_code;
     }
 
-    auto result{ml::simulation_benchmark::run_benchmark(*command_line.options)};
+    auto result{ml::simulation_benchmark::run_benchmark(*command_line.options, [] {
+        std::cerr << ml::simulation_benchmark::profiler_ready_message << '\n' << std::flush;
+    })};
     if (!result) {
         std::cerr << result.error() << '\n';
         return 1;

@@ -9,9 +9,11 @@ import re
 import socket
 import subprocess
 import sys
+import threading
+import time
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, TextIO, cast
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -20,6 +22,7 @@ DEFAULT_OUTPUT_ROOT = ROOT / ".local" / "benchmarks" / "tracy-comparison"
 BENCHMARK_EXECUTABLE = "native-simulation-benchmark.exe"
 CAPTURE_EXECUTABLE = "tracy-capture.exe"
 CSVEXPORT_EXECUTABLE = "tracy-csvexport.exe"
+PROFILER_READY_MESSAGE = "native-simulation-benchmark: profiler-ready"
 RESERVED_RUNNER_OPTIONS = {
     "--level",
     "--seconds",
@@ -39,6 +42,7 @@ class CompareOptions:
     a_preset: str
     b_preset: str
     output_dir: Path
+    output_dir_explicit: bool
     skip_build: bool
     connection_timeout_seconds: float
     process_timeout_seconds: float
@@ -109,7 +113,7 @@ def parse_options(arguments: list[str]) -> CompareOptions:
         if option_name in RESERVED_RUNNER_OPTIONS:
             parser.error(f"{option_name} is managed by the comparison tool")
 
-    timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d-%H%M%SZ")
+    timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d-%H%M%S-%fZ")
     output_dir = parsed.output_dir or DEFAULT_OUTPUT_ROOT / timestamp
     return CompareOptions(
         level=parsed.level.resolve(),
@@ -118,6 +122,7 @@ def parse_options(arguments: list[str]) -> CompareOptions:
         a_preset=parsed.a_preset,
         b_preset=parsed.b_preset,
         output_dir=output_dir.resolve(),
+        output_dir_explicit=parsed.output_dir is not None,
         skip_build=parsed.skip_build,
         connection_timeout_seconds=parsed.connection_timeout_seconds,
         process_timeout_seconds=parsed.process_timeout_seconds,
@@ -296,7 +301,10 @@ def invoke_with_benchmark_access(options: CompareOptions) -> int:
         str(SCRIPT),
         *_options_arguments(replace(options, skip_build=True)),
     ]
-    return subprocess.run(command, cwd=ROOT, check=False).returncode
+    return_code = subprocess.run(command, cwd=ROOT, check=False).returncode
+    if return_code != 0 and not (options.output_dir / "comparison.json").is_file():
+        raise PipelineError("jobserver_failed", f"jobserver command exited with {return_code}")
+    return return_code
 
 
 def _unused_loopback_port() -> int:
@@ -316,6 +324,33 @@ def _stop_process(process: subprocess.Popen[str] | None) -> None:
         process.wait(timeout=5.0)
 
 
+def _monitor_benchmark_stderr(
+    stream: TextIO, destination: TextIO, profiler_ready: threading.Event
+) -> None:
+    for line in stream:
+        destination.write(line)
+        destination.flush()
+        if line.rstrip("\r\n") == PROFILER_READY_MESSAGE:
+            profiler_ready.set()
+
+
+def _wait_for_profiler_ready(
+    process: subprocess.Popen[str], profiler_ready: threading.Event, timeout: float, label: str
+) -> None:
+    deadline = time.monotonic() + timeout
+    while not profiler_ready.wait(timeout=0.05):
+        return_code = process.poll()
+        if return_code is not None:
+            raise PipelineError(
+                "benchmark_failed",
+                f"benchmark {label} exited with {return_code} before requesting a profiler",
+            )
+        if time.monotonic() >= deadline:
+            raise PipelineError(
+                "benchmark_timeout", f"benchmark {label} did not request a profiler in time"
+            )
+
+
 def capture_run(options: CompareOptions, label: str, preset: str) -> JsonObject:
     output = options.output_dir / label
     output.mkdir(parents=True, exist_ok=True)
@@ -331,10 +366,32 @@ def capture_run(options: CompareOptions, label: str, preset: str) -> JsonObject:
 
     capture_process: subprocess.Popen[str] | None = None
     benchmark_process: subprocess.Popen[str] | None = None
+    stderr_thread: threading.Thread | None = None
     try:
         with capture_log_path.open("w", encoding="utf-8") as capture_log, benchmark_error_path.open(
             "w", encoding="utf-8"
         ) as benchmark_error:
+            benchmark_process = subprocess.Popen(
+                [str(benchmark_executable), *benchmark_arguments(options)],
+                cwd=ROOT,
+                env=environment,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            if benchmark_process.stderr is None:
+                raise PipelineError("benchmark_failed", f"benchmark {label} stderr is unavailable")
+            profiler_ready = threading.Event()
+            stderr_thread = threading.Thread(
+                target=_monitor_benchmark_stderr,
+                args=(benchmark_process.stderr, benchmark_error, profiler_ready),
+                daemon=True,
+            )
+            stderr_thread.start()
+            _wait_for_profiler_ready(
+                benchmark_process, profiler_ready, options.process_timeout_seconds, label
+            )
+
             capture_process = subprocess.Popen(
                 [str(capture_executable), "-o", str(capture_path), "-a", "127.0.0.1", "-p", str(port)],
                 cwd=ROOT,
@@ -342,21 +399,23 @@ def capture_run(options: CompareOptions, label: str, preset: str) -> JsonObject:
                 stderr=subprocess.STDOUT,
                 text=True,
             )
-            benchmark_process = subprocess.Popen(
-                [str(benchmark_executable), *benchmark_arguments(options)],
-                cwd=ROOT,
-                env=environment,
-                stdout=subprocess.PIPE,
-                stderr=benchmark_error,
-                text=True,
-            )
             try:
-                standard_output, _ = benchmark_process.communicate(timeout=options.process_timeout_seconds)
+                benchmark_return_code = benchmark_process.wait(
+                    timeout=options.process_timeout_seconds
+                )
             except subprocess.TimeoutExpired as error:
                 raise PipelineError("benchmark_timeout", f"benchmark {label} exceeded the process timeout") from error
-            if benchmark_process.returncode != 0:
+            if benchmark_process.stdout is None:
+                raise PipelineError("benchmark_failed", f"benchmark {label} stdout is unavailable")
+            standard_output = benchmark_process.stdout.read()
+            if benchmark_return_code != 0:
+                capture_return_code = capture_process.poll()
+                if capture_return_code not in (None, 0):
+                    raise PipelineError(
+                        "capture_failed", f"Tracy capture {label} exited with {capture_return_code}"
+                    )
                 raise PipelineError(
-                    "benchmark_failed", f"benchmark {label} exited with {benchmark_process.returncode}"
+                    "benchmark_failed", f"benchmark {label} exited with {benchmark_return_code}"
                 )
             try:
                 decoded = json.loads(standard_output.strip())
@@ -382,6 +441,13 @@ def capture_run(options: CompareOptions, label: str, preset: str) -> JsonObject:
     finally:
         _stop_process(benchmark_process)
         _stop_process(capture_process)
+        if stderr_thread is not None:
+            stderr_thread.join(timeout=5.0)
+        if benchmark_process is not None:
+            if benchmark_process.stdout is not None:
+                benchmark_process.stdout.close()
+            if benchmark_process.stderr is not None:
+                benchmark_process.stderr.close()
 
     if not capture_path.is_file() or capture_path.stat().st_size == 0:
         raise PipelineError("capture_failed", f"Tracy capture {label} was not created")
@@ -502,6 +568,21 @@ def compare_results(options: CompareOptions, a_result: JsonObject, b_result: Jso
                 "code": "workload_mismatch",
                 "severity": "error",
                 "message": "benchmark results describe different deterministic workloads",
+            }
+        )
+
+    a_final_state = a_result.get("final_state")
+    b_final_state = b_result.get("final_state")
+    if not isinstance(a_final_state, dict) or not isinstance(b_final_state, dict):
+        raise PipelineError("benchmark_result_invalid", "benchmark final state is missing")
+    if a_final_state != b_final_state:
+        warnings.append(
+            {
+                "code": "final_state_mismatch",
+                "severity": "error",
+                "message": "benchmark results describe different final simulation states",
+                "a": a_final_state,
+                "b": b_final_state,
             }
         )
 
@@ -643,6 +724,15 @@ def run_comparison(options: CompareOptions, manifest: JsonObject) -> int:
 
 def main(arguments: list[str]) -> int:
     options = parse_options(arguments)
+    inside_jobserver = bool(os.environ.get("NUKETHEBEES_JOBSERVER_JOB"))
+    if (
+        options.output_dir_explicit
+        and not inside_jobserver
+        and options.output_dir.exists()
+        and any(options.output_dir.iterdir())
+    ):
+        print(f"Tracy comparison failed: output directory is not empty: {options.output_dir}", file=sys.stderr)
+        return 1
     options.output_dir.mkdir(parents=True, exist_ok=True)
     manifest = make_manifest(options, "preparing")
     write_json(options.output_dir / "manifest.json", manifest)
@@ -650,11 +740,17 @@ def main(arguments: list[str]) -> int:
     try:
         if not options.skip_build:
             build_prerequisites(options)
-        if not os.environ.get("NUKETHEBEES_JOBSERVER_JOB"):
+        if not inside_jobserver:
             return invoke_with_benchmark_access(options)
         return run_comparison(options, manifest)
     except PipelineError as error:
         write_failure(options, manifest, error)
         print(f"Tracy comparison failed: {error}", file=sys.stderr)
+        print(f"Results: {options.output_dir}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        pipeline_error = PipelineError("operating_system_error", str(error))
+        write_failure(options, manifest, pipeline_error)
+        print(f"Tracy comparison failed: {pipeline_error}", file=sys.stderr)
         print(f"Results: {options.output_dir}", file=sys.stderr)
         return 1

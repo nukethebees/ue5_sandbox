@@ -10,6 +10,9 @@
 
 namespace ml::simulation_benchmark {
 inline constexpr double simulation_tick_rate_hz{60.0};
+inline constexpr char profiler_ready_message[]{"native-simulation-benchmark: profiler-ready"};
+
+using ProfilerReadyCallback = void (*)();
 
 struct BenchmarkResult {
     std::string level_path{};
@@ -58,7 +61,8 @@ struct BenchmarkResult {
 
 [[nodiscard]] auto calculate_tick_count(double seconds)
     -> std::expected<ioj::sim::SimTick, std::string>;
-[[nodiscard]] auto run_benchmark(BenchmarkOptions const& options)
+[[nodiscard]] auto run_benchmark(BenchmarkOptions const& options,
+                                 ProfilerReadyCallback profiler_ready = nullptr)
     -> std::expected<BenchmarkResult, std::string>;
 [[nodiscard]] auto to_json(BenchmarkResult const& result) -> std::string;
 } // namespace ml::simulation_benchmark

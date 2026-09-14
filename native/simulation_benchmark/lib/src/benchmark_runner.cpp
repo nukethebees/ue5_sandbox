@@ -110,7 +110,8 @@ auto calculate_tick_count(double const seconds) -> std::expected<ioj::sim::SimTi
     return ioj::sim::duration_to_tick_period(simulation_tick_rate_hz, seconds);
 }
 
-auto run_benchmark(BenchmarkOptions const& options) -> std::expected<BenchmarkResult, std::string> {
+auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const profiler_ready)
+    -> std::expected<BenchmarkResult, std::string> {
     auto const requested_ticks{calculate_tick_count(options.simulated_seconds)};
     if (!requested_ticks) {
         return std::unexpected{requested_ticks.error()};
@@ -197,6 +198,10 @@ auto run_benchmark(BenchmarkOptions const& options) -> std::expected<BenchmarkRe
     if (options.profiler_connection_timeout_seconds.has_value()) {
         if (!ioj::sim::profiling::available) {
             return std::unexpected{"profiler support is not enabled in this benchmark build"};
+        }
+
+        if (profiler_ready != nullptr) {
+            profiler_ready();
         }
 
         auto const timeout{
