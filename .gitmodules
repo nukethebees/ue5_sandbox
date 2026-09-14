@@ -20,3 +20,7 @@
 	path = native/third_party/cli11
 	url = https://github.com/CLIUtils/CLI11.git
 	shallow = true
+[submodule "native/third_party/nlohmann_json"]
+	path = native/third_party/nlohmann_json
+	url = https://github.com/nlohmann/json.git
+	shallow = true

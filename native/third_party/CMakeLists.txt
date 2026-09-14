@@ -3,6 +3,11 @@ set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 add_subdirectory(googletest)
 
+set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
+set(JSON_Install OFF CACHE BOOL "" FORCE)
+set(JSON_SystemInclude ON CACHE BOOL "" FORCE)
+add_subdirectory(nlohmann_json)
+
 set(CLI11_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(CLI11_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(CLI11_BUILD_TESTS OFF CACHE BOOL "" FORCE)
