@@ -13,7 +13,7 @@
 namespace jobserver {
 namespace {
 auto quote_argument(std::wstring const& argument) -> std::wstring {
-    if (argument.find_first_of(L" \t\"") == std::wstring::npos) {
+    if (!argument.empty() && argument.find_first_of(L" \t\"") == std::wstring::npos) {
         return argument;
     }
     std::wstring result{L"\""};
@@ -225,6 +225,7 @@ auto Supervisor::run(Command const& command,
     bool timed_out{};
     bool root_exited{};
     bool suspected{};
+    std::int64_t activity_at_suspicion{};
     std::uint64_t previous_cpu_time{};
     for (;;) {
         if (!root_exited) {
@@ -275,8 +276,13 @@ auto Supervisor::run(Command const& command,
             auto const last{
                 std::chrono::steady_clock::time_point{std::chrono::steady_clock::duration{
                     last_activity.load(std::memory_order_relaxed)}}};
-            if (!suspected && std::chrono::steady_clock::now() - last >= *suspect_after) {
+            auto const inactive_for{std::chrono::steady_clock::now() - last};
+            if (suspected && inactive_for < *suspect_after) {
+                suspected = false;
+                health(JobHealth::normal, {});
+            } else if (!suspected && inactive_for >= *suspect_after) {
                 suspected = true;
+                activity_at_suspicion = last_activity.load(std::memory_order_relaxed);
                 health(JobHealth::suspected_hang,
                        "no stdout, stderr, or process-tree CPU activity");
             }
@@ -288,6 +294,9 @@ auto Supervisor::run(Command const& command,
     close_if_valid(process.hProcess);
     stdout_thread.join();
     stderr_thread.join();
+    if (suspected && last_activity.load(std::memory_order_relaxed) > activity_at_suspicion) {
+        health(JobHealth::normal, {});
+    }
 
     bool killed{};
     int termination_exit_code{};

@@ -34,7 +34,7 @@ auto widen(std::string const& text) -> std::wstring {
 }
 
 auto quote_argument(std::wstring const& argument) -> std::wstring {
-    if (argument.find_first_of(L" \t\"") == std::wstring::npos) {
+    if (!argument.empty() && argument.find_first_of(L" \t\"") == std::wstring::npos) {
         return argument;
     }
     std::wstring result{L"\""};

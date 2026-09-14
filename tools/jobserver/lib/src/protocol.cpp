@@ -72,23 +72,35 @@ auto decode_base64(std::string const& encoded) -> std::expected<std::string, Err
     std::string result;
     result.reserve((encoded.size() / 4) * 3);
     for (std::size_t index{}; index < encoded.size(); index += 4) {
+        auto const third_padding{encoded[index + 2] == '='};
+        auto const fourth_padding{encoded[index + 3] == '='};
+        if ((third_padding && !fourth_padding) ||
+            ((third_padding || fourth_padding) && index + 4 != encoded.size())) {
+            return std::unexpected(
+                Error{"invalid_base64", "Output payload contains invalid base64 padding"});
+        }
         auto const first{base64_value(encoded[index])};
         auto const second{base64_value(encoded[index + 1])};
-        auto const third{encoded[index + 2] == '=' ? 0 : base64_value(encoded[index + 2])};
-        auto const fourth{encoded[index + 3] == '=' ? 0 : base64_value(encoded[index + 3])};
+        auto const third{third_padding ? 0 : base64_value(encoded[index + 2])};
+        auto const fourth{fourth_padding ? 0 : base64_value(encoded[index + 3])};
         if (first < 0 || second < 0 || third < 0 || fourth < 0) {
             return std::unexpected(
                 Error{"invalid_base64", "Output payload contains invalid base64"});
+        }
+        if ((third_padding && (second & 0x0f) != 0) ||
+            (fourth_padding && !third_padding && (third & 0x03) != 0)) {
+            return std::unexpected(
+                Error{"invalid_base64", "Output payload contains non-zero padding bits"});
         }
         auto const value{(static_cast<std::uint32_t>(first) << 18U) |
                          (static_cast<std::uint32_t>(second) << 12U) |
                          (static_cast<std::uint32_t>(third) << 6U) |
                          static_cast<std::uint32_t>(fourth)};
         result.push_back(static_cast<char>((value >> 16U) & 0xffU));
-        if (encoded[index + 2] != '=') {
+        if (!third_padding) {
             result.push_back(static_cast<char>((value >> 8U) & 0xffU));
         }
-        if (encoded[index + 3] != '=') {
+        if (!fourth_padding) {
             result.push_back(static_cast<char>(value & 0xffU));
         }
     }

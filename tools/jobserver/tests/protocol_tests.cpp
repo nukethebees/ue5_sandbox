@@ -43,3 +43,9 @@ TEST(JobserverProtocol, Base64RoundTripsArbitraryBytes) {
     ASSERT_TRUE(decoded.has_value());
     EXPECT_EQ(*decoded, bytes);
 }
+
+TEST(JobserverProtocol, RejectsMalformedBase64Padding) {
+    EXPECT_FALSE(jobserver::protocol::decode_base64("AA=A").has_value());
+    EXPECT_FALSE(jobserver::protocol::decode_base64("AAAA=AAA").has_value());
+    EXPECT_FALSE(jobserver::protocol::decode_base64("A===").has_value());
+}
