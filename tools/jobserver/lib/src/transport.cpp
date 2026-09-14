@@ -13,17 +13,9 @@
 #include <vector>
 
 namespace jobserver::transport {
-auto pipe_name() -> std::wstring const& {
+auto user_sid() -> std::wstring const& {
     static auto const value = [] {
-        if (auto const size{
-                GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_TEST_PIPE", nullptr, 0)};
-            size != 0) {
-            std::wstring override_name(size, L'\0');
-            GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_TEST_PIPE", override_name.data(), size);
-            override_name.resize(size - 1);
-            return override_name;
-        }
-        std::wstring result{LR"(\\.\pipe\NukeTheBees.Jobserver.)"};
+        std::wstring result;
         HANDLE token{};
         if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token)) {
             DWORD size{};
@@ -40,6 +32,21 @@ auto pipe_name() -> std::wstring const& {
             CloseHandle(token);
         }
         return result;
+    }();
+    return value;
+}
+
+auto pipe_name() -> std::wstring const& {
+    static auto const value = [] {
+        if (auto const size{
+                GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_TEST_PIPE", nullptr, 0)};
+            size != 0) {
+            std::wstring override_name(size, L'\0');
+            GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_TEST_PIPE", override_name.data(), size);
+            override_name.resize(size - 1);
+            return override_name;
+        }
+        return std::wstring{LR"(\\.\pipe\NukeTheBees.Jobserver.)"} + user_sid();
     }();
     return value;
 }

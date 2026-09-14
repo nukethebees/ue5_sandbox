@@ -10,6 +10,8 @@
 
 #include <chrono>
 #include <cwchar>
+#include <filesystem>
+#include <fstream>
 #include <iterator>
 #include <thread>
 
@@ -114,6 +116,41 @@ void close_handle(void*& handle) {
 }
 
 auto request_daemon_start() -> bool {
+    auto const& sid{transport::user_sid()};
+    if (sid.empty()) {
+        return false;
+    }
+    auto const mutex_name{L"Global\\NukeTheBees.Jobserver.Start." + sid};
+    auto const mutex{CreateMutexW(nullptr, FALSE, mutex_name.c_str())};
+    if (mutex == nullptr) {
+        return false;
+    }
+    auto const wait{WaitForSingleObject(mutex, 10'000)};
+    if (wait != WAIT_OBJECT_0 && wait != WAIT_ABANDONED) {
+        CloseHandle(mutex);
+        return false;
+    }
+    auto finish = [mutex](bool const result) {
+        ReleaseMutex(mutex);
+        CloseHandle(mutex);
+        return result;
+    };
+    if (WaitNamedPipeW(transport::pipe_name().c_str(), 0)) {
+        return finish(true);
+    }
+
+    if (auto const size{
+            GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_TEST_START_MARKER", nullptr, 0)};
+        size != 0) {
+        std::wstring marker(size, L'\0');
+        if (GetEnvironmentVariableW(
+                L"NUKETHEBEES_JOBSERVER_TEST_START_MARKER", marker.data(), size) == size - 1) {
+            marker.resize(size - 1);
+            std::ofstream output{std::filesystem::path{marker}, std::ios::app};
+            output << GetCurrentProcessId() << '\n';
+        }
+    }
+
     STARTUPINFOW startup{};
     startup.cb = sizeof(STARTUPINFOW);
     PROCESS_INFORMATION process{};
@@ -128,14 +165,25 @@ auto request_daemon_start() -> bool {
                         nullptr,
                         &startup,
                         &process)) {
-        return false;
+        return finish(false);
     }
     CloseHandle(process.hThread);
-    WaitForSingleObject(process.hProcess, 5000);
+    auto const task_wait{WaitForSingleObject(process.hProcess, 5000)};
     DWORD exit_code{};
     GetExitCodeProcess(process.hProcess, &exit_code);
     CloseHandle(process.hProcess);
-    return exit_code == 0;
+    if (task_wait != WAIT_OBJECT_0 || exit_code != 0) {
+        return finish(false);
+    }
+
+    auto const deadline{std::chrono::steady_clock::now() + std::chrono::seconds{5}};
+    while (std::chrono::steady_clock::now() < deadline) {
+        if (WaitNamedPipeW(transport::pipe_name().c_str(), 100)) {
+            return finish(true);
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds{50});
+    }
+    return finish(false);
 }
 
 auto connect_pipe() -> std::expected<void*, Error> {

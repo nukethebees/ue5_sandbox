@@ -8,6 +8,7 @@
 #include <string>
 
 namespace jobserver::transport {
+[[nodiscard]] auto user_sid() -> std::wstring const&;
 [[nodiscard]] auto pipe_name() -> std::wstring const&;
 
 [[nodiscard]] auto read_message(void* handle,

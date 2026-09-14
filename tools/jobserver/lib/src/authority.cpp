@@ -386,7 +386,7 @@ auto force_recover_authority(std::function<bool()> const& is_responsive)
     if (current_sid.empty()) {
         return std::unexpected(Error{"recovery_failed", "Could not identify the current user"});
     }
-    auto const mutex_name{L"Local\\NukeTheBees.Jobserver.Recovery." + current_sid};
+    auto const mutex_name{L"Global\\NukeTheBees.Jobserver.Recovery." + current_sid};
     Handle const mutex{CreateMutexW(nullptr, FALSE, mutex_name.c_str())};
     if (mutex.get() == nullptr) {
         return std::unexpected(
