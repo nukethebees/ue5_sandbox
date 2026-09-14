@@ -171,6 +171,7 @@ def main() -> None:
     directories = [
         project_root / "Codegen",
         project_root / "native",
+        project_root / "tools",
         project_root / "Source",
         project_root / "Plugins" / "USFLoader",
         project_root / "Plugins" / "SandboxCore",
