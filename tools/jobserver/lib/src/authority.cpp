@@ -308,6 +308,78 @@ void clear_authority() noexcept {
     } catch (...) {}
 }
 
+auto check_recovery_authority(std::function<bool()> const& is_responsive)
+    -> std::expected<RecoveryAssessment, Error> {
+    RecoveryAssessment result;
+    result.responsive = is_responsive();
+
+    auto const current_sid{process_user_sid(GetCurrentProcess())};
+    if (current_sid.empty()) {
+        return std::unexpected(Error{"recovery_failed", "Could not identify the current user"});
+    }
+    auto const stored{read_authority()};
+    if (!stored) {
+        result.reason = stored.error().message;
+        return result;
+    }
+    result.process_id = stored->process_id;
+    result.creation_time = stored->creation_time;
+    result.executable = stored->executable;
+
+    auto expected_executable{current_executable()};
+    expected_executable.replace_filename(L"jobserverd.exe");
+    if (!paths_equal(stored->executable, expected_executable)) {
+        result.reason = "The authority record does not identify the expected jobserver executable";
+        return result;
+    }
+    if (stored->user_sid != current_sid) {
+        result.reason = "The authority record belongs to a different user";
+        return result;
+    }
+    Handle const process{
+        OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE, FALSE, stored->process_id)};
+    if (process.get() == nullptr) {
+        if (GetLastError() == ERROR_INVALID_PARAMETER) {
+            result.authority_valid = true;
+            result.recoverable = !result.responsive;
+            result.reason = result.responsive ? "The daemon is responsive but its record is stale"
+                                              : "The recorded daemon has already exited";
+            return result;
+        }
+        result.reason = "Could not inspect the recorded daemon process";
+        return result;
+    }
+    auto const live_creation_time{process_creation_time(process.get())};
+    if (live_creation_time != stored->creation_time) {
+        result.reason = "The recorded daemon process ID has been reused";
+        return result;
+    }
+    if (WaitForSingleObject(process.get(), 0) == WAIT_OBJECT_0) {
+        result.authority_valid = true;
+        result.recoverable = !result.responsive;
+        result.reason = result.responsive
+                          ? "The daemon is responsive but its recorded process exited"
+                          : "The recorded daemon has exited";
+        return result;
+    }
+    auto const live{AuthorityRecord{.process_id = stored->process_id,
+                                    .creation_time = live_creation_time,
+                                    .executable = process_path(process.get()),
+                                    .user_sid = process_user_sid(process.get())}};
+    if (!records_match(*stored, live) || !paths_equal(live.executable, expected_executable) ||
+        live.user_sid != current_sid) {
+        result.reason = "The live process does not match the recorded daemon identity";
+        return result;
+    }
+
+    result.authority_valid = true;
+    result.process_running = true;
+    result.recoverable = !result.responsive;
+    result.reason = result.responsive ? "The daemon is responsive; recovery is not needed"
+                                      : "The daemon is unresponsive and safe to recover";
+    return result;
+}
+
 auto force_recover_authority(std::function<bool()> const& is_responsive)
     -> std::expected<void, Error> {
     auto const current_sid{process_user_sid(GetCurrentProcess())};

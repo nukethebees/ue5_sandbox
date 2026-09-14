@@ -132,6 +132,7 @@ complete resource set needed by nested work.
 jobserver status
 jobserver status --json
 jobserver ping
+jobserver recover --check
 jobserver recover --force
 jobserver show <job-id>
 jobserver history
@@ -142,10 +143,12 @@ jobserver doctor
 jobserver version
 ```
 
-`status` reports active and queued jobs, blockers, elapsed time, health, and resource usage.
+`status` reports daemon PID, uptime, audit freshness, handler/owner counts, active and queued jobs,
+blockers, elapsed time, health, and resource usage.
 Queued clients receive periodic heartbeat frames while they wait. `ping` uses a bounded control
 request to distinguish a responsive daemon from one whose process merely still exists. Other
 control commands also fail with a clear timeout rather than waiting indefinitely.
+`recover --check` performs the same identity and liveness checks without changing anything.
 `recover --force` is an explicit last resort for an unresponsive daemon. It refuses a responsive
 daemon and terminates a process only after a per-user recovery mutex and a live comparison of the
 recorded PID, process creation time, executable path, and user SID. It never searches or kills by

@@ -186,6 +186,11 @@ auto make_pipe_security()
 }
 
 auto Server::run() -> int {
+    started_at_ = std::chrono::system_clock::now();
+    started_steady_ = std::chrono::steady_clock::now();
+    last_audit_ms_.store(
+        std::chrono::duration_cast<std::chrono::milliseconds>(started_at_.time_since_epoch())
+            .count());
     load_history();
     auto pipe_security{make_pipe_security()};
     if (!pipe_security) {
@@ -632,21 +637,60 @@ void Server::handle_status(void* const pipe, bool const include_history) {
         std::scoped_lock const lock{diagnostics_mutex_};
         diagnostics = diagnostics_;
     }
-    static_cast<void>(write_client(pipe,
-                                   Json{{"type", "status"},
-                                        {"jobs", entries},
-                                        {"resources", resources},
-                                        {"diagnostics", diagnostics},
-                                        {"heartbeat_ms",
-                                         std::chrono::duration_cast<std::chrono::milliseconds>(
-                                             std::chrono::system_clock::now().time_since_epoch())
-                                             .count()}}
-                                       .dump()));
+    std::size_t supervised_jobs{};
+    std::size_t leases{};
+    std::size_t active_handlers{};
+    {
+        std::scoped_lock const lock{supervisors_mutex_};
+        supervised_jobs = supervisors_.size();
+    }
+    {
+        std::scoped_lock const lock{leases_mutex_};
+        leases = leases_.size();
+    }
+    {
+        std::scoped_lock const lock{handlers_mutex_};
+        active_handlers = active_handlers_;
+    }
+    auto const last_audit_ms{last_audit_ms_.load()};
+    auto const now_ms{std::chrono::duration_cast<std::chrono::milliseconds>(
+                          std::chrono::system_clock::now().time_since_epoch())
+                          .count()};
+    auto const started_ms{
+        std::chrono::duration_cast<std::chrono::milliseconds>(started_at_.time_since_epoch())
+            .count()};
+    auto const daemon = Json{{"process_id", GetCurrentProcessId()},
+                             {"started_ms", started_ms},
+                             {"uptime_ms",
+                              std::chrono::duration_cast<std::chrono::milliseconds>(
+                                  std::chrono::steady_clock::now() - started_steady_)
+                                  .count()},
+                             {"last_audit_ms", last_audit_ms},
+                             {"last_audit_age_ms", now_ms - last_audit_ms},
+                             {"active_handlers", active_handlers},
+                             {"supervised_jobs", supervised_jobs},
+                             {"leases", leases},
+                             {"version", "0.1.0"},
+                             {"protocol_major", protocol::major_version},
+                             {"protocol_minor", protocol::minor_version}};
+    auto response = Json::object();
+    response["type"] = "status";
+    response["daemon"] = daemon;
+    response["jobs"] = std::move(entries);
+    response["resources"] = std::move(resources);
+    response["diagnostics"] = std::move(diagnostics);
+    response["heartbeat_ms"] = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                   std::chrono::system_clock::now().time_since_epoch())
+                                   .count();
+    static_cast<void>(write_client(pipe, response.dump()));
 }
 
 void Server::audit_loop(std::stop_token const stop_token) {
     while (!stop_token.stop_requested()) {
         std::this_thread::sleep_for(std::chrono::milliseconds{100});
+        last_audit_ms_.store(std::chrono::duration_cast<std::chrono::milliseconds>(
+                                 std::chrono::system_clock::now().time_since_epoch())
+                                 .count());
         std::unordered_set<std::string> owned_jobs;
         {
             std::scoped_lock const lock{supervisors_mutex_};

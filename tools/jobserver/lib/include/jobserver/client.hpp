@@ -1,5 +1,6 @@
 #pragma once
 
+#include "jobserver/authority.hpp"
 #include "jobserver/types.hpp"
 
 #include <expected>
@@ -40,6 +41,7 @@ class Client {
         -> std::expected<void, Error>;
     [[nodiscard]] static auto shutdown() -> std::expected<void, Error>;
     [[nodiscard]] static auto start_daemon() -> std::expected<void, Error>;
+    [[nodiscard]] static auto check_daemon_recovery() -> std::expected<RecoveryAssessment, Error>;
     [[nodiscard]] static auto force_recover_daemon() -> std::expected<void, Error>;
 };
 }

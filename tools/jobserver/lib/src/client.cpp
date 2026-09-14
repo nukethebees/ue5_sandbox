@@ -443,6 +443,10 @@ auto Client::shutdown() -> std::expected<void, Error> {
     return {};
 }
 
+auto Client::check_daemon_recovery() -> std::expected<RecoveryAssessment, Error> {
+    return check_recovery_authority([] { return Client::ping().has_value(); });
+}
+
 auto Client::force_recover_daemon() -> std::expected<void, Error> {
     return force_recover_authority([] { return Client::ping().has_value(); });
 }

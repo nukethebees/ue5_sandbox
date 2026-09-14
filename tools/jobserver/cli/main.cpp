@@ -55,7 +55,7 @@ void print_help() {
                  "  jobserver start\n"
                  "  jobserver ping\n"
                  "  jobserver shutdown\n"
-                 "  jobserver recover --force\n"
+                 "  jobserver recover --check|--force\n"
                  "  jobserver doctor\n"
                  "  jobserver version\n\n"
                  "run options:\n"
@@ -122,6 +122,16 @@ void print_status(std::string const& text) {
     if (!status.is_object()) {
         std::cout << text << '\n';
         return;
+    }
+    auto const daemon = status.value("daemon", Json::object());
+    if (!daemon.empty()) {
+        std::cout << "DAEMON\n";
+        std::cout << "  pid " << daemon.value("process_id", 0U) << "  uptime "
+                  << daemon.value("uptime_ms", 0LL) << "ms  audit "
+                  << daemon.value("last_audit_age_ms", 0LL) << "ms ago  handlers "
+                  << daemon.value("active_handlers", 0U) << "  supervisors "
+                  << daemon.value("supervised_jobs", 0U) << "  leases "
+                  << daemon.value("leases", 0U) << '\n';
     }
     std::cout << "JOBS\n";
     for (auto const& job : status.value("jobs", Json::array())) {
@@ -330,9 +340,28 @@ auto wmain(int argc, wchar_t** argv) -> int {
         return result ? 0 : print_error(result.error());
     }
     if (command == "recover") {
-        if (arguments.size() != 3 || arguments[2] != "--force") {
-            std::cerr << "jobserver: recover requires --force\n";
+        if (arguments.size() != 3 || (arguments[2] != "--check" && arguments[2] != "--force")) {
+            std::cerr << "jobserver: recover requires --check or --force\n";
             return 2;
+        }
+        if (arguments[2] == "--check") {
+            auto assessment{jobserver::Client::check_daemon_recovery()};
+            if (!assessment) {
+                return print_error(assessment.error());
+            }
+            auto const yes_no = [](bool const value) { return value ? "yes" : "no"; };
+            std::cout << "responsive:      " << yes_no(assessment->responsive) << '\n';
+            std::cout << "authority valid: " << yes_no(assessment->authority_valid) << '\n';
+            std::cout << "process running: " << yes_no(assessment->process_running) << '\n';
+            std::cout << "recoverable:     " << yes_no(assessment->recoverable) << '\n';
+            if (assessment->process_id != 0) {
+                std::cout << "process id:      " << assessment->process_id << '\n';
+                std::cout << "creation time:   " << assessment->creation_time << '\n';
+                std::cout << "executable:      " << jobserver::path_to_utf8(assessment->executable)
+                          << '\n';
+            }
+            std::cout << "reason:          " << assessment->reason << '\n';
+            return 0;
         }
         auto recovered{jobserver::Client::force_recover_daemon()};
         if (!recovered) {

@@ -374,9 +374,30 @@ TEST_F(JobserverIntegration, IncompleteClientCannotPreventDaemonShutdown) {
 
 TEST_F(JobserverIntegration, PingConfirmsResponsiveControlPlane) {
     EXPECT_TRUE(jobserver::Client::ping().has_value());
+
+    auto status{jobserver::Client::status()};
+    ASSERT_TRUE(status.has_value());
+    auto const status_json = Json::parse(*status);
+    ASSERT_TRUE(status_json.is_object()) << status_json.dump();
+    ASSERT_TRUE(status_json.contains("daemon")) << status_json.dump();
+    ASSERT_TRUE(status_json["daemon"].is_object()) << status_json.dump();
+    auto const daemon = status_json["daemon"];
+    EXPECT_EQ(daemon.value("process_id", 0U), GetProcessId(daemon_.process));
+    EXPECT_GE(daemon.value("uptime_ms", -1LL), 0);
+    EXPECT_GE(daemon.value("last_audit_ms", 0LL), 1);
+    EXPECT_GE(daemon.value("active_handlers", 0U), 1U);
+    EXPECT_EQ(daemon.value("protocol_major", 0), jobserver::protocol::major_version);
 }
 
 TEST_F(JobserverIntegration, RecoveryRefusesResponsiveDaemon) {
+    auto assessment{jobserver::Client::check_daemon_recovery()};
+    ASSERT_TRUE(assessment.has_value());
+    EXPECT_TRUE(assessment->responsive);
+    EXPECT_TRUE(assessment->authority_valid);
+    EXPECT_TRUE(assessment->process_running);
+    EXPECT_FALSE(assessment->recoverable);
+    EXPECT_EQ(assessment->process_id, GetProcessId(daemon_.process));
+
     auto recovered{jobserver::Client::force_recover_daemon()};
     ASSERT_FALSE(recovered.has_value());
     EXPECT_EQ(recovered.error().code, "daemon_healthy");
@@ -392,6 +413,13 @@ TEST_F(JobserverIntegration, RecoveryTerminatesOnlyValidatedUnresponsiveDaemon) 
         ASSERT_NE(daemon_.process, nullptr);
         close_thread();
         ASSERT_TRUE(barrier.wait(2s));
+
+        auto assessment{jobserver::Client::check_daemon_recovery()};
+        ASSERT_TRUE(assessment.has_value());
+        EXPECT_FALSE(assessment->responsive);
+        EXPECT_TRUE(assessment->authority_valid);
+        EXPECT_TRUE(assessment->process_running);
+        EXPECT_TRUE(assessment->recoverable);
 
         auto recovered{jobserver::Client::force_recover_daemon()};
         ASSERT_TRUE(recovered.has_value()) << recovered.error().message;
