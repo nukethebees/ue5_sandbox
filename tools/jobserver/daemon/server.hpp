@@ -48,6 +48,7 @@ class Server {
     std::mutex handlers_mutex_;
     std::condition_variable handlers_finished_;
     std::size_t active_handlers_{};
+    std::atomic<std::uint64_t> rejected_clients_{};
     std::chrono::system_clock::time_point started_at_{};
     std::chrono::steady_clock::time_point started_steady_{};
     std::atomic<std::int64_t> last_audit_ms_{};

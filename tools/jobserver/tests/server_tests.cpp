@@ -10,6 +10,7 @@
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <filesystem>
@@ -18,6 +19,7 @@
 #include <iterator>
 #include <optional>
 #include <ranges>
+#include <span>
 #include <string>
 #include <thread>
 #include <vector>
@@ -75,6 +77,30 @@ auto connect_raw_pipe() -> HANDLE {
         std::this_thread::sleep_for(10ms);
     }
     return INVALID_HANDLE_VALUE;
+}
+
+auto connect_sync_raw_pipe() -> HANDLE {
+    for (auto attempt{0}; attempt != 100; ++attempt) {
+        auto const pipe{CreateFileW(jobserver::transport::pipe_name().c_str(),
+                                    GENERIC_READ | GENERIC_WRITE,
+                                    0,
+                                    nullptr,
+                                    OPEN_EXISTING,
+                                    0,
+                                    nullptr)};
+        if (pipe != INVALID_HANDLE_VALUE) {
+            return pipe;
+        }
+        std::this_thread::sleep_for(1ms);
+    }
+    return INVALID_HANDLE_VALUE;
+}
+
+auto write_raw(HANDLE const pipe, std::span<std::byte const> const bytes) -> bool {
+    DWORD written{};
+    return WriteFile(pipe, bytes.data(), static_cast<DWORD>(bytes.size()), &written, nullptr) !=
+               FALSE &&
+           written == bytes.size();
 }
 
 void close(ChildProcess& process) {
@@ -964,6 +990,74 @@ TEST_F(JobserverIntegration, RejectsProtocolMismatchAndMalformedRequestWithoutSt
     EXPECT_EQ(malformed_response.value("code", ""), "invalid_json");
     CloseHandle(pipe);
     EXPECT_TRUE(jobserver::Client::status().has_value());
+}
+
+TEST_F(JobserverIntegration, TruncatedAndOversizedFramesDoNotStopDaemon) {
+    auto send_and_close = [](std::span<std::byte const> const bytes) {
+        auto const pipe{connect_sync_raw_pipe()};
+        EXPECT_NE(pipe, INVALID_HANDLE_VALUE);
+        if (pipe != INVALID_HANDLE_VALUE) {
+            EXPECT_TRUE(write_raw(pipe, bytes));
+            CloseHandle(pipe);
+        }
+    };
+
+    std::array<std::byte, 2> const partial_header{std::byte{8}, std::byte{0}};
+    send_and_close(partial_header);
+
+    std::array<std::byte, 6> const truncated_payload{
+        std::byte{8}, std::byte{0}, std::byte{0}, std::byte{0}, std::byte{'{'}, std::byte{'"'}};
+    send_and_close(truncated_payload);
+
+    auto const oversized{jobserver::protocol::maximum_payload_size + 1U};
+    std::array<std::byte, 4> const oversized_header{
+        std::byte{oversized & 0xffU},
+        std::byte{(oversized >> 8U) & 0xffU},
+        std::byte{(oversized >> 16U) & 0xffU},
+        std::byte{(oversized >> 24U) & 0xffU},
+    };
+    send_and_close(oversized_header);
+
+    EXPECT_TRUE(jobserver::Client::ping().has_value());
+}
+
+TEST_F(JobserverIntegration, SlowHandshakeFloodIsBoundedAndDrains) {
+    stop_daemon();
+    ASSERT_EQ(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_IO_TIMEOUT_MS", L"2000"), 0);
+    start_daemon();
+
+    std::vector<HANDLE> clients;
+    clients.reserve(80);
+    for (auto index{0}; index != 80; ++index) {
+        auto const pipe{connect_sync_raw_pipe()};
+        ASSERT_NE(pipe, INVALID_HANDLE_VALUE);
+        clients.push_back(pipe);
+    }
+    for (auto const pipe : clients) {
+        CloseHandle(pipe);
+    }
+
+    Json daemon;
+    for (auto attempt{0}; attempt != 300; ++attempt) {
+        auto status{jobserver::Client::status()};
+        if (status) {
+            auto const json = Json::parse(*status);
+            daemon = json.value("daemon", Json::object());
+            if (daemon.value("active_handlers", 0U) == 1U) {
+                break;
+            }
+        }
+        std::this_thread::sleep_for(10ms);
+    }
+    ASSERT_TRUE(daemon.is_object());
+    EXPECT_EQ(daemon.value("handler_capacity", 0U), 64U);
+    EXPECT_GE(daemon.value("rejected_clients", 0ULL), 1ULL);
+    EXPECT_EQ(daemon.value("active_handlers", 0U), 1U);
+    EXPECT_TRUE(jobserver::Client::ping().has_value());
+
+    stop_daemon();
+    ASSERT_EQ(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_IO_TIMEOUT_MS", L"250"), 0);
+    start_daemon();
 }
 
 TEST_F(JobserverIntegration, LoadsOnlyNewestValidHistoryEntries) {

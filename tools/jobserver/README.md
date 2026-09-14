@@ -169,6 +169,9 @@ this heuristic.
 - Handshake, request, and daemon-to-client writes have bounded deadlines. An incomplete or
   non-reading client cannot prevent daemon shutdown or upgrade; detached jobs continue logging
   after their client stops consuming output.
+- Initial handshakes and requests time out after five seconds, and the daemon admits at most 64
+  simultaneous client handlers. Excess connections are rejected and counted in `status`, bounding
+  thread and handle growth during broken-client floods.
 - Closing or crashing the daemon kills every supervised process tree through
   `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`.
 - A restarted daemon begins with no live ownership. Active resource state is never reconstructed

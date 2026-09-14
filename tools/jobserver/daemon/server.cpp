@@ -23,10 +23,31 @@
 namespace jobserver {
 namespace {
 using Json = nlohmann::json;
+inline constexpr std::size_t maximum_client_handlers{64};
 
 auto client_io_timeout() -> std::chrono::milliseconds {
     static auto const timeout = [] -> std::chrono::milliseconds {
         constexpr auto default_timeout{std::chrono::seconds{30}};
+        wchar_t value[32]{};
+        auto const length{GetEnvironmentVariableW(
+            L"NUKETHEBEES_JOBSERVER_TEST_IO_TIMEOUT_MS", value, std::size(value))};
+        if (length == 0 || length >= std::size(value)) {
+            return default_timeout;
+        }
+        wchar_t* end{};
+        auto const parsed{std::wcstoul(value, &end, 10)};
+        if (end == value || *end != L'\0' || parsed == 0 ||
+            parsed > static_cast<unsigned long>(std::numeric_limits<std::int64_t>::max())) {
+            return default_timeout;
+        }
+        return std::chrono::milliseconds{parsed};
+    }();
+    return timeout;
+}
+
+auto initial_message_timeout() -> std::chrono::milliseconds {
+    static auto const timeout = [] -> std::chrono::milliseconds {
+        constexpr auto default_timeout{std::chrono::seconds{5}};
         wchar_t value[32]{};
         auto const length{GetEnvironmentVariableW(
             L"NUKETHEBEES_JOBSERVER_TEST_IO_TIMEOUT_MS", value, std::size(value))};
@@ -270,9 +291,19 @@ auto Server::run() -> int {
             }
             continue;
         }
+        auto admitted{false};
         {
             std::scoped_lock const lock{handlers_mutex_};
-            ++active_handlers_;
+            if (active_handlers_ < maximum_client_handlers) {
+                ++active_handlers_;
+                admitted = true;
+            }
+        }
+        if (!admitted) {
+            ++rejected_clients_;
+            DisconnectNamedPipe(pipe);
+            CloseHandle(pipe);
+            continue;
         }
         std::thread{[this, pipe] {
             try {
@@ -298,7 +329,7 @@ auto Server::run() -> int {
 
 void Server::serve_client(void* const native_pipe) {
     auto const pipe{static_cast<HANDLE>(native_pipe)};
-    auto hello{transport::read_message(pipe, client_io_timeout())};
+    auto hello{transport::read_message(pipe, initial_message_timeout())};
     if (!hello) {
         CloseHandle(pipe);
         return;
@@ -330,7 +361,7 @@ void Server::serve_client(void* const native_pipe) {
     acknowledgement["protocol"]["minor"] = protocol::minor_version;
     acknowledgement["server_version"] = "0.1.0";
     static_cast<void>(write_client(pipe, acknowledgement.dump()));
-    auto request{transport::read_message(pipe, client_io_timeout())};
+    auto request{transport::read_message(pipe, initial_message_timeout())};
     if (!request) {
         CloseHandle(pipe);
         return;
@@ -668,6 +699,8 @@ void Server::handle_status(void* const pipe, bool const include_history) {
                              {"last_audit_ms", last_audit_ms},
                              {"last_audit_age_ms", now_ms - last_audit_ms},
                              {"active_handlers", active_handlers},
+                             {"handler_capacity", maximum_client_handlers},
+                             {"rejected_clients", rejected_clients_.load()},
                              {"supervised_jobs", supervised_jobs},
                              {"leases", leases},
                              {"version", "0.1.0"},
