@@ -6,6 +6,9 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <string_view>
 
 namespace ml::level_authoring {
@@ -30,6 +33,54 @@ auto contains_message(std::vector<CatalogValidationIssue> const& issues,
                       std::string_view const text) -> bool {
     return std::ranges::any_of(issues,
                                [text](auto const& issue) { return issue.message.contains(text); });
+}
+
+class TemporaryLevelDirectory final {
+  public:
+    TemporaryLevelDirectory() {
+        auto const suffix{std::chrono::steady_clock::now().time_since_epoch().count()};
+        path_ = std::filesystem::temp_directory_path() /
+                ("sandbox-level-reader-" + std::to_string(suffix));
+        std::filesystem::create_directories(path_ / "Libraries");
+    }
+    ~TemporaryLevelDirectory() { std::filesystem::remove_all(path_); }
+
+    auto path() const -> std::filesystem::path const& { return path_; }
+  private:
+    std::filesystem::path path_{};
+};
+
+TEST(NativeLevelAuthoringReader, ReadsFileWithSiblingLibraryDirectory) {
+    TemporaryLevelDirectory directory;
+    std::ofstream{directory.path() / "Libraries" / "metadata.scm"}
+        << "(define benchmark-title \"Loaded From Library\")";
+    auto const level_path{directory.path() / "level.scm"};
+    std::ofstream{level_path} << R"(
+(load-script "metadata.scm")
+(level
+  (id 'file-level)
+  (title benchmark-title)
+  (teams (team 'blue))
+  (player 'player)
+  (entities
+    (entity 'player 'player-fighter 'blue
+      (position 0 0 0)
+      (rotation 0 0 0))))
+)";
+
+    LevelDefinitionReader reader;
+    auto const result{reader.read_file(level_path)};
+
+    ASSERT_TRUE(result) << result.script_error;
+    EXPECT_EQ(result.definition->metadata.title, "Loaded From Library");
+}
+
+TEST(NativeLevelAuthoringReader, ReportsMissingFile) {
+    LevelDefinitionReader reader;
+    auto const result{reader.read_file("missing-level.scm")};
+
+    ASSERT_FALSE(result);
+    EXPECT_TRUE(result.script_error.contains("Unable to open level file"));
 }
 
 TEST(NativeLevelAuthoringCampaignReader, DecodesAndValidatesCampaignData) {

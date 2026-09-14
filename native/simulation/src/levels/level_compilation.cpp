@@ -100,7 +100,9 @@ auto append_spawn_groups(LevelEventSchedule& schedule,
     return true;
 }
 
-auto team(std::string const& id) -> ioj::sim::Team {
+} // namespace
+
+auto to_simulation_team(std::string_view const id) noexcept -> Team {
     if (id == "red") {
         return ioj::sim::Team::Red;
     }
@@ -118,7 +120,6 @@ auto team(std::string const& id) -> ioj::sim::Team {
     }
     return ioj::sim::Team::White;
 }
-} // namespace
 
 auto compile_level(LevelDefinition const& definition,
                    SimClock const& clock,
@@ -216,7 +217,7 @@ auto compile_level(LevelDefinition const& definition,
                 ioj::sim::Rotator3f{static_cast<float>(entity.rotation.pitch),
                                     static_cast<float>(entity.rotation.yaw),
                                     static_cast<float>(entity.rotation.roll)});
-            capital_events.teams[row] = team(entity.team);
+            capital_events.teams[row] = to_simulation_team(entity.team);
             capital_events.healths[row] = capital_config.max_health;
             capital_events.initial_fighter_spawn_delays[row] = 0.0f;
             capital_events.fighter_spawn_cooldowns[row] = capital_config.spawn_delay;
@@ -233,7 +234,7 @@ auto compile_level(LevelDefinition const& definition,
                 ioj::sim::Rotator3f{static_cast<float>(entity.rotation.pitch),
                                     static_cast<float>(entity.rotation.yaw),
                                     static_cast<float>(entity.rotation.roll)});
-            turret_events.teams[row] = team(entity.team);
+            turret_events.teams[row] = to_simulation_team(entity.team);
             turret_events.healths[row] = turret_config.max_health;
             turret_events.laser_damages[row] = turret_config.laser.damage;
         }

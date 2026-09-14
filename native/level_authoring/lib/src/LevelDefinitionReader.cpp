@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <fstream>
+#include <iterator>
 #include <limits>
 #include <utility>
 
@@ -661,6 +663,26 @@ class DefinitionDecoder final {
 
 LevelDefinitionReader::LevelDefinitionReader(std::string script_library_root)
     : script_library_root_{std::move(script_library_root)} {}
+
+auto LevelDefinitionReader::read_file(std::filesystem::path const& path) const
+    -> LevelDefinitionReadResult {
+    auto input{std::ifstream{path, std::ios::binary}};
+    if (!input) {
+        return {.script_error = "Unable to open level file: " + path.string()};
+    }
+
+    auto source{std::string{std::istreambuf_iterator<char>{input}, {}}};
+    if (input.bad()) {
+        return {.script_error = "Unable to read level file: " + path.string()};
+    }
+
+    if (!script_library_root_.empty()) {
+        return read_source(source);
+    }
+
+    auto const library_root{path.parent_path() / "Libraries"};
+    return LevelDefinitionReader{library_root.string()}.read_source(source);
+}
 
 auto LevelDefinitionReader::read_source(std::string_view const source) const
     -> LevelDefinitionReadResult {

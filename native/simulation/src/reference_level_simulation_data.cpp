@@ -1,8 +1,9 @@
 // Captured from DA_FT_soa_entities_LevelConfig via Unreal's production conversion.
-#include "simulation_fixture.h"
-namespace ioj::sim::tests {
-auto make_fixture() -> SimulationFixture {
-    SimulationFixture fixture;
+#include <ioj/sim/reference_level_simulation_data.h>
+
+namespace ioj::sim {
+auto make_reference_level_simulation_data() -> ReferenceLevelSimulationData {
+    ReferenceLevelSimulationData fixture;
     auto& data{fixture.data};
     auto& player{fixture.player};
     data.lasers.n_preallocated_instances = 50000;

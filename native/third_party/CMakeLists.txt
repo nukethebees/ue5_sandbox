@@ -3,6 +3,11 @@ set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 add_subdirectory(googletest)
 
+set(CLI11_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(CLI11_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(CLI11_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+add_subdirectory(cli11 EXCLUDE_FROM_ALL)
+
 foreach(google_test_target IN ITEMS gtest gtest_main)
   set_property(TARGET ${google_test_target} PROPERTY
     MSVC_RUNTIME_LIBRARY MultiThreadedDLL)

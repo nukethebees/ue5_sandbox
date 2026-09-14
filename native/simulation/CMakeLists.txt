@@ -104,6 +104,7 @@ target_sources(native-simulation PRIVATE
   include/ioj/sim/level_event_types.h
   include/ioj/sim/level_read_view.h
   include/ioj/sim/level_sim.h
+  include/ioj/sim/reference_level_simulation_data.h
   include/ioj/sim/level_telemetry_block_history_types.h
   include/ioj/sim/level_telemetry_current_state.h
   include/ioj/sim/level_telemetry_history_stats.h
@@ -259,6 +260,7 @@ target_sources(native-simulation PRIVATE
   src/lasers/sim.cpp
   src/level_event_types.cpp
   src/level_sim.cpp
+  src/reference_level_simulation_data.cpp
   src/level_telemetry_manager.cpp
   src/levels/level_compilation.cpp
   src/levels/level_definition.cpp

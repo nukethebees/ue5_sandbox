@@ -2,6 +2,7 @@
 
 #include <ioj/sim/levels/level_definition.h>
 
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -27,6 +28,8 @@ class LevelDefinitionReader final {
     LevelDefinitionReader() = default;
     explicit LevelDefinitionReader(std::string script_library_root);
 
+    [[nodiscard]] auto read_file(std::filesystem::path const& path) const
+        -> LevelDefinitionReadResult;
     [[nodiscard]] auto read_source(std::string_view source) const -> LevelDefinitionReadResult;
   private:
     std::string script_library_root_{};

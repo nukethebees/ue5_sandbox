@@ -49,6 +49,7 @@ add_subdirectory(s7)
 add_subdirectory(core)
 add_subdirectory(simulation)
 add_subdirectory(level_authoring)
+add_subdirectory(simulation_benchmark)
 add_subdirectory(image)
 add_subdirectory(mesh_gen)
 
@@ -70,6 +71,7 @@ sandbox_target_precompile_test_headers(
   native-core-tests
   native-level-authoring-tests
   native-simulation-tests
+  native-simulation-benchmark-tests
   sandbox-image-tests
   slate-codegen-tests
 )

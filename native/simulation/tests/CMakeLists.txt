@@ -29,7 +29,6 @@ target_sources(native-simulation-tests PRIVATE
   scenarios/test_turrets_kill_one.cpp
   worldless_simulation_tests.cpp
   support/worldless_simulation_test.cpp
-  support/simulation_fixture.cpp
   deterministic_bias_tests.cpp
   entity_handle_tests.cpp
   fixed_tick_tests.cpp

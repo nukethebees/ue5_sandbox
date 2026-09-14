@@ -6,13 +6,18 @@
 
 #include <expected>
 #include <string>
+#include <string_view>
 #include <vector>
 
+namespace ioj::sim {
 struct SimClock;
+}
 
 namespace ioj::sim::levels {
 using LevelCompilationErrors = std::vector<std::string>;
 using LevelCompilationResult = std::expected<CompiledLevelEvents, LevelCompilationErrors>;
+
+[[nodiscard]] auto to_simulation_team(std::string_view id) noexcept -> Team;
 
 [[nodiscard]] auto compile_level(LevelDefinition const& definition,
                                  SimClock const& clock,

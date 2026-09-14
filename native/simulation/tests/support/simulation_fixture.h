@@ -1,12 +1,11 @@
 #pragma once
-#include <ioj/sim/level_sim.h>
+#include <ioj/sim/reference_level_simulation_data.h>
 
 namespace ioj::sim::tests {
-struct SimulationFixture {
-    LevelSimInitData data;
-    ioj::sim::player::PlayerSpawnData player;
-};
-auto make_fixture() -> SimulationFixture;
+using SimulationFixture = ReferenceLevelSimulationData;
+inline auto make_fixture() -> SimulationFixture {
+    return make_reference_level_simulation_data();
+}
 auto make_simulation_data(SimulationFixture const& fixture) -> LevelSimInitData;
 auto make_player_spawn(SimulationFixture const& fixture, ioj::sim::Transform3d transform = {})
     -> ioj::sim::player::PlayerSpawnData;

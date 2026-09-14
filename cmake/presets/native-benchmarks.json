@@ -35,6 +35,14 @@
         "SANDBOX_NATIVE_SOA_BENCHMARKS": true,
         "UE_CONFIGURATION": "Development"
       }
+    },
+    {
+      "name": "native-simulation-benchmark",
+      "displayName": "Native simulation benchmark",
+      "inherits": "native-release",
+      "cacheVariables": {
+        "UE_CONFIGURATION": "Development"
+      }
     }
   ],
   "buildPresets": [
@@ -81,6 +89,11 @@
         "native-soa-reserve-matrix-mimalloc",
         "codegen-tests"
       ]
+    },
+    {
+      "name": "native-simulation-benchmark",
+      "configurePreset": "native-simulation-benchmark",
+      "targets": ["native-simulation-benchmark", "native-simulation-benchmark-tests"]
     },
     {
       "name": "native-soa-reserve",
@@ -213,6 +226,13 @@
           "type": "test",
           "name": "native-soa"
         }
+      ]
+    },
+    {
+      "name": "native-simulation-benchmark",
+      "steps": [
+        { "type": "configure", "name": "native-simulation-benchmark" },
+        { "type": "build", "name": "native-simulation-benchmark" }
       ]
     },
     {

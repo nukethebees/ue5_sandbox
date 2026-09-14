@@ -500,6 +500,7 @@ add_custom_target(dev-core
   DEPENDS
     native-core-tests
     native-simulation-tests
+    native-simulation-benchmark-tests
     sandbox-image-tests
     mesh-gen-tests
     editor
@@ -562,7 +563,10 @@ elseif(SANDBOX_TEST_SUITE STREQUAL "default")
   add_low_level_test_suite(core-tests SandboxCoreTests SandboxCore
     LABELS low-level-core)
   add_custom_target(native-tests
-    DEPENDS native-level-authoring-tests native-simulation-tests
+    DEPENDS
+      native-level-authoring-tests
+      native-simulation-tests
+      native-simulation-benchmark-tests
   )
 
   add_dependencies(core-tests check-generated-code)
