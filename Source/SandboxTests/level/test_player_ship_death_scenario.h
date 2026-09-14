@@ -2,7 +2,7 @@
 
 #include <SandboxTests/support/SimulationTestScenario.h>
 
-#include <sandbox/simulation/entities/TestEntityUniqueId.h>
+#include <ioj/sim/entity_types.h>
 
 #include <SandboxCore/time_series_data.h>
 #include <SandboxNative/RegistryEntityHandle.h>
@@ -35,8 +35,8 @@ class FTestPlayerShipDeathScenario final : public FSimulationTestScenario {
     void check_player_ship_death();
 
     TWeakObjectPtr<ATestSpaceShip> player_ship{nullptr};
-    FRegistryEntityHandle player_ship_handle{};
-    TestEntityUniqueId player_ship_id{};
+    ::ioj::sim::RegistryEntityHandle player_ship_handle{};
+    ::ioj::sim::EntityUniqueId player_ship_id{};
     TimeSeriesData<FSimulationSample> samples;
 };
 }

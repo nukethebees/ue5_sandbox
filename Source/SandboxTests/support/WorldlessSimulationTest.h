@@ -3,24 +3,24 @@
 #include <SpaceGameSimulation/entities/TestTeam.h>
 #include <span>
 
-#include <sandbox/simulation/simulation/LevelSimulation.h>
+#include <ioj/sim/level_sim.h>
 #include <SandboxCore/test_timeline.h>
 
 #include <Misc/Optional.h>
 
 class USpaceGameLevelConfig;
 
-namespace ml::test_space_ship {
-struct FPlayerSpawnData;
+namespace ioj::sim::player {
+struct PlayerSpawnData;
 }
 
 namespace ml {
 auto make_worldless_simulation_test_data(USpaceGameLevelConfig const& config)
-    -> FLevelSimulationInitData;
+    -> ::ioj::sim::LevelSimInitData;
 auto make_worldless_player_spawn(USpaceGameLevelConfig const& config,
                                  FTransform const& transform = FTransform::Identity)
-    -> ml::test_space_ship::FPlayerSpawnData;
-auto add_worldless_capital_spawn(FLevelSimulationInitData& data,
+    -> ::ioj::sim::player::PlayerSpawnData;
+auto add_worldless_capital_spawn(::ioj::sim::LevelSimInitData& data,
                                  FVector3f location,
                                  ETestTeam team,
                                  int32 target_spawn_index = INDEX_NONE,
@@ -30,33 +30,33 @@ auto add_worldless_capital_spawn(FLevelSimulationInitData& data,
 
 class FWorldlessSimulationTest {
   public:
-    using time_type = FLevelSimulation::time_type;
+    using time_type = ::ioj::sim::LevelSim::time_type;
 
-    explicit FWorldlessSimulationTest(FLevelSimulationInitData data);
+    explicit FWorldlessSimulationTest(::ioj::sim::LevelSimInitData data);
     FWorldlessSimulationTest(FWorldlessSimulationTest const&) = delete;
     FWorldlessSimulationTest(FWorldlessSimulationTest&&) = delete;
     auto operator=(FWorldlessSimulationTest const&) -> FWorldlessSimulationTest& = delete;
     auto operator=(FWorldlessSimulationTest&&) -> FWorldlessSimulationTest& = delete;
 
-    auto get_simulation() -> FLevelSimulation& { return simulation_; }
-    auto get_simulation() const -> FLevelSimulation const& { return simulation_; }
-    auto get_registry() -> FTestEntityRegistry& { return simulation_.get_entity_registry(); }
-    auto get_registry() const -> FTestEntityRegistry const& {
+    auto get_simulation() -> ::ioj::sim::LevelSim& { return simulation_; }
+    auto get_simulation() const -> ::ioj::sim::LevelSim const& { return simulation_; }
+    auto get_registry() -> ::ioj::sim::EntityRegistry& { return simulation_.get_entity_registry(); }
+    auto get_registry() const -> ::ioj::sim::EntityRegistry const& {
         return simulation_.get_entity_registry();
     }
     auto get_time() const -> time_type { return simulation_.get_clock().get_simulation_time(); }
 
     void finish_initialisation();
-    void queue_damage(std::span<FRegistryEntityHandle const> targets,
+    void queue_damage(std::span<::ioj::sim::RegistryEntityHandle const> targets,
                       int32 damage,
-                      FRegistryEntityHandle instigator = {});
-    void queue_kills(std::span<FRegistryEntityHandle const> targets,
-                     FRegistryEntityHandle instigator = {});
+                      ::ioj::sim::RegistryEntityHandle instigator = {});
+    void queue_kills(std::span<::ioj::sim::RegistryEntityHandle const> targets,
+                     ::ioj::sim::RegistryEntityHandle instigator = {});
     auto run_until_timeline_finished(time_type maximum_time) -> bool;
 
-    TFunction<void(FLevelSimulation&)> on_end_tick;
+    TFunction<void(::ioj::sim::LevelSim&)> on_end_tick;
     FTestTimeline timeline;
   private:
-    FLevelSimulation simulation_;
+    ::ioj::sim::LevelSim simulation_;
 };
 }

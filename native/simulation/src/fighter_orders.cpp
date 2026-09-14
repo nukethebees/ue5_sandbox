@@ -1,12 +1,12 @@
-#include "sandbox/simulation/fighter_orders.h"
+#include "ioj/sim/fighter_orders.h"
 
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
 
-namespace ml::simulation::fighters {
+namespace ioj::sim::fighters {
 void apply_orders(OrderApplicationView const fighters,
-                  TestCapitalShipFighterOrderQueueConstView const orders,
+                  FighterOrderQueueConstView const orders,
                   std::span<std::int16_t const> const navigation_periods,
                   std::int8_t const direct_choice) {
     auto const count{orders.num()};
@@ -24,9 +24,8 @@ void apply_orders(OrderApplicationView const fighters,
             auto const old_task{fighters.tasks[element]};
             auto const new_task{orders.tasks[order_index]};
             fighters.tasks[element] = new_task;
-            auto const tier{new_task == CapitalShipFighterTask::Standby
-                                ? NavigationRiskTier::Clear
-                                : NavigationRiskTier::Nearby};
+            auto const tier{new_task == FighterTask::Standby ? NavigationRiskTier::Clear
+                                                             : NavigationRiskTier::Nearby};
             auto const tier_index{static_cast<std::size_t>(tier)};
             assert(tier_index < navigation_periods.size());
             reset_navigation_state(fighters.navigation,
@@ -34,8 +33,7 @@ void apply_orders(OrderApplicationView const fighters,
                                    tier,
                                    navigation_periods[tier_index],
                                    direct_choice);
-            if (old_task != CapitalShipFighterTask::Attack &&
-                new_task == CapitalShipFighterTask::Attack) {
+            if (old_task != FighterTask::Attack && new_task == FighterTask::Attack) {
                 fighters.desired_move_locations.set(fighter_index,
                                                     fighters.locations[fighter_index]);
                 fighters.attack_reposition_countdowns[element] = 0;

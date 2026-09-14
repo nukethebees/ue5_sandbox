@@ -1,9 +1,9 @@
 #pragma once
 #include "../support/simulation_test_support.h"
 
-namespace ml {
+namespace ioj::sim {
 
-enum class ECollisionUniformGridTraceScenario : std::uint8_t {
+enum class CollisionUniformGridTraceScenario : std::uint8_t {
     HitsAndMisses,
     StopsAtEndpoint,
     ReturnsNearestHit,
@@ -29,7 +29,7 @@ enum class ECollisionUniformGridTraceScenario : std::uint8_t {
 };
 
 void run_worldless_collision_uniform_grid_membership(
-    ml::simulation_tests::SimulationFixture const& config);
-void run_collision_uniform_grid_trace(ml::simulation_tests::SimulationFixture const& config,
-                                      ECollisionUniformGridTraceScenario scenario);
+    ioj::sim::tests::SimulationFixture const& config);
+void run_collision_uniform_grid_trace(ioj::sim::tests::SimulationFixture const& config,
+                                      CollisionUniformGridTraceScenario scenario);
 }

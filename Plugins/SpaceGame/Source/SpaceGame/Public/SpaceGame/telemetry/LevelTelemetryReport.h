@@ -1,6 +1,6 @@
 #pragma once
 #include <CoreMinimal.h>
-#include <sandbox/simulation/telemetry/LevelTelemetryRunRecord.h>
+#include <ioj/sim/telemetry/level_telemetry_run_record.h>
 
 #include <array>
 
@@ -40,7 +40,7 @@ struct FLevelTelemetryEnvironment {
     uint64 total_physical_memory_bytes{};
 };
 
-struct FLevelTelemetryReportMetadata : FLevelTelemetryRunMetadata {
+struct FLevelTelemetryReportMetadata : ::ioj::sim::LevelTelemetryRunMetadata {
     FLevelTelemetryEnvironment environment{};
     FString launch_state{TEXT("running")};
     FString results_navigation{TEXT("none")};
@@ -50,30 +50,31 @@ struct FLevelTelemetryReportMetadata : FLevelTelemetryRunMetadata {
 
 struct FLevelTelemetryPerformanceWindow {
     static constexpr int32 system_count{static_cast<int32>(ELevelTelemetryTimingSystem::COUNT)};
-    static constexpr int32 phase_count{static_cast<int32>(ELevelTelemetryTimingPhase::COUNT)};
+    static constexpr int32 phase_count{
+        static_cast<int32>(::ioj::sim::LevelTelemetryTimingPhase::COUNT)};
     double real_elapsed_seconds{};
-    ml::simulation::SimTick completed_tick{};
-    FLevelTelemetryTimingAggregate frame{};
-    FLevelTelemetryTimingAggregate game_thread{};
-    FLevelTelemetryTimingAggregate render_thread{};
-    FLevelTelemetryTimingAggregate gpu{};
-    FLevelTelemetryTimingAggregate simulation_tick{};
-    std::array<FLevelTelemetryTimingAggregate, system_count> systems{};
-    std::array<FLevelTelemetryTimingAggregate, phase_count> phases{};
+    ::ioj::sim::SimTick completed_tick{};
+    ::ioj::sim::LevelTelemetryTimingAggregate frame{};
+    ::ioj::sim::LevelTelemetryTimingAggregate game_thread{};
+    ::ioj::sim::LevelTelemetryTimingAggregate render_thread{};
+    ::ioj::sim::LevelTelemetryTimingAggregate gpu{};
+    ::ioj::sim::LevelTelemetryTimingAggregate simulation_tick{};
+    std::array<::ioj::sim::LevelTelemetryTimingAggregate, system_count> systems{};
+    std::array<::ioj::sim::LevelTelemetryTimingAggregate, phase_count> phases{};
     std::array<double, phase_count> phase_cpu_share{};
 };
 
 struct SPACEGAME_API FLevelTelemetryReport {
-    static constexpr int32 schema_version{FLevelTelemetryRunRecord::schema_version};
+    static constexpr int32 schema_version{::ioj::sim::LevelTelemetryRunRecord::schema_version};
     FLevelTelemetryReport() = default;
-    FLevelTelemetryReport(FLevelTelemetryRunRecord record);
+    FLevelTelemetryReport(::ioj::sim::LevelTelemetryRunRecord record);
 
     int32 loaded_schema_version{schema_version};
     FLevelTelemetryReportMetadata metadata;
-    FLevelTelemetryRunCompletion completion;
-    FLevelTelemetryTickSeries tick_series;
-    ml::TimeSeriesData<ml::simulation::SimTick> completed_ticks_by_real_time;
-    TArray<FLevelTelemetryBattleSample> battle_samples;
+    ::ioj::sim::LevelTelemetryRunCompletion completion;
+    ::ioj::sim::LevelTelemetryTickSeries tick_series;
+    ml::TimeSeriesData<::ioj::sim::SimTick> completed_ticks_by_real_time;
+    TArray<::ioj::sim::LevelTelemetryBattleSample> battle_samples;
     TArray<FLevelTelemetryPerformanceWindow> performance_windows;
 };
 

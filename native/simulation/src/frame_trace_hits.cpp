@@ -1,6 +1,6 @@
-#include "sandbox/simulation/frame_trace_hits.h"
+#include "ioj/sim/frame_trace_hits.h"
 
-namespace ml::simulation {
+namespace ioj::sim {
 FrameTraceHits::FrameTraceHits(std::pmr::memory_resource* const resource)
     : locations{resource}
     , entities{resource}
@@ -28,4 +28,4 @@ auto FrameTraceHits::get_const_view() const noexcept -> TraceHitsConstView {
 auto FrameTraceHits::num() const noexcept -> std::int32_t {
     return locations.num();
 }
-} // namespace ml::simulation
+} // namespace ioj::sim

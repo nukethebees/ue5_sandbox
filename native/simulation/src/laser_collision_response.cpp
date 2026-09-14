@@ -1,4 +1,4 @@
-#include "sandbox/simulation/laser_collision_response.h"
+#include "ioj/sim/laser_collision_response.h"
 
 #include <algorithm>
 #include <cassert>
@@ -6,7 +6,7 @@
 #include <cstddef>
 #include <functional>
 
-namespace ml::simulation::lasers {
+namespace ioj::sim::lasers {
 namespace laser_collision_response_detail {
 inline constexpr float safe_normal_tolerance{1.e-8f};
 
@@ -44,7 +44,7 @@ void prepare_collision_traces(Vectors3fConstView const locations,
 void process_collision_hits(TraceHitsConstView const trace_hits,
                             Vectors3fConstView const velocities,
                             std::span<std::int32_t const> const damages,
-                            std::span<FRegistryEntityHandle const> const instigators,
+                            std::span<RegistryEntityHandle const> const instigators,
                             std::span<LaserSource const> const sources,
                             ml::FrameArray<std::int32_t>& removal_indices,
                             FrameDirectDamageEvents& damage_events,
@@ -85,4 +85,4 @@ void process_collision_hits(TraceHitsConstView const trace_hits,
 
     std::ranges::sort(removal_indices.view(), std::greater{});
 }
-} // namespace ml::simulation::lasers
+} // namespace ioj::sim::lasers

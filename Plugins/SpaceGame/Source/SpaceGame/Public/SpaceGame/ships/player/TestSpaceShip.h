@@ -1,11 +1,11 @@
 #pragma once
-#include <sandbox/simulation/entities/TestEntityUniqueId.h>
+#include <ioj/sim/entity_types.h>
 #include <SpaceGamePresentation/presentation/PlayerPresentation.h>
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/ships/common/NativeShipHealth.h>
 #include <SpaceGameSimulation/ships/player/NativePlayerTypes.h>
 
-#include <sandbox/simulation/ships/player/TestSpaceShipSimulation.h>
+#include <ioj/sim/player/sim.h>
 #include <SpaceGame/entities/TestEntity.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGamePresentation/support/logging/ActorLoggingConfig.h>
@@ -40,17 +40,17 @@ class SPACEGAME_API ATestSpaceShip
     // Lifecycle and simulation binding
     /* **************************************** */
     ATestSpaceShip();
-    auto make_spawn_data() const -> ml::test_space_ship::FPlayerSpawnData;
-    void bind_simulation(ml::test_space_ship::Simulation& new_simulation);
+    auto make_spawn_data() const -> ::ioj::sim::player::PlayerSpawnData;
+    void bind_simulation(::ioj::sim::player::Sim& new_simulation);
     void unbind_simulation();
     auto has_simulation() const noexcept -> bool { return bound_simulation != nullptr; }
 
     /* **************************************** */
     // Entity identity and configuration
     /* **************************************** */
-    auto get_entity_handle() const noexcept -> FRegistryEntityHandle override;
+    auto get_entity_handle() const noexcept -> ::ioj::sim::RegistryEntityHandle override;
     auto get_test_name() const noexcept -> FName { return TEXT("PlayerShip"); }
-    auto get_unique_id() const -> TestEntityUniqueId;
+    auto get_unique_id() const -> ::ioj::sim::EntityUniqueId;
     auto get_team() const noexcept -> ETestTeam;
     void set_team(ETestTeam new_team) noexcept;
 
@@ -95,7 +95,7 @@ class SPACEGAME_API ATestSpaceShip
     auto energy_is_full() const -> bool;
     auto get_energy() const -> float;
 
-    auto get_lock_on_target() const -> FRegistryEntityHandle;
+    auto get_lock_on_target() const -> ::ioj::sim::RegistryEntityHandle;
     void start_fire_laser();
     void stop_fire_laser();
     void upgrade_laser();
@@ -135,8 +135,8 @@ class SPACEGAME_API ATestSpaceShip
     /* **************************************** */
     auto GetVelocity() const -> FVector override;
 
-    auto simulation() -> ml::test_space_ship::Simulation&;
-    auto simulation() const -> ml::test_space_ship::Simulation const&;
+    auto simulation() -> ::ioj::sim::player::Sim&;
+    auto simulation() const -> ::ioj::sim::player::Sim const&;
 
     void handle_simulation_death();
     void configure_ship_mesh();
@@ -185,5 +185,5 @@ class SPACEGAME_API ATestSpaceShip
     float debug_lock_on_sphere_radius{1000.f};
 #endif
 
-    ml::test_space_ship::Simulation* bound_simulation{nullptr};
+    ::ioj::sim::player::Sim* bound_simulation{nullptr};
 };

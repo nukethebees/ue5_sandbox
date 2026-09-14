@@ -45,8 +45,8 @@ auto to_unreal_ids(std::vector<std::string> const& source) -> TArray<Id> {
 }
 } // namespace
 
-auto to_native(FLevelDefinition const& definition) -> LevelDefinition {
-    LevelDefinition result;
+auto to_native(FLevelDefinition const& definition) -> ::ioj::sim::levels::LevelDefinition {
+    ::ioj::sim::levels::LevelDefinition result;
     result.metadata.id = to_utf8(definition.metadata.id.value);
     result.metadata.title = to_utf8(definition.metadata.title);
     result.metadata.description = to_utf8(definition.metadata.description);
@@ -73,7 +73,7 @@ auto to_native(FLevelDefinition const& definition) -> LevelDefinition {
     }
     if (definition.mission.IsSet()) {
         auto const& mission{definition.mission.GetValue()};
-        LevelMissionDefinition native_mission{
+        ::ioj::sim::levels::LevelMissionDefinition native_mission{
             .mode = mission.mode,
             .hero_entity_ids = to_ids<FLevelEntityId>(mission.hero_entity_ids),
             .must_survive_entity_ids = to_ids<FLevelEntityId>(mission.must_survive_entity_ids),
@@ -119,7 +119,7 @@ auto to_native(FLevelDefinition const& definition) -> LevelDefinition {
     return result;
 }
 
-auto to_unreal(LevelDefinition definition) -> FLevelDefinition {
+auto to_unreal(::ioj::sim::levels::LevelDefinition definition) -> FLevelDefinition {
     FLevelBuilder builder;
     FLevelMetadata metadata{
         .id = FLevelId{to_fname(definition.metadata.id)},

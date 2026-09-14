@@ -1,6 +1,6 @@
-#include "sandbox/simulation/fighter_task_layout.h"
+#include "ioj/sim/fighter_task_layout.h"
 
-namespace ml::simulation::fighters {
+namespace ioj::sim::fighters {
 TaskLayout::TaskLayout(TaskCounts const& counts) {
     std::int32_t offset{};
     for (std::size_t group{}; group < task_type_count; ++group) {
@@ -12,7 +12,7 @@ TaskLayout::TaskLayout(TaskCounts const& counts) {
     }
 }
 
-auto count_tasks(std::span<CapitalShipFighterTask const> const tasks) -> TaskCounts {
+auto count_tasks(std::span<FighterTask const> const tasks) -> TaskCounts {
     TaskCounts counts{};
     for (auto const task : tasks) {
         auto const group{static_cast<std::size_t>(task)};
@@ -22,11 +22,11 @@ auto count_tasks(std::span<CapitalShipFighterTask const> const tasks) -> TaskCou
     return counts;
 }
 
-auto tasks_are_contiguous(std::span<CapitalShipFighterTask const> const tasks,
-                          TaskSpans const& spans) noexcept -> bool {
-    auto current_task{CapitalShipFighterTask::Standby};
+auto tasks_are_contiguous(std::span<FighterTask const> const tasks, TaskSpans const& spans) noexcept
+    -> bool {
+    auto current_task{FighterTask::Standby};
     for (auto const task : tasks) {
-        if (task < current_task || task >= CapitalShipFighterTask::COUNT) {
+        if (task < current_task || task >= FighterTask::COUNT) {
             return false;
         }
         current_task = task;

@@ -1,7 +1,7 @@
 (vector-soa-module native_rotators_3f
   :backend standard-library
-  :header "native/simulation/include/sandbox/simulation/rotators3f.h"
-  :namespace ml::simulation
+  :header "native/simulation/include/ioj/sim/rotators3f.h"
+  :namespace ioj::sim
   :storage-name Rotators3f
   :value-type float
   :components (pitches yaws rolls)

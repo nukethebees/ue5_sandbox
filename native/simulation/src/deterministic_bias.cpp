@@ -1,6 +1,6 @@
-#include "sandbox/simulation/deterministic_bias.h"
+#include "ioj/sim/deterministic_bias.h"
 
-namespace ml {
+namespace ioj::sim {
 auto make_deterministic_biases(std::span<std::int32_t const> const first,
                                std::span<std::int32_t const> const second,
                                std::span<std::uint32_t> const integral_out,
@@ -19,7 +19,7 @@ auto make_deterministic_biases(std::span<std::int32_t const> const first,
     return true;
 }
 
-auto make_deterministic_biases(std::span<FRegistryEntityHandle const> const handles,
+auto make_deterministic_biases(std::span<RegistryEntityHandle const> const handles,
                                std::span<std::uint32_t> const integral_out) noexcept -> bool {
     auto const count{handles.size()};
     if (integral_out.size() != count) {

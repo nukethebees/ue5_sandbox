@@ -3,8 +3,8 @@
 #include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
-auto make_simulation_config(FLaserWeaponConfig const& source) -> FSimulationLaserWeaponConfig {
-    FSimulationLaserWeaponConfig result;
+auto make_simulation_config(FLaserWeaponConfig const& source) -> ::ioj::sim::LaserWeaponSimConfig {
+    ::ioj::sim::LaserWeaponSimConfig result;
     result.damage = source.damage;
     result.projectile_speed = source.projectile_speed;
     result.max_distance = source.max_distance;
@@ -12,8 +12,8 @@ auto make_simulation_config(FLaserWeaponConfig const& source) -> FSimulationLase
     return result;
 }
 
-auto make_simulation_config(FPlayerShipConfig const& source) -> FPlayerSimulationConfig {
-    FPlayerSimulationConfig result;
+auto make_simulation_config(FPlayerShipConfig const& source) -> ::ioj::sim::PlayerSimConfig {
+    ::ioj::sim::PlayerSimConfig result;
     result.thrust_energy_max = source.thrust_energy_max;
     result.speed_responses = ml::to_native(source.speed_responses);
     result.cruise_speed = source.cruise_speed;
@@ -45,15 +45,15 @@ auto make_simulation_config(FPlayerShipConfig const& source) -> FPlayerSimulatio
     return result;
 }
 
-auto make_simulation_config(FLaserProjectileConfig const& source) -> FLaserSimulationConfig {
-    FLaserSimulationConfig result;
+auto make_simulation_config(FLaserProjectileConfig const& source) -> ::ioj::sim::LaserSimConfig {
+    ::ioj::sim::LaserSimConfig result;
     result.n_preallocated_instances = source.n_preallocated_instances;
     result.collision_jobs = source.collision_jobs;
     return result;
 }
 
-auto make_simulation_config(FCapitalShipConfig const& source) -> FCapitalSimulationConfig {
-    FCapitalSimulationConfig result;
+auto make_simulation_config(FCapitalShipConfig const& source) -> ::ioj::sim::CapitalShipSimConfig {
+    ::ioj::sim::CapitalShipSimConfig result;
     result.spawn_delay = source.spawn_delay;
     result.fighter_spawn_slots = source.fighter_spawn_slots;
     result.fighter_spawn_slots_relative_transforms.reserve(
@@ -65,8 +65,8 @@ auto make_simulation_config(FCapitalShipConfig const& source) -> FCapitalSimulat
     return result;
 }
 
-auto make_simulation_config(FFighterConfig const& source) -> FFighterSimulationConfig {
-    FFighterSimulationConfig result;
+auto make_simulation_config(FFighterConfig const& source) -> ::ioj::sim::FighterSimConfig {
+    ::ioj::sim::FighterSimConfig result;
     result.fire_dot_product_threshold = source.fire_dot_product_threshold;
     result.speed = source.speed;
     result.turn_speed_unitless = source.turn_speed_unitless;
@@ -95,8 +95,8 @@ auto make_simulation_config(FFighterConfig const& source) -> FFighterSimulationC
     return result;
 }
 
-auto make_simulation_config(FTurretConfig const& source) -> FTurretSimulationConfig {
-    FTurretSimulationConfig result;
+auto make_simulation_config(FTurretConfig const& source) -> ::ioj::sim::TurretSimConfig {
+    ::ioj::sim::TurretSimConfig result;
     result.search_slice_size = source.search_slice_size;
     result.detection_radius = source.detection_radius;
     result.target_refresh_frequency = source.target_refresh_frequency;
@@ -106,8 +106,8 @@ auto make_simulation_config(FTurretConfig const& source) -> FTurretSimulationCon
     return result;
 }
 
-auto make_simulation_config(FTubeSpinnerConfig const& source) -> FSpinnerSimulationConfig {
-    FSpinnerSimulationConfig result;
+auto make_simulation_config(FTubeSpinnerConfig const& source) -> ::ioj::sim::SpinnerSimConfig {
+    ::ioj::sim::SpinnerSimConfig result;
     result.fire_point_offsets.reserve(static_cast<std::size_t>(source.fire_point_offsets.Num()));
     for (auto const& offset : source.fire_point_offsets) {
         result.fire_point_offsets.push_back({ml::to_native(FVector3f{offset.GetLocation()}),

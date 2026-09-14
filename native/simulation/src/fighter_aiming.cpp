@@ -1,12 +1,12 @@
-#include "sandbox/simulation/fighter_aiming.h"
+#include "ioj/sim/fighter_aiming.h"
 #include "sandbox/core/generated/array_math_kernels.h"
 
-#include "sandbox/simulation/fighter_navigation.h"
+#include "ioj/sim/fighter_navigation.h"
 
 #include <cassert>
 #include <cstddef>
 
-namespace ml::simulation::fighters {
+namespace ioj::sim::fighters {
 void update_movement_aiming(Vectors3fView const aim_directions,
                             Vectors3fConstView const movement_directions,
                             float const turn_fraction) noexcept {

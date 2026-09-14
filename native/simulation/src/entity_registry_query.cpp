@@ -1,11 +1,11 @@
-#include "sandbox/simulation/entity_registry_query.h"
+#include "ioj/sim/entity_registry_query.h"
 
-#include "sandbox/simulation/entity_registry_bookkeeping.h"
+#include "ioj/sim/entity_registry_bookkeeping.h"
 
 #include <algorithm>
 #include <cmath>
 
-namespace ml::simulation {
+namespace ioj::sim {
 namespace {
 auto byte_value(std::span<std::byte const> const values, std::int32_t const index) noexcept
     -> std::uint8_t {
@@ -19,14 +19,14 @@ auto collect_entities_in_range(collision::GridGeometry const geometry,
                                QueryThreadBuffers& buffers,
                                Vector3f const origin,
                                float const radius,
-                               std::span<FRegistryEntityHandle> const out_entities,
+                               std::span<RegistryEntityHandle> const out_entities,
                                IncludeEntity&& include_entity) -> std::int32_t {
     if (out_entities.empty()) {
         return 0;
     }
 
     auto const absolute_radius{std::abs(radius)};
-    auto const radius_extent{make_vector3f(absolute_radius, absolute_radius, absolute_radius)};
+    auto const radius_extent{ml::make_vector3f(absolute_radius, absolute_radius, absolute_radius)};
     auto [min_coord, max_coord]{
         collision::to_cell_coord_bounds(geometry, origin - radius_extent, origin + radius_extent)};
     auto const max_grid_coord{collision::CellCoord{
@@ -90,12 +90,12 @@ auto collect_entities_in_range(collision::GridGeometry const geometry,
 } // namespace
 
 auto analyse_handle(EntityRegistryQueryView const registry,
-                    FRegistryEntityHandle const handle) noexcept -> RegistryHandleState {
-    return ml::simulation::analyse_handle(registry.generations, handle);
+                    RegistryEntityHandle const handle) noexcept -> RegistryHandleState {
+    return ioj::sim::analyse_handle(registry.generations, handle);
 }
 
 auto is_valid_alive(EntityRegistryQueryView const registry,
-                    FRegistryEntityHandle const handle) noexcept -> bool {
+                    RegistryEntityHandle const handle) noexcept -> bool {
     return analyse_handle(registry, handle) == RegistryHandleState::Active &&
            registry.alive[static_cast<std::size_t>(handle.index)] != 0;
 }
@@ -103,7 +103,7 @@ auto is_valid_alive(EntityRegistryQueryView const registry,
 auto collect_entities_in_range(EntityRegistryQueryView const registry,
                                Vector3f const origin,
                                float const radius,
-                               std::span<FRegistryEntityHandle> const out_entities) noexcept
+                               std::span<RegistryEntityHandle> const out_entities) noexcept
     -> std::int32_t {
     if (out_entities.empty()) {
         return 0;
@@ -132,7 +132,7 @@ auto collect_entities_in_range(EntityRegistryQueryView const registry,
 
 auto collect_non_team_alive_entities(EntityRegistryQueryView const registry,
                                      Team const excluded_team,
-                                     std::span<FRegistryEntityHandle> const out_entities) noexcept
+                                     std::span<RegistryEntityHandle> const out_entities) noexcept
     -> std::int32_t {
     auto const count{registry.num()};
     std::int32_t output_count{};
@@ -159,7 +159,7 @@ auto collect_non_team_entities_in_range(collision::GridGeometry const geometry,
                                         Vector3f const origin,
                                         float const radius,
                                         Team const excluded_team,
-                                        std::span<FRegistryEntityHandle> const out_entities)
+                                        std::span<RegistryEntityHandle> const out_entities)
     -> std::int32_t {
     return collect_entities_in_range(geometry,
                                      grid_entities,
@@ -168,7 +168,7 @@ auto collect_non_team_entities_in_range(collision::GridGeometry const geometry,
                                      origin,
                                      radius,
                                      out_entities,
-                                     [registry, excluded_team](FRegistryEntityHandle const handle) {
+                                     [registry, excluded_team](RegistryEntityHandle const handle) {
                                          return byte_value(registry.teams, handle.index) !=
                                                 static_cast<std::uint8_t>(excluded_team);
                                      });
@@ -181,8 +181,8 @@ auto collect_entities_of_type_in_range(collision::GridGeometry const geometry,
                                        Vector3f const origin,
                                        float const radius,
                                        EntityType const entity_type,
-                                       FRegistryEntityHandle const ignored_entity,
-                                       std::span<FRegistryEntityHandle> const out_entities)
+                                       RegistryEntityHandle const ignored_entity,
+                                       std::span<RegistryEntityHandle> const out_entities)
     -> std::int32_t {
     return collect_entities_in_range(
         geometry,
@@ -192,14 +192,14 @@ auto collect_entities_of_type_in_range(collision::GridGeometry const geometry,
         origin,
         radius,
         out_entities,
-        [registry, entity_type, ignored_entity](FRegistryEntityHandle const handle) {
+        [registry, entity_type, ignored_entity](RegistryEntityHandle const handle) {
             return handle != ignored_entity && byte_value(registry.entity_types, handle.index) ==
                                                    static_cast<std::uint8_t>(entity_type);
         });
 }
 
 auto find_any_non_team_entity(EntityRegistryQueryView const registry,
-                              Team const excluded_team) noexcept -> FRegistryEntityHandle {
+                              Team const excluded_team) noexcept -> RegistryEntityHandle {
     auto const count{registry.num()};
     for (std::int32_t index{}; index < count; ++index) {
         auto const element{static_cast<std::size_t>(index)};
@@ -213,7 +213,7 @@ auto find_any_non_team_entity(EntityRegistryQueryView const registry,
 
 auto find_any_non_team_entity(EntityRegistryQueryView const registry,
                               Team const excluded_team,
-                              EntityType const entity_type) noexcept -> FRegistryEntityHandle {
+                              EntityType const entity_type) noexcept -> RegistryEntityHandle {
     auto const count{registry.num()};
     for (std::int32_t index{}; index < count; ++index) {
         auto const element{static_cast<std::size_t>(index)};
@@ -225,4 +225,4 @@ auto find_any_non_team_entity(EntityRegistryQueryView const registry,
     }
     return {};
 }
-} // namespace ml::simulation
+} // namespace ioj::sim

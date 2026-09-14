@@ -1,8 +1,8 @@
 #pragma once
 
-#include <sandbox/simulation/laser_source.h>
+#include <ioj/sim/laser_source.h>
 
-#include <sandbox/simulation/simulation/SystemReadViews.h>
+#include <ioj/sim/system_read_views.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
 
@@ -27,7 +27,7 @@ struct SPACEGAMEPRESENTATION_API FLaserPresentation {
     }
     void set_spark_effects(FSparkEffects& effects) noexcept { spark_effects_ = &effects; }
   private:
-    auto view() const -> FLaserReadView const& { return view_; }
+    auto view() const -> ::ioj::sim::LaserReadView const& { return view_; }
 
     void clear_runtime_state_presentation();
     void begin_play_presentation();
@@ -59,9 +59,9 @@ struct SPACEGAMEPRESENTATION_API FLaserPresentation {
     bool debugging_shapes_enabled{false};
 #endif
 
-    FLaserReadView view_{};
+    ::ioj::sim::LaserReadView view_{};
     FTeamColours player_colours_;
     FTeamColours fighter_colours_;
     FTeamColours turret_colours_;
-    auto source_colour(ml::simulation::LaserSource source) const -> FLinearColor;
+    auto source_colour(::ioj::sim::LaserSource source) const -> FLinearColor;
 };

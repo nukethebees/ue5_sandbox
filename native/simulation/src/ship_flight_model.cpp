@@ -1,5 +1,5 @@
-#include "sandbox/simulation/ship_flight_model.h"
+#include "ioj/sim/ship_flight_model.h"
 
-namespace ml::simulation {
+namespace ioj::sim {
 template class ShipFlightModel<float>;
 }

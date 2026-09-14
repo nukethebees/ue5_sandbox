@@ -43,7 +43,7 @@ void SLevelCompletionView::Construct(FArguments const& args) {
 
 void SLevelCompletionView::update_report(FString const& level_display_name,
                                          ETestMissionState const state,
-                                         FLevelTelemetrySnapshot const& snapshot,
+                                         ::ioj::sim::LevelTelemetrySnapshot const& snapshot,
                                          TOptional<float> const par_time_seconds,
                                          bool const new_best_time) {
     check(state == ETestMissionState::Succeeded || state == ETestMissionState::Failed);

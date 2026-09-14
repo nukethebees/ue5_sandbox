@@ -20,7 +20,7 @@ auto get_entity_name(ETestEntityType const type,
             static FString const name{capital_ship};
             return name;
         }
-        case ETestEntityType::CapitalShipFighter: {
+        case ETestEntityType::Fighter: {
             static FString const name{capital_ship_fighter};
             return name;
         }
@@ -51,7 +51,7 @@ auto get_entity_class_name(ETestEntityType const type) -> FString const& {
                            TEXT("PlayerShip"),
                            TEXT("Turret"),
                            TEXT("CapitalShip"),
-                           TEXT("CapitalShipFighter"),
+                           TEXT("Fighter"),
                            TEXT("TubeSpinner"));
 }
 

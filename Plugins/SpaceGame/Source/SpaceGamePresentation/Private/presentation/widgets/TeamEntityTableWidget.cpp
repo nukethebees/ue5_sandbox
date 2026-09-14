@@ -36,8 +36,8 @@ auto UTeamEntityTableWidget::RebuildWidget() -> TSharedRef<SWidget> {
     return hud_style_ ? ml::ioj::make_hud_panel(hud_style_.GetValue(), content) : content;
 }
 
-void
-    UTeamEntityTableWidget::set_entity_counts(FTestEntityRegistry::EntityCounts const& new_counts) {
+void UTeamEntityTableWidget::set_entity_counts(
+    ::ioj::sim::EntityRegistry::EntityCounts const& new_counts) {
     values = new_counts;
     rebuild_table();
 }

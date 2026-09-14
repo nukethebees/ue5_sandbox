@@ -10,8 +10,7 @@
 #include <array>
 
 namespace {
-using EntityTypeRadii =
-    std::array<float, static_cast<std::size_t>(ml::simulation::EntityType::COUNT)>;
+using EntityTypeRadii = std::array<float, static_cast<std::size_t>(::ioj::sim::EntityType::COUNT)>;
 
 auto make_entity_type_radii() -> EntityTypeRadii {
     EntityTypeRadii radii{};
@@ -19,12 +18,12 @@ auto make_entity_type_radii() -> EntityTypeRadii {
     return radii;
 }
 
-auto make_view(ml::simulation::RegistryEntityData const& entities)
-    -> ml::simulation::RegistryEntityData::ConstView {
+auto make_view(::ioj::sim::RegistryEntityData const& entities)
+    -> ::ioj::sim::RegistryEntityData::ConstView {
     return entities.get_const_view();
 }
 
-void add_entity(ml::simulation::RegistryEntityData& entities,
+void add_entity(::ioj::sim::RegistryEntityData& entities,
                 EntityTypeRadii& entity_type_radii,
                 FVector3f const position,
                 int32 const health,
@@ -55,9 +54,9 @@ auto make_forward_x_view() -> FEntityOverlayView {
             .output_size = {1000, 1000}};
 }
 
-auto select_target(ml::simulation::RegistryEntityData const& entities,
+auto select_target(::ioj::sim::RegistryEntityData const& entities,
                    EntityTypeRadii const& entity_type_radii,
-                   FRegistryEntityHandle const current_target = {},
+                   ::ioj::sim::RegistryEntityHandle const current_target = {},
                    float const weapon_range = 1000.0f) -> FSoftTargetSelectionResult {
     TArray<int> generations;
     generations.Init(0, entities.num());
@@ -84,16 +83,12 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 {
     TEST_METHOD(FiltersEligibilityRangeAndNormalizesHealth)
     {
-        ml::simulation::RegistryEntityData entities;
+        ::ioj::sim::RegistryEntityData entities;
         auto entity_type_radii{make_entity_type_radii()};
         add_entity(
             entities, entity_type_radii, {10.0f, 0.0f, 0.0f}, 10, ETestEntityType::Turret, 50.0f);
-        add_entity(entities,
-                   entity_type_radii,
-                   {20.0f, 0.0f, 0.0f},
-                   25,
-                   ETestEntityType::CapitalShipFighter,
-                   100.0f);
+        add_entity(
+            entities, entity_type_radii, {20.0f, 0.0f, 0.0f}, 25, ETestEntityType::Fighter, 100.0f);
         add_entity(entities,
                    entity_type_radii,
                    {30.0f, 0.0f, 0.0f},
@@ -141,7 +136,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 
     TEST_METHOD(ClampsHealthFromRegistry)
     {
-        ml::simulation::RegistryEntityData entities;
+        ::ioj::sim::RegistryEntityData entities;
         auto entity_type_radii{make_entity_type_radii()};
         add_entity(
             entities, entity_type_radii, FVector3f::ZeroVector, -10, ETestEntityType::Turret);
@@ -167,7 +162,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 
     TEST_METHOD(SelectsOnlyTheBestValidHostile)
     {
-        ml::simulation::RegistryEntityData entities;
+        ::ioj::sim::RegistryEntityData entities;
         auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
                    entity_type_radii,
@@ -208,7 +203,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 
     TEST_METHOD(RetainsAndSwitchesWithHysteresis)
     {
-        ml::simulation::RegistryEntityData entities;
+        ::ioj::sim::RegistryEntityData entities;
         auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
                    entity_type_radii,
@@ -250,7 +245,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 
     TEST_METHOD(ProjectedSizeDoesNotLetARearTargetDominate)
     {
-        ml::simulation::RegistryEntityData entities;
+        ::ioj::sim::RegistryEntityData entities;
         auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
                    entity_type_radii,
@@ -275,7 +270,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 
     TEST_METHOD(NearestSurfaceResolvesCentredTargetsAndHysteresis)
     {
-        ml::simulation::RegistryEntityData entities;
+        ::ioj::sim::RegistryEntityData entities;
         auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
                    entity_type_radii,
@@ -304,7 +299,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 
     TEST_METHOD(NormalizesRangeAlphaUsingTargetSurfaceDistance)
     {
-        ml::simulation::RegistryEntityData entities;
+        ::ioj::sim::RegistryEntityData entities;
         auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
                    entity_type_radii,
@@ -345,7 +340,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 
     TEST_METHOD(RangeAlphaUsesTargetSurfaceRatherThanCentre)
     {
-        ml::simulation::RegistryEntityData entities;
+        ::ioj::sim::RegistryEntityData entities;
         auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
                    entity_type_radii,
@@ -364,7 +359,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 
     TEST_METHOD(ReportsWorldScaleSeparatelyFromClampedIndicatorRadius)
     {
-        ml::simulation::RegistryEntityData entities;
+        ::ioj::sim::RegistryEntityData entities;
         auto entity_type_radii{make_entity_type_radii()};
         add_entity(entities,
                    entity_type_radii,

@@ -1,24 +1,24 @@
 (soa-module level_telemetry_history
-  :header "native/simulation/include/sandbox/simulation/telemetry/LevelTelemetryHistory.h"
+  :header "native/simulation/include/ioj/sim/telemetry/level_telemetry_history.h"
   :backend standard-library
-  :namespace ml::level_telemetry
+  :namespace ioj::sim::telemetry
   :include-order ("SpaceGameSimulation/" "SandboxCore/")
-  (struct FHistoryRows
+  (struct HistoryRows
     :operations (all)
-    :field-mask-name FHistoryFieldMask
-    :field-enum-name EHistoryField
+      :field-mask-name HistoryFieldMask
+    :field-enum-name HistoryField
     (member completed_ticks array @native_sim_tick)
-    (member validity_masks array FHistoryFieldMask)
+    (member validity_masks array HistoryFieldMask)
     (member active_entities array int32
       :mask-field true)
     (member active_entities_by_type array @level_telemetry_entity_type_counts
       :mask-field true
-      :mask-dimensions ((entity_type_index "ml::simulation::telemetry::entity_type_count")))
+      :mask-dimensions ((entity_type_index "ioj::sim::telemetry::entity_type_count")))
     (member active_entities_by_team_and_type array @level_telemetry_entity_counts
       :mask-field true
       :mask-dimensions (
-        (team_index "ml::simulation::telemetry::team_count")
-        (entity_type_index "ml::simulation::telemetry::entity_type_count")))
+        (team_index "ioj::sim::telemetry::team_count")
+        (entity_type_index "ioj::sim::telemetry::entity_type_count")))
     (member spawned_entities array int32
       :mask-field true)
     (member destroyed_entities array int32
@@ -43,4 +43,4 @@
       :mask-field true)
     (member requested_time_scale array double
       :mask-field true)
-    (single-allocation FSingleAllocationHistoryRows)))
+    (single-allocation SingleAllocationHistoryRows)))

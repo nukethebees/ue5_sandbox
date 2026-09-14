@@ -1,10 +1,10 @@
-#include "sandbox/simulation/query_thread_buffer_pool.h"
+#include "ioj/sim/query_thread_buffer_pool.h"
 
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
 
-namespace ml::simulation {
+namespace ioj::sim {
 auto QueryThreadBufferPool::reserve(std::int32_t const count) -> QueryThreadBufferReserveResult {
     if (count <= 0) {
         return QueryThreadBufferReserveResult::invalid_count;
@@ -58,4 +58,4 @@ auto QueryThreadBufferPool::get(std::int32_t const index) -> QueryThreadBuffers&
     assert(index >= 0 && static_cast<std::size_t>(index) < buffers_.size());
     return buffers_[static_cast<std::size_t>(index)];
 }
-} // namespace ml::simulation
+} // namespace ioj::sim

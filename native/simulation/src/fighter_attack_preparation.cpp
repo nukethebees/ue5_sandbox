@@ -1,4 +1,4 @@
-#include "sandbox/simulation/fighter_attack_preparation.h"
+#include "ioj/sim/fighter_attack_preparation.h"
 
 #include "sandbox/core/projectile_intercept.h"
 #include "sandbox/core/vector_normalization.h"
@@ -6,7 +6,7 @@
 #include <cassert>
 #include <cstddef>
 
-namespace ml::simulation::fighters {
+namespace ioj::sim::fighters {
 void prepare_attack(AttackPreparationView const fighters,
                     AttackPreparationParameters const parameters) {
     auto const count{fighters.locations.num()};

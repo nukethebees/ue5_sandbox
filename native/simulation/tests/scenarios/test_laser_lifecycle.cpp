@@ -1,12 +1,12 @@
 #include "test_laser_lifecycle.h"
 #include "../support/simulation_test_support.h"
 
-#include <sandbox/simulation/world_aabb_operations.h>
+#include <ioj/sim/world_aabb_operations.h>
 
-#include <sandbox/simulation/combat/lasers/TestLasersSimulation.h>
-#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/lasers/sim.h>
 
-namespace ml {
+namespace ioj::sim {
 namespace {
 constexpr double projectile_queue_time{0.05};
 constexpr double collision_test_end_time{1.5};
@@ -19,40 +19,40 @@ constexpr float collision_max_distance{20000.f};
 constexpr float miss_max_distance{500.f};
 }
 
-void run_worldless_laser_lifecycle(ml::simulation_tests::SimulationFixture const& config,
-                                   ELaserLifecycleScenario const scenario) {
-    auto data{ml::simulation_tests::make_simulation_data(config)};
+void run_worldless_laser_lifecycle(ioj::sim::tests::SimulationFixture const& config,
+                                   LaserLifecycleScenario const scenario) {
+    auto data{ioj::sim::tests::make_simulation_data(config)};
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
-    ml::simulation_tests::add_capital_spawn(data,
-                                            ml::simulation::Vector3f{{-4000.f, 0.f, 0.f}},
-                                            ml::simulation::Team::Blue,
-                                            -1,
-                                            60.f,
-                                            60.f,
-                                            normal_target_health);
-    ml::simulation_tests::add_capital_spawn(
-        data,
-        ml::simulation::Vector3f{{4000.f, 0.f, 0.f}},
-        ml::simulation::Team::Red,
-        -1,
-        60.f,
-        60.f,
-        scenario == ELaserLifecycleScenario::SimultaneousLethalHits ? low_target_health
-                                                                    : normal_target_health);
-    if (scenario == ELaserLifecycleScenario::WorldBlocker) {
+    ioj::sim::tests::add_capital_spawn(data,
+                                       ioj::sim::Vector3f{{-4000.f, 0.f, 0.f}},
+                                       ioj::sim::Team::Blue,
+                                       -1,
+                                       60.f,
+                                       60.f,
+                                       normal_target_health);
+    ioj::sim::tests::add_capital_spawn(data,
+                                       ioj::sim::Vector3f{{4000.f, 0.f, 0.f}},
+                                       ioj::sim::Team::Red,
+                                       -1,
+                                       60.f,
+                                       60.f,
+                                       scenario == LaserLifecycleScenario::SimultaneousLethalHits
+                                           ? low_target_health
+                                           : normal_target_health);
+    if (scenario == LaserLifecycleScenario::WorldBlocker) {
         data.static_bounds.add_defaulted(1);
-        simulation::collision::set(
+        ioj::sim::collision::set(
             data.static_bounds, 0, {{-1100.f, -100.f, -100.f}}, {{-900.f, 100.f, 100.f}});
     }
 
-    ml::simulation_tests::WorldlessSimulationTest harness{std::move(data)};
+    ioj::sim::tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     auto& lasers{harness.get_simulation().get_lasers()};
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     auto const shooter{capitals.get_handle(0)};
     auto const target{capitals.get_handle(1)};
-    auto const initial_target_health{scenario == ELaserLifecycleScenario::SimultaneousLethalHits
+    auto const initial_target_health{scenario == LaserLifecycleScenario::SimultaneousLethalHits
                                          ? low_target_health
                                          : normal_target_health};
 
@@ -63,8 +63,8 @@ void run_worldless_laser_lifecycle(ml::simulation_tests::SimulationFixture const
         std::int32_t alive_entities{};
         std::int32_t kills{};
     };
-    TimeSeriesData<Sample> samples;
-    harness.on_end_tick = [&](FLevelSimulation&) {
+    ml::TimeSeriesData<Sample> samples;
+    harness.on_end_tick = [&](LevelSim&) {
         samples.add(harness.get_time(),
                     Sample{lasers.get_num_instances(),
                            lasers.get_number_spawned(),
@@ -81,44 +81,44 @@ void run_worldless_laser_lifecycle(ml::simulation_tests::SimulationFixture const
         auto const target_direction{HMM_NormV3(target_location - shooter_location)};
         auto start{shooter_location + target_direction * (shooter_radius + 100.f)};
         auto fire_direction{target_direction};
-        if (scenario == ELaserLifecycleScenario::Miss) {
-            start = ml::simulation::Vector3f{{0.f, 0.f, 100000.f}};
-            fire_direction = ml::simulation::Vector3f{{0.f, 0.f, 1.f}};
-        } else if (scenario == ELaserLifecycleScenario::WorldBlocker) {
-            start = ml::simulation::Vector3f{{-2000.f, 0.f, 0.f}};
-            fire_direction = ml::simulation::Vector3f{{1.f, 0.f, 0.f}};
+        if (scenario == LaserLifecycleScenario::Miss) {
+            start = ioj::sim::Vector3f{{0.f, 0.f, 100000.f}};
+            fire_direction = ioj::sim::Vector3f{{0.f, 0.f, 1.f}};
+        } else if (scenario == LaserLifecycleScenario::WorldBlocker) {
+            start = ioj::sim::Vector3f{{-2000.f, 0.f, 0.f}};
+            fire_direction = ioj::sim::Vector3f{{1.f, 0.f, 0.f}};
         }
 
-        auto const count{scenario == ELaserLifecycleScenario::SimultaneousLethalHits ? 2 : 1};
-        simulation::lasers::SpawnRequests requests;
+        auto const count{scenario == LaserLifecycleScenario::SimultaneousLethalHits ? 2 : 1};
+        ioj::sim::lasers::SpawnRequests requests;
         requests.add_uninitialised(count);
         for (std::int32_t i{}; i < count; ++i) {
             requests.locations.set(i, start);
-            requests.rotations.set(i, ml::simulation::direction_to_rotation(fire_direction));
-            requests.base_velocities.set(i, ml::simulation::Vector3f{});
+            requests.rotations.set(i, ioj::sim::direction_to_rotation(fire_direction));
+            requests.base_velocities.set(i, ioj::sim::Vector3f{});
             requests.damages[i] = projectile_damage;
             requests.speeds[i] = projectile_speed;
-            requests.max_distances[i] = scenario == ELaserLifecycleScenario::Miss
+            requests.max_distances[i] = scenario == LaserLifecycleScenario::Miss
                                           ? miss_max_distance
                                           : collision_max_distance;
             requests.instigator_handles[i] = shooter;
-            requests.sources[i] = ml::simulation::LaserSource{
-                ml::simulation::Team::White, ml::simulation::EntityType::TubeSpinner};
+            requests.sources[i] =
+                ioj::sim::LaserSource{ioj::sim::Team::White, ioj::sim::EntityType::TubeSpinner};
         }
         lasers.queue_laser_spawns(requests.get_const_view());
     });
-    auto const end_time{scenario == ELaserLifecycleScenario::Miss ? expiry_test_end_time
-                                                                  : collision_test_end_time};
+    auto const end_time{scenario == LaserLifecycleScenario::Miss ? expiry_test_end_time
+                                                                 : collision_test_end_time};
     harness.timeline.finish_at(end_time);
-    ml::simulation_tests::expect_true(harness.run_until_timeline_finished(end_time + 0.5),
-                                      "Laser lifecycle timeline completes");
-    ml::simulation_tests::expect_true(!samples.is_empty(), "Laser lifecycle samples are recorded");
+    ioj::sim::tests::expect_true(harness.run_until_timeline_finished(end_time + 0.5),
+                                 "Laser lifecycle timeline completes");
+    ioj::sim::tests::expect_true(!samples.is_empty(), "Laser lifecycle samples are recorded");
     if (samples.is_empty()) {
         return;
     }
 
-    auto const expected_spawn_count{
-        scenario == ELaserLifecycleScenario::SimultaneousLethalHits ? 2 : 1};
+    auto const expected_spawn_count{scenario == LaserLifecycleScenario::SimultaneousLethalHits ? 2
+                                                                                               : 1};
     auto observed_committed_projectile{false};
     auto damage_was_delayed{false};
     for (auto const& sample : samples.values()) {
@@ -127,29 +127,27 @@ void run_worldless_laser_lifecycle(ml::simulation_tests::SimulationFixture const
             damage_was_delayed |= sample.target_health == initial_target_health;
         }
     }
-    ml::simulation_tests::expect_true(observed_committed_projectile,
-                                      "Queued projectile becomes active");
-    ml::simulation_tests::expect_true(damage_was_delayed,
-                                      "Projectile commit precedes collision damage");
+    ioj::sim::tests::expect_true(observed_committed_projectile, "Queued projectile becomes active");
+    ioj::sim::tests::expect_true(damage_was_delayed, "Projectile commit precedes collision damage");
     auto const& final{samples.last_value()};
-    ml::simulation_tests::expect_equal(
+    ioj::sim::tests::expect_equal(
         expected_spawn_count, final.total_spawned, "Projectile count spawned");
-    ml::simulation_tests::expect_equal(0, final.active_lasers, "No active projectiles remain");
-    if (scenario == ELaserLifecycleScenario::Hit) {
-        ml::simulation_tests::expect_equal(normal_target_health - projectile_damage,
-                                           final.target_health,
-                                           "Projectile applies damage once");
-        ml::simulation_tests::expect_equal(
+    ioj::sim::tests::expect_equal(0, final.active_lasers, "No active projectiles remain");
+    if (scenario == LaserLifecycleScenario::Hit) {
+        ioj::sim::tests::expect_equal(normal_target_health - projectile_damage,
+                                      final.target_health,
+                                      "Projectile applies damage once");
+        ioj::sim::tests::expect_equal(
             2, final.alive_entities, "Nonlethal hit preserves both entities");
-    } else if (scenario == ELaserLifecycleScenario::SimultaneousLethalHits) {
-        ml::simulation_tests::expect_true(final.target_health <= 0, "Simultaneous hits are lethal");
-        ml::simulation_tests::expect_equal(1, final.alive_entities, "Target is removed once");
-        ml::simulation_tests::expect_equal(1, final.kills, "One kill is recorded");
+    } else if (scenario == LaserLifecycleScenario::SimultaneousLethalHits) {
+        ioj::sim::tests::expect_true(final.target_health <= 0, "Simultaneous hits are lethal");
+        ioj::sim::tests::expect_equal(1, final.alive_entities, "Target is removed once");
+        ioj::sim::tests::expect_equal(1, final.kills, "One kill is recorded");
     } else {
-        ml::simulation_tests::expect_equal(
+        ioj::sim::tests::expect_equal(
             normal_target_health, final.target_health, "Non-entity termination preserves health");
-        ml::simulation_tests::expect_equal(2, final.alive_entities, "Both entities remain alive");
-        ml::simulation_tests::expect_equal(0, final.kills, "No kill is recorded");
+        ioj::sim::tests::expect_equal(2, final.alive_entities, "Both entities remain alive");
+        ioj::sim::tests::expect_equal(0, final.kills, "No kill is recorded");
     }
 }
 

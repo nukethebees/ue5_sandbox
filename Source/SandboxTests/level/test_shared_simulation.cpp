@@ -158,7 +158,7 @@ TEST_CLASS(TelemetryBenchmark, "SandboxBenchmarks.TelemetryBenchmark")
                 orchestrator->set_time_scale(time_scale);
 
                 auto& telemetry{orchestrator->get_level_telemetry_manager()};
-                FLevelTelemetryRunMetadata metadata;
+                ::ioj::sim::LevelTelemetryRunMetadata metadata;
                 metadata.level_id = "spark-renderer-showcase";
                 metadata.requested_duration_seconds = simulated_seconds;
                 metadata.initial_requested_time_scale = time_scale;
@@ -171,7 +171,7 @@ TEST_CLASS(TelemetryBenchmark, "SandboxBenchmarks.TelemetryBenchmark")
                 }
                 auto const elapsed_seconds{FPlatformTime::Seconds() - started_at};
                 telemetry.finalize_completed(
-                    ml::simulation::LevelTelemetryRunEndReason::DurationReached);
+                    ::ioj::sim::LevelTelemetryRunEndReason::DurationReached);
                 auto const history_stats{telemetry.get_history_stats()};
                 auto const run_record{telemetry.take_finalized_run()};
                 double telemetry_cpu_ms{};
@@ -179,7 +179,7 @@ TEST_CLASS(TelemetryBenchmark, "SandboxBenchmarks.TelemetryBenchmark")
                 if (run_record.has_value()) {
                     for (auto const& window : run_record->performance_windows) {
                         auto const& telemetry_timing{window.systems[static_cast<int32>(
-                            ESimulationTelemetryTimingSystem::Telemetry)]};
+                            ::ioj::sim::SimTelemetryTimingSystem::Telemetry)]};
                         telemetry_cpu_ms +=
                             telemetry_timing.mean_ms * telemetry_timing.sample_count;
                         simulation_cpu_ms +=
@@ -203,7 +203,7 @@ TEST_CLASS(TelemetryBenchmark, "SandboxBenchmarks.TelemetryBenchmark")
                     history_stats.acquired_block_count,
                     history_stats.retained_block_count,
                     history_stats.total_byte_capacity,
-                    sizeof(FLevelTelemetryManager)));
+                    sizeof(::ioj::sim::LevelTelemetryManager)));
                 return static_cast<double>(orchestrator->get_completed_ticks()) / elapsed_seconds;
             };
 

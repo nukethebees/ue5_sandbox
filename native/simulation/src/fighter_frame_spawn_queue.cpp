@@ -1,6 +1,6 @@
-#include "sandbox/simulation/fighter_frame_spawn_queue.h"
+#include "ioj/sim/fighter_frame_spawn_queue.h"
 
-namespace ml::simulation::fighters {
+namespace ioj::sim::fighters {
 FrameSpawnQueue::FrameSpawnQueue(std::pmr::memory_resource* const resource)
     : locations{resource}
     , rotations{resource}
@@ -24,15 +24,15 @@ void FrameSpawnQueue::clear() {
 void FrameSpawnQueue::add(Vector3f const location,
                           Rotator3f const rotation,
                           Team const team,
-                          FRegistryEntityHandle const parent,
-                          FRegistryEntityHandle const target) {
+                          RegistryEntityHandle const parent,
+                          RegistryEntityHandle const target) {
     locations.add(location);
     rotations.add(rotation);
     teams.add(team);
     parents.add(parent);
     targets.add(target);
 }
-auto FrameSpawnQueue::get_const_view() const -> TestCapitalShipFighterSpawnQueueConstView {
+auto FrameSpawnQueue::get_const_view() const -> FighterSpawnQueueConstView {
     return {locations.get_const_view(),
             rotations.get_const_view(),
             teams.view(),

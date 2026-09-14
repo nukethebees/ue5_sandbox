@@ -1,7 +1,7 @@
 #pragma once
 
+#include <ioj/sim/levels/level_definition.h>
 #include <sandbox/level_authoring/CampaignDefinition.h>
-#include <sandbox/simulation/levels/LevelDefinition.h>
 
 #include <cstddef>
 #include <optional>
@@ -20,7 +20,7 @@ struct CatalogValidationIssue {
     std::string message{};
 };
 
-using LevelCatalogEntry = CatalogEntry<LevelDefinition>;
+using LevelCatalogEntry = CatalogEntry<::ioj::sim::levels::LevelDefinition>;
 using CampaignCatalogEntry = CatalogEntry<CampaignDefinition>;
 
 [[nodiscard]] auto validate_level_catalog(std::vector<LevelCatalogEntry> const& entries)

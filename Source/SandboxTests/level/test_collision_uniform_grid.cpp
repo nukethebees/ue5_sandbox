@@ -2,9 +2,9 @@
 #include <Components/InstancedStaticMeshComponent.h>
 #include <CQTest.h>
 #include <Engine/World.h>
+#include <ioj/sim/collision/collision_system.h>
+#include <ioj/sim/entity_registry.h>
 #include <Misc/ScopeExit.h>
-#include <sandbox/simulation/entities/TestEntityRegistry.h>
-#include <sandbox/simulation/simulation/CollisionSystem.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestCollisionActor.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
@@ -50,8 +50,8 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
         config.omitted_collision_actor_classes.Add(
             ASandboxTestOmittedCollisionActor::StaticClass());
 
-        FTestEntityRegistry registry;
-        ml::ioj::FCollisionSystem collision{registry};
+        ::ioj::sim::EntityRegistry registry;
+        ::ioj::sim::collision::CollisionSystem collision{registry};
         auto& grid{collision.get_uniform_grid()};
         auto const configured_dims{config.calculate_grid_dimensions()};
         grid.set_grid_dims({configured_dims.X, configured_dims.Y, configured_dims.Z});

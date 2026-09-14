@@ -3,10 +3,10 @@
 #include <SandboxTests/SandboxTestLogCategories.h>
 #include <SandboxTests/support/SpaceGameTestSettings.h>
 
-#include <sandbox/simulation/entities/DirectDamageEvents.h>
-#include <sandbox/simulation/entities/TestEntityRegistry.h>
-#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
-#include <sandbox/simulation/ships/fighters/TestCapitalShipFightersSimulation.h>
+#include <ioj/sim/capital_ships/sim.h>
+#include <ioj/sim/entities/direct_damage_events.h>
+#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/fighters/sim.h>
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -37,7 +37,7 @@ auto TestSimulationDriver::from_world(UWorld& world) -> TestSimulationDriver {
     return TestSimulationDriver{world, *orchestrator};
 }
 
-auto TestSimulationDriver::get_registry() const -> FTestEntityRegistry& {
+auto TestSimulationDriver::get_registry() const -> ::ioj::sim::EntityRegistry& {
     return orchestrator.get_entity_registry();
 }
 
@@ -46,24 +46,24 @@ auto TestSimulationDriver::get_player_ship() const -> ATestSpaceShip const& {
     check(IsValid(actor));
     return *actor;
 }
-auto TestSimulationDriver::get_capital_ships() const -> test_capital_ships::Simulation const& {
+auto TestSimulationDriver::get_capital_ships() const -> ::ioj::sim::capital_ships::Sim const& {
     auto const simulation{orchestrator.get_capital_ships()};
     check(simulation);
     return *simulation;
 }
-auto TestSimulationDriver::get_capital_ship_fighters() const
-    -> test_capital_ship_fighters::Simulation const& {
-    auto const simulation{orchestrator.get_capital_ship_fighters()};
+auto TestSimulationDriver::get_fighters() const -> ::ioj::sim::fighters::Sim const& {
+    auto const simulation{orchestrator.get_fighters()};
     check(simulation);
     return *simulation;
 }
 
-void TestSimulationDriver::queue_damage(std::span<FRegistryEntityHandle const> const targets,
-                                        int32 const damage,
-                                        FRegistryEntityHandle const instigator) {
+void TestSimulationDriver::queue_damage(
+    std::span<::ioj::sim::RegistryEntityHandle const> const targets,
+    int32 const damage,
+    ::ioj::sim::RegistryEntityHandle const instigator) {
     auto const n{static_cast<int32>(targets.size())};
 
-    DirectDamageEvents damage_events;
+    ::ioj::sim::DirectDamageEvents damage_events;
     damage_events.reserve(n);
     for (auto const target : targets) {
         damage_events.add(target, damage, instigator);
@@ -71,8 +71,9 @@ void TestSimulationDriver::queue_damage(std::span<FRegistryEntityHandle const> c
 
     get_registry().queue_direct_damage_events(damage_events);
 }
-void TestSimulationDriver::queue_kills(std::span<FRegistryEntityHandle const> const targets,
-                                       FRegistryEntityHandle const instigator) {
+void TestSimulationDriver::queue_kills(
+    std::span<::ioj::sim::RegistryEntityHandle const> const targets,
+    ::ioj::sim::RegistryEntityHandle const instigator) {
     queue_damage(targets, std::numeric_limits<int32>::max(), instigator);
 }
 bool TestSimulationDriver::should_export_results() const {

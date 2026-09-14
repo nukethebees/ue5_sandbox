@@ -1,13 +1,13 @@
-#include "sandbox/simulation/fighter_firing.h"
+#include "ioj/sim/fighter_firing.h"
 
+#include "ioj/sim/fighter_firing_scratch.h"
 #include "sandbox/core/tick_countdown.h"
 #include "sandbox/core/vector_math.h"
-#include "sandbox/simulation/fighter_firing_scratch.h"
 
 #include <cassert>
 #include <cstddef>
 
-namespace ml::simulation::fighters {
+namespace ioj::sim::fighters {
 void prepare_firing(FiringPreparationView const fighters,
                     FiringPreparationParameters const parameters,
                     FiringScratch& scratch) {
@@ -22,8 +22,8 @@ void prepare_firing(FiringPreparationView const fighters,
     assert(fighters.attack_cooldowns.size() == size);
     assert(parameters.retry_cooldown >= 0);
 
-    TickCountdownView<std::int16_t> const cooldowns{fighters.attack_cooldowns,
-                                                    parameters.retry_cooldown};
+    ml::TickCountdownView<std::int16_t> const cooldowns{fighters.attack_cooldowns,
+                                                        parameters.retry_cooldown};
     auto& aiming_dot_products{scratch.aiming_dot_products};
     auto& can_fire{scratch.can_fire};
     auto& trace_starts{scratch.line_of_sight_starts};
@@ -77,14 +77,14 @@ void resolve_firing_visibility(Vectors3fConstView const locations,
                                std::span<std::uint8_t const> const visibility_results,
                                float const arrival_distance_squared,
                                std::int16_t const retry_cooldown,
-                               FrameArray<std::int32_t>& can_fire,
-                               FrameArray<std::int32_t>& fighters_to_reposition) {
+                               ml::FrameArray<std::int32_t>& can_fire,
+                               ml::FrameArray<std::int32_t>& fighters_to_reposition) {
     assert(locations.num() == desired_move_locations.num());
     assert(attack_cooldowns.size() == static_cast<std::size_t>(locations.num()));
     assert(visibility_results.size() == static_cast<std::size_t>(can_fire.num()));
     assert(retry_cooldown >= 0);
 
-    TickCountdownView<std::int16_t> const cooldowns{attack_cooldowns, retry_cooldown};
+    ml::TickCountdownView<std::int16_t> const cooldowns{attack_cooldowns, retry_cooldown};
     auto const count{can_fire.num()};
     for (auto index{count - 1}; index >= 0; --index) {
         auto const fighter_index{can_fire[index]};
@@ -106,7 +106,7 @@ void resolve_firing_visibility(Vectors3fConstView const locations,
 void accept_visible_firing_positions(Vectors3fView const desired_move_locations,
                                      Vectors3fConstView const candidate_locations,
                                      std::span<std::uint8_t const> const visibility_results,
-                                     FrameArray<std::int32_t>& fighters_to_reposition) {
+                                     ml::FrameArray<std::int32_t>& fighters_to_reposition) {
     auto const count{fighters_to_reposition.num()};
     assert(candidate_locations.num() == count);
     assert(visibility_results.size() == static_cast<std::size_t>(count));

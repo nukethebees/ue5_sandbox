@@ -31,10 +31,12 @@ class ATestTubeSpinnerProxy
     }
 
     // ITestEntity
-    auto get_entity_handle() const noexcept -> FRegistryEntityHandle override {
+    auto get_entity_handle() const noexcept -> ::ioj::sim::RegistryEntityHandle override {
         return entity_handle;
     }
-    void set_entity_handle(FRegistryEntityHandle const handle) noexcept { entity_handle = handle; }
+    void set_entity_handle(::ioj::sim::RegistryEntityHandle const handle) noexcept {
+        entity_handle = handle;
+    }
 #if WITH_EDITOR
     void set_test_name(FName const new_test_name) noexcept { test_name = new_test_name; }
     auto get_test_name() const noexcept -> FName override { return test_name; }
@@ -80,5 +82,5 @@ class ATestTubeSpinnerProxy
     FName test_name{NAME_None};
 #endif
 
-    FRegistryEntityHandle entity_handle;
+    ::ioj::sim::RegistryEntityHandle entity_handle;
 };

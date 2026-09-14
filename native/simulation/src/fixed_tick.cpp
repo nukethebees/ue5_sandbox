@@ -1,6 +1,6 @@
-#include "sandbox/simulation/fixed_tick.h"
+#include "ioj/sim/fixed_tick.h"
 
-namespace ml::simulation {
+namespace ioj::sim {
 auto initialise_tick_loop(double const tick_rate,
                           double const time_scale,
                           double& tick_period,

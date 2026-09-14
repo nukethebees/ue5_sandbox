@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sandbox/simulation/simulation/LevelTelemetrySnapshot.h>
+#include <ioj/sim/level_telemetry_snapshot.h>
 #include <SpaceGameSimulation/missions/TestMissionState.h>
 
 #include <CommonActivatableWidget.h>
@@ -31,7 +31,7 @@ class SPACEGAME_API UGameUiRootLayout : public UCommonActivatableWidget {
     auto show_pause_menu(UInputAction& toggle_action, FPauseMenuData data) -> UPauseMenuWidget*;
     auto show_level_completion(FString level_display_name,
                                ETestMissionState state,
-                               FLevelTelemetrySnapshot snapshot,
+                               ::ioj::sim::LevelTelemetrySnapshot snapshot,
                                TOptional<float> par_time_seconds = NullOpt,
                                bool new_best_time = false) -> ULevelCompletionWidget*;
     void clear_menus();

@@ -1,10 +1,10 @@
-#include "sandbox/simulation/entity_registry_update.h"
+#include "ioj/sim/entity_registry_update.h"
 
 #include <cassert>
 #include <cstddef>
 #include <utility>
 
-namespace ml::simulation {
+namespace ioj::sim {
 namespace {
 template <typename Enum>
 auto enum_at(std::span<std::byte const> const values, std::size_t const index) noexcept -> Enum {
@@ -90,4 +90,4 @@ auto apply_entity_updates(EntityRegistryBookkeeping& bookkeeping,
     }
     return -1;
 }
-} // namespace ml::simulation
+} // namespace ioj::sim

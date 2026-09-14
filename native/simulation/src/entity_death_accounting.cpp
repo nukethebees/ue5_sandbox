@@ -1,11 +1,11 @@
-#include "sandbox/simulation/entity_death_accounting.h"
+#include "ioj/sim/entity_death_accounting.h"
 
 #include <cstddef>
 
-namespace ml::simulation {
+namespace ioj::sim {
 namespace {
 auto make_death_accounting_error(UniqueIdLookupError const code,
-                                 FRegistryEntityHandle const handle,
+                                 RegistryEntityHandle const handle,
                                  std::int32_t const event_index) noexcept
     -> std::unexpected<EntityDeathAccountingError> {
     return std::unexpected{EntityDeathAccountingError{code, handle, event_index}};
@@ -59,4 +59,4 @@ auto record_entity_deaths(EntityRegistryBookkeeping& bookkeeping,
     }
     return {};
 }
-} // namespace ml::simulation
+} // namespace ioj::sim

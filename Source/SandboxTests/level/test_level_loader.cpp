@@ -6,7 +6,7 @@
 #include <SandboxTests/support/PlayerControllerTestAccess.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
-#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <ioj/sim/entity_registry.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/levels/ExampleLevels.h>
 #include <SpaceGame/levels/LevelDefinition.h>
@@ -215,11 +215,11 @@ void FLevelLoaderCameraScenario::sample_modal_transitions() {
     sample.pause_open = FPlayerControllerTestAccess::has_modal(*controller);
     sample.pause_rejects_activation = rejects_activation();
     sample.pause_suspended =
-        orchestrator.get_state() == EOrchestratorState::Paused &&
+        orchestrator.get_state() == ::ioj::sim::OrchestratorState::Paused &&
         controller->get_active_control_context() == EPlayerControlContext::None;
     sample.hud_hidden = hud->GetVisibility() == ESlateVisibility::Collapsed;
     FPlayerControllerTestAccess::toggle_pause(*controller);
-    sample.pause_resumed = orchestrator.get_state() == EOrchestratorState::Running &&
+    sample.pause_resumed = orchestrator.get_state() == ::ioj::sim::OrchestratorState::Running &&
                            !FPlayerControllerTestAccess::has_modal(*controller) &&
                            controller->is_observer_movement_enabled();
 
@@ -231,12 +231,13 @@ void FLevelLoaderCameraScenario::sample_modal_transitions() {
     sample.completion_open = FPlayerControllerTestAccess::has_modal(*controller);
     sample.completion_rejects_activation = rejects_activation();
     sample.completion_suspended =
-        orchestrator.get_state() == EOrchestratorState::Paused &&
+        orchestrator.get_state() == ::ioj::sim::OrchestratorState::Paused &&
         controller->get_active_control_context() == EPlayerControlContext::None;
     FPlayerControllerTestAccess::close_completion(*controller);
-    sample.completion_resumed = orchestrator.get_state() == EOrchestratorState::Running &&
-                                !FPlayerControllerTestAccess::has_modal(*controller) &&
-                                controller->is_observer_movement_enabled();
+    sample.completion_resumed =
+        orchestrator.get_state() == ::ioj::sim::OrchestratorState::Running &&
+        !FPlayerControllerTestAccess::has_modal(*controller) &&
+        controller->is_observer_movement_enabled();
     sample.hud_restored = hud->GetVisibility() == visibility;
     sample.input_restored = component->GetActionEventBindings().Num() == binding_count;
     modal_samples_.add(test_driver->get_time(), sample);
@@ -370,7 +371,8 @@ void FLevelLoaderScenario::load_fixture() {
     checks.are_equal(0,
                      count_actors<ATestStaticTurretsProxy>(context_.world),
                      TEXT("Rejected load spawns no turrets"));
-    checks.is_true(context_.orchestrator.get_state() == EOrchestratorState::Uninitialised,
+    checks.is_true(context_.orchestrator.get_state() ==
+                       ::ioj::sim::OrchestratorState::Uninitialised,
                    TEXT("Rejected load leaves orchestrator uninitialised"));
 
     s7::FLevelDefinitionReader reader;
@@ -570,11 +572,12 @@ void FLevelLoaderScenario::sample_controller_lifecycle() {
     FPlayerControllerTestAccess::toggle_pause(*controller);
     controller->UnPossess();
     sample.unpossessed_while_paused =
-        orchestrator.get_state() == EOrchestratorState::Paused && !IsValid(controller->GetPawn()) &&
+        orchestrator.get_state() == ::ioj::sim::OrchestratorState::Paused &&
+        !IsValid(controller->GetPawn()) &&
         controller->get_active_control_context() == EPlayerControlContext::None;
     FPlayerControllerTestAccess::toggle_pause(*controller);
     sample.resumed_without_ship =
-        orchestrator.get_state() == EOrchestratorState::Running &&
+        orchestrator.get_state() == ::ioj::sim::OrchestratorState::Running &&
         controller->get_active_control_context() == EPlayerControlContext::None;
     controller->Possess(ship);
     sample.possession_enabled_ship =
@@ -584,11 +587,11 @@ void FLevelLoaderScenario::sample_controller_lifecycle() {
     controller->UnPossess();
     controller->Possess(ship);
     sample.possession_stayed_suspended =
-        orchestrator.get_state() == EOrchestratorState::Paused &&
+        orchestrator.get_state() == ::ioj::sim::OrchestratorState::Paused &&
         controller->get_active_control_context() == EPlayerControlContext::None;
     FPlayerControllerTestAccess::toggle_pause(*controller);
     sample.resumed_with_ship =
-        orchestrator.get_state() == EOrchestratorState::Running &&
+        orchestrator.get_state() == ::ioj::sim::OrchestratorState::Running &&
         controller->get_active_control_context() == EPlayerControlContext::Player;
     sample.bindings_restored = component->GetActionEventBindings().Num() == binding_count;
     control_samples_.add(test_driver->get_time(), sample);

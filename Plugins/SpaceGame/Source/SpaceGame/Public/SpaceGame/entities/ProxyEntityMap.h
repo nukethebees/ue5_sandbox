@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sandbox/simulation/entities/TestEntityUniqueId.h>
+#include <ioj/sim/entity_types.h>
 #include <SandboxNative/RegistryEntityHandle.h>
 
 #include <Containers/Map.h>
@@ -8,8 +8,8 @@
 class AActor;
 
 struct FRegistryEntityIdentifiers {
-    FRegistryEntityHandle handle;
-    TestEntityUniqueId unique_id;
+    ::ioj::sim::RegistryEntityHandle handle;
+    ::ioj::sim::EntityUniqueId unique_id;
 };
 
 using FProxyEntityMap = TMap<AActor const*, FRegistryEntityIdentifiers>;

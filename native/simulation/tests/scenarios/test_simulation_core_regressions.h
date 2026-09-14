@@ -1,11 +1,11 @@
 #pragma once
 #include "../support/simulation_test_support.h"
 
-namespace ml {
+namespace ioj::sim {
 
-enum class ESimulationCoreRegressionScenario : std::uint8_t { FixedTickLifecycle, DamageLifecycle };
+enum class SimulationCoreRegressionScenario : std::uint8_t { FixedTickLifecycle, DamageLifecycle };
 
-void run_worldless_simulation_core_regression(ml::simulation_tests::SimulationFixture const& config,
-                                              ESimulationCoreRegressionScenario scenario);
-void run_worldless_collision_damage(ml::simulation_tests::SimulationFixture const& config);
+void run_worldless_simulation_core_regression(ioj::sim::tests::SimulationFixture const& config,
+                                              SimulationCoreRegressionScenario scenario);
+void run_worldless_collision_damage(ioj::sim::tests::SimulationFixture const& config);
 }

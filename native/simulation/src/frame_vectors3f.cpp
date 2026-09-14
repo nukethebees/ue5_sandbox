@@ -1,6 +1,6 @@
-#include "sandbox/simulation/frame_vectors3f.h"
+#include "ioj/sim/frame_vectors3f.h"
 
-namespace ml::simulation {
+namespace ioj::sim {
 FrameVectors3f::FrameVectors3f(std::pmr::memory_resource* const resource)
     : xs{resource}
     , ys{resource}
@@ -50,4 +50,4 @@ auto FrameVectors3f::is_empty() const noexcept -> bool {
 void FrameVectors3f::validate_array_sizes() const {
     get_const_view().validate_array_sizes();
 }
-} // namespace ml::simulation
+} // namespace ioj::sim

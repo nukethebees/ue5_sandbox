@@ -1,12 +1,12 @@
 #include <CQTest.h>
-#include <sandbox/simulation/memory/GameMemory.h>
+#include <ioj/sim/memory/game_memory.h>
 #include <SpaceGameSimulation/memory/GameMemoryBootstrap.h>
 
 TEST_CLASS(GameMemoryBootstrap, "Sandbox.UnitTests")
 {
     TEST_METHOD(OccupiedBackingFallsBackToLocalMemory)
     {
-        auto backing{FGameMemoryBacking::create(1024)};
+        auto backing{::ioj::sim::GameMemoryBacking::create(1024)};
         auto lease{backing->try_acquire_lease()};
         ASSERT_THAT(IsTrue(lease.has_value()));
         auto& delegate{FGameMemoryBootstrap::acquire_backing_delegate()};

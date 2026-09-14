@@ -1,7 +1,8 @@
 (soa-module native_fighter_order_queue
-  :header "native/simulation/include/sandbox/simulation/fighter_order_queue.h"
+  :header "native/simulation/include/ioj/sim/fighter_order_queue.h"
   :backend standard-library
-  (struct TestCapitalShipFighterOrderQueue
+  :namespace ioj::sim
+  (struct FighterOrderQueue
     :operations (all)
     (member handles array @native_registry_handle)
     (member orders array @native_fighter_order)

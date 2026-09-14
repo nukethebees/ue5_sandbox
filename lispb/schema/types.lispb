@@ -1,10 +1,10 @@
 (type level_telemetry_entity_type_counts
-  :spelling "ml::simulation::telemetry::EntityTypeCounts"
-  :header "sandbox/simulation/entity_telemetry.h")
+  :spelling "ioj::sim::telemetry::EntityTypeCounts"
+  :header "ioj/sim/entity_telemetry.h")
 
 (type level_telemetry_entity_counts
-  :spelling "ml::simulation::telemetry::EntityCounts"
-  :header "sandbox/simulation/entity_telemetry.h")
+  :spelling "ioj::sim::telemetry::EntityCounts"
+  :header "ioj/sim/entity_telemetry.h")
 
 (type soa_experiment_MimallocArrayAllocator
   :spelling "MimallocArrayAllocator"
@@ -79,7 +79,7 @@
 
 (type death_reason
   :spelling "ETestDeathReason"
-  :header "sandbox/simulation/entities/TestDeathReason.h"
+  :header "ioj/sim/entities/TestDeathReason.h"
   :pass-by value)
 
 (type collision_enabled
@@ -94,36 +94,36 @@
 
 (type level_event_count
   :spelling "ml::FLevelEventCount"
-  :header "sandbox/simulation/levels/LevelEventGroupCounts.h"
+  :header "ioj/sim/levels/LevelEventGroupCounts.h"
   :pass-by value)
 
 (type level_mission_event_type
   :spelling "ml::ELevelMissionEventType"
-  :header "sandbox/simulation/levels/LevelMissionEventType.h"
+  :header "ioj/sim/levels/LevelMissionEventType.h"
   :pass-by value)
 
 (type fighter_order
-  :spelling "TestCapitalShipFighterOrder"
-  :header "sandbox/simulation/ships/fighters/TestCapitalShipFighterOrder.h")
+  :spelling "ioj::sim::FighterOrder"
+  :header "ioj/sim/fighter_types.h")
 
 (type fighter_order_queue
-  :spelling "TestCapitalShipFighterOrderQueue"
-  :header "sandbox/simulation/fighter_order_queue.h"
+  :spelling "ioj::sim::FighterOrderQueue"
+  :header "ioj/sim/fighter_order_queue.h"
   (operation remove-at-swap remove_at_swap))
 
 (type fighter_spawn_queue
-  :spelling "TestCapitalShipFighterSpawnQueue"
-  :header "sandbox/simulation/ships/fighters/TestCapitalShipFighterSpawnQueue.h"
+  :spelling "ioj::sim::FighterSpawnQueue"
+  :header "ioj/sim/fighter_spawn_queue.h"
   (operation remove-at-swap remove_at_swap))
 
 (type fighter_spawn_queue_const_view
-  :spelling "ml::simulation::TestCapitalShipFighterSpawnQueueConstView"
-  :header "sandbox/simulation/fighter_spawn_queue.h"
+  :spelling "ioj::sim::FighterSpawnQueueConstView"
+  :header "ioj/sim/fighter_spawn_queue.h"
   :pass-by value)
 
 (type fighter_task
-  :spelling "ETestCapitalShipFightersTask"
-  :header "SpaceGameSimulation/ships/fighters/TestCapitalShipFightersTask.h"
+  :spelling "ioj::sim::FighterTask"
+  :header "ioj/sim/fighter_types.h"
   :pass-by value)
 
 (type fstring
@@ -180,23 +180,23 @@
   :pass-by value)
 
 (type registry_handle
-  :spelling "FRegistryEntityHandle"
-  :header "SandboxNative/RegistryEntityHandle.h"
+  :spelling "::ioj::sim::RegistryEntityHandle"
+  :header "ioj/sim/entity_handle.h"
   :pass-by value)
 
 (type native_registry_handle
-  :spelling "FRegistryEntityHandle"
-  :header "sandbox/simulation/entity_handle.h"
+  :spelling "ioj::sim::RegistryEntityHandle"
+  :header "ioj/sim/entity_handle.h"
   :pass-by value)
 
 (type native_level_event_count
-  :spelling "ml::simulation::LevelEventCount"
-  :header "sandbox/simulation/level_event_types.h"
+  :spelling "ioj::sim::LevelEventCount"
+  :header "ioj/sim/level_event_types.h"
   :pass-by value)
 
 (type native_sim_tick
-  :spelling "ml::simulation::SimTick"
-  :header "sandbox/simulation/sim_tick.h"
+  :spelling "ioj::sim::SimTick"
+  :header "ioj/sim/sim_tick.h"
   :pass-by value)
 
 (type native_uint8
@@ -205,66 +205,66 @@
   :pass-by value)
 
 (type native_level_mission_event_type
-  :spelling "ml::simulation::LevelMissionEventType"
-  :header "sandbox/simulation/level_event_types.h"
+  :spelling "ioj::sim::LevelMissionEventType"
+  :header "ioj/sim/level_event_types.h"
   :pass-by value)
 
 (type native_death_reason
-  :spelling "ml::simulation::DeathReason"
-  :header "sandbox/simulation/entity_life_state.h"
+  :spelling "ioj::sim::DeathReason"
+  :header "ioj/sim/entity_life_state.h"
   :pass-by value)
 
 (type native_life_state
-  :spelling "ml::simulation::LifeState"
-  :header "sandbox/simulation/entity_life_state.h"
+  :spelling "ioj::sim::LifeState"
+  :header "ioj/sim/entity_life_state.h"
   :pass-by value)
 
 (type native_entity_type
-  :spelling "ml::simulation::EntityType"
-  :header "sandbox/simulation/entity_types.h"
+  :spelling "ioj::sim::EntityType"
+  :header "ioj/sim/entity_types.h"
   :pass-by value)
 
 (type native_team
-  :spelling "ml::simulation::Team"
-  :header "sandbox/simulation/entity_types.h"
+  :spelling "ioj::sim::Team"
+  :header "ioj/sim/entity_types.h"
   :pass-by value)
 
 (type native_unique_id
-  :spelling "ml::simulation::EntityUniqueId"
-  :header "sandbox/simulation/entity_types.h"
+  :spelling "ioj::sim::EntityUniqueId"
+  :header "ioj/sim/entity_types.h"
   :pass-by value)
 
 (type native_fighter_order
-  :spelling "ml::simulation::CapitalShipFighterOrder"
-  :header "sandbox/simulation/fighter_types.h"
+  :spelling "ioj::sim::FighterOrder"
+  :header "ioj/sim/fighter_types.h"
   :pass-by value)
 
 (type native_fighter_task
-  :spelling "ml::simulation::CapitalShipFighterTask"
-  :header "sandbox/simulation/fighter_types.h"
+  :spelling "ioj::sim::FighterTask"
+  :header "ioj/sim/fighter_types.h"
   :pass-by value)
 
 (type native_vector_3f
-  :spelling "ml::simulation::Vector3f"
-  :header "sandbox/simulation/vector_types.h"
+  :spelling "ioj::sim::Vector3f"
+  :header "ioj/sim/vector_types.h"
   :pass-by value)
 
 (type native_index_span
-  :spelling "FIndexSpan"
-  :header "sandbox/simulation/index_span.h"
+  :spelling "ioj::sim::IndexSpan"
+  :header "ioj/sim/index_span.h"
   :pass-by value)
 
 (type native_vectors_3f
   :spelling "Vectors3f"
-  :header "sandbox/simulation/vectors3f.h")
+  :header "ioj/sim/vectors3f.h")
 
 (type native_rotators_3f
   :spelling "Rotators3f"
-  :header "sandbox/simulation/rotators3f.h")
+  :header "ioj/sim/rotators3f.h")
 
 (type native_rotator_3f
-  :spelling "ml::simulation::Rotator3f"
-  :header "sandbox/simulation/rotator_types.h"
+  :spelling "ioj::sim::Rotator3f"
+  :header "ioj/sim/rotator_types.h"
   :pass-by value)
 
 (type rotator_3f
@@ -319,7 +319,7 @@
 
 (type unique_id
   :spelling "TestEntityUniqueId"
-  :header "sandbox/simulation/entities/TestEntityUniqueId.h"
+  :header "ioj/sim/entities/TestEntityUniqueId.h"
   :pass-by value)
 
 (type vector_2f
@@ -417,35 +417,35 @@
   (operation set-element set
     :pass-by value))
 
-(type test_fighters
-  :spelling "ml::test_capital_ship_fighters::Simulation"
-  :header "sandbox/simulation/ships/fighters/TestCapitalShipFightersSimulation.h")
+(type fighters_sim
+  :spelling "ioj::sim::fighters::Sim"
+  :header "ioj/sim/fighters/sim.h")
 
 (type spawned_entity_handles
-  :spelling "ml::simulation::SpawnedEntityHandles"
-  :header "sandbox/simulation/spawned_entity_handles.h")
+  :spelling "ioj::sim::SpawnedEntityHandles"
+  :header "ioj/sim/spawned_entity_handles.h")
 
-(type test_space_ship
-  :spelling "ml::test_space_ship::Simulation"
-  :header "sandbox/simulation/ships/player/TestSpaceShipSimulation.h")
+(type player_sim
+  :spelling "ioj::sim::player::Sim"
+  :header "ioj/sim/player/sim.h")
 
-(type test_lasers
-  :spelling "ml::test_lasers::Simulation"
-  :header "sandbox/simulation/combat/lasers/TestLasersSimulation.h")
+(type lasers_sim
+  :spelling "ioj::sim::lasers::Sim"
+  :header "ioj/sim/lasers/sim.h")
 
-(type test_capital_ships
-  :spelling "ml::test_capital_ships::Simulation"
-  :header "sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h")
+(type capital_ships_sim
+  :spelling "ioj::sim::capital_ships::Sim"
+  :header "ioj/sim/capital_ships/sim.h")
 
-(type test_static_turrets
-  :spelling "ml::test_static_turrets::Simulation"
-  :header "sandbox/simulation/defences/turrets/TestStaticTurretsSimulation.h")
+(type turrets_sim
+  :spelling "ioj::sim::turrets::Sim"
+  :header "ioj/sim/turrets/sim.h")
 
-(type test_tube_spinners
-  :spelling "ml::test_tube_spinners::Simulation"
-  :header "sandbox/simulation/defences/spinners/TestTubeSpinnersSimulation.h")
+(type spinners_sim
+  :spelling "ioj::sim::spinners::Sim"
+  :header "ioj/sim/spinners/sim.h")
 
 (type laser_source
-  :spelling "ml::simulation::LaserSource"
-  :header "sandbox/simulation/laser_source.h"
+  :spelling "ioj::sim::LaserSource"
+  :header "ioj/sim/laser_source.h"
   :pass-by value)

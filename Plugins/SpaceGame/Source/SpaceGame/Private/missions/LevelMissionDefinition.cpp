@@ -1,4 +1,4 @@
-#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <ioj/sim/entity_registry.h>
 #include <SpaceGame/entities/TestEntity.h>
 #include <SpaceGame/missions/LevelMissionDefinition.h>
 #include <SpaceGameSimulation/missions/NativeMissionTypes.h>
@@ -34,9 +34,9 @@ void FLevelMissionDefinition::replace_startup_actor(AActor const* const old_acto
     }
 }
 
-void FLevelMissionDefinition::apply(FTestMissionManager& mission,
+void FLevelMissionDefinition::apply(::ioj::sim::MissionManager& mission,
                                     FProxyEntityMap const& proxies,
-                                    FTestEntityRegistry const& registry) const {
+                                    ::ioj::sim::EntityRegistry const& registry) const {
     mission.set_mission_mode(ml::to_native(mission_mode));
     mission.set_target_time(target_time);
     mission.set_kill_target(kill_target);

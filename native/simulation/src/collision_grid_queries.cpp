@@ -1,12 +1,12 @@
-#include "sandbox/simulation/collision_grid_queries.h"
+#include "ioj/sim/collision_grid_queries.h"
 
-#include "sandbox/simulation/world_aabb_operations.h"
+#include "ioj/sim/world_aabb_operations.h"
 
 #include <algorithm>
 #include <cmath>
 #include <limits>
 
-namespace ml::simulation::collision {
+namespace ioj::sim::collision {
 namespace {
 enum class TraceKind : std::uint8_t {
     Line,
@@ -19,7 +19,7 @@ enum class IgnoredEntityMode : std::uint8_t {
 };
 
 auto entity_type_at(EntityRegistryQueryView const registry,
-                    FRegistryEntityHandle const entity) noexcept -> EntityType {
+                    RegistryEntityHandle const entity) noexcept -> EntityType {
     return static_cast<EntityType>(std::to_integer<std::uint8_t>(
         registry.entity_types[static_cast<std::size_t>(entity.index)]));
 }
@@ -31,7 +31,7 @@ void trace_grid_aabbs(GridGeometry const geometry,
                       EntityRegistryQueryView const registry,
                       LineTracesConstView const traces,
                       TraceHitsView const hits,
-                      std::span<FRegistryEntityHandle const> const ignored_entities,
+                      std::span<RegistryEntityHandle const> const ignored_entities,
                       Vector3f const moving_half_extent) {
     traces.validate_array_sizes();
     hits.validate_array_sizes();
@@ -56,7 +56,7 @@ void trace_grid_aabbs(GridGeometry const geometry,
     for (std::int32_t trace_index{}; trace_index < trace_count; ++trace_index) {
         auto const output_index{static_cast<std::size_t>(trace_index)};
         hits.hits[output_index] = 0;
-        hits.entities[output_index] = FRegistryEntityHandle{};
+        hits.entities[output_index] = RegistryEntityHandle{};
         hits.static_geometry_indices[output_index] = -1;
 
         auto const start{traces.starts[trace_index]};
@@ -76,9 +76,9 @@ void trace_grid_aabbs(GridGeometry const geometry,
         }
 
         auto nearest_t{std::numeric_limits<float>::infinity()};
-        FRegistryEntityHandle nearest_entity;
+        RegistryEntityHandle nearest_entity;
         std::int32_t nearest_static_index{-1};
-        FRegistryEntityHandle ignored_entity{};
+        RegistryEntityHandle ignored_entity{};
         if constexpr (IgnoredMode == IgnoredEntityMode::PerTrace) {
             ignored_entity = ignored_entities[output_index];
         }
@@ -95,8 +95,8 @@ void trace_grid_aabbs(GridGeometry const geometry,
                             continue;
                         }
                     }
-                    if constexpr (EntityFilter == TraceEntityFilter::ExcludeCapitalShipFighters) {
-                        if (entity_type_at(registry, entity) == EntityType::CapitalShipFighter) {
+                    if constexpr (EntityFilter == TraceEntityFilter::ExcludeFighters) {
+                        if (entity_type_at(registry, entity) == EntityType::Fighter) {
                             continue;
                         }
                     }
@@ -125,7 +125,7 @@ void trace_grid_aabbs(GridGeometry const geometry,
                                             moving_half_extent)};
                 if (hit_t < nearest_t) {
                     nearest_t = hit_t;
-                    nearest_entity = FRegistryEntityHandle{};
+                    nearest_entity = RegistryEntityHandle{};
                     nearest_static_index = static_index;
                 }
             }
@@ -253,7 +253,7 @@ void dispatch_ignored_mode(GridGeometry const geometry,
                            EntityRegistryQueryView const registry,
                            LineTracesConstView const traces,
                            TraceHitsView const hits,
-                           std::span<FRegistryEntityHandle const> const ignored_entities,
+                           std::span<RegistryEntityHandle const> const ignored_entities,
                            Vector3f const moving_half_extent,
                            TraceEntityFilter const entity_filter) {
     auto const dispatch_filter{[&]<IgnoredEntityMode IgnoredMode>() {
@@ -268,8 +268,8 @@ void dispatch_ignored_mode(GridGeometry const geometry,
                                                                              ignored_entities,
                                                                              moving_half_extent);
                 return;
-            case TraceEntityFilter::ExcludeCapitalShipFighters:
-                trace_grid_aabbs<Kind, IgnoredMode, TraceEntityFilter::ExcludeCapitalShipFighters>(
+            case TraceEntityFilter::ExcludeFighters:
+                trace_grid_aabbs<Kind, IgnoredMode, TraceEntityFilter::ExcludeFighters>(
                     geometry,
                     entity_storage,
                     static_storage,
@@ -307,7 +307,7 @@ void trace_grid_lines_ignoring_entities(
     EntityRegistryQueryView const registry,
     LineTracesConstView const traces,
     TraceHitsView const hits,
-    std::span<FRegistryEntityHandle const> const ignored_entities) {
+    std::span<RegistryEntityHandle const> const ignored_entities) {
     trace_grid_aabbs<TraceKind::Line, IgnoredEntityMode::PerTrace, TraceEntityFilter::None>(
         geometry, entity_storage, static_storage, registry, traces, hits, ignored_entities, {});
 }
@@ -319,7 +319,7 @@ void sweep_grid_aabbs(GridGeometry const geometry,
                       LineTracesConstView const centre_paths,
                       Vector3f const moving_half_extent,
                       TraceHitsView const hits,
-                      std::span<FRegistryEntityHandle const> const ignored_entities,
+                      std::span<RegistryEntityHandle const> const ignored_entities,
                       TraceEntityFilter const entity_filter) {
     dispatch_ignored_mode<TraceKind::Sweep>(geometry,
                                             entity_storage,
@@ -331,4 +331,4 @@ void sweep_grid_aabbs(GridGeometry const geometry,
                                             moving_half_extent,
                                             entity_filter);
 }
-} // namespace ml::simulation::collision
+} // namespace ioj::sim::collision

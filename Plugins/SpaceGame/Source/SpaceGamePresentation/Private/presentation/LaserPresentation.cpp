@@ -17,7 +17,7 @@
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserISMCCount, TEXT("Sandbox/TestLaserISMCCount"));
 
 namespace SpaceGame::LaserPresentation::Private {
-auto make_seed(ml::simulation::SimTick const tick, FVector3f const location, int32 const ordinal)
+auto make_seed(::ioj::sim::SimTick const tick, FVector3f const location, int32 const ordinal)
     -> uint32 {
     auto seed{HashCombineFast(GetTypeHash(static_cast<uint32>(tick)),
                               GetTypeHash(static_cast<uint32>(tick >> 32)))};
@@ -85,14 +85,13 @@ void FLaserPresentation::configure_ismc() {
     instances->set_num_custom_data_floats(n_custom_ismc_floats);
 }
 
-auto FLaserPresentation::source_colour(ml::simulation::LaserSource const source) const
-    -> FLinearColor {
+auto FLaserPresentation::source_colour(::ioj::sim::LaserSource const source) const -> FLinearColor {
     switch (source.type) {
-        case ml::simulation::EntityType::PlayerShip:
+        case ::ioj::sim::EntityType::PlayerShip:
             return player_colours_[ml::to_unreal(source.team)];
-        case ml::simulation::EntityType::CapitalShipFighter:
+        case ::ioj::sim::EntityType::Fighter:
             return fighter_colours_[ml::to_unreal(source.team)];
-        case ml::simulation::EntityType::Turret:
+        case ::ioj::sim::EntityType::Turret:
             return turret_colours_[ml::to_unreal(source.team)];
         default:
             return FLinearColor::White;

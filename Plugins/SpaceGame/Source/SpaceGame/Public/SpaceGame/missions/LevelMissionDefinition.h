@@ -2,7 +2,7 @@
 #include <SpaceGameSimulation/missions/TestMissionMode.h>
 
 #include <GameFramework/Actor.h>
-#include <sandbox/simulation/missions/TestMissionManager.h>
+#include <ioj/sim/mission_manager.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
 
 #include "LevelMissionDefinition.generated.h"
@@ -28,9 +28,9 @@ struct SPACEGAME_API FLevelMissionDefinition {
     GENERATED_BODY()
 
     void replace_startup_actor(AActor const* old_actor, AActor& new_actor);
-    void apply(FTestMissionManager& mission,
+    void apply(::ioj::sim::MissionManager& mission,
                FProxyEntityMap const& proxy_entities,
-               FTestEntityRegistry const& registry) const;
+               ::ioj::sim::EntityRegistry const& registry) const;
     void set_mission_mode(ETestMissionMode mode) { mission_mode = mode; }
     void set_target_time(float value) { target_time = value; }
     void set_kill_target(int32 value) { kill_target = value; }

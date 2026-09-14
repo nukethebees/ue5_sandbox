@@ -10,17 +10,20 @@
 class UWorld;
 class AActor;
 
-struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
 
 class ATestSpaceShip;
 
-namespace ml::test_capital_ships {
-struct Simulation;
+namespace ioj::sim {
+struct EntityRegistry;
 }
 
-namespace ml::test_capital_ship_fighters {
-struct Simulation;
+namespace ioj::sim::capital_ships {
+struct Sim;
+}
+
+namespace ioj::sim::fighters {
+struct Sim;
 }
 
 namespace ml {
@@ -33,14 +36,14 @@ struct TestSimulationDriver {
 
     auto get_world() const -> UWorld* { return &world; }
     auto get_player_ship() const -> ATestSpaceShip const&;
-    auto get_capital_ships() const -> test_capital_ships::Simulation const&;
-    auto get_capital_ship_fighters() const -> test_capital_ship_fighters::Simulation const&;
+    auto get_capital_ships() const -> ::ioj::sim::capital_ships::Sim const&;
+    auto get_fighters() const -> ::ioj::sim::fighters::Sim const&;
 
-    void queue_damage(std::span<FRegistryEntityHandle const> targets,
+    void queue_damage(std::span<::ioj::sim::RegistryEntityHandle const> targets,
                       int32 damage,
-                      FRegistryEntityHandle instigator = {});
-    void queue_kills(std::span<FRegistryEntityHandle const> targets,
-                     FRegistryEntityHandle instigator = {});
+                      ::ioj::sim::RegistryEntityHandle instigator = {});
+    void queue_kills(std::span<::ioj::sim::RegistryEntityHandle const> targets,
+                     ::ioj::sim::RegistryEntityHandle instigator = {});
     bool should_export_results() const;
 
     void set_time_scale(time_type scale);
@@ -55,7 +58,7 @@ struct TestSimulationDriver {
     bool time_wait_completed() const;
 
     UWorld& world;
-    auto get_registry() const -> FTestEntityRegistry&;
+    auto get_registry() const -> ::ioj::sim::EntityRegistry&;
     ATestBatchOrchestrator& orchestrator;
 
     uint64 tick_wait_end{0};

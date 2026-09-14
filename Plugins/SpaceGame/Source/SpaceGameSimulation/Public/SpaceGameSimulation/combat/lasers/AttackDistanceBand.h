@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sandbox/simulation/attack_distance_band.h>
+#include <ioj/sim/attack_distance_band.h>
 
 #include <CoreMinimal.h>
 
@@ -12,7 +12,7 @@ struct FAttackDistanceBand {
 
     bool values_are_valid() const { return to_native().values_are_valid(); }
 
-    auto to_native() const noexcept -> ml::simulation::AttackDistanceBand {
+    auto to_native() const noexcept -> ::ioj::sim::AttackDistanceBand {
         return {
             .minimum_ratio = minimum_ratio,
             .desired_ratio = desired_ratio,

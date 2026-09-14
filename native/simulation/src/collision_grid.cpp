@@ -1,6 +1,6 @@
-#include "sandbox/simulation/collision_grid.h"
+#include "ioj/sim/collision_grid.h"
 
-#include "sandbox/simulation/vectors3f.h"
+#include "ioj/sim/vectors3f.h"
 
 #include <algorithm>
 #include <cassert>
@@ -8,7 +8,7 @@
 #include <limits>
 #include <utility>
 
-namespace ml::simulation::collision {
+namespace ioj::sim::collision {
 namespace {
 constexpr std::size_t axis_count{3};
 
@@ -28,7 +28,7 @@ auto to_closed_max_cell(float const value,
 }
 
 auto grid_half_size(GridGeometry const geometry) noexcept -> Vec3f {
-    return make_vector3f(
+    return ml::make_vector3f(
         static_cast<float>(geometry.dimensions.x) * geometry.cell_dimensions.X * 0.5f,
         static_cast<float>(geometry.dimensions.y) * geometry.cell_dimensions.Y * 0.5f,
         static_cast<float>(geometry.dimensions.z) * geometry.cell_dimensions.Z * 0.5f);
@@ -40,7 +40,7 @@ auto clip_segment(Vec3f const start,
                   Vec3f const bounds_max_inside,
                   Vec3f& clipped_start,
                   Vec3f& clipped_end) noexcept -> bool {
-    auto const delta{make_vector3f(end.X - start.X, end.Y - start.Y, end.Z - start.Z)};
+    auto const delta{ml::make_vector3f(end.X - start.X, end.Y - start.Y, end.Z - start.Z)};
     float entry_t{};
     float exit_t{1.0f};
 
@@ -162,7 +162,7 @@ auto to_cell_coord_bounds(GridGeometry const geometry,
 
 auto to_cell_min(GridGeometry const geometry, CellCoord const coordinate) noexcept -> Vec3f {
     auto const half_size{grid_half_size(geometry)};
-    return make_vector3f(
+    return ml::make_vector3f(
         static_cast<float>(coordinate.x) * geometry.cell_dimensions.X - half_size.X,
         static_cast<float>(coordinate.y) * geometry.cell_dimensions.Y - half_size.Y,
         static_cast<float>(coordinate.z) * geometry.cell_dimensions.Z - half_size.Z);
@@ -255,7 +255,7 @@ auto GridTraversal::create(GridGeometry const geometry,
     }
 
     auto const half_size{grid_half_size(geometry)};
-    auto const bounds_min{make_vector3f(-half_size.X, -half_size.Y, -half_size.Z)};
+    auto const bounds_min{ml::make_vector3f(-half_size.X, -half_size.Y, -half_size.Z)};
     Vec3f bounds_max_inside{half_size};
     for (std::size_t axis{}; axis < axis_count; ++axis) {
         bounds_max_inside.Elements[axis] =
@@ -279,9 +279,9 @@ auto GridTraversal::create(GridGeometry const geometry,
     result.current_cell_ = clamp_cell(clipped_start);
     result.end_cell_ = clamp_cell(clipped_end);
     auto const cell_min{to_cell_min(geometry, result.current_cell_)};
-    auto const delta{make_vector3f(clipped_end.X - clipped_start.X,
-                                   clipped_end.Y - clipped_start.Y,
-                                   clipped_end.Z - clipped_start.Z)};
+    auto const delta{ml::make_vector3f(clipped_end.X - clipped_start.X,
+                                       clipped_end.Y - clipped_start.Y,
+                                       clipped_end.Z - clipped_start.Z)};
     for (std::size_t axis{}; axis < axis_count; ++axis) {
         if (delta.Elements[axis] == 0.0f) {
             result.steps_[axis] = 0;

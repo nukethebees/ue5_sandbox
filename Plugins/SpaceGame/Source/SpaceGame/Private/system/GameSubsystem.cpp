@@ -141,7 +141,7 @@ void UGameSubsystem::Deinitialize() {
     Super::Deinitialize();
 }
 
-auto UGameSubsystem::get_game_memory() noexcept -> FGameMemory& {
+auto UGameSubsystem::get_game_memory() noexcept -> ::ioj::sim::GameMemory& {
     check(game_memory_.IsValid());
     return *game_memory_;
 }

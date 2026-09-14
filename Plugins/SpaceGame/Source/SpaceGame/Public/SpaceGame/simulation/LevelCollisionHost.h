@@ -1,5 +1,5 @@
 #pragma once
-#include <sandbox/simulation/simulation/CollisionSystem.h>
+#include <ioj/sim/collision/collision_system.h>
 #include <SandboxCore/enum_array.h>
 #include <SpaceGame/simulation/StaticCollisionSources.h>
 #include <SpaceGameSimulation/entities/TestEntityType.h>
@@ -20,8 +20,9 @@ struct SPACEGAME_API FLevelCollisionHost {
     static auto extract_entity_bounds(EntityMeshes const& meshes) -> FEntityBoundsExtractionResult;
     void initialise_static_geometry(UWorld& world,
                                     FCollisionGridConfig const& config,
-                                    FCollisionSystem& collision);
-    auto add_static_geometry(UPrimitiveComponent& component, FCollisionSystem& collision) -> bool;
+                                    ::ioj::sim::collision::CollisionSystem& collision);
+    auto add_static_geometry(UPrimitiveComponent& component,
+                             ::ioj::sim::collision::CollisionSystem& collision) -> bool;
     void restore_collision();
     auto get_static_collision_sources() const noexcept -> FStaticCollisionSources::ConstView {
         return static_collision_sources_.get_const_view();

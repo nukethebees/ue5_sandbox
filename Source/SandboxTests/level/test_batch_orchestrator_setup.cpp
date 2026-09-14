@@ -4,15 +4,15 @@
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 
-#include <sandbox/simulation/combat/lasers/TestLasersSimulation.h>
-#include <sandbox/simulation/defences/spinners/TestTubeSpinnersSimulation.h>
-#include <sandbox/simulation/defences/turrets/TestStaticTurretsSimulation.h>
-#include <sandbox/simulation/entities/TestEntityRegistry.h>
-#include <sandbox/simulation/missions/TestMissionManager.h>
-#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
-#include <sandbox/simulation/ships/fighters/TestCapitalShipFightersSimulation.h>
-#include <sandbox/simulation/simulation/LevelTelemetryManager.h>
-#include <sandbox/simulation/simulation/SimulationClock.h>
+#include <ioj/sim/capital_ships/sim.h>
+#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/fighters/sim.h>
+#include <ioj/sim/lasers/sim.h>
+#include <ioj/sim/level_telemetry_manager.h>
+#include <ioj/sim/mission_manager.h>
+#include <ioj/sim/sim_clock.h>
+#include <ioj/sim/spinners/sim.h>
+#include <ioj/sim/turrets/sim.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -58,7 +58,8 @@ void FTestBatchOrchestratorSetupScenario::prepare_level() {
         auto& world{context_.world};
 
         TestRunner->TestTrue(TEXT("Paused test start mode defers orchestrator initialisation"),
-                             orchestrator->get_state() == EOrchestratorState::Uninitialised);
+                             orchestrator->get_state() ==
+                                 ::ioj::sim::OrchestratorState::Uninitialised);
         TestRunner->TestFalse(TEXT("Uninitialised orchestrator does not tick"),
                               orchestrator->IsActorTickEnabled());
 
@@ -80,7 +81,7 @@ void FTestBatchOrchestratorSetupScenario::prepare_level() {
         orchestrator->start_simulation();
 
         TestRunner->TestTrue(TEXT("Starting transitions the orchestrator to running"),
-                             orchestrator->get_state() == EOrchestratorState::Running);
+                             orchestrator->get_state() == ::ioj::sim::OrchestratorState::Running);
         TestRunner->TestTrue(TEXT("Running orchestrator ticks"),
                              orchestrator->IsActorTickEnabled());
         TestRunner->TestEqual(TEXT("Starting does not immediately advance simulation"),
@@ -99,10 +100,11 @@ void FTestBatchOrchestratorSetupScenario::simulation_clock_conversions() {
         TestRunner->TestEqual(
             TEXT("Reusable level is constructed once"), context_.level_construction_count, 1);
         TestRunner->TestTrue(TEXT("Reset leaves the orchestrator uninitialised"),
-                             orchestrator->get_state() == EOrchestratorState::Uninitialised);
+                             orchestrator->get_state() ==
+                                 ::ioj::sim::OrchestratorState::Uninitialised);
 
-        FSimulationClock clock;
-        clock.initialise(ml::simulation::FixedTickLoop{});
+        ::ioj::sim::SimClock clock;
+        clock.initialise(::ioj::sim::FixedTickLoop{});
 
         TestRunner->TestEqual(TEXT("Tick-rate frequency has a one-tick period"),
                               clock.frequency_to_tick_period(60.0),
@@ -136,8 +138,8 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
             SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
             return;
         }
-        orchestrator.get_level_telemetry_manager().begin_run(
-            FLevelTelemetryRunMetadata{.run_id = "frame-ordering", .detailed_timing = true});
+        orchestrator.get_level_telemetry_manager().begin_run(::ioj::sim::LevelTelemetryRunMetadata{
+            .run_id = "frame-ordering", .detailed_timing = true});
         struct FFrameObservation {
             uint64 completed_ticks{};
             uint64 presentation_count{};
@@ -154,7 +156,7 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
                 }
                 if (owner.get_completed_ticks() == 6) {
                     owner.get_level_simulation()->complete_telemetry_run(
-                        ml::simulation::LevelTelemetryRunEndReason::DurationReached);
+                        ::ioj::sim::LevelTelemetryRunEndReason::DurationReached);
                 }
             }));
         auto const dt{orchestrator.get_level_simulation()->get_clock().get_tick_period()};
@@ -262,7 +264,7 @@ void FTestBatchOrchestratorSetupScenario::kill_telemetry_test_entity() {
     telemetry_samples_before_change = telemetry_manager.get_active_entity_count_data().num();
     kill_samples_before_change = telemetry_manager.get_cumulative_kill_count_data().num();
 
-    TStaticArray<FRegistryEntityHandle, 1> const targets{
+    TStaticArray<::ioj::sim::RegistryEntityHandle, 1> const targets{
         test_driver->get_player_ship().get_entity_handle()};
     test_driver->queue_kills(targets, targets[0]);
 }
@@ -429,16 +431,16 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FLevelTelemetryManagerTest,
                                  EAutomationTestFlags::EditorContext |
                                      EAutomationTestFlags::EngineFilter)
 
-struct FLevelTelemetryManagerTestAccess {
-    static auto history(FLevelTelemetryManager const& manager)
-        -> FLevelTelemetryBlockHistory const& {
+struct ::ioj::sim::LevelTelemetryManagerTestAccess {
+    static auto history(::ioj::sim::LevelTelemetryManager const& manager)
+        -> ::ioj::sim::LevelTelemetryBlockHistory const& {
         return manager.history_;
     }
 };
 
 auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
-    using Field = ml::level_telemetry::EHistoryField;
-    using FieldMask = ml::level_telemetry::FHistoryFieldMask;
+    using Field = ::ioj::sim::telemetry::HistoryField;
+    using FieldMask = ::ioj::sim::telemetry::HistoryFieldMask;
     static_assert(FieldMask::index(Field::ActiveEntities) == 0);
     static_assert(FieldMask::index(Field::ActiveEntitiesByType) == 1);
     static_assert(FieldMask::index(Field::ActiveEntitiesByTeamAndType) == 6);
@@ -447,14 +449,14 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     static_assert(FieldMask::field_count == 48);
     static_assert(sizeof(FieldMask) == sizeof(uint64));
 
-    FSimulationClock clock;
+    ::ioj::sim::SimClock clock;
     clock.initialise({});
-    FTestEntityRegistry entity_registry;
-    ml::FSpatialQueryManager spatial_queries{entity_registry};
+    ::ioj::sim::EntityRegistry entity_registry;
+    ::ioj::sim::SpatialQueryManager spatial_queries{entity_registry};
     ml::FFrameMemoryResource frame_memory{1024 * 1024};
-    ml::test_lasers::Simulation lasers{clock, entity_registry, spatial_queries, frame_memory};
-    FGameMemory game_memory{{.root_capacity_bytes = 2u * 1024u * 1024u}};
-    FLevelTelemetryManager telemetry_manager{
+    ::ioj::sim::lasers::Sim lasers{clock, entity_registry, spatial_queries, frame_memory};
+    ::ioj::sim::GameMemory game_memory{{.root_capacity_bytes = 2u * 1024u * 1024u}};
+    ::ioj::sim::LevelTelemetryManager telemetry_manager{
         clock,
         entity_registry,
         lasers,
@@ -485,14 +487,15 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("Initialisation records one sample for each workload series"),
               tick_series.active_lasers.num(),
               int32{1});
-    auto const& initial_history{FLevelTelemetryManagerTestAccess::history(telemetry_manager)};
+    auto const& initial_history{
+        ::ioj::sim::LevelTelemetryManagerTestAccess::history(telemetry_manager)};
     auto const initial_history_columns{initial_history.block_view(0).columns()};
     TestEqual(TEXT("Initialisation merges all telemetry fields into one row"),
               initial_history.num(),
               int32{1});
     TestEqual(TEXT("Initial row marks all 48 telemetry fields valid"),
               initial_history_columns.validity_masks[0].value(),
-              (uint64{1} << ml::level_telemetry::FHistoryFieldMask::field_count) - 1);
+              (uint64{1} << ::ioj::sim::telemetry::HistoryFieldMask::field_count) - 1);
     TestEqual(TEXT("Initial row performs one payload write per logical series"),
               telemetry_manager.get_history_stats().payload_write_count,
               uint64{48});
@@ -502,10 +505,11 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("A legitimate zero-valued field survives reconstruction"),
               tick_series.kills.last_value(),
               int32{0});
-    auto const telemetry_manager_size{sizeof(FLevelTelemetryManager)};
+    auto const telemetry_manager_size{sizeof(::ioj::sim::LevelTelemetryManager)};
     // Account for the migrated container headers, not additional history or sample storage.
-    constexpr auto migrated_vector_count{5 + FSimulationTelemetryPerformanceWindow::system_count +
-                                         FSimulationTelemetryPerformanceWindow::phase_count};
+    constexpr auto migrated_vector_count{5 +
+                                         ::ioj::sim::SimTelemetryPerformanceWindow::system_count +
+                                         ::ioj::sim::SimTelemetryPerformanceWindow::phase_count};
     constexpr auto native_header_overhead{
         migrated_vector_count * (sizeof(std::vector<double>) - sizeof(TArray<double>)) +
         7 * (sizeof(std::string) - sizeof(FString)) + sizeof(std::string) - sizeof(FName)};
@@ -546,14 +550,16 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               tick_series.requested_time_scale.last_time(),
               uint64{2});
     auto const time_scale_columns{
-        FLevelTelemetryManagerTestAccess::history(telemetry_manager).block_view(0).columns()};
+        ::ioj::sim::LevelTelemetryManagerTestAccess::history(telemetry_manager)
+            .block_view(0)
+            .columns()};
     TestEqual(TEXT("A single changed field emits one additional row"),
               time_scale_columns.num(),
               int32{2});
     TestEqual(TEXT("Single-field row marks only requested time scale valid"),
               time_scale_columns.validity_masks[1].value(),
-              uint64{1} << ml::level_telemetry::FHistoryFieldMask::index(
-                  ml::level_telemetry::EHistoryField::RequestedTimeScale));
+              uint64{1} << ::ioj::sim::telemetry::HistoryFieldMask::index(
+                  ::ioj::sim::telemetry::HistoryField::RequestedTimeScale));
 
     clock.completed_ticks = 5;
     clock.tick_loop.tick_period = 0.25;
@@ -591,18 +597,18 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               active_count_data.last_time(),
               uint64{0});
 
-    ml::simulation::RegistryEntityData fixture_entity_data;
+    ::ioj::sim::RegistryEntityData fixture_entity_data;
     constexpr int32 fixture_count{3};
     fixture_entity_data.add_defaulted(fixture_count);
     for (int32 i{}; i < fixture_count; ++i) {
         fixture_entity_data.healths[i] = 100;
         fixture_entity_data.alive[i] = 1;
-        fixture_entity_data.teams[i] = ml::simulation::Team::Red;
+        fixture_entity_data.teams[i] = ::ioj::sim::Team::Red;
     }
-    fixture_entity_data.teams[0] = ml::simulation::Team::Green;
-    fixture_entity_data.entity_types[0] = ml::simulation::EntityType::PlayerShip;
-    fixture_entity_data.entity_types[1] = ml::simulation::EntityType::CapitalShip;
-    fixture_entity_data.entity_types[2] = ml::simulation::EntityType::CapitalShipFighter;
+    fixture_entity_data.teams[0] = ::ioj::sim::Team::Green;
+    fixture_entity_data.entity_types[0] = ::ioj::sim::EntityType::PlayerShip;
+    fixture_entity_data.entity_types[1] = ::ioj::sim::EntityType::CapitalShip;
+    fixture_entity_data.entity_types[2] = ::ioj::sim::EntityType::Fighter;
     entity_registry.add_entities(fixture_entity_data.get_const_view());
 
     clock.completed_ticks = 2;
@@ -625,7 +631,7 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               1);
     TestEqual(TEXT("Current state records the red fighter"),
               entity_state.active_entities_by_team_and_type[std::to_underlying(
-                  ETestTeam::Red)][std::to_underlying(ETestEntityType::CapitalShipFighter)],
+                  ETestTeam::Red)][std::to_underlying(ETestEntityType::Fighter)],
               1);
     auto const green_index{std::to_underlying(ETestTeam::Green)};
     auto const player_ship_index{std::to_underlying(ETestEntityType::PlayerShip)};
@@ -643,7 +649,9 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               entity_state.spawned_entities,
               int32{3});
     auto const entity_change_columns{
-        FLevelTelemetryManagerTestAccess::history(telemetry_manager).block_view(0).columns()};
+        ::ioj::sim::LevelTelemetryManagerTestAccess::history(telemetry_manager)
+            .block_view(0)
+            .columns()};
     TestEqual(TEXT("Several entity fields changing together emit one row"),
               entity_change_columns.num(),
               int32{2});
@@ -682,13 +690,13 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
         TestTrue(TEXT("Entity snapshot kill counts are nonnegative"), value >= 0);
     }
 
-    FLevelTelemetryManager boundary_manager{
+    ::ioj::sim::LevelTelemetryManager boundary_manager{
         clock,
         entity_registry,
         lasers,
         spatial_queries,
         game_memory,
-        {.block_bytes = ml::level_telemetry::FHistoryRowsSingleLayout::layout_bytes(1)},
+        {.block_bytes = ::ioj::sim::telemetry::HistoryRowsSingleLayout::layout_bytes(1)},
     };
     clock.initialise({});
     boundary_manager.initialise();

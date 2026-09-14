@@ -1,9 +1,9 @@
 #include <algorithm>
 #include <cmath>
+#include <ioj/sim/rotator3d.h>
 #include <numbers>
-#include <sandbox/simulation/rotator3d.h>
 
-namespace ml::simulation {
+namespace ioj::sim {
 auto to_quaternion(Rotator3d const rotation) noexcept -> ml::Quaternion4d {
     auto const half_radians{std::numbers::pi / 360.0};
     auto const pitch{std::fmod(rotation.pitch, 360.0) * half_radians};

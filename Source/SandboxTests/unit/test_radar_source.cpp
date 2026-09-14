@@ -5,12 +5,12 @@
 #include <CQTest.h>
 
 namespace ml::test_radar_source {
-auto make_view(simulation::RegistryEntityData const& entities)
-    -> simulation::RegistryEntityData::ConstView {
+auto make_view(::ioj::sim::RegistryEntityData const& entities)
+    -> ::ioj::sim::RegistryEntityData::ConstView {
     return entities.get_const_view();
 }
 
-void add_entity(simulation::RegistryEntityData& entities,
+void add_entity(::ioj::sim::RegistryEntityData& entities,
                 FVector3f const location,
                 ETestTeam const team,
                 ETestEntityType const type,
@@ -59,11 +59,11 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 {
     TEST_METHOD(FiltersMapsAndOrdersContacts)
     {
-        ml::simulation::RegistryEntityData entities;
+        ::ioj::sim::RegistryEntityData entities;
         ml::test_radar_source::add_entity(
             entities, FVector3f::ZeroVector, ETestTeam::Blue, ETestEntityType::PlayerShip);
         ml::test_radar_source::add_entity(
-            entities, {50.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::CapitalShipFighter);
+            entities, {50.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::Fighter);
         ml::test_radar_source::add_entity(
             entities, {0.0f, 50.0f, 25.0f}, ETestTeam::Green, ETestEntityType::CapitalShip);
         ml::test_radar_source::add_entity(
@@ -72,11 +72,8 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
             entities, {0.0f, -50.0f, 0.0f}, ETestTeam::White, ETestEntityType::TubeSpinner);
         ml::test_radar_source::add_entity(
             entities, {100.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::Turret);
-        ml::test_radar_source::add_entity(entities,
-                                          {25.0f, 0.0f, 0.0f},
-                                          ETestTeam::Red,
-                                          ETestEntityType::CapitalShipFighter,
-                                          false);
+        ml::test_radar_source::add_entity(
+            entities, {25.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::Fighter, false);
         ml::test_radar_source::add_entity(
             entities, {101.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::CapitalShip);
 
@@ -160,11 +157,11 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 
     TEST_METHOD(UsesPlayerRelativeContactColours)
     {
-        ml::simulation::RegistryEntityData entities;
+        ::ioj::sim::RegistryEntityData entities;
         ml::test_radar_source::add_entity(
             entities, FVector3f::ZeroVector, ETestTeam::Blue, ETestEntityType::PlayerShip);
         ml::test_radar_source::add_entity(
-            entities, {10.0f, 0.0f, 0.0f}, ETestTeam::Blue, ETestEntityType::CapitalShipFighter);
+            entities, {10.0f, 0.0f, 0.0f}, ETestTeam::Blue, ETestEntityType::Fighter);
         ml::test_radar_source::add_entity(
             entities, {20.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::CapitalShip);
         ml::test_radar_source::add_entity(
@@ -209,11 +206,11 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         auto const world_contact{
             FVector3f{player_location + no_roll_rotation.RotateVector(FVector{local_contact})}};
 
-        ml::simulation::RegistryEntityData entities;
+        ::ioj::sim::RegistryEntityData entities;
         ml::test_radar_source::add_entity(
             entities, FVector3f{player_location}, ETestTeam::Blue, ETestEntityType::PlayerShip);
         ml::test_radar_source::add_entity(
-            entities, world_contact, ETestTeam::Red, ETestEntityType::CapitalShipFighter);
+            entities, world_contact, ETestTeam::Red, ETestEntityType::Fighter);
         TArray<int32> generations;
         generations.Init(3, entities.num());
         TArray<EEntityOverlayObjectiveRole> objective_roles;
@@ -334,11 +331,11 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
     TEST_METHOD(ContactMappingDoesNotDependOnOtherContacts)
     {
         auto const settings{ml::test_radar_source::nonlinear_settings()};
-        ml::simulation::RegistryEntityData entities;
+        ::ioj::sim::RegistryEntityData entities;
         ml::test_radar_source::add_entity(
             entities, FVector3f::ZeroVector, ETestTeam::Blue, ETestEntityType::PlayerShip);
         ml::test_radar_source::add_entity(
-            entities, {250.0f, -80.0f, 40.0f}, ETestTeam::Red, ETestEntityType::CapitalShipFighter);
+            entities, {250.0f, -80.0f, 40.0f}, ETestTeam::Red, ETestEntityType::Fighter);
         TArray<int32> generations;
         generations.Init(1, entities.num());
         TArray<EEntityOverlayObjectiveRole> objective_roles;
@@ -384,11 +381,11 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
     TEST_METHOD(FixedMaximumRangeExcludesAllOutOfRangeContacts)
     {
         auto const settings{ml::test_radar_source::nonlinear_settings()};
-        ml::simulation::RegistryEntityData entities;
+        ::ioj::sim::RegistryEntityData entities;
         ml::test_radar_source::add_entity(
             entities, FVector3f::ZeroVector, ETestTeam::Blue, ETestEntityType::PlayerShip);
         ml::test_radar_source::add_entity(
-            entities, {1999.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::CapitalShipFighter);
+            entities, {1999.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::Fighter);
         ml::test_radar_source::add_entity(
             entities, {2000.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::CapitalShip);
         ml::test_radar_source::add_entity(

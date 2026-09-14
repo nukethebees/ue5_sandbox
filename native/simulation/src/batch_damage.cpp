@@ -1,11 +1,11 @@
-#include "sandbox/simulation/batch_damage.h"
+#include "ioj/sim/batch_damage.h"
 
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <functional>
 
-namespace ml::simulation {
+namespace ioj::sim {
 auto sort_and_deduplicate_removal_indices(std::span<std::int32_t> const indices) noexcept
     -> std::int32_t {
     std::ranges::sort(indices, std::greater{});
@@ -13,7 +13,7 @@ auto sort_and_deduplicate_removal_indices(std::span<std::int32_t> const indices)
     return static_cast<std::int32_t>(unique_end - indices.begin());
 }
 
-auto resolve_batch_damage(std::span<FRegistryEntityHandle const> const entity_handles,
+auto resolve_batch_damage(std::span<RegistryEntityHandle const> const entity_handles,
                           std::span<std::int32_t> const healths,
                           DirectDamageEventsConstView const damage_events,
                           std::span<std::int32_t> const removal_indices,
@@ -53,4 +53,4 @@ auto resolve_batch_damage(std::span<FRegistryEntityHandle const> const entity_ha
     }
     return {removal_count, death_count};
 }
-} // namespace ml::simulation
+} // namespace ioj::sim

@@ -1,6 +1,6 @@
-#include "sandbox/simulation/spatial_query_telemetry.h"
+#include "ioj/sim/spatial_query_telemetry.h"
 
-namespace ml::simulation::collision {
+namespace ioj::sim::collision {
 void CollisionGridTelemetry::record_rebuild() noexcept {
     rebuild_count_.fetch_add(1, std::memory_order_relaxed);
 }
@@ -46,4 +46,4 @@ auto SpatialQueryTelemetry::snapshot(CollisionGridTelemetrySnapshot const grid,
         .occupied_dynamic_cell_count = occupied_dynamic_cell_count,
     };
 }
-} // namespace ml::simulation::collision
+} // namespace ioj::sim::collision

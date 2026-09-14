@@ -2,8 +2,8 @@
 #include <SGCollision/world_aabbs.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
-#include <sandbox/simulation/entities/TestEntityRegistry.h>
-#include <sandbox/simulation/world_aabb_operations.h>
+#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/world_aabb_operations.h>
 #include <SGCollision/mesh_data_extraction.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGameSimulation/entities/TestEntityType.h>
@@ -24,8 +24,7 @@ namespace {
 static_assert(FEntityAABBs::space_ship_index == std::to_underlying(ETestEntityType::PlayerShip));
 static_assert(FEntityAABBs::static_turret_index == std::to_underlying(ETestEntityType::Turret));
 static_assert(FEntityAABBs::capital_ship_index == std::to_underlying(ETestEntityType::CapitalShip));
-static_assert(FEntityAABBs::fighter_index ==
-              std::to_underlying(ETestEntityType::CapitalShipFighter));
+static_assert(FEntityAABBs::fighter_index == std::to_underlying(ETestEntityType::Fighter));
 static_assert(FEntityAABBs::tube_spinner_index == std::to_underlying(ETestEntityType::TubeSpinner));
 static_assert(FEntityAABBs::num_rows == std::to_underlying(ETestEntityType::COUNT));
 
@@ -84,11 +83,11 @@ struct FStaticCollisionComponentData {
     ECollisionEnabled::Type original_collision_mode{ECollisionEnabled::NoCollision};
 };
 
-auto extract_static_collision_component(UPrimitiveComponent& component,
-                                        CollisionUniformGrid const& uniform_grid,
-                                        AActor const* const expected_owner,
-                                        TCHAR const*& rejection_reason)
-    -> TOptional<FStaticCollisionComponentData> {
+auto extract_static_collision_component(
+    UPrimitiveComponent& component,
+    ::ioj::sim::collision::CollisionUniformGrid const& uniform_grid,
+    AActor const* const expected_owner,
+    TCHAR const*& rejection_reason) -> TOptional<FStaticCollisionComponentData> {
     auto* const actor{component.GetOwner()};
     if (!IsValid(actor)) {
         rejection_reason = TEXT("component has no valid owner");
@@ -165,11 +164,13 @@ auto FLevelCollisionHost::extract_entity_bounds(EntityMeshes const& meshes)
     }
     return result;
 }
-void FLevelCollisionHost::initialise_static_geometry(UWorld& world,
-                                                     FCollisionGridConfig const& config,
-                                                     FCollisionSystem& collision) {
+void FLevelCollisionHost::initialise_static_geometry(
+    UWorld& world,
+    FCollisionGridConfig const& config,
+    ::ioj::sim::collision::CollisionSystem& collision) {
     auto& uniform_grid_{collision.get_uniform_grid()};
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCollisionSystem::initialise_static_geometry);
+    TRACE_CPUPROFILER_EVENT_SCOPE(
+        Sandbox::ioj::sim::collision::CollisionSystem::initialise_static_geometry);
     checkf(config.is_valid(), TEXT("Cannot harvest static collision with an invalid grid config"));
 
     auto const previous_sources{static_collision_sources_.get_const_view()};
@@ -241,7 +242,7 @@ void FLevelCollisionHost::initialise_static_geometry(UWorld& world,
                 continue;
             }
 
-            simulation::collision::add(static_aabbs,
+            ::ioj::sim::collision::add(static_aabbs,
                                        {data->min_point.X, data->min_point.Y, data->min_point.Z},
                                        {data->max_point.X, data->max_point.Y, data->max_point.Z});
             static_collision_sources_.add(component, data->original_collision_mode);
@@ -266,9 +267,11 @@ void FLevelCollisionHost::initialise_static_geometry(UWorld& world,
            unexpected_actor_count);
 }
 auto FLevelCollisionHost::add_static_geometry(UPrimitiveComponent& component,
-                                              FCollisionSystem& collision) -> bool {
+                                              ::ioj::sim::collision::CollisionSystem& collision)
+    -> bool {
     auto& uniform_grid_{collision.get_uniform_grid()};
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCollisionSystem::add_static_geometry);
+    TRACE_CPUPROFILER_EVENT_SCOPE(
+        Sandbox::ioj::sim::collision::CollisionSystem::add_static_geometry);
 
     auto* const actor{component.GetOwner()};
     auto const reject_component{[&](TCHAR const* const reason) {

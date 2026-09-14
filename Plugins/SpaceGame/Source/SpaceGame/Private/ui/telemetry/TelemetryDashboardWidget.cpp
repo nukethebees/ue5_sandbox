@@ -186,10 +186,10 @@ void UTelemetryDashboardWidget::rebuild_state() {
                  ? FString::Printf(TEXT("%.3g"), metric->weighted_mean.GetValue())
                  : FString{TEXT("—")};
     };
-    auto last_int = [](FLevelTelemetryTickSeries::Int32Data const& series) {
+    auto last_int = [](::ioj::sim::LevelTelemetryTickSeries::Int32Data const& series) {
         return series.is_empty() ? 0 : series.last_value();
     };
-    auto last_uint = [](FLevelTelemetryTickSeries::Uint64Data const& series) {
+    auto last_uint = [](::ioj::sim::LevelTelemetryTickSeries::Uint64Data const& series) {
         return series.is_empty() ? uint64{0} : series.last_value();
     };
     state_.summary = FText::FromString(FString::Printf(

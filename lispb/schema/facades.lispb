@@ -1,8 +1,8 @@
-(facade-module test_capital_ship_fighters_command_interface
-  :header "native/simulation/include/sandbox/simulation/ships/fighters/TestCapitalShipFightersCommandInterface.h"
-  :namespace ml::test_capital_ship_fighters
+(facade-module fighters_command_interface
+  :header "native/simulation/include/ioj/sim/fighters/command_interface.h"
+  :namespace ioj::sim::fighters
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  (facade CommandInterface @test_fighters fighters
+  (facade CommandInterface @fighters_sim fighters
     :target-storage reference
     (method queue_spawns "std::int32_t"
       (parameter queue @fighter_spawn_queue_const_view))
@@ -10,29 +10,29 @@
       (parameter queue (type-ref @fighter_order_queue :suffix " const&")))
     (method self_destruct_fighter void
       (parameter handle (type-ref @native_registry_handle :suffix " const")))
-    (method get_new_spawn_entity_data (type-ref @test_fighters :suffix " const&" :nested "RegistryEntityData")
+    (method get_new_spawn_entity_data (type-ref @fighters_sim :suffix " const&" :nested "RegistryEntityData")
       :const true)
     (method get_new_spawn_entity_handles (type-ref @spawned_entity_handles :suffix " const&")
       :const true)
     (method get_num_instances "std::int32_t"
       :const true
       :noexcept true)
-    (method get_handles "std::span<FRegistryEntityHandle const>"
+    (method get_handles "std::span<ioj::sim::RegistryEntityHandle const>"
       :const true
       :noexcept true)
-    (method get_target_handles "std::span<FRegistryEntityHandle const>"
+    (method get_target_handles "std::span<ioj::sim::RegistryEntityHandle const>"
       :const true
       :noexcept true)))
 
-(facade-module test_space_ship_phase_interface
-  :header "native/simulation/include/sandbox/simulation/ships/player/TestSpaceShipPhaseInterface.h"
-  :source "native/simulation/src/ships/player/TestSpaceShipPhaseInterface.cpp"
-  :header-include "sandbox/simulation/ships/player/TestSpaceShipPhaseInterface.h"
-  :namespace ml::test_space_ship
+(facade-module player_phase_interface
+  :header "native/simulation/include/ioj/sim/player/phase_interface.h"
+  :source "native/simulation/src/player/phase_interface.cpp"
+  :header-include "ioj/sim/player/phase_interface.h"
+  :namespace ioj::sim::player
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  (facade PhaseInterface @test_space_ship simulation
+  (facade PhaseInterface @player_sim simulation
     :method-access private
-    :friends ("::FLevelSimulation")
+    :friends ("::ioj::sim::LevelSim")
     :friend-kind struct
     :definitions-in-source true
     :target-storage reference
@@ -45,16 +45,16 @@
     (method resolve_damage_events void)
     (method update_entity_registry void)))
 
-(facade-module test_lasers_phase_interface
-  :header "native/simulation/include/sandbox/simulation/combat/lasers/TestLasersPhaseInterface.h"
-  :source "native/simulation/src/combat/lasers/TestLasersPhaseInterface.cpp"
-  :header-include "sandbox/simulation/combat/lasers/TestLasersPhaseInterface.h"
-  :namespace ml::test_lasers
+(facade-module lasers_phase_interface
+  :header "native/simulation/include/ioj/sim/lasers/phase_interface.h"
+  :source "native/simulation/src/lasers/phase_interface.cpp"
+  :header-include "ioj/sim/lasers/phase_interface.h"
+  :namespace ioj::sim::lasers
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  (facade PhaseInterface @test_lasers simulation
+  (facade PhaseInterface @lasers_sim simulation
     :bind-access private
     :method-access private
-    :friends ("::FLevelSimulation")
+    :friends ("::ioj::sim::LevelSim")
     :friend-kind struct
     :definitions-in-source true
     :target-storage reference
@@ -65,16 +65,16 @@
     (method commit_spawns void)
     (method end_tick void)))
 
-(facade-module test_capital_ships_phase_interface
-  :header "native/simulation/include/sandbox/simulation/ships/capital/TestCapitalShipsPhaseInterface.h"
-  :source "native/simulation/src/ships/capital/TestCapitalShipsPhaseInterface.cpp"
-  :header-include "sandbox/simulation/ships/capital/TestCapitalShipsPhaseInterface.h"
-  :namespace ml::test_capital_ships
+(facade-module capital_ships_phase_interface
+  :header "native/simulation/include/ioj/sim/capital_ships/phase_interface.h"
+  :source "native/simulation/src/capital_ships/phase_interface.cpp"
+  :header-include "ioj/sim/capital_ships/phase_interface.h"
+  :namespace ioj::sim::capital_ships
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  (facade PhaseInterface @test_capital_ships simulation
+  (facade PhaseInterface @capital_ships_sim simulation
     :bind-access private
     :method-access private
-    :friends ("::FLevelSimulation")
+    :friends ("::ioj::sim::LevelSim")
     :friend-kind struct
     :definitions-in-source true
     :target-storage reference
@@ -88,16 +88,16 @@
     (method sync_from_registry void)
     (method end_tick void)))
 
-(facade-module test_capital_ship_fighters_phase_interface
-  :header "native/simulation/include/sandbox/simulation/ships/fighters/TestCapitalShipFightersPhaseInterface.h"
-  :source "native/simulation/src/ships/fighters/TestCapitalShipFightersPhaseInterface.cpp"
-  :header-include "sandbox/simulation/ships/fighters/TestCapitalShipFightersPhaseInterface.h"
-  :namespace ml::test_capital_ship_fighters
+(facade-module fighters_phase_interface
+  :header "native/simulation/include/ioj/sim/fighters/phase_interface.h"
+  :source "native/simulation/src/fighters/phase_interface.cpp"
+  :header-include "ioj/sim/fighters/phase_interface.h"
+  :namespace ioj::sim::fighters
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  (facade PhaseInterface @test_fighters simulation
+  (facade PhaseInterface @fighters_sim simulation
     :bind-access private
     :method-access private
-    :friends ("::FLevelSimulation")
+    :friends ("::ioj::sim::LevelSim")
     :friend-kind struct
     :definitions-in-source true
     :target-storage reference
@@ -115,16 +115,16 @@
     (method sync_from_registry void)
     (method end_tick void)))
 
-(facade-module test_static_turrets_phase_interface
-  :header "native/simulation/include/sandbox/simulation/defences/turrets/TestStaticTurretsPhaseInterface.h"
-  :source "native/simulation/src/defences/turrets/TestStaticTurretsPhaseInterface.cpp"
-  :header-include "sandbox/simulation/defences/turrets/TestStaticTurretsPhaseInterface.h"
-  :namespace ml::test_static_turrets
+(facade-module turrets_phase_interface
+  :header "native/simulation/include/ioj/sim/turrets/phase_interface.h"
+  :source "native/simulation/src/turrets/phase_interface.cpp"
+  :header-include "ioj/sim/turrets/phase_interface.h"
+  :namespace ioj::sim::turrets
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  (facade PhaseInterface @test_static_turrets simulation
+  (facade PhaseInterface @turrets_sim simulation
     :bind-access private
     :method-access private
-    :friends ("::FLevelSimulation")
+    :friends ("::ioj::sim::LevelSim")
     :friend-kind struct
     :definitions-in-source true
     :target-storage reference
@@ -139,16 +139,16 @@
     (method sync_from_registry void)
     (method end_tick void)))
 
-(facade-module test_tube_spinners_phase_interface
-  :header "native/simulation/include/sandbox/simulation/defences/spinners/TestTubeSpinnersPhaseInterface.h"
-  :source "native/simulation/src/defences/spinners/TestTubeSpinnersPhaseInterface.cpp"
-  :header-include "sandbox/simulation/defences/spinners/TestTubeSpinnersPhaseInterface.h"
-  :namespace ml::test_tube_spinners
+(facade-module spinners_phase_interface
+  :header "native/simulation/include/ioj/sim/spinners/phase_interface.h"
+  :source "native/simulation/src/spinners/phase_interface.cpp"
+  :header-include "ioj/sim/spinners/phase_interface.h"
+  :namespace ioj::sim::spinners
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  (facade PhaseInterface @test_tube_spinners simulation
+  (facade PhaseInterface @spinners_sim simulation
     :bind-access private
     :method-access private
-    :friends ("::FLevelSimulation")
+    :friends ("::ioj::sim::LevelSim")
     :friend-kind struct
     :definitions-in-source true
     :target-storage reference

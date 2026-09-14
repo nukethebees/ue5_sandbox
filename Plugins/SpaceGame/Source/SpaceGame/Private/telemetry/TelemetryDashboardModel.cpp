@@ -66,7 +66,7 @@ auto as_of(Series const& series, uint64 const tick) -> typename Series::value_ty
     return nullptr;
 }
 
-auto requested_unchanged(FLevelTelemetryTickSeries::DoubleData const& series,
+auto requested_unchanged(::ioj::sim::LevelTelemetryTickSeries::DoubleData const& series,
                          uint64 const begin_tick,
                          uint64 const end_tick,
                          double& output) -> bool {
@@ -303,7 +303,7 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
             ETelemetryDashboardMetric::CapitalShips,
             ETelemetryDashboardMetric::CapitalShipFighters,
             ETelemetryDashboardMetric::TubeSpinners};
-        for (int32 type{}; type < FLevelTelemetryTickSeries::entity_type_count; ++type) {
+        for (int32 type{}; type < ::ioj::sim::LevelTelemetryTickSeries::entity_type_count; ++type) {
             add_gauge(builder(type_metrics[type]),
                       record.tick_series.active_entities_by_type[type],
                       end_tick,
@@ -445,8 +445,7 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
             }
         };
 
-        auto type_total = [](ml::simulation::telemetry::EntityCounts const& counts,
-                             int32 const type) {
+        auto type_total = [](::ioj::sim::telemetry::EntityCounts const& counts, int32 const type) {
             int32 total{};
             for (auto const& team : counts) {
                 total += team[type];
@@ -466,7 +465,8 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
             auto const time{end.simulated_elapsed_seconds};
             builder(ETelemetryDashboardMetric::ActiveEntities)
                 .add(time, sum_counts(end.alive), duration);
-            for (int32 type{}; type < FLevelTelemetryTickSeries::entity_type_count; ++type) {
+            for (int32 type{}; type < ::ioj::sim::LevelTelemetryTickSeries::entity_type_count;
+                 ++type) {
                 builder(type_metrics[type]).add(time, type_total(end.alive, type), duration);
             }
 

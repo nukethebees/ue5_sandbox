@@ -2,10 +2,10 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <ioj/sim/entity_world_bounds.h>
+#include <ioj/sim/line_traces.h>
+#include <ioj/sim/rotator_math.h>
 #include <sandbox/core/time_series_data.h>
-#include <sandbox/simulation/entity_world_bounds.h>
-#include <sandbox/simulation/line_traces.h>
-#include <sandbox/simulation/rotator_math.h>
 #include <span>
 #include <vector>
 #include "simulation_fixture.h"

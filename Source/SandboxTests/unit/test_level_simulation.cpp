@@ -1,8 +1,8 @@
+#include <ioj/sim/level_sim.h>
+#include <ioj/sim/levels/level_event_manager.h>
+#include <ioj/sim/world_aabb_operations.h>
 #include <NiagaraComponent.h>
 #include <NiagaraSystem.h>
-#include <sandbox/simulation/levels/LevelEventManager.h>
-#include <sandbox/simulation/simulation/LevelSimulation.h>
-#include <sandbox/simulation/world_aabb_operations.h>
 #include <SandboxISMCComponent.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/test_setup.h>
@@ -34,30 +34,32 @@
 #include <type_traits>
 
 static_assert(std::is_const_v<std::remove_reference_t<
-                  decltype(std::declval<FCapitalReadView>().entities.locations.xs[0])>>);
+                  decltype(std::declval<::ioj::sim::CapitalReadView>().entities.locations.xs[0])>>);
+static_assert(std::is_const_v<std::remove_reference_t<
+                  decltype(std::declval<::ioj::sim::FighterReadView>().entities.teams[0])>>);
 static_assert(
     std::is_const_v<
-        std::remove_reference_t<decltype(std::declval<FFighterReadView>().entities.teams[0])>>);
+        std::remove_reference_t<decltype(std::declval<::ioj::sim::TurretReadView>().changes[0])>>);
 static_assert(
-    std::is_const_v<std::remove_reference_t<decltype(std::declval<FTurretReadView>().changes[0])>>);
-static_assert(std::is_const_v<std::remove_reference_t<
-                  decltype(std::declval<FLaserReadView>().entities.lifetimes_remaining[0])>>);
-static_assert(std::is_const_v<std::remove_pointer_t<decltype(FLevelReadView::registry)>>);
+    std::is_const_v<std::remove_reference_t<
+        decltype(std::declval<::ioj::sim::LaserReadView>().entities.lifetimes_remaining[0])>>);
+static_assert(
+    std::is_const_v<std::remove_pointer_t<decltype(::ioj::sim::LevelReadView::registry)>>);
 
 namespace {
-auto make_battle() -> FLevelSimulationInitData {
-    FLevelSimulationInitData data;
+auto make_battle() -> ::ioj::sim::LevelSimInitData {
+    ::ioj::sim::LevelSimInitData data;
     data.grid_dimensions = {16, 16, 4};
     data.cell_size = {1000.f, 1000.f, 1000.f};
     data.lasers.n_preallocated_instances = 16;
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_spawns.add_defaulted(2);
-    data.capital_spawns.teams = {ml::simulation::Team::Green, ml::simulation::Team::White};
+    data.capital_spawns.teams = {::ioj::sim::Team::Green, ::ioj::sim::Team::White};
     data.capital_spawns.healths = {100, 100};
     data.capital_spawns.initial_spawn_delays = {60.f, 60.f};
     data.capital_spawns.spawn_cooldowns = {60.f, 60.f};
     data.capital_spawns.locations.xs = {-1000.f, 1000.f};
-    auto const count{ml::simulation::collision::EntityAABBs::num()};
+    auto const count{::ioj::sim::collision::EntityAABBs::num()};
     for (int32 index{}; index < count; ++index) {
         data.entity_bounds.half_extent_xs[index] = 10.f;
         data.entity_bounds.half_extent_ys[index] = 10.f;
@@ -66,7 +68,7 @@ auto make_battle() -> FLevelSimulationInitData {
     return data;
 }
 
-auto make_scheduled_battle() -> FLevelSimulationInitData {
+auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
     auto data{make_battle()};
     data.capital_spawns.reset();
     data.capital_target_spawn_indices.clear();
@@ -96,7 +98,7 @@ auto make_scheduled_battle() -> FLevelSimulationInitData {
         .distance = 1000.0,
     });
     builder.set_mission({
-        .mode = ml::ELevelMissionMode::KillEnemies,
+        .mode = ::ioj::sim::levels::LevelMissionMode::KillEnemies,
         .kill_count = 1,
         .hero_entity_ids = {hero},
     });
@@ -106,7 +108,7 @@ auto make_scheduled_battle() -> FLevelSimulationInitData {
         .required_kill_entity_ids = {enemy},
     });
     auto const definition{builder.finish()};
-    FSimulationClock clock;
+    ::ioj::sim::SimClock clock;
     clock.initialise(data.clock_settings);
     auto compiled{ml::compile_level_events(definition, clock, data.capital_ships, data.turrets)};
     check(compiled);
@@ -114,9 +116,9 @@ auto make_scheduled_battle() -> FLevelSimulationInitData {
     return data;
 }
 
-void prepare_mission(FLevelSimulation& simulation) {
+void prepare_mission(::ioj::sim::LevelSim& simulation) {
     auto& mission{simulation.get_mission_manager()};
-    mission.set_mission_mode(ml::simulation::MissionMode::KillEnemies);
+    mission.set_mission_mode(::ioj::sim::MissionMode::KillEnemies);
     mission.set_kill_target(1);
     mission.set_save_mission_results(false);
     mission.add_hero_entity(simulation.get_capital_ships().get_handle(0));
@@ -124,8 +126,8 @@ void prepare_mission(FLevelSimulation& simulation) {
     simulation.finish_initialisation();
 }
 
-void kill_enemy(FLevelSimulation& simulation) {
-    DirectDamageEvents events;
+void kill_enemy(::ioj::sim::LevelSim& simulation) {
+    ::ioj::sim::DirectDamageEvents events;
     events.add(simulation.get_capital_ships().get_handle(1),
                100,
                simulation.get_capital_ships().get_handle(0));
@@ -134,12 +136,12 @@ void kill_enemy(FLevelSimulation& simulation) {
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FLevelSimulationScheduledEventsTest,
+    FLevelSimScheduledEventsTest,
     "Sandbox.UnitTests.LevelSimulation.ScheduledSpawnsAndObjectivesUseSimulationTicks",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-auto FLevelSimulationScheduledEventsTest::RunTest(FString const&) -> bool {
-    FLevelSimulation simulation{make_scheduled_battle()};
+auto FLevelSimScheduledEventsTest::RunTest(FString const&) -> bool {
+    ::ioj::sim::LevelSim simulation{make_scheduled_battle()};
     TestEqual(TEXT("Tick-zero entities are available before finishing initialization"),
               simulation.get_capital_ships().get_num_instances(),
               1);
@@ -182,11 +184,11 @@ auto FLevelSimulationScheduledEventsTest::RunTest(FString const&) -> bool {
 /* **************************************** */
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FLevelSimulationSpawnQueriesTest,
+    FLevelSimSpawnQueriesTest,
     "Sandbox.UnitTests.LevelSimulation.ScheduledSpawnIsQueryableDuringDecisions",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-auto FLevelSimulationSpawnQueriesTest::RunTest(FString const&) -> bool {
+auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
     auto data{make_scheduled_battle()};
     data.turrets.target_refresh_frequency = 10.f;
     // Keep the muzzle outside the turret's collision bounds so it cannot block its own query.
@@ -196,10 +198,10 @@ auto FLevelSimulationSpawnQueriesTest::RunTest(FString const&) -> bool {
     initial.entity_indices[0] = data.level_events.initialisation.entity_count++;
     initial.locations.set(0, ml::make_vector3f(-1000.f, 1000.f, 0.f));
     initial.rotations.set(0, {});
-    initial.teams[0] = ml::simulation::Team::Blue;
+    initial.teams[0] = ::ioj::sim::Team::Blue;
     initial.healths[0] = 100;
     initial.laser_damages[0] = 0;
-    FLevelSimulation simulation{MoveTemp(data)};
+    ::ioj::sim::LevelSim simulation{MoveTemp(data)};
     simulation.finish_initialisation();
     simulation.start();
     auto const dt{simulation.get_clock().get_tick_period()};
@@ -232,11 +234,11 @@ auto FLevelSimulationSpawnQueriesTest::RunTest(FString const&) -> bool {
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FLevelSimulationPresentationEquivalenceTest,
+    FLevelSimPresentationEquivalenceTest,
     "Sandbox.UnitTests.LevelSimulation.PresentationDoesNotChangeBattleResults",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-auto FLevelSimulationPresentationEquivalenceTest::RunTest(FString const&) -> bool {
+auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
     auto world{ml::get_editor_world()};
     auto* config{ml::load_default_level_config()};
     if (!TestTrue(TEXT("Editor world is available for presentation"), world.has_value()) ||
@@ -266,28 +268,28 @@ auto FLevelSimulationPresentationEquivalenceTest::RunTest(FString const&) -> boo
         (*slot)->RegisterComponent();
     }
     resources.config = config->get_visual_config();
-    FLevelSimulation headless{make_battle()};
-    FLevelSimulation visible{make_battle()};
+    ::ioj::sim::LevelSim headless{make_battle()};
+    ::ioj::sim::LevelSim visible{make_battle()};
     TestEqual(TEXT("Presentation construction preserves initial entity count"),
               visible.get_capital_ships().get_num_instances(),
               headless.get_capital_ships().get_num_instances());
     TestEqual(TEXT("Presentation construction leaves initialization open"),
               visible.get_state(),
-              EOrchestratorState::Uninitialised);
+              ::ioj::sim::OrchestratorState::Uninitialised);
     prepare_mission(headless);
     prepare_mission(visible);
     FLevelPresentation presentation{resources, visible.get_read_view(), {}};
-    using Samples = ml::TimeSeriesData<FTestEntityRegistry::EntityData>;
+    using Samples = ml::TimeSeriesData<::ioj::sim::EntityRegistry::EntityData>;
     Samples headless_samples;
     Samples visible_samples;
-    auto record{[](Samples& samples, FLevelSimulation& simulation) {
+    auto record{[](Samples& samples, ::ioj::sim::LevelSim& simulation) {
         samples.add(simulation.get_clock().get_simulation_time(),
                     simulation.get_entity_registry().get_entity_data());
     }};
-    headless.on_end_tick = [&](FLevelSimulation& simulation) {
+    headless.on_end_tick = [&](::ioj::sim::LevelSim& simulation) {
         record(headless_samples, simulation);
     };
-    visible.on_end_tick = [&](FLevelSimulation& simulation) {
+    visible.on_end_tick = [&](::ioj::sim::LevelSim& simulation) {
         record(visible_samples, simulation);
     };
     headless.start();
@@ -374,14 +376,14 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     }
     resources.config = config->get_visual_config();
 
-    FLevelSimulation simulation{make_scheduled_battle()};
+    ::ioj::sim::LevelSim simulation{make_scheduled_battle()};
     simulation.finish_initialisation();
     FLevelPresentation presentation{resources, simulation.get_read_view(), {}};
     simulation.start();
     auto const dt{simulation.get_clock().get_tick_period()};
-    simulation.on_end_tick = [](FLevelSimulation& level) {
+    simulation.on_end_tick = [](::ioj::sim::LevelSim& level) {
         if (level.get_clock().get_completed_ticks() == 3) {
-            DirectDamageEvents damage;
+            ::ioj::sim::DirectDamageEvents damage;
             damage.add(level.get_capital_ships().get_handle(1),
                        MAX_int32,
                        level.get_capital_ships().get_handle(0));
@@ -401,10 +403,10 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     if (static_cast<int32>(frame.capitals.changes.size()) == 2) {
         TestEqual(TEXT("Spawn is recorded first"),
                   frame.capitals.changes[0].kind,
-                  EEntityFrameChange::Spawn);
+                  ::ioj::sim::EntityFrameChangeKind::Spawn);
         TestEqual(TEXT("Death follows spawn"),
                   frame.capitals.changes[1].kind,
-                  EEntityFrameChange::RemoveSwap);
+                  ::ioj::sim::EntityFrameChangeKind::RemoveSwap);
         TestTrue(TEXT("Changes identify the same entity"),
                  frame.capitals.changes[0].handle == frame.capitals.changes[1].handle);
     }
@@ -449,7 +451,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
 
     auto death_data{make_battle()};
     death_data.clock_settings.tick_rate = 10.0;
-    FLevelSimulation deaths{MoveTemp(death_data)};
+    ::ioj::sim::LevelSim deaths{MoveTemp(death_data)};
     deaths.finish_initialisation();
     resources.config.capital_ships.n_small_explosions = 3;
     resources.config.capital_ships.small_death_explosion = NewObject<UNiagaraSystem>(owner);
@@ -457,9 +459,9 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     resources.config.capital_ships.time_between_explosions = 10.f;
     resources.config.capital_ships.large_explosion_delay = 100.f;
     FLevelPresentation death_effects{resources, deaths.get_read_view(), {}};
-    deaths.on_end_tick = [](FLevelSimulation& level) {
+    deaths.on_end_tick = [](::ioj::sim::LevelSim& level) {
         if (level.get_clock().get_completed_ticks() <= 2) {
-            DirectDamageEvents damage;
+            ::ioj::sim::DirectDamageEvents damage;
             damage.add(level.get_capital_ships().get_handle(0),
                        MAX_int32,
                        level.get_capital_ships().get_handle(0));
@@ -523,7 +525,7 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     data.clock_settings.tick_rate = 10.0;
     data.player = actor->make_spawn_data();
     data.player->config.boost_depletion_time = 0.05f;
-    FLevelSimulation simulation{MoveTemp(data)};
+    ::ioj::sim::LevelSim simulation{MoveTemp(data)};
     simulation.finish_initialisation();
     simulation.start();
     auto* player{simulation.get_player_ship_simulation()};
@@ -538,7 +540,7 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     auto const frame{player->get_read_view()};
     TestEqual(TEXT("Boost has already ended after multiple fixed ticks"),
               frame.boost_brake_state,
-              ml::simulation::player::BoostBrakeState::None);
+              ::ioj::sim::player::BoostBrakeState::None);
     TestEqual(TEXT("Boost start remains observable without a consumer"),
               frame.boost_start_sequence,
               uint64{1});
@@ -576,7 +578,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
     auto* const component{NewObject<USandboxISMCComponent>()};
     component->set_num_custom_data_floats(FLaserPresentation::n_custom_ismc_floats);
 
-    FLevelSimulation simulation{make_battle()};
+    ::ioj::sim::LevelSim simulation{make_battle()};
     prepare_mission(simulation);
     auto& lasers{simulation.get_lasers()};
     FLaserPresentation presentation{*component};
@@ -591,7 +593,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
     expected_material_data.Reserve(tick_count * spawns_per_tick);
 
     for (int32 tick{}; tick < tick_count; ++tick) {
-        ml::simulation::lasers::SpawnRequests requests;
+        ::ioj::sim::lasers::SpawnRequests requests;
         requests.add_uninitialised(spawns_per_tick);
         for (int32 spawn{}; spawn < spawns_per_tick; ++spawn) {
             auto const id{expected_material_data.Num() + 1};
@@ -674,20 +676,20 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FLevelTelemetryRunRecordTest,
 
 auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     auto data{make_battle()};
-    data.telemetry_metadata = FLevelTelemetryRunMetadata{
+    data.telemetry_metadata = ::ioj::sim::LevelTelemetryRunMetadata{
         .run_id = "12345678-1234-1234-1234-123456789abc",
         .map_name = "TelemetryTest",
         .level_id = "telemetry-test",
         .level_display_name = "Telemetry Test",
         .launched_utc = "2026-09-06T12:00:00Z",
     };
-    FLevelSimulation simulation{MoveTemp(data)};
+    ::ioj::sim::LevelSim simulation{MoveTemp(data)};
     simulation.finish_initialisation();
     simulation.start();
     simulation.advance(1.0);
     simulation.set_time_scale(4.0);
     simulation.advance(simulation.get_clock().get_tick_period());
-    simulation.finalize_telemetry_run(ml::simulation::LevelTelemetryRunEndReason::WorldEnd, "test");
+    simulation.finalize_telemetry_run(::ioj::sim::LevelTelemetryRunEndReason::WorldEnd, "test");
     auto record{simulation.get_level_telemetry_manager().take_finalized_run()};
     if (!TestTrue(TEXT("Telemetry JSON fixture produces a run record"), record.has_value())) {
         return false;
@@ -705,7 +707,7 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     }
     TestEqual(TEXT("JSON records current schema version"),
               root->GetIntegerField(TEXT("schema_version")),
-              FLevelTelemetryRunRecord::schema_version);
+              ::ioj::sim::LevelTelemetryRunRecord::schema_version);
     auto const realtime_json{root->GetObjectField(TEXT("completed_ticks_by_real_time"))};
     TestEqual(TEXT("JSON contains realtime elapsed times"),
               realtime_json->GetArrayField(TEXT("real_elapsed_seconds")).Num(),
@@ -747,7 +749,8 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
         TestTrue(TEXT("Legacy runs do not expose v2 battle samples"),
                  legacy_round_trip->battle_samples.IsEmpty());
     }
-    root->SetNumberField(TEXT("schema_version"), FLevelTelemetryRunRecord::schema_version);
+    root->SetNumberField(TEXT("schema_version"),
+                         ::ioj::sim::LevelTelemetryRunRecord::schema_version);
     TestFalse(TEXT("Malformed JSON returns an error"),
               deserialize_level_telemetry_run(TEXT("{")).has_value());
     auto unsupported_json{json};

@@ -1,9 +1,9 @@
-#include "sandbox/simulation/fighter_navigation_state.h"
+#include "ioj/sim/fighter_navigation_state.h"
 
 #include <cassert>
 #include <cstddef>
 
-namespace ml::simulation::fighters {
+namespace ioj::sim::fighters {
 void reset_navigation_state(NavigationStateView const state,
                             std::int32_t const index,
                             NavigationRiskTier const initial_tier,

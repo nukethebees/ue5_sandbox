@@ -14,7 +14,7 @@ struct FProjectedPosition {
 };
 
 struct FSoftTargetCandidate {
-    FRegistryEntityHandle handle{};
+    ::ioj::sim::RegistryEntityHandle handle{};
     float centre_distance_pixels{std::numeric_limits<float>::max()};
     float centre_score_pixels{std::numeric_limits<float>::max()};
     float surface_distance{std::numeric_limits<float>::max()};
@@ -62,7 +62,7 @@ auto project_to_overlay(FEntityOverlayView const& view,
 }
 
 auto is_supported_entity_type(ETestEntityType const type) -> bool {
-    return type == ETestEntityType::CapitalShip || type == ETestEntityType::CapitalShipFighter ||
+    return type == ETestEntityType::CapitalShip || type == ETestEntityType::Fighter ||
            type == ETestEntityType::Turret;
 }
 
@@ -74,7 +74,7 @@ auto inverse_maximum_health(ETestEntityType const type,
             maximum = maximums.capital_ship;
             break;
         }
-        case ETestEntityType::CapitalShipFighter: {
+        case ETestEntityType::Fighter: {
             maximum = maximums.fighter;
             break;
         }
@@ -96,7 +96,7 @@ auto team_colour(ETestEntityType const type,
         case ETestEntityType::CapitalShip: {
             return colours.capital_ship[team];
         }
-        case ETestEntityType::CapitalShipFighter: {
+        case ETestEntityType::Fighter: {
             return colours.fighter[team];
         }
         case ETestEntityType::Turret: {
@@ -109,15 +109,16 @@ auto team_colour(ETestEntityType const type,
 }
 }
 
-auto select_soft_target(ml::simulation::RegistryEntityData::ConstView const entities,
+auto select_soft_target(::ioj::sim::RegistryEntityData::ConstView const entities,
                         std::span<float const> const entity_type_radii,
                         TConstArrayView<int> const generations,
                         TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
                         FSoftTargetSelectionContext const& context,
                         FSoftTargetSelectionSettings const& settings,
-                        FRegistryEntityHandle const current_target) -> FSoftTargetSelectionResult {
+                        ::ioj::sim::RegistryEntityHandle const current_target)
+    -> FSoftTargetSelectionResult {
     entities.validate_array_sizes();
-    check(entity_type_radii.size() == static_cast<std::size_t>(ml::simulation::EntityType::COUNT));
+    check(entity_type_radii.size() == static_cast<std::size_t>(::ioj::sim::EntityType::COUNT));
     check(generations.Num() == entities.num());
     check(objective_roles.Num() == entities.num());
     if (!context.view.is_valid()) {
@@ -288,7 +289,7 @@ auto select_soft_target(ml::simulation::RegistryEntityData::ConstView const enti
 }
 
 auto collect_entity_overlay_instances(
-    ml::simulation::RegistryEntityData::ConstView const entities,
+    ::ioj::sim::RegistryEntityData::ConstView const entities,
     std::span<float const> const entity_type_radii,
     TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
     FEntityOverlayTeamColours const& team_colours,
@@ -299,7 +300,7 @@ auto collect_entity_overlay_instances(
     FEntityOverlayCollector& collector) -> FEntityOverlayCollectionResult {
     TRACE_CPUPROFILER_EVENT_SCOPE(EntityOverlay::CollectRegistrySource);
     entities.validate_array_sizes();
-    check(entity_type_radii.size() == static_cast<std::size_t>(ml::simulation::EntityType::COUNT));
+    check(entity_type_radii.size() == static_cast<std::size_t>(::ioj::sim::EntityType::COUNT));
     check(objective_roles.Num() == entities.num());
     collector.begin(origin, FMath::Max(maximum_range, 0.0f), output_instances);
 

@@ -3,7 +3,7 @@
 
 #include <Engine/GameInstance.h>
 #include <InputAction.h>
-#include <sandbox/simulation/missions/TestMissionManager.h>
+#include <ioj/sim/mission_manager.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/system/GameSubsystem.h>
@@ -130,7 +130,7 @@ auto FPlayerModalUi::show_pause(ASpaceGamePlayerController& owner,
 }
 auto FPlayerModalUi::show_completion(ASpaceGamePlayerController& owner,
                                      FTestMissionCompletion const& completion,
-                                     FLevelTelemetrySnapshot snapshot) -> bool {
+                                     ::ioj::sim::LevelTelemetrySnapshot snapshot) -> bool {
     if (!has_root()) {
         UE_LOG(LogSandboxController, Error, TEXT("FPlayerModalUi: UI root is invalid."));
         return false;

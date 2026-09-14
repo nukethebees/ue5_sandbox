@@ -3,10 +3,10 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestEnhancedInputSubsystem.h>
 
-#include <sandbox/simulation/combat/lasers/TestLasersSimulation.h>
-#include <sandbox/simulation/entities/TestEntityRegistry.h>
-#include <sandbox/simulation/simulation/SimulationClock.h>
-#include <sandbox/simulation/simulation/SpatialQueryManager.h>
+#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/lasers/sim.h>
+#include <ioj/sim/sim_clock.h>
+#include <ioj/sim/spatial_query_manager.h>
 #include <SpaceGame/ships/player/PlayerControlContexts.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
@@ -39,12 +39,12 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
     FBenchmarkControlInputs benchmark_input_;
     FGlobalControlInputs global_input_;
     FPlayerControlContexts contexts_;
-    FSimulationClock clock_;
-    FTestEntityRegistry registry_;
-    ml::FSpatialQueryManager queries_{registry_};
+    ::ioj::sim::SimClock clock_;
+    ::ioj::sim::EntityRegistry registry_;
+    ::ioj::sim::SpatialQueryManager queries_{registry_};
     ml::FFrameMemoryResource frame_memory_{1024 * 1024};
-    ml::test_lasers::Simulation lasers_{clock_, registry_, queries_, frame_memory_};
-    ml::test_space_ship::Simulation ship_simulation_{clock_, registry_, queries_, lasers_};
+    ::ioj::sim::lasers::Sim lasers_{clock_, registry_, queries_, frame_memory_};
+    ::ioj::sim::player::Sim ship_simulation_{clock_, registry_, queries_, lasers_};
 
     BEFORE_EACH()
     {

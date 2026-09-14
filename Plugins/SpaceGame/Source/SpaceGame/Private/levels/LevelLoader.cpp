@@ -156,7 +156,7 @@ auto FLevelLoader::load(FLevelDefinition const& definition,
         return result;
     }
 
-    if (orchestrator_.get_state() != EOrchestratorState::Uninitialised) {
+    if (orchestrator_.get_state() != ::ioj::sim::OrchestratorState::Uninitialised) {
         add_error(result,
                   ELevelLoadErrorCode::InvalidOrchestratorState,
                   TEXT("Level loader requires an uninitialised orchestrator"));

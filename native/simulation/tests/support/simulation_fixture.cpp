@@ -1,6 +1,6 @@
 // Captured from DA_FT_soa_entities_LevelConfig via Unreal's production conversion.
 #include "simulation_fixture.h"
-namespace ml::simulation_tests {
+namespace ioj::sim::tests {
 auto make_fixture() -> SimulationFixture {
     SimulationFixture fixture;
     auto& data{fixture.data};

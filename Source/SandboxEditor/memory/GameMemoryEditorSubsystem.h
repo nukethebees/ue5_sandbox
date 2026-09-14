@@ -1,7 +1,7 @@
 #pragma once
 
-#include "sandbox/simulation/memory/GameMemoryBacking.h"
-#include "sandbox/simulation/memory/GameMemoryConfig.h"
+#include "ioj/sim/memory/game_memory_backing.h"
+#include "ioj/sim/memory/game_memory_config.h"
 
 #include "EditorSubsystem.h"
 
@@ -14,11 +14,11 @@ class SANDBOXEDITOR_API USandboxEditorGameMemorySubsystem : public UEditorSubsys
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
     virtual void Deinitialize() override;
 
-    auto acquire_backing() -> std::optional<FGameMemoryBackingLease>;
+    auto acquire_backing() -> std::optional<::ioj::sim::GameMemoryBackingLease>;
     auto backing_address() const noexcept -> std::byte*;
   private:
     void handle_editor_pre_exit();
     void end_active_pie_if_leased();
 
-    std::unique_ptr<FGameMemoryBacking> backing_{};
+    std::unique_ptr<::ioj::sim::GameMemoryBacking> backing_{};
 };

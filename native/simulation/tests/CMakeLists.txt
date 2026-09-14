@@ -12,7 +12,7 @@ target_sources(native-simulation-tests PRIVATE
   test_spinner_spawning.cpp
   fighter_entity_data_test.cpp
   scenarios/test_capital_command_fighters.cpp
-  scenarios/test_capital_fighter_handles.cpp
+  scenarios/test_fighter_handles.cpp
   scenarios/test_collision_uniform_grid.cpp
   scenarios/test_entity_registry.cpp
   scenarios/test_fighter_attack.cpp

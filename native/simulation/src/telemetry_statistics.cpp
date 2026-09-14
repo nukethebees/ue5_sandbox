@@ -1,9 +1,9 @@
-#include "sandbox/simulation/telemetry_statistics.h"
+#include "ioj/sim/telemetry_statistics.h"
 
 #include <algorithm>
 #include <cmath>
 
-namespace ml::simulation::telemetry {
+namespace ioj::sim::telemetry {
 auto aggregate_timings(std::span<double> const samples) noexcept -> LevelTelemetryTimingAggregate {
     LevelTelemetryTimingAggregate result;
     result.sample_count = samples.size();
@@ -24,4 +24,4 @@ auto aggregate_timings(std::span<double> const samples) noexcept -> LevelTelemet
     result.p95_ms = samples[p95_index] * 1000.0;
     return result;
 }
-} // namespace ml::simulation::telemetry
+} // namespace ioj::sim::telemetry

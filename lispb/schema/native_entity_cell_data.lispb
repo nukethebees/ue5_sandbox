@@ -1,7 +1,7 @@
 (soa-module native_entity_cell_data
-  :header "native/simulation/include/sandbox/simulation/entity_cell_data.h"
+  :header "native/simulation/include/ioj/sim/entity_cell_data.h"
   :backend standard-library
-  :namespace ml::simulation::collision
+  :namespace ioj::sim::collision
   (struct EntityCellDataColumns
     :operations (all)
     (member min_point_xs array float)

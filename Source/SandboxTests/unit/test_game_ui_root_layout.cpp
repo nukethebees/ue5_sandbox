@@ -116,7 +116,7 @@ TEST_CLASS(GameUiRootLayout, "Sandbox.UnitTests")
             TEXT("Reopening pause does not accumulate widgets"), root->get_modal_count(), 1);
         pause_menu->DeactivateWidget();
 
-        FLevelTelemetrySnapshot completion_snapshot;
+        ::ioj::sim::LevelTelemetrySnapshot completion_snapshot;
         completion_snapshot.kills = 6;
         auto* const completion{root->show_level_completion(
             TEXT("Border Skirmish"), ETestMissionState::Succeeded, completion_snapshot)};

@@ -25,9 +25,7 @@ void write(std::ostream& out, char const* path, T value) {
     }
     out << ";\n";
 }
-void transform(std::ostream& out,
-               std::string const& path,
-               ml::simulation::Transform3d const& value) {
+void transform(std::ostream& out, std::string const& path, ::ioj::sim::Transform3d const& value) {
     write(out, (path + ".location.x").c_str(), value.location.x);
     write(out, (path + ".location.y").c_str(), value.location.y);
     write(out, (path + ".location.z").c_str(), value.location.z);

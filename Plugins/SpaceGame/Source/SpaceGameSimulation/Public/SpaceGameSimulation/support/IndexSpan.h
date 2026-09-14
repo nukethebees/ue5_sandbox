@@ -2,7 +2,7 @@
 
 #include <CoreMinimal.h>
 
-#include <sandbox/simulation/index_span.h>
+#include <ioj/sim/index_span.h>
 
 inline auto to_string(FIndexSpan const span) -> FString {
     return FString::Printf(TEXT("IndexSpan(%d, %d)"), span.offset, span.count);

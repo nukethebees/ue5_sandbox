@@ -10,8 +10,9 @@
 
 namespace ml::level_authoring {
 namespace {
-auto make_level(std::string id, std::vector<std::string> unlocks = {}) -> LevelDefinition {
-    LevelDefinition definition{
+auto make_level(std::string id, std::vector<std::string> unlocks = {})
+    -> ::ioj::sim::levels::LevelDefinition {
+    ::ioj::sim::levels::LevelDefinition definition{
         .metadata = {.id = std::move(id), .title = "Test Level"},
         .unlock_level_ids = std::move(unlocks),
         .player_entity_id = "player",

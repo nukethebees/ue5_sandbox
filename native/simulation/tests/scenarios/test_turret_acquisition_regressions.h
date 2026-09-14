@@ -1,14 +1,13 @@
 #pragma once
 #include "../support/simulation_test_support.h"
 
-namespace ml {
-enum class ETurretAcquisitionRegressionScenario : std::uint8_t {
+namespace ioj::sim {
+enum class TurretAcquisitionRegressionScenario : std::uint8_t {
     NoOtherEntity,
     FriendlyOnly,
     EnemyOutsideRadius,
 };
 
-void run_worldless_turret_acquisition_regression(
-    ml::simulation_tests::SimulationFixture const& config,
-    ETurretAcquisitionRegressionScenario scenario);
+void run_worldless_turret_acquisition_regression(ioj::sim::tests::SimulationFixture const& config,
+                                                 TurretAcquisitionRegressionScenario scenario);
 }

@@ -1,6 +1,6 @@
-#include "sandbox/simulation/frame_hit_details.h"
+#include "ioj/sim/frame_hit_details.h"
 
-namespace ml::simulation::lasers {
+namespace ioj::sim::lasers {
 FrameHitDetails::FrameHitDetails(std::pmr::memory_resource* const resource)
     : locations{resource}
     , emission_directions{resource}
@@ -26,4 +26,4 @@ auto FrameHitDetails::num() const noexcept -> std::int32_t {
 auto FrameHitDetails::get_const_view() const -> LaserHitDetailsConstView {
     return {locations.get_const_view(), emission_directions.get_const_view(), sources.view()};
 }
-} // namespace ml::simulation::lasers
+} // namespace ioj::sim::lasers

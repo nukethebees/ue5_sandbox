@@ -8,7 +8,7 @@
 
 #include <SandboxCore/time_series_data.h>
 
-#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <ioj/sim/entity_registry.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -78,7 +78,7 @@ void FTestPlayerShipDeathScenario::queue_player_ship_death() {
 
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
-    std::vector<FRegistryEntityHandle> const targets{player_ship_handle};
+    std::vector<::ioj::sim::RegistryEntityHandle> const targets{player_ship_handle};
     test_driver->timeline
         .then_after(kill_time, [this, targets] { test_driver->queue_kills(targets); })
         .finish_after(post_kill_time);
@@ -103,7 +103,7 @@ void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
                 FSimulationSample{test_driver->get_registry().is_valid_dead(player_ship_handle),
                                   IsValid(player_ship.Get()),
                                   unique_entities.life_state[player_ship_id.id] ==
-                                      ml::simulation::LifeState::Alive,
+                                      ::ioj::sim::LifeState::Alive,
                                   IsValid(controller) && IsValid(controller->GetPawn()),
                                   IsValid(controller) && controller->get_active_control_context() ==
                                                              EPlayerControlContext::Player});

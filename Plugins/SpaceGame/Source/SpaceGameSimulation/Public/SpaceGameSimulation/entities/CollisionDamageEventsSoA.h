@@ -12,7 +12,7 @@
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
 #include "CoreMinimal.h"
-#include "SandboxNative/RegistryEntityHandle.h"
+#include "ioj/sim/entity_handle.h"
 
 #include <utility>
 
@@ -52,14 +52,14 @@ struct SPACEGAMESIMULATION_API UnresolvedCollisionDamageEventsConstView {
     TConstArrayView<int32> damage_amounts;
     TConstArrayView<UActorComponent*> actor_components;
     TConstArrayView<int32> hit_items;
-    TConstArrayView<FRegistryEntityHandle> instigators;
+    TConstArrayView<::ioj::sim::RegistryEntityHandle> instigators;
 };
 
 struct SPACEGAMESIMULATION_API UnresolvedCollisionDamageEventsView {
     using View = UnresolvedCollisionDamageEventsView;
     using ConstView = UnresolvedCollisionDamageEventsConstView;
 
-    void set(int32 const index, AActor* const new_damaged_actors, int32 const new_damage_amounts, UActorComponent* const new_actor_components, int32 const new_hit_items, FRegistryEntityHandle const new_instigators) const {
+    void set(int32 const index, AActor* const new_damaged_actors, int32 const new_damage_amounts, UActorComponent* const new_actor_components, int32 const new_hit_items, ::ioj::sim::RegistryEntityHandle const new_instigators) const {
         damaged_actors[index] = new_damaged_actors;
         damage_amounts[index] = new_damage_amounts;
         actor_components[index] = new_actor_components;
@@ -98,14 +98,14 @@ struct SPACEGAMESIMULATION_API UnresolvedCollisionDamageEventsView {
     TArrayView<int32> damage_amounts;
     TArrayView<UActorComponent*> actor_components;
     TArrayView<int32> hit_items;
-    TArrayView<FRegistryEntityHandle> instigators;
+    TArrayView<::ioj::sim::RegistryEntityHandle> instigators;
 };
 
 struct SPACEGAMESIMULATION_API UnresolvedCollisionDamageEvents {
     using View = UnresolvedCollisionDamageEventsView;
     using ConstView = UnresolvedCollisionDamageEventsConstView;
 
-    void set(int32 const index, AActor* const new_damaged_actors, int32 const new_damage_amounts, UActorComponent* const new_actor_components, int32 const new_hit_items, FRegistryEntityHandle const new_instigators) {
+    void set(int32 const index, AActor* const new_damaged_actors, int32 const new_damage_amounts, UActorComponent* const new_actor_components, int32 const new_hit_items, ::ioj::sim::RegistryEntityHandle const new_instigators) {
         damaged_actors[index] = new_damaged_actors;
         damage_amounts[index] = new_damage_amounts;
         actor_components[index] = new_actor_components;
@@ -113,7 +113,7 @@ struct SPACEGAMESIMULATION_API UnresolvedCollisionDamageEvents {
         instigators[index] = new_instigators;
     }
 
-    auto add(AActor* const new_damaged_actors, int32 const new_damage_amounts, UActorComponent* const new_actor_components, int32 const new_hit_items, FRegistryEntityHandle const new_instigators) -> int32 {
+    auto add(AActor* const new_damaged_actors, int32 const new_damage_amounts, UActorComponent* const new_actor_components, int32 const new_hit_items, ::ioj::sim::RegistryEntityHandle const new_instigators) -> int32 {
         auto const index{num()};
         damaged_actors.Add(new_damaged_actors);
         damage_amounts.Add(new_damage_amounts);
@@ -247,7 +247,7 @@ struct SPACEGAMESIMULATION_API UnresolvedCollisionDamageEvents {
     TArray<int32> damage_amounts;
     TArray<UActorComponent*> actor_components;
     TArray<int32> hit_items;
-    TArray<FRegistryEntityHandle> instigators;
+    TArray<::ioj::sim::RegistryEntityHandle> instigators;
 };
 
 struct CollisionDamageEventsView;
@@ -281,14 +281,14 @@ struct SPACEGAMESIMULATION_API CollisionDamageEventsConstView {
     TConstArrayView<int32> damage_amounts;
     TConstArrayView<UActorComponent*> actor_components;
     TConstArrayView<int32> hit_items;
-    TConstArrayView<FRegistryEntityHandle> instigators;
+    TConstArrayView<::ioj::sim::RegistryEntityHandle> instigators;
 };
 
 struct SPACEGAMESIMULATION_API CollisionDamageEventsView {
     using View = CollisionDamageEventsView;
     using ConstView = CollisionDamageEventsConstView;
 
-    void set(int32 const index, int32 const new_damage_amounts, UActorComponent* const new_actor_components, int32 const new_hit_items, FRegistryEntityHandle const new_instigators) const {
+    void set(int32 const index, int32 const new_damage_amounts, UActorComponent* const new_actor_components, int32 const new_hit_items, ::ioj::sim::RegistryEntityHandle const new_instigators) const {
         damage_amounts[index] = new_damage_amounts;
         actor_components[index] = new_actor_components;
         hit_items[index] = new_hit_items;
@@ -324,21 +324,21 @@ struct SPACEGAMESIMULATION_API CollisionDamageEventsView {
     TArrayView<int32> damage_amounts;
     TArrayView<UActorComponent*> actor_components;
     TArrayView<int32> hit_items;
-    TArrayView<FRegistryEntityHandle> instigators;
+    TArrayView<::ioj::sim::RegistryEntityHandle> instigators;
 };
 
 struct SPACEGAMESIMULATION_API CollisionDamageEvents {
     using View = CollisionDamageEventsView;
     using ConstView = CollisionDamageEventsConstView;
 
-    void set(int32 const index, int32 const new_damage_amounts, UActorComponent* const new_actor_components, int32 const new_hit_items, FRegistryEntityHandle const new_instigators) {
+    void set(int32 const index, int32 const new_damage_amounts, UActorComponent* const new_actor_components, int32 const new_hit_items, ::ioj::sim::RegistryEntityHandle const new_instigators) {
         damage_amounts[index] = new_damage_amounts;
         actor_components[index] = new_actor_components;
         hit_items[index] = new_hit_items;
         instigators[index] = new_instigators;
     }
 
-    auto add(int32 const new_damage_amounts, UActorComponent* const new_actor_components, int32 const new_hit_items, FRegistryEntityHandle const new_instigators) -> int32 {
+    auto add(int32 const new_damage_amounts, UActorComponent* const new_actor_components, int32 const new_hit_items, ::ioj::sim::RegistryEntityHandle const new_instigators) -> int32 {
         auto const index{num()};
         damage_amounts.Add(new_damage_amounts);
         actor_components.Add(new_actor_components);
@@ -464,6 +464,6 @@ struct SPACEGAMESIMULATION_API CollisionDamageEvents {
     TArray<int32> damage_amounts;
     TArray<UActorComponent*> actor_components;
     TArray<int32> hit_items;
-    TArray<FRegistryEntityHandle> instigators;
+    TArray<::ioj::sim::RegistryEntityHandle> instigators;
 };
 // clang-format on

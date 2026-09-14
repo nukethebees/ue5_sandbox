@@ -1,11 +1,13 @@
-#include "sandbox/simulation/entity_handle.h"
+#include "ioj/sim/entity_handle.h"
 
 #include <gtest/gtest.h>
 
 #include <type_traits>
 
+namespace ioj::sim::tests {
+
 TEST(EntityHandle, ValidityAndReset) {
-    FRegistryEntityHandle handle{};
+    RegistryEntityHandle handle{};
     EXPECT_TRUE(handle.is_null());
     EXPECT_FALSE(handle.is_valid());
 
@@ -18,6 +20,8 @@ TEST(EntityHandle, ValidityAndReset) {
 }
 
 TEST(EntityHandle, PreservesCompactTrivialLayout) {
-    static_assert(sizeof(FRegistryEntityHandle) == sizeof(std::uint64_t));
-    static_assert(std::is_trivially_copyable_v<FRegistryEntityHandle>);
+    static_assert(sizeof(RegistryEntityHandle) == sizeof(std::uint64_t));
+    static_assert(std::is_trivially_copyable_v<RegistryEntityHandle>);
 }
+
+} // namespace ioj::sim::tests

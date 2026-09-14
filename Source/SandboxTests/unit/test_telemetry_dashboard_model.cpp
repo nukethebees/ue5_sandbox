@@ -80,14 +80,14 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
     TEST_METHOD(DerivesCurrentWorkloadAndRatesBySimulatedTime)
     {
         FLevelTelemetryReport record;
-        FLevelTelemetryBattleSample begin;
+        ::ioj::sim::LevelTelemetryBattleSample begin;
         begin.simulated_elapsed_seconds = 0.0;
         begin.alive[0][0] = 2;
         begin.combat.spawned[0][0] = 2;
         begin.active_lasers = 3;
         begin.lasers_fired = 10;
         begin.range_query_count = 20;
-        FLevelTelemetryBattleSample end{begin};
+        ::ioj::sim::LevelTelemetryBattleSample end{begin};
         end.completed_tick = 60;
         end.simulated_elapsed_seconds = 1.0;
         end.alive[0][0] = 3;

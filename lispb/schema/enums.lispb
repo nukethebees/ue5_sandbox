@@ -173,7 +173,7 @@
     (value CapitalShip
       :display-name "Capital Ship"
       :serialized-name capital_ship)
-    (value CapitalShipFighter
+    (value Fighter
       :display-name "Capital Ship Fighter"
       :serialized-name capital_ship_fighter)
     (value TubeSpinner

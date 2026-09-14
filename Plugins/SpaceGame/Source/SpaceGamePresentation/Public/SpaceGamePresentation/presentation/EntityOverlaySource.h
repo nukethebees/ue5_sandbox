@@ -1,6 +1,6 @@
 #pragma once
 
-#include "sandbox/simulation/registry_entity_data.h"
+#include "ioj/sim/registry_entity_data.h"
 #include "SpaceGamePresentation/entities/TeamColours.h"
 
 #include "SandboxNative/RegistryEntityHandle.h"
@@ -31,7 +31,7 @@ struct SPACEGAMEPRESENTATION_API FSoftTargetSelectionContext {
 };
 
 struct SPACEGAMEPRESENTATION_API FSoftTargetSelectionResult {
-    FRegistryEntityHandle handle{};
+    ::ioj::sim::RegistryEntityHandle handle{};
     float range_alpha{0.0f};
     float indicator_radius_pixels{0.0f};
     float world_units_per_pixel{0.0f};
@@ -56,16 +56,17 @@ struct SPACEGAMEPRESENTATION_API FEntityOverlayCollectionResult {
 };
 
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto
-    select_soft_target(ml::simulation::RegistryEntityData::ConstView entities,
+    select_soft_target(::ioj::sim::RegistryEntityData::ConstView entities,
                        std::span<float const> entity_type_radii,
                        TConstArrayView<int> generations,
                        TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
                        FSoftTargetSelectionContext const& context,
                        FSoftTargetSelectionSettings const& settings,
-                       FRegistryEntityHandle current_target) -> FSoftTargetSelectionResult;
+                       ::ioj::sim::RegistryEntityHandle current_target)
+        -> FSoftTargetSelectionResult;
 
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto
-    collect_entity_overlay_instances(ml::simulation::RegistryEntityData::ConstView entities,
+    collect_entity_overlay_instances(::ioj::sim::RegistryEntityData::ConstView entities,
                                      std::span<float const> entity_type_radii,
                                      TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
                                      FEntityOverlayTeamColours const& team_colours,

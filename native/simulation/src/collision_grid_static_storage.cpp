@@ -1,13 +1,13 @@
-#include "sandbox/simulation/collision_grid_static_storage.h"
+#include "ioj/sim/collision_grid_static_storage.h"
 
-#include "sandbox/simulation/world_aabb_operations.h"
+#include "ioj/sim/world_aabb_operations.h"
 
 #include <cassert>
 #include <cstddef>
 #include <limits>
 #include <utility>
 
-namespace ml::simulation::collision {
+namespace ioj::sim::collision {
 void CollisionGridStaticStorage::reset() noexcept {
     aabbs_.reset();
     cell_range_indices_.clear();
@@ -22,7 +22,7 @@ void CollisionGridStaticStorage::set_aabbs(WorldAABBs aabbs) noexcept {
 
 auto CollisionGridStaticStorage::add_aabb(Vector3f const min_point, Vector3f const max_point)
     -> std::int32_t {
-    return ml::simulation::collision::add(aabbs_, min_point, max_point);
+    return ioj::sim::collision::add(aabbs_, min_point, max_point);
 }
 
 auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
@@ -145,4 +145,4 @@ auto CollisionGridStaticStorage::aabb_indices_for_cell(std::int32_t const cell_i
     auto const element{static_cast<std::size_t>(range_index)};
     return std::span{aabb_indices_}.subspan(range_offsets_[element], range_counts_[element]);
 }
-} // namespace ml::simulation::collision
+} // namespace ioj::sim::collision

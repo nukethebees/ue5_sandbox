@@ -1,8 +1,8 @@
-#include "sandbox/simulation/spinner_firing.h"
+#include "ioj/sim/spinner_firing.h"
 
 #include <cassert>
 
-namespace ml::simulation::spinners {
+namespace ioj::sim::spinners {
 void fire_lasers(FiringView const spinners,
                  std::span<FirePoint const> const fire_points,
                  FiringParameters const parameters,
@@ -17,7 +17,7 @@ void fire_lasers(FiringView const spinners,
     assert(spinners.handles.size() == static_cast<std::size_t>(count));
     assert(spinners.next_fire_point_indices.size() == static_cast<std::size_t>(count));
     assert(spinners.cooldowns.num() == static_cast<std::size_t>(count));
-    FrameArray<std::int32_t> ready_indices{&resource};
+    ml::FrameArray<std::int32_t> ready_indices{&resource};
     ready_indices.reserve(count);
     for (std::int32_t index{}; index < count; ++index) {
         if (spinners.cooldowns.try_consume(static_cast<std::size_t>(index))) {

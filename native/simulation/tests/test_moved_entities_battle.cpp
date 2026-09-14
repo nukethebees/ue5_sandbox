@@ -1,11 +1,13 @@
+#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/level_sim.h>
 #include <map>
-#include <sandbox/simulation/entities/TestEntityRegistry.h>
-#include <sandbox/simulation/simulation/LevelSimulation.h>
 #include <set>
 #include "support/simulation_test_support.h"
 
+namespace ioj::sim::tests {
+
 namespace {
-struct FTransformSnapshot {
+struct TransformSnapshot {
     float x{};
     float y{};
     float z{};
@@ -13,11 +15,11 @@ struct FTransformSnapshot {
     float yaw{};
     float roll{};
 
-    auto operator==(FTransformSnapshot const&) const -> bool = default;
+    auto operator==(TransformSnapshot const&) const -> bool = default;
 };
 
-auto get_transform_snapshot(FTestEntityRegistry::EntityData const& data, std::int32_t const index)
-    -> FTransformSnapshot {
+auto get_transform_snapshot(EntityRegistry::EntityData const& data, std::int32_t const index)
+    -> TransformSnapshot {
     return {
         .x = data.locations.xs[index],
         .y = data.locations.ys[index],
@@ -28,8 +30,8 @@ auto get_transform_snapshot(FTestEntityRegistry::EntityData const& data, std::in
     };
 }
 
-auto make_long_running_battle() -> FLevelSimulationInitData {
-    FLevelSimulationInitData data;
+auto make_long_running_battle() -> LevelSimInitData {
+    LevelSimInitData data;
     data.clock_settings.tick_rate = 60.0;
     data.grid_dimensions = {96, 96, 32};
     data.cell_size = {{2000.f, 2000.f, 5000.f}};
@@ -45,7 +47,7 @@ auto make_long_running_battle() -> FLevelSimulationInitData {
 
     data.capital_spawns.add_defaulted(2);
     data.capital_spawns.locations.xs = {-10000.f, 10000.f};
-    data.capital_spawns.teams = {ml::simulation::Team::Green, ml::simulation::Team::White};
+    data.capital_spawns.teams = {ioj::sim::Team::Green, ioj::sim::Team::White};
     data.capital_spawns.healths = {std::numeric_limits<std::int32_t>::max(),
                                    std::numeric_limits<std::int32_t>::max()};
     data.capital_spawns.initial_spawn_delays = {0.f, 0.f};
@@ -64,17 +66,17 @@ auto make_long_running_battle() -> FLevelSimulationInitData {
 
 TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLongBattle) {
 
-    FLevelSimulation simulation{make_long_running_battle()};
+    LevelSim simulation{make_long_running_battle()};
     simulation.finish_initialisation();
 
-    std::map<FRegistryEntityHandle, FTransformSnapshot> previous_transforms;
-    auto capture_current_transforms = [&](FTestEntityRegistry const& registry) {
+    std::map<RegistryEntityHandle, TransformSnapshot> previous_transforms;
+    auto capture_current_transforms = [&](EntityRegistry const& registry) {
         previous_transforms.clear();
         auto const& data{registry.get_entity_data()};
         auto const generations{registry.get_generations()};
         auto const count{static_cast<std::int32_t>(generations.size())};
         for (std::int32_t index{}; index < count; ++index) {
-            FRegistryEntityHandle const handle{index, generations[index]};
+            RegistryEntityHandle const handle{index, generations[index]};
             previous_transforms.emplace(handle, get_transform_snapshot(data, index));
         }
     };
@@ -83,15 +85,15 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
     std::int32_t observed_ticks{};
     std::int32_t observed_moved_fighters{};
     bool observed_empty_tick{};
-    simulation.on_end_tick = [&](FLevelSimulation& level) {
+    simulation.on_end_tick = [&](LevelSim& level) {
         auto const& registry{level.get_entity_registry()};
         auto const& data{registry.get_entity_data()};
         auto const generations{registry.get_generations()};
         auto const count{static_cast<std::int32_t>(generations.size())};
 
-        std::set<FRegistryEntityHandle> expected_moved;
+        std::set<RegistryEntityHandle> expected_moved;
         for (std::int32_t index{}; index < count; ++index) {
-            FRegistryEntityHandle const handle{index, generations[index]};
+            RegistryEntityHandle const handle{index, generations[index]};
             auto const current{get_transform_snapshot(data, index)};
             if (auto const previous{previous_transforms.find(handle)};
                 previous != previous_transforms.end() && previous->second != current) {
@@ -100,22 +102,20 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
         }
 
         auto const moved{registry.get_moved_entities_this_tick()};
-        std::set<FRegistryEntityHandle> unique_moved;
+        std::set<RegistryEntityHandle> unique_moved;
         for (auto const handle : moved) {
-            ml::simulation_tests::expect_true(registry.is_valid_handle(handle),
-                                              "Moved handle remains valid after registry end_tick");
-            ml::simulation_tests::expect_false(std::ranges::contains(unique_moved, handle),
-                                               "Moved handle occurs only once in its tick");
+            ioj::sim::tests::expect_true(registry.is_valid_handle(handle),
+                                         "Moved handle remains valid after registry end_tick");
+            ioj::sim::tests::expect_false(std::ranges::contains(unique_moved, handle),
+                                          "Moved handle occurs only once in its tick");
             unique_moved.insert(handle);
-            ml::simulation_tests::expect_true(
-                std::ranges::contains(expected_moved, handle),
-                "Moved handle changed from the prior committed transform");
-            if (registry.get_entity_type(handle) ==
-                ml::simulation::EntityType::CapitalShipFighter) {
+            ioj::sim::tests::expect_true(std::ranges::contains(expected_moved, handle),
+                                         "Moved handle changed from the prior committed transform");
+            if (registry.get_entity_type(handle) == ioj::sim::EntityType::Fighter) {
                 ++observed_moved_fighters;
             }
         }
-        ml::simulation_tests::expect_equal(
+        ioj::sim::tests::expect_equal(
             static_cast<std::int32_t>(moved.size()),
             static_cast<std::int32_t>(expected_moved.size()),
             "Movement list exactly matches this tick's transform changes");
@@ -132,16 +132,18 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
     }
     simulation.pause();
 
-    ml::simulation_tests::expect_equal(
+    ioj::sim::tests::expect_equal(
         observed_ticks, tick_count, "Every requested battle tick was observed");
-    ml::simulation_tests::expect_true(observed_empty_tick,
-                                      "Battle includes an initially quiet movement tick");
-    ml::simulation_tests::expect_true(observed_moved_fighters > 100,
-                                      "Battle exercises fighter movement");
-    ml::simulation_tests::expect_equal(simulation.get_capital_ships().get_fighters_spawned(),
-                                       16,
-                                       "Battle spawns exactly one fighter wave");
-    ml::simulation_tests::expect_equal(simulation.get_capital_ship_fighters().get_num_instances(),
-                                       16,
-                                       "Zero-damage battle preserves every fighter");
+    ioj::sim::tests::expect_true(observed_empty_tick,
+                                 "Battle includes an initially quiet movement tick");
+    ioj::sim::tests::expect_true(observed_moved_fighters > 100,
+                                 "Battle exercises fighter movement");
+    ioj::sim::tests::expect_equal(simulation.get_capital_ships().get_fighters_spawned(),
+                                  16,
+                                  "Battle spawns exactly one fighter wave");
+    ioj::sim::tests::expect_equal(simulation.get_fighters().get_num_instances(),
+                                  16,
+                                  "Zero-damage battle preserves every fighter");
 }
+
+} // namespace ioj::sim::tests

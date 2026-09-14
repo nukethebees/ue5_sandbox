@@ -58,12 +58,13 @@ auto make_realtime_series(ml::TimeSeriesData<uint64> const& series) -> TSharedRe
     return result;
 }
 
-auto make_tick_series(FLevelTelemetryTickSeries const& source) -> TSharedRef<FJsonObject> {
+auto make_tick_series(::ioj::sim::LevelTelemetryTickSeries const& source)
+    -> TSharedRef<FJsonObject> {
     auto result{MakeShared<FJsonObject>()};
     result->SetObjectField(TEXT("active_entities"), make_series(source.active_entities));
 
     auto active_by_type{MakeShared<FJsonObject>()};
-    constexpr auto entity_type_count{FLevelTelemetryTickSeries::entity_type_count};
+    constexpr auto entity_type_count{::ioj::sim::LevelTelemetryTickSeries::entity_type_count};
     for (int32 entity_type_index{}; entity_type_index < entity_type_count; ++entity_type_index) {
         active_by_type->SetObjectField(
             LexToSerializedString(static_cast<ETestEntityType>(entity_type_index)),
@@ -72,7 +73,7 @@ auto make_tick_series(FLevelTelemetryTickSeries const& source) -> TSharedRef<FJs
     result->SetObjectField(TEXT("active_entities_by_type"), active_by_type);
 
     auto active_by_team_and_type{MakeShared<FJsonObject>()};
-    constexpr auto team_count{FLevelTelemetryTickSeries::team_count};
+    constexpr auto team_count{::ioj::sim::LevelTelemetryTickSeries::team_count};
     for (int32 team_index{}; team_index < team_count; ++team_index) {
         auto team{MakeShared<FJsonObject>()};
         for (int32 entity_type_index{}; entity_type_index < entity_type_count;
@@ -114,7 +115,8 @@ auto make_flat_counts(Counts const& source) -> TArray<TSharedPtr<FJsonValue>> {
     return result;
 }
 
-auto make_timing(FLevelTelemetryTimingAggregate const& source) -> TSharedRef<FJsonObject> {
+auto make_timing(::ioj::sim::LevelTelemetryTimingAggregate const& source)
+    -> TSharedRef<FJsonObject> {
     auto result{MakeShared<FJsonObject>()};
     result->SetNumberField(TEXT("mean_ms"), source.mean_ms);
     result->SetNumberField(TEXT("p95_ms"), source.p95_ms);
@@ -123,7 +125,7 @@ auto make_timing(FLevelTelemetryTimingAggregate const& source) -> TSharedRef<FJs
     return result;
 }
 
-auto make_combat(ml::simulation::telemetry::CombatTelemetryCounters const& source)
+auto make_combat(::ioj::sim::telemetry::CombatTelemetryCounters const& source)
     -> TSharedRef<FJsonObject> {
     auto result{MakeShared<FJsonObject>()};
     result->SetArrayField(TEXT("spawned"), make_flat_counts(source.spawned));
@@ -138,7 +140,7 @@ auto make_combat(ml::simulation::telemetry::CombatTelemetryCounters const& sourc
     return result;
 }
 
-auto make_battle_samples(TArray<FLevelTelemetryBattleSample> const& source)
+auto make_battle_samples(TArray<::ioj::sim::LevelTelemetryBattleSample> const& source)
     -> TArray<TSharedPtr<FJsonValue>> {
     TArray<TSharedPtr<FJsonValue>> result;
     result.Reserve(source.Num());
@@ -302,7 +304,8 @@ auto parse_flat_counts(FJsonObject const& source,
 auto parse_timing(FJsonObject const& source,
                   TCHAR const* const field,
                   FString const& path,
-                  FLevelTelemetryTimingAggregate& output) -> std::expected<void, FString> {
+                  ::ioj::sim::LevelTelemetryTimingAggregate& output)
+    -> std::expected<void, FString> {
     auto const object{required_object(source, field, path)};
     if (!object) {
         return std::unexpected{object.error()};
@@ -323,7 +326,7 @@ auto parse_timing(FJsonObject const& source,
 }
 
 auto parse_combat(FJsonObject const& source,
-                  ml::simulation::telemetry::CombatTelemetryCounters& output,
+                  ::ioj::sim::telemetry::CombatTelemetryCounters& output,
                   FString const& path) -> std::expected<void, FString> {
 #define PARSE_COMBAT_COUNTS(field)                                                           \
     do {                                                                                     \
@@ -658,8 +661,7 @@ auto deserialize_level_telemetry_run(FString const& json)
     READ_REQUIRED(
         parsed_reason,
         parse_serialized_enum<ELevelTelemetryRunEndReason>(reason_name, TEXT("completion.reason")));
-    result.completion.reason =
-        static_cast<ml::simulation::LevelTelemetryRunEndReason>(parsed_reason);
+    result.completion.reason = static_cast<::ioj::sim::LevelTelemetryRunEndReason>(parsed_reason);
     READ_REQUIRED(result.completion.interrupted,
                   required_bool(**completion, TEXT("interrupted"), TEXT("completion.interrupted")));
     READ_REQUIRED(result.completion.world_end_reason,
@@ -803,7 +805,7 @@ auto deserialize_level_telemetry_run(FString const& json)
     if (!by_type || !by_team) {
         return std::unexpected{!by_type ? by_type.error() : by_team.error()};
     }
-    for (int32 type{}; type < FLevelTelemetryTickSeries::entity_type_count; ++type) {
+    for (int32 type{}; type < ::ioj::sim::LevelTelemetryTickSeries::entity_type_count; ++type) {
         auto const* type_name{LexToSerializedString(static_cast<ETestEntityType>(type))};
         auto parsed{parse_tick_series(
             **by_type,
@@ -820,7 +822,7 @@ auto deserialize_level_telemetry_run(FString const& json)
             return std::unexpected{valid.error()};
         }
     }
-    for (int32 team{}; team < FLevelTelemetryTickSeries::team_count; ++team) {
+    for (int32 team{}; team < ::ioj::sim::LevelTelemetryTickSeries::team_count; ++team) {
         auto const* team_name{LexToSerializedString(static_cast<ETestTeam>(team))};
         auto const team_object{required_object(
             **by_team,
@@ -829,7 +831,7 @@ auto deserialize_level_telemetry_run(FString const& json)
         if (!team_object) {
             return std::unexpected{team_object.error()};
         }
-        for (int32 type{}; type < FLevelTelemetryTickSeries::entity_type_count; ++type) {
+        for (int32 type{}; type < ::ioj::sim::LevelTelemetryTickSeries::entity_type_count; ++type) {
             auto const* type_name{LexToSerializedString(static_cast<ETestEntityType>(type))};
             auto parsed{parse_tick_series(
                 **team_object,
@@ -867,7 +869,7 @@ auto deserialize_level_telemetry_run(FString const& json)
             if (!object.IsValid()) {
                 return std::unexpected{error_at(path, TEXT("sample must be an object"))};
             }
-            FLevelTelemetryBattleSample sample;
+            ::ioj::sim::LevelTelemetryBattleSample sample;
             READ_REQUIRED(sample.completed_tick,
                           required_integer<uint64>(
                               *object, TEXT("completed_tick"), path + TEXT(".completed_tick")));

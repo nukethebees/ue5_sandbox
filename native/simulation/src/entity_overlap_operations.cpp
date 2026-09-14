@@ -1,9 +1,9 @@
-#include "sandbox/simulation/entity_overlap_operations.h"
+#include "ioj/sim/entity_overlap_operations.h"
 
 #include <span>
 
-namespace ml::simulation::collision {
-void sort_and_deduplicate(ioj::FEntityEntityOverlaps& overlaps,
+namespace ioj::sim::collision {
+void sort_and_deduplicate(ioj::sim::collision::EntityEntityOverlaps& overlaps,
                           std::vector<std::int32_t>& sort_indices_scratch) {
     auto const overlap_count{overlaps.num()};
     if (overlap_count <= 1) {
@@ -12,7 +12,7 @@ void sort_and_deduplicate(ioj::FEntityEntityOverlaps& overlaps,
 
     sort_indices_scratch.resize(static_cast<std::size_t>(overlap_count));
     overlaps.sort(
-        [](ioj::FEntityEntityOverlaps const& values,
+        [](ioj::sim::collision::EntityEntityOverlaps const& values,
            std::int32_t const lhs,
            std::int32_t const rhs) {
             auto const lhs_first{values.first_entities[lhs]};
@@ -37,7 +37,7 @@ void sort_and_deduplicate(ioj::FEntityEntityOverlaps& overlaps,
     overlaps.set_num(write_index);
 }
 
-void sort_and_deduplicate(ioj::FEntityStaticOverlaps& overlaps,
+void sort_and_deduplicate(ioj::sim::collision::EntityStaticOverlaps& overlaps,
                           std::vector<std::int32_t>& sort_indices_scratch) {
     auto const overlap_count{overlaps.num()};
     if (overlap_count <= 1) {
@@ -46,7 +46,7 @@ void sort_and_deduplicate(ioj::FEntityStaticOverlaps& overlaps,
 
     sort_indices_scratch.resize(static_cast<std::size_t>(overlap_count));
     overlaps.sort(
-        [](ioj::FEntityStaticOverlaps const& values,
+        [](ioj::sim::collision::EntityStaticOverlaps const& values,
            std::int32_t const lhs,
            std::int32_t const rhs) {
             auto const lhs_entity{values.entities[lhs]};
@@ -72,4 +72,4 @@ void sort_and_deduplicate(ioj::FEntityStaticOverlaps& overlaps,
     }
     overlaps.set_num(write_index);
 }
-} // namespace ml::simulation::collision
+} // namespace ioj::sim::collision

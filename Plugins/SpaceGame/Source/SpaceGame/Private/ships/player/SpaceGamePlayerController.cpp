@@ -1,6 +1,6 @@
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 
-#include <sandbox/simulation/missions/TestMissionManager.h>
+#include <ioj/sim/mission_manager.h>
 #include <SandboxCoreEngine/actor_utils.h>
 #include <SpaceGame/input/ControlProfiles.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
@@ -413,7 +413,7 @@ void ASpaceGamePlayerController::toggle_pause_game() {
     }
 
     switch (orchestrator->get_state()) {
-        case EOrchestratorState::Running: {
+        case ::ioj::sim::OrchestratorState::Running: {
             if (return_to_level_select_pending_ || (modal_ui_.is_completion_active())) {
                 return;
             }
@@ -426,8 +426,8 @@ void ASpaceGamePlayerController::toggle_pause_game() {
             }
             break;
         }
-        case EOrchestratorState::Uninitialised:
-        case EOrchestratorState::Paused: {
+        case ::ioj::sim::OrchestratorState::Uninitialised:
+        case ::ioj::sim::OrchestratorState::Paused: {
             if (modal_ui_.is_pause_active()) {
                 modal_ui_.deactivate_pause();
             } else if (!modal_ui_.has_completion()) {
@@ -435,7 +435,7 @@ void ASpaceGamePlayerController::toggle_pause_game() {
             }
             break;
         }
-        case EOrchestratorState::Stopped: {
+        case ::ioj::sim::OrchestratorState::Stopped: {
             UE_LOG(LogSandboxController,
                    Error,
                    TEXT("ASpaceGamePlayerController::toggle_pause_game: Orchestrator is stopped."));
@@ -446,7 +446,7 @@ void ASpaceGamePlayerController::toggle_pause_game() {
 void ASpaceGamePlayerController::show_initial_pause_menu() {
     auto* const orchestrator{orchestrator_.Get()};
     if (!IsValid(orchestrator) || !orchestrator->was_launched_paused() ||
-        orchestrator->get_state() != EOrchestratorState::Paused || !is_gameplay_mode() ||
+        orchestrator->get_state() != ::ioj::sim::OrchestratorState::Paused || !is_gameplay_mode() ||
         get_active_control_context() == EPlayerControlContext::Benchmark ||
         return_to_level_select_pending_ || modal_ui_.has_modal()) {
         return;
@@ -469,7 +469,8 @@ void ASpaceGamePlayerController::show_initial_pause_menu() {
 }
 auto ASpaceGamePlayerController::open_pause_menu() -> bool {
     auto* const orchestrator{orchestrator_.Get()};
-    if (!IsValid(orchestrator) || orchestrator->get_state() != EOrchestratorState::Paused ||
+    if (!IsValid(orchestrator) ||
+        orchestrator->get_state() != ::ioj::sim::OrchestratorState::Paused ||
         !modal_ui_.has_root() || !IsValid(global_input.toggle_menu) || !IsValid(ui_data) ||
         !IsValid(ui_data->team_visual_data)) {
         UE_LOG(LogSandboxController,
@@ -494,7 +495,8 @@ auto ASpaceGamePlayerController::open_pause_menu() -> bool {
 }
 auto ASpaceGamePlayerController::suspend_gameplay_for_modal() -> bool {
     auto* const orchestrator{orchestrator_.Get()};
-    if (!IsValid(orchestrator) || orchestrator->get_state() != EOrchestratorState::Running) {
+    if (!IsValid(orchestrator) ||
+        orchestrator->get_state() != ::ioj::sim::OrchestratorState::Running) {
         UE_LOG(LogSandboxController,
                Error,
                TEXT("ASpaceGamePlayerController::suspend_gameplay_for_modal: Gameplay is not "
@@ -523,7 +525,7 @@ void ASpaceGamePlayerController::resume_game() {
                TEXT("ASpaceGamePlayerController::resume_game: Orchestrator is invalid."));
         return;
     }
-    if (orchestrator->get_state() == EOrchestratorState::Stopped) {
+    if (orchestrator->get_state() == ::ioj::sim::OrchestratorState::Stopped) {
         UE_LOG(LogSandboxController,
                Error,
                TEXT("ASpaceGamePlayerController::resume_game: Orchestrator is stopped."));
@@ -544,13 +546,13 @@ void ASpaceGamePlayerController::resume_game() {
     }
 
     switch (orchestrator->get_state()) {
-        case EOrchestratorState::Uninitialised:
-        case EOrchestratorState::Paused: {
+        case ::ioj::sim::OrchestratorState::Uninitialised:
+        case ::ioj::sim::OrchestratorState::Paused: {
             orchestrator->start_simulation();
             break;
         }
-        case EOrchestratorState::Running:
-        case EOrchestratorState::Stopped: {
+        case ::ioj::sim::OrchestratorState::Running:
+        case ::ioj::sim::OrchestratorState::Stopped: {
             break;
         }
     }

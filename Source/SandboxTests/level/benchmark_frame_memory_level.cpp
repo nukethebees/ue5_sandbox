@@ -3,10 +3,10 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
 
-#include <sandbox/simulation/combat/lasers/TestLasersSimulation.h>
-#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
-#include <sandbox/simulation/ships/fighters/TestCapitalShipFightersSimulation.h>
-#include <sandbox/simulation/simulation/LevelSimulation.h>
+#include <ioj/sim/capital_ships/sim.h>
+#include <ioj/sim/fighters/sim.h>
+#include <ioj/sim/lasers/sim.h>
+#include <ioj/sim/level_sim.h>
 #include <SpaceGame/levels/LevelLoader.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -67,7 +67,7 @@ TEST_CLASS(FrameMemoryLevelBenchmark, "SandboxBenchmarks.FrameMemoryLevel")
   private:
     void sample_tick(ATestBatchOrchestrator & orchestrator) {
         auto const* const simulation{orchestrator.get_level_simulation()};
-        auto const* const fighters{orchestrator.get_capital_ship_fighters()};
+        auto const* const fighters{orchestrator.get_fighters()};
         check(simulation);
         check(fighters);
 
@@ -122,7 +122,7 @@ TEST_CLASS(FrameMemoryLevelBenchmark, "SandboxBenchmarks.FrameMemoryLevel")
         auto driver{ml::TestSimulationDriver::from_world(world)};
         auto& orchestrator{driver.orchestrator};
 
-        if (orchestrator.get_state() == EOrchestratorState::Running) {
+        if (orchestrator.get_state() == ::ioj::sim::OrchestratorState::Running) {
             orchestrator.pause_simulation();
         }
         driver.set_time_scale(ml::frame_memory_level_benchmark::benchmark_time_scale);
@@ -158,7 +158,7 @@ TEST_CLASS(FrameMemoryLevelBenchmark, "SandboxBenchmarks.FrameMemoryLevel")
         auto const started_at{FPlatformTime::Seconds()};
         uint64 presentation_updates{};
         while (orchestrator.get_completed_ticks() - start_tick < ticks_to_run &&
-               orchestrator.get_state() == EOrchestratorState::Running) {
+               orchestrator.get_state() == ::ioj::sim::OrchestratorState::Running) {
             auto const completed_ticks{orchestrator.get_completed_ticks() - start_tick};
             auto const batch_ticks{FMath::Min(ticks_per_advance, ticks_to_run - completed_ticks)};
             auto const unscaled_dt{static_cast<double>(batch_ticks) * tick_period /

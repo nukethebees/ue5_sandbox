@@ -1,15 +1,15 @@
-#include "sandbox/simulation/collision_grid_overlap_query.h"
+#include "ioj/sim/collision_grid_overlap_query.h"
 
-#include "sandbox/simulation/world_aabb_operations.h"
+#include "ioj/sim/world_aabb_operations.h"
 
-namespace ml::simulation::collision {
+namespace ioj::sim::collision {
 void append_grid_overlaps(GridGeometry const geometry,
                           CollisionGridEntityStorage const& entity_storage,
                           CollisionGridStaticStorage const& static_storage,
                           EntityRegistryQueryView const registry,
                           WorldAABB const query_bounds,
-                          FRegistryEntityHandle const ignored_entity,
-                          std::vector<FRegistryEntityHandle>& out_entities,
+                          RegistryEntityHandle const ignored_entity,
+                          std::vector<RegistryEntityHandle>& out_entities,
                           std::vector<std::int32_t>& out_static_geometry_indices) {
     auto const [min_coord,
                 max_coord]{to_cell_coord_bounds(geometry, query_bounds.min, query_bounds.max)};

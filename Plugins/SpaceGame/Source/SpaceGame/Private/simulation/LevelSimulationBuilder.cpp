@@ -1,5 +1,5 @@
 #include "SpaceGame/simulation/LevelSimulationBuilder.h"
-#include <sandbox/simulation/rotator_math.h>
+#include <ioj/sim/rotator_math.h>
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
 #include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
@@ -24,8 +24,8 @@
 #include <vector>
 
 namespace ml::level_simulation_builder {
-auto intersects(simulation::collision::WorldAABB const& first,
-                simulation::collision::WorldAABB const& second,
+auto intersects(::ioj::sim::collision::WorldAABB const& first,
+                ::ioj::sim::collision::WorldAABB const& second,
                 float const first_clearance,
                 float const second_clearance) noexcept -> bool {
     return first.min.X - first_clearance <= second.max.X + second_clearance &&
@@ -36,26 +36,26 @@ auto intersects(simulation::collision::WorldAABB const& first,
            first.max.Z + first_clearance >= second.min.Z - second_clearance;
 }
 
-void validate_fighter_spawn_slots(FCapitalSimulationConfig const& capital_config,
-                                  FFighterSimulationConfig const& fighter_config,
-                                  simulation::collision::EntityAABBs const& entity_bounds,
+void validate_fighter_spawn_slots(::ioj::sim::CapitalShipSimConfig const& capital_config,
+                                  ::ioj::sim::FighterSimConfig const& fighter_config,
+                                  ::ioj::sim::collision::EntityAABBs const& entity_bounds,
                                   FLevelStartErrors& errors) {
     auto const capital_index{ioj::FEntityAABBs::capital_ship_index};
     auto const fighter_index{ioj::FEntityAABBs::fighter_index};
-    auto const capital_bounds{simulation::collision::make_entity_world_bounds(
+    auto const capital_bounds{::ioj::sim::collision::make_entity_world_bounds(
         entity_bounds, capital_index, {}, ml::make_quaternion4f(0.0f, 0.0f, 0.0f, 1.0f))};
     auto const clearance{fighter_config.avoidance_clearance_buffer};
     auto const& spawn_slots{capital_config.fighter_spawn_slots_relative_transforms};
     auto const slot_count{static_cast<int32>(spawn_slots.size())};
-    std::vector<simulation::collision::WorldAABB> fighter_bounds;
+    std::vector<::ioj::sim::collision::WorldAABB> fighter_bounds;
     fighter_bounds.reserve(static_cast<std::size_t>(slot_count));
 
     for (int32 slot_index{}; slot_index < slot_count; ++slot_index) {
         auto const& slot{spawn_slots[slot_index]};
-        auto const location{ml::simulation::to_float(slot.location)};
-        auto const orientation{ml::simulation::to_quaternion(
-            ml::simulation::to_float(ml::simulation::to_rotator(slot.rotation)))};
-        fighter_bounds.push_back(simulation::collision::make_entity_world_bounds(
+        auto const location{::ioj::sim::to_float(slot.location)};
+        auto const orientation{
+            ::ioj::sim::to_quaternion(::ioj::sim::to_float(::ioj::sim::to_rotator(slot.rotation)))};
+        fighter_bounds.push_back(::ioj::sim::collision::make_entity_world_bounds(
             entity_bounds, fighter_index, location, orientation));
         if (intersects(capital_bounds, fighter_bounds.back(), 0.0f, clearance)) {
             errors.add(FString::Printf(
@@ -85,31 +85,31 @@ void validate_fighter_spawn_slots(FCapitalSimulationConfig const& capital_config
 }
 
 namespace ml {
-void validate_world_fighter_spawn_slots(FLevelSimulationInitData const& data,
+void validate_world_fighter_spawn_slots(::ioj::sim::LevelSimInitData const& data,
                                         FLevelStartErrors& errors) {
     auto const capital_index{ioj::FEntityAABBs::capital_ship_index};
     auto const fighter_index{ioj::FEntityAABBs::fighter_index};
     auto const clearance{data.fighters.avoidance_clearance_buffer};
     auto const& slots{data.capital_ships.fighter_spawn_slots_relative_transforms};
-    auto const validate{[&](ml::simulation::Vectors3fConstView const locations,
-                            ml::simulation::Rotators3fConstView const rotations) {
+    auto const validate{[&](::ioj::sim::Vectors3fConstView const locations,
+                            ::ioj::sim::Rotators3fConstView const rotations) {
         auto const count{locations.num()};
         for (int32 i{}; i < count; ++i) {
             auto const position{ml::to_unreal(locations[i])};
             auto const rotation{ml::to_unreal(rotations[i])};
-            auto const capital_orientation{simulation::to_quaternion(rotations[i])};
-            auto const capital_bounds{simulation::collision::make_entity_world_bounds(
+            auto const capital_orientation{::ioj::sim::to_quaternion(rotations[i])};
+            auto const capital_bounds{::ioj::sim::collision::make_entity_world_bounds(
                 data.entity_bounds, capital_index, locations[i], capital_orientation)};
             auto const slot_count{static_cast<int32>(slots.size())};
             for (int32 slot_index{}; slot_index < slot_count; ++slot_index) {
                 auto const& slot{slots[slot_index]};
-                auto const slot_location{ml::simulation::to_float(slot.location)};
+                auto const slot_location{::ioj::sim::to_float(slot.location)};
                 auto const spawn{position + rotation.RotateVector(ml::to_unreal(slot_location))};
                 auto const slot_rotation{
-                    ml::simulation::to_float(ml::simulation::to_rotator(slot.rotation))};
+                    ::ioj::sim::to_float(::ioj::sim::to_rotator(slot.rotation))};
                 auto const fighter_orientation{capital_orientation *
-                                               simulation::to_quaternion(slot_rotation)};
-                auto const fighter_bounds{simulation::collision::make_entity_world_bounds(
+                                               ::ioj::sim::to_quaternion(slot_rotation)};
+                auto const fighter_bounds{::ioj::sim::collision::make_entity_world_bounds(
                     data.entity_bounds, fighter_index, ml::to_native(spawn), fighter_orientation)};
                 if (level_simulation_builder::intersects(
                         capital_bounds, fighter_bounds, 0.0f, clearance)) {
@@ -133,9 +133,9 @@ void validate_world_fighter_spawn_slots(FLevelSimulationInitData const& data,
 
 auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
                                      FFixedTickLoop const& clock_settings,
-                                     TOptional<test_space_ship::FPlayerSpawnData> player,
+                                     TOptional<::ioj::sim::player::PlayerSpawnData> player,
                                      UStaticMesh const* const player_collision_mesh)
-    -> FLevelSimulationBuildResult {
+    -> FLevelSimBuildResult {
     FLevelStartErrors errors;
     auto const require_mesh{[&errors](UStaticMesh const* const mesh, TCHAR const* const name) {
         if (!IsValid(mesh)) {
@@ -151,10 +151,10 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
         require_mesh(player_collision_mesh, TEXT("player ship mesh"));
     }
     if (errors.has_errors()) {
-        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(errors)};
+        return FLevelSimBuildResult{std::unexpect, MoveTemp(errors)};
     }
 
-    FLevelSimulationBuildResult result{std::in_place};
+    FLevelSimBuildResult result{std::in_place};
     auto& data{result.value()};
     data.clock_settings = ml::to_native(clock_settings);
     data.lasers = make_simulation_config(config.laser_projectiles);
@@ -179,18 +179,18 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     ioj::FLevelCollisionHost::EntityMeshes meshes{};
     meshes[ETestEntityType::PlayerShip] = player_collision_mesh;
     meshes[ETestEntityType::CapitalShip] = config.capital_ships.mesh;
-    meshes[ETestEntityType::CapitalShipFighter] = config.fighters.mesh;
+    meshes[ETestEntityType::Fighter] = config.fighters.mesh;
     meshes[ETestEntityType::Turret] = config.turrets.mesh;
     meshes[ETestEntityType::TubeSpinner] = config.tube_spinners.mesh;
     auto bounds{ioj::FLevelCollisionHost::extract_entity_bounds(meshes)};
     if (!bounds) {
-        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(bounds.error())};
+        return FLevelSimBuildResult{std::unexpect, MoveTemp(bounds.error())};
     }
     data.entity_bounds = MoveTemp(bounds.value());
     level_simulation_builder::validate_fighter_spawn_slots(
         data.capital_ships, data.fighters, data.entity_bounds, errors);
     if (errors.has_errors()) {
-        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(errors)};
+        return FLevelSimBuildResult{std::unexpect, MoveTemp(errors)};
     }
     return result;
 }
@@ -198,17 +198,17 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
 auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
                                      FFixedTickLoop const& clock_settings,
                                      FLevelDefinition const& definition,
-                                     TOptional<test_space_ship::FPlayerSpawnData> player,
+                                     TOptional<::ioj::sim::player::PlayerSpawnData> player,
                                      WorldAABBs static_bounds,
                                      UStaticMesh const* const player_collision_mesh)
-    -> FLevelSimulationBuildResult {
+    -> FLevelSimBuildResult {
     auto const validation{validate_level(definition)};
     if (!validation) {
         FLevelStartErrors errors;
         for (auto const& error : validation.errors) {
             errors.add(error.message);
         }
-        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(errors)};
+        return FLevelSimBuildResult{std::unexpect, MoveTemp(errors)};
     }
 
     auto result{make_level_simulation_init_data(
@@ -225,17 +225,17 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
         data.participating_teams.add(ml::to_native(team.GetValue()));
     }
 
-    FSimulationClock clock;
+    ::ioj::sim::SimClock clock;
     clock.initialise(ml::to_native(clock_settings));
     auto compiled{compile_level_events(definition, clock, data.capital_ships, data.turrets)};
     if (!compiled) {
-        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(compiled.error())};
+        return FLevelSimBuildResult{std::unexpect, MoveTemp(compiled.error())};
     }
     data.level_events = MoveTemp(compiled.value());
     FLevelStartErrors spawn_errors;
     validate_world_fighter_spawn_slots(data, spawn_errors);
     if (spawn_errors.has_errors()) {
-        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(spawn_errors)};
+        return FLevelSimBuildResult{std::unexpect, MoveTemp(spawn_errors)};
     }
 
     auto const turret_events{data.level_events.initial_spawns.turret_spawns.get_const_view()};

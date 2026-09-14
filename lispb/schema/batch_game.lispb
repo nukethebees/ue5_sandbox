@@ -1,7 +1,7 @@
-(soa-module test_capital_ship_fighters_soa
-  :header "native/simulation/include/sandbox/simulation/fighter_entity_data.h"
+(soa-module fighters_soa
+  :header "native/simulation/include/ioj/sim/fighter_entity_data.h"
   :backend standard-library
-  :namespace ml::simulation
+  :namespace ioj::sim
   (struct Vectors3f
     :layout-only true
     (member xs array float)
@@ -48,10 +48,10 @@
     (member target_distances array float)
     (member target_radii array float)))
 
-(soa-module test_capital_ships_soa
-  :header "native/simulation/include/sandbox/simulation/capital_entity_data.h"
+(soa-module capital_ships_soa
+  :header "native/simulation/include/ioj/sim/capital_entity_data.h"
   :backend standard-library
-  :namespace ml::simulation
+  :namespace ioj::sim
   (struct Vectors3f
     :layout-only true
     (member xs array float)
@@ -71,13 +71,13 @@
     (member fighter_spawn_cooldowns array float)
     (member teams array @native_team)
     (member healths array int32)
-    (member capital_fighter_handle_spans array @native_index_span)
+    (member fighter_handle_spans array @native_index_span)
     (member target_handles array @native_registry_handle)))
 
-(soa-module test_lasers_soa
-  :header "native/simulation/include/sandbox/simulation/laser_soa.h"
+(soa-module lasers_soa
+  :header "native/simulation/include/ioj/sim/laser_soa.h"
   :backend standard-library
-  :namespace ml::simulation::lasers
+  :namespace ioj::sim::lasers
   (struct Vectors3f
     :layout-only true
     (member xs array float)
@@ -110,10 +110,10 @@
     (member initial_lifetimes array float)
     (member spawn_times array float)))
 
-(soa-module test_capital_ship_fighter_spawn_queue_soa
-  :header "native/simulation/include/sandbox/simulation/fighter_spawn_queue.h"
+(soa-module fighter_spawn_queue_soa
+  :header "native/simulation/include/ioj/sim/fighter_spawn_queue.h"
   :backend standard-library
-  :namespace ml::simulation
+  :namespace ioj::sim
   (struct Vectors3f
     :layout-only true
     (member xs array float)
@@ -124,7 +124,7 @@
     (member pitches array float)
     (member yaws array float)
     (member rolls array float))
-  (struct TestCapitalShipFighterSpawnQueue
+  (struct FighterSpawnQueue
     :operations (all)
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member rotations nested @native_rotators_3f :nested-schema Rotators3f)
@@ -132,10 +132,10 @@
     (member parents array @native_registry_handle)
     (member targets array @native_registry_handle)))
 
-(soa-module test_static_turrets_soa
-  :header "native/simulation/include/sandbox/simulation/turret_entity_data.h"
+(soa-module turrets_soa
+  :header "native/simulation/include/ioj/sim/turret_entity_data.h"
   :backend standard-library
-  :namespace ml::simulation
+  :namespace ioj::sim
   (struct Vectors3f
     :layout-only true
     (member xs array float)
@@ -163,10 +163,10 @@
     (member target_velocities nested @native_vectors_3f :nested-schema Vectors3f)
     (member healths array int32)))
 
-(soa-module test_tube_spinners_soa
-  :header "native/simulation/include/sandbox/simulation/spinner_entity_data.h"
+(soa-module spinners_soa
+  :header "native/simulation/include/ioj/sim/spinner_entity_data.h"
   :backend standard-library
-  :namespace ml::simulation
+  :namespace ioj::sim
   (struct Vectors3f
     :layout-only true
     (member xs array float)
@@ -186,9 +186,9 @@
     (member next_fire_point_indices array int32)))
 
 (soa-module capital_spawn_data
-  :header "native/simulation/include/sandbox/simulation/capital_spawn_data.h"
+  :header "native/simulation/include/ioj/sim/capital_spawn_data.h"
   :backend standard-library
-  :namespace ml::simulation
+  :namespace ioj::sim
   (struct Vectors3f
     :layout-only true
     (member xs array float)
@@ -210,9 +210,9 @@
     (member spawn_cooldowns array float)))
 
 (soa-module turret_spawn_data
-  :header "native/simulation/include/sandbox/simulation/turret_spawn_data.h"
+  :header "native/simulation/include/ioj/sim/turret_spawn_data.h"
   :backend standard-library
-  :namespace ml::simulation
+  :namespace ioj::sim
   (struct Vectors3f
     :layout-only true
     (member xs array float)
@@ -226,9 +226,9 @@
     (member laser_damages array int32)))
 
 (soa-module laser_hit_details
-  :header "native/simulation/include/sandbox/simulation/laser_hit_details.h"
+  :header "native/simulation/include/ioj/sim/laser_hit_details.h"
   :backend standard-library
-  :namespace ml::simulation
+  :namespace ioj::sim
   (struct Vectors3f
     :layout-only true
     (member xs array float)

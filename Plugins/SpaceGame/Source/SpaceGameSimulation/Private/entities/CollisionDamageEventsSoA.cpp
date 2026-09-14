@@ -22,7 +22,7 @@ auto UnresolvedCollisionDamageEventsConstView::get_view(int32 const offset, int3
         TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
         TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
         TConstArrayView<int32>{hit_items}.Slice(offset, count),
-        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+        TConstArrayView<::ioj::sim::RegistryEntityHandle>{instigators}.Slice(offset, count),
     };
 }
 
@@ -36,7 +36,7 @@ auto UnresolvedCollisionDamageEventsConstView::get_const_view(int32 const offset
         TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
         TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
         TConstArrayView<int32>{hit_items}.Slice(offset, count),
-        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+        TConstArrayView<::ioj::sim::RegistryEntityHandle>{instigators}.Slice(offset, count),
     };
 }
 
@@ -80,7 +80,7 @@ auto UnresolvedCollisionDamageEventsView::get_view(int32 const offset, int32 con
         TArrayView<int32>{damage_amounts}.Slice(offset, count),
         TArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
         TArrayView<int32>{hit_items}.Slice(offset, count),
-        TArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+        TArrayView<::ioj::sim::RegistryEntityHandle>{instigators}.Slice(offset, count),
     };
 }
 
@@ -94,7 +94,7 @@ auto UnresolvedCollisionDamageEventsView::get_view(int32 const offset, int32 con
         TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
         TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
         TConstArrayView<int32>{hit_items}.Slice(offset, count),
-        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+        TConstArrayView<::ioj::sim::RegistryEntityHandle>{instigators}.Slice(offset, count),
     };
 }
 
@@ -108,7 +108,7 @@ auto UnresolvedCollisionDamageEventsView::get_const_view(int32 const offset, int
         TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
         TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
         TConstArrayView<int32>{hit_items}.Slice(offset, count),
-        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+        TConstArrayView<::ioj::sim::RegistryEntityHandle>{instigators}.Slice(offset, count),
     };
 }
 
@@ -214,7 +214,7 @@ auto UnresolvedCollisionDamageEvents::get_view(int32 const offset, int32 const c
         TArrayView<int32>{damage_amounts}.Slice(offset, count),
         TArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
         TArrayView<int32>{hit_items}.Slice(offset, count),
-        TArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+        TArrayView<::ioj::sim::RegistryEntityHandle>{instigators}.Slice(offset, count),
     };
 }
 
@@ -228,7 +228,7 @@ auto UnresolvedCollisionDamageEvents::get_view(int32 const offset, int32 const c
         TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
         TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
         TConstArrayView<int32>{hit_items}.Slice(offset, count),
-        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+        TConstArrayView<::ioj::sim::RegistryEntityHandle>{instigators}.Slice(offset, count),
     };
 }
 
@@ -242,7 +242,7 @@ auto UnresolvedCollisionDamageEvents::get_const_view(int32 const offset, int32 c
         TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
         TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
         TConstArrayView<int32>{hit_items}.Slice(offset, count),
-        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+        TConstArrayView<::ioj::sim::RegistryEntityHandle>{instigators}.Slice(offset, count),
     };
 }
 
@@ -297,7 +297,7 @@ auto CollisionDamageEventsConstView::get_view(int32 const offset, int32 const co
         TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
         TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
         TConstArrayView<int32>{hit_items}.Slice(offset, count),
-        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+        TConstArrayView<::ioj::sim::RegistryEntityHandle>{instigators}.Slice(offset, count),
     };
 }
 
@@ -310,7 +310,7 @@ auto CollisionDamageEventsConstView::get_const_view(int32 const offset, int32 co
         TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
         TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
         TConstArrayView<int32>{hit_items}.Slice(offset, count),
-        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+        TConstArrayView<::ioj::sim::RegistryEntityHandle>{instigators}.Slice(offset, count),
     };
 }
 
@@ -352,7 +352,7 @@ auto CollisionDamageEventsView::get_view(int32 const offset, int32 const count) 
         TArrayView<int32>{damage_amounts}.Slice(offset, count),
         TArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
         TArrayView<int32>{hit_items}.Slice(offset, count),
-        TArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+        TArrayView<::ioj::sim::RegistryEntityHandle>{instigators}.Slice(offset, count),
     };
 }
 
@@ -365,7 +365,7 @@ auto CollisionDamageEventsView::get_view(int32 const offset, int32 const count) 
         TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
         TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
         TConstArrayView<int32>{hit_items}.Slice(offset, count),
-        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+        TConstArrayView<::ioj::sim::RegistryEntityHandle>{instigators}.Slice(offset, count),
     };
 }
 
@@ -378,7 +378,7 @@ auto CollisionDamageEventsView::get_const_view(int32 const offset, int32 const c
         TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
         TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
         TConstArrayView<int32>{hit_items}.Slice(offset, count),
-        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+        TConstArrayView<::ioj::sim::RegistryEntityHandle>{instigators}.Slice(offset, count),
     };
 }
 
@@ -476,7 +476,7 @@ auto CollisionDamageEvents::get_view(int32 const offset, int32 const count) -> V
         TArrayView<int32>{damage_amounts}.Slice(offset, count),
         TArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
         TArrayView<int32>{hit_items}.Slice(offset, count),
-        TArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+        TArrayView<::ioj::sim::RegistryEntityHandle>{instigators}.Slice(offset, count),
     };
 }
 
@@ -489,7 +489,7 @@ auto CollisionDamageEvents::get_view(int32 const offset, int32 const count) cons
         TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
         TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
         TConstArrayView<int32>{hit_items}.Slice(offset, count),
-        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+        TConstArrayView<::ioj::sim::RegistryEntityHandle>{instigators}.Slice(offset, count),
     };
 }
 
@@ -502,7 +502,7 @@ auto CollisionDamageEvents::get_const_view(int32 const offset, int32 const count
         TConstArrayView<int32>{damage_amounts}.Slice(offset, count),
         TConstArrayView<UActorComponent*>{actor_components}.Slice(offset, count),
         TConstArrayView<int32>{hit_items}.Slice(offset, count),
-        TConstArrayView<FRegistryEntityHandle>{instigators}.Slice(offset, count),
+        TConstArrayView<::ioj::sim::RegistryEntityHandle>{instigators}.Slice(offset, count),
     };
 }
 

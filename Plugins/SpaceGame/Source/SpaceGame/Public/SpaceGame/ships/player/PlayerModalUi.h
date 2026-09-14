@@ -1,7 +1,7 @@
 #pragma once
 
 #include <CoreMinimal.h>
-#include <sandbox/simulation/simulation/LevelTelemetrySnapshot.h>
+#include <ioj/sim/level_telemetry_snapshot.h>
 #include <SpaceGame/ships/player/PlayerControlContext.h>
 #include "PlayerModalUi.generated.h"
 
@@ -38,7 +38,7 @@ struct SPACEGAME_API FPlayerModalUi {
                     ml::ioj::FPauseMenuData data) -> bool;
     auto show_completion(ASpaceGamePlayerController& owner,
                          FTestMissionCompletion const& completion,
-                         FLevelTelemetrySnapshot snapshot) -> bool;
+                         ::ioj::sim::LevelTelemetrySnapshot snapshot) -> bool;
     void detach_callbacks(ASpaceGamePlayerController& owner);
     void clear_modals(ASpaceGamePlayerController& owner);
     void clear_menus(ASpaceGamePlayerController& owner);

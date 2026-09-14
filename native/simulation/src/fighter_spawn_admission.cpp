@@ -1,10 +1,10 @@
-#include "sandbox/simulation/fighter_spawn_admission.h"
+#include "ioj/sim/fighter_spawn_admission.h"
 
 #include <algorithm>
 #include <cassert>
 #include <limits>
 
-namespace ml::simulation::fighters {
+namespace ioj::sim::fighters {
 auto admit_spawns(std::span<std::byte const> const teams,
                   std::span<std::uint8_t const> const participant_mask,
                   std::span<std::int32_t> const remaining_team_capacity) -> SpawnAdmission {

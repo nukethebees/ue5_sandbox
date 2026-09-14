@@ -10,8 +10,8 @@
 #include "SpaceGame/levels/LevelLoader.h"
 #include "SpaceGame/system/GameSubsystem.h"
 
-#include <sandbox/simulation/entities/TestEntityRegistry.h>
-#include <sandbox/simulation/missions/TestMissionManager.h>
+#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/mission_manager.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
@@ -104,7 +104,7 @@ void set_capital_proxy_config_on_all(UWorld& world, USpaceGameLevelConfig& confi
 
 template <typename TProxy>
 void add_proxy_handles(UWorld& world,
-                       FTestEntityRegistry const& entity_registry,
+                       ::ioj::sim::EntityRegistry const& entity_registry,
                        FProxyEntityMap& proxy_entities) {
     for (TActorIterator<TProxy> it{&world}; it; ++it) {
         auto* const proxy{*it};
@@ -192,7 +192,7 @@ void ATestBatchOrchestrator::BeginPlay() {
 void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason) {
     if (level_simulation_.IsSet()) {
         level_simulation_->finalize_telemetry_run(
-            ml::simulation::LevelTelemetryRunEndReason::WorldEnd,
+            ::ioj::sim::LevelTelemetryRunEndReason::WorldEnd,
             TCHAR_TO_UTF8(*end_play_reason_name(end_play_reason)));
     }
     hud_manager.deactivate();
@@ -214,7 +214,7 @@ void ATestBatchOrchestrator::start_simulation() {
     if (!level_simulation_.IsSet() && !begin_play()) {
         return;
     }
-    if (get_state() != EOrchestratorState::Paused) {
+    if (get_state() != ::ioj::sim::OrchestratorState::Paused) {
         UE_LOG(LogSandbox, Error, TEXT("Cannot start a simulation that is not paused"));
         return;
     }
@@ -232,7 +232,7 @@ void ATestBatchOrchestrator::reset_for_new_level() {
 
     if (level_simulation_.IsSet()) {
         level_simulation_->finalize_telemetry_run(
-            ml::simulation::LevelTelemetryRunEndReason::OrchestratorReset, "reset");
+            ::ioj::sim::LevelTelemetryRunEndReason::OrchestratorReset, "reset");
     }
 
     auto* const world{GetWorld()};
@@ -396,7 +396,7 @@ void ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) {
     }
 }
 void ATestBatchOrchestrator::set_start_mode(EOrchestratorStartMode const mode) {
-    if (get_state() != EOrchestratorState::Uninitialised) {
+    if (get_state() != ::ioj::sim::OrchestratorState::Uninitialised) {
         UE_LOG(LogSandbox,
                Error,
                TEXT("ATestBatchOrchestrator::set_start_mode: Orchestrator is already initialised"));
@@ -406,7 +406,7 @@ void ATestBatchOrchestrator::set_start_mode(EOrchestratorStartMode const mode) {
     start_mode = mode;
 }
 void ATestBatchOrchestrator::set_presentation_enabled(bool const enabled) {
-    if (get_state() != EOrchestratorState::Uninitialised) {
+    if (get_state() != ::ioj::sim::OrchestratorState::Uninitialised) {
         UE_LOG(
             LogSandbox, Error, TEXT("Cannot change presentation after simulation initialisation"));
         return;
@@ -421,12 +421,11 @@ void ATestBatchOrchestrator::set_presentation_enabled(bool const enabled) {
 auto ATestBatchOrchestrator::get_player_ship() const -> ATestSpaceShip const* {
     return player_ship.Get();
 }
-auto ATestBatchOrchestrator::get_player_ship_simulation() noexcept
-    -> ml::test_space_ship::Simulation* {
+auto ATestBatchOrchestrator::get_player_ship_simulation() noexcept -> ::ioj::sim::player::Sim* {
     return level_simulation_.IsSet() ? level_simulation_->get_player_ship_simulation() : nullptr;
 }
 auto ATestBatchOrchestrator::get_player_ship_simulation() const noexcept
-    -> ml::test_space_ship::Simulation const* {
+    -> ::ioj::sim::player::Sim const* {
     return level_simulation_.IsSet() ? level_simulation_->get_player_ship_simulation() : nullptr;
 }
 void ATestBatchOrchestrator::set_player_ship(ATestSpaceShip& new_player_ship) {
@@ -453,7 +452,7 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
     auto& world{*GetWorld()};
     auto const& config{*level_config};
 
-    TOptional<ml::test_space_ship::FPlayerSpawnData> player;
+    TOptional<::ioj::sim::player::PlayerSpawnData> player;
     if (IsValid(player_ship)) {
         player.Emplace(player_ship->make_spawn_data());
     }
@@ -524,7 +523,7 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
         auto const n_to_add{capital_proxies.Num()};
         auto const default_spawn_cooldown{level_config->capital_ships.spawn_delay};
 
-        ml::test_capital_ships::SpawnData spawn_data;
+        ::ioj::sim::capital_ships::SpawnData spawn_data;
         ml::add_uninitialised(n_to_add, spawn_data);
         for (int32 i{0}; i < n_to_add; ++i) {
             auto const& proxy_transform{capital_proxies[i]->GetActorTransform()};
@@ -544,10 +543,9 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
     {
         auto const n_to_add{turret_proxies.Num()};
 
-        ml::test_static_turrets::SpawnData spawn_data;
+        ::ioj::sim::turrets::SpawnData spawn_data;
         spawn_data.add_uninitialised(n_to_add);
-        std::vector<ml::simulation::Transform3d> initial_transforms(
-            static_cast<std::size_t>(n_to_add));
+        std::vector<::ioj::sim::Transform3d> initial_transforms(static_cast<std::size_t>(n_to_add));
         for (int32 i{0}; i < n_to_add; ++i) {
             auto const transform{turret_proxies[i]->GetActorTransform()};
             initial_transforms[i] = ml::to_native(transform);
@@ -564,7 +562,7 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
     {
         auto const n_to_add{spinner_proxies.Num()};
 
-        ml::simulation::Vectors3f new_locations;
+        ::ioj::sim::Vectors3f new_locations;
         new_locations.add_uninitialised(n_to_add);
         std::vector<float> new_yaws(static_cast<std::size_t>(n_to_add));
         std::vector<int32> new_fire_point_indices(static_cast<std::size_t>(n_to_add));
@@ -756,7 +754,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     update_collision_bounds_visualization();
 
     level_simulation_->on_mission_evaluated = [this] { process_mission_result(); };
-    level_simulation_->on_end_tick = [this](FLevelSimulation&) {
+    level_simulation_->on_end_tick = [this](::ioj::sim::LevelSim&) {
         end_tick_test_hook.ExecuteIfBound(*this);
         process_mission_result();
         process_battle_run_end();
@@ -960,7 +958,7 @@ void ATestBatchOrchestrator::Tick(float dt) {
     tick(static_cast<time_type>(dt));
 }
 void ATestBatchOrchestrator::tick(time_type const dt) {
-    if (get_state() != EOrchestratorState::Running) {
+    if (get_state() != ::ioj::sim::OrchestratorState::Running) {
         return;
     }
 
@@ -970,8 +968,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
     auto const fighter_diagnostics_enabled{
         ml::fighter_diagnostics::enabled.GetValueOnGameThread() != 0};
     level_simulation_->get_capital_ships().diagnostics_enabled = fighter_diagnostics_enabled;
-    level_simulation_->get_capital_ship_fighters().diagnostics_enabled =
-        fighter_diagnostics_enabled;
+    level_simulation_->get_fighters().diagnostics_enabled = fighter_diagnostics_enabled;
     level_simulation_->advance(dt);
     update_collision_bounds_visualization();
 
@@ -1040,7 +1037,7 @@ void ATestBatchOrchestrator::clear_end_tick_test_hook() {
     end_tick_test_hook.Unbind();
 }
 void ATestBatchOrchestrator::prepare_level() {
-    if (get_state() != EOrchestratorState::Uninitialised) {
+    if (get_state() != ::ioj::sim::OrchestratorState::Uninitialised) {
         UE_LOG(LogSandbox, Error, TEXT("Cannot prepare an already initialized level"));
         return;
     }
@@ -1111,7 +1108,7 @@ void ATestBatchOrchestrator::process_mission_result() {
         auto* game_instance{GetGameInstance()};
         auto* saves{USpaceSaveSubsystem::get(game_instance)};
         if (IsValid(saves)) {
-            if (result->state == ml::simulation::MissionState::Succeeded) {
+            if (result->state == ::ioj::sim::MissionState::Succeeded) {
                 auto const previous_progress{saves->get_level_progress(
                     ml::FLevelId{FName{UTF8_TO_TCHAR(result->level_id.c_str())}})};
                 new_best_time =
@@ -1156,17 +1153,17 @@ void ATestBatchOrchestrator::process_battle_run_end() {
         !level_simulation_->has_future_authored_spawns()) {
         auto const alive_by_team{get_entity_registry().count_alive_per_team()};
         int32 living_team_count{};
-        std::optional<ml::simulation::Team> winner;
+        std::optional<::ioj::sim::Team> winner;
         constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};
         for (int32 team_index{}; team_index < team_count; ++team_index) {
             if (alive_by_team[team_index] > 0) {
                 ++living_team_count;
-                winner = static_cast<ml::simulation::Team>(team_index);
+                winner = static_cast<::ioj::sim::Team>(team_index);
             }
         }
         if (living_team_count <= 1) {
             level_simulation_->complete_telemetry_run(
-                ml::simulation::LevelTelemetryRunEndReason::BattleResolved,
+                ::ioj::sim::LevelTelemetryRunEndReason::BattleResolved,
                 living_team_count == 1 ? winner : std::nullopt);
             return;
         }
@@ -1175,7 +1172,7 @@ void ATestBatchOrchestrator::process_battle_run_end() {
     if (launch_options_.simulated_duration_seconds.IsSet() &&
         get_simulation_time() >= launch_options_.simulated_duration_seconds.GetValue()) {
         level_simulation_->complete_telemetry_run(
-            ml::simulation::LevelTelemetryRunEndReason::DurationReached);
+            ::ioj::sim::LevelTelemetryRunEndReason::DurationReached);
     }
 }
 void ATestBatchOrchestrator::handle_telemetry_persisted(FString run_id, FString error) {

@@ -22,7 +22,7 @@ enum class ETestEntityType : uint8 {
     PlayerShip UMETA(DisplayName = "Player Ship"),
     Turret,
     CapitalShip UMETA(DisplayName = "Capital Ship"),
-    CapitalShipFighter UMETA(DisplayName = "Capital Ship Fighter"),
+    Fighter UMETA(DisplayName = "Capital Ship Fighter"),
     TubeSpinner UMETA(DisplayName = "Tube Spinner"),
     COUNT UMETA(Hidden),
 };

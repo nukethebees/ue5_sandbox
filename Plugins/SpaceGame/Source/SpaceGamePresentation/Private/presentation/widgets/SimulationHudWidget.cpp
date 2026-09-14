@@ -101,7 +101,8 @@ void USimulationHudWidget::apply_ui_style(ml::ioj::FGameUiStyle const& style) {
     apply_entity_overlay_colours();
 }
 
-void USimulationHudWidget::set_entity_counts(FTestEntityRegistry::EntityCounts const& counts) {
+void USimulationHudWidget::set_entity_counts(
+    ::ioj::sim::EntityRegistry::EntityCounts const& counts) {
     if (force_status_widget) {
         force_status_widget->set_entity_counts(counts);
     }

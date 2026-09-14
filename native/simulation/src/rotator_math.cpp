@@ -1,4 +1,4 @@
-#include "sandbox/simulation/rotator_math.h"
+#include "ioj/sim/rotator_math.h"
 
 #include "sandbox/core/trigonometry.h"
 #include "sandbox/core/vector_math.h"
@@ -6,7 +6,7 @@
 #include <cmath>
 #include <numbers>
 
-namespace ml::simulation {
+namespace ioj::sim {
 auto direction_to_rotation(Vector3f const direction) noexcept -> Rotator3f {
     Rotator3f rotation{};
     ml::native_math::to_rotations(&rotation.pitch,

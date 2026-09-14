@@ -1,7 +1,7 @@
 (soa-module native_entity_history
-  :header "native/simulation/include/sandbox/simulation/entity_history.h"
+  :header "native/simulation/include/ioj/sim/entity_history.h"
   :backend standard-library
-  :namespace ml::simulation
+  :namespace ioj::sim
   (struct EntityHistoryColumns
     :operations (all)
     (member registry_indices array (type-ref @native_registry_handle :nested "index_type"))

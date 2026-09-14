@@ -8,7 +8,7 @@
 
 FPlayerPresentation::FPlayerPresentation(FPlayerPresentationResources resources,
                                          FPlayerShipConfig const& config,
-                                         FPlayerReadView const& initial_state)
+                                         ::ioj::sim::PlayerReadView const& initial_state)
     : resources_{MoveTemp(resources)}
     , config_{config}
     , boost_start_sequence_{initial_state.boost_start_sequence} {
@@ -26,7 +26,7 @@ FPlayerPresentation::FPlayerPresentation(FPlayerPresentationResources resources,
                                          config.boost_effect_colour_intensity);
     tick(initial_state);
 }
-void FPlayerPresentation::tick(FPlayerReadView const& state) {
+void FPlayerPresentation::tick(::ioj::sim::PlayerReadView const& state) {
     if (!resources_.root.IsValid() || !resources_.mesh.IsValid() || !resources_.pulse.IsValid() ||
         !resources_.engine.IsValid()) {
         return;
@@ -40,7 +40,7 @@ void FPlayerPresentation::tick(FPlayerReadView const& state) {
         boost_start_sequence_ = state.boost_start_sequence;
     }
     if (boost_brake_state_ != state.boost_brake_state) {
-        if (state.boost_brake_state == ml::simulation::player::BoostBrakeState::Boost) {
+        if (state.boost_brake_state == ::ioj::sim::player::BoostBrakeState::Boost) {
             resources_.engine->Activate();
         } else {
             resources_.engine->Deactivate();
@@ -62,7 +62,7 @@ void FPlayerPresentation::tick(FPlayerReadView const& state) {
         draw_direction(ml::to_unreal(state.transform), 5000.f);
     }
     if (resources_.debug_lock_on &&
-        state.laser_firing_mode == ml::simulation::LaserFiringState::lock_on_searching) {
+        state.laser_firing_mode == ::ioj::sim::LaserFiringState::lock_on_searching) {
         auto const end{
             draw_direction(ml::to_unreal(state.middle_socket), config_.laser_lock_on_distance)};
         DrawDebugSphere(world, end, resources_.debug_lock_on_sphere_radius, 8, FColor::Orange);

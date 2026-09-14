@@ -128,7 +128,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         if (TestRunner->TestTrue(TEXT("Mission is decoded"), definition.mission.IsSet())) {
             auto const& mission{definition.mission.GetValue()};
             TestRunner->TestTrue(TEXT("Mission mode is decoded"),
-                                 mission.mode == ml::ELevelMissionMode::KillEnemies);
+                                 mission.mode == ::ioj::sim::levels::LevelMissionMode::KillEnemies);
             TestRunner->TestFalse(TEXT("Omitted kill count selects automatic targeting"),
                                   mission.kill_count.IsSet());
             TestRunner->TestEqual(
@@ -429,7 +429,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         }
         auto const& mission{result.definition->mission.GetValue()};
         TestRunner->TestTrue(TEXT("Timed mode is decoded"),
-                             mission.mode == ml::ELevelMissionMode::KillEnemiesWithinTime);
+                             mission.mode ==
+                                 ::ioj::sim::levels::LevelMissionMode::KillEnemiesWithinTime);
         TestRunner->TestEqual(
             TEXT("Time limit is decoded"), mission.time_limit_seconds.GetValue(), 45.5f);
         TestRunner->TestEqual(TEXT("Kill count is decoded"), mission.kill_count.GetValue(), 3);

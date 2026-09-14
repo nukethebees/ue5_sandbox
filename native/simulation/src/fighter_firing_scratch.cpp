@@ -1,6 +1,6 @@
-#include "sandbox/simulation/fighter_firing_scratch.h"
+#include "ioj/sim/fighter_firing_scratch.h"
 
-namespace ml::simulation::fighters {
+namespace ioj::sim::fighters {
 FiringScratch::FiringScratch(std::pmr::memory_resource* const resource)
     : new_lasers{resource}
     , aiming_dot_products{resource}

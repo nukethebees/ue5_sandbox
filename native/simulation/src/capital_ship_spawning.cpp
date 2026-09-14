@@ -1,9 +1,9 @@
-#include "sandbox/simulation/capital_ship_spawning.h"
+#include "ioj/sim/capital_ship_spawning.h"
 #include "sandbox/core/array_math.h"
 
 #include <cassert>
 
-namespace ml::simulation::capitals {
+namespace ioj::sim::capitals {
 void initialize_spawned_ships(SpawnInitializationView const ships,
                               CapitalSpawnDataConstView const spawns) {
     auto const count{spawns.locations.num()};
@@ -21,8 +21,8 @@ void initialize_spawned_ships(SpawnInitializationView const ships,
 }
 
 void collect_ships_ready_to_spawn_fighters(std::span<float const> const remaining_times,
-                                           std::span<FRegistryEntityHandle const> const targets,
-                                           FrameArray<std::int32_t>& indices) {
+                                           std::span<RegistryEntityHandle const> const targets,
+                                           ml::FrameArray<std::int32_t>& indices) {
     assert(remaining_times.size() == targets.size());
     auto const count{static_cast<std::int32_t>(remaining_times.size())};
     indices.clear();

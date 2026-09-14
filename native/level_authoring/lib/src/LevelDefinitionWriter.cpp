@@ -95,7 +95,8 @@ void append_error(std::vector<std::string>& errors, std::string error) {
     }
 }
 
-auto collect_errors(LevelDefinition const& definition) -> std::vector<std::string> {
+auto collect_errors(::ioj::sim::levels::LevelDefinition const& definition)
+    -> std::vector<std::string> {
     std::vector<std::string> errors;
     if (definition.metadata.par_time_seconds) {
         errors.emplace_back("Initial-state source does not support par-time");
@@ -150,7 +151,7 @@ auto join_errors(std::vector<std::string> const& errors) -> std::string {
 }
 } // namespace
 
-auto emit_initial_level_source(LevelDefinition const& definition)
+auto emit_initial_level_source(::ioj::sim::levels::LevelDefinition const& definition)
     -> std::expected<std::string, std::string> {
     auto const errors{collect_errors(definition)};
     if (!errors.empty()) {

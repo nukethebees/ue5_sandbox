@@ -1,13 +1,13 @@
 #include <SpaceGame/telemetry/LevelTelemetryReport.h>
 
-FLevelTelemetryReport::FLevelTelemetryReport(FLevelTelemetryRunRecord record)
+FLevelTelemetryReport::FLevelTelemetryReport(::ioj::sim::LevelTelemetryRunRecord record)
     : loaded_schema_version{record.loaded_schema_version}
     , completion{MoveTemp(record.completion)}
     , tick_series{MoveTemp(record.tick_series)}
     , completed_ticks_by_real_time{MoveTemp(record.completed_ticks_by_real_time)} {
     battle_samples.Append(record.battle_samples.data(),
                           static_cast<int32>(record.battle_samples.size()));
-    static_cast<FLevelTelemetryRunMetadata&>(metadata) = MoveTemp(record.metadata);
+    static_cast<::ioj::sim::LevelTelemetryRunMetadata&>(metadata) = MoveTemp(record.metadata);
     performance_windows.Reserve(static_cast<int32>(record.performance_windows.size()));
     for (auto const& source : record.performance_windows) {
         FLevelTelemetryPerformanceWindow window;
@@ -18,10 +18,10 @@ FLevelTelemetryReport::FLevelTelemetryReport(FLevelTelemetryRunRecord record)
         window.simulation_tick = source.simulation_tick;
         window.phases = source.phases;
         window.phase_cpu_share = source.phase_cpu_share;
-        auto const count{FSimulationTelemetryPerformanceWindow::system_count};
+        auto const count{::ioj::sim::SimTelemetryPerformanceWindow::system_count};
         for (int32 i{}; i < count; ++i) {
             auto const destination{
-                i == static_cast<int32>(ESimulationTelemetryTimingSystem::Telemetry)
+                i == static_cast<int32>(::ioj::sim::SimTelemetryTimingSystem::Telemetry)
                     ? static_cast<int32>(ELevelTelemetryTimingSystem::Telemetry)
                     : i};
             window.systems[destination] = source.systems[i];

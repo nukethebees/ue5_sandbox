@@ -1,11 +1,11 @@
 #pragma once
 
-#include <sandbox/simulation/entity_aabbs.h>
+#include <ioj/sim/entity_aabbs.h>
 
 #include <CoreMinimal.h>
 
 namespace ml::ioj {
-struct FEntityAABBs : simulation::collision::EntityAABBs {
+struct FEntityAABBs : ::ioj::sim::collision::EntityAABBs {
     auto get_centre(int32 const index) const noexcept -> FVector3f {
         auto const value{EntityAABBs::get_centre(index)};
         return {value.X, value.Y, value.Z};

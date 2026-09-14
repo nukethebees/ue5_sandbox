@@ -367,7 +367,7 @@ TEST(SingleAllocationSoa, BenchmarkSchemaTracksFighterLeafOrderAndWidths) {
                                  std::string{module_name}};
     };
 
-    auto const& fighter{find_struct("test_capital_ship_fighters_soa", "FighterEntityData").members};
+    auto const& fighter{find_struct("fighters_soa", "FighterEntityData").members};
     std::vector<SoaMemberSchema> experiment;
     for (auto const& member : find_struct("single_allocation_experiment", "EntityData").members) {
         if (member.type.name != "Countdown8" && member.type.name != "Countdown16" &&

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "sandbox/simulation/entities/TestEntityRegistry.h"
+#include "ioj/sim/entity_registry.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayFrameStore.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 #include "SpaceGamePresentation/entities/TestTeamVisualData.h"
@@ -26,7 +26,7 @@ class SPACEGAMEPRESENTATION_API USimulationHudWidget : public UUserWidget {
     GENERATED_BODY()
   public:
     virtual void apply_ui_style(ml::ioj::FGameUiStyle const& style);
-    void set_entity_counts(FTestEntityRegistry::EntityCounts const& counts);
+    void set_entity_counts(::ioj::sim::EntityRegistry::EntityCounts const& counts);
     void set_entity_colours(UTestTeamVisualData::FColourArray const& colours);
     void set_mission_data(ml::hud_manager::FMissionDataCache const& data);
 

@@ -75,7 +75,7 @@ auto make_level_telemetry_environment(UWorld const& world) -> FLevelTelemetryEnv
 
 auto make_level_telemetry_run_metadata(UWorld const& world,
                                        FLevelMissionDefinition const& mission_definition)
-    -> FLevelTelemetryRunMetadata {
+    -> ::ioj::sim::LevelTelemetryRunMetadata {
     return {
         .run_id = TCHAR_TO_UTF8(*FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphensLower)),
         .map_name = TCHAR_TO_UTF8(*UGameplayStatics::GetCurrentLevelName(&world)),

@@ -1,18 +1,15 @@
 #pragma once
 #include "../support/simulation_test_support.h"
 
-namespace ml {
-void run_worldless_fighter_attack(ml::simulation_tests::SimulationFixture const& config);
-void
-    run_worldless_fighter_obstacle_avoidance(ml::simulation_tests::SimulationFixture const& config);
-void run_worldless_fighter_capital_obstruction(
-    ml::simulation_tests::SimulationFixture const& config);
-void run_worldless_fighter_clear_navigation(ml::simulation_tests::SimulationFixture const& config);
-void run_worldless_fighter_separation(ml::simulation_tests::SimulationFixture const& config);
-void run_worldless_fighter_dense_determinism(ml::simulation_tests::SimulationFixture const& config);
-void run_worldless_fighter_large_cluster(ml::simulation_tests::SimulationFixture const& config);
+namespace ioj::sim {
+void run_worldless_fighter_attack(ioj::sim::tests::SimulationFixture const& config);
+void run_worldless_fighter_obstacle_avoidance(ioj::sim::tests::SimulationFixture const& config);
+void run_worldless_fighter_capital_obstruction(ioj::sim::tests::SimulationFixture const& config);
+void run_worldless_fighter_clear_navigation(ioj::sim::tests::SimulationFixture const& config);
+void run_worldless_fighter_separation(ioj::sim::tests::SimulationFixture const& config);
+void run_worldless_fighter_dense_determinism(ioj::sim::tests::SimulationFixture const& config);
+void run_worldless_fighter_large_cluster(ioj::sim::tests::SimulationFixture const& config);
 void run_worldless_fighter_hard_avoidance_authority(
-    ml::simulation_tests::SimulationFixture const& config);
-void run_worldless_fighter_navigation_frequency(
-    ml::simulation_tests::SimulationFixture const& config);
+    ioj::sim::tests::SimulationFixture const& config);
+void run_worldless_fighter_navigation_frequency(ioj::sim::tests::SimulationFixture const& config);
 }

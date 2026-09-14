@@ -2,8 +2,8 @@
 
 #include <CoreMinimal.h>
 
-#include <sandbox/simulation/fixed_tick.h>
-#include <sandbox/simulation/fixed_tick_loop.h>
+#include <ioj/sim/fixed_tick.h>
+#include <ioj/sim/fixed_tick_loop.h>
 
 #include "FixedTickLoop.generated.h"
 
@@ -13,15 +13,13 @@ struct SPACEGAMESIMULATION_API FFixedTickLoop {
 
     void initialise() {
         auto const succeeded{
-            ml::simulation::initialise_tick_loop(tick_rate, time_scale, tick_period, accumulator)};
+            ::ioj::sim::initialise_tick_loop(tick_rate, time_scale, tick_period, accumulator)};
         check(succeeded);
     }
 
-    void add_time(double const dt) {
-        ml::simulation::add_tick_loop_time(dt, time_scale, accumulator);
-    }
+    void add_time(double const dt) { ::ioj::sim::add_tick_loop_time(dt, time_scale, accumulator); }
 
-    auto try_tick() -> bool { return ml::simulation::try_consume_tick(tick_period, accumulator); }
+    auto try_tick() -> bool { return ::ioj::sim::try_consume_tick(tick_period, accumulator); }
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     double tick_rate{60.0};
@@ -34,7 +32,7 @@ struct SPACEGAMESIMULATION_API FFixedTickLoop {
 };
 
 namespace ml {
-inline auto to_native(FFixedTickLoop const& value) -> simulation::FixedTickLoop {
+inline auto to_native(FFixedTickLoop const& value) -> ::ioj::sim::FixedTickLoop {
     return {value.tick_rate, value.time_scale, value.tick_period, value.accumulator};
 }
 }

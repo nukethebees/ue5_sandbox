@@ -10,9 +10,9 @@
 #include <SandboxCore/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
-#include <sandbox/simulation/entities/TestEntityRegistry.h>
-#include <sandbox/simulation/missions/TestMissionManager.h>
-#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
+#include <ioj/sim/capital_ships/sim.h>
+#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/mission_manager.h>
 #include <SandboxCoreEngine/enums.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
@@ -74,19 +74,19 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     auto& mission{simulation.get_mission_manager()};
     auto const& capitals{simulation.get_capital_ships()};
     auto const first_capital{first_capital_index == INDEX_NONE
-                                 ? FRegistryEntityHandle{}
+                                 ? ::ioj::sim::RegistryEntityHandle{}
                                  : capitals.get_handle(first_capital_index)};
     auto const second_capital{second_capital_index == INDEX_NONE
-                                  ? FRegistryEntityHandle{}
+                                  ? ::ioj::sim::RegistryEntityHandle{}
                                   : capitals.get_handle(second_capital_index)};
     if (needs_defence) {
         mission.set_save_mission_results(false);
-        mission.set_mission_mode(simulation::MissionMode::SurviveTime);
+        mission.set_mission_mode(::ioj::sim::MissionMode::SurviveTime);
         mission.set_target_time(10.f);
         mission.add_entity_that_must_survive(first_capital);
         mission.add_entity_required_to_kill(second_capital);
     } else {
-        mission.set_mission_mode(simulation::MissionMode::None);
+        mission.set_mission_mode(::ioj::sim::MissionMode::None);
         mission.set_save_mission_results(true);
     }
     harness.finish_initialisation();
@@ -126,7 +126,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
         harness.timeline.then_after(
             0.1, [&] { harness.queue_kills(std::array{first_capital}, player_handle); });
     }
-    harness.on_end_tick = [&](FLevelSimulation&) { hud.force_sample(); };
+    harness.on_end_tick = [&](::ioj::sim::LevelSim&) { hud.force_sample(); };
     harness.timeline.finish_at(0.35);
     test.TestTrue(TEXT("HUD cache timeline completes"), harness.run_until_timeline_finished(1.0));
 
@@ -434,7 +434,7 @@ void FTestHUDManagerScenario::player_kill_begin() {
     auto const& capitals{test_driver->get_capital_ships()};
     check(capitals.get_num_instances() == 1);
 
-    std::array<FRegistryEntityHandle, 1> const targets{capitals.get_handle(0)};
+    std::array<::ioj::sim::RegistryEntityHandle, 1> const targets{capitals.get_handle(0)};
     auto const instigator{player_ship->get_entity_handle()};
     test_driver->timeline.then_after(damage_queue_time, [this, targets, instigator] {
         test_driver->queue_kills(targets, instigator);
@@ -587,7 +587,7 @@ void FTestHUDManagerScenario::entity_count_begin() {
 
     auto const& capitals{test_driver->get_capital_ships()};
     check(capitals.get_num_instances() == 1);
-    std::array<FRegistryEntityHandle, 1> const targets{capitals.get_handle(0)};
+    std::array<::ioj::sim::RegistryEntityHandle, 1> const targets{capitals.get_handle(0)};
     test_driver->timeline.then_after(damage_queue_time,
                                      [this, targets] { test_driver->queue_kills(targets); });
     ml::reset_and_reserve_time_series(
@@ -640,7 +640,7 @@ auto FTestHUDManagerScenario::initialise_headless_hud_manager() -> bool {
         return false;
     }
 
-    if (orchestrator->get_state() == EOrchestratorState::Uninitialised) {
+    if (orchestrator->get_state() == ::ioj::sim::OrchestratorState::Uninitialised) {
         orchestrator->start_simulation();
     }
 

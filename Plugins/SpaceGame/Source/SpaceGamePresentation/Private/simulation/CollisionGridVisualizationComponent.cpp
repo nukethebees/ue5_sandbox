@@ -1,7 +1,7 @@
 #include "SpaceGamePresentation/simulation/CollisionGridVisualizationComponent.h"
 
-#include <sandbox/simulation/simulation/CollisionSystem.h>
-#include <sandbox/simulation/world_aabb_operations.h>
+#include <ioj/sim/collision/collision_system.h>
+#include <ioj/sim/world_aabb_operations.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <Engine/EngineTypes.h>
@@ -315,7 +315,7 @@ void UCollisionGridVisualizationComponent::configure_collision_bounds(
 }
 
 void UCollisionGridVisualizationComponent::update_collision_bounds(
-    ml::ioj::FCollisionSystem const& collision_system) {
+    ::ioj::sim::collision::CollisionSystem const& collision_system) {
     if (!show_collision_bounds_) {
         clear_collision_bounds();
         return;
@@ -326,8 +326,8 @@ void UCollisionGridVisualizationComponent::update_collision_bounds(
     entity_bounds_.Reset();
     entity_bounds_.Reserve(entity_count);
     for (int32 i{}; i < entity_count; ++i) {
-        entity_bounds_.Emplace(ml::to_unreal(ml::simulation::collision::min_at(entity_aabbs, i)),
-                               ml::to_unreal(ml::simulation::collision::max_at(entity_aabbs, i)));
+        entity_bounds_.Emplace(ml::to_unreal(::ioj::sim::collision::min_at(entity_aabbs, i)),
+                               ml::to_unreal(::ioj::sim::collision::max_at(entity_aabbs, i)));
     }
 
     auto const& static_aabbs{collision_system.get_uniform_grid().get_static_aabbs()};
@@ -335,9 +335,8 @@ void UCollisionGridVisualizationComponent::update_collision_bounds(
     auto const static_columns{static_aabbs.get_const_view().columns()};
     static_bounds_.SetNumUninitialized(static_count, EAllowShrinking::No);
     for (int32 i{}; i < static_count; ++i) {
-        static_bounds_[i] =
-            FBox3f{ml::to_unreal(ml::simulation::collision::min_at(static_columns, i)),
-                   ml::to_unreal(ml::simulation::collision::max_at(static_columns, i))};
+        static_bounds_[i] = FBox3f{ml::to_unreal(::ioj::sim::collision::min_at(static_columns, i)),
+                                   ml::to_unreal(::ioj::sim::collision::max_at(static_columns, i))};
     }
 
     if (SceneProxy != nullptr) {

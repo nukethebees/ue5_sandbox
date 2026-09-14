@@ -1,9 +1,9 @@
-#include "sandbox/simulation/spatial.h"
+#include "ioj/sim/spatial.h"
 
 #include <algorithm>
 #include <cmath>
 
-namespace ml::simulation {
+namespace ioj::sim {
 auto sample_spherical_shell_point(Point3d const centre,
                                   Point3d const unit_direction,
                                   float const min_distance,

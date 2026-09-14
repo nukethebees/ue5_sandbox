@@ -9,7 +9,7 @@
 #include <SpaceGamePresentation/presentation/TurretPresentation.h>
 #include <SpaceGameRendering/SparkEffects.h>
 
-#include <sandbox/simulation/simulation/LevelReadView.h>
+#include <ioj/sim/level_read_view.h>
 
 struct SPACEGAMEPRESENTATION_API FLevelPresentationResources {
     USandboxISMCComponent* lasers{nullptr};
@@ -25,16 +25,16 @@ struct SPACEGAMEPRESENTATION_API FLevelPresentationResources {
 
 struct SPACEGAMEPRESENTATION_API FLevelPresentation {
     FLevelPresentation(FLevelPresentationResources const& resources,
-                       FLevelReadView const& view,
+                       ::ioj::sim::LevelReadView const& view,
                        TArray<FTransform> turret_transforms);
     FLevelPresentation(FLevelPresentation const&) = delete;
     FLevelPresentation(FLevelPresentation&&) = delete;
     auto operator=(FLevelPresentation const&) -> FLevelPresentation& = delete;
     auto operator=(FLevelPresentation&&) -> FLevelPresentation& = delete;
 
-    void tick(float dt, FLevelReadView const& view);
+    void tick(float dt, ::ioj::sim::LevelReadView const& view);
     auto get_tick_count() const -> uint64 { return tick_count_; }
-    auto get_last_completed_tick() const -> ml::simulation::SimTick { return last_completed_tick_; }
+    auto get_last_completed_tick() const -> ::ioj::sim::SimTick { return last_completed_tick_; }
   private:
     FLevelVisualConfig config_;
   public:
@@ -49,6 +49,6 @@ struct SPACEGAMEPRESENTATION_API FLevelPresentation {
     TOptional<FPlayerPresentation> player_;
     uint64 last_frame_sequence_{};
     uint64 tick_count_{};
-    ml::simulation::SimTick last_completed_tick_{};
-    void update_views(FLevelReadView const& view, bool consume_changes);
+    ::ioj::sim::SimTick last_completed_tick_{};
+    void update_views(::ioj::sim::LevelReadView const& view, bool consume_changes);
 };

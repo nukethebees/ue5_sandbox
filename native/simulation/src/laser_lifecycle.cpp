@@ -1,4 +1,4 @@
-#include "sandbox/simulation/laser_lifecycle.h"
+#include "ioj/sim/laser_lifecycle.h"
 
 #include "sandbox/core/frame_array.h"
 #include "sandbox/core/generated/array_math_kernels.h"
@@ -7,13 +7,13 @@
 #include <cassert>
 #include <functional>
 
-namespace ml::simulation::lasers {
+namespace ioj::sim::lasers {
 void expire_instances(Entities& entities,
                       float const delta_time,
                       std::pmr::memory_resource& frame_memory) {
     ml::subtract_in_place(std::span<float>{entities.lifetimes_remaining}, delta_time);
 
-    FrameArray<std::int32_t> expired_indices{&frame_memory};
+    ml::FrameArray<std::int32_t> expired_indices{&frame_memory};
     auto const count{entities.num()};
     expired_indices.reserve(count);
     for (std::int32_t index{count - 1}; index >= 0; --index) {
@@ -38,4 +38,4 @@ void remove_instances(Entities& entities, std::span<std::int32_t const> const in
     }
     entities.validate_array_sizes();
 }
-} // namespace ml::simulation::lasers
+} // namespace ioj::sim::lasers

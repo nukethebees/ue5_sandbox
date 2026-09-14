@@ -1,8 +1,8 @@
 #pragma once
 #include "../support/simulation_test_support.h"
 
-namespace ml {
-enum class EMissionManagerScenario : std::uint8_t {
+namespace ioj::sim {
+enum class MissionManagerScenario : std::uint8_t {
     SurviveTime,
     KillEnemies,
     KillEnemiesWithinTime,
@@ -14,6 +14,6 @@ enum class EMissionManagerScenario : std::uint8_t {
     ExplicitCompletionIsLatched,
 };
 
-void run_worldless_mission_manager_scenario(ml::simulation_tests::SimulationFixture const& config,
-                                            EMissionManagerScenario scenario);
+void run_worldless_mission_manager_scenario(ioj::sim::tests::SimulationFixture const& config,
+                                            MissionManagerScenario scenario);
 }

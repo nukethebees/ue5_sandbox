@@ -4,10 +4,10 @@
 #include <SandboxTests/support/TestEnhancedInputSubsystem.h>
 #include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
 
-#include <sandbox/simulation/combat/lasers/TestLasersSimulation.h>
-#include <sandbox/simulation/entities/TestEntityRegistry.h>
-#include <sandbox/simulation/simulation/SimulationClock.h>
-#include <sandbox/simulation/simulation/SpatialQueryManager.h>
+#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/lasers/sim.h>
+#include <ioj/sim/sim_clock.h>
+#include <ioj/sim/spatial_query_manager.h>
 #include <SpaceGame/input/ControlProfiles.h>
 #include <SpaceGame/input/SpaceGameInputUserSettings.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
@@ -753,12 +753,12 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
 
     TEST_METHOD(NewSamplingSessionStartsWithNeutralControl)
     {
-        FSimulationClock clock;
-        FTestEntityRegistry registry;
-        ml::FSpatialQueryManager queries{registry};
+        ::ioj::sim::SimClock clock;
+        ::ioj::sim::EntityRegistry registry;
+        ::ioj::sim::SpatialQueryManager queries{registry};
         ml::FFrameMemoryResource frame_memory{1024 * 1024};
-        ml::test_lasers::Simulation lasers{clock, registry, queries, frame_memory};
-        ml::test_space_ship::Simulation simulation{clock, registry, queries, lasers};
+        ::ioj::sim::lasers::Sim lasers{clock, registry, queries, frame_memory};
+        ::ioj::sim::player::Sim simulation{clock, registry, queries, lasers};
         simulation.start_sampling();
         simulation.set_ship_1d_control_y(1.0f);
         simulation.stop_sampling();
@@ -780,17 +780,17 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
 
     TEST_METHOD(DesiredForwardVelocityTrimAdjustsThePersistentTarget)
     {
-        FSimulationClock clock;
-        FTestEntityRegistry registry;
-        ml::FSpatialQueryManager queries{registry};
+        ::ioj::sim::SimClock clock;
+        ::ioj::sim::EntityRegistry registry;
+        ::ioj::sim::SpatialQueryManager queries{registry};
         ml::FFrameMemoryResource frame_memory{1024 * 1024};
-        ml::test_lasers::Simulation lasers{clock, registry, queries, frame_memory};
-        ml::test_space_ship::Simulation simulation{clock, registry, queries, lasers};
-        FPlayerSimulationConfig config;
+        ::ioj::sim::lasers::Sim lasers{clock, registry, queries, frame_memory};
+        ::ioj::sim::player::Sim simulation{clock, registry, queries, lasers};
+        ::ioj::sim::PlayerSimConfig config;
         config.cruise_speed = 1000.f;
         config.forward_velocity_trim_fraction = 0.1f;
         simulation.set_config(config);
-        simulation.set_flight_mode(ml::simulation::SpaceShipFlightMode::PlanarVelocity);
+        simulation.set_flight_mode(::ioj::sim::SpaceShipFlightMode::PlanarVelocity);
 
         simulation.start_sampling();
         simulation.set_ship_2d_control({0.25, -0.5});
@@ -823,18 +823,18 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                 0.01));
 
         auto const persistent_target{simulation.target_local_planar_velocity};
-        simulation.control_mode = ml::simulation::SpaceShipControlMode::Power;
+        simulation.control_mode = ::ioj::sim::SpaceShipControlMode::Power;
         simulation.adjust_desired_forward_velocity(1.f);
         TestRunner->TestTrue(TEXT("Power mode leaves the persistent target unchanged"),
                              ml::to_unreal(simulation.target_local_planar_velocity)
                                  .Equals(ml::to_unreal(persistent_target)));
-        simulation.control_mode = ml::simulation::SpaceShipControlMode::Velocity;
-        simulation.set_flight_mode(ml::simulation::SpaceShipFlightMode::ForwardSpeed);
+        simulation.control_mode = ::ioj::sim::SpaceShipControlMode::Velocity;
+        simulation.set_flight_mode(::ioj::sim::SpaceShipFlightMode::ForwardSpeed);
         simulation.adjust_desired_forward_velocity(1.f);
         TestRunner->TestTrue(TEXT("Forward-speed flight leaves the planar target unchanged"),
                              ml::to_unreal(simulation.target_local_planar_velocity)
                                  .Equals(ml::to_unreal(persistent_target)));
-        simulation.set_flight_mode(ml::simulation::SpaceShipFlightMode::PlanarVelocity);
+        simulation.set_flight_mode(::ioj::sim::SpaceShipFlightMode::PlanarVelocity);
         simulation.start_boost();
         simulation.stop_boost();
         TestRunner->TestTrue(TEXT("Boost preserves the persistent planar target"),
@@ -1049,12 +1049,12 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         context.set_ship(ship);
         TestRunner->TestFalse(TEXT("Ship context cannot bind before simulation initialization"),
                               context.can_bind());
-        FSimulationClock clock;
-        FTestEntityRegistry registry;
-        ml::FSpatialQueryManager queries{registry};
+        ::ioj::sim::SimClock clock;
+        ::ioj::sim::EntityRegistry registry;
+        ::ioj::sim::SpatialQueryManager queries{registry};
         ml::FFrameMemoryResource frame_memory{1024 * 1024};
-        ml::test_lasers::Simulation lasers{clock, registry, queries, frame_memory};
-        ml::test_space_ship::Simulation simulation{clock, registry, queries, lasers};
+        ::ioj::sim::lasers::Sim lasers{clock, registry, queries, frame_memory};
+        ::ioj::sim::player::Sim simulation{clock, registry, queries, lasers};
         ship->bind_simulation(simulation);
         TestRunner->TestTrue(TEXT("Ship context binds"), context.bind());
         TestRunner->TestTrue(TEXT("Ship context reports bound"), context.is_bound());

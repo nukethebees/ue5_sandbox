@@ -73,7 +73,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         if (TestRunner->TestTrue(TEXT("Mission is preserved"), definition.mission.IsSet())) {
             auto const& mission{definition.mission.GetValue()};
             TestRunner->TestTrue(TEXT("Mission mode is preserved"),
-                                 mission.mode == ml::ELevelMissionMode::KillEnemies);
+                                 mission.mode == ::ioj::sim::levels::LevelMissionMode::KillEnemies);
             TestRunner->TestFalse(TEXT("Omitted kill count is preserved"),
                                   mission.kill_count.IsSet());
             TestRunner->TestEqual(TEXT("Mission has two heroes"), mission.hero_entity_ids.Num(), 2);
@@ -229,7 +229,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
             .distance = 1000.0,
         });
         builder.set_mission(ml::FLevelMissionDefinition{
-            .mode = ml::ELevelMissionMode::SurviveTime,
+            .mode = ::ioj::sim::levels::LevelMissionMode::SurviveTime,
             .time_limit_seconds = 10.0f,
             .must_survive_entity_ids = {ml::FLevelEntityId{FName{TEXT("capital")}}},
         });
@@ -259,14 +259,14 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
     TEST_METHOD(MissionModeRequirementsAreValidated)
     {
         auto missing_mode{ml::example_levels::make_native_example()};
-        missing_mode.mission->mode = ml::ELevelMissionMode::Unspecified;
+        missing_mode.mission->mode = ::ioj::sim::levels::LevelMissionMode::Unspecified;
         auto const missing_mode_validation{ml::validate_level(missing_mode)};
         TestRunner->TestTrue(TEXT("Missing mission mode is reported"),
                              contains_error(missing_mode_validation,
                                             ml::ELevelValidationErrorCode::MissingMissionMode));
 
         auto missing_time{ml::example_levels::make_native_example()};
-        missing_time.mission->mode = ml::ELevelMissionMode::KillEnemiesWithinTime;
+        missing_time.mission->mode = ::ioj::sim::levels::LevelMissionMode::KillEnemiesWithinTime;
         auto const missing_time_validation{ml::validate_level(missing_time)};
         TestRunner->TestTrue(
             TEXT("Missing timed mission limit is reported"),
@@ -298,7 +298,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 
         auto survive{ml::example_levels::make_native_example()};
         survive.mission = ml::FLevelMissionDefinition{
-            .mode = ml::ELevelMissionMode::SurviveTime,
+            .mode = ::ioj::sim::levels::LevelMissionMode::SurviveTime,
             .time_limit_seconds = 10.0f,
             .kill_count = 1,
         };

@@ -1,10 +1,10 @@
-#include "sandbox/simulation/fighter_firing_position.h"
+#include "ioj/sim/fighter_firing_position.h"
+#include "ioj/sim/rotator_math.h"
 #include "sandbox/core/vector_normalization.h"
-#include "sandbox/simulation/rotator_math.h"
 
 #include <array>
 
-namespace ml::simulation::fighters {
+namespace ioj::sim::fighters {
 auto make_fire_point_candidate(Vector3f const target_location,
                                Vector3f const reference_location,
                                float const fire_point_distance,

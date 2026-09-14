@@ -60,7 +60,7 @@ void apply_activity_graph_style(SGraphPlot& graph,
 }
 
 void update_activity_graph(SGraphPlot& graph,
-                           FLevelTelemetrySnapshot const& snapshot,
+                           ::ioj::sim::LevelTelemetrySnapshot const& snapshot,
                            FLinearColor const active_entity_color,
                            FLinearColor const kills_color) {
     auto const tick_period{snapshot.tick_period};

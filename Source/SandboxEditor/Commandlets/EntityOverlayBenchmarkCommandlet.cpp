@@ -1,7 +1,7 @@
 #include "SandboxEditor/Commandlets/EntityOverlayBenchmarkCommandlet.h"
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
-#include "sandbox/simulation/entities/TestEntityRegistry.h"
+#include "ioj/sim/entity_registry.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayBenchmark.h"
 #include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
 
@@ -14,8 +14,8 @@
 DEFINE_LOG_CATEGORY_STATIC(LogEntityOverlayBenchmark, Log, All);
 
 namespace {
-auto make_view(FTestEntityRegistry::EntityData const& entities)
-    -> FTestEntityRegistry::EntityData::ConstView {
+auto make_view(::ioj::sim::EntityRegistry::EntityData const& entities)
+    -> ::ioj::sim::EntityRegistry::EntityData::ConstView {
     return entities.get_const_view();
 }
 
@@ -31,8 +31,8 @@ auto make_team_colours() -> FEntityOverlayTeamColours {
 }
 
 auto write_debug_frames(FString const& output_directory) -> bool {
-    FTestEntityRegistry registry;
-    FTestEntityRegistry::EntityData entities;
+    ::ioj::sim::EntityRegistry registry;
+    ::ioj::sim::EntityRegistry::EntityData entities;
     FVector3f const positions[]{
         {1000.0f, -600.0f, 0.0f},
         {1000.0f, -300.0f, 0.0f},
@@ -46,16 +46,16 @@ auto write_debug_frames(FString const& output_directory) -> bool {
         {-10.0f, -5.0f, -5.0f},
     };
     int32 const health[]{0, 25, 50, 75, 100, 75, 100, 100, 100, 50};
-    std::array<float, static_cast<std::size_t>(ml::simulation::EntityType::COUNT)> const
+    std::array<float, static_cast<std::size_t>(::ioj::sim::EntityType::COUNT)> const
         entity_type_radii{200.0f, 200.0f, 200.0f, 200.0f, 200.0f};
     auto const count{UE_ARRAY_COUNT(positions)};
     entities.add_defaulted(count);
     for (int32 index{0}; index < count; ++index) {
         entities.locations.set(index, ml::to_native(positions[index]));
         entities.healths[index] = health[index];
-        entities.teams[index] = static_cast<ml::simulation::Team>(
-            index % static_cast<int32>(ml::simulation::Team::COUNT));
-        entities.entity_types[index] = ml::simulation::EntityType::Turret;
+        entities.teams[index] =
+            static_cast<::ioj::sim::Team>(index % static_cast<int32>(::ioj::sim::Team::COUNT));
+        entities.entity_types[index] = ::ioj::sim::EntityType::Turret;
         entities.alive[index] = 1;
     }
     static_cast<void>(registry.add_entities(make_view(entities)));
@@ -98,7 +98,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
     }
 
     entities.locations.set(count - 1, {100.0f, 50.0f, 50.0f});
-    FTestEntityRegistry moved_registry;
+    ::ioj::sim::EntityRegistry moved_registry;
     static_cast<void>(moved_registry.add_entities(make_view(entities)));
     auto& moved_frame{frame_store->next()};
     static_cast<void>(collect_entity_overlay_instances(make_view(moved_registry.get_entity_data()),

@@ -28,7 +28,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
     TEST_METHOD(PlanarMovementDefaults)
     {
         FPlayerShipConfig const presentation_defaults{};
-        FPlayerSimulationConfig const simulation_defaults{};
+        ::ioj::sim::PlayerSimConfig const simulation_defaults{};
         TestRunner->TestEqual(TEXT("Presentation lateral trim defaults to 3000"),
                               presentation_defaults.planar_lateral_trim_speed,
                               3000.f);
@@ -98,7 +98,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
 
     TEST_METHOD(RotatedCapitalSpawnClearance)
     {
-        FLevelSimulationInitData data;
+        ::ioj::sim::LevelSimInitData data;
         auto const index{ml::ioj::FEntityAABBs::capital_ship_index};
         data.entity_bounds.half_extent_xs[index] = 100.f;
         data.entity_bounds.half_extent_ys[index] = 20.f;

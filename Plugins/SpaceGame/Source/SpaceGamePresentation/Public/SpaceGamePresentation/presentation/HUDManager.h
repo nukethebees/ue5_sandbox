@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <ioj/sim/entity_registry.h>
 #include <SandboxCore/multi_buffer.h>
 #include <SandboxCore/periodic_tick_countdown.h>
 #include <SandboxUI/EntityOverlay/EntityOverlayFrameStore.h>
@@ -25,20 +25,18 @@
 #include <HAL/Platform.h>
 #include <UObject/WeakObjectPtrTemplates.h>
 
-struct FTestEntityRegistry;
-struct FTestMissionManager;
 struct FLevelVisualConfig;
 class USimulationHudWidget;
 class UShipHudWidget;
 class UInstancedStaticMeshComponent;
 
-namespace ml::test_space_ship {
-struct Simulation;
+namespace ioj::sim {
+struct MissionManager;
+struct SpatialQueryManager;
 }
-namespace ml {
-struct FSpatialQueryManager;
+namespace ioj::sim::player {
+struct Sim;
 }
-
 enum class EHUDManagerState : uint8 {
     Disabled,
     Active,
@@ -70,9 +68,9 @@ struct FMissionStaticDataCache {
     bool operator==(FMissionStaticDataCache const& other) const noexcept = default;
 
     ETestMissionMode mission_mode{ETestMissionMode::None};
-    TArray<TestEntityUniqueId> surviving_entity_ids;
+    TArray<::ioj::sim::EntityUniqueId> surviving_entity_ids;
     TArray<ETestEntityType> surviving_entity_types;
-    TArray<TestEntityUniqueId> required_kill_entity_ids;
+    TArray<::ioj::sim::EntityUniqueId> required_kill_entity_ids;
     TArray<ETestEntityType> required_kill_entity_types;
 };
 
@@ -97,7 +95,7 @@ struct FMissionDataCache {
 struct FEntityCountDataCache {
     bool operator==(FEntityCountDataCache const& other) const noexcept = default;
 
-    FTestEntityRegistry::EntityCounts alive_per_team_and_type{};
+    ::ioj::sim::EntityRegistry::EntityCounts alive_per_team_and_type{};
 };
 
 struct FKillDataCache {
@@ -160,11 +158,11 @@ struct FDataChanges {
 
 struct SPACEGAMEPRESENTATION_API FHUDManager {
     void initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
-                    FTestMissionManager const& new_mission_manager,
-                    FTestEntityRegistry const& new_entity_registry,
-                    ml::FSpatialQueryManager const& new_spatial_query_manager,
+                    ::ioj::sim::MissionManager const& new_mission_manager,
+                    ::ioj::sim::EntityRegistry const& new_entity_registry,
+                    ::ioj::sim::SpatialQueryManager const& new_spatial_query_manager,
                     double update_tick_rate,
-                    ml::test_space_ship::Simulation const* new_player_ship,
+                    ::ioj::sim::player::Sim const* new_player_ship,
                     FLevelVisualConfig const& level_config,
                     FEntityOverlaySettings const& entity_overlay_settings,
                     FRadarSettings const& radar_settings,
@@ -210,12 +208,12 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
         FEntityOverlayFrameStorePtr entity_overlay_frame_store;
         FEntityOverlayCollector entity_overlay_collector;
         FRadarFrameStorePtr radar_frame_store;
-        FRegistryEntityHandle soft_target{};
+        ::ioj::sim::RegistryEntityHandle soft_target{};
         float soft_target_range_alpha{0.0f};
         float soft_target_radius_pixels{0.0f};
         float soft_target_world_units_per_pixel{0.0f};
         float soft_target_pulse_remaining{0.0f};
-        FRegistryEntityHandle fading_soft_target{};
+        ::ioj::sim::RegistryEntityHandle fading_soft_target{};
         float fading_soft_target_range_alpha{0.0f};
         float fading_soft_target_radius_pixels{0.0f};
         float fading_soft_target_world_units_per_pixel{0.0f};
@@ -237,7 +235,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
                                bool render_world_target);
     void configure_world_soft_target_renderer();
     void clear_world_soft_targets();
-    void add_world_soft_target(FRegistryEntityHandle handle,
+    void add_world_soft_target(::ioj::sim::RegistryEntityHandle handle,
                                float range_alpha,
                                float indicator_radius_pixels,
                                float world_units_per_pixel,
@@ -268,10 +266,10 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
 
     EHUDManagerState state{EHUDManagerState::Disabled};
     TArray<FRegisteredHud> registered_huds;
-    ml::test_space_ship::Simulation const* player_ship{nullptr};
-    FTestMissionManager const* mission_manager{nullptr};
-    FTestEntityRegistry const* entity_registry{nullptr};
-    ml::FSpatialQueryManager const* spatial_query_manager{nullptr};
+    ::ioj::sim::player::Sim const* player_ship{nullptr};
+    ::ioj::sim::MissionManager const* mission_manager{nullptr};
+    ::ioj::sim::EntityRegistry const* entity_registry{nullptr};
+    ::ioj::sim::SpatialQueryManager const* spatial_query_manager{nullptr};
     FPeriodicTickCountdown8 update_timers;
 
     ml::MultiBuffer<ml::hud_manager::FMissionDataCache, 2> mission_data_buffers;
@@ -279,7 +277,8 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     ml::MultiBuffer<ml::hud_manager::FKillDataCache, 2> kill_data_buffers;
     ml::MultiBuffer<ml::hud_manager::FPlayerStatusDataCache, 2> player_status_data_buffers;
     ml::MultiBuffer<ml::hud_manager::FPlayerFlightDataCache, 2> player_flight_data_buffers;
-    TArray<TestEntityUniqueId, TInlineAllocator<ml::ship_hud::FTopKillerEntries::minimum_size>>
+    TArray<::ioj::sim::EntityUniqueId,
+           TInlineAllocator<ml::ship_hud::FTopKillerEntries::minimum_size>>
         top_killer_ids_buffer;
 
     bool has_mission_data{false};

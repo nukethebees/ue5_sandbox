@@ -1,6 +1,6 @@
-#include "sandbox/simulation/player_thrust.h"
+#include "ioj/sim/player_thrust.h"
 
-namespace ml::simulation::player {
+namespace ioj::sim::player {
 auto make_thrust_transition(ThrustSettings const settings,
                             BoostBrakeState const state,
                             float const current_speed) noexcept -> ThrustTransition {

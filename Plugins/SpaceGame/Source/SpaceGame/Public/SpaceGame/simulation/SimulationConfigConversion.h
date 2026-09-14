@@ -1,15 +1,17 @@
 #pragma once
-#include <sandbox/simulation/simulation/LevelSimulationConfig.h>
+#include <ioj/sim/sim_config.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 auto SPACEGAME_API make_simulation_config(FLaserWeaponConfig const& source)
-    -> FSimulationLaserWeaponConfig;
+    -> ::ioj::sim::LaserWeaponSimConfig;
 auto SPACEGAME_API make_simulation_config(FPlayerShipConfig const& source)
-    -> FPlayerSimulationConfig;
+    -> ::ioj::sim::PlayerSimConfig;
 auto SPACEGAME_API make_simulation_config(FLaserProjectileConfig const& source)
-    -> FLaserSimulationConfig;
+    -> ::ioj::sim::LaserSimConfig;
 auto SPACEGAME_API make_simulation_config(FCapitalShipConfig const& source)
-    -> FCapitalSimulationConfig;
-auto SPACEGAME_API make_simulation_config(FFighterConfig const& source) -> FFighterSimulationConfig;
-auto SPACEGAME_API make_simulation_config(FTurretConfig const& source) -> FTurretSimulationConfig;
+    -> ::ioj::sim::CapitalShipSimConfig;
+auto SPACEGAME_API make_simulation_config(FFighterConfig const& source)
+    -> ::ioj::sim::FighterSimConfig;
+auto SPACEGAME_API make_simulation_config(FTurretConfig const& source)
+    -> ::ioj::sim::TurretSimConfig;
 auto SPACEGAME_API make_simulation_config(FTubeSpinnerConfig const& source)
-    -> FSpinnerSimulationConfig;
+    -> ::ioj::sim::SpinnerSimConfig;

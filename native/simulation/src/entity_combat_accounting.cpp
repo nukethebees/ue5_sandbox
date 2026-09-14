@@ -1,11 +1,11 @@
-#include "sandbox/simulation/entity_combat_accounting.h"
+#include "ioj/sim/entity_combat_accounting.h"
 
 #include <cstddef>
 
-namespace ml::simulation {
+namespace ioj::sim {
 namespace {
 auto make_combat_accounting_error(UniqueIdLookupError const code,
-                                  FRegistryEntityHandle const handle,
+                                  RegistryEntityHandle const handle,
                                   std::int32_t const event_index) noexcept
     -> std::unexpected<EntityCombatAccountingError> {
     return std::unexpected{EntityCombatAccountingError{code, handle, event_index}};
@@ -54,7 +54,7 @@ auto record_shots(EntityRegistryStatistics& statistics,
                   std::span<std::int32_t const> const generations,
                   std::span<EntityUniqueId const> const current_unique_ids,
                   EntityHistoryColumnsConstView const history,
-                  std::span<FRegistryEntityHandle const> const instigators) noexcept
+                  std::span<RegistryEntityHandle const> const instigators) noexcept
     -> std::expected<void, EntityCombatAccountingError> {
     auto const count{static_cast<std::int32_t>(instigators.size())};
     for (std::int32_t index{}; index < count; ++index) {
@@ -75,4 +75,4 @@ auto record_shots(EntityRegistryStatistics& statistics,
     }
     return {};
 }
-} // namespace ml::simulation
+} // namespace ioj::sim

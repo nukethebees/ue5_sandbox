@@ -1,9 +1,9 @@
-#include "sandbox/simulation/entity_registry_refresh.h"
+#include "ioj/sim/entity_registry_refresh.h"
 
 #include <cassert>
 #include <cstddef>
 
-namespace ml::simulation {
+namespace ioj::sim {
 namespace {
 [[maybe_unused]] auto is_unused_or_sized(std::int32_t const size,
                                          std::int32_t const expected) noexcept -> bool {
@@ -12,7 +12,7 @@ namespace {
 }
 
 auto refresh_registry_handles(EntityRegistryQueryView const registry,
-                              std::span<FRegistryEntityHandle> const handles) noexcept
+                              std::span<RegistryEntityHandle> const handles) noexcept
     -> std::int32_t {
     std::int32_t first_invalid{-1};
     auto const count{static_cast<std::int32_t>(handles.size())};
@@ -40,7 +40,7 @@ auto refresh_registry_handles(EntityRegistryQueryView const registry,
 }
 
 auto copy_registry_entity_data(EntityRegistryQueryView const registry,
-                               std::span<FRegistryEntityHandle const> const handles,
+                               std::span<RegistryEntityHandle const> const handles,
                                EntityRegistryRefreshViews const outputs) noexcept -> std::int32_t {
     auto const count{static_cast<std::int32_t>(handles.size())};
     assert(is_unused_or_sized(outputs.locations.num(), count));
@@ -52,10 +52,10 @@ auto copy_registry_entity_data(EntityRegistryQueryView const registry,
         auto const handle{handles[element]};
         if (handle.is_null()) {
             if (!outputs.locations.is_empty()) {
-                outputs.locations.set(index, make_vector3f(0.0f, 0.0f, 0.0f));
+                outputs.locations.set(index, ml::make_vector3f(0.0f, 0.0f, 0.0f));
             }
             if (!outputs.velocities.is_empty()) {
-                outputs.velocities.set(index, make_vector3f(0.0f, 0.0f, 0.0f));
+                outputs.velocities.set(index, ml::make_vector3f(0.0f, 0.0f, 0.0f));
             }
             continue;
         }
@@ -76,4 +76,4 @@ auto copy_registry_entity_data(EntityRegistryQueryView const registry,
     }
     return first_inactive;
 }
-} // namespace ml::simulation
+} // namespace ioj::sim

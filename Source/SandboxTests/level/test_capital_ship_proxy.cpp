@@ -2,7 +2,7 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include "test_capital_ship_proxy_scenario.h"
 
-#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
+#include <ioj/sim/capital_ships/sim.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>

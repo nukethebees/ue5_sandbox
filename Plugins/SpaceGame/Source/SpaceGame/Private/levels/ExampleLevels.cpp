@@ -38,7 +38,7 @@ auto make_native_example() -> FLevelDefinition {
         .rotation = FRotator{0.0, 180.0, 0.0},
     });
     builder.set_mission(FLevelMissionDefinition{
-        .mode = ELevelMissionMode::KillEnemies,
+        .mode = ::ioj::sim::levels::LevelMissionMode::KillEnemies,
         .hero_entity_ids = {player_id, blue_capital_id},
         .must_survive_entity_ids = {blue_capital_id},
         .required_kill_entity_ids = {red_capital_id},

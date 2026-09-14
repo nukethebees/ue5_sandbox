@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sandbox/simulation/ship_flight_model.h>
+#include <ioj/sim/ship_flight_model.h>
 #include "SandboxCoreEngine/SpeedResponse.h"
 #include "SGLegacy/combat/DamageableShip.h"
 #include "SGLegacy/players/ShipHealthComponent.h"
@@ -151,7 +151,7 @@ class ASpaceShip
     UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Energy")
     float thrust_change_rate{0.f};
 
-    ml::simulation::ShipFlightModel<float> flight_model{};
+    ::ioj::sim::ShipFlightModel<float> flight_model{};
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Speed")
     FSpeedResponses speed_responses{};
 

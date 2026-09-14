@@ -1,14 +1,14 @@
-#include "sandbox/simulation/fighter_spawn_initialization.h"
+#include "ioj/sim/fighter_spawn_initialization.h"
 
-#include "sandbox/simulation/fighter_navigation.h"
-#include "sandbox/simulation/rotator_math.h"
+#include "ioj/sim/fighter_navigation.h"
+#include "ioj/sim/rotator_math.h"
 
 #include <cassert>
 #include <cstddef>
 
-namespace ml::simulation::fighters {
+namespace ioj::sim::fighters {
 void initialize_spawned_fighters(SpawnInitializationView const fighters,
-                                 TestCapitalShipFighterSpawnQueueConstView const spawns,
+                                 FighterSpawnQueueConstView const spawns,
                                  SpawnInitializationParameters const parameters) {
     spawns.validate_array_sizes();
     auto const count{spawns.num()};
@@ -19,7 +19,7 @@ void initialize_spawned_fighters(SpawnInitializationView const fighters,
         auto const element{static_cast<std::size_t>(index)};
         auto const location{spawns.locations[index]};
         auto const rotation{spawns.rotations[index]};
-        fighters.tasks[element] = CapitalShipFighterTask::Attack;
+        fighters.tasks[element] = FighterTask::Attack;
         fighters.locations.set(index, location);
         fighters.desired_move_locations.set(index, location);
         fighters.aim_directions.set(index, forward_direction(rotation));

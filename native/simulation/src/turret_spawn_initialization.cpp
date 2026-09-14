@@ -1,8 +1,8 @@
-#include "sandbox/simulation/turret_spawn_initialization.h"
+#include "ioj/sim/turret_spawn_initialization.h"
 
 #include <cassert>
 
-namespace ml::simulation::turrets {
+namespace ioj::sim::turrets {
 void initialize_spawned_turrets(SpawnInitializationView const turrets,
                                 TurretSpawnDataConstView const spawns,
                                 Vector3f const fire_point_offset,

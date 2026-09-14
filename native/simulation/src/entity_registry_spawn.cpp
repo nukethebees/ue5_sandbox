@@ -1,9 +1,9 @@
-#include "sandbox/simulation/entity_registry_spawn.h"
+#include "ioj/sim/entity_registry_spawn.h"
 
 #include <cassert>
 #include <cstddef>
 
-namespace ml::simulation {
+namespace ioj::sim {
 auto register_spawned_entity(EntityRegistryBookkeeping& bookkeeping,
                              EntityRegistryStatistics& statistics,
                              EntityHistoryColumnsView const history,
@@ -11,7 +11,7 @@ auto register_spawned_entity(EntityRegistryBookkeeping& bookkeeping,
                              EntityUniqueId const unique_id,
                              Team const team,
                              EntityType const type,
-                             std::uint8_t const alive) noexcept -> FRegistryEntityHandle {
+                             std::uint8_t const alive) noexcept -> RegistryEntityHandle {
     assert(slot_index >= 0);
     assert(static_cast<std::size_t>(slot_index) < bookkeeping.generations.size());
     assert(bookkeeping.unique_ids.size() == bookkeeping.generations.size());
@@ -30,4 +30,4 @@ auto register_spawned_entity(EntityRegistryBookkeeping& bookkeeping,
     statistics.record_spawn(team, type, alive != 0);
     return {slot_index, generation};
 }
-} // namespace ml::simulation
+} // namespace ioj::sim

@@ -1,10 +1,10 @@
-#include "sandbox/simulation/query_thread_buffers.h"
+#include "ioj/sim/query_thread_buffers.h"
 
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
 
-namespace ml::simulation {
+namespace ioj::sim {
 void QueryThreadBuffers::ensure_entity_stamp_count(std::int32_t const entity_count) {
     assert(entity_count >= 0);
     auto const required_count{static_cast<std::size_t>(entity_count)};
@@ -21,4 +21,4 @@ auto QueryThreadBuffers::advance_range_query_stamp() noexcept -> std::uint32_t {
     }
     return range_query_stamp;
 }
-} // namespace ml::simulation
+} // namespace ioj::sim

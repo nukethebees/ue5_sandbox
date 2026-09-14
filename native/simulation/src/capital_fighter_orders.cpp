@@ -1,17 +1,17 @@
-#include "sandbox/simulation/capital_fighter_orders.h"
+#include "ioj/sim/capital_fighter_orders.h"
 
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
 
-namespace ml::simulation {
-void build_capital_fighter_orders(std::span<FRegistryEntityHandle const> const capital_targets,
-                                  std::span<FIndexSpan const> const fighter_spans,
-                                  std::span<FRegistryEntityHandle const> const owned_fighters,
-                                  std::span<FRegistryEntityHandle const> const fighter_handles,
-                                  std::span<FRegistryEntityHandle const> const fighter_targets,
-                                  EntityRegistryQueryView const registry,
-                                  TestCapitalShipFighterOrderQueue& orders) {
+namespace ioj::sim {
+void build_fighter_orders(std::span<RegistryEntityHandle const> const capital_targets,
+                          std::span<IndexSpan const> const fighter_spans,
+                          std::span<RegistryEntityHandle const> const owned_fighters,
+                          std::span<RegistryEntityHandle const> const fighter_handles,
+                          std::span<RegistryEntityHandle const> const fighter_targets,
+                          EntityRegistryQueryView const registry,
+                          FighterOrderQueue& orders) {
     assert(capital_targets.size() == fighter_spans.size());
     assert(fighter_handles.size() == fighter_targets.size());
 
@@ -28,8 +28,8 @@ void build_capital_fighter_orders(std::span<FRegistryEntityHandle const> const c
             auto const fighter{owned_fighters[static_cast<std::size_t>(index)]};
             if (capital_target.is_null()) {
                 orders.add(fighter,
-                           CapitalShipFighterOrder{.task = 1, .target = 1},
-                           CapitalShipFighterTask::Standby,
+                           FighterOrder{.task = 1, .target = 1},
+                           FighterTask::Standby,
                            capital_target);
                 continue;
             }
@@ -42,8 +42,7 @@ void build_capital_fighter_orders(std::span<FRegistryEntityHandle const> const c
                                           RegistryHandleState::Active &&
                                       registry.alive[static_cast<std::size_t>(target.index)] == 0};
             if (target.is_null() || target_is_dead) {
-                orders.add(
-                    fighter, CapitalShipFighterOrder{.task = 0, .target = 1}, {}, capital_target);
+                orders.add(fighter, FighterOrder{.task = 0, .target = 1}, {}, capital_target);
             }
         }
     }

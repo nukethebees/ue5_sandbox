@@ -12,7 +12,7 @@ auto glyph(ETestEntityType const type) -> ERadarGlyph {
         case ETestEntityType::PlayerShip: {
             return ERadarGlyph::Player;
         }
-        case ETestEntityType::CapitalShipFighter: {
+        case ETestEntityType::Fighter: {
             return ERadarGlyph::Fighter;
         }
         case ETestEntityType::CapitalShip: {
@@ -43,7 +43,7 @@ auto size_scale(ETestEntityType const type) -> float {
         case ETestEntityType::Turret: {
             return 1.0f;
         }
-        case ETestEntityType::CapitalShipFighter: {
+        case ETestEntityType::Fighter: {
             return 1.0f;
         }
         default: {
@@ -148,13 +148,13 @@ auto sanitize_radar_settings(FRadarSettings settings) -> FRadarSettings {
     return settings;
 }
 
-auto collect_radar_instances(ml::simulation::RegistryEntityData::ConstView const entities,
+auto collect_radar_instances(::ioj::sim::RegistryEntityData::ConstView const entities,
                              TConstArrayView<int32> const generations,
                              TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
                              FRadarContactColours const& contact_colours,
                              FTransform const& player_transform,
-                             FRegistryEntityHandle const player_handle,
-                             FRegistryEntityHandle const selected_handle,
+                             ::ioj::sim::RegistryEntityHandle const player_handle,
+                             ::ioj::sim::RegistryEntityHandle const selected_handle,
                              ETestTeam const player_team,
                              FRadarSettings const& settings,
                              FRadarFrame& output_frame) -> FRadarCollectionResult {
@@ -183,9 +183,9 @@ auto collect_radar_instances(ml::simulation::RegistryEntityData::ConstView const
                 continue;
             }
 
-            FRegistryEntityHandle const handle{index, generations[index]};
+            ::ioj::sim::RegistryEntityHandle const handle{index, generations[index]};
             if (handle == player_handle ||
-                entities.entity_types[index] == ml::simulation::EntityType::PlayerShip) {
+                entities.entity_types[index] == ::ioj::sim::EntityType::PlayerShip) {
                 continue;
             }
             if (priority == 0) {
@@ -206,7 +206,7 @@ auto collect_radar_instances(ml::simulation::RegistryEntityData::ConstView const
                 FVector3f{no_roll_transform.InverseTransformVectorNoScale(FVector{world_delta})}};
             auto const entity_type{ml::to_unreal(entities.entity_types[index])};
             auto heading_radians{0.0f};
-            if (entity_type == ETestEntityType::CapitalShipFighter) {
+            if (entity_type == ETestEntityType::Fighter) {
                 auto const world_velocity{ml::to_unreal(entities.velocities[index])};
                 auto const local_velocity{FVector3f{
                     no_roll_transform.InverseTransformVectorNoScale(FVector{world_velocity})}};

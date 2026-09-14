@@ -1,15 +1,15 @@
-#include "sandbox/simulation/turret_targeting.h"
+#include "ioj/sim/turret_targeting.h"
 
 #include "sandbox/core/loop_bounds.h"
 
 #include <cassert>
 
-namespace ml::simulation {
-auto select_turret_target(std::span<FRegistryEntityHandle const> const candidates,
+namespace ioj::sim {
+auto select_turret_target(std::span<RegistryEntityHandle const> const candidates,
                           std::span<std::uint8_t const> const has_line_of_sight,
                           std::span<std::byte const> const registry_teams,
                           Team const turret_team,
-                          std::uint32_t const integral_bias) noexcept -> FRegistryEntityHandle {
+                          std::uint32_t const integral_bias) noexcept -> RegistryEntityHandle {
     assert(candidates.size() == has_line_of_sight.size());
     if (candidates.empty()) {
         return {};
@@ -39,4 +39,4 @@ auto select_turret_target(std::span<FRegistryEntityHandle const> const candidate
     }
     return {};
 }
-} // namespace ml::simulation
+} // namespace ioj::sim

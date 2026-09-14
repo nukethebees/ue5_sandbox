@@ -1,6 +1,6 @@
-#include "sandbox/simulation/laser_spawn_initialization.h"
+#include "ioj/sim/laser_spawn_initialization.h"
 
-namespace ml::simulation::lasers {
+namespace ioj::sim::lasers {
 namespace laser_spawn_initialization_detail {
 auto forward_direction(Rotator3f const rotation) noexcept -> Vector3f {
     auto const pitch{HMM_AngleDeg(rotation.pitch)};
@@ -41,4 +41,4 @@ void initialise_spawns(Entities& entities,
         output.spawn_times[spawn_index] = simulation_time;
     }
 }
-} // namespace ml::simulation::lasers
+} // namespace ioj::sim::lasers

@@ -1,7 +1,7 @@
 #pragma once
 #include <SpaceGameSimulation/entities/TestTeam.h>
 
-#include "sandbox/simulation/registry_entity_data.h"
+#include "ioj/sim/registry_entity_data.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 #include "SandboxUI/Radar/RadarTypes.h"
 #include "SpaceGamePresentation/presentation/LevelPresentationSettings.h"
@@ -32,13 +32,13 @@ namespace ml::radar_source {
 }
 
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto
-    collect_radar_instances(ml::simulation::RegistryEntityData::ConstView entities,
+    collect_radar_instances(::ioj::sim::RegistryEntityData::ConstView entities,
                             TConstArrayView<int32> generations,
                             TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
                             FRadarContactColours const& contact_colours,
                             FTransform const& player_transform,
-                            FRegistryEntityHandle player_handle,
-                            FRegistryEntityHandle selected_handle,
+                            ::ioj::sim::RegistryEntityHandle player_handle,
+                            ::ioj::sim::RegistryEntityHandle selected_handle,
                             ETestTeam player_team,
                             FRadarSettings const& settings,
                             FRadarFrame& output_frame) -> FRadarCollectionResult;

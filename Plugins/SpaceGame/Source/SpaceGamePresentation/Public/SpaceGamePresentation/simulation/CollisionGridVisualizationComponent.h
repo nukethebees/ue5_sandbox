@@ -4,8 +4,8 @@
 
 #include "CollisionGridVisualizationComponent.generated.h"
 
-namespace ml::ioj {
-struct FCollisionSystem;
+namespace ioj::sim::collision {
+struct CollisionSystem;
 }
 
 UCLASS(ClassGroup = (Rendering))
@@ -21,7 +21,7 @@ class SPACEGAMEPRESENTATION_API UCollisionGridVisualizationComponent final
                    float thickness,
                    bool show_grid);
     void configure_collision_bounds(bool visible, float max_draw_distance);
-    void update_collision_bounds(ml::ioj::FCollisionSystem const& collision_system);
+    void update_collision_bounds(::ioj::sim::collision::CollisionSystem const& collision_system);
     void clear_collision_bounds();
     void clear();
 

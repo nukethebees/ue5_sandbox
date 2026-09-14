@@ -68,7 +68,7 @@ auto validate_level(FLevelDefinition const& definition) -> FLevelValidationResul
         return result;
     }
 
-    auto native_result{level_authoring::validate_level(level_authoring::to_native(definition))};
+    auto native_result{::ioj::sim::levels::validate_level(level_authoring::to_native(definition))};
     result.errors.Reserve(static_cast<int32>(native_result.errors.size()));
     for (auto& error : native_result.errors) {
         result.errors.Add({.code = error.code, .message = to_validation_fstring(error.message)});

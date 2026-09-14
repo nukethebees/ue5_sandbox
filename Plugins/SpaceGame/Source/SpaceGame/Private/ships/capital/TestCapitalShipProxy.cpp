@@ -155,7 +155,7 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
 
     ml::ioj::FLevelCollisionHost::EntityMeshes meshes{};
     meshes[ETestEntityType::CapitalShip] = config->capital_ships.mesh;
-    meshes[ETestEntityType::CapitalShipFighter] = config->fighters.mesh;
+    meshes[ETestEntityType::Fighter] = config->fighters.mesh;
     auto const local_bounds{ml::ioj::FLevelCollisionHost::extract_entity_bounds(meshes)};
     if (!local_bounds) {
         report_error(local_bounds.error().format());

@@ -1,9 +1,9 @@
 #pragma once
 
-#include <sandbox/simulation/world_aabbs.h>
+#include <ioj/sim/world_aabbs.h>
 
 namespace ml {
-using WorldAABBs = simulation::collision::WorldAABBs;
-using WorldAABBsConstView = simulation::collision::WorldAABBsColumnsConstView;
-using WorldAABBsView = simulation::collision::WorldAABBsColumnsView;
+using WorldAABBs = ::ioj::sim::collision::WorldAABBs;
+using WorldAABBsConstView = ::ioj::sim::collision::WorldAABBsColumnsConstView;
+using WorldAABBsView = ::ioj::sim::collision::WorldAABBsColumnsView;
 }

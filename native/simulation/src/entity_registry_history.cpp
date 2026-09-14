@@ -1,15 +1,15 @@
-#include "sandbox/simulation/entity_registry_history.h"
+#include "ioj/sim/entity_registry_history.h"
 
-#include "sandbox/simulation/entity_registry_bookkeeping.h"
+#include "ioj/sim/entity_registry_bookkeeping.h"
 
 #include <cassert>
 #include <cstddef>
 
-namespace ml::simulation {
+namespace ioj::sim {
 auto find_entity_unique_id(std::span<std::int32_t const> const generations,
                            std::span<EntityUniqueId const> const current_unique_ids,
                            EntityHistoryColumnsConstView const history,
-                           FRegistryEntityHandle const handle) noexcept
+                           RegistryEntityHandle const handle) noexcept
     -> std::expected<EntityUniqueId, UniqueIdLookupError> {
     assert(generations.size() == current_unique_ids.size());
 
@@ -33,4 +33,4 @@ auto find_entity_unique_id(std::span<std::int32_t const> const generations,
     }
     return std::unexpected{UniqueIdLookupError::MissingStaleHandle};
 }
-} // namespace ml::simulation
+} // namespace ioj::sim

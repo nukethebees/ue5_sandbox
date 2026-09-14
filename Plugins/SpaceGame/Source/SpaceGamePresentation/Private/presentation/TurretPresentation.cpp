@@ -3,7 +3,7 @@
 #include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
-#include <sandbox/simulation/entities/TestEntityRegistry.h>
+#include <ioj/sim/entity_registry.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
@@ -74,7 +74,7 @@ void FTurretPresentation::update_visual_data() {
     auto const colours{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
     for (auto const& change : view().changes) {
-        if (change.kind == EEntityFrameChange::RemoveSwap) {
+        if (change.kind == ::ioj::sim::EntityFrameChangeKind::RemoveSwap) {
             ismc_transforms.RemoveAtSwap(change.index, EAllowShrinking::No);
             instances->RemoveInstance(change.index);
         } else {

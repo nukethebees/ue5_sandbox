@@ -1,6 +1,7 @@
 (soa-module native_direct_damage_events
-  :header "native/simulation/include/sandbox/simulation/direct_damage_events.h"
+  :header "native/simulation/include/ioj/sim/direct_damage_events.h"
   :backend standard-library
+  :namespace ioj::sim
   (struct DirectDamageEvents
     :operations (all)
     (member damaged_entities array @native_registry_handle)

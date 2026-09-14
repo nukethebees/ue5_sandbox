@@ -3,7 +3,7 @@
 #include <SpaceGame/levels/NativeLevelDefinitionConversion.h>
 
 #include <Containers/StringConv.h>
-#include <sandbox/simulation/levels/LevelCompilation.h>
+#include <ioj/sim/levels/level_compilation.h>
 
 namespace ml {
 namespace {
@@ -14,11 +14,11 @@ auto to_compilation_fstring(std::string const& value) -> FString {
 } // namespace
 
 auto compile_level_events(FLevelDefinition const& definition,
-                          FSimulationClock const& clock,
-                          FCapitalSimulationConfig const& capital_config,
-                          FTurretSimulationConfig const& turret_config)
+                          ::ioj::sim::SimClock const& clock,
+                          ::ioj::sim::CapitalShipSimConfig const& capital_config,
+                          ::ioj::sim::TurretSimConfig const& turret_config)
     -> FLevelEventCompilationResult {
-    auto result{level_authoring::compile_level(
+    auto result{::ioj::sim::levels::compile_level(
         level_authoring::to_native(definition), clock, capital_config, turret_config)};
     if (result) {
         return FLevelEventCompilationResult{std::in_place, std::move(result.value())};

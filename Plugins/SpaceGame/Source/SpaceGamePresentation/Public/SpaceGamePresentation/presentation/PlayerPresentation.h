@@ -1,5 +1,5 @@
 #pragma once
-#include <sandbox/simulation/ships/player/PlayerReadView.h>
+#include <ioj/sim/player/player_read_view.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <UObject/WeakObjectPtrTemplates.h>
 
@@ -19,12 +19,12 @@ struct FPlayerPresentationResources {
 struct SPACEGAMEPRESENTATION_API FPlayerPresentation {
     FPlayerPresentation(FPlayerPresentationResources resources,
                         FPlayerShipConfig const& config,
-                        FPlayerReadView const& initial_state);
-    void tick(FPlayerReadView const& state);
+                        ::ioj::sim::PlayerReadView const& initial_state);
+    void tick(::ioj::sim::PlayerReadView const& state);
   private:
     FPlayerPresentationResources resources_;
     FPlayerShipConfig config_;
-    ml::simulation::player::BoostBrakeState boost_brake_state_{
-        ml::simulation::player::BoostBrakeState::None};
+    ::ioj::sim::player::BoostBrakeState boost_brake_state_{
+        ::ioj::sim::player::BoostBrakeState::None};
     uint64 boost_start_sequence_{};
 };

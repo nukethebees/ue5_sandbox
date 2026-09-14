@@ -1,6 +1,6 @@
 #include <tracy/Tracy.hpp>
 
-namespace ml::profiling::tests {
+namespace ioj::sim::tests::profiling {
 class TracyLifetime final {
   public:
     TracyLifetime() { tracy::StartupProfiler(); }

@@ -5,8 +5,8 @@
 #include <source_location>
 #include <string>
 
-namespace ml::simulation_tests {
-inline auto distance(ml::simulation::Vector3f a, ml::simulation::Vector3f b) -> float {
+namespace ioj::sim::tests {
+inline auto distance(ioj::sim::Vector3f a, ioj::sim::Vector3f b) -> float {
     return HMM_LenV3(a - b);
 }
 inline auto distance(ml::Vector3d a, ml::Vector3d b) -> double {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sandbox/simulation/simulation/SystemReadViews.h>
+#include <ioj/sim/system_read_views.h>
 #include <SpaceGamePresentation/entities/TeamColours.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
@@ -18,7 +18,7 @@ struct SPACEGAMEPRESENTATION_API FFighterPresentation {
 
     void set_actor_config(FFighterConfig const* new_config) noexcept;
   private:
-    auto view() const -> FFighterReadView const& { return view_; }
+    auto view() const -> ::ioj::sim::FighterReadView const& { return view_; }
 
     void clear_runtime_state_presentation();
     void begin_play_presentation();
@@ -40,5 +40,5 @@ struct SPACEGAMEPRESENTATION_API FFighterPresentation {
     bool enable_target_debug_drawing{false};
     bool enable_ship_location_debug_drawing{false};
 
-    FFighterReadView view_{};
+    ::ioj::sim::FighterReadView view_{};
 };

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "sandbox/simulation/simulation/LevelTelemetrySnapshot.h"
+#include "ioj/sim/level_telemetry_snapshot.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
 class SGraphPlot;
@@ -14,7 +14,7 @@ void apply_activity_graph_style(SGraphPlot& graph,
                                 FVector2f desired_size);
 
 void update_activity_graph(SGraphPlot& graph,
-                           FLevelTelemetrySnapshot const& snapshot,
+                           ::ioj::sim::LevelTelemetrySnapshot const& snapshot,
                            FLinearColor active_entity_color,
                            FLinearColor kills_color);
 }

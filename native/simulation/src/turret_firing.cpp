@@ -1,4 +1,4 @@
-#include "sandbox/simulation/turret_firing.h"
+#include "ioj/sim/turret_firing.h"
 
 #include "sandbox/core/projectile_intercept.h"
 #include "sandbox/core/vector_math.h"
@@ -6,7 +6,7 @@
 
 #include <cassert>
 
-namespace ml::simulation::turrets {
+namespace ioj::sim::turrets {
 FiringScratch::FiringScratch(std::pmr::memory_resource* const resource)
     : candidate_indices{resource}
     , hit_handles{resource}
@@ -77,16 +77,16 @@ void emit_lasers(FiringView const turrets,
         auto const target_velocity{turrets.target_velocities[index]};
         auto const intercept_time{
             ml::solve_intercept_time(location, target_location, target_velocity, speed)};
-        auto const direction{native_math::safe_normal(
+        auto const direction{ml::native_math::safe_normal(
             target_location + target_velocity * intercept_time - location, normal_tolerance)};
         Rotator3f rotation{};
-        native_math::to_rotations(&rotation.pitch,
-                                  &rotation.yaw,
-                                  &rotation.roll,
-                                  &direction.X,
-                                  &direction.Y,
-                                  &direction.Z,
-                                  1);
+        ml::native_math::to_rotations(&rotation.pitch,
+                                      &rotation.yaw,
+                                      &rotation.roll,
+                                      &direction.X,
+                                      &direction.Y,
+                                      &direction.Z,
+                                      1);
         requests.add(location,
                      rotation,
                      HMM_V3(0.f, 0.f, 0.f),

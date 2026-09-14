@@ -1,18 +1,18 @@
 #pragma once
-#include <sandbox/simulation/simulation/LevelSimulation.h>
+#include <ioj/sim/level_sim.h>
 
-namespace ml::simulation_tests {
+namespace ioj::sim::tests {
 struct SimulationFixture {
-    FLevelSimulationInitData data;
-    ml::test_space_ship::FPlayerSpawnData player;
+    LevelSimInitData data;
+    ioj::sim::player::PlayerSpawnData player;
 };
 auto make_fixture() -> SimulationFixture;
-auto make_simulation_data(SimulationFixture const& fixture) -> FLevelSimulationInitData;
-auto make_player_spawn(SimulationFixture const& fixture, ml::simulation::Transform3d transform = {})
-    -> ml::test_space_ship::FPlayerSpawnData;
-auto add_capital_spawn(FLevelSimulationInitData& data,
-                       ml::simulation::Vector3f location,
-                       ml::simulation::Team team,
+auto make_simulation_data(SimulationFixture const& fixture) -> LevelSimInitData;
+auto make_player_spawn(SimulationFixture const& fixture, ioj::sim::Transform3d transform = {})
+    -> ioj::sim::player::PlayerSpawnData;
+auto add_capital_spawn(LevelSimInitData& data,
+                       ioj::sim::Vector3f location,
+                       ioj::sim::Team team,
                        std::int32_t target_spawn_index = -1,
                        float initial_spawn_delay = 0.f,
                        float spawn_cooldown = 60.f,

@@ -16,8 +16,8 @@ auto get_test_entity_type_name(ETestEntityType const value) -> TCHAR const* {
     case ETestEntityType::CapitalShip: {
         return TEXT("CapitalShip");
     }
-    case ETestEntityType::CapitalShipFighter: {
-        return TEXT("CapitalShipFighter");
+    case ETestEntityType::Fighter: {
+        return TEXT("Fighter");
     }
     case ETestEntityType::TubeSpinner: {
         return TEXT("TubeSpinner");
@@ -41,7 +41,7 @@ auto get_test_entity_type_display_name(ETestEntityType const value) -> TCHAR con
     case ETestEntityType::CapitalShip: {
         return TEXT("Capital Ship");
     }
-    case ETestEntityType::CapitalShipFighter: {
+    case ETestEntityType::Fighter: {
         return TEXT("Capital Ship Fighter");
     }
     case ETestEntityType::TubeSpinner: {
@@ -66,7 +66,7 @@ auto get_test_entity_type_serialized_name(ETestEntityType const value) -> TCHAR 
     case ETestEntityType::CapitalShip: {
         return TEXT("capital_ship");
     }
-    case ETestEntityType::CapitalShipFighter: {
+    case ETestEntityType::Fighter: {
         return TEXT("capital_ship_fighter");
     }
     case ETestEntityType::TubeSpinner: {
@@ -114,7 +114,7 @@ auto try_parse_serialized(FStringView const value, ETestEntityType& result) -> b
         return true;
     }
     if (value == TEXT("capital_ship_fighter")) {
-        result = ETestEntityType::CapitalShipFighter;
+        result = ETestEntityType::Fighter;
         return true;
     }
     if (value == TEXT("tube_spinner")) {

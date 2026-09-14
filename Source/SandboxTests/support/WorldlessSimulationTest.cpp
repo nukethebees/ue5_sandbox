@@ -3,9 +3,9 @@
 #include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
-#include <sandbox/simulation/entities/DirectDamageEvents.h>
-#include <sandbox/simulation/entities/TestEntityRegistry.h>
-#include <sandbox/simulation/simulation/LevelSimulationConfig.h>
+#include <ioj/sim/entities/direct_damage_events.h>
+#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/sim_config.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
@@ -17,7 +17,7 @@
 
 namespace ml {
 auto make_worldless_simulation_test_data(USpaceGameLevelConfig const& config)
-    -> FLevelSimulationInitData {
+    -> ::ioj::sim::LevelSimInitData {
     check(IsValid(config.classes.player_ship_class));
     auto const* player{config.classes.player_ship_class->GetDefaultObject<ATestSpaceShip>()};
     check(player);
@@ -27,7 +27,7 @@ auto make_worldless_simulation_test_data(USpaceGameLevelConfig const& config)
 }
 
 auto make_worldless_player_spawn(USpaceGameLevelConfig const& config, FTransform const& transform)
-    -> ml::test_space_ship::FPlayerSpawnData {
+    -> ::ioj::sim::player::PlayerSpawnData {
     check(IsValid(config.classes.player_ship_class));
     auto const* player{config.classes.player_ship_class->GetDefaultObject<ATestSpaceShip>()};
     check(player);
@@ -37,7 +37,7 @@ auto make_worldless_player_spawn(USpaceGameLevelConfig const& config, FTransform
     return result;
 }
 
-auto add_worldless_capital_spawn(FLevelSimulationInitData& data,
+auto add_worldless_capital_spawn(::ioj::sim::LevelSimInitData& data,
                                  FVector3f const location,
                                  ETestTeam const team,
                                  int32 const target_spawn_index,
@@ -47,7 +47,7 @@ auto add_worldless_capital_spawn(FLevelSimulationInitData& data,
     auto const index{data.capital_spawns.num()};
     data.capital_spawns.add_defaulted(1);
     data.capital_spawns.locations.set(index, ml::to_native(FVector3f{location}));
-    data.capital_spawns.teams[index] = static_cast<ml::simulation::Team>(team);
+    data.capital_spawns.teams[index] = static_cast<::ioj::sim::Team>(team);
     data.capital_spawns.healths[index] =
         health == INDEX_NONE ? data.capital_ships.max_health : health;
     data.capital_spawns.initial_spawn_delays[index] = initial_spawn_delay;
@@ -56,9 +56,9 @@ auto add_worldless_capital_spawn(FLevelSimulationInitData& data,
     return index;
 }
 
-FWorldlessSimulationTest::FWorldlessSimulationTest(FLevelSimulationInitData data)
+FWorldlessSimulationTest::FWorldlessSimulationTest(::ioj::sim::LevelSimInitData data)
     : simulation_{MoveTemp(data)} {
-    simulation_.on_end_tick = [this](FLevelSimulation& simulation) {
+    simulation_.on_end_tick = [this](::ioj::sim::LevelSim& simulation) {
         if (on_end_tick) {
             on_end_tick(simulation);
         }
@@ -70,11 +70,12 @@ void FWorldlessSimulationTest::finish_initialisation() {
     simulation_.finish_initialisation();
 }
 
-void FWorldlessSimulationTest::queue_damage(std::span<FRegistryEntityHandle const> const targets,
-                                            int32 const damage,
-                                            FRegistryEntityHandle const instigator) {
+void FWorldlessSimulationTest::queue_damage(
+    std::span<::ioj::sim::RegistryEntityHandle const> const targets,
+    int32 const damage,
+    ::ioj::sim::RegistryEntityHandle const instigator) {
     auto const count{static_cast<int32>(targets.size())};
-    DirectDamageEvents events;
+    ::ioj::sim::DirectDamageEvents events;
     events.reserve(count);
     for (auto const target : targets) {
         events.add(target, damage, instigator);
@@ -82,9 +83,10 @@ void FWorldlessSimulationTest::queue_damage(std::span<FRegistryEntityHandle cons
     get_registry().queue_direct_damage_events(events);
 }
 
-void FWorldlessSimulationTest::queue_kills(std::span<FRegistryEntityHandle const> const targets,
-                                           FRegistryEntityHandle const instigator) {
-    DirectDamageEvents events;
+void FWorldlessSimulationTest::queue_kills(
+    std::span<::ioj::sim::RegistryEntityHandle const> const targets,
+    ::ioj::sim::RegistryEntityHandle const instigator) {
+    ::ioj::sim::DirectDamageEvents events;
     auto const count{static_cast<int32>(targets.size())};
     events.reserve(count);
     for (auto const target : targets) {
@@ -96,7 +98,7 @@ void FWorldlessSimulationTest::queue_kills(std::span<FRegistryEntityHandle const
 
 auto FWorldlessSimulationTest::run_until_timeline_finished(time_type const maximum_time) -> bool {
     check(maximum_time > 0.0);
-    check(simulation_.get_state() == EOrchestratorState::Paused);
+    check(simulation_.get_state() == ::ioj::sim::OrchestratorState::Paused);
     simulation_.start();
     auto const tick_period{simulation_.get_clock().get_tick_period()};
     auto const maximum_ticks{static_cast<uint64>(FMath::CeilToDouble(maximum_time / tick_period))};

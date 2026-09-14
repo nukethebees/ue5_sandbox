@@ -1,9 +1,9 @@
-#include "sandbox/simulation/frame_laser_spawn_requests.h"
+#include "ioj/sim/frame_laser_spawn_requests.h"
 
 #include <algorithm>
 
-namespace ml::simulation::lasers {
-auto FrameSpawnRequests::get_const_view() const -> ml::simulation::lasers::SpawnRequestsConstView {
+namespace ioj::sim::lasers {
+auto FrameSpawnRequests::get_const_view() const -> ioj::sim::lasers::SpawnRequestsConstView {
     return {locations.get_const_view(),
             rotations.get_const_view(),
             base_velocities.get_const_view(),
@@ -49,7 +49,7 @@ void FrameSpawnRequests::add(Vector3f const location,
                              std::int32_t const damage,
                              float const speed,
                              float const max_distance,
-                             FRegistryEntityHandle const instigator_handle,
+                             RegistryEntityHandle const instigator_handle,
                              LaserSource const source) {
     locations.add(location);
     rotations.add(rotation);
@@ -72,4 +72,4 @@ void FrameSpawnRequests::set_max_distances(float const value) {
 auto FrameSpawnRequests::num() const noexcept -> std::int32_t {
     return locations.num();
 }
-} // namespace ml::simulation::lasers
+} // namespace ioj::sim::lasers

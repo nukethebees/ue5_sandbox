@@ -1,7 +1,7 @@
-#include "sandbox/simulation/capital_fighter_reassignment.h"
+#include "ioj/sim/capital_fighter_reassignment.h"
 
-#include "sandbox/simulation/capital_ship_queries.h"
-#include "sandbox/simulation/entity_types.h"
+#include "ioj/sim/capital_ship_queries.h"
+#include "ioj/sim/entity_types.h"
 
 #include <algorithm>
 #include <array>
@@ -9,16 +9,16 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace ml::simulation {
-auto assign_spawned_capital_fighters(
-    std::span<FRegistryEntityHandle const> const capital_handles,
-    std::span<std::byte const> const capital_teams,
-    SpawnedEntityHandles const& spawned_handles,
-    std::span<FRegistryEntityHandle const> const spawn_parents,
-    std::span<std::byte const> const spawn_teams,
-    EntityRegistryQueryView const registry,
-    ml::test_capital_ships::FighterReassignment& reassignments,
-    ml::FrameArray<FRegistryEntityHandle>& fighters_to_self_destruct) -> std::int32_t {
+namespace ioj::sim {
+auto assign_spawned_fighters(std::span<RegistryEntityHandle const> const capital_handles,
+                             std::span<std::byte const> const capital_teams,
+                             SpawnedEntityHandles const& spawned_handles,
+                             std::span<RegistryEntityHandle const> const spawn_parents,
+                             std::span<std::byte const> const spawn_teams,
+                             EntityRegistryQueryView const registry,
+                             ioj::sim::capital_ships::FighterReassignment& reassignments,
+                             ml::FrameArray<RegistryEntityHandle>& fighters_to_self_destruct)
+    -> std::int32_t {
     assert(capital_handles.size() == capital_teams.size());
     assert(spawn_parents.size() == spawn_teams.size());
 
@@ -50,11 +50,11 @@ auto assign_spawned_capital_fighters(
     return surviving_spawn_count;
 }
 
-auto rebuild_capital_fighter_rosters(std::span<FRegistryEntityHandle const> const capital_handles,
-                                     std::span<FIndexSpan> const fighter_spans,
-                                     std::span<FRegistryEntityHandle const> const previous_fighters,
-                                     ml::test_capital_ships::FighterReassignment& reassignments,
-                                     std::span<FRegistryEntityHandle> const output_fighters)
+auto rebuild_fighter_rosters(std::span<RegistryEntityHandle const> const capital_handles,
+                             std::span<IndexSpan> const fighter_spans,
+                             std::span<RegistryEntityHandle const> const previous_fighters,
+                             ioj::sim::capital_ships::FighterReassignment& reassignments,
+                             std::span<RegistryEntityHandle> const output_fighters)
     -> std::int32_t {
     assert(fighter_spans.size() == capital_handles.size());
     assert(output_fighters.size() >=
@@ -67,7 +67,7 @@ auto rebuild_capital_fighter_rosters(std::span<FRegistryEntityHandle const> cons
         auto const old_end{old_span.end()};
         assert(old_span.offset >= 0 && old_span.count >= 0);
         assert(static_cast<std::size_t>(old_end) <= previous_fighters.size());
-        FIndexSpan new_span{.offset = output_count, .count = 0};
+        IndexSpan new_span{.offset = output_count, .count = 0};
         for (auto fighter_index{old_span.offset}; fighter_index < old_end; ++fighter_index) {
             auto const fighter{previous_fighters[static_cast<std::size_t>(fighter_index)]};
             if (!fighter.is_null()) {
@@ -92,14 +92,13 @@ auto rebuild_capital_fighter_rosters(std::span<FRegistryEntityHandle const> cons
     return output_count;
 }
 
-void plan_capital_fighter_reassignment(
-    std::span<FRegistryEntityHandle const> const capital_handles,
-    std::span<std::byte const> const capital_teams,
-    std::span<FIndexSpan const> const fighter_spans,
-    std::span<FRegistryEntityHandle const> const fighter_handles,
-    std::span<std::int32_t const> const dying_capital_indices,
-    ml::test_capital_ships::FighterReassignment& reassignments,
-    ml::FrameArray<FRegistryEntityHandle>& fighters_to_self_destruct) {
+void plan_fighter_reassignment(std::span<RegistryEntityHandle const> const capital_handles,
+                               std::span<std::byte const> const capital_teams,
+                               std::span<IndexSpan const> const fighter_spans,
+                               std::span<RegistryEntityHandle const> const fighter_handles,
+                               std::span<std::int32_t const> const dying_capital_indices,
+                               ioj::sim::capital_ships::FighterReassignment& reassignments,
+                               ml::FrameArray<RegistryEntityHandle>& fighters_to_self_destruct) {
     assert(capital_teams.size() == capital_handles.size());
     assert(fighter_spans.size() == capital_handles.size());
 
@@ -153,4 +152,4 @@ void plan_capital_fighter_reassignment(
         }
     }
 }
-} // namespace ml::simulation
+} // namespace ioj::sim

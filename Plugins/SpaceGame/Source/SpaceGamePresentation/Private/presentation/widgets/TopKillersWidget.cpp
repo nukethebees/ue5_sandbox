@@ -20,7 +20,7 @@ void UTopKillersWidget::NativePreConstruct() {
         team_colours[ETestTeam::Yellow] = FLinearColor::Yellow;
 
         top_killers.reset();
-        top_killers.add({.id = 14}, ETestEntityType::CapitalShipFighter, ETestTeam::Green, 18);
+        top_killers.add({.id = 14}, ETestEntityType::Fighter, ETestTeam::Green, 18);
         top_killers.add({.id = 7}, ETestEntityType::Turret, ETestTeam::Red, 13);
         top_killers.add({.id = 2}, ETestEntityType::CapitalShip, ETestTeam::Blue, 9);
     }

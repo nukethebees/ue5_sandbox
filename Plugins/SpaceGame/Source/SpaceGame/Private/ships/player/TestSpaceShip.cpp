@@ -43,8 +43,8 @@ ATestSpaceShip::ATestSpaceShip()
     configure_ship_mesh();
 }
 
-auto ATestSpaceShip::make_spawn_data() const -> ml::test_space_ship::FPlayerSpawnData {
-    ml::test_space_ship::FPlayerSpawnData result;
+auto ATestSpaceShip::make_spawn_data() const -> ::ioj::sim::player::PlayerSpawnData {
+    ::ioj::sim::player::PlayerSpawnData result;
     result.team = ml::to_native(team);
     result.transform = ml::to_native(GetActorTransform());
     result.body_transform =
@@ -69,7 +69,7 @@ auto ATestSpaceShip::make_spawn_data() const -> ml::test_space_ship::FPlayerSpaw
     return result;
 }
 
-void ATestSpaceShip::bind_simulation(ml::test_space_ship::Simulation& new_simulation) {
+void ATestSpaceShip::bind_simulation(::ioj::sim::player::Sim& new_simulation) {
     bound_simulation = &new_simulation;
 #if WITH_EDITOR
     bound_simulation->speed_sampling_enabled = true;
@@ -80,12 +80,12 @@ void ATestSpaceShip::unbind_simulation() {
     bound_simulation = nullptr;
 }
 
-auto ATestSpaceShip::simulation() -> ml::test_space_ship::Simulation& {
+auto ATestSpaceShip::simulation() -> ::ioj::sim::player::Sim& {
     checkf(bound_simulation, TEXT("Player input requires a bound level simulation"));
     return *bound_simulation;
 }
 
-auto ATestSpaceShip::simulation() const -> ml::test_space_ship::Simulation const& {
+auto ATestSpaceShip::simulation() const -> ::ioj::sim::player::Sim const& {
     return const_cast<ATestSpaceShip*>(this)->simulation();
 }
 
@@ -104,12 +104,13 @@ void ATestSpaceShip::configure_ship_mesh() {
 /* **************************************** */
 // Entity identity and configuration
 /* **************************************** */
-auto ATestSpaceShip::get_entity_handle() const noexcept -> FRegistryEntityHandle {
-    return bound_simulation ? bound_simulation->registry_handle : FRegistryEntityHandle{};
+auto ATestSpaceShip::get_entity_handle() const noexcept -> ::ioj::sim::RegistryEntityHandle {
+    return bound_simulation ? bound_simulation->registry_handle
+                            : ::ioj::sim::RegistryEntityHandle{};
 }
 
-auto ATestSpaceShip::get_unique_id() const -> TestEntityUniqueId {
-    return bound_simulation ? bound_simulation->unique_entity_id : TestEntityUniqueId{};
+auto ATestSpaceShip::get_unique_id() const -> ::ioj::sim::EntityUniqueId {
+    return bound_simulation ? bound_simulation->unique_entity_id : ::ioj::sim::EntityUniqueId{};
 }
 
 auto ATestSpaceShip::get_team() const noexcept -> ETestTeam {
@@ -272,7 +273,7 @@ auto ATestSpaceShip::get_energy() const -> float {
     return simulation().get_energy();
 }
 
-auto ATestSpaceShip::get_lock_on_target() const -> FRegistryEntityHandle {
+auto ATestSpaceShip::get_lock_on_target() const -> ::ioj::sim::RegistryEntityHandle {
     return simulation().lock_on_target;
 }
 

@@ -4,7 +4,7 @@
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/support/FixedTickLoop.h>
 
-#include <sandbox/simulation/simulation/LevelSimulation.h>
+#include <ioj/sim/level_sim.h>
 #include <SpaceGame/missions/LevelMissionDefinition.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -41,7 +41,7 @@ UCLASS()
 class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     GENERATED_BODY()
   public:
-    using tick_type = ml::simulation::SimTick;
+    using tick_type = ::ioj::sim::SimTick;
     using time_type = double;
 
     /* **************************************** */
@@ -78,9 +78,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto frequency_to_tick_period(time_type const frequency) const noexcept -> tick_type;
     auto duration_to_tick_period(time_type const duration) const noexcept -> tick_type;
 
-    auto get_state() const noexcept -> EOrchestratorState {
+    auto get_state() const noexcept -> ::ioj::sim::OrchestratorState {
         return level_simulation_.IsSet() ? level_simulation_->get_state()
-                                         : EOrchestratorState::Uninitialised;
+                                         : ::ioj::sim::OrchestratorState::Uninitialised;
     }
     auto get_completed_ticks() const noexcept -> tick_type {
         return level_simulation_.IsSet() ? level_simulation_->get_clock().get_completed_ticks() : 0;
@@ -108,79 +108,76 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     // Player and combat simulations
     /* **************************************** */
     auto get_player_ship() const -> ATestSpaceShip const*;
-    auto get_player_ship_simulation() noexcept -> ml::test_space_ship::Simulation*;
-    auto get_player_ship_simulation() const noexcept -> ml::test_space_ship::Simulation const*;
+    auto get_player_ship_simulation() noexcept -> ::ioj::sim::player::Sim*;
+    auto get_player_ship_simulation() const noexcept -> ::ioj::sim::player::Sim const*;
     void set_player_ship(ATestSpaceShip& new_player_ship);
     void clear_player_ship();
-    auto get_lasers() noexcept -> ml::test_lasers::Simulation* {
+    auto get_lasers() noexcept -> ::ioj::sim::lasers::Sim* {
         return level_simulation_.IsSet() ? &level_simulation_->get_lasers() : nullptr;
     }
-    auto get_lasers() const noexcept -> ml::test_lasers::Simulation const* {
+    auto get_lasers() const noexcept -> ::ioj::sim::lasers::Sim const* {
         return level_simulation_.IsSet() ? &level_simulation_->get_lasers() : nullptr;
     }
-    auto get_capital_ships() noexcept -> ml::test_capital_ships::Simulation* {
+    auto get_capital_ships() noexcept -> ::ioj::sim::capital_ships::Sim* {
         return level_simulation_.IsSet() ? &level_simulation_->get_capital_ships() : nullptr;
     }
-    auto get_capital_ships() const noexcept -> ml::test_capital_ships::Simulation const* {
+    auto get_capital_ships() const noexcept -> ::ioj::sim::capital_ships::Sim const* {
         return level_simulation_.IsSet() ? &level_simulation_->get_capital_ships() : nullptr;
     }
-    auto get_capital_ship_fighters() noexcept -> ml::test_capital_ship_fighters::Simulation* {
-        return level_simulation_.IsSet() ? &level_simulation_->get_capital_ship_fighters()
-                                         : nullptr;
+    auto get_fighters() noexcept -> ::ioj::sim::fighters::Sim* {
+        return level_simulation_.IsSet() ? &level_simulation_->get_fighters() : nullptr;
     }
-    auto get_capital_ship_fighters() const noexcept
-        -> ml::test_capital_ship_fighters::Simulation const* {
-        return level_simulation_.IsSet() ? &level_simulation_->get_capital_ship_fighters()
-                                         : nullptr;
+    auto get_fighters() const noexcept -> ::ioj::sim::fighters::Sim const* {
+        return level_simulation_.IsSet() ? &level_simulation_->get_fighters() : nullptr;
     }
-    auto get_turrets() noexcept -> ml::test_static_turrets::Simulation* {
+    auto get_turrets() noexcept -> ::ioj::sim::turrets::Sim* {
         return level_simulation_.IsSet() ? &level_simulation_->get_turrets() : nullptr;
     }
-    auto get_turrets() const noexcept -> ml::test_static_turrets::Simulation const* {
+    auto get_turrets() const noexcept -> ::ioj::sim::turrets::Sim const* {
         return level_simulation_.IsSet() ? &level_simulation_->get_turrets() : nullptr;
     }
-    auto get_spinners() noexcept -> ml::test_tube_spinners::Simulation* {
+    auto get_spinners() noexcept -> ::ioj::sim::spinners::Sim* {
         return level_simulation_.IsSet() ? &level_simulation_->get_spinners() : nullptr;
     }
-    auto get_spinners() const noexcept -> ml::test_tube_spinners::Simulation const* {
+    auto get_spinners() const noexcept -> ::ioj::sim::spinners::Sim const* {
         return level_simulation_.IsSet() ? &level_simulation_->get_spinners() : nullptr;
     }
 
     /* **************************************** */
     // Simulation services
     /* **************************************** */
-    auto get_entity_registry() noexcept -> FTestEntityRegistry& {
+    auto get_entity_registry() noexcept -> ::ioj::sim::EntityRegistry& {
         check(level_simulation_.IsSet());
         return level_simulation_->get_entity_registry();
     }
-    auto get_entity_registry() const noexcept -> FTestEntityRegistry const& {
+    auto get_entity_registry() const noexcept -> ::ioj::sim::EntityRegistry const& {
         check(level_simulation_.IsSet());
         return level_simulation_->get_entity_registry();
     }
-    auto get_level_telemetry_manager() noexcept -> FLevelTelemetryManager& {
+    auto get_level_telemetry_manager() noexcept -> ::ioj::sim::LevelTelemetryManager& {
         check(level_simulation_.IsSet());
         return level_simulation_->get_level_telemetry_manager();
     }
-    auto get_level_telemetry_manager() const noexcept -> FLevelTelemetryManager const& {
+    auto get_level_telemetry_manager() const noexcept -> ::ioj::sim::LevelTelemetryManager const& {
         check(level_simulation_.IsSet());
         return level_simulation_->get_level_telemetry_manager();
     }
-    auto get_entity_type(FRegistryEntityHandle const handle) const -> ETestEntityType {
+    auto get_entity_type(::ioj::sim::RegistryEntityHandle const handle) const -> ETestEntityType {
         return ml::to_unreal(get_entity_registry().get_entity_type(handle));
     }
-    auto get_spatial_query_manager() noexcept -> ml::FSpatialQueryManager& {
+    auto get_spatial_query_manager() noexcept -> ::ioj::sim::SpatialQueryManager& {
         check(level_simulation_.IsSet());
         return level_simulation_->get_spatial_query_manager();
     }
-    auto get_spatial_query_manager() const noexcept -> ml::FSpatialQueryManager const& {
+    auto get_spatial_query_manager() const noexcept -> ::ioj::sim::SpatialQueryManager const& {
         check(level_simulation_.IsSet());
         return level_simulation_->get_spatial_query_manager();
     }
-    auto get_mission_manager() noexcept -> FTestMissionManager& {
+    auto get_mission_manager() noexcept -> ::ioj::sim::MissionManager& {
         check(level_simulation_.IsSet());
         return level_simulation_->get_mission_manager();
     }
-    auto get_mission_manager() const noexcept -> FTestMissionManager const& {
+    auto get_mission_manager() const noexcept -> ::ioj::sim::MissionManager const& {
         check(level_simulation_.IsSet());
         return level_simulation_->get_mission_manager();
     }
@@ -206,10 +203,10 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     FOnOrchestratorReset on_reset;
     FOnTestMissionCompleted on_mission_completed;
     auto get_mission_definition() -> FLevelMissionDefinition& { return mission_definition; }
-    auto get_level_simulation() -> FLevelSimulation* {
+    auto get_level_simulation() -> ::ioj::sim::LevelSim* {
         return level_simulation_.IsSet() ? &level_simulation_.GetValue() : nullptr;
     }
-    auto get_level_simulation() const -> FLevelSimulation const* {
+    auto get_level_simulation() const -> ::ioj::sim::LevelSim const* {
         return level_simulation_.IsSet() ? &level_simulation_.GetValue() : nullptr;
     }
     auto get_level_presentation() const -> FLevelPresentation const* {
@@ -296,7 +293,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     FFixedTickLoop hud_tick_loop{};
 
     FHUDManager hud_manager;
-    TOptional<FLevelSimulation> level_simulation_;
+    TOptional<::ioj::sim::LevelSim> level_simulation_;
     TOptional<FLevelPresentation> level_presentation_;
     TArray<FTransform> initial_turret_transforms_;
     TArray<FLevelExternalTimingSample> external_timings_;

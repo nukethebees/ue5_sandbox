@@ -1,8 +1,8 @@
-#include "sandbox/simulation/step_response.h"
+#include "ioj/sim/step_response.h"
 
 #include <cmath>
 
-namespace ml::simulation {
+namespace ioj::sim {
 void DampedStepResponse::configure(float const settling_time, float const damping_ratio) noexcept {
     auto const natural_frequency{5.0f / settling_time};
     auto const root{std::sqrt(1.0f - damping_ratio * damping_ratio)};

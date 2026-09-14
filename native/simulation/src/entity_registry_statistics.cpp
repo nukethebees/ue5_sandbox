@@ -1,10 +1,10 @@
-#include "sandbox/simulation/entity_registry_statistics.h"
+#include "ioj/sim/entity_registry_statistics.h"
 
 #include <cassert>
 #include <numeric>
 #include <utility>
 
-namespace ml::simulation {
+namespace ioj::sim {
 namespace {
 constexpr auto is_valid(Team const team) noexcept -> bool {
     return std::to_underlying(team) < telemetry::team_count;
@@ -162,4 +162,4 @@ void EntityRegistryStatistics::adjust_alive_count(Team const team,
     assert(count >= 0);
     assert(alive_count_ >= 0);
 }
-} // namespace ml::simulation
+} // namespace ioj::sim

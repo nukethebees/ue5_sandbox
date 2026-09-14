@@ -1,14 +1,14 @@
-#include "sandbox/simulation/fighter_navigation_schedule.h"
+#include "ioj/sim/fighter_navigation_schedule.h"
 
-#include "sandbox/simulation/fighter_navigation.h"
-#include "sandbox/simulation/fighter_navigation_scratch.h"
+#include "ioj/sim/fighter_navigation.h"
+#include "ioj/sim/fighter_navigation_scratch.h"
 
 #include <cassert>
 #include <cstddef>
 
-namespace ml::simulation::fighters {
-void collect_navigation_updates(std::span<FIndexSpan const> const task_spans,
-                                PeriodicTickCountdownView<std::int16_t> const countdowns,
+namespace ioj::sim::fighters {
+void collect_navigation_updates(std::span<IndexSpan const> const task_spans,
+                                ml::PeriodicTickCountdownView<std::int16_t> const countdowns,
                                 NavigationScratch& scratch) {
     auto const count{static_cast<std::int32_t>(countdowns.num())};
     scratch.ready_fighter_indices.reserve(count);

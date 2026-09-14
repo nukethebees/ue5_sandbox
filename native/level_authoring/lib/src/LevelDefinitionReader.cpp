@@ -364,7 +364,7 @@ class DefinitionDecoder final {
             return;
         }
 
-        LevelCameraDefinition camera;
+        ::ioj::sim::levels::LevelCameraDefinition camera;
         auto const target_count{list_length(targets) - 1};
         camera.target_entity_ids.reserve(static_cast<std::size_t>(target_count));
         bool valid{true};
@@ -401,17 +401,17 @@ class DefinitionDecoder final {
 
     auto read_mission_mode(s7::Value const value,
                            std::string const& path,
-                           ELevelMissionMode& output) -> bool {
+                           ::ioj::sim::levels::LevelMissionMode& output) -> bool {
         std::string mode;
         if (!read_symbol(value, path, mode)) {
             return false;
         }
         if (mode == "survive-time") {
-            output = ELevelMissionMode::SurviveTime;
+            output = ::ioj::sim::levels::LevelMissionMode::SurviveTime;
         } else if (mode == "kill-enemies") {
-            output = ELevelMissionMode::KillEnemies;
+            output = ::ioj::sim::levels::LevelMissionMode::KillEnemies;
         } else if (mode == "kill-enemies-within-time") {
-            output = ELevelMissionMode::KillEnemiesWithinTime;
+            output = ::ioj::sim::levels::LevelMissionMode::KillEnemiesWithinTime;
         } else {
             add_error(path, "Unknown mission mode '" + mode + "'");
             return false;
@@ -438,7 +438,7 @@ class DefinitionDecoder final {
     }
 
     void read_mission(s7::Value const clause, std::string const& path) {
-        LevelMissionDefinition mission;
+        ::ioj::sim::levels::LevelMissionDefinition mission;
         bool has_mode{};
         bool has_time_limit{};
         bool has_kill_count{};
@@ -530,7 +530,7 @@ class DefinitionDecoder final {
                 continue;
             }
 
-            LevelMissionObjectiveEvent event;
+            ::ioj::sim::levels::LevelMissionObjectiveEvent event;
             auto const time{list_value(value, 1)};
             if (!expect_tagged_list(time, "at", event_path + ".at") ||
                 !expect_length(time, 2, event_path + ".at") ||
@@ -616,7 +616,7 @@ class DefinitionDecoder final {
                 continue;
             }
 
-            EntitySpawnDefinition entity;
+            ::ioj::sim::levels::EntitySpawnDefinition entity;
             double position[3]{};
             double rotation[3]{};
             auto valid{read_symbol(list_value(value, 1), entity_path + ".id", entity.id)};
@@ -654,7 +654,7 @@ class DefinitionDecoder final {
 
     s7::Scheme& scheme_;
     s7::Value root_{};
-    LevelDefinition definition_{};
+    ::ioj::sim::levels::LevelDefinition definition_{};
     std::vector<LevelDefinitionDecodeError> errors_{};
 };
 } // namespace

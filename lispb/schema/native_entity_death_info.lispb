@@ -1,6 +1,7 @@
 (soa-module native_entity_death_info
-  :header "native/simulation/include/sandbox/simulation/entity_death_info.h"
+  :header "native/simulation/include/ioj/sim/entity_death_info.h"
   :backend standard-library
+  :namespace ioj::sim
   (struct EntityDeathInfo
     :operations (all)
     (member reasons array @native_death_reason)

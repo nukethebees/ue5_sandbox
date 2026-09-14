@@ -1,12 +1,12 @@
-#include "sandbox/simulation/entity_registry_bookkeeping.h"
+#include "ioj/sim/entity_registry_bookkeeping.h"
 
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
 
-namespace ml::simulation {
+namespace ioj::sim {
 auto analyse_handle(std::span<std::int32_t const> const generations,
-                    FRegistryEntityHandle const handle) noexcept -> RegistryHandleState {
+                    RegistryEntityHandle const handle) noexcept -> RegistryHandleState {
     if (handle.is_null()) {
         return RegistryHandleState::Null;
     }
@@ -74,32 +74,31 @@ void EntityRegistryBookkeeping::append_slots(size_type const count) {
 }
 
 void EntityRegistryBookkeeping::queue_update_handles(
-    std::span<FRegistryEntityHandle const> const handles) {
+    std::span<RegistryEntityHandle const> const handles) {
     queued_update_handles.insert(queued_update_handles.end(), handles.begin(), handles.end());
 }
 
-void EntityRegistryBookkeeping::record_dead(FRegistryEntityHandle const handle) {
+void EntityRegistryBookkeeping::record_dead(RegistryEntityHandle const handle) {
     dead_entities.push_back(handle);
 }
 
-void EntityRegistryBookkeeping::record_moved(FRegistryEntityHandle const handle) {
+void EntityRegistryBookkeeping::record_moved(RegistryEntityHandle const handle) {
     if (std::ranges::find(moved_entities, handle) == moved_entities.end()) {
         moved_entities.push_back(handle);
     }
 }
 
-auto EntityRegistryBookkeeping::analyse_handle(FRegistryEntityHandle const handle) const noexcept
+auto EntityRegistryBookkeeping::analyse_handle(RegistryEntityHandle const handle) const noexcept
     -> RegistryHandleState {
-    return ml::simulation::analyse_handle(generations, handle);
+    return ioj::sim::analyse_handle(generations, handle);
 }
 
-auto EntityRegistryBookkeeping::is_valid_handle(FRegistryEntityHandle const handle) const noexcept
+auto EntityRegistryBookkeeping::is_valid_handle(RegistryEntityHandle const handle) const noexcept
     -> bool {
     return analyse_handle(handle) == RegistryHandleState::Active;
 }
 
-auto EntityRegistryBookkeeping::is_stale(FRegistryEntityHandle const handle) const noexcept
-    -> bool {
+auto EntityRegistryBookkeeping::is_stale(RegistryEntityHandle const handle) const noexcept -> bool {
     return analyse_handle(handle) == RegistryHandleState::Stale;
 }
-} // namespace ml::simulation
+} // namespace ioj::sim

@@ -9,7 +9,7 @@ auto FLevelPresentationResources::is_valid() const -> bool {
            IsValid(spinners) && IsValid(sparks);
 }
 FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resources,
-                                       FLevelReadView const& view,
+                                       ::ioj::sim::LevelReadView const& view,
                                        TArray<FTransform> turret_transforms)
     : config_{resources.config}
     , sparks{*resources.sparks}
@@ -65,7 +65,8 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     lasers.begin_play_presentation();
 }
 
-void FLevelPresentation::update_views(FLevelReadView const& view, bool const consume_changes) {
+void FLevelPresentation::update_views(::ioj::sim::LevelReadView const& view,
+                                      bool const consume_changes) {
     capital_ships.view_ = view.capitals;
     capital_ship_fighters.view_ = view.fighters;
     turrets.view_ = view.turrets;
@@ -81,7 +82,7 @@ void FLevelPresentation::update_views(FLevelReadView const& view, bool const con
         lasers.view_.hit_ordinals = {};
     }
 }
-void FLevelPresentation::tick(float const dt, FLevelReadView const& view) {
+void FLevelPresentation::tick(float const dt, ::ioj::sim::LevelReadView const& view) {
     update_views(view, last_frame_sequence_ != view.frame_sequence);
     last_frame_sequence_ = view.frame_sequence;
     last_completed_tick_ = view.clock->get_completed_ticks();

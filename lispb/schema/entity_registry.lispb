@@ -21,9 +21,9 @@
     (member instigators array @registry_handle)))
 
 (soa-module test_entity_registry_data_soa
-  :header "native/simulation/include/sandbox/simulation/registry_entity_data.h"
+  :header "native/simulation/include/ioj/sim/registry_entity_data.h"
   :backend standard-library
-  :namespace ml::simulation
+  :namespace ioj::sim
   (struct Vectors3f
     :layout-only true
     (member xs array float)

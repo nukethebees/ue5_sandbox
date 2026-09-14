@@ -7,11 +7,11 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
-#include <sandbox/simulation/combat/lasers/TestLasersSimulation.h>
-#include <sandbox/simulation/defences/spinners/TestTubeSpinnersSimulation.h>
-#include <sandbox/simulation/defences/turrets/TestStaticTurretsSimulation.h>
-#include <sandbox/simulation/ships/capital/TestCapitalShipsSimulation.h>
-#include <sandbox/simulation/ships/fighters/TestCapitalShipFightersSimulation.h>
+#include <ioj/sim/capital_ships/sim.h>
+#include <ioj/sim/fighters/sim.h>
+#include <ioj/sim/lasers/sim.h>
+#include <ioj/sim/spinners/sim.h>
+#include <ioj/sim/turrets/sim.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -99,7 +99,7 @@ void FTestBatchOrchestratorResetScenario::sample(ATestBatchOrchestrator& orchest
         .actor_count = count_actors(*test_driver->get_world()),
         .registry_alive = test_driver->get_registry().count_alive(),
         .capital_count = orchestrator.get_capital_ships()->get_num_instances(),
-        .fighter_count = orchestrator.get_capital_ship_fighters()->get_num_instances(),
+        .fighter_count = orchestrator.get_fighters()->get_num_instances(),
         .laser_count = orchestrator.get_lasers()->get_num_instances(),
     };
 

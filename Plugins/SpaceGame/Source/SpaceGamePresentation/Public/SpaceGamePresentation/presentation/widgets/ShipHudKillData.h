@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sandbox/simulation/entities/TestEntityUniqueId.h>
+#include <ioj/sim/entity_types.h>
 #include <SandboxCoreEngine/enums.h>
 #include <SpaceGameSimulation/entities/TestEntityType.h>
 #include <SpaceGameSimulation/entities/TestTeam.h>
@@ -22,7 +22,7 @@ struct FTopKillerEntries : public ml::FSoAArrayMixin {
                teams == other.teams && kills == other.kills;
     }
 
-    void add(TestEntityUniqueId const entity_id,
+    void add(::ioj::sim::EntityUniqueId const entity_id,
              ETestEntityType const entity_type,
              ETestTeam const team,
              int32 const kill_count) {
@@ -38,7 +38,7 @@ struct FTopKillerEntries : public ml::FSoAArrayMixin {
             self.entity_ids, self.entity_types, self.teams, self.kills);
     }
 
-    TArray<TestEntityUniqueId, TInlineAllocator<minimum_size>> entity_ids;
+    TArray<::ioj::sim::EntityUniqueId, TInlineAllocator<minimum_size>> entity_ids;
     TArray<ETestEntityType, TInlineAllocator<minimum_size>> entity_types;
     TArray<ETestTeam, TInlineAllocator<minimum_size>> teams;
     TArray<int32, TInlineAllocator<minimum_size>> kills;

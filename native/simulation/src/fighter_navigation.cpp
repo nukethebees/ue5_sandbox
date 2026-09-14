@@ -1,9 +1,9 @@
-#include "sandbox/simulation/fighter_navigation.h"
+#include "ioj/sim/fighter_navigation.h"
 
+#include "ioj/sim/deterministic_bias.h"
+#include "ioj/sim/entity_registry_bookkeeping.h"
 #include "sandbox/core/trigonometry.h"
 #include "sandbox/core/vector_normalization.h"
-#include "sandbox/simulation/deterministic_bias.h"
-#include "sandbox/simulation/entity_registry_bookkeeping.h"
 
 #include <algorithm>
 #include <bit>
@@ -11,7 +11,7 @@
 #include <cmath>
 #include <limits>
 
-namespace ml::simulation::fighters {
+namespace ioj::sim::fighters {
 using ml::native_math::safe_normal;
 using ml::native_math::sin_cos;
 namespace {
@@ -39,7 +39,7 @@ auto clamp_to_unit_size(Vector3f const vector) noexcept -> Vector3f {
     return vector;
 }
 
-constexpr auto hash_entity_handle(FRegistryEntityHandle const handle) noexcept -> std::uint32_t {
+constexpr auto hash_entity_handle(RegistryEntityHandle const handle) noexcept -> std::uint32_t {
     auto const value{std::bit_cast<std::uint64_t>(handle)};
     return static_cast<std::uint32_t>(value) + static_cast<std::uint32_t>(value >> 32) * 23u;
 }
@@ -54,8 +54,8 @@ constexpr auto combine_hashes(std::uint32_t const first, std::uint32_t const sec
 auto make_avoidance_frame(Vector3f const preferred_direction, float const float_bias) noexcept
     -> AvoidanceFrame {
     auto const reference_axis{std::abs(preferred_direction.Z) < 0.9f
-                                  ? make_vector3f(0.0f, 0.0f, 1.0f)
-                                  : make_vector3f(0.0f, 1.0f, 0.0f)};
+                                  ? ml::make_vector3f(0.0f, 0.0f, 1.0f)
+                                  : ml::make_vector3f(0.0f, 1.0f, 0.0f)};
     auto const first_lateral{safe_normal(HMM_Cross(reference_axis, preferred_direction))};
     auto const second_lateral{safe_normal(HMM_Cross(preferred_direction, first_lateral))};
     auto const roll_angle{float_bias * two_pi};
@@ -143,12 +143,12 @@ void make_avoidance_choice_order(
     }
 }
 
-auto make_coincident_separation_direction(FRegistryEntityHandle const self,
-                                          FRegistryEntityHandle const other) noexcept -> Vector3f {
+auto make_coincident_separation_direction(RegistryEntityHandle const self,
+                                          RegistryEntityHandle const other) noexcept -> Vector3f {
     auto const first{self < other ? self : other};
     auto const second{self < other ? other : self};
     auto const pair_hash{combine_hashes(hash_entity_handle(first), hash_entity_handle(second))};
-    auto const biases{ml::make_deterministic_biases(
+    auto const biases{ioj::sim::make_deterministic_biases(
         static_cast<std::int32_t>(pair_hash), static_cast<std::int32_t>(pair_hash ^ 0x9e3779b9u))};
     auto const z{biases.floating * 2.0f - 1.0f};
     auto const radial{std::sqrt(std::max(0.0f, 1.0f - z * z))};
@@ -156,7 +156,7 @@ auto make_coincident_separation_direction(FRegistryEntityHandle const self,
     float angle_sin;
     float angle_cos;
     sin_cos(angle, angle_sin, angle_cos);
-    auto const direction{make_vector3f(radial * angle_cos, radial * angle_sin, z)};
+    auto const direction{ml::make_vector3f(radial * angle_cos, radial * angle_sin, z)};
     return self == first ? direction : -direction;
 }
 
@@ -210,10 +210,10 @@ auto make_separation_steering_direction(Vector3f const goal_direction,
 auto observe_separation(Vectors3fConstView const registry_locations,
                         [[maybe_unused]] std::span<std::int32_t const> const registry_generations,
                         Vector3f const fighter_location,
-                        FRegistryEntityHandle const fighter_handle,
+                        RegistryEntityHandle const fighter_handle,
                         Vector3f const goal_direction,
                         Vector3f const previous_memory,
-                        std::span<FRegistryEntityHandle const> const neighbours,
+                        std::span<RegistryEntityHandle const> const neighbours,
                         SeparationObservationParameters const parameters) noexcept
     -> SeparationObservation {
     assert(neighbours.size() <= static_cast<std::size_t>(separation_neighbour_limit));
@@ -222,7 +222,7 @@ auto observe_separation(Vectors3fConstView const registry_locations,
 
     std::array<Vector3f, separation_neighbour_limit> directions_to_neighbours;
     std::array<float, separation_neighbour_limit> neighbour_weights;
-    auto separation_observation{make_vector3f(0.0f, 0.0f, 0.0f)};
+    auto separation_observation{ml::make_vector3f(0.0f, 0.0f, 0.0f)};
     auto closest_distance_squared{std::numeric_limits<float>::max()};
     auto const neighbour_count{static_cast<std::int32_t>(neighbours.size())};
     for (std::int32_t neighbour_index{}; neighbour_index < neighbour_count; ++neighbour_index) {
@@ -334,4 +334,4 @@ auto choose_navigation_alternative(Vector3f const fighter_location,
     }
     return chosen_choice;
 }
-} // namespace ml::simulation::fighters
+} // namespace ioj::sim::fighters

@@ -1,14 +1,14 @@
-#include "sandbox/simulation/fighter_navigation_scans.h"
+#include "ioj/sim/fighter_navigation_scans.h"
 
+#include "ioj/sim/fighter_navigation.h"
+#include "ioj/sim/fighter_navigation_scratch.h"
 #include "sandbox/core/vector_math.h"
-#include "sandbox/simulation/fighter_navigation.h"
-#include "sandbox/simulation/fighter_navigation_scratch.h"
 
 #include <array>
 #include <cassert>
 #include <cstddef>
 
-namespace ml::simulation::fighters {
+namespace ioj::sim::fighters {
 namespace navigation_scans_detail {
 auto lookahead_distance(float const speed,
                         float const time,

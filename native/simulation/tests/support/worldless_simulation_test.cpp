@@ -1,10 +1,10 @@
 #include "worldless_simulation_test.h"
 #include <algorithm>
 #include <cmath>
-namespace ml::simulation_tests {
-WorldlessSimulationTest::WorldlessSimulationTest(FLevelSimulationInitData data)
+namespace ioj::sim::tests {
+WorldlessSimulationTest::WorldlessSimulationTest(LevelSimInitData data)
     : simulation_{std::move(data)} {
-    simulation_.on_end_tick = [this](FLevelSimulation& simulation) {
+    simulation_.on_end_tick = [this](LevelSim& simulation) {
         if (on_end_tick) {
             on_end_tick(simulation);
         }
@@ -12,9 +12,9 @@ WorldlessSimulationTest::WorldlessSimulationTest(FLevelSimulationInitData data)
     };
 }
 
-void WorldlessSimulationTest::queue_damage(std::span<FRegistryEntityHandle const> const targets,
+void WorldlessSimulationTest::queue_damage(std::span<RegistryEntityHandle const> const targets,
                                            std::int32_t const damage,
-                                           FRegistryEntityHandle const instigator) {
+                                           RegistryEntityHandle const instigator) {
     auto const count{static_cast<std::int32_t>(targets.size())};
     DirectDamageEvents events;
     events.reserve(count);
@@ -24,8 +24,8 @@ void WorldlessSimulationTest::queue_damage(std::span<FRegistryEntityHandle const
     get_registry().queue_direct_damage_events(events);
 }
 
-void WorldlessSimulationTest::queue_kills(std::span<FRegistryEntityHandle const> const targets,
-                                          FRegistryEntityHandle const instigator) {
+void WorldlessSimulationTest::queue_kills(std::span<RegistryEntityHandle const> const targets,
+                                          RegistryEntityHandle const instigator) {
     DirectDamageEvents events;
     auto const count{static_cast<std::int32_t>(targets.size())};
     events.reserve(count);
@@ -38,12 +38,11 @@ void WorldlessSimulationTest::queue_kills(std::span<FRegistryEntityHandle const>
 
 auto WorldlessSimulationTest::run_until_timeline_finished(time_type const maximum_time) -> bool {
     assert(maximum_time > 0.0);
-    assert(simulation_.get_state() == EOrchestratorState::Paused);
+    assert(simulation_.get_state() == OrchestratorState::Paused);
     simulation_.start();
     auto const tick_period{simulation_.get_clock().get_tick_period()};
-    auto const maximum_ticks{
-        static_cast<ml::simulation::SimTick>(std::ceil(maximum_time / tick_period))};
-    for (ml::simulation::SimTick tick{}; tick < maximum_ticks && !timeline.is_finished(); ++tick) {
+    auto const maximum_ticks{static_cast<ioj::sim::SimTick>(std::ceil(maximum_time / tick_period))};
+    for (ioj::sim::SimTick tick{}; tick < maximum_ticks && !timeline.is_finished(); ++tick) {
         simulation_.advance(tick_period);
     }
     simulation_.pause();
@@ -51,9 +50,9 @@ auto WorldlessSimulationTest::run_until_timeline_finished(time_type const maximu
 }
 }
 
-namespace ml::simulation_tests {
-auto make_simulation_data(SimulationFixture const& fixture) -> FLevelSimulationInitData {
-    FLevelSimulationInitData data;
+namespace ioj::sim::tests {
+auto make_simulation_data(SimulationFixture const& fixture) -> LevelSimInitData {
+    LevelSimInitData data;
     data.clock_settings = fixture.data.clock_settings;
     data.lasers = fixture.data.lasers;
     data.overlap_response = fixture.data.overlap_response;
@@ -68,15 +67,15 @@ auto make_simulation_data(SimulationFixture const& fixture) -> FLevelSimulationI
     data.fighter_fire_point_distance = fixture.data.fighter_fire_point_distance;
     return data;
 }
-auto make_player_spawn(SimulationFixture const& fixture, ml::simulation::Transform3d transform)
-    -> ml::test_space_ship::FPlayerSpawnData {
+auto make_player_spawn(SimulationFixture const& fixture, ioj::sim::Transform3d transform)
+    -> ioj::sim::player::PlayerSpawnData {
     auto player{fixture.player};
     player.transform = transform;
     return player;
 }
-auto add_capital_spawn(FLevelSimulationInitData& data,
-                       ml::simulation::Vector3f location,
-                       ml::simulation::Team team,
+auto add_capital_spawn(LevelSimInitData& data,
+                       ioj::sim::Vector3f location,
+                       ioj::sim::Team team,
                        std::int32_t target_spawn_index,
                        float initial_spawn_delay,
                        float spawn_cooldown,

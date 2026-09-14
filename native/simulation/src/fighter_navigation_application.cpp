@@ -1,19 +1,19 @@
-#include "sandbox/simulation/fighter_navigation_application.h"
+#include "ioj/sim/fighter_navigation_application.h"
 
+#include "ioj/sim/fighter_navigation.h"
+#include "ioj/sim/fighter_navigation_scratch.h"
+#include "ioj/sim/navigation_telemetry.h"
 #include "sandbox/core/vector_math.h"
-#include "sandbox/simulation/fighter_navigation.h"
-#include "sandbox/simulation/fighter_navigation_scratch.h"
-#include "sandbox/simulation/navigation_telemetry.h"
 
 #include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstddef>
 
-namespace ml::simulation::fighters {
+namespace ioj::sim::fighters {
 void apply_separation_steering(Vectors3fView const movement_directions,
                                Vectors3fConstView const separation_steering,
-                               std::span<FIndexSpan const> const active_spans,
+                               std::span<IndexSpan const> const active_spans,
                                float const separation_strength) {
     assert(movement_directions.num() == separation_steering.num());
     for (auto const span : active_spans) {
@@ -30,7 +30,7 @@ void apply_separation_steering(Vectors3fView const movement_directions,
 }
 
 void apply_navigation_choices(NavigationApplicationView const fighters,
-                              std::span<FIndexSpan const> const active_spans,
+                              std::span<IndexSpan const> const active_spans,
                               NavigationApplicationParameters const parameters,
                               NavigationScratch const& scratch,
                               NavigationTelemetrySnapshot& telemetry) {

@@ -1,6 +1,6 @@
-#include "sandbox/simulation/fighter_navigation_scratch.h"
+#include "ioj/sim/fighter_navigation_scratch.h"
 
-namespace ml::simulation::fighters {
+namespace ioj::sim::fighters {
 NavigationScratch::NavigationScratch(std::pmr::memory_resource* const resource)
     : ready_fighter_indices{resource}
     , line_of_sight_starts{resource}

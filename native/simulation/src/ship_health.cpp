@@ -1,19 +1,19 @@
-#include "sandbox/simulation/ship_health.h"
+#include "ioj/sim/ship_health.h"
 
 #include <cstddef>
 
-namespace ml::simulation {
+namespace ioj::sim {
 auto clamp_health_to_max(std::int32_t const health, std::int32_t const max_health) noexcept
     -> std::int32_t {
     return max_health > health ? max_health : health;
 }
 
-auto apply_direct_damage(FRegistryEntityHandle const ship,
+auto apply_direct_damage(RegistryEntityHandle const ship,
                          std::int32_t health,
                          DirectDamageEventsConstView const damage_events) noexcept
     -> ShipDamageResult {
     auto const original_health{health};
-    FRegistryEntityHandle killer{};
+    RegistryEntityHandle killer{};
 
     auto const damage_count{damage_events.num()};
     for (std::int32_t event_index{}; event_index < damage_count; ++event_index) {
@@ -31,4 +31,4 @@ auto apply_direct_damage(FRegistryEntityHandle const ship,
 
     return {health, killer, original_health > 0 && health <= 0};
 }
-} // namespace ml::simulation
+} // namespace ioj::sim

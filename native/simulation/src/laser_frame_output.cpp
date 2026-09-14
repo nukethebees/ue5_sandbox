@@ -1,6 +1,6 @@
-#include "sandbox/simulation/laser_frame_output.h"
+#include "ioj/sim/laser_frame_output.h"
 
-namespace ml::simulation::lasers {
+namespace ioj::sim::lasers {
 void FrameOutput::reset() {
     hits.reset();
     hit_ticks.clear();
@@ -16,4 +16,4 @@ void FrameOutput::append_hits(LaserHitDetailsConstView const new_hits, SimTick c
         hit_ordinals.push_back(index);
     }
 }
-} // namespace ml::simulation::lasers
+} // namespace ioj::sim::lasers

@@ -1,7 +1,7 @@
 (soa-module native_world_aabbs
-  :header "native/simulation/include/sandbox/simulation/world_aabbs.h"
+  :header "native/simulation/include/ioj/sim/world_aabbs.h"
   :backend standard-library
-  :namespace ml::simulation::collision
+  :namespace ioj::sim::collision
   (struct WorldAABBsColumns
     :operations (all)
     (member min_xs array float)

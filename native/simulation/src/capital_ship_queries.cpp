@@ -1,11 +1,11 @@
-#include "sandbox/simulation/capital_ship_queries.h"
+#include "ioj/sim/capital_ship_queries.h"
 
 #include <algorithm>
 #include <cstddef>
 
-namespace ml::simulation {
-auto find_capital_ship_index(std::span<FRegistryEntityHandle const> const handles,
-                             FRegistryEntityHandle const handle) noexcept
+namespace ioj::sim {
+auto find_capital_ship_index(std::span<RegistryEntityHandle const> const handles,
+                             RegistryEntityHandle const handle) noexcept
     -> std::optional<std::int32_t> {
     auto const found{std::ranges::find(handles, handle)};
     if (found == handles.end()) {
@@ -26,7 +26,7 @@ auto find_first_capital_ship_on_team(std::span<std::byte const> const teams,
     return static_cast<std::int32_t>(found - teams.begin());
 }
 
-auto collect_capitals_without_targets(std::span<FRegistryEntityHandle const> const target_handles,
+auto collect_capitals_without_targets(std::span<RegistryEntityHandle const> const target_handles,
                                       ml::FrameArray<std::int32_t>& output_indices)
     -> std::int32_t {
     auto const capital_count{static_cast<std::int32_t>(target_handles.size())};
@@ -39,4 +39,4 @@ auto collect_capitals_without_targets(std::span<FRegistryEntityHandle const> con
     }
     return output_indices.num();
 }
-} // namespace ml::simulation
+} // namespace ioj::sim

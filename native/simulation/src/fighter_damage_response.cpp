@@ -1,13 +1,13 @@
-#include "sandbox/simulation/fighter_damage_response.h"
+#include "ioj/sim/fighter_damage_response.h"
 
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
 
-namespace ml::simulation::fighters {
-void retarget_from_damage(std::span<FRegistryEntityHandle const> const fighter_handles,
+namespace ioj::sim::fighters {
+void retarget_from_damage(std::span<RegistryEntityHandle const> const fighter_handles,
                           std::span<std::byte const> const fighter_teams,
-                          std::span<FRegistryEntityHandle> const target_handles,
+                          std::span<RegistryEntityHandle> const target_handles,
                           DirectDamageEventsConstView const damage_events,
                           EntityRegistryQueryView const registry) noexcept {
     assert(fighter_teams.size() == fighter_handles.size());
@@ -34,4 +34,4 @@ void retarget_from_damage(std::span<FRegistryEntityHandle const> const fighter_h
         }
     }
 }
-} // namespace ml::simulation::fighters
+} // namespace ioj::sim::fighters

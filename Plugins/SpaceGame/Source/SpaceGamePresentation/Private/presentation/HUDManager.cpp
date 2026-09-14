@@ -7,9 +7,9 @@
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
-#include "sandbox/simulation/missions/TestMissionManager.h"
-#include "sandbox/simulation/ships/player/TestSpaceShipSimulation.h"
-#include "sandbox/simulation/simulation/SpatialQueryManager.h"
+#include "ioj/sim/mission_manager.h"
+#include "ioj/sim/player/sim.h"
+#include "ioj/sim/spatial_query_manager.h"
 #include "SpaceGamePresentation/entities/TestTeamVisualData.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipHudWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/SimulationHudWidget.h"
@@ -39,11 +39,11 @@ TRACE_DECLARE_INT_COUNTER(SandboxRadarVisibleCount, TEXT("Sandbox/Radar/VisibleC
 TRACE_DECLARE_INT_COUNTER(SandboxRadarUploadBytes, TEXT("Sandbox/Radar/UploadBytes"));
 
 void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
-                             FTestMissionManager const& new_mission_manager,
-                             FTestEntityRegistry const& new_entity_registry,
-                             ml::FSpatialQueryManager const& new_spatial_query_manager,
+                             ::ioj::sim::MissionManager const& new_mission_manager,
+                             ::ioj::sim::EntityRegistry const& new_entity_registry,
+                             ::ioj::sim::SpatialQueryManager const& new_spatial_query_manager,
                              double const update_tick_rate,
-                             ml::test_space_ship::Simulation const* const new_player_ship,
+                             ::ioj::sim::player::Sim const* const new_player_ship,
                              FLevelVisualConfig const& level_config,
                              FEntityOverlaySettings const& entity_overlay_settings,
                              FRadarSettings const& radar_settings,
@@ -98,10 +98,10 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     radar_style_.objective_size_multiplier = radar_settings_.objective_size_multiplier;
     radar_style_.objective_ring_padding_pixels = radar_settings_.objective_ring_padding_pixels;
     radar_style_.objective_ring_thickness_pixels = radar_settings_.objective_ring_thickness_pixels;
-    auto const fighter_radius{spatial_query_manager->get_entity_type_radius(
-        ml::simulation::EntityType::CapitalShipFighter)};
+    auto const fighter_radius{
+        spatial_query_manager->get_entity_type_radius(::ioj::sim::EntityType::Fighter)};
     auto const capital_radius{
-        spatial_query_manager->get_entity_type_radius(ml::simulation::EntityType::CapitalShip)};
+        spatial_query_manager->get_entity_type_radius(::ioj::sim::EntityType::CapitalShip)};
     entity_overlay_style_ = {
         .bar_size_pixels = FVector2f{entity_overlay_settings.bar_size_pixels},
         .screen_offset_pixels = FVector2f{entity_overlay_settings.screen_offset_pixels},
@@ -412,7 +412,7 @@ void FHUDManager::update_entity_overlay_objective_roles() {
         return;
     }
 
-    auto const assign_role = [this](std::span<FRegistryEntityHandle const> const handles,
+    auto const assign_role = [this](std::span<::ioj::sim::RegistryEntityHandle const> const handles,
                                     EEntityOverlayObjectiveRole const role) {
         for (auto const handle : handles) {
             if (!entity_registry->is_valid_alive(handle)) {
@@ -676,7 +676,7 @@ void FHUDManager::clear_world_soft_targets() {
     }
 }
 
-void FHUDManager::add_world_soft_target(FRegistryEntityHandle const handle,
+void FHUDManager::add_world_soft_target(::ioj::sim::RegistryEntityHandle const handle,
                                         float const range_alpha,
                                         float const indicator_radius_pixels,
                                         float const world_units_per_pixel,
@@ -871,7 +871,8 @@ void FHUDManager::collect_kill_data() {
         top_killer_ids_buffer.Add({.id = entity_index});
     }
     Algo::Sort(top_killer_ids_buffer,
-               [&unique_entities](TestEntityUniqueId const lhs, TestEntityUniqueId const rhs) {
+               [&unique_entities](::ioj::sim::EntityUniqueId const lhs,
+                                  ::ioj::sim::EntityUniqueId const rhs) {
                    auto const lhs_kills{unique_entities.kills[lhs.id]};
                    auto const rhs_kills{unique_entities.kills[rhs.id]};
                    return lhs_kills != rhs_kills ? lhs_kills > rhs_kills : lhs.id < rhs.id;
@@ -925,8 +926,8 @@ bool FHUDManager::collect_player_status_data() {
         next_data.fire_rate = ml::to_unreal(player_ship->laser_fire_rate);
 
         auto const firing_mode{player_ship->laser_firing_mode};
-        if (firing_mode == ml::simulation::LaserFiringState::lock_on_searching ||
-            firing_mode == ml::simulation::LaserFiringState::lock_on_acquired) {
+        if (firing_mode == ::ioj::sim::LaserFiringState::lock_on_searching ||
+            firing_mode == ::ioj::sim::LaserFiringState::lock_on_acquired) {
             next_data.crosshair_targeting = true;
         }
     }

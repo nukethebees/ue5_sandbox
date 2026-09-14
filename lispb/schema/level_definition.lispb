@@ -15,10 +15,10 @@
     (member spawn_times_seconds array double)))
 
 (soa-module level_runtime_events
-  :header "native/simulation/include/sandbox/simulation/levels/LevelRuntimeEvents.h"
+  :header "native/simulation/include/ioj/sim/levels/level_runtime_events.h"
   :backend standard-library
-  :namespace ml
-  :prelude ("namespace ml { using simulation::Vectors3f; using simulation::Vectors3fView; using simulation::Vectors3fConstView; using simulation::Rotators3f; using simulation::Rotators3fView; using simulation::Rotators3fConstView; }")
+  :namespace ioj::sim
+  :prelude ("namespace ioj::sim { using ioj::sim::Vectors3f; using ioj::sim::Vectors3fView; using ioj::sim::Vectors3fConstView; using ioj::sim::Rotators3f; using ioj::sim::Rotators3fView; using ioj::sim::Rotators3fConstView; }")
   (struct Vectors3f
     :layout-only true
     (member xs array float)
@@ -29,12 +29,12 @@
     (member pitches array float)
     (member yaws array float)
     (member rolls array float))
-  (struct FLevelSpawnGroups
+  (struct LevelSpawnGroups
     :operations (all)
     (member types array @native_entity_type)
     (member offsets array int32)
     (member counts array @native_level_event_count))
-  (struct FLevelCapitalSpawnEvents
+  (struct LevelCapitalSpawnEvents
     :operations (all)
     (member entity_indices array int32)
     (member target_entity_indices array int32)
@@ -44,7 +44,7 @@
     (member healths array int32)
     (member initial_fighter_spawn_delays array float)
     (member fighter_spawn_cooldowns array float))
-  (struct FLevelTurretSpawnEvents
+  (struct LevelTurretSpawnEvents
     :operations (all)
     (member entity_indices array int32)
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
@@ -52,7 +52,7 @@
     (member teams array @native_team)
     (member healths array int32)
     (member laser_damages array int32))
-  (struct FLevelMissionEventGroups
+  (struct LevelMissionEventGroups
     :operations (all)
     (member types array @native_level_mission_event_type)
     (member offsets array int32)

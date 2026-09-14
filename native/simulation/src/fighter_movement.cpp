@@ -1,11 +1,11 @@
-#include "sandbox/simulation/fighter_movement.h"
+#include "ioj/sim/fighter_movement.h"
 
 #include "sandbox/core/vector_math.h"
 
 #include <cassert>
 #include <cstddef>
 
-namespace ml::simulation::fighters {
+namespace ioj::sim::fighters {
 void prepare_movement(Vectors3fView const directions,
                       std::span<float> const distances,
                       Vectors3fConstView const locations,
@@ -59,4 +59,4 @@ void move(MovementView const fighters, float const delta_time) noexcept {
                                                  1.0f,
                                                  count);
 }
-} // namespace ml::simulation::fighters
+} // namespace ioj::sim::fighters
