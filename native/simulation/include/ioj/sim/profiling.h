@@ -8,12 +8,20 @@
 
 namespace ioj::sim::profiling {
 namespace stub_backend {
+inline constexpr bool available{false};
+inline auto is_connected() -> bool {
+    return false;
+}
 inline void plot(char const*, std::int64_t) {}
 inline void mark_frame(char const*) {}
 }
 
 #if defined(SANDBOX_WITH_TRACY)
 namespace tracy_backend {
+inline constexpr bool available{true};
+inline auto is_connected() -> bool {
+    return TracyIsConnected;
+}
 inline void plot(char const* const name, std::int64_t const value) {
     TracyPlot(name, value);
 }

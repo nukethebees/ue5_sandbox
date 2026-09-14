@@ -12,6 +12,15 @@
   ],
   "configurePresets": [
     {
+      "name": "tracy-tools",
+      "displayName": "Vendored Tracy command-line tools",
+      "inherits": "win-x64-clangcl-release",
+      "cacheVariables": {
+        "SANDBOX_TRACY_TOOLS": true,
+        "UE_CONFIGURATION": "Shipping"
+      }
+    },
+    {
       "name": "kernel-benchmark",
       "displayName": "Native kernel benchmark",
       "inherits": "win-x64-clangcl-release-unity",
@@ -64,6 +73,14 @@
     }
   ],
   "buildPresets": [
+    {
+      "name": "tracy-tools",
+      "configurePreset": "tracy-tools",
+      "targets": [
+        "tracy-capture",
+        "tracy-csvexport"
+      ]
+    },
     {
       "name": "kernel-benchmark",
       "configurePreset": "kernel-benchmark",
@@ -200,6 +217,19 @@
     }
   ],
   "workflowPresets": [
+    {
+      "name": "tracy-tools",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "tracy-tools"
+        },
+        {
+          "type": "build",
+          "name": "tracy-tools"
+        }
+      ]
+    },
     {
       "name": "kernel-benchmark",
       "steps": [

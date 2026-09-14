@@ -36,14 +36,18 @@ TEST(SimulationBenchmarkCommandLine, ParsesRequiredOptions) {
                        "1.5",
                        "--game-speed",
                        "100",
+                       "--wait-for-profiler",
+                       "5",
                        "--detailed-timing"};
 
-    auto const result{parse_command_line(8, argv)};
+    auto const result{parse_command_line(10, argv)};
 
     ASSERT_TRUE(result.options.has_value()) << result.standard_error;
     EXPECT_EQ(result.options->level_path, level.path());
     EXPECT_DOUBLE_EQ(result.options->simulated_seconds, 1.5);
     EXPECT_EQ(result.options->game_speed, 100u);
+    ASSERT_TRUE(result.options->profiler_connection_timeout_seconds.has_value());
+    EXPECT_DOUBLE_EQ(*result.options->profiler_connection_timeout_seconds, 5.0);
     EXPECT_TRUE(result.options->telemetry_enabled);
     EXPECT_TRUE(result.options->detailed_timing);
 }
@@ -75,6 +79,22 @@ TEST(SimulationBenchmarkCommandLine, RejectsNonPositiveGameSpeed) {
                        "--seconds",
                        "1",
                        "--game-speed",
+                       "0"};
+    auto const result{parse_command_line(7, argv)};
+
+    EXPECT_FALSE(result.options.has_value());
+    EXPECT_NE(result.exit_code, 0);
+}
+
+TEST(SimulationBenchmarkCommandLine, RejectsNonPositiveProfilerWait) {
+    TemporaryFile level;
+    auto const path{level.path().string()};
+    char const* argv[]{"native-simulation-benchmark",
+                       "--level",
+                       path.c_str(),
+                       "--seconds",
+                       "1",
+                       "--wait-for-profiler",
                        "0"};
     auto const result{parse_command_line(7, argv)};
 

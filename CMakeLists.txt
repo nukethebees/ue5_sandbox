@@ -48,6 +48,7 @@ endif()
 add_subdirectory(native)
 add_subdirectory(tools/jobserver)
 add_subdirectory(Scripts)
+add_subdirectory(tools)
 add_subdirectory(lispb/materials)
 add_subdirectory(Plugins/SpaceGame)
 

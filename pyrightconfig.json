@@ -1,6 +1,7 @@
 {
   "include": [
     "Scripts",
+    "tools",
     "Source/SandboxEditor/codegen"
   ],
   "pythonVersion": "3.14",

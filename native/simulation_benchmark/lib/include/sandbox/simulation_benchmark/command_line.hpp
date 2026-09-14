@@ -10,6 +10,7 @@ struct BenchmarkOptions {
     std::filesystem::path level_path{};
     double simulated_seconds{};
     std::uint32_t game_speed{1};
+    std::optional<double> profiler_connection_timeout_seconds{};
     bool telemetry_enabled{};
     bool detailed_timing{};
 };

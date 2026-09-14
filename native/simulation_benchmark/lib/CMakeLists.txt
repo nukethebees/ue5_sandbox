@@ -16,6 +16,10 @@ target_compile_definitions(native-simulation-benchmark-lib PRIVATE
   SANDBOX_BENCHMARK_BUILD_TYPE="${CMAKE_BUILD_TYPE}"
 )
 if(SANDBOX_WITH_TRACY)
-  target_compile_definitions(native-simulation-benchmark-lib PRIVATE SANDBOX_BENCHMARK_WITH_TRACY)
+  target_compile_definitions(native-simulation-benchmark-lib PRIVATE
+    SANDBOX_BENCHMARK_WITH_TRACY
+    SANDBOX_WITH_TRACY
+  )
+  target_link_libraries(native-simulation-benchmark-lib PRIVATE Tracy::TracyClient)
 endif()
 configure_sandbox_s7_abi(native-simulation-benchmark-lib)

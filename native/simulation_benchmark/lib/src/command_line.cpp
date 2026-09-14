@@ -17,6 +17,10 @@ auto parse_command_line(int const argc, char const* const* argv) -> CommandLineR
         ->check(CLI::PositiveNumber);
     app.add_option("--game-speed", options.game_speed, "Deterministic ticks per advance call")
         ->check(CLI::PositiveNumber);
+    app.add_option("--wait-for-profiler",
+                   options.profiler_connection_timeout_seconds,
+                   "Wait for a profiler connection before timing, up to this many seconds")
+        ->check(CLI::PositiveNumber);
     app.add_flag("--telemetry", options.telemetry_enabled, "Capture level telemetry");
     app.add_flag("--detailed-timing", options.detailed_timing, "Capture detailed telemetry timing");
 
@@ -33,6 +37,10 @@ auto parse_command_line(int const argc, char const* const* argv) -> CommandLineR
 
     if (!std::isfinite(options.simulated_seconds)) {
         return {.standard_error = "--seconds must be finite\n", .exit_code = 2};
+    }
+    if (options.profiler_connection_timeout_seconds.has_value() &&
+        !std::isfinite(*options.profiler_connection_timeout_seconds)) {
+        return {.standard_error = "--wait-for-profiler must be finite\n", .exit_code = 2};
     }
     if (options.detailed_timing) {
         options.telemetry_enabled = true;

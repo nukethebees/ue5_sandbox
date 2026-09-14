@@ -1,0 +1,5 @@
+#pragma once
+
+namespace tracy {
+inline constexpr char const* GitRef{"@tracy_git_ref@"};
+}

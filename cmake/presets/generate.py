@@ -468,6 +468,15 @@ def make_native_benchmark_document() -> dict[str, Any]:
     document["include"] = ["native.json"]
     document["configurePresets"] = [
         {
+            "name": "tracy-tools",
+            "displayName": "Vendored Tracy command-line tools",
+            "inherits": "win-x64-clangcl-release",
+            "cacheVariables": {
+                "SANDBOX_TRACY_TOOLS": True,
+                "UE_CONFIGURATION": "Shipping",
+            },
+        },
+        {
             "name": "kernel-benchmark",
             "displayName": "Native kernel benchmark",
             "inherits": BENCHMARK_CONFIGURATION,
@@ -516,6 +525,11 @@ def make_native_benchmark_document() -> dict[str, Any]:
         },
     ]
     document["buildPresets"] = [
+        {
+            "name": "tracy-tools",
+            "configurePreset": "tracy-tools",
+            "targets": ["tracy-capture", "tracy-csvexport"],
+        },
         {
             "name": "kernel-benchmark",
             "configurePreset": "kernel-benchmark",
@@ -627,6 +641,13 @@ def make_native_benchmark_document() -> dict[str, Any]:
         },
     ]
     document["workflowPresets"] = [
+        {
+            "name": "tracy-tools",
+            "steps": [
+                {"type": "configure", "name": "tracy-tools"},
+                {"type": "build", "name": "tracy-tools"},
+            ],
+        },
         _workflow("kernel-benchmark", "kernel-benchmark", "kernel-benchmark-tests"),
         _workflow(
             "kernel-benchmark-plots",

@@ -1,6 +1,7 @@
 #include <sandbox/simulation_benchmark/benchmark_runner.hpp>
 
 #include <ioj/sim/levels/level_compilation.h>
+#include <ioj/sim/profiling.h>
 #include <ioj/sim/reference_level_simulation_data.h>
 #include <ioj/sim/rotator3d.h>
 #include <ioj/sim/sim_clock.h>
@@ -192,6 +193,22 @@ auto run_benchmark(BenchmarkOptions const& options) -> std::expected<BenchmarkRe
     auto const initial_capital_ships{simulation.get_capital_ships().get_num_instances()};
     auto const initial_turrets{simulation.get_turrets().get_num_instances()};
     simulation.start();
+
+    if (options.profiler_connection_timeout_seconds.has_value()) {
+        if (!ioj::sim::profiling::available) {
+            return std::unexpected{"profiler support is not enabled in this benchmark build"};
+        }
+
+        auto const timeout{
+            std::chrono::duration<double>{*options.profiler_connection_timeout_seconds}};
+        auto const deadline{std::chrono::steady_clock::now() + timeout};
+        while (!ioj::sim::profiling::is_connected()) {
+            if (std::chrono::steady_clock::now() >= deadline) {
+                return std::unexpected{"timed out waiting for a profiler connection"};
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds{10});
+        }
+    }
 
     auto const tick_period{simulation.get_clock().get_tick_period()};
     std::uint64_t advance_calls{};
