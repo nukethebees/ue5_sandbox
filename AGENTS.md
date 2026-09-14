@@ -19,7 +19,7 @@ Unreal Engine 5.8 project.
 * A Windows-only CMake 4.3+/Ninja layer at the repository root invokes UnrealBuildTool through `RunUBT.bat`. `.Target.cs`, `.Build.cs`, and UBT remain authoritative.
 * Use the CMake layer for builds; do not invoke UBT, `RunUBT.bat`, or `Build.bat` directly.
 * CMake serializes Unreal builds that share an engine checkout. Do not overlap a CMake Unreal build with Visual Studio, Live Coding, or another Unreal build launched outside CMake because those paths do not participate in the CMake lock.
-* CMake also coordinates expensive work and benchmarks across worktrees through a per-user machine activity gate under `%TEMP%/SandboxUnrealBuild/activity/v1`. Requests are FIFO: standard build/test work may overlap unless an older benchmark is waiting or running, while benchmarks wait for every older request and run exclusively. Use `get-machine-activity-state` or the `machine-activity-status` target to inspect it.
+* A canonical per-user jobserver coordinates expensive work across worktrees. Ordinary work shares the machine resource; benchmarks wait for older work to drain and then run exclusively. Use `get-jobserver-state` or the `jobserver-status` target to inspect running and queued jobs.
 * Preferred build: `cmake --workflow --preset debug-game`.
 * Targets: `editor`, `game`, `core-tests`, `native-tests`, `dev-core`, `resave-assets`, `generate-project-files`, `cook`, `cook-incremental`, `stage`, `archive`, `run-staged`, and `verify-package`. Cook targets are available from the Development configure preset; stage/archive/run/verify use the current game configuration.
 * Iterative staged game: `cmake --workflow --preset development-staged-game`.
@@ -41,7 +41,7 @@ Unreal Engine 5.8 project.
   * all suites: `cmake --workflow --preset debug-game-tests`
   * unit suites: `cmake --workflow --preset debug-game-unit-tests`
   * level tests after building: `ctest --preset debug-game-level-tests`
-* Before starting a timed benchmark, complete all build and setup work, then run it without asking the user for confirmation. Use the repository benchmark targets and scripts so the benchmark acquires a machine activity ticket, waits for older work, and runs exclusively. If a benchmark entry point does not acquire a benchmark ticket, fix or wrap it before collecting timings. Dry runs and correctness tests do not require benchmark access.
+* Before starting a timed benchmark, complete all build and setup work, then run it without asking the user for confirmation. Use the repository benchmark targets and scripts so the benchmark acquires exclusive machine access from the jobserver, waits for older work, and runs without build interference. If a benchmark entry point does not request benchmark resources, fix or wrap it before collecting timings. Dry runs and correctness tests do not require benchmark access.
 * Run only the benchmark subset needed to answer the current question. Do not run a comprehensive benchmark matrix by default; reserve it for explicitly requested broad validation or when every dimension is materially affected.
 * For repeated Unreal level benchmark samples, run the iterations within one editor process rather than launching the editor once per sample. For revision comparisons, group each revision's samples into as few editor launches as practical.
 

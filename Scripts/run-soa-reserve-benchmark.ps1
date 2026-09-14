@@ -6,16 +6,21 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
-if ($env:SANDBOX_MACHINE_ACTIVITY_MODE -ne 'benchmark') {
-    $module = Join-Path $repo 'cmake/machine_activity.cmake'
-    $runner = Join-Path $repo 'cmake/run_with_machine_activity.cmake'
+if (-not $env:NUKETHEBEES_JOBSERVER_JOB) {
+    $jobserver = Join-Path $env:LOCALAPPDATA 'NukeTheBees/jobserver/bin/jobserver.exe'
     $powershell = (Get-Process -Id $PID).Path
     $activityArguments = @(
-        "-DMACHINE_ACTIVITY_MODULE=$module"
-        '-DMACHINE_ACTIVITY_MODE=benchmark'
-        '-DMACHINE_ACTIVITY_OPERATION=single-allocation SoA reserve benchmark'
-        '-P'
-        $runner
+        'run'
+        '--name'
+        'single-allocation SoA reserve benchmark'
+        '--kind'
+        'benchmark'
+        '--worktree'
+        $repo
+        '--exclusive'
+        'machine'
+        '--exclusive'
+        'benchmark'
         '--'
         $powershell
         '-NoProfile'
@@ -27,7 +32,7 @@ if ($env:SANDBOX_MACHINE_ACTIVITY_MODE -ne 'benchmark') {
     if ($OutputDirectory) {
         $activityArguments += @('-OutputDirectory', $OutputDirectory)
     }
-    & cmake @activityArguments
+    & $jobserver @activityArguments
     exit $LASTEXITCODE
 }
 

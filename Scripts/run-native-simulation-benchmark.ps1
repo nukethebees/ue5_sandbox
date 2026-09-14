@@ -31,17 +31,22 @@ if (-not $SkipBuild) {
     }
 }
 
-if ($env:SANDBOX_MACHINE_ACTIVITY_MODE -ne 'benchmark') {
-    $module = Join-Path $repo 'cmake/machine_activity.cmake'
-    $runner = Join-Path $repo 'cmake/run_with_machine_activity.cmake'
+if (-not $env:NUKETHEBEES_JOBSERVER_JOB) {
+    $jobserver = Join-Path $env:LOCALAPPDATA 'NukeTheBees/jobserver/bin/jobserver.exe'
     $powershell = (Get-Process -Id $PID).Path
     $secondsText = $Seconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
     $activityArguments = @(
-        "-DMACHINE_ACTIVITY_MODULE=$module"
-        '-DMACHINE_ACTIVITY_MODE=benchmark'
-        '-DMACHINE_ACTIVITY_OPERATION=native simulation benchmark'
-        '-P'
-        $runner
+        'run'
+        '--name'
+        'native simulation benchmark'
+        '--kind'
+        'benchmark'
+        '--worktree'
+        $repo
+        '--exclusive'
+        'machine'
+        '--exclusive'
+        'benchmark'
         '--'
         $powershell
         '-NoProfile'
@@ -59,7 +64,7 @@ if ($env:SANDBOX_MACHINE_ACTIVITY_MODE -ne 'benchmark') {
     )
     if ($Telemetry) { $activityArguments += '-Telemetry' }
     if ($DetailedTiming) { $activityArguments += '-DetailedTiming' }
-    & cmake @activityArguments
+    & $jobserver @activityArguments
     exit $LASTEXITCODE
 }
 

@@ -66,25 +66,27 @@ checked-out branches and their worktree directories.
 CMake 4.4.2 or newer and Ninja on `PATH` provide a small command-line wrapper around UnrealBuildTool (UBT). It does not
 compile Unreal modules itself; `.Target.cs`, `.Build.cs`, and UBT remain authoritative.
 
-CMake invokes the source engine's `RunUBT.bat` and serializes Unreal builds that share the same engine checkout. Manual
-Visual Studio builds, Live Coding, and other Unreal builds launched outside CMake do not participate in that lock. Do
-not run one of those external builds at the same time as a CMake Unreal build.
+CMake invokes the source engine's `RunUBT.bat` and asks the per-user jobserver to serialize Unreal
+builds that share the same engine checkout. Manual Visual Studio builds, Live Coding, and other
+Unreal builds launched outside CMake do not participate in that resource claim. Do not run one of
+those external builds at the same time as a CMake Unreal build.
 
 CMake-coordinated compiles, links, Unreal commandlets, and editor tests also participate in a
-per-user machine activity gate shared by every worktree. Requests are ordered FIFO. Standard work
-may overlap unless an older benchmark is waiting or running. A benchmark waits for every older
-request and then runs exclusively, while later work waits behind it. Inspect the gate with
-`get-machine-activity-state` after loading `dev.ps1`, or build the `machine-activity-status` target.
-The transparent ticket files live under `%TEMP%\SandboxUnrealBuild\activity\v1`.
+canonical per-user jobserver shared by every worktree. Requests are ordered fairly by conflicting
+resource claims. Standard work may overlap unless an older benchmark is waiting or running. A
+benchmark waits for older machine work to drain and then runs exclusively, while later conflicting
+work waits behind it. Use `get-jobserver-state` after loading `dev.ps1`, or build the
+`jobserver-status` target.
 
 ### Native dependencies
 
-Native dependencies are pinned Git submodules under `native/third_party`: GoogleTest 1.18.0,
-cpu_features 0.11.0, and Google Benchmark 1.9.5. Initialize them after cloning or creating a
-worktree:
+Native dependencies are pinned Git submodules under `native/third_party`, including GoogleTest,
+cpu_features, Google Benchmark, CLI11, and nlohmann/json. Initialize them after cloning or creating
+a worktree:
 
 ```powershell
-git submodule update --init native/third_party/googletest native/third_party/cpu_features native/third_party/benchmark
+git submodule update --init native/third_party/googletest native/third_party/cpu_features `
+  native/third_party/benchmark native/third_party/cli11 native/third_party/nlohmann_json
 ```
 
 CMake builds these dependencies from source. No package manager installation or environment

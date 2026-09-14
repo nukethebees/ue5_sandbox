@@ -32,16 +32,17 @@ if (-not $SkipBuild) {
     }
 }
 
-if ($env:SANDBOX_MACHINE_ACTIVITY_MODE -ne 'benchmark') {
-    $module = Join-Path $repo 'cmake/machine_activity.cmake'
-    $runner = Join-Path $repo 'cmake/run_with_machine_activity.cmake'
+if (-not $env:NUKETHEBEES_JOBSERVER_JOB) {
+    $jobserver = Join-Path $env:LOCALAPPDATA 'NukeTheBees/jobserver/bin/jobserver.exe'
     $powershell = (Get-Process -Id $PID).Path
     $secondsText = $Seconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
-    & cmake `
-        "-DMACHINE_ACTIVITY_MODULE=$module" `
-        '-DMACHINE_ACTIVITY_MODE=benchmark' `
-        '-DMACHINE_ACTIVITY_OPERATION=level telemetry integration benchmark' `
-        -P $runner -- $powershell -NoProfile -File $PSCommandPath `
+    & $jobserver run `
+        --name 'level telemetry integration benchmark' `
+        --kind benchmark `
+        --worktree $repo `
+        --exclusive machine `
+        --exclusive benchmark `
+        -- $powershell -NoProfile -File $PSCommandPath `
         -Pairs $Pairs -Seconds $secondsText -GameSpeed $GameSpeed -SkipBuild
     exit $LASTEXITCODE
 }

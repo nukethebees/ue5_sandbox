@@ -29,19 +29,19 @@ CAPACITIES = (65536, 65600, 75008, 100032, 131072)
 def run_with_benchmark_access() -> int | None:
     if (
         "--smoke" in sys.argv
-        or os.environ.get("SANDBOX_MACHINE_ACTIVITY_MODE") == "benchmark"
+        or os.environ.get("NUKETHEBEES_JOBSERVER_JOB")
     ):
         return None
 
-    module = ROOT / "cmake" / "machine_activity.cmake"
-    runner = ROOT / "cmake" / "run_with_machine_activity.cmake"
+    jobserver = Path(os.environ["LOCALAPPDATA"]) / "NukeTheBees" / "jobserver" / "bin" / "jobserver.exe"
     command = [
-        "cmake",
-        f"-DMACHINE_ACTIVITY_MODULE={module}",
-        "-DMACHINE_ACTIVITY_MODE=benchmark",
-        "-DMACHINE_ACTIVITY_OPERATION=single-allocation SoA spacing benchmark",
-        "-P",
-        str(runner),
+        str(jobserver),
+        "run",
+        "--name", "single-allocation SoA spacing benchmark",
+        "--kind", "benchmark",
+        "--worktree", str(ROOT),
+        "--exclusive", "machine",
+        "--exclusive", "benchmark",
         "--",
         sys.executable,
         str(Path(__file__).resolve()),

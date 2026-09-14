@@ -123,14 +123,19 @@ function Invoke-Benchmark {
         throw "Native simulation benchmark executable was not built: $executable"
     }
     $level = Join-Path $SourceDirectory 'LevelScripts/Benchmarks/Batch_benchmark.scm'
-    $activityModule = Join-Path $repo 'cmake/machine_activity.cmake'
-    $activityRunner = Join-Path $repo 'cmake/run_with_machine_activity.cmake'
+    $jobserver = Join-Path $env:LOCALAPPDATA 'NukeTheBees/jobserver/bin/jobserver.exe'
     $activityArguments = @(
-        "-DMACHINE_ACTIVITY_MODULE=$activityModule"
-        '-DMACHINE_ACTIVITY_MODE=benchmark'
-        "-DMACHINE_ACTIVITY_OPERATION=$benchmarkName revision comparison"
-        '-P'
-        $activityRunner
+        'run'
+        '--name'
+        "$benchmarkName revision comparison"
+        '--kind'
+        'benchmark'
+        '--worktree'
+        $SourceDirectory
+        '--exclusive'
+        'machine'
+        '--exclusive'
+        'benchmark'
         '--'
     )
     $benchmarkCommand = @(
@@ -139,7 +144,7 @@ function Invoke-Benchmark {
         '--seconds', '20',
         '--game-speed', '100'
     )
-    $output = @(Invoke-Checked -Executable 'cmake' `
+    $output = @(Invoke-Checked -Executable $jobserver `
         -Arguments @($activityArguments + $benchmarkCommand) `
         -WorkingDirectory $SourceDirectory)
     $jsonLines = @($output | Where-Object { $_.TrimStart().StartsWith('{') })
