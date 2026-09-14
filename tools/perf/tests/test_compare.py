@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import csv
+import io
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 
 PERF_ROOT = Path(__file__).resolve().parents[1]
@@ -11,12 +13,14 @@ sys.path.insert(0, str(PERF_ROOT))
 
 from lib.benchmark_comparison import (
     CompareOptions,
+    JsonObject,
     benchmark_arguments,
     compare_results,
     normalize_source_file,
     parse_options,
     parse_zone_csv,
     percentage_delta,
+    print_summary,
 )
 
 
@@ -163,6 +167,28 @@ class ComparisonTests(unittest.TestCase):
     def test_percentage_delta_handles_zero_baseline(self) -> None:
         self.assertIsNone(percentage_delta(0, 1))
         self.assertEqual(percentage_delta(10, 12), 20.0)
+
+    def test_summary_prints_tracy_comparison_paths(self) -> None:
+        output = Path("results")
+        benchmark_result = {"timing": {"mean_tick_microseconds": 10.0}}
+        comparison: JsonObject = {
+            "status": "complete",
+            "overall": {
+                "a": benchmark_result,
+                "b": benchmark_result,
+                "delta_percent": 0.0,
+            },
+            "zones": [],
+        }
+        standard_output = io.StringIO()
+
+        with redirect_stdout(standard_output):
+            print_summary(comparison, output, top=5)
+
+        summary = standard_output.getvalue()
+        self.assertIn(str(output / "a" / "capture.tracy"), summary)
+        self.assertIn(str(output / "b" / "capture.tracy"), summary)
+        self.assertIn("Compare > Open second trace", summary)
 
 
 if __name__ == "__main__":

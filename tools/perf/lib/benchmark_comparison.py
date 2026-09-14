@@ -613,6 +613,9 @@ def print_summary(comparison: JsonObject, output_dir: Path, top: int) -> None:
                 f"{zone['identity']['name']}"
             )
     print(f"Results: {output_dir}")
+    print(f"Tracy capture A: {output_dir / 'a' / 'capture.tracy'}")
+    print(f"Tracy capture B: {output_dir / 'b' / 'capture.tracy'}")
+    print("Open capture A in tracy-profiler, then use Compare > Open second trace and select capture B.")
 
 
 def run_comparison(options: CompareOptions, manifest: JsonObject) -> int:
