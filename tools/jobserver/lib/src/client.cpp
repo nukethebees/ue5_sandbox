@@ -134,7 +134,7 @@ auto connect_pipe() -> std::expected<void*, Error> {
                                       0,
                                       nullptr,
                                       OPEN_EXISTING,
-                                      0,
+                                      FILE_FLAG_OVERLAPPED,
                                       nullptr)};
         if (handle != INVALID_HANDLE_VALUE) {
             auto hello = Json::object();

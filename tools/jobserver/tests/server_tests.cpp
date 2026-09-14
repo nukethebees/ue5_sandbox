@@ -4,9 +4,12 @@
 
 #include <Windows.h>
 
+#include <tlhelp32.h>
+
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <filesystem>
@@ -64,7 +67,7 @@ auto connect_raw_pipe() -> HANDLE {
                                     0,
                                     nullptr,
                                     OPEN_EXISTING,
-                                    0,
+                                    FILE_FLAG_OVERLAPPED,
                                     nullptr)};
         if (pipe != INVALID_HANDLE_VALUE) {
             return pipe;
@@ -95,6 +98,26 @@ auto wait_for_exit(ChildProcess& process, std::chrono::milliseconds const timeou
     DWORD exit_code{};
     GetExitCodeProcess(process.process, &exit_code);
     return exit_code;
+}
+
+auto process_ids_named(std::wstring const& executable_name) -> std::vector<DWORD> {
+    auto const snapshot{CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)};
+    if (snapshot == INVALID_HANDLE_VALUE) {
+        return {};
+    }
+    std::vector<DWORD> result;
+    PROCESSENTRY32W entry{};
+    entry.dwSize = sizeof(entry);
+    if (Process32FirstW(snapshot, &entry)) {
+        do {
+            if (executable_name == entry.szExeFile) {
+                result.push_back(entry.th32ProcessID);
+            }
+        } while (Process32NextW(snapshot, &entry));
+    }
+    CloseHandle(snapshot);
+    std::ranges::sort(result);
+    return result;
 }
 
 auto test_request(std::string name, jobserver::ClaimMode const mode) -> jobserver::AcquireRequest {
@@ -199,6 +222,7 @@ class JobserverIntegration : public ::testing::Test {
         std::filesystem::create_directories(data_path_);
         ASSERT_EQ(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_PIPE", pipe_name_.c_str()), 0);
         ASSERT_EQ(_putenv_s("NUKETHEBEES_JOBSERVER_TEST_DATA", data_path_.string().c_str()), 0);
+        ASSERT_EQ(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_IO_TIMEOUT_MS", L"250"), 0);
         ASSERT_EQ(_wputenv_s(L"NUKETHEBEES_JOBSERVER_JOB", L""), 0);
     }
 
@@ -206,6 +230,7 @@ class JobserverIntegration : public ::testing::Test {
         std::filesystem::remove_all(data_path_);
         static_cast<void>(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_PIPE", L""));
         static_cast<void>(_putenv_s("NUKETHEBEES_JOBSERVER_TEST_DATA", ""));
+        static_cast<void>(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_IO_TIMEOUT_MS", L""));
     }
 
     void SetUp() override { start_daemon(); }
@@ -286,6 +311,58 @@ TEST_F(JobserverIntegration, ConcurrentDaemonStartsElectOneAuthority) {
     ASSERT_EQ(running_count, 1);
     close_thread();
     EXPECT_TRUE(jobserver::Client::status().has_value());
+}
+
+TEST_F(JobserverIntegration, IncompleteClientCannotPreventDaemonShutdown) {
+    auto const stalled_pipe{connect_raw_pipe()};
+    ASSERT_NE(stalled_pipe, INVALID_HANDLE_VALUE);
+
+    auto const start{std::chrono::steady_clock::now()};
+    auto shutdown{jobserver::Client::shutdown()};
+    ASSERT_TRUE(shutdown.has_value()) << shutdown.error().message;
+    auto const exit_code{wait_for_exit(daemon_, 2s)};
+    EXPECT_TRUE(exit_code.has_value());
+    EXPECT_LT(std::chrono::steady_clock::now() - start, 1s);
+
+    CloseHandle(stalled_pipe);
+    close(daemon_);
+}
+
+TEST_F(JobserverIntegration, UnavailablePersistenceDoesNotStrandGrantedResource) {
+    stop_daemon();
+    auto const blocked_data_path{data_path_ / "blocked-data"};
+    {
+        std::ofstream blocker{blocked_data_path};
+        ASSERT_TRUE(blocker.is_open());
+        blocker << "not a directory";
+    }
+    ASSERT_EQ(_putenv_s("NUKETHEBEES_JOBSERVER_TEST_DATA", blocked_data_path.string().c_str()), 0);
+    start_daemon();
+
+    auto result{jobserver::Client::run(
+        submit_request("unavailable persistence",
+                       {{.name = "persistence-resource", .mode = jobserver::ClaimMode::exclusive}},
+                       {"exit", "0"}),
+        [](std::string const&, std::string const&) {})};
+    EXPECT_TRUE(result.has_value()) << result.error().message;
+    if (result) {
+        EXPECT_EQ(*result, 0);
+    }
+    auto replacement{jobserver::Client::acquire({
+        .metadata = {.name = "replacement after persistence failure",
+                     .kind = "test",
+                     .worktree = {}},
+        .resources = {{.name = "persistence-resource", .mode = jobserver::ClaimMode::exclusive}},
+    })};
+    EXPECT_TRUE(replacement.has_value()) << replacement.error().message;
+    if (replacement) {
+        EXPECT_TRUE(replacement->release().has_value());
+    }
+
+    stop_daemon();
+    ASSERT_EQ(_putenv_s("NUKETHEBEES_JOBSERVER_TEST_DATA", data_path_.string().c_str()), 0);
+    std::filesystem::remove(blocked_data_path);
+    start_daemon();
 }
 
 TEST_F(JobserverIntegration, CrashedLeaseClientReleasesItsResource) {
@@ -410,7 +487,7 @@ TEST_F(JobserverIntegration, IndependentWorktreeProcessesShareOneQueue) {
     std::filesystem::create_directories(first_worktree);
     std::filesystem::create_directories(second_worktree);
     auto first{launch(JOBSERVER_TEST_CLIENT_PATH,
-                      L"lease-hold worktree-one cross-worktree-resource 800",
+                      L"lease-hold worktree-one cross-worktree-resource 2000",
                       first_worktree)};
     ASSERT_NE(first.process, nullptr);
     auto const first_job{find_job("worktree-one")};
@@ -426,8 +503,8 @@ TEST_F(JobserverIntegration, IndependentWorktreeProcessesShareOneQueue) {
     EXPECT_EQ(second_job->value("state", ""), "QUEUED");
     EXPECT_EQ(second_job->value("worktree", ""), jobserver::path_to_utf8(second_worktree));
 
-    auto const first_exit{wait_for_exit(first, 3s)};
-    auto const second_exit{wait_for_exit(second, 3s)};
+    auto const first_exit{wait_for_exit(first, 5s)};
+    auto const second_exit{wait_for_exit(second, 5s)};
     ASSERT_TRUE(first_exit.has_value());
     ASSERT_TRUE(second_exit.has_value());
     EXPECT_EQ(*first_exit, 0U);
@@ -605,6 +682,7 @@ TEST_F(JobserverIntegration, DaemonCrashKillsDescendantProcessTree) {
 }
 
 TEST_F(JobserverIntegration, DaemonCrashDrainsMixedWorkloadAndRestartsCleanly) {
+    auto const helper_processes_before{process_ids_named(L"jobserver-test-helper.exe")};
     auto const first_marker{data_path_ / "mixed-crash-first.txt"};
     auto const second_marker{data_path_ / "mixed-crash-second.txt"};
     auto const queued_marker{data_path_ / "mixed-crash-queued.txt"};
@@ -651,6 +729,7 @@ TEST_F(JobserverIntegration, DaemonCrashDrainsMixedWorkloadAndRestartsCleanly) {
     EXPECT_FALSE(std::filesystem::exists(first_marker));
     EXPECT_FALSE(std::filesystem::exists(second_marker));
     EXPECT_FALSE(std::filesystem::exists(queued_marker));
+    EXPECT_EQ(process_ids_named(L"jobserver-test-helper.exe"), helper_processes_before);
 
     start_daemon();
     auto status{jobserver::Client::status()};
@@ -832,8 +911,8 @@ TEST_F(JobserverIntegration, SlowAndAbandonedOutputClientsDoNotBlockControlPlane
     EXPECT_TRUE(jobserver::Client::status().has_value());
     EXPECT_LT(std::chrono::steady_clock::now() - status_start, 1s);
     ASSERT_TRUE(jobserver::Client::cancel(abandoned_job->value("id", ""), true).has_value());
-    CloseHandle(pipe);
 
+    auto drained{false};
     for (auto attempt{0}; attempt != 100; ++attempt) {
         auto status{jobserver::Client::status()};
         ASSERT_TRUE(status.has_value());
@@ -841,11 +920,20 @@ TEST_F(JobserverIntegration, SlowAndAbandonedOutputClientsDoNotBlockControlPlane
         if (std::ranges::none_of(jobs, [](Json const& job) {
                 return job.value("name", "") == "abandoned output reader";
             })) {
-            return;
+            drained = true;
+            break;
         }
         std::this_thread::sleep_for(20ms);
     }
-    FAIL() << "Abandoned output job did not drain";
+    EXPECT_TRUE(drained) << "Abandoned output job did not drain";
+
+    auto const shutdown_start{std::chrono::steady_clock::now()};
+    auto shutdown{jobserver::Client::shutdown()};
+    EXPECT_TRUE(shutdown.has_value()) << shutdown.error().message;
+    EXPECT_TRUE(wait_for_exit(daemon_, 2s).has_value());
+    EXPECT_LT(std::chrono::steady_clock::now() - shutdown_start, 1500ms);
+    CloseHandle(pipe);
+    close(daemon_);
 }
 
 TEST_F(JobserverIntegration, DisconnectPolicyControlsWhetherChildOutlivesClient) {

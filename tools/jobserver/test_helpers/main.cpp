@@ -88,7 +88,7 @@ auto wmain(int argc, wchar_t** argv) -> int {
     }
     if (mode == L"pause-output") {
         std::cout << "before\n" << std::flush;
-        std::this_thread::sleep_for(std::chrono::milliseconds{200});
+        std::this_thread::sleep_for(std::chrono::milliseconds{500});
         std::cout << "after\n" << std::flush;
         return 0;
     }

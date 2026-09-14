@@ -12,7 +12,9 @@ pipe; there is no TCP listener, remote execution, or distributed scheduling.
 - `jobserverd.exe` owns resource allocation, job state, process supervision, logs, and history.
 - `jobserver.exe` is the command-line client used by CMake, PowerShell, Codex, and developers.
 - `jobserver-client` is the typed C++ client library used by the CLI and available to native tools.
-- Windows Job Objects contain supervised process trees and kill them if the daemon exits.
+- Windows Job Objects contain supervised process trees and kill them if the daemon exits. Job
+  membership is attached atomically during process creation, so a daemon crash cannot strand a
+  child in the gap between creation and later supervision.
 
 The production pipe name includes the current user's SID:
 
@@ -151,12 +153,17 @@ this heuristic.
 - A lease is owned by its pipe connection and is released when that connection disappears.
 - An attached supervised job is terminated when its client disconnects.
 - A detached supervised job continues and remains visible through status and history.
+- Handshake, request, and daemon-to-client writes have bounded deadlines. An incomplete or
+  non-reading client cannot prevent daemon shutdown or upgrade; detached jobs continue logging
+  after their client stops consuming output.
 - Closing or crashing the daemon kills every supervised process tree through
   `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`.
 - A restarted daemon begins with no live ownership. Active resource state is never reconstructed
   from disk.
 - Completed-job history is append-only JSONL, tolerates corrupt lines, and is bounded to the newest
   1,000 entries. History is not authoritative for live ownership.
+- History and logs are best-effort. An unavailable or full data directory does not prevent command
+  execution or retain resource ownership.
 - A protocol-major mismatch is rejected during the handshake. Minor versions may add compatible
   fields.
 

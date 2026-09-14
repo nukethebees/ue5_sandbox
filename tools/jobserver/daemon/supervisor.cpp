@@ -163,12 +163,39 @@ auto Supervisor::run(Command const& command,
             Error{"job_creation_failed", "Could not create the Windows Job Object"});
     }
 
-    STARTUPINFOW startup{};
-    startup.cb = sizeof(STARTUPINFOW);
-    startup.dwFlags = STARTF_USESTDHANDLES;
-    startup.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
-    startup.hStdOutput = stdout_write;
-    startup.hStdError = stderr_write;
+    SIZE_T attributes_size{};
+    InitializeProcThreadAttributeList(nullptr, 1, 0, &attributes_size);
+    std::vector<std::byte> attributes_storage(attributes_size);
+    auto const attributes{reinterpret_cast<PPROC_THREAD_ATTRIBUTE_LIST>(attributes_storage.data())};
+    auto attributes_initialized{
+        InitializeProcThreadAttributeList(attributes, 1, 0, &attributes_size) != FALSE};
+    HANDLE job_list[]{job};
+    if (!attributes_initialized || !UpdateProcThreadAttribute(attributes,
+                                                              0,
+                                                              PROC_THREAD_ATTRIBUTE_JOB_LIST,
+                                                              job_list,
+                                                              sizeof(job_list),
+                                                              nullptr,
+                                                              nullptr)) {
+        if (attributes_initialized) {
+            DeleteProcThreadAttributeList(attributes);
+        }
+        close_if_valid(job);
+        close_if_valid(stdout_read);
+        close_if_valid(stdout_write);
+        close_if_valid(stderr_read);
+        close_if_valid(stderr_write);
+        return std::unexpected(
+            Error{"job_assignment_failed", "Could not prepare atomic Job Object assignment"});
+    }
+
+    STARTUPINFOEXW startup{};
+    startup.StartupInfo.cb = sizeof(STARTUPINFOEXW);
+    startup.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
+    startup.StartupInfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+    startup.StartupInfo.hStdOutput = stdout_write;
+    startup.StartupInfo.hStdError = stderr_write;
+    startup.lpAttributeList = attributes;
     PROCESS_INFORMATION process{};
     auto command_line{make_command_line(command)};
     auto environment{make_environment(command)};
@@ -179,11 +206,13 @@ auto Supervisor::run(Command const& command,
                         nullptr,
                         nullptr,
                         TRUE,
-                        CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT,
+                        CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT |
+                            EXTENDED_STARTUPINFO_PRESENT,
                         environment.data(),
                         working_directory,
-                        &startup,
+                        &startup.StartupInfo,
                         &process)) {
+        DeleteProcThreadAttributeList(attributes);
         close_if_valid(job);
         close_if_valid(stdout_read);
         close_if_valid(stdout_write);
@@ -192,18 +221,7 @@ auto Supervisor::run(Command const& command,
         return std::unexpected(
             Error{"process_creation_failed", "Could not create the supervised process"});
     }
-    if (!AssignProcessToJobObject(job, process.hProcess)) {
-        TerminateProcess(process.hProcess, 1);
-        close_if_valid(process.hThread);
-        close_if_valid(process.hProcess);
-        close_if_valid(job);
-        close_if_valid(stdout_read);
-        close_if_valid(stdout_write);
-        close_if_valid(stderr_read);
-        close_if_valid(stderr_write);
-        return std::unexpected(
-            Error{"job_assignment_failed", "Could not assign the child to its Windows Job Object"});
-    }
+    DeleteProcThreadAttributeList(attributes);
     {
         std::scoped_lock const lock{mutex_};
         job_handle_ = job;

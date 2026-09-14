@@ -24,7 +24,7 @@ class Server {
     void handle_cancel(void* pipe, std::string const& message, bool kill);
     void handle_shutdown(void* pipe);
     void load_history();
-    void record_history(std::string const& id);
+    void record_history(std::string const& id) noexcept;
 
     Scheduler scheduler_;
     std::mutex supervisors_mutex_;
