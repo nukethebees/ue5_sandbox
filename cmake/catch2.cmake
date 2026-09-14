@@ -19,10 +19,8 @@ function(add_low_level_test_suite target_name unreal_target test_name_prefix)
   endif()
 
   if(test_suite_ACTIVITY)
-    sandbox_machine_activity_command(test_command "${test_suite_ACTIVITY}"
+    sandbox_jobserver_command(test_command "${test_suite_ACTIVITY}"
       "Low-level test: ${unreal_target}")
-    list(INSERT test_command 4
-      "-DMACHINE_ACTIVITY_BYPASS_ARGUMENT=--list-tests")
   endif()
 
   discover_tests(

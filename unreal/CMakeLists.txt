@@ -126,24 +126,16 @@ endif()
 cmake_path(ABSOLUTE_PATH UE_ROOT BASE_DIRECTORY "${PROJECT_SOURCE_DIR}" NORMALIZE OUTPUT_VARIABLE UE_ROOT_ABSOLUTE)
 file(REAL_PATH "${UE_ROOT_ABSOLUTE}" UE_ROOT_CANONICAL)
 
-if(NOT DEFINED ENV{TEMP} OR "$ENV{TEMP}" STREQUAL "")
-  message(FATAL_ERROR
-    "The TEMP environment variable is required for the cross-worktree Unreal build lock.")
-endif()
+string(TOLOWER "${UE_ROOT_CANONICAL}" UE_BUILD_RESOURCE_IDENTITY)
+string(SHA256 UE_BUILD_RESOURCE_HASH "${UE_BUILD_RESOURCE_IDENTITY}")
 
-string(TOLOWER "${UE_ROOT_CANONICAL}" UE_BUILD_LOCK_IDENTITY)
-string(SHA256 UE_BUILD_LOCK_HASH "${UE_BUILD_LOCK_IDENTITY}")
-cmake_path(SET UE_BUILD_LOCK_PATH NORMALIZE
-  "$ENV{TEMP}/SandboxUnrealBuild/locks/ue-${UE_BUILD_LOCK_HASH}.lock"
-)
-
-set(UE_LOCKED_COMMAND_PREFIX
-  "${CMAKE_COMMAND}"
-  "-DUNREAL_LOCK_PATH=${UE_BUILD_LOCK_PATH}"
-  "-DUNREAL_ENGINE_ROOT=${UE_ROOT_CANONICAL}"
-  "-DUNREAL_WORKING_DIRECTORY=${PROJECT_SOURCE_DIR}"
-  "-DMACHINE_ACTIVITY_MODULE=${SANDBOX_MACHINE_ACTIVITY_MODULE}"
-  -P "${PROJECT_SOURCE_DIR}/cmake/run_unreal_locked.cmake"
+set(UE_JOBSERVER_COMMAND_PREFIX
+  "${SANDBOX_JOBSERVER_CLI}" run
+  --name "Unreal build: ${UE_ROOT_CANONICAL}"
+  --kind unreal-build
+  --worktree "${PROJECT_SOURCE_DIR}"
+  --shared machine
+  --resource "unreal-build/${UE_BUILD_RESOURCE_HASH}=1"
   --
 )
 
@@ -256,7 +248,7 @@ add_custom_target(generate-project-files
     "${PROJECT_SOURCE_DIR}/PowerShell/Set-LiveCodingDisabled.ps1"
     -settings_path
     "${PROJECT_SOURCE_DIR}/Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"
-  COMMAND ${UE_LOCKED_COMMAND_PREFIX}
+  COMMAND ${UE_JOBSERVER_COMMAND_PREFIX}
     "${CMAKE_COMMAND}" -E env
     "SANDBOX_NATIVE_TOOLCHAIN=${SANDBOX_NATIVE_TOOLCHAIN}"
     "${UE_GENERATE_PROJECT_FILES_SCRIPT}"

@@ -1,5 +1,39 @@
 $env:MSBUILDDISABLENODEREUSE = '1'
 
+function Get-JobserverPath {
+    Join-Path $env:LOCALAPPDATA 'NukeTheBees\jobserver\bin\jobserver.exe'
+}
+
+function Get-UnrealJobserverResource {
+    $engineRoot = [System.IO.Path]::GetFullPath($env:UE_ROOT).ToLowerInvariant()
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($engineRoot)
+    $hash = [System.Security.Cryptography.SHA256]::HashData($bytes)
+    'unreal-build/' + [Convert]::ToHexString($hash).ToLowerInvariant()
+}
+
+function Invoke-JobserverWorkflow {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Name,
+        [Parameter(Mandatory)]
+        [string]$Preset
+    )
+
+    $jobserver = Get-JobserverPath
+    if (-not (Test-Path -LiteralPath $jobserver -PathType Leaf)) {
+        throw "The per-user jobserver is not installed. Run 'csetup' first."
+    }
+
+    $unrealResource = Get-UnrealJobserverResource
+    & $jobserver run `
+        --name $Name `
+        --kind cmake-workflow `
+        --worktree $script:dev_project_root `
+        --shared machine `
+        --resource "$unrealResource=1" `
+        -- cmake --workflow --preset $Preset
+}
+
 function Get-UbtEngineRoot {
     if ([string]::IsNullOrWhiteSpace($env:UE_ROOT)) {
         throw 'UE_ROOT is not set. Set it to the Unreal Engine installation root.'
@@ -192,7 +226,9 @@ function cbuild {
     try {
         foreach ($current_configuration in $configuration) {
             Write-Host "Building the project with CMake workflow '$current_configuration'."
-            & cmake --workflow --preset $current_configuration
+            Invoke-JobserverWorkflow `
+                -Name "CMake workflow: $current_configuration" `
+                -Preset $current_configuration
 
             if ($LASTEXITCODE -ne 0) {
                 throw "CMake workflow '$current_configuration' exited with code $LASTEXITCODE."
@@ -229,10 +265,25 @@ function csetup {
             throw "CMake preset generation exited with code $LASTEXITCODE."
         }
 
+        $jobserver = Get-JobserverPath
+        if (-not (Test-Path -LiteralPath $jobserver -PathType Leaf)) {
+            Write-Host 'Bootstrapping the canonical per-user jobserver.'
+            & cmake --preset win-x64-clangcl-debug
+            if ($LASTEXITCODE -ne 0) {
+                throw "Jobserver bootstrap configuration exited with code $LASTEXITCODE."
+            }
+            & cmake --build --preset win-x64-clangcl-debug --target install-jobserver
+            if ($LASTEXITCODE -ne 0) {
+                throw "Jobserver installation exited with code $LASTEXITCODE."
+            }
+        }
+
         foreach ($current_configuration in $configurations) {
             $workflow = "setup-worktree-$current_configuration"
             Write-Host "Preparing worktree with CMake workflow '$workflow'."
-            & cmake --workflow --preset $workflow
+            Invoke-JobserverWorkflow `
+                -Name "CMake setup workflow: $current_configuration" `
+                -Preset $workflow
 
             if ($LASTEXITCODE -ne 0) {
                 throw "CMake workflow '$workflow' exited with code $LASTEXITCODE."
@@ -262,13 +313,11 @@ function cprojectfiles {
     }
 }
 
-function get-machine-activity-state {
-    $module = Join-Path $script:dev_project_root 'cmake/machine_activity.cmake'
-    $runner = Join-Path $script:dev_project_root 'cmake/run_with_machine_activity.cmake'
-    & cmake "-DMACHINE_ACTIVITY_MODULE=$module" `
-        -DMACHINE_ACTIVITY_ACTION=status -P $runner
+function get-jobserver-state {
+    $jobserver = Get-JobserverPath
+    & $jobserver status
     if ($LASTEXITCODE -ne 0) {
-        throw "Machine activity status exited with code $LASTEXITCODE."
+        throw "Jobserver status exited with code $LASTEXITCODE."
     }
 }
 

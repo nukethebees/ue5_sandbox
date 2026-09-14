@@ -1,6 +1,6 @@
 function(add_unreal_target target_name unreal_target)
   add_custom_target(${target_name}
-    COMMAND ${UE_LOCKED_COMMAND_PREFIX}
+    COMMAND ${UE_JOBSERVER_COMMAND_PREFIX}
       "${CMAKE_COMMAND}" -E env
       "SANDBOX_NATIVE_TOOLCHAIN=${SANDBOX_NATIVE_TOOLCHAIN}"
       "${UE_BUILD_SCRIPT}" ${unreal_target} ${UE_PLATFORM} ${UE_CONFIGURATION}
@@ -54,7 +54,7 @@ function(add_unreal_commandlet_target target_name)
       "add_unreal_commandlet_target(${target_name}) requires COMMENT.")
   endif()
 
-  sandbox_machine_activity_command(activity_command STANDARD
+  sandbox_jobserver_command(activity_command STANDARD
     "Unreal commandlet: ${commandlet_COMMANDLET}")
   add_custom_target(${target_name}
     COMMAND ${activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
@@ -76,7 +76,7 @@ function(add_unreal_commandlet_target target_name)
 endfunction()
 
 function(add_unreal_benchmark_commandlet_target target_name commandlet)
-  sandbox_machine_activity_command(activity_command BENCHMARK
+  sandbox_jobserver_command(activity_command BENCHMARK
     "Unreal benchmark commandlet: ${commandlet}")
   add_custom_target(${target_name}
     COMMAND ${activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
@@ -125,7 +125,7 @@ function(add_unreal_editor_test test_name)
     message(FATAL_ERROR
       "add_unreal_editor_test(${test_name}) ACTIVITY must be STANDARD or BENCHMARK.")
   endif()
-  sandbox_machine_activity_command(activity_command "${editor_test_ACTIVITY}"
+  sandbox_jobserver_command(activity_command "${editor_test_ACTIVITY}"
     "Unreal test: ${test_name}")
 
   add_test(

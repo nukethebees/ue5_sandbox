@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 4.4.2)
 
-include(cmake/machine_activity_integration.cmake)
-sandbox_configure_machine_activity()
+include(cmake/jobserver_integration.cmake)
+sandbox_configure_jobserver()
 
 project(SandboxUnrealBuild LANGUAGES CXX)
-sandbox_add_machine_activity_status_target()
+sandbox_add_jobserver_status_target()
 
 if(CMAKE_UNITY_BUILD)
   set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
@@ -46,6 +46,7 @@ if(SANDBOX_WITH_ASAN)
 endif()
 
 add_subdirectory(native)
+add_subdirectory(tools/jobserver)
 add_subdirectory(Scripts)
 add_subdirectory(lispb/materials)
 add_subdirectory(Plugins/SpaceGame)

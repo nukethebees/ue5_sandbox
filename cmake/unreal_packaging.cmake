@@ -12,7 +12,7 @@ function(add_unreal_build_cook_run_target target_name)
   endif()
 
   add_custom_target(${target_name}
-    COMMAND ${UE_LOCKED_COMMAND_PREFIX}
+    COMMAND ${UE_JOBSERVER_COMMAND_PREFIX}
       "${CMAKE_COMMAND}" -E env
       "SANDBOX_NATIVE_TOOLCHAIN=${SANDBOX_NATIVE_TOOLCHAIN}"
       "UE-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
