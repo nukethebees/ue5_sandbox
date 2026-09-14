@@ -366,6 +366,56 @@ TEST_F(JobserverIntegration, IndependentWorktreeProcessesShareOneQueue) {
     close(second);
 }
 
+TEST_F(JobserverIntegration, NestedCommandInheritsInvokingBuildDirectory) {
+    auto const build_directory{data_path_ / "nested-build-directory"};
+    auto const worktree{data_path_ / "nested-worktree"};
+    auto const marker{std::filesystem::path{"nested-marker.txt"}};
+    std::filesystem::create_directories(build_directory);
+    std::filesystem::create_directories(worktree);
+
+    ASSERT_EQ(_putenv_s("NUKETHEBEES_JOBSERVER_JOB", "test-parent"), 0);
+    auto child{launch(JOBSERVER_CLI_PATH,
+                      L"run --name nested-working-directory --kind test --worktree " +
+                          quote(worktree.wstring()) + L" -- " +
+                          quote(std::filesystem::path{JOBSERVER_TEST_HELPER_PATH}.wstring()) +
+                          L" marker-after " + marker.wstring() + L" 0",
+                      build_directory)};
+    ASSERT_EQ(_putenv_s("NUKETHEBEES_JOBSERVER_JOB", ""), 0);
+    ASSERT_NE(child.process, nullptr);
+    auto const exit_code{wait_for_exit(child, 3s)};
+    ASSERT_TRUE(exit_code.has_value());
+    EXPECT_EQ(*exit_code, 0U);
+    EXPECT_TRUE(std::filesystem::exists(build_directory / marker));
+    EXPECT_FALSE(std::filesystem::exists(worktree / marker));
+    close(child);
+}
+
+TEST_F(JobserverIntegration, CliResolvesExecutableFromSubmittingProcessPath) {
+    auto const helper_directory{std::filesystem::path{JOBSERVER_TEST_HELPER_PATH}.parent_path()};
+    auto const required{GetEnvironmentVariableW(L"PATH", nullptr, 0)};
+    ASSERT_NE(required, 0U);
+    std::wstring original_path(static_cast<std::size_t>(required), L'\0');
+    auto const written{
+        GetEnvironmentVariableW(L"PATH", original_path.data(), static_cast<DWORD>(required))};
+    ASSERT_NE(written, 0U);
+    original_path.resize(written);
+
+    auto const test_path{helper_directory.wstring() + L";" + original_path};
+    ASSERT_TRUE(SetEnvironmentVariableW(L"PATH", test_path.c_str()));
+    auto child{launch(JOBSERVER_CLI_PATH,
+                      L"run --name path-resolution --kind test -- "
+                      L"jobserver-test-helper exit 0",
+                      data_path_)};
+    auto const restore_succeeded{SetEnvironmentVariableW(L"PATH", original_path.c_str()) != FALSE};
+    ASSERT_TRUE(restore_succeeded);
+
+    ASSERT_NE(child.process, nullptr);
+    auto const exit_code{wait_for_exit(child, 3s)};
+    ASSERT_TRUE(exit_code.has_value());
+    EXPECT_EQ(*exit_code, 0U);
+    close(child);
+}
+
 TEST_F(JobserverIntegration, RejectsProtocolMismatchAndMalformedRequestWithoutStopping) {
     auto pipe{connect_raw_pipe()};
     ASSERT_NE(pipe, INVALID_HANDLE_VALUE);

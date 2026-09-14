@@ -1,5 +1,7 @@
 #include "jobserver/client.hpp"
 
+#include <Windows.h>
+
 #include <nlohmann/json.hpp>
 
 #include <chrono>
@@ -45,6 +47,28 @@ auto parse_duration(std::string const& text) -> std::chrono::milliseconds {
         digits.resize(text.size() - 1);
     }
     return std::chrono::milliseconds{std::stoll(digits) * multiplier};
+}
+
+auto resolve_executable(std::filesystem::path const& executable) -> std::filesystem::path {
+    if (executable.has_parent_path()) {
+        return executable;
+    }
+
+    auto const required{SearchPathW(nullptr, executable.c_str(), L".exe", 0, nullptr, nullptr)};
+    if (required == 0) {
+        return executable;
+    }
+    std::vector<wchar_t> buffer(static_cast<std::size_t>(required) + 1);
+    auto const written{SearchPathW(nullptr,
+                                   executable.c_str(),
+                                   L".exe",
+                                   static_cast<DWORD>(buffer.size()),
+                                   buffer.data(),
+                                   nullptr)};
+    if (written == 0 || written >= buffer.size()) {
+        return executable;
+    }
+    return std::filesystem::path{buffer.data()};
 }
 
 auto print_error(jobserver::Error const& error) -> int {
@@ -142,7 +166,6 @@ auto run_command(std::vector<std::string> const& arguments) -> int {
             request.metadata.kind = *value;
         } else if (argument == "--worktree") {
             request.metadata.worktree = *value;
-            request.command.working_directory = *value;
         } else if (argument == "--shared") {
             request.resources.push_back({.name = *value, .mode = jobserver::ClaimMode::shared});
         } else if (argument == "--exclusive") {
@@ -171,7 +194,7 @@ auto run_command(std::vector<std::string> const& arguments) -> int {
         std::cerr << "jobserver: run requires a command after --\n";
         return 2;
     }
-    request.command.executable = arguments[index++];
+    request.command.executable = resolve_executable(arguments[index++]);
     request.command.arguments.assign(arguments.begin() + static_cast<std::ptrdiff_t>(index),
                                      arguments.end());
     auto result{

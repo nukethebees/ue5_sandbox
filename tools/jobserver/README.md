@@ -113,7 +113,8 @@ jobserver run `
   -- cmake --build out/build/debug-game
 ```
 
-`--worktree <path>` records the originating worktree and uses it as the child working directory.
+`--worktree <path>` records the originating worktree. The child inherits the CLI's working
+directory, so compiler launchers and other wrappers preserve their caller's relative paths.
 `--detach` lets a supervised command continue if its submitting client disconnects. Attached jobs
 are cancelled when their client disappears.
 

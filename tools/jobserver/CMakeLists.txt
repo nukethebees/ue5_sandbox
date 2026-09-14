@@ -51,6 +51,10 @@ target_link_libraries(jobserver PRIVATE
   jobserver::client
   nlohmann_json::nlohmann_json
 )
+target_compile_definitions(jobserver PRIVATE
+  WIN32_LEAN_AND_MEAN
+  NOMINMAX
+)
 
 add_executable(jobserverd)
 target_sources(jobserverd PRIVATE
@@ -94,11 +98,13 @@ target_link_libraries(jobserver-tests PRIVATE
   GTest::gtest_main
 )
 target_compile_definitions(jobserver-tests PRIVATE
+  JOBSERVER_CLI_PATH="$<TARGET_FILE:jobserver>"
   JOBSERVER_DAEMON_PATH="$<TARGET_FILE:jobserverd>"
   JOBSERVER_TEST_CLIENT_PATH="$<TARGET_FILE:jobserver-test-client>"
   JOBSERVER_TEST_HELPER_PATH="$<TARGET_FILE:jobserver-test-helper>"
 )
 add_dependencies(jobserver-tests
+  jobserver
   jobserver-test-client
   jobserver-test-helper
   jobserverd
