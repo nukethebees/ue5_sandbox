@@ -25,6 +25,8 @@ $installRoot = Split-Path $binPath
 $backup = Join-Path $installRoot ".system-test-client-$run.exe"
 $previousPath = Join-Path $installRoot 'previous'
 $interruptedBinBackup = Join-Path $installRoot ".system-test-bin-$run"
+$doctorStaging = Join-Path $installRoot ".staging-doctor-$run"
+$startMarker = Join-Path $installRoot ".system-test-start-$run.txt"
 $holderName = "upgrade-holder-$run"
 $processes = @()
 
@@ -164,6 +166,7 @@ try {
         throw 'Could not stop the daemon before the startup race'
     }
     Wait-Daemon $false
+    $env:NUKETHEBEES_JOBSERVER_TEST_START_MARKER = $startMarker
     $starters = @()
     for ($index = 0; $index -ne 8; ++$index) {
         $starters += Start-ProcessWithArguments $clientPath @('start')
@@ -173,7 +176,13 @@ try {
             throw "A racing daemon starter failed with exit code $($starter.ExitCode)"
         }
     }
+    Remove-Item Env:NUKETHEBEES_JOBSERVER_TEST_START_MARKER
     Wait-Daemon $true
+    $startAttempts = @(Get-Content -LiteralPath $startMarker)
+    if ($startAttempts.Count -ne 1) {
+        throw "Expected one serialized Task Scheduler request, found $($startAttempts.Count)"
+    }
+    Remove-Item -LiteralPath $startMarker
     $installedDaemon = Join-Path (Split-Path $clientPath) 'jobserverd.exe'
     $authorities = @(Get-Process jobserverd -ErrorAction SilentlyContinue |
         Where-Object { $_.Path -eq $installedDaemon })
@@ -198,8 +207,33 @@ try {
         throw 'Repair installation did not restore the canonical client'
     }
     Remove-Item -LiteralPath $backup
+
+    $doctorOutput = (& $clientPath doctor) -join "`n"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Doctor failed after installation:`n$doctorOutput"
+    }
+    foreach ($requiredCheck in @('PASS  scheduled task:',
+            'PASS  daemon identity:',
+            'PASS  protocol:',
+            'PASS  authority record:',
+            'PASS  data directory:',
+            'PASS  daemon log:',
+            'PASS  staging directories: none')) {
+        if (-not $doctorOutput.Contains($requiredCheck)) {
+            throw "Doctor omitted '$requiredCheck':`n$doctorOutput"
+        }
+    }
+
+    New-Item -ItemType Directory -Path $doctorStaging | Out-Null
+    $doctorOutput = (& $clientPath doctor) -join "`n"
+    if ($LASTEXITCODE -ne 0 -or -not $doctorOutput.Contains('WARN  staging directories: 1 abandoned')) {
+        throw "Doctor did not report abandoned staging state:`n$doctorOutput"
+    }
+    Remove-Item -LiteralPath $doctorStaging
 } finally {
     Remove-Item Env:NUKETHEBEES_JOBSERVER_TEST_INSTALL_FAIL_AFTER_SWAP -ErrorAction SilentlyContinue
+    Remove-Item Env:NUKETHEBEES_JOBSERVER_TEST_START_MARKER -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $startMarker -Force -ErrorAction SilentlyContinue
     foreach ($process in $processes) {
         if ($null -ne $process -and -not $process.HasExited) {
             Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
@@ -219,6 +253,7 @@ try {
             Move-Item -LiteralPath $interruptedBinBackup -Destination $binPath
         }
     }
+    Remove-Item -LiteralPath $doctorStaging -Recurse -Force -ErrorAction SilentlyContinue
     & $clientPath status --json *> $null
     if ($LASTEXITCODE -ne 0) {
         & $clientPath start *> $null

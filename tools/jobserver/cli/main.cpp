@@ -1,3 +1,5 @@
+#include "doctor.hpp"
+
 #include "jobserver/client.hpp"
 
 #include <Windows.h>
@@ -377,12 +379,18 @@ auto wmain(int argc, wchar_t** argv) -> int {
         auto const root{local_app_data() / "NukeTheBees" / "jobserver"};
         std::cout << "install: " << (root / "bin") << '\n';
         std::cout << "data:    " << (root / "data") << '\n';
-        auto result{jobserver::Client::ping()};
-        if (!result) {
-            return print_error(result.error());
+        auto failed{false};
+        for (auto const& check : jobserver::cli::run_doctor()) {
+            auto const* status = "PASS";
+            if (check.status == jobserver::cli::DoctorStatus::warning) {
+                status = "WARN";
+            } else if (check.status == jobserver::cli::DoctorStatus::failure) {
+                status = "FAIL";
+                failed = true;
+            }
+            std::cout << status << "  " << check.name << ": " << check.detail << '\n';
         }
-        std::cout << "daemon:  reachable\nprotocol: 1.0\n";
-        return 0;
+        return failed ? 4 : 0;
     }
     if (command == "version") {
         std::cout << "jobserver 0.1.0 (protocol 1.0)\n";

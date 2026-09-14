@@ -47,10 +47,16 @@ target_compile_definitions(jobserver-supervisor PRIVATE
 )
 
 add_executable(jobserver)
-target_sources(jobserver PRIVATE cli/main.cpp)
+target_sources(jobserver PRIVATE
+  cli/doctor.cpp
+  cli/main.cpp
+)
 target_link_libraries(jobserver PRIVATE
   jobserver::client
   nlohmann_json::nlohmann_json
+  ole32
+  oleaut32
+  taskschd
 )
 target_compile_definitions(jobserver PRIVATE
   WIN32_LEAN_AND_MEAN

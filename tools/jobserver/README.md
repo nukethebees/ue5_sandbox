@@ -52,9 +52,15 @@ Mutable history and logs live separately under:
 %LOCALAPPDATA%\NukeTheBees\jobserver\data
 ```
 
+`jobserverd.log` records daemon lifecycle and internal diagnostic messages. At startup, a log of at
+least 1 MiB is moved to `jobserverd.previous.log`; logging remains best-effort and cannot prevent
+the daemon from starting.
+
 Installation registers the per-user `NukeTheBeesJobserver` Scheduled Task. It starts at logon and
 clients also ask the task to start when the pipe is absent. Task configuration uses `IgnoreNew`,
-while `FILE_FLAG_FIRST_PIPE_INSTANCE` prevents two daemon processes from becoming authorities.
+while `FILE_FLAG_FIRST_PIPE_INSTANCE` prevents two daemon processes from becoming authorities. A
+global per-user startup mutex makes racing clients recheck the pipe instead of each invoking Task
+Scheduler independently.
 
 An update stages and smoke-tests both new binaries before asking the old daemon to shut down.
 Shutdown is refused while jobs are queued or running, so installation cannot silently abandon or
@@ -152,14 +158,19 @@ jobserver version
 
 `status` reports daemon PID, uptime, audit freshness, handler/owner counts, active and queued jobs,
 blockers, elapsed time, health, and resource usage.
+`doctor` checks the canonical binaries and client location, Scheduled Task action, responsive
+daemon PID and executable, protocol, authority record, writable data directory, diagnostic log,
+and abandoned installer staging directories. Failures produce a nonzero exit code; warnings are
+reported without making the command fail.
 Queued clients receive periodic heartbeat frames while they wait. `ping` uses a bounded control
 request to distinguish a responsive daemon from one whose process merely still exists. Other
 control commands also fail with a clear timeout rather than waiting indefinitely.
 `recover --check` performs the same identity and liveness checks without changing anything.
 `recover --force` is an explicit last resort for an unresponsive daemon. It refuses a responsive
-daemon and terminates a process only after a per-user recovery mutex and a live comparison of the
-recorded PID, process creation time, executable path, and user SID. It never searches or kills by
-process name. Recovery then asks the canonical Scheduled Task to start a replacement daemon.
+daemon and terminates a process only after a global per-user recovery mutex and a live comparison
+of the recorded PID, process creation time, executable path, and user SID. It never searches or
+kills by process name. Recovery then asks the canonical Scheduled Task to start a replacement
+daemon.
 `cancel` and `kill` both terminate a supervised Windows Job Object; they use distinct conventional
 exit codes (`130` and `137`). A timeout is reported as `124`.
 

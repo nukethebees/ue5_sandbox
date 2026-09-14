@@ -1158,6 +1158,24 @@ TEST_F(JobserverIntegration, LoadsOnlyNewestValidHistoryEntries) {
     EXPECT_EQ(valid_lines, 1000);
 }
 
+TEST_F(JobserverIntegration, RotatesAndWritesDaemonDiagnosticLog) {
+    stop_daemon();
+    auto const log_path{data_path_ / "jobserverd.log"};
+    auto const previous_path{data_path_ / "jobserverd.previous.log"};
+    {
+        std::ofstream oversized{log_path, std::ios::binary | std::ios::trunc};
+        oversized << std::string(1024U * 1024U + 1U, 'x');
+    }
+
+    start_daemon();
+
+    ASSERT_TRUE(std::filesystem::exists(previous_path));
+    EXPECT_GT(std::filesystem::file_size(previous_path), 1024U * 1024U);
+    std::ifstream current{log_path};
+    auto const contents{std::string{std::istreambuf_iterator<char>{current}, {}}};
+    EXPECT_NE(contents.find("Jobserver daemon starting"), std::string::npos) << contents;
+}
+
 TEST_F(JobserverIntegration, RefusesShutdownWhileLeaseIsActive) {
     auto lease{jobserver::Client::acquire(
         test_request("shutdown blocker", jobserver::ClaimMode::exclusive))};
