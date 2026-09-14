@@ -13,6 +13,12 @@ enum class PackedState : std::uint8_t {
     Max = 0xFF,
 };
 
+enum class TinyState : std::uint8_t {
+    Zero = 0,
+    One = 1,
+    Max = 3,
+};
+
 
 } // namespace codegen_compile_fixture
 // clang-format on

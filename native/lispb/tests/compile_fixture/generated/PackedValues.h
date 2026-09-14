@@ -204,4 +204,142 @@ static_assert(sizeof(PackedByte) == sizeof(PackedByte::storage_type));
 static_assert(std::is_trivially_copyable_v<PackedByte>);
 static_assert(std::is_standard_layout_v<PackedByte>);
 
+struct PackedWide {
+    using storage_type = std::uint64_t;
+    static_assert(std::is_unsigned_v<storage_type>);
+    static_assert(std::numeric_limits<storage_type>::digits == 64);
+
+    inline static constexpr int value_offset{0};
+    inline static constexpr int value_bits{64};
+    inline static constexpr storage_type value_value_mask{storage_type{0xffffffffffffffff}};
+    inline static constexpr storage_type value_mask{storage_type{0xffffffffffffffff}};
+
+    constexpr PackedWide() noexcept = default;
+    explicit constexpr PackedWide(storage_type const raw) noexcept
+        : value_{raw} {}
+
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+
+    [[nodiscard]] constexpr auto operator<=>(PackedWide const&) const noexcept = default;
+
+    [[nodiscard]] constexpr auto value() const noexcept -> std::uint64_t {
+        return static_cast<std::uint64_t>(static_cast<storage_type>(value_ >> value_offset) &
+                                          value_value_mask);
+    }
+
+    [[nodiscard]] constexpr auto try_set_value(std::uint64_t const value) noexcept -> bool {
+        if (value > static_cast<std::uint64_t>(value_value_mask)) {
+            return false;
+        }
+        auto const encoded{static_cast<storage_type>(value)};
+        auto const cleared{
+            static_cast<storage_type>(value_ & static_cast<storage_type>(~value_mask))};
+        auto const shifted{static_cast<storage_type>(
+            static_cast<storage_type>(encoded & value_value_mask) << value_offset)};
+        value_ = static_cast<storage_type>(cleared | shifted);
+        return true;
+    }
+
+    constexpr void set_value(std::uint64_t const value) noexcept {
+        if (!try_set_value(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+  private:
+    storage_type value_{};
+};
+static_assert(sizeof(PackedWide) == sizeof(PackedWide::storage_type));
+static_assert(std::is_trivially_copyable_v<PackedWide>);
+static_assert(std::is_standard_layout_v<PackedWide>);
+
+struct PackedTinyState {
+    using storage_type = std::uint8_t;
+    static_assert(std::is_unsigned_v<storage_type>);
+    static_assert(std::numeric_limits<storage_type>::digits == 8);
+    using state_underlying_type = std::underlying_type_t<codegen_compile_fixture::TinyState>;
+    static_assert(std::is_enum_v<codegen_compile_fixture::TinyState>);
+    static_assert(std::is_unsigned_v<state_underlying_type>);
+    static_assert(std::numeric_limits<state_underlying_type>::digits >= 2);
+
+    inline static constexpr int state_offset{0};
+    inline static constexpr int state_bits{2};
+    inline static constexpr storage_type state_value_mask{storage_type{0x3}};
+    inline static constexpr storage_type state_mask{storage_type{0x3}};
+    static_assert(static_cast<state_underlying_type>(codegen_compile_fixture::TinyState::Zero) <=
+                  static_cast<state_underlying_type>(state_value_mask));
+    static_assert(static_cast<state_underlying_type>(codegen_compile_fixture::TinyState::One) <=
+                  static_cast<state_underlying_type>(state_value_mask));
+    static_assert(static_cast<state_underlying_type>(codegen_compile_fixture::TinyState::Max) <=
+                  static_cast<state_underlying_type>(state_value_mask));
+
+    inline static constexpr int payload_offset{2};
+    inline static constexpr int payload_bits{6};
+    inline static constexpr storage_type payload_value_mask{storage_type{0x3f}};
+    inline static constexpr storage_type payload_mask{storage_type{0xfc}};
+
+    constexpr PackedTinyState() noexcept = default;
+    explicit constexpr PackedTinyState(storage_type const raw) noexcept
+        : value_{raw} {}
+
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+
+    [[nodiscard]] constexpr auto operator<=>(PackedTinyState const&) const noexcept = default;
+
+    [[nodiscard]] constexpr auto state() const noexcept -> codegen_compile_fixture::TinyState {
+        auto const encoded{static_cast<state_underlying_type>(
+            static_cast<storage_type>(value_ >> state_offset) & state_value_mask)};
+        return static_cast<codegen_compile_fixture::TinyState>(encoded);
+    }
+
+    [[nodiscard]] constexpr auto
+        try_set_state(codegen_compile_fixture::TinyState const value) noexcept -> bool {
+        auto const underlying{static_cast<state_underlying_type>(value)};
+        if (underlying > static_cast<state_underlying_type>(state_value_mask)) {
+            return false;
+        }
+        auto const encoded{static_cast<storage_type>(underlying)};
+        auto const cleared{
+            static_cast<storage_type>(value_ & static_cast<storage_type>(~state_mask))};
+        auto const shifted{static_cast<storage_type>(
+            static_cast<storage_type>(encoded & state_value_mask) << state_offset)};
+        value_ = static_cast<storage_type>(cleared | shifted);
+        return true;
+    }
+
+    constexpr void set_state(codegen_compile_fixture::TinyState const value) noexcept {
+        if (!try_set_state(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+
+    [[nodiscard]] constexpr auto payload() const noexcept -> std::uint8_t {
+        return static_cast<std::uint8_t>(static_cast<storage_type>(value_ >> payload_offset) &
+                                         payload_value_mask);
+    }
+
+    [[nodiscard]] constexpr auto try_set_payload(std::uint8_t const value) noexcept -> bool {
+        if (value > static_cast<std::uint8_t>(payload_value_mask)) {
+            return false;
+        }
+        auto const encoded{static_cast<storage_type>(value)};
+        auto const cleared{
+            static_cast<storage_type>(value_ & static_cast<storage_type>(~payload_mask))};
+        auto const shifted{static_cast<storage_type>(
+            static_cast<storage_type>(encoded & payload_value_mask) << payload_offset)};
+        value_ = static_cast<storage_type>(cleared | shifted);
+        return true;
+    }
+
+    constexpr void set_payload(std::uint8_t const value) noexcept {
+        if (!try_set_payload(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+  private:
+    storage_type value_{};
+};
+static_assert(sizeof(PackedTinyState) == sizeof(PackedTinyState::storage_type));
+static_assert(std::is_trivially_copyable_v<PackedTinyState>);
+static_assert(std::is_standard_layout_v<PackedTinyState>);
+
 } // namespace codegen_compile_fixture

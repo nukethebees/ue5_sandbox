@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 
 using int32 = std::int32_t;
 using int64 = std::int64_t;
@@ -16,6 +17,20 @@ using SIZE_T = std::size_t;
 using TCHAR = char;
 using FString = std::string;
 using FStringView = std::string_view;
+
+class FText {
+  public:
+    static auto FromString(FString value) -> FText { return FText{std::move(value)}; }
+
+    auto ToString() const -> FString const& { return value_; }
+
+    auto operator==(FText const&) const -> bool = default;
+  private:
+    explicit FText(FString value)
+        : value_{std::move(value)} {}
+
+    FString value_;
+};
 
 #define TEXT(value) value
 #define RESTRICT
@@ -45,3 +60,6 @@ auto ensureMsgf(bool const expression, TCHAR const*, Args&&...) -> bool {
 #endif
 
 #define checkf(expression, message, ...) check(expression)
+#define checkNoEntry() check(false)
+
+#include "Containers/Array.h"

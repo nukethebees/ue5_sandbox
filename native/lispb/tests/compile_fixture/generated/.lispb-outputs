@@ -10,6 +10,8 @@ PlainEnums.h
 ReferenceFacade.h
 ReflectedEnums.cpp
 ReflectedEnums.h
+Settings.cpp
+Settings.h
 Soa.cpp
 Soa.h
 SourceFacade.cpp

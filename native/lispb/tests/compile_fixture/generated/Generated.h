@@ -16,5 +16,6 @@
 #include "ReflectedEnums.h"
 #include "PackedEnums.h"
 #include "PackedValues.h"
+#include "Settings.h"
 #include "StaticTables.h"
 // clang-format on

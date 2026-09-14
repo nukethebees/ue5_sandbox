@@ -51,6 +51,11 @@
   :header "PackedEnums.h"
   :pass-by value)
 
+(type tiny_state
+  :spelling "codegen_compile_fixture::TinyState"
+  :header "PackedEnums.h"
+  :pass-by value)
+
 (type standard_uint8
   :spelling "std::uint8_t"
   :header "cstdint"

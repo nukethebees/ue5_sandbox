@@ -4,6 +4,7 @@
 #include "Containers/AllowShrinking.h"
 
 #include <algorithm>
+#include <initializer_list>
 #include <utility>
 #include <vector>
 
@@ -11,6 +12,10 @@ template <typename T>
 class TArray {
   public:
     using SizeType = int32;
+
+    TArray() = default;
+    TArray(std::initializer_list<T> values)
+        : values_{values} {}
 
     auto GetData() -> T* { return values_.data(); }
     auto GetData() const -> T const* { return values_.data(); }

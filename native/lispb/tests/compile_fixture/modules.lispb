@@ -34,7 +34,11 @@
   (enum PackedState @standard_uint8
     (value Zero :value "0x00")
     (value AB :value "0xAB")
-    (value Max :value "0xFF")))
+    (value Max :value "0xFF"))
+  (enum TinyState @standard_uint8
+    (value Zero :value "0")
+    (value One :value "1")
+    (value Max :value "3")))
 
 (packed-value-module packed_value_fixture
   :header "PackedValues.h"
@@ -47,7 +51,45 @@
     :storage std::uint8_t
     (field low std::uint8_t :bits 3)
     (field flag bool :bits 1)
-    (field high std::uint8_t :bits 4)))
+    (field high std::uint8_t :bits 4))
+  (packed-value PackedWide
+    :storage std::uint64_t
+    (field value std::uint64_t :bits 64))
+  (packed-value PackedTinyState
+    :storage std::uint8_t
+    (field state @tiny_state :bits 2 :kind enum)
+    (field payload std::uint8_t :bits 6)))
+
+(settings-module settings_fixture
+  :header "Settings.h"
+  :source "Settings.cpp"
+  :header-include "Settings.h"
+  :namespace codegen_compile_fixture
+  :api-name TSettingsAccess
+  :state-name FSettingsState
+  :export-specifier COMPILE_FIXTURE_API
+  (category video "Video")
+  (setting vsync "VSync"
+    :tooltip "Synchronize presentation."
+    :category video
+    :value-type bool
+    :backend engine
+    :apply deferred
+    (control toggle))
+  (setting frame_limit "Frame Limit"
+    :category video
+    :value-type float
+    :backend engine
+    :apply immediate
+    (control choice
+      :options-provider frame_limits
+      :availability-provider frame_limit))
+  (setting resolution_scale "Resolution Scale"
+    :category video
+    :value-type float
+    :backend engine
+    :apply deferred
+    (control float-range :min 50 :max 100 :step 0.5)))
 
 (homogeneous-soa-module homogeneous_fixture
   :header "Homogeneous.h"
@@ -249,4 +291,4 @@
 
 (umbrella-module all_fixture
   :header "Generated.h"
-  :headers ("Homogeneous.h" "Soa.h" "Vector1.h" "Vector2.h" "Vector3.h" "InlineFacade.h" "SourceFacade.h" "ReferenceFacade.h" "PlainEnums.h" "ReflectedEnums.h" "PackedEnums.h" "PackedValues.h" "StaticTables.h"))
+  :headers ("Homogeneous.h" "Soa.h" "Vector1.h" "Vector2.h" "Vector3.h" "InlineFacade.h" "SourceFacade.h" "ReferenceFacade.h" "PlainEnums.h" "ReflectedEnums.h" "PackedEnums.h" "PackedValues.h" "Settings.h" "StaticTables.h"))

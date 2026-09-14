@@ -2,7 +2,11 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
+#include <limits>
+#include <span>
 #include <utility>
+#include <variant>
 
 #undef check
 #define check(expression) EXPECT_TRUE(expression)
@@ -27,6 +31,17 @@ concept BorrowsConstOwner = requires(T&& owner) { std::forward<T>(owner).get_con
 
 template <typename T>
 concept SlicesOwner = requires(T&& owner) { std::forward<T>(owner).slice(0, 0); };
+
+struct FSettingsAccessFixture : TSettingsAccess<FSettingsAccessFixture> {
+    auto settings_state() const -> FSettingsState const& { return state; }
+    void set_setting(EGameSetting const id, FGameSettingValue const& value) {
+        last_setting = id;
+        EXPECT_TRUE(set_game_setting_value(state, id, value));
+    }
+
+    FSettingsState state;
+    EGameSetting last_setting{EGameSetting::VSync};
+};
 
 TEST(GeneratedSingleAllocationSoa, Ownership) {
     using Owner = CountedParents;
@@ -85,6 +100,44 @@ TEST(GeneratedSingleAllocationSoa, Ownership) {
         check(CountingAllocator::allocations == 3 && CountingAllocator::frees == 2);
     }
     check(CountingAllocator::allocations == 3 && CountingAllocator::frees == 3);
+}
+
+TEST(GeneratedSingleAllocationSoa, BulkMutationAndAliasing) {
+    SingleParents rows;
+    rows.set_num(65);
+    for (int32 i{}; i < rows.num(); ++i) {
+        rows.get_view().keys()[i] = i;
+        rows.get_view().view_children().values[i] = i * 10;
+    }
+
+    auto const original_capacity{rows.capacity()};
+    EXPECT_EQ(rows.append_from(rows), 65);
+    EXPECT_GT(rows.capacity(), original_capacity);
+    EXPECT_EQ(rows.num(), 130);
+    EXPECT_EQ(rows.get_view().keys()[129], 64);
+    EXPECT_EQ(rows.get_view().view_children().values[129], 640);
+
+    auto const source{rows.slice(1, 3)};
+    EXPECT_EQ(rows.append_from(source), 130);
+    EXPECT_EQ(rows.get_view().keys()[130], 1);
+    EXPECT_EQ(rows.get_view().view_children().values[132], 30);
+
+    SingleParents removed;
+    removed.set_num(8);
+    for (int32 i{}; i < removed.num(); ++i) {
+        removed.get_view().keys()[i] = i;
+        removed.get_view().view_children().values[i] = i * 10;
+    }
+    std::array<int32, 3> const indices{6, 3, 1};
+    removed.remove_at_swap(std::span<int32 const>{indices});
+
+    std::array<int32, 5> const expected{0, 5, 2, 7, 4};
+    ASSERT_EQ(removed.num(), static_cast<int32>(expected.size()));
+    for (int32 i{}; i < removed.num(); ++i) {
+        EXPECT_EQ(removed.get_view().keys()[i], expected[static_cast<std::size_t>(i)]);
+        EXPECT_EQ(removed.get_view().view_children().values[i],
+                  expected[static_cast<std::size_t>(i)] * 10);
+    }
 }
 
 TEST(GeneratedHomogeneousStorage, Operations) {
@@ -211,6 +264,32 @@ TEST(GeneratedFieldMask, Operations) {
     FFieldMask9 merged;
     merged.set(wide);
     check(merged.has(EField9::Tail));
+
+    FFieldMask16 mask16;
+    auto const high16{FFieldMask16::values_field(15)};
+    mask16.set(high16);
+    EXPECT_EQ(mask16.value(), uint16{0x8000});
+    EXPECT_EQ(FFieldMask16::index(high16), 15);
+
+    FFieldMask17 mask17;
+    auto const high17{FFieldMask17::values_field(16)};
+    mask17.set(high17);
+    EXPECT_EQ(mask17.value(), uint32{0x10000});
+    EXPECT_EQ(FFieldMask17::index(high17), 16);
+
+    FFieldMask32 mask32;
+    auto const high32{FFieldMask32::values_field(31)};
+    mask32.set(high32);
+    EXPECT_EQ(mask32.value(), uint32{0x80000000});
+    EXPECT_EQ(FFieldMask32::index(high32), 31);
+
+    FFieldMask33 mask33;
+    auto const high33{FFieldMask33::values_field(32)};
+    mask33.set(high33);
+    EXPECT_EQ(mask33.value(), uint64{0x100000000});
+    EXPECT_EQ(FFieldMask33::index(high33), 32);
+    mask33.clear(high33);
+    EXPECT_TRUE(mask33.is_empty());
 }
 
 TEST(GeneratedPackedValue, HasStorageLayoutProperties) {
@@ -285,6 +364,27 @@ TEST(GeneratedPackedValue, ExhaustivelyRoundTripsUint8Storage) {
     }
 }
 
+TEST(GeneratedPackedValue, HandlesFullWidthStorageAndNarrowEnums) {
+    auto const maximum{std::numeric_limits<std::uint64_t>::max()};
+    PackedWide wide;
+    EXPECT_TRUE(wide.try_set_value(maximum));
+    EXPECT_EQ(wide.value(), maximum);
+    EXPECT_EQ(wide.raw_value(), maximum);
+    EXPECT_EQ(PackedWide{std::uint64_t{0x123456789abcdef0}}.value(),
+              std::uint64_t{0x123456789abcdef0});
+
+    PackedTinyState tiny;
+    tiny.set_state(TinyState::One);
+    tiny.set_payload(std::uint8_t{42});
+    EXPECT_EQ(tiny.raw_value(), std::uint8_t{0xa9});
+
+    auto const before_failure{tiny.raw_value()};
+    EXPECT_FALSE(tiny.try_set_state(static_cast<TinyState>(4)));
+    EXPECT_EQ(tiny.raw_value(), before_failure);
+    EXPECT_EQ(tiny.state(), TinyState::One);
+    EXPECT_EQ(tiny.payload(), std::uint8_t{42});
+}
+
 TEST(GeneratedFixedSoa, Lifetimes) {
     check(FTracked::alive == 0);
     {
@@ -328,6 +428,92 @@ TEST(GeneratedFixedSoa, Lifetimes) {
         check(alternate.get_const_view().children.tracked[0].value == 90);
     }
     check(FTracked::alive == 0);
+}
+
+TEST(GeneratedFixedSoa, AssignmentResizeAndBulkOperationsPreserveLifetimes) {
+    ASSERT_EQ(FTracked::alive, 0);
+    {
+        TFixedRows<6> source;
+        source.add(1, FTracked{10});
+        source.add(2, FTracked{20});
+        source.add(3, FTracked{30});
+
+        TFixedRows<6> destination;
+        destination.add(9, FTracked{90});
+        EXPECT_EQ(FTracked::alive, 4);
+
+        destination = source;
+        EXPECT_EQ(FTracked::alive, 6);
+        EXPECT_EQ(destination.get_const_view().children.tracked[2].value, 30);
+
+        destination.copy_element(0, source, 2);
+        destination.copy_elements(1, source, 0, 2);
+        EXPECT_EQ(destination.get_const_view().children.tracked[0].value, 30);
+        EXPECT_EQ(destination.get_const_view().children.tracked[1].value, 10);
+        EXPECT_EQ(destination.get_const_view().children.tracked[2].value, 20);
+
+        destination.set_num(2);
+        EXPECT_EQ(FTracked::alive, 5);
+        destination.set_num(4);
+        EXPECT_EQ(FTracked::alive, 7);
+        destination.pop();
+        EXPECT_EQ(FTracked::alive, 6);
+
+        TFixedRows<6> appended;
+        appended.append_from(source.left(2));
+        EXPECT_EQ(FTracked::alive, 8);
+        destination = std::move(appended);
+        EXPECT_EQ(FTracked::alive, 5);
+        EXPECT_TRUE(appended.is_empty());
+        EXPECT_EQ(destination.num(), 2);
+        EXPECT_EQ(destination.get_const_view().children.tracked[1].value, 20);
+
+        auto& alias{destination};
+        destination = std::move(alias);
+        EXPECT_EQ(FTracked::alive, 5);
+        EXPECT_EQ(destination.num(), 2);
+    }
+    EXPECT_EQ(FTracked::alive, 0);
+}
+
+TEST(GeneratedSettings, DescriptorsDispatchAndAccessors) {
+    auto const categories{game_setting_category_descriptors()};
+    ASSERT_EQ(categories.Num(), 1);
+    EXPECT_EQ(categories[0].id, EGameSettingCategory::Video);
+    EXPECT_EQ(categories[0].label.ToString(), "Video");
+
+    auto const descriptors{game_setting_descriptors()};
+    ASSERT_EQ(descriptors.Num(), 3);
+    EXPECT_EQ(descriptors[0].id, EGameSetting::VSync);
+    EXPECT_EQ(descriptors[1].id, EGameSetting::FrameLimit);
+    EXPECT_EQ(descriptors[2].id, EGameSetting::ResolutionScale);
+    EXPECT_EQ(descriptors[0].tooltip.ToString(), "Synchronize presentation.");
+    EXPECT_EQ(descriptors[1].apply_mode, ESettingApplyMode::Immediate);
+    EXPECT_EQ(descriptors[1].control_kind, ESettingControlKind::Choice);
+    EXPECT_EQ(descriptors[1].options_provider, EGameSettingOptionProvider::FrameLimits);
+    EXPECT_EQ(descriptors[1].availability_provider, EGameSettingAvailabilityProvider::FrameLimit);
+    EXPECT_EQ(descriptors[2].minimum, 50.0);
+    EXPECT_EQ(descriptors[2].maximum, 100.0);
+    EXPECT_EQ(descriptors[2].step, 0.5);
+    EXPECT_EQ(&game_setting_descriptor(EGameSetting::FrameLimit), &descriptors[1]);
+
+    FSettingsState state{.vsync = false, .frame_limit = 60.0f, .resolution_scale = 75.0f};
+    EXPECT_FALSE(std::get<bool>(game_setting_value(state, EGameSetting::VSync)));
+    EXPECT_EQ(std::get<float>(game_setting_value(state, EGameSetting::FrameLimit)), 60.0f);
+    EXPECT_TRUE(
+        set_game_setting_value(state, EGameSetting::ResolutionScale, FGameSettingValue{80.0f}));
+    EXPECT_EQ(state.resolution_scale, 80.0f);
+
+    auto const unchanged{state};
+    EXPECT_FALSE(set_game_setting_value(state, EGameSetting::VSync, FGameSettingValue{120.0f}));
+    EXPECT_EQ(state, unchanged);
+
+    FSettingsAccessFixture access;
+    access.state.frame_limit = 30.0f;
+    EXPECT_EQ(access.frame_limit(), 30.0f);
+    access.set_vsync(true);
+    EXPECT_TRUE(access.state.vsync);
+    EXPECT_EQ(access.last_setting, EGameSetting::VSync);
 }
 
 TEST(GeneratedVector, Operations) {
