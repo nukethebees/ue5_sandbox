@@ -29,13 +29,23 @@ class TemporaryFile final {
 TEST(SimulationBenchmarkCommandLine, ParsesRequiredOptions) {
     TemporaryFile level;
     auto const path{level.path().string()};
-    char const* argv[]{"native-simulation-benchmark", "--level", path.c_str(), "--seconds", "1.5"};
+    char const* argv[]{"native-simulation-benchmark",
+                       "--level",
+                       path.c_str(),
+                       "--seconds",
+                       "1.5",
+                       "--game-speed",
+                       "100",
+                       "--detailed-timing"};
 
-    auto const result{parse_command_line(5, argv)};
+    auto const result{parse_command_line(8, argv)};
 
     ASSERT_TRUE(result.options.has_value()) << result.standard_error;
     EXPECT_EQ(result.options->level_path, level.path());
     EXPECT_DOUBLE_EQ(result.options->simulated_seconds, 1.5);
+    EXPECT_EQ(result.options->game_speed, 100u);
+    EXPECT_TRUE(result.options->telemetry_enabled);
+    EXPECT_TRUE(result.options->detailed_timing);
 }
 
 TEST(SimulationBenchmarkCommandLine, RejectsMissingLevel) {
@@ -51,6 +61,22 @@ TEST(SimulationBenchmarkCommandLine, RejectsNonPositiveSeconds) {
     auto const path{level.path().string()};
     char const* argv[]{"native-simulation-benchmark", "--level", path.c_str(), "--seconds", "0"};
     auto const result{parse_command_line(5, argv)};
+
+    EXPECT_FALSE(result.options.has_value());
+    EXPECT_NE(result.exit_code, 0);
+}
+
+TEST(SimulationBenchmarkCommandLine, RejectsNonPositiveGameSpeed) {
+    TemporaryFile level;
+    auto const path{level.path().string()};
+    char const* argv[]{"native-simulation-benchmark",
+                       "--level",
+                       path.c_str(),
+                       "--seconds",
+                       "1",
+                       "--game-speed",
+                       "0"};
+    auto const result{parse_command_line(7, argv)};
 
     EXPECT_FALSE(result.options.has_value());
     EXPECT_NE(result.exit_code, 0);
@@ -85,6 +111,8 @@ TEST(SimulationBenchmarkJson, EmitsStableSchemaAndEscapesStrings) {
     result.level_title = "line\nbreak";
     result.requested_ticks = 60;
     result.completed_ticks = 60;
+    result.game_speed = 4;
+    result.advance_calls = 15;
     result.elapsed_seconds = 2.0;
     result.frame_memory_peak_payload_bytes = 123;
     result.frame_memory_total_root_claims = 456;
@@ -95,6 +123,8 @@ TEST(SimulationBenchmarkJson, EmitsStableSchemaAndEscapesStrings) {
     EXPECT_NE(json.find("quote\\\"test.scm"), std::string::npos);
     EXPECT_NE(json.find("line\\nbreak"), std::string::npos);
     EXPECT_NE(json.find("\"ticks_per_second\":30"), std::string::npos);
+    EXPECT_NE(json.find("\"game_speed\":4"), std::string::npos);
+    EXPECT_NE(json.find("\"advance_calls\":15"), std::string::npos);
     EXPECT_NE(json.find("\"frame_peak_payload_bytes\":123"), std::string::npos);
     EXPECT_NE(json.find("\"frame_total_root_claims\":456"), std::string::npos);
 }
@@ -109,6 +139,18 @@ TEST(SimulationBenchmarkRunner, LoadsCompilesAndAdvancesExistingLevel) {
     EXPECT_EQ(result->requested_ticks, 1);
     EXPECT_EQ(result->completed_ticks, 1);
     EXPECT_EQ(result->alive_entities, 1);
+}
+
+TEST(SimulationBenchmarkRunner, BatchesTicksByGameSpeed) {
+    auto const level_path{std::filesystem::path{SANDBOX_PROJECT_SOURCE_DIR} / "LevelScripts" /
+                          "DevThreeSecondFailure.scm"};
+    auto const result{
+        run_benchmark({.level_path = level_path, .simulated_seconds = 0.05, .game_speed = 2})};
+
+    ASSERT_TRUE(result.has_value()) << result.error();
+    EXPECT_EQ(result->requested_ticks, 3);
+    EXPECT_EQ(result->completed_ticks, 3);
+    EXPECT_EQ(result->advance_calls, 2u);
 }
 } // namespace
 } // namespace ml::simulation_benchmark::tests

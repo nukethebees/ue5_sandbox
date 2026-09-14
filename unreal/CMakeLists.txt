@@ -447,15 +447,6 @@ add_unreal_editor_test(SandboxBenchmarks.LevelTelemetryStorage
   TIMEOUT 1200
 )
 
-add_unreal_editor_test(SandboxBenchmarks.LevelTelemetryIntegration
-  ACTIVITY BENCHMARK
-  ARGUMENTS
-    "-ExecCmds=Automation RunTests SandboxBenchmarks.TelemetryBenchmark; Quit"
-    -FullStdOutLogOutput
-  LABELS telemetry-benchmark
-  TIMEOUT 1200
-)
-
 add_unreal_editor_test(SandboxISMC.RemoteBenchmark
   ACTIVITY BENCHMARK
   ARGUMENTS

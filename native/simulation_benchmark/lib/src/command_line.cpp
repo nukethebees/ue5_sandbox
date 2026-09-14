@@ -15,6 +15,10 @@ auto parse_command_line(int const argc, char const* const* argv) -> CommandLineR
     app.add_option("--seconds", options.simulated_seconds, "In-game seconds to simulate")
         ->required()
         ->check(CLI::PositiveNumber);
+    app.add_option("--game-speed", options.game_speed, "Deterministic ticks per advance call")
+        ->check(CLI::PositiveNumber);
+    app.add_flag("--telemetry", options.telemetry_enabled, "Capture level telemetry");
+    app.add_flag("--detailed-timing", options.detailed_timing, "Capture detailed telemetry timing");
 
     try {
         app.parse(argc, argv);
@@ -29,6 +33,9 @@ auto parse_command_line(int const argc, char const* const* argv) -> CommandLineR
 
     if (!std::isfinite(options.simulated_seconds)) {
         return {.standard_error = "--seconds must be finite\n", .exit_code = 2};
+    }
+    if (options.detailed_timing) {
+        options.telemetry_enabled = true;
     }
     return {.options = std::move(options)};
 }

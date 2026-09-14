@@ -133,7 +133,12 @@ function Invoke-Benchmark {
         $activityRunner
         '--'
     )
-    $benchmarkCommand = @($executable, '--level', $level, '--seconds', '20')
+    $benchmarkCommand = @(
+        $executable,
+        '--level', $level,
+        '--seconds', '20',
+        '--game-speed', '100'
+    )
     $output = @(Invoke-Checked -Executable 'cmake' `
         -Arguments @($activityArguments + $benchmarkCommand) `
         -WorkingDirectory $SourceDirectory)

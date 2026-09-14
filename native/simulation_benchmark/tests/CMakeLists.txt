@@ -28,3 +28,15 @@ if(SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK)
     TIMEOUT 600
   )
 endif()
+
+if(SANDBOX_TELEMETRY_INTEGRATION_BENCHMARK)
+  add_test(NAME native-level-telemetry-integration-benchmark
+    COMMAND powershell -NoProfile -File
+      "${PROJECT_SOURCE_DIR}/Scripts/run-level-telemetry-integration-benchmark.ps1"
+      -SkipBuild
+  )
+  set_tests_properties(native-level-telemetry-integration-benchmark PROPERTIES
+    LABELS "telemetry-integration-benchmark"
+    TIMEOUT 1200
+  )
+endif()

@@ -254,6 +254,15 @@ def make_native_benchmark_document() -> dict[str, Any]:
                 "UE_CONFIGURATION": "Development",
             },
         },
+        {
+            "name": "telemetry-integration-benchmark",
+            "displayName": "Native level telemetry integration benchmark",
+            "inherits": BENCHMARK_CONFIGURATION,
+            "cacheVariables": {
+                "SANDBOX_TELEMETRY_INTEGRATION_BENCHMARK": True,
+                "UE_CONFIGURATION": "Shipping",
+            },
+        },
     ]
     document["buildPresets"] = [
         {
@@ -317,6 +326,14 @@ def make_native_benchmark_document() -> dict[str, Any]:
                 "native-simulation-benchmark-tests",
             ],
         },
+        {
+            "name": "telemetry-integration-benchmark",
+            "configurePreset": "telemetry-integration-benchmark",
+            "targets": [
+                "native-simulation-benchmark",
+                "native-simulation-benchmark-tests",
+            ],
+        },
     ]
     document["testPresets"] = [
         {
@@ -350,6 +367,12 @@ def make_native_benchmark_document() -> dict[str, Any]:
             "inherits": "test-base",
             "configurePreset": "frame-memory-level-benchmark",
             "filter": {"include": {"label": "^frame-memory-level-benchmark$"}},
+        },
+        {
+            "name": "telemetry-integration-benchmark",
+            "inherits": "test-base",
+            "configurePreset": "telemetry-integration-benchmark",
+            "filter": {"include": {"label": "^telemetry-integration-benchmark$"}},
         },
     ]
     document["workflowPresets"] = [
@@ -401,6 +424,11 @@ def make_native_benchmark_document() -> dict[str, Any]:
             "frame-memory-level-benchmark",
             "frame-memory-level-benchmark",
             "frame-memory-level-benchmark",
+        ),
+        _workflow(
+            "telemetry-integration-benchmark",
+            "telemetry-integration-benchmark",
+            "telemetry-integration-benchmark",
         ),
     ]
     return document

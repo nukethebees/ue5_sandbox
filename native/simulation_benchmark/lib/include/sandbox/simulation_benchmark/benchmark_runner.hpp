@@ -17,8 +17,10 @@ struct BenchmarkResult {
     std::string level_title{};
     double requested_seconds{};
     double tick_rate_hz{};
+    std::uint32_t game_speed{};
     ioj::sim::SimTick requested_ticks{};
     ioj::sim::SimTick completed_ticks{};
+    std::uint64_t advance_calls{};
     double completed_seconds{};
     double elapsed_seconds{};
     std::int32_t initial_capital_ships{};
@@ -38,6 +40,16 @@ struct BenchmarkResult {
     std::uint64_t frame_memory_total_padding_bytes{};
     std::uint64_t frame_memory_total_root_claims{};
     std::uint64_t frame_memory_overflow_count{};
+    bool telemetry_enabled{};
+    bool detailed_timing{};
+    std::int32_t telemetry_rows{};
+    std::uint64_t telemetry_payload_writes{};
+    std::int32_t telemetry_acquired_blocks{};
+    std::int32_t telemetry_retained_blocks{};
+    std::size_t telemetry_allocated_bytes{};
+    std::int32_t telemetry_performance_windows{};
+    double telemetry_cpu_ms{};
+    double simulation_cpu_ms{};
     unsigned int hardware_threads{};
     std::string compiler{};
     std::string build_type{};

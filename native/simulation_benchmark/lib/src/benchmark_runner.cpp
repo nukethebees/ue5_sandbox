@@ -4,6 +4,7 @@
 #include <ioj/sim/reference_level_simulation_data.h>
 #include <ioj/sim/rotator3d.h>
 #include <ioj/sim/sim_clock.h>
+#include <ioj/sim/telemetry/level_telemetry_run_end_reason.h>
 #include <sandbox/level_authoring/LevelDefinitionReader.h>
 
 #include <algorithm>
@@ -124,7 +125,7 @@ auto run_benchmark(BenchmarkOptions const& options) -> std::expected<BenchmarkRe
     auto reference{ioj::sim::make_reference_level_simulation_data()};
     auto& data{reference.data};
     data.clock_settings.tick_rate = simulation_tick_rate_hz;
-    data.clock_settings.time_scale = 1.0;
+    data.clock_settings.time_scale = static_cast<double>(options.game_speed);
     data.clock_settings.tick_period = 0.0;
     data.clock_settings.accumulator = 0.0;
     data.grid_dimensions.z = std::max(data.grid_dimensions.z, 25);
@@ -162,6 +163,18 @@ auto run_benchmark(BenchmarkOptions const& options) -> std::expected<BenchmarkRe
     }
     data.level_events = std::move(*compiled);
 
+    if (options.telemetry_enabled) {
+        data.telemetry_metadata = ioj::sim::LevelTelemetryRunMetadata{
+            .level_id = level.metadata.id,
+            .level_display_name = level.metadata.title,
+            .tick_rate_hz = simulation_tick_rate_hz,
+            .tick_period_seconds = 1.0 / simulation_tick_rate_hz,
+            .initial_requested_time_scale = static_cast<double>(options.game_speed),
+            .requested_duration_seconds = options.simulated_seconds,
+            .detailed_timing = options.detailed_timing,
+        };
+    }
+
     ioj::sim::LevelSim simulation{std::move(data)};
     FrameMemorySummary frame_summary;
     simulation.on_end_tick = [&frame_summary](ioj::sim::LevelSim& current_simulation) {
@@ -181,14 +194,42 @@ auto run_benchmark(BenchmarkOptions const& options) -> std::expected<BenchmarkRe
     simulation.start();
 
     auto const tick_period{simulation.get_clock().get_tick_period()};
+    std::uint64_t advance_calls{};
     auto const started_at{std::chrono::steady_clock::now()};
-    for (ioj::sim::SimTick tick{}; tick < *requested_ticks; ++tick) {
-        simulation.advance(tick_period);
+    while (simulation.get_clock().get_completed_ticks() < *requested_ticks) {
+        auto const remaining_ticks{*requested_ticks - simulation.get_clock().get_completed_ticks()};
+        auto const batch_ticks{std::min<ioj::sim::SimTick>(remaining_ticks, options.game_speed)};
+        auto const unscaled_seconds{static_cast<double>(batch_ticks) * tick_period /
+                                    static_cast<double>(options.game_speed)};
+        auto const previous_ticks{simulation.get_clock().get_completed_ticks()};
+        simulation.advance(unscaled_seconds);
+        ++advance_calls;
+        if (simulation.get_clock().get_completed_ticks() == previous_ticks) {
+            return std::unexpected{"simulation advance did not complete a deterministic tick"};
+        }
     }
     auto const finished_at{std::chrono::steady_clock::now()};
-    simulation.pause();
+
+    if (options.telemetry_enabled) {
+        simulation.complete_telemetry_run(ioj::sim::LevelTelemetryRunEndReason::DurationReached);
+    } else {
+        simulation.pause();
+    }
 
     auto const frame_memory{simulation.get_frame_memory_stats()};
+    auto const telemetry_history{simulation.get_level_telemetry_manager().get_history_stats()};
+    auto telemetry_run{simulation.get_level_telemetry_manager().take_finalized_run()};
+    double telemetry_cpu_ms{};
+    double simulation_cpu_ms{};
+    if (telemetry_run.has_value()) {
+        for (auto const& window : telemetry_run->performance_windows) {
+            auto const& telemetry_timing{window.systems[static_cast<std::int32_t>(
+                ioj::sim::SimTelemetryTimingSystem::Telemetry)]};
+            telemetry_cpu_ms += telemetry_timing.mean_ms * telemetry_timing.sample_count;
+            simulation_cpu_ms +=
+                window.simulation_tick.mean_ms * window.simulation_tick.sample_count;
+        }
+    }
     auto const completed_ticks{simulation.get_clock().get_completed_ticks()};
     auto const elapsed{std::chrono::duration<double>{finished_at - started_at}.count()};
     return BenchmarkResult{
@@ -197,8 +238,10 @@ auto run_benchmark(BenchmarkOptions const& options) -> std::expected<BenchmarkRe
         .level_title = level.metadata.title,
         .requested_seconds = options.simulated_seconds,
         .tick_rate_hz = simulation.get_clock().get_tick_rate(),
+        .game_speed = options.game_speed,
         .requested_ticks = *requested_ticks,
         .completed_ticks = completed_ticks,
+        .advance_calls = advance_calls,
         .completed_seconds = static_cast<double>(completed_ticks) / simulation_tick_rate_hz,
         .elapsed_seconds = elapsed,
         .initial_capital_ships = initial_capital_ships,
@@ -218,6 +261,19 @@ auto run_benchmark(BenchmarkOptions const& options) -> std::expected<BenchmarkRe
         .frame_memory_total_padding_bytes = frame_summary.total_padding_bytes,
         .frame_memory_total_root_claims = frame_summary.total_root_claims,
         .frame_memory_overflow_count = frame_memory.overflow_count,
+        .telemetry_enabled = options.telemetry_enabled,
+        .detailed_timing = options.detailed_timing,
+        .telemetry_rows = telemetry_history.used_sample_count,
+        .telemetry_payload_writes = telemetry_history.payload_write_count,
+        .telemetry_acquired_blocks = telemetry_history.acquired_block_count,
+        .telemetry_retained_blocks = telemetry_history.retained_block_count,
+        .telemetry_allocated_bytes = telemetry_history.total_byte_capacity,
+        .telemetry_performance_windows =
+            telemetry_run.has_value()
+                ? static_cast<std::int32_t>(telemetry_run->performance_windows.size())
+                : 0,
+        .telemetry_cpu_ms = telemetry_cpu_ms,
+        .simulation_cpu_ms = simulation_cpu_ms,
         .hardware_threads = std::thread::hardware_concurrency(),
         .compiler = SANDBOX_BENCHMARK_COMPILER_ID,
         .build_type = SANDBOX_BENCHMARK_BUILD_TYPE,
@@ -246,11 +302,11 @@ auto to_json(BenchmarkResult const& result) -> std::string {
            << ",\"id\":" << json_string(result.level_id)
            << ",\"title\":" << json_string(result.level_title) << "}"
            << ",\"workload\":{\"requested_seconds\":" << result.requested_seconds
-           << ",\"tick_rate_hz\":" << result.tick_rate_hz
+           << ",\"tick_rate_hz\":" << result.tick_rate_hz << ",\"game_speed\":" << result.game_speed
            << ",\"requested_ticks\":" << result.requested_ticks
            << ",\"completed_ticks\":" << result.completed_ticks
            << ",\"completed_seconds\":" << result.completed_seconds
-           << ",\"advance_calls\":" << result.requested_ticks << "}"
+           << ",\"advance_calls\":" << result.advance_calls << "}"
            << ",\"timing\":{\"elapsed_seconds\":" << result.elapsed_seconds
            << ",\"ticks_per_second\":" << ticks_per_second
            << ",\"mean_tick_microseconds\":" << mean_tick_microseconds << "}"
@@ -269,6 +325,20 @@ auto to_json(BenchmarkResult const& result) -> std::string {
            << ",\"frame_total_padding_bytes\":" << result.frame_memory_total_padding_bytes
            << ",\"frame_total_root_claims\":" << result.frame_memory_total_root_claims
            << ",\"frame_overflow_count\":" << result.frame_memory_overflow_count << "}"
+           << ",\"telemetry\":{\"enabled\":" << (result.telemetry_enabled ? "true" : "false")
+           << ",\"detailed_timing\":" << (result.detailed_timing ? "true" : "false")
+           << ",\"rows\":" << result.telemetry_rows
+           << ",\"payload_writes\":" << result.telemetry_payload_writes
+           << ",\"acquired_blocks\":" << result.telemetry_acquired_blocks
+           << ",\"retained_blocks\":" << result.telemetry_retained_blocks
+           << ",\"allocated_bytes\":" << result.telemetry_allocated_bytes
+           << ",\"performance_windows\":" << result.telemetry_performance_windows
+           << ",\"telemetry_cpu_ms\":" << result.telemetry_cpu_ms
+           << ",\"simulation_cpu_ms\":" << result.simulation_cpu_ms << ",\"telemetry_cpu_percent\":"
+           << (result.simulation_cpu_ms > 0.0
+                   ? result.telemetry_cpu_ms / result.simulation_cpu_ms * 100.0
+                   : 0.0)
+           << "}"
            << ",\"environment\":{\"hardware_threads\":" << result.hardware_threads
            << ",\"compiler\":" << json_string(result.compiler)
            << ",\"build_type\":" << json_string(result.build_type)

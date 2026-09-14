@@ -15,6 +15,7 @@ $level = Join-Path $repo 'LevelScripts/Benchmarks/Batch_benchmark.scm'
 $arguments = @{
     Level = $level
     Seconds = $Seconds
+    GameSpeed = 100
     BuildPreset = 'frame-memory-level-benchmark'
     SkipBuild = $SkipBuild
 }
@@ -35,6 +36,13 @@ if ($result.level.id -ne 'batch-benchmark') {
 }
 if ($result.workload.completed_ticks -ne $result.workload.requested_ticks) {
     throw 'Frame-memory benchmark did not complete the requested deterministic workload.'
+}
+if ($result.workload.game_speed -ne 100) {
+    throw "Unexpected frame-memory benchmark game speed: $($result.workload.game_speed)"
+}
+$expectedAdvanceCalls = [Math]::Ceiling([double]$result.workload.requested_ticks / 100.0)
+if ($result.workload.advance_calls -ne $expectedAdvanceCalls) {
+    throw "Unexpected deterministic advance count: $($result.workload.advance_calls)"
 }
 if ($result.memory.frame_overflow_count -ne 0) {
     throw "Frame memory overflowed $($result.memory.frame_overflow_count) times."

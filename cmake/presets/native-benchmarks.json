@@ -52,6 +52,15 @@
         "SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK": true,
         "UE_CONFIGURATION": "Development"
       }
+    },
+    {
+      "name": "telemetry-integration-benchmark",
+      "displayName": "Native level telemetry integration benchmark",
+      "inherits": "win-x64-clangcl-release-unity",
+      "cacheVariables": {
+        "SANDBOX_TELEMETRY_INTEGRATION_BENCHMARK": true,
+        "UE_CONFIGURATION": "Shipping"
+      }
     }
   ],
   "buildPresets": [
@@ -128,6 +137,14 @@
         "native-simulation-benchmark",
         "native-simulation-benchmark-tests"
       ]
+    },
+    {
+      "name": "telemetry-integration-benchmark",
+      "configurePreset": "telemetry-integration-benchmark",
+      "targets": [
+        "native-simulation-benchmark",
+        "native-simulation-benchmark-tests"
+      ]
     }
   ],
   "testPresets": [
@@ -168,6 +185,16 @@
       "filter": {
         "include": {
           "label": "^frame-memory-level-benchmark$"
+        }
+      }
+    },
+    {
+      "name": "telemetry-integration-benchmark",
+      "inherits": "test-base",
+      "configurePreset": "telemetry-integration-benchmark",
+      "filter": {
+        "include": {
+          "label": "^telemetry-integration-benchmark$"
         }
       }
     }
@@ -327,6 +354,23 @@
         {
           "type": "test",
           "name": "frame-memory-level-benchmark"
+        }
+      ]
+    },
+    {
+      "name": "telemetry-integration-benchmark",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "telemetry-integration-benchmark"
+        },
+        {
+          "type": "build",
+          "name": "telemetry-integration-benchmark"
+        },
+        {
+          "type": "test",
+          "name": "telemetry-integration-benchmark"
         }
       ]
     }
