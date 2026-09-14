@@ -43,6 +43,19 @@ TEST(JobserverSupervisor, PropagatesExitCodeAndOutput) {
     EXPECT_NE(stderr_text.find("stderr 1"), std::string::npos) << stderr_text;
 }
 
+TEST(JobserverSupervisor, DoesNotCreateAConsoleWindow) {
+    jobserver::Supervisor supervisor;
+    auto const result{supervisor.run(
+        helper_command({"require-no-console"}),
+        std::nullopt,
+        std::nullopt,
+        [](std::string const&, std::string const&) {},
+        [](jobserver::JobHealth, std::string) {},
+        [] { return true; })};
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->exit_code, 0);
+}
+
 TEST(JobserverSupervisor, TimeoutTerminatesProcessTree) {
     jobserver::Supervisor supervisor;
     auto const result{supervisor.run(

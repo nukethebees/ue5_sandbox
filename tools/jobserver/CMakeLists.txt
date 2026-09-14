@@ -57,7 +57,7 @@ target_compile_definitions(jobserver PRIVATE
   NOMINMAX
 )
 
-add_executable(jobserverd)
+add_executable(jobserverd WIN32)
 target_sources(jobserverd PRIVATE
   daemon/main.cpp
   daemon/server.cpp
@@ -164,14 +164,11 @@ install(TARGETS jobserver jobserverd
 
 add_custom_target(install-jobserver
   COMMAND pwsh -NoProfile -File
-    "${CMAKE_CURRENT_SOURCE_DIR}/install/Stop-Jobserver.ps1"
-    -ClientPath "${SANDBOX_JOBSERVER_INSTALL_ROOT}/bin/jobserver.exe"
-  COMMAND "${CMAKE_COMMAND}" --install "${CMAKE_BINARY_DIR}"
-    --component jobserver
-    --prefix "${SANDBOX_JOBSERVER_INSTALL_ROOT}"
-  COMMAND pwsh -NoProfile -File
-    "${CMAKE_CURRENT_SOURCE_DIR}/install/Register-Jobserver.ps1"
-    -DaemonPath "${SANDBOX_JOBSERVER_INSTALL_ROOT}/bin/jobserverd.exe"
+    "${CMAKE_CURRENT_SOURCE_DIR}/install/Install-Jobserver.ps1"
+    -BuiltClientPath "$<TARGET_FILE:jobserver>"
+    -BuiltDaemonPath "$<TARGET_FILE:jobserverd>"
+    -InstallRoot "${SANDBOX_JOBSERVER_INSTALL_ROOT}"
+    -RegisterScript "${CMAKE_CURRENT_SOURCE_DIR}/install/Register-Jobserver.ps1"
   DEPENDS jobserver jobserverd
   COMMENT "Installing and registering the canonical per-user jobserver"
   USES_TERMINAL

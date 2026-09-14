@@ -12,6 +12,8 @@ pipe; there is no TCP listener, remote execution, or distributed scheduling.
 - `jobserverd.exe` owns resource allocation, job state, process supervision, logs, and history.
 - `jobserver.exe` is the command-line client used by CMake, PowerShell, Codex, and developers.
 - `jobserver-client` is the typed C++ client library used by the CLI and available to native tools.
+- The daemon and its supervised console processes run without allocating visible console windows.
+  Nested commands preserve the same behavior.
 - Windows Job Objects contain supervised process trees and kill them if the daemon exits. Job
   membership is attached atomically during process creation, so a daemon crash cannot strand a
   child in the gap between creation and later supervision.
@@ -38,7 +40,7 @@ cmake --build --preset win-x64-clangcl-debug --target install-jobserver
 
 `csetup` performs this bootstrap automatically when the jobserver is not installed.
 
-The install target places immutable binaries under:
+The install target places the active binaries under:
 
 ```text
 %LOCALAPPDATA%\NukeTheBees\jobserver\bin
@@ -54,9 +56,14 @@ Installation registers the per-user `NukeTheBeesJobserver` Scheduled Task. It st
 clients also ask the task to start when the pipe is absent. Task configuration uses `IgnoreNew`,
 while `FILE_FLAG_FIRST_PIPE_INSTANCE` prevents two daemon processes from becoming authorities.
 
-An update first asks the old daemon to shut down. Shutdown is refused while jobs are queued or
-running, so installation cannot silently abandon or kill active work. The new binaries are copied
-only after the old daemon drains, and the task is then registered and started again.
+An update stages and smoke-tests both new binaries before asking the old daemon to shut down.
+Shutdown is refused while jobs are queued or running, so installation cannot silently abandon or
+kill active work. After the old daemon drains, the installer swaps the complete `bin` directory,
+registers the task, and verifies the replacement through `ping`. The prior binaries are retained in
+`previous` and are automatically restored and restarted if anything after the swap fails. A named
+per-user mutex serializes installers from separate worktrees and Windows sessions. A later install
+also repairs an update interrupted while the active directory was being swapped and removes
+abandoned staging directories.
 
 ## Resource model
 
@@ -231,9 +238,9 @@ ctest --test-dir out/build/debug-game -L jobserver-system --output-on-failure
 ```
 
 They validate a real CMake compile from a worktree path containing spaces and Unicode, cross-
-worktree fairness and exclusivity, refused active updates, idle upgrades, concurrent daemon start,
-and recovery when the installed client is missing. These tests are serial and are excluded from
-the normal test presets.
+worktree fairness and exclusivity, refused active updates, rollback after a failed binary swap,
+recovery from an interrupted swap, idle upgrades, concurrent daemon start, and recovery when the
+installed client is missing. These tests are serial and are excluded from the normal test presets.
 
 The integration suite also uses deterministic lifecycle barriers to terminate the daemon after
 admission, allocation, process creation, process resume, output, descendant creation, completion,

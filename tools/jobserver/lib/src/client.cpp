@@ -90,7 +90,7 @@ auto run_in_inherited_job(Command const& command) -> std::expected<int, Error> {
                         nullptr,
                         nullptr,
                         TRUE,
-                        0,
+                        CREATE_NO_WINDOW,
                         nullptr,
                         working_directory,
                         &startup,

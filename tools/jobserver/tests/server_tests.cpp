@@ -279,6 +279,38 @@ auto find_job_in_state(std::string const& name, std::string const& state) -> std
     return std::nullopt;
 }
 
+auto wait_for_job_to_disappear(std::string const& name, std::chrono::milliseconds const timeout)
+    -> bool {
+    auto const deadline{std::chrono::steady_clock::now() + timeout};
+    while (std::chrono::steady_clock::now() < deadline) {
+        auto status{jobserver::Client::status()};
+        if (status) {
+            auto const json = Json::parse(*status);
+            auto const jobs = json.find("jobs");
+            if (json.is_object() && jobs != json.end() && jobs->is_array() &&
+                std::ranges::none_of(*jobs, [&](Json const& job) {
+                    return job.is_object() && job.value("name", "") == name;
+                })) {
+                return true;
+            }
+        }
+        std::this_thread::sleep_for(10ms);
+    }
+    return false;
+}
+
+auto wait_for_file(std::filesystem::path const& path, std::chrono::milliseconds const timeout)
+    -> bool {
+    auto const deadline{std::chrono::steady_clock::now() + timeout};
+    while (std::chrono::steady_clock::now() < deadline) {
+        if (std::filesystem::exists(path)) {
+            return true;
+        }
+        std::this_thread::sleep_for(10ms);
+    }
+    return false;
+}
+
 class JobserverIntegration : public ::testing::Test {
   protected:
     static void SetUpTestSuite() {
@@ -322,6 +354,9 @@ class JobserverIntegration : public ::testing::Test {
         if (WaitForSingleObject(daemon_.process, 0) == WAIT_TIMEOUT) {
             auto shutdown{jobserver::Client::shutdown()};
             EXPECT_TRUE(shutdown.has_value()) << shutdown.error().message;
+            if (!shutdown) {
+                EXPECT_TRUE(TerminateProcess(daemon_.process, 99));
+            }
         }
         auto const exit_code{wait_for_exit(daemon_, 5s)};
         EXPECT_TRUE(exit_code.has_value());
@@ -787,12 +822,12 @@ TEST_F(JobserverIntegration, ConflictingClientsAreGrantedInFifoOrder) {
         return jobserver::Client::acquire(
             test_request("waiting exclusive", jobserver::ClaimMode::exclusive));
     })};
-    ASSERT_TRUE(find_job("waiting exclusive").has_value());
+    ASSERT_TRUE(find_job_in_state("waiting exclusive", "QUEUED").has_value());
     auto later_future{std::async(std::launch::async, [] {
         return jobserver::Client::acquire(
             test_request("later shared", jobserver::ClaimMode::shared));
     })};
-    ASSERT_TRUE(find_job("later shared").has_value());
+    ASSERT_TRUE(find_job_in_state("later shared", "QUEUED").has_value());
 
     ASSERT_TRUE(active->release().has_value());
     ASSERT_EQ(exclusive_future.wait_for(2s), std::future_status::ready);
@@ -933,6 +968,21 @@ TEST_F(JobserverIntegration, NestedCommandInheritsInvokingBuildDirectory) {
     EXPECT_EQ(*exit_code, 0U);
     EXPECT_TRUE(std::filesystem::exists(build_directory / marker));
     EXPECT_FALSE(std::filesystem::exists(worktree / marker));
+    close(child);
+}
+
+TEST_F(JobserverIntegration, NestedCommandDoesNotCreateAConsoleWindow) {
+    ASSERT_EQ(_putenv_s("NUKETHEBEES_JOBSERVER_JOB", "test-parent"), 0);
+    auto child{launch(JOBSERVER_CLI_PATH,
+                      L"run --name nested-no-console --kind test -- " +
+                          quote(std::filesystem::path{JOBSERVER_TEST_HELPER_PATH}.wstring()) +
+                          L" require-no-console",
+                      data_path_)};
+    ASSERT_EQ(_putenv_s("NUKETHEBEES_JOBSERVER_JOB", ""), 0);
+    ASSERT_NE(child.process, nullptr);
+    auto const exit_code{wait_for_exit(child, 3s)};
+    ASSERT_TRUE(exit_code.has_value());
+    EXPECT_EQ(*exit_code, 0U);
     close(child);
 }
 
@@ -1412,21 +1462,21 @@ TEST_F(JobserverIntegration, DisconnectPolicyControlsWhetherChildOutlivesClient)
     auto attached{
         launch(JOBSERVER_TEST_CLIENT_PATH, L"attached-run \"" + attached_marker.wstring() + L"\"")};
     ASSERT_NE(attached.process, nullptr);
-    ASSERT_TRUE(find_job("attached client job").has_value());
+    ASSERT_TRUE(find_job_in_state("attached client job", "RUNNING").has_value());
     ASSERT_TRUE(TerminateProcess(attached.process, 99));
     ASSERT_TRUE(wait_for_exit(attached, 2s).has_value());
     close(attached);
+    ASSERT_TRUE(wait_for_job_to_disappear("attached client job", 2s));
 
     auto detached{
         launch(JOBSERVER_TEST_CLIENT_PATH, L"detached-run \"" + detached_marker.wstring() + L"\"")};
     ASSERT_NE(detached.process, nullptr);
-    ASSERT_TRUE(find_job("detached client job").has_value());
+    ASSERT_TRUE(find_job_in_state("detached client job", "RUNNING").has_value());
     ASSERT_TRUE(TerminateProcess(detached.process, 99));
     ASSERT_TRUE(wait_for_exit(detached, 2s).has_value());
     close(detached);
 
-    std::this_thread::sleep_for(1s);
     EXPECT_FALSE(std::filesystem::exists(attached_marker));
-    EXPECT_TRUE(std::filesystem::exists(detached_marker));
+    EXPECT_TRUE(wait_for_file(detached_marker, 3s));
 }
 }

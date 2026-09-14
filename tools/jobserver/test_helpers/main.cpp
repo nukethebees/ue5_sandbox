@@ -75,6 +75,9 @@ auto wmain(int argc, wchar_t** argv) -> int {
         std::cout << narrow(std::filesystem::current_path().wstring());
         return 0;
     }
+    if (mode == L"require-no-console") {
+        return GetConsoleWindow() == nullptr ? 0 : 5;
+    }
     if (mode == L"large-output") {
         auto const size{argc >= 3 ? _wtoi(argv[2]) : 65'536};
         std::string output(static_cast<std::size_t>(size), 'x');

@@ -210,7 +210,7 @@ auto Supervisor::run(Command const& command,
                         nullptr,
                         nullptr,
                         TRUE,
-                        CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT |
+                        CREATE_NO_WINDOW | CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT |
                             EXTENDED_STARTUPINFO_PRESENT,
                         environment.data(),
                         working_directory,

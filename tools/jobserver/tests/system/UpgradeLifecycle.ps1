@@ -19,8 +19,12 @@ $clientPath = (Resolve-Path -LiteralPath $ClientPath).Path
 $builtClientPath = (Resolve-Path -LiteralPath $BuiltClientPath).Path
 $builtDaemonPath = (Resolve-Path -LiteralPath $BuiltDaemonPath).Path
 $cmake = (Get-Command cmake -ErrorAction Stop).Source
-$backup = "$clientPath.system-test-backup"
 $run = [Guid]::NewGuid().ToString('N')
+$binPath = Split-Path $clientPath
+$installRoot = Split-Path $binPath
+$backup = Join-Path $installRoot ".system-test-client-$run.exe"
+$previousPath = Join-Path $installRoot 'previous'
+$interruptedBinBackup = Join-Path $installRoot ".system-test-bin-$run"
 $holderName = "upgrade-holder-$run"
 $processes = @()
 
@@ -30,6 +34,8 @@ function Start-ProcessWithArguments {
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = $Executable
     $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
     foreach ($argument in $Arguments) {
         $startInfo.ArgumentList.Add($argument)
     }
@@ -114,6 +120,18 @@ try {
         throw "Upgrade holder failed with exit code $($holder.ExitCode)"
     }
 
+    $env:NUKETHEBEES_JOBSERVER_TEST_INSTALL_FAIL_AFTER_SWAP = '1'
+    & $cmake --build $buildDirectory --target install-jobserver
+    $rollbackExitCode = $LASTEXITCODE
+    Remove-Item Env:NUKETHEBEES_JOBSERVER_TEST_INSTALL_FAIL_AFTER_SWAP
+    if ($rollbackExitCode -eq 0) {
+        throw 'Installation unexpectedly succeeded after the injected swap failure'
+    }
+    Wait-Daemon $true
+    if ((Get-FileHash -LiteralPath $clientPath -Algorithm SHA256).Hash -ne $clientHashBefore) {
+        throw 'Rollback did not restore the previous installed client'
+    }
+
     & $cmake --build $buildDirectory --target install-jobserver
     if ($LASTEXITCODE -ne 0) {
         throw "Idle installation failed with exit code $LASTEXITCODE"
@@ -123,6 +141,23 @@ try {
         (Get-FileHash -LiteralPath $builtClientPath -Algorithm SHA256).Hash) {
         throw 'Installed client does not match the built client after update'
     }
+
+    & $clientPath shutdown
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Could not stop the daemon before interrupted-swap recovery testing'
+    }
+    Wait-Daemon $false
+    if (-not (Test-Path -LiteralPath $previousPath -PathType Container)) {
+        throw 'Successful installation did not retain the previous binaries'
+    }
+    Move-Item -LiteralPath $binPath -Destination $interruptedBinBackup
+
+    & $cmake --build $buildDirectory --target install-jobserver
+    if ($LASTEXITCODE -ne 0) {
+        throw "Interrupted-swap recovery failed with exit code $LASTEXITCODE"
+    }
+    Wait-Daemon $true
+    Remove-Item -LiteralPath $interruptedBinBackup -Recurse -Force
 
     & $clientPath shutdown
     if ($LASTEXITCODE -ne 0) {
@@ -164,6 +199,7 @@ try {
     }
     Remove-Item -LiteralPath $backup
 } finally {
+    Remove-Item Env:NUKETHEBEES_JOBSERVER_TEST_INSTALL_FAIL_AFTER_SWAP -ErrorAction SilentlyContinue
     foreach ($process in $processes) {
         if ($null -ne $process -and -not $process.HasExited) {
             Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
@@ -174,6 +210,13 @@ try {
             Remove-Item -LiteralPath $backup
         } else {
             Move-Item -LiteralPath $backup -Destination $clientPath
+        }
+    }
+    if (Test-Path -LiteralPath $interruptedBinBackup) {
+        if (Test-Path -LiteralPath $binPath) {
+            Remove-Item -LiteralPath $interruptedBinBackup -Recurse -Force
+        } else {
+            Move-Item -LiteralPath $interruptedBinBackup -Destination $binPath
         }
     }
     & $clientPath status --json *> $null
