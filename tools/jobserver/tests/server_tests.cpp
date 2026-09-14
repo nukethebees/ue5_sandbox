@@ -120,6 +120,48 @@ auto process_ids_named(std::wstring const& executable_name) -> std::vector<DWORD
     return result;
 }
 
+class TestBarrier {
+  public:
+    TestBarrier(std::string const& phase, int const index) {
+        auto const suffix{std::to_wstring(GetCurrentProcessId()) + L"." + std::to_wstring(index)};
+        reached_name_ = L"Local\\NukeTheBees.Jobserver.Barrier.Reached." + suffix;
+        release_name_ = L"Local\\NukeTheBees.Jobserver.Barrier.Release." + suffix;
+        reached_ = CreateEventW(nullptr, TRUE, FALSE, reached_name_.c_str());
+        release_ = CreateEventW(nullptr, TRUE, FALSE, release_name_.c_str());
+        static_cast<void>(_putenv_s("NUKETHEBEES_JOBSERVER_TEST_BARRIER", phase.c_str()));
+        static_cast<void>(
+            _wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_BARRIER_REACHED", reached_name_.c_str()));
+        static_cast<void>(
+            _wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_BARRIER_RELEASE", release_name_.c_str()));
+    }
+    ~TestBarrier() {
+        release();
+        CloseHandle(reached_);
+        CloseHandle(release_);
+        static_cast<void>(_putenv_s("NUKETHEBEES_JOBSERVER_TEST_BARRIER", ""));
+        static_cast<void>(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_BARRIER_REACHED", L""));
+        static_cast<void>(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_BARRIER_RELEASE", L""));
+    }
+
+    TestBarrier(TestBarrier const&) = delete;
+    auto operator=(TestBarrier const&) -> TestBarrier& = delete;
+
+    [[nodiscard]] auto valid() const -> bool { return reached_ != nullptr && release_ != nullptr; }
+    [[nodiscard]] auto wait(std::chrono::milliseconds const timeout) const -> bool {
+        return WaitForSingleObject(reached_, static_cast<DWORD>(timeout.count())) == WAIT_OBJECT_0;
+    }
+    void release() const {
+        if (release_ != nullptr) {
+            SetEvent(release_);
+        }
+    }
+  private:
+    std::wstring reached_name_;
+    std::wstring release_name_;
+    HANDLE reached_{};
+    HANDLE release_{};
+};
+
 auto test_request(std::string name, jobserver::ClaimMode const mode) -> jobserver::AcquireRequest {
     return {
         .metadata = {.name = std::move(name), .kind = "test", .worktree = {}},
@@ -223,6 +265,7 @@ class JobserverIntegration : public ::testing::Test {
         ASSERT_EQ(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_PIPE", pipe_name_.c_str()), 0);
         ASSERT_EQ(_putenv_s("NUKETHEBEES_JOBSERVER_TEST_DATA", data_path_.string().c_str()), 0);
         ASSERT_EQ(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_IO_TIMEOUT_MS", L"250"), 0);
+        ASSERT_EQ(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_HEARTBEAT_MS", L"100"), 0);
         ASSERT_EQ(_wputenv_s(L"NUKETHEBEES_JOBSERVER_JOB", L""), 0);
     }
 
@@ -231,6 +274,7 @@ class JobserverIntegration : public ::testing::Test {
         static_cast<void>(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_PIPE", L""));
         static_cast<void>(_putenv_s("NUKETHEBEES_JOBSERVER_TEST_DATA", ""));
         static_cast<void>(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_IO_TIMEOUT_MS", L""));
+        static_cast<void>(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_HEARTBEAT_MS", L""));
     }
 
     void SetUp() override { start_daemon(); }
@@ -328,6 +372,152 @@ TEST_F(JobserverIntegration, IncompleteClientCannotPreventDaemonShutdown) {
     close(daemon_);
 }
 
+TEST_F(JobserverIntegration, PingConfirmsResponsiveControlPlane) {
+    EXPECT_TRUE(jobserver::Client::ping().has_value());
+}
+
+TEST_F(JobserverIntegration, ControlRequestTimesOutWhenHandlerIsWedged) {
+    stop_daemon();
+    {
+        TestBarrier barrier{"before_status_response", 1};
+        ASSERT_TRUE(barrier.valid());
+        daemon_ = launch(JOBSERVER_DAEMON_PATH);
+        ASSERT_NE(daemon_.process, nullptr);
+        close_thread();
+        ASSERT_TRUE(jobserver::Client::ping().has_value());
+
+        auto const start{std::chrono::steady_clock::now()};
+        auto status{jobserver::Client::status()};
+        EXPECT_FALSE(status.has_value());
+        if (!status) {
+            EXPECT_EQ(status.error().code, "read_timeout");
+        }
+        EXPECT_LT(std::chrono::steady_clock::now() - start, 1s);
+
+        barrier.release();
+        EXPECT_TRUE(jobserver::Client::ping().has_value());
+        stop_daemon();
+    }
+    start_daemon();
+}
+
+TEST_F(JobserverIntegration, DaemonCrashAtLifecycleBarriersLeavesNoOwnershipOrProcesses) {
+    stop_daemon();
+    auto const helper_processes_before{process_ids_named(L"jobserver-test-helper.exe")};
+    auto const marker{data_path_ / "barrier-descendant-marker.txt"};
+    std::filesystem::remove(marker);
+    std::vector<std::string> const phases{
+        "after_admission",
+        "after_resource_grant",
+        "before_process_creation",
+        "after_process_creation",
+        "before_process_resume",
+        "during_output",
+        "after_root_exit_with_descendants",
+        "before_resource_release",
+        "during_history_recording",
+    };
+
+    for (auto index{0}; index != static_cast<int>(phases.size()); ++index) {
+        auto const& phase{phases[static_cast<std::size_t>(index)]};
+        TestBarrier barrier{phase, index + 10};
+        ASSERT_TRUE(barrier.valid());
+        start_daemon();
+
+        auto arguments = std::vector<std::string>{"sleep", "20"};
+        if (phase == "during_output") {
+            arguments = {"large-output", "65536"};
+        } else if (phase == "after_root_exit_with_descendants") {
+            arguments = {"spawn-marker", marker.string(), "60000"};
+        } else if (phase == "before_resource_release" || phase == "during_history_recording") {
+            arguments = {"exit", "0"};
+        }
+        auto request{
+            submit_request("barrier " + phase,
+                           {{.name = "barrier-resource", .mode = jobserver::ClaimMode::exclusive}},
+                           std::move(arguments))};
+        auto client{std::async(std::launch::async, [request = std::move(request)] {
+            return jobserver::Client::run(request, [](std::string const&, std::string const&) {});
+        })};
+
+        ASSERT_TRUE(barrier.wait(3s)) << phase;
+        ASSERT_TRUE(TerminateProcess(daemon_.process, 91));
+        ASSERT_TRUE(wait_for_exit(daemon_, 2s).has_value());
+        close(daemon_);
+        barrier.release();
+        ASSERT_EQ(client.wait_for(2s), std::future_status::ready) << phase;
+        EXPECT_FALSE(client.get().has_value()) << phase;
+
+        for (auto attempt{0}; attempt != 50; ++attempt) {
+            if (process_ids_named(L"jobserver-test-helper.exe") == helper_processes_before) {
+                break;
+            }
+            std::this_thread::sleep_for(20ms);
+        }
+        EXPECT_EQ(process_ids_named(L"jobserver-test-helper.exe"), helper_processes_before)
+            << phase;
+    }
+
+    EXPECT_FALSE(std::filesystem::exists(marker));
+    start_daemon();
+    auto status{jobserver::Client::status()};
+    ASSERT_TRUE(status.has_value());
+    EXPECT_TRUE(Json::parse(*status).value("jobs", Json::array()).empty());
+}
+
+TEST_F(JobserverIntegration, AuditExpiresStartingJobAndReportsRecovery) {
+    stop_daemon();
+    ASSERT_EQ(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_STARTING_TIMEOUT_MS", L"100"), 0);
+    {
+        TestBarrier barrier{"after_resource_grant", 100};
+        ASSERT_TRUE(barrier.valid());
+        start_daemon();
+        auto client{std::async(std::launch::async, [] {
+            return jobserver::Client::run(
+                submit_request("expired starting job",
+                               {{.name = "starting-timeout-resource",
+                                 .mode = jobserver::ClaimMode::exclusive}},
+                               {"sleep", "60000"}),
+                [](std::string const&, std::string const&) {});
+        })};
+        ASSERT_TRUE(barrier.wait(2s));
+
+        auto recovered{false};
+        for (auto attempt{0}; attempt != 50; ++attempt) {
+            auto status{jobserver::Client::status()};
+            ASSERT_TRUE(status.has_value());
+            auto const json = Json::parse(*status);
+            auto const diagnostics = json.value("diagnostics", Json::array());
+            recovered = std::ranges::any_of(diagnostics, [](Json const& diagnostic) {
+                return diagnostic.get<std::string>().contains("expired STARTING");
+            });
+            if (recovered) {
+                break;
+            }
+            std::this_thread::sleep_for(20ms);
+        }
+        EXPECT_TRUE(recovered);
+        barrier.release();
+        ASSERT_EQ(client.wait_for(2s), std::future_status::ready);
+        EXPECT_FALSE(client.get().has_value());
+
+        auto replacement{jobserver::Client::acquire({
+            .metadata = {.name = "replacement after starting recovery",
+                         .kind = "test",
+                         .worktree = {}},
+            .resources = {{.name = "starting-timeout-resource",
+                           .mode = jobserver::ClaimMode::exclusive}},
+        })};
+        EXPECT_TRUE(replacement.has_value()) << replacement.error().message;
+        if (replacement) {
+            EXPECT_TRUE(replacement->release().has_value());
+        }
+        stop_daemon();
+    }
+    ASSERT_EQ(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_STARTING_TIMEOUT_MS", L""), 0);
+    start_daemon();
+}
+
 TEST_F(JobserverIntegration, UnavailablePersistenceDoesNotStrandGrantedResource) {
     stop_daemon();
     auto const blocked_data_path{data_path_ / "blocked-data"};
@@ -378,6 +568,42 @@ TEST_F(JobserverIntegration, CrashedLeaseClientReleasesItsResource) {
         .resources = {{.name = "crash-resource", .mode = jobserver::ClaimMode::exclusive}},
     })};
     ASSERT_TRUE(lease.has_value()) << lease.error().message;
+}
+
+TEST_F(JobserverIntegration, QueuedClientReceivesPeriodicHeartbeat) {
+    auto active{jobserver::Client::acquire({
+        .metadata = {.name = "heartbeat blocker", .kind = "test", .worktree = {}},
+        .resources = {{.name = "heartbeat-resource", .mode = jobserver::ClaimMode::exclusive}},
+    })};
+    ASSERT_TRUE(active.has_value());
+    auto pipe{connect_and_handshake_raw_pipe()};
+    ASSERT_NE(pipe, INVALID_HANDLE_VALUE);
+    auto message = raw_submit_message("heartbeat waiter", {"exit", "0"});
+    message["resources"] = Json::array();
+    message["resources"].push_back(
+        Json{{"name", "heartbeat-resource"}, {"mode", "exclusive"}, {"units", 1}});
+    ASSERT_TRUE(jobserver::transport::write_message(pipe, message.dump()).has_value());
+
+    auto heartbeat{jobserver::transport::read_message(pipe, 1s)};
+    ASSERT_TRUE(heartbeat.has_value()) << heartbeat.error().message;
+    auto const heartbeat_json = Json::parse(*heartbeat);
+    ASSERT_TRUE(heartbeat_json.is_object()) << heartbeat_json.dump();
+    EXPECT_EQ(heartbeat_json.value("type", ""), "queued");
+
+    CloseHandle(pipe);
+    EXPECT_TRUE(active->release().has_value());
+    for (auto attempt{0}; attempt != 100; ++attempt) {
+        auto status{jobserver::Client::status()};
+        ASSERT_TRUE(status.has_value());
+        auto const jobs = Json::parse(*status).value("jobs", Json::array());
+        if (std::ranges::none_of(jobs, [](Json const& job) {
+                return job.value("name", "") == "heartbeat waiter";
+            })) {
+            return;
+        }
+        std::this_thread::sleep_for(20ms);
+    }
+    FAIL() << "Heartbeat waiter did not drain after its client disconnected";
 }
 
 TEST_F(JobserverIntegration, ConflictingClientsAreGrantedInFifoOrder) {

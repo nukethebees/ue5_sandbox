@@ -53,6 +53,7 @@ void print_help() {
                  "  jobserver kill <job-id>\n"
                  "  jobserver logs <job-id>\n"
                  "  jobserver start\n"
+                 "  jobserver ping\n"
                  "  jobserver shutdown\n"
                  "  jobserver doctor\n"
                  "  jobserver version\n\n"
@@ -149,6 +150,13 @@ void print_status(std::string const& text) {
             std::cout << " exclusive";
         }
         std::cout << '\n';
+    }
+    auto const diagnostics{status.value("diagnostics", std::vector<std::string>{})};
+    if (!diagnostics.empty()) {
+        std::cout << "RECOVERIES\n";
+        for (auto const& diagnostic : diagnostics) {
+            std::cout << "  " << diagnostic << '\n';
+        }
     }
 }
 
@@ -308,6 +316,14 @@ auto wmain(int argc, wchar_t** argv) -> int {
         auto result{jobserver::Client::start_daemon()};
         return result ? 0 : print_error(result.error());
     }
+    if (command == "ping") {
+        auto result{jobserver::Client::ping()};
+        if (!result) {
+            return print_error(result.error());
+        }
+        std::cout << "pong\n";
+        return 0;
+    }
     if (command == "shutdown") {
         auto result{jobserver::Client::shutdown()};
         return result ? 0 : print_error(result.error());
@@ -316,7 +332,7 @@ auto wmain(int argc, wchar_t** argv) -> int {
         auto const root{local_app_data() / "NukeTheBees" / "jobserver"};
         std::cout << "install: " << (root / "bin") << '\n';
         std::cout << "data:    " << (root / "data") << '\n';
-        auto result{jobserver::Client::status(false)};
+        auto result{jobserver::Client::ping()};
         if (!result) {
             return print_error(result.error());
         }

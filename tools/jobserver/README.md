@@ -22,9 +22,10 @@ The production pipe name includes the current user's SID:
 \\.\pipe\NukeTheBees.Jobserver.<user-sid>
 ```
 
-The pipe rejects remote clients and its access control list permits only the current user and
-LocalSystem. Messages use a four-byte little-endian payload length followed by UTF-8 JSON. The
-current protocol version is `1.0`.
+The pipe rejects remote clients. Its access control list lets restricted local tokens connect, and
+the daemon then impersonates each client and rejects it unless its user SID matches the daemon's
+user SID. Messages use a four-byte little-endian payload length followed by UTF-8 JSON. The current
+protocol version is `1.0`.
 
 ## Installation and startup
 
@@ -130,6 +131,7 @@ complete resource set needed by nested work.
 ```powershell
 jobserver status
 jobserver status --json
+jobserver ping
 jobserver show <job-id>
 jobserver history
 jobserver logs <job-id>
@@ -140,6 +142,9 @@ jobserver version
 ```
 
 `status` reports active and queued jobs, blockers, elapsed time, health, and resource usage.
+Queued clients receive periodic heartbeat frames while they wait. `ping` uses a bounded control
+request to distinguish a responsive daemon from one whose process merely still exists. Other
+control commands also fail with a clear timeout rather than waiting indefinitely.
 `cancel` and `kill` both terminate a supervised Windows Job Object; they use distinct conventional
 exit codes (`130` and `137`). A timeout is reported as `124`.
 
@@ -164,6 +169,9 @@ this heuristic.
   1,000 entries. History is not authoritative for live ownership.
 - History and logs are best-effort. An unavailable or full data directory does not prevent command
   execution or retain resource ownership.
+- A daemon audit loop checks live owner registration and recomputes resource accounting from the
+  authoritative job queue. It interrupts expired `STARTING` entries, recovers ownerless jobs, and
+  publishes recovery details in `status` under `diagnostics` (shown as `RECOVERIES` in text output).
 - A protocol-major mismatch is rejected during the handshake. Minor versions may add compatible
   fields.
 
@@ -211,6 +219,11 @@ They validate a real CMake compile from a worktree path containing spaces and Un
 worktree fairness and exclusivity, refused active updates, idle upgrades, concurrent daemon start,
 and recovery when the installed client is missing. These tests are serial and are excluded from
 the normal test presets.
+
+The integration suite also uses deterministic lifecycle barriers to terminate the daemon after
+admission, allocation, process creation, process resume, output, descendant creation, completion,
+and history publication. Each case verifies that resources and test-process counts return to their
+baseline.
 
 The implementation uses Win32 directly rather than Boost.Process. Named-pipe security, suspended
 launch followed by Job Object assignment, process-tree accounting, and reliable tree termination

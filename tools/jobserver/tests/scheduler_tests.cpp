@@ -136,3 +136,46 @@ TEST(JobserverScheduler, ReleasingQueuedJobDoesNotAlterOwnership) {
     ASSERT_NE(machine, snapshot.resources.end());
     EXPECT_TRUE(machine->exclusive);
 }
+
+TEST(JobserverScheduler, AuditRecoversExpiredStartingJobAndGrantsNextWaiter) {
+    jobserver::Scheduler scheduler;
+    auto const expired{scheduler.enqueue(metadata("expired"), exclusive("machine"))};
+    auto const waiting{scheduler.enqueue(metadata("waiting"), exclusive("machine"))};
+    ASSERT_TRUE(scheduler.try_grant(expired));
+    ASSERT_FALSE(scheduler.try_grant(waiting));
+
+    auto const findings{scheduler.audit_and_recover({}, std::chrono::milliseconds{0})};
+
+    EXPECT_FALSE(findings.empty());
+    EXPECT_EQ(scheduler.state(expired), jobserver::JobState::interrupted);
+    EXPECT_TRUE(scheduler.try_grant(waiting));
+}
+
+TEST(JobserverScheduler, AuditPreservesRunningJobWithRegisteredOwner) {
+    jobserver::Scheduler scheduler;
+    auto const job{scheduler.enqueue(metadata("owned"), exclusive("machine"))};
+    ASSERT_TRUE(scheduler.try_grant(job));
+    scheduler.set_state(job, jobserver::JobState::running);
+
+    auto const findings{scheduler.audit_and_recover({job}, std::chrono::milliseconds{0})};
+
+    EXPECT_TRUE(findings.empty());
+    EXPECT_EQ(scheduler.state(job), jobserver::JobState::running);
+}
+
+TEST(JobserverScheduler, AuditRecoversRunningJobWithoutRegisteredOwner) {
+    jobserver::Scheduler scheduler;
+    auto const job{scheduler.enqueue(metadata("orphaned"), exclusive("machine"))};
+    ASSERT_TRUE(scheduler.try_grant(job));
+    scheduler.set_state(job, jobserver::JobState::running);
+
+    auto const findings{scheduler.audit_and_recover({}, std::chrono::hours{1})};
+
+    EXPECT_FALSE(findings.empty());
+    EXPECT_EQ(scheduler.state(job), jobserver::JobState::interrupted);
+    auto const snapshot{scheduler.snapshot()};
+    auto const machine{
+        std::ranges::find(snapshot.resources, "machine", &jobserver::ResourceUsage::name)};
+    ASSERT_NE(machine, snapshot.resources.end());
+    EXPECT_FALSE(machine->exclusive);
+}

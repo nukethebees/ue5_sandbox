@@ -186,6 +186,66 @@ auto Scheduler::snapshot() const -> SchedulerSnapshot {
     return result;
 }
 
+auto Scheduler::audit_and_recover(std::unordered_set<std::string> const& owned_jobs,
+                                  std::chrono::milliseconds const maximum_starting_time)
+    -> std::vector<std::string> {
+    std::scoped_lock const lock{mutex_};
+    std::vector<std::string> diagnostics;
+    auto const now{std::chrono::system_clock::now()};
+
+    for (auto& entry : entries_) {
+        auto const starting_expired{entry.state == JobState::starting &&
+                                    entry.started_at != decltype(entry.started_at){} &&
+                                    now - entry.started_at >= maximum_starting_time};
+        auto const running_without_owner{
+            (entry.state == JobState::running || entry.state == JobState::cancelling) &&
+            !owned_jobs.contains(entry.id)};
+        if (starting_expired || running_without_owner) {
+            diagnostics.push_back(starting_expired
+                                      ? "recovered expired STARTING job " + entry.id
+                                      : "recovered RUNNING job without an owner " + entry.id);
+            entry.state = JobState::interrupted;
+            entry.finished_at = now;
+        }
+    }
+
+    auto expected{resources_};
+    for (auto& [name, state] : expected) {
+        static_cast<void>(name);
+        state.counted_used = 0;
+        state.shared_users = 0;
+        state.exclusive = false;
+    }
+    for (auto const& entry : entries_) {
+        if (entry.state != JobState::starting && entry.state != JobState::running &&
+            entry.state != JobState::cancelling) {
+            continue;
+        }
+        for (auto const& claim : entry.claims) {
+            auto& state{expected.at(claim.name)};
+            if (claim.mode == ClaimMode::exclusive) {
+                state.exclusive = true;
+            } else if (claim.mode == ClaimMode::shared) {
+                ++state.shared_users;
+            } else {
+                state.counted_used += claim.units;
+            }
+        }
+    }
+    for (auto& [name, state] : resources_) {
+        auto const& wanted{expected.at(name)};
+        if (state.counted_used != wanted.counted_used ||
+            state.shared_users != wanted.shared_users || state.exclusive != wanted.exclusive) {
+            diagnostics.push_back("repaired resource accounting for " + name);
+            state.counted_used = wanted.counted_used;
+            state.shared_users = wanted.shared_users;
+            state.exclusive = wanted.exclusive;
+        }
+    }
+    grant_available();
+    return diagnostics;
+}
+
 auto Scheduler::find_entry(std::string const& id) -> std::vector<QueueEntry>::iterator {
     return std::ranges::find(entries_, id, &QueueEntry::id);
 }

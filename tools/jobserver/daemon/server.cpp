@@ -2,6 +2,7 @@
 
 #include "jobserver/protocol.hpp"
 #include "jobserver/transport.hpp"
+#include "test_barrier.hpp"
 
 #include <Windows.h>
 
@@ -40,6 +41,34 @@ auto client_io_timeout() -> std::chrono::milliseconds {
         return std::chrono::milliseconds{parsed};
     }();
     return timeout;
+}
+
+auto maximum_starting_time() -> std::chrono::milliseconds {
+    constexpr auto default_timeout{std::chrono::seconds{30}};
+    wchar_t value[32]{};
+    auto const length{GetEnvironmentVariableW(
+        L"NUKETHEBEES_JOBSERVER_TEST_STARTING_TIMEOUT_MS", value, std::size(value))};
+    if (length == 0 || length >= std::size(value)) {
+        return default_timeout;
+    }
+    wchar_t* end{};
+    auto const parsed{std::wcstoul(value, &end, 10)};
+    return end != value && *end == L'\0' && parsed != 0 ? std::chrono::milliseconds{parsed}
+                                                        : default_timeout;
+}
+
+auto queue_heartbeat_interval() -> std::chrono::milliseconds {
+    constexpr auto default_interval{std::chrono::seconds{5}};
+    wchar_t value[32]{};
+    auto const length{GetEnvironmentVariableW(
+        L"NUKETHEBEES_JOBSERVER_TEST_HEARTBEAT_MS", value, std::size(value))};
+    if (length == 0 || length >= std::size(value)) {
+        return default_interval;
+    }
+    wchar_t* end{};
+    auto const parsed{std::wcstoul(value, &end, 10)};
+    return end != value && *end == L'\0' && parsed != 0 ? std::chrono::milliseconds{parsed}
+                                                        : default_interval;
 }
 
 auto write_client(void* const pipe, std::string const& message) -> std::expected<void, Error> {
@@ -95,6 +124,45 @@ auto pipe_connected(HANDLE const pipe) -> bool {
     return PeekNamedPipe(pipe, nullptr, 0, nullptr, &available, nullptr) != FALSE;
 }
 
+auto token_user(HANDLE const token) -> std::vector<std::byte> {
+    DWORD size{};
+    GetTokenInformation(token, TokenUser, nullptr, 0, &size);
+    std::vector<std::byte> storage(size);
+    if (size == 0 || !GetTokenInformation(token, TokenUser, storage.data(), size, &size)) {
+        return {};
+    }
+    return storage;
+}
+
+auto same_user_client(HANDLE const pipe) -> bool {
+    if (!ImpersonateNamedPipeClient(pipe)) {
+        return false;
+    }
+
+    HANDLE client_token{};
+    auto const opened_client{OpenThreadToken(GetCurrentThread(), TOKEN_QUERY, TRUE, &client_token)};
+    auto const client_storage{opened_client ? token_user(client_token) : std::vector<std::byte>{}};
+    if (client_token != nullptr) {
+        CloseHandle(client_token);
+    }
+    RevertToSelf();
+
+    HANDLE daemon_token{};
+    if (client_storage.empty() ||
+        !OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &daemon_token)) {
+        return false;
+    }
+    auto const daemon_storage{token_user(daemon_token)};
+    CloseHandle(daemon_token);
+    if (daemon_storage.empty()) {
+        return false;
+    }
+
+    auto const client_user{reinterpret_cast<TOKEN_USER const*>(client_storage.data())};
+    auto const daemon_user{reinterpret_cast<TOKEN_USER const*>(daemon_storage.data())};
+    return EqualSid(client_user->User.Sid, daemon_user->User.Sid) != FALSE;
+}
+
 void send_error(void* const pipe, Error const& error) {
     static_cast<void>(write_client(
         pipe, Json{{"type", "error"}, {"code", error.code}, {"message", error.message}}.dump()));
@@ -102,38 +170,10 @@ void send_error(void* const pipe, Error const& error) {
 
 auto make_pipe_security()
     -> std::expected<std::pair<SECURITY_ATTRIBUTES, PSECURITY_DESCRIPTOR>, Error> {
-    HANDLE token{};
-    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token)) {
-        return std::unexpected(
-            Error{"security_initialization_failed", "Could not open the daemon process token"});
-    }
-    DWORD size{};
-    GetTokenInformation(token, TokenUser, nullptr, 0, &size);
-    std::vector<std::byte> storage(size);
-    if (size == 0 || !GetTokenInformation(token, TokenUser, storage.data(), size, &size)) {
-        CloseHandle(token);
-        return std::unexpected(
-            Error{"security_initialization_failed", "Could not read the daemon user SID"});
-    }
-    CloseHandle(token);
-    auto const user{reinterpret_cast<TOKEN_USER const*>(storage.data())};
-    LPWSTR sid{};
-    if (!ConvertSidToStringSidW(user->User.Sid, &sid)) {
-        return std::unexpected(
-            Error{"security_initialization_failed", "Could not format the daemon user SID"});
-    }
-    std::wstring descriptor;
-    if (GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_TEST_PIPE", nullptr, 0) != 0) {
-        descriptor = L"D:P(A;;GA;;;WD)";
-    } else {
-        descriptor = L"D:P(A;;GA;;;SY)(A;;GA;;;";
-        descriptor += sid;
-        descriptor += L")";
-    }
-    LocalFree(sid);
+    constexpr auto descriptor{L"D:P(A;;GA;;;WD)S:(ML;;NW;;;LW)"};
     PSECURITY_DESCRIPTOR security_descriptor{};
     if (!ConvertStringSecurityDescriptorToSecurityDescriptorW(
-            descriptor.c_str(), SDDL_REVISION_1, &security_descriptor, nullptr)) {
+            descriptor, SDDL_REVISION_1, &security_descriptor, nullptr)) {
         return std::unexpected(Error{"security_initialization_failed",
                                      "Could not construct the named-pipe security descriptor"});
     }
@@ -152,6 +192,7 @@ auto Server::run() -> int {
         return 1;
     }
     auto& [security, descriptor]{*pipe_security};
+    std::jthread audit_thread{[this](std::stop_token const stop_token) { audit_loop(stop_token); }};
     auto finish = [&](int const result) {
         LocalFree(descriptor);
         std::unique_lock lock{handlers_mutex_};
@@ -175,8 +216,10 @@ auto Server::run() -> int {
                                          0,
                                          &security)};
         if (pipe == INVALID_HANDLE_VALUE) {
+            auto const error{GetLastError()};
             std::cerr << (first ? "Another jobserver daemon is already running\n"
-                                : "Could not create scheduler pipe\n");
+                                : "Could not create scheduler pipe (Windows error " +
+                                      std::to_string(error) + ")\n");
             return finish(first ? 2 : 1);
         }
         first = false;
@@ -241,6 +284,11 @@ void Server::serve_client(void* const native_pipe) {
         CloseHandle(pipe);
         return;
     }
+    if (!same_user_client(pipe)) {
+        send_error(pipe, Error{"access_denied", "The client belongs to a different user"});
+        CloseHandle(pipe);
+        return;
+    }
     auto const hello_json = Json::parse(*hello, nullptr, false);
     auto compatible{hello_json.is_object()};
     compatible = compatible && hello_json.contains("type") && hello_json["type"].is_string() &&
@@ -281,6 +329,8 @@ void Server::serve_client(void* const native_pipe) {
             handle_submit(pipe, *request);
         } else if (type == "status") {
             handle_status(pipe, json.value("history", false));
+        } else if (type == "ping") {
+            static_cast<void>(write_client(pipe, Json{{"type", "pong"}}.dump()));
         } else if (type == "cancel") {
             handle_cancel(pipe, *request, false);
         } else if (type == "kill") {
@@ -317,6 +367,8 @@ void Server::handle_acquire(void* const pipe, std::string const& message) {
         id = scheduler_.enqueue(parse_metadata(json.value("metadata", Json::object())),
                                 std::move(*claims));
     }
+    test_barrier("after_admission");
+    auto next_heartbeat{std::chrono::steady_clock::now() + queue_heartbeat_interval()};
     while (!scheduler_.try_grant(id)) {
         auto const state{scheduler_.state(id)};
         if (!state || *state != JobState::queued) {
@@ -327,9 +379,25 @@ void Server::handle_acquire(void* const pipe, std::string const& message) {
             static_cast<void>(scheduler_.cancel_queued(id));
             return;
         }
+        if (std::chrono::steady_clock::now() >= next_heartbeat) {
+            if (!write_client(pipe, Json{{"type", "queued"}, {"id", id}}.dump())) {
+                static_cast<void>(scheduler_.cancel_queued(id));
+                return;
+            }
+            next_heartbeat = std::chrono::steady_clock::now() + queue_heartbeat_interval();
+        }
         std::this_thread::sleep_for(std::chrono::milliseconds{100});
     }
+    test_barrier("after_resource_grant");
     GrantedClaimGuard const claim_guard{scheduler_, id};
+    if (scheduler_.state(id) != JobState::starting) {
+        send_error(pipe, Error{"start_expired", "Lease startup exceeded the daemon deadline"});
+        return;
+    }
+    {
+        std::scoped_lock const lock{leases_mutex_};
+        leases_.insert(id);
+    }
     scheduler_.set_state(id, JobState::running);
     if (!write_client(pipe, Json{{"type", "granted"}, {"id", id}}.dump())) {
         scheduler_.release(id, JobState::interrupted);
@@ -337,6 +405,10 @@ void Server::handle_acquire(void* const pipe, std::string const& message) {
     }
     auto const release{transport::read_message(pipe)};
     scheduler_.release(id, release ? JobState::succeeded : JobState::interrupted);
+    {
+        std::scoped_lock const lock{leases_mutex_};
+        leases_.erase(id);
+    }
     record_history(id);
 }
 
@@ -362,6 +434,8 @@ void Server::handle_submit(void* const pipe, std::string const& message) {
         }
         id = scheduler_.enqueue(metadata, std::move(*claims));
     }
+    test_barrier("after_admission");
+    auto next_heartbeat{std::chrono::steady_clock::now() + queue_heartbeat_interval()};
     while (!scheduler_.try_grant(id)) {
         auto const state{scheduler_.state(id)};
         if (!state || *state != JobState::queued) {
@@ -377,9 +451,21 @@ void Server::handle_submit(void* const pipe, std::string const& message) {
             static_cast<void>(scheduler_.cancel_queued(id));
             return;
         }
+        if (std::chrono::steady_clock::now() >= next_heartbeat) {
+            if (!write_client(pipe, Json{{"type", "queued"}, {"id", id}}.dump())) {
+                static_cast<void>(scheduler_.cancel_queued(id));
+                return;
+            }
+            next_heartbeat = std::chrono::steady_clock::now() + queue_heartbeat_interval();
+        }
         std::this_thread::sleep_for(std::chrono::milliseconds{100});
     }
+    test_barrier("after_resource_grant");
     GrantedClaimGuard const claim_guard{scheduler_, id};
+    if (scheduler_.state(id) != JobState::starting) {
+        send_error(pipe, Error{"start_expired", "Command startup exceeded the daemon deadline"});
+        return;
+    }
     auto const command_json = json.value("command", Json::object());
     Command command{
         .executable = path_from_utf8(command_json.value("executable", "")),
@@ -441,12 +527,13 @@ void Server::handle_submit(void* const pipe, std::string const& message) {
             return continue_on_disconnect ||
                    (client_writable.load() && pipe_connected(static_cast<HANDLE>(pipe)));
         })};
-    {
-        std::scoped_lock const lock{supervisors_mutex_};
-        supervisors_.erase(id);
-    }
     if (!result) {
+        test_barrier("before_resource_release");
         scheduler_.release(id, JobState::failed);
+        {
+            std::scoped_lock const lock{supervisors_mutex_};
+            supervisors_.erase(id);
+        }
         send_error(pipe, result.error());
         return;
     }
@@ -458,7 +545,12 @@ void Server::handle_submit(void* const pipe, std::string const& message) {
     } else if (result->exit_code == 0) {
         final_state = JobState::succeeded;
     }
+    test_barrier("before_resource_release");
     scheduler_.release(id, final_state);
+    {
+        std::scoped_lock const lock{supervisors_mutex_};
+        supervisors_.erase(id);
+    }
     record_history(id);
     auto const reported_exit_code{result->timed_out ? 124
                                                     : (result->termination_exit_code != 0
@@ -475,6 +567,7 @@ void Server::handle_submit(void* const pipe, std::string const& message) {
 }
 
 void Server::handle_status(void* const pipe, bool const include_history) {
+    test_barrier("before_status_response");
     auto const snapshot{scheduler_.snapshot()};
     auto const now{std::chrono::system_clock::now()};
     auto entries = Json::array();
@@ -520,8 +613,70 @@ void Server::handle_status(void* const pipe, bool const include_history) {
             {"exclusive", resource.exclusive},
         });
     }
-    static_cast<void>(write_client(
-        pipe, Json{{"type", "status"}, {"jobs", entries}, {"resources", resources}}.dump()));
+    auto diagnostics = Json::array();
+    {
+        std::scoped_lock const lock{diagnostics_mutex_};
+        diagnostics = diagnostics_;
+    }
+    static_cast<void>(write_client(pipe,
+                                   Json{{"type", "status"},
+                                        {"jobs", entries},
+                                        {"resources", resources},
+                                        {"diagnostics", diagnostics},
+                                        {"heartbeat_ms",
+                                         std::chrono::duration_cast<std::chrono::milliseconds>(
+                                             std::chrono::system_clock::now().time_since_epoch())
+                                             .count()}}
+                                       .dump()));
+}
+
+void Server::audit_loop(std::stop_token const stop_token) {
+    while (!stop_token.stop_requested()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds{100});
+        std::unordered_set<std::string> owned_jobs;
+        {
+            std::scoped_lock const lock{supervisors_mutex_};
+            for (auto const& [id, supervisor] : supervisors_) {
+                static_cast<void>(supervisor);
+                owned_jobs.insert(id);
+            }
+        }
+        {
+            std::scoped_lock const lock{leases_mutex_};
+            owned_jobs.insert(leases_.begin(), leases_.end());
+        }
+        auto findings{scheduler_.audit_and_recover(owned_jobs, maximum_starting_time())};
+        auto const snapshot{scheduler_.snapshot()};
+        std::unordered_set<std::string> terminal_jobs;
+        for (auto const& entry : snapshot.entries) {
+            if (entry.state == JobState::succeeded || entry.state == JobState::failed ||
+                entry.state == JobState::timed_out || entry.state == JobState::killed ||
+                entry.state == JobState::interrupted) {
+                terminal_jobs.insert(entry.id);
+            }
+        }
+        {
+            std::scoped_lock const lock{supervisors_mutex_};
+            std::erase_if(supervisors_,
+                          [&](auto const& item) { return terminal_jobs.contains(item.first); });
+        }
+        {
+            std::scoped_lock const lock{leases_mutex_};
+            std::erase_if(leases_,
+                          [&](std::string const& id) { return terminal_jobs.contains(id); });
+        }
+        if (findings.empty()) {
+            continue;
+        }
+        std::scoped_lock const lock{diagnostics_mutex_};
+        for (auto& finding : findings) {
+            std::cerr << "Jobserver invariant recovery: " << finding << '\n';
+            diagnostics_.push_back(std::move(finding));
+        }
+        if (diagnostics_.size() > 100) {
+            diagnostics_.erase(diagnostics_.begin(), diagnostics_.end() - 100);
+        }
+    }
 }
 
 void Server::load_history() {
@@ -558,6 +713,7 @@ void Server::load_history() {
 
 void Server::record_history(std::string const& id) noexcept {
     try {
+        test_barrier("during_history_recording");
         auto const snapshot{scheduler_.snapshot()};
         auto const found{std::ranges::find(snapshot.entries, id, &QueueEntry::id)};
         if (found == snapshot.entries.end() || history_path_.empty()) {

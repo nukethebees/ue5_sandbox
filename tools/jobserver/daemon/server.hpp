@@ -8,8 +8,10 @@
 #include <filesystem>
 #include <memory>
 #include <mutex>
+#include <stop_token>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace jobserver {
@@ -25,10 +27,15 @@ class Server {
     void handle_shutdown(void* pipe);
     void load_history();
     void record_history(std::string const& id) noexcept;
+    void audit_loop(std::stop_token stop_token);
 
     Scheduler scheduler_;
     std::mutex supervisors_mutex_;
     std::unordered_map<std::string, std::shared_ptr<Supervisor>> supervisors_;
+    std::mutex leases_mutex_;
+    std::unordered_set<std::string> leases_;
+    std::mutex diagnostics_mutex_;
+    std::vector<std::string> diagnostics_;
     std::mutex history_mutex_;
     std::filesystem::path history_path_;
     std::vector<std::string> history_;

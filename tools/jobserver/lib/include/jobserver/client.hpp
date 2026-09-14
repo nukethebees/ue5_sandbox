@@ -35,6 +35,7 @@ class Client {
         -> std::expected<int, Error>;
     [[nodiscard]] static auto status(bool include_history = false)
         -> std::expected<std::string, Error>;
+    [[nodiscard]] static auto ping() -> std::expected<void, Error>;
     [[nodiscard]] static auto cancel(std::string const& id, bool kill)
         -> std::expected<void, Error>;
     [[nodiscard]] static auto shutdown() -> std::expected<void, Error>;

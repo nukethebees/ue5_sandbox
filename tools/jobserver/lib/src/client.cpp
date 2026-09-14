@@ -8,11 +8,27 @@
 #include <nlohmann/json.hpp>
 
 #include <chrono>
+#include <cwchar>
+#include <iterator>
 #include <thread>
 
 namespace jobserver {
 namespace {
 using Json = nlohmann::json;
+
+auto control_timeout() -> std::chrono::milliseconds {
+    constexpr auto default_timeout{std::chrono::seconds{5}};
+    wchar_t value[32]{};
+    auto const length{GetEnvironmentVariableW(
+        L"NUKETHEBEES_JOBSERVER_TEST_IO_TIMEOUT_MS", value, std::size(value))};
+    if (length == 0 || length >= std::size(value)) {
+        return default_timeout;
+    }
+    wchar_t* end{};
+    auto const parsed{std::wcstoul(value, &end, 10)};
+    return end != value && *end == L'\0' && parsed != 0 ? std::chrono::milliseconds{parsed}
+                                                        : default_timeout;
+}
 
 auto widen(std::string const& text) -> std::wstring {
     if (text.empty()) {
@@ -144,11 +160,11 @@ auto connect_pipe() -> std::expected<void*, Error> {
             hello["protocol"]["minor"] = protocol::minor_version;
             hello["client_version"] = "0.1.0";
             auto const hello_text{hello.dump()};
-            if (auto sent{transport::write_message(handle, hello_text)}; !sent) {
+            if (auto sent{transport::write_message(handle, hello_text, control_timeout())}; !sent) {
                 CloseHandle(handle);
                 return std::unexpected(sent.error());
             }
-            auto response{transport::read_message(handle)};
+            auto response{transport::read_message(handle, control_timeout())};
             if (!response) {
                 CloseHandle(handle);
                 return std::unexpected(response.error());
@@ -240,19 +256,25 @@ auto Client::acquire(AcquireRequest const& request) -> std::expected<Lease, Erro
         close_handle(*handle);
         return std::unexpected(sent.error());
     }
-    auto response{transport::read_message(*handle)};
-    if (!response) {
-        close_handle(*handle);
-        return std::unexpected(response.error());
+    for (;;) {
+        auto response{transport::read_message(*handle)};
+        if (!response) {
+            close_handle(*handle);
+            return std::unexpected(response.error());
+        }
+        auto const parsed = Json::parse(*response, nullptr, false);
+        if (parsed.is_object() && parsed.value("type", "") == "queued") {
+            continue;
+        }
+        if (!parsed.is_object() || parsed.value("type", "") != "granted") {
+            close_handle(*handle);
+            auto const message{parsed.is_object()
+                                   ? parsed.value("message", "Invalid acquire response")
+                                   : "Invalid acquire response"};
+            return std::unexpected(Error{"acquire_failed", message});
+        }
+        return Lease{*handle, parsed.value("id", "")};
     }
-    auto const parsed = Json::parse(*response, nullptr, false);
-    if (!parsed.is_object() || parsed.value("type", "") != "granted") {
-        close_handle(*handle);
-        auto const message{parsed.is_object() ? parsed.value("message", "Invalid acquire response")
-                                              : "Invalid acquire response"};
-        return std::unexpected(Error{"acquire_failed", message});
-    }
-    return Lease{*handle, parsed.value("id", "")};
 }
 
 auto Client::run(SubmitRequest const& request, OutputCallback output) -> std::expected<int, Error> {
@@ -328,14 +350,36 @@ auto Client::status(bool const include_history) -> std::expected<std::string, Er
         return std::unexpected(handle.error());
     }
     auto const sent{transport::write_message(
-        *handle, Json{{"type", "status"}, {"history", include_history}}.dump())};
+        *handle, Json{{"type", "status"}, {"history", include_history}}.dump(), control_timeout())};
     if (!sent) {
         close_handle(*handle);
         return std::unexpected(sent.error());
     }
-    auto response{transport::read_message(*handle)};
+    auto response{transport::read_message(*handle, control_timeout())};
     close_handle(*handle);
     return response;
+}
+
+auto Client::ping() -> std::expected<void, Error> {
+    auto handle{connect_pipe()};
+    if (!handle) {
+        return std::unexpected(handle.error());
+    }
+    auto sent{transport::write_message(*handle, Json{{"type", "ping"}}.dump(), control_timeout())};
+    if (!sent) {
+        close_handle(*handle);
+        return std::unexpected(sent.error());
+    }
+    auto response{transport::read_message(*handle, control_timeout())};
+    close_handle(*handle);
+    if (!response) {
+        return std::unexpected(response.error());
+    }
+    auto const parsed = Json::parse(*response, nullptr, false);
+    if (!parsed.is_object() || parsed.value("type", "") != "pong") {
+        return std::unexpected(Error{"invalid_ping", "Daemon returned an invalid ping response"});
+    }
+    return {};
 }
 
 auto Client::cancel(std::string const& id, bool const kill) -> std::expected<void, Error> {
@@ -344,12 +388,12 @@ auto Client::cancel(std::string const& id, bool const kill) -> std::expected<voi
         return std::unexpected(handle.error());
     }
     auto const sent{transport::write_message(
-        *handle, Json{{"type", kill ? "kill" : "cancel"}, {"id", id}}.dump())};
+        *handle, Json{{"type", kill ? "kill" : "cancel"}, {"id", id}}.dump(), control_timeout())};
     if (!sent) {
         close_handle(*handle);
         return std::unexpected(sent.error());
     }
-    auto response{transport::read_message(*handle)};
+    auto response{transport::read_message(*handle, control_timeout())};
     close_handle(*handle);
     if (!response) {
         return std::unexpected(response.error());
@@ -378,12 +422,13 @@ auto Client::shutdown() -> std::expected<void, Error> {
     if (!handle) {
         return std::unexpected(handle.error());
     }
-    auto const sent{transport::write_message(*handle, Json{{"type", "shutdown"}}.dump())};
+    auto const sent{
+        transport::write_message(*handle, Json{{"type", "shutdown"}}.dump(), control_timeout())};
     if (!sent) {
         close_handle(*handle);
         return std::unexpected(sent.error());
     }
-    auto response{transport::read_message(*handle)};
+    auto response{transport::read_message(*handle, control_timeout())};
     close_handle(*handle);
     if (!response) {
         return std::unexpected(response.error());

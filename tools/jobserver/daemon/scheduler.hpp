@@ -10,6 +10,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace jobserver {
@@ -55,6 +56,9 @@ class Scheduler {
     void release(std::string const& id, JobState final_state);
     [[nodiscard]] auto cancel_queued(std::string const& id) -> bool;
     [[nodiscard]] auto snapshot() const -> SchedulerSnapshot;
+    [[nodiscard]] auto audit_and_recover(std::unordered_set<std::string> const& owned_jobs,
+                                         std::chrono::milliseconds maximum_starting_time)
+        -> std::vector<std::string>;
   private:
     struct ResourceState {
         std::uint32_t capacity{1};

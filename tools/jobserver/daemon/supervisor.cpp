@@ -1,4 +1,5 @@
 #include "supervisor.hpp"
+#include "test_barrier.hpp"
 
 #include <Windows.h>
 
@@ -112,6 +113,7 @@ void read_output(HANDLE const pipe,
         }
         last_activity.store(std::chrono::steady_clock::now().time_since_epoch().count(),
                             std::memory_order_relaxed);
+        test_barrier("during_output");
         output(stream, std::string{buffer.data(), read});
     }
     CloseHandle(pipe);
@@ -162,6 +164,8 @@ auto Supervisor::run(Command const& command,
         return std::unexpected(
             Error{"job_creation_failed", "Could not create the Windows Job Object"});
     }
+
+    test_barrier("before_process_creation");
 
     SIZE_T attributes_size{};
     InitializeProcThreadAttributeList(nullptr, 1, 0, &attributes_size);
@@ -222,6 +226,7 @@ auto Supervisor::run(Command const& command,
             Error{"process_creation_failed", "Could not create the supervised process"});
     }
     DeleteProcThreadAttributeList(attributes);
+    test_barrier("after_process_creation");
     {
         std::scoped_lock const lock{mutex_};
         job_handle_ = job;
@@ -229,6 +234,7 @@ auto Supervisor::run(Command const& command,
             TerminateJobObject(job, static_cast<UINT>(termination_exit_code_));
         }
     }
+    test_barrier("before_process_resume");
     ResumeThread(process.hThread);
     close_if_valid(process.hThread);
     close_if_valid(stdout_write);
@@ -245,6 +251,7 @@ auto Supervisor::run(Command const& command,
     bool suspected{};
     std::int64_t activity_at_suspicion{};
     std::uint64_t previous_cpu_time{};
+    bool tested_descendant_exit{};
     for (;;) {
         if (!root_exited) {
             auto const wait{WaitForSingleObject(process.hProcess, 100)};
@@ -278,6 +285,10 @@ auto Supervisor::run(Command const& command,
         }
         if (root_exited && accounting.ActiveProcesses == 0) {
             break;
+        }
+        if (root_exited && accounting.ActiveProcesses != 0 && !tested_descendant_exit) {
+            tested_descendant_exit = true;
+            test_barrier("after_root_exit_with_descendants");
         }
         auto const cpu_time{static_cast<std::uint64_t>(accounting.TotalUserTime.QuadPart) +
                             static_cast<std::uint64_t>(accounting.TotalKernelTime.QuadPart)};
