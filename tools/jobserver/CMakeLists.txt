@@ -75,6 +75,10 @@ target_link_libraries(jobserver-test-helper PRIVATE sandbox::warnings_as_errors)
 add_executable(jobserver-test-client)
 target_sources(jobserver-test-client PRIVATE test_helpers/client_main.cpp)
 target_link_libraries(jobserver-test-client PRIVATE jobserver::client)
+target_compile_definitions(jobserver-test-client PRIVATE
+  JOBSERVER_TEST_HELPER_PATH="$<TARGET_FILE:jobserver-test-helper>"
+)
+add_dependencies(jobserver-test-client jobserver-test-helper)
 
 add_executable(jobserver-tests)
 target_sources(jobserver-tests PRIVATE
