@@ -191,6 +191,20 @@ lease-client crashes, queued cancellation, restart, single-instance enforcement,
 shutdown/admission. Small helper executables provide deterministic output, crashes, sleeps, and
 child process trees.
 
+The opt-in system tests mutate the canonical per-user installation and create a temporary detached
+Git worktree. Run them only when no other local work is using the jobserver:
+
+```powershell
+cmake --preset debug-game -DSANDBOX_JOBSERVER_SYSTEM_TESTS=ON
+cmake --build --preset debug-game --target jobserver-tests
+ctest --test-dir out/build/debug-game -L jobserver-system --output-on-failure
+```
+
+They validate a real CMake compile from a worktree path containing spaces and Unicode, cross-
+worktree fairness and exclusivity, refused active updates, idle upgrades, concurrent daemon start,
+and recovery when the installed client is missing. These tests are serial and are excluded from
+the normal test presets.
+
 The implementation uses Win32 directly rather than Boost.Process. Named-pipe security, suspended
 launch followed by Job Object assignment, process-tree accounting, and reliable tree termination
 all require native Windows APIs; adding the wider Boost headers would not remove that platform

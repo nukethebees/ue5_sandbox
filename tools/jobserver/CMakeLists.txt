@@ -112,6 +112,50 @@ add_dependencies(jobserver-tests
 add_test(NAME jobserver-tests COMMAND jobserver-tests)
 set_tests_properties(jobserver-tests PROPERTIES LABELS "all;jobserver")
 
+option(SANDBOX_JOBSERVER_SYSTEM_TESTS
+  "Register tests that mutate the canonical per-user jobserver installation"
+  OFF
+)
+if(SANDBOX_JOBSERVER_SYSTEM_TESTS)
+  add_test(NAME jobserver-system-cross-worktree
+    COMMAND pwsh -NoProfile -File
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/system/CrossWorktree.ps1"
+      -SourceRoot "${PROJECT_SOURCE_DIR}"
+      -ClientPath "${SANDBOX_JOBSERVER_CLI}"
+  )
+  add_test(NAME jobserver-system-upgrade
+    COMMAND pwsh -NoProfile -File
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/system/UpgradeLifecycle.ps1"
+      -BuildDirectory "${CMAKE_BINARY_DIR}"
+      -ClientPath "${SANDBOX_JOBSERVER_CLI}"
+      -BuiltClientPath "$<TARGET_FILE:jobserver>"
+      -BuiltDaemonPath "$<TARGET_FILE:jobserverd>"
+  )
+  set_tests_properties(
+    jobserver-system-cross-worktree
+    jobserver-system-upgrade
+    PROPERTIES
+      LABELS "jobserver;jobserver-system"
+      RUN_SERIAL TRUE
+      TIMEOUT 300
+  )
+endif()
+
+# Keep the repair path independent from the installed jobserver version.
+set_target_properties(
+  jobserver-client
+  jobserver-scheduler
+  jobserver-supervisor
+  jobserver
+  jobserverd
+  jobserver-test-helper
+  jobserver-test-client
+  jobserver-tests
+  PROPERTIES
+    CXX_COMPILER_LAUNCHER ""
+    CXX_LINKER_LAUNCHER ""
+)
+
 install(TARGETS jobserver jobserverd
   RUNTIME DESTINATION bin
   COMPONENT jobserver
