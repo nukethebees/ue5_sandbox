@@ -1,22 +1,15 @@
 add_library(native-simulation STATIC)
 target_sources(native-simulation PRIVATE
   include/ioj/sim/attack_distance_band.h
-  include/ioj/sim/batch_damage.h
   include/ioj/sim/batch_operations.h
   include/ioj/sim/capital_death_event.h
   include/ioj/sim/capital_entity_data.h
-  include/ioj/sim/capital_fighter_orders.h
-  include/ioj/sim/capital_fighter_reassignment.h
-  include/ioj/sim/capital_ship_queries.h
-  include/ioj/sim/capital_ship_spawning.h
   include/ioj/sim/capital_ships/phase_interface.h
   include/ioj/sim/capital_ships/sim.h
   include/ioj/sim/capital_ships/spawn_data.h
   include/ioj/sim/capital_spawn_data.h
   include/ioj/sim/collision_events.h
   include/ioj/sim/collision_grid_entity_storage.h
-  include/ioj/sim/collision_grid_overlap_query.h
-  include/ioj/sim/collision_grid_queries.h
   include/ioj/sim/collision_grid_static_storage.h
   include/ioj/sim/collision_grid.h
   include/ioj/sim/collision_overlap_storage.h
@@ -31,49 +24,28 @@ target_sources(native-simulation PRIVATE
   include/ioj/sim/entity_aabbs.h
   include/ioj/sim/entity_cell_data_operations.h
   include/ioj/sim/entity_cell_data.h
-  include/ioj/sim/entity_combat_accounting.h
-  include/ioj/sim/entity_death_accounting.h
   include/ioj/sim/entity_death_info.h
   include/ioj/sim/entity_handle.h
   include/ioj/sim/entity_history.h
   include/ioj/sim/entity_life_state.h
-  include/ioj/sim/entity_overlap_operations.h
   include/ioj/sim/entity_overlaps.h
   include/ioj/sim/entity_registry_bookkeeping.h
-  include/ioj/sim/entity_registry_history.h
   include/ioj/sim/entity_registry_query.h
   include/ioj/sim/entity_registry_refresh.h
-  include/ioj/sim/entity_registry_spawn.h
   include/ioj/sim/entity_registry_statistics.h
-  include/ioj/sim/entity_registry_update.h
   include/ioj/sim/entity_registry_view.h
   include/ioj/sim/entity_registry.h
   include/ioj/sim/entity_telemetry.h
   include/ioj/sim/entity_types.h
   include/ioj/sim/entity_world_bounds.h
-  include/ioj/sim/fighter_aiming.h
-  include/ioj/sim/fighter_attack_preparation.h
-  include/ioj/sim/fighter_damage_response.h
   include/ioj/sim/fighter_diagnostics.h
   include/ioj/sim/fighter_entity_data.h
-  include/ioj/sim/fighter_firing_position.h
-  include/ioj/sim/fighter_firing_scratch.h
-  include/ioj/sim/fighter_firing.h
   include/ioj/sim/fighter_frame_spawn_queue.h
-  include/ioj/sim/fighter_movement.h
-  include/ioj/sim/fighter_navigation_application.h
-  include/ioj/sim/fighter_navigation_scans.h
-  include/ioj/sim/fighter_navigation_schedule.h
   include/ioj/sim/fighter_navigation_scratch.h
-  include/ioj/sim/fighter_navigation_state.h
   include/ioj/sim/fighter_navigation.h
   include/ioj/sim/fighter_order_queue.h
-  include/ioj/sim/fighter_orders.h
   include/ioj/sim/fighter_reassignment.h
-  include/ioj/sim/fighter_spawn_admission.h
-  include/ioj/sim/fighter_spawn_initialization.h
   include/ioj/sim/fighter_spawn_queue.h
-  include/ioj/sim/fighter_task_layout.h
   include/ioj/sim/fighter_types.h
   include/ioj/sim/fighters/command_interface.h
   include/ioj/sim/fighters/frame_spawn_queue.h
@@ -91,13 +63,10 @@ target_sources(native-simulation PRIVATE
   include/ioj/sim/frame_trace_hits.h
   include/ioj/sim/frame_vectors3f.h
   include/ioj/sim/index_span.h
-  include/ioj/sim/laser_collision_response.h
   include/ioj/sim/laser_frame_output.h
   include/ioj/sim/laser_hit_details.h
-  include/ioj/sim/laser_lifecycle.h
   include/ioj/sim/laser_soa.h
   include/ioj/sim/laser_source.h
-  include/ioj/sim/laser_spawn_initialization.h
   include/ioj/sim/lasers/frame_scratch.h
   include/ioj/sim/lasers/phase_interface.h
   include/ioj/sim/lasers/sim.h
@@ -136,7 +105,6 @@ target_sources(native-simulation PRIVATE
   include/ioj/sim/missions/mission_state.h
   include/ioj/sim/navigation_telemetry.h
   include/ioj/sim/overlap_handler.h
-  include/ioj/sim/player_thrust.h
   include/ioj/sim/player/control_mode.h
   include/ioj/sim/player/fire_rate.h
   include/ioj/sim/player/flight_mode.h
@@ -168,12 +136,10 @@ target_sources(native-simulation PRIVATE
   include/ioj/sim/spatial.h
   include/ioj/sim/spawned_entity_handles.h
   include/ioj/sim/spinner_entity_data.h
-  include/ioj/sim/spinner_firing.h
   include/ioj/sim/spinners/phase_interface.h
   include/ioj/sim/spinners/sim.h
   include/ioj/sim/step_response.h
   include/ioj/sim/system_read_views.h
-  include/ioj/sim/telemetry_statistics.h
   include/ioj/sim/telemetry/level_telemetry_block_history.h
   include/ioj/sim/telemetry/level_telemetry_history.h
   include/ioj/sim/telemetry/level_telemetry_run_end_reason.h
@@ -181,10 +147,7 @@ target_sources(native-simulation PRIVATE
   include/ioj/sim/trace_hits.h
   include/ioj/sim/transform3d.h
   include/ioj/sim/turret_entity_data.h
-  include/ioj/sim/turret_firing.h
   include/ioj/sim/turret_spawn_data.h
-  include/ioj/sim/turret_spawn_initialization.h
-  include/ioj/sim/turret_targeting.h
   include/ioj/sim/turrets/phase_interface.h
   include/ioj/sim/turrets/sim.h
   include/ioj/sim/turrets/spawn_data.h
@@ -194,54 +157,25 @@ target_sources(native-simulation PRIVATE
   include/ioj/sim/world_aabb_operations.h
   include/ioj/sim/world_aabbs.h
   src/attack_distance_band.cpp
-  src/batch_damage.cpp
   src/batch_operations.cpp
-  src/capital_fighter_orders.cpp
-  src/capital_fighter_reassignment.cpp
-  src/capital_ship_queries.cpp
-  src/capital_ship_spawning.cpp
   src/capital_ships/phase_interface.cpp
   src/capital_ships/sim.cpp
   src/collision_events.cpp
   src/collision_grid_entity_storage.cpp
-  src/collision_grid_overlap_query.cpp
-  src/collision_grid_queries.cpp
   src/collision_grid_static_storage.cpp
   src/collision_grid.cpp
   src/collision_overlap_storage.cpp
   src/collision/collision_system.cpp
   src/collision/collision_uniform_grid.cpp
   src/deterministic_bias.cpp
-  src/entity_combat_accounting.cpp
-  src/entity_death_accounting.cpp
-  src/entity_overlap_operations.cpp
   src/entity_registry_bookkeeping.cpp
-  src/entity_registry_history.cpp
   src/entity_registry_query.cpp
   src/entity_registry_refresh.cpp
-  src/entity_registry_spawn.cpp
   src/entity_registry_statistics.cpp
-  src/entity_registry_update.cpp
   src/entity_registry.cpp
   src/entity_world_bounds.cpp
-  src/fighter_aiming.cpp
-  src/fighter_attack_preparation.cpp
-  src/fighter_damage_response.cpp
-  src/fighter_firing_position.cpp
-  src/fighter_firing_scratch.cpp
-  src/fighter_firing.cpp
   src/fighter_frame_spawn_queue.cpp
-  src/fighter_movement.cpp
-  src/fighter_navigation_application.cpp
-  src/fighter_navigation_scans.cpp
-  src/fighter_navigation_schedule.cpp
-  src/fighter_navigation_scratch.cpp
-  src/fighter_navigation_state.cpp
   src/fighter_navigation.cpp
-  src/fighter_orders.cpp
-  src/fighter_spawn_admission.cpp
-  src/fighter_spawn_initialization.cpp
-  src/fighter_task_layout.cpp
   src/fighters/phase_interface.cpp
   src/fighters/sim.cpp
   src/fixed_tick.cpp
@@ -252,10 +186,7 @@ target_sources(native-simulation PRIVATE
   src/frame_rotators3f.cpp
   src/frame_trace_hits.cpp
   src/frame_vectors3f.cpp
-  src/laser_collision_response.cpp
   src/laser_frame_output.cpp
-  src/laser_lifecycle.cpp
-  src/laser_spawn_initialization.cpp
   src/lasers/phase_interface.cpp
   src/lasers/sim.cpp
   src/level_event_types.cpp
@@ -270,7 +201,6 @@ target_sources(native-simulation PRIVATE
   src/memory/game_memory.cpp
   src/mission_manager.cpp
   src/overlap_handler.cpp
-  src/player_thrust.cpp
   src/player/phase_interface.cpp
   src/player/sim.cpp
   src/query_thread_buffer_pool.cpp
@@ -283,16 +213,11 @@ target_sources(native-simulation PRIVATE
   src/spatial_query_manager.cpp
   src/spatial_query_telemetry.cpp
   src/spatial.cpp
-  src/spinner_firing.cpp
   src/spinners/phase_interface.cpp
   src/spinners/sim.cpp
   src/step_response.cpp
-  src/telemetry_statistics.cpp
   src/telemetry/level_telemetry_block_history.cpp
   src/transform3d.cpp
-  src/turret_firing.cpp
-  src/turret_spawn_initialization.cpp
-  src/turret_targeting.cpp
   src/turrets/phase_interface.cpp
   src/turrets/sim.cpp
 )
