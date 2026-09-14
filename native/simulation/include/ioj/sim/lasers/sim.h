@@ -80,7 +80,10 @@ struct Sim {
     /* **************************************** */
     // Movement and collision
     /* **************************************** */
+    void expire_instances(float dt);
+    void update_locations(float dt);
     void handle_collisions(float dt);
+    void remove_instances(std::span<std::int32_t const> indices);
 
     /* **************************************** */
     // Buffer cleanup

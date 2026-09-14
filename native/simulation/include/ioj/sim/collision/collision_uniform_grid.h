@@ -5,7 +5,6 @@
 
 #include <ioj/sim/collision_grid.h>
 #include <ioj/sim/collision_grid_entity_storage.h>
-#include <ioj/sim/collision_grid_queries.h>
 #include <ioj/sim/collision_grid_static_storage.h>
 #include <ioj/sim/entity_world_bounds.h>
 #include <ioj/sim/spatial_query_telemetry.h>
@@ -20,6 +19,11 @@ struct EntityRegistry;
 }
 
 namespace ioj::sim::collision {
+enum class TraceEntityFilter : std::uint8_t {
+    None,
+    ExcludeFighters,
+};
+
 struct CollisionUniformGrid {
     static inline ioj::sim::Vector3f const origin{};
 

@@ -10,7 +10,10 @@
 #include <sandbox/core/countdown.h>
 #include <sandbox/core/fixed_array.h>
 #include <sandbox/core/periodic_tick_countdown.h>
+#include <sandbox/core/projectile_intercept.h>
 #include <sandbox/core/tick_countdown.h>
+#include <sandbox/core/vector_math.h>
+#include <sandbox/core/vector_normalization.h>
 #include <span>
 #include <thread>
 #include <utility>
@@ -19,15 +22,14 @@
 #include <ioj/sim/batch_operations.h>
 #include <ioj/sim/entity_registry.h>
 #include <ioj/sim/entity_registry_view.h>
+#include <ioj/sim/frame_vectors3f.h>
 #include <ioj/sim/lasers/frame_scratch.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_config.h>
 #include <ioj/sim/spatial_query_manager.h>
-#include <ioj/sim/turret_firing.h>
-#include <ioj/sim/turret_spawn_initialization.h>
-#include <ioj/sim/turret_targeting.h>
-
+#include <sandbox/core/frame_array.h>
 #include <sandbox/core/frame_memory_resource.h>
+#include <sandbox/core/loop_bounds.h>
 
 namespace ioj::sim::turrets {
 /* **************************************** */
@@ -70,23 +72,23 @@ auto Sim::register_turrets(SpawnDataConstView const spawn_data,
 
     auto const first_new_index{entities.num()};
     entities.add_defaulted(n_to_add);
-    auto const new_entities_view{entities.get_view(first_new_index, n_to_add)};
     auto const spawn_count{static_cast<std::size_t>(n_to_add)};
-    ioj::sim::turrets::initialize_spawned_turrets(
-        {.locations = new_entities_view.locations,
-         .fire_point_locations = new_entities_view.fire_point_locations,
-         .teams = std::as_writable_bytes(std::span{new_entities_view.teams.data(), spawn_count}),
-         .healths = {new_entities_view.healths.data(), spawn_count},
-         .laser_damages = {new_entities_view.laser_damages.data(), spawn_count},
-         .refresh_remaining_ticks = {entities.target_refresh_countdowns_remaining_ticks.data() +
-                                         first_new_index,
-                                     spawn_count},
-         .refresh_periods = {entities.target_refresh_countdowns_periods.data() + first_new_index,
-                             spawn_count}},
-        spawn_data,
-        config.fire_point_offset,
-        target_refresh_tick_period,
-        target_refresh_next_offset);
+    for (std::int32_t local_index{}; local_index < n_to_add; ++local_index) {
+        auto const index{first_new_index + local_index};
+        auto const location{spawn_data.locations[local_index]};
+        entities.locations.set(index, location);
+        entities.fire_point_locations.set(index, location + config.fire_point_offset);
+        entities.teams[index] = spawn_data.teams[local_index];
+        entities.healths[index] = spawn_data.healths[local_index];
+        entities.laser_damages[index] = spawn_data.laser_damages[local_index];
+        entities.target_refresh_countdowns_periods[index] = target_refresh_tick_period;
+        entities.target_refresh_countdowns_remaining_ticks[index] =
+            static_cast<std::int16_t>(target_refresh_next_offset);
+        ++target_refresh_next_offset;
+        if (target_refresh_next_offset == target_refresh_tick_period) {
+            target_refresh_next_offset = 0;
+        }
+    }
 
     RegistryEntityData new_entity_data;
     new_entity_data.add_uninitialised(n_to_add);
@@ -338,12 +340,35 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
                 target_handles,
                 has_line_of_sight);
 
-            entities.target_handles[i] = ioj::sim::select_turret_target(
-                {target_handles.data(), static_cast<std::size_t>(target_count)},
-                {has_line_of_sight.data(), static_cast<std::size_t>(target_count)},
-                registry_view.teams,
-                this_team,
-                entities.integral_biases[i]);
+            if (target_count > 0) {
+                auto const target_offset{static_cast<std::int32_t>(
+                    entities.integral_biases[i] % static_cast<std::uint32_t>(target_count))};
+                auto const loop_bounds{
+                    ml::make_rotated_loop_bounds(0, target_count, target_offset)};
+                for (auto const bounds : loop_bounds) {
+                    for (auto candidate_index{bounds.begin}; candidate_index < bounds.end;
+                         ++candidate_index) {
+                        auto const element{static_cast<std::size_t>(candidate_index)};
+                        if (has_line_of_sight[element] == 0) {
+                            continue;
+                        }
+
+                        auto const candidate{target_handles[element]};
+                        assert(candidate.index >= 0);
+                        auto const registry_element{static_cast<std::size_t>(candidate.index)};
+                        assert(registry_element < registry_view.teams.size());
+                        auto const candidate_team{
+                            std::to_integer<std::uint8_t>(registry_view.teams[registry_element])};
+                        if (candidate_team != static_cast<std::uint8_t>(this_team)) {
+                            entities.target_handles[i] = candidate;
+                            break;
+                        }
+                    }
+                    if (!entities.target_handles[i].is_null()) {
+                        break;
+                    }
+                }
+            }
         }
     }
 }
@@ -354,41 +379,89 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
 void Sim::fire_at_enemies() {
     SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::fire_at_enemies");
 
-    auto const count{static_cast<std::size_t>(get_num_instances())};
-    ioj::sim::turrets::FiringView const firing_view{
-        .locations = entities.locations.get_const_view(),
-        .fire_point_locations = entities.fire_point_locations.get_const_view(),
-        .target_locations = entities.target_locations.get_const_view(),
-        .target_velocities = entities.target_velocities.get_const_view(),
-        .handles = {entities.handles.data(), count},
-        .targets = {entities.target_handles.data(), count},
-        .laser_damages = {entities.laser_damages.data(), count},
-        .teams = std::as_bytes(std::span{entities.teams.data(), count}),
-        .cooldowns =
-            ml::TickCountdownView<std::int16_t>{entities.laser_cooldowns, cooldown_restart_ticks_}};
-    ioj::sim::turrets::FiringScratch scratch{&frame_memory_resource};
+    auto const count{get_num_instances()};
+    ml::FrameArray<std::int32_t> candidate_indices{&frame_memory_resource};
+    ml::FrameArray<RegistryEntityHandle> hit_handles{&frame_memory_resource};
+    FrameVectors3f starts{&frame_memory_resource};
+    FrameVectors3f ends{&frame_memory_resource};
+    candidate_indices.reserve(count);
+    starts.reserve(count);
+    ends.reserve(count);
+
+    auto const registry{ioj::sim::make_native_query_view(entity_registry)};
     auto const disengage_radius{get_disengage_radius()};
-    ioj::sim::turrets::prepare_firing(firing_view,
-                                      ioj::sim::make_native_query_view(entity_registry),
-                                      disengage_radius * disengage_radius,
-                                      scratch);
-    auto const candidate_count{scratch.candidate_indices.num()};
+    auto const disengage_radius_squared{disengage_radius * disengage_radius};
+    auto cooldowns{
+        ml::TickCountdownView<std::int16_t>{entities.laser_cooldowns, cooldown_restart_ticks_}};
+    for (std::int32_t index{}; index < count; ++index) {
+        auto const element{static_cast<std::size_t>(index)};
+        auto& target{entities.target_handles[element]};
+        if (target.is_null()) {
+            continue;
+        }
+        if (!is_valid_alive(registry, target)) {
+            target.reset();
+            continue;
+        }
+        if (!cooldowns.is_ready(element)) {
+            continue;
+        }
+        if (HMM_LenSqrV3(entities.locations[index] - entities.target_locations[index]) >=
+            disengage_radius_squared) {
+            target.reset();
+            continue;
+        }
+
+        candidate_indices.add(index);
+        starts.add(entities.fire_point_locations[index]);
+        ends.add(entities.target_locations[index]);
+        cooldowns.restart_counter(element);
+    }
+
+    auto const candidate_count{candidate_indices.num()};
     if (candidate_count == 0) {
         return;
     }
+    hit_handles.set_num(candidate_count);
 
     spatial_query_manager.trace_line_of_sight(
-        scratch.starts.get_const_view(),
-        scratch.ends.get_const_view(),
-        {scratch.hit_handles.data(), static_cast<std::size_t>(candidate_count)});
+        starts.get_const_view(),
+        ends.get_const_view(),
+        {hit_handles.data(), static_cast<std::size_t>(candidate_count)});
 
     ioj::sim::lasers::FrameSpawnRequests new_lasers{&frame_memory_resource};
-    ioj::sim::turrets::emit_lasers(firing_view,
-                                   scratch,
-                                   config.laser.projectile_speed,
-                                   config.laser.max_distance,
-                                   1.e-8f,
-                                   new_lasers);
+    new_lasers.reserve(candidate_count);
+    for (std::int32_t candidate{}; candidate < candidate_count; ++candidate) {
+        auto const index{candidate_indices[candidate]};
+        auto const element{static_cast<std::size_t>(index)};
+        if (hit_handles[candidate] != entities.target_handles[element]) {
+            continue;
+        }
+
+        auto const location{entities.fire_point_locations[index]};
+        auto const target_location{entities.target_locations[index]};
+        auto const target_velocity{entities.target_velocities[index]};
+        auto const intercept_time{ml::solve_intercept_time(
+            location, target_location, target_velocity, config.laser.projectile_speed)};
+        auto const direction{ml::native_math::safe_normal(
+            target_location + target_velocity * intercept_time - location, 1.e-8f)};
+        Rotator3f rotation{};
+        ml::native_math::to_rotations(&rotation.pitch,
+                                      &rotation.yaw,
+                                      &rotation.roll,
+                                      &direction.X,
+                                      &direction.Y,
+                                      &direction.Z,
+                                      1);
+        new_lasers.add(location,
+                       rotation,
+                       HMM_V3(0.f, 0.f, 0.f),
+                       entities.laser_damages[element],
+                       config.laser.projectile_speed,
+                       config.laser.max_distance,
+                       entities.handles[element],
+                       {entities.teams[element], EntityType::Turret});
+    }
     laser_simulation.queue_laser_spawns(new_lasers.get_const_view());
 }
 auto Sim::get_disengage_radius() const -> float {

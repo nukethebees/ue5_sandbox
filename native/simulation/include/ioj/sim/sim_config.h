@@ -2,13 +2,19 @@
 #include <ioj/sim/transform3d.h>
 
 #include <cstdint>
-#include <ioj/sim/spinner_firing.h>
 #include <vector>
 
 #include <ioj/sim/base_sim_config.h>
 #include <sandbox/core/speed_response.h>
 
 namespace ioj::sim {
+
+namespace spinners {
+struct FirePoint {
+    Vector3f location;
+    Rotator3f rotation;
+};
+}
 
 struct PlayerSimConfig {
     float thrust_energy_max{1.f};

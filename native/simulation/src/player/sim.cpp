@@ -16,7 +16,6 @@
 #include <ioj/sim/entity_death_info.h>
 #include <ioj/sim/entity_registry.h>
 #include <ioj/sim/lasers/sim.h>
-#include <ioj/sim/player_thrust.h>
 #include <ioj/sim/ship_health.h>
 #include <ioj/sim/spatial_query_manager.h>
 
@@ -121,11 +120,25 @@ void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("Sandbox::PlayerShipSim::resolve_damage_events");
 
     auto const& direct_damage{entity_registry.get_direct_damage_queue_view()};
-    auto const result{ioj::sim::apply_direct_damage(
-        registry_handle, health.health, direct_damage.get_const_view())};
-    health.health = result.health;
-    if (result.died) {
-        die(result.killer);
+    auto const original_health{health.health};
+    RegistryEntityHandle killer{};
+    auto const damage_events{direct_damage.get_const_view()};
+    auto const damage_count{damage_events.num()};
+    for (std::int32_t event_index{}; event_index < damage_count; ++event_index) {
+        auto const element{static_cast<std::size_t>(event_index)};
+        if (damage_events.damaged_entities[element] != registry_handle) {
+            continue;
+        }
+
+        auto const was_alive{health.health > 0};
+        health.health -= damage_events.damage_amounts[element];
+        if (was_alive && health.health <= 0) {
+            killer = damage_events.instigators[element];
+        }
+    }
+
+    if (original_health > 0 && health.health <= 0) {
+        die(killer);
     }
 }
 
@@ -245,14 +258,6 @@ void Sim::set_desired_planar_velocity(ml::Vector3d const desired_velocity) {
 }
 
 void Sim::set_boost_brake_state(ioj::sim::player::BoostBrakeState const state) {
-    using NativeState = ioj::sim::player::BoostBrakeState;
-    static_assert(static_cast<std::uint8_t>(ioj::sim::player::BoostBrakeState::None) ==
-                  static_cast<std::uint8_t>(NativeState::None));
-    static_assert(static_cast<std::uint8_t>(ioj::sim::player::BoostBrakeState::Boost) ==
-                  static_cast<std::uint8_t>(NativeState::Boost));
-    static_assert(static_cast<std::uint8_t>(ioj::sim::player::BoostBrakeState::Brake) ==
-                  static_cast<std::uint8_t>(NativeState::Brake));
-
     if (state == ioj::sim::player::BoostBrakeState::Boost && boost_brake_state != state) {
         ++boost_start_sequence_;
     }
@@ -265,16 +270,42 @@ void Sim::set_boost_brake_state(ioj::sim::player::BoostBrakeState const state) {
         ml::log_error("Unhandled player boost/brake state.");
     }
 
-    auto const transition{ioj::sim::player::make_thrust_transition(
-        {.cruise_speed = config.cruise_speed,
-         .boost_speed = config.boost_speed,
-         .brake_speed = config.brake_speed,
-         .thrust_recharge_time = config.thrust_recharge_time,
-         .boost_depletion_time = config.boost_depletion_time,
-         .brake_depletion_time = config.brake_depletion_time,
-         .boost_forward_speed_addition_multiplier = config.boost_forward_speed_addition_multiplier},
-        static_cast<NativeState>(state),
-        current_speed)};
+    enum class SpeedResponseKind : std::uint8_t {
+        AcceleratingToCruise,
+        SlowingToCruise,
+        Boost,
+        Brake
+    };
+    struct ThrustTransition {
+        float target_speed;
+        float energy_change_rate;
+        float planar_boost_target;
+        SpeedResponseKind speed_response;
+    };
+
+    ThrustTransition transition{};
+    switch (state) {
+        case ioj::sim::player::BoostBrakeState::Boost:
+            transition = {config.boost_speed,
+                          -(1.f / config.boost_depletion_time),
+                          config.cruise_speed * config.boost_forward_speed_addition_multiplier,
+                          SpeedResponseKind::Boost};
+            break;
+        case ioj::sim::player::BoostBrakeState::Brake:
+            transition = {config.brake_speed,
+                          -(1.f / config.brake_depletion_time),
+                          0.f,
+                          SpeedResponseKind::Brake};
+            break;
+        default:
+            transition = {config.cruise_speed,
+                          1.f / config.thrust_recharge_time,
+                          0.f,
+                          config.cruise_speed < current_speed
+                              ? SpeedResponseKind::SlowingToCruise
+                              : SpeedResponseKind::AcceleratingToCruise};
+            break;
+    }
     std::array const responses{&speed_responses.accelerating_to_cruise,
                                &speed_responses.slowing_to_cruise,
                                &speed_responses.boost,

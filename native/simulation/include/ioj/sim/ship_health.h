@@ -1,16 +1,8 @@
 #pragma once
 
-#include "ioj/sim/direct_damage_events.h"
-
 #include <cstdint>
 
 namespace ioj::sim {
-struct ShipDamageResult {
-    std::int32_t health;
-    RegistryEntityHandle killer;
-    bool died;
-};
-
 [[nodiscard]] auto clamp_health_to_max(std::int32_t health, std::int32_t max_health) noexcept
     -> std::int32_t;
 
@@ -34,9 +26,4 @@ struct ShipHealth {
     std::int32_t health{default_max_health};
     std::int32_t max_health{default_max_health};
 };
-
-[[nodiscard]] auto apply_direct_damage(RegistryEntityHandle ship,
-                                       std::int32_t health,
-                                       DirectDamageEventsConstView damage_events) noexcept
-    -> ShipDamageResult;
 } // namespace ioj::sim

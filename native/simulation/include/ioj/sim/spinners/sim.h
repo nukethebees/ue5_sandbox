@@ -1,6 +1,5 @@
 #pragma once
 #include <cstdint>
-#include <ioj/sim/spinner_firing.h>
 #include <ioj/sim/system_read_views.h>
 #include <optional>
 #include <span>

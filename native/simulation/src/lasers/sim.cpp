@@ -5,16 +5,17 @@
 #include <vector>
 
 #include <ioj/sim/entity_registry.h>
-#include <ioj/sim/laser_collision_response.h>
-#include <ioj/sim/laser_lifecycle.h>
-#include <ioj/sim/laser_spawn_initialization.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/spatial_query_manager.h>
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <execution>
+#include <functional>
 #include <numeric>
+#include <sandbox/core/frame_array.h>
+#include <sandbox/core/generated/array_math_kernels.h>
 
 namespace ioj::sim::lasers {
 /* **************************************** */
@@ -51,10 +52,10 @@ void Sim::commit_spawns() {
 void Sim::simulate(float const dt) {
     SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::simulate");
 
-    ioj::sim::lasers::expire_instances(entities, dt, frame_memory_resource);
+    expire_instances(dt);
 
     handle_collisions(dt);
-    ioj::sim::lasers::update_locations(entities.get_view(), dt);
+    update_locations(dt);
 }
 
 void Sim::end_tick() {
@@ -92,11 +93,36 @@ void Sim::process_pending_spawns() {
         return;
     }
 
+    auto const requests{pending_spawns.get_const_view()};
     auto const tick_period{static_cast<float>(simulation_clock.get_tick_period())};
+    auto const simulation_time{static_cast<float>(simulation_clock.get_simulation_time())};
     constexpr float fixed_spawn_offset{10.f};
-    auto const time{static_cast<float>(simulation_clock.get_simulation_time())};
-    ioj::sim::lasers::initialise_spawns(
-        entities, pending_spawns.get_const_view(), tick_period, time, fixed_spawn_offset);
+    entities.add_defaulted(n_to_add);
+    auto const output{entities.get_view().right(n_to_add)};
+    for (std::int32_t spawn_index{}; spawn_index < n_to_add; ++spawn_index) {
+        auto const speed{requests.speeds[spawn_index]};
+        auto const lifetime{requests.max_distances[spawn_index] / speed};
+        auto const rotation{requests.rotations[spawn_index]};
+        auto const pitch{HMM_AngleDeg(rotation.pitch)};
+        auto const yaw{HMM_AngleDeg(rotation.yaw)};
+        auto const cos_pitch{HMM_CosF(pitch)};
+        auto const direction{
+            HMM_V3(cos_pitch * HMM_CosF(yaw), cos_pitch * HMM_SinF(yaw), HMM_SinF(pitch))};
+        auto const forward_velocity{direction * speed};
+
+        output.locations.set(spawn_index,
+                             requests.locations[spawn_index] + forward_velocity * tick_period +
+                                 direction * fixed_spawn_offset);
+        output.rotations.set(spawn_index, rotation);
+        output.velocities.set(spawn_index,
+                              requests.base_velocities[spawn_index] + forward_velocity);
+        output.sources[spawn_index] = requests.sources[spawn_index];
+        output.damages[spawn_index] = requests.damages[spawn_index];
+        output.instigator_handles[spawn_index] = requests.instigator_handles[spawn_index];
+        output.lifetimes_remaining[spawn_index] = lifetime;
+        output.initial_lifetimes[spawn_index] = lifetime;
+        output.spawn_times[spawn_index] = simulation_time;
+    }
 
     number_spawned += n_to_add;
     validate_array_sizes();
@@ -105,6 +131,24 @@ void Sim::process_pending_spawns() {
 /* **************************************** */
 // Movement and collision
 /* **************************************** */
+void Sim::expire_instances(float const dt) {
+    ml::subtract_in_place(std::span<float>{entities.lifetimes_remaining}, dt);
+
+    ml::FrameArray<std::int32_t> expired_indices{&frame_memory_resource};
+    auto const count{entities.num()};
+    expired_indices.reserve(count);
+    for (std::int32_t index{count - 1}; index >= 0; --index) {
+        if (entities.lifetimes_remaining[index] <= 0.f) {
+            expired_indices.add(index);
+        }
+    }
+    remove_instances(expired_indices.view());
+}
+void Sim::update_locations(float const dt) {
+    ml::add_scaled_in_place(entities.locations.xs, entities.velocities.xs, dt);
+    ml::add_scaled_in_place(entities.locations.ys, entities.velocities.ys, dt);
+    ml::add_scaled_in_place(entities.locations.zs, entities.velocities.zs, dt);
+}
 void Sim::handle_collisions(float const dt) {
     SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::handle_collisions");
 
@@ -136,12 +180,17 @@ void Sim::handle_collisions(float const dt) {
                 return;
             }
 
-            ioj::sim::lasers::prepare_collision_traces(
-                locations.slice(i_start, trace_count),
-                velocities.slice(i_start, trace_count),
-                dt,
-                collision_scratch.trace_starts.get_view().slice(i_start, trace_count),
-                collision_scratch.trace_ends.get_view().slice(i_start, trace_count));
+            auto const trace_locations{locations.slice(i_start, trace_count)};
+            auto const trace_velocities{velocities.slice(i_start, trace_count)};
+            auto const trace_starts{
+                collision_scratch.trace_starts.get_view().slice(i_start, trace_count)};
+            auto const trace_ends{
+                collision_scratch.trace_ends.get_view().slice(i_start, trace_count)};
+            for (std::int32_t trace_index{}; trace_index < trace_count; ++trace_index) {
+                auto const start{trace_locations[trace_index]};
+                trace_starts.set(trace_index, start);
+                trace_ends.set(trace_index, start + trace_velocities[trace_index] * dt);
+            }
 
             auto const traces{ioj::sim::LineTracesConstView{
                 collision_scratch.trace_starts.get_const_view().slice(i_start, trace_count),
@@ -157,20 +206,47 @@ void Sim::handle_collisions(float const dt) {
     ml::FrameArray<std::int32_t> to_remove{&frame_memory_resource};
     FrameHitDetails hit_details{&frame_memory_resource};
     FrameDirectDamageEvents collision_damage_events{&frame_memory_resource};
-    ioj::sim::lasers::process_collision_hits(
-        collision_scratch.trace_hits.get_const_view(),
-        entities.velocities.get_const_view(),
-        {entities.damages.data(), static_cast<std::size_t>(n)},
-        {entities.instigator_handles.data(), static_cast<std::size_t>(n)},
-        {entities.sources.data(), static_cast<std::size_t>(n)},
-        to_remove,
-        collision_damage_events,
-        hit_details);
+    auto const trace_hits{collision_scratch.trace_hits.get_const_view()};
+    auto const hit_count{static_cast<std::int32_t>(
+        std::ranges::count_if(trace_hits.hits, [](auto const hit) { return hit != 0; }))};
+    to_remove.reserve(hit_count);
+    collision_damage_events.reserve(hit_count);
+    hit_details.reserve(hit_count);
+    constexpr float safe_normal_tolerance{1.e-8f};
+    for (std::int32_t entity_index{}; entity_index < n; ++entity_index) {
+        auto const element{static_cast<std::size_t>(entity_index)};
+        if (trace_hits.hits[element] == 0) {
+            continue;
+        }
+
+        to_remove.add(entity_index);
+        auto const damaged_entity{trace_hits.entities[element]};
+        if (damaged_entity.is_valid()) {
+            collision_damage_events.add(
+                damaged_entity, entities.damages[element], entities.instigator_handles[element]);
+        }
+
+        auto const velocity{entities.velocities[entity_index]};
+        auto const length_squared{HMM_LenSqrV3(velocity)};
+        auto const emission_direction{length_squared < safe_normal_tolerance
+                                          ? HMM_V3(0.f, 0.f, -1.f)
+                                          : velocity * (-1.f / std::sqrt(length_squared))};
+        hit_details.add(
+            trace_hits.locations[entity_index], emission_direction, entities.sources[element]);
+    }
+    std::ranges::sort(to_remove.view(), std::greater{});
     entity_registry.queue_direct_damage_events(collision_damage_events.get_const_view());
 
-    ioj::sim::lasers::remove_instances(entities, to_remove.view());
+    remove_instances(to_remove.view());
 
     frame_output_.append_hits(hit_details.get_const_view(), simulation_clock.get_completed_ticks());
+}
+void Sim::remove_instances(std::span<std::int32_t const> const indices) {
+    assert(std::ranges::is_sorted(indices, std::greater{}));
+    for (auto const index : indices) {
+        entities.remove_at_swap(index, 1);
+    }
+    validate_array_sizes();
 }
 
 /* **************************************** */

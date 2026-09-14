@@ -1,10 +1,7 @@
 #pragma once
 #include <cstdint>
-#include <ioj/sim/fighter_firing_position.h>
 #include <ioj/sim/fighter_navigation.h>
 #include <ioj/sim/fighter_navigation_scratch.h>
-#include <ioj/sim/fighter_navigation_state.h>
-#include <ioj/sim/fighter_task_layout.h>
 #include <ioj/sim/navigation_telemetry.h>
 #include <optional>
 #include <span>
@@ -49,9 +46,9 @@ struct Sim {
     using EntityData = ioj::sim::FighterEntityData;
     using EntityBuffers = ml::MultiBuffer<EntityData, 2>;
     using Task = ioj::sim::FighterTask;
-    static constexpr auto n_task_types{ioj::sim::fighters::task_type_count};
-    using TaskSpans = ioj::sim::fighters::TaskSpans;
-    using TaskCounts = ioj::sim::fighters::TaskCounts;
+    static constexpr auto n_task_types{static_cast<std::size_t>(Task::COUNT)};
+    using TaskSpans = std::array<IndexSpan, n_task_types>;
+    using TaskCounts = std::array<std::int32_t, n_task_types>;
     using TaskView = EntityData::View;
     using ConstTaskView = EntityData::ConstView;
     using TaskViews = std::array<TaskView, n_task_types>;
@@ -118,7 +115,6 @@ struct Sim {
     float fire_dot_product_threshold{0.95f};
     bool diagnostics_enabled{};
   private:
-    using FirePointCandidate = ioj::sim::fighters::FirePointCandidate;
     using NavigationScratch = ioj::sim::fighters::NavigationScratch;
     using NavigationRiskTier = ioj::sim::fighters::NavigationRiskTier;
 
@@ -135,7 +131,6 @@ struct Sim {
     // Navigation
     /* **************************************** */
     auto get_navigation_tick_period(NavigationRiskTier tier) const -> std::int16_t;
-    auto get_native_navigation_state() -> ioj::sim::fighters::NavigationStateView;
     void reset_navigation_state(std::int32_t fighter_index, NavigationRiskTier initial_tier);
 
     /* **************************************** */

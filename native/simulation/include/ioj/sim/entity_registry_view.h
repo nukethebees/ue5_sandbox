@@ -1,9 +1,7 @@
 #pragma once
 
-#include <ioj/sim/entity_registry_query.h>
-#include <ioj/sim/entity_registry_update.h>
-
 #include <ioj/sim/entity_registry.h>
+#include <ioj/sim/entity_registry_query.h>
 
 #include <cstddef>
 #include <span>
@@ -29,33 +27,4 @@ inline auto make_native_query_view(EntityRegistry const& registry) noexcept
     };
 }
 
-inline auto make_native_update_view(ioj::sim::RegistryEntityData::View const view) noexcept
-    -> ioj::sim::EntityRegistryUpdateView {
-    auto const count{static_cast<std::size_t>(view.num())};
-    auto const teams{std::span{view.teams.data(), count}};
-    auto const entity_types{std::span{view.entity_types.data(), count}};
-    return {
-        .locations = view.locations,
-        .velocities = view.velocities,
-        .rotations = view.rotations,
-        .healths = {view.healths.data(), count},
-        .teams = std::as_writable_bytes(teams),
-        .entity_types = std::as_bytes(entity_types),
-        .alive = {view.alive.data(), count},
-    };
-}
-
-inline auto make_native_update_view(ioj::sim::RegistryEntityData::ConstView const view) noexcept
-    -> ioj::sim::EntityRegistryUpdateConstView {
-    auto const count{static_cast<std::size_t>(view.num())};
-    auto const teams{std::span{view.teams.data(), count}};
-    return {
-        .locations = view.locations,
-        .velocities = view.velocities,
-        .rotations = view.rotations,
-        .healths = {view.healths.data(), count},
-        .teams = std::as_bytes(teams),
-        .alive = {view.alive.data(), count},
-    };
-}
 } // namespace ioj::sim

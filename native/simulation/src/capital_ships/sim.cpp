@@ -11,10 +11,6 @@
 #include <vector>
 
 #include <ioj/sim/batch_operations.h>
-#include <ioj/sim/capital_fighter_orders.h>
-#include <ioj/sim/capital_fighter_reassignment.h>
-#include <ioj/sim/capital_ship_queries.h>
-#include <ioj/sim/capital_ship_spawning.h>
 #include <ioj/sim/entity_registry.h>
 #include <ioj/sim/entity_registry_refresh.h>
 #include <ioj/sim/entity_registry_view.h>
@@ -24,6 +20,7 @@
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/spatial_query_manager.h>
 
+#include <sandbox/core/array_math.h>
 #include <sandbox/core/frame_array.h>
 
 namespace ioj::sim::capital_ships {
@@ -70,10 +67,13 @@ void Sim::make_decisions() {
     fighter_reassignment_queue.reset();
     entity_registry.refresh_handles(entities.target_handles);
     ml::FrameArray<std::int32_t> indices_without_targets{&frame_memory_resource};
-    auto const n_capitals{entities.target_handles.size()};
-    (void)ioj::sim::collect_capitals_without_targets(
-        {entities.target_handles.data(), static_cast<std::size_t>(n_capitals)},
-        indices_without_targets);
+    auto const n_capitals{static_cast<std::int32_t>(entities.target_handles.size())};
+    indices_without_targets.reserve(n_capitals);
+    for (std::int32_t index{}; index < n_capitals; ++index) {
+        if (entities.target_handles[index].is_null()) {
+            indices_without_targets.add(index);
+        }
+    }
     for (auto const index : indices_without_targets) {
         entities.target_handles[index] = spatial_query_manager.get_any_non_team_entity(
             entities.teams[index], ioj::sim::EntityType::CapitalShip);
@@ -112,9 +112,8 @@ auto Sim::get_num_instances() const noexcept -> std::int32_t {
     return entities.num();
 }
 auto Sim::is_valid(RegistryEntityHandle const handle) const noexcept -> bool {
-    auto const handles{
-        std::span{entities.handles.data(), static_cast<std::size_t>(entities.handles.size())}};
-    return handle.is_valid() && ioj::sim::find_capital_ship_index(handles, handle).has_value();
+    return handle.is_valid() &&
+           std::ranges::find(entities.handles, handle) != entities.handles.end();
 }
 auto Sim::get_fighter_handles(std::int32_t const index) const noexcept
     -> std::span<RegistryEntityHandle const> {
@@ -126,26 +125,25 @@ auto Sim::get_fighter_handles(IndexSpan const span) const noexcept
                                          static_cast<std::size_t>(span.count));
 }
 auto Sim::get_team(RegistryEntityHandle const handle) const noexcept -> ioj::sim::Team {
-    auto const handles{
-        std::span{entities.handles.data(), static_cast<std::size_t>(entities.handles.size())}};
-    if (auto const index{ioj::sim::find_capital_ship_index(handles, handle)}) {
-        return entities.teams[*index];
+    auto const found{std::ranges::find(entities.handles, handle)};
+    if (found != entities.handles.end()) {
+        return entities.teams[found - entities.handles.begin()];
     }
 
     ml::fatal_error("Invalid capital ship handle passed");
 }
 auto Sim::get_health(RegistryEntityHandle const handle) const noexcept -> std::int32_t {
-    auto const handles{
-        std::span{entities.handles.data(), static_cast<std::size_t>(entities.handles.size())}};
-    auto const index{ioj::sim::find_capital_ship_index(handles, handle)};
-    assert(index.has_value());
-    return entities.healths[*index];
+    auto const found{std::ranges::find(entities.handles, handle)};
+    assert(found != entities.handles.end());
+    return entities.healths[found - entities.handles.begin()];
 }
 auto Sim::find_first_index_on_team(ioj::sim::Team const team) const noexcept
     -> std::optional<std::int32_t> {
-    auto const n{get_num_instances()};
-    auto const teams{std::span{entities.teams.data(), static_cast<std::size_t>(n)}};
-    return ioj::sim::find_first_capital_ship_on_team(std::as_bytes(teams), team);
+    auto const found{std::ranges::find(entities.teams, team)};
+    if (found == entities.teams.end()) {
+        return std::nullopt;
+    }
+    return static_cast<std::int32_t>(found - entities.teams.begin());
 }
 auto Sim::find_first_handle_on_team(ioj::sim::Team const team) const noexcept
     -> std::optional<RegistryEntityHandle> {
@@ -208,16 +206,15 @@ void Sim::spawn_ships(SpawnDataConstView const spawn_data) {
 
     entities.add_defaulted(n_to_add);
     auto const appended{entities.right(n_to_add)};
-    auto const count{static_cast<std::size_t>(n_to_add)};
-    ioj::sim::capitals::initialize_spawned_ships(
-        {.locations = appended.locations,
-         .rotations = appended.rotations,
-         .remaining_spawn_times = {appended.fighter_spawn_timers.data(), count},
-         .spawn_cooldowns = {appended.fighter_spawn_cooldowns.data(), count},
-         .teams = std::as_writable_bytes(std::span{appended.teams.data(), count}),
-         .healths = {appended.healths.data(), count},
-         .targets = {appended.target_handles.data(), count}},
-        spawn_data);
+    for (std::int32_t index{}; index < n_to_add; ++index) {
+        appended.locations.set(index, spawn_data.locations[index]);
+        appended.rotations.set(index, spawn_data.rotations[index]);
+        appended.fighter_spawn_timers[index] = spawn_data.initial_spawn_delays[index];
+        appended.fighter_spawn_cooldowns[index] = spawn_data.spawn_cooldowns[index];
+        appended.teams[index] = spawn_data.teams[index];
+        appended.healths[index] = spawn_data.healths[index];
+        appended.target_handles[index] = spawn_data.target_handles[index];
+    }
     validate_array_sizes();
 }
 
@@ -257,10 +254,17 @@ void Sim::queue_fighter_spawns() {
 
     auto const n_capital_ships{get_num_instances()};
     ml::FrameArray<std::int32_t> ships_ready_to_spawn_fighters_indices{&frame_memory_resource};
-    ioj::sim::capitals::collect_ships_ready_to_spawn_fighters(
-        {entities.fighter_spawn_timers.data(), static_cast<std::size_t>(n_capital_ships)},
-        {entities.target_handles.data(), static_cast<std::size_t>(n_capital_ships)},
-        ships_ready_to_spawn_fighters_indices);
+    ships_ready_to_spawn_fighters_indices.set_num(n_capital_ships);
+    ships_ready_to_spawn_fighters_indices.set_num(
+        ml::kernel::collect_indices_less_equal(entities.fighter_spawn_timers.data(),
+                                               n_capital_ships,
+                                               0.f,
+                                               ships_ready_to_spawn_fighters_indices.data()));
+    for (auto index{ships_ready_to_spawn_fighters_indices.num() - 1}; index >= 0; --index) {
+        if (entities.target_handles[ships_ready_to_spawn_fighters_indices[index]].is_null()) {
+            ships_ready_to_spawn_fighters_indices.remove_at_swap(index);
+        }
+    }
     if (ships_ready_to_spawn_fighters_indices.num() == 0) {
         return;
     }
@@ -321,27 +325,64 @@ void Sim::refresh_fighter_handles() {
     auto const n_capitals{get_num_instances()};
     auto const queue_count{static_cast<std::size_t>(previous.num())};
     ml::FrameArray<RegistryEntityHandle> fighters_to_self_destruct{&frame_memory_resource};
-    [[maybe_unused]] auto const surviving_spawn_count{ioj::sim::assign_spawned_fighters(
-        {entities.handles.data(), static_cast<std::size_t>(n_capitals)},
-        std::as_bytes(std::span{entities.teams.data(), static_cast<std::size_t>(n_capitals)}),
-        spawn_handles,
-        {previous.parents.data(), queue_count},
-        std::as_bytes(std::span{previous.teams.data(), queue_count}),
-        ioj::sim::make_native_query_view(entity_registry),
-        fighter_reassignment_queue,
-        fighters_to_self_destruct)};
+    auto const capital_handles{std::span<RegistryEntityHandle const>{
+        entities.handles.data(), static_cast<std::size_t>(n_capitals)}};
+    auto const registry{ioj::sim::make_native_query_view(entity_registry)};
+    auto const spawn_count{std::min(static_cast<std::size_t>(spawn_handles.num()), queue_count)};
+    std::int32_t surviving_spawn_count{};
+    for (std::size_t spawn_index{}; spawn_index < spawn_count; ++spawn_index) {
+        auto const fighter{spawn_handles.get_handle(static_cast<std::int32_t>(spawn_index))};
+        if (!is_valid_alive(registry, fighter)) {
+            continue;
+        }
+
+        auto destination{previous.parents[spawn_index]};
+        if (std::ranges::find(capital_handles, destination) == capital_handles.end()) {
+            auto const team{previous.teams[spawn_index]};
+            auto const replacement{std::ranges::find(entities.teams, team)};
+            if (replacement == entities.teams.end()) {
+                fighters_to_self_destruct.add(fighter);
+                continue;
+            }
+            destination = entities.handles[replacement - entities.teams.begin()];
+        }
+
+        fighter_reassignment_queue.add(destination, fighter);
+        ++surviving_spawn_count;
+    }
     for (auto const fighter : fighters_to_self_destruct) {
         fighters_interface.self_destruct_fighter(fighter);
     }
 
     fighter_handles_scratch.resize(fighter_handles.size() +
                                    static_cast<std::size_t>(fighter_reassignment_queue.num()));
-    auto const fighter_count{ioj::sim::rebuild_fighter_rosters(
-        {entities.handles.data(), static_cast<std::size_t>(n_capitals)},
-        {entities.fighter_handle_spans.data(), static_cast<std::size_t>(n_capitals)},
-        fighter_handles,
-        fighter_reassignment_queue,
-        fighter_handles_scratch)};
+    std::int32_t fighter_count{};
+    for (std::int32_t capital_index{}; capital_index < n_capitals; ++capital_index) {
+        auto const old_span{entities.fighter_handle_spans[capital_index]};
+        auto const old_end{old_span.end()};
+        assert(old_span.offset >= 0 && old_span.count >= 0);
+        assert(static_cast<std::size_t>(old_end) <= fighter_handles.size());
+        IndexSpan new_span{.offset = fighter_count, .count = 0};
+        for (auto fighter_index{old_span.offset}; fighter_index < old_end; ++fighter_index) {
+            auto const fighter{fighter_handles[static_cast<std::size_t>(fighter_index)]};
+            if (!fighter.is_null()) {
+                fighter_handles_scratch[static_cast<std::size_t>(fighter_count++)] = fighter;
+            }
+        }
+
+        for (auto index{fighter_reassignment_queue.num() - 1}; index >= 0; --index) {
+            auto const destination{fighter_reassignment_queue.capital_handles[index]};
+            auto const found{std::ranges::find(capital_handles, destination)};
+            assert(found != capital_handles.end());
+            if (found - capital_handles.begin() == capital_index) {
+                fighter_handles_scratch[static_cast<std::size_t>(fighter_count++)] =
+                    fighter_reassignment_queue.fighter_handles[index];
+                fighter_reassignment_queue.remove_at_swap(index, 1);
+            }
+        }
+        new_span.count = fighter_count - new_span.offset;
+        entities.fighter_handle_spans[capital_index] = new_span;
+    }
     fighter_handles_scratch.resize(static_cast<std::size_t>(fighter_count));
 
     assert(fighter_handles_scratch.size() >= static_cast<std::size_t>(surviving_spawn_count));
@@ -357,14 +398,38 @@ void Sim::queue_fighter_orders() {
     auto const n_capitals{get_num_instances()};
     auto const all_fighters{fighters_interface.get_handles()};
     auto const fighter_targets{fighters_interface.get_target_handles()};
-    ioj::sim::build_fighter_orders(
-        {entities.target_handles.data(), static_cast<std::size_t>(n_capitals)},
-        {entities.fighter_handle_spans.data(), static_cast<std::size_t>(n_capitals)},
-        fighter_handles,
-        {all_fighters.data(), static_cast<std::size_t>(all_fighters.size())},
-        {fighter_targets.data(), static_cast<std::size_t>(fighter_targets.size())},
-        ioj::sim::make_native_query_view(entity_registry),
-        fighter_order_queue);
+    auto const registry{ioj::sim::make_native_query_view(entity_registry)};
+    fighter_order_queue.reset();
+    for (std::int32_t capital_index{}; capital_index < n_capitals; ++capital_index) {
+        auto const capital_target{entities.target_handles[capital_index]};
+        auto const span{entities.fighter_handle_spans[capital_index]};
+        auto const end{span.end()};
+        assert(span.offset >= 0 && span.count >= 0);
+        assert(static_cast<std::size_t>(end) <= fighter_handles.size());
+
+        for (auto index{span.start()}; index < end; ++index) {
+            auto const fighter{fighter_handles[static_cast<std::size_t>(index)]};
+            if (capital_target.is_null()) {
+                fighter_order_queue.add(fighter,
+                                        FighterOrder{.task = 1, .target = 1},
+                                        FighterTask::Standby,
+                                        capital_target);
+                continue;
+            }
+
+            auto const found{std::ranges::find(all_fighters, fighter)};
+            assert(found != all_fighters.end());
+            auto const fighter_index{static_cast<std::size_t>(found - all_fighters.begin())};
+            auto const target{fighter_targets[fighter_index]};
+            auto const target_is_dead{analyse_handle(registry, target) ==
+                                          RegistryHandleState::Active &&
+                                      registry.alive[static_cast<std::size_t>(target.index)] == 0};
+            if (target.is_null() || target_is_dead) {
+                fighter_order_queue.add(
+                    fighter, FighterOrder{.task = 0, .target = 1}, {}, capital_target);
+            }
+        }
+    }
 
     if (fighter_order_queue.num() > 0) {
         fighters_interface.queue_orders(fighter_order_queue);
@@ -412,15 +477,46 @@ void Sim::handle_dead_entities() {
 void Sim::reassign_fighter_handles_of_dying_capital() {
     auto const n{get_num_instances()};
     ml::FrameArray<RegistryEntityHandle> fighters_to_self_destruct{&frame_memory_resource};
-    auto const teams{std::span{entities.teams.data(), static_cast<std::size_t>(n)}};
-    ioj::sim::plan_fighter_reassignment(
-        {entities.handles.data(), static_cast<std::size_t>(n)},
-        std::as_bytes(teams),
-        {entities.fighter_handle_spans.data(), static_cast<std::size_t>(n)},
-        fighter_handles,
-        {local_indices_to_remove.data(), static_cast<std::size_t>(local_indices_to_remove.size())},
-        fighter_reassignment_queue,
-        fighters_to_self_destruct);
+    constexpr auto team_count{static_cast<std::size_t>(Team::COUNT)};
+    std::array<std::int32_t, team_count> replacements{};
+    replacements.fill(-1);
+    std::array<bool, team_count> needs_replacement{};
+
+    for (auto const capital_index : local_indices_to_remove) {
+        assert(capital_index >= 0 && capital_index < n);
+        needs_replacement[static_cast<std::size_t>(entities.teams[capital_index])] = true;
+    }
+
+    auto teams_remaining{static_cast<std::int32_t>(std::ranges::count(needs_replacement, true))};
+    for (std::int32_t capital_index{}; capital_index < n && teams_remaining > 0; ++capital_index) {
+        auto const team{static_cast<std::size_t>(entities.teams[capital_index])};
+        if (!needs_replacement[team] || std::ranges::find(local_indices_to_remove, capital_index) !=
+                                            local_indices_to_remove.end()) {
+            continue;
+        }
+
+        replacements[team] = capital_index;
+        needs_replacement[team] = false;
+        --teams_remaining;
+    }
+
+    for (auto const capital_index : local_indices_to_remove) {
+        auto const team{static_cast<std::size_t>(entities.teams[capital_index])};
+        auto const replacement_index{replacements[team]};
+        auto const fighter_span{entities.fighter_handle_spans[capital_index]};
+        assert(fighter_span.offset >= 0 && fighter_span.count >= 0);
+        assert(static_cast<std::size_t>(fighter_span.end()) <= fighter_handles.size());
+
+        for (auto fighter_index{fighter_span.offset}; fighter_index < fighter_span.end();
+             ++fighter_index) {
+            auto const fighter{fighter_handles[static_cast<std::size_t>(fighter_index)]};
+            if (replacement_index < 0) {
+                fighters_to_self_destruct.add(fighter);
+            } else {
+                fighter_reassignment_queue.add(entities.handles[replacement_index], fighter);
+            }
+        }
+    }
 
     for (auto const fighter : fighters_to_self_destruct) {
         fighters_interface.self_destruct_fighter(fighter);

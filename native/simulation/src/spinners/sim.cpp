@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <optional>
 #include <sandbox/core/countdown.h>
+#include <sandbox/core/frame_array.h>
 #include <sandbox/core/tick_countdown.h>
 #include <span>
 #include <utility>
@@ -141,21 +142,42 @@ void Sim::fire_lasers() {
         return;
     }
 
-    auto const count{static_cast<std::size_t>(get_num_instances())};
+    auto const count{get_num_instances()};
     ioj::sim::lasers::FrameSpawnRequests new_lasers{&frame_memory_resource};
-    ioj::sim::spinners::fire_lasers(
-        {.locations = entities.locations.get_const_view(),
-         .yaws = {entities.yaws.data(), count},
-         .handles = {entities.handles.data(), count},
-         .next_fire_point_indices = {entities.next_fire_point_indices.data(), count},
-         .cooldowns = ml::TickCountdownView<std::int16_t>{entities.laser_cooldowns,
-                                                          cooldown_restart_ticks_}},
-        config.fire_point_offsets,
-        {.damage = config.laser.damage,
-         .speed = config.laser.projectile_speed,
-         .maximum_distance = config.laser.max_distance},
-        frame_memory_resource,
-        new_lasers);
+    ml::FrameArray<std::int32_t> ready_indices{&frame_memory_resource};
+    ready_indices.reserve(count);
+    auto cooldowns{
+        ml::TickCountdownView<std::int16_t>{entities.laser_cooldowns, cooldown_restart_ticks_}};
+    for (std::int32_t index{}; index < count; ++index) {
+        if (cooldowns.try_consume(static_cast<std::size_t>(index))) {
+            ready_indices.add(index);
+        }
+    }
+
+    auto const ready_count{ready_indices.num()};
+    auto const fire_point_count{static_cast<std::int32_t>(config.fire_point_offsets.size())};
+    new_lasers.set_num(ready_count);
+    for (std::int32_t request_index{}; request_index < ready_count; ++request_index) {
+        auto const index{ready_indices[request_index]};
+        auto const element{static_cast<std::size_t>(index)};
+        auto& next_fire_point{entities.next_fire_point_indices[element]};
+        assert(next_fire_point >= 0 && next_fire_point < fire_point_count);
+        auto const& fire_point{
+            config.fire_point_offsets[static_cast<std::size_t>(next_fire_point)]};
+        new_lasers.locations.set(request_index, entities.locations[index] + fire_point.location);
+        new_lasers.rotations.set(request_index,
+                                 {fire_point.rotation.pitch,
+                                  fire_point.rotation.yaw + entities.yaws[element],
+                                  fire_point.rotation.roll});
+        new_lasers.base_velocities.set(request_index, HMM_V3(0.f, 0.f, 0.f));
+        new_lasers.damages[request_index] = config.laser.damage;
+        new_lasers.speeds[request_index] = config.laser.projectile_speed;
+        new_lasers.max_distances[request_index] = config.laser.max_distance;
+        new_lasers.instigator_handles[request_index] = entities.handles[element];
+        new_lasers.sources[request_index] = {Team::White, EntityType::TubeSpinner};
+        next_fire_point = (next_fire_point + 1) % fire_point_count;
+    }
+
     laser_simulation.queue_laser_spawns(new_lasers.get_const_view());
 }
 
