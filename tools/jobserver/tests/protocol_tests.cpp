@@ -49,3 +49,8 @@ TEST(JobserverProtocol, RejectsMalformedBase64Padding) {
     EXPECT_FALSE(jobserver::protocol::decode_base64("AAAA=AAA").has_value());
     EXPECT_FALSE(jobserver::protocol::decode_base64("A===").has_value());
 }
+
+TEST(JobserverProtocol, FilesystemPathsRoundTripUtf8) {
+    auto const utf8{std::string{"C:/worktree two \xe2\x98\x83/build"}};
+    EXPECT_EQ(jobserver::path_to_utf8(jobserver::path_from_utf8(utf8)), utf8);
+}

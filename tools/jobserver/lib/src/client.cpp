@@ -189,8 +189,9 @@ auto claims_json(std::vector<ResourceClaim> const& claims) -> Json {
 }
 
 auto metadata_json(JobMetadata const& metadata) -> Json {
-    return Json{
-        {"name", metadata.name}, {"kind", metadata.kind}, {"worktree", metadata.worktree.string()}};
+    return Json{{"name", metadata.name},
+                {"kind", metadata.kind},
+                {"worktree", path_to_utf8(metadata.worktree)}};
 }
 }
 
@@ -268,9 +269,9 @@ auto Client::run(SubmitRequest const& request, OutputCallback output) -> std::ex
         {"metadata", metadata_json(request.metadata)},
         {"resources", claims_json(request.resources)},
         {"command",
-         Json{{"executable", request.command.executable.string()},
+         Json{{"executable", path_to_utf8(request.command.executable)},
               {"arguments", request.command.arguments},
-              {"working_directory", request.command.working_directory.string()},
+              {"working_directory", path_to_utf8(request.command.working_directory)},
               {"environment", Json::array()}}},
         {"disconnect_policy",
          request.disconnect_policy == DisconnectPolicy::cancel ? "cancel" : "continue"},

@@ -81,6 +81,8 @@ struct Error {
     std::string message;
 };
 
+[[nodiscard]] auto path_from_utf8(std::string const& value) -> std::filesystem::path;
+[[nodiscard]] auto path_to_utf8(std::filesystem::path const& value) -> std::string;
 [[nodiscard]] auto to_string(ClaimMode value) -> std::string;
 [[nodiscard]] auto claim_mode_from_string(std::string const& value) -> std::optional<ClaimMode>;
 [[nodiscard]] auto to_string(JobState value) -> std::string;

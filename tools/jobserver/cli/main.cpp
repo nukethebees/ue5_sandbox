@@ -10,10 +10,38 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace {
 using Json = nlohmann::json;
+
+auto narrow(std::wstring_view const text) -> std::string {
+    if (text.empty()) {
+        return {};
+    }
+    auto const size{WideCharToMultiByte(CP_UTF8,
+                                        WC_ERR_INVALID_CHARS,
+                                        text.data(),
+                                        static_cast<int>(text.size()),
+                                        nullptr,
+                                        0,
+                                        nullptr,
+                                        nullptr)};
+    if (size <= 0) {
+        return {};
+    }
+    std::string result(static_cast<std::size_t>(size), '\0');
+    WideCharToMultiByte(CP_UTF8,
+                        WC_ERR_INVALID_CHARS,
+                        text.data(),
+                        static_cast<int>(text.size()),
+                        result.data(),
+                        size,
+                        nullptr,
+                        nullptr);
+    return result;
+}
 
 void print_help() {
     std::cout << "NukeTheBees local job scheduler\n\n"
@@ -165,7 +193,7 @@ auto run_command(std::vector<std::string> const& arguments) -> int {
         } else if (argument == "--kind") {
             request.metadata.kind = *value;
         } else if (argument == "--worktree") {
-            request.metadata.worktree = *value;
+            request.metadata.worktree = jobserver::path_from_utf8(*value);
         } else if (argument == "--shared") {
             request.resources.push_back({.name = *value, .mode = jobserver::ClaimMode::shared});
         } else if (argument == "--exclusive") {
@@ -194,7 +222,7 @@ auto run_command(std::vector<std::string> const& arguments) -> int {
         std::cerr << "jobserver: run requires a command after --\n";
         return 2;
     }
-    request.command.executable = resolve_executable(arguments[index++]);
+    request.command.executable = resolve_executable(jobserver::path_from_utf8(arguments[index++]));
     request.command.arguments.assign(arguments.begin() + static_cast<std::ptrdiff_t>(index),
                                      arguments.end());
     auto result{
@@ -207,11 +235,11 @@ auto run_command(std::vector<std::string> const& arguments) -> int {
 }
 }
 
-auto main(int argc, char** argv) -> int {
+auto wmain(int argc, wchar_t** argv) -> int {
     std::vector<std::string> arguments;
     arguments.reserve(static_cast<std::size_t>(argc));
     for (auto index{0}; index != argc; ++index) {
-        arguments.emplace_back(argv[index]);
+        arguments.emplace_back(narrow(argv[index]));
     }
     if (arguments.size() < 2 || arguments[1] == "--help" || arguments[1] == "-h") {
         print_help();

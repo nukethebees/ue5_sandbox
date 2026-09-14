@@ -41,7 +41,7 @@ auto parse_metadata(Json const& json) -> JobMetadata {
     return JobMetadata{
         .name = json.value("name", "unnamed"),
         .kind = json.value("kind", "command"),
-        .worktree = json.value("worktree", ""),
+        .worktree = path_from_utf8(json.value("worktree", "")),
     };
 }
 
@@ -312,9 +312,9 @@ void Server::handle_submit(void* const pipe, std::string const& message) {
     }
     auto const command_json = json.value("command", Json::object());
     Command command{
-        .executable = command_json.value("executable", ""),
+        .executable = path_from_utf8(command_json.value("executable", "")),
         .arguments = command_json.value("arguments", std::vector<std::string>{}),
-        .working_directory = command_json.value("working_directory", ""),
+        .working_directory = path_from_utf8(command_json.value("working_directory", "")),
         .environment = {},
     };
     command.environment.push_back({.name = "NUKETHEBEES_JOBSERVER_JOB", .value = id});
@@ -406,7 +406,7 @@ void Server::handle_status(void* const pipe, bool const include_history) {
             {"id", entry.id},
             {"name", entry.metadata.name},
             {"kind", entry.metadata.kind},
-            {"worktree", entry.metadata.worktree.string()},
+            {"worktree", path_to_utf8(entry.metadata.worktree)},
             {"state", to_string(entry.state)},
             {"health", to_string(entry.health)},
             {"health_reason", entry.health_reason},
@@ -484,7 +484,7 @@ void Server::record_history(std::string const& id) {
     entry["id"] = found->id;
     entry["name"] = found->metadata.name;
     entry["kind"] = found->metadata.kind;
-    entry["worktree"] = found->metadata.worktree.string();
+    entry["worktree"] = path_to_utf8(found->metadata.worktree);
     entry["state"] = to_string(found->state);
     entry["health"] = to_string(found->health);
     entry["health_reason"] = found->health_reason;
