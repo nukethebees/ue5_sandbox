@@ -5,6 +5,7 @@ endif()
 add_library(jobserver-client)
 add_library(jobserver::client ALIAS jobserver-client)
 target_sources(jobserver-client PRIVATE
+  lib/src/authority.cpp
   lib/src/client.cpp
   lib/src/protocol.cpp
   lib/src/transport.cpp

@@ -17,6 +17,9 @@ auto main(int argc, char** argv) -> int {
     auto const hold{mode == "lease-hold" && argc == 5};
     auto const detached_run{mode == "detached-run" && argc == 3};
     auto const attached_run{mode == "attached-run" && argc == 3};
+    if (mode == "recover" && argc == 2) {
+        return jobserver::Client::force_recover_daemon() ? 0 : 3;
+    }
     if (detached_run || attached_run) {
         auto const result{jobserver::Client::run(
             {

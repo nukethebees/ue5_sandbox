@@ -1,5 +1,6 @@
 #include "jobserver/client.hpp"
 
+#include "jobserver/authority.hpp"
 #include "jobserver/protocol.hpp"
 #include "jobserver/transport.hpp"
 
@@ -440,5 +441,9 @@ auto Client::shutdown() -> std::expected<void, Error> {
         return std::unexpected(Error{"shutdown_refused", message});
     }
     return {};
+}
+
+auto Client::force_recover_daemon() -> std::expected<void, Error> {
+    return force_recover_authority([] { return Client::ping().has_value(); });
 }
 }

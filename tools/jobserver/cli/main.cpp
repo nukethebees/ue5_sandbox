@@ -55,6 +55,7 @@ void print_help() {
                  "  jobserver start\n"
                  "  jobserver ping\n"
                  "  jobserver shutdown\n"
+                 "  jobserver recover --force\n"
                  "  jobserver doctor\n"
                  "  jobserver version\n\n"
                  "run options:\n"
@@ -327,6 +328,19 @@ auto wmain(int argc, wchar_t** argv) -> int {
     if (command == "shutdown") {
         auto result{jobserver::Client::shutdown()};
         return result ? 0 : print_error(result.error());
+    }
+    if (command == "recover") {
+        if (arguments.size() != 3 || arguments[2] != "--force") {
+            std::cerr << "jobserver: recover requires --force\n";
+            return 2;
+        }
+        auto recovered{jobserver::Client::force_recover_daemon()};
+        if (!recovered) {
+            return print_error(recovered.error());
+        }
+        std::cout << "Terminated the validated unresponsive daemon.\n";
+        auto started{jobserver::Client::start_daemon()};
+        return started ? 0 : print_error(started.error());
     }
     if (command == "doctor") {
         auto const root{local_app_data() / "NukeTheBees" / "jobserver"};

@@ -40,5 +40,6 @@ class Client {
         -> std::expected<void, Error>;
     [[nodiscard]] static auto shutdown() -> std::expected<void, Error>;
     [[nodiscard]] static auto start_daemon() -> std::expected<void, Error>;
+    [[nodiscard]] static auto force_recover_daemon() -> std::expected<void, Error>;
 };
 }

@@ -376,6 +376,125 @@ TEST_F(JobserverIntegration, PingConfirmsResponsiveControlPlane) {
     EXPECT_TRUE(jobserver::Client::ping().has_value());
 }
 
+TEST_F(JobserverIntegration, RecoveryRefusesResponsiveDaemon) {
+    auto recovered{jobserver::Client::force_recover_daemon()};
+    ASSERT_FALSE(recovered.has_value());
+    EXPECT_EQ(recovered.error().code, "daemon_healthy");
+    EXPECT_EQ(WaitForSingleObject(daemon_.process, 0), WAIT_TIMEOUT);
+}
+
+TEST_F(JobserverIntegration, RecoveryTerminatesOnlyValidatedUnresponsiveDaemon) {
+    stop_daemon();
+    {
+        TestBarrier barrier{"after_authority_publication", 2};
+        ASSERT_TRUE(barrier.valid());
+        daemon_ = launch(JOBSERVER_DAEMON_PATH);
+        ASSERT_NE(daemon_.process, nullptr);
+        close_thread();
+        ASSERT_TRUE(barrier.wait(2s));
+
+        auto recovered{jobserver::Client::force_recover_daemon()};
+        ASSERT_TRUE(recovered.has_value()) << recovered.error().message;
+        auto const exit_code{wait_for_exit(daemon_, 2s)};
+        ASSERT_TRUE(exit_code.has_value());
+        EXPECT_EQ(*exit_code, 70U);
+        close(daemon_);
+        EXPECT_FALSE(std::filesystem::exists(data_path_ / "authority.json"));
+    }
+    start_daemon();
+}
+
+TEST_F(JobserverIntegration, RecoveryRefusesTamperedAuthorityRecord) {
+    stop_daemon();
+    {
+        TestBarrier barrier{"after_authority_publication", 3};
+        ASSERT_TRUE(barrier.valid());
+        daemon_ = launch(JOBSERVER_DAEMON_PATH);
+        ASSERT_NE(daemon_.process, nullptr);
+        close_thread();
+        ASSERT_TRUE(barrier.wait(2s));
+
+        auto const authority_path{data_path_ / "authority.json"};
+        Json authority;
+        {
+            std::ifstream input{authority_path};
+            ASSERT_TRUE(input.good());
+            input >> authority;
+        }
+        authority["creation_time"] = authority.value("creation_time", 0ULL) + 1;
+        {
+            std::ofstream output{authority_path, std::ios::trunc};
+            output << authority.dump();
+        }
+
+        auto recovered{jobserver::Client::force_recover_daemon()};
+        ASSERT_FALSE(recovered.has_value());
+        EXPECT_EQ(recovered.error().code, "authority_mismatch");
+        EXPECT_EQ(WaitForSingleObject(daemon_.process, 0), WAIT_TIMEOUT);
+
+        ASSERT_TRUE(TerminateProcess(daemon_.process, 71));
+        ASSERT_TRUE(wait_for_exit(daemon_, 2s).has_value());
+        close(daemon_);
+    }
+    start_daemon();
+}
+
+TEST_F(JobserverIntegration, RecoveryCleansRecordForExitedDaemon) {
+    stop_daemon();
+    ASSERT_EQ(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_FAST_CONNECT", L"1"), 0);
+    {
+        TestBarrier barrier{"after_authority_publication", 4};
+        ASSERT_TRUE(barrier.valid());
+        daemon_ = launch(JOBSERVER_DAEMON_PATH);
+        ASSERT_NE(daemon_.process, nullptr);
+        close_thread();
+        ASSERT_TRUE(barrier.wait(2s));
+        ASSERT_TRUE(TerminateProcess(daemon_.process, 72));
+        ASSERT_TRUE(wait_for_exit(daemon_, 2s).has_value());
+        close(daemon_);
+        barrier.release();
+
+        auto recovered{jobserver::Client::force_recover_daemon()};
+        ASSERT_TRUE(recovered.has_value()) << recovered.error().message;
+        EXPECT_FALSE(std::filesystem::exists(data_path_ / "authority.json"));
+    }
+    ASSERT_EQ(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_FAST_CONNECT", L""), 0);
+    start_daemon();
+}
+
+TEST_F(JobserverIntegration, ConcurrentRecoveryKillsValidatedDaemonOnce) {
+    stop_daemon();
+    ASSERT_EQ(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_FAST_CONNECT", L"1"), 0);
+    {
+        TestBarrier barrier{"after_authority_publication", 5};
+        ASSERT_TRUE(barrier.valid());
+        daemon_ = launch(JOBSERVER_DAEMON_PATH);
+        ASSERT_NE(daemon_.process, nullptr);
+        close_thread();
+        ASSERT_TRUE(barrier.wait(2s));
+
+        auto first{launch(JOBSERVER_TEST_CLIENT_PATH, L"recover")};
+        auto second{launch(JOBSERVER_TEST_CLIENT_PATH, L"recover")};
+        ASSERT_NE(first.process, nullptr);
+        ASSERT_NE(second.process, nullptr);
+        auto const first_result{wait_for_exit(first, 3s)};
+        auto const second_result{wait_for_exit(second, 3s)};
+        ASSERT_TRUE(first_result.has_value());
+        ASSERT_TRUE(second_result.has_value());
+        EXPECT_TRUE((*first_result == 0U && *second_result == 3U) ||
+                    (*first_result == 3U && *second_result == 0U));
+        close(first);
+        close(second);
+
+        auto const exit_code{wait_for_exit(daemon_, 2s)};
+        ASSERT_TRUE(exit_code.has_value());
+        EXPECT_EQ(*exit_code, 70U);
+        close(daemon_);
+    }
+    ASSERT_EQ(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_FAST_CONNECT", L""), 0);
+    start_daemon();
+}
+
 TEST_F(JobserverIntegration, ControlRequestTimesOutWhenHandlerIsWedged) {
     stop_daemon();
     {

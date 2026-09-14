@@ -132,6 +132,7 @@ complete resource set needed by nested work.
 jobserver status
 jobserver status --json
 jobserver ping
+jobserver recover --force
 jobserver show <job-id>
 jobserver history
 jobserver logs <job-id>
@@ -145,6 +146,10 @@ jobserver version
 Queued clients receive periodic heartbeat frames while they wait. `ping` uses a bounded control
 request to distinguish a responsive daemon from one whose process merely still exists. Other
 control commands also fail with a clear timeout rather than waiting indefinitely.
+`recover --force` is an explicit last resort for an unresponsive daemon. It refuses a responsive
+daemon and terminates a process only after a per-user recovery mutex and a live comparison of the
+recorded PID, process creation time, executable path, and user SID. It never searches or kills by
+process name. Recovery then asks the canonical Scheduled Task to start a replacement daemon.
 `cancel` and `kill` both terminate a supervised Windows Job Object; they use distinct conventional
 exit codes (`130` and `137`). A timeout is reported as `124`.
 
@@ -165,6 +170,10 @@ this heuristic.
   `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`.
 - A restarted daemon begins with no live ownership. Active resource state is never reconstructed
   from disk.
+- The daemon publishes a separate `authority.json` identity record for explicit stale-daemon
+  recovery. It is not authoritative for resources or leases, is removed only by the matching
+  process instance, and is fully revalidated before use so stale PIDs and PID reuse cannot select
+  another process.
 - Completed-job history is append-only JSONL, tolerates corrupt lines, and is bounded to the newest
   1,000 entries. History is not authoritative for live ownership.
 - History and logs are best-effort. An unavailable or full data directory does not prevent command

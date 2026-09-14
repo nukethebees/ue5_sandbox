@@ -1,5 +1,6 @@
 #include "server.hpp"
 
+#include "jobserver/authority.hpp"
 #include "jobserver/protocol.hpp"
 #include "jobserver/transport.hpp"
 #include "test_barrier.hpp"
@@ -193,10 +194,14 @@ auto Server::run() -> int {
     }
     auto& [security, descriptor]{*pipe_security};
     std::jthread audit_thread{[this](std::stop_token const stop_token) { audit_loop(stop_token); }};
+    auto authority_published{false};
     auto finish = [&](int const result) {
         LocalFree(descriptor);
         std::unique_lock lock{handlers_mutex_};
         handlers_finished_.wait(lock, [&] { return active_handlers_ == 0; });
+        if (authority_published) {
+            clear_authority();
+        }
         return result;
     };
     bool first{true};
@@ -221,6 +226,15 @@ auto Server::run() -> int {
                                 : "Could not create scheduler pipe (Windows error " +
                                       std::to_string(error) + ")\n");
             return finish(first ? 2 : 1);
+        }
+        if (first) {
+            auto const published{publish_authority()};
+            if (!published) {
+                std::cerr << published.error().message << "; forced recovery will be unavailable\n";
+            } else {
+                authority_published = true;
+            }
+            test_barrier("after_authority_publication");
         }
         first = false;
         listener_.store(pipe);
