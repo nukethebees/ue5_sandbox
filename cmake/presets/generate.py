@@ -212,6 +212,257 @@ def test_filter(combination: Combination) -> dict[str, Any]:
     return test_filter
 
 
+def make_unreal_document() -> dict[str, Any]:
+    document = generated_header()
+    document["include"] = ["base.json"]
+
+    unreal_configurations = (
+        ("debug", "Debug", "Debug", "Debug"),
+        ("debug-game", "DebugGame", "Debug", "DebugGame"),
+        ("development", "Development", "RelWithDebInfo", "Development"),
+        ("shipping", "Shipping", "Release", "Shipping"),
+        ("test", "Test", "Release", "Test"),
+    )
+    compiler_variants = (
+        ("", "", "windows-clang-cl", "unreal"),
+        ("-msvc", " (MSVC native)", "windows-msvc", "unreal-msvc"),
+    )
+
+    configure_presets: list[dict[str, Any]] = []
+    for _, _, compiler_base, unreal_base in compiler_variants:
+        configure_presets.append(
+            {
+                "name": unreal_base,
+                "hidden": True,
+                "inherits": compiler_base,
+                "cacheVariables": {
+                    "CMAKE_C_FLAGS_RELEASE": "/O2 /DNDEBUG",
+                    "CMAKE_C_FLAGS_RELWITHDEBINFO": "/O2 /Zi /DNDEBUG",
+                    "CMAKE_CXX_FLAGS_RELEASE": "/O2 /DNDEBUG",
+                    "CMAKE_CXX_FLAGS_RELWITHDEBINFO": "/O2 /Zi /DNDEBUG",
+                    "CMAKE_UNITY_BUILD": True,
+                    "CMAKE_UNITY_BUILD_BATCH_SIZE": "32",
+                    "SANDBOX_WITH_UNREAL": True,
+                },
+            }
+        )
+
+    for suffix, display_suffix, _, unreal_base in compiler_variants:
+        for name, display_name, cmake_build_type, ue_configuration in unreal_configurations:
+            configure_presets.append(
+                {
+                    "name": f"{name}{suffix}",
+                    "displayName": f"{display_name}{display_suffix}",
+                    "inherits": unreal_base,
+                    "cacheVariables": {
+                        "CMAKE_BUILD_TYPE": cmake_build_type,
+                        "UE_CONFIGURATION": ue_configuration,
+                    },
+                }
+            )
+
+    build_presets: list[dict[str, Any]] = [
+        {
+            "name": "worktree-dependencies-debug-game",
+            "configurePreset": "debug-game",
+            "targets": ["worktree-dependencies"],
+        },
+        {
+            "name": "worktree-dependencies-development",
+            "configurePreset": "development",
+            "targets": ["worktree-dependencies"],
+        },
+    ]
+    for suffix, _, _, _ in compiler_variants:
+        for name, _, _, _ in unreal_configurations:
+            target = "game" if name == "shipping" else "dev-core"
+            build_presets.append(
+                {
+                    "name": f"{name}{suffix}",
+                    "configurePreset": f"{name}{suffix}",
+                    "targets": [target],
+                }
+            )
+
+    extra_build_presets = (
+        ("resave-assets", "debug-game", "resave-assets"),
+        ("generate-lab-mesh-assemblies", "debug-game", "generate-lab-mesh-assemblies"),
+        ("import-game-audio", "debug-game", "import-game-audio"),
+        ("generate-project-files", "debug-game", "generate-project-files"),
+        ("generate-project-files-development", "development", "generate-project-files"),
+        ("format-code", "debug-game", "format-code"),
+        ("format-all-code", "debug-game", "format-all-code"),
+    )
+    build_presets.extend(
+        {
+            "name": name,
+            "configurePreset": configure_preset,
+            "targets": [target],
+        }
+        for name, configure_preset, target in extra_build_presets
+    )
+
+    packaging_build_presets = (
+        ("development-game", "development", "game"),
+        ("development-cook", "development", "cook"),
+        ("development-cook-incremental", "development", "cook-incremental"),
+        ("development-stage", "development", "stage"),
+        ("development-archive", "development", "archive"),
+        ("development-run-staged", "development", "run-staged"),
+        ("development-verify-package", "development", "verify-package"),
+        ("shipping-stage", "shipping", "stage"),
+        ("shipping-archive", "shipping", "archive"),
+        ("shipping-run-staged", "shipping", "run-staged"),
+        ("shipping-verify-package", "shipping", "verify-package"),
+    )
+    build_presets.extend(
+        {
+            "name": name,
+            "configurePreset": configure_preset,
+            "targets": [target],
+        }
+        for name, configure_preset, target in packaging_build_presets
+    )
+
+    test_presets: list[dict[str, Any]] = []
+    for suffix in ("", "-msvc"):
+        for name, label in (
+            ("tests", "^all$"),
+            ("level-tests", "^level$"),
+            ("unit-tests", "unit"),
+        ):
+            test_presets.append(
+                {
+                    "name": f"debug-game{suffix}-{name}",
+                    "inherits": "test-base",
+                    "configurePreset": f"debug-game{suffix}",
+                    "filter": {"include": {"label": label}},
+                }
+            )
+    test_presets.insert(
+        1,
+        {
+            "name": "debug-game-input-smoke-tests",
+            "inherits": "test-base",
+            "configurePreset": "debug-game",
+            "filter": {"include": {"label": "input-smoke"}},
+        },
+    )
+
+    workflow_presets: list[dict[str, Any]] = [
+        {
+            "name": "setup-worktree-debug-game",
+            "displayName": "Prepare a worktree for DebugGame development",
+            "description": "Build DebugGame dependencies, import optional audio, and generate project files",
+            "steps": [
+                {"type": "configure", "name": "debug-game"},
+                {"type": "build", "name": "worktree-dependencies-debug-game"},
+                {"type": "build", "name": "import-game-audio"},
+                {"type": "build", "name": "generate-project-files"},
+            ],
+        },
+        {
+            "name": "setup-worktree-development",
+            "displayName": "Prepare a worktree for Development",
+            "description": "Build non-Unreal Development dependencies and generate project files",
+            "steps": [
+                {"type": "configure", "name": "development"},
+                {"type": "build", "name": "worktree-dependencies-development"},
+                {"type": "build", "name": "generate-project-files-development"},
+            ],
+        },
+    ]
+    for suffix, _, _, _ in compiler_variants:
+        for name, _, _, _ in unreal_configurations:
+            preset_name = f"{name}{suffix}"
+            workflow_presets.append(
+                {
+                    "name": preset_name,
+                    "steps": [
+                        {"type": "configure", "name": preset_name},
+                        {"type": "build", "name": preset_name},
+                    ],
+                }
+            )
+
+    for name, configure_preset, _ in extra_build_presets:
+        if name == "generate-project-files-development":
+            continue
+        workflow_presets.append(
+            {
+                "name": name,
+                "steps": [
+                    {"type": "configure", "name": configure_preset},
+                    {"type": "build", "name": name},
+                ],
+            }
+        )
+
+    for suffix in ("", "-msvc"):
+        for test_suffix in ("tests", "unit-tests"):
+            test_name = f"debug-game{suffix}-{test_suffix}"
+            workflow_presets.append(
+                {
+                    "name": test_name,
+                    "steps": [
+                        {"type": "configure", "name": f"debug-game{suffix}"},
+                        {"type": "build", "name": f"debug-game{suffix}"},
+                        {"type": "test", "name": test_name},
+                    ],
+                }
+            )
+
+    workflow_presets.extend(
+        [
+            {
+                "name": "development-cook",
+                "steps": [
+                    {"type": "configure", "name": "development"},
+                    {"type": "build", "name": "development-cook"},
+                ],
+            },
+            {
+                "name": "development-staged-game",
+                "steps": [
+                    {"type": "configure", "name": "development"},
+                    {"type": "build", "name": "development-game"},
+                    {"type": "build", "name": "development-cook-incremental"},
+                    {"type": "build", "name": "development-stage"},
+                ],
+            },
+            {
+                "name": "development-package",
+                "steps": [
+                    {"type": "configure", "name": "development"},
+                    {"type": "build", "name": "development-game"},
+                    {"type": "build", "name": "development-cook"},
+                    {"type": "build", "name": "development-stage"},
+                    {"type": "build", "name": "development-archive"},
+                    {"type": "build", "name": "development-verify-package"},
+                ],
+            },
+            {
+                "name": "shipping-package",
+                "description": "Build, stage, archive, and verify Shipping using an existing Development cook",
+                "steps": [
+                    {"type": "configure", "name": "shipping"},
+                    {"type": "build", "name": "shipping"},
+                    {"type": "build", "name": "shipping-stage"},
+                    {"type": "build", "name": "shipping-archive"},
+                    {"type": "build", "name": "shipping-verify-package"},
+                ],
+            },
+        ]
+    )
+
+    document["configurePresets"] = configure_presets
+    document["buildPresets"] = build_presets
+    document["testPresets"] = test_presets
+    document["workflowPresets"] = workflow_presets
+    validate_preset_references(document)
+    return document
+
+
 def make_native_benchmark_document() -> dict[str, Any]:
     document = generated_header()
     document["include"] = ["native.json"]
@@ -479,7 +730,7 @@ def update_file(path: Path, contents: str, check: bool) -> bool:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate native CMake preset files.")
+    parser = argparse.ArgumentParser(description="Generate CMake preset files.")
     parser.add_argument(
         "--check",
         action="store_true",
@@ -496,6 +747,7 @@ def main() -> int:
     documents = {
         PRESET_DIRECTORY / "base.json": make_base_document(),
         PRESET_DIRECTORY / "native.json": make_native_document(combinations),
+        PRESET_DIRECTORY / "unreal.json": make_unreal_document(),
         PRESET_DIRECTORY / "native-benchmarks.json": make_native_benchmark_document(),
     }
     stale = False
@@ -505,7 +757,7 @@ def main() -> int:
     if arguments.check and stale:
         return 1
     if arguments.check:
-        print("Generated native CMake presets are up to date.")
+        print("Generated CMake presets are up to date.")
     return 0
 
 

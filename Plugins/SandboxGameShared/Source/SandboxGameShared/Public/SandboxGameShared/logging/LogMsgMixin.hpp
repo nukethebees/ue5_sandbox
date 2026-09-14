@@ -55,6 +55,10 @@ struct LogMsgMixin {
         requires (verbosity < ELogVerbosity::NumVerbosity)
     void log_to(this Self const& self, DecayedFormatString<Args...>&& fmt, Args&&... args) {
 
+#if NO_LOGGING
+        return;
+#else
+
 #define LOG_BRANCH(VERBOSITY)                                                   \
     if constexpr (verbosity == ELogVerbosity::VERBOSITY) {                      \
         UE_LOG(LOCAL_CATEGORY, VERBOSITY, TEXT("%s: %s"), self.get_tag(), *msg) \
@@ -82,6 +86,7 @@ struct LogMsgMixin {
         LOG_ELSE_BRANCH(VeryVerbose)
 #undef LOG_BRANCH
 #undef LOG_ELSE_BRANCH
+#endif
     }
 
     template <ELogVerbosity::Type verbosity, typename... Args>

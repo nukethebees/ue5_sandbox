@@ -3,6 +3,7 @@
 
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
+#if !NO_LOGGING
 static void cmd_sandbox_log(TArray<FString> const& args) {
     if (args.Num() != 1) {
         UE_LOG(LogSandbox, Warning, TEXT("Usage: set_all_sandbox_logs <VerbosityLevel>"));
@@ -100,3 +101,4 @@ static FAutoConsoleCommand
                        TEXT("Sets the verbosity for all Sandbox log categories. Usage: "
                             "sandbox_log <VerbosityLevel>"),
                        FConsoleCommandWithArgsDelegate::CreateStatic(&cmd_sandbox_log));
+#endif

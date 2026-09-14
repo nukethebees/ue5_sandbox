@@ -135,6 +135,7 @@ void FDrawDebugConfig::draw_circle_arc(FVector const& start,
         return;
     }
 
+#if ENABLE_DRAW_DEBUG
     DrawDebugCircleArc(world.Get(),
                        start,
                        arc_radius,
@@ -146,6 +147,7 @@ void FDrawDebugConfig::draw_circle_arc(FVector const& start,
                        lifetime,
                        depth_priority,
                        get_thickness(circle_arc_thickness));
+#endif
 }
 
 void FDrawDebugConfig::draw_sphere(FVector const& start, float const radius_) const {

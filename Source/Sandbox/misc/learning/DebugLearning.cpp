@@ -97,6 +97,7 @@ void ADebugLearning::Tick(float dt) {
                     draw_axis);
 
     move_coords();
+#if ENABLE_DRAW_DEBUG
     DrawDebugCircleArc(world,
                        start,
                        radius,
@@ -108,6 +109,7 @@ void ADebugLearning::Tick(float dt) {
                        lifetime,
                        depth_priority,
                        thickness);
+#endif
 
     move_coords();
     auto donut_transform{get_transform()};

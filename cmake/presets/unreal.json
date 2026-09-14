@@ -1,6 +1,15 @@
 {
   "version": 9,
-  "include": ["base.json"],
+  "vendor": {
+    "nukethebees.dev/preset-generator": {
+      "generated": true,
+      "source": "cmake/presets/generate.py",
+      "warning": "Generated file. Do not edit manually."
+    }
+  },
+  "include": [
+    "base.json"
+  ],
   "configurePresets": [
     {
       "name": "unreal",
@@ -125,97 +134,212 @@
     {
       "name": "worktree-dependencies-debug-game",
       "configurePreset": "debug-game",
-      "targets": ["worktree-dependencies"]
+      "targets": [
+        "worktree-dependencies"
+      ]
     },
     {
       "name": "worktree-dependencies-development",
       "configurePreset": "development",
-      "targets": ["worktree-dependencies"]
+      "targets": [
+        "worktree-dependencies"
+      ]
     },
     {
       "name": "debug",
       "configurePreset": "debug",
-      "targets": ["dev-core"]
+      "targets": [
+        "dev-core"
+      ]
     },
     {
       "name": "debug-game",
       "configurePreset": "debug-game",
-      "targets": ["dev-core"]
+      "targets": [
+        "dev-core"
+      ]
     },
     {
       "name": "development",
       "configurePreset": "development",
-      "targets": ["dev-core"]
+      "targets": [
+        "dev-core"
+      ]
     },
     {
       "name": "shipping",
       "configurePreset": "shipping",
-      "targets": ["dev-core"]
+      "targets": [
+        "game"
+      ]
     },
     {
       "name": "test",
       "configurePreset": "test",
-      "targets": ["dev-core"]
+      "targets": [
+        "dev-core"
+      ]
     },
     {
       "name": "debug-msvc",
       "configurePreset": "debug-msvc",
-      "targets": ["dev-core"]
+      "targets": [
+        "dev-core"
+      ]
     },
     {
       "name": "debug-game-msvc",
       "configurePreset": "debug-game-msvc",
-      "targets": ["dev-core"]
+      "targets": [
+        "dev-core"
+      ]
     },
     {
       "name": "development-msvc",
       "configurePreset": "development-msvc",
-      "targets": ["dev-core"]
+      "targets": [
+        "dev-core"
+      ]
     },
     {
       "name": "shipping-msvc",
       "configurePreset": "shipping-msvc",
-      "targets": ["dev-core"]
+      "targets": [
+        "game"
+      ]
     },
     {
       "name": "test-msvc",
       "configurePreset": "test-msvc",
-      "targets": ["dev-core"]
+      "targets": [
+        "dev-core"
+      ]
     },
     {
       "name": "resave-assets",
       "configurePreset": "debug-game",
-      "targets": ["resave-assets"]
+      "targets": [
+        "resave-assets"
+      ]
     },
     {
       "name": "generate-lab-mesh-assemblies",
       "configurePreset": "debug-game",
-      "targets": ["generate-lab-mesh-assemblies"]
+      "targets": [
+        "generate-lab-mesh-assemblies"
+      ]
     },
     {
       "name": "import-game-audio",
       "configurePreset": "debug-game",
-      "targets": ["import-game-audio"]
+      "targets": [
+        "import-game-audio"
+      ]
     },
     {
       "name": "generate-project-files",
       "configurePreset": "debug-game",
-      "targets": ["generate-project-files"]
+      "targets": [
+        "generate-project-files"
+      ]
     },
     {
       "name": "generate-project-files-development",
       "configurePreset": "development",
-      "targets": ["generate-project-files"]
+      "targets": [
+        "generate-project-files"
+      ]
     },
     {
       "name": "format-code",
       "configurePreset": "debug-game",
-      "targets": ["format-code"]
+      "targets": [
+        "format-code"
+      ]
     },
     {
       "name": "format-all-code",
       "configurePreset": "debug-game",
-      "targets": ["format-all-code"]
+      "targets": [
+        "format-all-code"
+      ]
+    },
+    {
+      "name": "development-game",
+      "configurePreset": "development",
+      "targets": [
+        "game"
+      ]
+    },
+    {
+      "name": "development-cook",
+      "configurePreset": "development",
+      "targets": [
+        "cook"
+      ]
+    },
+    {
+      "name": "development-cook-incremental",
+      "configurePreset": "development",
+      "targets": [
+        "cook-incremental"
+      ]
+    },
+    {
+      "name": "development-stage",
+      "configurePreset": "development",
+      "targets": [
+        "stage"
+      ]
+    },
+    {
+      "name": "development-archive",
+      "configurePreset": "development",
+      "targets": [
+        "archive"
+      ]
+    },
+    {
+      "name": "development-run-staged",
+      "configurePreset": "development",
+      "targets": [
+        "run-staged"
+      ]
+    },
+    {
+      "name": "development-verify-package",
+      "configurePreset": "development",
+      "targets": [
+        "verify-package"
+      ]
+    },
+    {
+      "name": "shipping-stage",
+      "configurePreset": "shipping",
+      "targets": [
+        "stage"
+      ]
+    },
+    {
+      "name": "shipping-archive",
+      "configurePreset": "shipping",
+      "targets": [
+        "archive"
+      ]
+    },
+    {
+      "name": "shipping-run-staged",
+      "configurePreset": "shipping",
+      "targets": [
+        "run-staged"
+      ]
+    },
+    {
+      "name": "shipping-verify-package",
+      "configurePreset": "shipping",
+      "targets": [
+        "verify-package"
+      ]
     }
   ],
   "testPresets": [
@@ -296,10 +420,22 @@
       "displayName": "Prepare a worktree for DebugGame development",
       "description": "Build DebugGame dependencies, import optional audio, and generate project files",
       "steps": [
-        { "type": "configure", "name": "debug-game" },
-        { "type": "build", "name": "worktree-dependencies-debug-game" },
-        { "type": "build", "name": "import-game-audio" },
-        { "type": "build", "name": "generate-project-files" }
+        {
+          "type": "configure",
+          "name": "debug-game"
+        },
+        {
+          "type": "build",
+          "name": "worktree-dependencies-debug-game"
+        },
+        {
+          "type": "build",
+          "name": "import-game-audio"
+        },
+        {
+          "type": "build",
+          "name": "generate-project-files"
+        }
       ]
     },
     {
@@ -307,153 +443,383 @@
       "displayName": "Prepare a worktree for Development",
       "description": "Build non-Unreal Development dependencies and generate project files",
       "steps": [
-        { "type": "configure", "name": "development" },
-        { "type": "build", "name": "worktree-dependencies-development" },
-        { "type": "build", "name": "generate-project-files-development" }
+        {
+          "type": "configure",
+          "name": "development"
+        },
+        {
+          "type": "build",
+          "name": "worktree-dependencies-development"
+        },
+        {
+          "type": "build",
+          "name": "generate-project-files-development"
+        }
       ]
     },
     {
       "name": "debug",
       "steps": [
-        { "type": "configure", "name": "debug" },
-        { "type": "build", "name": "debug" }
+        {
+          "type": "configure",
+          "name": "debug"
+        },
+        {
+          "type": "build",
+          "name": "debug"
+        }
       ]
     },
     {
       "name": "debug-game",
       "steps": [
-        { "type": "configure", "name": "debug-game" },
-        { "type": "build", "name": "debug-game" }
+        {
+          "type": "configure",
+          "name": "debug-game"
+        },
+        {
+          "type": "build",
+          "name": "debug-game"
+        }
       ]
     },
     {
       "name": "development",
       "steps": [
-        { "type": "configure", "name": "development" },
-        { "type": "build", "name": "development" }
+        {
+          "type": "configure",
+          "name": "development"
+        },
+        {
+          "type": "build",
+          "name": "development"
+        }
       ]
     },
     {
       "name": "shipping",
       "steps": [
-        { "type": "configure", "name": "shipping" },
-        { "type": "build", "name": "shipping" }
+        {
+          "type": "configure",
+          "name": "shipping"
+        },
+        {
+          "type": "build",
+          "name": "shipping"
+        }
       ]
     },
     {
       "name": "test",
       "steps": [
-        { "type": "configure", "name": "test" },
-        { "type": "build", "name": "test" }
+        {
+          "type": "configure",
+          "name": "test"
+        },
+        {
+          "type": "build",
+          "name": "test"
+        }
       ]
     },
     {
       "name": "debug-msvc",
       "steps": [
-        { "type": "configure", "name": "debug-msvc" },
-        { "type": "build", "name": "debug-msvc" }
+        {
+          "type": "configure",
+          "name": "debug-msvc"
+        },
+        {
+          "type": "build",
+          "name": "debug-msvc"
+        }
       ]
     },
     {
       "name": "debug-game-msvc",
       "steps": [
-        { "type": "configure", "name": "debug-game-msvc" },
-        { "type": "build", "name": "debug-game-msvc" }
+        {
+          "type": "configure",
+          "name": "debug-game-msvc"
+        },
+        {
+          "type": "build",
+          "name": "debug-game-msvc"
+        }
       ]
     },
     {
       "name": "development-msvc",
       "steps": [
-        { "type": "configure", "name": "development-msvc" },
-        { "type": "build", "name": "development-msvc" }
+        {
+          "type": "configure",
+          "name": "development-msvc"
+        },
+        {
+          "type": "build",
+          "name": "development-msvc"
+        }
       ]
     },
     {
       "name": "shipping-msvc",
       "steps": [
-        { "type": "configure", "name": "shipping-msvc" },
-        { "type": "build", "name": "shipping-msvc" }
+        {
+          "type": "configure",
+          "name": "shipping-msvc"
+        },
+        {
+          "type": "build",
+          "name": "shipping-msvc"
+        }
       ]
     },
     {
       "name": "test-msvc",
       "steps": [
-        { "type": "configure", "name": "test-msvc" },
-        { "type": "build", "name": "test-msvc" }
+        {
+          "type": "configure",
+          "name": "test-msvc"
+        },
+        {
+          "type": "build",
+          "name": "test-msvc"
+        }
       ]
     },
     {
       "name": "resave-assets",
       "steps": [
-        { "type": "configure", "name": "debug-game" },
-        { "type": "build", "name": "resave-assets" }
+        {
+          "type": "configure",
+          "name": "debug-game"
+        },
+        {
+          "type": "build",
+          "name": "resave-assets"
+        }
       ]
     },
     {
       "name": "generate-lab-mesh-assemblies",
       "steps": [
-        { "type": "configure", "name": "debug-game" },
-        { "type": "build", "name": "generate-lab-mesh-assemblies" }
+        {
+          "type": "configure",
+          "name": "debug-game"
+        },
+        {
+          "type": "build",
+          "name": "generate-lab-mesh-assemblies"
+        }
       ]
     },
     {
       "name": "import-game-audio",
       "steps": [
-        { "type": "configure", "name": "debug-game" },
-        { "type": "build", "name": "import-game-audio" }
+        {
+          "type": "configure",
+          "name": "debug-game"
+        },
+        {
+          "type": "build",
+          "name": "import-game-audio"
+        }
       ]
     },
     {
       "name": "generate-project-files",
       "steps": [
-        { "type": "configure", "name": "debug-game" },
-        { "type": "build", "name": "generate-project-files" }
+        {
+          "type": "configure",
+          "name": "debug-game"
+        },
+        {
+          "type": "build",
+          "name": "generate-project-files"
+        }
       ]
     },
     {
       "name": "format-code",
       "steps": [
-        { "type": "configure", "name": "debug-game" },
-        { "type": "build", "name": "format-code" }
+        {
+          "type": "configure",
+          "name": "debug-game"
+        },
+        {
+          "type": "build",
+          "name": "format-code"
+        }
       ]
     },
     {
       "name": "format-all-code",
       "steps": [
-        { "type": "configure", "name": "debug-game" },
-        { "type": "build", "name": "format-all-code" }
+        {
+          "type": "configure",
+          "name": "debug-game"
+        },
+        {
+          "type": "build",
+          "name": "format-all-code"
+        }
       ]
     },
     {
       "name": "debug-game-tests",
       "steps": [
-        { "type": "configure", "name": "debug-game" },
-        { "type": "build", "name": "debug-game" },
-        { "type": "test", "name": "debug-game-tests" }
+        {
+          "type": "configure",
+          "name": "debug-game"
+        },
+        {
+          "type": "build",
+          "name": "debug-game"
+        },
+        {
+          "type": "test",
+          "name": "debug-game-tests"
+        }
       ]
     },
     {
       "name": "debug-game-unit-tests",
       "steps": [
-        { "type": "configure", "name": "debug-game" },
-        { "type": "build", "name": "debug-game" },
-        { "type": "test", "name": "debug-game-unit-tests" }
+        {
+          "type": "configure",
+          "name": "debug-game"
+        },
+        {
+          "type": "build",
+          "name": "debug-game"
+        },
+        {
+          "type": "test",
+          "name": "debug-game-unit-tests"
+        }
       ]
     },
     {
       "name": "debug-game-msvc-tests",
       "steps": [
-        { "type": "configure", "name": "debug-game-msvc" },
-        { "type": "build", "name": "debug-game-msvc" },
-        { "type": "test", "name": "debug-game-msvc-tests" }
+        {
+          "type": "configure",
+          "name": "debug-game-msvc"
+        },
+        {
+          "type": "build",
+          "name": "debug-game-msvc"
+        },
+        {
+          "type": "test",
+          "name": "debug-game-msvc-tests"
+        }
       ]
     },
     {
       "name": "debug-game-msvc-unit-tests",
       "steps": [
-        { "type": "configure", "name": "debug-game-msvc" },
-        { "type": "build", "name": "debug-game-msvc" },
-        { "type": "test", "name": "debug-game-msvc-unit-tests" }
+        {
+          "type": "configure",
+          "name": "debug-game-msvc"
+        },
+        {
+          "type": "build",
+          "name": "debug-game-msvc"
+        },
+        {
+          "type": "test",
+          "name": "debug-game-msvc-unit-tests"
+        }
+      ]
+    },
+    {
+      "name": "development-cook",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "development"
+        },
+        {
+          "type": "build",
+          "name": "development-cook"
+        }
+      ]
+    },
+    {
+      "name": "development-staged-game",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "development"
+        },
+        {
+          "type": "build",
+          "name": "development-game"
+        },
+        {
+          "type": "build",
+          "name": "development-cook-incremental"
+        },
+        {
+          "type": "build",
+          "name": "development-stage"
+        }
+      ]
+    },
+    {
+      "name": "development-package",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "development"
+        },
+        {
+          "type": "build",
+          "name": "development-game"
+        },
+        {
+          "type": "build",
+          "name": "development-cook"
+        },
+        {
+          "type": "build",
+          "name": "development-stage"
+        },
+        {
+          "type": "build",
+          "name": "development-archive"
+        },
+        {
+          "type": "build",
+          "name": "development-verify-package"
+        }
+      ]
+    },
+    {
+      "name": "shipping-package",
+      "description": "Build, stage, archive, and verify Shipping using an existing Development cook",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "shipping"
+        },
+        {
+          "type": "build",
+          "name": "shipping"
+        },
+        {
+          "type": "build",
+          "name": "shipping-stage"
+        },
+        {
+          "type": "build",
+          "name": "shipping-archive"
+        },
+        {
+          "type": "build",
+          "name": "shipping-verify-package"
+        }
       ]
     }
   ]

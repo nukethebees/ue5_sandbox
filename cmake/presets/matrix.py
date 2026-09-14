@@ -189,8 +189,23 @@ def validate_preset_references(document: Mapping[str, Any]) -> None:
         "build": build_names,
         "test": test_names,
     }
+    configured_by_step = {
+        "build": {
+            cast(str, preset["name"]): cast(str, preset["configurePreset"])
+            for preset in build_presets
+        },
+        "test": {
+            cast(str, preset["name"]): cast(str, preset["configurePreset"])
+            for preset in test_presets
+        },
+    }
     for preset in workflow_presets:
         steps = cast(list[Preset], preset["steps"])
+        if not steps or steps[0].get("type") != "configure":
+            raise ValueError(
+                f"Workflow preset '{preset['name']}' must start with a configure step."
+            )
+        workflow_configure_name = cast(str, steps[0]["name"])
         for step in steps:
             step_type = cast(str, step["type"])
             step_name = cast(str, step["name"])
@@ -199,6 +214,14 @@ def validate_preset_references(document: Mapping[str, Any]) -> None:
                     f"Workflow preset '{preset['name']}' references unknown {step_type} "
                     f"preset '{step_name}'."
                 )
+            if step_type in configured_by_step:
+                step_configure_name = configured_by_step[step_type][step_name]
+                if step_configure_name != workflow_configure_name:
+                    raise ValueError(
+                        f"Workflow preset '{preset['name']}' starts with configure preset "
+                        f"'{workflow_configure_name}', but {step_type} preset '{step_name}' "
+                        f"uses '{step_configure_name}'."
+                    )
 
 
 def _unique_names(kind: str, presets: Iterable[Preset]) -> set[str]:

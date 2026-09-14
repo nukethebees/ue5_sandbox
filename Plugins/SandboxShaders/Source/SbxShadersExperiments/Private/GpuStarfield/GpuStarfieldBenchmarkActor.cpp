@@ -87,10 +87,12 @@ void AGpuStarfieldBenchmarkActor::BeginPlay() {
 }
 
 void AGpuStarfieldBenchmarkActor::EndPlay(EEndPlayReason::Type const end_play_reason) {
+#if CSV_PROFILER
     if (csv_finished_delegate_.IsValid()) {
         FCsvProfiler::Get()->OnCSVProfileFinished().Remove(csv_finished_delegate_);
         csv_finished_delegate_.Reset();
     }
+#endif
 
     Super::EndPlay(end_play_reason);
 }
@@ -233,6 +235,7 @@ void AGpuStarfieldBenchmarkActor::begin_benchmark_phase() {
 }
 
 void AGpuStarfieldBenchmarkActor::begin_csv_capture() {
+#if CSV_PROFILER
     auto const& phase{benchmark_phases_[benchmark_phase_index_]};
     auto const filename{FString::Printf(TEXT("gpu_starfield_%d_%s_%s_r%d.csv"),
                                         phase.star_count,
@@ -254,11 +257,21 @@ void AGpuStarfieldBenchmarkActor::begin_csv_capture() {
         benchmark_capture_frames_, benchmark_output_directory_, filename);
 
     UE_LOG(LogGpuStarfieldBenchmark, Display, TEXT("Capturing %s"), *filename);
+#else
+    UE_LOG(LogGpuStarfieldBenchmark,
+           Error,
+           TEXT("GPU starfield benchmarks require CSV profiler support."));
+    benchmark_active_ = false;
+    SetActorTickEnabled(false);
+    FPlatformMisc::RequestExitWithStatus(true, 1);
+#endif
 }
 
 void AGpuStarfieldBenchmarkActor::finish_benchmark_phase(FString const& filename) {
+#if CSV_PROFILER
     FCsvProfiler::Get()->OnCSVProfileFinished().Remove(csv_finished_delegate_);
     csv_finished_delegate_.Reset();
+#endif
 
     auto const& phase{benchmark_phases_[benchmark_phase_index_]};
     if (phase.camera_motion && benchmark_max_camera_distance_ < benchmark_camera_distance * 0.95) {

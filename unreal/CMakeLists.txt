@@ -156,6 +156,15 @@ if(NOT EXISTS "${UE_BUILD_SCRIPT}")
     "Expected to find '${UE_BUILD_SCRIPT}'.")
 endif()
 
+cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Build BatchFiles RunUAT.bat
+  OUTPUT_VARIABLE UE_RUN_UAT_SCRIPT
+)
+if(NOT EXISTS "${UE_RUN_UAT_SCRIPT}")
+  message(FATAL_ERROR
+    "UE_ROOT='${UE_ROOT_ABSOLUTE}' is not a usable Unreal Engine installation. "
+    "Expected to find '${UE_RUN_UAT_SCRIPT}'.")
+endif()
+
 cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Build BatchFiles GenerateProjectFiles.bat
   OUTPUT_VARIABLE UE_GENERATE_PROJECT_FILES_SCRIPT
 )
@@ -165,12 +174,18 @@ if(NOT EXISTS "${UE_GENERATE_PROJECT_FILES_SCRIPT}")
     "Expected to find '${UE_GENERATE_PROJECT_FILES_SCRIPT}'.")
 endif()
 
-if(UE_CONFIGURATION STREQUAL "Development")
+if(UE_CONFIGURATION MATCHES "^(Debug|DebugGame|Development)$")
+  set(UE_EDITOR_CONFIGURATION "${UE_CONFIGURATION}")
+else()
+  set(UE_EDITOR_CONFIGURATION Development)
+endif()
+
+if(UE_EDITOR_CONFIGURATION STREQUAL "Development")
   set(UE_EDITOR_NAME UnrealEditor.exe)
   set(UE_EDITOR_CMD_NAME UnrealEditor-Cmd.exe)
 else()
-  set(UE_EDITOR_NAME "UnrealEditor-Win64-${UE_CONFIGURATION}.exe")
-  set(UE_EDITOR_CMD_NAME "UnrealEditor-Win64-${UE_CONFIGURATION}-Cmd.exe")
+  set(UE_EDITOR_NAME "UnrealEditor-Win64-${UE_EDITOR_CONFIGURATION}.exe")
+  set(UE_EDITOR_CMD_NAME "UnrealEditor-Win64-${UE_EDITOR_CONFIGURATION}-Cmd.exe")
 endif()
 
 cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Binaries Win64 "${UE_EDITOR_NAME}"
@@ -191,8 +206,46 @@ if(NOT EXISTS "${UE_EDITOR_CMD_EXE}")
     "Expected to find '${UE_EDITOR_CMD_EXE}'.")
 endif()
 
+cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Binaries Win64 UnrealEditor-Cmd.exe
+  OUTPUT_VARIABLE UE_DEVELOPMENT_EDITOR_CMD_EXE
+)
+cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Binaries Win64 UnrealPak.exe
+  OUTPUT_VARIABLE UE_UNREAL_PAK_EXE
+)
+if(NOT EXISTS "${UE_UNREAL_PAK_EXE}")
+  message(FATAL_ERROR
+    "UE_ROOT='${UE_ROOT_ABSOLUTE}' is not a usable Unreal Engine installation. "
+    "Expected to find '${UE_UNREAL_PAK_EXE}'.")
+endif()
+
 set(SANDBOX_UPROJECT "${PROJECT_SOURCE_DIR}/Sandbox.uproject")
 set(SANDBOX_LOCAL_DDC_DIR "${PROJECT_BINARY_DIR}/local-derived-data-cache")
+if(DEFINED ENV{SANDBOX_GAME_ARTIFACT_ROOT} AND
+    NOT "$ENV{SANDBOX_GAME_ARTIFACT_ROOT}" STREQUAL "")
+  set(sandbox_game_artifact_root_default "$ENV{SANDBOX_GAME_ARTIFACT_ROOT}")
+else()
+  set(sandbox_game_artifact_root_default "${PROJECT_SOURCE_DIR}/out/game-package")
+endif()
+set(SANDBOX_GAME_ARTIFACT_ROOT "${sandbox_game_artifact_root_default}" CACHE PATH
+  "Root directory for cooked, staged, and archived game artifacts")
+cmake_path(ABSOLUTE_PATH SANDBOX_GAME_ARTIFACT_ROOT
+  BASE_DIRECTORY "${PROJECT_SOURCE_DIR}"
+  NORMALIZE
+  OUTPUT_VARIABLE SANDBOX_GAME_ARTIFACT_ROOT_ABSOLUTE
+)
+set(SANDBOX_GAME_PLATFORM_ROOT
+  "${SANDBOX_GAME_ARTIFACT_ROOT_ABSOLUTE}/${UE_PLATFORM}")
+set(SANDBOX_GAME_COOK_ROOT "${SANDBOX_GAME_PLATFORM_ROOT}/cook")
+set(SANDBOX_GAME_COOK_DIRECTORY "${SANDBOX_GAME_COOK_ROOT}/Windows")
+set(SANDBOX_GAME_CONFIGURATION_ROOT
+  "${SANDBOX_GAME_PLATFORM_ROOT}/${UE_CONFIGURATION}")
+set(SANDBOX_GAME_STAGE_ROOT "${SANDBOX_GAME_CONFIGURATION_ROOT}/stage")
+set(SANDBOX_GAME_ARCHIVE_ROOT "${SANDBOX_GAME_CONFIGURATION_ROOT}/archive")
+set(SANDBOX_GAME_STAGE_DIRECTORY "${SANDBOX_GAME_STAGE_ROOT}/Windows")
+set(SANDBOX_GAME_ARCHIVE_DIRECTORY "${SANDBOX_GAME_ARCHIVE_ROOT}")
+set(SANDBOX_GAME_STAGE_EXECUTABLE "${SANDBOX_GAME_STAGE_DIRECTORY}/Sandbox.exe")
+set(SANDBOX_GAME_VERIFICATION_ROOT
+  "${SANDBOX_GAME_CONFIGURATION_ROOT}/verification")
 set(SANDBOX_LIVE_CODING_DISABLED_ARGUMENT
   "-ini:EditorPerProjectUserSettings:[/Script/LiveCoding.LiveCodingSettings]:bEnabled=False"
 )
@@ -216,6 +269,7 @@ add_custom_target(generate-project-files
   VERBATIM
 )
 include("${PROJECT_SOURCE_DIR}/cmake/unreal.cmake")
+include("${PROJECT_SOURCE_DIR}/cmake/unreal_packaging.cmake")
 include("${PROJECT_SOURCE_DIR}/cmake/catch2.cmake")
 
 add_test(NAME Sandbox.LiveCodingConfig
@@ -260,6 +314,7 @@ add_dependencies(editor
 )
 add_dependencies(game check-space-game-layers)
 add_dependencies(game check-generated-code)
+add_unreal_packaging_targets()
 
 add_custom_target(worktree-dependencies
   COMMAND "${POWERSHELL_EXECUTABLE}" -NoProfile -File

@@ -21,7 +21,10 @@ Unreal Engine 5.8 project.
 * CMake serializes Unreal builds that share an engine checkout. Do not overlap a CMake Unreal build with Visual Studio, Live Coding, or another Unreal build launched outside CMake because those paths do not participate in the CMake lock.
 * CMake also coordinates expensive work and benchmarks across worktrees through a per-user machine activity gate under `%TEMP%/SandboxUnrealBuild/activity/v1`. Requests are FIFO: standard build/test work may overlap unless an older benchmark is waiting or running, while benchmarks wait for every older request and run exclusively. Use `get-machine-activity-state` or the `machine-activity-status` target to inspect it.
 * Preferred build: `cmake --workflow --preset debug-game`.
-* Targets: `editor`, `game`, `core-tests`, `native-tests`, `dev-core`, `resave-assets`, and `generate-project-files`.
+* Targets: `editor`, `game`, `core-tests`, `native-tests`, `dev-core`, `resave-assets`, `generate-project-files`, `cook`, `cook-incremental`, `stage`, `archive`, `run-staged`, and `verify-package`. Cook targets are available from the Development configure preset; stage/archive/run/verify use the current game configuration.
+* Iterative staged game: `cmake --workflow --preset development-staged-game`.
+* Full Development package: `cmake --workflow --preset development-package`.
+* Full Shipping package, including the DebugGame test gate and Development cook: `pwsh -NoProfile -File PowerShell/PackageGame.ps1`. Use `-SkipTests` only when the test gate has already completed.
 * Link every first-party native CMake target to `sandbox::warnings_as_errors` or a stricter
   project-specific warning interface. The underlying
   `sandbox::warnings` interface requires at least `-Wall -Wextra -Wpedantic` for GNU-style GNU,

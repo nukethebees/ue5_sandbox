@@ -30,5 +30,9 @@ public class SpaceGameS7 : ModuleRules
             "Slate",
             "SlateCore",
         });
+
+        RuntimeDependencies.Add(
+            "$(ProjectDir)/LevelScripts/...*.scm",
+            StagedFileType.UFS);
     }
 }
