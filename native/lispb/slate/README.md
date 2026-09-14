@@ -211,7 +211,7 @@ or `--output-root`.
 For example, from the repository root:
 
 ```text
-out/build/native-debug/native/lispb/lispb.exe expand --target slate-radar
+out/build/win-x64-clangcl-debug-unity/native/lispb/lispb.exe expand --target slate-radar
 ```
 
 Input and output paths are resolved by `lispb/project.lispb`. Output filenames are derived from

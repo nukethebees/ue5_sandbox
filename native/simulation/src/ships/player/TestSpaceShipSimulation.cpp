@@ -514,7 +514,6 @@ void Simulation::fire_laser() {
         }
         default: {
             ml::fatal_error("Unhandled player laser mode.");
-            break;
         }
     }
 

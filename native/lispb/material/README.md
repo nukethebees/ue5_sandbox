@@ -17,21 +17,21 @@ types, emit material expressions, compile shaders, and save packages.
 Build the native compiler and validate the canonical material:
 
 ```powershell
-cmake --preset native-debug
+cmake --preset win-x64-clangcl-debug-unity
 cmake --build --preset codegen --target lispb
-out/build/native-debug/native/lispb/lispb.exe validate --target ui-glow-material
+out/build/win-x64-clangcl-debug-unity/native/lispb/lispb.exe validate --target ui-glow-material
 ```
 
 Inspect the ordered parameters, stable node handles, bindings, outputs, and texture dependencies:
 
 ```powershell
-out/build/native-debug/native/lispb/lispb.exe dump-ir --target ui-glow-material
+out/build/win-x64-clangcl-debug-unity/native/lispb/lispb.exe dump-ir --target ui-glow-material
 ```
 
 Compile a versioned binary IR artifact:
 
 ```powershell
-out/build/native-debug/native/lispb/lispb.exe generate --target ui-glow-material
+out/build/win-x64-clangcl-debug-unity/native/lispb/lispb.exe generate --target ui-glow-material
 ```
 
 The artifact contains the project-relative source filename, SHA-256 source hash, validated IR, and

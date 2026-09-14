@@ -1,11 +1,20 @@
 {
   "version": 9,
-  "include": ["native.json"],
+  "vendor": {
+    "nukethebees.dev/preset-generator": {
+      "generated": true,
+      "source": "cmake/presets/generate.py",
+      "warning": "Generated file. Do not edit manually."
+    }
+  },
+  "include": [
+    "native.json"
+  ],
   "configurePresets": [
     {
       "name": "kernel-benchmark",
       "displayName": "Native kernel benchmark",
-      "inherits": "native-release",
+      "inherits": "win-x64-clangcl-release-unity",
       "cacheVariables": {
         "SANDBOX_KERNEL_BENCHMARKS": true,
         "UE_CONFIGURATION": "Development"
@@ -21,7 +30,7 @@
     },
     {
       "name": "native-soa",
-      "inherits": "native-release",
+      "inherits": "win-x64-clangcl-release-unity",
       "cacheVariables": {
         "SANDBOX_NATIVE_SOA_BENCHMARKS": true,
         "UE_CONFIGURATION": "Development"
@@ -32,37 +41,60 @@
     {
       "name": "kernel-benchmark",
       "configurePreset": "kernel-benchmark",
-      "targets": ["kernel-native-simd-tests", "kernel-native-benchmarks"]
+      "targets": [
+        "kernel-native-simd-tests",
+        "kernel-native-benchmarks"
+      ]
     },
     {
       "name": "kernel-benchmark-plots",
       "configurePreset": "kernel-benchmark-plots",
-      "targets": ["kernel-native-simd-tests", "kernel-benchmark-report"]
+      "targets": [
+        "kernel-native-simd-tests",
+        "kernel-benchmark-report"
+      ]
     },
     {
       "name": "kernel-benchmark-plots-full",
       "configurePreset": "kernel-benchmark-plots",
-      "targets": ["kernel-native-simd-tests", "kernel-benchmark-report-full"]
+      "targets": [
+        "kernel-native-simd-tests",
+        "kernel-benchmark-report-full"
+      ]
     },
     {
       "name": "kernel-vector-layout-benchmark-plots",
       "configurePreset": "kernel-benchmark-plots",
-      "targets": ["kernel-native-simd-tests", "kernel-vector-layout-benchmark-report"]
+      "targets": [
+        "kernel-native-simd-tests",
+        "kernel-vector-layout-benchmark-report"
+      ]
     },
     {
       "name": "native-soa",
       "configurePreset": "native-soa",
-      "targets": ["native-soa-tests", "native-soa-tests-mimalloc", "native-soa-benchmarks", "native-soa-reserve-matrix", "native-soa-reserve-matrix-mimalloc", "codegen-tests"]
+      "targets": [
+        "native-soa-tests",
+        "native-soa-tests-mimalloc",
+        "native-soa-benchmarks",
+        "native-soa-reserve-matrix",
+        "native-soa-reserve-matrix-mimalloc",
+        "codegen-tests"
+      ]
     },
     {
       "name": "native-soa-reserve",
       "configurePreset": "native-soa",
-      "targets": ["native-soa-reserve-report"]
+      "targets": [
+        "native-soa-reserve-report"
+      ]
     },
     {
       "name": "native-soa-reserve-matrix",
       "configurePreset": "native-soa",
-      "targets": ["native-soa-reserve-matrix-report"]
+      "targets": [
+        "native-soa-reserve-matrix-report"
+      ]
     }
   ],
   "testPresets": [
@@ -101,59 +133,128 @@
     {
       "name": "kernel-benchmark",
       "steps": [
-        { "type": "configure", "name": "kernel-benchmark" },
-        { "type": "build", "name": "kernel-benchmark" },
-        { "type": "test", "name": "kernel-benchmark-tests" }
+        {
+          "type": "configure",
+          "name": "kernel-benchmark"
+        },
+        {
+          "type": "build",
+          "name": "kernel-benchmark"
+        },
+        {
+          "type": "test",
+          "name": "kernel-benchmark-tests"
+        }
       ]
     },
     {
       "name": "kernel-benchmark-plots",
       "steps": [
-        { "type": "configure", "name": "kernel-benchmark-plots" },
-        { "type": "build", "name": "kernel-benchmark-plots" },
-        { "type": "test", "name": "kernel-benchmark-plot-tests" }
+        {
+          "type": "configure",
+          "name": "kernel-benchmark-plots"
+        },
+        {
+          "type": "build",
+          "name": "kernel-benchmark-plots"
+        },
+        {
+          "type": "test",
+          "name": "kernel-benchmark-plot-tests"
+        }
       ]
     },
     {
       "name": "kernel-benchmark-plots-full",
       "steps": [
-        { "type": "configure", "name": "kernel-benchmark-plots" },
-        { "type": "build", "name": "kernel-benchmark-plots-full" },
-        { "type": "test", "name": "kernel-benchmark-plot-tests" }
+        {
+          "type": "configure",
+          "name": "kernel-benchmark-plots"
+        },
+        {
+          "type": "build",
+          "name": "kernel-benchmark-plots-full"
+        },
+        {
+          "type": "test",
+          "name": "kernel-benchmark-plot-tests"
+        }
       ]
     },
     {
       "name": "kernel-vector-layout-benchmark-plots",
       "steps": [
-        { "type": "configure", "name": "kernel-benchmark-plots" },
-        { "type": "build", "name": "kernel-vector-layout-benchmark-plots" },
-        { "type": "test", "name": "kernel-benchmark-plot-tests" }
+        {
+          "type": "configure",
+          "name": "kernel-benchmark-plots"
+        },
+        {
+          "type": "build",
+          "name": "kernel-vector-layout-benchmark-plots"
+        },
+        {
+          "type": "test",
+          "name": "kernel-benchmark-plot-tests"
+        }
       ]
     },
     {
       "name": "native-soa",
       "steps": [
-        { "type": "configure", "name": "native-soa" },
-        { "type": "build", "name": "native-soa" },
-        { "type": "test", "name": "native-soa" }
+        {
+          "type": "configure",
+          "name": "native-soa"
+        },
+        {
+          "type": "build",
+          "name": "native-soa"
+        },
+        {
+          "type": "test",
+          "name": "native-soa"
+        }
       ]
     },
     {
       "name": "native-soa-reserve",
       "steps": [
-        { "type": "configure", "name": "native-soa" },
-        { "type": "build", "name": "native-soa" },
-        { "type": "test", "name": "native-soa" },
-        { "type": "build", "name": "native-soa-reserve" }
+        {
+          "type": "configure",
+          "name": "native-soa"
+        },
+        {
+          "type": "build",
+          "name": "native-soa"
+        },
+        {
+          "type": "test",
+          "name": "native-soa"
+        },
+        {
+          "type": "build",
+          "name": "native-soa-reserve"
+        }
       ]
     },
     {
       "name": "native-soa-reserve-matrix",
       "steps": [
-        { "type": "configure", "name": "native-soa" },
-        { "type": "build", "name": "native-soa" },
-        { "type": "test", "name": "native-soa" },
-        { "type": "build", "name": "native-soa-reserve-matrix" }
+        {
+          "type": "configure",
+          "name": "native-soa"
+        },
+        {
+          "type": "build",
+          "name": "native-soa"
+        },
+        {
+          "type": "test",
+          "name": "native-soa"
+        },
+        {
+          "type": "build",
+          "name": "native-soa-reserve-matrix"
+        }
       ]
     }
   ]

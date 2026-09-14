@@ -19,6 +19,7 @@ add_subdirectory(cmake)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 option(SANDBOX_WITH_UNREAL "Configure Unreal Engine integration and targets" ON)
+option(SANDBOX_WITH_ASAN "Instrument native targets with AddressSanitizer" OFF)
 
 set(CACHE{UE_PLATFORM}
   TYPE STRING
@@ -38,6 +39,11 @@ set_property(CACHE UE_CONFIGURATION PROPERTY STRINGS
   Shipping
   Test
 )
+
+if(SANDBOX_WITH_ASAN)
+  include(cmake/address_sanitizer.cmake)
+  sandbox_enable_address_sanitizer()
+endif()
 
 add_subdirectory(native)
 add_subdirectory(Scripts)

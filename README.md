@@ -133,38 +133,51 @@ artifact directory.
 The root `CMakePresets.json` includes category files under `cmake/presets/`, using preset
 schema version 9:
 
-- `base.json`: shared configure and test defaults.
-- `native.json`: complete native Debug/Release and specialized codegen workflows.
+- `base.json`: generated shared configure, platform/toolchain and test defaults.
+- `native.json`: generated native configuration matrix and specialized codegen workflows.
 - `unreal.json`: Unreal configurations, builds, automation tests and development tooling.
-- `native-benchmarks.json`: native kernel and SOA benchmark presets.
+- `native-benchmarks.json`: generated native kernel and SOA benchmark presets.
 - `unreal-benchmarks.json`: Unreal-backed benchmark presets.
 
 Each category includes its prerequisites; shared definitions are not duplicated. Local overrides
 still belong in the root, Git-ignored `CMakeUserPresets.json`.
+Regenerate the generated files with `python cmake/presets/generate.py`; `csetup` does this before
+its normal worktree setup. Use `python cmake/presets/generate.py --check` to verify that they are
+current without changing them.
 
 ### Native-only development
 
 All native libraries and tools are configured together through `native/CMakeLists.txt`.
-Use the `native-debug` or `native-release` workflows to configure, build and test all default
-native targets. These configure presets set
+Native preset names encode platform, architecture, compiler, configuration and enabled optional
+features. Names without `-unity` are intended for Visual Studio editing; select the corresponding
+`-unity` preset for faster full builds. These configure presets set
 `SANDBOX_WITH_UNREAL=OFF`, so no Unreal installation or `UE_ROOT` is required.
 The Unreal configure presets enable that option. Standalone native libraries remain in their
 respective build trees; only Unreal-enabled configurations publish libraries under `Binaries/`.
 
 ```powershell
-cmake --workflow --preset native-debug
-cmake --workflow --preset native-release
-cmake --workflow --preset native-debug-msvc
-cmake --workflow --preset native-release-msvc
+cmake --workflow --preset win-x64-clangcl-debug
+cmake --workflow --preset win-x64-clangcl-release-unity
+cmake --workflow --preset win-x64-msvc-debug
+cmake --workflow --preset win-x64-msvc-release-unity
+cmake --workflow --preset win-x64-clangcl-debug-asan
+cmake --workflow --preset win-x64-clangcl-release-asan-unity
 
 cmake --build --preset codegen
 ctest --preset codegen-tests
 ```
 
-The aggregate workflows use compiler-specific build trees. The specialized `codegen` and
-`generate-code` presets use `native-debug`; native benchmark presets remain opt-in and use
-clang-cl. To build an individual target, configure the desired native preset and pass the target
-explicitly to `cmake --build out/build/<preset> --target <target>`.
+The aggregate workflows use compiler- and feature-specific build trees. The specialized `codegen`
+and `generate-code` presets use `win-x64-clangcl-debug-unity`; native benchmark presets remain
+opt-in and use `win-x64-clangcl-release-unity`. To build an individual target, configure the
+desired native preset and pass the target explicitly to
+`cmake --build out/build/<preset> --target <target>`.
+
+The Windows clang-cl ASAN test presets exclude 15 code-generation error-path tests that deliberately
+throw and inspect C++ exceptions. With LLVM 21's Windows ASAN runtime those tests terminate with an
+access violation while accessing the caught exception, although they pass in the corresponding
+non-ASAN clang-cl and MSVC presets. The exclusions are listed explicitly in
+`cmake/presets/features.py`; all other native tests remain enabled in ASAN workflows.
 
 Simulation logic and worldless combat scenarios run in native GoogleTest tests under
 `native/simulation/tests/`. Unreal retains asset/configuration conversion, collision harvesting,

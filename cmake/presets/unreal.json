@@ -11,6 +11,8 @@
         "CMAKE_C_FLAGS_RELWITHDEBINFO": "/O2 /Zi /DNDEBUG",
         "CMAKE_CXX_FLAGS_RELEASE": "/O2 /DNDEBUG",
         "CMAKE_CXX_FLAGS_RELWITHDEBINFO": "/O2 /Zi /DNDEBUG",
+        "CMAKE_UNITY_BUILD": true,
+        "CMAKE_UNITY_BUILD_BATCH_SIZE": "32",
         "SANDBOX_WITH_UNREAL": true
       }
     },
@@ -23,6 +25,8 @@
         "CMAKE_C_FLAGS_RELWITHDEBINFO": "/O2 /Zi /DNDEBUG",
         "CMAKE_CXX_FLAGS_RELEASE": "/O2 /DNDEBUG",
         "CMAKE_CXX_FLAGS_RELWITHDEBINFO": "/O2 /Zi /DNDEBUG",
+        "CMAKE_UNITY_BUILD": true,
+        "CMAKE_UNITY_BUILD_BATCH_SIZE": "32",
         "SANDBOX_WITH_UNREAL": true
       }
     },

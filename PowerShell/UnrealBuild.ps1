@@ -217,6 +217,18 @@ function csetup {
 
     Push-Location -LiteralPath $script:dev_project_root
     try {
+        $preset_generator = Join-Path $script:dev_project_root 'cmake\presets\generate.py'
+        if (-not (Test-Path -LiteralPath $preset_generator -PathType Leaf)) {
+            throw "CMake preset generator was not found: $preset_generator"
+        }
+
+        Write-Host 'Generating native CMake presets.'
+        & python $preset_generator
+
+        if ($LASTEXITCODE -ne 0) {
+            throw "CMake preset generation exited with code $LASTEXITCODE."
+        }
+
         foreach ($current_configuration in $configurations) {
             $workflow = "setup-worktree-$current_configuration"
             Write-Host "Preparing worktree with CMake workflow '$workflow'."

@@ -77,7 +77,7 @@ Unreal build commands:
   cbuild [config ...]      Build the project with one or more CMake workflows in order.
                            Each config may be debug, debug-game, development, shipping, or test;
                            default is debug-game. Stops on the first failed workflow.
-  csetup [config]          Prepare this worktree for supported development configurations.
+  csetup [config]          Generate native presets and prepare supported development configurations.
                            Config may be all, debug-game, or development; default is all.
   cprojectfiles [config]   Regenerate Unreal project files without building dependencies.
                            Config may be debug-game or development; default is debug-game.

@@ -1,115 +1,392 @@
 {
   "version": 9,
-  "include": ["base.json"],
+  "vendor": {
+    "nukethebees.dev/preset-generator": {
+      "generated": true,
+      "source": "cmake/presets/generate.py",
+      "warning": "Generated file. Do not edit manually."
+    }
+  },
+  "include": [
+    "base.json"
+  ],
   "configurePresets": [
     {
-      "name": "native",
+      "name": "native-common",
       "hidden": true,
-      "inherits": "windows-clang-cl",
       "cacheVariables": {
         "SANDBOX_WITH_UNREAL": false,
+        "SANDBOX_WITH_ASAN": false,
+        "CMAKE_UNITY_BUILD": false
+      }
+    },
+    {
+      "name": "native-config-debug",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
         "UE_CONFIGURATION": "DebugGame"
       }
     },
     {
-      "name": "native-msvc",
+      "name": "native-config-release",
       "hidden": true,
-      "inherits": "windows-msvc",
       "cacheVariables": {
-        "SANDBOX_WITH_UNREAL": false,
+        "CMAKE_BUILD_TYPE": "Release",
         "UE_CONFIGURATION": "DebugGame"
       }
     },
     {
-      "name": "native-debug",
-      "displayName": "Native Debug",
-      "inherits": "native",
+      "name": "win-x64-clangcl-debug",
+      "displayName": "Native Windows x64 clang-cl Debug",
+      "inherits": [
+        "windows-clang-cl",
+        "native-common",
+        "native-config-debug"
+      ]
+    },
+    {
+      "name": "win-x64-clangcl-debug-unity",
+      "displayName": "Native Windows x64 clang-cl Debug + Unity",
+      "inherits": [
+        "windows-clang-cl",
+        "native-common",
+        "native-config-debug"
+      ],
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_UNITY_BUILD": true,
+        "CMAKE_UNITY_BUILD_BATCH_SIZE": "32"
       }
     },
     {
-      "name": "native-release",
-      "displayName": "Native Release",
-      "inherits": "native",
+      "name": "win-x64-clangcl-debug-asan",
+      "displayName": "Native Windows x64 clang-cl Debug + ASan",
+      "inherits": [
+        "windows-clang-cl",
+        "native-common",
+        "native-config-debug"
+      ],
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "SANDBOX_WITH_ASAN": true
       }
     },
     {
-      "name": "native-debug-msvc",
-      "displayName": "Native Debug (MSVC)",
-      "inherits": "native-msvc",
+      "name": "win-x64-clangcl-debug-asan-unity",
+      "displayName": "Native Windows x64 clang-cl Debug + ASan + Unity",
+      "inherits": [
+        "windows-clang-cl",
+        "native-common",
+        "native-config-debug"
+      ],
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
+        "SANDBOX_WITH_ASAN": true,
+        "CMAKE_UNITY_BUILD": true,
+        "CMAKE_UNITY_BUILD_BATCH_SIZE": "32"
+      },
+      "environment": {
+        "ASAN_OPTIONS": "detect_odr_violation=0"
       }
     },
     {
-      "name": "native-release-msvc",
-      "displayName": "Native Release (MSVC)",
-      "inherits": "native-msvc",
+      "name": "win-x64-clangcl-release",
+      "displayName": "Native Windows x64 clang-cl Release",
+      "inherits": [
+        "windows-clang-cl",
+        "native-common",
+        "native-config-release"
+      ]
+    },
+    {
+      "name": "win-x64-clangcl-release-unity",
+      "displayName": "Native Windows x64 clang-cl Release + Unity",
+      "inherits": [
+        "windows-clang-cl",
+        "native-common",
+        "native-config-release"
+      ],
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_UNITY_BUILD": true,
+        "CMAKE_UNITY_BUILD_BATCH_SIZE": "32"
+      }
+    },
+    {
+      "name": "win-x64-clangcl-release-asan",
+      "displayName": "Native Windows x64 clang-cl Release + ASan",
+      "inherits": [
+        "windows-clang-cl",
+        "native-common",
+        "native-config-release"
+      ],
+      "cacheVariables": {
+        "SANDBOX_WITH_ASAN": true
+      }
+    },
+    {
+      "name": "win-x64-clangcl-release-asan-unity",
+      "displayName": "Native Windows x64 clang-cl Release + ASan + Unity",
+      "inherits": [
+        "windows-clang-cl",
+        "native-common",
+        "native-config-release"
+      ],
+      "cacheVariables": {
+        "SANDBOX_WITH_ASAN": true,
+        "CMAKE_UNITY_BUILD": true,
+        "CMAKE_UNITY_BUILD_BATCH_SIZE": "32"
+      },
+      "environment": {
+        "ASAN_OPTIONS": "detect_odr_violation=0"
+      }
+    },
+    {
+      "name": "win-x64-msvc-debug",
+      "displayName": "Native Windows x64 MSVC Debug",
+      "inherits": [
+        "windows-msvc",
+        "native-common",
+        "native-config-debug"
+      ]
+    },
+    {
+      "name": "win-x64-msvc-debug-unity",
+      "displayName": "Native Windows x64 MSVC Debug + Unity",
+      "inherits": [
+        "windows-msvc",
+        "native-common",
+        "native-config-debug"
+      ],
+      "cacheVariables": {
+        "CMAKE_UNITY_BUILD": true,
+        "CMAKE_UNITY_BUILD_BATCH_SIZE": "32"
+      }
+    },
+    {
+      "name": "win-x64-msvc-release",
+      "displayName": "Native Windows x64 MSVC Release",
+      "inherits": [
+        "windows-msvc",
+        "native-common",
+        "native-config-release"
+      ]
+    },
+    {
+      "name": "win-x64-msvc-release-unity",
+      "displayName": "Native Windows x64 MSVC Release + Unity",
+      "inherits": [
+        "windows-msvc",
+        "native-common",
+        "native-config-release"
+      ],
+      "cacheVariables": {
+        "CMAKE_UNITY_BUILD": true,
+        "CMAKE_UNITY_BUILD_BATCH_SIZE": "32"
       }
     }
   ],
   "buildPresets": [
     {
-      "name": "native-debug",
-      "configurePreset": "native-debug"
+      "name": "win-x64-clangcl-debug",
+      "configurePreset": "win-x64-clangcl-debug"
     },
     {
-      "name": "native-release",
-      "configurePreset": "native-release"
+      "name": "win-x64-clangcl-debug-unity",
+      "configurePreset": "win-x64-clangcl-debug-unity"
     },
     {
-      "name": "native-debug-msvc",
-      "configurePreset": "native-debug-msvc"
+      "name": "win-x64-clangcl-debug-asan",
+      "configurePreset": "win-x64-clangcl-debug-asan"
     },
     {
-      "name": "native-release-msvc",
-      "configurePreset": "native-release-msvc"
+      "name": "win-x64-clangcl-debug-asan-unity",
+      "configurePreset": "win-x64-clangcl-debug-asan-unity"
+    },
+    {
+      "name": "win-x64-clangcl-release",
+      "configurePreset": "win-x64-clangcl-release"
+    },
+    {
+      "name": "win-x64-clangcl-release-unity",
+      "configurePreset": "win-x64-clangcl-release-unity"
+    },
+    {
+      "name": "win-x64-clangcl-release-asan",
+      "configurePreset": "win-x64-clangcl-release-asan"
+    },
+    {
+      "name": "win-x64-clangcl-release-asan-unity",
+      "configurePreset": "win-x64-clangcl-release-asan-unity"
+    },
+    {
+      "name": "win-x64-msvc-debug",
+      "configurePreset": "win-x64-msvc-debug"
+    },
+    {
+      "name": "win-x64-msvc-debug-unity",
+      "configurePreset": "win-x64-msvc-debug-unity"
+    },
+    {
+      "name": "win-x64-msvc-release",
+      "configurePreset": "win-x64-msvc-release"
+    },
+    {
+      "name": "win-x64-msvc-release-unity",
+      "configurePreset": "win-x64-msvc-release-unity"
     },
     {
       "name": "codegen",
-      "configurePreset": "native-debug",
-      "targets": ["lispb", "codegen-tests", "slate-codegen-tests", "kernel-codegen-tests"]
+      "configurePreset": "win-x64-clangcl-debug-unity",
+      "targets": [
+        "lispb",
+        "codegen-tests",
+        "slate-codegen-tests",
+        "kernel-codegen-tests"
+      ]
     },
     {
       "name": "generate-code",
-      "configurePreset": "native-debug",
-      "targets": ["generate-code"]
+      "configurePreset": "win-x64-clangcl-debug-unity",
+      "targets": [
+        "generate-code"
+      ]
     }
   ],
   "testPresets": [
     {
-      "name": "native-debug",
+      "name": "win-x64-clangcl-debug",
       "inherits": "test-base",
-      "configurePreset": "native-debug",
-      "filter": { "include": { "label": "all" } }
+      "configurePreset": "win-x64-clangcl-debug",
+      "filter": {
+        "include": {
+          "label": "all"
+        }
+      }
     },
     {
-      "name": "native-release",
+      "name": "win-x64-clangcl-debug-unity",
       "inherits": "test-base",
-      "configurePreset": "native-release",
-      "filter": { "include": { "label": "all" } }
+      "configurePreset": "win-x64-clangcl-debug-unity",
+      "filter": {
+        "include": {
+          "label": "all"
+        }
+      }
     },
     {
-      "name": "native-debug-msvc",
+      "name": "win-x64-clangcl-debug-asan",
       "inherits": "test-base",
-      "configurePreset": "native-debug-msvc",
-      "filter": { "include": { "label": "all" } }
+      "configurePreset": "win-x64-clangcl-debug-asan",
+      "filter": {
+        "include": {
+          "label": "all"
+        },
+        "exclude": {
+          "name": "^(Ast\\.RejectsInvalidFunctionQualifierCombinations|Generator\\.PreservesDestinationWhenAtomicReplacementFails|SourceLoader\\.ReportsSourceLocationForUnknownProperties|SlateCompiler\\.RejectsDuplicateOwnersAcrossInputs|SlateCompiler\\.ReportsMissingIncludesAndCycles|SlateCompiler\\.RejectsInvalidMacroDeclarationsAndInvocations|SlateCompiler\\.ReportsMacroDefinitionAndInvocationForSemanticErrors|SlateCompiler\\.RestrictsIncludedFilesAndIsolatesMacrosBetweenInputs|SlateCompiler\\.ExpansionCanInspectSemanticallyInvalidTrees|SlateDsl\\.LibrariesRejectHostDependentForms|SlateDsl\\.RejectsRepeatedSingleUseParameters|SlateDsl\\.RejectsUndeclaredAndIncorrectParameterUses|SlateDsl\\.RejectsUnusedAndDuplicateParameters|SlateExpandCli|KernelParser\\.RejectsUnknownExpressionOperatorWithLocation)$"
+        }
+      }
     },
     {
-      "name": "native-release-msvc",
+      "name": "win-x64-clangcl-debug-asan-unity",
       "inherits": "test-base",
-      "configurePreset": "native-release-msvc",
-      "filter": { "include": { "label": "all" } }
+      "configurePreset": "win-x64-clangcl-debug-asan-unity",
+      "filter": {
+        "include": {
+          "label": "all"
+        },
+        "exclude": {
+          "name": "^(Ast\\.RejectsInvalidFunctionQualifierCombinations|Generator\\.PreservesDestinationWhenAtomicReplacementFails|SourceLoader\\.ReportsSourceLocationForUnknownProperties|SlateCompiler\\.RejectsDuplicateOwnersAcrossInputs|SlateCompiler\\.ReportsMissingIncludesAndCycles|SlateCompiler\\.RejectsInvalidMacroDeclarationsAndInvocations|SlateCompiler\\.ReportsMacroDefinitionAndInvocationForSemanticErrors|SlateCompiler\\.RestrictsIncludedFilesAndIsolatesMacrosBetweenInputs|SlateCompiler\\.ExpansionCanInspectSemanticallyInvalidTrees|SlateDsl\\.LibrariesRejectHostDependentForms|SlateDsl\\.RejectsRepeatedSingleUseParameters|SlateDsl\\.RejectsUndeclaredAndIncorrectParameterUses|SlateDsl\\.RejectsUnusedAndDuplicateParameters|SlateExpandCli|KernelParser\\.RejectsUnknownExpressionOperatorWithLocation)$"
+        }
+      }
+    },
+    {
+      "name": "win-x64-clangcl-release",
+      "inherits": "test-base",
+      "configurePreset": "win-x64-clangcl-release",
+      "filter": {
+        "include": {
+          "label": "all"
+        }
+      }
+    },
+    {
+      "name": "win-x64-clangcl-release-unity",
+      "inherits": "test-base",
+      "configurePreset": "win-x64-clangcl-release-unity",
+      "filter": {
+        "include": {
+          "label": "all"
+        }
+      }
+    },
+    {
+      "name": "win-x64-clangcl-release-asan",
+      "inherits": "test-base",
+      "configurePreset": "win-x64-clangcl-release-asan",
+      "filter": {
+        "include": {
+          "label": "all"
+        },
+        "exclude": {
+          "name": "^(Ast\\.RejectsInvalidFunctionQualifierCombinations|Generator\\.PreservesDestinationWhenAtomicReplacementFails|SourceLoader\\.ReportsSourceLocationForUnknownProperties|SlateCompiler\\.RejectsDuplicateOwnersAcrossInputs|SlateCompiler\\.ReportsMissingIncludesAndCycles|SlateCompiler\\.RejectsInvalidMacroDeclarationsAndInvocations|SlateCompiler\\.ReportsMacroDefinitionAndInvocationForSemanticErrors|SlateCompiler\\.RestrictsIncludedFilesAndIsolatesMacrosBetweenInputs|SlateCompiler\\.ExpansionCanInspectSemanticallyInvalidTrees|SlateDsl\\.LibrariesRejectHostDependentForms|SlateDsl\\.RejectsRepeatedSingleUseParameters|SlateDsl\\.RejectsUndeclaredAndIncorrectParameterUses|SlateDsl\\.RejectsUnusedAndDuplicateParameters|SlateExpandCli|KernelParser\\.RejectsUnknownExpressionOperatorWithLocation)$"
+        }
+      }
+    },
+    {
+      "name": "win-x64-clangcl-release-asan-unity",
+      "inherits": "test-base",
+      "configurePreset": "win-x64-clangcl-release-asan-unity",
+      "filter": {
+        "include": {
+          "label": "all"
+        },
+        "exclude": {
+          "name": "^(Ast\\.RejectsInvalidFunctionQualifierCombinations|Generator\\.PreservesDestinationWhenAtomicReplacementFails|SourceLoader\\.ReportsSourceLocationForUnknownProperties|SlateCompiler\\.RejectsDuplicateOwnersAcrossInputs|SlateCompiler\\.ReportsMissingIncludesAndCycles|SlateCompiler\\.RejectsInvalidMacroDeclarationsAndInvocations|SlateCompiler\\.ReportsMacroDefinitionAndInvocationForSemanticErrors|SlateCompiler\\.RestrictsIncludedFilesAndIsolatesMacrosBetweenInputs|SlateCompiler\\.ExpansionCanInspectSemanticallyInvalidTrees|SlateDsl\\.LibrariesRejectHostDependentForms|SlateDsl\\.RejectsRepeatedSingleUseParameters|SlateDsl\\.RejectsUndeclaredAndIncorrectParameterUses|SlateDsl\\.RejectsUnusedAndDuplicateParameters|SlateExpandCli|KernelParser\\.RejectsUnknownExpressionOperatorWithLocation)$"
+        }
+      }
+    },
+    {
+      "name": "win-x64-msvc-debug",
+      "inherits": "test-base",
+      "configurePreset": "win-x64-msvc-debug",
+      "filter": {
+        "include": {
+          "label": "all"
+        }
+      }
+    },
+    {
+      "name": "win-x64-msvc-debug-unity",
+      "inherits": "test-base",
+      "configurePreset": "win-x64-msvc-debug-unity",
+      "filter": {
+        "include": {
+          "label": "all"
+        }
+      }
+    },
+    {
+      "name": "win-x64-msvc-release",
+      "inherits": "test-base",
+      "configurePreset": "win-x64-msvc-release",
+      "filter": {
+        "include": {
+          "label": "all"
+        }
+      }
+    },
+    {
+      "name": "win-x64-msvc-release-unity",
+      "inherits": "test-base",
+      "configurePreset": "win-x64-msvc-release-unity",
+      "filter": {
+        "include": {
+          "label": "all"
+        }
+      }
     },
     {
       "name": "codegen-tests",
       "inherits": "test-base",
-      "configurePreset": "native-debug",
+      "configurePreset": "win-x64-clangcl-debug-unity",
       "filter": {
         "include": {
           "label": "codegen"
@@ -119,50 +396,237 @@
   ],
   "workflowPresets": [
     {
-      "name": "native-debug",
+      "name": "win-x64-clangcl-debug",
       "steps": [
-        { "type": "configure", "name": "native-debug" },
-        { "type": "build", "name": "native-debug" },
-        { "type": "test", "name": "native-debug" }
+        {
+          "type": "configure",
+          "name": "win-x64-clangcl-debug"
+        },
+        {
+          "type": "build",
+          "name": "win-x64-clangcl-debug"
+        },
+        {
+          "type": "test",
+          "name": "win-x64-clangcl-debug"
+        }
       ]
     },
     {
-      "name": "native-release",
+      "name": "win-x64-clangcl-debug-unity",
       "steps": [
-        { "type": "configure", "name": "native-release" },
-        { "type": "build", "name": "native-release" },
-        { "type": "test", "name": "native-release" }
+        {
+          "type": "configure",
+          "name": "win-x64-clangcl-debug-unity"
+        },
+        {
+          "type": "build",
+          "name": "win-x64-clangcl-debug-unity"
+        },
+        {
+          "type": "test",
+          "name": "win-x64-clangcl-debug-unity"
+        }
       ]
     },
     {
-      "name": "native-debug-msvc",
+      "name": "win-x64-clangcl-debug-asan",
       "steps": [
-        { "type": "configure", "name": "native-debug-msvc" },
-        { "type": "build", "name": "native-debug-msvc" },
-        { "type": "test", "name": "native-debug-msvc" }
+        {
+          "type": "configure",
+          "name": "win-x64-clangcl-debug-asan"
+        },
+        {
+          "type": "build",
+          "name": "win-x64-clangcl-debug-asan"
+        },
+        {
+          "type": "test",
+          "name": "win-x64-clangcl-debug-asan"
+        }
       ]
     },
     {
-      "name": "native-release-msvc",
+      "name": "win-x64-clangcl-debug-asan-unity",
       "steps": [
-        { "type": "configure", "name": "native-release-msvc" },
-        { "type": "build", "name": "native-release-msvc" },
-        { "type": "test", "name": "native-release-msvc" }
+        {
+          "type": "configure",
+          "name": "win-x64-clangcl-debug-asan-unity"
+        },
+        {
+          "type": "build",
+          "name": "win-x64-clangcl-debug-asan-unity"
+        },
+        {
+          "type": "test",
+          "name": "win-x64-clangcl-debug-asan-unity"
+        }
+      ]
+    },
+    {
+      "name": "win-x64-clangcl-release",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "win-x64-clangcl-release"
+        },
+        {
+          "type": "build",
+          "name": "win-x64-clangcl-release"
+        },
+        {
+          "type": "test",
+          "name": "win-x64-clangcl-release"
+        }
+      ]
+    },
+    {
+      "name": "win-x64-clangcl-release-unity",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "win-x64-clangcl-release-unity"
+        },
+        {
+          "type": "build",
+          "name": "win-x64-clangcl-release-unity"
+        },
+        {
+          "type": "test",
+          "name": "win-x64-clangcl-release-unity"
+        }
+      ]
+    },
+    {
+      "name": "win-x64-clangcl-release-asan",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "win-x64-clangcl-release-asan"
+        },
+        {
+          "type": "build",
+          "name": "win-x64-clangcl-release-asan"
+        },
+        {
+          "type": "test",
+          "name": "win-x64-clangcl-release-asan"
+        }
+      ]
+    },
+    {
+      "name": "win-x64-clangcl-release-asan-unity",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "win-x64-clangcl-release-asan-unity"
+        },
+        {
+          "type": "build",
+          "name": "win-x64-clangcl-release-asan-unity"
+        },
+        {
+          "type": "test",
+          "name": "win-x64-clangcl-release-asan-unity"
+        }
+      ]
+    },
+    {
+      "name": "win-x64-msvc-debug",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "win-x64-msvc-debug"
+        },
+        {
+          "type": "build",
+          "name": "win-x64-msvc-debug"
+        },
+        {
+          "type": "test",
+          "name": "win-x64-msvc-debug"
+        }
+      ]
+    },
+    {
+      "name": "win-x64-msvc-debug-unity",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "win-x64-msvc-debug-unity"
+        },
+        {
+          "type": "build",
+          "name": "win-x64-msvc-debug-unity"
+        },
+        {
+          "type": "test",
+          "name": "win-x64-msvc-debug-unity"
+        }
+      ]
+    },
+    {
+      "name": "win-x64-msvc-release",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "win-x64-msvc-release"
+        },
+        {
+          "type": "build",
+          "name": "win-x64-msvc-release"
+        },
+        {
+          "type": "test",
+          "name": "win-x64-msvc-release"
+        }
+      ]
+    },
+    {
+      "name": "win-x64-msvc-release-unity",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "win-x64-msvc-release-unity"
+        },
+        {
+          "type": "build",
+          "name": "win-x64-msvc-release-unity"
+        },
+        {
+          "type": "test",
+          "name": "win-x64-msvc-release-unity"
+        }
       ]
     },
     {
       "name": "codegen",
       "steps": [
-        { "type": "configure", "name": "native-debug" },
-        { "type": "build", "name": "codegen" },
-        { "type": "test", "name": "codegen-tests" }
+        {
+          "type": "configure",
+          "name": "win-x64-clangcl-debug-unity"
+        },
+        {
+          "type": "build",
+          "name": "codegen"
+        },
+        {
+          "type": "test",
+          "name": "codegen-tests"
+        }
       ]
     },
     {
       "name": "generate-code",
       "steps": [
-        { "type": "configure", "name": "native-debug" },
-        { "type": "build", "name": "generate-code" }
+        {
+          "type": "configure",
+          "name": "win-x64-clangcl-debug-unity"
+        },
+        {
+          "type": "build",
+          "name": "generate-code"
+        }
       ]
     }
   ]

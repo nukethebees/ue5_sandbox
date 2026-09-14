@@ -1,27 +1,54 @@
 {
   "version": 9,
+  "vendor": {
+    "nukethebees.dev/preset-generator": {
+      "generated": true,
+      "source": "cmake/presets/generate.py",
+      "warning": "Generated file. Do not edit manually."
+    }
+  },
   "configurePresets": [
     {
       "name": "base",
       "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/out/build/${presetName}",
-      "cacheVariables": {
-        "CMAKE_UNITY_BUILD": true,
-        "CMAKE_UNITY_BUILD_BATCH_SIZE": "32"
-      }
+      "binaryDir": "${sourceDir}/out/build/${presetName}"
     },
     {
       "name": "windows-clang-cl",
       "hidden": true,
       "inherits": "base",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/windows-clang-cl.cmake"
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "toolchainFile": "${sourceDir}/cmake/toolchains/windows-clang-cl.cmake",
+      "cacheVariables": {
+        "UE_PLATFORM": "Win64"
+      }
     },
     {
       "name": "windows-msvc",
       "hidden": true,
       "inherits": "base",
-      "toolchainFile": "${sourceDir}/cmake/toolchains/windows-msvc.cmake"
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "toolchainFile": "${sourceDir}/cmake/toolchains/windows-msvc.cmake",
+      "cacheVariables": {
+        "UE_PLATFORM": "Win64"
+      }
     }
   ],
   "testPresets": [

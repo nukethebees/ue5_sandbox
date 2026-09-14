@@ -69,7 +69,6 @@ void FTestMissionManager::begin_play() {
 
         default: {
             ml::fatal_error("FTestMissionManager: Unhandled ml::simulation::MissionMode.");
-            break;
         }
     }
 }
@@ -169,7 +168,6 @@ void FTestMissionManager::consume_level_events(ml::FLevelMissionEventGroupsConst
             default: {
                 ml::fatal_error(std::format("Unsupported level mission event type: {}",
                                             static_cast<std::int32_t>(groups.types[index])));
-                break;
             }
         }
     }
@@ -304,7 +302,6 @@ void FTestMissionManager::mission_tick() {
     switch (mission_state) {
         case ml::simulation::MissionState::NotStarted: {
             ml::fatal_error("FTestMissionManager ticking but not started.");
-            break;
         }
         case ml::simulation::MissionState::Running: {
             break;
@@ -320,7 +317,6 @@ void FTestMissionManager::mission_tick() {
         }
         default: {
             ml::fatal_error("FTestMissionManager: Unhandled ml::simulation::MissionState.");
-            break;
         }
     }
 
@@ -352,7 +348,6 @@ void FTestMissionManager::mission_tick() {
         }
         default: {
             ml::fatal_error("FTestMissionManager: Unhandled ml::simulation::MissionMode.");
-            break;
         }
     }
 }
@@ -398,7 +393,6 @@ void FTestMissionManager::set_mission_state(ml::simulation::MissionState const n
         }
         default: {
             ml::fatal_error("FTestMissionManager: Unhandled ml::simulation::MissionState.");
-            break;
         }
     }
 }
