@@ -14,15 +14,30 @@ inline constexpr std::int32_t collision_resilient_health{1'000'000};
 void run_worldless_fighters_intercept_capital(ioj::sim::tests::SimulationFixture const& config) {
     auto data{ioj::sim::tests::make_simulation_data(config)};
     data.fighters.health = fighters_intercept_test::collision_resilient_health;
-    data.capital_spawns.add_defaulted(3);
-    data.capital_spawns.locations.xs = {-61180.f, 77320.f, 3590.f};
-    data.capital_spawns.locations.ys = {2170.f, 2170.f, 3240.f};
-    data.capital_spawns.locations.zs = {4360.f, 4360.f, 4360.f};
-    data.capital_spawns.teams = {ioj::sim::Team::Green, ioj::sim::Team::Red, ioj::sim::Team::Blue};
-    data.capital_spawns.healths.assign(3, fighters_intercept_test::collision_resilient_health);
-    data.capital_spawns.initial_spawn_delays = {0.f, 600.f, 600.f};
-    data.capital_spawns.spawn_cooldowns = {60.f, 60.f, 60.f};
-    data.capital_target_spawn_indices = {1, 0, 0};
+    auto const green{
+        ioj::sim::tests::add_capital_spawn(data,
+                                           {{-61180.f, 2170.f, 4360.f}},
+                                           ioj::sim::Team::Green,
+                                           -1,
+                                           0.f,
+                                           60.f,
+                                           fighters_intercept_test::collision_resilient_health)};
+    auto const red{
+        ioj::sim::tests::add_capital_spawn(data,
+                                           {{77320.f, 2170.f, 4360.f}},
+                                           ioj::sim::Team::Red,
+                                           green,
+                                           600.f,
+                                           60.f,
+                                           fighters_intercept_test::collision_resilient_health)};
+    ioj::sim::tests::add_capital_spawn(data,
+                                       {{3590.f, 3240.f, 4360.f}},
+                                       ioj::sim::Team::Blue,
+                                       green,
+                                       600.f,
+                                       60.f,
+                                       fighters_intercept_test::collision_resilient_health);
+    data.level_events.initial_spawns.capital_spawns.target_entity_indices[0] = red;
 
     ioj::sim::tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();

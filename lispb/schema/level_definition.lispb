@@ -52,6 +52,12 @@
     (member teams array @native_team)
     (member healths array int32)
     (member laser_damages array int32))
+  (struct LevelSpinnerSpawnEvents
+    :operations (all)
+    (member entity_indices array int32)
+    (member locations nested @native_vectors_3f :nested-schema Vectors3f)
+    (member yaws array float)
+    (member initial_fire_point_indices array int32))
   (struct LevelMissionEventGroups
     :operations (all)
     (member types array @native_level_mission_event_type)

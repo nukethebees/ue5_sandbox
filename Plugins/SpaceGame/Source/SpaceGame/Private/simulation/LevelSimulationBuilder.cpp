@@ -123,8 +123,6 @@ void validate_world_fighter_spawn_slots(::ioj::sim::LevelSimInitData const& data
             }
         }
     }};
-    validate(data.capital_spawns.locations.get_const_view(),
-             data.capital_spawns.rotations.get_const_view());
     auto const& initial{data.level_events.initial_spawns.capital_spawns};
     validate(initial.locations.get_const_view(), initial.rotations.get_const_view());
     auto const& scheduled{data.level_events.schedule.capital_spawns};
@@ -238,14 +236,6 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
         return FLevelSimBuildResult{std::unexpect, MoveTemp(spawn_errors)};
     }
 
-    auto const turret_events{data.level_events.initial_spawns.turret_spawns.get_const_view()};
-    auto const turret_count{turret_events.num()};
-    data.turret_transforms.reserve(static_cast<std::size_t>(turret_count));
-    for (int32 i{}; i < turret_count; ++i) {
-        data.turret_transforms.push_back(
-            ml::to_native(FTransform{FRotator{ml::to_unreal(turret_events.rotations[i])},
-                                     FVector{ml::to_unreal(turret_events.locations[i])}}));
-    }
     return result;
 }
 }

@@ -26,11 +26,8 @@ void run_worldless_simulation_core_regression(ioj::sim::tests::SimulationFixture
     if (scenario == SimulationCoreRegressionScenario::DamageLifecycle) {
         data.capital_ships.fighter_spawn_slots = 0;
         data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
-        data.capital_spawns.add_defaulted(1);
-        data.capital_spawns.teams[0] = static_cast<ioj::sim::Team>(ioj::sim::Team::White);
-        data.capital_spawns.healths[0] = initial_health;
-        data.capital_spawns.initial_spawn_delays[0] = 60.f;
-        data.capital_spawns.spawn_cooldowns[0] = 60.f;
+        ioj::sim::tests::add_capital_spawn(
+            data, {}, ioj::sim::Team::White, -1, 60.f, 60.f, initial_health);
     }
 
     ioj::sim::tests::WorldlessSimulationTest harness{std::move(data)};
@@ -142,7 +139,7 @@ void run_worldless_collision_damage(ioj::sim::tests::SimulationFixture const& co
     data.overlap_response.damage_per_overlap_detection = collision_damage_test::overlap_damage;
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
-    data.player = ioj::sim::tests::make_player_spawn(config);
+    ioj::sim::tests::add_player_spawn(data, ioj::sim::tests::make_player_spawn(config));
     data.player->config.lateral_adjustment_speed = 1.f;
     data.player->health = {collision_damage_test::player_health,
                            collision_damage_test::player_health};

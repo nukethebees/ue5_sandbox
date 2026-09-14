@@ -45,14 +45,21 @@ auto make_long_running_battle() -> LevelSimInitData {
             {.location = {1000.0, y, 0.0}});
     }
 
-    data.capital_spawns.add_defaulted(2);
-    data.capital_spawns.locations.xs = {-10000.f, 10000.f};
-    data.capital_spawns.teams = {ioj::sim::Team::Green, ioj::sim::Team::White};
-    data.capital_spawns.healths = {std::numeric_limits<std::int32_t>::max(),
-                                   std::numeric_limits<std::int32_t>::max()};
-    data.capital_spawns.initial_spawn_delays = {0.f, 0.f};
-    data.capital_spawns.spawn_cooldowns = {10000.f, 10000.f};
-    data.capital_target_spawn_indices = {1, 0};
+    auto const first{add_capital_spawn(data,
+                                       {{-10000.f, 0.f, 0.f}},
+                                       ioj::sim::Team::Green,
+                                       -1,
+                                       0.f,
+                                       10000.f,
+                                       std::numeric_limits<std::int32_t>::max())};
+    auto const second{add_capital_spawn(data,
+                                        {{10000.f, 0.f, 0.f}},
+                                        ioj::sim::Team::White,
+                                        first,
+                                        0.f,
+                                        10000.f,
+                                        std::numeric_limits<std::int32_t>::max())};
+    data.level_events.initial_spawns.capital_spawns.target_entity_indices[0] = second;
 
     auto const entity_type_count{data.entity_bounds.num()};
     for (std::int32_t type_index{}; type_index < entity_type_count; ++type_index) {

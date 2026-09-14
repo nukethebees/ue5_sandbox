@@ -53,12 +53,16 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
     data.cell_size = {1000.f, 1000.f, 1000.f};
     data.lasers.n_preallocated_instances = 16;
     data.capital_ships.fighter_spawn_slots = 0;
-    data.capital_spawns.add_defaulted(2);
-    data.capital_spawns.teams = {::ioj::sim::Team::Green, ::ioj::sim::Team::White};
-    data.capital_spawns.healths = {100, 100};
-    data.capital_spawns.initial_spawn_delays = {60.f, 60.f};
-    data.capital_spawns.spawn_cooldowns = {60.f, 60.f};
-    data.capital_spawns.locations.xs = {-1000.f, 1000.f};
+    auto& spawns{data.level_events.initial_spawns.capital_spawns};
+    spawns.add_defaulted(2);
+    spawns.entity_indices = {0, 1};
+    spawns.target_entity_indices = {-1, -1};
+    spawns.teams = {::ioj::sim::Team::Green, ::ioj::sim::Team::White};
+    spawns.healths = {100, 100};
+    spawns.initial_fighter_spawn_delays = {60.f, 60.f};
+    spawns.fighter_spawn_cooldowns = {60.f, 60.f};
+    spawns.locations.xs = {-1000.f, 1000.f};
+    data.level_events.initialisation.entity_count = 2;
     auto const count{::ioj::sim::collision::EntityAABBs::num()};
     for (int32 index{}; index < count; ++index) {
         data.entity_bounds.half_extent_xs[index] = 10.f;
@@ -70,8 +74,7 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
 
 auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
     auto data{make_battle()};
-    data.capital_spawns.reset();
-    data.capital_target_spawn_indices.clear();
+    data.level_events = {};
     data.clock_settings.tick_rate = 10.0;
 
     ml::FLevelBuilder builder;
@@ -116,14 +119,14 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
     return data;
 }
 
-void prepare_mission(::ioj::sim::LevelSim& simulation) {
-    auto& mission{simulation.get_mission_manager()};
-    mission.set_mission_mode(::ioj::sim::MissionMode::KillEnemies);
-    mission.set_kill_target(1);
-    mission.set_save_mission_results(false);
-    mission.add_hero_entity(simulation.get_capital_ships().get_handle(0));
-    mission.add_entity_required_to_kill(simulation.get_capital_ships().get_handle(1));
-    simulation.finish_initialisation();
+void add_mission(::ioj::sim::LevelSimInitData& data) {
+    auto& mission{data.level_events.initialisation.mission.emplace()};
+    auto const& entities{data.level_events.initial_spawns.capital_spawns.entity_indices};
+    mission.mode = ::ioj::sim::levels::LevelMissionMode::KillEnemies;
+    mission.kill_count = 1;
+    mission.save_results = false;
+    mission.hero_entity_indices = {entities[0]};
+    mission.required_kill_entity_indices = {entities[1]};
 }
 
 void kill_enemy(::ioj::sim::LevelSim& simulation) {
@@ -180,7 +183,7 @@ auto FLevelSimScheduledEventsTest::RunTest(FString const&) -> bool {
 }
 
 /* **************************************** */
-// Initialization compatibility and spatial queries
+// Initialization and spatial queries
 /* **************************************** */
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -268,16 +271,20 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
         (*slot)->RegisterComponent();
     }
     resources.config = config->get_visual_config();
-    ::ioj::sim::LevelSim headless{make_battle()};
-    ::ioj::sim::LevelSim visible{make_battle()};
+    auto headless_data{make_battle()};
+    auto visible_data{make_battle()};
+    add_mission(headless_data);
+    add_mission(visible_data);
+    ::ioj::sim::LevelSim headless{MoveTemp(headless_data)};
+    ::ioj::sim::LevelSim visible{MoveTemp(visible_data)};
     TestEqual(TEXT("Presentation construction preserves initial entity count"),
               visible.get_capital_ships().get_num_instances(),
               headless.get_capital_ships().get_num_instances());
     TestEqual(TEXT("Presentation construction leaves initialization open"),
               visible.get_state(),
               ::ioj::sim::OrchestratorState::Uninitialised);
-    prepare_mission(headless);
-    prepare_mission(visible);
+    headless.finish_initialisation();
+    visible.finish_initialisation();
     FLevelPresentation presentation{resources, visible.get_read_view(), {}};
     using Samples = ml::TimeSeriesData<::ioj::sim::EntityRegistry::EntityData>;
     Samples headless_samples;
@@ -523,6 +530,8 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     };
     auto data{make_battle()};
     data.clock_settings.tick_rate = 10.0;
+    data.level_events.initialisation.player_entity_index =
+        data.level_events.initialisation.entity_count++;
     data.player = actor->make_spawn_data();
     data.player->config.boost_depletion_time = 0.05f;
     ::ioj::sim::LevelSim simulation{MoveTemp(data)};
@@ -578,8 +587,10 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
     auto* const component{NewObject<USandboxISMCComponent>()};
     component->set_num_custom_data_floats(FLaserPresentation::n_custom_ismc_floats);
 
-    ::ioj::sim::LevelSim simulation{make_battle()};
-    prepare_mission(simulation);
+    auto data{make_battle()};
+    add_mission(data);
+    ::ioj::sim::LevelSim simulation{MoveTemp(data)};
+    simulation.finish_initialisation();
     auto& lasers{simulation.get_lasers()};
     FLaserPresentation presentation{*component};
 

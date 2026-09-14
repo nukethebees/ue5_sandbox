@@ -37,12 +37,6 @@ static void finalise_participating_teams(LevelSimInitData& data) {
         if (data.player.has_value()) {
             include(data.player->team);
         }
-        for (auto const team : data.capital_spawns.teams) {
-            include(team);
-        }
-        for (auto const team : data.turret_spawns.teams) {
-            include(team);
-        }
         for (auto const team : data.level_events.initial_spawns.capital_spawns.teams) {
             include(team);
         }
@@ -66,59 +60,6 @@ static void finalise_participating_teams(LevelSimInitData& data) {
     }
 }
 
-/* **************************************** */
-// Legacy initialization
-/* **************************************** */
-// Legacy initialization supplies spawn arrays instead of compiled level events.
-static auto make_legacy_level_initialisation(LevelSimInitData const& data)
-    -> ioj::sim::CompiledLevelEvents {
-    ioj::sim::CompiledLevelEvents compiled;
-    auto& initialisation{compiled.initialisation};
-    auto& initial_spawns{compiled.initial_spawns};
-    auto const player_offset{data.player.has_value() ? 1 : 0};
-    auto const capital_count{data.capital_spawns.num()};
-    auto const turret_count{data.turret_spawns.num()};
-    initialisation.entity_count = player_offset + capital_count + turret_count;
-    initialisation.player_entity_index = data.player.has_value() ? 0 : -1;
-
-    initial_spawns.capital_spawns.add_uninitialised(capital_count);
-    for (std::int32_t i{}; i < capital_count; ++i) {
-        auto const entity_index{player_offset + i};
-        auto const target_index{
-            (static_cast<std::size_t>(i) < data.capital_target_spawn_indices.size())
-                ? data.capital_target_spawn_indices[i]
-                : -1};
-        auto const target_entity_index{
-            target_index == LevelSimInitData::player_target_spawn_index
-                ? initialisation.player_entity_index
-                : (target_index == -1 ? -1 : player_offset + target_index)};
-        auto& events{initial_spawns.capital_spawns};
-        events.entity_indices[i] = entity_index;
-        events.target_entity_indices[i] = target_entity_index;
-        events.locations.set(i, data.capital_spawns.locations[i]);
-        events.rotations.set(i, data.capital_spawns.rotations[i]);
-        events.teams[i] = data.capital_spawns.teams[i];
-        events.healths[i] = data.capital_spawns.healths[i];
-        events.initial_fighter_spawn_delays[i] = data.capital_spawns.initial_spawn_delays[i];
-        events.fighter_spawn_cooldowns[i] = data.capital_spawns.spawn_cooldowns[i];
-    }
-
-    initial_spawns.turret_spawns.add_uninitialised(turret_count);
-    for (std::int32_t i{}; i < turret_count; ++i) {
-        auto const entity_index{player_offset + capital_count + i};
-        auto const rotation{(static_cast<std::size_t>(i) < data.turret_transforms.size())
-                                ? data.turret_transforms[i].rotator()
-                                : ioj::sim::Rotator3d{}};
-        auto& events{initial_spawns.turret_spawns};
-        events.entity_indices[i] = entity_index;
-        events.locations.set(i, data.turret_spawns.locations[i]);
-        events.rotations.set(i, ioj::sim::to_float(rotation));
-        events.teams[i] = data.turret_spawns.teams[i];
-        events.healths[i] = data.turret_spawns.healths[i];
-        events.laser_damages[i] = data.turret_spawns.laser_damages[i];
-    }
-    return compiled;
-}
 }
 
 /* **************************************** */
@@ -152,7 +93,10 @@ LevelSim::LevelSim(LevelSimInitData data)
     , spinners_simulation_{clock_, entity_registry_, lasers_simulation_, frame_memory_}
     , spinners_phase_{spinners_simulation_}
     , mission_manager_{clock_, entity_registry_}
-    , event_manager_{capital_ships_simulation_, turrets_simulation_, mission_manager_}
+    , event_manager_{capital_ships_simulation_,
+                     turrets_simulation_,
+                     spinners_simulation_,
+                     mission_manager_}
     , level_telemetry_manager_{clock_,
                                entity_registry_,
                                lasers_simulation_,
@@ -165,9 +109,9 @@ LevelSim::LevelSim(LevelSimInitData data)
 
     initialise_spatial_queries(data);
     configure_subsystems(data);
-    begin_subsystems(data);
+    begin_subsystems();
 
-    initialise_events(data);
+    initialise_events(std::move(data.level_events));
     event_manager_.dispatch_tick(0);
 }
 void LevelSim::finish_initialisation() {
@@ -251,7 +195,7 @@ void LevelSim::initialise_spatial_queries(LevelSimInitData& data) {
     query_manager_.get_collision_system().get_uniform_grid().set_static_aabbs(
         std::move(data.static_bounds));
 }
-void LevelSim::begin_subsystems(LevelSimInitData const& data) {
+void LevelSim::begin_subsystems() {
     if (player_ship_simulation_.has_value()) {
         player_ship_phase_->begin_play();
     }
@@ -260,22 +204,14 @@ void LevelSim::begin_subsystems(LevelSimInitData const& data) {
     fighters_phase_.begin_play();
     turrets_phase_.begin_play();
 
-    spinners_simulation_.spawn_instances(
-        data.spinner_locations.get_const_view(), data.spinner_yaws, data.spinner_fire_points);
     spinners_phase_.begin_play();
     lasers_phase_.begin_play();
 }
-void LevelSim::initialise_events(LevelSimInitData& data) {
-    if (!data.level_events.initialisation.mission.has_value() &&
-        data.level_events.initialisation.entity_count == 0 &&
-        (!data.capital_spawns.is_empty() || !data.turret_spawns.is_empty())) {
-        data.level_events = level_simulation::make_legacy_level_initialisation(data);
-    }
-
+void LevelSim::initialise_events(CompiledLevelEvents events) {
     auto const player_handle{player_ship_simulation_.has_value()
                                  ? player_ship_simulation_->registry_handle
                                  : RegistryEntityHandle{}};
-    event_manager_.initialise(std::move(data.level_events), player_handle);
+    event_manager_.initialise(std::move(events), player_handle);
 }
 
 /* **************************************** */

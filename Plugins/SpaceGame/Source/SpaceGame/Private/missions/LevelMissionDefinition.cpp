@@ -1,7 +1,4 @@
-#include <ioj/sim/entity_registry.h>
-#include <SpaceGame/entities/TestEntity.h>
 #include <SpaceGame/missions/LevelMissionDefinition.h>
-#include <SpaceGameSimulation/missions/NativeMissionTypes.h>
 
 void FTestMissionStartupData::prune_invalid_actors() {
     hero_entities.RemoveAll([](TObjectPtr<AActor> const& actor) { return !IsValid(actor); });
@@ -10,7 +7,6 @@ void FTestMissionStartupData::prune_invalid_actors() {
     entities_required_to_kill.RemoveAll(
         [](TObjectPtr<AActor> const& actor) { return !IsValid(actor); });
 }
-
 void FLevelMissionDefinition::replace_startup_actor(AActor const* const old_actor,
                                                     AActor& new_actor) {
     if (!old_actor) {
@@ -31,41 +27,5 @@ void FLevelMissionDefinition::replace_startup_actor(AActor const* const old_acto
     }
     for (auto& actor : startup_data.entities_required_to_kill) {
         replace_actor(actor);
-    }
-}
-
-void FLevelMissionDefinition::apply(::ioj::sim::MissionManager& mission,
-                                    FProxyEntityMap const& proxies,
-                                    ::ioj::sim::EntityRegistry const& registry) const {
-    mission.set_mission_mode(ml::to_native(mission_mode));
-    mission.set_target_time(target_time);
-    mission.set_kill_target(kill_target);
-    mission.set_save_mission_results(save_mission_results);
-    mission.set_level_identity(TCHAR_TO_UTF8(*level_id.ToString()),
-                               TCHAR_TO_UTF8(*level_display_name));
-    auto resolve{[&](AActor const& actor) {
-        if (auto const* identifiers{proxies.Find(&actor)}) {
-            return identifiers->handle;
-        }
-        auto const* entity{Cast<ITestEntity>(&actor)};
-        check(entity);
-        auto const handle{entity->get_entity_handle()};
-        check(registry.is_valid_handle(handle));
-        return handle;
-    }};
-    for (auto const actor : startup_data.hero_entities) {
-        if (IsValid(actor)) {
-            mission.add_hero_entity(resolve(*actor));
-        }
-    }
-    for (auto const actor : startup_data.entities_must_survive) {
-        if (IsValid(actor)) {
-            mission.add_entity_that_must_survive(resolve(*actor));
-        }
-    }
-    for (auto const actor : startup_data.entities_required_to_kill) {
-        if (IsValid(actor)) {
-            mission.add_entity_required_to_kill(resolve(*actor));
-        }
     }
 }

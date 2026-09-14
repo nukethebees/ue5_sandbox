@@ -10,6 +10,7 @@ namespace ioj::sim {
 struct LevelInitialSpawnEvents {
     LevelCapitalSpawnEvents capital_spawns{};
     LevelTurretSpawnEvents turret_spawns{};
+    LevelSpinnerSpawnEvents spinner_spawns{};
 };
 
 struct CompiledLevelEvents {

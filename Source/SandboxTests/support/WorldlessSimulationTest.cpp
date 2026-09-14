@@ -37,22 +37,32 @@ auto make_worldless_player_spawn(USpaceGameLevelConfig const& config, FTransform
     return result;
 }
 
+auto add_worldless_player_spawn(::ioj::sim::LevelSimInitData& data,
+                                ::ioj::sim::player::PlayerSpawnData spawn) -> int32 {
+    auto& initialisation{data.level_events.initialisation};
+    auto const entity_index{initialisation.entity_count++};
+    initialisation.player_entity_index = entity_index;
+    data.player.emplace(MoveTemp(spawn));
+    return entity_index;
+}
+
 auto add_worldless_capital_spawn(::ioj::sim::LevelSimInitData& data,
                                  FVector3f const location,
                                  ETestTeam const team,
-                                 int32 const target_spawn_index,
+                                 int32 const target_entity_index,
                                  float const initial_spawn_delay,
                                  float const spawn_cooldown,
                                  int32 const health) -> int32 {
-    auto const index{data.capital_spawns.num()};
-    data.capital_spawns.add_defaulted(1);
-    data.capital_spawns.locations.set(index, ml::to_native(FVector3f{location}));
-    data.capital_spawns.teams[index] = static_cast<::ioj::sim::Team>(team);
-    data.capital_spawns.healths[index] =
-        health == INDEX_NONE ? data.capital_ships.max_health : health;
-    data.capital_spawns.initial_spawn_delays[index] = initial_spawn_delay;
-    data.capital_spawns.spawn_cooldowns[index] = spawn_cooldown;
-    data.capital_target_spawn_indices.push_back(target_spawn_index);
+    auto& events{data.level_events.initial_spawns.capital_spawns};
+    auto const index{events.num()};
+    events.add_defaulted(1);
+    events.entity_indices[index] = data.level_events.initialisation.entity_count++;
+    events.target_entity_indices[index] = target_entity_index;
+    events.locations.set(index, ml::to_native(FVector3f{location}));
+    events.teams[index] = static_cast<::ioj::sim::Team>(team);
+    events.healths[index] = health == INDEX_NONE ? data.capital_ships.max_health : health;
+    events.initial_fighter_spawn_delays[index] = initial_spawn_delay;
+    events.fighter_spawn_cooldowns[index] = spawn_cooldown;
     return index;
 }
 

@@ -20,10 +20,12 @@ auto make_worldless_simulation_test_data(USpaceGameLevelConfig const& config)
 auto make_worldless_player_spawn(USpaceGameLevelConfig const& config,
                                  FTransform const& transform = FTransform::Identity)
     -> ::ioj::sim::player::PlayerSpawnData;
+auto add_worldless_player_spawn(::ioj::sim::LevelSimInitData& data,
+                                ::ioj::sim::player::PlayerSpawnData spawn) -> int32;
 auto add_worldless_capital_spawn(::ioj::sim::LevelSimInitData& data,
                                  FVector3f location,
                                  ETestTeam team,
-                                 int32 target_spawn_index = INDEX_NONE,
+                                 int32 target_entity_index = INDEX_NONE,
                                  float initial_spawn_delay = 0.f,
                                  float spawn_cooldown = 60.f,
                                  int32 health = INDEX_NONE) -> int32;

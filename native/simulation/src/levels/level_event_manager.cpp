@@ -12,8 +12,9 @@
 namespace ioj::sim {
 LevelEventManager::LevelEventManager(capital_ships::Sim& capital_ships,
                                      turrets::Sim& turrets,
+                                     spinners::Sim& spinners,
                                      MissionManager& mission_manager) noexcept
-    : spawn_manager_{capital_ships, turrets}
+    : spawn_manager_{capital_ships, turrets, spinners}
     , mission_manager_{mission_manager} {}
 
 void LevelEventManager::initialise(CompiledLevelEvents data,
@@ -33,7 +34,8 @@ void LevelEventManager::initialise(CompiledLevelEvents data,
         spawn_manager_.set_entity_handle(initialisation_.player_entity_index, player_handle);
     }
     spawn_manager_.spawn_initial(data.initial_spawns.capital_spawns.get_const_view(),
-                                 data.initial_spawns.turret_spawns.get_const_view());
+                                 data.initial_spawns.turret_spawns.get_const_view(),
+                                 data.initial_spawns.spinner_spawns.get_const_view());
 
     mission_manager_.bind_level_event_data(schedule_.mission_events.values,
                                            spawn_manager_.get_entity_handles());

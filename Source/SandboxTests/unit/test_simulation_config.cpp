@@ -108,11 +108,12 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         data.fighters.avoidance_clearance_buffer = 1.f;
         data.capital_ships.fighter_spawn_slots_relative_transforms = {
             {.location = {0.0, 40.0, 0.0}}};
-        data.capital_spawns.add_defaulted(1);
+        auto& capitals{data.level_events.initial_spawns.capital_spawns};
+        capitals.add_defaulted(1);
         ml::FLevelStartErrors clear_errors;
         ml::validate_world_fighter_spawn_slots(data, clear_errors);
         TestRunner->TestFalse(TEXT("Unrotated slot clears capital"), clear_errors.has_errors());
-        data.capital_spawns.rotations.set(0, {0.f, 45.f, 0.f});
+        capitals.rotations.set(0, {0.f, 45.f, 0.f});
         ml::FLevelStartErrors rotated_errors;
         ml::validate_world_fighter_spawn_slots(data, rotated_errors);
         TestRunner->TestTrue(

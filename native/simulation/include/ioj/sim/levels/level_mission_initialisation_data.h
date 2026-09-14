@@ -16,5 +16,6 @@ struct LevelMissionInitialisationData {
     std::optional<std::int32_t> kill_count{};
     std::string level_id{};
     std::string level_title{};
+    bool save_results{true};
 };
 }

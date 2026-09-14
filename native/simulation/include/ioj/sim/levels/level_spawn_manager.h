@@ -16,10 +16,16 @@ namespace ioj::sim::turrets {
 struct Sim;
 }
 
+namespace ioj::sim::spinners {
+struct Sim;
+}
+
 namespace ioj::sim {
 class LevelSpawnManager {
   public:
-    LevelSpawnManager(capital_ships::Sim& capital_ships, turrets::Sim& turrets) noexcept;
+    LevelSpawnManager(capital_ships::Sim& capital_ships,
+                      turrets::Sim& turrets,
+                      spinners::Sim& spinners) noexcept;
     LevelSpawnManager(LevelSpawnManager const&) = delete;
     LevelSpawnManager(LevelSpawnManager&&) = delete;
     auto operator=(LevelSpawnManager const&) -> LevelSpawnManager& = delete;
@@ -30,7 +36,8 @@ class LevelSpawnManager {
                     LevelTurretSpawnEventsConstView turret_payloads);
     void set_entity_handle(std::int32_t entity_index, RegistryEntityHandle handle);
     void spawn_initial(LevelCapitalSpawnEventsConstView capital_events,
-                       LevelTurretSpawnEventsConstView turret_events);
+                       LevelTurretSpawnEventsConstView turret_events,
+                       LevelSpinnerSpawnEventsConstView spinner_events);
     void spawn(LevelSpawnGroupsConstView groups);
     auto get_handle(std::int32_t entity_index) const -> RegistryEntityHandle;
     auto get_entity_handles() const noexcept -> std::span<RegistryEntityHandle const> {
@@ -38,12 +45,15 @@ class LevelSpawnManager {
     }
   private:
     void spawn_capitals(LevelCapitalSpawnEventsConstView events);
+    void resolve_capital_targets(LevelCapitalSpawnEventsConstView events);
     void spawn_turrets(LevelTurretSpawnEventsConstView events);
+    void spawn_spinners(LevelSpinnerSpawnEventsConstView events);
 
     LevelCapitalSpawnEventsConstView capital_payloads_{};
     LevelTurretSpawnEventsConstView turret_payloads_{};
     capital_ships::Sim& capital_ships_;
     turrets::Sim& turrets_;
+    spinners::Sim& spinners_;
     std::vector<RegistryEntityHandle> entity_handles_{};
     std::vector<RegistryEntityHandle> target_handles_scratch_{};
 };

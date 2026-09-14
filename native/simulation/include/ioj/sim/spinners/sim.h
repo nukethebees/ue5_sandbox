@@ -16,6 +16,7 @@
 
 namespace ioj::sim {
 struct LevelSim;
+class LevelSpawnManager;
 struct SpinnerSimConfig;
 struct EntityRegistry;
 }
@@ -65,9 +66,10 @@ struct Sim {
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    void spawn_instances(ioj::sim::Vectors3fConstView new_locations,
+    auto spawn_instances(ioj::sim::Vectors3fConstView new_locations,
                          std::span<float const> new_yaws,
-                         std::span<std::int32_t const> new_fire_point_indices);
+                         std::span<std::int32_t const> new_fire_point_indices)
+        -> std::span<RegistryEntityHandle const>;
 
     /* **************************************** */
     // Movement
@@ -81,6 +83,7 @@ struct Sim {
 
     friend class PhaseInterface;
     friend struct ::ioj::sim::LevelSim;
+    friend class ::ioj::sim::LevelSpawnManager;
 
     friend struct SpinnerSpawnTestAccess;
 

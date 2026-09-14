@@ -130,7 +130,7 @@ void run_worldless_fighter_capital_obstruction(ioj::sim::tests::SimulationFixtur
         data, obstacle, ioj::sim::Team::Green, -1, 60.f, 60.f, 100000);
     ioj::sim::tests::add_capital_spawn(data, target, ioj::sim::Team::Red, -1, 60.f, 60.f, 100000);
     ioj::sim::Rotator3f const obstacle_rotation{0.f, 35.f, 0.f};
-    data.capital_spawns.rotations.set(1, ioj::sim::Rotator3f{obstacle_rotation});
+    data.level_events.initial_spawns.capital_spawns.rotations.set(1, obstacle_rotation);
 
     auto const obstacle_bounds{ioj::sim::collision::make_entity_world_bounds(
         data.entity_bounds,

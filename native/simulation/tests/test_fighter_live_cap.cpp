@@ -25,16 +25,16 @@ auto make_cap_battle(std::span<ioj::sim::Team const> const capital_teams,
     }
 
     auto const capital_count{static_cast<std::int32_t>(capital_teams.size())};
-    data.capital_spawns.add_defaulted(capital_count);
-    data.capital_target_spawn_indices.resize(static_cast<std::size_t>(capital_count));
     for (std::int32_t capital_index{}; capital_index < capital_count; ++capital_index) {
-        data.capital_spawns.locations.xs[capital_index] = capital_index * 1000.f;
-        data.capital_spawns.teams[capital_index] =
-            static_cast<ioj::sim::Team>(capital_teams[capital_index]);
-        data.capital_spawns.healths[capital_index] = 100;
-        data.capital_spawns.initial_spawn_delays[capital_index] = 0.f;
-        data.capital_spawns.spawn_cooldowns[capital_index] = spawn_cooldown;
-        data.capital_target_spawn_indices[capital_index] = capital_index;
+        auto const entity_index{add_capital_spawn(data,
+                                                  {{capital_index * 1000.f, 0.f, 0.f}},
+                                                  capital_teams[capital_index],
+                                                  -1,
+                                                  0.f,
+                                                  spawn_cooldown,
+                                                  100)};
+        data.level_events.initial_spawns.capital_spawns.target_entity_indices[capital_index] =
+            entity_index;
     }
 
     auto const bounds_count{data.entity_bounds.num()};
@@ -101,7 +101,7 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
     start_and_tick(inferred_simulation);
     ioj::sim::tests::expect_equal(inferred_simulation.get_fighters().get_num_instances(),
                                   14,
-                                  "Legacy team inference deduplicates team sources");
+                                  "Compiled team inference deduplicates team sources");
 
     LevelSim empty_simulation{make_cap_battle(
         std::span<ioj::sim::Team const>{}, std::span<ioj::sim::Team const>{}, 10, 0)};

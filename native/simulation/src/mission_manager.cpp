@@ -86,6 +86,7 @@ void MissionManager::initialise_level_mission(
     std::span<RegistryEntityHandle const> const level_entity_handles) {
     assert(!level_initialisation_applied_);
     set_level_identity(data.level_id, data.level_title);
+    set_save_mission_results(data.save_results);
 
     switch (data.mode) {
         case levels::LevelMissionMode::Unspecified: {

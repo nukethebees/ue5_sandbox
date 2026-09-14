@@ -9,13 +9,16 @@
 #include <vector>
 
 #include <ioj/sim/capital_ships/sim.h>
+#include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/turrets/sim.h>
 
 namespace ioj::sim {
 LevelSpawnManager::LevelSpawnManager(capital_ships::Sim& capital_ships,
-                                     turrets::Sim& turrets) noexcept
+                                     turrets::Sim& turrets,
+                                     spinners::Sim& spinners) noexcept
     : capital_ships_{capital_ships}
-    , turrets_{turrets} {}
+    , turrets_{turrets}
+    , spinners_{spinners} {}
 
 void LevelSpawnManager::initialise(std::int32_t const entity_count,
                                    LevelCapitalSpawnEventsConstView const capital_payloads,
@@ -34,12 +37,19 @@ void LevelSpawnManager::set_entity_handle(std::int32_t const entity_index,
 }
 
 void LevelSpawnManager::spawn_initial(LevelCapitalSpawnEventsConstView const capital_events,
-                                      LevelTurretSpawnEventsConstView const turret_events) {
+                                      LevelTurretSpawnEventsConstView const turret_events,
+                                      LevelSpinnerSpawnEventsConstView const spinner_events) {
     if (capital_events.num() > 0) {
         spawn_capitals(capital_events);
     }
     if (turret_events.num() > 0) {
         spawn_turrets(turret_events);
+    }
+    if (spinner_events.num() > 0) {
+        spawn_spinners(spinner_events);
+    }
+    if (capital_events.num() > 0) {
+        resolve_capital_targets(capital_events);
     }
 }
 
@@ -61,6 +71,12 @@ void LevelSpawnManager::spawn(LevelSpawnGroupsConstView const groups) {
                 ml::fatal_error(std::format("Unsupported level spawn entity type: {}",
                                             std::to_underlying(groups.types[index])));
             }
+        }
+    }
+    for (std::int32_t index{}; index < group_count; ++index) {
+        if (groups.types[index] == ioj::sim::EntityType::CapitalShip) {
+            resolve_capital_targets(
+                capital_payloads_.get_const_view(groups.offsets[index], groups.counts[index]));
         }
     }
 }
@@ -86,10 +102,15 @@ void LevelSpawnManager::spawn_capitals(LevelCapitalSpawnEventsConstView const ev
     for (std::int32_t i{}; i < count; ++i) {
         set_entity_handle(events.entity_indices[i], handles[i]);
     }
+}
+
+void LevelSpawnManager::resolve_capital_targets(LevelCapitalSpawnEventsConstView const events) {
+    auto const count{events.num()};
     for (std::int32_t i{}; i < count; ++i) {
         auto const target_index{events.target_entity_indices[i]};
         if (target_index != -1) {
-            capital_ships_.set_target_handle(handles[i], get_handle(target_index));
+            auto const source_handle{get_handle(events.entity_indices[i])};
+            capital_ships_.set_target_handle(source_handle, get_handle(target_index));
         }
     }
 }
@@ -103,6 +124,15 @@ void LevelSpawnManager::spawn_turrets(LevelTurretSpawnEventsConstView const even
         .laser_damages = {events.laser_damages.data(), size},
     };
     auto const handles{turrets_.register_turrets(spawn_data, events.rotations)};
+    auto const count{events.num()};
+    for (std::int32_t i{}; i < count; ++i) {
+        set_entity_handle(events.entity_indices[i], handles[i]);
+    }
+}
+
+void LevelSpawnManager::spawn_spinners(LevelSpinnerSpawnEventsConstView const events) {
+    auto const handles{spinners_.spawn_instances(
+        events.locations, events.yaws, events.initial_fire_point_indices)};
     auto const count{events.num()};
     for (std::int32_t i{}; i < count; ++i) {
         set_entity_handle(events.entity_indices[i], handles[i]);

@@ -1,4 +1,5 @@
 #pragma once
+#include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/missions/MissionCompletion.h>
 #include <SpaceGame/telemetry/LevelTelemetryReport.h>
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
@@ -261,7 +262,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     // Presentation and proxies
     /* **************************************** */
     auto make_presentation_resources() const -> FLevelPresentationResources;
-    void bind_capital_ship_proxy_targets(FProxyEntityMap const& proxy_entities);
     void bind_and_destroy_proxies();
     void refresh_collision_grid_visualization();
     void update_collision_bounds_visualization();

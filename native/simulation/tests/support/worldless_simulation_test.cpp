@@ -73,21 +73,64 @@ auto make_player_spawn(SimulationFixture const& fixture, ioj::sim::Transform3d t
     player.transform = transform;
     return player;
 }
+auto add_player_spawn(LevelSimInitData& data, ioj::sim::player::PlayerSpawnData spawn)
+    -> std::int32_t {
+    auto& initialisation{data.level_events.initialisation};
+    auto const entity_index{initialisation.entity_count++};
+    initialisation.player_entity_index = entity_index;
+    data.player.emplace(std::move(spawn));
+    return entity_index;
+}
 auto add_capital_spawn(LevelSimInitData& data,
                        ioj::sim::Vector3f location,
                        ioj::sim::Team team,
-                       std::int32_t target_spawn_index,
+                       std::int32_t target_entity_index,
                        float initial_spawn_delay,
                        float spawn_cooldown,
                        std::int32_t health) -> std::int32_t {
-    auto const index{data.capital_spawns.num()};
-    data.capital_spawns.add_defaulted(1);
-    data.capital_spawns.locations.set(index, location);
-    data.capital_spawns.teams[index] = team;
-    data.capital_spawns.healths[index] = health == -1 ? data.capital_ships.max_health : health;
-    data.capital_spawns.initial_spawn_delays[index] = initial_spawn_delay;
-    data.capital_spawns.spawn_cooldowns[index] = spawn_cooldown;
-    data.capital_target_spawn_indices.push_back(target_spawn_index);
-    return index;
+    auto& events{data.level_events.initial_spawns.capital_spawns};
+    auto const row{events.num()};
+    auto const entity_index{data.level_events.initialisation.entity_count++};
+    events.add_defaulted(1);
+    events.entity_indices[row] = entity_index;
+    events.target_entity_indices[row] = target_entity_index;
+    events.locations.set(row, location);
+    events.teams[row] = team;
+    events.healths[row] = health == -1 ? data.capital_ships.max_health : health;
+    events.initial_fighter_spawn_delays[row] = initial_spawn_delay;
+    events.fighter_spawn_cooldowns[row] = spawn_cooldown;
+    return entity_index;
+}
+auto add_turret_spawn(LevelSimInitData& data,
+                      ioj::sim::Vector3f location,
+                      ioj::sim::Rotator3f rotation,
+                      ioj::sim::Team team,
+                      std::int32_t health,
+                      std::int32_t laser_damage) -> std::int32_t {
+    auto& events{data.level_events.initial_spawns.turret_spawns};
+    auto const row{events.num()};
+    auto const entity_index{data.level_events.initialisation.entity_count++};
+    events.add_defaulted(1);
+    events.entity_indices[row] = entity_index;
+    events.locations.set(row, location);
+    events.rotations.set(row, rotation);
+    events.teams[row] = team;
+    events.healths[row] = health == -1 ? data.turrets.max_health : health;
+    events.laser_damages[row] = laser_damage == -1 ? data.turrets.laser.damage : laser_damage;
+    return entity_index;
+}
+auto add_spinner_spawn(LevelSimInitData& data,
+                       ioj::sim::Vector3f location,
+                       float const yaw,
+                       std::int32_t const initial_fire_point_index) -> std::int32_t {
+    auto& events{data.level_events.initial_spawns.spinner_spawns};
+    auto const row{events.num()};
+    auto const entity_index{data.level_events.initialisation.entity_count++};
+    events.add_defaulted(1);
+    events.entity_indices[row] = entity_index;
+    events.locations.set(row, location);
+    events.yaws[row] = yaw;
+    events.initial_fire_point_indices[row] = initial_fire_point_index;
+    return entity_index;
 }
 }

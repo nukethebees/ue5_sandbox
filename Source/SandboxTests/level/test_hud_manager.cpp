@@ -55,7 +55,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
         scenario == EHUDManagerScenario::MissionTimeUsesSimulationClockWithoutHUD};
     auto const needs_player{scenario == EHUDManagerScenario::PlayerStateAndKillsUpdateWithoutHUD};
     if (needs_player) {
-        data.player.emplace(make_worldless_player_spawn(config));
+        add_worldless_player_spawn(data, make_worldless_player_spawn(config));
     }
     int32 first_capital_index{INDEX_NONE};
     int32 second_capital_index{INDEX_NONE};
@@ -69,6 +69,18 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
             data, FVector3f{2000.f, 0.f, 0.f}, ETestTeam::Red, INDEX_NONE, 60.f, 60.f);
     }
 
+    auto& mission_data{data.level_events.initialisation.mission.emplace()};
+    if (needs_defence) {
+        auto const& capital_events{data.level_events.initial_spawns.capital_spawns};
+        mission_data.mode = ::ioj::sim::levels::LevelMissionMode::SurviveTime;
+        mission_data.time_limit_seconds = 10.f;
+        mission_data.save_results = false;
+        mission_data.must_survive_entity_indices.push_back(
+            capital_events.entity_indices[first_capital_index]);
+        mission_data.required_kill_entity_indices.push_back(
+            capital_events.entity_indices[second_capital_index]);
+    }
+
     FWorldlessSimulationTest harness{MoveTemp(data)};
     auto& simulation{harness.get_simulation()};
     auto& mission{simulation.get_mission_manager()};
@@ -79,16 +91,6 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     auto const second_capital{second_capital_index == INDEX_NONE
                                   ? ::ioj::sim::RegistryEntityHandle{}
                                   : capitals.get_handle(second_capital_index)};
-    if (needs_defence) {
-        mission.set_save_mission_results(false);
-        mission.set_mission_mode(::ioj::sim::MissionMode::SurviveTime);
-        mission.set_target_time(10.f);
-        mission.add_entity_that_must_survive(first_capital);
-        mission.add_entity_required_to_kill(second_capital);
-    } else {
-        mission.set_mission_mode(::ioj::sim::MissionMode::None);
-        mission.set_save_mission_results(true);
-    }
     harness.finish_initialisation();
 
     FHUDManager hud;

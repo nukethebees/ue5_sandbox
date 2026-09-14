@@ -12,8 +12,6 @@ void run_worldless_turret_acquisition_regression(
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     auto const count{scenario == TurretAcquisitionRegressionScenario::NoOtherEntity ? 1 : 2};
-    data.turret_spawns.add_defaulted(count);
-    data.turret_transforms.resize(static_cast<std::size_t>(count));
     for (std::int32_t i{}; i < count; ++i) {
         auto const friendly{scenario == TurretAcquisitionRegressionScenario::FriendlyOnly ||
                             i == 0};
@@ -22,11 +20,12 @@ void run_worldless_turret_acquisition_regression(
                    : (scenario == TurretAcquisitionRegressionScenario::EnemyOutsideRadius
                           ? data.turrets.detection_radius + 1.f
                           : 1000.f)};
-        data.turret_spawns.locations.set(i, HMM_V3(distance, 0.f, 0.f));
-        data.turret_spawns.teams[i] = friendly ? ioj::sim::Team::Blue : ioj::sim::Team::Red;
-        data.turret_spawns.healths[i] = data.turrets.max_health;
-        data.turret_spawns.laser_damages[i] = 0;
-        data.turret_transforms[i].location = {distance, 0.0, 0.0};
+        ioj::sim::tests::add_turret_spawn(data,
+                                          HMM_V3(distance, 0.f, 0.f),
+                                          {},
+                                          friendly ? ioj::sim::Team::Blue : ioj::sim::Team::Red,
+                                          data.turrets.max_health,
+                                          0);
     }
     ioj::sim::tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();

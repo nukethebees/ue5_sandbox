@@ -15,6 +15,7 @@ class LevelEventManager {
   public:
     LevelEventManager(capital_ships::Sim& capital_ships,
                       turrets::Sim& turrets,
+                      spinners::Sim& spinners,
                       MissionManager& mission_manager) noexcept;
     LevelEventManager(LevelEventManager const&) = delete;
     LevelEventManager(LevelEventManager&&) = delete;

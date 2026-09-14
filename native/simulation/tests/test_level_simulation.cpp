@@ -21,12 +21,8 @@ auto make_battle() -> LevelSimInitData {
     data.cell_size = {{1000.f, 1000.f, 1000.f}};
     data.lasers.n_preallocated_instances = 16;
     data.capital_ships.fighter_spawn_slots = 0;
-    data.capital_spawns.add_defaulted(2);
-    data.capital_spawns.teams = {ioj::sim::Team::Green, ioj::sim::Team::White};
-    data.capital_spawns.healths = {100, 100};
-    data.capital_spawns.initial_spawn_delays = {60.f, 60.f};
-    data.capital_spawns.spawn_cooldowns = {60.f, 60.f};
-    data.capital_spawns.locations.xs = {-1000.f, 1000.f};
+    add_capital_spawn(data, {{-1000.f, 0.f, 0.f}}, ioj::sim::Team::Green, -1, 60.f, 60.f, 100);
+    add_capital_spawn(data, {{1000.f, 0.f, 0.f}}, ioj::sim::Team::White, -1, 60.f, 60.f, 100);
     auto const count{ioj::sim::collision::EntityAABBs::num()};
     for (std::int32_t index{}; index < count; ++index) {
         data.entity_bounds.half_extent_xs[index] = 10.f;
@@ -39,8 +35,8 @@ auto make_battle() -> LevelSimInitData {
 auto make_overlap_response_battle() -> LevelSimInitData {
     auto data{make_battle()};
     data.overlap_response.damage_per_overlap_detection = 50;
-    data.capital_spawns.healths = {5000, 5000};
-    data.player.emplace();
+    data.level_events.initial_spawns.capital_spawns.healths = {5000, 5000};
+    add_player_spawn(data, {});
     data.player->transform.location = {-1000.0, 0.0, 0.0};
     data.player->config.lateral_adjustment_speed = 1.f;
     data.player->health = {150, 150};
@@ -50,14 +46,14 @@ auto make_overlap_response_battle() -> LevelSimInitData {
     return data;
 }
 
-void prepare_mission(LevelSim& simulation) {
-    auto& mission{simulation.get_mission_manager()};
-    mission.set_mission_mode(ioj::sim::MissionMode::KillEnemies);
-    mission.set_kill_target(1);
-    mission.set_save_mission_results(false);
-    mission.add_hero_entity(simulation.get_capital_ships().get_handle(0));
-    mission.add_entity_required_to_kill(simulation.get_capital_ships().get_handle(1));
-    simulation.finish_initialisation();
+void add_mission(LevelSimInitData& data) {
+    auto& mission{data.level_events.initialisation.mission.emplace()};
+    auto const& entities{data.level_events.initial_spawns.capital_spawns.entity_indices};
+    mission.mode = ioj::sim::levels::LevelMissionMode::KillEnemies;
+    mission.kill_count = 1;
+    mission.save_results = false;
+    mission.hero_entity_indices = {entities[0]};
+    mission.required_kill_entity_indices = {entities[1]};
 }
 
 void kill_enemy(LevelSim& simulation) {
@@ -128,8 +124,9 @@ TEST(NativeSimulation, LevelTelemetryMissionCompletionTest) {
         .map_name = "TelemetryMissionTest",
         .launched_utc = "2026-09-06T12:00:00Z",
     };
+    add_mission(data);
     LevelSim simulation{std::move(data)};
-    prepare_mission(simulation);
+    simulation.finish_initialisation();
     simulation.start();
 
     auto const dt{simulation.get_clock().get_tick_period()};
@@ -168,8 +165,9 @@ TEST(NativeSimulation, LevelTelemetryMissionCompletionTest) {
 TEST(NativeSimulation, LaserFrameOutputsTest) {
     auto data{make_battle()};
     data.clock_settings.tick_rate = 10.0;
+    add_mission(data);
     LevelSim simulation{std::move(data)};
-    prepare_mission(simulation);
+    simulation.finish_initialisation();
     auto queue_shot = [](LevelSim& level) {
         ioj::sim::lasers::SpawnRequests requests;
         requests.add_uninitialised(1);
@@ -242,85 +240,58 @@ TEST(NativeSimulation, LevelSimInitialQueriesTest) {
     return;
 }
 
-TEST(NativeSimulation, LevelSimAuthoredInitialisationTest) {
-    for (auto const with_mission : {false, true}) {
-        auto data{make_battle()};
-        if (with_mission) {
-            data.level_events.initialisation.mission.emplace();
-        } else {
-            data.level_events.initialisation.entity_count = 1;
+TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
+    auto data{make_battle()};
+    auto const player_index{add_player_spawn(data, {})};
+    auto& capitals_events{data.level_events.initial_spawns.capital_spawns};
+    capitals_events.target_entity_indices = {capitals_events.entity_indices[1], player_index};
+    add_turret_spawn(data, {{0.f, -1000.f, 0.f}}, {0.f, 90.f, 0.f}, ioj::sim::Team::Green, 20, 5);
+    add_turret_spawn(data, {{0.f, 1000.f, 0.f}}, {}, ioj::sim::Team::White, 30, 7);
+    LevelSim simulation{std::move(data)};
+    simulation.finish_initialisation();
+    auto const& capitals{simulation.get_capital_ships()};
+    ioj::sim::tests::expect_true(capitals.get_target_handle(0) == capitals.get_handle(1),
+                                 "Compiled capital target index maps to its registered handle");
+    auto const* player{simulation.get_player_ship_simulation()};
+    ioj::sim::tests::expect_true(capitals.get_target_handle(1) == player->registry_handle,
+                                 "Compiled player entity index maps to the player handle");
+    ioj::sim::tests::expect_equal(simulation.get_entity_registry().get_num_alive_active_entities(),
+                                  5,
+                                  "Every compiled initial entity is registered");
+    auto const& entities{simulation.get_entity_registry().get_entity_data()};
+    auto const entity_count{entities.num()};
+    std::int32_t turret_count{};
+    for (std::int32_t i{}; i < entity_count; ++i) {
+        if (entities.entity_types[i] == ioj::sim::EntityType::Turret) {
+            auto const rotated{entities.teams[i] == ioj::sim::Team::Green};
+            ioj::sim::tests::expect_equal(
+                entities.healths[i], rotated ? 20 : 30, "Compiled turret health is retained");
+            ioj::sim::tests::expect_equal(entities.rotations.yaws[i],
+                                          rotated ? 90.f : 0.f,
+                                          "Compiled turret rotation is retained");
+            ++turret_count;
         }
-        LevelSim simulation{std::move(data)};
-        simulation.finish_initialisation();
-        ioj::sim::tests::expect_equal(
-            simulation.get_capital_ships().get_num_instances(),
-            0,
-            "Authored mission or entity count prevents legacy capital spawns");
     }
-    return;
-}
-
-TEST(NativeSimulation, LevelSimLegacyInitialisationTest) {
-    for (auto const with_player : {false, true}) {
-        auto data{make_battle()};
-        if (with_player) {
-            data.player.emplace();
-        }
-        data.capital_target_spawn_indices = {1, LevelSimInitData::player_target_spawn_index};
-        data.turret_spawns.add_defaulted(2);
-        data.turret_spawns.teams = {ioj::sim::Team::Green, ioj::sim::Team::White};
-        data.turret_spawns.healths = {20, 30};
-        data.turret_spawns.laser_damages = {5, 7};
-        data.turret_spawns.locations.ys = {-1000.f, 1000.f};
-        data.turret_transforms.push_back(ioj::sim::Transform3d{
-            .rotation = ioj::sim::to_quaternion(ioj::sim::Rotator3d{0.0, 90.0, 0.0})});
-        LevelSim simulation{std::move(data)};
-        simulation.finish_initialisation();
-        auto const& capitals{simulation.get_capital_ships()};
-        ioj::sim::tests::expect_true(capitals.get_target_handle(0) == capitals.get_handle(1),
-                                     "Capital spawn indices map to registered handles");
-        auto const* player{simulation.get_player_ship_simulation()};
-        ioj::sim::tests::expect_true(
-            capitals.get_target_handle(1) ==
-                (player ? player->registry_handle : RegistryEntityHandle{}),
-            "Player target sentinel respects optional player offset");
-        ioj::sim::tests::expect_equal(
-            simulation.get_entity_registry().get_num_alive_active_entities(),
-            with_player ? 5 : 4,
-            "All legacy entities are registered");
-        auto const& entities{simulation.get_entity_registry().get_entity_data()};
-        auto const entity_count{entities.num()};
-        std::int32_t turret_count{};
-        for (std::int32_t i{}; i < entity_count; ++i) {
-            if (entities.entity_types[i] == ioj::sim::EntityType::Turret) {
-                auto const explicit_rotation{entities.teams[i] == ioj::sim::Team::Green};
-                ioj::sim::tests::expect_equal(entities.healths[i],
-                                              explicit_rotation ? 20 : 30,
-                                              "Legacy turret health survives conversion");
-                ioj::sim::tests::expect_equal(
-                    entities.rotations.yaws[i],
-                    explicit_rotation ? 90.f : 0.f,
-                    "Turret rotation uses the transform or defaults to zero");
-                ++turret_count;
-            }
-        }
-        ioj::sim::tests::expect_equal(turret_count, 2, "Both legacy turrets are registered");
-    }
+    ioj::sim::tests::expect_equal(turret_count, 2, "Both compiled turrets are registered");
     return;
 }
 
 TEST(NativeSimulation, LevelSimReconstructionTest) {
     std::optional<LevelSim> simulation;
     ioj::sim::tests::expect_false(simulation.has_value(), "Construction can be delayed");
-    simulation.emplace(make_battle());
-    prepare_mission(*simulation);
+    auto first_data{make_battle()};
+    add_mission(first_data);
+    simulation.emplace(std::move(first_data));
+    simulation->finish_initialisation();
     simulation->start();
     simulation->advance(simulation->get_clock().get_tick_period());
     kill_enemy(*simulation);
     simulation->advance(simulation->get_clock().get_tick_period());
     simulation.reset();
-    simulation.emplace(make_battle());
-    prepare_mission(*simulation);
+    auto second_data{make_battle()};
+    add_mission(second_data);
+    simulation.emplace(std::move(second_data));
+    simulation->finish_initialisation();
     ioj::sim::tests::expect_equal(simulation->get_clock().get_completed_ticks(),
                                   std::uint64_t{0},
                                   "Fresh clock starts at zero");
@@ -337,7 +308,7 @@ TEST(NativeSimulation, LevelSimReconstructionTest) {
 
 TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
     auto data{make_battle()};
-    data.player.emplace();
+    add_player_spawn(data, {});
     data.player->flight_mode = ioj::sim::SpaceShipFlightMode::PlanarVelocity;
 
     LevelSim simulation{std::move(data)};
@@ -434,8 +405,12 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
 }
 
 TEST(NativeSimulation, WorldlessLevelSimulationTest) {
-    LevelSim first{make_battle()};
-    LevelSim second{make_battle()};
+    auto first_data{make_battle()};
+    auto second_data{make_battle()};
+    add_mission(first_data);
+    add_mission(second_data);
+    LevelSim first{std::move(first_data)};
+    LevelSim second{std::move(second_data)};
     ioj::sim::tests::expect_equal(first.get_state(),
                                   OrchestratorState::Uninitialised,
                                   "Construction leaves external setup open");
@@ -443,8 +418,8 @@ TEST(NativeSimulation, WorldlessLevelSimulationTest) {
     ioj::sim::tests::expect_equal(first.get_clock().get_completed_ticks(),
                                   std::uint64_t{0},
                                   "Uninitialised simulation ignores elapsed time");
-    prepare_mission(first);
-    prepare_mission(second);
+    first.finish_initialisation();
+    second.finish_initialisation();
     ioj::sim::tests::expect_equal(first.get_state(),
                                   OrchestratorState::Paused,
                                   "Finishing initialization pauses the simulation");

@@ -15,16 +15,18 @@ void run_worldless_player_ship_vs_capital(ioj::sim::tests::SimulationFixture con
     data.fighters.health = player_vs_capital_test::collision_resilient_health;
     data.fighters.laser.projectile_speed = 20000.f;
     data.fighters.laser.max_distance = 1.f;
-    data.player.emplace(ioj::sim::tests::make_player_spawn(
-        config,
-        ioj::sim::Transform3d{.rotation =
-                                  ioj::sim::to_quaternion(ioj::sim::Rotator3d{0.f, -90.f, 0.f}),
-                              .location = ml::Vector3d{19850.f, 1300.f, 980.f}}));
+    auto const player_index{ioj::sim::tests::add_player_spawn(
+        data,
+        ioj::sim::tests::make_player_spawn(
+            config,
+            ioj::sim::Transform3d{.rotation =
+                                      ioj::sim::to_quaternion(ioj::sim::Rotator3d{0.f, -90.f, 0.f}),
+                                  .location = ml::Vector3d{19850.f, 1300.f, 980.f}}))};
     data.player->health.health = player_vs_capital_test::collision_resilient_health;
     ioj::sim::tests::add_capital_spawn(data,
                                        ioj::sim::Vector3f{{-22020.f, 2170.f, 4360.f}},
                                        ioj::sim::Team::Green,
-                                       LevelSimInitData::player_target_spawn_index,
+                                       player_index,
                                        0.f,
                                        120.f);
 

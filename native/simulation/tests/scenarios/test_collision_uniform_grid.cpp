@@ -268,25 +268,20 @@ auto count_handle(std::span<RegistryEntityHandle const> const handles,
 void run_worldless_collision_uniform_grid_membership(
     ioj::sim::tests::SimulationFixture const& config) {
     auto data{ioj::sim::tests::make_simulation_data(config)};
-    data.player = ioj::sim::tests::make_player_spawn(
-        config,
-        ioj::sim::Transform3d{.rotation = ml::Quaternion4d{},
-                              .location = ml::Vector3d{-1500.f, -1500.f, 0.f}});
+    auto const player_index{ioj::sim::tests::add_player_spawn(
+        data,
+        ioj::sim::tests::make_player_spawn(
+            config,
+            ioj::sim::Transform3d{.rotation = ml::Quaternion4d{},
+                                  .location = ml::Vector3d{-1500.f, -1500.f, 0.f}}))};
     ioj::sim::tests::add_capital_spawn(data,
                                        ioj::sim::Vector3f{{-500.f, -500.f, 0.f}},
                                        ioj::sim::Team::Blue,
-                                       LevelSimInitData::player_target_spawn_index,
+                                       player_index,
                                        0.f,
                                        data.capital_ships.spawn_delay);
-    data.turret_spawns.add_defaulted(1);
-    data.turret_spawns.locations.set(0, HMM_V3(500.f, 500.f, 0.f));
-    data.turret_spawns.teams[0] = ioj::sim::Team::Blue;
-    data.turret_spawns.healths[0] = data.turrets.max_health;
-    data.turret_spawns.laser_damages[0] = data.turrets.laser.damage;
-    data.turret_transforms.push_back({.location = {500., 500., 0.}});
-    data.spinner_locations.add(HMM_V3(1500.f, 1500.f, 0.f));
-    data.spinner_yaws.push_back(0.f);
-    data.spinner_fire_points.push_back(0);
+    ioj::sim::tests::add_turret_spawn(data, HMM_V3(500.f, 500.f, 0.f), {}, ioj::sim::Team::Blue);
+    ioj::sim::tests::add_spinner_spawn(data, HMM_V3(1500.f, 1500.f, 0.f), 0.f, 0);
 
     ioj::sim::tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();

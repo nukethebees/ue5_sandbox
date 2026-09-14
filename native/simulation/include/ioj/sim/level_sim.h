@@ -35,8 +35,6 @@
 namespace ioj::sim {
 
 struct LevelSimInitData {
-    static constexpr std::int32_t player_target_spawn_index{-2};
-
     ioj::sim::FixedTickLoop clock_settings{};
 
     LaserSimConfig lasers;
@@ -49,15 +47,7 @@ struct LevelSimInitData {
     ioj::sim::TeamList participating_teams;
 
     std::optional<ioj::sim::player::PlayerSpawnData> player;
-    ioj::sim::capital_ships::SpawnData capital_spawns;
-    std::vector<std::int32_t> capital_target_spawn_indices;
-    ioj::sim::turrets::SpawnData turret_spawns;
     ioj::sim::CompiledLevelEvents level_events;
-
-    ioj::sim::Vectors3f spinner_locations;
-    std::vector<float> spinner_yaws;
-    std::vector<std::int32_t> spinner_fire_points;
-    std::vector<ioj::sim::Transform3d> turret_transforms;
 
     ioj::sim::collision::EntityAABBs entity_bounds{};
     ioj::sim::collision::WorldAABBs static_bounds{};
@@ -87,7 +77,7 @@ struct LevelSim {
     auto operator=(LevelSim const&) -> LevelSim& = delete;
     auto operator=(LevelSim&&) -> LevelSim& = delete;
 
-    // Call after initial targets, external mission setup, and static collision are installed.
+    // Call after static collision is installed.
     // Synchronizes the initial world and telemetry before transitioning to Paused.
     void finish_initialisation();
     // Requires Paused. Start/pause reset realtime sampling, preserving simulation accumulation.
@@ -168,8 +158,8 @@ struct LevelSim {
     void configure_subsystems(LevelSimInitData const& data);
     void configure_player(ioj::sim::player::PlayerSpawnData const& spawn);
     void initialise_spatial_queries(LevelSimInitData& data);
-    void begin_subsystems(LevelSimInitData const& data);
-    void initialise_events(LevelSimInitData& data);
+    void begin_subsystems();
+    void initialise_events(CompiledLevelEvents events);
 
     /* **************************************** */
     // Telemetry

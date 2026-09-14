@@ -1252,6 +1252,351 @@ struct LevelTurretSpawnEvents {
     }
 };
 
+struct LevelSpinnerSpawnEventsView;
+struct LevelSpinnerSpawnEventsConstView;
+struct LevelSpinnerSpawnEventsConstView {
+    using View = LevelSpinnerSpawnEventsView;
+    using ConstView = LevelSpinnerSpawnEventsConstView;
+    using size_type = std::int32_t;
+    std::span<std::int32_t const> entity_indices;
+    Vectors3fConstView locations;
+    std::span<float const> yaws;
+    std::span<std::int32_t const> initial_fire_point_indices;
+    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_indices.size()); }
+    auto is_empty() const noexcept -> bool { return num() == 0; }
+    template <typename Fn>
+    void each_column(Fn&& fn) const {
+        fn(entity_indices);
+        fn(locations.xs);
+        fn(locations.ys);
+        fn(locations.zs);
+        fn(yaws);
+        fn(initial_fire_point_indices);
+    }
+    void validate_array_sizes() const {
+        auto const count{num()};
+        each_column([count](auto column) {
+            ml::native_soa::require(column.size() == static_cast<std::size_t>(count));
+        });
+    }
+    auto slice(size_type const offset, size_type const count) const
+        -> LevelSpinnerSpawnEventsConstView {
+        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
+                                count <= num() - offset);
+        return {
+            entity_indices.subspan(static_cast<std::size_t>(offset),
+                                   static_cast<std::size_t>(count)),
+            locations.slice(offset, count),
+            yaws.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
+            initial_fire_point_indices.subspan(static_cast<std::size_t>(offset),
+                                               static_cast<std::size_t>(count)),
+        };
+    }
+    auto get_view() const -> LevelSpinnerSpawnEventsConstView { return *this; }
+    auto get_view(size_type const offset, size_type const count) const
+        -> LevelSpinnerSpawnEventsConstView {
+        return slice(offset, count);
+    }
+    auto get_const_view() const -> ConstView {
+        return {
+            entity_indices,
+            locations.get_const_view(),
+            yaws,
+            initial_fire_point_indices,
+        };
+    }
+    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
+        return get_const_view().slice(offset, count);
+    }
+    auto left(size_type const count) const -> LevelSpinnerSpawnEventsConstView {
+        return slice(0, count);
+    }
+    auto right(size_type const count) const -> LevelSpinnerSpawnEventsConstView {
+        return slice(num() - count, count);
+    }
+};
+struct LevelSpinnerSpawnEventsView {
+    using View = LevelSpinnerSpawnEventsView;
+    using ConstView = LevelSpinnerSpawnEventsConstView;
+    using size_type = std::int32_t;
+    std::span<std::int32_t> entity_indices;
+    Vectors3fView locations;
+    std::span<float> yaws;
+    std::span<std::int32_t> initial_fire_point_indices;
+    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_indices.size()); }
+    auto is_empty() const noexcept -> bool { return num() == 0; }
+    template <typename Fn>
+    void each_column(Fn&& fn) const {
+        fn(entity_indices);
+        fn(locations.xs);
+        fn(locations.ys);
+        fn(locations.zs);
+        fn(yaws);
+        fn(initial_fire_point_indices);
+    }
+    void validate_array_sizes() const {
+        auto const count{num()};
+        each_column([count](auto column) {
+            ml::native_soa::require(column.size() == static_cast<std::size_t>(count));
+        });
+    }
+    auto slice(size_type const offset, size_type const count) const -> LevelSpinnerSpawnEventsView {
+        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
+                                count <= num() - offset);
+        return {
+            entity_indices.subspan(static_cast<std::size_t>(offset),
+                                   static_cast<std::size_t>(count)),
+            locations.slice(offset, count),
+            yaws.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
+            initial_fire_point_indices.subspan(static_cast<std::size_t>(offset),
+                                               static_cast<std::size_t>(count)),
+        };
+    }
+    auto get_view() const -> LevelSpinnerSpawnEventsView { return *this; }
+    auto get_view(size_type const offset, size_type const count) const
+        -> LevelSpinnerSpawnEventsView {
+        return slice(offset, count);
+    }
+    auto get_const_view() const -> ConstView {
+        return {
+            entity_indices,
+            locations.get_const_view(),
+            yaws,
+            initial_fire_point_indices,
+        };
+    }
+    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
+        return get_const_view().slice(offset, count);
+    }
+    auto left(size_type const count) const -> LevelSpinnerSpawnEventsView {
+        return slice(0, count);
+    }
+    auto right(size_type const count) const -> LevelSpinnerSpawnEventsView {
+        return slice(num() - count, count);
+    }
+};
+struct LevelSpinnerSpawnEvents {
+    using View = LevelSpinnerSpawnEventsView;
+    using ConstView = LevelSpinnerSpawnEventsConstView;
+    using size_type = std::int32_t;
+    ml::native_soa::Vector<std::int32_t> entity_indices;
+    Vectors3f locations;
+    ml::native_soa::Vector<float> yaws;
+    ml::native_soa::Vector<std::int32_t> initial_fire_point_indices;
+    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_indices.size()); }
+    auto is_empty() const noexcept -> bool { return num() == 0; }
+    template <typename Fn>
+    void each_column(Fn&& fn) {
+        fn(entity_indices);
+        fn(locations.xs);
+        fn(locations.ys);
+        fn(locations.zs);
+        fn(yaws);
+        fn(initial_fire_point_indices);
+    }
+    template <typename Fn>
+    void each_column(Fn&& fn) const {
+        fn(entity_indices);
+        fn(locations.xs);
+        fn(locations.ys);
+        fn(locations.zs);
+        fn(yaws);
+        fn(initial_fire_point_indices);
+    }
+    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
+    void reserve(size_type const count) {
+        ml::native_soa::require(count >= 0);
+        entity_indices.reserve(static_cast<std::size_t>(count));
+        locations.xs.reserve(static_cast<std::size_t>(count));
+        locations.ys.reserve(static_cast<std::size_t>(count));
+        locations.zs.reserve(static_cast<std::size_t>(count));
+        yaws.reserve(static_cast<std::size_t>(count));
+        initial_fire_point_indices.reserve(static_cast<std::size_t>(count));
+    }
+    void reset() noexcept {
+        entity_indices.clear();
+        locations.xs.clear();
+        locations.ys.clear();
+        locations.zs.clear();
+        yaws.clear();
+        initial_fire_point_indices.clear();
+    }
+    void set_num(size_type const count) {
+        ml::native_soa::require(count >= 0);
+        auto const size{static_cast<std::size_t>(count)};
+        entity_indices.resize(size);
+        locations.xs.resize(size);
+        locations.ys.resize(size);
+        locations.zs.resize(size);
+        yaws.resize(size);
+        initial_fire_point_indices.resize(size);
+    }
+    void add_uninitialised(size_type const count) {
+        auto const old_num{num()};
+        ml::native_soa::require(count >= 0 &&
+                                count <= std::numeric_limits<size_type>::max() - old_num);
+        set_num(old_num + count);
+    }
+    void add_defaulted(size_type const count) { add_uninitialised(count); }
+    void remove_at_swap(size_type const index, size_type const count) {
+        auto const old_num{num()};
+        ml::native_soa::require(index >= 0 && index <= old_num && count >= 0 &&
+                                count <= old_num - index);
+        auto const moved{std::min(count, old_num - index - count)};
+        auto const source{old_num - moved};
+        for (size_type i{}; i < moved; ++i) {
+            entity_indices[index + i] = entity_indices[source + i];
+        }
+        for (size_type i{}; i < moved; ++i) {
+            locations.xs[index + i] = locations.xs[source + i];
+        }
+        for (size_type i{}; i < moved; ++i) {
+            locations.ys[index + i] = locations.ys[source + i];
+        }
+        for (size_type i{}; i < moved; ++i) {
+            locations.zs[index + i] = locations.zs[source + i];
+        }
+        for (size_type i{}; i < moved; ++i) {
+            yaws[index + i] = yaws[source + i];
+        }
+        for (size_type i{}; i < moved; ++i) {
+            initial_fire_point_indices[index + i] = initial_fire_point_indices[source + i];
+        }
+        set_num(old_num - count);
+    }
+    void append_from(ConstView source) {
+        auto const count{source.num()};
+        ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
+        source.validate_array_sizes();
+        if (count == 0) {
+            return;
+        }
+        {
+            auto const address{reinterpret_cast<std::uintptr_t>(source.entity_indices.data())};
+            auto const begin{reinterpret_cast<std::uintptr_t>(entity_indices.data())};
+            ml::native_soa::require(address < begin || address >= begin + entity_indices.size() *
+                                                                              sizeof(std::int32_t));
+        }
+        {
+            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.xs.data())};
+            auto const begin{reinterpret_cast<std::uintptr_t>(locations.xs.data())};
+            ml::native_soa::require(address < begin ||
+                                    address >= begin + locations.xs.size() * sizeof(float));
+        }
+        {
+            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.ys.data())};
+            auto const begin{reinterpret_cast<std::uintptr_t>(locations.ys.data())};
+            ml::native_soa::require(address < begin ||
+                                    address >= begin + locations.ys.size() * sizeof(float));
+        }
+        {
+            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.zs.data())};
+            auto const begin{reinterpret_cast<std::uintptr_t>(locations.zs.data())};
+            ml::native_soa::require(address < begin ||
+                                    address >= begin + locations.zs.size() * sizeof(float));
+        }
+        {
+            auto const address{reinterpret_cast<std::uintptr_t>(source.yaws.data())};
+            auto const begin{reinterpret_cast<std::uintptr_t>(yaws.data())};
+            ml::native_soa::require(address < begin ||
+                                    address >= begin + yaws.size() * sizeof(float));
+        }
+        {
+            auto const address{
+                reinterpret_cast<std::uintptr_t>(source.initial_fire_point_indices.data())};
+            auto const begin{reinterpret_cast<std::uintptr_t>(initial_fire_point_indices.data())};
+            ml::native_soa::require(address < begin ||
+                                    address >= begin + initial_fire_point_indices.size() *
+                                                           sizeof(std::int32_t));
+        }
+        entity_indices.insert(
+            entity_indices.end(), source.entity_indices.begin(), source.entity_indices.end());
+        locations.xs.insert(
+            locations.xs.end(), source.locations.xs.begin(), source.locations.xs.end());
+        locations.ys.insert(
+            locations.ys.end(), source.locations.ys.begin(), source.locations.ys.end());
+        locations.zs.insert(
+            locations.zs.end(), source.locations.zs.begin(), source.locations.zs.end());
+        yaws.insert(yaws.end(), source.yaws.begin(), source.yaws.end());
+        initial_fire_point_indices.insert(initial_fire_point_indices.end(),
+                                          source.initial_fire_point_indices.begin(),
+                                          source.initial_fire_point_indices.end());
+    }
+    auto get_view() -> View {
+        return {
+            entity_indices,
+            locations.get_view(),
+            yaws,
+            initial_fire_point_indices,
+        };
+    }
+    auto get_view() const -> ConstView {
+        return {
+            entity_indices,
+            locations.get_view(),
+            yaws,
+            initial_fire_point_indices,
+        };
+    }
+    auto get_const_view() const -> ConstView { return get_view(); }
+    auto get_view(size_type const offset, size_type const count) -> View {
+        return get_view().slice(offset, count);
+    }
+    auto get_view(size_type const offset, size_type const count) const -> ConstView {
+        return get_view().slice(offset, count);
+    }
+    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
+        return get_const_view().slice(offset, count);
+    }
+    auto slice(size_type const offset, size_type const count) -> View {
+        return get_view(offset, count);
+    }
+    auto slice(size_type const offset, size_type const count) const -> ConstView {
+        return get_const_view(offset, count);
+    }
+    auto left(size_type const count) -> View { return slice(0, count); }
+    auto right(size_type const count) -> View { return slice(num() - count, count); }
+    auto left(size_type const count) const -> ConstView { return slice(0, count); }
+    auto right(size_type const count) const -> ConstView { return slice(num() - count, count); }
+    template <typename Other>
+    void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
+        entity_indices[static_cast<std::size_t>(dst_index)] =
+            other.entity_indices[static_cast<std::size_t>(src_index)];
+        locations.copy_element(dst_index, other.locations, src_index);
+        yaws[static_cast<std::size_t>(dst_index)] = other.yaws[static_cast<std::size_t>(src_index)];
+        initial_fire_point_indices[static_cast<std::size_t>(dst_index)] =
+            other.initial_fire_point_indices[static_cast<std::size_t>(src_index)];
+    }
+    template <typename Other>
+    void copy_elements(size_type const dst_index,
+                       Other const& other,
+                       size_type const src_index,
+                       size_type const count) {
+        for (size_type i{}; i < count; ++i) {
+            copy_element(dst_index + i, other, src_index + i);
+        }
+    }
+    void apply_permutation(std::span<std::int32_t> const indices) {
+        validate_array_sizes();
+        ml::native_soa::require(indices.size() == static_cast<std::size_t>(num()));
+        each_column([indices](auto& column) { ml::apply_permutation(std::span{column}, indices); });
+    }
+    template <typename Compare>
+    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
+        validate_array_sizes();
+        ml::native_soa::require(scratch_indices.size() == static_cast<std::size_t>(num()));
+        for (size_type i{}; i < num(); ++i) {
+            scratch_indices[static_cast<std::size_t>(i)] = i;
+        }
+        std::sort(scratch_indices.begin(),
+                  scratch_indices.end(),
+                  [this, &compare](size_type const lhs, size_type const rhs) {
+                      return compare(*this, lhs, rhs);
+                  });
+        apply_permutation(scratch_indices);
+    }
+};
+
 struct LevelMissionEventGroupsView;
 struct LevelMissionEventGroupsConstView;
 struct LevelMissionEventGroupsConstView {

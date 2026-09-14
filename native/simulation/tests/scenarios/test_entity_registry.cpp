@@ -15,24 +15,21 @@ void run_worldless_entity_registry_scenario(ioj::sim::tests::SimulationFixture c
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     if (scenario != EntityRegistryScenario::TeamCounts) {
-        data.player.emplace(ioj::sim::tests::make_player_spawn(config));
+        ioj::sim::tests::add_player_spawn(data, ioj::sim::tests::make_player_spawn(config));
     }
     std::int32_t actor_index{};
     for (std::int32_t team_index{};
          team_index < static_cast<std::int32_t>(expected_team_counts.size());
          ++team_index) {
         for (std::int32_t i{}; i < expected_team_counts[team_index]; ++i) {
-            auto const index{data.capital_spawns.num()};
-            data.capital_spawns.add_defaulted(1);
-            data.capital_spawns.locations.set(index,
-                                              HMM_V3(static_cast<float>(actor_index * 5000),
-                                                     static_cast<float>(team_index * 5000),
-                                                     4360.f));
-            data.capital_spawns.teams[index] =
-                static_cast<ioj::sim::Team>(static_cast<ioj::sim::Team>(team_index));
-            data.capital_spawns.healths[index] = data.capital_ships.max_health;
-            data.capital_spawns.initial_spawn_delays[index] = 5.f;
-            data.capital_spawns.spawn_cooldowns[index] = 60.f;
+            ioj::sim::tests::add_capital_spawn(data,
+                                               HMM_V3(static_cast<float>(actor_index * 5000),
+                                                      static_cast<float>(team_index * 5000),
+                                                      4360.f),
+                                               static_cast<ioj::sim::Team>(team_index),
+                                               -1,
+                                               5.f,
+                                               60.f);
             ++actor_index;
         }
     }

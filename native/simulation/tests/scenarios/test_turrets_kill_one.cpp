@@ -14,17 +14,11 @@ void add_worldless_turrets(LevelSimInitData& data,
                            std::int32_t const blue_health = -1) {
     assert(static_cast<std::int32_t>(locations.size()) == static_cast<std::int32_t>(teams.size()));
     auto const count{static_cast<std::int32_t>(locations.size())};
-    data.turret_spawns.add_defaulted(count);
-    data.turret_transforms.resize(static_cast<std::size_t>(count));
     for (std::int32_t i{}; i < count; ++i) {
         auto const health{blue_health != -1 && teams[i] == ioj::sim::Team::Blue
                               ? blue_health
                               : data.turrets.max_health};
-        data.turret_spawns.locations.set(i, locations[i]);
-        data.turret_spawns.teams[i] = static_cast<ioj::sim::Team>(teams[i]);
-        data.turret_spawns.healths[i] = health;
-        data.turret_spawns.laser_damages[i] = laser_damage;
-        data.turret_transforms[i].location = {locations[i].X, locations[i].Y, locations[i].Z};
+        ioj::sim::tests::add_turret_spawn(data, locations[i], {}, teams[i], health, laser_damage);
     }
 }
 }

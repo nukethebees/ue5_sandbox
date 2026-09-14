@@ -7,15 +7,11 @@
 namespace ioj::sim {
 void run_worldless_fighter_los_failure(ioj::sim::tests::SimulationFixture const& config) {
     auto data{ioj::sim::tests::make_simulation_data(config)};
-    data.capital_spawns.add_defaulted(2);
-    data.capital_spawns.locations.xs = {-39600.f, 50180.f};
-    data.capital_spawns.locations.ys = {2170.f, 2170.f};
-    data.capital_spawns.locations.zs = {4360.f, 4360.f};
-    data.capital_spawns.teams = {ioj::sim::Team::Blue, ioj::sim::Team::Red};
-    data.capital_spawns.healths = {data.capital_ships.max_health, data.capital_ships.max_health};
-    data.capital_spawns.initial_spawn_delays = {0.f, 10000.f};
-    data.capital_spawns.spawn_cooldowns = {1000.f, 10000.f};
-    data.capital_target_spawn_indices = {1, 0};
+    auto const blue{ioj::sim::tests::add_capital_spawn(
+        data, {{-39600.f, 2170.f, 4360.f}}, ioj::sim::Team::Blue, -1, 0.f, 1000.f)};
+    auto const red{ioj::sim::tests::add_capital_spawn(
+        data, {{50180.f, 2170.f, 4360.f}}, ioj::sim::Team::Red, blue, 10000.f, 10000.f)};
+    data.level_events.initial_spawns.capital_spawns.target_entity_indices[0] = red;
 
     ioj::sim::tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();

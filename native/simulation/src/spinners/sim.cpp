@@ -74,9 +74,10 @@ auto Sim::get_num_instances() const noexcept -> std::int32_t {
 /* **************************************** */
 // Spawning
 /* **************************************** */
-void Sim::spawn_instances(ioj::sim::Vectors3fConstView const new_locations,
+auto Sim::spawn_instances(ioj::sim::Vectors3fConstView const new_locations,
                           std::span<float const> const new_yaws,
-                          std::span<std::int32_t const> const new_fire_point_indices) {
+                          std::span<std::int32_t const> const new_fire_point_indices)
+    -> std::span<RegistryEntityHandle const> {
     SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::spawn_instances");
 
     auto const n{new_locations.num()};
@@ -116,6 +117,7 @@ void Sim::spawn_instances(ioj::sim::Vectors3fConstView const new_locations,
     }
 
     validate_array_sizes();
+    return appended.handles;
 }
 
 /* **************************************** */
