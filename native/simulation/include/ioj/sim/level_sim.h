@@ -127,9 +127,7 @@ struct LevelSim {
     }
     auto get_fighters() -> ioj::sim::fighters::Sim& { return fighters_simulation_; }
     auto get_fighters() const -> ioj::sim::fighters::Sim const& { return fighters_simulation_; }
-    auto get_turrets() -> ioj::sim::turrets::Sim& { return turrets_simulation_; }
     auto get_turrets() const -> ioj::sim::turrets::Sim const& { return turrets_simulation_; }
-    auto get_spinners() -> ioj::sim::spinners::Sim& { return spinners_simulation_; }
     auto get_spinners() const -> ioj::sim::spinners::Sim const& { return spinners_simulation_; }
     auto get_entity_registry() -> EntityRegistry& { return entity_registry_; }
     auto get_entity_registry() const -> EntityRegistry const& { return entity_registry_; }

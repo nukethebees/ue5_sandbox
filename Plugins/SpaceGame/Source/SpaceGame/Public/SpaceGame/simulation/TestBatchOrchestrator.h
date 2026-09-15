@@ -131,14 +131,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto get_fighters() const noexcept -> ::ioj::sim::fighters::Sim const* {
         return level_simulation_.IsSet() ? &level_simulation_->get_fighters() : nullptr;
     }
-    auto get_turrets() noexcept -> ::ioj::sim::turrets::Sim* {
-        return level_simulation_.IsSet() ? &level_simulation_->get_turrets() : nullptr;
-    }
     auto get_turrets() const noexcept -> ::ioj::sim::turrets::Sim const* {
         return level_simulation_.IsSet() ? &level_simulation_->get_turrets() : nullptr;
-    }
-    auto get_spinners() noexcept -> ::ioj::sim::spinners::Sim* {
-        return level_simulation_.IsSet() ? &level_simulation_->get_spinners() : nullptr;
     }
     auto get_spinners() const noexcept -> ::ioj::sim::spinners::Sim const* {
         return level_simulation_.IsSet() ? &level_simulation_->get_spinners() : nullptr;
