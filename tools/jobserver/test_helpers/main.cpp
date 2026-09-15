@@ -69,6 +69,33 @@ auto wmain(int argc, wchar_t** argv) -> int {
         std::this_thread::sleep_for(std::chrono::seconds{60});
         return 0;
     }
+    if (mode == L"ready-tree" && argc == 4) {
+        STARTUPINFOW startup{};
+        startup.cb = sizeof(STARTUPINFOW);
+        PROCESS_INFORMATION child{};
+        auto command{L"jobserver-test-helper.exe ready-sleep \"" +
+                     std::filesystem::path{argv[3]}.wstring() + L"\""};
+        if (!CreateProcessW(nullptr,
+                            command.data(),
+                            nullptr,
+                            nullptr,
+                            FALSE,
+                            CREATE_NO_WINDOW,
+                            nullptr,
+                            nullptr,
+                            &startup,
+                            &child)) {
+            return 3;
+        }
+        CloseHandle(child.hThread);
+        CloseHandle(child.hProcess);
+        {
+            std::ofstream ready{std::filesystem::path{argv[2]}};
+            ready << GetCurrentProcessId();
+        }
+        std::this_thread::sleep_for(std::chrono::seconds{60});
+        return 0;
+    }
     if (mode == L"output") {
         auto const count{argc >= 3 ? _wtoi(argv[2]) : 3};
         for (auto index{0}; index != count; ++index) {

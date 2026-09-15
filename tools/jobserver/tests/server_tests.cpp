@@ -148,6 +148,46 @@ auto process_ids_named(std::wstring const& executable_name) -> std::vector<DWORD
     return result;
 }
 
+auto helper_children_of(DWORD const parent_id) -> std::vector<DWORD> {
+    auto const snapshot{CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)};
+    if (snapshot == INVALID_HANDLE_VALUE) {
+        return {};
+    }
+    std::vector<DWORD> result;
+    PROCESSENTRY32W entry{};
+    entry.dwSize = sizeof(entry);
+    if (Process32FirstW(snapshot, &entry)) {
+        do {
+            if (entry.th32ParentProcessID == parent_id &&
+                std::wstring_view{entry.szExeFile} == L"jobserver-test-helper.exe") {
+                result.push_back(entry.th32ProcessID);
+            }
+        } while (Process32NextW(snapshot, &entry));
+    }
+    CloseHandle(snapshot);
+    return result;
+}
+
+auto observe_process(DWORD const process_id) -> ChildProcess {
+    return {.process =
+                OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_TERMINATE,
+                            FALSE,
+                            process_id)};
+}
+
+void expect_crash_cleanup(ChildProcess& process) {
+    EXPECT_NE(process.process, nullptr);
+    if (process.process != nullptr) {
+        auto const exited{wait_for_exit(process, 2s)};
+        EXPECT_TRUE(exited) << "Supervised process survived daemon termination";
+        if (!exited) {
+            EXPECT_TRUE(TerminateProcess(process.process, 99));
+            EXPECT_TRUE(wait_for_exit(process, 2s));
+        }
+    }
+    close(process);
+}
+
 class TestBarrier {
   public:
     TestBarrier(std::string const& phase, int const index) {
@@ -673,6 +713,153 @@ TEST_F(JobserverIntegration, DaemonCrashAtLifecycleBarriersLeavesNoOwnershipOrPr
     auto status{jobserver::Client::status()};
     ASSERT_TRUE(status.has_value());
     EXPECT_TRUE(Json::parse(*status).value("jobs", Json::array()).empty());
+}
+
+TEST_F(JobserverIntegration, LaunchBoundaryCrashesKillExactProcessesAndRestartCleanly) {
+    stop_daemon();
+    std::vector<std::string> const phases{
+        "before_process_creation",
+        "before_atomic_job_assignment",
+        "after_process_creation",
+        "before_process_resume",
+        "after_process_resume",
+    };
+    auto const phase_count{phases.size()};
+    for (auto index{std::size_t{0}}; index != phase_count; ++index) {
+        SCOPED_TRACE(phases[index]);
+        {
+            TestBarrier barrier{phases[index], 400 + static_cast<int>(index)};
+            ASSERT_TRUE(barrier.valid());
+            start_daemon();
+            auto const ready{data_path_ / ("launch-ready-" + std::to_string(index))};
+            auto const pipe{connect_and_handshake_raw_pipe()};
+            ASSERT_NE(pipe, INVALID_HANDLE_VALUE);
+            auto request = raw_submit_message("launch crash", {"ready-sleep", ready.string()});
+            request["disconnect_policy"] = index % 2 == 0 ? "cancel" : "continue";
+            request["resources"] =
+                Json::array({{{"name", "launch-crash-resource"}, {"mode", "exclusive"}}});
+            EXPECT_TRUE(jobserver::transport::write_message(pipe, request.dump()));
+            EXPECT_TRUE(barrier.wait(3s));
+
+            auto const child_ids{helper_children_of(GetProcessId(daemon_.process))};
+            auto const child_expected{index >= 2};
+            EXPECT_EQ(child_ids.size(), child_expected ? 1U : 0U);
+            std::vector<ChildProcess> children;
+            for (auto const id : child_ids) {
+                children.push_back(observe_process(id));
+                EXPECT_NE(children.back().process, nullptr);
+                if (children.back().process != nullptr) {
+                    EXPECT_EQ(WaitForSingleObject(children.back().process, 0), WAIT_TIMEOUT);
+                }
+            }
+            if (phases[index] == "after_process_resume") {
+                EXPECT_TRUE(wait_for_file(ready, 2s));
+            } else {
+                EXPECT_FALSE(std::filesystem::exists(ready));
+            }
+
+            EXPECT_TRUE(TerminateProcess(daemon_.process, 92));
+            EXPECT_TRUE(wait_for_exit(daemon_, 2s));
+            close(daemon_);
+            barrier.release();
+            for (auto& child : children) {
+                expect_crash_cleanup(child);
+            }
+            EXPECT_FALSE(jobserver::transport::read_message(pipe, 1s));
+            CloseHandle(pipe);
+        }
+
+        start_daemon();
+        auto status{jobserver::Client::status()};
+        ASSERT_TRUE(status);
+        auto const json = Json::parse(*status);
+        EXPECT_TRUE(json.value("jobs", Json::array()).empty());
+        EXPECT_TRUE(json.value("diagnostics", Json::array()).empty());
+        EXPECT_EQ(json["daemon"].value("scheduler_entries", -1), 0);
+        EXPECT_EQ(json["daemon"].value("supervised_jobs", -1), 0);
+        for (auto const& resource : json.value("resources", Json::array())) {
+            EXPECT_EQ(resource.value("used", -1), 0);
+            EXPECT_FALSE(resource.value("exclusive", true));
+        }
+        auto recovery{jobserver::Client::run(
+            submit_request(
+                "launch recovery",
+                {{.name = "launch-crash-resource", .mode = jobserver::ClaimMode::exclusive}},
+                {"exit", "0"}),
+            [](auto const&, auto const&) {})};
+        ASSERT_TRUE(recovery);
+        EXPECT_EQ(*recovery, 0);
+        stop_daemon();
+    }
+    start_daemon();
+}
+
+TEST_F(JobserverIntegration, CrashKillsSuspendedLaunchAndConcurrentRunningTree) {
+    stop_daemon();
+    TestBarrier barrier{"before_process_resume", 410};
+    ASSERT_TRUE(barrier.valid());
+    start_daemon();
+    auto const suspended_pipe{connect_and_handshake_raw_pipe()};
+    ASSERT_NE(suspended_pipe, INVALID_HANDLE_VALUE);
+    EXPECT_TRUE(jobserver::transport::write_message(
+        suspended_pipe, raw_submit_message("suspended crash", {"sleep", "60000"}).dump()));
+    EXPECT_TRUE(barrier.wait(3s));
+    auto const suspended_ids{helper_children_of(GetProcessId(daemon_.process))};
+    EXPECT_EQ(suspended_ids.size(), 1U);
+    std::vector<ChildProcess> observed;
+    for (auto const id : suspended_ids) {
+        observed.push_back(observe_process(id));
+    }
+
+    auto const root_ready{data_path_ / "crash-tree-root.txt"};
+    auto const child_ready{data_path_ / "crash-tree-child.txt"};
+    auto const running_pipe{connect_and_handshake_raw_pipe()};
+    EXPECT_NE(running_pipe, INVALID_HANDLE_VALUE);
+    EXPECT_TRUE(jobserver::transport::write_message(
+        running_pipe,
+        raw_submit_message("running crash tree",
+                           {"ready-tree", root_ready.string(), child_ready.string()})
+            .dump()));
+    for (auto const& ready : {root_ready, child_ready}) {
+        auto const reached{wait_for_file(ready, 2s)};
+        EXPECT_TRUE(reached);
+        if (reached) {
+            DWORD id{};
+            for (auto attempt{0}; attempt != 100 && id == 0; ++attempt) {
+                std::ifstream input{ready};
+                input >> id;
+                if (id == 0) {
+                    std::this_thread::sleep_for(10ms);
+                }
+            }
+            EXPECT_NE(id, 0U);
+            observed.push_back(observe_process(id));
+        }
+    }
+    EXPECT_EQ(observed.size(), 3U);
+    for (auto const& process : observed) {
+        EXPECT_NE(process.process, nullptr);
+        if (process.process != nullptr) {
+            EXPECT_EQ(WaitForSingleObject(process.process, 0), WAIT_TIMEOUT);
+        }
+    }
+    EXPECT_TRUE(TerminateProcess(daemon_.process, 93));
+    EXPECT_TRUE(wait_for_exit(daemon_, 2s));
+    close(daemon_);
+    barrier.release();
+    for (auto& process : observed) {
+        expect_crash_cleanup(process);
+    }
+    EXPECT_FALSE(jobserver::transport::read_message(suspended_pipe, 1s));
+    EXPECT_FALSE(jobserver::transport::read_message(running_pipe, 1s));
+    CloseHandle(suspended_pipe);
+    CloseHandle(running_pipe);
+    start_daemon();
+    auto status{jobserver::Client::status()};
+    ASSERT_TRUE(status);
+    auto const json = Json::parse(*status);
+    EXPECT_TRUE(json.value("jobs", Json::array()).empty());
+    EXPECT_EQ(json["daemon"].value("supervised_jobs", -1), 0);
 }
 
 TEST_F(JobserverIntegration, AuditExpiresStartingJobAndReportsRecovery) {

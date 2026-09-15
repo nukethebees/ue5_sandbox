@@ -181,6 +181,7 @@ auto Supervisor::run(Command const& command,
     auto command_line{make_command_line(command)};
     auto const working_directory{
         command.working_directory.empty() ? nullptr : command.working_directory.c_str()};
+    test_barrier("before_atomic_job_assignment");
     if (!CreateProcessW(command.executable.c_str(),
                         command_line.data(),
                         nullptr,
@@ -212,6 +213,7 @@ auto Supervisor::run(Command const& command,
     }
     test_barrier("before_process_resume");
     ResumeThread(process.hThread);
+    test_barrier("after_process_resume");
     close_if_valid(process.hThread);
     close_if_valid(stdout_write);
     close_if_valid(stderr_write);

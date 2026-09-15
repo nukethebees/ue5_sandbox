@@ -277,6 +277,11 @@ admission, allocation, process creation, process resume, output, descendant crea
 and history publication. Each case verifies that resources and test-process counts return to their
 baseline.
 
+Launch-boundary crash tests retain handles to the exact children before terminating the isolated
+daemon, verifying kernel-observed exit rather than relying only on executable-name snapshots.
+They cover prepared atomic Job Object assignment, suspended creation, publication, resume, a
+concurrent running parent/descendant tree, and clean resource acquisition after restart.
+
 ## Nested commands and resource claims
 
 Commands launched inside an existing supervised job execute locally in its inherited Windows Job
@@ -308,6 +313,6 @@ nested bypass behavior. The Tracy comparison driver uses a private child marker 
 treating any enclosing job as permission to run benchmarks.
 
 The implementation uses Win32 directly rather than Boost.Process. Named-pipe security, suspended
-launch followed by Job Object assignment, process-tree accounting, and reliable tree termination
+launch with atomic Job Object assignment, process-tree accounting, and reliable tree termination
 all require native Windows APIs; adding the wider Boost headers would not remove that platform
 plumbing here.
