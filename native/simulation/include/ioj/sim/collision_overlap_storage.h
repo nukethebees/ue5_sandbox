@@ -17,13 +17,11 @@ class CollisionOverlapStorage {
     void finalize();
 
     [[nodiscard]] auto get_view() const noexcept -> DetectedOverlapsView;
-    [[nodiscard]] auto entity_entity_overlaps() const noexcept
-        -> ioj::sim::collision::EntityEntityOverlapsConstView;
-    [[nodiscard]] auto entity_static_overlaps() const noexcept
-        -> ioj::sim::collision::EntityStaticOverlapsConstView;
+    [[nodiscard]] auto entity_entity_overlaps() const noexcept -> EntityEntityOverlapsConstView;
+    [[nodiscard]] auto entity_static_overlaps() const noexcept -> EntityStaticOverlapsConstView;
   private:
-    ioj::sim::collision::EntityEntityOverlaps entity_entity_overlaps_;
-    ioj::sim::collision::EntityStaticOverlaps entity_static_overlaps_;
+    EntityEntityOverlaps entity_entity_overlaps_;
+    EntityStaticOverlaps entity_static_overlaps_;
     std::vector<std::int32_t> sort_indices_scratch_;
 };
 } // namespace ioj::sim::collision

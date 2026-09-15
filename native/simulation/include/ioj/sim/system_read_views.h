@@ -20,14 +20,14 @@ enum class EntityFrameChangeKind : std::uint8_t { Spawn, RemoveSwap };
 struct EntityFrameChange {
     EntityFrameChangeKind kind{};
     std::int32_t index{};
-    ioj::sim::Vector3f location{};
-    ioj::sim::Rotator3f rotation{};
-    ioj::sim::Team team{};
+    Vector3f location{};
+    Rotator3f rotation{};
+    Team team{};
     RegistryEntityHandle handle{};
 };
 
 struct CapitalReadView {
-    ioj::sim::CapitalEntityData::ConstView entities;
+    CapitalEntityData::ConstView entities;
     EntityRegistry const* registry{};
     std::span<RegistryEntityHandle const> fighter_handles;
     std::span<EntityFrameChange const> changes;
@@ -39,25 +39,25 @@ struct CapitalReadView {
     }
 };
 struct FighterReadView {
-    ioj::sim::FighterEntityData::ConstView entities;
+    FighterEntityData::ConstView entities;
     EntityRegistry const* registry{};
     auto get_num_instances() const -> std::int32_t { return entities.num(); }
 };
 struct TurretReadView {
-    ioj::sim::TurretEntityData::ConstView entities;
+    TurretEntityData::ConstView entities;
     EntityRegistry const* registry{};
     std::span<EntityFrameChange const> changes;
-    std::span<ioj::sim::Vector3f const> death_locations;
+    std::span<Vector3f const> death_locations;
     auto get_num_instances() const -> std::int32_t { return entities.num(); }
 };
 struct SpinnerReadView {
-    ioj::sim::SpinnerEntityData::ConstView entities;
+    SpinnerEntityData::ConstView entities;
     auto get_num_instances() const -> std::int32_t { return entities.num(); }
 };
 struct LaserReadView {
-    ioj::sim::lasers::Entities::ConstView entities;
-    ioj::sim::LaserHitDetailsConstView hits;
-    std::span<ioj::sim::SimTick const> hit_ticks;
+    lasers::Entities::ConstView entities;
+    LaserHitDetailsConstView hits;
+    std::span<SimTick const> hit_ticks;
     std::span<std::int32_t const> hit_ordinals;
     auto get_num_instances() const -> std::int32_t { return entities.num(); }
 };

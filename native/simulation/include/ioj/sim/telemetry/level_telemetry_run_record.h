@@ -35,28 +35,28 @@ struct LevelTelemetryRunMetadata {
 };
 
 struct LevelTelemetryRunCompletion {
-    ioj::sim::LevelTelemetryRunEndReason reason{ioj::sim::LevelTelemetryRunEndReason::WorldEnd};
+    LevelTelemetryRunEndReason reason{LevelTelemetryRunEndReason::WorldEnd};
     bool interrupted{true};
     std::string completed_utc{};
     std::string world_end_reason{};
-    std::optional<ioj::sim::MissionMode> mission_mode{};
-    std::optional<ioj::sim::MissionState> mission_state{};
-    std::optional<ioj::sim::MissionFailReason> mission_fail_reason{};
+    std::optional<MissionMode> mission_mode{};
+    std::optional<MissionState> mission_state{};
+    std::optional<MissionFailReason> mission_fail_reason{};
     std::optional<double> mission_elapsed_seconds{};
-    ioj::sim::SimTick completed_ticks{};
+    SimTick completed_ticks{};
     double simulated_elapsed_seconds{};
     double wall_elapsed_seconds{};
-    std::optional<ioj::sim::Team> winning_team{};
+    std::optional<Team> winning_team{};
 };
 
 struct LevelTelemetryRunRecord {
-    static constexpr std::int32_t schema_version{2};
+    static constexpr std::int32_t schema_version{3};
 
     std::int32_t loaded_schema_version{schema_version};
     LevelTelemetryRunMetadata metadata{};
     LevelTelemetryRunCompletion completion{};
     LevelTelemetryTickSeries tick_series{};
-    ml::TimeSeriesData<ioj::sim::SimTick> completed_ticks_by_real_time{};
+    ml::TimeSeriesData<SimTick> completed_ticks_by_real_time{};
     std::vector<LevelTelemetryBattleSample> battle_samples{};
     std::vector<SimTelemetryPerformanceWindow> performance_windows{};
 };

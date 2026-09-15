@@ -21,16 +21,16 @@ namespace ioj::sim {
 
 struct EntityRegistry {
   public:
-    using EntityData = ioj::sim::RegistryEntityData;
-    using TeamCounts = ioj::sim::telemetry::TeamCounts;
-    using EntityTypeCounts = ioj::sim::telemetry::EntityTypeCounts;
-    using EntityCounts = ioj::sim::telemetry::EntityCounts;
-    using Uint64EntityTypeCounts = ioj::sim::telemetry::Uint64EntityTypeCounts;
-    using Uint64EntityCounts = ioj::sim::telemetry::Uint64EntityCounts;
-    using DoubleEntityTypeCounts = ioj::sim::telemetry::DoubleEntityTypeCounts;
-    using DoubleEntityCounts = ioj::sim::telemetry::DoubleEntityCounts;
-    using KillMatrix = ioj::sim::telemetry::KillMatrix;
-    using CombatTelemetryCounters = ioj::sim::telemetry::CombatTelemetryCounters;
+    using EntityData = RegistryEntityData;
+    using TeamCounts = telemetry::TeamCounts;
+    using EntityTypeCounts = telemetry::EntityTypeCounts;
+    using EntityCounts = telemetry::EntityCounts;
+    using Uint64EntityTypeCounts = telemetry::Uint64EntityTypeCounts;
+    using Uint64EntityCounts = telemetry::Uint64EntityCounts;
+    using DoubleEntityTypeCounts = telemetry::DoubleEntityTypeCounts;
+    using DoubleEntityCounts = telemetry::DoubleEntityCounts;
+    using KillMatrix = telemetry::KillMatrix;
+    using CombatTelemetryCounters = telemetry::CombatTelemetryCounters;
 
     struct ConstView {
         auto get_num() const { return indices.size(); }
@@ -45,7 +45,7 @@ struct EntityRegistry {
         EntityData::View data;
     };
 
-    static constexpr std::uint8_t TEAM_COUNT{static_cast<std::uint8_t>(ioj::sim::Team::COUNT)};
+    static constexpr std::uint8_t TEAM_COUNT{static_cast<std::uint8_t>(Team::COUNT)};
 
     /* **************************************** */
     // Lifecycle
@@ -86,7 +86,7 @@ struct EntityRegistry {
     // Handle queries
     /* **************************************** */
     // Active means the slot generation matches, including a current dead occupant.
-    auto analyse_handle(RegistryEntityHandle const handle) const -> ioj::sim::RegistryHandleState;
+    auto analyse_handle(RegistryEntityHandle const handle) const -> RegistryHandleState;
     auto is_valid_handle(RegistryEntityHandle const handle) const -> bool;
     auto is_valid_alive(RegistryEntityHandle const handle) const -> bool;
     auto is_valid_dead(RegistryEntityHandle const handle) const -> bool;
@@ -98,11 +98,11 @@ struct EntityRegistry {
     // Clears stale/dead handles; null stays null and invalid handles assert.
     void refresh_handles(std::span<RegistryEntityHandle> handles) const;
     void refresh_locations(std::span<RegistryEntityHandle const> handles,
-                           ioj::sim::Vectors3fView const& locations);
+                           Vectors3fView const& locations);
     // Empty views are considered to be unused parameters
     void refresh_entity_data(std::span<RegistryEntityHandle> handles,
-                             ioj::sim::Vectors3fView const& locations,
-                             ioj::sim::Vectors3fView const& velocities);
+                             Vectors3fView const& locations,
+                             Vectors3fView const& velocities);
 
     /* **************************************** */
     // Entity data queries
@@ -111,11 +111,11 @@ struct EntityRegistry {
     auto get_generations() const noexcept -> std::span<int const> {
         return {bookkeeping_.generations.data(), bookkeeping_.generations.size()};
     }
-    auto get_location(RegistryEntityHandle const handle) const -> ioj::sim::Vector3f;
-    auto get_velocity(RegistryEntityHandle const handle) const -> ioj::sim::Vector3f;
+    auto get_location(RegistryEntityHandle const handle) const -> Vector3f;
+    auto get_velocity(RegistryEntityHandle const handle) const -> Vector3f;
     auto get_health(RegistryEntityHandle const handle) const -> std::int32_t;
-    auto get_team(RegistryEntityHandle const handle) const -> ioj::sim::Team;
-    auto get_entity_type(RegistryEntityHandle const handle) const -> ioj::sim::EntityType;
+    auto get_team(RegistryEntityHandle const handle) const -> Team;
+    auto get_entity_type(RegistryEntityHandle const handle) const -> EntityType;
     auto get_alive(RegistryEntityHandle const handle) const -> bool;
 
     /* **************************************** */
@@ -124,10 +124,8 @@ struct EntityRegistry {
     // First-change order; populated by commit_updates() and cleared by begin_tick().
     auto get_moved_entities_this_tick() const -> std::span<RegistryEntityHandle const>;
     auto get_dead_entities_this_frame() const -> std::span<RegistryEntityHandle const>;
-    auto get_handles_not_in_team(ioj::sim::Team const team) const
-        -> std::vector<RegistryEntityHandle>;
-    void get_handles_not_in_team(ioj::sim::Team const team,
-                                 std::vector<RegistryEntityHandle>& out) const;
+    auto get_handles_not_in_team(Team const team) const -> std::vector<RegistryEntityHandle>;
+    void get_handles_not_in_team(Team const team, std::vector<RegistryEntityHandle>& out) const;
 
     /* **************************************** */
     // Aggregate queries
@@ -136,10 +134,10 @@ struct EntityRegistry {
     auto get_num_alive_active_entities() const noexcept -> std::int32_t;
     auto count_kills() const noexcept -> std::int32_t;
     auto count_alive() const noexcept -> std::int32_t;
-    auto count_alive(ioj::sim::EntityType type) const noexcept -> std::int32_t;
+    auto count_alive(EntityType type) const noexcept -> std::int32_t;
     auto count_alive_per_team() const noexcept -> TeamCounts;
     auto count_alive_per_team_and_type() const noexcept -> EntityCounts;
-    auto count_alive_not_on_team(ioj::sim::Team const team) const noexcept -> std::int32_t;
+    auto count_alive_not_on_team(Team const team) const noexcept -> std::int32_t;
     auto get_combat_telemetry() const noexcept -> CombatTelemetryCounters const& {
         return statistics_.combat_telemetry();
     }
@@ -147,22 +145,22 @@ struct EntityRegistry {
     /* **************************************** */
     // Unique entity queries
     /* **************************************** */
-    auto get_unique_entities() const noexcept -> ioj::sim::EntityHistoryColumnsConstView {
+    auto get_unique_entities() const noexcept -> EntityHistoryColumnsConstView {
         return unique_entity_history_.get_const_view().columns();
     }
     // Slot-to-ID mapping includes current dead occupants until their slots are reused.
-    auto get_active_unique_ids() const noexcept -> std::span<ioj::sim::EntityUniqueId const> {
+    auto get_active_unique_ids() const noexcept -> std::span<EntityUniqueId const> {
         return {bookkeeping_.unique_ids.data(), bookkeeping_.unique_ids.size()};
     }
-    auto is_valid_unique_id(ioj::sim::EntityUniqueId const id) const -> bool;
+    auto is_valid_unique_id(EntityUniqueId const id) const -> bool;
     auto get_num_unique_ids_issued() const -> std::int32_t { return unique_entity_history_.num(); }
-    auto find_unique_id(RegistryEntityHandle const handle) const -> ioj::sim::EntityUniqueId;
-    auto get_kills(ioj::sim::EntityUniqueId const id) const -> std::uint32_t;
+    auto find_unique_id(RegistryEntityHandle const handle) const -> EntityUniqueId;
+    auto get_kills(EntityUniqueId const id) const -> std::uint32_t;
 
     /* **************************************** */
     // Spatial queries
     /* **************************************** */
-    auto collect_entities_in_range(ioj::sim::Vector3f const& origin,
+    auto collect_entities_in_range(Vector3f const& origin,
                                    float const radius,
                                    std::span<RegistryEntityHandle> const out_entities) const
         -> std::int32_t;
@@ -194,11 +192,11 @@ struct EntityRegistry {
 
     // Current slot data shares indices with bookkeeping generations and IDs. Reuse changes both.
     EntityData entity_data;
-    ioj::sim::EntityRegistryBookkeeping bookkeeping_;
+    EntityRegistryBookkeeping bookkeeping_;
 
     // Append-only rows indexed by unique ID until reset; handle/type stay fixed, team/alive track
     // committed state. Old rows and their death/kill accounting survive slot reuse.
-    ioj::sim::EntityHistory unique_entity_history_;
+    EntityHistory unique_entity_history_;
 
     // Queued updates
     EntityData queued_entity_data;
@@ -207,7 +205,7 @@ struct EntityRegistry {
     // Queued damage events
     DirectDamageEvents queued_direct_damage_events;
 
-    ioj::sim::EntityRegistryStatistics statistics_;
+    EntityRegistryStatistics statistics_;
 };
 
 inline auto EntityRegistry::is_valid_handle(RegistryEntityHandle const handle) const -> bool {

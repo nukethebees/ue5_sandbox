@@ -90,7 +90,7 @@ void EntityRegistryBookkeeping::record_moved(RegistryEntityHandle const handle) 
 
 auto EntityRegistryBookkeeping::analyse_handle(RegistryEntityHandle const handle) const noexcept
     -> RegistryHandleState {
-    return ioj::sim::analyse_handle(generations, handle);
+    return sim::analyse_handle(generations, handle);
 }
 
 auto EntityRegistryBookkeeping::is_valid_handle(RegistryEntityHandle const handle) const noexcept

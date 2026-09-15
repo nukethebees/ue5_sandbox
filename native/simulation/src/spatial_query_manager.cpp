@@ -340,7 +340,7 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
     {
         SANDBOX_PROFILE_SCOPE(
             "Sandbox::SpatialQueryManager::collect_non_team_entities_in_range::loop");
-        return ioj::sim::collect_non_team_entities_in_range(
+        return sim::collect_non_team_entities_in_range(
             grid.get_native_geometry(),
             grid.get_native_entity_storage(),
             make_native_query_view(entity_registry),
@@ -369,7 +369,7 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
     auto const& grid{collision.get_uniform_grid()};
     validate_grid_for_range_query(grid, origin, radius);
     query_manager::ThreadBufferLease const buffer_lease{*this};
-    return ioj::sim::collect_entities_of_type_in_range(
+    return sim::collect_entities_of_type_in_range(
         grid.get_native_geometry(),
         grid.get_native_entity_storage(),
         make_native_query_view(entity_registry),

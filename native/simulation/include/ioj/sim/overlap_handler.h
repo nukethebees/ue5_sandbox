@@ -10,7 +10,7 @@ struct EntityRegistry;
 struct OverlapHandler {
     OverlapHandler(EntityRegistry& registry, OverlapResponseConfig const& config) noexcept;
 
-    void handle(ioj::sim::collision::DetectedOverlapsView overlaps);
+    void handle(collision::DetectedOverlapsView overlaps);
   private:
     void append_damage(RegistryEntityHandle entity);
 

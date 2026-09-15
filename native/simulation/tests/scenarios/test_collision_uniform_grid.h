@@ -28,8 +28,7 @@ enum class CollisionUniformGridTraceScenario : std::uint8_t {
     StaticGeometry,
 };
 
-void run_worldless_collision_uniform_grid_membership(
-    ioj::sim::tests::SimulationFixture const& config);
-void run_collision_uniform_grid_trace(ioj::sim::tests::SimulationFixture const& config,
+void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture const& config);
+void run_collision_uniform_grid_trace(tests::SimulationFixture const& config,
                                       CollisionUniformGridTraceScenario scenario);
 }

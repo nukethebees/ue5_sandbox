@@ -8,9 +8,9 @@
 
 namespace ioj::sim {
 inline auto make_native_query_view(EntityRegistry const& registry) noexcept
-    -> ioj::sim::EntityRegistryQueryView {
-    static_assert(sizeof(ioj::sim::Team) == sizeof(std::byte));
-    static_assert(sizeof(ioj::sim::EntityType) == sizeof(std::byte));
+    -> EntityRegistryQueryView {
+    static_assert(sizeof(Team) == sizeof(std::byte));
+    static_assert(sizeof(EntityType) == sizeof(std::byte));
 
     auto const& data{registry.get_entity_data()};
     auto const count{static_cast<std::size_t>(data.num())};

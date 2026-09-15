@@ -640,7 +640,7 @@ auto EntityRegistry::collect_entities_in_range(
     std::span<RegistryEntityHandle> const out_entities) const -> std::int32_t {
     SANDBOX_PROFILE_SCOPE("Sandbox::EntityRegistry::collect_entities_in_range");
 
-    return ioj::sim::collect_entities_in_range(
+    return sim::collect_entities_in_range(
         make_native_query_view(*this),
         origin,
         radius,

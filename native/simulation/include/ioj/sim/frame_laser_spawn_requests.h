@@ -34,7 +34,7 @@ struct FrameSpawnRequests {
     void set_speeds(float value);
     void set_max_distances(float value);
     [[nodiscard]] auto num() const noexcept -> std::int32_t;
-    [[nodiscard]] auto get_const_view() const -> ioj::sim::lasers::SpawnRequestsConstView;
+    [[nodiscard]] auto get_const_view() const -> SpawnRequestsConstView;
 
     FrameVectors3f locations;
     FrameRotators3f rotations;

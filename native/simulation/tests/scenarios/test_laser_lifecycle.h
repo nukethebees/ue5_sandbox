@@ -9,6 +9,6 @@ enum class LaserLifecycleScenario : std::uint8_t {
     WorldBlocker
 };
 
-void run_worldless_laser_lifecycle(ioj::sim::tests::SimulationFixture const& config,
+void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
                                    LaserLifecycleScenario scenario);
 }

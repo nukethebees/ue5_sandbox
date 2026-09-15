@@ -10,8 +10,8 @@
 
 namespace ioj::sim::collision {
 struct DetectedOverlapsView {
-    ioj::sim::collision::EntityEntityOverlaps::ConstView entity_entity_overlaps;
-    ioj::sim::collision::EntityStaticOverlaps::ConstView entity_static_overlaps;
+    EntityEntityOverlaps::ConstView entity_entity_overlaps;
+    EntityStaticOverlaps::ConstView entity_static_overlaps;
 };
 
 struct AABBOverlapEventBatch {
@@ -26,8 +26,8 @@ struct AABBOverlapEventBatchView {
 };
 
 struct AABBOverlapEventsView {
-    ioj::sim::collision::EntityEntityOverlaps::ConstView entity_entity_overlaps;
-    ioj::sim::collision::EntityStaticOverlaps::ConstView entity_static_overlaps;
+    EntityEntityOverlaps::ConstView entity_entity_overlaps;
+    EntityStaticOverlaps::ConstView entity_static_overlaps;
     std::span<AABBOverlapEventBatch const> batches;
 
     [[nodiscard]] auto get_batch(std::int32_t index) const -> AABBOverlapEventBatchView;
@@ -37,12 +37,12 @@ class AABBOverlapEventStorage {
   public:
     void reset() noexcept;
     void append_batch(SimTick tick,
-                      ioj::sim::collision::EntityEntityOverlapsConstView entity_entity_overlaps,
-                      ioj::sim::collision::EntityStaticOverlapsConstView entity_static_overlaps);
+                      EntityEntityOverlapsConstView entity_entity_overlaps,
+                      EntityStaticOverlapsConstView entity_static_overlaps);
     [[nodiscard]] auto get_view() const noexcept -> AABBOverlapEventsView;
   private:
-    ioj::sim::collision::EntityEntityOverlaps entity_entity_overlaps_;
-    ioj::sim::collision::EntityStaticOverlaps entity_static_overlaps_;
+    EntityEntityOverlaps entity_entity_overlaps_;
+    EntityStaticOverlaps entity_static_overlaps_;
     std::vector<AABBOverlapEventBatch> batches_;
 };
 } // namespace ioj::sim::collision

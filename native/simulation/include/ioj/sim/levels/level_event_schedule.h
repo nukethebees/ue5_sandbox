@@ -15,12 +15,11 @@ struct LevelEventSchedule {
     LevelCapitalSpawnEvents capital_spawns{};
     LevelTurretSpawnEvents turret_spawns{};
     LevelMissionEvents mission_events{};
-    std::vector<ioj::sim::SimTick> execution_ticks{};
+    std::vector<SimTick> execution_ticks{};
     std::vector<LevelEventGroupCounts> event_group_counts{};
 
-    auto add_spawn_group(ioj::sim::EntityType type, std::int32_t offset, std::int32_t count)
+    auto add_spawn_group(EntityType type, std::int32_t offset, std::int32_t count) -> bool;
+    auto add_mission_group(LevelMissionEventType type, std::span<std::int32_t const> values)
         -> bool;
-    auto add_mission_group(ioj::sim::LevelMissionEventType type,
-                           std::span<std::int32_t const> values) -> bool;
 };
 }

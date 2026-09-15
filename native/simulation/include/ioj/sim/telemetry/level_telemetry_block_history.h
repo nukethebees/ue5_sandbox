@@ -11,9 +11,6 @@
 
 namespace ioj::sim {
 
-using LevelTelemetryHistoryConfig = ioj::sim::LevelTelemetryHistoryConfig;
-using LevelTelemetryBlockHistoryStats = ioj::sim::LevelTelemetryBlockHistoryStats;
-
 class LevelTelemetryBlockHistory {
   public:
     LevelTelemetryBlockHistory(GameMemory& memory, LevelTelemetryHistoryConfig config = {});
@@ -23,16 +20,15 @@ class LevelTelemetryBlockHistory {
     auto operator=(LevelTelemetryBlockHistory&&) -> LevelTelemetryBlockHistory& = delete;
 
     void reset();
-    auto append_uninitialized() -> ioj::sim::telemetry::HistoryRowsSingleView;
-    auto last_view() -> ioj::sim::telemetry::HistoryRowsSingleView;
-    auto last_const_view() const -> ioj::sim::telemetry::HistoryRowsSingleConstView;
+    auto append_uninitialized() -> telemetry::HistoryRowsSingleView;
+    auto last_view() -> telemetry::HistoryRowsSingleView;
+    auto last_const_view() const -> telemetry::HistoryRowsSingleConstView;
 
     template <typename Func>
     void for_each_block(Func&& func) const {
         for (std::int32_t index{}; index < used_block_count_; ++index) {
             auto const& block{blocks_[index]};
-            func(ioj::sim::telemetry::HistoryRowsSingleConstView{
-                &block.storage, 0, block.storage.num_});
+            func(telemetry::HistoryRowsSingleConstView{&block.storage, 0, block.storage.num_});
         }
     }
 
@@ -44,7 +40,7 @@ class LevelTelemetryBlockHistory {
     auto retained_block_count() const noexcept -> std::int32_t {
         return static_cast<std::int32_t>(blocks_.size());
     }
-    auto block_view(std::int32_t index) const -> ioj::sim::telemetry::HistoryRowsSingleConstView;
+    auto block_view(std::int32_t index) const -> telemetry::HistoryRowsSingleConstView;
     auto block_data(std::int32_t index) const -> std::byte const*;
     auto get_stats() const noexcept -> LevelTelemetryBlockHistoryStats;
   private:

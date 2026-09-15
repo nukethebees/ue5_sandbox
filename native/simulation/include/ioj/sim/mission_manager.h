@@ -23,9 +23,9 @@ struct LevelMissionEventGroupsConstView;
 struct LevelMissionResult {
     std::string level_id{};
     std::string level_display_name;
-    ioj::sim::MissionMode mode{ioj::sim::MissionMode::None};
-    ioj::sim::MissionState state{ioj::sim::MissionState::NotStarted};
-    ioj::sim::MissionFailReason fail_reason{ioj::sim::MissionFailReason::None};
+    MissionMode mode{MissionMode::None};
+    MissionState state{MissionState::NotStarted};
+    MissionFailReason fail_reason{MissionFailReason::None};
     std::int32_t kills{};
     float elapsed_seconds{};
     std::int32_t target_kills{};
@@ -61,7 +61,7 @@ struct MissionManager {
     /* **************************************** */
     // Mission configuration and objectives
     /* **************************************** */
-    void set_mission_mode(ioj::sim::MissionMode new_mode);
+    void set_mission_mode(MissionMode new_mode);
     void set_target_time(float new_target_time);
     void set_kill_target(std::int32_t new_kill_target);
     void set_save_mission_results(bool should_save) noexcept;
@@ -81,8 +81,8 @@ struct MissionManager {
     /* **************************************** */
     // Queries
     /* **************************************** */
-    auto get_mission_mode() const noexcept -> ioj::sim::MissionMode { return mission_mode; }
-    auto get_mission_state() const noexcept -> ioj::sim::MissionState { return mission_state; }
+    auto get_mission_mode() const noexcept -> MissionMode { return mission_mode; }
+    auto get_mission_state() const noexcept -> MissionState { return mission_state; }
 
     auto get_survive_seconds() const noexcept -> float { return target_time; }
     auto get_target_time() const noexcept -> float { return target_time; }
@@ -94,7 +94,7 @@ struct MissionManager {
         return std::max(0, resolved_kill_target - mission_kills);
     }
     auto get_mission_kills() const noexcept -> std::int32_t { return mission_kills; }
-    auto get_mission_fail_reason() const noexcept -> ioj::sim::MissionFailReason {
+    auto get_mission_fail_reason() const noexcept -> MissionFailReason {
         return mission_fail_reason;
     }
     auto get_level_id() const noexcept -> std::string { return level_id; }
@@ -109,39 +109,31 @@ struct MissionManager {
         -> std::span<RegistryEntityHandle const> {
         return entity_handles_that_must_survive;
     }
-    auto get_entity_health_that_must_survive() const noexcept
-        -> std::span<ioj::sim::ShipHealth const> {
+    auto get_entity_health_that_must_survive() const noexcept -> std::span<ShipHealth const> {
         return entity_health_that_must_survive;
     }
-    auto get_entity_ids_that_must_survive() const noexcept
-        -> std::span<ioj::sim::EntityUniqueId const> {
+    auto get_entity_ids_that_must_survive() const noexcept -> std::span<EntityUniqueId const> {
         return entity_ids_that_must_survive;
     }
-    auto get_entity_types_that_must_survive() const noexcept
-        -> std::span<ioj::sim::EntityType const> {
+    auto get_entity_types_that_must_survive() const noexcept -> std::span<EntityType const> {
         return entity_types_that_must_survive;
     }
     auto get_entity_handles_required_to_kill() const noexcept
         -> std::span<RegistryEntityHandle const> {
         return entity_handles_required_to_kill;
     }
-    auto get_entity_health_required_to_kill() const noexcept
-        -> std::span<ioj::sim::ShipHealth const> {
+    auto get_entity_health_required_to_kill() const noexcept -> std::span<ShipHealth const> {
         return entity_health_required_to_kill;
     }
-    auto get_entity_ids_required_to_kill() const noexcept
-        -> std::span<ioj::sim::EntityUniqueId const> {
+    auto get_entity_ids_required_to_kill() const noexcept -> std::span<EntityUniqueId const> {
         return entity_ids_required_to_kill;
     }
-    auto get_entity_types_required_to_kill() const noexcept
-        -> std::span<ioj::sim::EntityType const> {
+    auto get_entity_types_required_to_kill() const noexcept -> std::span<EntityType const> {
         return entity_types_required_to_kill;
     }
 
     auto get_mission_stopwatch() const noexcept -> float { return mission_elapsed_seconds; }
-    auto mission_running() const noexcept -> bool {
-        return mission_state == ioj::sim::MissionState::Running;
-    }
+    auto mission_running() const noexcept -> bool { return mission_state == MissionState::Running; }
     auto is_ready() const noexcept -> bool;
     auto has_pending_objective_events() const noexcept -> bool {
         return pending_objective_events_ > 0;
@@ -153,9 +145,8 @@ struct MissionManager {
     /* **************************************** */
     // State transitions and mission modes
     /* **************************************** */
-    void set_mission_state(
-        ioj::sim::MissionState const new_state,
-        ioj::sim::MissionFailReason const fail_reason = ioj::sim::MissionFailReason::None);
+    void set_mission_state(MissionState const new_state,
+                           MissionFailReason const fail_reason = MissionFailReason::None);
 
     void mission_tick_survive_seconds();
     void mission_tick_kill_enemies();
@@ -176,7 +167,7 @@ struct MissionManager {
     // Completion and results
     /* **************************************** */
     void handle_mission_success();
-    void handle_mission_failure(ioj::sim::MissionFailReason fail_reason);
+    void handle_mission_failure(MissionFailReason fail_reason);
 
     void queue_result();
 
@@ -187,21 +178,21 @@ struct MissionManager {
     EntityRegistry& entity_registry;
 
     std::vector<RegistryEntityHandle> hero_entity_handles{};
-    std::vector<ioj::sim::EntityUniqueId> hero_entity_ids{};
+    std::vector<EntityUniqueId> hero_entity_ids{};
     std::vector<RegistryEntityHandle> entity_handles_that_must_survive{};
-    std::vector<ioj::sim::EntityUniqueId> entity_ids_that_must_survive{};
-    std::vector<ioj::sim::EntityType> entity_types_that_must_survive{};
-    std::vector<ioj::sim::ShipHealth> entity_health_that_must_survive{};
+    std::vector<EntityUniqueId> entity_ids_that_must_survive{};
+    std::vector<EntityType> entity_types_that_must_survive{};
+    std::vector<ShipHealth> entity_health_that_must_survive{};
     std::vector<RegistryEntityHandle> entity_handles_required_to_kill{};
-    std::vector<ioj::sim::EntityUniqueId> entity_ids_required_to_kill{};
-    std::vector<ioj::sim::EntityType> entity_types_required_to_kill{};
-    std::vector<ioj::sim::ShipHealth> entity_health_required_to_kill{};
+    std::vector<EntityUniqueId> entity_ids_required_to_kill{};
+    std::vector<EntityType> entity_types_required_to_kill{};
+    std::vector<ShipHealth> entity_health_required_to_kill{};
 
-    ioj::sim::MissionState mission_state{ioj::sim::MissionState::NotStarted};
+    MissionState mission_state{MissionState::NotStarted};
 
-    ioj::sim::MissionFailReason mission_fail_reason{ioj::sim::MissionFailReason::None};
+    MissionFailReason mission_fail_reason{MissionFailReason::None};
 
-    ioj::sim::MissionMode mission_mode{ioj::sim::MissionMode::None};
+    MissionMode mission_mode{MissionMode::None};
 
     float target_time{60.0f};
 

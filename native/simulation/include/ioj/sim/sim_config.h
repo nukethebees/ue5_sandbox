@@ -51,13 +51,13 @@ struct TurretSimConfig {
     std::int32_t search_slice_size{64};
     float detection_radius{3000.f};
     float target_refresh_frequency{5.f};
-    ioj::sim::Vector3f fire_point_offset{};
+    Vector3f fire_point_offset{};
     LaserWeaponSimConfig laser{};
     std::int32_t max_health{20};
 };
 
 struct SpinnerSimConfig {
-    std::vector<ioj::sim::spinners::FirePoint> fire_point_offsets;
+    std::vector<spinners::FirePoint> fire_point_offsets;
     float yaw_rotation_speed_degrees{66.f};
     LaserWeaponSimConfig laser{};
 };
@@ -65,7 +65,7 @@ struct SpinnerSimConfig {
 struct CapitalShipSimConfig {
     float spawn_delay{5.f};
     std::int32_t fighter_spawn_slots{};
-    std::vector<ioj::sim::Transform3d> fighter_spawn_slots_relative_transforms;
+    std::vector<Transform3d> fighter_spawn_slots_relative_transforms;
     std::int32_t max_health{5000};
 };
 } // namespace ioj::sim

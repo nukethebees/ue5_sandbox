@@ -22,7 +22,7 @@ struct SpatialQueryManager;
 }
 
 namespace ioj::sim::query_manager {
-using ThreadBuffers = ioj::sim::QueryThreadBuffers;
+using ThreadBuffers = QueryThreadBuffers;
 
 class ThreadBufferLease {
   public:
@@ -42,7 +42,7 @@ class ThreadBufferLease {
 }
 
 namespace ioj::sim {
-using SpatialQueryTelemetrySnapshot = ioj::sim::collision::SpatialQueryTelemetrySnapshot;
+using SpatialQueryTelemetrySnapshot = collision::SpatialQueryTelemetrySnapshot;
 struct SpatialQueryManager {
   public:
     /* **************************************** */
@@ -54,68 +54,67 @@ struct SpatialQueryManager {
     auto operator=(SpatialQueryManager const&) -> SpatialQueryManager& = delete;
     auto operator=(SpatialQueryManager&&) -> SpatialQueryManager& = delete;
 
-    void initialise(ioj::sim::collision::CellCoord const grid_dimensions,
-                    ioj::sim::Vector3f const cell_size,
-                    ioj::sim::collision::EntityAABBs const& entity_bounds);
+    void initialise(collision::CellCoord const grid_dimensions,
+                    Vector3f const cell_size,
+                    collision::EntityAABBs const& entity_bounds);
 
     void reserve_thread_buffers(std::int32_t count);
 
     /* **************************************** */
     // Batched line queries
     /* **************************************** */
-    void trace_line_of_sight(ioj::sim::Vectors3fConstView start_locations,
-                             ioj::sim::Vectors3fConstView end_locations,
+    void trace_line_of_sight(Vectors3fConstView start_locations,
+                             Vectors3fConstView end_locations,
                              std::span<RegistryEntityHandle> out_entity_handles) const;
-    void has_line_of_sight_to_targets(ioj::sim::Vector3f const& start_location,
-                                      ioj::sim::Vectors3fConstView end_locations,
+    void has_line_of_sight_to_targets(Vector3f const& start_location,
+                                      Vectors3fConstView end_locations,
                                       std::span<RegistryEntityHandle const> targets,
                                       std::span<std::uint8_t> has_los) const;
-    void have_clear_lines(ioj::sim::Vectors3fConstView start_locations,
-                          ioj::sim::Vectors3fConstView end_locations,
+    void have_clear_lines(Vectors3fConstView start_locations,
+                          Vectors3fConstView end_locations,
                           std::span<std::uint8_t> clear_lines,
                           std::span<RegistryEntityHandle const> ignored_entities = {}) const;
-    void trace_closest_lines(ioj::sim::Vectors3fConstView start_locations,
-                             ioj::sim::Vectors3fConstView end_locations,
+    void trace_closest_lines(Vectors3fConstView start_locations,
+                             Vectors3fConstView end_locations,
                              TraceHitsView out_hits,
                              std::span<RegistryEntityHandle const> ignored_entities = {}) const;
-    void sweep_closest_aabbs(ioj::sim::Vectors3fConstView start_locations,
-                             ioj::sim::Vectors3fConstView end_locations,
-                             ioj::sim::Vector3f moving_half_extent,
-                             TraceHitsView out_hits,
-                             std::span<RegistryEntityHandle const> ignored_entities = {},
-                             ioj::sim::collision::TraceEntityFilter entity_filter =
-                                 ioj::sim::collision::TraceEntityFilter::None) const;
+    void sweep_closest_aabbs(
+        Vectors3fConstView start_locations,
+        Vectors3fConstView end_locations,
+        Vector3f moving_half_extent,
+        TraceHitsView out_hits,
+        std::span<RegistryEntityHandle const> ignored_entities = {},
+        collision::TraceEntityFilter entity_filter = collision::TraceEntityFilter::None) const;
 
     /* **************************************** */
     // Scalar and entity queries
     /* **************************************** */
-    auto has_clear_line(ioj::sim::Vector3f start_location,
-                        ioj::sim::Vector3f end_location,
+    auto has_clear_line(Vector3f start_location,
+                        Vector3f end_location,
                         RegistryEntityHandle ignored_entity = {}) const -> bool;
-    auto trace_closest(ioj::sim::Vector3f start_location,
-                       ioj::sim::Vector3f end_location,
+    auto trace_closest(Vector3f start_location,
+                       Vector3f end_location,
                        RegistryEntityHandle ignored_entity = {}) const -> LineTraceResult;
 
     auto
-        collect_non_team_entities_in_range(ioj::sim::Vector3f const& origin,
-                                           ioj::sim::Team const team,
+        collect_non_team_entities_in_range(Vector3f const& origin,
+                                           Team const team,
                                            float const radius,
                                            std::span<RegistryEntityHandle> const out_entities) const
         -> std::int32_t;
-    auto collect_entities_of_type_in_range(ioj::sim::Vector3f const& origin,
-                                           ioj::sim::EntityType entity_type,
+    auto collect_entities_of_type_in_range(Vector3f const& origin,
+                                           EntityType entity_type,
                                            float radius,
                                            RegistryEntityHandle ignored_entity,
                                            std::span<RegistryEntityHandle> out_entities) const
         -> std::int32_t;
-    auto get_any_non_team_entity(ioj::sim::Team const team) const -> RegistryEntityHandle;
-    auto get_any_non_team_entity(ioj::sim::Team const team,
-                                 ioj::sim::EntityType const entity_type) const
+    auto get_any_non_team_entity(Team const team) const -> RegistryEntityHandle;
+    auto get_any_non_team_entity(Team const team, EntityType const entity_type) const
         -> RegistryEntityHandle;
-    void are_spheres_in_bounds(ioj::sim::Vectors3fConstView centres,
+    void are_spheres_in_bounds(Vectors3fConstView centres,
                                float radius,
                                std::span<std::uint8_t> out_results) const;
-    auto get_entity_type_radius(ioj::sim::EntityType entity_type) const noexcept -> float;
+    auto get_entity_type_radius(EntityType entity_type) const noexcept -> float;
     auto get_entity_type_radii() const noexcept -> std::span<float const>;
     void copy_entity_radii(std::span<RegistryEntityHandle const> handles,
                            std::span<float> out_radii) const;
@@ -123,14 +122,12 @@ struct SpatialQueryManager {
     /* **************************************** */
     // Collision state and telemetry
     /* **************************************** */
-    auto get_collision_system() noexcept -> ioj::sim::collision::CollisionSystem& {
-        return collision;
-    }
-    auto get_collision_system() const noexcept -> ioj::sim::collision::CollisionSystem const& {
+    auto get_collision_system() noexcept -> collision::CollisionSystem& { return collision; }
+    auto get_collision_system() const noexcept -> collision::CollisionSystem const& {
         return collision;
     }
 
-    auto update(ioj::sim::SimTick tick) -> ioj::sim::collision::DetectedOverlapsView;
+    auto update(SimTick tick) -> collision::DetectedOverlapsView;
     void reset_runtime_telemetry() noexcept;
     auto get_runtime_telemetry() const noexcept -> SpatialQueryTelemetrySnapshot;
   private:
@@ -149,10 +146,10 @@ struct SpatialQueryManager {
     /* **************************************** */
     EntityRegistry const& entity_registry;
 
-    mutable ioj::sim::QueryThreadBufferPool thread_buffer_pool_;
+    mutable QueryThreadBufferPool thread_buffer_pool_;
 
-    ioj::sim::collision::CollisionSystem collision;
-    std::array<float, static_cast<std::size_t>(ioj::sim::EntityType::COUNT)> entity_radii_{};
-    ioj::sim::collision::SpatialQueryTelemetry telemetry_;
+    collision::CollisionSystem collision;
+    std::array<float, static_cast<std::size_t>(EntityType::COUNT)> entity_radii_{};
+    collision::SpatialQueryTelemetry telemetry_;
 };
 }

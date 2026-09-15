@@ -14,6 +14,6 @@ enum class MissionManagerScenario : std::uint8_t {
     ExplicitCompletionIsLatched,
 };
 
-void run_worldless_mission_manager_scenario(ioj::sim::tests::SimulationFixture const& config,
+void run_worldless_mission_manager_scenario(tests::SimulationFixture const& config,
                                             MissionManagerScenario scenario);
 }

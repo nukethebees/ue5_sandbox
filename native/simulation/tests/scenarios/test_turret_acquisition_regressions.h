@@ -8,6 +8,6 @@ enum class TurretAcquisitionRegressionScenario : std::uint8_t {
     EnemyOutsideRadius,
 };
 
-void run_worldless_turret_acquisition_regression(ioj::sim::tests::SimulationFixture const& config,
+void run_worldless_turret_acquisition_regression(tests::SimulationFixture const& config,
                                                  TurretAcquisitionRegressionScenario scenario);
 }
