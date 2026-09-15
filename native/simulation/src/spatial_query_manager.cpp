@@ -328,8 +328,6 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
     std::span<RegistryEntityHandle> const out_entities) const -> std::int32_t {
     SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::collect_non_team_entities_in_range");
 
-    telemetry_.record_range_query();
-
     if (out_entities.empty()) {
         return 0;
     }
@@ -359,8 +357,6 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
     RegistryEntityHandle const ignored_entity,
     std::span<RegistryEntityHandle> const out_entities) const -> std::int32_t {
     SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::collect_entities_of_type_in_range");
-
-    telemetry_.record_range_query();
 
     if (out_entities.empty()) {
         return 0;
@@ -434,14 +430,4 @@ auto SpatialQueryManager::update(SimTick const tick) -> collision::DetectedOverl
     return collision.update(entity_registry.get_moved_entities_this_tick(), tick);
 }
 
-void SpatialQueryManager::reset_runtime_telemetry() noexcept {
-    telemetry_.reset();
-    collision.get_uniform_grid().reset_runtime_telemetry();
-}
-
-auto SpatialQueryManager::get_runtime_telemetry() const noexcept -> SpatialQueryTelemetrySnapshot {
-    auto const& grid{collision.get_uniform_grid()};
-    auto const grid_telemetry{grid.get_runtime_telemetry()};
-    return telemetry_.snapshot(grid_telemetry, grid.get_non_empty_cell_count());
-}
 }

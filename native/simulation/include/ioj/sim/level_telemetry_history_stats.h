@@ -18,6 +18,5 @@ struct LevelTelemetryHistoryStats {
     std::int32_t unused_samples_in_final_block{};
     std::size_t unused_payload_bytes_in_final_block{};
     std::size_t fixed_layout_overhead_bytes{};
-    std::uint64_t payload_write_count{};
 };
 } // namespace ioj::sim

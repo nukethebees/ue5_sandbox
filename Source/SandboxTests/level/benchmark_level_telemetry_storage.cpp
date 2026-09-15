@@ -27,11 +27,9 @@ namespace level_telemetry_benchmark {
 using Field = ::ioj::sim::telemetry::HistoryField;
 using FieldMask = ::ioj::sim::telemetry::HistoryFieldMask;
 
-inline constexpr int32 int32_series_count{FieldMask::index(Field::GridRebuildCount)};
-inline constexpr int32 double_series_bit{FieldMask::index(Field::RequestedTimeScale)};
-inline constexpr int32 uint64_series_count{double_series_bit - int32_series_count};
+inline constexpr int32 int32_series_count{FieldMask::field_count};
 inline constexpr int32 series_count{FieldMask::field_count};
-inline constexpr SIZE_T row_payload_bytes{228};
+inline constexpr SIZE_T row_payload_bytes{180};
 
 struct FWorkload {
     TCHAR const* name{};
@@ -83,10 +81,7 @@ auto typical_mask(int32 const tick) -> uint64 {
         mask |= uint64{1} << (6 + tick / 5 % 30);
     }
     if (tick % 60 == 0) {
-        mask |= ((uint64{1} << 10) - 1) << 36;
-    }
-    if (tick % 3600 == 0) {
-        mask |= uint64{1} << double_series_bit;
+        mask |= ((uint64{1} << 5) - 1) << 36;
     }
     return mask;
 }
@@ -106,44 +101,24 @@ auto pathological_mask(int32 const tick) -> uint64 {
 
 struct FLegacyHistory {
     TStaticArray<ml::XYSeriesData<uint64, int32>, int32_series_count> int32_series{};
-    TStaticArray<ml::XYSeriesData<uint64, uint64>, uint64_series_count> uint64_series{};
-    ml::XYSeriesData<uint64, double> double_series{};
     int32 allocation_count{};
 
     void append(uint64 const tick, uint64 mask) {
         while (mask != 0) {
             auto const field{static_cast<int32>(std::countr_zero(mask))};
-            if (field < int32_series_count) {
-                auto& series{int32_series[field]};
-                auto const time_capacity{series.time_capacity()};
-                auto const value_capacity{series.value_capacity()};
-                series.add(tick, static_cast<int32>(tick + field));
-                allocation_count += series.time_capacity() != time_capacity ? 1 : 0;
-                allocation_count += series.value_capacity() != value_capacity ? 1 : 0;
-            } else if (field < double_series_bit) {
-                auto& series{uint64_series[field - int32_series_count]};
-                auto const time_capacity{series.time_capacity()};
-                auto const value_capacity{series.value_capacity()};
-                series.add(tick, tick + field);
-                allocation_count += series.time_capacity() != time_capacity ? 1 : 0;
-                allocation_count += series.value_capacity() != value_capacity ? 1 : 0;
-            } else {
-                auto const time_capacity{double_series.time_capacity()};
-                auto const value_capacity{double_series.value_capacity()};
-                double_series.add(tick, static_cast<double>(tick + field));
-                allocation_count += double_series.time_capacity() != time_capacity ? 1 : 0;
-                allocation_count += double_series.value_capacity() != value_capacity ? 1 : 0;
-            }
+            auto& series{int32_series[field]};
+            auto const time_capacity{series.time_capacity()};
+            auto const value_capacity{series.value_capacity()};
+            series.add(tick, static_cast<int32>(tick + field));
+            allocation_count += series.time_capacity() != time_capacity ? 1 : 0;
+            allocation_count += series.value_capacity() != value_capacity ? 1 : 0;
             mask &= mask - 1;
         }
     }
 
     auto allocated_bytes() const -> SIZE_T {
-        SIZE_T result{double_series.allocated_bytes()};
+        SIZE_T result{};
         for (auto const& series : int32_series) {
-            result += series.allocated_bytes();
-        }
-        for (auto const& series : uint64_series) {
             result += series.allocated_bytes();
         }
         return result;
@@ -156,14 +131,6 @@ struct FLegacyHistory {
                 result += static_cast<uint64>(value);
             }
         }
-        for (auto const& series : uint64_series) {
-            for (auto const value : series.values()) {
-                result += value;
-            }
-        }
-        for (auto const value : double_series.values()) {
-            result += static_cast<uint64>(value);
-        }
         return result;
     }
 
@@ -171,10 +138,6 @@ struct FLegacyHistory {
         for (auto& series : int32_series) {
             series.reset();
         }
-        for (auto& series : uint64_series) {
-            series.reset();
-        }
-        double_series.reset();
     }
 };
 
@@ -196,23 +159,9 @@ void write_new_payload(::ioj::sim::telemetry::HistoryRowsView const& rows,
     } else if (field == 38) {
         rows.kills[row] = static_cast<int32>(value);
     } else if (field == 39) {
-        rows.registry_slot_count[row] = static_cast<int32>(value);
-    } else if (field == 40) {
         rows.active_lasers[row] = static_cast<int32>(value);
-    } else if (field == 41) {
-        rows.lasers_fired[row] = static_cast<int32>(value);
-    } else if (field == 42) {
-        rows.occupied_spatial_cell_count[row] = static_cast<int32>(value);
-    } else if (field == 43) {
-        rows.grid_rebuild_count[row] = value;
-    } else if (field == 44) {
-        rows.range_query_count[row] = value;
-    } else if (field == 45) {
-        rows.line_trace_count[row] = value;
-    } else if (field == 46) {
-        rows.sweep_trace_count[row] = value;
     } else {
-        rows.requested_time_scale[row] = static_cast<double>(value);
+        rows.lasers_fired[row] = static_cast<int32>(value);
     }
 }
 
@@ -236,23 +185,9 @@ auto checksum_rows(::ioj::sim::telemetry::HistoryRowsConstView const& rows) -> u
             } else if (field == 38) {
                 result += rows.kills[row];
             } else if (field == 39) {
-                result += rows.registry_slot_count[row];
-            } else if (field == 40) {
                 result += rows.active_lasers[row];
-            } else if (field == 41) {
-                result += rows.lasers_fired[row];
-            } else if (field == 42) {
-                result += rows.occupied_spatial_cell_count[row];
-            } else if (field == 43) {
-                result += rows.grid_rebuild_count[row];
-            } else if (field == 44) {
-                result += rows.range_query_count[row];
-            } else if (field == 45) {
-                result += rows.line_trace_count[row];
-            } else if (field == 46) {
-                result += rows.sweep_trace_count[row];
             } else {
-                result += static_cast<uint64>(rows.requested_time_scale[row]);
+                result += rows.lasers_fired[row];
             }
             mask &= mask - 1;
         }
@@ -477,15 +412,8 @@ void log_column_page_stats(FAutomationTestBase& test,
         TEXT("spawned_entities"),
         TEXT("destroyed_entities"),
         TEXT("kills"),
-        TEXT("registry_slot_count"),
         TEXT("active_lasers"),
         TEXT("lasers_fired"),
-        TEXT("occupied_spatial_cell_count"),
-        TEXT("grid_rebuild_count"),
-        TEXT("range_query_count"),
-        TEXT("line_trace_count"),
-        TEXT("sweep_trace_count"),
-        TEXT("requested_time_scale"),
     };
     auto const columns{history.get_const_view().columns()};
     int32 column_index{};
@@ -544,15 +472,8 @@ void zero_row_range(std::byte* const data,
     zero_column<Layout::SpawnedEntities>(data, blocks, first, count);
     zero_column<Layout::DestroyedEntities>(data, blocks, first, count);
     zero_column<Layout::Kills>(data, blocks, first, count);
-    zero_column<Layout::RegistrySlotCount>(data, blocks, first, count);
     zero_column<Layout::ActiveLasers>(data, blocks, first, count);
     zero_column<Layout::LasersFired>(data, blocks, first, count);
-    zero_column<Layout::OccupiedSpatialCellCount>(data, blocks, first, count);
-    zero_column<Layout::GridRebuildCount>(data, blocks, first, count);
-    zero_column<Layout::RangeQueryCount>(data, blocks, first, count);
-    zero_column<Layout::LineTraceCount>(data, blocks, first, count);
-    zero_column<Layout::SweepTraceCount>(data, blocks, first, count);
-    zero_column<Layout::RequestedTimeScale>(data, blocks, first, count);
 }
 
 void run_chunk_zero_probe(FAutomationTestBase& token,

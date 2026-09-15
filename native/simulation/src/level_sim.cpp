@@ -7,7 +7,6 @@
 #include <ioj/sim/profiling.h>
 #include <optional>
 #include <sandbox/core/diagnostics.h>
-#include <sandbox/core/monotonic_clock.h>
 #include <span>
 #include <thread>
 #include <vector>
@@ -15,76 +14,6 @@
 namespace ioj::sim {
 
 namespace level_simulation {
-class TickTimingCollector {
-  public:
-    explicit TickTimingCollector(bool const enabled)
-        : enabled_{enabled}
-        , tick_started_at_{enabled ? ml::monotonic_seconds() : 0.0}
-        , phase_started_at_{tick_started_at_} {
-        system_timings_.fill(-1.0);
-        phase_timings_.fill(-1.0);
-        for (auto& systems : phase_system_timings_) {
-            systems.fill(-1.0);
-        }
-    }
-
-    class Scope {
-      public:
-        Scope(TickTimingCollector& collector, SimTelemetryTimingSystem const system)
-            : collector_{collector}
-            , system_index_{static_cast<std::size_t>(system)}
-            , phase_index_{static_cast<std::size_t>(collector.phase_)}
-            , started_at_{collector.enabled_ ? ml::monotonic_seconds() : 0.0} {}
-        Scope(Scope const&) = delete;
-        Scope(Scope&&) = delete;
-        auto operator=(Scope const&) -> Scope& = delete;
-        auto operator=(Scope&&) -> Scope& = delete;
-        ~Scope() {
-            if (collector_.enabled_) {
-                auto const elapsed{ml::monotonic_seconds() - started_at_};
-                auto& total{collector_.system_timings_[system_index_]};
-                auto& phase_total{collector_.phase_system_timings_[phase_index_][system_index_]};
-                total = std::max(0.0, total) + elapsed;
-                phase_total = std::max(0.0, phase_total) + elapsed;
-            }
-        }
-      private:
-        TickTimingCollector& collector_;
-        std::size_t system_index_{};
-        std::size_t phase_index_{};
-        double started_at_{};
-    };
-
-    [[nodiscard]] auto scope(SimTelemetryTimingSystem const system) -> Scope {
-        return Scope{*this, system};
-    }
-
-    void finish_phase() {
-        if (enabled_) {
-            auto const now{ml::monotonic_seconds()};
-            phase_timings_[static_cast<std::size_t>(phase_)] = now - phase_started_at_;
-            phase_started_at_ = now;
-        }
-    }
-    void set_phase(LevelTelemetryTimingPhase const phase) { phase_ = phase; }
-    void record(LevelTelemetryManager& manager) const {
-        if (enabled_) {
-            manager.record_simulation_tick_timing(ml::monotonic_seconds() - tick_started_at_,
-                                                  system_timings_,
-                                                  phase_timings_,
-                                                  phase_system_timings_);
-        }
-    }
-  private:
-    bool enabled_{};
-    double tick_started_at_{};
-    double phase_started_at_{};
-    LevelTelemetryTimingPhase phase_{LevelTelemetryTimingPhase::Preparation};
-    SimTelemetryPerformanceWindow::SystemTimings system_timings_;
-    SimTelemetryPerformanceWindow::PhaseArray<double> phase_timings_;
-    SimTelemetryPerformanceWindow::PhaseSystemTimings phase_system_timings_{};
-};
-
 /* **************************************** */
 // Participating teams
 /* **************************************** */
@@ -167,12 +96,8 @@ LevelSim::LevelSim(LevelSimInitData data)
                      turrets_simulation_,
                      spinners_simulation_,
                      mission_manager_}
-    , level_telemetry_manager_{clock_,
-                               entity_registry_,
-                               lasers_simulation_,
-                               query_manager_,
-                               *game_memory_,
-                               data.telemetry_history} {
+    , level_telemetry_manager_{
+          clock_, entity_registry_, lasers_simulation_, *game_memory_, data.telemetry_history} {
     clock_.initialise(data.clock_settings);
     telemetry_metadata_ = std::move(data.telemetry_metadata);
     level_simulation::finalise_participating_teams(data);
@@ -191,8 +116,6 @@ void LevelSim::finish_initialisation() {
     query_manager_.update(clock_.get_completed_ticks());
     entity_registry_.end_tick();
 
-    // Initialization rebuilds must not contribute to runtime telemetry.
-    query_manager_.reset_runtime_telemetry();
     initialise_telemetry();
 
     event_manager_.configure_mission();
@@ -202,12 +125,10 @@ void LevelSim::finish_initialisation() {
 }
 void LevelSim::start() {
     assert(state_ == OrchestratorState::Paused);
-    telemetry_tick_loop_.initialise();
     state_ = OrchestratorState::Running;
 }
 void LevelSim::pause() {
     assert(state_ != OrchestratorState::Uninitialised);
-    telemetry_tick_loop_.initialise();
     state_ = OrchestratorState::Paused;
 }
 void LevelSim::set_time_scale(time_type scale) {
@@ -290,9 +211,6 @@ auto LevelSim::add_static_collision_aabb(Vector3f const min_point, Vector3f cons
 /* **************************************** */
 void LevelSim::initialise_telemetry() {
     level_telemetry_manager_.initialise();
-    telemetry_tick_loop_.tick_rate = 4.0;
-    telemetry_tick_loop_.time_scale = 1.0;
-    telemetry_tick_loop_.initialise();
 
     if (telemetry_metadata_.has_value()) {
         level_telemetry_manager_.begin_run(std::move(telemetry_metadata_.value()));
@@ -335,38 +253,21 @@ void LevelSim::advance(time_type const dt) {
     turrets_simulation_.reset_frame_output();
     lasers_simulation_.reset_frame_output();
     query_manager_.get_collision_system().reset_frame_events();
-    level_telemetry_manager_.observe_frame(dt);
     clock_.tick_loop.add_time(dt);
 
     while (clock_.tick_loop.try_tick()) {
         auto const tick_period{static_cast<float>(clock_.tick_loop.tick_period)};
-        level_simulation::TickTimingCollector timings{
-            level_telemetry_manager_.detailed_timing_enabled() &&
-            (clock_.completed_ticks % 16) == 0};
         auto const player_active{player_ship_simulation_.has_value() &&
                                  player_ship_simulation_->health.is_alive()};
         auto publish_entity_state = [&] {
             SANDBOX_PROFILE_SCOPE("Sandbox::LevelSim::advance::publish_entity_state");
             if (player_ship_simulation_.has_value() && player_ship_simulation_->health.is_alive()) {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Player)};
                 player_ship_phase_->update_entity_registry();
             }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Capitals)};
-                capital_ships_phase_.update_entity_registry();
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Fighters)};
-                fighters_phase_.update_entity_registry();
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Turrets)};
-                turrets_phase_.update_entity_registry();
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Registry)};
-                entity_registry_.commit_updates();
-            }
+            capital_ships_phase_.update_entity_registry();
+            fighters_phase_.update_entity_registry();
+            turrets_phase_.update_entity_registry();
+            entity_registry_.commit_updates();
         };
 
         /* -------------------------------------------------------------------------------- */
@@ -374,81 +275,38 @@ void LevelSim::advance(time_type const dt) {
         /* -------------------------------------------------------------------------------- */
         {
             SANDBOX_PROFILE_SCOPE("Sandbox::LevelSim::Preparation");
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Registry)};
-                entity_registry_.begin_tick();
-            }
+            entity_registry_.begin_tick();
             if (player_active) {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Player)};
                 player_ship_phase_->prepare_tick(tick_period);
             }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Capitals)};
-                capital_ships_phase_.prepare_tick(tick_period);
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Fighters)};
-                fighters_phase_.prepare_tick(tick_period);
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Turrets)};
-                turrets_phase_.prepare_tick(tick_period);
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Spinners)};
-                spinners_phase_.prepare_tick(tick_period);
-            }
+            capital_ships_phase_.prepare_tick(tick_period);
+            fighters_phase_.prepare_tick(tick_period);
+            turrets_phase_.prepare_tick(tick_period);
+            spinners_phase_.prepare_tick(tick_period);
         }
         frame_memory_.reclaim();
-        timings.finish_phase();
-        timings.set_phase(LevelTelemetryTimingPhase::Thinking);
 
         /* -------------------------------------------------------------------------------- */
         // Thinking
         /* -------------------------------------------------------------------------------- */
         {
             SANDBOX_PROFILE_SCOPE("Sandbox::LevelSim::Thinking");
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Turrets)};
-                turrets_phase_.think(tick_period);
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Capitals)};
-                capital_ships_phase_.think(tick_period);
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Fighters)};
-                fighters_phase_.think(tick_period);
-            }
+            turrets_phase_.think(tick_period);
+            capital_ships_phase_.think(tick_period);
+            fighters_phase_.think(tick_period);
             if (player_active) {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Player)};
                 player_ship_phase_->think(tick_period);
             }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Spinners)};
-                spinners_phase_.think(tick_period);
-            }
+            spinners_phase_.think(tick_period);
 
             if (player_active) {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Player)};
                 player_ship_phase_->generate_fire_commands();
             }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Fighters)};
-                fighters_phase_.generate_fire_commands();
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Turrets)};
-                turrets_phase_.generate_fire_commands();
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Spinners)};
-                spinners_phase_.generate_fire_commands();
-            }
+            fighters_phase_.generate_fire_commands();
+            turrets_phase_.generate_fire_commands();
+            spinners_phase_.generate_fire_commands();
         }
         frame_memory_.reclaim();
-        timings.finish_phase();
-        timings.set_phase(LevelTelemetryTimingPhase::Action);
 
         /* -------------------------------------------------------------------------------- */
         // Action
@@ -457,49 +315,26 @@ void LevelSim::advance(time_type const dt) {
             SANDBOX_PROFILE_SCOPE("Sandbox::LevelSim::Action");
 
             // Existing projectiles retain pre-movement collision geometry.
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Lasers)};
-                lasers_phase_.simulate(tick_period);
-            }
+            lasers_phase_.simulate(tick_period);
             frame_memory_.reclaim();
 
             if (player_active) {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Player)};
                 player_ship_phase_->apply_movement();
             }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Fighters)};
-                fighters_phase_.apply_movement();
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Spinners)};
-                spinners_phase_.apply_movement();
-            }
+            fighters_phase_.apply_movement();
+            spinners_phase_.apply_movement();
             frame_memory_.reclaim();
 
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Mission)};
-                event_manager_.execute_tick(clock_.completed_ticks + 1);
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Fighters)};
-                fighters_phase_.commit_spawns();
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Capitals)};
-                capital_ships_phase_.execute_fighter_self_destruct_requests();
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Lasers)};
-                lasers_phase_.commit_spawns();
-            }
+            event_manager_.execute_tick(clock_.completed_ticks + 1);
+            fighters_phase_.commit_spawns();
+            capital_ships_phase_.execute_fighter_self_destruct_requests();
+            lasers_phase_.commit_spawns();
             frame_memory_.reclaim();
 
             // Collision observes moved and newly created entities, before resolved deaths.
             publish_entity_state();
             collision::DetectedOverlapsView overlaps;
             {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::SpatialQueries)};
                 auto const authored_spawns{event_manager_.get_spawned_handles()};
                 if (authored_spawns.empty()) {
                     overlaps = query_manager_.update(clock_.completed_ticks + 1);
@@ -520,82 +355,35 @@ void LevelSim::advance(time_type const dt) {
             }
 
             if (player_active) {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Player)};
                 player_ship_phase_->resolve_damage_events();
             }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Capitals)};
-                capital_ships_phase_.resolve_damage_events();
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Fighters)};
-                fighters_phase_.resolve_damage_events();
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Turrets)};
-                turrets_phase_.resolve_damage_events();
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Capitals)};
-                capital_ships_phase_.resolve_fighters_of_dying_capitals();
-            }
+            capital_ships_phase_.resolve_damage_events();
+            fighters_phase_.resolve_damage_events();
+            turrets_phase_.resolve_damage_events();
+            capital_ships_phase_.resolve_fighters_of_dying_capitals();
 
             // Queue final rows before compaction; include all capital-death consequences.
             publish_entity_state();
             auto const queries_need_refresh{
                 !entity_registry_.get_dead_entities_this_frame().empty()};
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Capitals)};
-                capital_ships_phase_.cleanup_entities();
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Fighters)};
-                fighters_phase_.cleanup_entities();
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Turrets)};
-                turrets_phase_.cleanup_entities();
-            }
+            capital_ships_phase_.cleanup_entities();
+            fighters_phase_.cleanup_entities();
+            turrets_phase_.cleanup_entities();
             if (queries_need_refresh) {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::SpatialQueries)};
                 query_manager_.get_collision_system().refresh_queries();
             }
             frame_memory_.reclaim();
 
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Mission)};
-                mission_manager_.mission_tick();
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Capitals)};
-                capital_ships_phase_.finish_action();
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Fighters)};
-                fighters_phase_.finish_action();
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Turrets)};
-                turrets_phase_.finish_action();
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Spinners)};
-                spinners_phase_.finish_action();
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Lasers)};
-                lasers_phase_.finish_action();
-            }
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Registry)};
-                entity_registry_.end_tick();
-            }
+            mission_manager_.mission_tick();
+            capital_ships_phase_.finish_action();
+            fighters_phase_.finish_action();
+            turrets_phase_.finish_action();
+            spinners_phase_.finish_action();
+            lasers_phase_.finish_action();
+            entity_registry_.end_tick();
 
             ++clock_.completed_ticks;
-            {
-                auto const timing{timings.scope(SimTelemetryTimingSystem::Telemetry)};
-                level_telemetry_manager_.tick();
-            }
+            level_telemetry_manager_.tick();
             if (on_mission_evaluated) {
                 on_mission_evaluated();
             }
@@ -604,31 +392,17 @@ void LevelSim::advance(time_type const dt) {
             }
             frame_memory_.reset();
         }
-        timings.finish_phase();
-        timings.record(level_telemetry_manager_);
         profiling::mark_frame("Simulation");
 
         if (state_ != OrchestratorState::Running) {
             break;
         }
     }
-
-    sample_realtime_telemetry(dt);
 }
 
 /* **************************************** */
-// Telemetry sampling
+// Read views
 /* **************************************** */
-void LevelSim::sample_realtime_telemetry(time_type const dt) {
-    telemetry_tick_loop_.add_time(dt);
-    bool should_sample{};
-    while (telemetry_tick_loop_.try_tick()) {
-        should_sample = true;
-    }
-    if (should_sample) {
-        level_telemetry_manager_.capture_realtime_sample();
-    }
-}
 
 auto LevelSim::get_read_view() const -> LevelReadView {
     return {frame_sequence_,

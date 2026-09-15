@@ -24,16 +24,9 @@ enum class HistoryField : std::uint8_t {
         static_cast<std::uint8_t>(ActiveEntitiesByTeamAndType) + (team_count) * (entity_type_count),
     DestroyedEntities = static_cast<std::uint8_t>(SpawnedEntities) + 1,
     Kills = static_cast<std::uint8_t>(DestroyedEntities) + 1,
-    RegistrySlotCount = static_cast<std::uint8_t>(Kills) + 1,
-    ActiveLasers = static_cast<std::uint8_t>(RegistrySlotCount) + 1,
+    ActiveLasers = static_cast<std::uint8_t>(Kills) + 1,
     LasersFired = static_cast<std::uint8_t>(ActiveLasers) + 1,
-    OccupiedSpatialCellCount = static_cast<std::uint8_t>(LasersFired) + 1,
-    GridRebuildCount = static_cast<std::uint8_t>(OccupiedSpatialCellCount) + 1,
-    RangeQueryCount = static_cast<std::uint8_t>(GridRebuildCount) + 1,
-    LineTraceCount = static_cast<std::uint8_t>(RangeQueryCount) + 1,
-    SweepTraceCount = static_cast<std::uint8_t>(LineTraceCount) + 1,
-    RequestedTimeScale = static_cast<std::uint8_t>(SweepTraceCount) + 1,
-    Count = static_cast<std::uint8_t>(RequestedTimeScale) + 1,
+    Count = static_cast<std::uint8_t>(LasersFired) + 1,
 };
 
 struct HistoryFieldMask {
@@ -104,15 +97,8 @@ struct HistoryRowsConstView {
     std::span<std::int32_t const> spawned_entities;
     std::span<std::int32_t const> destroyed_entities;
     std::span<std::int32_t const> kills;
-    std::span<std::int32_t const> registry_slot_count;
     std::span<std::int32_t const> active_lasers;
     std::span<std::int32_t const> lasers_fired;
-    std::span<std::int32_t const> occupied_spatial_cell_count;
-    std::span<std::uint64_t const> grid_rebuild_count;
-    std::span<std::uint64_t const> range_query_count;
-    std::span<std::uint64_t const> line_trace_count;
-    std::span<std::uint64_t const> sweep_trace_count;
-    std::span<double const> requested_time_scale;
     auto num() const noexcept -> size_type {
         return static_cast<size_type>(completed_ticks.size());
     }
@@ -127,15 +113,8 @@ struct HistoryRowsConstView {
         fn(spawned_entities);
         fn(destroyed_entities);
         fn(kills);
-        fn(registry_slot_count);
         fn(active_lasers);
         fn(lasers_fired);
-        fn(occupied_spatial_cell_count);
-        fn(grid_rebuild_count);
-        fn(range_query_count);
-        fn(line_trace_count);
-        fn(sweep_trace_count);
-        fn(requested_time_scale);
     }
     void validate_array_sizes() const {
         auto const count{num()};
@@ -162,23 +141,9 @@ struct HistoryRowsConstView {
             destroyed_entities.subspan(static_cast<std::size_t>(offset),
                                        static_cast<std::size_t>(count)),
             kills.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            registry_slot_count.subspan(static_cast<std::size_t>(offset),
-                                        static_cast<std::size_t>(count)),
             active_lasers.subspan(static_cast<std::size_t>(offset),
                                   static_cast<std::size_t>(count)),
             lasers_fired.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            occupied_spatial_cell_count.subspan(static_cast<std::size_t>(offset),
-                                                static_cast<std::size_t>(count)),
-            grid_rebuild_count.subspan(static_cast<std::size_t>(offset),
-                                       static_cast<std::size_t>(count)),
-            range_query_count.subspan(static_cast<std::size_t>(offset),
-                                      static_cast<std::size_t>(count)),
-            line_trace_count.subspan(static_cast<std::size_t>(offset),
-                                     static_cast<std::size_t>(count)),
-            sweep_trace_count.subspan(static_cast<std::size_t>(offset),
-                                      static_cast<std::size_t>(count)),
-            requested_time_scale.subspan(static_cast<std::size_t>(offset),
-                                         static_cast<std::size_t>(count)),
         };
     }
     auto get_view() const -> HistoryRowsConstView { return *this; }
@@ -195,15 +160,8 @@ struct HistoryRowsConstView {
             spawned_entities,
             destroyed_entities,
             kills,
-            registry_slot_count,
             active_lasers,
             lasers_fired,
-            occupied_spatial_cell_count,
-            grid_rebuild_count,
-            range_query_count,
-            line_trace_count,
-            sweep_trace_count,
-            requested_time_scale,
         };
     }
     auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
@@ -226,15 +184,8 @@ struct HistoryRowsView {
     std::span<std::int32_t> spawned_entities;
     std::span<std::int32_t> destroyed_entities;
     std::span<std::int32_t> kills;
-    std::span<std::int32_t> registry_slot_count;
     std::span<std::int32_t> active_lasers;
     std::span<std::int32_t> lasers_fired;
-    std::span<std::int32_t> occupied_spatial_cell_count;
-    std::span<std::uint64_t> grid_rebuild_count;
-    std::span<std::uint64_t> range_query_count;
-    std::span<std::uint64_t> line_trace_count;
-    std::span<std::uint64_t> sweep_trace_count;
-    std::span<double> requested_time_scale;
     auto num() const noexcept -> size_type {
         return static_cast<size_type>(completed_ticks.size());
     }
@@ -249,15 +200,8 @@ struct HistoryRowsView {
         fn(spawned_entities);
         fn(destroyed_entities);
         fn(kills);
-        fn(registry_slot_count);
         fn(active_lasers);
         fn(lasers_fired);
-        fn(occupied_spatial_cell_count);
-        fn(grid_rebuild_count);
-        fn(range_query_count);
-        fn(line_trace_count);
-        fn(sweep_trace_count);
-        fn(requested_time_scale);
     }
     void validate_array_sizes() const {
         auto const count{num()};
@@ -284,23 +228,9 @@ struct HistoryRowsView {
             destroyed_entities.subspan(static_cast<std::size_t>(offset),
                                        static_cast<std::size_t>(count)),
             kills.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            registry_slot_count.subspan(static_cast<std::size_t>(offset),
-                                        static_cast<std::size_t>(count)),
             active_lasers.subspan(static_cast<std::size_t>(offset),
                                   static_cast<std::size_t>(count)),
             lasers_fired.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            occupied_spatial_cell_count.subspan(static_cast<std::size_t>(offset),
-                                                static_cast<std::size_t>(count)),
-            grid_rebuild_count.subspan(static_cast<std::size_t>(offset),
-                                       static_cast<std::size_t>(count)),
-            range_query_count.subspan(static_cast<std::size_t>(offset),
-                                      static_cast<std::size_t>(count)),
-            line_trace_count.subspan(static_cast<std::size_t>(offset),
-                                     static_cast<std::size_t>(count)),
-            sweep_trace_count.subspan(static_cast<std::size_t>(offset),
-                                      static_cast<std::size_t>(count)),
-            requested_time_scale.subspan(static_cast<std::size_t>(offset),
-                                         static_cast<std::size_t>(count)),
         };
     }
     auto get_view() const -> HistoryRowsView { return *this; }
@@ -317,15 +247,8 @@ struct HistoryRowsView {
             spawned_entities,
             destroyed_entities,
             kills,
-            registry_slot_count,
             active_lasers,
             lasers_fired,
-            occupied_spatial_cell_count,
-            grid_rebuild_count,
-            range_query_count,
-            line_trace_count,
-            sweep_trace_count,
-            requested_time_scale,
         };
     }
     auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
@@ -344,15 +267,8 @@ struct HistoryRowsView {
              std::int32_t const new_spawned_entities,
              std::int32_t const new_destroyed_entities,
              std::int32_t const new_kills,
-             std::int32_t const new_registry_slot_count,
              std::int32_t const new_active_lasers,
-             std::int32_t const new_lasers_fired,
-             std::int32_t const new_occupied_spatial_cell_count,
-             std::uint64_t const new_grid_rebuild_count,
-             std::uint64_t const new_range_query_count,
-             std::uint64_t const new_line_trace_count,
-             std::uint64_t const new_sweep_trace_count,
-             double const new_requested_time_scale) const {
+             std::int32_t const new_lasers_fired) const {
         ml::native_soa::require(index >= 0 && index < num());
         completed_ticks[static_cast<std::size_t>(index)] = new_completed_ticks;
         validity_masks[static_cast<std::size_t>(index)] = new_validity_masks;
@@ -363,16 +279,8 @@ struct HistoryRowsView {
         spawned_entities[static_cast<std::size_t>(index)] = new_spawned_entities;
         destroyed_entities[static_cast<std::size_t>(index)] = new_destroyed_entities;
         kills[static_cast<std::size_t>(index)] = new_kills;
-        registry_slot_count[static_cast<std::size_t>(index)] = new_registry_slot_count;
         active_lasers[static_cast<std::size_t>(index)] = new_active_lasers;
         lasers_fired[static_cast<std::size_t>(index)] = new_lasers_fired;
-        occupied_spatial_cell_count[static_cast<std::size_t>(index)] =
-            new_occupied_spatial_cell_count;
-        grid_rebuild_count[static_cast<std::size_t>(index)] = new_grid_rebuild_count;
-        range_query_count[static_cast<std::size_t>(index)] = new_range_query_count;
-        line_trace_count[static_cast<std::size_t>(index)] = new_line_trace_count;
-        sweep_trace_count[static_cast<std::size_t>(index)] = new_sweep_trace_count;
-        requested_time_scale[static_cast<std::size_t>(index)] = new_requested_time_scale;
     }
 };
 struct HistoryRows {
@@ -387,15 +295,8 @@ struct HistoryRows {
     ml::native_soa::Vector<std::int32_t> spawned_entities;
     ml::native_soa::Vector<std::int32_t> destroyed_entities;
     ml::native_soa::Vector<std::int32_t> kills;
-    ml::native_soa::Vector<std::int32_t> registry_slot_count;
     ml::native_soa::Vector<std::int32_t> active_lasers;
     ml::native_soa::Vector<std::int32_t> lasers_fired;
-    ml::native_soa::Vector<std::int32_t> occupied_spatial_cell_count;
-    ml::native_soa::Vector<std::uint64_t> grid_rebuild_count;
-    ml::native_soa::Vector<std::uint64_t> range_query_count;
-    ml::native_soa::Vector<std::uint64_t> line_trace_count;
-    ml::native_soa::Vector<std::uint64_t> sweep_trace_count;
-    ml::native_soa::Vector<double> requested_time_scale;
     auto num() const noexcept -> size_type {
         return static_cast<size_type>(completed_ticks.size());
     }
@@ -410,15 +311,8 @@ struct HistoryRows {
         fn(spawned_entities);
         fn(destroyed_entities);
         fn(kills);
-        fn(registry_slot_count);
         fn(active_lasers);
         fn(lasers_fired);
-        fn(occupied_spatial_cell_count);
-        fn(grid_rebuild_count);
-        fn(range_query_count);
-        fn(line_trace_count);
-        fn(sweep_trace_count);
-        fn(requested_time_scale);
     }
     template <typename Fn>
     void each_column(Fn&& fn) const {
@@ -430,15 +324,8 @@ struct HistoryRows {
         fn(spawned_entities);
         fn(destroyed_entities);
         fn(kills);
-        fn(registry_slot_count);
         fn(active_lasers);
         fn(lasers_fired);
-        fn(occupied_spatial_cell_count);
-        fn(grid_rebuild_count);
-        fn(range_query_count);
-        fn(line_trace_count);
-        fn(sweep_trace_count);
-        fn(requested_time_scale);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
     void reserve(size_type const count) {
@@ -451,15 +338,8 @@ struct HistoryRows {
         spawned_entities.reserve(static_cast<std::size_t>(count));
         destroyed_entities.reserve(static_cast<std::size_t>(count));
         kills.reserve(static_cast<std::size_t>(count));
-        registry_slot_count.reserve(static_cast<std::size_t>(count));
         active_lasers.reserve(static_cast<std::size_t>(count));
         lasers_fired.reserve(static_cast<std::size_t>(count));
-        occupied_spatial_cell_count.reserve(static_cast<std::size_t>(count));
-        grid_rebuild_count.reserve(static_cast<std::size_t>(count));
-        range_query_count.reserve(static_cast<std::size_t>(count));
-        line_trace_count.reserve(static_cast<std::size_t>(count));
-        sweep_trace_count.reserve(static_cast<std::size_t>(count));
-        requested_time_scale.reserve(static_cast<std::size_t>(count));
     }
     void reset() noexcept {
         completed_ticks.clear();
@@ -470,15 +350,8 @@ struct HistoryRows {
         spawned_entities.clear();
         destroyed_entities.clear();
         kills.clear();
-        registry_slot_count.clear();
         active_lasers.clear();
         lasers_fired.clear();
-        occupied_spatial_cell_count.clear();
-        grid_rebuild_count.clear();
-        range_query_count.clear();
-        line_trace_count.clear();
-        sweep_trace_count.clear();
-        requested_time_scale.clear();
     }
     void set_num(size_type const count) {
         ml::native_soa::require(count >= 0);
@@ -491,15 +364,8 @@ struct HistoryRows {
         spawned_entities.resize(size);
         destroyed_entities.resize(size);
         kills.resize(size);
-        registry_slot_count.resize(size);
         active_lasers.resize(size);
         lasers_fired.resize(size);
-        occupied_spatial_cell_count.resize(size);
-        grid_rebuild_count.resize(size);
-        range_query_count.resize(size);
-        line_trace_count.resize(size);
-        sweep_trace_count.resize(size);
-        requested_time_scale.resize(size);
     }
     void add_uninitialised(size_type const count) {
         auto const old_num{num()};
@@ -540,31 +406,10 @@ struct HistoryRows {
             kills[index + i] = kills[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
-            registry_slot_count[index + i] = registry_slot_count[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
             active_lasers[index + i] = active_lasers[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
             lasers_fired[index + i] = lasers_fired[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            occupied_spatial_cell_count[index + i] = occupied_spatial_cell_count[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            grid_rebuild_count[index + i] = grid_rebuild_count[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            range_query_count[index + i] = range_query_count[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            line_trace_count[index + i] = line_trace_count[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            sweep_trace_count[index + i] = sweep_trace_count[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            requested_time_scale[index + i] = requested_time_scale[source + i];
         }
         set_num(old_num - count);
     }
@@ -577,15 +422,8 @@ struct HistoryRows {
              std::int32_t const new_spawned_entities,
              std::int32_t const new_destroyed_entities,
              std::int32_t const new_kills,
-             std::int32_t const new_registry_slot_count,
              std::int32_t const new_active_lasers,
-             std::int32_t const new_lasers_fired,
-             std::int32_t const new_occupied_spatial_cell_count,
-             std::uint64_t const new_grid_rebuild_count,
-             std::uint64_t const new_range_query_count,
-             std::uint64_t const new_line_trace_count,
-             std::uint64_t const new_sweep_trace_count,
-             double const new_requested_time_scale) {
+             std::int32_t const new_lasers_fired) {
         get_view().set(index,
                        new_completed_ticks,
                        new_validity_masks,
@@ -595,15 +433,8 @@ struct HistoryRows {
                        new_spawned_entities,
                        new_destroyed_entities,
                        new_kills,
-                       new_registry_slot_count,
                        new_active_lasers,
-                       new_lasers_fired,
-                       new_occupied_spatial_cell_count,
-                       new_grid_rebuild_count,
-                       new_range_query_count,
-                       new_line_trace_count,
-                       new_sweep_trace_count,
-                       new_requested_time_scale);
+                       new_lasers_fired);
     }
     auto add(SimTick const new_completed_ticks,
              HistoryFieldMask const new_validity_masks,
@@ -613,15 +444,8 @@ struct HistoryRows {
              std::int32_t const new_spawned_entities,
              std::int32_t const new_destroyed_entities,
              std::int32_t const new_kills,
-             std::int32_t const new_registry_slot_count,
              std::int32_t const new_active_lasers,
-             std::int32_t const new_lasers_fired,
-             std::int32_t const new_occupied_spatial_cell_count,
-             std::uint64_t const new_grid_rebuild_count,
-             std::uint64_t const new_range_query_count,
-             std::uint64_t const new_line_trace_count,
-             std::uint64_t const new_sweep_trace_count,
-             double const new_requested_time_scale) -> size_type {
+             std::int32_t const new_lasers_fired) -> size_type {
         auto const index{num()};
         add_defaulted(1);
         set(index,
@@ -633,15 +457,8 @@ struct HistoryRows {
             new_spawned_entities,
             new_destroyed_entities,
             new_kills,
-            new_registry_slot_count,
             new_active_lasers,
-            new_lasers_fired,
-            new_occupied_spatial_cell_count,
-            new_grid_rebuild_count,
-            new_range_query_count,
-            new_line_trace_count,
-            new_sweep_trace_count,
-            new_requested_time_scale);
+            new_lasers_fired);
         return index;
     }
     void append_from(ConstView source) {
@@ -707,13 +524,6 @@ struct HistoryRows {
                                     address >= begin + kills.size() * sizeof(std::int32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.registry_slot_count.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(registry_slot_count.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + registry_slot_count.size() * sizeof(std::int32_t));
-        }
-        {
             auto const address{reinterpret_cast<std::uintptr_t>(source.active_lasers.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(active_lasers.data())};
             ml::native_soa::require(address < begin ||
@@ -724,49 +534,6 @@ struct HistoryRows {
             auto const begin{reinterpret_cast<std::uintptr_t>(lasers_fired.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + lasers_fired.size() * sizeof(std::int32_t));
-        }
-        {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.occupied_spatial_cell_count.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(occupied_spatial_cell_count.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + occupied_spatial_cell_count.size() *
-                                                           sizeof(std::int32_t));
-        }
-        {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.grid_rebuild_count.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(grid_rebuild_count.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + grid_rebuild_count.size() * sizeof(std::uint64_t));
-        }
-        {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.range_query_count.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(range_query_count.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + range_query_count.size() * sizeof(std::uint64_t));
-        }
-        {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.line_trace_count.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(line_trace_count.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + line_trace_count.size() * sizeof(std::uint64_t));
-        }
-        {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.sweep_trace_count.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(sweep_trace_count.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + sweep_trace_count.size() * sizeof(std::uint64_t));
-        }
-        {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.requested_time_scale.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(requested_time_scale.data())};
-            ml::native_soa::require(
-                address < begin || address >= begin + requested_time_scale.size() * sizeof(double));
         }
         completed_ticks.insert(
             completed_ticks.end(), source.completed_ticks.begin(), source.completed_ticks.end());
@@ -786,30 +553,10 @@ struct HistoryRows {
                                   source.destroyed_entities.begin(),
                                   source.destroyed_entities.end());
         kills.insert(kills.end(), source.kills.begin(), source.kills.end());
-        registry_slot_count.insert(registry_slot_count.end(),
-                                   source.registry_slot_count.begin(),
-                                   source.registry_slot_count.end());
         active_lasers.insert(
             active_lasers.end(), source.active_lasers.begin(), source.active_lasers.end());
         lasers_fired.insert(
             lasers_fired.end(), source.lasers_fired.begin(), source.lasers_fired.end());
-        occupied_spatial_cell_count.insert(occupied_spatial_cell_count.end(),
-                                           source.occupied_spatial_cell_count.begin(),
-                                           source.occupied_spatial_cell_count.end());
-        grid_rebuild_count.insert(grid_rebuild_count.end(),
-                                  source.grid_rebuild_count.begin(),
-                                  source.grid_rebuild_count.end());
-        range_query_count.insert(range_query_count.end(),
-                                 source.range_query_count.begin(),
-                                 source.range_query_count.end());
-        line_trace_count.insert(
-            line_trace_count.end(), source.line_trace_count.begin(), source.line_trace_count.end());
-        sweep_trace_count.insert(sweep_trace_count.end(),
-                                 source.sweep_trace_count.begin(),
-                                 source.sweep_trace_count.end());
-        requested_time_scale.insert(requested_time_scale.end(),
-                                    source.requested_time_scale.begin(),
-                                    source.requested_time_scale.end());
     }
     auto get_view() -> View {
         return {
@@ -821,15 +568,8 @@ struct HistoryRows {
             spawned_entities,
             destroyed_entities,
             kills,
-            registry_slot_count,
             active_lasers,
             lasers_fired,
-            occupied_spatial_cell_count,
-            grid_rebuild_count,
-            range_query_count,
-            line_trace_count,
-            sweep_trace_count,
-            requested_time_scale,
         };
     }
     auto get_view() const -> ConstView {
@@ -842,15 +582,8 @@ struct HistoryRows {
             spawned_entities,
             destroyed_entities,
             kills,
-            registry_slot_count,
             active_lasers,
             lasers_fired,
-            occupied_spatial_cell_count,
-            grid_rebuild_count,
-            range_query_count,
-            line_trace_count,
-            sweep_trace_count,
-            requested_time_scale,
         };
     }
     auto get_const_view() const -> ConstView { return get_view(); }
@@ -891,24 +624,10 @@ struct HistoryRows {
             other.destroyed_entities[static_cast<std::size_t>(src_index)];
         kills[static_cast<std::size_t>(dst_index)] =
             other.kills[static_cast<std::size_t>(src_index)];
-        registry_slot_count[static_cast<std::size_t>(dst_index)] =
-            other.registry_slot_count[static_cast<std::size_t>(src_index)];
         active_lasers[static_cast<std::size_t>(dst_index)] =
             other.active_lasers[static_cast<std::size_t>(src_index)];
         lasers_fired[static_cast<std::size_t>(dst_index)] =
             other.lasers_fired[static_cast<std::size_t>(src_index)];
-        occupied_spatial_cell_count[static_cast<std::size_t>(dst_index)] =
-            other.occupied_spatial_cell_count[static_cast<std::size_t>(src_index)];
-        grid_rebuild_count[static_cast<std::size_t>(dst_index)] =
-            other.grid_rebuild_count[static_cast<std::size_t>(src_index)];
-        range_query_count[static_cast<std::size_t>(dst_index)] =
-            other.range_query_count[static_cast<std::size_t>(src_index)];
-        line_trace_count[static_cast<std::size_t>(dst_index)] =
-            other.line_trace_count[static_cast<std::size_t>(src_index)];
-        sweep_trace_count[static_cast<std::size_t>(dst_index)] =
-            other.sweep_trace_count[static_cast<std::size_t>(src_index)];
-        requested_time_scale[static_cast<std::size_t>(dst_index)] =
-            other.requested_time_scale[static_cast<std::size_t>(src_index)];
     }
     template <typename Other>
     void copy_elements(size_type const dst_index,
@@ -965,15 +684,8 @@ struct HistoryRowsSingleLayout {
     inline static constexpr ColLayout<std::int32_t> SpawnedEntities{ActiveEntitiesByTeamAndType};
     inline static constexpr ColLayout<std::int32_t> DestroyedEntities{SpawnedEntities};
     inline static constexpr ColLayout<std::int32_t> Kills{DestroyedEntities};
-    inline static constexpr ColLayout<std::int32_t> RegistrySlotCount{Kills};
-    inline static constexpr ColLayout<std::int32_t> ActiveLasers{RegistrySlotCount};
+    inline static constexpr ColLayout<std::int32_t> ActiveLasers{Kills};
     inline static constexpr ColLayout<std::int32_t> LasersFired{ActiveLasers};
-    inline static constexpr ColLayout<std::int32_t> OccupiedSpatialCellCount{LasersFired};
-    inline static constexpr ColLayout<std::uint64_t> GridRebuildCount{OccupiedSpatialCellCount};
-    inline static constexpr ColLayout<std::uint64_t> RangeQueryCount{GridRebuildCount};
-    inline static constexpr ColLayout<std::uint64_t> LineTraceCount{RangeQueryCount};
-    inline static constexpr ColLayout<std::uint64_t> SweepTraceCount{LineTraceCount};
-    inline static constexpr ColLayout<double> RequestedTimeScale{SweepTraceCount};
 
     inline static constexpr byte_size_type allocation_alignment{
         ml::native_soa::maximum_alignment(CompletedTicks,
@@ -984,25 +696,18 @@ struct HistoryRowsSingleLayout {
                                           SpawnedEntities,
                                           DestroyedEntities,
                                           Kills,
-                                          RegistrySlotCount,
                                           ActiveLasers,
-                                          LasersFired,
-                                          OccupiedSpatialCellCount,
-                                          GridRebuildCount,
-                                          RangeQueryCount,
-                                          LineTraceCount,
-                                          SweepTraceCount,
-                                          RequestedTimeScale)};
+                                          LasersFired)};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::layout_align(RequestedTimeScale.block_end, allocation_alignment) +
-        16 * (column_gap + allocation_alignment - 1)};
+        ml::native_soa::layout_align(LasersFired.block_end, allocation_alignment) +
+        9 * (column_gap + allocation_alignment - 1)};
     inline static constexpr size_type max_capacity{
         ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : RequestedTimeScale.data_end(blocks);
+        return blocks == 0 ? 0 : LasersFired.data_end(blocks);
     }
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
@@ -1025,14 +730,6 @@ struct HistoryRowsSingleLayout {
         static_assert(
             ml::native_soa::supported_leaf<EntityCounts>,
             "Single-allocation leaf active_entities_by_team_and_type requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::native_soa::supported_leaf<std::uint64_t>,
-            "Single-allocation leaf grid_rebuild_count requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::native_soa::supported_leaf<double>,
-            "Single-allocation leaf requested_time_scale requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
 
         static_assert(
@@ -1058,29 +755,13 @@ struct HistoryRowsSingleLayout {
         static_assert(sizeof(std::int32_t) <=
                       (max_allocation_size - Kills.block_offset) / capacity_granularity);
         static_assert(sizeof(std::int32_t) <=
-                      (max_allocation_size - RegistrySlotCount.block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(std::int32_t) <=
                       (max_allocation_size - ActiveLasers.block_offset) / capacity_granularity);
         static_assert(sizeof(std::int32_t) <=
                       (max_allocation_size - LasersFired.block_offset) / capacity_granularity);
-        static_assert(sizeof(std::int32_t) <=
-                      (max_allocation_size - OccupiedSpatialCellCount.block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(std::uint64_t) <=
-                      (max_allocation_size - GridRebuildCount.block_offset) / capacity_granularity);
-        static_assert(sizeof(std::uint64_t) <=
-                      (max_allocation_size - RangeQueryCount.block_offset) / capacity_granularity);
-        static_assert(sizeof(std::uint64_t) <=
-                      (max_allocation_size - LineTraceCount.block_offset) / capacity_granularity);
-        static_assert(sizeof(std::uint64_t) <=
-                      (max_allocation_size - SweepTraceCount.block_offset) / capacity_granularity);
-        static_assert(sizeof(double) <= (max_allocation_size - RequestedTimeScale.block_offset) /
-                                            capacity_granularity);
-        static_assert(
-            16 <= (max_allocation_size - ml::native_soa::layout_align(RequestedTimeScale.block_end,
-                                                                      allocation_alignment)) /
-                      (column_gap + allocation_alignment - 1));
+        static_assert(9 <=
+                      (max_allocation_size -
+                       ml::native_soa::layout_align(LasersFired.block_end, allocation_alignment)) /
+                          (column_gap + allocation_alignment - 1));
         static_assert(max_capacity >= capacity_granularity);
         return true;
     };
@@ -1128,15 +809,8 @@ struct SingleAllocationHistoryRowsStorage
         Element<std::int32_t>* spawned_entities{};
         Element<std::int32_t>* destroyed_entities{};
         Element<std::int32_t>* kills{};
-        Element<std::int32_t>* registry_slot_count{};
         Element<std::int32_t>* active_lasers{};
         Element<std::int32_t>* lasers_fired{};
-        Element<std::int32_t>* occupied_spatial_cell_count{};
-        Element<std::uint64_t>* grid_rebuild_count{};
-        Element<std::uint64_t>* range_query_count{};
-        Element<std::uint64_t>* line_trace_count{};
-        Element<std::uint64_t>* sweep_trace_count{};
-        Element<double>* requested_time_scale{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (completed_ticks == nullptr) {
                 return {};
@@ -1149,15 +823,8 @@ struct SingleAllocationHistoryRowsStorage
                     spawned_entities + offset,
                     destroyed_entities + offset,
                     kills + offset,
-                    registry_slot_count + offset,
                     active_lasers + offset,
-                    lasers_fired + offset,
-                    occupied_spatial_cell_count + offset,
-                    grid_rebuild_count + offset,
-                    range_query_count + offset,
-                    line_trace_count + offset,
-                    sweep_trace_count + offset,
-                    requested_time_scale + offset};
+                    lasers_fired + offset};
         }
     };
     template <typename Self>
@@ -1195,15 +862,8 @@ struct SingleAllocationHistoryRowsStorage
                 pointer_at(SpawnedEntities),
                 pointer_at(DestroyedEntities),
                 pointer_at(Kills),
-                pointer_at(RegistrySlotCount),
                 pointer_at(ActiveLasers),
-                pointer_at(LasersFired),
-                pointer_at(OccupiedSpatialCellCount),
-                pointer_at(GridRebuildCount),
-                pointer_at(RangeQueryCount),
-                pointer_at(LineTraceCount),
-                pointer_at(SweepTraceCount),
-                pointer_at(RequestedTimeScale)};
+                pointer_at(LasersFired)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -1224,16 +884,8 @@ struct SingleAllocationHistoryRowsStorage
         std::uninitialized_value_construct_n<std::int32_t*>(columns.spawned_entities, count);
         std::uninitialized_value_construct_n<std::int32_t*>(columns.destroyed_entities, count);
         std::uninitialized_value_construct_n<std::int32_t*>(columns.kills, count);
-        std::uninitialized_value_construct_n<std::int32_t*>(columns.registry_slot_count, count);
         std::uninitialized_value_construct_n<std::int32_t*>(columns.active_lasers, count);
         std::uninitialized_value_construct_n<std::int32_t*>(columns.lasers_fired, count);
-        std::uninitialized_value_construct_n<std::int32_t*>(columns.occupied_spatial_cell_count,
-                                                            count);
-        std::uninitialized_value_construct_n<std::uint64_t*>(columns.grid_rebuild_count, count);
-        std::uninitialized_value_construct_n<std::uint64_t*>(columns.range_query_count, count);
-        std::uninitialized_value_construct_n<std::uint64_t*>(columns.line_trace_count, count);
-        std::uninitialized_value_construct_n<std::uint64_t*>(columns.sweep_trace_count, count);
-        std::uninitialized_value_construct_n<double*>(columns.requested_time_scale, count);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -1250,8 +902,6 @@ struct SingleAllocationHistoryRowsStorage
         auto const active_entities_bytes{elements_to_move * sizeof(std::int32_t)};
         auto const active_entities_by_type_bytes{elements_to_move * sizeof(EntityTypeCounts)};
         auto const active_entities_by_team_and_type_bytes{elements_to_move * sizeof(EntityCounts)};
-        auto const grid_rebuild_count_bytes{elements_to_move * sizeof(std::uint64_t)};
-        auto const requested_time_scale_bytes{elements_to_move * sizeof(double)};
         std::memcpy(columns.completed_ticks + index,
                     columns.completed_ticks + source,
                     completed_ticks_bytes);
@@ -1273,31 +923,10 @@ struct SingleAllocationHistoryRowsStorage
                     columns.destroyed_entities + source,
                     active_entities_bytes);
         std::memcpy(columns.kills + index, columns.kills + source, active_entities_bytes);
-        std::memcpy(columns.registry_slot_count + index,
-                    columns.registry_slot_count + source,
-                    active_entities_bytes);
         std::memcpy(
             columns.active_lasers + index, columns.active_lasers + source, active_entities_bytes);
         std::memcpy(
             columns.lasers_fired + index, columns.lasers_fired + source, active_entities_bytes);
-        std::memcpy(columns.occupied_spatial_cell_count + index,
-                    columns.occupied_spatial_cell_count + source,
-                    active_entities_bytes);
-        std::memcpy(columns.grid_rebuild_count + index,
-                    columns.grid_rebuild_count + source,
-                    grid_rebuild_count_bytes);
-        std::memcpy(columns.range_query_count + index,
-                    columns.range_query_count + source,
-                    grid_rebuild_count_bytes);
-        std::memcpy(columns.line_trace_count + index,
-                    columns.line_trace_count + source,
-                    grid_rebuild_count_bytes);
-        std::memcpy(columns.sweep_trace_count + index,
-                    columns.sweep_trace_count + source,
-                    grid_rebuild_count_bytes);
-        std::memcpy(columns.requested_time_scale + index,
-                    columns.requested_time_scale + source,
-                    requested_time_scale_bytes);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -1318,8 +947,6 @@ struct SingleAllocationHistoryRowsStorage
         auto const active_entities_bytes{elements_to_copy * sizeof(std::int32_t)};
         auto const active_entities_by_type_bytes{elements_to_copy * sizeof(EntityTypeCounts)};
         auto const active_entities_by_team_and_type_bytes{elements_to_copy * sizeof(EntityCounts)};
-        auto const grid_rebuild_count_bytes{elements_to_copy * sizeof(std::uint64_t)};
-        auto const requested_time_scale_bytes{elements_to_copy * sizeof(double)};
         std::memcpy(
             destination.completed_ticks, source.completed_ticks.data(), completed_ticks_bytes);
         std::memcpy(destination.validity_masks, source.validity_masks.data(), validity_masks_bytes);
@@ -1337,28 +964,8 @@ struct SingleAllocationHistoryRowsStorage
                     source.destroyed_entities.data(),
                     active_entities_bytes);
         std::memcpy(destination.kills, source.kills.data(), active_entities_bytes);
-        std::memcpy(destination.registry_slot_count,
-                    source.registry_slot_count.data(),
-                    active_entities_bytes);
         std::memcpy(destination.active_lasers, source.active_lasers.data(), active_entities_bytes);
         std::memcpy(destination.lasers_fired, source.lasers_fired.data(), active_entities_bytes);
-        std::memcpy(destination.occupied_spatial_cell_count,
-                    source.occupied_spatial_cell_count.data(),
-                    active_entities_bytes);
-        std::memcpy(destination.grid_rebuild_count,
-                    source.grid_rebuild_count.data(),
-                    grid_rebuild_count_bytes);
-        std::memcpy(destination.range_query_count,
-                    source.range_query_count.data(),
-                    grid_rebuild_count_bytes);
-        std::memcpy(
-            destination.line_trace_count, source.line_trace_count.data(), grid_rebuild_count_bytes);
-        std::memcpy(destination.sweep_trace_count,
-                    source.sweep_trace_count.data(),
-                    grid_rebuild_count_bytes);
-        std::memcpy(destination.requested_time_scale,
-                    source.requested_time_scale.data(),
-                    requested_time_scale_bytes);
     }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::native_soa::allocate(
@@ -1376,8 +983,6 @@ struct SingleAllocationHistoryRowsStorage
             auto const active_entities_bytes{live_count * sizeof(std::int32_t)};
             auto const active_entities_by_type_bytes{live_count * sizeof(EntityTypeCounts)};
             auto const active_entities_by_team_and_type_bytes{live_count * sizeof(EntityCounts)};
-            auto const grid_rebuild_count_bytes{live_count * sizeof(std::uint64_t)};
-            auto const requested_time_scale_bytes{live_count * sizeof(double)};
             std::memcpy(destination.completed_ticks, source.completed_ticks, completed_ticks_bytes);
             std::memcpy(destination.validity_masks, source.validity_masks, validity_masks_bytes);
             std::memcpy(destination.active_entities, source.active_entities, active_entities_bytes);
@@ -1392,25 +997,8 @@ struct SingleAllocationHistoryRowsStorage
             std::memcpy(
                 destination.destroyed_entities, source.destroyed_entities, active_entities_bytes);
             std::memcpy(destination.kills, source.kills, active_entities_bytes);
-            std::memcpy(
-                destination.registry_slot_count, source.registry_slot_count, active_entities_bytes);
             std::memcpy(destination.active_lasers, source.active_lasers, active_entities_bytes);
             std::memcpy(destination.lasers_fired, source.lasers_fired, active_entities_bytes);
-            std::memcpy(destination.occupied_spatial_cell_count,
-                        source.occupied_spatial_cell_count,
-                        active_entities_bytes);
-            std::memcpy(destination.grid_rebuild_count,
-                        source.grid_rebuild_count,
-                        grid_rebuild_count_bytes);
-            std::memcpy(
-                destination.range_query_count, source.range_query_count, grid_rebuild_count_bytes);
-            std::memcpy(
-                destination.line_trace_count, source.line_trace_count, grid_rebuild_count_bytes);
-            std::memcpy(
-                destination.sweep_trace_count, source.sweep_trace_count, grid_rebuild_count_bytes);
-            std::memcpy(destination.requested_time_scale,
-                        source.requested_time_scale,
-                        requested_time_scale_bytes);
         }
         ml::native_soa::free(data_, allocation_alignment);
         data_ = new_data;
@@ -1468,11 +1056,6 @@ struct HistoryRowsSingleConstView : ml::native_soa::CompactViewState<true> {
         return {column_data<std::int32_t>(HistoryRowsSingleLayout::Kills.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto registry_slot_count() const -> std::span<std::int32_t const> {
-        return {column_data<std::int32_t>(
-                    HistoryRowsSingleLayout::RegistrySlotCount.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
     auto active_lasers() const -> std::span<std::int32_t const> {
         return {column_data<std::int32_t>(
                     HistoryRowsSingleLayout::ActiveLasers.offset(capacity_blocks())),
@@ -1481,36 +1064,6 @@ struct HistoryRowsSingleConstView : ml::native_soa::CompactViewState<true> {
     auto lasers_fired() const -> std::span<std::int32_t const> {
         return {column_data<std::int32_t>(
                     HistoryRowsSingleLayout::LasersFired.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto occupied_spatial_cell_count() const -> std::span<std::int32_t const> {
-        return {column_data<std::int32_t>(
-                    HistoryRowsSingleLayout::OccupiedSpatialCellCount.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto grid_rebuild_count() const -> std::span<std::uint64_t const> {
-        return {column_data<std::uint64_t>(
-                    HistoryRowsSingleLayout::GridRebuildCount.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto range_query_count() const -> std::span<std::uint64_t const> {
-        return {column_data<std::uint64_t>(
-                    HistoryRowsSingleLayout::RangeQueryCount.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto line_trace_count() const -> std::span<std::uint64_t const> {
-        return {column_data<std::uint64_t>(
-                    HistoryRowsSingleLayout::LineTraceCount.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto sweep_trace_count() const -> std::span<std::uint64_t const> {
-        return {column_data<std::uint64_t>(
-                    HistoryRowsSingleLayout::SweepTraceCount.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto requested_time_scale() const -> std::span<double const> {
-        return {column_data<double>(
-                    HistoryRowsSingleLayout::RequestedTimeScale.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto columns() const -> HistoryRowsConstView {
@@ -1543,31 +1096,10 @@ struct HistoryRowsSingleConstView : ml::native_soa::CompactViewState<true> {
             {column_data_unchecked<std::int32_t>(HistoryRowsSingleLayout::Kills.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<std::int32_t>(
-                 HistoryRowsSingleLayout::RegistrySlotCount.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::int32_t>(
                  HistoryRowsSingleLayout::ActiveLasers.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<std::int32_t>(
                  HistoryRowsSingleLayout::LasersFired.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::int32_t>(
-                 HistoryRowsSingleLayout::OccupiedSpatialCellCount.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::uint64_t>(
-                 HistoryRowsSingleLayout::GridRebuildCount.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::uint64_t>(
-                 HistoryRowsSingleLayout::RangeQueryCount.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::uint64_t>(
-                 HistoryRowsSingleLayout::LineTraceCount.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::uint64_t>(
-                 HistoryRowsSingleLayout::SweepTraceCount.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<double>(
-                 HistoryRowsSingleLayout::RequestedTimeScale.offset(blocks)),
              static_cast<std::size_t>(count_)}};
     }
     template <typename Func>
@@ -1626,11 +1158,6 @@ struct HistoryRowsSingleView : ml::native_soa::CompactViewState<false> {
         return {column_data<std::int32_t>(HistoryRowsSingleLayout::Kills.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto registry_slot_count() const -> std::span<std::int32_t> {
-        return {column_data<std::int32_t>(
-                    HistoryRowsSingleLayout::RegistrySlotCount.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
     auto active_lasers() const -> std::span<std::int32_t> {
         return {column_data<std::int32_t>(
                     HistoryRowsSingleLayout::ActiveLasers.offset(capacity_blocks())),
@@ -1639,36 +1166,6 @@ struct HistoryRowsSingleView : ml::native_soa::CompactViewState<false> {
     auto lasers_fired() const -> std::span<std::int32_t> {
         return {column_data<std::int32_t>(
                     HistoryRowsSingleLayout::LasersFired.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto occupied_spatial_cell_count() const -> std::span<std::int32_t> {
-        return {column_data<std::int32_t>(
-                    HistoryRowsSingleLayout::OccupiedSpatialCellCount.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto grid_rebuild_count() const -> std::span<std::uint64_t> {
-        return {column_data<std::uint64_t>(
-                    HistoryRowsSingleLayout::GridRebuildCount.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto range_query_count() const -> std::span<std::uint64_t> {
-        return {column_data<std::uint64_t>(
-                    HistoryRowsSingleLayout::RangeQueryCount.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto line_trace_count() const -> std::span<std::uint64_t> {
-        return {column_data<std::uint64_t>(
-                    HistoryRowsSingleLayout::LineTraceCount.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto sweep_trace_count() const -> std::span<std::uint64_t> {
-        return {column_data<std::uint64_t>(
-                    HistoryRowsSingleLayout::SweepTraceCount.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto requested_time_scale() const -> std::span<double> {
-        return {column_data<double>(
-                    HistoryRowsSingleLayout::RequestedTimeScale.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto columns() const -> HistoryRowsView {
@@ -1701,31 +1198,10 @@ struct HistoryRowsSingleView : ml::native_soa::CompactViewState<false> {
             {column_data_unchecked<std::int32_t>(HistoryRowsSingleLayout::Kills.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<std::int32_t>(
-                 HistoryRowsSingleLayout::RegistrySlotCount.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::int32_t>(
                  HistoryRowsSingleLayout::ActiveLasers.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<std::int32_t>(
                  HistoryRowsSingleLayout::LasersFired.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::int32_t>(
-                 HistoryRowsSingleLayout::OccupiedSpatialCellCount.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::uint64_t>(
-                 HistoryRowsSingleLayout::GridRebuildCount.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::uint64_t>(
-                 HistoryRowsSingleLayout::RangeQueryCount.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::uint64_t>(
-                 HistoryRowsSingleLayout::LineTraceCount.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::uint64_t>(
-                 HistoryRowsSingleLayout::SweepTraceCount.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<double>(
-                 HistoryRowsSingleLayout::RequestedTimeScale.offset(blocks)),
              static_cast<std::size_t>(count_)}};
     }
     template <typename Func>

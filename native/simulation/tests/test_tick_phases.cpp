@@ -76,7 +76,6 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
 
     auto const events{queries.get_collision_system().get_aabb_overlap_events()};
     EXPECT_EQ(events.entity_entity_overlaps.num(), 1);
-    EXPECT_EQ(queries.get_runtime_telemetry().grid_rebuild_count, 1);
 
     simulation.advance(simulation.get_clock().get_tick_period());
 
@@ -221,7 +220,6 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
     EXPECT_EQ(simulation.get_mission_manager().get_mission_state(), MissionState::Failed);
 
     auto const& queries{simulation.get_spatial_query_manager()};
-    EXPECT_EQ(queries.get_runtime_telemetry().grid_rebuild_count, 2);
     EXPECT_EQ(queries.get_collision_system().get_aabb_overlap_events().entity_entity_overlaps.num(),
               1);
     EXPECT_EQ(queries.trace_closest({{-20.f, 0.f, 0.f}}, {{20.f, 0.f, 0.f}}).entity,
@@ -335,110 +333,4 @@ TEST(TickPhases, CapitalDeathPublishesExistingAndNewChildDeathsBeforeMissionEval
     }
 }
 
-TEST(TickPhases, DetailedTimingRetainsSystemsWithinThreePhases) {
-    auto data{make_world()};
-    add_moving_player(data);
-    data.telemetry_metadata.emplace();
-    data.telemetry_metadata->run_id = "phase-timing-test";
-    data.telemetry_metadata->detailed_timing = true;
-
-    LevelSim simulation{std::move(data)};
-    simulation.finish_initialisation();
-
-    simulation.start();
-    simulation.advance(simulation.get_clock().get_tick_period() * 17.0);
-
-    simulation.finalize_telemetry_run(LevelTelemetryRunEndReason::DurationReached);
-
-    auto const record{simulation.take_finalized_telemetry_run()};
-    ASSERT_TRUE(record.has_value());
-
-    std::uint64_t samples{};
-
-    for (auto const& window : record->performance_windows) {
-        auto const& phases{window.phases};
-
-        auto const count{phases.size()};
-        EXPECT_EQ(count, 3);
-
-        for (std::size_t phase{}; phase < count; ++phase) {
-            samples += phases[phase].sample_count;
-            if (phases[phase].sample_count > 0) {
-                auto const& player_timing{window.phase_systems[phase][static_cast<std::size_t>(
-                    SimTelemetryTimingSystem::Player)]};
-                EXPECT_GT(player_timing.sample_count, 0);
-            }
-        }
-    }
-
-    EXPECT_GT(samples, 0);
-}
-
-TEST(TickPhases, TimingAggregationKeepsColumnsIndependentAcrossWindows) {
-    SimClock clock{};
-    clock.initialise({});
-    EntityRegistry registry{};
-    SpatialQueryManager queries{registry};
-    ml::FrameMemoryResource frame_memory{4096};
-    lasers::Sim lasers{clock, registry, queries, frame_memory};
-    GameMemory game_memory{{.root_capacity_bytes = 2u * 1024u * 1024u}};
-    LevelTelemetryManager manager{
-        clock, registry, lasers, queries, game_memory, {.block_bytes = 100u * 1024u}};
-    manager.initialise();
-    manager.begin_run({.run_id = "timing-aggregation", .detailed_timing = true});
-
-    for (auto const seconds : {0.003, 0.001, 0.002}) {
-        SimTelemetryPerformanceWindow::SystemTimings systems;
-        systems.fill(-1.0);
-
-        SimTelemetryPerformanceWindow::PhaseArray<double> phases;
-        phases.fill(-1.0);
-
-        SimTelemetryPerformanceWindow::PhaseSystemTimings phase_systems;
-
-        for (auto& phase : phase_systems) {
-            phase.fill(-1.0);
-        }
-
-        systems[0] = seconds;
-        phases[0] = seconds;
-        phase_systems[0][0] = seconds;
-        phase_systems[1][1] = seconds + 0.010;
-
-        manager.record_simulation_tick_timing(seconds, systems, phases, phase_systems);
-    }
-
-    manager.capture_realtime_sample();
-
-    SimTelemetryPerformanceWindow::SystemTimings systems{};
-
-    SimTelemetryPerformanceWindow::PhaseArray<double> phases{};
-
-    SimTelemetryPerformanceWindow::PhaseSystemTimings phase_systems{};
-
-    phase_systems[0][0] = 0.004;
-
-    manager.record_simulation_tick_timing(0.004, systems, phases, phase_systems);
-
-    manager.finalize_interrupted(LevelTelemetryRunEndReason::DurationReached, {});
-
-    auto const record{manager.take_finalized_run()};
-    ASSERT_TRUE(record.has_value());
-    ASSERT_EQ(record->performance_windows.size(), 2);
-
-    auto const& first{record->performance_windows[0]};
-    auto const& first_timing{first.phase_systems[0][0]};
-    EXPECT_EQ(first_timing.sample_count, 3);
-    EXPECT_DOUBLE_EQ(first_timing.mean_ms, 2.0);
-    EXPECT_DOUBLE_EQ(first_timing.p95_ms, 3.0);
-    EXPECT_DOUBLE_EQ(first_timing.max_ms, 3.0);
-    EXPECT_NEAR(first.phase_systems[1][1].mean_ms, 12.0, 1.e-10);
-    EXPECT_EQ(first.phase_systems[0][1].sample_count, 0);
-
-    auto const& second{record->performance_windows[1]};
-    auto const& second_timing{second.phase_systems[0][0]};
-    EXPECT_EQ(second_timing.sample_count, 1);
-    EXPECT_DOUBLE_EQ(second_timing.mean_ms, 4.0);
-    EXPECT_DOUBLE_EQ(second.phase_systems[1][1].mean_ms, 0.0);
-}
 }

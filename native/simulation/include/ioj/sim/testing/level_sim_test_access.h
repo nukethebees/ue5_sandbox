@@ -16,9 +16,6 @@ struct LevelSimTestAccess {
     static void begin_telemetry_run(LevelSim& simulation, LevelTelemetryRunMetadata metadata) {
         simulation.level_telemetry_manager_.begin_run(std::move(metadata));
     }
-    static void capture_realtime_telemetry_sample(LevelSim& simulation) {
-        simulation.level_telemetry_manager_.capture_realtime_sample();
-    }
     static auto complete_mission(LevelSim& simulation) -> bool {
         return simulation.mission_manager_.complete_mission();
     }

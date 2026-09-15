@@ -496,7 +496,6 @@ void CollisionUniformGrid::rebuild_static_grid() {
 
 void CollisionUniformGrid::rebuild_grid(collision::EntityAABBs const& entity_aabbs) {
     SANDBOX_PROFILE_SCOPE("Sandbox::CollisionUniformGrid::rebuild_grid");
-    telemetry_.record_rebuild();
     if (!is_configured()) {
         ml::fatal_error("Cannot rebuild an unconfigured collision grid");
     }
@@ -572,7 +571,6 @@ void CollisionUniformGrid::append_overlaps(
 
 void CollisionUniformGrid::trace_aabbs(LineTracesConstView const& traces,
                                        TraceHitsView const& hits) const {
-    telemetry_.record_line_traces(static_cast<std::uint64_t>(traces.num()));
     collision_uniform_grid_detail::trace_grid_lines(geometry_,
                                                     entity_storage_,
                                                     static_storage_,
@@ -585,7 +583,6 @@ void CollisionUniformGrid::trace_aabbs(
     LineTracesConstView const& traces,
     TraceHitsView const& hits,
     std::span<RegistryEntityHandle const> const ignored_entities) const {
-    telemetry_.record_line_traces(static_cast<std::uint64_t>(traces.num()));
     collision_uniform_grid_detail::trace_grid_lines_ignoring_entities(
         geometry_,
         entity_storage_,
@@ -601,7 +598,6 @@ void CollisionUniformGrid::sweep_aabbs(LineTracesConstView const& centre_paths,
                                        TraceHitsView const& hits,
                                        std::span<RegistryEntityHandle const> const ignored_entities,
                                        TraceEntityFilter const entity_filter) const {
-    telemetry_.record_sweep_traces(static_cast<std::uint64_t>(centre_paths.num()));
     assert(std::isfinite(moving_half_extent.X) && std::isfinite(moving_half_extent.Y) &&
            std::isfinite(moving_half_extent.Z));
     assert(moving_half_extent.X >= 0.f);
@@ -617,15 +613,6 @@ void CollisionUniformGrid::sweep_aabbs(LineTracesConstView const& centre_paths,
         hits,
         {ignored_entities.data(), static_cast<std::size_t>(ignored_entities.size())},
         entity_filter);
-}
-
-void CollisionUniformGrid::reset_runtime_telemetry() noexcept {
-    telemetry_.reset();
-}
-
-auto CollisionUniformGrid::get_runtime_telemetry() const noexcept
-    -> CollisionGridTelemetrySnapshot {
-    return telemetry_.snapshot();
 }
 
 auto CollisionUniformGrid::to_cell_x(float const value) const -> std::int32_t {

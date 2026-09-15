@@ -8,7 +8,6 @@
 
 #include <ioj/sim/query_thread_buffer_pool.h>
 #include <ioj/sim/sim_tick.h>
-#include <ioj/sim/spatial_query_telemetry.h>
 
 #include <ioj/sim/collision/collision_system.h>
 #include <ioj/sim/trace_hits.h>
@@ -42,7 +41,6 @@ class ThreadBufferLease {
 }
 
 namespace ioj::sim {
-using SpatialQueryTelemetrySnapshot = collision::SpatialQueryTelemetrySnapshot;
 struct SpatialQueryManager {
   public:
     /* **************************************** */
@@ -128,8 +126,6 @@ struct SpatialQueryManager {
     }
 
     auto update(SimTick tick) -> collision::DetectedOverlapsView;
-    void reset_runtime_telemetry() noexcept;
-    auto get_runtime_telemetry() const noexcept -> SpatialQueryTelemetrySnapshot;
   private:
     /* **************************************** */
     // Thread buffer leasing
@@ -150,6 +146,5 @@ struct SpatialQueryManager {
 
     collision::CollisionSystem collision;
     std::array<float, static_cast<std::size_t>(EntityType::COUNT)> entity_radii_{};
-    collision::SpatialQueryTelemetry telemetry_;
 };
 }

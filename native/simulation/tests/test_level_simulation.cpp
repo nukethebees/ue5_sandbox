@@ -241,9 +241,6 @@ TEST(NativeSimulation, LevelSimInitialQueriesTest) {
     simulation.set_static_collision(std::move(static_bounds));
     simulation.finish_initialisation();
     auto const& queries{simulation.get_spatial_query_manager()};
-    tests::expect_equal(queries.get_runtime_telemetry().grid_rebuild_count,
-                        std::uint64_t{0},
-                        "Initialization rebuilds are excluded from runtime counters");
     auto const dynamic_hit{queries.trace_closest({{-1100.f, 0.f, 0.f}}, {{-900.f, 0.f, 0.f}})};
     tests::expect_true(dynamic_hit.hit &&
                            dynamic_hit.entity == simulation.get_capital_ships().get_handle(0),
@@ -506,7 +503,6 @@ TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
                        "Simulation initialization starts telemetry recording");
 
     simulation.advance(1.0);
-    auto const time_scale_change_tick{simulation.get_clock().get_completed_ticks() + 1};
     simulation.set_time_scale(4.0);
     simulation.advance(simulation.get_clock().get_tick_period());
     simulation.finalize_telemetry_run(LevelTelemetryRunEndReason::WorldEnd, "test");
@@ -526,25 +522,17 @@ TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
     tests::expect_equal(record->completion.completed_ticks,
                         simulation.get_clock().get_completed_ticks(),
                         "Completion preserves completed ticks");
-    auto const& realtime{record->completed_ticks_by_real_time};
-    tests::expect_true(realtime.num() >= 3,
-                       "Recorder emits start, periodic, and final realtime mappings");
-    tests::expect_equal(realtime.value_at(0), SimTick{0}, "Realtime mapping starts at tick zero");
-    tests::expect_equal(realtime.last_value(),
-                        simulation.get_clock().get_completed_ticks(),
-                        "Realtime mapping ends at the completed tick");
+    auto const& battle{record->battle_samples};
+    ASSERT_GE(battle.size(), 3);
+    EXPECT_EQ(battle.front().completed_tick, SimTick{0});
+    EXPECT_EQ(battle.back().completed_tick, simulation.get_clock().get_completed_ticks());
+    EXPECT_DOUBLE_EQ(battle.back().simulated_elapsed_seconds,
+                     simulation.get_clock().get_simulation_time());
+    EXPECT_DOUBLE_EQ(record->metadata.initial_requested_time_scale, 1.0);
 
     auto const& series{record->tick_series};
     tests::expect_equal(
         series.active_entities.num(), 1, "An unchanged entity count is only stored once");
-    tests::expect_equal(series.requested_time_scale.num(),
-                        2,
-                        "Requested time scale is only stored when it changes");
-    tests::expect_equal(series.requested_time_scale.last_time(),
-                        time_scale_change_tick,
-                        "Changed requested time scale is indexed by its first simulation tick");
-    tests::expect_equal(
-        series.requested_time_scale.last_value(), 4.0, "Changed requested time scale is retained");
 }
 
 } // namespace tests

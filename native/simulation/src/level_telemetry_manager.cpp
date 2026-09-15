@@ -1,7 +1,6 @@
 #include "ioj/sim/level_telemetry_manager.h"
 #include <cstdint>
 #include <optional>
-#include <sandbox/core/monotonic_clock.h>
 #include <span>
 #include <vector>
 
@@ -50,30 +49,8 @@ bool contains_only_nonnegative_values(Data const& data) {
     return true;
 }
 
-auto aggregate_timings(std::span<double> samples) -> LevelTelemetryTimingAggregate {
-    LevelTelemetryTimingAggregate result;
-    result.sample_count = samples.size();
-    if (samples.empty()) {
-        return result;
-    }
-
-    double total{};
-    for (auto const sample : samples) {
-        total += sample;
-        result.max_ms = std::max(result.max_ms, sample * 1000.0);
-    }
-    std::ranges::sort(samples);
-
-    auto const p95_index{std::min(static_cast<std::size_t>(std::ceil(samples.size() * 0.95) - 1),
-                                  samples.size() - 1)};
-    result.mean_ms = total * 1000.0 / static_cast<double>(samples.size());
-    result.p95_ms = samples[p95_index] * 1000.0;
-    return result;
 }
 
-}
-
-using level_telemetry_detail::aggregate_timings;
 using level_telemetry_detail::contains_only_nonnegative_values;
 using level_telemetry_detail::snapshot_with_terminal_sample;
 
@@ -83,13 +60,11 @@ using level_telemetry_detail::snapshot_with_terminal_sample;
 LevelTelemetryManager::LevelTelemetryManager(SimClock const& clock,
                                              EntityRegistry const& entity_registry,
                                              lasers::Sim const& lasers,
-                                             SpatialQueryManager const& spatial_queries,
                                              GameMemory& game_memory,
                                              LevelTelemetryHistoryConfig history_config) noexcept
     : clock_{clock}
     , entity_registry_{entity_registry}
     , lasers_{lasers}
-    , spatial_queries_{spatial_queries}
     , history_{game_memory, history_config} {}
 
 void LevelTelemetryManager::initialise() {
@@ -105,30 +80,15 @@ void LevelTelemetryManager::reset() {
     history_.reset();
     metadata_ = {};
     completion_ = {};
-    completed_ticks_by_real_time_.reset();
     battle_samples_.clear();
-    performance_windows_.clear();
     active_entity_count_data_.reset();
     cumulative_kill_count_data_.reset();
-    run_started_at_ = 0.0;
-    last_sampled_time_scale_ = 0.0;
-    payload_write_count_ = 0;
     run_recording_ = false;
     run_finalized_ = false;
     run_record_taken_ = false;
     initialized_ = false;
     has_sampled_state_ = false;
     next_battle_sample_seconds_ = 0.0;
-
-    frame_samples_.clear();
-    simulation_tick_samples_.clear();
-    for (auto& samples : system_samples_) {
-        samples.clear();
-    }
-    for (auto& samples : phase_samples_) {
-        samples.clear();
-    }
-    phase_system_samples_.clear();
 }
 
 /* **************************************** */
@@ -145,36 +105,6 @@ void LevelTelemetryManager::tick() {
         sample_battle_state();
         next_battle_sample_seconds_ = std::floor(simulated_seconds) + 1.0;
     }
-}
-
-void LevelTelemetryManager::observe_frame(double const frame_seconds) {
-    if (run_recording_ && frame_seconds >= 0.0) {
-        frame_samples_.push_back(frame_seconds);
-    }
-}
-
-void LevelTelemetryManager::record_simulation_tick_timing(
-    double const elapsed_seconds,
-    std::array<double, SimTelemetryPerformanceWindow::system_count> const& systems,
-    SimTelemetryPerformanceWindow::PhaseArray<double> const& phases,
-    SimTelemetryPerformanceWindow::PhaseSystemTimings const& phase_systems) {
-    if (!run_recording_ || !metadata_.detailed_timing) {
-        return;
-    }
-
-    simulation_tick_samples_.push_back(elapsed_seconds);
-    for (std::int32_t index{}; index < SimTelemetryPerformanceWindow::system_count; ++index) {
-        if (systems[index] >= 0.0) {
-            system_samples_[index].push_back(systems[index]);
-        }
-    }
-
-    for (std::int32_t index{}; index < SimTelemetryPerformanceWindow::phase_count; ++index) {
-        if (phases[index] >= 0.0) {
-            phase_samples_[index].push_back(phases[index]);
-        }
-    }
-    phase_system_samples_.push_back(phase_systems);
 }
 
 /* **************************************** */
@@ -223,7 +153,6 @@ auto LevelTelemetryManager::make_snapshot() const -> LevelTelemetrySnapshot {
 // State and series sampling
 /* **************************************** */
 void LevelTelemetryManager::update_current_state() {
-    auto const spatial{spatial_queries_.get_runtime_telemetry()};
     current_state_.active_entities_by_team_and_type =
         entity_registry_.count_alive_per_team_and_type();
     current_state_.active_entities = entity_registry_.count_alive();
@@ -231,14 +160,8 @@ void LevelTelemetryManager::update_current_state() {
     current_state_.destroyed_entities =
         current_state_.spawned_entities - current_state_.active_entities;
     current_state_.kills = entity_registry_.count_kills();
-    current_state_.registry_slot_count = entity_registry_.get_num_elements();
     current_state_.active_lasers = lasers_.get_num_instances();
     current_state_.lasers_fired = lasers_.get_number_spawned();
-    current_state_.occupied_spatial_cell_count = spatial.occupied_dynamic_cell_count;
-    current_state_.grid_rebuild_count = spatial.grid_rebuild_count;
-    current_state_.range_query_count = spatial.range_query_count;
-    current_state_.line_trace_count = spatial.line_trace_count;
-    current_state_.sweep_trace_count = spatial.sweep_trace_count;
 
     assert(current_state_.destroyed_entities >= 0);
 }
@@ -280,10 +203,6 @@ void LevelTelemetryManager::sample_live_series() {
     if (!has_sampled_state_ || current_state_.kills != last_sampled_state_.kills) {
         mask.set(Field::Kills);
     }
-    auto const time_scale{clock_.get_time_scale()};
-    if (!has_sampled_state_ || time_scale != last_sampled_time_scale_) {
-        mask.set(Field::RequestedTimeScale);
-    }
     if (mask.is_empty()) {
         return;
     }
@@ -316,16 +235,11 @@ void LevelTelemetryManager::sample_live_series() {
         columns.kills[row] = current_state_.kills;
         cumulative_kill_count_data_.add(tick, current_state_.kills);
     }
-    if (mask.has(Field::RequestedTimeScale)) {
-        columns.requested_time_scale[row] = time_scale;
-    }
 
-    payload_write_count_ += std::popcount(mask.value());
     last_sampled_state_.active_entities = current_state_.active_entities;
     last_sampled_state_.active_entities_by_team_and_type =
         current_state_.active_entities_by_team_and_type;
     last_sampled_state_.kills = current_state_.kills;
-    last_sampled_time_scale_ = time_scale;
 }
 
 void LevelTelemetryManager::sample_series() {
@@ -345,27 +259,9 @@ void LevelTelemetryManager::sample_series() {
     mark_changed(Field::DestroyedEntities,
                  current_state_.destroyed_entities,
                  last_sampled_state_.destroyed_entities);
-    mark_changed(Field::RegistrySlotCount,
-                 current_state_.registry_slot_count,
-                 last_sampled_state_.registry_slot_count);
     mark_changed(
         Field::ActiveLasers, current_state_.active_lasers, last_sampled_state_.active_lasers);
     mark_changed(Field::LasersFired, current_state_.lasers_fired, last_sampled_state_.lasers_fired);
-    mark_changed(Field::OccupiedSpatialCellCount,
-                 current_state_.occupied_spatial_cell_count,
-                 last_sampled_state_.occupied_spatial_cell_count);
-    mark_changed(Field::GridRebuildCount,
-                 current_state_.grid_rebuild_count,
-                 last_sampled_state_.grid_rebuild_count);
-    mark_changed(Field::RangeQueryCount,
-                 current_state_.range_query_count,
-                 last_sampled_state_.range_query_count);
-    mark_changed(Field::LineTraceCount,
-                 current_state_.line_trace_count,
-                 last_sampled_state_.line_trace_count);
-    mark_changed(Field::SweepTraceCount,
-                 current_state_.sweep_trace_count,
-                 last_sampled_state_.sweep_trace_count);
 
     if (!mask.is_empty()) {
         auto columns{append_history_row(clock_.get_completed_ticks())};
@@ -378,43 +274,18 @@ void LevelTelemetryManager::sample_series() {
         if (mask.has(Field::DestroyedEntities)) {
             columns.destroyed_entities[row] = current_state_.destroyed_entities;
         }
-        if (mask.has(Field::RegistrySlotCount)) {
-            columns.registry_slot_count[row] = current_state_.registry_slot_count;
-        }
         if (mask.has(Field::ActiveLasers)) {
             columns.active_lasers[row] = current_state_.active_lasers;
         }
         if (mask.has(Field::LasersFired)) {
             columns.lasers_fired[row] = current_state_.lasers_fired;
         }
-        if (mask.has(Field::OccupiedSpatialCellCount)) {
-            columns.occupied_spatial_cell_count[row] = current_state_.occupied_spatial_cell_count;
-        }
-        if (mask.has(Field::GridRebuildCount)) {
-            columns.grid_rebuild_count[row] = current_state_.grid_rebuild_count;
-        }
-        if (mask.has(Field::RangeQueryCount)) {
-            columns.range_query_count[row] = current_state_.range_query_count;
-        }
-        if (mask.has(Field::LineTraceCount)) {
-            columns.line_trace_count[row] = current_state_.line_trace_count;
-        }
-        if (mask.has(Field::SweepTraceCount)) {
-            columns.sweep_trace_count[row] = current_state_.sweep_trace_count;
-        }
-        payload_write_count_ += std::popcount(mask.value());
     }
 
     last_sampled_state_.spawned_entities = current_state_.spawned_entities;
     last_sampled_state_.destroyed_entities = current_state_.destroyed_entities;
-    last_sampled_state_.registry_slot_count = current_state_.registry_slot_count;
     last_sampled_state_.active_lasers = current_state_.active_lasers;
     last_sampled_state_.lasers_fired = current_state_.lasers_fired;
-    last_sampled_state_.occupied_spatial_cell_count = current_state_.occupied_spatial_cell_count;
-    last_sampled_state_.grid_rebuild_count = current_state_.grid_rebuild_count;
-    last_sampled_state_.range_query_count = current_state_.range_query_count;
-    last_sampled_state_.line_trace_count = current_state_.line_trace_count;
-    last_sampled_state_.sweep_trace_count = current_state_.sweep_trace_count;
     has_sampled_state_ = true;
 }
 
@@ -451,7 +322,6 @@ auto LevelTelemetryManager::get_history_stats() const noexcept -> LevelTelemetry
         .unused_samples_in_final_block = block_stats.unused_samples_in_final_block,
         .unused_payload_bytes_in_final_block = block_stats.unused_payload_bytes_in_final_block,
         .fixed_layout_overhead_bytes = block_stats.fixed_layout_overhead_bytes,
-        .payload_write_count = payload_write_count_,
     };
 }
 
@@ -488,16 +358,8 @@ auto LevelTelemetryManager::materialize_tick_series() const -> LevelTelemetryTic
     result.spawned_entities.reserve(sample_counts[FieldMask::index(Field::SpawnedEntities)]);
     result.destroyed_entities.reserve(sample_counts[FieldMask::index(Field::DestroyedEntities)]);
     result.kills.reserve(sample_counts[FieldMask::index(Field::Kills)]);
-    result.registry_slot_count.reserve(sample_counts[FieldMask::index(Field::RegistrySlotCount)]);
     result.active_lasers.reserve(sample_counts[FieldMask::index(Field::ActiveLasers)]);
     result.lasers_fired.reserve(sample_counts[FieldMask::index(Field::LasersFired)]);
-    result.occupied_spatial_cell_count.reserve(
-        sample_counts[FieldMask::index(Field::OccupiedSpatialCellCount)]);
-    result.grid_rebuild_count.reserve(sample_counts[FieldMask::index(Field::GridRebuildCount)]);
-    result.range_query_count.reserve(sample_counts[FieldMask::index(Field::RangeQueryCount)]);
-    result.line_trace_count.reserve(sample_counts[FieldMask::index(Field::LineTraceCount)]);
-    result.sweep_trace_count.reserve(sample_counts[FieldMask::index(Field::SweepTraceCount)]);
-    result.requested_time_scale.reserve(sample_counts[FieldMask::index(Field::RequestedTimeScale)]);
 
     history_.for_each_block([&result](auto const block) {
         auto const rows{block.columns()};
@@ -535,32 +397,11 @@ auto LevelTelemetryManager::materialize_tick_series() const -> LevelTelemetryTic
             if (mask.has(Field::Kills)) {
                 result.kills.add(tick, rows.kills[row]);
             }
-            if (mask.has(Field::RegistrySlotCount)) {
-                result.registry_slot_count.add(tick, rows.registry_slot_count[row]);
-            }
             if (mask.has(Field::ActiveLasers)) {
                 result.active_lasers.add(tick, rows.active_lasers[row]);
             }
             if (mask.has(Field::LasersFired)) {
                 result.lasers_fired.add(tick, rows.lasers_fired[row]);
-            }
-            if (mask.has(Field::OccupiedSpatialCellCount)) {
-                result.occupied_spatial_cell_count.add(tick, rows.occupied_spatial_cell_count[row]);
-            }
-            if (mask.has(Field::GridRebuildCount)) {
-                result.grid_rebuild_count.add(tick, rows.grid_rebuild_count[row]);
-            }
-            if (mask.has(Field::RangeQueryCount)) {
-                result.range_query_count.add(tick, rows.range_query_count[row]);
-            }
-            if (mask.has(Field::LineTraceCount)) {
-                result.line_trace_count.add(tick, rows.line_trace_count[row]);
-            }
-            if (mask.has(Field::SweepTraceCount)) {
-                result.sweep_trace_count.add(tick, rows.sweep_trace_count[row]);
-            }
-            if (mask.has(Field::RequestedTimeScale)) {
-                result.requested_time_scale.add(tick, rows.requested_time_scale[row]);
             }
         }
     });
@@ -585,12 +426,6 @@ void LevelTelemetryManager::sample_battle_state(bool const force) {
         .alive = current_state_.active_entities_by_team_and_type,
         .active_lasers = current_state_.active_lasers,
         .lasers_fired = current_state_.lasers_fired,
-        .registry_slot_count = current_state_.registry_slot_count,
-        .occupied_spatial_cell_count = current_state_.occupied_spatial_cell_count,
-        .grid_rebuild_count = current_state_.grid_rebuild_count,
-        .range_query_count = current_state_.range_query_count,
-        .line_trace_count = current_state_.line_trace_count,
-        .sweep_trace_count = current_state_.sweep_trace_count,
     });
 }
 
@@ -611,69 +446,12 @@ void LevelTelemetryManager::begin_run(LevelTelemetryRunMetadata metadata) {
 
     metadata_ = std::move(metadata);
     completion_ = {};
-    completed_ticks_by_real_time_.reset();
-    run_started_at_ = ml::monotonic_seconds();
     run_recording_ = true;
     run_finalized_ = false;
     run_record_taken_ = false;
 
-    add_realtime_sample(clock_.get_completed_ticks(), run_started_at_);
     sample_battle_state(true);
     next_battle_sample_seconds_ = 1.0;
-}
-
-void LevelTelemetryManager::capture_realtime_sample() {
-    if (!run_recording_) {
-        return;
-    }
-
-    auto const now{ml::monotonic_seconds()};
-    add_realtime_sample(clock_.get_completed_ticks(), now);
-    close_performance_window(now);
-}
-
-void LevelTelemetryManager::close_performance_window(double const monotonic_time) {
-    SimTelemetryPerformanceWindow window;
-    window.real_elapsed_seconds = wall_elapsed(monotonic_time);
-    window.completed_tick = clock_.get_completed_ticks();
-    window.frame = aggregate_timings(frame_samples_);
-    window.game_thread = window.frame;
-    window.simulation_tick = aggregate_timings(simulation_tick_samples_);
-
-    for (std::int32_t index{}; index < SimTelemetryPerformanceWindow::system_count; ++index) {
-        window.systems[index] = aggregate_timings(system_samples_[index]);
-        system_samples_[index].clear();
-    }
-
-    double phase_total_ms{};
-    std::vector<double> phase_system_scratch;
-    phase_system_scratch.reserve(phase_system_samples_.size());
-    for (std::int32_t index{}; index < SimTelemetryPerformanceWindow::phase_count; ++index) {
-        window.phases[index] = aggregate_timings(phase_samples_[index]);
-        phase_total_ms += window.phases[index].mean_ms;
-        phase_samples_[index].clear();
-        for (std::int32_t system{}; system < SimTelemetryPerformanceWindow::system_count;
-             ++system) {
-            phase_system_scratch.clear();
-            for (auto const& tick : phase_system_samples_) {
-                if (tick[index][system] >= 0.0) {
-                    phase_system_scratch.push_back(tick[index][system]);
-                }
-            }
-            window.phase_systems[index][system] = aggregate_timings(phase_system_scratch);
-        }
-    }
-    phase_system_samples_.clear();
-
-    if (phase_total_ms > 0.0) {
-        for (std::int32_t index{}; index < SimTelemetryPerformanceWindow::phase_count; ++index) {
-            window.phase_cpu_share[index] = window.phases[index].mean_ms / phase_total_ms;
-        }
-    }
-
-    performance_windows_.push_back(std::move(window));
-    frame_samples_.clear();
-    simulation_tick_samples_.clear();
 }
 
 /* **************************************** */
@@ -683,17 +461,17 @@ void LevelTelemetryManager::mark_mission_terminal(LevelMissionResult const& resu
     auto const reason{result.state == MissionState::Succeeded
                           ? LevelTelemetryRunEndReason::MissionSucceeded
                           : LevelTelemetryRunEndReason::MissionFailed};
-    finalize_run(reason, false, {}, &result, ml::monotonic_seconds());
+    finalize_run(reason, false, {}, &result);
 }
 
 void LevelTelemetryManager::finalize_interrupted(LevelTelemetryRunEndReason const reason,
                                                  std::string world_end_reason) {
-    finalize_run(reason, true, std::move(world_end_reason), nullptr, ml::monotonic_seconds());
+    finalize_run(reason, true, std::move(world_end_reason), nullptr);
 }
 
 void LevelTelemetryManager::finalize_completed(LevelTelemetryRunEndReason const reason,
                                                std::optional<Team> winning_team) {
-    finalize_run(reason, false, {}, nullptr, ml::monotonic_seconds());
+    finalize_run(reason, false, {}, nullptr);
     completion_.winning_team = winning_team;
 }
 
@@ -708,30 +486,14 @@ auto LevelTelemetryManager::take_finalized_run() -> std::optional<LevelTelemetry
     result.metadata = std::move(metadata_);
     result.completion = std::move(completion_);
     result.tick_series = materialize_tick_series();
-    result.completed_ticks_by_real_time = std::move(completed_ticks_by_real_time_);
     result.battle_samples = std::move(battle_samples_);
-    result.performance_windows = std::move(performance_windows_);
     return result;
-}
-
-auto LevelTelemetryManager::wall_elapsed(double const monotonic_time) const -> double {
-    return std::max(0.0, monotonic_time - run_started_at_);
-}
-
-void LevelTelemetryManager::add_realtime_sample(tick_type const completed_tick,
-                                                double const monotonic_time) {
-    auto& data{completed_ticks_by_real_time_};
-    auto const elapsed{wall_elapsed(monotonic_time)};
-    if (data.is_empty() || data.last_time() < elapsed) {
-        data.add(elapsed, completed_tick);
-    }
 }
 
 void LevelTelemetryManager::finalize_run(LevelTelemetryRunEndReason const reason,
                                          bool const interrupted,
                                          std::string world_end_reason,
-                                         LevelMissionResult const* const mission_result,
-                                         double const monotonic_time) {
+                                         LevelMissionResult const* const mission_result) {
     if (!run_recording_ || run_finalized_) {
         return;
     }
@@ -741,10 +503,6 @@ void LevelTelemetryManager::finalize_run(LevelTelemetryRunEndReason const reason
     update_current_state();
     sample_series();
     sample_battle_state(true);
-    add_realtime_sample(completed_ticks, monotonic_time);
-    if (!frame_samples_.empty() || !simulation_tick_samples_.empty()) {
-        close_performance_window(monotonic_time);
-    }
 
     completion_.reason = reason;
     completion_.interrupted = interrupted;
@@ -752,7 +510,6 @@ void LevelTelemetryManager::finalize_run(LevelTelemetryRunEndReason const reason
     completion_.world_end_reason = std::move(world_end_reason);
     completion_.completed_ticks = completed_ticks;
     completion_.simulated_elapsed_seconds = clock_.get_simulation_time();
-    completion_.wall_elapsed_seconds = wall_elapsed(monotonic_time);
 
     if (mission_result != nullptr) {
         completion_.mission_mode = mission_result->mode;

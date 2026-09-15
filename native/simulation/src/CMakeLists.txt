@@ -83,7 +83,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/sim_tick.h
   ../include/ioj/sim/sim_time.h
   ../include/ioj/sim/spatial_query_manager.h
-  ../include/ioj/sim/spatial_query_telemetry.h
   ../include/ioj/sim/spatial.h
   ../include/ioj/sim/spawned_entity_handles.h
   ../include/ioj/sim/spinner_entity_data.h
@@ -138,7 +137,6 @@ target_sources(native-simulation PRIVATE
   ship_health.cpp
   sim_time.cpp
   spatial_query_manager.cpp
-  spatial_query_telemetry.cpp
   spatial.cpp
   step_response.cpp
   transform3d.cpp

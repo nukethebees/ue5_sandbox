@@ -29,9 +29,6 @@ struct LevelTelemetryRunMetadata {
     std::string source_sha256{};
     std::optional<double> requested_duration_seconds{};
     double battle_sample_interval_seconds{1.0};
-    double performance_window_seconds{0.25};
-    std::uint32_t detailed_timing_tick_stride{16};
-    bool detailed_timing{};
 };
 
 struct LevelTelemetryRunCompletion {
@@ -45,19 +42,16 @@ struct LevelTelemetryRunCompletion {
     std::optional<double> mission_elapsed_seconds{};
     SimTick completed_ticks{};
     double simulated_elapsed_seconds{};
-    double wall_elapsed_seconds{};
     std::optional<Team> winning_team{};
 };
 
 struct LevelTelemetryRunRecord {
-    static constexpr std::int32_t schema_version{3};
+    static constexpr std::int32_t schema_version{4};
 
     std::int32_t loaded_schema_version{schema_version};
     LevelTelemetryRunMetadata metadata{};
     LevelTelemetryRunCompletion completion{};
     LevelTelemetryTickSeries tick_series{};
-    ml::TimeSeriesData<SimTick> completed_ticks_by_real_time{};
     std::vector<LevelTelemetryBattleSample> battle_samples{};
-    std::vector<SimTelemetryPerformanceWindow> performance_windows{};
 };
 } // namespace ioj::sim

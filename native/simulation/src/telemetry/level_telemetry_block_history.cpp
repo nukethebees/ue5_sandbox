@@ -23,9 +23,8 @@ auto capacity_for_bytes(std::size_t const bytes) -> std::int32_t {
 }
 
 constexpr auto logical_payload_bytes_per_row() -> std::size_t {
-    return sizeof(std::uint64_t) * 5 + sizeof(telemetry::HistoryFieldMask) +
-           sizeof(std::int32_t) * 8 + sizeof(telemetry::EntityTypeCounts) +
-           sizeof(telemetry::EntityCounts) + sizeof(double);
+    return sizeof(SimTick) + sizeof(telemetry::HistoryFieldMask) + sizeof(std::int32_t) * 6 +
+           sizeof(telemetry::EntityTypeCounts) + sizeof(telemetry::EntityCounts);
 }
 }
 

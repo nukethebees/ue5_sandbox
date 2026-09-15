@@ -173,7 +173,6 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
             .tick_period_seconds = 1.0 / simulation_tick_rate_hz,
             .initial_requested_time_scale = static_cast<double>(options.game_speed),
             .requested_duration_seconds = options.simulated_seconds,
-            .detailed_timing = options.detailed_timing,
         };
     }
 
@@ -241,17 +240,6 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     auto const frame_memory{simulation.get_frame_memory_stats()};
     auto const telemetry_history{simulation.get_level_telemetry_manager().get_history_stats()};
     auto telemetry_run{simulation.take_finalized_telemetry_run()};
-    double telemetry_cpu_ms{};
-    double simulation_cpu_ms{};
-    if (telemetry_run.has_value()) {
-        for (auto const& window : telemetry_run->performance_windows) {
-            auto const& telemetry_timing{window.systems[static_cast<std::int32_t>(
-                ioj::sim::SimTelemetryTimingSystem::Telemetry)]};
-            telemetry_cpu_ms += telemetry_timing.mean_ms * telemetry_timing.sample_count;
-            simulation_cpu_ms +=
-                window.simulation_tick.mean_ms * window.simulation_tick.sample_count;
-        }
-    }
     auto const completed_ticks{simulation.get_clock().get_completed_ticks()};
     auto const elapsed{std::chrono::duration<double>{finished_at - started_at}.count()};
     return BenchmarkResult{
@@ -284,18 +272,10 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         .frame_memory_total_root_claims = frame_summary.total_root_claims,
         .frame_memory_overflow_count = frame_memory.overflow_count,
         .telemetry_enabled = options.telemetry_enabled,
-        .detailed_timing = options.detailed_timing,
         .telemetry_rows = telemetry_history.used_sample_count,
-        .telemetry_payload_writes = telemetry_history.payload_write_count,
         .telemetry_acquired_blocks = telemetry_history.acquired_block_count,
         .telemetry_retained_blocks = telemetry_history.retained_block_count,
         .telemetry_allocated_bytes = telemetry_history.total_byte_capacity,
-        .telemetry_performance_windows =
-            telemetry_run.has_value()
-                ? static_cast<std::int32_t>(telemetry_run->performance_windows.size())
-                : 0,
-        .telemetry_cpu_ms = telemetry_cpu_ms,
-        .simulation_cpu_ms = simulation_cpu_ms,
         .hardware_threads = std::thread::hardware_concurrency(),
         .compiler = SANDBOX_BENCHMARK_COMPILER_ID,
         .build_type = SANDBOX_BENCHMARK_BUILD_TYPE,
@@ -348,19 +328,10 @@ auto to_json(BenchmarkResult const& result) -> std::string {
            << ",\"frame_total_root_claims\":" << result.frame_memory_total_root_claims
            << ",\"frame_overflow_count\":" << result.frame_memory_overflow_count << "}"
            << ",\"telemetry\":{\"enabled\":" << (result.telemetry_enabled ? "true" : "false")
-           << ",\"detailed_timing\":" << (result.detailed_timing ? "true" : "false")
            << ",\"rows\":" << result.telemetry_rows
-           << ",\"payload_writes\":" << result.telemetry_payload_writes
            << ",\"acquired_blocks\":" << result.telemetry_acquired_blocks
            << ",\"retained_blocks\":" << result.telemetry_retained_blocks
-           << ",\"allocated_bytes\":" << result.telemetry_allocated_bytes
-           << ",\"performance_windows\":" << result.telemetry_performance_windows
-           << ",\"telemetry_cpu_ms\":" << result.telemetry_cpu_ms
-           << ",\"simulation_cpu_ms\":" << result.simulation_cpu_ms << ",\"telemetry_cpu_percent\":"
-           << (result.simulation_cpu_ms > 0.0
-                   ? result.telemetry_cpu_ms / result.simulation_cpu_ms * 100.0
-                   : 0.0)
-           << "}"
+           << ",\"allocated_bytes\":" << result.telemetry_allocated_bytes << "}"
            << ",\"environment\":{\"hardware_threads\":" << result.hardware_threads
            << ",\"compiler\":" << json_string(result.compiler)
            << ",\"build_type\":" << json_string(result.build_type)

@@ -7,7 +7,6 @@
 #include <ioj/sim/collision_grid_entity_storage.h>
 #include <ioj/sim/collision_grid_static_storage.h>
 #include <ioj/sim/entity_world_bounds.h>
-#include <ioj/sim/spatial_query_telemetry.h>
 #include <ioj/sim/trace_hits.h>
 
 #include <cstdint>
@@ -80,8 +79,6 @@ struct CollisionUniformGrid {
     void set_static_aabbs(WorldAABBs static_aabbs);
     auto add_static_aabb(Vector3f min_point, Vector3f max_point) -> std::int32_t;
     void rebuild_grid(EntityAABBs const& entity_aabbs);
-    void reset_runtime_telemetry() noexcept;
-    auto get_runtime_telemetry() const noexcept -> CollisionGridTelemetrySnapshot;
 
     auto get_static_aabbs() const noexcept -> WorldAABBs const& { return static_storage_.aabbs(); }
     auto get_entity_world_bounds() const -> WorldAABBsColumnsConstView {
@@ -118,7 +115,5 @@ struct CollisionUniformGrid {
     CollisionGridEntityStorage entity_storage_;
 
     CollisionGridStaticStorage static_storage_;
-
-    CollisionGridTelemetry telemetry_;
 };
 }

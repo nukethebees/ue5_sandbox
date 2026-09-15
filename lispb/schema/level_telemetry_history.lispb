@@ -25,22 +25,8 @@
       :mask-field true)
     (member kills array int32
       :mask-field true)
-    (member registry_slot_count array int32
-      :mask-field true)
     (member active_lasers array int32
       :mask-field true)
     (member lasers_fired array int32
-      :mask-field true)
-    (member occupied_spatial_cell_count array int32
-      :mask-field true)
-    (member grid_rebuild_count array uint64
-      :mask-field true)
-    (member range_query_count array uint64
-      :mask-field true)
-    (member line_trace_count array uint64
-      :mask-field true)
-    (member sweep_trace_count array uint64
-      :mask-field true)
-    (member requested_time_scale array double
       :mask-field true)
     (single-allocation SingleAllocationHistoryRows)))

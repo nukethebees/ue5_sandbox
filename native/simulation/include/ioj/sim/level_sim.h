@@ -166,7 +166,6 @@ struct LevelSim {
     // Telemetry
     /* **************************************** */
     void initialise_telemetry();
-    void sample_realtime_telemetry(time_type dt);
 
     SimClock clock_;
     OrchestratorState state_{OrchestratorState::Uninitialised};
@@ -203,7 +202,6 @@ struct LevelSim {
     LevelEventManager event_manager_;
 
     LevelTelemetryManager level_telemetry_manager_;
-    FixedTickLoop telemetry_tick_loop_{};
     std::optional<LevelTelemetryRunMetadata> telemetry_metadata_{};
     std::uint64_t frame_sequence_{};
 };

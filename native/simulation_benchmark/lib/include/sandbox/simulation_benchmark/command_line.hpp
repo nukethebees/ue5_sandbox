@@ -12,7 +12,6 @@ struct BenchmarkOptions {
     std::uint32_t game_speed{1};
     std::optional<double> profiler_connection_timeout_seconds{};
     bool telemetry_enabled{};
-    bool detailed_timing{};
 };
 
 struct CommandLineResult {

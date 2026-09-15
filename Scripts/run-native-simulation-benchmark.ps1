@@ -9,7 +9,6 @@ param(
     [ValidateRange(1, [uint32]::MaxValue)]
     [uint32] $GameSpeed = 1,
     [switch] $Telemetry,
-    [switch] $DetailedTiming,
     [string] $BuildPreset = 'native-simulation-benchmark',
     [switch] $SkipBuild
 )
@@ -63,7 +62,6 @@ if (-not $env:NUKETHEBEES_JOBSERVER_JOB) {
         '-SkipBuild'
     )
     if ($Telemetry) { $activityArguments += '-Telemetry' }
-    if ($DetailedTiming) { $activityArguments += '-DetailedTiming' }
     & $jobserver @activityArguments
     exit $LASTEXITCODE
 }
@@ -72,6 +70,5 @@ $executable = Join-Path $repo "out/build/$BuildPreset/bin/native-simulation-benc
 $secondsText = $Seconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
 $arguments = @('--level', $levelPath, '--seconds', $secondsText, '--game-speed', $GameSpeed)
 if ($Telemetry) { $arguments += '--telemetry' }
-if ($DetailedTiming) { $arguments += '--detailed-timing' }
 & $executable @arguments
 exit $LASTEXITCODE

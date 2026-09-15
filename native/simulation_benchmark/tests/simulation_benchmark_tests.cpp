@@ -38,7 +38,7 @@ TEST(SimulationBenchmarkCommandLine, ParsesRequiredOptions) {
                        "100",
                        "--wait-for-profiler",
                        "5",
-                       "--detailed-timing"};
+                       "--telemetry"};
 
     auto const result{parse_command_line(10, argv)};
 
@@ -49,7 +49,6 @@ TEST(SimulationBenchmarkCommandLine, ParsesRequiredOptions) {
     ASSERT_TRUE(result.options->profiler_connection_timeout_seconds.has_value());
     EXPECT_DOUBLE_EQ(*result.options->profiler_connection_timeout_seconds, 5.0);
     EXPECT_TRUE(result.options->telemetry_enabled);
-    EXPECT_TRUE(result.options->detailed_timing);
 }
 
 TEST(SimulationBenchmarkCommandLine, RejectsMissingLevel) {
