@@ -196,9 +196,10 @@ target_compile_definitions(codegen-tests PRIVATE
   SANDBOX_CODEGEN_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
-include(GoogleTest)
-gtest_discover_tests(codegen-tests PROPERTIES LABELS "unit;all;codegen")
-gtest_discover_tests(codegen-generated-tests PROPERTIES LABELS "unit;all;codegen")
+add_test(NAME codegen-tests COMMAND codegen-tests)
+set_tests_properties(codegen-tests PROPERTIES LABELS "unit;all;codegen")
+add_test(NAME codegen-generated-tests COMMAND codegen-generated-tests)
+set_tests_properties(codegen-generated-tests PROPERTIES LABELS "unit;all;codegen")
 foreach(restriction IN ITEMS COPY DESTRUCTOR DEFAULT)
   set(reject_target "codegen-reject-single-${restriction}")
   add_library(${reject_target} OBJECT EXCLUDE_FROM_ALL tests/compile_fixture/rejected_leaf.cpp)

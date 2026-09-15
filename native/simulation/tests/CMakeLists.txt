@@ -45,5 +45,5 @@ target_link_libraries(native-simulation-tests PRIVATE
 
 target_link_libraries(native-simulation-tests PRIVATE GTest::gtest_main)
 
-include(GoogleTest)
-gtest_discover_tests(native-simulation-tests PROPERTIES LABELS "unit;all;native-simulation")
+add_test(NAME native-simulation-tests COMMAND native-simulation-tests)
+set_tests_properties(native-simulation-tests PROPERTIES LABELS "unit;all;native-simulation")

@@ -33,7 +33,8 @@ target_link_libraries(kernel-codegen-tests PRIVATE
   sandbox::codegen_warnings
 )
 
-gtest_discover_tests(kernel-codegen-tests PROPERTIES LABELS "unit;all;codegen")
+add_test(NAME kernel-codegen-tests COMMAND kernel-codegen-tests)
+set_tests_properties(kernel-codegen-tests PROPERTIES LABELS "unit;all;codegen")
 
 set(KERNEL_COMPILE_FIXTURE "${CMAKE_CURRENT_SOURCE_DIR}/tests/compile")
 set(KERNEL_COMPILE_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/compile-generated")
@@ -124,7 +125,8 @@ target_link_libraries(kernel-generated-standard-tests PRIVATE
   GTest::gtest_main
   sandbox::codegen_warnings
 )
-gtest_discover_tests(kernel-generated-standard-tests PROPERTIES LABELS "unit;all;codegen")
+add_test(NAME kernel-generated-standard-tests COMMAND kernel-generated-standard-tests)
+set_tests_properties(kernel-generated-standard-tests PROPERTIES LABELS "unit;all;codegen")
 add_dependencies(kernel-codegen-tests kernel-generated-standard-tests)
 
 add_custom_target(generate-kernel-code
@@ -243,7 +245,8 @@ target_link_libraries(kernel-generated-avx2-lab-tests PRIVATE
 )
 add_dependencies(kernel-generated-avx2-lab-tests check-generated-kernel-avx2-lab)
 add_dependencies(kernel-codegen-tests kernel-generated-avx2-lab-tests)
-gtest_discover_tests(kernel-generated-avx2-lab-tests PROPERTIES LABELS "unit;all;codegen")
+add_test(NAME kernel-generated-avx2-lab-tests COMMAND kernel-generated-avx2-lab-tests)
+set_tests_properties(kernel-generated-avx2-lab-tests PROPERTIES LABELS "unit;all;codegen")
 
 if(SANDBOX_KERNEL_BENCHMARKS)
   set(KERNEL_NATIVE_SIMD_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/native-simd-generated")
@@ -383,7 +386,8 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     sandbox::codegen_warnings
     sandbox::fp_strict
   )
-  gtest_discover_tests(kernel-native-simd-tests
+  add_test(NAME kernel-native-simd-tests COMMAND kernel-native-simd-tests)
+  set_tests_properties(kernel-native-simd-tests
     PROPERTIES LABELS "unit;native-kernel-benchmark"
   )
 

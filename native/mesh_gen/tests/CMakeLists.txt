@@ -6,5 +6,5 @@ target_link_libraries(mesh-gen-tests PRIVATE
   sandbox::warnings_as_errors
 )
 
-include(GoogleTest)
-gtest_discover_tests(mesh-gen-tests PROPERTIES LABELS "unit;all;native-mesh")
+add_test(NAME mesh-gen-tests COMMAND mesh-gen-tests)
+set_tests_properties(mesh-gen-tests PROPERTIES LABELS "unit;all;native-mesh")

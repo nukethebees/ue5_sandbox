@@ -57,5 +57,5 @@ target_link_libraries(sandbox-image-tests PRIVATE
   GTest::gtest_main
 )
 
-include(GoogleTest)
-gtest_discover_tests(sandbox-image-tests PROPERTIES LABELS "unit;all;native-image")
+add_test(NAME sandbox-image-tests COMMAND sandbox-image-tests)
+set_tests_properties(sandbox-image-tests PROPERTIES LABELS "unit;all;native-image")

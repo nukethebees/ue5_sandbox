@@ -11,8 +11,8 @@ target_compile_definitions(native-simulation-benchmark-tests PRIVATE
 )
 configure_sandbox_s7_abi(native-simulation-benchmark-tests)
 
-include(GoogleTest)
-gtest_discover_tests(native-simulation-benchmark-tests PROPERTIES
+add_test(NAME native-simulation-benchmark-tests COMMAND native-simulation-benchmark-tests)
+set_tests_properties(native-simulation-benchmark-tests PROPERTIES
   LABELS "unit;all;native-simulation-benchmark"
 )
 

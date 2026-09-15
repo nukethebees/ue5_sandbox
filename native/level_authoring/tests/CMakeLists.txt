@@ -8,6 +8,6 @@ target_link_libraries(native-level-authoring-tests PRIVATE
 )
 configure_sandbox_s7_abi(native-level-authoring-tests)
 
-include(GoogleTest)
-gtest_discover_tests(native-level-authoring-tests PROPERTIES
+add_test(NAME native-level-authoring-tests COMMAND native-level-authoring-tests)
+set_tests_properties(native-level-authoring-tests PROPERTIES
   LABELS "unit;all;native-level-authoring")

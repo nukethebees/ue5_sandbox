@@ -25,7 +25,8 @@ target_link_libraries(slate-codegen-tests PRIVATE
   sandbox::codegen_warnings
 )
 
-gtest_discover_tests(slate-codegen-tests PROPERTIES LABELS "unit;all;codegen")
+add_test(NAME slate-codegen-tests COMMAND slate-codegen-tests)
+set_tests_properties(slate-codegen-tests PROPERTIES LABELS "unit;all;codegen")
 
 set(SLATE_COMPILE_FIXTURE "${CMAKE_CURRENT_SOURCE_DIR}/tests/compile")
 set(SLATE_COMPILE_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/compile-generated")

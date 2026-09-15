@@ -70,8 +70,8 @@ target_link_libraries(native-core-tests PRIVATE native-core sandbox::warnings_as
 
 target_link_libraries(native-core-tests PRIVATE GTest::gtest_main)
 
-include(GoogleTest)
-gtest_discover_tests(native-core-tests PROPERTIES LABELS "unit;all;native-core")
+add_test(NAME native-core-tests COMMAND native-core-tests)
+set_tests_properties(native-core-tests PROPERTIES LABELS "unit;all;native-core")
 
 add_library(native-core-static-string-view-reject-automatic OBJECT EXCLUDE_FROM_ALL)
 target_sources(native-core-static-string-view-reject-automatic PRIVATE
