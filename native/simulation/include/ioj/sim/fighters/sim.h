@@ -39,19 +39,17 @@ namespace ioj::sim::fighters {
 class CommandInterface;
 class PhaseInterface;
 
-using NavigationTelemetrySnapshot = ioj::sim::fighters::NavigationTelemetrySnapshot;
-
 struct FighterLevelData {
-    std::span<ioj::sim::Team const> participating_teams;
+    std::span<Team const> participating_teams;
     float collision_radius{};
     float fire_point_distance{};
 };
 
 struct Sim {
-    using RegistryEntityData = ioj::sim::RegistryEntityData;
-    using EntityData = ioj::sim::FighterEntityData;
+    using RegistryEntityData = sim::RegistryEntityData;
+    using EntityData = FighterEntityData;
     using EntityBuffers = ml::MultiBuffer<EntityData, 2>;
-    using Task = ioj::sim::FighterTask;
+    using Task = FighterTask;
     static constexpr auto n_task_types{static_cast<std::size_t>(Task::COUNT)};
     using TaskSpans = std::array<IndexSpan, n_task_types>;
     using TaskCounts = std::array<std::int32_t, n_task_types>;
@@ -63,7 +61,7 @@ struct Sim {
     Sim(SimClock const& clock,
         EntityRegistry& entity_registry,
         SpatialQueryManager const& spatial_query_manager,
-        ioj::sim::lasers::Sim& laser_simulation,
+        lasers::Sim& laser_simulation,
         std::pmr::memory_resource& frame_memory_resource) noexcept;
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
@@ -84,9 +82,7 @@ struct Sim {
     /* **************************************** */
     auto get_num_instances() const noexcept -> std::int32_t;
     auto get_entity_registry() const noexcept -> EntityRegistry const& { return entity_registry; }
-    auto get_laser_simulation() const noexcept -> ioj::sim::lasers::Sim const& {
-        return laser_simulation;
-    }
+    auto get_laser_simulation() const noexcept -> lasers::Sim const& { return laser_simulation; }
     auto get_view(std::int32_t offset, std::int32_t width) -> EntityData::View;
     auto get_const_view(std::int32_t offset, std::int32_t width) const -> EntityData::ConstView;
     auto get_handles() const noexcept -> std::span<RegistryEntityHandle const>;
@@ -98,9 +94,9 @@ struct Sim {
     auto get_target_locations() const {
         return entity_buffers.current().target_locations.get_view();
     }
-    auto get_target_location(RegistryEntityHandle fighter_handle) const -> ioj::sim::Vector3f;
+    auto get_target_location(RegistryEntityHandle fighter_handle) const -> Vector3f;
     auto get_tasks() const -> std::span<Task const>;
-    auto get_teams() const -> std::span<ioj::sim::Team const>;
+    auto get_teams() const -> std::span<Team const>;
     auto get_navigation_telemetry() const noexcept -> NavigationTelemetrySnapshot const& {
         return navigation_telemetry;
     }
@@ -116,17 +112,15 @@ struct Sim {
     void check_fighter_tasks() const {}
 #endif
   private:
-    using NavigationScratch = ioj::sim::fighters::NavigationScratch;
-    using NavigationRiskTier = ioj::sim::fighters::NavigationRiskTier;
+    using NavigationScratch = fighters::NavigationScratch;
+    using NavigationRiskTier = fighters::NavigationRiskTier;
 
     inline static constexpr std::int8_t direct_movement_choice{-1};
     inline static constexpr std::int8_t stop_movement_choice{-2};
-    inline static constexpr std::int32_t n_avoidance_choices{
-        ioj::sim::fighters::avoidance_direction_count};
+    inline static constexpr std::int32_t n_avoidance_choices{avoidance_direction_count};
     inline static constexpr std::uint8_t clear_scans_to_end_avoidance{2};
     inline static constexpr std::uint8_t lower_risk_scans_to_demote{2};
-    inline static constexpr std::int32_t max_separation_neighbours{
-        ioj::sim::fighters::separation_neighbour_limit};
+    inline static constexpr std::int32_t max_separation_neighbours{separation_neighbour_limit};
 
     /* **************************************** */
     // Navigation
@@ -138,15 +132,15 @@ struct Sim {
     // Sim phases
     /* **************************************** */
     void begin_play();
-    void begin_tick();
-    void update_timers(float dt);
-    void make_decisions();
-    void move(float dt);
-    void queue_commands();
+    void prepare_tick(float dt);
+    void think(float dt);
+    void plan_movement(float dt);
+    void apply_movement();
+    void generate_fire_commands();
     void resolve_damage_events();
     void update_entity_registry();
-    void sync_from_registry();
-    void end_tick();
+    void cleanup_entities();
+    void finish_action();
 
     /* **************************************** */
     // Accessors
@@ -189,7 +183,7 @@ struct Sim {
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    auto queue_spawns(ioj::sim::FighterSpawnQueueConstView queue) -> std::int32_t;
+    auto queue_spawns(FighterSpawnQueueConstView queue) -> std::int32_t;
     void commit_spawns();
 
     /* **************************************** */
@@ -235,13 +229,13 @@ struct Sim {
     friend class CommandInterface;
     friend class PhaseInterface;
 
+    float movement_tick_period_{};
     FighterSimConfig config{};
     float collision_radius_{};
     float fire_point_distance_{};
     bool diagnostics_enabled_{};
-    std::array<std::uint8_t, static_cast<std::size_t>(ioj::sim::Team::COUNT)> participant_mask{};
-    std::array<std::int32_t, static_cast<std::size_t>(ioj::sim::Team::COUNT)>
-        remaining_team_capacity{};
+    std::array<std::uint8_t, static_cast<std::size_t>(Team::COUNT)> participant_mask{};
+    std::array<std::int32_t, static_cast<std::size_t>(Team::COUNT)> remaining_team_capacity{};
     std::int32_t per_team_limit{};
     SimClock const& simulation_clock;
     std::int16_t attack_retry_cooldown_tick_value{0};
@@ -262,9 +256,9 @@ struct Sim {
     std::pmr::memory_resource& frame_memory_resource;
     RegistryEntityData registry_update_data;
 
-    ioj::sim::FighterSpawnQueue spawn_queue;
+    FighterSpawnQueue spawn_queue;
     RegistryEntityData new_spawn_entity_data;
-    ioj::sim::SpawnedEntityHandles new_spawn_entity_handles;
+    SpawnedEntityHandles new_spawn_entity_handles;
 
     std::vector<std::int32_t> local_indices_to_remove;
     EntityDeathInfo entity_death_info;
@@ -274,7 +268,7 @@ struct Sim {
     ConstTaskViews const_task_views{};
     FighterOrderQueue order_queue{};
 
-    ioj::sim::lasers::Sim& laser_simulation;
+    lasers::Sim& laser_simulation;
 
     NavigationTelemetrySnapshot navigation_telemetry;
     std::int32_t diagnostic_stop_reports{};

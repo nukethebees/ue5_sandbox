@@ -16,32 +16,36 @@ void PhaseInterface::begin_play() {
     simulation.begin_play();
 }
 
-void PhaseInterface::begin_tick() {
-    simulation.begin_tick();
+void PhaseInterface::prepare_tick(float const dt) {
+    simulation.prepare_tick(dt);
 }
 
-void PhaseInterface::update_timers(float const dt) {
-    simulation.update_timers(dt);
+void PhaseInterface::think(float const dt) {
+    simulation.think(dt);
 }
 
-void PhaseInterface::make_decisions() {
-    simulation.make_decisions();
+void PhaseInterface::execute_fighter_self_destruct_requests() {
+    simulation.execute_fighter_self_destruct_requests();
 }
 
 void PhaseInterface::resolve_damage_events() {
     simulation.resolve_damage_events();
 }
 
+void PhaseInterface::resolve_fighters_of_dying_capitals() {
+    simulation.resolve_fighters_of_dying_capitals();
+}
+
 void PhaseInterface::update_entity_registry() {
     simulation.update_entity_registry();
 }
 
-void PhaseInterface::sync_from_registry() {
-    simulation.sync_from_registry();
+void PhaseInterface::cleanup_entities() {
+    simulation.cleanup_entities();
 }
 
-void PhaseInterface::end_tick() {
-    simulation.end_tick();
+void PhaseInterface::finish_action() {
+    simulation.finish_action();
 }
 } // namespace ioj::sim::capital_ships
 // clang-format on

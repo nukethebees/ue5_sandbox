@@ -170,22 +170,22 @@ void Sim::begin_play() {
     cooldown_cleaner_ = 0;
     validate_array_sizes();
 }
-void Sim::begin_tick() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::begin_tick");
+void Sim::prepare_tick(float const) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::prepare_tick");
     clear_tick_buffers();
-}
-void Sim::update_timers(float const) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::update_timers");
 
     ml::tick_countdowns<std::int16_t>(entities.laser_cooldowns, cooldown_cleaner_, 16384);
     ml::tick_periodic_countdowns<std::int16_t>(entities.target_refresh_countdowns_remaining_ticks);
 }
-void Sim::make_decisions() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::make_decisions");
+void Sim::think(float const) {
+    entity_registry.refresh_entity_data(entities.target_handles,
+                                        entities.target_locations.get_view(),
+                                        entities.target_velocities.get_view());
+    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::think");
     perform_search();
 }
-void Sim::queue_commands() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::queue_commands");
+void Sim::generate_fire_commands() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::generate_fire_commands");
 
     fire_at_enemies();
 }
@@ -211,17 +211,13 @@ void Sim::update_entity_registry() {
         },
         entity_death_info);
 }
-void Sim::sync_from_registry() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::sync_from_registry");
-
-    entity_registry.refresh_entity_data(entities.target_handles,
-                                        entities.target_locations.get_view(),
-                                        entities.target_velocities.get_view());
+void Sim::cleanup_entities() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::cleanup_entities");
 
     handle_dead_entities();
 }
-void Sim::end_tick() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::end_tick");
+void Sim::finish_action() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::finish_action");
     profiling::plot("Sandbox/TurretCount", get_num_instances());
 
     validate_array_sizes();

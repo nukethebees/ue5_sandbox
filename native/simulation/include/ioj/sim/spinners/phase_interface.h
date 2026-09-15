@@ -13,15 +13,17 @@ class PhaseInterface {
 
     void begin_play();
 
-    void update_timers(float const dt);
+    void prepare_tick(float const dt);
 
-    void move(float const dt);
+    void think(float const dt);
 
-    void queue_commands();
+    void apply_movement();
 
-    void end_tick();
+    void generate_fire_commands();
 
-    friend struct ::ioj::sim::LevelSim;
+    void finish_action();
+
+    friend struct sim::LevelSim;
     Sim& simulation;
 };
 } // namespace ioj::sim::spinners

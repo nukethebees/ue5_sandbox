@@ -783,7 +783,7 @@ void FHUDManager::update_radar(FRegisteredHud& registration) {
                                static_cast<int32>(entity_registry->get_generations().size())},
         entity_overlay_objective_roles_,
         radar_contact_colours_,
-        ml::to_unreal(player_ship->transform),
+        ml::to_unreal(player_ship->get_movement_state().transform),
         player_ship->registry_handle,
         player_ship->lock_on_target,
         ml::to_unreal(player_ship->team),
@@ -920,7 +920,7 @@ bool FHUDManager::collect_player_status_data() {
         next_data.has_player_ship = true;
         next_data.health = ml::to_unreal(player_ship->health);
         next_data.speed = player_ship->get_speed();
-        next_data.target_speed = player_ship->target_speed;
+        next_data.target_speed = player_ship->get_movement_state().target_speed;
         next_data.energy = player_ship->get_energy();
         next_data.points = player_ship->get_kills();
         next_data.fire_rate = ml::to_unreal(player_ship->laser_fire_rate);
@@ -950,7 +950,7 @@ bool FHUDManager::collect_player_flight_data() {
         next_data.moving = ml::to_unreal(player_ship->planar_movement_direction);
         next_data.desired_velocity_scale =
             ml::to_unreal(player_ship->target_local_planar_velocity_scale);
-        next_data.ship_velocity = ml::to_unreal(player_ship->velocity);
+        next_data.ship_velocity = ml::to_unreal(player_ship->get_movement_state().velocity);
         next_data.target_velocity = ml::to_unreal(player_ship->target_local_planar_velocity);
         next_data.control_mode = ml::to_unreal(player_ship->control_mode);
         next_data.flight_mode = ml::to_unreal(player_ship->flight_mode);

@@ -16,10 +16,6 @@ void PhaseInterface::begin_play() {
     simulation.begin_play();
 }
 
-void PhaseInterface::begin_tick() {
-    simulation.begin_tick();
-}
-
 void PhaseInterface::simulate(float const dt) {
     simulation.simulate(dt);
 }
@@ -28,8 +24,8 @@ void PhaseInterface::commit_spawns() {
     simulation.commit_spawns();
 }
 
-void PhaseInterface::end_tick() {
-    simulation.end_tick();
+void PhaseInterface::finish_action() {
+    simulation.finish_action();
 }
 } // namespace ioj::sim::lasers
 // clang-format on

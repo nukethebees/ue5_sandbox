@@ -18,15 +18,15 @@ class CommandInterface {
 
     }
 
-    std::int32_t queue_spawns(ioj::sim::FighterSpawnQueueConstView queue) {
+    std::int32_t queue_spawns(FighterSpawnQueueConstView queue) {
         return fighters.queue_spawns(queue);
     }
 
-    void queue_orders(ioj::sim::FighterOrderQueue const& queue) {
+    void queue_orders(FighterOrderQueue const& queue) {
         fighters.queue_orders(queue);
     }
 
-    void self_destruct_fighter(ioj::sim::RegistryEntityHandle const handle) {
+    void self_destruct_fighter(RegistryEntityHandle const handle) {
         fighters.self_destruct_fighter(handle);
     }
 
@@ -34,7 +34,7 @@ class CommandInterface {
         return fighters.get_new_spawn_entity_data();
     }
 
-    ioj::sim::SpawnedEntityHandles const& get_new_spawn_entity_handles() const {
+    SpawnedEntityHandles const& get_new_spawn_entity_handles() const {
         return fighters.get_new_spawn_entity_handles();
     }
 
@@ -42,11 +42,11 @@ class CommandInterface {
         return fighters.get_num_instances();
     }
 
-    std::span<ioj::sim::RegistryEntityHandle const> get_handles() const noexcept {
+    std::span<RegistryEntityHandle const> get_handles() const noexcept {
         return fighters.get_handles();
     }
 
-    std::span<ioj::sim::RegistryEntityHandle const> get_target_handles() const noexcept {
+    std::span<RegistryEntityHandle const> get_target_handles() const noexcept {
         return fighters.get_target_handles();
     }
 

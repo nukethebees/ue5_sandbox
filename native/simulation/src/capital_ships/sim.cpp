@@ -50,17 +50,15 @@ void Sim::begin_play() {
            config.fighter_spawn_slots_relative_transforms.size());
     validate_array_sizes();
 }
-void Sim::begin_tick() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::begin_tick");
+void Sim::prepare_tick(float const dt) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::prepare_tick");
     tick_buffers.cycle();
     clear_tick_buffers();
-}
-void Sim::update_timers(float const dt) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::update_timers");
+    fighter_self_destruct_requests_.clear();
     ml::tick_countdowns(entities.fighter_spawn_timers, dt);
 }
-void Sim::make_decisions() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::make_decisions");
+void Sim::think(float const) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::think");
 
     queue_fighter_spawns();
     refresh_fighter_handles();
@@ -80,6 +78,17 @@ void Sim::make_decisions() {
     }
     queue_fighter_orders();
 }
+void Sim::execute_fighter_self_destruct_requests() {
+    for (auto const fighter : fighter_self_destruct_requests_) {
+        fighters_interface.self_destruct_fighter(fighter);
+    }
+    fighter_self_destruct_requests_.clear();
+}
+void Sim::resolve_fighters_of_dying_capitals() {
+    batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
+    reassign_fighter_handles_of_dying_capital();
+    execute_fighter_self_destruct_requests();
+}
 void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::resolve_damage_events");
     batch::resolve_damage_events(entity_registry,
@@ -94,12 +103,12 @@ void Sim::update_entity_registry() {
     entity_registry.queue_entity_updates({entities.handles, entity_update_data.get_const_view()},
                                          entity_death_info);
 }
-void Sim::sync_from_registry() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::sync_from_registry");
+void Sim::cleanup_entities() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::cleanup_entities");
     handle_dead_entities();
 }
-void Sim::end_tick() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::end_tick");
+void Sim::finish_action() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::finish_action");
     profiling::plot("Sandbox/CapitalShipCount", get_num_instances());
     fighters_spawned += tick_buffers.current().num();
     validate_array_sizes();
@@ -328,7 +337,7 @@ void Sim::refresh_fighter_handles() {
         entities.handles.data(), static_cast<std::size_t>(n_capitals)}};
     auto const registry{make_native_query_view(entity_registry)};
     auto const spawn_count{std::min(static_cast<std::size_t>(spawn_handles.num()), queue_count)};
-    std::int32_t surviving_spawn_count{};
+    [[maybe_unused]] std::int32_t surviving_spawn_count{};
     for (std::size_t spawn_index{}; spawn_index < spawn_count; ++spawn_index) {
         auto const fighter{spawn_handles.get_handle(static_cast<std::int32_t>(spawn_index))};
         if (!is_valid_alive(registry, fighter)) {
@@ -350,7 +359,7 @@ void Sim::refresh_fighter_handles() {
         ++surviving_spawn_count;
     }
     for (auto const fighter : fighters_to_self_destruct) {
-        fighters_interface.self_destruct_fighter(fighter);
+        fighter_self_destruct_requests_.push_back(fighter);
     }
 
     fighter_handles_scratch.resize(fighter_handles.size() +
@@ -468,7 +477,6 @@ void Sim::handle_dead_entities() {
                                   .handle = entities.handles[index]});
     }
 
-    reassign_fighter_handles_of_dying_capital();
     for (auto const index : local_indices_to_remove) {
         entities.remove_at_swap(index, 1);
     }
@@ -517,8 +525,25 @@ void Sim::reassign_fighter_handles_of_dying_capital() {
         }
     }
 
+    auto const& new_spawns{tick_buffers.current()};
+    auto const& new_handles{fighters_interface.get_new_spawn_entity_handles()};
+    assert(new_spawns.num() == new_handles.num());
+    auto const new_count{new_spawns.num()};
+    for (std::int32_t index{}; index < new_count; ++index) {
+        auto const parent{new_spawns.parents[index]};
+        auto const found{std::ranges::find(entities.handles, parent)};
+        if (found == entities.handles.end()) {
+            continue;
+        }
+        auto const parent_index{static_cast<std::int32_t>(found - entities.handles.begin())};
+        if (std::ranges::contains(local_indices_to_remove, parent_index) &&
+            replacements[static_cast<std::size_t>(new_spawns.teams[index])] < 0) {
+            fighters_to_self_destruct.add(new_handles.get_handle(index));
+        }
+    }
+
     for (auto const fighter : fighters_to_self_destruct) {
-        fighters_interface.self_destruct_fighter(fighter);
+        fighter_self_destruct_requests_.push_back(fighter);
     }
 }
 

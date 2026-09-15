@@ -45,16 +45,16 @@ namespace ioj::sim::capital_ships {
 class PhaseInterface;
 
 struct Sim {
-    using RegistryEntityData = ioj::sim::RegistryEntityData;
-    using SpawnData = ioj::sim::CapitalSpawnData;
-    using EntityTickData = ioj::sim::FighterSpawnQueue;
-    using EntityData = ioj::sim::CapitalEntityData;
-    using FighterReassignment = ioj::sim::capital_ships::FighterReassignment;
+    using RegistryEntityData = sim::RegistryEntityData;
+    using SpawnData = CapitalSpawnData;
+    using EntityTickData = FighterSpawnQueue;
+    using EntityData = CapitalEntityData;
+    using FighterReassignment = capital_ships::FighterReassignment;
     using EntityBuffers = ml::MultiBuffer<EntityTickData, 2>;
 
     Sim(EntityRegistry& entity_registry,
         SpatialQueryManager const& spatial_query_manager,
-        ioj::sim::fighters::Sim& fighters,
+        fighters::Sim& fighters,
         std::pmr::memory_resource& frame_memory_resource);
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
@@ -108,15 +108,11 @@ struct Sim {
     auto get_target_handles() const noexcept -> std::span<RegistryEntityHandle const> {
         return entities.target_handles;
     }
-    auto get_team(std::int32_t index) const noexcept -> ioj::sim::Team {
-        return entities.teams[index];
-    }
-    auto get_team(RegistryEntityHandle handle) const noexcept -> ioj::sim::Team;
+    auto get_team(std::int32_t index) const noexcept -> Team { return entities.teams[index]; }
+    auto get_team(RegistryEntityHandle handle) const noexcept -> Team;
     auto get_health(RegistryEntityHandle handle) const noexcept -> std::int32_t;
-    auto find_first_index_on_team(ioj::sim::Team team) const noexcept
-        -> std::optional<std::int32_t>;
-    auto find_first_handle_on_team(ioj::sim::Team team) const noexcept
-        -> std::optional<RegistryEntityHandle>;
+    auto find_first_index_on_team(Team team) const noexcept -> std::optional<std::int32_t>;
+    auto find_first_handle_on_team(Team team) const noexcept -> std::optional<RegistryEntityHandle>;
 
     /* **************************************** */
     // Checks
@@ -129,13 +125,14 @@ struct Sim {
     // Sim phases
     /* **************************************** */
     void begin_play();
-    void begin_tick();
-    void update_timers(float dt);
-    void make_decisions();
+    void prepare_tick(float dt);
+    void think(float dt);
+    void execute_fighter_self_destruct_requests();
     void resolve_damage_events();
+    void resolve_fighters_of_dying_capitals();
     void update_entity_registry();
-    void sync_from_registry();
-    void end_tick();
+    void cleanup_entities();
+    void finish_action();
 
     /* **************************************** */
     // Ship spawning
@@ -175,9 +172,9 @@ struct Sim {
     void clear_tick_buffers();
 
     friend class PhaseInterface;
-    friend struct ::ioj::sim::LevelSim;
+    friend struct sim::LevelSim;
 
-    friend class ::ioj::sim::LevelSpawnManager;
+    friend class sim::LevelSpawnManager;
 
     CapitalShipSimConfig config{};
     bool diagnostics_enabled_{};
@@ -193,7 +190,8 @@ struct Sim {
     std::vector<CapitalDeathEvent> deaths_;
     RegistryEntityData entity_update_data;
 
-    ioj::sim::fighters::CommandInterface fighters_interface;
+    fighters::CommandInterface fighters_interface;
+    std::vector<RegistryEntityHandle> fighter_self_destruct_requests_;
     std::vector<RegistryEntityHandle> fighter_handles;
     std::vector<RegistryEntityHandle> fighter_handles_scratch;
     FighterReassignment fighter_reassignment_queue;

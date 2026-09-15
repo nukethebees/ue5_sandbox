@@ -13,15 +13,13 @@ class PhaseInterface {
 
     void begin_play();
 
-    void begin_tick();
+    void prepare_tick(float const dt);
 
-    void update_timers(float const dt);
+    void think(float const dt);
 
-    void make_decisions();
+    void apply_movement();
 
-    void move(float const dt);
-
-    void queue_commands();
+    void generate_fire_commands();
 
     void commit_spawns();
 
@@ -29,11 +27,11 @@ class PhaseInterface {
 
     void update_entity_registry();
 
-    void sync_from_registry();
+    void cleanup_entities();
 
-    void end_tick();
+    void finish_action();
 
-    friend struct ::ioj::sim::LevelSim;
+    friend struct sim::LevelSim;
     Sim& simulation;
 };
 } // namespace ioj::sim::fighters

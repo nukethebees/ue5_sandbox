@@ -50,7 +50,7 @@ bool contains_only_nonnegative_values(Data const& data) {
     return true;
 }
 
-auto aggregate_timings(std::vector<double> samples) -> LevelTelemetryTimingAggregate {
+auto aggregate_timings(std::span<double> samples) -> LevelTelemetryTimingAggregate {
     LevelTelemetryTimingAggregate result;
     result.sample_count = samples.size();
     if (samples.empty()) {
@@ -128,6 +128,7 @@ void LevelTelemetryManager::reset() {
     for (auto& samples : phase_samples_) {
         samples.clear();
     }
+    phase_system_samples_.clear();
 }
 
 /* **************************************** */
@@ -155,7 +156,8 @@ void LevelTelemetryManager::observe_frame(double const frame_seconds) {
 void LevelTelemetryManager::record_simulation_tick_timing(
     double const elapsed_seconds,
     std::array<double, SimTelemetryPerformanceWindow::system_count> const& systems,
-    std::array<double, SimTelemetryPerformanceWindow::phase_count> const& phases) {
+    SimTelemetryPerformanceWindow::PhaseArray<double> const& phases,
+    SimTelemetryPerformanceWindow::PhaseSystemTimings const& phase_systems) {
     if (!run_recording_ || !metadata_.detailed_timing) {
         return;
     }
@@ -172,6 +174,7 @@ void LevelTelemetryManager::record_simulation_tick_timing(
             phase_samples_[index].push_back(phases[index]);
         }
     }
+    phase_system_samples_.push_back(phase_systems);
 }
 
 /* **************************************** */
@@ -633,21 +636,34 @@ void LevelTelemetryManager::close_performance_window(double const monotonic_time
     SimTelemetryPerformanceWindow window;
     window.real_elapsed_seconds = wall_elapsed(monotonic_time);
     window.completed_tick = clock_.get_completed_ticks();
-    window.frame = aggregate_timings(std::move(frame_samples_));
+    window.frame = aggregate_timings(frame_samples_);
     window.game_thread = window.frame;
-    window.simulation_tick = aggregate_timings(std::move(simulation_tick_samples_));
+    window.simulation_tick = aggregate_timings(simulation_tick_samples_);
 
     for (std::int32_t index{}; index < SimTelemetryPerformanceWindow::system_count; ++index) {
-        window.systems[index] = aggregate_timings(std::move(system_samples_[index]));
+        window.systems[index] = aggregate_timings(system_samples_[index]);
         system_samples_[index].clear();
     }
 
     double phase_total_ms{};
+    std::vector<double> phase_system_scratch;
+    phase_system_scratch.reserve(phase_system_samples_.size());
     for (std::int32_t index{}; index < SimTelemetryPerformanceWindow::phase_count; ++index) {
-        window.phases[index] = aggregate_timings(std::move(phase_samples_[index]));
+        window.phases[index] = aggregate_timings(phase_samples_[index]);
         phase_total_ms += window.phases[index].mean_ms;
         phase_samples_[index].clear();
+        for (std::int32_t system{}; system < SimTelemetryPerformanceWindow::system_count;
+             ++system) {
+            phase_system_scratch.clear();
+            for (auto const& tick : phase_system_samples_) {
+                if (tick[index][system] >= 0.0) {
+                    phase_system_scratch.push_back(tick[index][system]);
+                }
+            }
+            window.phase_systems[index][system] = aggregate_timings(phase_system_scratch);
+        }
     }
+    phase_system_samples_.clear();
 
     if (phase_total_ms > 0.0) {
         for (std::int32_t index{}; index < SimTelemetryPerformanceWindow::phase_count; ++index) {

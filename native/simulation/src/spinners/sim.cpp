@@ -45,23 +45,29 @@ void Sim::begin_play() {
     cooldown_cleaner_ = 0;
     validate_array_sizes();
 }
-void Sim::update_timers(float const) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::update_timers");
+void Sim::prepare_tick(float const) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::prepare_tick");
 
     ml::tick_countdowns<std::int16_t>(entities.laser_cooldowns, cooldown_cleaner_, 16384);
 }
-void Sim::move(float const dt) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::move");
+void Sim::think(float const dt) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::think");
 
-    rotate_instances(dt);
+    planned_yaw_delta_ = dt * config.yaw_rotation_speed_degrees;
 }
-void Sim::queue_commands() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::queue_commands");
+void Sim::apply_movement() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::apply_movement");
+    for (auto& yaw : entities.yaws) {
+        yaw += planned_yaw_delta_;
+    }
+}
+void Sim::generate_fire_commands() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::generate_fire_commands");
 
     fire_lasers();
 }
-void Sim::end_tick() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::end_tick");
+void Sim::finish_action() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::finish_action");
 }
 
 /* **************************************** */
@@ -121,20 +127,6 @@ auto Sim::spawn_instances(Vectors3fConstView const new_locations,
 }
 
 /* **************************************** */
-// Movement
-/* **************************************** */
-void Sim::rotate_instances(float const dt) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::rotate_instances");
-
-    auto const speed{config.yaw_rotation_speed_degrees};
-    auto const delta_yaw_degrees{dt * speed};
-
-    for (auto& yaw : entities.yaws) {
-        yaw += delta_yaw_degrees;
-    }
-}
-
-/* **************************************** */
 // Firing
 /* **************************************** */
 void Sim::fire_lasers() {
@@ -167,10 +159,11 @@ void Sim::fire_lasers() {
         auto const& fire_point{
             config.fire_point_offsets[static_cast<std::size_t>(next_fire_point)]};
         new_lasers.locations.set(request_index, entities.locations[index] + fire_point.location);
-        new_lasers.rotations.set(request_index,
-                                 {fire_point.rotation.pitch,
-                                  fire_point.rotation.yaw + entities.yaws[element],
-                                  fire_point.rotation.roll});
+        new_lasers.rotations.set(
+            request_index,
+            {fire_point.rotation.pitch,
+             fire_point.rotation.yaw + (entities.yaws[element] + planned_yaw_delta_),
+             fire_point.rotation.roll});
         new_lasers.base_velocities.set(request_index, HMM_V3(0.f, 0.f, 0.f));
         new_lasers.damages[request_index] = config.laser.damage;
         new_lasers.speeds[request_index] = config.laser.projectile_speed;

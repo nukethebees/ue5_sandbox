@@ -13,21 +13,23 @@ class PhaseInterface {
 
     void begin_play();
 
-    void begin_tick();
+    void prepare_tick(float const dt);
 
-    void update_timers(float const dt);
+    void think(float const dt);
 
-    void make_decisions();
+    void execute_fighter_self_destruct_requests();
 
     void resolve_damage_events();
 
+    void resolve_fighters_of_dying_capitals();
+
     void update_entity_registry();
 
-    void sync_from_registry();
+    void cleanup_entities();
 
-    void end_tick();
+    void finish_action();
 
-    friend struct ::ioj::sim::LevelSim;
+    friend struct sim::LevelSim;
     Sim& simulation;
 };
 } // namespace ioj::sim::capital_ships

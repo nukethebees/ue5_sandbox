@@ -16,24 +16,20 @@ void PhaseInterface::begin_play() {
     simulation.begin_play();
 }
 
-void PhaseInterface::begin_tick() {
-    simulation.begin_tick();
+void PhaseInterface::prepare_tick(float const dt) {
+    simulation.prepare_tick(dt);
 }
 
-void PhaseInterface::update_timers(float const dt) {
-    simulation.update_timers(dt);
+void PhaseInterface::think(float const dt) {
+    simulation.think(dt);
 }
 
-void PhaseInterface::make_decisions() {
-    simulation.make_decisions();
+void PhaseInterface::apply_movement() {
+    simulation.apply_movement();
 }
 
-void PhaseInterface::move(float const dt) {
-    simulation.move(dt);
-}
-
-void PhaseInterface::queue_commands() {
-    simulation.queue_commands();
+void PhaseInterface::generate_fire_commands() {
+    simulation.generate_fire_commands();
 }
 
 void PhaseInterface::commit_spawns() {
@@ -48,12 +44,12 @@ void PhaseInterface::update_entity_registry() {
     simulation.update_entity_registry();
 }
 
-void PhaseInterface::sync_from_registry() {
-    simulation.sync_from_registry();
+void PhaseInterface::cleanup_entities() {
+    simulation.cleanup_entities();
 }
 
-void PhaseInterface::end_tick() {
-    simulation.end_tick();
+void PhaseInterface::finish_action() {
+    simulation.finish_action();
 }
 } // namespace ioj::sim::fighters
 // clang-format on

@@ -13,15 +13,13 @@ class PhaseInterface {
 
     void begin_play();
 
-    void begin_tick();
-
     void simulate(float const dt);
 
     void commit_spawns();
 
-    void end_tick();
+    void finish_action();
 
-    friend struct ::ioj::sim::LevelSim;
+    friend struct sim::LevelSim;
     Sim& simulation;
 };
 } // namespace ioj::sim::lasers

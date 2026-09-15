@@ -43,10 +43,6 @@ void Sim::begin_play() {
     validate_array_sizes();
 }
 
-void Sim::begin_tick() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::begin_tick");
-}
-
 void Sim::commit_spawns() {
     SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::commit_spawns");
     process_pending_spawns();
@@ -62,8 +58,8 @@ void Sim::simulate(float const dt) {
     update_locations(dt);
 }
 
-void Sim::end_tick() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::end_tick");
+void Sim::finish_action() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::finish_action");
     profiling::plot("Sandbox/LaserCount", get_num_instances());
     validate_array_sizes();
 }

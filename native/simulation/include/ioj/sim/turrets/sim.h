@@ -28,14 +28,14 @@ namespace ioj::sim::turrets {
 class PhaseInterface;
 
 struct Sim {
-    using RegistryEntityData = ioj::sim::RegistryEntityData;
-    using EntityData = ioj::sim::TurretEntityData;
-    using SpawnData = ioj::sim::TurretSpawnData;
+    using RegistryEntityData = sim::RegistryEntityData;
+    using EntityData = TurretEntityData;
+    using SpawnData = TurretSpawnData;
 
     Sim(SimClock const& clock,
         EntityRegistry& entity_registry,
         SpatialQueryManager const& spatial_query_manager,
-        ioj::sim::lasers::Sim& laser_simulation,
+        lasers::Sim& laser_simulation,
         std::pmr::memory_resource& frame_memory_resource) noexcept;
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
@@ -60,7 +60,7 @@ struct Sim {
     auto get_num_instances() const noexcept -> std::int32_t;
     auto get_target_handles() const -> std::span<RegistryEntityHandle const>;
     auto get_entity_registry() const -> EntityRegistry const& { return entity_registry; }
-    auto get_laser_simulation() const -> ioj::sim::lasers::Sim const& { return laser_simulation; }
+    auto get_laser_simulation() const -> lasers::Sim const& { return laser_simulation; }
 
     /* **************************************** */
     // Checks
@@ -72,20 +72,18 @@ struct Sim {
     // Sim phases
     /* **************************************** */
     void begin_play();
-    void begin_tick();
-    void update_timers(float dt);
-    void make_decisions();
-    void queue_commands();
+    void prepare_tick(float dt);
+    void think(float dt);
+    void generate_fire_commands();
     void resolve_damage_events();
     void update_entity_registry();
-    void sync_from_registry();
-    void end_tick();
+    void cleanup_entities();
+    void finish_action();
 
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    auto register_turrets(TurretSpawnDataConstView spawn_data,
-                          ioj::sim::Rotators3fConstView rotations)
+    auto register_turrets(TurretSpawnDataConstView spawn_data, Rotators3fConstView rotations)
         -> std::vector<RegistryEntityHandle>;
 
     /* **************************************** */
@@ -119,20 +117,20 @@ struct Sim {
     void clear_tick_buffers();
 
     friend class PhaseInterface;
-    friend struct ::ioj::sim::LevelSim;
+    friend struct sim::LevelSim;
 
-    friend class ::ioj::sim::LevelSpawnManager;
+    friend class sim::LevelSpawnManager;
 
     TurretSimConfig config{};
     SimClock const& simulation_clock;
     EntityRegistry& entity_registry;
     SpatialQueryManager const& spatial_query_manager;
-    ioj::sim::lasers::Sim& laser_simulation;
+    lasers::Sim& laser_simulation;
     std::pmr::memory_resource& frame_memory_resource;
     EntityData entities{};
     EntityDeathInfo entity_death_info;
     std::vector<EntityFrameChange> frame_changes_;
-    std::vector<ioj::sim::Vector3f> death_locations_;
+    std::vector<Vector3f> death_locations_;
     RegistryEntityData entity_update_data;
     std::int32_t target_refresh_next_offset{0};
     std::int16_t cooldown_restart_ticks_{};

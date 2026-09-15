@@ -109,7 +109,7 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     tests::expect_equal(1, nonlethal.capital_count, "Nonlethal damage preserves batch entity");
     tests::expect_equal(75, nonlethal.health, "Nonlethal damage is applied once");
     tests::expect_equal(
-        0, lethal.capital_count, "Lethal damage removes batch entity in resolution tick");
+        0, lethal.capital_count, "Lethal damage removes batch entity in the same Action phase");
     tests::expect_equal(0, lethal.registry_alive_count, "Registry death commits in the same tick");
     tests::expect_equal(
         0, lethal.telemetry_active_count, "Telemetry observes committed death before hook");

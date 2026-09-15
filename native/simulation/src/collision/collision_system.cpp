@@ -39,6 +39,9 @@ void CollisionSystem::rebuild_grid() {
     SANDBOX_PROFILE_SCOPE("Sandbox::CollisionSystem::rebuild_grid");
     uniform_grid_.rebuild_grid(entity_aabbs_);
 }
+void CollisionSystem::refresh_queries() {
+    rebuild_grid();
+}
 void CollisionSystem::collect_overlaps_for_moved_entities(
     std::span<RegistryEntityHandle const> const collision_dirty_entities) {
     SANDBOX_PROFILE_SCOPE("Sandbox::CollisionSystem::collect_overlaps_for_moved_entities");

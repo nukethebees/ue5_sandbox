@@ -62,17 +62,18 @@ void LevelEventManager::initialise(CompiledLevelEvents data,
     mission_manager_.set_pending_objective_events(mission_tick_count);
 }
 
-auto LevelEventManager::dispatch_tick(SimTick const tick) -> bool {
+void LevelEventManager::execute_tick(SimTick const tick) {
+    spawn_manager_.reset_tick_output();
     auto const event_tick_count{schedule_.execution_ticks.size()};
     if (static_cast<std::size_t>(next_event_index_) == event_tick_count) {
-        return false;
+        return;
     }
     auto const execution_tick{schedule_.execution_ticks[next_event_index_]};
     if (execution_tick < tick) {
         ml::fatal_error("Level event dispatch skipped a scheduled tick");
     }
     if (execution_tick != tick) {
-        return false;
+        return;
     }
 
     auto const counts{schedule_.event_group_counts[next_event_index_]};
@@ -87,7 +88,10 @@ auto LevelEventManager::dispatch_tick(SimTick const tick) -> bool {
         mission_group_offset_ += counts.mission_groups;
     }
     ++next_event_index_;
-    return counts.spawn_groups != 0;
+}
+
+auto LevelEventManager::get_spawned_handles() const -> std::span<RegistryEntityHandle const> {
+    return spawn_manager_.get_spawned_handles();
 }
 
 void LevelEventManager::configure_mission() {

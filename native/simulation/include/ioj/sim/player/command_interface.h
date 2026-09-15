@@ -15,11 +15,11 @@ class CommandInterface {
 
     }
 
-    void set_config(ioj::sim::PlayerSimConfig const& config) noexcept {
+    void set_config(PlayerSimConfig const& config) noexcept {
         simulation.set_config(config);
     }
 
-    void set_team(ioj::sim::Team team) noexcept {
+    void set_team(Team team) noexcept {
         simulation.set_team(team);
     }
 
@@ -95,7 +95,7 @@ class CommandInterface {
         simulation.roll(direction);
     }
 
-    void set_flight_mode(ioj::sim::SpaceShipFlightMode mode) noexcept {
+    void set_flight_mode(SpaceShipFlightMode mode) noexcept {
         simulation.set_flight_mode(mode);
     }
 
@@ -119,7 +119,7 @@ class CommandInterface {
         simulation.select_previous_laser_fire_rate();
     }
 
-    void set_laser_fire_rate(ioj::sim::ShipFireRate rate) noexcept {
+    void set_laser_fire_rate(ShipFireRate rate) noexcept {
         simulation.set_laser_fire_rate(rate);
     }
 

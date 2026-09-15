@@ -17,10 +17,10 @@
     (method get_num_instances "std::int32_t"
       :const true
       :noexcept true)
-    (method get_handles "std::span<ioj::sim::RegistryEntityHandle const>"
+    (method get_handles "std::span<RegistryEntityHandle const>"
       :const true
       :noexcept true)
-    (method get_target_handles "std::span<ioj::sim::RegistryEntityHandle const>"
+    (method get_target_handles "std::span<RegistryEntityHandle const>"
       :const true
       :noexcept true)))
 
@@ -30,7 +30,7 @@
   (facade CommandInterface @player_sim simulation
     :target-storage reference
     (method set_config void :noexcept true
-      (parameter config "ioj::sim::PlayerSimConfig const&"))
+      (parameter config "PlayerSimConfig const&"))
     (method set_team void :noexcept true
       (parameter team @native_team))
     (method set_speed_sampling_enabled void :noexcept true
@@ -56,14 +56,14 @@
     (method stop_brake void)
     (method roll void :noexcept true (parameter direction float))
     (method set_flight_mode void :noexcept true
-      (parameter mode "ioj::sim::SpaceShipFlightMode"))
+      (parameter mode "SpaceShipFlightMode"))
     (method start_fire_laser void)
     (method stop_fire_laser void)
     (method upgrade_laser void :noexcept true)
     (method select_next_laser_fire_rate void :noexcept true)
     (method select_previous_laser_fire_rate void :noexcept true)
     (method set_laser_fire_rate void :noexcept true
-      (parameter rate "ioj::sim::ShipFireRate"))
+      (parameter rate "ShipFireRate"))
     (method add_health void (parameter added_health "std::int32_t"))
     (method consume_death_notification bool :noexcept true)))
 
@@ -75,16 +75,17 @@
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
   (facade PhaseInterface @player_sim simulation
     :method-access private
-    :friends ("::ioj::sim::LevelSim")
+    :friends ("sim::LevelSim")
     :friend-kind struct
     :definitions-in-source true
     :target-storage reference
     (method begin_play void)
-    (method update_timers void
+    (method prepare_tick void
       (parameter dt "float const"))
-    (method move void
+    (method think void
       (parameter dt "float const"))
-    (method queue_commands void)
+    (method apply_movement void)
+    (method generate_fire_commands void)
     (method resolve_damage_events void)
     (method update_entity_registry void)))
 
@@ -97,16 +98,15 @@
   (facade PhaseInterface @lasers_sim simulation
     :bind-access private
     :method-access private
-    :friends ("::ioj::sim::LevelSim")
+    :friends ("sim::LevelSim")
     :friend-kind struct
     :definitions-in-source true
     :target-storage reference
     (method begin_play void)
-    (method begin_tick void)
     (method simulate void
       (parameter dt "float const"))
     (method commit_spawns void)
-    (method end_tick void)))
+    (method finish_action void)))
 
 (facade-module capital_ships_phase_interface
   :header "native/simulation/include/ioj/sim/capital_ships/phase_interface.h"
@@ -117,19 +117,21 @@
   (facade PhaseInterface @capital_ships_sim simulation
     :bind-access private
     :method-access private
-    :friends ("::ioj::sim::LevelSim")
+    :friends ("sim::LevelSim")
     :friend-kind struct
     :definitions-in-source true
     :target-storage reference
     (method begin_play void)
-    (method begin_tick void)
-    (method update_timers void
+    (method prepare_tick void
       (parameter dt "float const"))
-    (method make_decisions void)
+    (method think void
+      (parameter dt "float const"))
+    (method execute_fighter_self_destruct_requests void)
     (method resolve_damage_events void)
+    (method resolve_fighters_of_dying_capitals void)
     (method update_entity_registry void)
-    (method sync_from_registry void)
-    (method end_tick void)))
+    (method cleanup_entities void)
+    (method finish_action void)))
 
 (facade-module fighters_phase_interface
   :header "native/simulation/include/ioj/sim/fighters/phase_interface.h"
@@ -140,23 +142,22 @@
   (facade PhaseInterface @fighters_sim simulation
     :bind-access private
     :method-access private
-    :friends ("::ioj::sim::LevelSim")
+    :friends ("sim::LevelSim")
     :friend-kind struct
     :definitions-in-source true
     :target-storage reference
     (method begin_play void)
-    (method begin_tick void)
-    (method update_timers void
+    (method prepare_tick void
       (parameter dt "float const"))
-    (method make_decisions void)
-    (method move void
+    (method think void
       (parameter dt "float const"))
-    (method queue_commands void)
+    (method apply_movement void)
+    (method generate_fire_commands void)
     (method commit_spawns void)
     (method resolve_damage_events void)
     (method update_entity_registry void)
-    (method sync_from_registry void)
-    (method end_tick void)))
+    (method cleanup_entities void)
+    (method finish_action void)))
 
 (facade-module turrets_phase_interface
   :header "native/simulation/include/ioj/sim/turrets/phase_interface.h"
@@ -167,20 +168,20 @@
   (facade PhaseInterface @turrets_sim simulation
     :bind-access private
     :method-access private
-    :friends ("::ioj::sim::LevelSim")
+    :friends ("sim::LevelSim")
     :friend-kind struct
     :definitions-in-source true
     :target-storage reference
     (method begin_play void)
-    (method begin_tick void)
-    (method update_timers void
+    (method prepare_tick void
       (parameter dt "float const"))
-    (method make_decisions void)
-    (method queue_commands void)
+    (method think void
+      (parameter dt "float const"))
+    (method generate_fire_commands void)
     (method resolve_damage_events void)
     (method update_entity_registry void)
-    (method sync_from_registry void)
-    (method end_tick void)))
+    (method cleanup_entities void)
+    (method finish_action void)))
 
 (facade-module spinners_phase_interface
   :header "native/simulation/include/ioj/sim/spinners/phase_interface.h"
@@ -191,14 +192,15 @@
   (facade PhaseInterface @spinners_sim simulation
     :bind-access private
     :method-access private
-    :friends ("::ioj::sim::LevelSim")
+    :friends ("sim::LevelSim")
     :friend-kind struct
     :definitions-in-source true
     :target-storage reference
     (method begin_play void)
-    (method update_timers void
+    (method prepare_tick void
       (parameter dt "float const"))
-    (method move void
+    (method think void
       (parameter dt "float const"))
-    (method queue_commands void)
-    (method end_tick void)))
+    (method apply_movement void)
+    (method generate_fire_commands void)
+    (method finish_action void)))

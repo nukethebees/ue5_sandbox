@@ -23,7 +23,8 @@ class LevelEventManager {
     auto operator=(LevelEventManager&&) -> LevelEventManager& = delete;
 
     void initialise(CompiledLevelEvents data, RegistryEntityHandle player_handle = {});
-    auto dispatch_tick(ioj::sim::SimTick tick) -> bool;
+    void execute_tick(SimTick tick);
+    auto get_spawned_handles() const -> std::span<RegistryEntityHandle const>;
     void configure_mission();
     auto get_entity_handle(std::int32_t entity_index) const -> RegistryEntityHandle;
     auto has_future_spawns() const noexcept -> bool;

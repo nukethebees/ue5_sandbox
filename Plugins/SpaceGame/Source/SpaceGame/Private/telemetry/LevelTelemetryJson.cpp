@@ -189,13 +189,40 @@ auto make_performance_windows(TArray<FLevelTelemetryPerformanceWindow> const& so
         object->SetArrayField(TEXT("systems"), MoveTemp(systems));
         TArray<TSharedPtr<FJsonValue>> phases;
         TArray<TSharedPtr<FJsonValue>> phase_cpu_share;
-        ml::reserve(FLevelTelemetryPerformanceWindow::phase_count, phases, phase_cpu_share);
-        for (int32 index{}; index < FLevelTelemetryPerformanceWindow::phase_count; ++index) {
-            phases.Add(MakeShared<FJsonValueObject>(make_timing(window.phases[index])));
-            phase_cpu_share.Add(MakeShared<FJsonValueNumber>(window.phase_cpu_share[index]));
+        auto const phase_count{window.historical_phases.has_value()
+                                   ? FHistoricalTelemetryPhases::phase_count
+                                   : FLevelTelemetryPerformanceWindow::phase_count};
+        ml::reserve(phase_count, phases, phase_cpu_share);
+        TArray<TSharedPtr<FJsonValue>> phase_names;
+        static constexpr TCHAR const* current_names[]{
+            TEXT("Preparation"), TEXT("Thinking"), TEXT("Action")};
+        for (int32 index{}; index < phase_count; ++index) {
+            auto const& timing{window.historical_phases.has_value()
+                                   ? window.historical_phases->timings[index]
+                                   : window.phases[index]};
+            auto const share{window.historical_phases.has_value()
+                                 ? window.historical_phases->cpu_share[index]
+                                 : window.phase_cpu_share[index]};
+            phases.Add(MakeShared<FJsonValueObject>(make_timing(timing)));
+            phase_cpu_share.Add(MakeShared<FJsonValueNumber>(share));
+            phase_names.Add(MakeShared<FJsonValueString>(
+                window.historical_phases.has_value() ? FHistoricalTelemetryPhases::names[index]
+                                                     : current_names[index]));
         }
         object->SetArrayField(TEXT("phases"), MoveTemp(phases));
         object->SetArrayField(TEXT("phase_cpu_share"), MoveTemp(phase_cpu_share));
+        object->SetArrayField(TEXT("phase_names"), MoveTemp(phase_names));
+        if (!window.historical_phases.has_value()) {
+            TArray<TSharedPtr<FJsonValue>> phase_systems;
+            for (auto const& phase : window.phase_systems) {
+                TArray<TSharedPtr<FJsonValue>> timings;
+                for (auto const& timing : phase) {
+                    timings.Add(MakeShared<FJsonValueObject>(make_timing(timing)));
+                }
+                phase_systems.Add(MakeShared<FJsonValueArray>(MoveTemp(timings)));
+            }
+            object->SetArrayField(TEXT("phase_systems"), MoveTemp(phase_systems));
+        }
         result.Add(MakeShared<FJsonValueObject>(object));
     }
     return result;
@@ -505,7 +532,7 @@ auto deserialize_level_telemetry_run(FString const& json)
     if (!schema) {
         return std::unexpected{schema.error()};
     }
-    if (*schema != 1 && *schema != FLevelTelemetryReport::schema_version) {
+    if (*schema != 1 && *schema != 2 && *schema != FLevelTelemetryReport::schema_version) {
         return std::unexpected{
             FString::Printf(TEXT("Unsupported telemetry schema version %d"), *schema)};
     }
@@ -960,13 +987,17 @@ auto deserialize_level_telemetry_run(FString const& json)
                     return std::unexpected{parsed.error()};
                 }
             }
+            auto const phase_count{*schema >= 3 ? FLevelTelemetryPerformanceWindow::phase_count
+                                                : FHistoricalTelemetryPhases::phase_count};
+            if (*schema < 3) {
+                window.historical_phases.emplace();
+            }
             TArray<TSharedPtr<FJsonValue>> const* phases{};
             TArray<TSharedPtr<FJsonValue>> const* phase_cpu_share{};
             if (!object->TryGetArrayField(TEXT("phases"), phases) || !phases ||
-                phases->Num() != FLevelTelemetryPerformanceWindow::phase_count ||
+                phases->Num() != phase_count ||
                 !object->TryGetArrayField(TEXT("phase_cpu_share"), phase_cpu_share) ||
-                !phase_cpu_share ||
-                phase_cpu_share->Num() != FLevelTelemetryPerformanceWindow::phase_count) {
+                !phase_cpu_share || phase_cpu_share->Num() != phase_count) {
                 return std::unexpected{
                     error_at(path + TEXT(".phases"), TEXT("phase arrays are missing or invalid"))};
             }
@@ -978,8 +1009,12 @@ auto deserialize_level_telemetry_run(FString const& json)
                 }
                 auto wrapper{MakeShared<FJsonObject>()};
                 wrapper->SetObjectField(TEXT("value"), timing_object);
-                auto parsed{parse_timing(
-                    *wrapper, TEXT("value"), path + TEXT(".phases"), window.phases[phase])};
+                auto parsed{parse_timing(*wrapper,
+                                         TEXT("value"),
+                                         path + TEXT(".phases"),
+                                         (window.historical_phases.has_value()
+                                              ? window.historical_phases->timings[phase]
+                                              : window.phases[phase]))};
                 if (!parsed) {
                     return std::unexpected{parsed.error()};
                 }
@@ -988,7 +1023,43 @@ auto deserialize_level_telemetry_run(FString const& json)
                     return std::unexpected{error_at(path + TEXT(".phase_cpu_share"),
                                                     TEXT("shares must be nonnegative"))};
                 }
-                window.phase_cpu_share[phase] = share;
+                if (window.historical_phases.has_value()) {
+                    window.historical_phases->cpu_share[phase] = share;
+                } else {
+                    window.phase_cpu_share[phase] = share;
+                }
+            }
+            if (*schema >= 3) {
+                TArray<TSharedPtr<FJsonValue>> const* phase_systems{};
+                if (!object->TryGetArrayField(TEXT("phase_systems"), phase_systems) ||
+                    !phase_systems || phase_systems->Num() != phase_count) {
+                    return std::unexpected{error_at(path + TEXT(".phase_systems"),
+                                                    TEXT("timing matrix is missing or invalid"))};
+                }
+                for (int32 phase{}; phase < phase_count; ++phase) {
+                    TArray<TSharedPtr<FJsonValue>> const* timings{};
+                    if (!(*phase_systems)[phase]->TryGetArray(timings) || !timings ||
+                        timings->Num() != FLevelTelemetryPerformanceWindow::system_count) {
+                        return std::unexpected{error_at(path + TEXT(".phase_systems"),
+                                                        TEXT("system timing array is invalid"))};
+                    }
+                    for (int32 system{}; system < timings->Num(); ++system) {
+                        auto const timing_object{(*timings)[system]->AsObject()};
+                        if (!timing_object.IsValid()) {
+                            return std::unexpected{error_at(path + TEXT(".phase_systems"),
+                                                            TEXT("timing must be an object"))};
+                        }
+                        auto wrapper{MakeShared<FJsonObject>()};
+                        wrapper->SetObjectField(TEXT("value"), timing_object);
+                        auto parsed{parse_timing(*wrapper,
+                                                 TEXT("value"),
+                                                 path + TEXT(".phase_systems"),
+                                                 window.phase_systems[phase][system])};
+                        if (!parsed) {
+                            return std::unexpected{parsed.error()};
+                        }
+                    }
+                }
             }
             result.performance_windows.Add(MoveTemp(window));
         }
@@ -999,7 +1070,7 @@ auto deserialize_level_telemetry_run(FString const& json)
 
 auto serialize_level_telemetry_run(FLevelTelemetryReport const& record) -> FString {
     auto root{MakeShared<FJsonObject>()};
-    root->SetNumberField(TEXT("schema_version"), FLevelTelemetryReport::schema_version);
+    root->SetNumberField(TEXT("schema_version"), record.loaded_schema_version);
     root->SetStringField(TEXT("run_id"), UTF8_TO_TCHAR(record.metadata.run_id.c_str()));
 
     auto level{MakeShared<FJsonObject>()};

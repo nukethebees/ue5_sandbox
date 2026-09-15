@@ -14,17 +14,19 @@ class PhaseInterface {
     private:
     void begin_play();
 
-    void update_timers(float const dt);
+    void prepare_tick(float const dt);
 
-    void move(float const dt);
+    void think(float const dt);
 
-    void queue_commands();
+    void apply_movement();
+
+    void generate_fire_commands();
 
     void resolve_damage_events();
 
     void update_entity_registry();
 
-    friend struct ::ioj::sim::LevelSim;
+    friend struct sim::LevelSim;
     Sim& simulation;
 };
 } // namespace ioj::sim::player

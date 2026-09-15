@@ -254,20 +254,28 @@ void UTelemetryDashboardWidget::rebuild_state() {
             record->metadata.detailed_timing ? TEXT("ON") : TEXT("OFF"));
         if (!record->performance_windows.IsEmpty()) {
             auto const& window{record->performance_windows.Last()};
-            summary += FString::Printf(
-                TEXT("\nLATEST WINDOW  //  FRAME MEAN/P95/MAX %.3f/%.3f/%.3f ms    "
-                     "SIM TICK MEAN/MAX %.3f/%.3f ms\nPHASE CPU SHARE  //  SETUP %.1f%%  "
-                     "DECISION %.1f%%  SIMULATION %.1f%%  RESOLUTION %.1f%%  END %.1f%%"),
-                window.frame.mean_ms,
-                window.frame.p95_ms,
-                window.frame.max_ms,
-                window.simulation_tick.mean_ms,
-                window.simulation_tick.max_ms,
-                window.phase_cpu_share[0] * 100.0,
-                window.phase_cpu_share[1] * 100.0,
-                window.phase_cpu_share[2] * 100.0,
-                window.phase_cpu_share[3] * 100.0,
-                window.phase_cpu_share[4] * 100.0);
+            summary +=
+                FString::Printf(TEXT("\nLATEST WINDOW  //  FRAME MEAN/P95/MAX %.3f/%.3f/%.3f ms    "
+                                     "SIM TICK MEAN/MAX %.3f/%.3f ms"),
+                                window.frame.mean_ms,
+                                window.frame.p95_ms,
+                                window.frame.max_ms,
+                                window.simulation_tick.mean_ms,
+                                window.simulation_tick.max_ms);
+            summary += TEXT("\nPHASE CPU SHARE  // ");
+            if (window.historical_phases.has_value()) {
+                for (int32 index{}; index < FHistoricalTelemetryPhases::phase_count; ++index) {
+                    summary += FString::Printf(TEXT(" %s %.1f%%"),
+                                               FHistoricalTelemetryPhases::names[index],
+                                               window.historical_phases->cpu_share[index] * 100.0);
+                }
+            } else {
+                summary +=
+                    FString::Printf(TEXT(" PREPARATION %.1f%%  THINKING %.1f%%  ACTION %.1f%%"),
+                                    window.phase_cpu_share[0] * 100.0,
+                                    window.phase_cpu_share[1] * 100.0,
+                                    window.phase_cpu_share[2] * 100.0);
+            }
         }
     }
     if (baseline) {

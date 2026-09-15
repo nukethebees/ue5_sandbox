@@ -99,6 +99,8 @@ void LevelSpawnManager::spawn_capitals(LevelCapitalSpawnEventsConstView const ev
         .spawn_cooldowns = {events.fighter_spawn_cooldowns.data(), size},
     };
     auto const handles{capital_ships_.register_ships(spawn_data)};
+    spawned_handles_this_tick_.insert(
+        spawned_handles_this_tick_.end(), handles.begin(), handles.end());
     for (std::int32_t i{}; i < count; ++i) {
         set_entity_handle(events.entity_indices[i], handles[i]);
     }
@@ -124,6 +126,8 @@ void LevelSpawnManager::spawn_turrets(LevelTurretSpawnEventsConstView const even
         .laser_damages = {events.laser_damages.data(), size},
     };
     auto const handles{turrets_.register_turrets(spawn_data, events.rotations)};
+    spawned_handles_this_tick_.insert(
+        spawned_handles_this_tick_.end(), handles.begin(), handles.end());
     auto const count{events.num()};
     for (std::int32_t i{}; i < count; ++i) {
         set_entity_handle(events.entity_indices[i], handles[i]);

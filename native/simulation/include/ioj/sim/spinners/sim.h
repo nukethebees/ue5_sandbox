@@ -25,11 +25,11 @@ namespace ioj::sim::spinners {
 class PhaseInterface;
 
 struct Sim {
-    using EntityData = ioj::sim::SpinnerEntityData;
+    using EntityData = SpinnerEntityData;
 
     Sim(SimClock const& clock,
         EntityRegistry& entity_registry,
-        ioj::sim::lasers::Sim& laser_simulation,
+        lasers::Sim& laser_simulation,
         std::pmr::memory_resource& frame_memory_resource) noexcept;
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
@@ -47,7 +47,7 @@ struct Sim {
     /* **************************************** */
     auto get_num_instances() const noexcept -> std::int32_t;
     auto get_entity_registry() const -> EntityRegistry const& { return entity_registry; }
-    auto get_laser_simulation() const -> ioj::sim::lasers::Sim const& { return laser_simulation; }
+    auto get_laser_simulation() const -> lasers::Sim const& { return laser_simulation; }
 
     /* **************************************** */
     // Checks
@@ -58,15 +58,16 @@ struct Sim {
     // Sim phases
     /* **************************************** */
     void begin_play();
-    void update_timers(float dt);
-    void move(float dt);
-    void queue_commands();
-    void end_tick();
+    void prepare_tick(float dt);
+    void think(float dt);
+    void apply_movement();
+    void generate_fire_commands();
+    void finish_action();
 
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    auto spawn_instances(ioj::sim::Vectors3fConstView new_locations,
+    auto spawn_instances(Vectors3fConstView new_locations,
                          std::span<float const> new_yaws,
                          std::span<std::int32_t const> new_fire_point_indices)
         -> std::span<RegistryEntityHandle const>;
@@ -74,7 +75,6 @@ struct Sim {
     /* **************************************** */
     // Movement
     /* **************************************** */
-    void rotate_instances(float dt);
 
     /* **************************************** */
     // Firing
@@ -82,17 +82,18 @@ struct Sim {
     void fire_lasers();
 
     friend class PhaseInterface;
-    friend struct ::ioj::sim::LevelSim;
-    friend class ::ioj::sim::LevelSpawnManager;
+    friend struct sim::LevelSim;
+    friend class sim::LevelSpawnManager;
 
     friend struct SpinnerSpawnTestAccess;
 
+    float planned_yaw_delta_{};
     SpinnerSimConfig config{};
     std::int16_t cooldown_restart_ticks_{};
     std::int16_t cooldown_cleaner_{};
     SimClock const& simulation_clock;
     EntityRegistry& entity_registry;
-    ioj::sim::lasers::Sim& laser_simulation;
+    lasers::Sim& laser_simulation;
     std::pmr::memory_resource& frame_memory_resource;
     EntityData entities{};
 };

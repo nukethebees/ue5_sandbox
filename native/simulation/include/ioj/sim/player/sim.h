@@ -31,6 +31,7 @@ struct EntityDeathInfo;
 struct PlayerSimConfig;
 struct EntityRegistry;
 struct SpatialQueryManager;
+struct PlayerSimTestAccess;
 }
 
 namespace ioj::sim::lasers {
@@ -42,25 +43,42 @@ class PhaseInterface;
 
 struct PlayerSpawnData {
     PlayerSimConfig config;
-    ioj::sim::Team team{ioj::sim::Team::White};
+    Team team{Team::White};
 
-    ioj::sim::Transform3d transform{ioj::sim::Transform3d{}};
-    ioj::sim::Transform3d body_transform{ioj::sim::Transform3d{}};
-    ioj::sim::Transform3d left_socket{ioj::sim::Transform3d{}};
-    ioj::sim::Transform3d right_socket{ioj::sim::Transform3d{}};
-    ioj::sim::Transform3d middle_socket{ioj::sim::Transform3d{}};
+    Transform3d transform{Transform3d{}};
+    Transform3d body_transform{Transform3d{}};
+    Transform3d left_socket{Transform3d{}};
+    Transform3d right_socket{Transform3d{}};
+    Transform3d middle_socket{Transform3d{}};
 
-    ioj::sim::SpaceShipFlightMode flight_mode{ioj::sim::SpaceShipFlightMode::ForwardSpeed};
-    ioj::sim::SpaceShipControlMode control_mode{ioj::sim::SpaceShipControlMode::Velocity};
+    SpaceShipFlightMode flight_mode{SpaceShipFlightMode::ForwardSpeed};
+    SpaceShipControlMode control_mode{SpaceShipControlMode::Velocity};
 
-    ioj::sim::ShipLaserMode laser_mode{ioj::sim::ShipLaserMode::Single};
-    ioj::sim::ShipFireRate laser_fire_rate{ioj::sim::ShipFireRate::Burst3};
+    ShipLaserMode laser_mode{ShipLaserMode::Single};
+    ShipFireRate laser_fire_rate{ShipFireRate::Burst3};
 
-    ioj::sim::ShipHealth health{1000};
+    ShipHealth health{1000};
+};
+
+struct MovementState {
+    Transform3d transform{};
+    Transform3d body_transform{};
+    ml::Vector3d velocity{};
+    ml::Vector3d planar_velocity{};
+    float planar_boost_speed{};
+    float thrust_energy{1.f};
+    float thrust_change_rate{};
+    float target_speed{};
+    ShipFlightModel<float> forward_flight_model{};
+    ShipFlightModel<ml::Vector3d> planar_flight_model{};
+    ShipFlightModel<float> planar_boost_flight_model{};
+    BoostBrakeState boost_brake_state{};
+    float time_since_rotation_input{100.f};
+    std::uint64_t boost_start_sequence{};
 };
 
 struct Sim {
-    using RegistryEntityData = ioj::sim::RegistryEntityData;
+    using RegistryEntityData = sim::RegistryEntityData;
 
     /* **************************************** */
     // Construction and configuration
@@ -68,24 +86,25 @@ struct Sim {
     Sim(SimClock const& clock,
         EntityRegistry& entity_registry,
         SpatialQueryManager const& spatial_query_manager,
-        ioj::sim::lasers::Sim& lasers);
+        lasers::Sim& lasers);
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
     auto operator=(Sim&&) -> Sim& = delete;
 
     auto get_read_view() const -> PlayerReadView {
-        return {transform,
-                body_transform,
+        return {movement_state_.transform,
+                movement_state_.body_transform,
                 get_middle_socket(),
-                velocity,
-                boost_brake_state,
+                movement_state_.velocity,
+                movement_state_.boost_brake_state,
                 laser_firing_mode,
-                boost_start_sequence_};
+                movement_state_.boost_start_sequence};
     }
+    auto get_movement_state() const noexcept -> MovementState const& { return movement_state_; }
     void configure(PlayerSpawnData const& spawn) noexcept;
     void set_config(PlayerSimConfig const& new_config) noexcept;
-    void set_team(ioj::sim::Team new_team) noexcept { team = new_team; }
+    void set_team(Team new_team) noexcept { team = new_team; }
     void set_speed_sampling_enabled(bool enabled) noexcept { speed_sampling_enabled = enabled; }
 
     /* **************************************** */
@@ -108,7 +127,7 @@ struct Sim {
     void start_brake();
     void stop_brake();
     void roll(float direction) noexcept;
-    void set_flight_mode(ioj::sim::SpaceShipFlightMode new_flight_mode) noexcept;
+    void set_flight_mode(SpaceShipFlightMode new_flight_mode) noexcept;
 
     /* **************************************** */
     // Weapons
@@ -118,7 +137,7 @@ struct Sim {
     void upgrade_laser() noexcept;
     void select_next_laser_fire_rate() noexcept;
     void select_previous_laser_fire_rate() noexcept;
-    void set_laser_fire_rate(ioj::sim::ShipFireRate value) noexcept;
+    void set_laser_fire_rate(ShipFireRate value) noexcept;
 
     /* **************************************** */
     // Health and status
@@ -130,51 +149,37 @@ struct Sim {
     auto get_speed() const noexcept -> float;
     auto get_energy() const -> float;
     auto energy_is_full() const -> bool;
-    auto get_middle_socket() const -> ioj::sim::Transform3d;
+    auto get_middle_socket() const -> Transform3d;
     auto get_laser_effective_range() const noexcept -> float;
 
     /* **************************************** */
     // Sim state
     /* **************************************** */
-    ioj::sim::EntityUniqueId unique_entity_id;
+    EntityUniqueId unique_entity_id;
     RegistryEntityHandle registry_handle{};
-    ioj::sim::Team team{ioj::sim::Team::White};
+    Team team{Team::White};
 
-    ioj::sim::Transform3d transform{ioj::sim::Transform3d{}};
-    ioj::sim::Transform3d body_transform{ioj::sim::Transform3d{}};
-    ioj::sim::Transform3d left_socket{ioj::sim::Transform3d{}};
-    ioj::sim::Transform3d right_socket{ioj::sim::Transform3d{}};
-    ioj::sim::Transform3d middle_socket{ioj::sim::Transform3d{}};
+    Transform3d left_socket{Transform3d{}};
+    Transform3d right_socket{Transform3d{}};
+    Transform3d middle_socket{Transform3d{}};
 
-    float thrust_energy{1.f};
-    float thrust_change_rate{0.f};
-
-    ioj::sim::ShipFlightModel<float> forward_flight_model{};
-    ioj::sim::ShipFlightModel<ml::Vector3d> planar_flight_model{};
-    ioj::sim::ShipFlightModel<float> planar_boost_flight_model{};
-    ioj::sim::SpaceShipFlightMode flight_mode{ioj::sim::SpaceShipFlightMode::ForwardSpeed};
-    ioj::sim::SpaceShipControlMode control_mode{ioj::sim::SpaceShipControlMode::Velocity};
-    ml::Vector3d velocity{ml::Vector3d{}};
-    ml::Vector3d planar_velocity{ml::Vector3d{}};
-    float planar_boost_speed{0.f};
-    float target_speed{0.f};
+    SpaceShipFlightMode flight_mode{SpaceShipFlightMode::ForwardSpeed};
+    SpaceShipControlMode control_mode{SpaceShipControlMode::Velocity};
     ml::Vector2d target_local_planar_velocity_scale{ml::Vector2d{}};
     ml::Vector3d target_local_planar_velocity{ml::Vector3d{}};
     ml::Vector2d planar_movement_direction{ml::Vector2d{}};
-    ioj::sim::player::BoostBrakeState boost_brake_state{ioj::sim::player::BoostBrakeState::None};
     ml::Vector2d rotation_input{ml::Vector2d{}};
     float roll_input{0.f};
-    float time_since_rotation_input{100.f};
 
-    ioj::sim::ShipLaserMode laser_mode{ioj::sim::ShipLaserMode::Single};
+    ShipLaserMode laser_mode{ShipLaserMode::Single};
     float laser_shot_cooldown{0.f};
     std::int32_t lasers_fired_this_burst{0};
     std::int32_t lasers_per_burst{3};
     RegistryEntityHandle lock_on_target{};
-    ioj::sim::LaserFiringState laser_firing_mode{ioj::sim::LaserFiringState::idle};
-    ioj::sim::ShipFireRate laser_fire_rate{ioj::sim::ShipFireRate::Burst3};
+    LaserFiringState laser_firing_mode{LaserFiringState::idle};
+    ShipFireRate laser_fire_rate{ShipFireRate::Burst3};
 
-    ioj::sim::ShipHealth health{1000};
+    ShipHealth health{1000};
     bool sampling{false};
     bool speed_sampling_enabled{};
 
@@ -184,13 +189,16 @@ struct Sim {
     std::int32_t speed_sample_tick_period{1};
     std::vector<ml::Vector2d> speed_samples;
   private:
+    MovementState movement_state_{};
+    MovementState planned_movement_{};
     /* **************************************** */
     // Tick phases
     /* **************************************** */
     void begin_play();
-    void update_timers(float dt);
-    void move(float dt);
-    void queue_commands();
+    void prepare_tick(float dt);
+    void think(float dt);
+    void apply_movement();
+    void generate_fire_commands();
     void resolve_damage_events();
     void update_entity_registry();
 
@@ -204,22 +212,23 @@ struct Sim {
     /* **************************************** */
     // Movement
     /* **************************************** */
-    void integrate_velocity(float dt);
-    void update_rotation(float dt);
-    void update_body_orientation(float dt);
+    void integrate_velocity(float dt, MovementState& movement);
+    void update_rotation(float dt, MovementState& movement);
+    void update_body_orientation(float dt, MovementState& movement);
     void set_desired_planar_velocity(ml::Vector3d desired_velocity);
     std::uint64_t boost_start_sequence_{};
-    void set_boost_brake_state(ioj::sim::player::BoostBrakeState state);
-    void update_boost_brake(float dt);
+    void set_boost_brake_state(BoostBrakeState state);
+    void set_boost_brake_state(BoostBrakeState state, MovementState& movement);
+    void update_boost_brake(float dt, MovementState& movement);
 
     /* **************************************** */
     // Weapons
     /* **************************************** */
     void set_lock_on_target(RegistryEntityHandle target) noexcept;
-    void set_laser_mode(ioj::sim::LaserFiringState mode) noexcept;
+    void set_laser_mode(LaserFiringState mode) noexcept;
     void update_laser_firing();
     void fire_laser();
-    void fire_lasers_from(std::span<ioj::sim::Transform3d const> fire_points);
+    void fire_lasers_from(std::span<Transform3d const> fire_points);
 
     /* **************************************** */
     // Health
@@ -237,11 +246,12 @@ struct Sim {
     // Dependencies and internal state
     /* **************************************** */
     friend class PhaseInterface;
+    friend struct sim::PlayerSimTestAccess;
 
     PlayerSimConfig config{};
     EntityRegistry& entity_registry;
     SpatialQueryManager const& spatial_query_manager;
-    ioj::sim::lasers::Sim& lasers;
+    lasers::Sim& lasers;
     SimClock const& simulation_clock;
     bool death_notification_pending{false};
 };

@@ -38,7 +38,7 @@ namespace ioj::sim {
 struct LevelSimTestAccess;
 
 struct LevelSimInitData {
-    ioj::sim::FixedTickLoop clock_settings{};
+    FixedTickLoop clock_settings{};
 
     LaserSimConfig lasers;
     OverlapResponseConfig overlap_response;
@@ -47,15 +47,15 @@ struct LevelSimInitData {
     TurretSimConfig turrets;
     SpinnerSimConfig spinners;
 
-    ioj::sim::TeamList participating_teams;
+    TeamList participating_teams;
 
-    std::optional<ioj::sim::player::PlayerSpawnData> player;
-    ioj::sim::CompiledLevelEvents level_events;
+    std::optional<player::PlayerSpawnData> player;
+    CompiledLevelEvents level_events;
 
-    ioj::sim::collision::EntityAABBs entity_bounds{};
-    ioj::sim::collision::WorldAABBs static_bounds{};
-    ioj::sim::collision::CellCoord grid_dimensions{400, 400, 5};
-    ioj::sim::Vector3f cell_size{ml::make_vector3f(5000.f, 5000.f, 20000.f)};
+    collision::EntityAABBs entity_bounds{};
+    collision::WorldAABBs static_bounds{};
+    collision::CellCoord grid_dimensions{400, 400, 5};
+    Vector3f cell_size{ml::make_vector3f(5000.f, 5000.f, 20000.f)};
 
     std::size_t frame_memory_capacity_bytes{16 * 1024 * 1024};
 
@@ -100,11 +100,10 @@ struct LevelSim {
     /* **************************************** */
     void set_fighter_diagnostics_enabled(bool enabled) noexcept;
     // Replaces static collision during initialization, before finish_initialisation().
-    void set_static_collision(ioj::sim::collision::WorldAABBs bounds);
-    auto add_static_collision_aabb(ioj::sim::Vector3f min_point, ioj::sim::Vector3f max_point)
-        -> std::int32_t;
+    void set_static_collision(collision::WorldAABBs bounds);
+    auto add_static_collision_aabb(Vector3f min_point, Vector3f max_point) -> std::int32_t;
     // Borrowed until this LevelSim is destroyed; null when the level has no player.
-    auto get_player_ship_commands() noexcept -> ioj::sim::player::CommandInterface* {
+    auto get_player_ship_commands() noexcept -> player::CommandInterface* {
         return player_ship_commands_.has_value() ? &player_ship_commands_.value() : nullptr;
     }
 
@@ -112,11 +111,10 @@ struct LevelSim {
     // Telemetry and mission results
     /* **************************************** */
     // Records interruption without changing simulation state.
-    void finalize_telemetry_run(ioj::sim::LevelTelemetryRunEndReason reason,
-                                std::string detail = {});
+    void finalize_telemetry_run(LevelTelemetryRunEndReason reason, std::string detail = {});
     // Pauses without resetting either tick accumulator.
-    void complete_telemetry_run(ioj::sim::LevelTelemetryRunEndReason reason,
-                                std::optional<ioj::sim::Team> winning_team = {});
+    void complete_telemetry_run(LevelTelemetryRunEndReason reason,
+                                std::optional<Team> winning_team = {});
     // Consumes the result and marks telemetry terminal without pausing.
     auto take_mission_result() -> std::optional<LevelMissionResult>;
     auto take_finalized_telemetry_run() -> std::optional<LevelTelemetryRunRecord>;
@@ -130,21 +128,19 @@ struct LevelSim {
     auto has_future_authored_spawns() const noexcept -> bool {
         return event_manager_.has_future_spawns();
     }
-    auto get_player_ship_simulation() const -> ioj::sim::player::Sim const* {
+    auto get_player_ship_simulation() const -> player::Sim const* {
         return player_ship_simulation_.has_value() ? &player_ship_simulation_.value() : nullptr;
     }
-    auto get_lasers() const -> ioj::sim::lasers::Sim const& { return lasers_simulation_; }
-    auto get_capital_ships() const -> ioj::sim::capital_ships::Sim const& {
+    auto get_lasers() const -> lasers::Sim const& { return lasers_simulation_; }
+    auto get_capital_ships() const -> capital_ships::Sim const& {
         return capital_ships_simulation_;
     }
-    auto get_fighters() const -> ioj::sim::fighters::Sim const& { return fighters_simulation_; }
-    auto get_turrets() const -> ioj::sim::turrets::Sim const& { return turrets_simulation_; }
-    auto get_spinners() const -> ioj::sim::spinners::Sim const& { return spinners_simulation_; }
+    auto get_fighters() const -> fighters::Sim const& { return fighters_simulation_; }
+    auto get_turrets() const -> turrets::Sim const& { return turrets_simulation_; }
+    auto get_spinners() const -> spinners::Sim const& { return spinners_simulation_; }
     auto get_entity_registry() const -> EntityRegistry const& { return entity_registry_; }
     auto get_mission_manager() const -> MissionManager const& { return mission_manager_; }
-    auto get_spatial_query_manager() const -> ioj::sim::SpatialQueryManager const& {
-        return query_manager_;
-    }
+    auto get_spatial_query_manager() const -> SpatialQueryManager const& { return query_manager_; }
     auto get_level_telemetry_manager() const -> LevelTelemetryManager const& {
         return level_telemetry_manager_;
     }
@@ -161,7 +157,7 @@ struct LevelSim {
     // Subsystem setup
     /* **************************************** */
     void configure_subsystems(LevelSimInitData const& data);
-    void configure_player(ioj::sim::player::PlayerSpawnData const& spawn);
+    void configure_player(player::PlayerSpawnData const& spawn);
     void initialise_spatial_queries(LevelSimInitData& data);
     void begin_subsystems();
     void initialise_events(CompiledLevelEvents events);
@@ -180,33 +176,34 @@ struct LevelSim {
 
     ml::FrameMemoryResource frame_memory_;
     EntityRegistry entity_registry_;
-    ioj::sim::SpatialQueryManager query_manager_;
-    ioj::sim::OverlapHandler overlap_handler_;
+    SpatialQueryManager query_manager_;
+    OverlapHandler overlap_handler_;
+    std::vector<RegistryEntityHandle> collision_dirty_entities_;
 
-    ioj::sim::lasers::Sim lasers_simulation_;
-    ioj::sim::lasers::PhaseInterface lasers_phase_;
+    lasers::Sim lasers_simulation_;
+    lasers::PhaseInterface lasers_phase_;
 
-    std::optional<ioj::sim::player::Sim> player_ship_simulation_;
-    std::optional<ioj::sim::player::PhaseInterface> player_ship_phase_;
-    std::optional<ioj::sim::player::CommandInterface> player_ship_commands_;
+    std::optional<player::Sim> player_ship_simulation_;
+    std::optional<player::PhaseInterface> player_ship_phase_;
+    std::optional<player::CommandInterface> player_ship_commands_;
 
-    ioj::sim::fighters::Sim fighters_simulation_;
-    ioj::sim::fighters::PhaseInterface fighters_phase_;
+    fighters::Sim fighters_simulation_;
+    fighters::PhaseInterface fighters_phase_;
 
-    ioj::sim::capital_ships::Sim capital_ships_simulation_;
-    ioj::sim::capital_ships::PhaseInterface capital_ships_phase_;
+    capital_ships::Sim capital_ships_simulation_;
+    capital_ships::PhaseInterface capital_ships_phase_;
 
-    ioj::sim::turrets::Sim turrets_simulation_;
-    ioj::sim::turrets::PhaseInterface turrets_phase_;
+    turrets::Sim turrets_simulation_;
+    turrets::PhaseInterface turrets_phase_;
 
-    ioj::sim::spinners::Sim spinners_simulation_;
-    ioj::sim::spinners::PhaseInterface spinners_phase_;
+    spinners::Sim spinners_simulation_;
+    spinners::PhaseInterface spinners_phase_;
 
     MissionManager mission_manager_;
-    ioj::sim::LevelEventManager event_manager_;
+    LevelEventManager event_manager_;
 
     LevelTelemetryManager level_telemetry_manager_;
-    ioj::sim::FixedTickLoop telemetry_tick_loop_{};
+    FixedTickLoop telemetry_tick_loop_{};
     std::optional<LevelTelemetryRunMetadata> telemetry_metadata_{};
     std::uint64_t frame_sequence_{};
 };

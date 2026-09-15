@@ -25,6 +25,9 @@ FLevelTelemetryReport::FLevelTelemetryReport(::ioj::sim::LevelTelemetryRunRecord
                     ? static_cast<int32>(ELevelTelemetryTimingSystem::Telemetry)
                     : i};
             window.systems[destination] = source.systems[i];
+            for (int32 phase{}; phase < FLevelTelemetryPerformanceWindow::phase_count; ++phase) {
+                window.phase_systems[phase][destination] = source.phase_systems[phase][i];
+            }
         }
         performance_windows.Add(MoveTemp(window));
     }

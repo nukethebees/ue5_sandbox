@@ -21,7 +21,7 @@ struct SpinnerSpawnTestAccess {
                 static_cast<std::size_t>(static_cast<std::int32_t>(fire_points.size()))});
     }
     static auto entities(Sim& simulation) -> SpinnerEntityData& { return simulation.entities; }
-    static void tick_cooldowns(Sim& simulation) { simulation.update_timers(0.f); }
+    static void tick_cooldowns(Sim& simulation) { simulation.prepare_tick(0.f); }
     static void set_cooldown(Sim& simulation, std::int16_t const ticks) {
         simulation.cooldown_restart_ticks_ = ticks;
     }

@@ -24,8 +24,8 @@ namespace ioj::sim::lasers {
 class PhaseInterface;
 
 struct Sim {
-    using SpawnRequests = ioj::sim::lasers::SpawnRequests;
-    using Entities = ioj::sim::lasers::Entities;
+    using SpawnRequests = lasers::SpawnRequests;
+    using Entities = lasers::Entities;
 
     /* **************************************** */
     // Construction and access
@@ -54,7 +54,7 @@ struct Sim {
     // Spawning and configuration
     /* **************************************** */
     void set_config(LaserSimConfig const& new_config) noexcept;
-    void queue_laser_spawns(ioj::sim::lasers::SpawnRequestsConstView spawn_data);
+    void queue_laser_spawns(SpawnRequestsConstView spawn_data);
     void queue_laser_spawns(SpawnRequests const& spawn_data) {
         queue_laser_spawns(spawn_data.get_const_view());
     }
@@ -64,10 +64,9 @@ struct Sim {
     // Tick phases
     /* **************************************** */
     void begin_play();
-    void begin_tick();
     void commit_spawns();
     void simulate(float dt);
-    void end_tick();
+    void finish_action();
 
     /* **************************************** */
     // Spawn preparation
@@ -100,7 +99,7 @@ struct Sim {
     Entities entities;
     SpawnRequests pending_spawns;
 
-    ioj::sim::lasers::FrameOutput frame_output_;
+    FrameOutput frame_output_;
 
     std::int32_t number_spawned{0};
 };

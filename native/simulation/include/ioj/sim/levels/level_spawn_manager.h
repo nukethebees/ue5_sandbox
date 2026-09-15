@@ -39,6 +39,10 @@ class LevelSpawnManager {
                        LevelTurretSpawnEventsConstView turret_events,
                        LevelSpinnerSpawnEventsConstView spinner_events);
     void spawn(LevelSpawnGroupsConstView groups);
+    void reset_tick_output() { spawned_handles_this_tick_.clear(); }
+    auto get_spawned_handles() const -> std::span<RegistryEntityHandle const> {
+        return spawned_handles_this_tick_;
+    }
     auto get_handle(std::int32_t entity_index) const -> RegistryEntityHandle;
     auto get_entity_handles() const noexcept -> std::span<RegistryEntityHandle const> {
         return entity_handles_;
@@ -56,5 +60,6 @@ class LevelSpawnManager {
     spinners::Sim& spinners_;
     std::vector<RegistryEntityHandle> entity_handles_{};
     std::vector<RegistryEntityHandle> target_handles_scratch_{};
+    std::vector<RegistryEntityHandle> spawned_handles_this_tick_{};
 };
 }

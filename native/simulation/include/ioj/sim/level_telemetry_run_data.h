@@ -38,11 +38,9 @@ enum class SimTelemetryTimingSystem : std::uint8_t {
 };
 
 enum class LevelTelemetryTimingPhase : std::uint8_t {
-    Setup,
-    Decision,
-    Simulation,
-    Resolution,
-    End,
+    Preparation,
+    Thinking,
+    Action,
     COUNT,
 };
 
@@ -58,15 +56,23 @@ struct SimTelemetryPerformanceWindow {
         static_cast<std::int32_t>(SimTelemetryTimingSystem::COUNT)};
     static constexpr std::int32_t phase_count{
         static_cast<std::int32_t>(LevelTelemetryTimingPhase::COUNT)};
+    template <typename T>
+    using PhaseArray = std::array<T, phase_count>;
+
+    using SystemTimings = std::array<double, system_count>;
+    using PhaseSystemTimings = PhaseArray<SystemTimings>;
+    using SystemTimingAggregates = std::array<LevelTelemetryTimingAggregate, system_count>;
+    using PhaseSystemTimingAggregates = PhaseArray<SystemTimingAggregates>;
 
     double real_elapsed_seconds{};
     SimTick completed_tick{};
     LevelTelemetryTimingAggregate frame{};
     LevelTelemetryTimingAggregate game_thread{};
     LevelTelemetryTimingAggregate simulation_tick{};
-    std::array<LevelTelemetryTimingAggregate, system_count> systems{};
-    std::array<LevelTelemetryTimingAggregate, phase_count> phases{};
-    std::array<double, phase_count> phase_cpu_share{};
+    SystemTimingAggregates systems{};
+    PhaseArray<LevelTelemetryTimingAggregate> phases{};
+    PhaseArray<double> phase_cpu_share{};
+    PhaseSystemTimingAggregates phase_systems{};
 };
 
 struct LevelTelemetryTickSeries {

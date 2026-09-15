@@ -3,6 +3,15 @@
 #include <ioj/sim/telemetry/level_telemetry_run_record.h>
 
 #include <array>
+#include <optional>
+
+struct FHistoricalTelemetryPhases {
+    static constexpr int32 phase_count{5};
+    inline static constexpr TCHAR const* names[phase_count]{
+        TEXT("Setup"), TEXT("Decision"), TEXT("Simulation"), TEXT("Resolution"), TEXT("End")};
+    std::array<::ioj::sim::LevelTelemetryTimingAggregate, phase_count> timings{};
+    std::array<double, phase_count> cpu_share{};
+};
 
 enum class ELevelTelemetryTimingSystem : uint8 {
     Player,
@@ -52,6 +61,9 @@ struct FLevelTelemetryPerformanceWindow {
     static constexpr int32 system_count{static_cast<int32>(ELevelTelemetryTimingSystem::COUNT)};
     static constexpr int32 phase_count{
         static_cast<int32>(::ioj::sim::LevelTelemetryTimingPhase::COUNT)};
+    using SystemTimingAggregates =
+        std::array<::ioj::sim::LevelTelemetryTimingAggregate, system_count>;
+    using PhaseSystemTimingAggregates = std::array<SystemTimingAggregates, phase_count>;
     double real_elapsed_seconds{};
     ::ioj::sim::SimTick completed_tick{};
     ::ioj::sim::LevelTelemetryTimingAggregate frame{};
@@ -59,9 +71,11 @@ struct FLevelTelemetryPerformanceWindow {
     ::ioj::sim::LevelTelemetryTimingAggregate render_thread{};
     ::ioj::sim::LevelTelemetryTimingAggregate gpu{};
     ::ioj::sim::LevelTelemetryTimingAggregate simulation_tick{};
-    std::array<::ioj::sim::LevelTelemetryTimingAggregate, system_count> systems{};
+    SystemTimingAggregates systems{};
     std::array<::ioj::sim::LevelTelemetryTimingAggregate, phase_count> phases{};
     std::array<double, phase_count> phase_cpu_share{};
+    PhaseSystemTimingAggregates phase_systems{};
+    std::optional<FHistoricalTelemetryPhases> historical_phases{};
 };
 
 struct SPACEGAME_API FLevelTelemetryReport {

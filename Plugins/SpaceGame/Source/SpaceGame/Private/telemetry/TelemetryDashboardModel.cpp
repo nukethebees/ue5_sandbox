@@ -24,7 +24,7 @@ auto read_summary(FString const& path) -> std::expected<FTelemetryRunSummary, FS
     }
     double schema{};
     if (!root->TryGetNumberField(TEXT("schema_version"), schema) ||
-        (schema != 1.0 && schema != FLevelTelemetryReport::schema_version)) {
+        (schema != 1.0 && schema != 2.0 && schema != FLevelTelemetryReport::schema_version)) {
         return std::unexpected{
             FString::Printf(TEXT("Unsupported or missing schema in '%s'"), *path)};
     }

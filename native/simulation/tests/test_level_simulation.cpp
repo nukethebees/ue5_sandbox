@@ -340,7 +340,8 @@ TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
 
     auto const dt{simulation.get_clock().get_tick_period()};
     auto local_velocity = [player] {
-        return player->transform.inverse_transform_vector_no_scale(player->velocity);
+        return player->get_movement_state().transform.inverse_transform_vector_no_scale(
+            player->get_movement_state().velocity);
     };
 
     simulation.get_player_ship_commands()->set_lateral_move_input(1.f);

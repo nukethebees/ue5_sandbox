@@ -1,3 +1,4 @@
+#include <ioj/sim/testing/player_sim_test_access.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
@@ -804,7 +805,8 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                              ml::to_unreal(simulation.target_local_planar_velocity)
                                  .Equals(FVector{-400.0, 250.0, 0.0}));
 
-        simulation.transform = ml::to_native(FTransform{FRotator{0.0, 90.0, 0.0}});
+        ::ioj::sim::PlayerSimTestAccess::set_transform(
+            simulation, ml::to_native(FTransform{FRotator{0.0, 90.0, 0.0}}));
         simulation.adjust_desired_forward_velocity(1.f);
         TestRunner->TestTrue(TEXT("Trim follows the current ship forward axis"),
                              ml::to_unreal(simulation.target_local_planar_velocity)
@@ -813,7 +815,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         for (int32 adjustment{}; adjustment < 20; ++adjustment) {
             simulation.adjust_desired_forward_velocity(-1.f);
         }
-        auto const forward{ml::to_unreal(simulation.transform.forward())};
+        auto const forward{ml::to_unreal(simulation.get_movement_state().transform.forward())};
         TestRunner->TestTrue(
             TEXT("Reverse trim clamps to the configured velocity limit"),
             FMath::IsNearlyEqual(

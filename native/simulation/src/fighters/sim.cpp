@@ -233,15 +233,19 @@ void Sim::begin_play() {
 
     assert(config.attack_distance_band.values_are_valid());
 }
-void Sim::begin_tick() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::begin_tick");
+void Sim::prepare_tick(float const dt) {
+    movement_tick_period_ = dt;
+    if (!tasks_are_contiguous()) {
+        refresh_layout();
+    }
+    refresh_task_views();
+    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::prepare_tick");
 
     auto& data{entity_buffers.current()};
     ml::tick_countdowns<std::int8_t>(data.awareness_scan_countdowns, awareness_cleaner_, 64);
     ml::tick_countdowns<std::int16_t>(
         data.attack_reposition_countdowns, reposition_cleaner_, 16384);
     ml::tick_periodic_countdowns<std::int16_t>(data.navigation_update_countdowns_remaining_ticks);
-    data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
     clear_tick_buffers();
 
     for (auto& capacity : remaining_team_capacity) {
@@ -258,14 +262,11 @@ void Sim::begin_tick() {
                 std::format("Live fighter has invalid or non-participating team {}", team_index));
         }
     }
+    ml::tick_countdowns<std::int16_t>(data.attack_cooldowns, attack_cleaner_, 16384);
 }
-void Sim::update_timers(float const) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::update_timers");
-    ml::tick_countdowns<std::int16_t>(
-        entity_buffers.current().attack_cooldowns, attack_cleaner_, 16384);
-}
-void Sim::make_decisions() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::make_decisions");
+void Sim::think(float const dt) {
+    refresh_target_data();
+    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::think");
 
     auto& data{entity_buffers.current()};
     auto const awareness_radius{config.awareness_radius};
@@ -313,15 +314,19 @@ void Sim::make_decisions() {
             data.target_handles[i] = selected_target;
         }
     }
+    refresh_target_data();
+    plan_movement(dt);
 }
-void Sim::move(float const dt) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::move");
+void Sim::plan_movement(float const dt) {
+    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::plan_movement");
 
     auto const d_turn{std::min(1.f, config.turn_speed_unitless * dt)};
     auto& data{entity_buffers.current()};
     if (data.num() < 1) {
         return;
     }
+
+    data.planned_aim_directions = data.aim_directions;
 
     auto const& move_view{get_task_view(Task::MoveToDestination)};
     auto const& attack_view{get_task_view(Task::Attack)};
@@ -390,9 +395,9 @@ void Sim::move(float const dt) {
     update_navigation_steering();
     if (do_move) {
         auto const movement_directions{move_view.movement_directions.get_const_view()};
-        ml::lerp_1d_in_place(move_view.aim_directions.xs, movement_directions.xs, d_turn);
-        ml::lerp_1d_in_place(move_view.aim_directions.ys, movement_directions.ys, d_turn);
-        ml::lerp_1d_in_place(move_view.aim_directions.zs, movement_directions.zs, d_turn);
+        ml::lerp_1d_in_place(move_view.planned_aim_directions.xs, movement_directions.xs, d_turn);
+        ml::lerp_1d_in_place(move_view.planned_aim_directions.ys, movement_directions.ys, d_turn);
+        ml::lerp_1d_in_place(move_view.planned_aim_directions.zs, movement_directions.zs, d_turn);
     }
     if (do_attack) {
         for (std::int32_t index{}; index < n_attack; ++index) {
@@ -401,20 +406,39 @@ void Sim::move(float const dt) {
                                              ? attack_view.movement_directions[index]
                                              : attack_view.desired_aiming_directions[index]};
             auto const current_direction{attack_view.aim_directions[index]};
-            attack_view.aim_directions.set(
+            attack_view.planned_aim_directions.set(
                 index, current_direction + (desired_direction - current_direction) * d_turn);
         }
     }
 
-    move(dt, move_view);
-    move(dt, attack_view);
-    distance_and_squared(attack_view.target_distances,
-                         attack_view.target_distance_sq,
-                         attack_view.locations.get_const_view(),
-                         attack_view.target_locations.get_const_view());
+    for (auto const task : {Task::MoveToDestination, Task::Attack}) {
+        auto const& view{get_task_view(task)};
+        auto const count{view.num()};
+        for (std::int32_t index{}; index < count; ++index) {
+            view.move_distances[index] =
+                std::min(view.move_distances[index], view.speeds[index] * dt);
+        }
+    }
+
+    for (std::int32_t index{}; index < n_attack; ++index) {
+        auto const next_location{attack_view.locations[index] +
+                                 attack_view.movement_directions[index] *
+                                     attack_view.move_distances[index]};
+        auto const distance_sq{HMM_LenSqrV3(next_location - attack_view.target_locations[index])};
+        attack_view.target_distance_sq[index] = distance_sq;
+        attack_view.target_distances[index] = std::sqrt(distance_sq);
+    }
 }
-void Sim::queue_commands() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::queue_commands");
+void Sim::apply_movement() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::apply_movement");
+    auto& data{entity_buffers.current()};
+    data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
+    data.aim_directions = data.planned_aim_directions;
+    move(movement_tick_period_, get_task_view(Task::MoveToDestination));
+    move(movement_tick_period_, get_task_view(Task::Attack));
+}
+void Sim::generate_fire_commands() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::generate_fire_commands");
     handle_firing(get_task_view(Task::Attack));
 }
 void Sim::resolve_damage_events() {
@@ -459,21 +483,20 @@ void Sim::update_entity_registry() {
                                          registry_update_data.get_const_view()};
     entity_registry.queue_entity_updates(view, entity_death_info);
 }
-void Sim::sync_from_registry() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::sync_from_registry");
+void Sim::cleanup_entities() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::cleanup_entities");
 
     tasks_are_contiguous();
     remove_dead_entities();
     commit_orders();
-    refresh_target_data();
     if (!tasks_are_contiguous()) {
         refresh_layout();
     }
     refresh_task_views();
     validate_array_sizes();
 }
-void Sim::end_tick() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::end_tick");
+void Sim::finish_action() {
+    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::finish_action");
     profiling::plot("Sandbox/FighterCount", get_num_instances());
     validate_array_sizes();
 }
@@ -486,9 +509,7 @@ void Sim::move(float const dt, TaskView const& fighters) {
     auto const count{fighters.num()};
     auto const directions{fighters.movement_directions.get_const_view()};
     for (std::int32_t index{}; index < count; ++index) {
-        auto const max_move_distance{fighters.speeds[index] * dt};
-        auto const move_distance{std::min(fighters.move_distances[index], max_move_distance)};
-        fighters.move_distances[index] = move_distance;
+        auto const move_distance{fighters.move_distances[index]};
         auto const velocity_scale{move_distance / dt};
         fighters.velocities.xs[index] = directions.xs[index] * velocity_scale;
         fighters.velocities.ys[index] = directions.ys[index] * velocity_scale;
@@ -1238,6 +1259,14 @@ void Sim::remove_dead_entities() {
 void Sim::handle_firing(TaskView const& data) {
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::handle_firing");
 
+    auto predicted_location = [&data](std::int32_t const index) {
+        return data.locations[index] + data.movement_directions[index] * data.move_distances[index];
+    };
+    auto predicted_velocity = [this, &data](std::int32_t const index) {
+        return data.movement_directions[index] *
+               (data.move_distances[index] / movement_tick_period_);
+    };
+
     auto const n_ships{data.num()};
     auto const aim_threshold{config.fire_dot_product_threshold};
     auto const laser_damage{config.laser.damage};
@@ -1267,9 +1296,9 @@ void Sim::handle_firing(TaskView const& data) {
         std::span<std::int16_t>{data.attack_cooldowns}, attack_retry_cooldown_tick_value};
     aiming_dot_products.set_num(n_ships);
     ml::native_math::dot_product_vector(aiming_dot_products.data(),
-                                        data.aim_directions.xs.data(),
-                                        data.aim_directions.ys.data(),
-                                        data.aim_directions.zs.data(),
+                                        data.planned_aim_directions.xs.data(),
+                                        data.planned_aim_directions.ys.data(),
+                                        data.planned_aim_directions.zs.data(),
                                         data.desired_aiming_directions.xs.data(),
                                         data.desired_aiming_directions.ys.data(),
                                         data.desired_aiming_directions.zs.data(),
@@ -1298,11 +1327,11 @@ void Sim::handle_firing(TaskView const& data) {
     for (std::int32_t index{}; index < firing_count; ++index) {
         auto const fighter_index{can_fire[index]};
         auto const element{static_cast<std::size_t>(fighter_index)};
-        auto const direction{data.aim_directions[fighter_index]};
+        auto const direction{data.planned_aim_directions[fighter_index]};
         auto const end_offset{los_check_buffer + data.target_radii[element]};
         firing_ignored_entities[index] = data.entity_handles[element];
-        line_of_sight_starts.set(index,
-                                 data.locations[fighter_index] + direction * fire_point_distance_);
+        line_of_sight_starts.set(
+            index, predicted_location(fighter_index) + direction * fire_point_distance_);
         line_of_sight_ends.set(index,
                                data.target_locations[fighter_index] - direction * end_offset);
     }
@@ -1328,7 +1357,7 @@ void Sim::handle_firing(TaskView const& data) {
 
         can_fire.remove_at_swap(index);
         cooldowns.restart_counter(static_cast<std::size_t>(fighter_index));
-        auto const offset{data.locations[fighter_index] -
+        auto const offset{predicted_location(fighter_index) -
                           data.desired_move_locations[fighter_index]};
         if (HMM_LenSqrV3(offset) <= attack_position_arrival_distance_sq) {
             firing_position_fighter_indices.add(fighter_index);
@@ -1387,11 +1416,11 @@ void Sim::handle_firing(TaskView const& data) {
     new_lasers.set_num(n_can_fire);
     for (std::int32_t i{0}; i < n_can_fire; ++i) {
         auto const ship_index{can_fire[i]};
-        auto const ship_location{data.locations[ship_index]};
-        auto const direction{data.aim_directions[ship_index]};
+        auto const ship_location{predicted_location(ship_index)};
+        auto const direction{data.planned_aim_directions[ship_index]};
         new_lasers.locations.set(i, ship_location + direction * fire_point_distance_);
         new_lasers.rotations.set(i, direction_to_rotation(direction));
-        new_lasers.base_velocities.set(i, data.velocities[ship_index]);
+        new_lasers.base_velocities.set(i, predicted_velocity(ship_index));
         new_lasers.instigator_handles[i] = data.entity_handles[ship_index];
         new_lasers.sources[i] = {data.teams[ship_index], EntityType::Fighter};
         data.attack_cooldowns[ship_index] = attack_restart_ticks_;

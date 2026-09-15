@@ -16,16 +16,20 @@ void PhaseInterface::begin_play() {
     simulation.begin_play();
 }
 
-void PhaseInterface::update_timers(float const dt) {
-    simulation.update_timers(dt);
+void PhaseInterface::prepare_tick(float const dt) {
+    simulation.prepare_tick(dt);
 }
 
-void PhaseInterface::move(float const dt) {
-    simulation.move(dt);
+void PhaseInterface::think(float const dt) {
+    simulation.think(dt);
 }
 
-void PhaseInterface::queue_commands() {
-    simulation.queue_commands();
+void PhaseInterface::apply_movement() {
+    simulation.apply_movement();
+}
+
+void PhaseInterface::generate_fire_commands() {
+    simulation.generate_fire_commands();
 }
 
 void PhaseInterface::resolve_damage_events() {

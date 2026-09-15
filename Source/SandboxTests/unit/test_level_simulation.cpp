@@ -189,7 +189,7 @@ auto FLevelSimScheduledEventsTest::RunTest(FString const&) -> bool {
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FLevelSimSpawnQueriesTest,
-    "Sandbox.UnitTests.LevelSimulation.ScheduledSpawnIsQueryableDuringDecisions",
+    "Sandbox.UnitTests.LevelSimulation.ScheduledSpawnQueryableInActionAndThinkingNextTick",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
@@ -228,10 +228,18 @@ auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
     auto const previous_rebuilds{
         simulation.get_spatial_query_manager().get_runtime_telemetry().grid_rebuild_count};
     simulation.advance(dt);
-    TestEqual(TEXT("Spawn tick rebuilds during setup and at end tick"),
+    TestEqual(TEXT("Spawn tick publishes collision queries once in Action"),
               simulation.get_spatial_query_manager().get_runtime_telemetry().grid_rebuild_count,
-              previous_rebuilds + 2);
-    TestTrue(TEXT("Decision phase acquires the enemy spawned in the same tick"),
+              previous_rebuilds + 1);
+    TestTrue(TEXT("Thinking cannot acquire an entity created later in Action"),
+             simulation.get_turrets().get_target_handles()[0].is_null());
+    auto const spawned_handle{simulation.get_capital_ships().get_handle(1)};
+    auto const spawn_hit{simulation.get_spatial_query_manager().trace_closest(
+        ml::make_vector3f(980.f, 0.f, 0.f), ml::make_vector3f(1020.f, 0.f, 0.f))};
+    TestTrue(TEXT("Action publishes the new entity to spatial queries"),
+             spawn_hit.hit && spawn_hit.entity == spawned_handle);
+    simulation.advance(dt);
+    TestTrue(TEXT("Thinking acquires the spawned enemy on the following tick"),
              simulation.get_turrets().get_target_handles()[0] ==
                  simulation.get_capital_ships().get_handle(1));
     return true;
@@ -696,6 +704,7 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
         .level_id = "telemetry-test",
         .level_display_name = "Telemetry Test",
         .launched_utc = "2026-09-06T12:00:00Z",
+        .detailed_timing = true,
     };
     ::ioj::sim::LevelSim simulation{MoveTemp(data)};
     simulation.finish_initialisation();
@@ -753,6 +762,81 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
                   round_trip->battle_samples.Last().range_query_count,
                   report.battle_samples.Last().range_query_count);
     }
+    auto const windows_json{root->GetArrayField(TEXT("performance_windows"))};
+    TestTrue(TEXT("Detailed timing produces performance windows"), !windows_json.IsEmpty());
+    if (!windows_json.IsEmpty()) {
+        auto const window{windows_json[0]->AsObject()};
+        auto const phases{window->GetArrayField(TEXT("phases"))};
+        auto const shares{window->GetArrayField(TEXT("phase_cpu_share"))};
+        TestEqual(TEXT("Current reports contain three phases"), phases.Num(), 3);
+        auto const names{window->GetArrayField(TEXT("phase_names"))};
+        TestTrue(TEXT("Current phase names describe the lifecycle"),
+                 names.Num() == 3 && names[0]->AsString() == TEXT("Preparation") &&
+                     names[1]->AsString() == TEXT("Thinking") &&
+                     names[2]->AsString() == TEXT("Action"));
+        TestEqual(TEXT("Per-system timing is retained beneath each phase"),
+                  window->GetArrayField(TEXT("phase_systems")).Num(),
+                  3);
+
+        TArray<TSharedPtr<FJsonValue>> old_phases;
+        TArray<TSharedPtr<FJsonValue>> old_shares;
+        for (int32 index{}; index < FHistoricalTelemetryPhases::phase_count; ++index) {
+            auto timing{MakeShared<FJsonObject>()};
+            timing->SetNumberField(TEXT("mean_ms"), index + 1.0);
+            timing->SetNumberField(TEXT("p95_ms"), index + 2.0);
+            timing->SetNumberField(TEXT("max_ms"), index + 3.0);
+            timing->SetNumberField(TEXT("sample_count"), index + 10);
+            old_phases.Add(MakeShared<FJsonValueObject>(timing));
+            old_shares.Add(MakeShared<FJsonValueNumber>((index + 1.0) / 15.0));
+        }
+        for (auto const& value : windows_json) {
+            value->AsObject()->SetArrayField(TEXT("phases"), old_phases);
+            value->AsObject()->SetArrayField(TEXT("phase_cpu_share"), old_shares);
+        }
+        root->SetNumberField(TEXT("schema_version"), 2);
+        FString historical_json;
+        auto historical_writer{TJsonWriterFactory<>::Create(&historical_json)};
+        FJsonSerializer::Serialize(root.ToSharedRef(), historical_writer);
+        auto const historical{deserialize_level_telemetry_run(historical_json)};
+        if (TestTrue(TEXT("Schema-v2 timing reports remain readable"), historical.has_value())) {
+            TestEqual(
+                TEXT("Historical schema remains identified"), historical->loaded_schema_version, 2);
+            TestTrue(TEXT("Old phase breakdown is explicitly historical"),
+                     historical->performance_windows[0].historical_phases.has_value());
+            if (historical->performance_windows[0].historical_phases.has_value()) {
+                TestEqual(TEXT("Old phase CPU shares retain their original positions"),
+                          historical->performance_windows[0].historical_phases->cpu_share[4],
+                          5.0 / 15.0);
+                TestEqual(TEXT("Historical timing values are not combined into Action"),
+                          historical->performance_windows[0].historical_phases->timings[4].mean_ms,
+                          5.0);
+            }
+            TestEqual(TEXT("Historical timings are not relabeled as current phases"),
+                      historical->performance_windows[0].phases[0].sample_count,
+                      uint64{0});
+            TestTrue(TEXT("Historical serialization preserves its format"),
+                     deserialize_level_telemetry_run(serialize_level_telemetry_run(*historical))
+                         .has_value());
+        }
+        for (int32 index{}; index < windows_json.Num(); ++index) {
+            auto const& original{report.performance_windows[index]};
+            TArray<TSharedPtr<FJsonValue>> original_phases;
+            TArray<TSharedPtr<FJsonValue>> original_shares;
+            for (int32 phase{}; phase < FLevelTelemetryPerformanceWindow::phase_count; ++phase) {
+                auto timing{MakeShared<FJsonObject>()};
+                timing->SetNumberField(TEXT("mean_ms"), original.phases[phase].mean_ms);
+                timing->SetNumberField(TEXT("p95_ms"), original.phases[phase].p95_ms);
+                timing->SetNumberField(TEXT("max_ms"), original.phases[phase].max_ms);
+                timing->SetNumberField(TEXT("sample_count"), original.phases[phase].sample_count);
+                original_phases.Add(MakeShared<FJsonValueObject>(timing));
+                original_shares.Add(MakeShared<FJsonValueNumber>(original.phase_cpu_share[phase]));
+            }
+            windows_json[index]->AsObject()->SetArrayField(TEXT("phases"),
+                                                           MoveTemp(original_phases));
+            windows_json[index]->AsObject()->SetArrayField(TEXT("phase_cpu_share"),
+                                                           MoveTemp(original_shares));
+        }
+    }
     root->SetNumberField(TEXT("schema_version"), 1);
     FString legacy_json;
     auto legacy_writer{TJsonWriterFactory<>::Create(&legacy_json)};
@@ -767,10 +851,14 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
                          ::ioj::sim::LevelTelemetryRunRecord::schema_version);
     TestFalse(TEXT("Malformed JSON returns an error"),
               deserialize_level_telemetry_run(TEXT("{")).has_value());
-    auto unsupported_json{json};
-    unsupported_json.ReplaceInline(TEXT("\"schema_version\": 2"), TEXT("\"schema_version\": 3"));
+    root->SetNumberField(TEXT("schema_version"), 999);
+    FString unsupported_json;
+    auto unsupported_writer{TJsonWriterFactory<>::Create(&unsupported_json)};
+    FJsonSerializer::Serialize(root.ToSharedRef(), unsupported_writer);
     TestFalse(TEXT("Unsupported schemas return an error"),
               deserialize_level_telemetry_run(unsupported_json).has_value());
+    root->SetNumberField(TEXT("schema_version"),
+                         ::ioj::sim::LevelTelemetryRunRecord::schema_version);
 
     auto parse_current_root = [&root]() {
         FString mutated_json;
@@ -778,6 +866,14 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
         FJsonSerializer::Serialize(root.ToSharedRef(), writer);
         return deserialize_level_telemetry_run(mutated_json);
     };
+    if (!windows_json.IsEmpty()) {
+        auto const window{windows_json[0]->AsObject()};
+        auto const matrix{window->GetArrayField(TEXT("phase_systems"))};
+        window->RemoveField(TEXT("phase_systems"));
+        TestFalse(TEXT("Current reports require fine-grained phase timings"),
+                  parse_current_root().has_value());
+        window->SetArrayField(TEXT("phase_systems"), matrix);
+    }
     auto const completion_json{root->GetObjectField(TEXT("completion"))};
     auto const original_reason{completion_json->GetStringField(TEXT("reason"))};
     completion_json->SetStringField(TEXT("reason"), TEXT("future_reason"));

@@ -19,10 +19,6 @@ struct EntityRegistry;
 }
 
 namespace ioj::sim::collision {
-using DetectedOverlapsView = ioj::sim::collision::DetectedOverlapsView;
-using AABBOverlapEventBatch = ioj::sim::collision::AABBOverlapEventBatch;
-using AABBOverlapEventBatchView = ioj::sim::collision::AABBOverlapEventBatchView;
-using AABBOverlapEventsView = ioj::sim::collision::AABBOverlapEventsView;
 
 struct CollisionSystem {
   public:
@@ -32,18 +28,17 @@ struct CollisionSystem {
     auto operator=(CollisionSystem const&) -> CollisionSystem& = delete;
     auto operator=(CollisionSystem&&) -> CollisionSystem& = delete;
 
-    void initialise(ioj::sim::collision::EntityAABBs const& bounds);
-    auto update(std::span<RegistryEntityHandle const> collision_dirty_entities,
-                ioj::sim::SimTick tick) -> DetectedOverlapsView;
+    void initialise(EntityAABBs const& bounds);
+    auto update(std::span<RegistryEntityHandle const> collision_dirty_entities, SimTick tick)
+        -> DetectedOverlapsView;
 
     void reset_frame_events();
+    void refresh_queries();
     auto get_aabb_overlap_events() const -> AABBOverlapEventsView {
         return overlap_event_storage_.get_view();
     }
 
-    auto get_entity_aabbs() const noexcept -> ioj::sim::collision::EntityAABBs const& {
-        return entity_aabbs_;
-    }
+    auto get_entity_aabbs() const noexcept -> EntityAABBs const& { return entity_aabbs_; }
     auto get_entity_entity_overlaps() const -> EntityEntityOverlaps::ConstView {
         return overlap_storage_.entity_entity_overlaps();
     }
@@ -60,10 +55,10 @@ struct CollisionSystem {
     EntityRegistry const& entity_registry_;
     CollisionUniformGrid uniform_grid_;
 
-    ioj::sim::collision::EntityAABBs entity_aabbs_{};
-    ioj::sim::collision::CollisionOverlapStorage overlap_storage_;
+    EntityAABBs entity_aabbs_{};
+    CollisionOverlapStorage overlap_storage_;
 
-    ioj::sim::collision::AABBOverlapEventStorage overlap_event_storage_;
+    AABBOverlapEventStorage overlap_event_storage_;
 
     std::vector<RegistryEntityHandle> overlapping_entities_scratch_;
     std::vector<std::int32_t> overlapping_static_geometry_indices_scratch_;
