@@ -27,7 +27,7 @@ The production pipe name includes the current user's SID:
 The pipe rejects remote clients. Its access control list lets restricted local tokens connect, and
 the daemon then impersonates each client and rejects it unless its user SID matches the daemon's
 user SID. Messages use a four-byte little-endian payload length followed by UTF-8 JSON. The current
-protocol version is `1.0`.
+protocol version is `1.1`.
 
 ## Installation and startup
 
@@ -55,6 +55,18 @@ Mutable history and logs live separately under:
 `jobserverd.log` records daemon lifecycle and internal diagnostic messages. At startup, a log of at
 least 1 MiB is moved to `jobserverd.previous.log`; logging remains best-effort and cannot prevent
 the daemon from starting.
+
+Completed jobs leave the live scheduler table after their final state is captured for history;
+history retains the newest 1,000 entries independently of live resource ownership. This also
+applies to cancelled queues, disconnected clients, failed launches, and unavailable persistence.
+
+Each job's stdout/stderr file is capped at 4 MiB. Output beyond that cap is discarded from disk,
+with a truncation marker replacing the end of the file; connected clients still receive full output.
+The newest 100 completed job log pairs are retained, in addition to active jobs. Cleanup runs after
+log closure and on authoritative daemon startup, including logs left by a crash. Retained legacy
+oversized files are truncated to the same cap. Expired logs are permanently deleted; history may
+therefore describe a job whose logs are no longer available. Cleanup ignores unrelated files and
+symlinks and is best-effort: disk failures never cancel jobs or strand resources.
 
 Installation registers the per-user `NukeTheBeesJobserver` Scheduled Task. It starts at logon and
 clients also ask the task to start when the pipe is absent. Task configuration uses `IgnoreNew`,

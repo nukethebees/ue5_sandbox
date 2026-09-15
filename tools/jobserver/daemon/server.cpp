@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <cwchar>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <iterator>
 #include <limits>
@@ -97,22 +98,16 @@ auto write_client(void* const pipe, std::string const& message) -> std::expected
     return transport::write_message(pipe, message, client_io_timeout());
 }
 
-class GrantedClaimGuard {
+class JobCompletionGuard {
   public:
-    GrantedClaimGuard(Scheduler& scheduler, std::string const& id)
-        : scheduler_{scheduler}
-        , id_{id} {}
-    ~GrantedClaimGuard() {
-        try {
-            scheduler_.release(id_, JobState::interrupted);
-        } catch (...) {}
-    }
+    explicit JobCompletionGuard(std::function<void()> finish)
+        : finish_{std::move(finish)} {}
+    ~JobCompletionGuard() { finish_(); }
 
-    GrantedClaimGuard(GrantedClaimGuard const&) = delete;
-    auto operator=(GrantedClaimGuard const&) -> GrantedClaimGuard& = delete;
+    JobCompletionGuard(JobCompletionGuard const&) = delete;
+    auto operator=(JobCompletionGuard const&) -> JobCompletionGuard& = delete;
   private:
-    Scheduler& scheduler_;
-    std::string const& id_;
+    std::function<void()> finish_;
 };
 
 auto parse_claims(Json const& json) -> std::expected<std::vector<ResourceClaim>, Error> {
@@ -254,6 +249,13 @@ auto Server::run() -> int {
             return finish(first ? 2 : 1);
         }
         if (first) {
+            if (!history_path_.empty()) {
+                try {
+                    log_store_ = std::make_unique<LogStore>(history_path_.parent_path() / "logs");
+                } catch (...) {
+                    std::cerr << "Job log storage is unavailable\n";
+                }
+            }
             auto const published{publish_authority()};
             if (!published) {
                 std::cerr << published.error().message << "; forced recovery will be unavailable\n";
@@ -419,6 +421,7 @@ void Server::handle_acquire(void* const pipe, std::string const& message) {
         id = scheduler_.enqueue(parse_metadata(json.value("metadata", Json::object())),
                                 std::move(*claims));
     }
+    JobCompletionGuard const completion_guard{[this, &id] { finish_job(id); }};
     test_barrier("after_admission");
     auto next_heartbeat{std::chrono::steady_clock::now() + queue_heartbeat_interval()};
     while (!scheduler_.try_grant(id)) {
@@ -441,7 +444,6 @@ void Server::handle_acquire(void* const pipe, std::string const& message) {
         std::this_thread::sleep_for(std::chrono::milliseconds{100});
     }
     test_barrier("after_resource_grant");
-    GrantedClaimGuard const claim_guard{scheduler_, id};
     if (scheduler_.state(id) != JobState::starting) {
         send_error(pipe, Error{"start_expired", "Lease startup exceeded the daemon deadline"});
         return;
@@ -525,6 +527,7 @@ void Server::handle_submit(void* const pipe, std::string const& message) {
         }
         id = scheduler_.enqueue(metadata, std::move(*claims));
     }
+    JobCompletionGuard const completion_guard{[this, &id] { finish_job(id); }};
     test_barrier("after_admission");
     auto next_heartbeat{std::chrono::steady_clock::now() + queue_heartbeat_interval()};
     while (!scheduler_.try_grant(id)) {
@@ -552,7 +555,6 @@ void Server::handle_submit(void* const pipe, std::string const& message) {
         std::this_thread::sleep_for(std::chrono::milliseconds{100});
     }
     test_barrier("after_resource_grant");
-    GrantedClaimGuard const claim_guard{scheduler_, id};
     if (scheduler_.state(id) != JobState::starting) {
         send_error(pipe, Error{"start_expired", "Command startup exceeded the daemon deadline"});
         return;
@@ -592,13 +594,13 @@ void Server::handle_submit(void* const pipe, std::string const& message) {
         suspect_after = std::chrono::milliseconds{json["suspect_after_ms"].get<std::int64_t>()};
     }
     std::mutex output_mutex;
-    auto const log_directory{history_path_.parent_path() / "logs"};
-    std::error_code filesystem_error;
-    std::filesystem::create_directories(log_directory, filesystem_error);
-    std::ofstream stdout_log{log_directory / (id + ".stdout.log"), std::ios::binary};
-    std::ofstream stderr_log{log_directory / (id + ".stderr.log"), std::ios::binary};
-    auto const logs_available{!filesystem_error && stdout_log.is_open() && stderr_log.is_open()};
-    if (!logs_available) {
+    std::unique_ptr<JobLogs> logs;
+    try {
+        if (log_store_) {
+            logs = log_store_->open(id);
+        }
+    } catch (...) {}
+    if (!logs || !logs->available()) {
         std::cerr << "Job logs are unavailable; continuing without persistent output\n";
     }
     auto supervisor{std::make_shared<Supervisor>()};
@@ -614,10 +616,8 @@ void Server::handle_submit(void* const pipe, std::string const& message) {
         suspect_after,
         [&](std::string const& stream, std::string const& text) {
             std::scoped_lock const lock{output_mutex};
-            auto& log{stream == "stderr" ? stderr_log : stdout_log};
-            if (logs_available) {
-                log.write(text.data(), static_cast<std::streamsize>(text.size()));
-                log.flush();
+            if (logs) {
+                logs->write(stream, text);
             }
             if (client_writable.load() &&
                 !write_client(pipe,
@@ -768,6 +768,7 @@ void Server::handle_status(void* const pipe, bool const include_history) {
                              {"rejected_clients", rejected_clients_.load()},
                              {"supervised_jobs", supervised_jobs},
                              {"leases", leases},
+                             {"scheduler_entries", snapshot.entries.size()},
                              {"version", "0.1.0"},
                              {"protocol_major", protocol::major_version},
                              {"protocol_minor", protocol::minor_version}};
@@ -860,21 +861,20 @@ void Server::load_history() {
         auto const parsed = Json::parse(line, nullptr, false);
         if (parsed.is_object()) {
             history_.push_back(std::move(line));
+            if (history_.size() > 1000) {
+                history_.erase(history_.begin());
+            }
         }
-    }
-    if (history_.size() > 1000) {
-        history_.erase(history_.begin(), history_.end() - 1000);
     }
 }
 
 void Server::record_history(std::string const& id) noexcept {
     try {
-        test_barrier("during_history_recording");
-        auto const snapshot{scheduler_.snapshot()};
-        auto const found{std::ranges::find(snapshot.entries, id, &QueueEntry::id)};
-        if (found == snapshot.entries.end() || history_path_.empty()) {
+        auto const found{scheduler_.take_completed(id)};
+        if (!found || history_path_.empty()) {
             return;
         }
+        test_barrier("during_history_recording");
         auto entry = Json::object();
         entry["id"] = found->id;
         entry["name"] = found->metadata.name;
@@ -892,6 +892,12 @@ void Server::record_history(std::string const& id) noexcept {
         auto const serialized{entry.dump()};
 
         std::scoped_lock const lock{history_mutex_};
+        history_.push_back(serialized);
+        auto const compact{history_.size() > 1000};
+        if (compact) {
+            history_.erase(history_.begin(),
+                           history_.begin() + static_cast<std::ptrdiff_t>(history_.size() - 1000));
+        }
         std::error_code filesystem_error;
         std::filesystem::create_directories(history_path_.parent_path(), filesystem_error);
         if (filesystem_error) {
@@ -902,11 +908,7 @@ void Server::record_history(std::string const& id) noexcept {
             std::ofstream output{history_path_, std::ios::app};
             output << serialized << '\n';
         }
-        history_.push_back(serialized);
-        if (history_.size() > 1000) {
-            history_.erase(history_.begin(),
-                           history_.begin() + static_cast<std::ptrdiff_t>(history_.size() - 1000));
-
+        if (compact) {
             auto replacement_path{history_path_};
             replacement_path += ".tmp";
             {
@@ -930,7 +932,6 @@ void Server::record_history(std::string const& id) noexcept {
 void Server::handle_cancel(void* const pipe, std::string const& message, bool const kill) {
     auto const id{Json::parse(message).value("id", "")};
     if (scheduler_.cancel_queued(id)) {
-        record_history(id);
         static_cast<void>(write_client(pipe, Json{{"type", "accepted"}, {"id", id}}.dump()));
         return;
     }
@@ -952,6 +953,24 @@ void Server::handle_cancel(void* const pipe, std::string const& message, bool co
         supervisor->cancel();
     }
     static_cast<void>(write_client(pipe, Json{{"type", "accepted"}, {"id", id}}.dump()));
+}
+
+void Server::finish_job(std::string const& id) noexcept {
+    try {
+        static_cast<void>(scheduler_.cancel_queued(id));
+        scheduler_.release(id, JobState::interrupted);
+        {
+            std::scoped_lock const lock{supervisors_mutex_};
+            supervisors_.erase(id);
+        }
+        {
+            std::scoped_lock const lock{leases_mutex_};
+            leases_.erase(id);
+        }
+        record_history(id);
+    } catch (...) {
+        std::cerr << "Could not finalize job " << id << '\n';
+    }
 }
 
 void Server::handle_shutdown(void* const pipe) {

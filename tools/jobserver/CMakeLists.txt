@@ -71,6 +71,7 @@ target_compile_definitions(jobserver PRIVATE
 add_executable(jobserverd WIN32)
 target_sources(jobserverd PRIVATE
   daemon/main.cpp
+  daemon/log_store.cpp
   daemon/server.cpp
 )
 target_link_libraries(jobserverd PRIVATE
@@ -99,6 +100,8 @@ add_dependencies(jobserver-test-client jobserver-test-helper)
 add_executable(jobserver-tests)
 target_sources(jobserver-tests PRIVATE
   tests/protocol_tests.cpp
+  tests/log_store_tests.cpp
+  daemon/log_store.cpp
   tests/scheduler_tests.cpp
   tests/server_tests.cpp
   tests/supervisor_tests.cpp

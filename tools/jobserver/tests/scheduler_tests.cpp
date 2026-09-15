@@ -226,3 +226,37 @@ TEST(JobserverScheduler, AuditRecoversRunningJobWithoutRegisteredOwner) {
     ASSERT_NE(machine, snapshot.resources.end());
     EXPECT_FALSE(machine->exclusive);
 }
+
+TEST(JobserverScheduler, TakingCompletedEntriesNeverRemovesLiveOwnership) {
+    jobserver::Scheduler scheduler;
+    auto const active{scheduler.enqueue(metadata("active"), exclusive("machine"))};
+    auto const queued{scheduler.enqueue(metadata("queued"), shared("machine"))};
+    EXPECT_FALSE(scheduler.take_completed(active));
+    EXPECT_FALSE(scheduler.take_completed(queued));
+    scheduler.set_state(active, jobserver::JobState::running);
+    EXPECT_FALSE(scheduler.take_completed(active));
+    scheduler.set_state(active, jobserver::JobState::cancelling);
+    EXPECT_FALSE(scheduler.take_completed(active));
+    scheduler.release(active, jobserver::JobState::succeeded);
+    auto const completed{scheduler.take_completed(active)};
+    ASSERT_TRUE(completed);
+    EXPECT_EQ(completed->metadata.name, "active");
+    EXPECT_EQ(completed->state, jobserver::JobState::succeeded);
+    EXPECT_FALSE(scheduler.take_completed(active));
+    EXPECT_EQ(scheduler.state(queued), jobserver::JobState::starting);
+    auto const cancelled{scheduler.enqueue(metadata("cancelled"), exclusive("machine"))};
+    EXPECT_TRUE(scheduler.cancel_queued(cancelled));
+    auto const cancellation{scheduler.take_completed(cancelled)};
+    ASSERT_TRUE(cancellation);
+    EXPECT_EQ(cancellation->state, jobserver::JobState::killed);
+}
+
+TEST(JobserverScheduler, ThousandsOfRetiredJobsDoNotAccumulate) {
+    jobserver::Scheduler scheduler;
+    for (auto index{0}; index < 3000; ++index) {
+        auto const id{scheduler.enqueue(metadata("short job"), shared("machine"))};
+        scheduler.release(id, jobserver::JobState::succeeded);
+        ASSERT_TRUE(scheduler.take_completed(id));
+        ASSERT_TRUE(scheduler.snapshot().entries.empty());
+    }
+}

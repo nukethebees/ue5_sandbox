@@ -196,6 +196,17 @@ auto Scheduler::cancel_queued(std::string const& id) -> bool {
     return true;
 }
 
+auto Scheduler::take_completed(std::string const& id) -> std::optional<QueueEntry> {
+    std::scoped_lock const lock{mutex_};
+    auto const entry{find_entry(id)};
+    if (entry == entries_.end() || !is_terminal(entry->state)) {
+        return std::nullopt;
+    }
+    auto completed{std::move(*entry)};
+    entries_.erase(entry);
+    return completed;
+}
+
 auto Scheduler::snapshot() const -> SchedulerSnapshot {
     std::scoped_lock const lock{mutex_};
     SchedulerSnapshot result{.entries = entries_, .resources = {}};

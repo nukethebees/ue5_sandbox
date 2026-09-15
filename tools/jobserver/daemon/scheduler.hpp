@@ -59,6 +59,7 @@ class Scheduler {
     void release(std::string const& id, JobState final_state);
     [[nodiscard]] auto cancel_queued(std::string const& id) -> bool;
     [[nodiscard]] auto snapshot() const -> SchedulerSnapshot;
+    [[nodiscard]] auto take_completed(std::string const& id) -> std::optional<QueueEntry>;
     [[nodiscard]] auto audit_and_recover(std::unordered_set<std::string> const& owned_jobs,
                                          std::chrono::milliseconds maximum_starting_time)
         -> std::vector<std::string>;

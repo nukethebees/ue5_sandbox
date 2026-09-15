@@ -1,6 +1,7 @@
 #include "jobserver/client.hpp"
 #include "jobserver/protocol.hpp"
 #include "jobserver/transport.hpp"
+#include "log_store.hpp"
 
 #include <Windows.h>
 
@@ -746,6 +747,14 @@ TEST_F(JobserverIntegration, UnavailablePersistenceDoesNotStrandGrantedResource)
     if (result) {
         EXPECT_EQ(*result, 0);
     }
+    auto const history_status{jobserver::Client::status(true)};
+    ASSERT_TRUE(history_status);
+    auto const history_json = Json::parse(*history_status);
+    EXPECT_EQ(history_json["daemon"]["scheduler_entries"], 0U);
+    EXPECT_TRUE(std::ranges::any_of(history_json["jobs"], [](auto const& job) {
+        return job.value("name", "") == "unavailable persistence" &&
+               job.value("state", "") == "SUCCEEDED";
+    }));
     auto replacement{jobserver::Client::acquire({
         .metadata = {.name = "replacement after persistence failure",
                      .kind = "test",
@@ -1021,6 +1030,55 @@ TEST_F(JobserverIntegration, NestedOutputFlowsThroughParentCapture) {
     EXPECT_EQ(*result, 0);
     EXPECT_NE(standard_output.find("stdout 1"), std::string::npos);
     EXPECT_NE(standard_error.find("stderr 1"), std::string::npos);
+}
+
+TEST_F(JobserverIntegration, CompletedJobsLeaveLiveTableButRemainInHistory) {
+    for (auto index{0}; index < 32; ++index) {
+        auto const result{
+            jobserver::Client::run(submit_request("retired short job", {}, {"exit", "0"}),
+                                   [](auto const&, auto const&) {})};
+        ASSERT_TRUE(result);
+        EXPECT_EQ(*result, 0);
+    }
+    auto const status{jobserver::Client::status(true)};
+    ASSERT_TRUE(status);
+    auto const json = Json::parse(*status);
+    EXPECT_EQ(json["daemon"]["scheduler_entries"], 0U);
+    auto count{0};
+    for (auto const& job : json["jobs"]) {
+        if (job.value("name", "") == "retired short job") {
+            EXPECT_EQ(job.value("state", ""), "SUCCEEDED");
+            ++count;
+        }
+    }
+    EXPECT_EQ(count, 32);
+}
+
+TEST_F(JobserverIntegration, DiskLogCapDoesNotTruncateClientOutput) {
+    auto const bytes{jobserver::LogStore::maximum_stream_bytes + 1024U};
+    std::size_t received{};
+    auto const result{jobserver::Client::run(
+        submit_request("capped output", {}, {"large-output", std::to_string(bytes)}),
+        [&](auto const& stream, auto const& text) {
+            if (stream == "stdout") {
+                received += text.size();
+            }
+        })};
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result, 0);
+    EXPECT_EQ(received, bytes);
+    auto const status{jobserver::Client::status(true)};
+    ASSERT_TRUE(status);
+    auto const json = Json::parse(*status);
+    auto const found{std::ranges::find_if(
+        json["jobs"], [](auto const& job) { return job.value("name", "") == "capped output"; })};
+    ASSERT_NE(found, json["jobs"].end());
+    auto const path{data_path_ / "logs" / (found->value("id", "") + ".stdout.log")};
+    EXPECT_EQ(std::filesystem::file_size(path), jobserver::LogStore::maximum_stream_bytes);
+    std::ifstream input{path, std::ios::binary};
+    input.seekg(-36, std::ios::end);
+    std::string const tail{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
+    EXPECT_NE(tail.find("log size limit reached"), std::string::npos);
 }
 
 TEST_F(JobserverIntegration, NestedClaimsRejectSpoofedAndStaleParentIds) {

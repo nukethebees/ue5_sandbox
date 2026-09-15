@@ -1,5 +1,6 @@
 #pragma once
 
+#include "log_store.hpp"
 #include "scheduler.hpp"
 #include "supervisor.hpp"
 
@@ -30,6 +31,7 @@ class Server {
     void handle_shutdown(void* pipe);
     void load_history();
     void record_history(std::string const& id) noexcept;
+    void finish_job(std::string const& id) noexcept;
     void audit_loop(std::stop_token stop_token);
 
     Scheduler scheduler_;
@@ -42,6 +44,7 @@ class Server {
     std::mutex history_mutex_;
     std::filesystem::path history_path_;
     std::vector<std::string> history_;
+    std::unique_ptr<LogStore> log_store_;
     std::atomic<bool> stopping_{};
     std::atomic<void*> listener_{};
     std::mutex admission_mutex_;
