@@ -246,7 +246,7 @@ auto Sim::get_fighter_spawn_slots() const noexcept -> std::int32_t {
 }
 void Sim::queue_fighter_spawns() {
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::queue_fighter_spawns");
-    if (!diagnostics_enabled) {
+    if (!diagnostics_enabled_) {
         diagnostic_spawn_reports = 0;
     }
 
@@ -287,7 +287,7 @@ void Sim::queue_fighter_spawns() {
         for (auto const& relative_transform : relative_transforms) {
             auto const new_transform{relative_transform * base_transform};
             if (fighters::diagnostics::take_report(
-                    diagnostics_enabled, diagnostic_spawn_reports, 64)) {
+                    diagnostics_enabled_, diagnostic_spawn_reports, 64)) {
                 /* ml::log_error(std::format("[FighterSpawn] Enqueue parentRegistryIndex={}
                    capitalIndex={} base=({}, {}, {}) slot=({}, {}, {}) world=({}, {}, {})",
                     entities.handles[capital_index].index, capital_index,

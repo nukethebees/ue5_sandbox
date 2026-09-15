@@ -30,6 +30,10 @@ Sim::Sim(SimClock const& clock,
     , frame_memory_resource{in_frame_memory_resource}
     , simulation_clock{clock} {}
 
+void Sim::set_config(LaserSimConfig const& new_config) noexcept {
+    config = new_config;
+}
+
 void Sim::begin_play() {
     SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::begin_play");
     ioj::sim::profiling::plot("Sandbox/LaserCount", 0);
@@ -79,7 +83,7 @@ void Sim::queue_laser_spawns(ioj::sim::lasers::SpawnRequestsConstView const spaw
 }
 
 void Sim::preallocate_instances() {
-    entities.reserve(n_preallocated_instances);
+    entities.reserve(config.n_preallocated_instances);
 }
 
 void Sim::process_pending_spawns() {
@@ -161,8 +165,8 @@ void Sim::handle_collisions(float const dt) {
     collision_scratch.set_num(n);
     auto const locations{entities.locations.get_const_view()};
     auto const velocities{entities.velocities.get_const_view()};
-    assert(collision_jobs > 0);
-    auto const job_count{std::min(n, collision_jobs)};
+    assert(config.collision_jobs > 0);
+    auto const job_count{std::min(n, config.collision_jobs)};
     auto const updates_per_slice{n / job_count + (n % job_count != 0)};
     ml::FrameArray<std::int32_t> jobs{&frame_memory_resource};
     jobs.set_num(job_count);

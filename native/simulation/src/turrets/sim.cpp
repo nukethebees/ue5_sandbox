@@ -162,7 +162,7 @@ void Sim::handle_dead_entities() {
 void Sim::begin_play() {
     SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::begin_play");
     ioj::sim::profiling::plot("Sandbox/TurretCount", 0);
-    assert(search_slice_size > 0);
+    assert(config.search_slice_size > 0);
 
     auto const cooldown_tick_period{
         simulation_clock.duration_to_tick_period(config.laser.fire_cooldown)};
@@ -276,7 +276,7 @@ void Sim::perform_search() {
 
     auto const hardware_thread_count{
         static_cast<std::int32_t>(std::max(1u, std::thread::hardware_concurrency()))};
-    auto const max_jobs_for_grain_size{std::max(1, n_turrets / search_slice_size)};
+    auto const max_jobs_for_grain_size{std::max(1, n_turrets / config.search_slice_size)};
     auto const n_jobs{std::min(hardware_thread_count, max_jobs_for_grain_size)};
     auto const turrets_per_job{(n_turrets + n_jobs - 1) / n_jobs};
 

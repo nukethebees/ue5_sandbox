@@ -53,14 +53,12 @@ struct Sim {
     /* **************************************** */
     // Spawning and configuration
     /* **************************************** */
+    void set_config(LaserSimConfig const& new_config) noexcept;
     void queue_laser_spawns(ioj::sim::lasers::SpawnRequestsConstView spawn_data);
     void queue_laser_spawns(SpawnRequests const& spawn_data) {
         queue_laser_spawns(spawn_data.get_const_view());
     }
     void validate_array_sizes() const;
-
-    std::int32_t n_preallocated_instances{5000};
-    std::int32_t collision_jobs{8};
   private:
     /* **************************************** */
     // Tick phases
@@ -97,6 +95,7 @@ struct Sim {
     SpatialQueryManager& query_manager;
     std::pmr::memory_resource& frame_memory_resource;
     SimClock const& simulation_clock;
+    LaserSimConfig config{};
 
     Entities entities;
     SpawnRequests pending_spawns;

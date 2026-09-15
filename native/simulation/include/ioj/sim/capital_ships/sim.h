@@ -76,6 +76,7 @@ struct Sim {
         deaths_.clear();
     }
     void set_config(CapitalShipSimConfig const& new_config) noexcept;
+    void set_diagnostics_enabled(bool enabled) noexcept { diagnostics_enabled_ = enabled; }
 
     /* **************************************** */
     // Accessors
@@ -123,8 +124,6 @@ struct Sim {
     void validate_array_sizes() const;
     void validate_entity_handles() const;
     void set_target_handle(RegistryEntityHandle ship_handle, RegistryEntityHandle target_handle);
-
-    bool diagnostics_enabled{};
   private:
     /* **************************************** */
     // Sim phases
@@ -181,6 +180,7 @@ struct Sim {
     friend class ::ioj::sim::LevelSpawnManager;
 
     CapitalShipSimConfig config{};
+    bool diagnostics_enabled_{};
     EntityRegistry& entity_registry;
     SpatialQueryManager const& spatial_query_manager;
     std::pmr::memory_resource& frame_memory_resource;

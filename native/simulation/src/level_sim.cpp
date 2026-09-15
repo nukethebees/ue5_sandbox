@@ -154,18 +154,14 @@ void LevelSim::configure_subsystems(LevelSimInitData const& data) {
         configure_player(data.player.value());
     }
 
-    lasers_simulation_.n_preallocated_instances = data.lasers.n_preallocated_instances;
-    lasers_simulation_.collision_jobs = data.lasers.collision_jobs;
-
+    lasers_simulation_.set_config(data.lasers);
     capital_ships_simulation_.set_config(data.capital_ships);
-    fighters_simulation_.set_config(data.fighters, data.participating_teams);
-    fighters_simulation_.fire_dot_product_threshold = data.fighters.fire_dot_product_threshold;
-    fighters_simulation_.collision_radius =
-        query_manager_.get_entity_type_radius(ioj::sim::EntityType::Fighter);
-    fighters_simulation_.fire_point_distance = data.fighter_fire_point_distance;
-
+    fighters_simulation_.set_config(
+        data.fighters,
+        {.participating_teams = data.participating_teams,
+         .collision_radius = query_manager_.get_entity_type_radius(ioj::sim::EntityType::Fighter),
+         .fire_point_distance = data.fighter_fire_point_distance});
     turrets_simulation_.set_config(data.turrets);
-    turrets_simulation_.search_slice_size = data.turrets.search_slice_size;
     spinners_simulation_.set_config(data.spinners);
 }
 void LevelSim::configure_player(ioj::sim::player::PlayerSpawnData const& spawn) {
@@ -174,19 +170,7 @@ void LevelSim::configure_player(ioj::sim::player::PlayerSpawnData const& spawn) 
     player_ship_phase_.emplace(player);
     player_ship_commands_.emplace(player);
 
-    player.set_config(spawn.config);
-    player.team = spawn.team;
-
-    player.transform = spawn.transform;
-    player.body_transform = spawn.body_transform;
-    player.left_socket = spawn.left_socket;
-    player.right_socket = spawn.right_socket;
-    player.middle_socket = spawn.middle_socket;
-    player.flight_mode = spawn.flight_mode;
-    player.control_mode = spawn.control_mode;
-    player.laser_mode = spawn.laser_mode;
-    player.laser_fire_rate = spawn.laser_fire_rate;
-    player.health = spawn.health;
+    player.configure(spawn);
 }
 void LevelSim::initialise_spatial_queries(LevelSimInitData& data) {
     query_manager_.initialise(data.grid_dimensions, data.cell_size, data.entity_bounds);
@@ -218,8 +202,8 @@ void LevelSim::initialise_events(CompiledLevelEvents events) {
 // Configuration and commands
 /* **************************************** */
 void LevelSim::set_fighter_diagnostics_enabled(bool const enabled) noexcept {
-    capital_ships_simulation_.diagnostics_enabled = enabled;
-    fighters_simulation_.diagnostics_enabled = enabled;
+    capital_ships_simulation_.set_diagnostics_enabled(enabled);
+    fighters_simulation_.set_diagnostics_enabled(enabled);
 }
 void LevelSim::set_static_collision(ioj::sim::collision::WorldAABBs bounds) {
     assert(state_ == OrchestratorState::Uninitialised);

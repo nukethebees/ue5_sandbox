@@ -40,8 +40,20 @@ namespace ioj::sim::player {
 /* **************************************** */
 // Construction and configuration
 /* **************************************** */
-void Sim::set_config(PlayerSimConfig const& new_config) noexcept {
-    config = new_config;
+void Sim::configure(PlayerSpawnData const& spawn) noexcept {
+    config = spawn.config;
+    team = spawn.team;
+
+    transform = spawn.transform;
+    body_transform = spawn.body_transform;
+    left_socket = spawn.left_socket;
+    right_socket = spawn.right_socket;
+    middle_socket = spawn.middle_socket;
+    flight_mode = spawn.flight_mode;
+    control_mode = spawn.control_mode;
+    laser_mode = spawn.laser_mode;
+    laser_fire_rate = spawn.laser_fire_rate;
+    health = spawn.health;
 }
 
 Sim::Sim(SimClock const& clock,

@@ -40,11 +40,13 @@ void run_worldless_fighter_obstacle_avoidance(ioj::sim::tests::SimulationFixture
                                        100000);
     ioj::sim::tests::add_capital_spawn(
         data, ioj::sim::Vector3f{{target_x, 0.f, 0.f}}, ioj::sim::Team::Red, 0, 60.f, 60.f, 100000);
+    auto const fighter_radius{ioj::sim::collision::get_entity_radius(
+        data.entity_bounds, ioj::sim::collision::EntityAABBs::fighter_index)};
 
     ioj::sim::tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     auto const& fighters{harness.get_simulation().get_fighters()};
-    auto const clearance{fighters.collision_radius + 100.f};
+    auto const clearance{fighter_radius + 100.f};
     auto const expanded_min{obstacle_min - ioj::sim::Vector3f{{clearance, clearance, clearance}}};
     auto const expanded_max{obstacle_max + ioj::sim::Vector3f{{clearance, clearance, clearance}}};
     bool fighter_spawned{};

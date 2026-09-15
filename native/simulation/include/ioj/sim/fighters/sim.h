@@ -41,6 +41,12 @@ class PhaseInterface;
 
 using NavigationTelemetrySnapshot = ioj::sim::fighters::NavigationTelemetrySnapshot;
 
+struct FighterLevelData {
+    std::span<ioj::sim::Team const> participating_teams;
+    float collision_radius{};
+    float fire_point_distance{};
+};
+
 struct Sim {
     using RegistryEntityData = ioj::sim::RegistryEntityData;
     using EntityData = ioj::sim::FighterEntityData;
@@ -70,8 +76,8 @@ struct Sim {
     auto get_read_view() const -> FighterReadView {
         return {entity_buffers.current().get_const_view(), &entity_registry};
     }
-    void set_config(FighterSimConfig const& new_config,
-                    std::span<ioj::sim::Team const> participating_teams) noexcept;
+    void set_config(FighterSimConfig const& new_config, FighterLevelData level_data) noexcept;
+    void set_diagnostics_enabled(bool enabled) noexcept { diagnostics_enabled_ = enabled; }
 
     /* **************************************** */
     // Accessors
@@ -109,11 +115,6 @@ struct Sim {
     void validate_array_sizes() const {}
     void check_fighter_tasks() const {}
 #endif
-
-    float collision_radius{0.f};
-    float fire_point_distance{0.f};
-    float fire_dot_product_threshold{0.95f};
-    bool diagnostics_enabled{};
   private:
     using NavigationScratch = ioj::sim::fighters::NavigationScratch;
     using NavigationRiskTier = ioj::sim::fighters::NavigationRiskTier;
@@ -235,6 +236,9 @@ struct Sim {
     friend class PhaseInterface;
 
     FighterSimConfig config{};
+    float collision_radius_{};
+    float fire_point_distance_{};
+    bool diagnostics_enabled_{};
     std::array<std::uint8_t, static_cast<std::size_t>(ioj::sim::Team::COUNT)> participant_mask{};
     std::array<std::int32_t, static_cast<std::size_t>(ioj::sim::Team::COUNT)>
         remaining_team_capacity{};
