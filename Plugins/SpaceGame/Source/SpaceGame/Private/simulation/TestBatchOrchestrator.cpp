@@ -789,11 +789,6 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     update_collision_bounds_visualization();
 
     level_simulation_->on_mission_evaluated = [this] { process_mission_result(); };
-    level_simulation_->on_end_tick = [this](::ioj::sim::LevelSim&) {
-        end_tick_test_hook.ExecuteIfBound(*this);
-        process_mission_result();
-        process_battle_run_end();
-    };
 
     if (presentation_enabled) {
         hud_manager.initialise(hud_update_frequencies,
@@ -1000,6 +995,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
     auto const fighter_diagnostics_enabled{
         ml::fighter_diagnostics::enabled.GetValueOnGameThread() != 0};
     level_simulation_->set_fighter_diagnostics_enabled(fighter_diagnostics_enabled);
+    auto const previous_tick{level_simulation_->get_clock().get_completed_ticks()};
     level_simulation_->advance(dt);
     update_collision_bounds_visualization();
 
@@ -1022,6 +1018,11 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         }
     }
 
+    if (level_simulation_->get_clock().get_completed_ticks() != previous_tick) {
+        end_tick_test_hook.ExecuteIfBound(*this);
+        process_mission_result();
+        process_battle_run_end();
+    }
     persist_finalized_telemetry_run();
 }
 void ATestBatchOrchestrator::set_time_scale(time_type const scale) noexcept {

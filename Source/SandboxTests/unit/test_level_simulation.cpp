@@ -9,6 +9,7 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestNiagaraComponent.h>
+#include <SandboxTests/support/WorldlessSimulationTest.h>
 #include <SpaceGame/levels/CompileLevelEvents.h>
 #include <SpaceGame/levels/LevelDefinition.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -279,8 +280,10 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
     auto visible_data{make_battle()};
     add_mission(headless_data);
     add_mission(visible_data);
-    ::ioj::sim::LevelSim headless{MoveTemp(headless_data)};
-    ::ioj::sim::LevelSim visible{MoveTemp(visible_data)};
+    ml::FWorldlessSimulationTest headless_harness{MoveTemp(headless_data)};
+    ml::FWorldlessSimulationTest visible_harness{MoveTemp(visible_data)};
+    auto& headless{headless_harness.get_simulation()};
+    auto& visible{visible_harness.get_simulation()};
     TestEqual(TEXT("Presentation construction preserves initial entity count"),
               visible.get_capital_ships().get_num_instances(),
               headless.get_capital_ships().get_num_instances());
@@ -297,10 +300,10 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
         samples.add(simulation.get_clock().get_simulation_time(),
                     simulation.get_entity_registry().get_entity_data());
     }};
-    headless.on_end_tick = [&](::ioj::sim::LevelSim& simulation) {
+    headless_harness.on_end_tick = [&](::ioj::sim::LevelSim& simulation) {
         record(headless_samples, simulation);
     };
-    visible.on_end_tick = [&](::ioj::sim::LevelSim& simulation) {
+    visible_harness.on_end_tick = [&](::ioj::sim::LevelSim& simulation) {
         record(visible_samples, simulation);
     };
     headless.start();
@@ -312,8 +315,8 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
             kill_enemy(headless);
             kill_enemy(visible);
         }
-        headless.advance(dt);
-        visible.advance(dt);
+        headless_harness.advance(dt);
+        visible_harness.advance(dt);
         auto const prior_presentations{presentation.get_tick_count()};
         TestEqual(
             TEXT("Advancing does not present"), prior_presentations, static_cast<uint64>(tick));
@@ -387,21 +390,17 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     }
     resources.config = config->get_visual_config();
 
-    ::ioj::sim::LevelSim simulation{make_scheduled_battle()};
+    auto scheduled_battle{make_scheduled_battle()};
+    auto& scheduled_spawns{scheduled_battle.level_events.schedule.capital_spawns};
+    scheduled_spawns.locations.xs[0] = -1000.f;
+    scheduled_spawns.healths[0] = 100;
+    scheduled_battle.level_events.initial_spawns.capital_spawns.healths[0] = 10000;
+    scheduled_battle.overlap_response.damage_per_overlap_detection = 100;
+    ::ioj::sim::LevelSim simulation{MoveTemp(scheduled_battle)};
     simulation.finish_initialisation();
     FLevelPresentation presentation{resources, simulation.get_read_view(), {}};
     simulation.start();
     auto const dt{simulation.get_clock().get_tick_period()};
-    simulation.on_end_tick = [](::ioj::sim::LevelSim& level) {
-        if (level.get_clock().get_completed_ticks() == 3) {
-            ::ioj::sim::DirectDamageEvents damage;
-            damage.add(level.get_capital_ships().get_handle(1),
-                       MAX_int32,
-                       level.get_capital_ships().get_handle(0));
-            ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(level,
-                                                                       damage.get_const_view());
-        }
-    };
     simulation.advance(dt * 4.25);
     auto const frame{simulation.get_read_view()};
     TestEqual(TEXT("Four fixed ticks precede presentation"),
@@ -471,16 +470,21 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     resources.config.capital_ships.time_between_explosions = 10.f;
     resources.config.capital_ships.large_explosion_delay = 100.f;
     FLevelPresentation death_effects{resources, deaths.get_read_view(), {}};
-    deaths.on_end_tick = [](::ioj::sim::LevelSim& level) {
-        if (level.get_clock().get_completed_ticks() <= 2) {
-            ::ioj::sim::DirectDamageEvents damage;
-            damage.add(level.get_capital_ships().get_handle(0),
-                       MAX_int32,
-                       level.get_capital_ships().get_handle(0));
-            ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(level,
-                                                                       damage.get_const_view());
-        }
-    };
+    ::ioj::sim::DirectDamageEvents damage;
+    damage.add(deaths.get_capital_ships().get_handle(0),
+               MAX_int32,
+               deaths.get_capital_ships().get_handle(1));
+    ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(deaths, damage.get_const_view());
+    ::ioj::sim::lasers::SpawnRequests shot;
+    shot.add({900.f, 0.f, 0.f},
+             {},
+             {},
+             MAX_int32,
+             1000.f,
+             10000.f,
+             {},
+             {::ioj::sim::Team::Green, ::ioj::sim::EntityType::CapitalShip});
+    ::ioj::sim::LevelSimTestAccess::queue_laser_spawns(deaths, shot.get_const_view());
     deaths.start();
     deaths.advance(0.425);
     auto const death_frame{deaths.get_read_view()};

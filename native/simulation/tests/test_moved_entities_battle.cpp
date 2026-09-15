@@ -73,8 +73,9 @@ auto make_long_running_battle() -> LevelSimInitData {
 
 TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLongBattle) {
 
-    LevelSim simulation{make_long_running_battle()};
-    simulation.finish_initialisation();
+    WorldlessSimulationTest harness{make_long_running_battle()};
+    harness.finish_initialisation();
+    auto& simulation{harness.get_simulation()};
 
     std::map<RegistryEntityHandle, TransformSnapshot> previous_transforms;
     auto capture_current_transforms = [&](EntityRegistry const& registry) {
@@ -92,7 +93,7 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
     std::int32_t observed_ticks{};
     std::int32_t observed_moved_fighters{};
     bool observed_empty_tick{};
-    simulation.on_end_tick = [&](LevelSim& level) {
+    harness.on_end_tick = [&](LevelSim& level) {
         auto const& registry{level.get_entity_registry()};
         auto const& data{registry.get_entity_data()};
         auto const generations{registry.get_generations()};
@@ -134,7 +135,7 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
     auto const tick_period{simulation.get_clock().get_tick_period()};
     constexpr std::int32_t tick_count{3000};
     for (std::int32_t tick{}; tick < tick_count; ++tick) {
-        simulation.advance(tick_period);
+        harness.advance(tick_period);
     }
     simulation.pause();
 

@@ -83,7 +83,7 @@ struct LevelSim {
     // Call after static collision is installed.
     // Synchronizes the initial world and telemetry before transitioning to Paused.
     void finish_initialisation();
-    // Requires Paused. Start/pause reset realtime sampling, preserving simulation accumulation.
+    // Requires Paused. Preserves accumulated simulation time.
     void start();
     // Repeated pauses are valid after finish_initialisation().
     void pause();
@@ -149,7 +149,6 @@ struct LevelSim {
     }
 
     std::function<void()> on_mission_evaluated;
-    std::function<void(LevelSim&)> on_end_tick;
   private:
     friend struct LevelSimTestAccess;
 

@@ -160,7 +160,7 @@ TEST(SimulationBenchmarkRunner, LoadsCompilesAndAdvancesExistingLevel) {
     EXPECT_EQ(result->alive_entities, 1);
 }
 
-TEST(SimulationBenchmarkRunner, BatchesTicksByGameSpeed) {
+TEST(SimulationBenchmarkRunner, AdvancesOneTickPerCallAtAnyRequestedGameSpeed) {
     auto const level_path{std::filesystem::path{SANDBOX_PROJECT_SOURCE_DIR} / "LevelScripts" /
                           "DevThreeSecondFailure.scm"};
     auto const result{
@@ -169,7 +169,7 @@ TEST(SimulationBenchmarkRunner, BatchesTicksByGameSpeed) {
     ASSERT_TRUE(result.has_value()) << result.error();
     EXPECT_EQ(result->requested_ticks, 3);
     EXPECT_EQ(result->completed_ticks, 3);
-    EXPECT_EQ(result->advance_calls, 2u);
+    EXPECT_EQ(result->advance_calls, 3u);
 }
 } // namespace
 } // namespace ml::simulation_benchmark::tests

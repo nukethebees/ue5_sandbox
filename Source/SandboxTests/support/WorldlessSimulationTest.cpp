@@ -68,17 +68,21 @@ auto add_worldless_capital_spawn(::ioj::sim::LevelSimInitData& data,
 }
 
 FWorldlessSimulationTest::FWorldlessSimulationTest(::ioj::sim::LevelSimInitData data)
-    : simulation_{MoveTemp(data)} {
-    simulation_.on_end_tick = [this](::ioj::sim::LevelSim& simulation) {
-        if (on_end_tick) {
-            on_end_tick(simulation);
-        }
-        timeline.tick(simulation.get_clock().get_simulation_time());
-    };
-}
+    : simulation_{MoveTemp(data)} {}
 
 void FWorldlessSimulationTest::finish_initialisation() {
     simulation_.finish_initialisation();
+}
+
+void FWorldlessSimulationTest::advance(time_type const dt) {
+    auto const previous_tick{simulation_.get_clock().get_completed_ticks()};
+    simulation_.advance(dt);
+    if (simulation_.get_clock().get_completed_ticks() != previous_tick) {
+        if (on_end_tick) {
+            on_end_tick(simulation_);
+        }
+        timeline.tick(simulation_.get_clock().get_simulation_time());
+    }
 }
 
 void FWorldlessSimulationTest::queue_damage(
@@ -112,11 +116,12 @@ void FWorldlessSimulationTest::queue_kills(
 auto FWorldlessSimulationTest::run_until_timeline_finished(time_type const maximum_time) -> bool {
     check(maximum_time > 0.0);
     check(simulation_.get_state() == ::ioj::sim::OrchestratorState::Paused);
+    simulation_.set_time_scale(1.0);
     simulation_.start();
     auto const tick_period{simulation_.get_clock().get_tick_period()};
     auto const maximum_ticks{static_cast<uint64>(FMath::CeilToDouble(maximum_time / tick_period))};
     for (uint64 tick{}; tick < maximum_ticks && !timeline.is_finished(); ++tick) {
-        simulation_.advance(tick_period);
+        advance(tick_period);
     }
     simulation_.pause();
     return timeline.is_finished();

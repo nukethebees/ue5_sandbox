@@ -17,6 +17,7 @@ class WorldlessSimulationTest {
                       RegistryEntityHandle instigator = {});
     void queue_kills(std::span<RegistryEntityHandle const> targets,
                      RegistryEntityHandle instigator = {});
+    void advance(time_type dt);
     auto run_until_timeline_finished(time_type maximum_time) -> bool;
     std::function<void(LevelSim&)> on_end_tick;
     FTestTimeline timeline;

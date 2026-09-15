@@ -24,6 +24,15 @@ struct FrameMemorySummary {
     std::uint64_t total_padding_bytes{};
     std::uint64_t total_root_claims{};
     std::int32_t peak_fighters{};
+
+    void record_tick(ioj::sim::LevelSim const& simulation) {
+        auto const stats{simulation.get_frame_memory_stats()};
+        peak_claimed_bytes = std::max(peak_claimed_bytes, stats.last_frame_claimed_bytes);
+        peak_payload_bytes = std::max(peak_payload_bytes, stats.last_frame_payload_bytes);
+        total_padding_bytes += stats.last_frame_padding_bytes;
+        total_root_claims += stats.last_frame_root_claim_count;
+        peak_fighters = std::max(peak_fighters, simulation.get_fighters().get_num_instances());
+    }
 };
 
 auto read_error(ml::level_authoring::LevelDefinitionReadResult const& result) -> std::string {
@@ -178,20 +187,11 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
 
     ioj::sim::LevelSim simulation{std::move(data)};
     FrameMemorySummary frame_summary;
-    simulation.on_end_tick = [&frame_summary](ioj::sim::LevelSim& current_simulation) {
-        auto const stats{current_simulation.get_frame_memory_stats()};
-        frame_summary.peak_claimed_bytes =
-            std::max(frame_summary.peak_claimed_bytes, stats.current_frame_peak_claimed_bytes);
-        frame_summary.peak_payload_bytes =
-            std::max(frame_summary.peak_payload_bytes, stats.current_payload_bytes);
-        frame_summary.total_padding_bytes += stats.current_padding_bytes;
-        frame_summary.total_root_claims += stats.current_root_claim_count;
-        frame_summary.peak_fighters = std::max(
-            frame_summary.peak_fighters, current_simulation.get_fighters().get_num_instances());
-    };
+
     simulation.finish_initialisation();
     auto const initial_capital_ships{simulation.get_capital_ships().get_num_instances()};
     auto const initial_turrets{simulation.get_turrets().get_num_instances()};
+    simulation.set_time_scale(1.0);
     simulation.start();
 
     if (options.profiler_connection_timeout_seconds.has_value()) {
@@ -218,12 +218,9 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     std::uint64_t advance_calls{};
     auto const started_at{std::chrono::steady_clock::now()};
     while (simulation.get_clock().get_completed_ticks() < *requested_ticks) {
-        auto const remaining_ticks{*requested_ticks - simulation.get_clock().get_completed_ticks()};
-        auto const batch_ticks{std::min<ioj::sim::SimTick>(remaining_ticks, options.game_speed)};
-        auto const unscaled_seconds{static_cast<double>(batch_ticks) * tick_period /
-                                    static_cast<double>(options.game_speed)};
         auto const previous_ticks{simulation.get_clock().get_completed_ticks()};
-        simulation.advance(unscaled_seconds);
+        simulation.advance(tick_period);
+        frame_summary.record_tick(simulation);
         ++advance_calls;
         if (simulation.get_clock().get_completed_ticks() == previous_ticks) {
             return std::unexpected{"simulation advance did not complete a deterministic tick"};

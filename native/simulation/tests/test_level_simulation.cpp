@@ -96,15 +96,10 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
     data.telemetry_metadata->run_id = "completion-test";
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
-    std::int32_t end_tick_calls{};
-    simulation.on_end_tick = [&](LevelSim& level) {
-        ++end_tick_calls;
-        level.complete_telemetry_run(LevelTelemetryRunEndReason::DurationReached, Team::Green);
-    };
     simulation.start();
     auto const dt{simulation.get_clock().get_tick_period()};
-    simulation.advance(dt * 3.25);
-    tests::expect_equal(end_tick_calls, 1, "Completion stops catch-up after the current tick");
+    simulation.advance(dt * 1.25);
+    simulation.complete_telemetry_run(LevelTelemetryRunEndReason::DurationReached, Team::Green);
     tests::expect_equal(
         simulation.get_state(), OrchestratorState::Paused, "Completed run is paused");
     tests::expect_equal(simulation.get_clock().get_completed_ticks(),
@@ -129,12 +124,15 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
     tests::expect_equal(simulation.get_clock().get_completed_ticks(),
                         std::uint64_t{1},
                         "Completed simulation ignores paused time");
-    simulation.on_end_tick = {};
     simulation.start();
-    simulation.advance(0.0);
+    simulation.advance(dt * 2.0);
     tests::expect_equal(simulation.get_clock().get_completed_ticks(),
                         std::uint64_t{3},
-                        "Completion and restart preserve accumulated simulation time");
+                        "Restart continues simulation without accumulating paused time");
+    tests::expect_equal(simulation.get_read_view().interpolation_alpha(),
+                        0.25,
+                        1.e-9,
+                        "Completion and restart preserve the accumulated fractional tick");
     return;
 }
 
@@ -187,25 +185,20 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
     add_mission(data);
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
-    auto queue_shot = [](LevelSim& level) {
+    auto queue_shot = [](LevelSim& level, float const location) {
         lasers::SpawnRequests requests;
-        requests.add_uninitialised(1);
-        requests.locations.set(0, Vector3f{{700.f, 0.f, 0.f}});
-        requests.rotations.set(0, Rotator3f{});
-        requests.base_velocities.set(0, Vector3f{});
-        requests.damages[0] = 1;
-        requests.speeds[0] = 2000.f;
-        requests.max_distances[0] = 10000.f;
-        requests.instigator_handles[0] = level.get_capital_ships().get_handle(0);
-        requests.sources[0] = LaserSource{Team::Green, EntityType::Fighter};
+        requests.add({{location, 0.f, 0.f}},
+                     {},
+                     {},
+                     1,
+                     2000.f,
+                     10000.f,
+                     level.get_capital_ships().get_handle(0),
+                     {Team::Green, EntityType::Fighter});
         LevelSimTestAccess::queue_laser_spawns(level, requests.get_const_view());
     };
-    queue_shot(simulation);
-    simulation.on_end_tick = [&](LevelSim& level) {
-        if (level.get_clock().get_completed_ticks() == 1) {
-            queue_shot(level);
-        }
-    };
+    queue_shot(simulation, 700.f);
+    queue_shot(simulation, 500.f);
     simulation.start();
     simulation.advance(0.425);
     auto const frame{simulation.get_read_view()};

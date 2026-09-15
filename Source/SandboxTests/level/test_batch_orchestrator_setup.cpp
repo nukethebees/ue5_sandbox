@@ -152,7 +152,7 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
                     owner.get_simulation_time(),
                     FFrameObservation{owner.get_completed_ticks(),
                                       owner.get_level_presentation()->get_tick_count()});
-                if (owner.get_completed_ticks() == 6) {
+                if (owner.get_completed_ticks() >= 6) {
                     FTestBatchOrchestratorTestAccess::complete_telemetry_run(
                         owner, ::ioj::sim::LevelTelemetryRunEndReason::DurationReached);
                 }
@@ -177,30 +177,30 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
         orchestrator.tick(dt * 4.0);
         orchestrator.clear_end_tick_test_hook();
         checks.are_equal(
-            int32{6}, observations.num(), TEXT("Terminal tick stops the fixed-step loop"));
+            int32{2}, observations.num(), TEXT("Each catch-up frame produces one observation"));
         auto const sample_count{observations.num()};
         for (int32 index{}; index < sample_count; ++index) {
             auto const& sample{observations.value_at(index)};
-            checks.are_equal(static_cast<uint64>(index + 1),
+            checks.are_equal(static_cast<uint64>((index + 1) * 4),
                              sample.completed_ticks,
-                             TEXT("Fixed ticks remain ordered"));
-            checks.are_equal(index < 4 ? uint64{1} : uint64{2},
+                             TEXT("Catch-up frames observe their final completed ticks"));
+            checks.are_equal(static_cast<uint64>(index + 2),
                              sample.presentation_count,
-                             TEXT("No presentation runs inside the fixed-step loop"));
+                             TEXT("Observations follow the frame presentation"));
         }
         checks.are_equal(uint64{3},
                          presentation->get_tick_count(),
                          TEXT("Terminal frame still presents exactly once"));
-        checks.are_equal(uint64{6},
+        checks.are_equal(uint64{8},
                          presentation->get_last_completed_tick(),
                          TEXT("Terminal presentation observes the final completed tick"));
         auto report{orchestrator.take_finalized_telemetry_report()};
         if (checks.is_true(report.IsSet(), TEXT("Terminal frame produces a telemetry report"))) {
-            checks.are_equal(uint64{6},
+            checks.are_equal(uint64{8},
                              report->completion.completed_ticks,
                              TEXT("Telemetry retains the final resolved tick"));
             checks.is_true(!report->battle_samples.IsEmpty() &&
-                               report->battle_samples.Last().completed_tick == 6,
+                               report->battle_samples.Last().completed_tick == 8,
                            TEXT("Terminal battle sample observes the final resolved tick"));
         }
         checks.is_true(!orchestrator.take_finalized_telemetry_report().IsSet(),
@@ -333,9 +333,11 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
     }
 
     auto const& changed_observation{telemetry_observations.value_at(changed_observation_index)};
-    checks.are_equal(changed_observation.completed_ticks,
+    auto const damage_tick{
+        telemetry_observations.value_at(changed_observation_index - 1).completed_ticks + 1};
+    checks.are_equal(damage_tick,
                      changed_observation.last_telemetry_tick,
-                     TEXT("Telemetry updates before the end-tick hook"));
+                     TEXT("Telemetry records the first tick after damage is queued"));
     checks.are_equal(changed_observation.registry_entity_count,
                      changed_observation.telemetry_entity_count,
                      TEXT("Telemetry records the active registry count"));
@@ -351,9 +353,9 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
     checks.are_equal(kill_samples_before_change + 1,
                      changed_observation.kill_sample_count,
                      TEXT("Killed entity changes cumulative kill telemetry"));
-    checks.are_equal(changed_observation.completed_ticks,
+    checks.are_equal(damage_tick,
                      changed_observation.last_kill_tick,
-                     TEXT("Kill telemetry updates before the end-tick hook"));
+                     TEXT("Kill telemetry records the damage-resolution tick"));
     checks.are_equal(int32{1},
                      changed_observation.cumulative_kill_count,
                      TEXT("Killed entity increments the cumulative kill count"));
