@@ -22,9 +22,16 @@ The production pipe name includes the current user's SID:
 
 ```text
 \\.\pipe\NukeTheBees.Jobserver.<user-sid>
+\\.\pipe\NukeTheBees.Jobserver.<user-sid>.control
 ```
 
-The pipe rejects remote clients. Its access control list lets restricted local tokens connect, and
+Both pipes belong to the same daemon. The main endpoint admits up to 64 job connections; the
+control endpoint reserves eight handlers for status, ping, cancellation, shutdown, and nested
+validation. It rejects job admission. New clients use it for control requests and fall back to the
+main endpoint only when the control pipe is absent, allowing an orderly upgrade from older daemons.
+Older clients can still send controls to the main endpoint, but do not gain the reserved capacity.
+
+The pipes reject remote clients. Their access control list lets restricted local tokens connect, and
 the daemon then impersonates each client and rejects it unless its user SID matches the daemon's
 user SID. Messages use a four-byte little-endian payload length followed by UTF-8 JSON. The current
 protocol version is `1.1`.
@@ -218,8 +225,21 @@ this heuristic.
   non-reading client cannot prevent daemon shutdown or upgrade; detached jobs continue logging
   after their client stops consuming output.
 - Initial handshakes and requests time out after five seconds, and the daemon admits at most 64
-  simultaneous client handlers. Excess connections are rejected and counted in `status`, bounding
-  thread and handle growth during broken-client floods.
+  simultaneous job handlers plus eight control handlers. Excess connections are rejected and
+  counted in `status`, bounding thread and handle growth during broken-client floods.
+- Idle lease holders and quiet running jobs have no idle read deadline. Once a frame starts,
+  however, its remaining header and payload must arrive within five seconds; trickling bytes does
+  not extend that deadline. Client request/release writes and terminal responses are bounded at
+  five seconds. Output writes retain a 30-second slow-reader allowance.
+- Cancellation and explicit job timeouts interrupt pending output writes before joining output
+  readers. A failed output connection is disconnected once: attached jobs are cancelled, detached
+  jobs drain their output into capped logs without retrying delivery or completion on a dead pipe.
+  Healthy output is drained before completion, including the tail after normal process exit.
+- Terminal replies allow at most five seconds for the peer to close. Idle shutdown interrupts
+  other connection reads/writes and reply waits, while preserving its own acknowledgement.
+- A status/history reply exceeding the one-MiB protocol limit returns `payload_too_large` rather
+  than leaving the client waiting for a response that cannot be encoded. Ordinary status remains
+  available without history; history pagination is not implemented.
 - Closing or crashing the daemon kills every supervised process tree through
   `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`.
 - A restarted daemon begins with no live ownership. Active resource state is never reconstructed

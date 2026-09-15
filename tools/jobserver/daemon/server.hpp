@@ -22,7 +22,10 @@ class Server {
   public:
     [[nodiscard]] auto run() -> int;
   private:
-    void serve_client(void* pipe);
+    void serve_client(void* pipe, bool control);
+    [[nodiscard]] auto write_client(void* pipe, std::string const& message)
+        -> std::expected<void, Error>;
+    void send_error(void* pipe, Error const& error);
     void handle_acquire(void* pipe, std::string const& message);
     void handle_submit(void* pipe, std::string const& message);
     void handle_validate_nested(void* pipe, std::string const& message);
@@ -46,12 +49,14 @@ class Server {
     std::vector<std::string> history_;
     std::unique_ptr<LogStore> log_store_;
     std::atomic<bool> stopping_{};
-    std::atomic<void*> listener_{};
+    std::stop_source connection_stop_;
     std::mutex admission_mutex_;
     bool accepting_jobs_{true};
     std::mutex handlers_mutex_;
     std::condition_variable handlers_finished_;
     std::size_t active_handlers_{};
+    std::size_t active_job_handlers_{};
+    std::size_t active_control_handlers_{};
     std::atomic<std::uint64_t> rejected_clients_{};
     std::chrono::system_clock::time_point started_at_{};
     std::chrono::steady_clock::time_point started_steady_{};

@@ -25,6 +25,7 @@ namespace jobserver {
 namespace {
 using Json = nlohmann::json;
 inline constexpr std::size_t maximum_client_handlers{64};
+inline constexpr std::size_t maximum_control_handlers{8};
 
 auto client_io_timeout() -> std::chrono::milliseconds {
     static auto const timeout = [] -> std::chrono::milliseconds {
@@ -92,10 +93,6 @@ auto queue_heartbeat_interval() -> std::chrono::milliseconds {
     auto const parsed{std::wcstoul(value, &end, 10)};
     return end != value && *end == L'\0' && parsed != 0 ? std::chrono::milliseconds{parsed}
                                                         : default_interval;
-}
-
-auto write_client(void* const pipe, std::string const& message) -> std::expected<void, Error> {
-    return transport::write_message(pipe, message, client_io_timeout());
 }
 
 class JobCompletionGuard {
@@ -293,11 +290,6 @@ auto same_user_client(HANDLE const pipe) -> bool {
     return EqualSid(client_user->User.Sid, daemon_user->User.Sid) != FALSE;
 }
 
-void send_error(void* const pipe, Error const& error) {
-    static_cast<void>(write_client(
-        pipe, Json{{"type", "error"}, {"code", error.code}, {"message", error.message}}.dump()));
-}
-
 auto make_pipe_security()
     -> std::expected<std::pair<SECURITY_ATTRIBUTES, PSECURITY_DESCRIPTOR>, Error> {
     constexpr auto descriptor{L"D:P(A;;GA;;;WD)S:(ML;;NW;;;LW)"};
@@ -312,6 +304,17 @@ auto make_pipe_security()
     attributes.lpSecurityDescriptor = security_descriptor;
     return std::pair{attributes, security_descriptor};
 }
+}
+
+auto Server::write_client(void* const pipe, std::string const& message)
+    -> std::expected<void, Error> {
+    return transport::write_message(
+        pipe, message, initial_message_timeout(), connection_stop_.get_token());
+}
+
+void Server::send_error(void* const pipe, Error const& error) {
+    static_cast<void>(write_client(
+        pipe, Json{{"type", "error"}, {"code", error.code}, {"message", error.message}}.dump()));
 }
 
 auto Server::run() -> int {
@@ -329,122 +332,146 @@ auto Server::run() -> int {
     auto& [security, descriptor]{*pipe_security};
     std::jthread audit_thread{[this](std::stop_token const stop_token) { audit_loop(stop_token); }};
     auto authority_published{false};
+    std::atomic<int> control_result{};
+    std::jthread control_thread;
     auto finish = [&](int const result) {
+        stopping_.store(true);
+        connection_stop_.request_stop();
+        if (control_thread.joinable()) {
+            control_thread.join();
+        }
         LocalFree(descriptor);
         std::unique_lock lock{handlers_mutex_};
         handlers_finished_.wait(lock, [&] { return active_handlers_ == 0; });
         if (authority_published) {
             clear_authority();
         }
-        return result;
+        return result == 0 ? control_result.load() : result;
     };
-    bool first{true};
-    for (;;) {
-        if (stopping_.load()) {
-            return finish(0);
-        }
-        auto const flags{PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED |
-                         (first ? FILE_FLAG_FIRST_PIPE_INSTANCE : 0U)};
-        auto const pipe{CreateNamedPipeW(transport::pipe_name().c_str(),
-                                         flags,
-                                         PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT |
-                                             PIPE_REJECT_REMOTE_CLIENTS,
-                                         PIPE_UNLIMITED_INSTANCES,
-                                         64U * 1024U,
-                                         64U * 1024U,
-                                         0,
-                                         &security)};
-        if (pipe == INVALID_HANDLE_VALUE) {
-            auto const error{GetLastError()};
-            std::cerr << (first ? "Another jobserver daemon is already running\n"
-                                : "Could not create scheduler pipe (Windows error " +
-                                      std::to_string(error) + ")\n");
-            return finish(first ? 2 : 1);
-        }
-        if (first) {
-            if (!history_path_.empty()) {
-                try {
-                    log_store_ = std::make_unique<LogStore>(history_path_.parent_path() / "logs");
-                } catch (...) {
-                    std::cerr << "Job log storage is unavailable\n";
-                }
-            }
-            auto const published{publish_authority()};
-            if (!published) {
-                std::cerr << published.error().message << "; forced recovery will be unavailable\n";
-            } else {
-                authority_published = true;
-            }
-            test_barrier("after_authority_publication");
-        }
-        first = false;
-        listener_.store(pipe);
-        OVERLAPPED overlapped{};
-        overlapped.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-        auto connected{false};
-        if (overlapped.hEvent != nullptr) {
-            connected = ConnectNamedPipe(pipe, &overlapped) != FALSE;
-            if (!connected) {
-                auto const error{GetLastError()};
-                if (error == ERROR_IO_PENDING) {
-                    if (WaitForSingleObject(overlapped.hEvent, INFINITE) == WAIT_OBJECT_0) {
-                        DWORD transferred{};
-                        connected =
-                            GetOverlappedResult(pipe, &overlapped, &transferred, FALSE) != FALSE;
-                    }
-                } else {
-                    connected = error == ERROR_PIPE_CONNECTED;
-                }
-            }
-            CloseHandle(overlapped.hEvent);
-        }
-        listener_.store(nullptr);
-        if (!connected) {
-            CloseHandle(pipe);
+    std::function<int(bool)> accept_clients;
+    accept_clients = [&](bool const control) -> int {
+        bool first{true};
+        for (;;) {
             if (stopping_.load()) {
-                return finish(0);
+                return 0;
             }
-            continue;
-        }
-        auto admitted{false};
-        {
-            std::scoped_lock const lock{handlers_mutex_};
-            if (active_handlers_ < maximum_client_handlers) {
-                ++active_handlers_;
-                admitted = true;
+            auto const flags{PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED |
+                             (first ? FILE_FLAG_FIRST_PIPE_INSTANCE : 0U)};
+            auto const endpoint{transport::pipe_name() + (control ? L".control" : L"")};
+            auto const pipe{CreateNamedPipeW(endpoint.c_str(),
+                                             flags,
+                                             PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT |
+                                                 PIPE_REJECT_REMOTE_CLIENTS,
+                                             PIPE_UNLIMITED_INSTANCES,
+                                             64U * 1024U,
+                                             64U * 1024U,
+                                             0,
+                                             &security)};
+            if (pipe == INVALID_HANDLE_VALUE) {
+                auto const error{GetLastError()};
+                std::cerr << (first ? "Another jobserver daemon is already running\n"
+                                    : "Could not create scheduler pipe (Windows error " +
+                                          std::to_string(error) + ")\n");
+                stopping_.store(true);
+                return first ? 2 : 1;
             }
-        }
-        if (!admitted) {
-            ++rejected_clients_;
-            DisconnectNamedPipe(pipe);
-            CloseHandle(pipe);
-            continue;
-        }
-        std::thread{[this, pipe] {
-            try {
-                serve_client(pipe);
-            } catch (std::exception const& error) {
-                std::cerr << "Client handler failed while processing a protocol message: "
-                          << error.what() << '\n';
-                DisconnectNamedPipe(pipe);
+            if (first && !control) {
+                if (!history_path_.empty()) {
+                    try {
+                        log_store_ =
+                            std::make_unique<LogStore>(history_path_.parent_path() / "logs");
+                    } catch (...) {
+                        std::cerr << "Job log storage is unavailable\n";
+                    }
+                }
+                auto const published{publish_authority()};
+                if (!published) {
+                    std::cerr << published.error().message
+                              << "; forced recovery will be unavailable\n";
+                } else {
+                    authority_published = true;
+                }
+                test_barrier("after_authority_publication");
+                control_thread = std::jthread{[&] { control_result.store(accept_clients(true)); }};
+            }
+            first = false;
+            OVERLAPPED overlapped{};
+            overlapped.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+            auto connected{false};
+            if (overlapped.hEvent != nullptr) {
+                connected = ConnectNamedPipe(pipe, &overlapped) != FALSE;
+                if (!connected) {
+                    auto const error{GetLastError()};
+                    if (error == ERROR_IO_PENDING) {
+                        while (WaitForSingleObject(overlapped.hEvent, 50) == WAIT_TIMEOUT &&
+                               !stopping_.load()) {}
+                        if (stopping_.load()) {
+                            CancelIoEx(pipe, &overlapped);
+                            WaitForSingleObject(overlapped.hEvent, INFINITE);
+                        } else {
+                            DWORD transferred{};
+                            connected = GetOverlappedResult(
+                                            pipe, &overlapped, &transferred, FALSE) != FALSE;
+                        }
+                    } else {
+                        connected = error == ERROR_PIPE_CONNECTED;
+                    }
+                }
+                CloseHandle(overlapped.hEvent);
+            }
+            if (!connected) {
                 CloseHandle(pipe);
-            } catch (...) {
-                std::cerr << "Client handler failed while processing a protocol message\n";
-                DisconnectNamedPipe(pipe);
-                CloseHandle(pipe);
+                if (stopping_.load()) {
+                    return 0;
+                }
+                continue;
             }
+            auto admitted{false};
             {
                 std::scoped_lock const lock{handlers_mutex_};
-                --active_handlers_;
+                auto& lane_handlers{control ? active_control_handlers_ : active_job_handlers_};
+                auto const capacity{control ? maximum_control_handlers : maximum_client_handlers};
+                if (lane_handlers < capacity) {
+                    ++lane_handlers;
+                    ++active_handlers_;
+                    admitted = true;
+                }
             }
-            handlers_finished_.notify_all();
-        }}.detach();
-    }
+            if (!admitted) {
+                ++rejected_clients_;
+                DisconnectNamedPipe(pipe);
+                CloseHandle(pipe);
+                continue;
+            }
+            std::thread{[this, pipe, control] {
+                try {
+                    serve_client(pipe, control);
+                } catch (std::exception const& error) {
+                    std::cerr << "Client handler failed while processing a protocol message: "
+                              << error.what() << '\n';
+                    DisconnectNamedPipe(pipe);
+                    CloseHandle(pipe);
+                } catch (...) {
+                    std::cerr << "Client handler failed while processing a protocol message\n";
+                    DisconnectNamedPipe(pipe);
+                    CloseHandle(pipe);
+                }
+                {
+                    std::scoped_lock const lock{handlers_mutex_};
+                    --active_handlers_;
+                    --(control ? active_control_handlers_ : active_job_handlers_);
+                }
+                handlers_finished_.notify_all();
+            }}.detach();
+        }
+    };
+    return finish(accept_clients(false));
 }
 
-void Server::serve_client(void* const native_pipe) {
+void Server::serve_client(void* const native_pipe, bool const control) {
     auto const pipe{static_cast<HANDLE>(native_pipe)};
-    auto hello{transport::read_message(pipe, initial_message_timeout())};
+    auto hello{transport::read_message(
+        pipe, initial_message_timeout(), initial_message_timeout(), connection_stop_.get_token())};
     if (!hello) {
         CloseHandle(pipe);
         return;
@@ -481,13 +508,19 @@ void Server::serve_client(void* const native_pipe) {
     acknowledgement["protocol"]["major"] = protocol::major_version;
     acknowledgement["protocol"]["minor"] = protocol::minor_version;
     acknowledgement["server_version"] = "0.1.0";
-    static_cast<void>(write_client(pipe, acknowledgement.dump()));
-    auto request{transport::read_message(pipe, initial_message_timeout())};
+    if (!write_client(pipe, acknowledgement.dump())) {
+        CloseHandle(pipe);
+        return;
+    }
+    auto request{transport::read_message(
+        pipe, initial_message_timeout(), initial_message_timeout(), connection_stop_.get_token())};
     if (!request) {
         CloseHandle(pipe);
         return;
     }
     auto const json = Json::parse(*request, nullptr, false);
+    auto const shutdown_response{json.is_object() && json.contains("type") &&
+                                 json["type"] == "shutdown"};
     if (!json.is_object()) {
         send_error(pipe, Error{"invalid_json", "Request is not valid JSON"});
     } else if (auto valid{validate_request(json)}; !valid) {
@@ -496,7 +529,9 @@ void Server::serve_client(void* const native_pipe) {
         auto const type{json.contains("type") && json["type"].is_string()
                             ? json["type"].get<std::string>()
                             : std::string{}};
-        if (type == "acquire") {
+        if (control && (type == "acquire" || type == "submit")) {
+            send_error(pipe, Error{"control_only", "Submit jobs through the job endpoint"});
+        } else if (type == "acquire") {
             handle_acquire(pipe, *request);
         } else if (type == "submit") {
             handle_submit(pipe, *request);
@@ -516,7 +551,12 @@ void Server::serve_client(void* const native_pipe) {
             send_error(pipe, Error{"unknown_message", "Unknown request type"});
         }
     }
-    static_cast<void>(transport::read_message(pipe, client_io_timeout()));
+    // Wait for EOF promptly, preserving unread replies but allowing idle shutdown to interrupt.
+    static_cast<void>(transport::read_message(pipe,
+                                              initial_message_timeout(),
+                                              initial_message_timeout(),
+                                              shutdown_response ? std::stop_token{}
+                                                                : connection_stop_.get_token()));
     DisconnectNamedPipe(pipe);
     CloseHandle(pipe);
 }
@@ -586,7 +626,8 @@ void Server::handle_acquire(void* const pipe, std::string const& message) {
         scheduler_.release(id, JobState::interrupted);
         return;
     }
-    auto const release{transport::read_message(pipe)};
+    auto const release{transport::read_message(
+        pipe, std::nullopt, initial_message_timeout(), connection_stop_.get_token())};
     auto const release_json = release ? Json::parse(*release, nullptr, false) : Json();
     auto const valid_release{release_json.is_object() && release_json.contains("type") &&
                              release_json["type"] == "release" && release_json.contains("id") &&
@@ -767,13 +808,16 @@ void Server::handle_submit(void* const pipe, std::string const& message) {
                 logs->write(stream, text);
             }
             if (client_writable.load() &&
-                !write_client(pipe,
-                              Json{{"type", "output"},
-                                   {"id", id},
-                                   {"stream", stream},
-                                   {"data", protocol::encode_base64(text)}}
-                                  .dump())) {
+                !transport::write_message(pipe,
+                                          Json{{"type", "output"},
+                                               {"id", id},
+                                               {"stream", stream},
+                                               {"data", protocol::encode_base64(text)}}
+                                              .dump(),
+                                          client_io_timeout(),
+                                          supervisor->output_stop_token())) {
                 client_writable.store(false);
+                DisconnectNamedPipe(static_cast<HANDLE>(pipe));
             }
         },
         [this, &id](JobHealth const health, std::string reason) {
@@ -790,7 +834,9 @@ void Server::handle_submit(void* const pipe, std::string const& message) {
             std::scoped_lock const lock{supervisors_mutex_};
             supervisors_.erase(id);
         }
-        send_error(pipe, result.error());
+        if (client_writable.load()) {
+            send_error(pipe, result.error());
+        }
         return;
     }
     auto final_state{JobState::failed};
@@ -812,14 +858,16 @@ void Server::handle_submit(void* const pipe, std::string const& message) {
                                                     : (result->termination_exit_code != 0
                                                            ? result->termination_exit_code
                                                            : result->exit_code)};
-    static_cast<void>(write_client(pipe,
-                                   Json{
-                                       {"type", "completed"},
-                                       {"id", id},
-                                       {"state", to_string(final_state)},
-                                       {"exit_code", reported_exit_code},
-                                   }
-                                       .dump()));
+    if (client_writable.load()) {
+        static_cast<void>(write_client(pipe,
+                                       Json{
+                                           {"type", "completed"},
+                                           {"id", id},
+                                           {"state", to_string(final_state)},
+                                           {"exit_code", reported_exit_code},
+                                       }
+                                           .dump()));
+    }
 }
 
 void Server::handle_status(void* const pipe, bool const include_history) {
@@ -883,6 +931,8 @@ void Server::handle_status(void* const pipe, bool const include_history) {
     std::size_t supervised_jobs{};
     std::size_t leases{};
     std::size_t active_handlers{};
+    std::size_t job_handlers{};
+    std::size_t control_handlers{};
     {
         std::scoped_lock const lock{supervisors_mutex_};
         supervised_jobs = supervisors_.size();
@@ -894,6 +944,8 @@ void Server::handle_status(void* const pipe, bool const include_history) {
     {
         std::scoped_lock const lock{handlers_mutex_};
         active_handlers = active_handlers_;
+        job_handlers = active_job_handlers_;
+        control_handlers = active_control_handlers_;
     }
     auto const last_audit_ms{last_audit_ms_.load()};
     auto const now_ms{std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -912,6 +964,9 @@ void Server::handle_status(void* const pipe, bool const include_history) {
                              {"last_audit_age_ms", now_ms - last_audit_ms},
                              {"active_handlers", active_handlers},
                              {"handler_capacity", maximum_client_handlers},
+                             {"job_handlers", job_handlers},
+                             {"control_handlers", control_handlers},
+                             {"control_handler_capacity", maximum_control_handlers},
                              {"rejected_clients", rejected_clients_.load()},
                              {"supervised_jobs", supervised_jobs},
                              {"leases", leases},
@@ -928,7 +983,10 @@ void Server::handle_status(void* const pipe, bool const include_history) {
     response["heartbeat_ms"] = std::chrono::duration_cast<std::chrono::milliseconds>(
                                    std::chrono::system_clock::now().time_since_epoch())
                                    .count();
-    static_cast<void>(write_client(pipe, response.dump()));
+    auto const sent{write_client(pipe, response.dump())};
+    if (!sent && sent.error().code == "payload_too_large") {
+        send_error(pipe, sent.error());
+    }
 }
 
 void Server::audit_loop(std::stop_token const stop_token) {
@@ -1136,9 +1194,7 @@ void Server::handle_shutdown(void* const pipe) {
     }
     accepting_jobs_ = false;
     stopping_.store(true);
-    static_cast<void>(write_client(pipe, Json{{"type", "accepted"}}.dump()));
-    if (auto const listener{listener_.load()}; listener != nullptr) {
-        CancelIoEx(static_cast<HANDLE>(listener), nullptr);
-    }
+    static_cast<void>(transport::write_message(
+        pipe, Json{{"type", "accepted"}}.dump(), initial_message_timeout()));
 }
 }

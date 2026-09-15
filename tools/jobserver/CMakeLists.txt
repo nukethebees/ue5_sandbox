@@ -69,6 +69,7 @@ target_compile_definitions(jobserver PRIVATE
 )
 
 add_executable(jobserverd WIN32)
+target_include_directories(jobserverd PRIVATE lib/src)
 target_sources(jobserverd PRIVATE
   daemon/main.cpp
   daemon/log_store.cpp

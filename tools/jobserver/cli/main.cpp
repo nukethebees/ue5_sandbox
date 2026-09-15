@@ -130,9 +130,11 @@ void print_status(std::string const& text) {
         std::cout << "DAEMON\n";
         std::cout << "  pid " << daemon.value("process_id", 0U) << "  uptime "
                   << daemon.value("uptime_ms", 0LL) << "ms  audit "
-                  << daemon.value("last_audit_age_ms", 0LL) << "ms ago  handlers "
-                  << daemon.value("active_handlers", 0U) << '/'
-                  << daemon.value("handler_capacity", 0U) << "  rejected "
+                  << daemon.value("last_audit_age_ms", 0LL) << "ms ago  job handlers "
+                  << daemon.value("job_handlers", daemon.value("active_handlers", 0U)) << '/'
+                  << daemon.value("handler_capacity", 0U) << "  control handlers "
+                  << daemon.value("control_handlers", 0U) << '/'
+                  << daemon.value("control_handler_capacity", 0U) << "  rejected "
                   << daemon.value("rejected_clients", 0ULL) << "  supervisors "
                   << daemon.value("supervised_jobs", 0U) << "  leases "
                   << daemon.value("leases", 0U) << '\n';

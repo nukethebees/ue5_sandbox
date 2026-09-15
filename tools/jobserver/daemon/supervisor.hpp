@@ -5,6 +5,7 @@
 #include <expected>
 #include <functional>
 #include <mutex>
+#include <stop_token>
 #include <string>
 
 namespace jobserver {
@@ -34,11 +35,15 @@ class Supervisor {
         -> std::expected<ProcessResult, Error>;
     void cancel();
     void kill();
+    [[nodiscard]] auto output_stop_token() const -> std::stop_token {
+        return output_stop_.get_token();
+    }
     [[nodiscard]] auto contains_process(std::uint32_t process_id) -> bool;
   private:
     void terminate(bool killed);
 
     std::mutex mutex_;
+    std::stop_source output_stop_;
     void* job_handle_{};
     bool cancellation_requested_{};
     bool kill_requested_{};

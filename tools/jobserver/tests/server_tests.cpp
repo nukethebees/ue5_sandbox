@@ -35,6 +35,31 @@ struct ChildProcess {
     HANDLE thread{};
 };
 
+class TestIoTimeout {
+  public:
+    explicit TestIoTimeout(char const* const value) {
+        char previous[32]{};
+        GetEnvironmentVariableA(
+            "NUKETHEBEES_JOBSERVER_TEST_IO_TIMEOUT_MS", previous, std::size(previous));
+        previous_ = previous;
+        static_cast<void>(_putenv_s("NUKETHEBEES_JOBSERVER_TEST_IO_TIMEOUT_MS", value));
+    }
+    ~TestIoTimeout() {
+        static_cast<void>(_putenv_s("NUKETHEBEES_JOBSERVER_TEST_IO_TIMEOUT_MS", previous_.c_str()));
+    }
+  private:
+    std::string previous_;
+};
+
+struct TestPipes {
+    std::vector<HANDLE> handles;
+    ~TestPipes() {
+        for (auto const handle : handles) {
+            CloseHandle(handle);
+        }
+    }
+};
+
 auto quote(std::wstring const& value) -> std::wstring {
     return L"\"" + value + L"\"";
 }
@@ -64,9 +89,10 @@ auto launch(std::filesystem::path const& executable,
     return {.process = process.hProcess, .thread = process.hThread};
 }
 
-auto connect_raw_pipe() -> HANDLE {
+auto connect_raw_pipe(bool const control = false) -> HANDLE {
+    auto const endpoint{jobserver::transport::pipe_name() + (control ? L".control" : L"")};
     for (auto attempt{0}; attempt != 50; ++attempt) {
-        auto const pipe{CreateFileW(jobserver::transport::pipe_name().c_str(),
+        auto const pipe{CreateFileW(endpoint.c_str(),
                                     GENERIC_READ | GENERIC_WRITE,
                                     0,
                                     nullptr,
@@ -272,8 +298,8 @@ auto raw_submit_message(std::string name, std::vector<std::string> arguments) ->
     return message;
 }
 
-auto connect_and_handshake_raw_pipe() -> HANDLE {
-    auto pipe{connect_raw_pipe()};
+auto connect_and_handshake_raw_pipe(bool const control = false) -> HANDLE {
+    auto pipe{connect_raw_pipe(control)};
     if (pipe == INVALID_HANDLE_VALUE) {
         return pipe;
     }
@@ -1826,6 +1852,202 @@ TEST_F(JobserverIntegration, SlowHandshakeFloodIsBoundedAndDrains) {
     stop_daemon();
     ASSERT_EQ(_wputenv_s(L"NUKETHEBEES_JOBSERVER_TEST_IO_TIMEOUT_MS", L"250"), 0);
     start_daemon();
+}
+
+TEST_F(JobserverIntegration, ControlEndpointSurvivesSaturatedJobHandlers) {
+    stop_daemon();
+    TestIoTimeout const production_timeout{""};
+    start_daemon();
+
+    TestPipes clients;
+    for (auto index{0}; index != 64; ++index) {
+        auto const pipe{connect_and_handshake_raw_pipe()};
+        if (pipe == INVALID_HANDLE_VALUE) {
+            FAIL() << "Could not fill job-handler pool";
+        }
+        clients.handles.push_back(pipe);
+        ASSERT_TRUE(jobserver::transport::write_message(pipe, Json{{"type", "ping"}}.dump(), 1s));
+        ASSERT_TRUE(jobserver::transport::read_message(pipe, 1s));
+    }
+
+    auto const start{std::chrono::steady_clock::now()};
+    auto status{jobserver::Client::status()};
+    EXPECT_TRUE(status.has_value());
+    if (status) {
+        auto const daemon = Json::parse(*status).at("daemon");
+        EXPECT_EQ(daemon.value("job_handlers", 0U), 64U);
+        EXPECT_EQ(daemon.value("control_handler_capacity", 0U), 8U);
+    }
+    EXPECT_TRUE(jobserver::Client::ping());
+    EXPECT_LT(std::chrono::steady_clock::now() - start, 1s);
+    EXPECT_TRUE(jobserver::Client::shutdown());
+    EXPECT_TRUE(wait_for_exit(daemon_, 1s));
+}
+
+TEST_F(JobserverIntegration, KillInterruptsPendingOutputWithProductionWriteDeadline) {
+    stop_daemon();
+    TestIoTimeout const production_timeout{""};
+    TestBarrier barrier{"during_output_write_pending", 900};
+    start_daemon();
+    auto const pipe{connect_and_handshake_raw_pipe()};
+    ASSERT_NE(pipe, INVALID_HANDLE_VALUE);
+    TestPipes const pipes{{pipe}};
+    auto const message =
+        raw_submit_message("blocked production output", {"large-output", "16777216"});
+    ASSERT_TRUE(jobserver::transport::write_message(pipe, message.dump(), 1s));
+    auto const pending{barrier.wait(3s)};
+    auto const job{find_job("blocked production output")};
+    EXPECT_TRUE(pending);
+    EXPECT_TRUE(job.has_value());
+    if (job) {
+        EXPECT_TRUE(jobserver::Client::cancel(job->value("id", ""), true));
+    }
+    auto const start{std::chrono::steady_clock::now()};
+    barrier.release();
+    EXPECT_TRUE(wait_for_job_to_disappear("blocked production output", 1s));
+    EXPECT_LT(std::chrono::steady_clock::now() - start, 1s);
+    EXPECT_TRUE(jobserver::Client::shutdown());
+    EXPECT_TRUE(wait_for_exit(daemon_, 1s));
+}
+
+TEST_F(JobserverIntegration, TimeoutInterruptsPendingOutputWithProductionWriteDeadline) {
+    stop_daemon();
+    TestIoTimeout const production_timeout{""};
+    TestBarrier barrier{"during_output_write_pending", 901};
+    start_daemon();
+    auto const pipe{connect_and_handshake_raw_pipe()};
+    ASSERT_NE(pipe, INVALID_HANDLE_VALUE);
+    TestPipes const pipes{{pipe}};
+    auto message = raw_submit_message("timed out production output", {"large-output", "16777216"});
+    message["timeout_ms"] = 500;
+    ASSERT_TRUE(jobserver::transport::write_message(pipe, message.dump(), 1s));
+    EXPECT_TRUE(barrier.wait(3s));
+    barrier.release();
+    EXPECT_TRUE(wait_for_job_to_disappear("timed out production output", 2s));
+    auto history{jobserver::Client::status(true)};
+    EXPECT_TRUE(history.has_value());
+    if (history) {
+        auto const jobs = Json::parse(*history).at("jobs");
+        EXPECT_TRUE(std::ranges::any_of(jobs, [](Json const& job) {
+            return job.value("name", "") == "timed out production output" &&
+                   job.value("state", "") == "TIMED_OUT";
+        }));
+    }
+    EXPECT_TRUE(jobserver::Client::shutdown());
+    EXPECT_TRUE(wait_for_exit(daemon_, 1s));
+}
+
+TEST_F(JobserverIntegration, ProductionIdleShutdownInterruptsIncompleteClientsOnBothEndpoints) {
+    stop_daemon();
+    TestIoTimeout const production_timeout{""};
+    start_daemon();
+    TestPipes clients;
+    for (auto const control : {false, true}) {
+        auto const pipe{connect_raw_pipe(control)};
+        ASSERT_NE(pipe, INVALID_HANDLE_VALUE);
+        clients.handles.push_back(pipe);
+    }
+    auto const start{std::chrono::steady_clock::now()};
+    EXPECT_TRUE(jobserver::Client::shutdown());
+    EXPECT_TRUE(wait_for_exit(daemon_, 1s));
+    EXPECT_LT(std::chrono::steady_clock::now() - start, 1s);
+}
+
+TEST_F(JobserverIntegration, IncompleteLeaseFrameExpiresButIdleLeaseDoesNot) {
+    for (auto const partial_payload : {false, true}) {
+        auto const pipe{connect_sync_raw_pipe()};
+        ASSERT_NE(pipe, INVALID_HANDLE_VALUE);
+        auto const hello = Json{{"type", "hello"}, {"protocol", {{"major", 1}, {"minor", 1}}}};
+        ASSERT_TRUE(jobserver::transport::write_message(pipe, hello.dump()));
+        ASSERT_TRUE(jobserver::transport::read_message(pipe));
+        auto const request =
+            Json{{"type", "acquire"},
+                 {"metadata", {{"name", "partial lease"}}},
+                 {"resources",
+                  Json::array({{{"name", "integration-resource"}, {"mode", "exclusive"}}})}};
+        ASSERT_TRUE(jobserver::transport::write_message(pipe, request.dump()));
+        ASSERT_TRUE(jobserver::transport::read_message(pipe));
+        std::this_thread::sleep_for(350ms);
+        EXPECT_TRUE(find_job("partial lease"));
+        std::array<std::byte, 5> const prefix{
+            std::byte{20}, std::byte{0}, std::byte{0}, std::byte{0}, std::byte{'{'}};
+        EXPECT_TRUE(write_raw(pipe, std::span{prefix}.first(partial_payload ? 5 : 1)));
+        EXPECT_TRUE(wait_for_job_to_disappear("partial lease", 1s));
+        CloseHandle(pipe);
+        auto next{jobserver::Client::acquire(
+            test_request("after partial frame", jobserver::ClaimMode::exclusive))};
+        ASSERT_TRUE(next);
+        EXPECT_TRUE(next->release());
+    }
+}
+
+TEST_F(JobserverIntegration, ControlEndpointRejectsJobAdmission) {
+    auto const pipe{connect_and_handshake_raw_pipe(true)};
+    ASSERT_NE(pipe, INVALID_HANDLE_VALUE);
+    auto const request = raw_submit_message("not a control job", {"exit", "0"});
+    EXPECT_TRUE(jobserver::transport::write_message(pipe, request.dump(), 1s));
+    auto const response{jobserver::transport::read_message(pipe, 1s)};
+    CloseHandle(pipe);
+    ASSERT_TRUE(response);
+    EXPECT_EQ(Json::parse(*response).value("code", ""), "control_only");
+    EXPECT_TRUE(wait_for_job_to_disappear("not a control job", 1s));
+}
+
+TEST_F(JobserverIntegration, ControlClientFallsBackToLegacyMainEndpoint) {
+    stop_daemon();
+    auto const pipe{
+        CreateNamedPipeW(jobserver::transport::pipe_name().c_str(),
+                         PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED | FILE_FLAG_FIRST_PIPE_INSTANCE,
+                         PIPE_TYPE_BYTE | PIPE_REJECT_REMOTE_CLIENTS,
+                         1,
+                         65536,
+                         65536,
+                         0,
+                         nullptr)};
+    ASSERT_NE(pipe, INVALID_HANDLE_VALUE);
+    auto const event{CreateEventW(nullptr, TRUE, FALSE, nullptr)};
+    ASSERT_NE(event, nullptr);
+    TestPipes const handles{{pipe, event}};
+    OVERLAPPED connected{};
+    connected.hEvent = event;
+    auto const immediate{ConnectNamedPipe(pipe, &connected) != FALSE};
+    ASSERT_TRUE(immediate || GetLastError() == ERROR_IO_PENDING);
+    auto client{std::async(std::launch::async, [] { return jobserver::Client::ping(); })};
+    if (!immediate && WaitForSingleObject(event, 1000) != WAIT_OBJECT_0) {
+        CancelIoEx(pipe, &connected);
+        WaitForSingleObject(event, INFINITE);
+        FAIL() << "Client did not connect to legacy endpoint";
+    }
+    ASSERT_TRUE(jobserver::transport::read_message(pipe, 1s));
+    ASSERT_TRUE(jobserver::transport::write_message(
+        pipe, Json{{"type", "hello_ack"}, {"protocol", {{"major", 1}, {"minor", 1}}}}.dump(), 1s));
+    auto const request{jobserver::transport::read_message(pipe, 1s)};
+    ASSERT_TRUE(request);
+    EXPECT_EQ(Json::parse(*request).value("type", ""), "ping");
+    ASSERT_TRUE(jobserver::transport::write_message(pipe, Json{{"type", "pong"}}.dump(), 1s));
+    EXPECT_TRUE(client.get());
+}
+
+TEST_F(JobserverIntegration, OversizedHistoryReturnsStructuredErrorInsteadOfReadTimeout) {
+    stop_daemon();
+    {
+        std::ofstream history{data_path_ / "history.jsonl", std::ios::trunc};
+        for (auto index{0}; index != 600; ++index) {
+            history << Json{{"id", "oversized-" + std::to_string(index)},
+                            {"name", std::string(2000, 'x')},
+                            {"state", "SUCCEEDED"}}
+                           .dump()
+                    << '\n';
+        }
+    }
+    start_daemon();
+    auto history{jobserver::Client::status(true)};
+    ASSERT_FALSE(history.has_value());
+    EXPECT_EQ(history.error().code, "payload_too_large");
+    EXPECT_TRUE(jobserver::Client::status(false));
+    EXPECT_TRUE(jobserver::Client::ping());
+    stop_daemon();
+    std::filesystem::remove(data_path_ / "history.jsonl");
 }
 
 TEST_F(JobserverIntegration, LoadsOnlyNewestValidHistoryEntries) {

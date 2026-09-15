@@ -347,6 +347,7 @@ void Supervisor::kill() {
 }
 
 void Supervisor::terminate(bool const killed) {
+    output_stop_.request_stop();
     std::scoped_lock const lock{mutex_};
     cancellation_requested_ = true;
     kill_requested_ = kill_requested_ || killed;

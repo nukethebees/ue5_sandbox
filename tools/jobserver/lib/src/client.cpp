@@ -205,7 +205,7 @@ auto request_daemon_start() -> bool {
     return finish(false);
 }
 
-auto connect_pipe() -> std::expected<void*, Error> {
+auto connect_pipe(bool const control = false) -> std::expected<void*, Error> {
     DWORD last_error{ERROR_SUCCESS};
     auto const test_endpoint{
         GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_TEST_PIPE", nullptr, 0) != 0};
@@ -213,13 +213,23 @@ auto connect_pipe() -> std::expected<void*, Error> {
         GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_TEST_FAST_CONNECT", nullptr, 0) != 0};
     auto const maximum_attempts{fast_test_connect ? 2 : 50};
     for (auto attempt{0}; attempt != maximum_attempts; ++attempt) {
-        auto const handle{CreateFileW(transport::pipe_name().c_str(),
-                                      GENERIC_READ | GENERIC_WRITE,
-                                      0,
-                                      nullptr,
-                                      OPEN_EXISTING,
-                                      FILE_FLAG_OVERLAPPED,
-                                      nullptr)};
+        auto const endpoint{transport::pipe_name() + (control ? L".control" : L"")};
+        auto handle{CreateFileW(endpoint.c_str(),
+                                GENERIC_READ | GENERIC_WRITE,
+                                0,
+                                nullptr,
+                                OPEN_EXISTING,
+                                FILE_FLAG_OVERLAPPED,
+                                nullptr)};
+        if (control && handle == INVALID_HANDLE_VALUE && GetLastError() == ERROR_FILE_NOT_FOUND) {
+            handle = CreateFileW(transport::pipe_name().c_str(),
+                                 GENERIC_READ | GENERIC_WRITE,
+                                 0,
+                                 nullptr,
+                                 OPEN_EXISTING,
+                                 FILE_FLAG_OVERLAPPED,
+                                 nullptr);
+        }
         if (handle != INVALID_HANDLE_VALUE) {
             auto hello = Json::object();
             hello["type"] = "hello";
@@ -306,8 +316,8 @@ auto Lease::release() -> std::expected<void, Error> {
     if (handle_ == nullptr) {
         return {};
     }
-    auto const result{
-        transport::write_message(handle_, Json{{"type", "release"}, {"id", id_}}.dump())};
+    auto const result{transport::write_message(
+        handle_, Json{{"type", "release"}, {"id", id_}}.dump(), control_timeout())};
     close_handle(handle_);
     return result;
 }
@@ -320,7 +330,7 @@ auto Client::acquire(AcquireRequest const& request) -> std::expected<Lease, Erro
     auto const message = Json{{"type", "acquire"},
                               {"metadata", metadata_json(request.metadata)},
                               {"resources", claims_json(request.resources)}};
-    if (auto sent{transport::write_message(*handle, message.dump())}; !sent) {
+    if (auto sent{transport::write_message(*handle, message.dump(), control_timeout())}; !sent) {
         close_handle(*handle);
         return std::unexpected(sent.error());
     }
@@ -348,7 +358,7 @@ auto Client::acquire(AcquireRequest const& request) -> std::expected<Lease, Erro
 auto Client::run(SubmitRequest const& request, OutputCallback output) -> std::expected<int, Error> {
     if (GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", nullptr, 0) != 0) {
         if (!request.resources.empty()) {
-            auto handle{connect_pipe()};
+            auto handle{connect_pipe(true)};
             if (!handle) {
                 return std::unexpected(handle.error());
             }
@@ -413,7 +423,7 @@ auto Client::run(SubmitRequest const& request, OutputCallback output) -> std::ex
     if (request.suspect_after) {
         message["suspect_after_ms"] = request.suspect_after->count();
     }
-    if (auto sent{transport::write_message(*handle, message.dump())}; !sent) {
+    if (auto sent{transport::write_message(*handle, message.dump(), control_timeout())}; !sent) {
         close_handle(*handle);
         return std::unexpected(sent.error());
     }
@@ -450,7 +460,7 @@ auto Client::run(SubmitRequest const& request, OutputCallback output) -> std::ex
 }
 
 auto Client::status(bool const include_history) -> std::expected<std::string, Error> {
-    auto handle{connect_pipe()};
+    auto handle{connect_pipe(true)};
     if (!handle) {
         return std::unexpected(handle.error());
     }
@@ -462,11 +472,20 @@ auto Client::status(bool const include_history) -> std::expected<std::string, Er
     }
     auto response{transport::read_message(*handle, control_timeout())};
     close_handle(*handle);
+    if (response) {
+        auto const parsed = Json::parse(*response, nullptr, false);
+        if (!parsed.is_object() || parsed.value("type", "") != "status") {
+            return std::unexpected(Error{
+                parsed.is_object() ? parsed.value("code", "invalid_response") : "invalid_response",
+                parsed.is_object() ? parsed.value("message", "Invalid status response")
+                                   : "Invalid status response"});
+        }
+    }
     return response;
 }
 
 auto Client::ping() -> std::expected<void, Error> {
-    auto handle{connect_pipe()};
+    auto handle{connect_pipe(true)};
     if (!handle) {
         return std::unexpected(handle.error());
     }
@@ -488,7 +507,7 @@ auto Client::ping() -> std::expected<void, Error> {
 }
 
 auto Client::cancel(std::string const& id, bool const kill) -> std::expected<void, Error> {
-    auto handle{connect_pipe()};
+    auto handle{connect_pipe(true)};
     if (!handle) {
         return std::unexpected(handle.error());
     }
@@ -523,7 +542,7 @@ auto Client::start_daemon() -> std::expected<void, Error> {
 }
 
 auto Client::shutdown() -> std::expected<void, Error> {
-    auto handle{connect_pipe()};
+    auto handle{connect_pipe(true)};
     if (!handle) {
         return std::unexpected(handle.error());
     }

@@ -1,6 +1,7 @@
 #include "jobserver/transport.hpp"
 
 #include "jobserver/protocol.hpp"
+#include "test_barrier.hpp"
 
 #include <Windows.h>
 
@@ -9,6 +10,7 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <functional>
 #include <limits>
 #include <optional>
 #include <vector>
@@ -53,6 +55,25 @@ auto pipe_name() -> std::wstring const& {
 }
 
 namespace {
+class IoCancellation {
+  public:
+    explicit IoCancellation(std::stop_token const stop)
+        : event_{stop.stop_possible() ? CreateEventW(nullptr, TRUE, FALSE, nullptr) : nullptr}
+        , callback_{stop, [handle = event_.handle] { SetEvent(handle); }} {}
+    [[nodiscard]] auto handle() const -> HANDLE { return event_.handle; }
+  private:
+    struct Event {
+        HANDLE handle;
+        ~Event() {
+            if (handle != nullptr) {
+                CloseHandle(handle);
+            }
+        }
+    };
+    Event event_;
+    std::stop_callback<std::function<void()>> callback_;
+};
+
 enum class IoResult {
     success,
     disconnected,
@@ -75,13 +96,15 @@ auto wait_timeout(std::optional<std::chrono::steady_clock::time_point> const dea
 auto complete_overlapped(HANDLE const handle,
                          OVERLAPPED& overlapped,
                          DWORD& transferred,
-                         std::optional<std::chrono::steady_clock::time_point> const deadline)
-    -> IoResult {
-    auto const wait_result{WaitForSingleObject(overlapped.hEvent, wait_timeout(deadline))};
-    if (wait_result == WAIT_TIMEOUT) {
+                         std::optional<std::chrono::steady_clock::time_point> const deadline,
+                         HANDLE const stop_event = nullptr) -> IoResult {
+    HANDLE const events[]{overlapped.hEvent, stop_event};
+    auto const wait_result{WaitForMultipleObjects(
+        stop_event == nullptr ? 1 : 2, events, FALSE, wait_timeout(deadline))};
+    if (wait_result == WAIT_TIMEOUT || wait_result == WAIT_OBJECT_0 + 1) {
         CancelIoEx(handle, &overlapped);
         WaitForSingleObject(overlapped.hEvent, INFINITE);
-        return IoResult::timed_out;
+        return wait_result == WAIT_TIMEOUT ? IoResult::timed_out : IoResult::disconnected;
     }
     if (wait_result != WAIT_OBJECT_0 ||
         !GetOverlappedResult(handle, &overlapped, &transferred, FALSE)) {
@@ -97,8 +120,15 @@ auto complete_overlapped(HANDLE const handle,
 auto read_exact(HANDLE const handle,
                 std::byte* data,
                 std::size_t remaining,
-                std::optional<std::chrono::steady_clock::time_point> const deadline) -> IoResult {
+                std::optional<std::chrono::steady_clock::time_point> const deadline,
+                HANDLE const stop_event = nullptr) -> IoResult {
     while (remaining != 0) {
+        if (deadline && wait_timeout(deadline) == 0) {
+            return IoResult::timed_out;
+        }
+        if (stop_event != nullptr && WaitForSingleObject(stop_event, 0) == WAIT_OBJECT_0) {
+            return IoResult::disconnected;
+        }
         OVERLAPPED overlapped{};
         overlapped.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
         if (overlapped.hEvent == nullptr) {
@@ -110,7 +140,7 @@ auto read_exact(HANDLE const handle,
         if (!ReadFile(handle, data, chunk, &read, &overlapped)) {
             auto const error{GetLastError()};
             result = error == ERROR_IO_PENDING
-                       ? complete_overlapped(handle, overlapped, read, deadline)
+                       ? complete_overlapped(handle, overlapped, read, deadline, stop_event)
                        : (error == ERROR_BROKEN_PIPE || error == ERROR_PIPE_NOT_CONNECTED
                               ? IoResult::disconnected
                               : IoResult::failed);
@@ -130,8 +160,15 @@ auto read_exact(HANDLE const handle,
 auto write_exact(HANDLE const handle,
                  std::byte const* data,
                  std::size_t remaining,
-                 std::optional<std::chrono::steady_clock::time_point> const deadline) -> IoResult {
+                 std::optional<std::chrono::steady_clock::time_point> const deadline,
+                 HANDLE const stop_event) -> IoResult {
     while (remaining != 0) {
+        if (deadline && wait_timeout(deadline) == 0) {
+            return IoResult::timed_out;
+        }
+        if (stop_event != nullptr && WaitForSingleObject(stop_event, 0) == WAIT_OBJECT_0) {
+            return IoResult::disconnected;
+        }
         OVERLAPPED overlapped{};
         overlapped.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
         if (overlapped.hEvent == nullptr) {
@@ -142,8 +179,11 @@ auto write_exact(HANDLE const handle,
         auto result{IoResult::success};
         if (!WriteFile(handle, data, chunk, &written, &overlapped)) {
             auto const error{GetLastError()};
+            if (error == ERROR_IO_PENDING) {
+                test_barrier("during_output_write_pending");
+            }
             result = error == ERROR_IO_PENDING
-                       ? complete_overlapped(handle, overlapped, written, deadline)
+                       ? complete_overlapped(handle, overlapped, written, deadline, stop_event)
                        : (error == ERROR_BROKEN_PIPE || error == ERROR_PIPE_NOT_CONNECTED
                               ? IoResult::disconnected
                               : IoResult::failed);
@@ -161,13 +201,25 @@ auto write_exact(HANDLE const handle,
 }
 }
 
-auto read_message(void* const native_handle, std::optional<std::chrono::milliseconds> const timeout)
-    -> std::expected<std::string, Error> {
+auto read_message(void* const native_handle,
+                  std::optional<std::chrono::milliseconds> const timeout,
+                  std::chrono::milliseconds const frame_timeout,
+                  std::stop_token const stop) -> std::expected<std::string, Error> {
     auto const handle{static_cast<HANDLE>(native_handle)};
-    auto const deadline{timeout ? std::optional{std::chrono::steady_clock::now() + *timeout}
-                                : std::nullopt};
+    IoCancellation const cancellation{stop};
+    if (stop.stop_possible() && cancellation.handle() == nullptr) {
+        return std::unexpected(Error{"read_failed", "Could not create I/O cancellation event"});
+    }
+    auto deadline{timeout ? std::optional{std::chrono::steady_clock::now() + *timeout}
+                          : std::nullopt};
     std::array<std::byte, 4> header{};
-    auto const header_result{read_exact(handle, header.data(), header.size(), deadline)};
+    auto header_result{read_exact(handle, header.data(), 1, deadline, cancellation.handle())};
+    if (header_result == IoResult::success) {
+        auto const frame_deadline{std::chrono::steady_clock::now() + frame_timeout};
+        deadline = deadline ? std::min(*deadline, frame_deadline) : frame_deadline;
+        header_result = read_exact(
+            handle, header.data() + 1, header.size() - 1, deadline, cancellation.handle());
+    }
     if (header_result == IoResult::timed_out) {
         return std::unexpected(Error{"read_timeout", "Scheduler read timed out"});
     }
@@ -179,11 +231,13 @@ auto read_message(void* const native_handle, std::optional<std::chrono::millisec
         return std::unexpected(decoded_size.error());
     }
     std::string payload(*decoded_size, '\0');
-    auto const payload_result{
-        payload.empty()
-            ? IoResult::success
-            : read_exact(
-                  handle, reinterpret_cast<std::byte*>(payload.data()), payload.size(), deadline)};
+    auto const payload_result{payload.empty()
+                                  ? IoResult::success
+                                  : read_exact(handle,
+                                               reinterpret_cast<std::byte*>(payload.data()),
+                                               payload.size(),
+                                               deadline,
+                                               cancellation.handle())};
     if (payload_result == IoResult::timed_out) {
         return std::unexpected(Error{"read_timeout", "Scheduler read timed out"});
     }
@@ -196,16 +250,23 @@ auto read_message(void* const native_handle, std::optional<std::chrono::millisec
 
 auto write_message(void* const native_handle,
                    std::string const& message,
-                   std::optional<std::chrono::milliseconds> const timeout)
-    -> std::expected<void, Error> {
+                   std::optional<std::chrono::milliseconds> const timeout,
+                   std::stop_token const stop) -> std::expected<void, Error> {
     auto const frame{protocol::encode_frame(message)};
     if (!frame) {
         return std::unexpected(frame.error());
     }
     auto const deadline{timeout ? std::optional{std::chrono::steady_clock::now() + *timeout}
                                 : std::nullopt};
-    auto const result{
-        write_exact(static_cast<HANDLE>(native_handle), frame->data(), frame->size(), deadline)};
+    IoCancellation const cancellation{stop};
+    if (stop.stop_possible() && cancellation.handle() == nullptr) {
+        return std::unexpected(Error{"write_failed", "Could not create I/O cancellation event"});
+    }
+    auto const result{write_exact(static_cast<HANDLE>(native_handle),
+                                  frame->data(),
+                                  frame->size(),
+                                  deadline,
+                                  cancellation.handle())};
     if (result == IoResult::timed_out) {
         return std::unexpected(Error{"write_timeout", "Scheduler write timed out"});
     }
