@@ -157,6 +157,11 @@ features. Names without `-unity` are intended for Visual Studio editing; select 
 The Unreal configure presets enable that option. Standalone native libraries remain in their
 respective build trees; only Unreal-enabled configurations publish libraries under `Binaries/`.
 
+Native tests and tools always link a static Tracy client. Unreal-enabled configurations also
+compile `native-simulation-unreal` against a shared Tracy client, publishing the simulation
+archive and client DLL under `Binaries/Native/`. The two simulation targets use the same sources;
+standalone executables need no Tracy DLL staging or additional `PATH` entries.
+
 ```powershell
 cmake --workflow --preset win-x64-clangcl-debug
 cmake --workflow --preset win-x64-clangcl-release-unity

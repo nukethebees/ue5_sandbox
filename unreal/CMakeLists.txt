@@ -317,7 +317,7 @@ add_custom_target(worktree-dependencies
     native-core
     native-memory
     sbx-mimalloc
-    native-simulation
+    native-simulation-unreal
     native-level-authoring
     cpu_features
     sandbox-s7
