@@ -575,9 +575,13 @@ void Server::handle_acquire(void* const pipe, std::string const& message) {
     }
     {
         std::scoped_lock const lock{leases_mutex_};
+        if (scheduler_.state(id) != JobState::starting) {
+            send_error(pipe, Error{"start_expired", "Lease startup exceeded the daemon deadline"});
+            return;
+        }
         leases_.insert(id);
+        scheduler_.set_state(id, JobState::running);
     }
-    scheduler_.set_state(id, JobState::running);
     if (!write_client(pipe, Json{{"type", "granted"}, {"id", id}}.dump())) {
         scheduler_.release(id, JobState::interrupted);
         return;
@@ -744,9 +748,14 @@ void Server::handle_submit(void* const pipe, std::string const& message) {
     auto supervisor{std::make_shared<Supervisor>()};
     {
         std::scoped_lock const lock{supervisors_mutex_};
+        if (scheduler_.state(id) != JobState::starting) {
+            send_error(pipe,
+                       Error{"start_expired", "Command startup exceeded the daemon deadline"});
+            return;
+        }
         supervisors_[id] = supervisor;
+        scheduler_.set_state(id, JobState::running);
     }
-    scheduler_.set_state(id, JobState::running);
     std::atomic client_writable{true};
     auto result{supervisor->run(
         command,
@@ -929,18 +938,20 @@ void Server::audit_loop(std::stop_token const stop_token) {
                                  std::chrono::system_clock::now().time_since_epoch())
                                  .count());
         std::unordered_set<std::string> owned_jobs;
+        std::vector<std::string> findings;
         {
-            std::scoped_lock const lock{supervisors_mutex_};
+            // Keep owner publication and the scheduler audit on the same side of this snapshot.
+            std::scoped_lock const lock{supervisors_mutex_, leases_mutex_};
             for (auto const& [id, supervisor] : supervisors_) {
                 static_cast<void>(supervisor);
                 owned_jobs.insert(id);
             }
-        }
-        {
-            std::scoped_lock const lock{leases_mutex_};
             owned_jobs.insert(leases_.begin(), leases_.end());
+            if (!owned_jobs.empty()) {
+                test_barrier("after_audit_owner_snapshot");
+            }
+            findings = scheduler_.audit_and_recover(owned_jobs, maximum_starting_time());
         }
-        auto findings{scheduler_.audit_and_recover(owned_jobs, maximum_starting_time())};
         auto const snapshot{scheduler_.snapshot()};
         std::unordered_set<std::string> terminal_jobs;
         for (auto const& entry : snapshot.entries) {

@@ -873,6 +873,52 @@ TEST_F(JobserverIntegration, GrantBetweenQueuePollAndStateReadIsNotCancellation)
     start_daemon();
 }
 
+TEST_F(JobserverIntegration, AuditSnapshotCannotInvalidateNewOwners) {
+    stop_daemon();
+    TestBarrier barrier{"after_audit_owner_snapshot", 303};
+    ASSERT_TRUE(barrier.valid());
+    start_daemon();
+    auto anchor{jobserver::Client::acquire({
+        .metadata = {.name = "audit anchor", .kind = "test", .worktree = {}},
+        .resources = {{.name = "audit-anchor-resource", .mode = jobserver::ClaimMode::exclusive}},
+    })};
+    ASSERT_TRUE(anchor);
+    ASSERT_TRUE(barrier.wait(2s));
+
+    auto lease_future{std::async(std::launch::async, [] {
+        return jobserver::Client::acquire(
+            test_request("audit lease", jobserver::ClaimMode::exclusive));
+    })};
+    auto process_future{std::async(std::launch::async, [] {
+        return jobserver::Client::run(submit_request("audit process",
+                                                     {{.name = "audit-process-resource",
+                                                       .mode = jobserver::ClaimMode::exclusive}},
+                                                     {"sleep", "1000"}),
+                                      [](auto const&, auto const&) {});
+    })};
+    std::this_thread::sleep_for(200ms);
+    auto const early_grant{lease_future.wait_for(0ms)};
+    barrier.release();
+    EXPECT_TRUE(anchor->release());
+    EXPECT_EQ(early_grant, std::future_status::timeout);
+    ASSERT_EQ(lease_future.wait_for(2s), std::future_status::ready);
+    auto lease{lease_future.get()};
+    ASSERT_TRUE(lease) << lease.error().message;
+    EXPECT_TRUE(find_job_in_state("audit lease", "RUNNING"));
+    EXPECT_TRUE(lease->release());
+    ASSERT_EQ(process_future.wait_for(3s), std::future_status::ready);
+    auto result{process_future.get()};
+    ASSERT_TRUE(result) << result.error().message;
+    EXPECT_EQ(*result, 0);
+    auto status{jobserver::Client::status()};
+    ASSERT_TRUE(status);
+    auto const json = Json::parse(*status);
+    EXPECT_TRUE(json.value("diagnostics", Json::array()).empty()) << json.dump();
+    EXPECT_EQ(json["daemon"].value("scheduler_entries", -1), 0);
+    EXPECT_EQ(json["daemon"].value("supervised_jobs", -1), 0);
+    EXPECT_EQ(json["daemon"].value("leases", -1), 0);
+}
+
 TEST_F(JobserverIntegration, ConflictingClientsAreGrantedInFifoOrder) {
     auto active{
         jobserver::Client::acquire(test_request("active shared", jobserver::ClaimMode::shared))};
