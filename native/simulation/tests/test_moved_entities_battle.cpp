@@ -47,14 +47,14 @@ auto make_long_running_battle() -> LevelSimInitData {
 
     auto const first{add_capital_spawn(data,
                                        {{-10000.f, 0.f, 0.f}},
-                                       ioj::sim::Team::Green,
+                                       Team::Green,
                                        -1,
                                        0.f,
                                        10000.f,
                                        std::numeric_limits<std::int32_t>::max())};
     auto const second{add_capital_spawn(data,
                                         {{10000.f, 0.f, 0.f}},
-                                        ioj::sim::Team::White,
+                                        Team::White,
                                         first,
                                         0.f,
                                         10000.f,
@@ -111,21 +111,20 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
         auto const moved{registry.get_moved_entities_this_tick()};
         std::set<RegistryEntityHandle> unique_moved;
         for (auto const handle : moved) {
-            ioj::sim::tests::expect_true(registry.is_valid_handle(handle),
-                                         "Moved handle remains valid after registry end_tick");
-            ioj::sim::tests::expect_false(std::ranges::contains(unique_moved, handle),
-                                          "Moved handle occurs only once in its tick");
+            tests::expect_true(registry.is_valid_handle(handle),
+                               "Moved handle remains valid after registry end_tick");
+            tests::expect_false(std::ranges::contains(unique_moved, handle),
+                                "Moved handle occurs only once in its tick");
             unique_moved.insert(handle);
-            ioj::sim::tests::expect_true(std::ranges::contains(expected_moved, handle),
-                                         "Moved handle changed from the prior committed transform");
-            if (registry.get_entity_type(handle) == ioj::sim::EntityType::Fighter) {
+            tests::expect_true(std::ranges::contains(expected_moved, handle),
+                               "Moved handle changed from the prior committed transform");
+            if (registry.get_entity_type(handle) == EntityType::Fighter) {
                 ++observed_moved_fighters;
             }
         }
-        ioj::sim::tests::expect_equal(
-            static_cast<std::int32_t>(moved.size()),
-            static_cast<std::int32_t>(expected_moved.size()),
-            "Movement list exactly matches this tick's transform changes");
+        tests::expect_equal(static_cast<std::int32_t>(moved.size()),
+                            static_cast<std::int32_t>(expected_moved.size()),
+                            "Movement list exactly matches this tick's transform changes");
         observed_empty_tick = observed_empty_tick || moved.empty();
         ++observed_ticks;
         capture_current_transforms(registry);
@@ -139,18 +138,15 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
     }
     simulation.pause();
 
-    ioj::sim::tests::expect_equal(
-        observed_ticks, tick_count, "Every requested battle tick was observed");
-    ioj::sim::tests::expect_true(observed_empty_tick,
-                                 "Battle includes an initially quiet movement tick");
-    ioj::sim::tests::expect_true(observed_moved_fighters > 100,
-                                 "Battle exercises fighter movement");
-    ioj::sim::tests::expect_equal(simulation.get_capital_ships().get_fighters_spawned(),
-                                  16,
-                                  "Battle spawns exactly one fighter wave");
-    ioj::sim::tests::expect_equal(simulation.get_fighters().get_num_instances(),
-                                  16,
-                                  "Zero-damage battle preserves every fighter");
+    tests::expect_equal(observed_ticks, tick_count, "Every requested battle tick was observed");
+    tests::expect_true(observed_empty_tick, "Battle includes an initially quiet movement tick");
+    tests::expect_true(observed_moved_fighters > 100, "Battle exercises fighter movement");
+    tests::expect_equal(simulation.get_capital_ships().get_fighters_spawned(),
+                        16,
+                        "Battle spawns exactly one fighter wave");
+    tests::expect_equal(simulation.get_fighters().get_num_instances(),
+                        16,
+                        "Zero-damage battle preserves every fighter");
 }
 
-} // namespace ioj::sim::tests
+} // namespace tests

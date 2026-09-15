@@ -35,27 +35,27 @@ void MissionManager::begin_play() {
     initialise_entity_health_required_to_kill();
 
     switch (mission_mode) {
-        case ioj::sim::MissionMode::None: {
-            set_mission_state(ioj::sim::MissionState::Disabled);
+        case MissionMode::None: {
+            set_mission_state(MissionState::Disabled);
             break;
         }
-        case ioj::sim::MissionMode::SurviveTime: {
+        case MissionMode::SurviveTime: {
             if (entity_handles_that_must_survive.empty()) {
                 ml::log_error("MissionManager: SurviveTime requires at least one entity that "
                               "must survive");
-                set_mission_state(ioj::sim::MissionState::Disabled);
+                set_mission_state(MissionState::Disabled);
                 break;
             }
 
-            set_mission_state(ioj::sim::MissionState::Running);
+            set_mission_state(MissionState::Running);
             break;
         }
-        case ioj::sim::MissionMode::KillEnemiesWithinTime:
+        case MissionMode::KillEnemiesWithinTime:
             [[fallthrough]];
-        case ioj::sim::MissionMode::KillEnemies: {
+        case MissionMode::KillEnemies: {
             if (hero_entity_ids.empty()) {
                 ml::log_error("MissionManager: Kill missions require at least one hero entity");
-                set_mission_state(ioj::sim::MissionState::Disabled);
+                set_mission_state(MissionState::Disabled);
                 break;
             }
 
@@ -64,12 +64,12 @@ void MissionManager::begin_play() {
                 resolved_kill_target = entity_registry.count_alive_not_on_team(hero_team);
             }
 
-            set_mission_state(ioj::sim::MissionState::Running);
+            set_mission_state(MissionState::Running);
             break;
         }
 
         default: {
-            ml::fatal_error("MissionManager: Unhandled ioj::sim::MissionMode.");
+            ml::fatal_error("MissionManager: Unhandled MissionMode.");
         }
     }
 }
@@ -90,19 +90,19 @@ void MissionManager::initialise_level_mission(
 
     switch (data.mode) {
         case levels::LevelMissionMode::Unspecified: {
-            set_mission_mode(ioj::sim::MissionMode::None);
+            set_mission_mode(MissionMode::None);
             break;
         }
         case levels::LevelMissionMode::SurviveTime: {
-            set_mission_mode(ioj::sim::MissionMode::SurviveTime);
+            set_mission_mode(MissionMode::SurviveTime);
             break;
         }
         case levels::LevelMissionMode::KillEnemies: {
-            set_mission_mode(ioj::sim::MissionMode::KillEnemies);
+            set_mission_mode(MissionMode::KillEnemies);
             break;
         }
         case levels::LevelMissionMode::KillEnemiesWithinTime: {
-            set_mission_mode(ioj::sim::MissionMode::KillEnemiesWithinTime);
+            set_mission_mode(MissionMode::KillEnemiesWithinTime);
             break;
         }
     }
@@ -133,7 +133,7 @@ void MissionManager::initialise_level_mission(
 void MissionManager::bind_level_event_data(
     std::span<std::int32_t const> const values,
     std::span<RegistryEntityHandle const> const level_entity_handles) {
-    assert(mission_state == ioj::sim::MissionState::NotStarted);
+    assert(mission_state == MissionState::NotStarted);
     level_event_values_ = values;
     level_entity_handles_ = level_entity_handles;
 }
@@ -143,21 +143,21 @@ void MissionManager::consume_level_events(LevelMissionEventGroupsConstView const
     for (std::int32_t index{}; index < group_count; ++index) {
         auto const values{level_event_values_.subspan(groups.offsets[index], groups.counts[index])};
         switch (groups.types[index]) {
-            case ioj::sim::LevelMissionEventType::MustSurvive: {
+            case LevelMissionEventType::MustSurvive: {
                 for (auto const entity_index : values) {
                     add_entity_that_must_survive(
                         get_level_entity_handle(level_entity_handles_, entity_index));
                 }
                 break;
             }
-            case ioj::sim::LevelMissionEventType::RequiredKill: {
+            case LevelMissionEventType::RequiredKill: {
                 for (auto const entity_index : values) {
                     add_entity_required_to_kill(
                         get_level_entity_handle(level_entity_handles_, entity_index));
                 }
                 break;
             }
-            case ioj::sim::LevelMissionEventType::IncreaseKillTarget: {
+            case LevelMissionEventType::IncreaseKillTarget: {
                 for (auto const increase : values) {
                     increase_kill_target(increase);
                     if (!level_initialisation_applied_) {
@@ -193,8 +193,8 @@ void MissionManager::reset_runtime_state() {
     entity_types_required_to_kill.clear();
     entity_health_required_to_kill.clear();
 
-    mission_state = ioj::sim::MissionState::NotStarted;
-    mission_fail_reason = ioj::sim::MissionFailReason::None;
+    mission_state = MissionState::NotStarted;
+    mission_fail_reason = MissionFailReason::None;
     mission_kills = 0;
     mission_elapsed_seconds = 0.f;
     resolved_kill_target = kill_target;
@@ -205,32 +205,32 @@ void MissionManager::reset_runtime_state() {
     level_initialisation_applied_ = false;
 }
 
-void MissionManager::set_mission_mode(ioj::sim::MissionMode const new_mode) {
-    assert(mission_state == ioj::sim::MissionState::NotStarted);
+void MissionManager::set_mission_mode(MissionMode const new_mode) {
+    assert(mission_state == MissionState::NotStarted);
     mission_mode = new_mode;
 }
 void MissionManager::set_target_time(float const new_target_time) {
-    assert(mission_state == ioj::sim::MissionState::NotStarted);
+    assert(mission_state == MissionState::NotStarted);
     assert(new_target_time > 0.f);
     target_time = new_target_time;
 }
 void MissionManager::set_kill_target(std::int32_t const new_kill_target) {
-    assert(mission_state == ioj::sim::MissionState::NotStarted);
+    assert(mission_state == MissionState::NotStarted);
     kill_target = new_kill_target;
     resolved_kill_target = new_kill_target;
 }
 void MissionManager::set_save_mission_results(bool const should_save) noexcept {
-    assert(mission_state == ioj::sim::MissionState::NotStarted);
+    assert(mission_state == MissionState::NotStarted);
     save_mission_results = should_save;
 }
 void MissionManager::set_level_identity(std::string const new_level_id, std::string display_name) {
-    assert(mission_state == ioj::sim::MissionState::NotStarted);
+    assert(mission_state == MissionState::NotStarted);
     level_id = new_level_id;
     level_display_name = std::move(display_name);
 }
 
 void MissionManager::add_hero_entity(RegistryEntityHandle handle) {
-    assert(mission_state == ioj::sim::MissionState::NotStarted);
+    assert(mission_state == MissionState::NotStarted);
     assert(entity_registry.is_valid_handle(handle));
     if (std::ranges::contains(hero_entity_handles, handle)) {
         return;
@@ -241,8 +241,7 @@ void MissionManager::add_hero_entity(RegistryEntityHandle handle) {
 }
 
 void MissionManager::add_entity_that_must_survive(RegistryEntityHandle handle) {
-    assert(mission_state == ioj::sim::MissionState::NotStarted ||
-           mission_state == ioj::sim::MissionState::Running);
+    assert(mission_state == MissionState::NotStarted || mission_state == MissionState::Running);
     assert(entity_registry.is_valid_handle(handle));
     if (std::ranges::contains(entity_handles_that_must_survive, handle)) {
         return;
@@ -252,14 +251,13 @@ void MissionManager::add_entity_that_must_survive(RegistryEntityHandle handle) {
     entity_ids_that_must_survive.push_back(id);
     entity_types_that_must_survive.push_back(
         entity_registry.get_unique_entities().entity_types[id.id]);
-    if (mission_state == ioj::sim::MissionState::Running) {
+    if (mission_state == MissionState::Running) {
         entity_health_that_must_survive.emplace_back(entity_registry.get_health(handle));
     }
 }
 
 void MissionManager::add_entity_required_to_kill(RegistryEntityHandle handle) {
-    assert(mission_state == ioj::sim::MissionState::NotStarted ||
-           mission_state == ioj::sim::MissionState::Running);
+    assert(mission_state == MissionState::NotStarted || mission_state == MissionState::Running);
     assert(entity_registry.is_valid_handle(handle));
     if (std::ranges::contains(entity_handles_required_to_kill, handle)) {
         return;
@@ -269,21 +267,20 @@ void MissionManager::add_entity_required_to_kill(RegistryEntityHandle handle) {
     entity_ids_required_to_kill.push_back(id);
     entity_types_required_to_kill.push_back(
         entity_registry.get_unique_entities().entity_types[id.id]);
-    if (mission_state == ioj::sim::MissionState::Running) {
+    if (mission_state == MissionState::Running) {
         entity_health_required_to_kill.emplace_back(entity_registry.get_health(handle));
     }
 }
 
 void MissionManager::increase_kill_target(std::int32_t const increase) {
     assert(increase >= 0);
-    assert(mission_state == ioj::sim::MissionState::NotStarted ||
-           mission_state == ioj::sim::MissionState::Running);
+    assert(mission_state == MissionState::NotStarted || mission_state == MissionState::Running);
     kill_target += increase;
     resolved_kill_target += increase;
 }
 
 void MissionManager::set_pending_objective_events(std::int32_t const count) {
-    assert(mission_state == ioj::sim::MissionState::NotStarted);
+    assert(mission_state == MissionState::NotStarted);
     assert(count >= 0);
     pending_objective_events_ = count;
 }
@@ -300,23 +297,23 @@ void MissionManager::mission_tick() {
     SANDBOX_PROFILE_SCOPE("Sandbox::MissionManager::mission_tick");
 
     switch (mission_state) {
-        case ioj::sim::MissionState::NotStarted: {
+        case MissionState::NotStarted: {
             ml::fatal_error("MissionManager ticking but not started.");
         }
-        case ioj::sim::MissionState::Running: {
+        case MissionState::Running: {
             break;
         }
-        case ioj::sim::MissionState::Succeeded: {
+        case MissionState::Succeeded: {
             return;
         }
-        case ioj::sim::MissionState::Failed: {
+        case MissionState::Failed: {
             return;
         }
-        case ioj::sim::MissionState::Disabled: {
+        case MissionState::Disabled: {
             return;
         }
         default: {
-            ml::fatal_error("MissionManager: Unhandled ioj::sim::MissionState.");
+            ml::fatal_error("MissionManager: Unhandled MissionState.");
         }
     }
 
@@ -325,74 +322,72 @@ void MissionManager::mission_tick() {
     update_entity_health_required_to_kill();
 
     if (!entity_handles_that_must_survive.empty() && !entities_that_must_survive_are_alive()) {
-        set_mission_state(ioj::sim::MissionState::Failed,
-                          ioj::sim::MissionFailReason::DefenceObjectiveFailed);
+        set_mission_state(MissionState::Failed, MissionFailReason::DefenceObjectiveFailed);
         return;
     }
 
     switch (mission_mode) {
-        case ioj::sim::MissionMode::None: {
+        case MissionMode::None: {
             break;
         }
-        case ioj::sim::MissionMode::SurviveTime: {
+        case MissionMode::SurviveTime: {
             mission_tick_survive_seconds();
             break;
         }
-        case ioj::sim::MissionMode::KillEnemies: {
+        case MissionMode::KillEnemies: {
             mission_tick_kill_enemies();
             break;
         }
-        case ioj::sim::MissionMode::KillEnemiesWithinTime: {
+        case MissionMode::KillEnemiesWithinTime: {
             mission_tick_kill_enemies_within_time();
             break;
         }
         default: {
-            ml::fatal_error("MissionManager: Unhandled ioj::sim::MissionMode.");
+            ml::fatal_error("MissionManager: Unhandled MissionMode.");
         }
     }
 }
 
 auto MissionManager::complete_mission() -> bool {
-    if (mission_state != ioj::sim::MissionState::Running || has_pending_objective_events()) {
+    if (mission_state != MissionState::Running || has_pending_objective_events()) {
         return false;
     }
 
-    set_mission_state(ioj::sim::MissionState::Succeeded);
+    set_mission_state(MissionState::Succeeded);
     return true;
 }
 
 auto MissionManager::is_ready() const noexcept -> bool {
-    return mission_state != ioj::sim::MissionState::NotStarted;
+    return mission_state != MissionState::NotStarted;
 }
 
-void MissionManager::set_mission_state(ioj::sim::MissionState const new_state,
-                                       ioj::sim::MissionFailReason const fail_reason) {
-    assert((new_state == ioj::sim::MissionState::Failed) ==
-           (fail_reason != ioj::sim::MissionFailReason::None));
+void MissionManager::set_mission_state(MissionState const new_state,
+                                       MissionFailReason const fail_reason) {
+    assert((new_state == MissionState::Failed) == (fail_reason != MissionFailReason::None));
 
     mission_state = new_state;
     mission_fail_reason = fail_reason;
 
     switch (mission_state) {
-        case ioj::sim::MissionState::NotStarted: {
+        case MissionState::NotStarted: {
             break;
         }
-        case ioj::sim::MissionState::Running: {
+        case MissionState::Running: {
             break;
         }
-        case ioj::sim::MissionState::Succeeded: {
+        case MissionState::Succeeded: {
             handle_mission_success();
             return;
         }
-        case ioj::sim::MissionState::Failed: {
+        case MissionState::Failed: {
             handle_mission_failure(fail_reason);
             return;
         }
-        case ioj::sim::MissionState::Disabled: {
+        case MissionState::Disabled: {
             return;
         }
         default: {
-            ml::fatal_error("MissionManager: Unhandled ioj::sim::MissionState.");
+            ml::fatal_error("MissionManager: Unhandled MissionState.");
         }
     }
 }
@@ -402,8 +397,7 @@ void MissionManager::mission_tick_survive_seconds() {
         if (!has_pending_objective_events() && entities_required_to_kill_are_dead()) {
             complete_mission();
         } else {
-            set_mission_state(ioj::sim::MissionState::Failed,
-                              ioj::sim::MissionFailReason::TimeElapsed);
+            set_mission_state(MissionState::Failed, MissionFailReason::TimeElapsed);
         }
     }
 }
@@ -428,7 +422,7 @@ void MissionManager::mission_tick_kill_enemies_within_time() {
     auto const mission_time_limit{get_target_time()};
 
     if (mission_time >= mission_time_limit) {
-        set_mission_state(ioj::sim::MissionState::Failed, ioj::sim::MissionFailReason::TimeElapsed);
+        set_mission_state(MissionState::Failed, MissionFailReason::TimeElapsed);
     }
 }
 
@@ -537,7 +531,7 @@ auto MissionManager::take_result() -> std::optional<LevelMissionResult> {
 void MissionManager::handle_mission_success() {
     queue_result();
 }
-void MissionManager::handle_mission_failure(ioj::sim::MissionFailReason) {
+void MissionManager::handle_mission_failure(MissionFailReason) {
     queue_result();
 }
 } // namespace ioj::sim

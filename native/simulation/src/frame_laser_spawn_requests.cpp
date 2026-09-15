@@ -3,7 +3,7 @@
 #include <algorithm>
 
 namespace ioj::sim::lasers {
-auto FrameSpawnRequests::get_const_view() const -> ioj::sim::lasers::SpawnRequestsConstView {
+auto FrameSpawnRequests::get_const_view() const -> lasers::SpawnRequestsConstView {
     return {locations.get_const_view(),
             rotations.get_const_view(),
             base_velocities.get_const_view(),
@@ -72,4 +72,4 @@ void FrameSpawnRequests::set_max_distances(float const value) {
 auto FrameSpawnRequests::num() const noexcept -> std::int32_t {
     return locations.num();
 }
-} // namespace ioj::sim::lasers
+} // namespace lasers

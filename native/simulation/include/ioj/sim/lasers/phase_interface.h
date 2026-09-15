@@ -9,7 +9,7 @@
 namespace ioj::sim::lasers {
 class PhaseInterface {
     private:
-    PhaseInterface(ioj::sim::lasers::Sim& new_target);
+    PhaseInterface(Sim& new_target);
 
     void begin_play();
 
@@ -22,7 +22,7 @@ class PhaseInterface {
     void end_tick();
 
     friend struct ::ioj::sim::LevelSim;
-    ioj::sim::lasers::Sim& simulation;
+    Sim& simulation;
 };
 } // namespace ioj::sim::lasers
 // clang-format on

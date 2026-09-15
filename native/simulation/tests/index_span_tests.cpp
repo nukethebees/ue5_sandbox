@@ -14,4 +14,4 @@ TEST(IndexSpan, ReportsBounds) {
     static_assert(span.end() == 11);
 }
 
-} // namespace ioj::sim::tests
+} // namespace tests

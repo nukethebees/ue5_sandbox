@@ -10,24 +10,24 @@ namespace ioj::sim {
 namespace {
 auto add_worldless_capital(LevelSimInitData& data,
                            ml::Vector3d const location,
-                           ioj::sim::Team const team = ioj::sim::Team::White) -> std::int32_t {
+                           Team const team = Team::White) -> std::int32_t {
     auto const row{data.level_events.initial_spawns.capital_spawns.num()};
-    ioj::sim::tests::add_capital_spawn(data, ioj::sim::to_float(location), team, -1, 60.f, 60.f);
+    tests::add_capital_spawn(data, to_float(location), team, -1, 60.f, 60.f);
     return row;
 }
 }
 
-void run_worldless_mission_manager_scenario(ioj::sim::tests::SimulationFixture const& config,
+void run_worldless_mission_manager_scenario(tests::SimulationFixture const& config,
                                             MissionManagerScenario const scenario) {
     using Scenario = MissionManagerScenario;
 
-    auto data{ioj::sim::tests::make_simulation_data(config)};
+    auto data{tests::make_simulation_data(config)};
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     auto const hero_index{add_worldless_capital(
         data,
         ml::Vector3d{-2000.f, 0.f, 0.f},
-        scenario == Scenario::AutomaticKillTarget ? ioj::sim::Team::Green : ioj::sim::Team::White)};
+        scenario == Scenario::AutomaticKillTarget ? Team::Green : Team::White)};
     std::int32_t ordinary_enemy_index{-1};
     std::int32_t required_enemy_index{-1};
     if (scenario == Scenario::KillEnemies || scenario == Scenario::KillEnemiesWithinTime) {
@@ -39,8 +39,8 @@ void run_worldless_mission_manager_scenario(ioj::sim::tests::SimulationFixture c
         required_enemy_index = add_worldless_capital(data, ml::Vector3d{2000.f, 0.f, 0.f});
     } else if (scenario == Scenario::AutomaticKillTarget) {
         ordinary_enemy_index =
-            add_worldless_capital(data, ml::Vector3d{2000.f, 0.f, 0.f}, ioj::sim::Team::Red);
-        add_worldless_capital(data, ml::Vector3d{4000.f, 0.f, 0.f}, ioj::sim::Team::Red);
+            add_worldless_capital(data, ml::Vector3d{2000.f, 0.f, 0.f}, Team::Red);
+        add_worldless_capital(data, ml::Vector3d{4000.f, 0.f, 0.f}, Team::Red);
     }
 
     auto& mission{data.level_events.initialisation.mission.emplace()};
@@ -54,17 +54,17 @@ void run_worldless_mission_manager_scenario(ioj::sim::tests::SimulationFixture c
     }};
     switch (scenario) {
         case Scenario::SurviveTime:
-            mission.mode = ioj::sim::levels::LevelMissionMode::SurviveTime;
+            mission.mode = levels::LevelMissionMode::SurviveTime;
             mission.time_limit_seconds = 0.1f;
             add_survivor();
             break;
         case Scenario::KillEnemies:
-            mission.mode = ioj::sim::levels::LevelMissionMode::KillEnemies;
+            mission.mode = levels::LevelMissionMode::KillEnemies;
             mission.kill_count = 1;
             add_hero();
             break;
         case Scenario::KillEnemiesWithinTime:
-            mission.mode = ioj::sim::levels::LevelMissionMode::KillEnemiesWithinTime;
+            mission.mode = levels::LevelMissionMode::KillEnemiesWithinTime;
             mission.time_limit_seconds = 0.1f;
             mission.kill_count = 1;
             add_hero();
@@ -72,24 +72,24 @@ void run_worldless_mission_manager_scenario(ioj::sim::tests::SimulationFixture c
         case Scenario::DefenceObjective:
         case Scenario::SuccessIsTerminal:
         case Scenario::ExplicitCompletionIsLatched:
-            mission.mode = ioj::sim::levels::LevelMissionMode::SurviveTime;
+            mission.mode = levels::LevelMissionMode::SurviveTime;
             mission.time_limit_seconds = scenario == Scenario::SuccessIsTerminal ? 0.1f : 10.f;
             add_survivor();
             break;
         case Scenario::RequiredKillsObjective:
-            mission.mode = ioj::sim::levels::LevelMissionMode::KillEnemies;
+            mission.mode = levels::LevelMissionMode::KillEnemies;
             mission.kill_count = 1;
             add_hero();
             add_required_enemy();
             break;
         case Scenario::RequiredKillsTimeElapsed:
-            mission.mode = ioj::sim::levels::LevelMissionMode::SurviveTime;
+            mission.mode = levels::LevelMissionMode::SurviveTime;
             mission.time_limit_seconds = 0.1f;
             add_survivor();
             add_required_enemy();
             break;
         case Scenario::AutomaticKillTarget:
-            mission.mode = ioj::sim::levels::LevelMissionMode::KillEnemies;
+            mission.mode = levels::LevelMissionMode::KillEnemies;
             mission.kill_count = 0;
             add_hero();
             break;
@@ -98,7 +98,7 @@ void run_worldless_mission_manager_scenario(ioj::sim::tests::SimulationFixture c
             break;
     }
 
-    ioj::sim::tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data)};
     auto& simulation{harness.get_simulation()};
     auto& manager{simulation.get_mission_manager()};
     auto const& capitals{simulation.get_capital_ships()};
@@ -113,8 +113,8 @@ void run_worldless_mission_manager_scenario(ioj::sim::tests::SimulationFixture c
     harness.finish_initialisation();
 
     struct Sample {
-        ioj::sim::MissionState state{ioj::sim::MissionState::NotStarted};
-        ioj::sim::MissionFailReason fail_reason{ioj::sim::MissionFailReason::None};
+        MissionState state{MissionState::NotStarted};
+        MissionFailReason fail_reason{MissionFailReason::None};
         std::int32_t kills{};
         std::int32_t kill_target{};
         bool survivor_alive{};
@@ -160,9 +160,8 @@ void run_worldless_mission_manager_scenario(ioj::sim::tests::SimulationFixture c
         harness.timeline.at(0.15, [&] { harness.queue_kills(std::array{hero}); });
     } else if (scenario == Scenario::ExplicitCompletionIsLatched) {
         harness.timeline.then_after(0.01, [&] {
-            first_completion_result = ioj::sim::LevelSimTestAccess::complete_mission(simulation);
-            duplicate_completion_result =
-                ioj::sim::LevelSimTestAccess::complete_mission(simulation);
+            first_completion_result = LevelSimTestAccess::complete_mission(simulation);
+            duplicate_completion_result = LevelSimTestAccess::complete_mission(simulation);
         });
     }
     auto const end_time{scenario == Scenario::RequiredKillsObjective ||
@@ -171,13 +170,12 @@ void run_worldless_mission_manager_scenario(ioj::sim::tests::SimulationFixture c
                             : 0.25};
     harness.timeline.finish_at(end_time);
 
-    ioj::sim::tests::expect_equal(
-        manager.get_mission_state(), ioj::sim::MissionState::Running, "Mission starts running");
-    ioj::sim::tests::expect_false(manager.should_save_mission_results(),
-                                  "Mission result saving is disabled");
-    ioj::sim::tests::expect_true(harness.run_until_timeline_finished(1.0),
-                                 "Mission timeline completes within its simulation-time limit");
-    ioj::sim::tests::expect_true(!samples.is_empty(), "Mission simulation samples recorded");
+    tests::expect_equal(
+        manager.get_mission_state(), MissionState::Running, "Mission starts running");
+    tests::expect_false(manager.should_save_mission_results(), "Mission result saving is disabled");
+    tests::expect_true(harness.run_until_timeline_finished(1.0),
+                       "Mission timeline completes within its simulation-time limit");
+    tests::expect_true(!samples.is_empty(), "Mission simulation samples recorded");
     if (samples.is_empty()) {
         return;
     }
@@ -185,93 +183,85 @@ void run_worldless_mission_manager_scenario(ioj::sim::tests::SimulationFixture c
     auto const& final{samples.last_value()};
     switch (scenario) {
         case Scenario::SurviveTime:
-            ioj::sim::tests::expect_equal(
-                final.state, ioj::sim::MissionState::Succeeded, "Survive-time mission succeeds");
-            ioj::sim::tests::expect_equal(final.fail_reason,
-                                          ioj::sim::MissionFailReason::None,
-                                          "Successful mission has no failure reason");
+            tests::expect_equal(
+                final.state, MissionState::Succeeded, "Survive-time mission succeeds");
+            tests::expect_equal(final.fail_reason,
+                                MissionFailReason::None,
+                                "Successful mission has no failure reason");
             break;
         case Scenario::KillEnemies:
-            ioj::sim::tests::expect_equal(
-                final.state, ioj::sim::MissionState::Succeeded, "Kill mission succeeds");
-            ioj::sim::tests::expect_equal(final.kills, 1, "Hero kill contributes to mission");
+            tests::expect_equal(final.state, MissionState::Succeeded, "Kill mission succeeds");
+            tests::expect_equal(final.kills, 1, "Hero kill contributes to mission");
             break;
         case Scenario::KillEnemiesWithinTime:
-            ioj::sim::tests::expect_equal(
-                final.state, ioj::sim::MissionState::Failed, "Timed kill mission fails");
-            ioj::sim::tests::expect_equal(final.fail_reason,
-                                          ioj::sim::MissionFailReason::TimeElapsed,
-                                          "Timed mission reports elapsed time");
+            tests::expect_equal(final.state, MissionState::Failed, "Timed kill mission fails");
+            tests::expect_equal(final.fail_reason,
+                                MissionFailReason::TimeElapsed,
+                                "Timed mission reports elapsed time");
             break;
         case Scenario::DefenceObjective:
-            ioj::sim::tests::expect_equal(final.state,
-                                          ioj::sim::MissionState::Failed,
-                                          "Defence objective failure fails mission");
-            ioj::sim::tests::expect_equal(final.fail_reason,
-                                          ioj::sim::MissionFailReason::DefenceObjectiveFailed,
-                                          "Defence failure reason is retained");
-            ioj::sim::tests::expect_equal(
+            tests::expect_equal(
+                final.state, MissionState::Failed, "Defence objective failure fails mission");
+            tests::expect_equal(final.fail_reason,
+                                MissionFailReason::DefenceObjectiveFailed,
+                                "Defence failure reason is retained");
+            tests::expect_equal(
                 final.survivor_health, 0, "Destroyed defence objective reports zero health");
             break;
         case Scenario::RequiredKillsObjective: {
             auto const& gated{samples.nearest_value(0.1)};
-            ioj::sim::tests::expect_equal(gated.state,
-                                          ioj::sim::MissionState::Running,
-                                          "Normal kill target does not bypass required kill");
-            ioj::sim::tests::expect_equal(
-                gated.kills, 1, "Normal kill target is met before required kill");
-            ioj::sim::tests::expect_true(gated.required_health > 0,
-                                         "Required target remains healthy while mission is gated");
-            ioj::sim::tests::expect_equal(
-                final.state, ioj::sim::MissionState::Succeeded, "Required-kill mission succeeds");
-            ioj::sim::tests::expect_equal(
-                final.kills, 1, "Uncredited required kill preserves mission kills");
-            ioj::sim::tests::expect_equal(
+            tests::expect_equal(gated.state,
+                                MissionState::Running,
+                                "Normal kill target does not bypass required kill");
+            tests::expect_equal(gated.kills, 1, "Normal kill target is met before required kill");
+            tests::expect_true(gated.required_health > 0,
+                               "Required target remains healthy while mission is gated");
+            tests::expect_equal(
+                final.state, MissionState::Succeeded, "Required-kill mission succeeds");
+            tests::expect_equal(final.kills, 1, "Uncredited required kill preserves mission kills");
+            tests::expect_equal(
                 final.required_health, 0, "Destroyed required target reports zero health");
             break;
         }
         case Scenario::RequiredKillsTimeElapsed:
-            ioj::sim::tests::expect_equal(final.state,
-                                          ioj::sim::MissionState::Failed,
-                                          "Incomplete required kill fails survive-time mission");
-            ioj::sim::tests::expect_equal(final.fail_reason,
-                                          ioj::sim::MissionFailReason::TimeElapsed,
-                                          "Incomplete required kill reports elapsed time");
-            ioj::sim::tests::expect_true(final.required_health > 0,
-                                         "Required target remains alive at timeout");
+            tests::expect_equal(final.state,
+                                MissionState::Failed,
+                                "Incomplete required kill fails survive-time mission");
+            tests::expect_equal(final.fail_reason,
+                                MissionFailReason::TimeElapsed,
+                                "Incomplete required kill reports elapsed time");
+            tests::expect_true(final.required_health > 0,
+                               "Required target remains alive at timeout");
             break;
         case Scenario::AutomaticKillTarget: {
             auto const& one_remaining{samples.nearest_value(0.1)};
-            ioj::sim::tests::expect_equal(
+            tests::expect_equal(
                 one_remaining.kill_target, 2, "Automatic target counts both initial enemies");
-            ioj::sim::tests::expect_equal(one_remaining.state,
-                                          ioj::sim::MissionState::Running,
-                                          "Mission remains running with one enemy left");
-            ioj::sim::tests::expect_equal(one_remaining.kills, 1, "First enemy kill is credited");
-            ioj::sim::tests::expect_equal(final.state,
-                                          ioj::sim::MissionState::Succeeded,
-                                          "Last enemy completes automatic kill target");
-            ioj::sim::tests::expect_equal(final.kills, 2, "Both enemy kills are credited");
+            tests::expect_equal(one_remaining.state,
+                                MissionState::Running,
+                                "Mission remains running with one enemy left");
+            tests::expect_equal(one_remaining.kills, 1, "First enemy kill is credited");
+            tests::expect_equal(
+                final.state, MissionState::Succeeded, "Last enemy completes automatic kill target");
+            tests::expect_equal(final.kills, 2, "Both enemy kills are credited");
             break;
         }
         case Scenario::SuccessIsTerminal:
-            ioj::sim::tests::expect_equal(final.state,
-                                          ioj::sim::MissionState::Succeeded,
-                                          "Mission remains successful after later destruction");
-            ioj::sim::tests::expect_equal(final.fail_reason,
-                                          ioj::sim::MissionFailReason::None,
-                                          "Later destruction does not add a failure reason");
-            ioj::sim::tests::expect_false(final.survivor_alive,
-                                          "Defended entity is destroyed after success");
+            tests::expect_equal(final.state,
+                                MissionState::Succeeded,
+                                "Mission remains successful after later destruction");
+            tests::expect_equal(final.fail_reason,
+                                MissionFailReason::None,
+                                "Later destruction does not add a failure reason");
+            tests::expect_false(final.survivor_alive, "Defended entity is destroyed after success");
             break;
         case Scenario::ExplicitCompletionIsLatched:
-            ioj::sim::tests::expect_true(first_completion_result,
-                                         "Explicit completion performs the state transition");
-            ioj::sim::tests::expect_false(duplicate_completion_result,
-                                          "Duplicate completion is ignored");
-            ioj::sim::tests::expect_equal(final.state,
-                                          ioj::sim::MissionState::Succeeded,
-                                          "Explicit completion leaves the mission succeeded");
+            tests::expect_true(first_completion_result,
+                               "Explicit completion performs the state transition");
+            tests::expect_false(duplicate_completion_result, "Duplicate completion is ignored");
+            tests::expect_equal(final.state,
+                                MissionState::Succeeded,
+                                "Explicit completion leaves the mission succeeded");
             break;
         default:
             assert(false && "unreachable scenario");

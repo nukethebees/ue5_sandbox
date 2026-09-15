@@ -7,7 +7,7 @@
 #include "ioj/sim/player/sim.h"
 
 namespace ioj::sim::player {
-PhaseInterface::PhaseInterface(ioj::sim::player::Sim& new_target)
+PhaseInterface::PhaseInterface(Sim& new_target)
     : simulation{new_target} {
 
 }

@@ -13,7 +13,7 @@
 namespace ioj::sim::fighters {
 class CommandInterface {
     public:
-    CommandInterface(ioj::sim::fighters::Sim& new_target)
+    CommandInterface(Sim& new_target)
         : fighters{new_target} {
 
     }
@@ -30,7 +30,7 @@ class CommandInterface {
         fighters.self_destruct_fighter(handle);
     }
 
-    ioj::sim::fighters::Sim::RegistryEntityData const& get_new_spawn_entity_data() const {
+    Sim::RegistryEntityData const& get_new_spawn_entity_data() const {
         return fighters.get_new_spawn_entity_data();
     }
 
@@ -51,7 +51,7 @@ class CommandInterface {
     }
 
     private:
-    ioj::sim::fighters::Sim& fighters;
+    Sim& fighters;
 };
 } // namespace ioj::sim::fighters
 // clang-format on

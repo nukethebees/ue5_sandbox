@@ -469,4 +469,4 @@ auto validate_level(LevelDefinition const& definition) -> LevelValidationResult 
     validate_mission_events(definition, entities, result);
     return result;
 }
-} // namespace ioj::sim::levels
+} // namespace levels

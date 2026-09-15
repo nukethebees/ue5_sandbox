@@ -6,9 +6,8 @@
 
 namespace ioj::sim {
 void run_worldless_turret_acquisition_regression(
-    ioj::sim::tests::SimulationFixture const& config,
-    TurretAcquisitionRegressionScenario const scenario) {
-    auto data{ioj::sim::tests::make_simulation_data(config)};
+    tests::SimulationFixture const& config, TurretAcquisitionRegressionScenario const scenario) {
+    auto data{tests::make_simulation_data(config)};
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     auto const count{scenario == TurretAcquisitionRegressionScenario::NoOtherEntity ? 1 : 2};
@@ -20,27 +19,26 @@ void run_worldless_turret_acquisition_regression(
                    : (scenario == TurretAcquisitionRegressionScenario::EnemyOutsideRadius
                           ? data.turrets.detection_radius + 1.f
                           : 1000.f)};
-        ioj::sim::tests::add_turret_spawn(data,
-                                          HMM_V3(distance, 0.f, 0.f),
-                                          {},
-                                          friendly ? ioj::sim::Team::Blue : ioj::sim::Team::Red,
-                                          data.turrets.max_health,
-                                          0);
+        tests::add_turret_spawn(data,
+                                HMM_V3(distance, 0.f, 0.f),
+                                {},
+                                friendly ? Team::Blue : Team::Red,
+                                data.turrets.max_health,
+                                0);
     }
-    ioj::sim::tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     harness.timeline.finish_at(0.5);
-    ioj::sim::tests::expect_true(harness.run_until_timeline_finished(1.0),
-                                 "Turret acquisition timeline completes");
+    tests::expect_true(harness.run_until_timeline_finished(1.0),
+                       "Turret acquisition timeline completes");
     auto const& turrets{harness.get_simulation().get_turrets()};
-    ioj::sim::tests::expect_equal(count, turrets.get_num_instances(), "All turrets are registered");
+    tests::expect_equal(count, turrets.get_num_instances(), "All turrets are registered");
     for (auto const target : turrets.get_target_handles()) {
-        ioj::sim::tests::expect_true(target.is_null(),
-                                     "Invalid candidate does not become a target");
+        tests::expect_true(target.is_null(), "Invalid candidate does not become a target");
     }
-    ioj::sim::tests::expect_equal(0,
-                                  harness.get_simulation().get_lasers().get_number_spawned(),
-                                  "Turrets without valid targets do not fire");
+    tests::expect_equal(0,
+                        harness.get_simulation().get_lasers().get_number_spawned(),
+                        "Turrets without valid targets do not fire");
 }
 
 }

@@ -11,35 +11,33 @@ namespace fighters_intercept_test {
 inline constexpr std::int32_t collision_resilient_health{1'000'000};
 }
 
-void run_worldless_fighters_intercept_capital(ioj::sim::tests::SimulationFixture const& config) {
-    auto data{ioj::sim::tests::make_simulation_data(config)};
+void run_worldless_fighters_intercept_capital(tests::SimulationFixture const& config) {
+    auto data{tests::make_simulation_data(config)};
     data.fighters.health = fighters_intercept_test::collision_resilient_health;
-    auto const green{
-        ioj::sim::tests::add_capital_spawn(data,
-                                           {{-61180.f, 2170.f, 4360.f}},
-                                           ioj::sim::Team::Green,
-                                           -1,
-                                           0.f,
-                                           60.f,
-                                           fighters_intercept_test::collision_resilient_health)};
-    auto const red{
-        ioj::sim::tests::add_capital_spawn(data,
-                                           {{77320.f, 2170.f, 4360.f}},
-                                           ioj::sim::Team::Red,
-                                           green,
-                                           600.f,
-                                           60.f,
-                                           fighters_intercept_test::collision_resilient_health)};
-    ioj::sim::tests::add_capital_spawn(data,
-                                       {{3590.f, 3240.f, 4360.f}},
-                                       ioj::sim::Team::Blue,
-                                       green,
-                                       600.f,
-                                       60.f,
-                                       fighters_intercept_test::collision_resilient_health);
+    auto const green{tests::add_capital_spawn(data,
+                                              {{-61180.f, 2170.f, 4360.f}},
+                                              Team::Green,
+                                              -1,
+                                              0.f,
+                                              60.f,
+                                              fighters_intercept_test::collision_resilient_health)};
+    auto const red{tests::add_capital_spawn(data,
+                                            {{77320.f, 2170.f, 4360.f}},
+                                            Team::Red,
+                                            green,
+                                            600.f,
+                                            60.f,
+                                            fighters_intercept_test::collision_resilient_health)};
+    tests::add_capital_spawn(data,
+                             {{3590.f, 3240.f, 4360.f}},
+                             Team::Blue,
+                             green,
+                             600.f,
+                             60.f,
+                             fighters_intercept_test::collision_resilient_health);
     data.level_events.initial_spawns.capital_spawns.target_entity_indices[0] = red;
 
-    ioj::sim::tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     auto const& fighters{harness.get_simulation().get_fighters()};
@@ -63,35 +61,34 @@ void run_worldless_fighters_intercept_capital(ioj::sim::tests::SimulationFixture
         samples.add(harness.get_time(), std::move(sample));
     };
     harness.timeline.finish_at(20.0);
-    ioj::sim::tests::expect_true(harness.run_until_timeline_finished(21.0),
-                                 "Fighter interception timeline completes");
-    ioj::sim::tests::expect_true(!samples.is_empty(), "Fighter interception samples are recorded");
+    tests::expect_true(harness.run_until_timeline_finished(21.0),
+                       "Fighter interception timeline completes");
+    tests::expect_true(!samples.is_empty(), "Fighter interception samples are recorded");
     if (samples.is_empty()) {
         return;
     }
 
     auto const& start{samples.nearest_value(2.0 / 60.0)};
     auto const& end{samples.nearest_value(20.0)};
-    ioj::sim::tests::expect_greater(static_cast<std::int32_t>(start.fighter_targets.size()),
-                                    std::int32_t{0},
-                                    "Parent has fighters");
-    ioj::sim::tests::expect_greater(static_cast<std::int32_t>(end.fighter_targets.size()),
-                                    std::int32_t{0},
-                                    "Parent has fighters at end");
-    ioj::sim::tests::expect_equal(
+    tests::expect_greater(static_cast<std::int32_t>(start.fighter_targets.size()),
+                          std::int32_t{0},
+                          "Parent has fighters");
+    tests::expect_greater(static_cast<std::int32_t>(end.fighter_targets.size()),
+                          std::int32_t{0},
+                          "Parent has fighters at end");
+    tests::expect_equal(
         original_target, start.parent_target, "Green capital initially targets red capital");
     for (std::int32_t i{}; i < static_cast<std::int32_t>(start.fighter_targets.size()); ++i) {
-        ioj::sim::tests::expect_equal(original_target,
-                                      start.fighter_targets[i],
-                                      "Initial fighter target matches red parent target",
-                                      i);
+        tests::expect_equal(original_target,
+                            start.fighter_targets[i],
+                            "Initial fighter target matches red parent target",
+                            i);
     }
     auto const intercept_count{
         static_cast<std::int32_t>(std::ranges::count(end.fighter_targets, intercept_target))};
-    ioj::sim::tests::expect_greater(
+    tests::expect_greater(
         intercept_count, std::int32_t{0}, "At least one fighter intercepts the blue capital");
-    ioj::sim::tests::expect_equal(
-        hero, capitals.get_handle(0), "Hero capital handle remains stable");
+    tests::expect_equal(hero, capitals.get_handle(0), "Hero capital handle remains stable");
 }
 
 }

@@ -91,7 +91,7 @@ auto collect_entities_in_range(collision::GridGeometry const geometry,
 
 auto analyse_handle(EntityRegistryQueryView const registry,
                     RegistryEntityHandle const handle) noexcept -> RegistryHandleState {
-    return ioj::sim::analyse_handle(registry.generations, handle);
+    return analyse_handle(registry.generations, handle);
 }
 
 auto is_valid_alive(EntityRegistryQueryView const registry,

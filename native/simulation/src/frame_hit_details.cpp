@@ -26,4 +26,4 @@ auto FrameHitDetails::num() const noexcept -> std::int32_t {
 auto FrameHitDetails::get_const_view() const -> LaserHitDetailsConstView {
     return {locations.get_const_view(), emission_directions.get_const_view(), sources.view()};
 }
-} // namespace ioj::sim::lasers
+} // namespace lasers

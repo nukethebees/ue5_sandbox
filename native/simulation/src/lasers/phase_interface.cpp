@@ -7,7 +7,7 @@
 #include "ioj/sim/lasers/sim.h"
 
 namespace ioj::sim::lasers {
-PhaseInterface::PhaseInterface(ioj::sim::lasers::Sim& new_target)
+PhaseInterface::PhaseInterface(Sim& new_target)
     : simulation{new_target} {
 
 }

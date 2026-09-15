@@ -50,7 +50,7 @@ void CollisionGridEntityStorage::add(Vector3f const min_point,
     assert(in_bounds(min_cell));
     assert(in_bounds(max_cell));
 
-    ioj::sim::collision::add(entity_cells_, min_point, max_point, min_cell, max_cell, handle);
+    collision::add(entity_cells_, min_point, max_point, min_cell, max_cell, handle);
 
     auto const row_stride{grid_dimensions_.x};
     auto const plane_stride{row_stride * grid_dimensions_.y};
@@ -105,7 +105,7 @@ auto CollisionGridEntityStorage::finish_rebuild() -> bool {
                     auto const destination{write_index++};
                     entities_[static_cast<std::size_t>(destination)] =
                         entity_cells.handles[static_cast<std::size_t>(entity_index)];
-                    ioj::sim::collision::set(aabbs_, destination, min_point, max_point);
+                    collision::set(aabbs_, destination, min_point, max_point);
                 }
                 row_index += row_stride;
             }
@@ -157,4 +157,4 @@ auto CollisionGridEntityStorage::entity_world_bounds() const noexcept
             cells.max_point_zs};
 }
 
-} // namespace ioj::sim::collision
+} // namespace collision

@@ -10,7 +10,7 @@
 namespace ioj::sim::player {
 class CommandInterface {
     public:
-    CommandInterface(ioj::sim::player::Sim& new_target)
+    CommandInterface(Sim& new_target)
         : simulation{new_target} {
 
     }
@@ -132,7 +132,7 @@ class CommandInterface {
     }
 
     private:
-    ioj::sim::player::Sim& simulation;
+    Sim& simulation;
 };
 } // namespace ioj::sim::player
 // clang-format on

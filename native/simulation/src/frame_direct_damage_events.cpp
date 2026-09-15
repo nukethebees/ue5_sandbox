@@ -23,4 +23,4 @@ void FrameDirectDamageEvents::add(RegistryEntityHandle const damaged_entity,
 auto FrameDirectDamageEvents::get_const_view() const noexcept -> DirectDamageEventsConstView {
     return {damaged_entities, damage_amounts, instigators};
 }
-} // namespace ioj::sim::lasers
+} // namespace lasers

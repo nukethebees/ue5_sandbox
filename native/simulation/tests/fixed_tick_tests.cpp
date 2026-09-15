@@ -8,29 +8,29 @@ namespace ioj::sim::tests {
 TEST(FixedTick, AccumulatesAndConsumesScaledTime) {
     double period{};
     double accumulator{};
-    ASSERT_TRUE(ioj::sim::initialise_tick_loop(10.0, 2.0, period, accumulator));
+    ASSERT_TRUE(initialise_tick_loop(10.0, 2.0, period, accumulator));
     EXPECT_DOUBLE_EQ(period, 0.1);
 
-    ioj::sim::add_tick_loop_time(0.03, 2.0, accumulator);
-    EXPECT_FALSE(ioj::sim::try_consume_tick(period, accumulator));
-    ioj::sim::add_tick_loop_time(0.03, 2.0, accumulator);
-    EXPECT_TRUE(ioj::sim::try_consume_tick(period, accumulator));
+    add_tick_loop_time(0.03, 2.0, accumulator);
+    EXPECT_FALSE(try_consume_tick(period, accumulator));
+    add_tick_loop_time(0.03, 2.0, accumulator);
+    EXPECT_TRUE(try_consume_tick(period, accumulator));
     EXPECT_NEAR(accumulator, 0.02, 1e-12);
 }
 
 TEST(FixedTick, RejectsInvalidSettings) {
     double period{1.0};
     double accumulator{1.0};
-    EXPECT_FALSE(ioj::sim::initialise_tick_loop(0.0, 1.0, period, accumulator));
-    EXPECT_FALSE(ioj::sim::initialise_tick_loop(1.0, 0.0, period, accumulator));
+    EXPECT_FALSE(initialise_tick_loop(0.0, 1.0, period, accumulator));
+    EXPECT_FALSE(initialise_tick_loop(1.0, 0.0, period, accumulator));
     EXPECT_DOUBLE_EQ(period, 1.0);
     EXPECT_DOUBLE_EQ(accumulator, 1.0);
 }
 
 TEST(SimulationClock, ConvertsDurationsAndFrequencies) {
-    EXPECT_EQ(ioj::sim::frequency_to_tick_period(60.0, 7.0), 9);
-    EXPECT_EQ(ioj::sim::duration_to_tick_period(60.0, 0.11), 7);
-    EXPECT_DOUBLE_EQ(ioj::sim::simulation_time(12, 0.25), 3.0);
+    EXPECT_EQ(frequency_to_tick_period(60.0, 7.0), 9);
+    EXPECT_EQ(duration_to_tick_period(60.0, 0.11), 7);
+    EXPECT_DOUBLE_EQ(simulation_time(12, 0.25), 3.0);
 }
 
-} // namespace ioj::sim::tests
+} // namespace tests

@@ -9,7 +9,7 @@
 namespace ioj::sim::fighters {
 class PhaseInterface {
     private:
-    PhaseInterface(ioj::sim::fighters::Sim& new_target);
+    PhaseInterface(Sim& new_target);
 
     void begin_play();
 
@@ -34,7 +34,7 @@ class PhaseInterface {
     void end_tick();
 
     friend struct ::ioj::sim::LevelSim;
-    ioj::sim::fighters::Sim& simulation;
+    Sim& simulation;
 };
 } // namespace ioj::sim::fighters
 // clang-format on

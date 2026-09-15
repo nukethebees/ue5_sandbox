@@ -93,12 +93,12 @@ auto CollisionOverlapStorage::get_view() const noexcept -> DetectedOverlapsView 
 }
 
 auto CollisionOverlapStorage::entity_entity_overlaps() const noexcept
-    -> ioj::sim::collision::EntityEntityOverlapsConstView {
+    -> collision::EntityEntityOverlapsConstView {
     return entity_entity_overlaps_.get_const_view();
 }
 
 auto CollisionOverlapStorage::entity_static_overlaps() const noexcept
-    -> ioj::sim::collision::EntityStaticOverlapsConstView {
+    -> collision::EntityStaticOverlapsConstView {
     return entity_static_overlaps_.get_const_view();
 }
-} // namespace ioj::sim::collision
+} // namespace collision

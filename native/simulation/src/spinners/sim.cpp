@@ -25,7 +25,7 @@ void Sim::set_config(SpinnerSimConfig const& new_config) noexcept {
 }
 Sim::Sim(SimClock const& clock,
          EntityRegistry& in_entity_registry,
-         ioj::sim::lasers::Sim& in_laser_simulation,
+         lasers::Sim& in_laser_simulation,
          std::pmr::memory_resource& in_frame_memory_resource) noexcept
     : simulation_clock{clock}
     , entity_registry{in_entity_registry}
@@ -74,7 +74,7 @@ auto Sim::get_num_instances() const noexcept -> std::int32_t {
 /* **************************************** */
 // Spawning
 /* **************************************** */
-auto Sim::spawn_instances(ioj::sim::Vectors3fConstView const new_locations,
+auto Sim::spawn_instances(Vectors3fConstView const new_locations,
                           std::span<float const> const new_yaws,
                           std::span<std::int32_t const> const new_fire_point_indices)
     -> std::span<RegistryEntityHandle const> {
@@ -97,7 +97,7 @@ auto Sim::spawn_instances(ioj::sim::Vectors3fConstView const new_locations,
 
     entities.validate_array_sizes();
 
-    ioj::sim::RegistryEntityData entity_data;
+    RegistryEntityData entity_data;
     entity_data.add_uninitialised(n);
     for (std::int32_t i{}; i < n; ++i) {
         entity_data.locations.set(i, new_locations[i]);
@@ -105,8 +105,8 @@ auto Sim::spawn_instances(ioj::sim::Vectors3fConstView const new_locations,
     }
     entity_data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
     std::ranges::fill(entity_data.healths, 1000000);
-    std::ranges::fill(entity_data.teams, ioj::sim::Team::White);
-    std::ranges::fill(entity_data.entity_types, ioj::sim::EntityType::TubeSpinner);
+    std::ranges::fill(entity_data.teams, Team::White);
+    std::ranges::fill(entity_data.entity_types, EntityType::TubeSpinner);
     std::ranges::fill(entity_data.alive, std::uint8_t{1});
     entity_data.validate_array_sizes();
 
@@ -145,7 +145,7 @@ void Sim::fire_lasers() {
     }
 
     auto const count{get_num_instances()};
-    ioj::sim::lasers::FrameSpawnRequests new_lasers{&frame_memory_resource};
+    lasers::FrameSpawnRequests new_lasers{&frame_memory_resource};
     ml::FrameArray<std::int32_t> ready_indices{&frame_memory_resource};
     ready_indices.reserve(count);
     auto cooldowns{
@@ -189,4 +189,4 @@ void Sim::fire_lasers() {
 void Sim::validate_array_sizes() const {
     entities.validate_array_sizes();
 }
-} // namespace ioj::sim::spinners
+} // namespace spinners

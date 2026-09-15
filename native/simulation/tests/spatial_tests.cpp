@@ -7,12 +7,11 @@
 namespace ioj::sim::tests {
 
 TEST(Spatial, SamplesSphericalShellSquaredDistanceUniformly) {
-    auto const minimum{ioj::sim::sample_spherical_shell_point(
-        {1.0, 2.0, 3.0}, {1.0, 0.0, 0.0}, 10.0f, 20.0f, 0.0f)};
-    auto const maximum{ioj::sim::sample_spherical_shell_point(
-        {1.0, 2.0, 3.0}, {1.0, 0.0, 0.0}, 10.0f, 20.0f, 1.0f)};
-    auto const midpoint{
-        ioj::sim::sample_spherical_shell_point({}, {1.0, 0.0, 0.0}, 10.0f, 20.0f, 0.5f)};
+    auto const minimum{
+        sample_spherical_shell_point({1.0, 2.0, 3.0}, {1.0, 0.0, 0.0}, 10.0f, 20.0f, 0.0f)};
+    auto const maximum{
+        sample_spherical_shell_point({1.0, 2.0, 3.0}, {1.0, 0.0, 0.0}, 10.0f, 20.0f, 1.0f)};
+    auto const midpoint{sample_spherical_shell_point({}, {1.0, 0.0, 0.0}, 10.0f, 20.0f, 0.5f)};
 
     EXPECT_DOUBLE_EQ(minimum.x, 11.0);
     EXPECT_DOUBLE_EQ(maximum.x, 21.0);
@@ -21,12 +20,11 @@ TEST(Spatial, SamplesSphericalShellSquaredDistanceUniformly) {
 }
 
 TEST(Spatial, ClampsUnitSample) {
-    auto const below{
-        ioj::sim::sample_spherical_shell_point({}, {0.0, 1.0, 0.0}, 2.0f, 4.0f, -1.0f)};
-    auto const above{ioj::sim::sample_spherical_shell_point({}, {0.0, 1.0, 0.0}, 2.0f, 4.0f, 2.0f)};
+    auto const below{sample_spherical_shell_point({}, {0.0, 1.0, 0.0}, 2.0f, 4.0f, -1.0f)};
+    auto const above{sample_spherical_shell_point({}, {0.0, 1.0, 0.0}, 2.0f, 4.0f, 2.0f)};
 
     EXPECT_DOUBLE_EQ(below.y, 2.0);
     EXPECT_DOUBLE_EQ(above.y, 4.0);
 }
 
-} // namespace ioj::sim::tests
+} // namespace tests

@@ -148,7 +148,7 @@ auto make_coincident_separation_direction(RegistryEntityHandle const self,
     auto const first{self < other ? self : other};
     auto const second{self < other ? other : self};
     auto const pair_hash{combine_hashes(hash_entity_handle(first), hash_entity_handle(second))};
-    auto const biases{ioj::sim::make_deterministic_biases(
+    auto const biases{make_deterministic_biases(
         static_cast<std::int32_t>(pair_hash), static_cast<std::int32_t>(pair_hash ^ 0x9e3779b9u))};
     auto const z{biases.floating * 2.0f - 1.0f};
     auto const radial{std::sqrt(std::max(0.0f, 1.0f - z * z))};
@@ -334,4 +334,4 @@ auto choose_navigation_alternative(Vector3f const fighter_location,
     }
     return chosen_choice;
 }
-} // namespace ioj::sim::fighters
+} // namespace fighters

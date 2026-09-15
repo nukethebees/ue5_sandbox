@@ -11,7 +11,7 @@
 #include <ioj/sim/entity_registry.h>
 
 namespace ioj::sim::collision {
-void CollisionSystem::initialise(ioj::sim::collision::EntityAABBs const& bounds) {
+void CollisionSystem::initialise(collision::EntityAABBs const& bounds) {
     entity_aabbs_ = bounds;
     overlap_storage_.reset();
     reset_frame_events();
@@ -19,7 +19,7 @@ void CollisionSystem::initialise(ioj::sim::collision::EntityAABBs const& bounds)
     overlapping_static_geometry_indices_scratch_.clear();
 }
 auto CollisionSystem::update(std::span<RegistryEntityHandle const> const collision_dirty_entities,
-                             ioj::sim::SimTick const tick) -> DetectedOverlapsView {
+                             SimTick const tick) -> DetectedOverlapsView {
     SANDBOX_PROFILE_SCOPE("Sandbox::CollisionSystem::update");
     rebuild_grid();
     collect_overlaps_for_moved_entities(collision_dirty_entities);
@@ -53,11 +53,11 @@ void CollisionSystem::collect_overlaps_for_moved_entities(
 
         auto const entity_index{dirty_entity.index};
         auto const entity_type_index{std::to_underlying(entity_data.entity_types[entity_index])};
-        auto const bounds{ioj::sim::collision::make_entity_world_bounds(
+        auto const bounds{collision::make_entity_world_bounds(
             entity_aabbs_,
             entity_type_index,
             entity_data.locations[entity_index],
-            ioj::sim::to_quaternion(entity_data.rotations[entity_index]))};
+            to_quaternion(entity_data.rotations[entity_index]))};
 
         overlapping_entities_scratch_.clear();
         overlapping_static_geometry_indices_scratch_.clear();

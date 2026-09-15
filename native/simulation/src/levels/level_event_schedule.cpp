@@ -7,7 +7,7 @@
 #include <vector>
 
 namespace ioj::sim {
-auto LevelEventSchedule::add_spawn_group(ioj::sim::EntityType const type,
+auto LevelEventSchedule::add_spawn_group(EntityType const type,
                                          std::int32_t const offset,
                                          std::int32_t const count) -> bool {
     if (count == 0) {
@@ -19,8 +19,8 @@ auto LevelEventSchedule::add_spawn_group(ioj::sim::EntityType const type,
     LevelEventCount payload_count;
     auto& tick_counts{event_group_counts.back()};
     LevelEventCount group_count;
-    if (!ioj::sim::try_to_level_event_count(count, payload_count) ||
-        !ioj::sim::try_to_level_event_count(tick_counts.spawn_groups + 1, group_count)) {
+    if (!try_to_level_event_count(count, payload_count) ||
+        !try_to_level_event_count(tick_counts.spawn_groups + 1, group_count)) {
         return false;
     }
 
@@ -29,7 +29,7 @@ auto LevelEventSchedule::add_spawn_group(ioj::sim::EntityType const type,
     return true;
 }
 
-auto LevelEventSchedule::add_mission_group(ioj::sim::LevelMissionEventType const type,
+auto LevelEventSchedule::add_mission_group(LevelMissionEventType const type,
                                            std::span<std::int32_t const> const values) -> bool {
     if (values.size() > std::numeric_limits<LevelEventCount>::max()) {
         return false;
@@ -44,8 +44,8 @@ auto LevelEventSchedule::add_mission_group(ioj::sim::LevelMissionEventType const
     LevelEventCount payload_count;
     auto& tick_counts{event_group_counts.back()};
     LevelEventCount group_count;
-    if (!ioj::sim::try_to_level_event_count(count, payload_count) ||
-        !ioj::sim::try_to_level_event_count(tick_counts.mission_groups + 1, group_count)) {
+    if (!try_to_level_event_count(count, payload_count) ||
+        !try_to_level_event_count(tick_counts.mission_groups + 1, group_count)) {
         return false;
     }
 

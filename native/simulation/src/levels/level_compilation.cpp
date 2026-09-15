@@ -12,7 +12,7 @@
 namespace ioj::sim::levels {
 namespace {
 struct EventSource {
-    ioj::sim::SimTick execution_tick{};
+    SimTick execution_tick{};
     std::int32_t source_index{};
 };
 
@@ -39,7 +39,7 @@ void append_indices(std::vector<std::int32_t>& output,
 auto append_mission_groups(LevelEventSchedule& schedule,
                            MissionTickValues& values,
                            std::string& error) -> bool {
-    auto const append = [&](ioj::sim::LevelMissionEventType const type,
+    auto const append = [&](LevelMissionEventType const type,
                             std::span<std::int32_t const> const event_values,
                             std::string_view const name) {
         if (schedule.add_mission_group(type, event_values)) {
@@ -49,15 +49,12 @@ auto append_mission_groups(LevelEventSchedule& schedule,
                 std::to_string(schedule.execution_ticks.back()) + ": " + std::string{name} +
                 " event count " + std::to_string(event_values.size()) +
                 " exceeds the per-tick group limit of " +
-                std::to_string(std::numeric_limits<ioj::sim::LevelEventCount>::max());
+                std::to_string(std::numeric_limits<LevelEventCount>::max());
         return false;
     };
-    if (!append(
-            ioj::sim::LevelMissionEventType::MustSurvive, values.must_survive, "must-survive") ||
-        !append(ioj::sim::LevelMissionEventType::RequiredKill,
-                values.required_kills,
-                "required-kill") ||
-        !append(ioj::sim::LevelMissionEventType::IncreaseKillTarget,
+    if (!append(LevelMissionEventType::MustSurvive, values.must_survive, "must-survive") ||
+        !append(LevelMissionEventType::RequiredKill, values.required_kills, "required-kill") ||
+        !append(LevelMissionEventType::IncreaseKillTarget,
                 values.kill_target_increases,
                 "kill-target increase")) {
         return false;
@@ -74,7 +71,7 @@ auto append_spawn_groups(LevelEventSchedule& schedule,
                          std::string& error) -> bool {
     auto const capital_end{schedule.capital_spawns.num()};
     auto const turret_end{schedule.turret_spawns.num()};
-    auto const append = [&](ioj::sim::EntityType const type,
+    auto const append = [&](EntityType const type,
                             std::int32_t const offset,
                             std::int32_t const count,
                             std::string_view const name) {
@@ -84,15 +81,12 @@ auto append_spawn_groups(LevelEventSchedule& schedule,
         error = "Level event compilation at tick " +
                 std::to_string(schedule.execution_ticks.back()) + ": " + std::string{name} +
                 " spawn count " + std::to_string(count) + " exceeds the per-tick group limit of " +
-                std::to_string(std::numeric_limits<ioj::sim::LevelEventCount>::max());
+                std::to_string(std::numeric_limits<LevelEventCount>::max());
         return false;
     };
-    if (!append(ioj::sim::EntityType::CapitalShip,
-                capital_offset,
-                capital_end - capital_offset,
-                "CapitalShip") ||
-        !append(
-            ioj::sim::EntityType::Turret, turret_offset, turret_end - turret_offset, "Turret")) {
+    if (!append(
+            EntityType::CapitalShip, capital_offset, capital_end - capital_offset, "CapitalShip") ||
+        !append(EntityType::Turret, turret_offset, turret_end - turret_offset, "Turret")) {
         return false;
     }
     capital_offset = capital_end;
@@ -104,21 +98,21 @@ auto append_spawn_groups(LevelEventSchedule& schedule,
 
 auto to_simulation_team(std::string_view const id) noexcept -> Team {
     if (id == "red") {
-        return ioj::sim::Team::Red;
+        return Team::Red;
     }
     if (id == "green") {
-        return ioj::sim::Team::Green;
+        return Team::Green;
     }
     if (id == "blue") {
-        return ioj::sim::Team::Blue;
+        return Team::Blue;
     }
     if (id == "orange") {
-        return ioj::sim::Team::Orange;
+        return Team::Orange;
     }
     if (id == "yellow") {
-        return ioj::sim::Team::Yellow;
+        return Team::Yellow;
     }
-    return ioj::sim::Team::White;
+    return Team::White;
 }
 
 auto compile_level(LevelDefinition const& definition,
@@ -212,11 +206,10 @@ auto compile_level(LevelDefinition const& definition,
                                          ml::make_vector3f(static_cast<float>(entity.position.x),
                                                            static_cast<float>(entity.position.y),
                                                            static_cast<float>(entity.position.z)));
-            capital_events.rotations.set(
-                row,
-                ioj::sim::Rotator3f{static_cast<float>(entity.rotation.pitch),
-                                    static_cast<float>(entity.rotation.yaw),
-                                    static_cast<float>(entity.rotation.roll)});
+            capital_events.rotations.set(row,
+                                         Rotator3f{static_cast<float>(entity.rotation.pitch),
+                                                   static_cast<float>(entity.rotation.yaw),
+                                                   static_cast<float>(entity.rotation.roll)});
             capital_events.teams[row] = to_simulation_team(entity.team);
             capital_events.healths[row] = capital_config.max_health;
             capital_events.initial_fighter_spawn_delays[row] = 0.0f;
@@ -229,11 +222,10 @@ auto compile_level(LevelDefinition const& definition,
                                         ml::make_vector3f(static_cast<float>(entity.position.x),
                                                           static_cast<float>(entity.position.y),
                                                           static_cast<float>(entity.position.z)));
-            turret_events.rotations.set(
-                row,
-                ioj::sim::Rotator3f{static_cast<float>(entity.rotation.pitch),
-                                    static_cast<float>(entity.rotation.yaw),
-                                    static_cast<float>(entity.rotation.roll)});
+            turret_events.rotations.set(row,
+                                        Rotator3f{static_cast<float>(entity.rotation.pitch),
+                                                  static_cast<float>(entity.rotation.yaw),
+                                                  static_cast<float>(entity.rotation.roll)});
             turret_events.teams[row] = to_simulation_team(entity.team);
             turret_events.healths[row] = turret_config.max_health;
             turret_events.laser_damages[row] = turret_config.laser.damage;
@@ -282,4 +274,4 @@ auto compile_level(LevelDefinition const& definition,
     }
     return compiled;
 }
-} // namespace ioj::sim::levels
+} // namespace levels

@@ -19,9 +19,9 @@ namespace level_simulation {
 // Participating teams
 /* **************************************** */
 static void finalise_participating_teams(LevelSimInitData& data) {
-    std::array<std::uint8_t, static_cast<std::size_t>(ioj::sim::Team::COUNT)> included{};
+    std::array<std::uint8_t, static_cast<std::size_t>(Team::COUNT)> included{};
     auto const included_count{included.size()};
-    auto include = [&included](ioj::sim::Team const team) {
+    auto include = [&included](Team const team) {
         auto const team_index{static_cast<std::int32_t>(team)};
         if (team_index >= 0 && static_cast<std::size_t>(team_index) < included_count) {
             included[team_index] = 1;
@@ -55,7 +55,7 @@ static void finalise_participating_teams(LevelSimInitData& data) {
     for (std::int32_t team_index{}; static_cast<std::size_t>(team_index) < included_count;
          ++team_index) {
         if (included[team_index] != 0) {
-            data.participating_teams.add(static_cast<ioj::sim::Team>(team_index));
+            data.participating_teams.add(static_cast<Team>(team_index));
         }
     }
 }
@@ -159,12 +159,12 @@ void LevelSim::configure_subsystems(LevelSimInitData const& data) {
     fighters_simulation_.set_config(
         data.fighters,
         {.participating_teams = data.participating_teams,
-         .collision_radius = query_manager_.get_entity_type_radius(ioj::sim::EntityType::Fighter),
+         .collision_radius = query_manager_.get_entity_type_radius(EntityType::Fighter),
          .fire_point_distance = data.fighter_fire_point_distance});
     turrets_simulation_.set_config(data.turrets);
     spinners_simulation_.set_config(data.spinners);
 }
-void LevelSim::configure_player(ioj::sim::player::PlayerSpawnData const& spawn) {
+void LevelSim::configure_player(player::PlayerSpawnData const& spawn) {
     auto& player{player_ship_simulation_.emplace(
         clock_, entity_registry_, query_manager_, lasers_simulation_)};
     player_ship_phase_.emplace(player);
@@ -205,12 +205,12 @@ void LevelSim::set_fighter_diagnostics_enabled(bool const enabled) noexcept {
     capital_ships_simulation_.set_diagnostics_enabled(enabled);
     fighters_simulation_.set_diagnostics_enabled(enabled);
 }
-void LevelSim::set_static_collision(ioj::sim::collision::WorldAABBs bounds) {
+void LevelSim::set_static_collision(collision::WorldAABBs bounds) {
     assert(state_ == OrchestratorState::Uninitialised);
     query_manager_.get_collision_system().get_uniform_grid().set_static_aabbs(std::move(bounds));
 }
-auto LevelSim::add_static_collision_aabb(ioj::sim::Vector3f const min_point,
-                                         ioj::sim::Vector3f const max_point) -> std::int32_t {
+auto LevelSim::add_static_collision_aabb(Vector3f const min_point, Vector3f const max_point)
+    -> std::int32_t {
     return query_manager_.get_collision_system().get_uniform_grid().add_static_aabb(min_point,
                                                                                     max_point);
 }
@@ -229,12 +229,11 @@ void LevelSim::initialise_telemetry() {
         telemetry_metadata_.reset();
     }
 }
-void LevelSim::finalize_telemetry_run(ioj::sim::LevelTelemetryRunEndReason const reason,
-                                      std::string detail) {
+void LevelSim::finalize_telemetry_run(LevelTelemetryRunEndReason const reason, std::string detail) {
     level_telemetry_manager_.finalize_interrupted(reason, std::move(detail));
 }
-void LevelSim::complete_telemetry_run(ioj::sim::LevelTelemetryRunEndReason const reason,
-                                      std::optional<ioj::sim::Team> winning_team) {
+void LevelSim::complete_telemetry_run(LevelTelemetryRunEndReason const reason,
+                                      std::optional<Team> winning_team) {
     level_telemetry_manager_.finalize_completed(reason, winning_team);
     state_ = OrchestratorState::Paused;
 }
@@ -430,7 +429,7 @@ void LevelSim::advance(time_type const dt) {
         fighters_phase_.commit_spawns();
         publish_entity_state();
 
-        ioj::sim::collision::DetectedOverlapsView detected_overlaps;
+        collision::DetectedOverlapsView detected_overlaps;
         measure(SimTelemetryTimingSystem::SpatialQueries, [&] {
             detected_overlaps = query_manager_.update(clock_.get_completed_ticks() + 1);
         });
@@ -510,7 +509,7 @@ void LevelSim::advance(time_type const dt) {
         }
 
         frame_memory_.reset();
-        ioj::sim::profiling::mark_frame("Simulation");
+        profiling::mark_frame("Simulation");
 
         if (state_ != OrchestratorState::Running) {
             break;

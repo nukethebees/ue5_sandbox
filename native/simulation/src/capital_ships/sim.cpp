@@ -33,7 +33,7 @@ void Sim::set_config(CapitalShipSimConfig const& new_config) noexcept {
 }
 Sim::Sim(EntityRegistry& in_entity_registry,
          SpatialQueryManager const& in_spatial_query_manager,
-         ioj::sim::fighters::Sim& fighters,
+         fighters::Sim& fighters,
          std::pmr::memory_resource& in_frame_memory_resource)
     : entity_registry{in_entity_registry}
     , spatial_query_manager{in_spatial_query_manager}
@@ -45,7 +45,7 @@ Sim::Sim(EntityRegistry& in_entity_registry,
 /* **************************************** */
 void Sim::begin_play() {
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::begin_play");
-    ioj::sim::profiling::plot("Sandbox/CapitalShipCount", 0);
+    profiling::plot("Sandbox/CapitalShipCount", 0);
     assert(static_cast<std::size_t>(config.fighter_spawn_slots) ==
            config.fighter_spawn_slots_relative_transforms.size());
     validate_array_sizes();
@@ -76,17 +76,17 @@ void Sim::make_decisions() {
     }
     for (auto const index : indices_without_targets) {
         entities.target_handles[index] = spatial_query_manager.get_any_non_team_entity(
-            entities.teams[index], ioj::sim::EntityType::CapitalShip);
+            entities.teams[index], EntityType::CapitalShip);
     }
     queue_fighter_orders();
 }
 void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::resolve_damage_events");
-    ioj::sim::batch::resolve_damage_events(entity_registry,
-                                           entities.handles,
-                                           entities.healths,
-                                           local_indices_to_remove,
-                                           entity_death_info);
+    batch::resolve_damage_events(entity_registry,
+                                 entities.handles,
+                                 entities.healths,
+                                 local_indices_to_remove,
+                                 entity_death_info);
 }
 void Sim::update_entity_registry() {
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::update_entity_registry");
@@ -100,7 +100,7 @@ void Sim::sync_from_registry() {
 }
 void Sim::end_tick() {
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::end_tick");
-    ioj::sim::profiling::plot("Sandbox/CapitalShipCount", get_num_instances());
+    profiling::plot("Sandbox/CapitalShipCount", get_num_instances());
     fighters_spawned += tick_buffers.current().num();
     validate_array_sizes();
 }
@@ -124,7 +124,7 @@ auto Sim::get_fighter_handles(IndexSpan const span) const noexcept
     return get_fighter_handles().subspan(static_cast<std::size_t>(span.offset),
                                          static_cast<std::size_t>(span.count));
 }
-auto Sim::get_team(RegistryEntityHandle const handle) const noexcept -> ioj::sim::Team {
+auto Sim::get_team(RegistryEntityHandle const handle) const noexcept -> Team {
     auto const found{std::ranges::find(entities.handles, handle)};
     if (found != entities.handles.end()) {
         return entities.teams[found - entities.handles.begin()];
@@ -137,15 +137,14 @@ auto Sim::get_health(RegistryEntityHandle const handle) const noexcept -> std::i
     assert(found != entities.handles.end());
     return entities.healths[found - entities.handles.begin()];
 }
-auto Sim::find_first_index_on_team(ioj::sim::Team const team) const noexcept
-    -> std::optional<std::int32_t> {
+auto Sim::find_first_index_on_team(Team const team) const noexcept -> std::optional<std::int32_t> {
     auto const found{std::ranges::find(entities.teams, team)};
     if (found == entities.teams.end()) {
         return std::nullopt;
     }
     return static_cast<std::int32_t>(found - entities.teams.begin());
 }
-auto Sim::find_first_handle_on_team(ioj::sim::Team const team) const noexcept
+auto Sim::find_first_handle_on_team(Team const team) const noexcept
     -> std::optional<RegistryEntityHandle> {
     auto const result{find_first_index_on_team(team)};
     return result ? std::optional<RegistryEntityHandle>{entities.handles[*result]} : std::nullopt;
@@ -172,7 +171,7 @@ auto Sim::register_ships(CapitalSpawnDataConstView const spawn_data)
         new_entity_data.rotations.set(i, spawn_data.rotations[i]);
     }
     new_entity_data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
-    std::ranges::fill(new_entity_data.entity_types, ioj::sim::EntityType::CapitalShip);
+    std::ranges::fill(new_entity_data.entity_types, EntityType::CapitalShip);
     for (std::int32_t i{}; i < n_to_add; ++i) {
         new_entity_data.healths[i] = spawn_data.healths[i];
         new_entity_data.teams[i] = spawn_data.teams[i];
@@ -232,7 +231,7 @@ void Sim::prepare_entity_update_data() {
     entity_update_data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
     entity_update_data.healths = entities.healths;
     entity_update_data.teams = entities.teams;
-    std::ranges::fill(entity_update_data.entity_types, ioj::sim::EntityType::CapitalShip);
+    std::ranges::fill(entity_update_data.entity_types, EntityType::CapitalShip);
     for (std::int32_t i{0}; i < n; ++i) {
         entity_update_data.alive[i] = entities.healths[i] > 0;
     }
@@ -271,16 +270,15 @@ void Sim::queue_fighter_spawns() {
     }
 
     auto const& relative_transforms{config.fighter_spawn_slots_relative_transforms};
-    ioj::sim::fighters::FrameSpawnQueue fighter_spawn_wave{&frame_memory_resource};
+    fighters::FrameSpawnQueue fighter_spawn_wave{&frame_memory_resource};
     assert(std::in_range<std::int32_t>(relative_transforms.size()));
     fighter_spawn_wave.reserve(static_cast<std::int32_t>(relative_transforms.size()));
     for (auto const capital_index : ships_ready_to_spawn_fighters_indices) {
         fighter_spawn_wave.clear();
         auto const base_location{entities.locations[capital_index]};
         auto const base_rotation{entities.rotations[capital_index]};
-        ioj::sim::Transform3d const base_transform{
-            ioj::sim::to_quaternion(
-                ioj::sim::Rotator3d{base_rotation.pitch, base_rotation.yaw, base_rotation.roll}),
+        Transform3d const base_transform{
+            to_quaternion(Rotator3d{base_rotation.pitch, base_rotation.yaw, base_rotation.roll}),
             {base_location.X, base_location.Y, base_location.Z},
             {1.0, 1.0, 1.0}};
 
@@ -296,8 +294,8 @@ void Sim::queue_fighter_spawns() {
                    relative_transform.location.z, new_transform.location.x,
                    new_transform.location.y, new_transform.location.z)); */
             }
-            fighter_spawn_wave.add(ioj::sim::to_float(new_transform.location),
-                                   ioj::sim::to_float(new_transform.rotator()),
+            fighter_spawn_wave.add(to_float(new_transform.location),
+                                   to_float(new_transform.rotator()),
                                    entities.teams[capital_index],
                                    entities.handles[capital_index],
                                    entities.target_handles[capital_index]);
@@ -313,8 +311,8 @@ void Sim::refresh_fighter_handles() {
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::refresh_fighter_handles");
 
     auto const& previous{tick_buffers.previous()};
-    [[maybe_unused]] auto const invalid_index{ioj::sim::refresh_registry_handles(
-        ioj::sim::make_native_query_view(entity_registry), fighter_handles)};
+    [[maybe_unused]] auto const invalid_index{
+        refresh_registry_handles(make_native_query_view(entity_registry), fighter_handles)};
     assert(invalid_index < 0);
 
     auto const& spawn_data{fighters_interface.get_new_spawn_entity_data()};
@@ -328,7 +326,7 @@ void Sim::refresh_fighter_handles() {
     ml::FrameArray<RegistryEntityHandle> fighters_to_self_destruct{&frame_memory_resource};
     auto const capital_handles{std::span<RegistryEntityHandle const>{
         entities.handles.data(), static_cast<std::size_t>(n_capitals)}};
-    auto const registry{ioj::sim::make_native_query_view(entity_registry)};
+    auto const registry{make_native_query_view(entity_registry)};
     auto const spawn_count{std::min(static_cast<std::size_t>(spawn_handles.num()), queue_count)};
     std::int32_t surviving_spawn_count{};
     for (std::size_t spawn_index{}; spawn_index < spawn_count; ++spawn_index) {
@@ -399,7 +397,7 @@ void Sim::queue_fighter_orders() {
     auto const n_capitals{get_num_instances()};
     auto const all_fighters{fighters_interface.get_handles()};
     auto const fighter_targets{fighters_interface.get_target_handles()};
-    auto const registry{ioj::sim::make_native_query_view(entity_registry)};
+    auto const registry{make_native_query_view(entity_registry)};
     fighter_order_queue.reset();
     for (std::int32_t capital_index{}; capital_index < n_capitals; ++capital_index) {
         auto const capital_target{entities.target_handles[capital_index]};
@@ -459,7 +457,7 @@ void Sim::handle_dead_entities() {
         return;
     }
 
-    ioj::sim::batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
+    batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
 
     auto const batch_index{static_cast<std::int32_t>(deaths_.size())};
     deaths_.reserve(deaths_.size() + static_cast<std::size_t>(local_indices_to_remove.size()));
@@ -543,4 +541,4 @@ void Sim::validate_array_sizes() const {
 void Sim::validate_entity_handles() const {
     entity_registry.validate_handles(entities.handles);
 }
-} // namespace ioj::sim::capital_ships
+} // namespace capital_ships

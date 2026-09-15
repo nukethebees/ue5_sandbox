@@ -20,17 +20,16 @@ inline constexpr std::int32_t overlap_damage{50};
 inline constexpr double duration{0.1};
 }
 
-void run_worldless_simulation_core_regression(ioj::sim::tests::SimulationFixture const& config,
+void run_worldless_simulation_core_regression(tests::SimulationFixture const& config,
                                               SimulationCoreRegressionScenario const scenario) {
-    auto data{ioj::sim::tests::make_simulation_data(config)};
+    auto data{tests::make_simulation_data(config)};
     if (scenario == SimulationCoreRegressionScenario::DamageLifecycle) {
         data.capital_ships.fighter_spawn_slots = 0;
         data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
-        ioj::sim::tests::add_capital_spawn(
-            data, {}, ioj::sim::Team::White, -1, 60.f, 60.f, initial_health);
+        tests::add_capital_spawn(data, {}, Team::White, -1, 60.f, 60.f, initial_health);
     }
 
-    ioj::sim::tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     auto& simulation{harness.get_simulation()};
     if (scenario == SimulationCoreRegressionScenario::FixedTickLifecycle) {
@@ -39,35 +38,34 @@ void run_worldless_simulation_core_regression(ioj::sim::tests::SimulationFixture
         simulation.start();
         auto const period{simulation.get_clock().get_tick_period()};
         simulation.advance(period * 0.5);
-        ioj::sim::tests::expect_equal(std::uint64_t{0},
-                                      simulation.get_clock().get_completed_ticks(),
-                                      "Half tick is accumulated");
+        tests::expect_equal(std::uint64_t{0},
+                            simulation.get_clock().get_completed_ticks(),
+                            "Half tick is accumulated");
         simulation.advance(period * 0.5);
-        ioj::sim::tests::expect_equal(std::uint64_t{1},
-                                      simulation.get_clock().get_completed_ticks(),
-                                      "Two half ticks advance once");
-        ioj::sim::tests::expect_equal(
-            1, end_tick_calls, "End-tick hook executes once per completed tick");
+        tests::expect_equal(std::uint64_t{1},
+                            simulation.get_clock().get_completed_ticks(),
+                            "Two half ticks advance once");
+        tests::expect_equal(1, end_tick_calls, "End-tick hook executes once per completed tick");
         simulation.advance(period * 3.25);
-        ioj::sim::tests::expect_equal(std::uint64_t{4},
-                                      simulation.get_clock().get_completed_ticks(),
-                                      "Large delta catches up deterministically");
-        ioj::sim::tests::expect_equal(4, end_tick_calls, "Catch-up executes every end-tick hook");
-        ioj::sim::tests::expect_equal(period * 4.0,
-                                      simulation.get_clock().get_simulation_time(),
-                                      1.e-9,
-                                      "Simulation time derives from completed ticks");
+        tests::expect_equal(std::uint64_t{4},
+                            simulation.get_clock().get_completed_ticks(),
+                            "Large delta catches up deterministically");
+        tests::expect_equal(4, end_tick_calls, "Catch-up executes every end-tick hook");
+        tests::expect_equal(period * 4.0,
+                            simulation.get_clock().get_simulation_time(),
+                            1.e-9,
+                            "Simulation time derives from completed ticks");
         simulation.pause();
         simulation.advance(period * 10.0);
-        ioj::sim::tests::expect_equal(std::uint64_t{4},
-                                      simulation.get_clock().get_completed_ticks(),
-                                      "Paused simulation ignores time");
+        tests::expect_equal(std::uint64_t{4},
+                            simulation.get_clock().get_completed_ticks(),
+                            "Paused simulation ignores time");
         simulation.start();
         simulation.advance(period * 0.75);
-        ioj::sim::tests::expect_equal(std::uint64_t{5},
-                                      simulation.get_clock().get_completed_ticks(),
-                                      "Resume preserves accumulated fraction");
-        ioj::sim::tests::expect_equal(5, end_tick_calls, "Resumed tick executes one hook");
+        tests::expect_equal(std::uint64_t{5},
+                            simulation.get_clock().get_completed_ticks(),
+                            "Resume preserves accumulated fraction");
+        tests::expect_equal(5, end_tick_calls, "Resumed tick executes one hook");
         return;
     }
 
@@ -97,36 +95,32 @@ void run_worldless_simulation_core_regression(ioj::sim::tests::SimulationFixture
     harness.timeline.at(lethal_damage_time,
                         [&] { harness.queue_damage(std::array{damaged_handle}, 75); });
     harness.timeline.finish_at(damage_test_end_time);
-    ioj::sim::tests::expect_true(harness.run_until_timeline_finished(1.0),
-                                 "Damage lifecycle timeline completes");
-    ioj::sim::tests::expect_true(!samples.is_empty(), "Damage lifecycle samples are recorded");
+    tests::expect_true(harness.run_until_timeline_finished(1.0),
+                       "Damage lifecycle timeline completes");
+    tests::expect_true(!samples.is_empty(), "Damage lifecycle samples are recorded");
     if (samples.is_empty()) {
         return;
     }
     auto const& initial{samples.value_at(0)};
     auto const& nonlethal{samples.nearest_value(0.10)};
     auto const& lethal{samples.nearest_value(0.22)};
-    ioj::sim::tests::expect_equal(1, initial.capital_count, "One capital starts active");
-    ioj::sim::tests::expect_equal(
-        initial_health, initial.health, "Capital starts at configured health");
-    ioj::sim::tests::expect_equal(
-        1, nonlethal.capital_count, "Nonlethal damage preserves batch entity");
-    ioj::sim::tests::expect_equal(75, nonlethal.health, "Nonlethal damage is applied once");
-    ioj::sim::tests::expect_equal(
+    tests::expect_equal(1, initial.capital_count, "One capital starts active");
+    tests::expect_equal(initial_health, initial.health, "Capital starts at configured health");
+    tests::expect_equal(1, nonlethal.capital_count, "Nonlethal damage preserves batch entity");
+    tests::expect_equal(75, nonlethal.health, "Nonlethal damage is applied once");
+    tests::expect_equal(
         0, lethal.capital_count, "Lethal damage removes batch entity in resolution tick");
-    ioj::sim::tests::expect_equal(
-        0, lethal.registry_alive_count, "Registry death commits in the same tick");
-    ioj::sim::tests::expect_equal(
+    tests::expect_equal(0, lethal.registry_alive_count, "Registry death commits in the same tick");
+    tests::expect_equal(
         0, lethal.telemetry_active_count, "Telemetry observes committed death before hook");
-    ioj::sim::tests::expect_equal(
-        0, lethal.health, "Registry retains terminal health for the dead handle");
-    ioj::sim::tests::expect_true(harness.get_registry().is_valid_dead(damaged_handle),
-                                 "Killed handle remains valid-dead");
-    ioj::sim::tests::expect_equal(
+    tests::expect_equal(0, lethal.health, "Registry retains terminal health for the dead handle");
+    tests::expect_true(harness.get_registry().is_valid_dead(damaged_handle),
+                       "Killed handle remains valid-dead");
+    tests::expect_equal(
         0, harness.get_registry().count_kills(), "Unattributed death does not create a kill");
 }
 
-void run_worldless_collision_damage(ioj::sim::tests::SimulationFixture const& config) {
+void run_worldless_collision_damage(tests::SimulationFixture const& config) {
     struct Sample {
         std::int32_t player_health{};
         std::int32_t capital_health{};
@@ -135,32 +129,26 @@ void run_worldless_collision_damage(ioj::sim::tests::SimulationFixture const& co
         bool player_alive{};
     };
 
-    auto data{ioj::sim::tests::make_simulation_data(config)};
+    auto data{tests::make_simulation_data(config)};
     data.overlap_response.damage_per_overlap_detection = collision_damage_test::overlap_damage;
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
-    ioj::sim::tests::add_player_spawn(data, ioj::sim::tests::make_player_spawn(config));
+    tests::add_player_spawn(data, tests::make_player_spawn(config));
     data.player->config.lateral_adjustment_speed = 1.f;
     data.player->health = {collision_damage_test::player_health,
                            collision_damage_test::player_health};
-    auto const player_bounds_index{ioj::sim::collision::EntityAABBs::space_ship_index};
+    auto const player_bounds_index{collision::EntityAABBs::space_ship_index};
     data.entity_bounds.half_extent_xs[player_bounds_index] = 1.f;
     data.entity_bounds.half_extent_ys[player_bounds_index] = 1.f;
     data.entity_bounds.half_extent_zs[player_bounds_index] = 1.f;
-    ioj::sim::tests::add_capital_spawn(data,
-                                       ioj::sim::Vector3f{},
-                                       ioj::sim::Team::White,
-                                       -1,
-                                       60.f,
-                                       60.f,
-                                       collision_damage_test::capital_health);
+    tests::add_capital_spawn(
+        data, Vector3f{}, Team::White, -1, 60.f, 60.f, collision_damage_test::capital_health);
 
-    ioj::sim::tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     auto& simulation{harness.get_simulation()};
     auto* const player{simulation.get_player_ship_simulation()};
-    if (!ioj::sim::tests::expect_not_null(player,
-                                          "Collision test player simulation is available")) {
+    if (!tests::expect_not_null(player, "Collision test player simulation is available")) {
         return;
     }
 
@@ -183,9 +171,9 @@ void run_worldless_collision_damage(ioj::sim::tests::SimulationFixture const& co
                     });
     };
     harness.timeline.finish_after(collision_damage_test::duration);
-    ioj::sim::tests::expect_true(harness.run_until_timeline_finished(2.0),
-                                 "Collision damage timeline completes");
-    ioj::sim::tests::expect_greater(samples.num(), 2, "Three collision ticks are recorded");
+    tests::expect_true(harness.run_until_timeline_finished(2.0),
+                       "Collision damage timeline completes");
+    tests::expect_greater(samples.num(), 2, "Three collision ticks are recorded");
     if (::testing::Test::HasFailure()) {
         return;
     }
@@ -193,38 +181,36 @@ void run_worldless_collision_damage(ioj::sim::tests::SimulationFixture const& co
     auto const& first{samples.value_at(0)};
     auto const& second{samples.value_at(1)};
     auto const& third{samples.value_at(2)};
-    ioj::sim::tests::expect_equal(1, first.dynamic_overlap_count, "First tick detects one overlap");
-    ioj::sim::tests::expect_equal(
-        1, second.dynamic_overlap_count, "Second tick detects one overlap");
-    ioj::sim::tests::expect_equal(1, third.dynamic_overlap_count, "Third tick detects one overlap");
-    ioj::sim::tests::expect_equal(collision_damage_test::player_health -
-                                      collision_damage_test::overlap_damage,
-                                  first.player_health,
-                                  "First overlap damages the player");
-    ioj::sim::tests::expect_equal(collision_damage_test::player_health -
-                                      2 * collision_damage_test::overlap_damage,
-                                  second.player_health,
-                                  "Second overlap damages the player");
-    ioj::sim::tests::expect_equal(collision_damage_test::player_health -
-                                      3 * collision_damage_test::overlap_damage,
-                                  third.player_health,
-                                  "Third overlap damages the player");
-    ioj::sim::tests::expect_equal(collision_damage_test::capital_health -
-                                      collision_damage_test::overlap_damage,
-                                  first.capital_health,
-                                  "First overlap damages the capital");
-    ioj::sim::tests::expect_equal(collision_damage_test::capital_health -
-                                      2 * collision_damage_test::overlap_damage,
-                                  second.capital_health,
-                                  "Second overlap damages the capital");
-    ioj::sim::tests::expect_equal(0, third.capital_health, "Third overlap kills the capital");
-    ioj::sim::tests::expect_true(third.player_alive, "Player survives the third overlap tick");
-    ioj::sim::tests::expect_true(harness.get_registry().is_valid_dead(capital_handle),
-                                 "Capital death commits in the third overlap tick");
-    ioj::sim::tests::expect_equal(0, third.kill_count, "Collision death grants no combat kill");
-    ioj::sim::tests::expect_true(
-        harness.get_registry().get_unique_entities().life_state[capital_id.id] ==
-            ioj::sim::LifeState::Unknown,
-        "Collision death is environmental");
+    tests::expect_equal(1, first.dynamic_overlap_count, "First tick detects one overlap");
+    tests::expect_equal(1, second.dynamic_overlap_count, "Second tick detects one overlap");
+    tests::expect_equal(1, third.dynamic_overlap_count, "Third tick detects one overlap");
+    tests::expect_equal(collision_damage_test::player_health -
+                            collision_damage_test::overlap_damage,
+                        first.player_health,
+                        "First overlap damages the player");
+    tests::expect_equal(collision_damage_test::player_health -
+                            2 * collision_damage_test::overlap_damage,
+                        second.player_health,
+                        "Second overlap damages the player");
+    tests::expect_equal(collision_damage_test::player_health -
+                            3 * collision_damage_test::overlap_damage,
+                        third.player_health,
+                        "Third overlap damages the player");
+    tests::expect_equal(collision_damage_test::capital_health -
+                            collision_damage_test::overlap_damage,
+                        first.capital_health,
+                        "First overlap damages the capital");
+    tests::expect_equal(collision_damage_test::capital_health -
+                            2 * collision_damage_test::overlap_damage,
+                        second.capital_health,
+                        "Second overlap damages the capital");
+    tests::expect_equal(0, third.capital_health, "Third overlap kills the capital");
+    tests::expect_true(third.player_alive, "Player survives the third overlap tick");
+    tests::expect_true(harness.get_registry().is_valid_dead(capital_handle),
+                       "Capital death commits in the third overlap tick");
+    tests::expect_equal(0, third.kill_count, "Collision death grants no combat kill");
+    tests::expect_true(harness.get_registry().get_unique_entities().life_state[capital_id.id] ==
+                           LifeState::Unknown,
+                       "Collision death is environmental");
 }
 }

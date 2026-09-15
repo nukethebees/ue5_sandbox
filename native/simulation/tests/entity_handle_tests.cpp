@@ -24,4 +24,4 @@ TEST(EntityHandle, PreservesCompactTrivialLayout) {
     static_assert(std::is_trivially_copyable_v<RegistryEntityHandle>);
 }
 
-} // namespace ioj::sim::tests
+} // namespace tests

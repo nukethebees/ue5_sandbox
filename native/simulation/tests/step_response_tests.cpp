@@ -5,7 +5,7 @@
 namespace ioj::sim::tests {
 
 TEST(StepResponse, MatchesDampedResponseAndApproachesOne) {
-    ioj::sim::DampedStepResponse response;
+    DampedStepResponse response;
     response.configure(3.0f, 0.5f);
 
     EXPECT_NEAR(response.value_at(0.0f), 0.0f, 1e-6f);
@@ -13,4 +13,4 @@ TEST(StepResponse, MatchesDampedResponseAndApproachesOne) {
     EXPECT_NEAR(response.value_at(10.0f), 1.0f, 0.001f);
 }
 
-} // namespace ioj::sim::tests
+} // namespace tests

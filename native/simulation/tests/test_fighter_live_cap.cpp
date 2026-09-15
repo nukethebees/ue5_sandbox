@@ -6,8 +6,8 @@
 namespace ioj::sim::tests {
 
 namespace {
-auto make_cap_battle(std::span<ioj::sim::Team const> const capital_teams,
-                     std::span<ioj::sim::Team const> const participating_teams,
+auto make_cap_battle(std::span<Team const> const capital_teams,
+                     std::span<Team const> const participating_teams,
                      std::int32_t const max_live_fighters,
                      std::int32_t const spawn_slots,
                      float const spawn_cooldown = 60.f) -> LevelSimInitData {
@@ -53,7 +53,7 @@ void start_and_tick(LevelSim& simulation) {
     simulation.advance(simulation.get_clock().get_tick_period());
 }
 
-auto count_team(LevelSim const& simulation, ioj::sim::Team const team) -> std::int32_t {
+auto count_team(LevelSim const& simulation, Team const team) -> std::int32_t {
     std::int32_t count{};
     for (auto const fighter_team : simulation.get_fighters().get_teams()) {
         count += fighter_team == team ? 1 : 0;
@@ -64,77 +64,69 @@ auto count_team(LevelSim const& simulation, ioj::sim::Team const team) -> std::i
 
 TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
 
-    std::vector<ioj::sim::Team> all_teams{ioj::sim::Team::White,
-                                          ioj::sim::Team::Red,
-                                          ioj::sim::Team::Green,
-                                          ioj::sim::Team::Blue,
-                                          ioj::sim::Team::Orange,
-                                          ioj::sim::Team::Yellow};
+    std::vector<Team> all_teams{
+        Team::White, Team::Red, Team::Green, Team::Blue, Team::Orange, Team::Yellow};
     for (auto const team_count : {1, 2, 4, 6}) {
-        auto const participants{std::span<ioj::sim::Team const>{all_teams}.first(team_count)};
+        auto const participants{std::span<Team const>{all_teams}.first(team_count)};
         auto const remainder{team_count > 1 ? team_count - 1 : 0};
         auto data{make_cap_battle(participants, participants, team_count * 3 + remainder, 4)};
         LevelSim simulation{std::move(data)};
         start_and_tick(simulation);
-        ioj::sim::tests::expect_equal(simulation.get_fighters().get_num_instances(),
-                                      team_count * 3,
-                                      "Floor partition leaves the global remainder unused");
+        tests::expect_equal(simulation.get_fighters().get_num_instances(),
+                            team_count * 3,
+                            "Floor partition leaves the global remainder unused");
         for (auto const team : participants) {
-            ioj::sim::tests::expect_equal(
+            tests::expect_equal(
                 count_team(simulation, team), 3, "Each participant receives the same partition");
         }
     }
 
-    std::vector<ioj::sim::Team> const one_capital{ioj::sim::Team::White};
-    std::vector<ioj::sim::Team> const two_participants{ioj::sim::Team::White, ioj::sim::Team::Red};
+    std::vector<Team> const one_capital{Team::White};
+    std::vector<Team> const two_participants{Team::White, Team::Red};
     auto data{make_cap_battle(one_capital, two_participants, 7, 8)};
     LevelSim simulation{std::move(data)};
     start_and_tick(simulation);
-    ioj::sim::tests::expect_equal(simulation.get_fighters().get_num_instances(),
-                                  3,
-                                  "A team cannot borrow another participant's unused allocation");
+    tests::expect_equal(simulation.get_fighters().get_num_instances(),
+                        3,
+                        "A team cannot borrow another participant's unused allocation");
 
-    std::vector<ioj::sim::Team> const repeated_capital_teams{
-        ioj::sim::Team::White, ioj::sim::Team::White, ioj::sim::Team::Red};
-    auto inferred_data{
-        make_cap_battle(repeated_capital_teams, std::span<ioj::sim::Team const>{}, 14, 8)};
+    std::vector<Team> const repeated_capital_teams{Team::White, Team::White, Team::Red};
+    auto inferred_data{make_cap_battle(repeated_capital_teams, std::span<Team const>{}, 14, 8)};
     LevelSim inferred_simulation{std::move(inferred_data)};
     start_and_tick(inferred_simulation);
-    ioj::sim::tests::expect_equal(inferred_simulation.get_fighters().get_num_instances(),
-                                  14,
-                                  "Compiled team inference deduplicates team sources");
+    tests::expect_equal(inferred_simulation.get_fighters().get_num_instances(),
+                        14,
+                        "Compiled team inference deduplicates team sources");
 
-    LevelSim empty_simulation{make_cap_battle(
-        std::span<ioj::sim::Team const>{}, std::span<ioj::sim::Team const>{}, 10, 0)};
+    LevelSim empty_simulation{
+        make_cap_battle(std::span<Team const>{}, std::span<Team const>{}, 10, 0)};
     empty_simulation.finish_initialisation();
     empty_simulation.start();
     empty_simulation.advance(empty_simulation.get_clock().get_tick_period());
-    ioj::sim::tests::expect_equal(empty_simulation.get_fighters().get_num_instances(),
-                                  0,
-                                  "A zero-team simulation remains empty");
+    tests::expect_equal(empty_simulation.get_fighters().get_num_instances(),
+                        0,
+                        "A zero-team simulation remains empty");
 }
 
 TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
 
-    std::vector<ioj::sim::Team> const capitals{ioj::sim::Team::White, ioj::sim::Team::White};
-    std::vector<ioj::sim::Team> const participants{ioj::sim::Team::White};
+    std::vector<Team> const capitals{Team::White, Team::White};
+    std::vector<Team> const participants{Team::White};
     auto data{make_cap_battle(capitals, participants, 6, 4)};
     LevelSim simulation{std::move(data)};
     start_and_tick(simulation);
-    ioj::sim::tests::expect_equal(simulation.get_fighters().get_num_instances(),
-                                  6,
-                                  "Full and partial waves stop at the team cap");
+    tests::expect_equal(simulation.get_fighters().get_num_instances(),
+                        6,
+                        "Full and partial waves stop at the team cap");
 
     simulation.advance(simulation.get_clock().get_tick_period());
     auto const& capital_simulation{simulation.get_capital_ships()};
-    ioj::sim::tests::expect_equal(
-        static_cast<std::int32_t>(capital_simulation.get_fighter_handles(0).size()),
-        4,
-        "First capital owns its full accepted wave");
-    ioj::sim::tests::expect_equal(
-        static_cast<std::int32_t>(capital_simulation.get_fighter_handles(1).size()),
-        2,
-        "Second capital owns only its accepted prefix");
+    tests::expect_equal(static_cast<std::int32_t>(capital_simulation.get_fighter_handles(0).size()),
+                        4,
+                        "First capital owns its full accepted wave");
+    tests::expect_equal(static_cast<std::int32_t>(capital_simulation.get_fighter_handles(1).size()),
+                        2,
+                        "Second capital owns only its accepted prefix");
 
     auto parent_death_data{make_cap_battle(capitals, participants, 2, 1)};
     LevelSim parent_death_simulation{std::move(parent_death_data)};
@@ -145,11 +137,11 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
     capital_damage.damaged_entities[0] = parent_death_simulation.get_capital_ships().get_handle(0);
     capital_damage.instigators[0] = parent_death_simulation.get_capital_ships().get_handle(1);
     capital_damage.damage_amounts[0] = 100;
-    ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(parent_death_simulation,
-                                                               capital_damage.get_const_view());
+    LevelSimTestAccess::queue_direct_damage_events(parent_death_simulation,
+                                                   capital_damage.get_const_view());
     parent_death_simulation.advance(parent_death_simulation.get_clock().get_tick_period());
     parent_death_simulation.advance(parent_death_simulation.get_clock().get_tick_period());
-    ioj::sim::tests::expect_equal(
+    tests::expect_equal(
         static_cast<std::int32_t>(
             parent_death_simulation.get_capital_ships().get_fighter_handles(0).size()),
         2,
@@ -158,11 +150,11 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
 
 TEST(FighterLiveCap, DeferredRemovalAndReconstruction) {
 
-    std::vector<ioj::sim::Team> const capitals{ioj::sim::Team::White};
+    std::vector<Team> const capitals{Team::White};
     auto make_data{[&] { return make_cap_battle(capitals, capitals, 1, 1, 0.f); }};
     LevelSim simulation{make_data()};
     start_and_tick(simulation);
-    ioj::sim::tests::expect_equal(
+    tests::expect_equal(
         simulation.get_fighters().get_num_instances(), 1, "Initial fighter fills the budget");
 
     DirectDamageEvents damage;
@@ -170,33 +162,33 @@ TEST(FighterLiveCap, DeferredRemovalAndReconstruction) {
     damage.damaged_entities[0] = simulation.get_fighters().get_handles()[0];
     damage.instigators[0] = simulation.get_capital_ships().get_handle(0);
     damage.damage_amounts[0] = 100000;
-    ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
+    LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
     simulation.advance(simulation.get_clock().get_tick_period());
-    ioj::sim::tests::expect_equal(simulation.get_fighters().get_num_instances(),
-                                  0,
-                                  "Deferred removal finishes before capacity is reusable");
+    tests::expect_equal(simulation.get_fighters().get_num_instances(),
+                        0,
+                        "Deferred removal finishes before capacity is reusable");
     simulation.advance(simulation.get_clock().get_tick_period());
-    ioj::sim::tests::expect_equal(simulation.get_fighters().get_num_instances(),
-                                  1,
-                                  "Exactly one replacement uses the released slot");
+    tests::expect_equal(simulation.get_fighters().get_num_instances(),
+                        1,
+                        "Exactly one replacement uses the released slot");
 
     std::optional<LevelSim> reconstructed;
     reconstructed.emplace(make_data());
     start_and_tick(*reconstructed);
-    ioj::sim::tests::expect_equal(reconstructed->get_fighters().get_num_instances(),
-                                  1,
-                                  "Reconstruction starts with a fresh budget");
+    tests::expect_equal(reconstructed->get_fighters().get_num_instances(),
+                        1,
+                        "Reconstruction starts with a fresh budget");
 }
 
 TEST(FighterLiveCap, UnknownTeamRejected) {
 
-    std::vector<ioj::sim::Team> const capitals{ioj::sim::Team::Green};
-    std::vector<ioj::sim::Team> const participants{ioj::sim::Team::White};
+    std::vector<Team> const capitals{Team::Green};
+    std::vector<Team> const participants{Team::White};
     auto data{make_cap_battle(capitals, participants, 10, 1)};
     LevelSim simulation{std::move(data)};
     start_and_tick(simulation);
-    ioj::sim::tests::expect_equal(
+    tests::expect_equal(
         simulation.get_fighters().get_num_instances(), 0, "Unknown team creates no fighter");
 }
 
-} // namespace ioj::sim::tests
+} // namespace tests

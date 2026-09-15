@@ -34,4 +34,4 @@ auto get_entity_radius(EntityAABBs const& bounds, std::int32_t const type_index)
     auto const half_extents{bounds.get_half_extents(type_index)};
     return std::max(std::max(half_extents.X, half_extents.Y), half_extents.Z);
 }
-} // namespace ioj::sim::collision
+} // namespace collision

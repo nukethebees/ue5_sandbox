@@ -7,7 +7,7 @@
 #include "ioj/sim/capital_ships/sim.h"
 
 namespace ioj::sim::capital_ships {
-PhaseInterface::PhaseInterface(ioj::sim::capital_ships::Sim& new_target)
+PhaseInterface::PhaseInterface(Sim& new_target)
     : simulation{new_target} {
 
 }

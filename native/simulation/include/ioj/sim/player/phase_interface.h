@@ -9,7 +9,7 @@
 namespace ioj::sim::player {
 class PhaseInterface {
     public:
-    PhaseInterface(ioj::sim::player::Sim& new_target);
+    PhaseInterface(Sim& new_target);
 
     private:
     void begin_play();
@@ -25,7 +25,7 @@ class PhaseInterface {
     void update_entity_registry();
 
     friend struct ::ioj::sim::LevelSim;
-    ioj::sim::player::Sim& simulation;
+    Sim& simulation;
 };
 } // namespace ioj::sim::player
 // clang-format on

@@ -7,7 +7,7 @@
 #include "ioj/sim/fighters/sim.h"
 
 namespace ioj::sim::fighters {
-PhaseInterface::PhaseInterface(ioj::sim::fighters::Sim& new_target)
+PhaseInterface::PhaseInterface(Sim& new_target)
     : simulation{new_target} {
 
 }

@@ -25,8 +25,8 @@ auto utc_now_iso8601() -> std::string {
     return std::format("{:%FT%TZ}", now);
 }
 
-using Field = ioj::sim::telemetry::HistoryField;
-using FieldMask = ioj::sim::telemetry::HistoryFieldMask;
+using Field = telemetry::HistoryField;
+using FieldMask = telemetry::HistoryFieldMask;
 
 template <typename Data>
 auto snapshot_with_terminal_sample(Data const& source,
@@ -82,8 +82,8 @@ using level_telemetry_detail::snapshot_with_terminal_sample;
 /* **************************************** */
 LevelTelemetryManager::LevelTelemetryManager(SimClock const& clock,
                                              EntityRegistry const& entity_registry,
-                                             ioj::sim::lasers::Sim const& lasers,
-                                             ioj::sim::SpatialQueryManager const& spatial_queries,
+                                             lasers::Sim const& lasers,
+                                             SpatialQueryManager const& spatial_queries,
                                              GameMemory& game_memory,
                                              LevelTelemetryHistoryConfig history_config) noexcept
     : clock_{clock}
@@ -416,7 +416,7 @@ void LevelTelemetryManager::sample_series() {
 }
 
 auto LevelTelemetryManager::append_history_row(tick_type const completed_tick)
-    -> ioj::sim::telemetry::HistoryRowsView {
+    -> telemetry::HistoryRowsView {
     auto const row_count{history_.num()};
     if (row_count > 0) {
         auto const completed_ticks{history_.last_const_view().completed_ticks()};
@@ -664,19 +664,19 @@ void LevelTelemetryManager::close_performance_window(double const monotonic_time
 // Completion and finalization
 /* **************************************** */
 void LevelTelemetryManager::mark_mission_terminal(LevelMissionResult const& result) {
-    auto const reason{result.state == ioj::sim::MissionState::Succeeded
-                          ? ioj::sim::LevelTelemetryRunEndReason::MissionSucceeded
-                          : ioj::sim::LevelTelemetryRunEndReason::MissionFailed};
+    auto const reason{result.state == MissionState::Succeeded
+                          ? LevelTelemetryRunEndReason::MissionSucceeded
+                          : LevelTelemetryRunEndReason::MissionFailed};
     finalize_run(reason, false, {}, &result, ml::monotonic_seconds());
 }
 
-void LevelTelemetryManager::finalize_interrupted(ioj::sim::LevelTelemetryRunEndReason const reason,
+void LevelTelemetryManager::finalize_interrupted(LevelTelemetryRunEndReason const reason,
                                                  std::string world_end_reason) {
     finalize_run(reason, true, std::move(world_end_reason), nullptr, ml::monotonic_seconds());
 }
 
-void LevelTelemetryManager::finalize_completed(ioj::sim::LevelTelemetryRunEndReason const reason,
-                                               std::optional<ioj::sim::Team> winning_team) {
+void LevelTelemetryManager::finalize_completed(LevelTelemetryRunEndReason const reason,
+                                               std::optional<Team> winning_team) {
     finalize_run(reason, false, {}, nullptr, ml::monotonic_seconds());
     completion_.winning_team = winning_team;
 }
@@ -711,7 +711,7 @@ void LevelTelemetryManager::add_realtime_sample(tick_type const completed_tick,
     }
 }
 
-void LevelTelemetryManager::finalize_run(ioj::sim::LevelTelemetryRunEndReason const reason,
+void LevelTelemetryManager::finalize_run(LevelTelemetryRunEndReason const reason,
                                          bool const interrupted,
                                          std::string world_end_reason,
                                          LevelMissionResult const* const mission_result,

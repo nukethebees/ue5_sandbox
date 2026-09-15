@@ -9,7 +9,7 @@
 namespace ioj::sim::spinners {
 struct SpinnerSpawnTestAccess {
     static void spawn(Sim& simulation,
-                      ioj::sim::Vectors3f::ConstView locations,
+                      Vectors3f::ConstView locations,
                       std::span<float const> yaws,
                       std::span<std::int32_t const> fire_points) {
         simulation.spawn_instances(
@@ -20,9 +20,7 @@ struct SpinnerSpawnTestAccess {
                 fire_points.data(),
                 static_cast<std::size_t>(static_cast<std::int32_t>(fire_points.size()))});
     }
-    static auto entities(Sim& simulation) -> ioj::sim::SpinnerEntityData& {
-        return simulation.entities;
-    }
+    static auto entities(Sim& simulation) -> SpinnerEntityData& { return simulation.entities; }
     static void tick_cooldowns(Sim& simulation) { simulation.update_timers(0.f); }
     static void set_cooldown(Sim& simulation, std::int16_t const ticks) {
         simulation.cooldown_restart_ticks_ = ticks;
@@ -37,21 +35,21 @@ namespace ioj::sim::tests {
 
 TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
 
-    using Access = ioj::sim::spinners::SpinnerSpawnTestAccess;
+    using Access = spinners::SpinnerSpawnTestAccess;
     SimClock clock;
     EntityRegistry registry;
-    ioj::sim::SpatialQueryManager queries{registry};
+    SpatialQueryManager queries{registry};
     ml::FrameMemoryResource frame_memory{1024 * 1024};
-    ioj::sim::lasers::Sim lasers{clock, registry, queries, frame_memory};
-    ioj::sim::spinners::Sim simulation{clock, registry, lasers, frame_memory};
+    lasers::Sim lasers{clock, registry, queries, frame_memory};
+    spinners::Sim simulation{clock, registry, lasers, frame_memory};
     auto& entities{Access::entities(simulation)};
     Access::set_cooldown(simulation, 23);
 
-    ioj::sim::Vectors3f locations;
+    Vectors3f locations;
     locations.add_defaulted(3);
-    locations.set(0, ioj::sim::Vector3f{{1.f, 2.f, 3.f}});
-    locations.set(1, ioj::sim::Vector3f{{4.f, 5.f, 6.f}});
-    locations.set(2, ioj::sim::Vector3f{{7.f, 8.f, 9.f}});
+    locations.set(0, Vector3f{{1.f, 2.f, 3.f}});
+    locations.set(1, Vector3f{{4.f, 5.f, 6.f}});
+    locations.set(2, Vector3f{{7.f, 8.f, 9.f}});
     std::vector<float> const yaws{10.f, 20.f, 30.f};
     std::vector<std::int32_t> const fire_points{2, 0, 1};
     Access::spawn(simulation,
@@ -90,7 +88,7 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
         ASSERT_TRUE((locations.ys[source_index] == entities.locations.ys[i]));
         ASSERT_TRUE((locations.zs[source_index] == entities.locations.zs[i]));
         ASSERT_TRUE((registry.is_valid_alive(entities.handles[i])));
-        ASSERT_TRUE((ioj::sim::Team::White == registry.get_team(entities.handles[i])));
+        ASSERT_TRUE((Team::White == registry.get_team(entities.handles[i])));
         for (std::int32_t j{}; j < i; ++j) {
             ASSERT_TRUE((entities.handles[i] != entities.handles[j]));
         }
@@ -102,4 +100,4 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     ASSERT_EQ((std::int16_t{23}), (entities.laser_cooldowns[5]));
 }
 
-} // namespace ioj::sim::tests
+} // namespace tests

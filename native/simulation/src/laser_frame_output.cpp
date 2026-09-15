@@ -16,4 +16,4 @@ void FrameOutput::append_hits(LaserHitDetailsConstView const new_hits, SimTick c
         hit_ordinals.push_back(index);
     }
 }
-} // namespace ioj::sim::lasers
+} // namespace lasers

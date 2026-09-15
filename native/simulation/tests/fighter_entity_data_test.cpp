@@ -6,7 +6,7 @@
 namespace ioj::sim::tests {
 
 TEST(NativeSimulation, FighterEntityBiasPackedDataTest) {
-    using EntityData = ioj::sim::FighterEntityData;
+    using EntityData = FighterEntityData;
 
     EntityData source;
     source.add_defaulted(3);
@@ -22,16 +22,16 @@ TEST(NativeSimulation, FighterEntityBiasPackedDataTest) {
     auto view{source.get_view(1, 2)};
     static_assert(std::is_same_v<decltype(view.integral_biases), std::span<std::uint32_t>>);
     static_assert(std::is_same_v<decltype(view.float_biases), std::span<float>>);
-    ioj::sim::tests::expect_equal(view.integral_biases[0], 200u, "Mutable view integral bias");
-    ioj::sim::tests::expect_equal(view.float_biases[1], 0.3f, "Mutable view float bias");
+    tests::expect_equal(view.integral_biases[0], 200u, "Mutable view integral bias");
+    tests::expect_equal(view.float_biases[1], 0.3f, "Mutable view float bias");
 
     EntityData const& const_source{source};
     auto const_view{const_source.get_const_view(1, 2)};
     static_assert(
         std::is_same_v<decltype(const_view.integral_biases), std::span<std::uint32_t const>>);
     static_assert(std::is_same_v<decltype(const_view.float_biases), std::span<float const>>);
-    ioj::sim::tests::expect_equal(const_view.integral_biases[1], 300u, "Const view integral bias");
-    ioj::sim::tests::expect_equal(const_view.float_biases[0], 0.2f, "Const view float bias");
+    tests::expect_equal(const_view.integral_biases[1], 300u, "Const view integral bias");
+    tests::expect_equal(const_view.float_biases[0], 0.2f, "Const view float bias");
 
     ml::MultiBuffer<EntityData, 2> buffers;
     buffers.current().add_defaulted(3);
@@ -46,20 +46,19 @@ TEST(NativeSimulation, FighterEntityBiasPackedDataTest) {
 
     auto& reordered{buffers.current()};
     reordered.validate_array_sizes();
-    ioj::sim::tests::expect_true(reordered.entity_handles[0] == RegistryEntityHandle{30, 3},
-                                 "Buffered copy keeps handle paired with integral bias");
-    ioj::sim::tests::expect_equal(
-        reordered.integral_biases[0], 300u, "Buffered copy integral bias");
-    ioj::sim::tests::expect_equal(reordered.float_biases[0], 0.3f, "Buffered copy float bias");
+    tests::expect_true(reordered.entity_handles[0] == RegistryEntityHandle{30, 3},
+                       "Buffered copy keeps handle paired with integral bias");
+    tests::expect_equal(reordered.integral_biases[0], 300u, "Buffered copy integral bias");
+    tests::expect_equal(reordered.float_biases[0], 0.3f, "Buffered copy float bias");
 
     reordered.remove_at_swap(0, 1);
     reordered.validate_array_sizes();
-    ioj::sim::tests::expect_true(reordered.entity_handles[0] == RegistryEntityHandle{20, 2},
-                                 "Swap removal keeps handle paired with integral bias");
-    ioj::sim::tests::expect_equal(reordered.integral_biases[0], 200u, "Swap removal integral bias");
-    ioj::sim::tests::expect_equal(reordered.float_biases[0], 0.2f, "Swap removal float bias");
+    tests::expect_true(reordered.entity_handles[0] == RegistryEntityHandle{20, 2},
+                       "Swap removal keeps handle paired with integral bias");
+    tests::expect_equal(reordered.integral_biases[0], 200u, "Swap removal integral bias");
+    tests::expect_equal(reordered.float_biases[0], 0.2f, "Swap removal float bias");
 
     return;
 }
 
-} // namespace ioj::sim::tests
+} // namespace tests

@@ -7,7 +7,7 @@
 #include "ioj/sim/turrets/sim.h"
 
 namespace ioj::sim::turrets {
-PhaseInterface::PhaseInterface(ioj::sim::turrets::Sim& new_target)
+PhaseInterface::PhaseInterface(Sim& new_target)
     : simulation{new_target} {
 
 }

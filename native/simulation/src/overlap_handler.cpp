@@ -11,7 +11,7 @@ OverlapHandler::OverlapHandler(EntityRegistry& registry,
     assert(damage_per_overlap_detection_ > 0);
 }
 
-void OverlapHandler::handle(ioj::sim::collision::DetectedOverlapsView const overlaps) {
+void OverlapHandler::handle(collision::DetectedOverlapsView const overlaps) {
     overlaps.entity_entity_overlaps.validate_array_sizes();
     overlaps.entity_static_overlaps.validate_array_sizes();
 
@@ -41,15 +41,15 @@ void OverlapHandler::append_damage(RegistryEntityHandle const entity) {
     }
 
     switch (registry_.get_entity_type(entity)) {
-        case ioj::sim::EntityType::PlayerShip:
-        case ioj::sim::EntityType::Turret:
-        case ioj::sim::EntityType::CapitalShip:
-        case ioj::sim::EntityType::Fighter: {
+        case EntityType::PlayerShip:
+        case EntityType::Turret:
+        case EntityType::CapitalShip:
+        case EntityType::Fighter: {
             damage_events_.add(entity, damage_per_overlap_detection_, {});
             break;
         }
-        case ioj::sim::EntityType::TubeSpinner:
-        case ioj::sim::EntityType::COUNT: {
+        case EntityType::TubeSpinner:
+        case EntityType::COUNT: {
             break;
         }
     }

@@ -62,7 +62,7 @@ void Sim::set_config(PlayerSimConfig const& new_config) noexcept {
 Sim::Sim(SimClock const& clock,
          EntityRegistry& in_entity_registry,
          SpatialQueryManager const& in_spatial_query_manager,
-         ioj::sim::lasers::Sim& in_lasers)
+         lasers::Sim& in_lasers)
     : entity_registry{in_entity_registry}
     , spatial_query_manager{in_spatial_query_manager}
     , lasers{in_lasers}
@@ -77,11 +77,11 @@ void Sim::begin_play() {
     velocity = ml::Vector3d{};
     thrust_energy = config.thrust_energy_max;
 
-    set_laser_mode(ioj::sim::LaserFiringState::idle);
+    set_laser_mode(LaserFiringState::idle);
     set_laser_fire_rate(laser_fire_rate);
 
     configure_speed_sampling();
-    set_boost_brake_state(ioj::sim::player::BoostBrakeState::None);
+    set_boost_brake_state(player::BoostBrakeState::None);
 
     register_with_entity_registry();
     health.clamp_to_max();
@@ -113,7 +113,7 @@ void Sim::move(float const dt) {
     auto adjustment_input{planar_movement_direction};
     auto lateral_adjustment_speed{config.lateral_adjustment_speed};
     auto vertical_adjustment_speed{config.vertical_adjustment_speed};
-    if (flight_mode == ioj::sim::SpaceShipFlightMode::PlanarVelocity) {
+    if (flight_mode == SpaceShipFlightMode::PlanarVelocity) {
         adjustment_input = sampling ? ml::Vector2d{} : adjustment_input.clamped_to_max_size(1.f);
         lateral_adjustment_speed = config.planar_lateral_trim_speed;
         vertical_adjustment_speed = config.planar_vertical_trim_speed;
@@ -177,13 +177,13 @@ void Sim::register_with_entity_registry() {
 
 auto Sim::get_entity_update_data() const -> RegistryEntityData {
     RegistryEntityData entity_data;
-    entity_data.locations.add(ioj::sim::to_float(transform.location));
-    entity_data.velocities.add(ioj::sim::to_float(velocity));
-    entity_data.rotations.add(ioj::sim::to_float(transform.rotator()));
+    entity_data.locations.add(to_float(transform.location));
+    entity_data.velocities.add(to_float(velocity));
+    entity_data.rotations.add(to_float(transform.rotator()));
     entity_data.healths.push_back(health.health);
     entity_data.teams.push_back(team);
     entity_data.alive.push_back(static_cast<std::uint8_t>(health.is_alive()));
-    entity_data.entity_types.push_back(ioj::sim::EntityType::PlayerShip);
+    entity_data.entity_types.push_back(EntityType::PlayerShip);
 
     return entity_data;
 }
@@ -202,12 +202,12 @@ void Sim::queue_entity_update(EntityDeathInfo const& death_info) {
 /* **************************************** */
 void Sim::integrate_velocity(float const dt) {
     switch (flight_mode) {
-        case ioj::sim::SpaceShipFlightMode::ForwardSpeed: {
+        case SpaceShipFlightMode::ForwardSpeed: {
             auto const new_speed{forward_flight_model.update(dt)};
             velocity = transform.forward() * new_speed;
             break;
         }
-        case ioj::sim::SpaceShipFlightMode::PlanarVelocity: {
+        case SpaceShipFlightMode::PlanarVelocity: {
             planar_velocity = planar_flight_model.update(dt);
             planar_boost_speed = planar_boost_flight_model.update(dt);
             velocity = planar_velocity + transform.forward() * planar_boost_speed;
@@ -221,10 +221,10 @@ void Sim::update_rotation(float const dt) {
     if (rotation_input != ml::Vector2d{} || !(std::abs(roll_input) <= 1.e-8f)) {
         auto const yaw_strength{std::abs(rotation_input.x)};
         auto const yaw_step{config.rotation_speed * yaw_strength * dt};
-        auto const delta_rotation{ioj::sim::Rotator3d{rotation_input.y * rotation_step,
-                                                      rotation_input.x * yaw_step,
-                                                      roll_input * rotation_step}};
-        transform.rotation = transform.rotation * ioj::sim::to_quaternion(delta_rotation);
+        auto const delta_rotation{Rotator3d{rotation_input.y * rotation_step,
+                                            rotation_input.x * yaw_step,
+                                            roll_input * rotation_step}};
+        transform.rotation = transform.rotation * to_quaternion(delta_rotation);
         transform.rotation.normalize();
         time_since_rotation_input = 0.f;
         return;
@@ -234,8 +234,7 @@ void Sim::update_rotation(float const dt) {
         auto const rotation{transform.rotator()};
         auto const roll{
             player_movement::interpolate_to(rotation.roll, 0.f, dt, config.auto_level_speed)};
-        transform.rotation =
-            ioj::sim::to_quaternion(ioj::sim::Rotator3d{rotation.pitch, rotation.yaw, roll});
+        transform.rotation = to_quaternion(Rotator3d{rotation.pitch, rotation.yaw, roll});
     }
 }
 
@@ -255,8 +254,7 @@ void Sim::update_body_orientation(float const dt) {
         std::max(static_cast<double>(config.turn_bank_speed), std::abs(turn_speed))};
     auto const new_roll{
         player_movement::interpolate_to(current_rotation.roll, turn_target, dt, roll_speed)};
-    body_transform.rotation =
-        ioj::sim::to_quaternion(ioj::sim::Rotator3d{new_pitch, new_yaw, new_roll});
+    body_transform.rotation = to_quaternion(Rotator3d{new_pitch, new_yaw, new_roll});
 }
 
 void Sim::set_desired_planar_velocity(ml::Vector3d const desired_velocity) {
@@ -272,16 +270,15 @@ void Sim::set_desired_planar_velocity(ml::Vector3d const desired_velocity) {
                                         target_local_planar_velocity);
 }
 
-void Sim::set_boost_brake_state(ioj::sim::player::BoostBrakeState const state) {
-    if (state == ioj::sim::player::BoostBrakeState::Boost && boost_brake_state != state) {
+void Sim::set_boost_brake_state(player::BoostBrakeState const state) {
+    if (state == player::BoostBrakeState::Boost && boost_brake_state != state) {
         ++boost_start_sequence_;
     }
 
     auto const current_speed{get_speed()};
     auto const& speed_responses{config.speed_responses};
-    if (state != ioj::sim::player::BoostBrakeState::None &&
-        state != ioj::sim::player::BoostBrakeState::Boost &&
-        state != ioj::sim::player::BoostBrakeState::Brake) {
+    if (state != player::BoostBrakeState::None && state != player::BoostBrakeState::Boost &&
+        state != player::BoostBrakeState::Brake) {
         ml::log_error("Unhandled player boost/brake state.");
     }
 
@@ -300,13 +297,13 @@ void Sim::set_boost_brake_state(ioj::sim::player::BoostBrakeState const state) {
 
     ThrustTransition transition{};
     switch (state) {
-        case ioj::sim::player::BoostBrakeState::Boost:
+        case player::BoostBrakeState::Boost:
             transition = {config.boost_speed,
                           -(1.f / config.boost_depletion_time),
                           config.cruise_speed * config.boost_forward_speed_addition_multiplier,
                           SpeedResponseKind::Boost};
             break;
-        case ioj::sim::player::BoostBrakeState::Brake:
+        case player::BoostBrakeState::Brake:
             transition = {config.brake_speed,
                           -(1.f / config.brake_depletion_time),
                           0.f,
@@ -341,7 +338,7 @@ void Sim::set_boost_brake_state(ioj::sim::player::BoostBrakeState const state) {
 void Sim::update_boost_brake(float const dt) {
     auto const starting_energy{thrust_energy};
     if (starting_energy <= 0.f) {
-        set_boost_brake_state(ioj::sim::player::BoostBrakeState::None);
+        set_boost_brake_state(player::BoostBrakeState::None);
     }
 
     thrust_energy += dt * thrust_change_rate;
@@ -368,7 +365,7 @@ void Sim::set_ship_2d_control(ml::Vector2d const input) {
         return;
     }
 
-    if (control_mode == ioj::sim::SpaceShipControlMode::Velocity) {
+    if (control_mode == SpaceShipControlMode::Velocity) {
         target_local_planar_velocity_scale = input;
     }
 }
@@ -386,16 +383,16 @@ void Sim::set_ship_1d_control_y(float const input) {
 }
 
 void Sim::select_next_control_mode() {
-    control_mode = static_cast<ioj::sim::SpaceShipControlMode>(
-        (static_cast<unsigned>(control_mode) + 1) %
-        static_cast<unsigned>(ioj::sim::SpaceShipControlMode::COUNT));
+    control_mode =
+        static_cast<SpaceShipControlMode>((static_cast<unsigned>(control_mode) + 1) %
+                                          static_cast<unsigned>(SpaceShipControlMode::COUNT));
 }
 
 void Sim::select_previous_control_mode() {
-    control_mode = static_cast<ioj::sim::SpaceShipControlMode>(
-        (static_cast<unsigned>(control_mode) +
-         static_cast<unsigned>(ioj::sim::SpaceShipControlMode::COUNT) - 1) %
-        static_cast<unsigned>(ioj::sim::SpaceShipControlMode::COUNT));
+    control_mode =
+        static_cast<SpaceShipControlMode>((static_cast<unsigned>(control_mode) +
+                                           static_cast<unsigned>(SpaceShipControlMode::COUNT) - 1) %
+                                          static_cast<unsigned>(SpaceShipControlMode::COUNT));
 }
 
 void Sim::start_sampling() noexcept {
@@ -409,7 +406,7 @@ void Sim::start_sampling() noexcept {
 
 void Sim::stop_sampling() {
     sampling = false;
-    if (control_mode != ioj::sim::SpaceShipControlMode::Velocity) {
+    if (control_mode != SpaceShipControlMode::Velocity) {
         return;
     }
 
@@ -419,8 +416,8 @@ void Sim::stop_sampling() {
 }
 
 void Sim::adjust_desired_forward_velocity(float const direction) {
-    if (flight_mode != ioj::sim::SpaceShipFlightMode::PlanarVelocity ||
-        control_mode != ioj::sim::SpaceShipControlMode::Velocity || sampling ||
+    if (flight_mode != SpaceShipFlightMode::PlanarVelocity ||
+        control_mode != SpaceShipControlMode::Velocity || sampling ||
         (std::abs(direction) <= 1.e-8f)) {
         return;
     }
@@ -443,26 +440,26 @@ void Sim::turn(ml::Vector2d const direction) noexcept {
 }
 
 void Sim::start_boost() {
-    if (energy_is_full() && boost_brake_state == ioj::sim::player::BoostBrakeState::None) {
-        set_boost_brake_state(ioj::sim::player::BoostBrakeState::Boost);
+    if (energy_is_full() && boost_brake_state == player::BoostBrakeState::None) {
+        set_boost_brake_state(player::BoostBrakeState::Boost);
     }
 }
 
 void Sim::stop_boost() {
-    if (boost_brake_state == ioj::sim::player::BoostBrakeState::Boost) {
-        set_boost_brake_state(ioj::sim::player::BoostBrakeState::None);
+    if (boost_brake_state == player::BoostBrakeState::Boost) {
+        set_boost_brake_state(player::BoostBrakeState::None);
     }
 }
 
 void Sim::start_brake() {
-    if (energy_is_full() && boost_brake_state == ioj::sim::player::BoostBrakeState::None) {
-        set_boost_brake_state(ioj::sim::player::BoostBrakeState::Brake);
+    if (energy_is_full() && boost_brake_state == player::BoostBrakeState::None) {
+        set_boost_brake_state(player::BoostBrakeState::Brake);
     }
 }
 
 void Sim::stop_brake() {
-    if (boost_brake_state == ioj::sim::player::BoostBrakeState::Brake) {
-        set_boost_brake_state(ioj::sim::player::BoostBrakeState::None);
+    if (boost_brake_state == player::BoostBrakeState::Brake) {
+        set_boost_brake_state(player::BoostBrakeState::None);
     }
 }
 
@@ -470,7 +467,7 @@ void Sim::roll(float const direction) noexcept {
     roll_input = std::clamp(direction, -1.f, 1.f);
 }
 
-void Sim::set_flight_mode(ioj::sim::SpaceShipFlightMode const new_flight_mode) noexcept {
+void Sim::set_flight_mode(SpaceShipFlightMode const new_flight_mode) noexcept {
     flight_mode = new_flight_mode;
 }
 
@@ -481,79 +478,78 @@ void Sim::set_lock_on_target(RegistryEntityHandle const target) noexcept {
     lock_on_target = target;
 }
 
-void Sim::set_laser_mode(ioj::sim::LaserFiringState const mode) noexcept {
+void Sim::set_laser_mode(LaserFiringState const mode) noexcept {
     laser_firing_mode = mode;
 }
 
 void Sim::update_laser_firing() {
     auto const cooldown_finished{laser_shot_cooldown <= 0.f};
     switch (laser_firing_mode) {
-        case ioj::sim::LaserFiringState::idle: {
+        case LaserFiringState::idle: {
             break;
         }
-        case ioj::sim::LaserFiringState::burst: {
+        case LaserFiringState::burst: {
             if (cooldown_finished) {
                 fire_laser();
                 laser_shot_cooldown = config.laser.fire_cooldown;
 
                 if (lasers_fired_this_burst >= lasers_per_burst) {
                     laser_shot_cooldown = config.laser_lock_on_transition_delay;
-                    set_laser_mode(ioj::sim::LaserFiringState::lock_on_transition);
+                    set_laser_mode(LaserFiringState::lock_on_transition);
                 }
             }
             break;
         }
-        case ioj::sim::LaserFiringState::lock_on_transition: {
+        case LaserFiringState::lock_on_transition: {
             if (cooldown_finished) {
-                set_laser_mode(ioj::sim::LaserFiringState::lock_on_searching);
+                set_laser_mode(LaserFiringState::lock_on_searching);
             }
             [[fallthrough]];
         }
-        case ioj::sim::LaserFiringState::lock_on_searching: {
+        case LaserFiringState::lock_on_searching: {
             auto const middle{get_middle_socket()};
             auto const start{middle.location};
             auto const end{start + middle.forward() * config.laser_lock_on_distance};
             auto const hit{spatial_query_manager.trace_closest(
-                ioj::sim::to_float(start), ioj::sim::to_float(end), registry_handle)};
+                to_float(start), to_float(end), registry_handle)};
 
             if (hit.hit && hit.entity.is_valid()) {
                 set_lock_on_target(hit.entity);
-                set_laser_mode(ioj::sim::LaserFiringState::lock_on_acquired);
+                set_laser_mode(LaserFiringState::lock_on_acquired);
             }
             break;
         }
-        case ioj::sim::LaserFiringState::lock_on_acquired: {
+        case LaserFiringState::lock_on_acquired: {
             break;
         }
     }
 }
 
 void Sim::start_fire_laser() {
-    set_laser_mode(ioj::sim::LaserFiringState::burst);
+    set_laser_mode(LaserFiringState::burst);
     lasers_fired_this_burst = 0;
     laser_shot_cooldown = 0.f;
     set_lock_on_target({});
 }
 
 void Sim::stop_fire_laser() {
-    if (laser_firing_mode == ioj::sim::LaserFiringState::lock_on_acquired) {
+    if (laser_firing_mode == LaserFiringState::lock_on_acquired) {
         set_lock_on_target({});
     }
-    set_laser_mode(ioj::sim::LaserFiringState::idle);
+    set_laser_mode(LaserFiringState::idle);
 }
 
 void Sim::fire_laser() {
     switch (laser_mode) {
-        case ioj::sim::ShipLaserMode::Single: {
-            std::array<ioj::sim::Transform3d, 1> const fire_points{get_middle_socket()};
+        case ShipLaserMode::Single: {
+            std::array<Transform3d, 1> const fire_points{get_middle_socket()};
             fire_lasers_from(fire_points);
             break;
         }
-        case ioj::sim::ShipLaserMode::Double:
-        case ioj::sim::ShipLaserMode::Hyper: {
-            std::array<ioj::sim::Transform3d, 2> const fire_points{
-                left_socket * body_transform * transform,
-                right_socket * body_transform * transform};
+        case ShipLaserMode::Double:
+        case ShipLaserMode::Hyper: {
+            std::array<Transform3d, 2> const fire_points{left_socket * body_transform * transform,
+                                                         right_socket * body_transform * transform};
             fire_lasers_from(fire_points);
             break;
         }
@@ -566,62 +562,59 @@ void Sim::fire_laser() {
     laser_shot_cooldown = config.laser.fire_cooldown;
 }
 
-void Sim::fire_lasers_from(std::span<ioj::sim::Transform3d const> const fire_points) {
-    ioj::sim::lasers::SpawnRequests new_lasers;
+void Sim::fire_lasers_from(std::span<Transform3d const> const fire_points) {
+    lasers::SpawnRequests new_lasers;
     auto const laser_count{static_cast<std::int32_t>(fire_points.size())};
     new_lasers.add_defaulted(laser_count);
 
     for (std::int32_t i{0}; i < laser_count; ++i) {
-        new_lasers.locations.set(i, ioj::sim::to_float(fire_points[i].location));
-        new_lasers.rotations.set(i, ioj::sim::to_float(fire_points[i].rotator()));
-        new_lasers.base_velocities.set(i, ioj::sim::to_float(velocity));
+        new_lasers.locations.set(i, to_float(fire_points[i].location));
+        new_lasers.rotations.set(i, to_float(fire_points[i].rotator()));
+        new_lasers.base_velocities.set(i, to_float(velocity));
     }
 
     std::ranges::fill(new_lasers.damages, config.laser.damage);
     std::ranges::fill(new_lasers.speeds, config.laser.projectile_speed);
     std::ranges::fill(new_lasers.max_distances, config.laser.max_distance);
-    std::ranges::fill(new_lasers.sources,
-                      ioj::sim::LaserSource{team, ioj::sim::EntityType::PlayerShip});
+    std::ranges::fill(new_lasers.sources, LaserSource{team, EntityType::PlayerShip});
     std::ranges::fill(new_lasers.instigator_handles, registry_handle);
     lasers.queue_laser_spawns(new_lasers.get_const_view());
 }
 
 void Sim::upgrade_laser() noexcept {
-    if (laser_mode == ioj::sim::ShipLaserMode::Single) {
-        laser_mode = ioj::sim::ShipLaserMode::Double;
-    } else if (laser_mode == ioj::sim::ShipLaserMode::Double) {
-        laser_mode = ioj::sim::ShipLaserMode::Hyper;
+    if (laser_mode == ShipLaserMode::Single) {
+        laser_mode = ShipLaserMode::Double;
+    } else if (laser_mode == ShipLaserMode::Double) {
+        laser_mode = ShipLaserMode::Hyper;
     }
 }
 
 void Sim::select_next_laser_fire_rate() noexcept {
-    set_laser_fire_rate(
-        static_cast<ioj::sim::ShipFireRate>((static_cast<unsigned>(laser_fire_rate) + 1) %
-                                            static_cast<unsigned>(ioj::sim::ShipFireRate::COUNT)));
+    set_laser_fire_rate(static_cast<ShipFireRate>((static_cast<unsigned>(laser_fire_rate) + 1) %
+                                                  static_cast<unsigned>(ShipFireRate::COUNT)));
 }
 
 void Sim::select_previous_laser_fire_rate() noexcept {
-    set_laser_fire_rate(static_cast<ioj::sim::ShipFireRate>(
-        (static_cast<unsigned>(laser_fire_rate) +
-         static_cast<unsigned>(ioj::sim::ShipFireRate::COUNT) - 1) %
-        static_cast<unsigned>(ioj::sim::ShipFireRate::COUNT)));
+    set_laser_fire_rate(static_cast<ShipFireRate>(
+        (static_cast<unsigned>(laser_fire_rate) + static_cast<unsigned>(ShipFireRate::COUNT) - 1) %
+        static_cast<unsigned>(ShipFireRate::COUNT)));
 }
 
-void Sim::set_laser_fire_rate(ioj::sim::ShipFireRate const value) noexcept {
+void Sim::set_laser_fire_rate(ShipFireRate const value) noexcept {
     laser_fire_rate = value;
     switch (laser_fire_rate) {
-        case ioj::sim::ShipFireRate::COUNT: {
+        case ShipFireRate::COUNT: {
             ml::fatal_error("Invalid player laser fire rate.");
         }
-        case ioj::sim::ShipFireRate::Single: {
+        case ShipFireRate::Single: {
             lasers_per_burst = 1;
             break;
         }
-        case ioj::sim::ShipFireRate::Burst3: {
+        case ShipFireRate::Burst3: {
             lasers_per_burst = 3;
             break;
         }
-        case ioj::sim::ShipFireRate::FullAuto: {
+        case ShipFireRate::FullAuto: {
             lasers_per_burst = std::numeric_limits<decltype(lasers_per_burst)>::max();
             break;
         }
@@ -650,8 +643,7 @@ void Sim::set_health(std::int32_t const new_health, RegistryEntityHandle const k
 
 void Sim::die(RegistryEntityHandle const killer) {
     EntityDeathInfo death_info;
-    auto const reason{killer.is_null() ? ioj::sim::DeathReason::Unknown
-                                       : ioj::sim::DeathReason::Combat};
+    auto const reason{killer.is_null() ? DeathReason::Unknown : DeathReason::Combat};
     death_info.add(reason, registry_handle, killer);
     queue_entity_update(death_info);
     death_notification_pending = true;
@@ -678,7 +670,7 @@ auto Sim::get_energy() const -> float {
     return thrust_energy / config.thrust_energy_max;
 }
 
-auto Sim::get_middle_socket() const -> ioj::sim::Transform3d {
+auto Sim::get_middle_socket() const -> Transform3d {
     return middle_socket * body_transform * transform;
 }
 
@@ -716,4 +708,4 @@ void Sim::configure_speed_sampling() {
     speed_sample_ticks_remaining = speed_sample_tick_period;
     speed_samples.assign(static_cast<std::size_t>(speed_sample_max), ml::Vector2d{});
 }
-} // namespace ioj::sim::player
+} // namespace player

@@ -7,7 +7,7 @@
 #include "ioj/sim/spinners/sim.h"
 
 namespace ioj::sim::spinners {
-PhaseInterface::PhaseInterface(ioj::sim::spinners::Sim& new_target)
+PhaseInterface::PhaseInterface(Sim& new_target)
     : simulation{new_target} {
 
 }

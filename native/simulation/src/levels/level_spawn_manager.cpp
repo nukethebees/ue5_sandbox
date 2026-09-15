@@ -59,11 +59,11 @@ void LevelSpawnManager::spawn(LevelSpawnGroupsConstView const groups) {
         auto const offset{groups.offsets[index]};
         auto const count{groups.counts[index]};
         switch (groups.types[index]) {
-            case ioj::sim::EntityType::CapitalShip: {
+            case EntityType::CapitalShip: {
                 spawn_capitals(capital_payloads_.get_const_view(offset, count));
                 break;
             }
-            case ioj::sim::EntityType::Turret: {
+            case EntityType::Turret: {
                 spawn_turrets(turret_payloads_.get_const_view(offset, count));
                 break;
             }
@@ -74,7 +74,7 @@ void LevelSpawnManager::spawn(LevelSpawnGroupsConstView const groups) {
         }
     }
     for (std::int32_t index{}; index < group_count; ++index) {
-        if (groups.types[index] == ioj::sim::EntityType::CapitalShip) {
+        if (groups.types[index] == EntityType::CapitalShip) {
             resolve_capital_targets(
                 capital_payloads_.get_const_view(groups.offsets[index], groups.counts[index]));
         }

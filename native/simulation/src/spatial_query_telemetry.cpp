@@ -46,4 +46,4 @@ auto SpatialQueryTelemetry::snapshot(CollisionGridTelemetrySnapshot const grid,
         .occupied_dynamic_cell_count = occupied_dynamic_cell_count,
     };
 }
-} // namespace ioj::sim::collision
+} // namespace collision

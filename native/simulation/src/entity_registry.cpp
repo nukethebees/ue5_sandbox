@@ -29,7 +29,7 @@ auto find_unique_id(std::span<std::int32_t const> const generations,
                     RegistryEntityHandle const handle) noexcept
     -> std::expected<EntityUniqueId, UniqueIdLookupError> {
     assert(generations.size() == current_ids.size());
-    switch (ioj::sim::analyse_handle(generations, handle)) {
+    switch (analyse_handle(generations, handle)) {
         case RegistryHandleState::Active:
             return current_ids[static_cast<std::size_t>(handle.index)];
         case RegistryHandleState::Stale:
@@ -466,7 +466,7 @@ auto EntityRegistry::get_direct_damage_queue_view() const -> DirectDamageEvents 
 // Handle queries
 /* **************************************** */
 auto EntityRegistry::analyse_handle(RegistryEntityHandle const handle) const
-    -> ioj::sim::RegistryHandleState {
+    -> RegistryHandleState {
     return bookkeeping_.analyse_handle(handle);
 }
 auto EntityRegistry::is_stale(RegistryEntityHandle const handle) const -> bool {
@@ -477,26 +477,25 @@ auto EntityRegistry::is_stale(RegistryEntityHandle const handle) const -> bool {
 // Entity data updates
 /* **************************************** */
 void EntityRegistry::refresh_handles(std::span<RegistryEntityHandle> const handles) const {
-    [[maybe_unused]] auto const invalid_index{ioj::sim::refresh_registry_handles(
-        ioj::sim::make_native_query_view(*this),
-        {handles.data(), static_cast<std::size_t>(handles.size())})};
+    [[maybe_unused]] auto const invalid_index{refresh_registry_handles(
+        make_native_query_view(*this), {handles.data(), static_cast<std::size_t>(handles.size())})};
     assert(invalid_index < 0);
 }
 void EntityRegistry::refresh_locations(std::span<RegistryEntityHandle const> handles,
-                                       ioj::sim::Vectors3fView const& locations) {
+                                       Vectors3fView const& locations) {
     [[maybe_unused]] auto const n{handles.size()};
     assert(static_cast<std::size_t>(locations.num()) == n);
 
     [[maybe_unused]] auto const inactive_index{entity_registry_detail::copy_entity_data(
-        ioj::sim::make_native_query_view(*this),
+        make_native_query_view(*this),
         {handles.data(), static_cast<std::size_t>(handles.size())},
         locations,
         {})};
     assert(inactive_index < 0);
 }
 void EntityRegistry::refresh_entity_data(std::span<RegistryEntityHandle> handles,
-                                         ioj::sim::Vectors3fView const& locations,
-                                         ioj::sim::Vectors3fView const& velocities) {
+                                         Vectors3fView const& locations,
+                                         Vectors3fView const& velocities) {
     auto const n_handles{handles.size()};
     if (n_handles == 0) {
         return;
@@ -516,21 +515,21 @@ void EntityRegistry::refresh_entity_data(std::span<RegistryEntityHandle> handles
     auto const update_locations{should_update_view(static_cast<std::size_t>(locations.num()))};
     auto const update_velocities{should_update_view(static_cast<std::size_t>(velocities.num()))};
     [[maybe_unused]] auto const inactive_index{entity_registry_detail::copy_entity_data(
-        ioj::sim::make_native_query_view(*this),
+        make_native_query_view(*this),
         {handles.data(), static_cast<std::size_t>(handles.size())},
-        update_locations ? locations : ioj::sim::Vectors3fView{},
-        update_velocities ? velocities : ioj::sim::Vectors3fView{})};
+        update_locations ? locations : Vectors3fView{},
+        update_velocities ? velocities : Vectors3fView{})};
     assert(inactive_index < 0);
 }
 
 /* **************************************** */
 // Entity data queries
 /* **************************************** */
-auto EntityRegistry::get_location(RegistryEntityHandle const handle) const -> ioj::sim::Vector3f {
+auto EntityRegistry::get_location(RegistryEntityHandle const handle) const -> Vector3f {
     assert(is_valid_handle(handle));
     return entity_data.locations[handle.index];
 }
-auto EntityRegistry::get_velocity(RegistryEntityHandle const handle) const -> ioj::sim::Vector3f {
+auto EntityRegistry::get_velocity(RegistryEntityHandle const handle) const -> Vector3f {
     assert(is_valid_handle(handle));
     return entity_data.velocities[handle.index];
 }
@@ -538,12 +537,11 @@ auto EntityRegistry::get_health(RegistryEntityHandle const handle) const -> std:
     assert(is_valid_handle(handle));
     return entity_data.healths[handle.index];
 }
-auto EntityRegistry::get_team(RegistryEntityHandle const handle) const -> ioj::sim::Team {
+auto EntityRegistry::get_team(RegistryEntityHandle const handle) const -> Team {
     assert(is_valid_handle(handle));
     return entity_data.teams[handle.index];
 }
-auto EntityRegistry::get_entity_type(RegistryEntityHandle const handle) const
-    -> ioj::sim::EntityType {
+auto EntityRegistry::get_entity_type(RegistryEntityHandle const handle) const -> EntityType {
     assert(is_valid_handle(handle));
     return entity_data.entity_types[handle.index];
 }
@@ -561,19 +559,17 @@ auto EntityRegistry::get_moved_entities_this_tick() const -> std::span<RegistryE
 auto EntityRegistry::get_dead_entities_this_frame() const -> std::span<RegistryEntityHandle const> {
     return {bookkeeping_.dead_entities.data(), bookkeeping_.dead_entities.size()};
 }
-auto EntityRegistry::get_handles_not_in_team(ioj::sim::Team const team) const
+auto EntityRegistry::get_handles_not_in_team(Team const team) const
     -> std::vector<RegistryEntityHandle> {
     std::vector<RegistryEntityHandle> out;
     get_handles_not_in_team(team, out);
     return out;
 }
-void EntityRegistry::get_handles_not_in_team(ioj::sim::Team const team,
+void EntityRegistry::get_handles_not_in_team(Team const team,
                                              std::vector<RegistryEntityHandle>& out) const {
     out.resize(static_cast<std::size_t>(get_num_elements()));
-    auto const count{ioj::sim::collect_non_team_alive_entities(
-        ioj::sim::make_native_query_view(*this),
-        team,
-        {out.data(), static_cast<std::size_t>(out.size())})};
+    auto const count{collect_non_team_alive_entities(
+        make_native_query_view(*this), team, {out.data(), static_cast<std::size_t>(out.size())})};
     out.resize(static_cast<std::size_t>(count));
 }
 
@@ -592,7 +588,7 @@ auto EntityRegistry::count_kills() const noexcept -> std::int32_t {
 auto EntityRegistry::count_alive() const noexcept -> std::int32_t {
     return statistics_.alive_count();
 }
-auto EntityRegistry::count_alive(ioj::sim::EntityType const type) const noexcept -> std::int32_t {
+auto EntityRegistry::count_alive(EntityType const type) const noexcept -> std::int32_t {
     return statistics_.count_alive(type);
 }
 auto EntityRegistry::count_alive_per_team() const noexcept -> TeamCounts {
@@ -601,19 +597,17 @@ auto EntityRegistry::count_alive_per_team() const noexcept -> TeamCounts {
 auto EntityRegistry::count_alive_per_team_and_type() const noexcept -> EntityCounts {
     return statistics_.count_alive_per_team_and_type();
 }
-auto EntityRegistry::count_alive_not_on_team(ioj::sim::Team const team) const noexcept
-    -> std::int32_t {
+auto EntityRegistry::count_alive_not_on_team(Team const team) const noexcept -> std::int32_t {
     return statistics_.count_alive_not_on_team(team);
 }
 
 /* **************************************** */
 // Unique entity queries
 /* **************************************** */
-auto EntityRegistry::is_valid_unique_id(ioj::sim::EntityUniqueId const id) const -> bool {
+auto EntityRegistry::is_valid_unique_id(EntityUniqueId const id) const -> bool {
     return id.id >= 0 && id.id < get_num_unique_ids_issued();
 }
-auto EntityRegistry::find_unique_id(RegistryEntityHandle const handle) const
-    -> ioj::sim::EntityUniqueId {
+auto EntityRegistry::find_unique_id(RegistryEntityHandle const handle) const -> EntityUniqueId {
     auto const unique_entities{unique_entity_history_.get_const_view().columns()};
     auto const result{entity_registry_detail::find_unique_id(
         bookkeeping_.generations, bookkeeping_.unique_ids, unique_entities, handle)};
@@ -631,7 +625,7 @@ auto EntityRegistry::find_unique_id(RegistryEntityHandle const handle) const
     }
     return {};
 }
-auto EntityRegistry::get_kills(ioj::sim::EntityUniqueId const id) const -> std::uint32_t {
+auto EntityRegistry::get_kills(EntityUniqueId const id) const -> std::uint32_t {
     assert(is_valid_unique_id(id));
     auto const unique_entities{unique_entity_history_.get_const_view().columns()};
     return unique_entities.kills[id.id];
@@ -641,13 +635,13 @@ auto EntityRegistry::get_kills(ioj::sim::EntityUniqueId const id) const -> std::
 // Spatial queries
 /* **************************************** */
 auto EntityRegistry::collect_entities_in_range(
-    ioj::sim::Vector3f const& origin,
+    Vector3f const& origin,
     float const radius,
     std::span<RegistryEntityHandle> const out_entities) const -> std::int32_t {
     SANDBOX_PROFILE_SCOPE("Sandbox::EntityRegistry::collect_entities_in_range");
 
     return ioj::sim::collect_entities_in_range(
-        ioj::sim::make_native_query_view(*this),
+        make_native_query_view(*this),
         origin,
         radius,
         {out_entities.data(), static_cast<std::size_t>(out_entities.size())});
@@ -711,12 +705,12 @@ void EntityRegistry::validate_unique_entity_data() const {
             unique_entities.registry_generations[i],
         };
         [[maybe_unused]] auto const handle_status{analyse_handle(handle)};
-        assert(handle_status != ioj::sim::RegistryHandleState::Invalid);
-        assert(handle_status != ioj::sim::RegistryHandleState::Null);
+        assert(handle_status != RegistryHandleState::Invalid);
+        assert(handle_status != RegistryHandleState::Null);
 
-        assert(unique_entities.life_state[i] == ioj::sim::LifeState::Alive ||
-               unique_entities.life_state[i] == ioj::sim::LifeState::Unknown ||
-               unique_entities.life_state[i] == ioj::sim::LifeState::Combat);
+        assert(unique_entities.life_state[i] == LifeState::Alive ||
+               unique_entities.life_state[i] == LifeState::Unknown ||
+               unique_entities.life_state[i] == LifeState::Combat);
     }
 }
 void EntityRegistry::validate_handles(std::span<RegistryEntityHandle const> const handles) {

@@ -19,37 +19,35 @@ inline constexpr std::int32_t collision_resilient_health{1'000'000};
 /* **************************************** */
 // Simultaneous capital deaths
 /* **************************************** */
-void run_worldless_simultaneous_capital_reassignment(
-    ioj::sim::tests::SimulationFixture const& config) {
+void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture const& config) {
     struct Sample {
         std::vector<RegistryEntityHandle> capitals{};
         std::vector<std::vector<RegistryEntityHandle>> owned_fighters{};
-        std::vector<ioj::sim::Team> capital_teams{};
-        std::vector<ioj::sim::Team> fighter_teams{};
+        std::vector<Team> capital_teams{};
+        std::vector<Team> fighter_teams{};
         std::vector<std::int32_t> span_starts{};
         std::vector<RegistryEntityHandle> all_owned_fighters{};
         std::vector<RegistryEntityHandle> fighters{};
     };
 
-    auto data{ioj::sim::tests::make_simulation_data(config)};
+    auto data{tests::make_simulation_data(config)};
     data.capital_ships.spawn_delay = 6000.f;
     data.capital_ships.max_health = fighter_handles_test::collision_resilient_health;
     data.fighters.laser.damage = 0;
     data.fighters.health = fighter_handles_test::collision_resilient_health;
     for (std::int32_t i{}; i < 4; ++i) {
-        ioj::sim::tests::add_capital_spawn(
-            data,
-            ioj::sim::Vector3f{{static_cast<float>((i % 2 == 0 ? -1.0 : 1.0) * 250000.0),
-                                static_cast<float>((i / 2) * 200000.0),
-                                0.f}},
-            i % 2 == 0 ? ioj::sim::Team::Green : ioj::sim::Team::Red,
-            i ^ 1,
-            0.f,
-            6000.f,
-            fighter_handles_test::collision_resilient_health);
+        tests::add_capital_spawn(data,
+                                 Vector3f{{static_cast<float>((i % 2 == 0 ? -1.0 : 1.0) * 250000.0),
+                                           static_cast<float>((i / 2) * 200000.0),
+                                           0.f}},
+                                 i % 2 == 0 ? Team::Green : Team::Red,
+                                 i ^ 1,
+                                 0.f,
+                                 6000.f,
+                                 fighter_handles_test::collision_resilient_health);
     }
 
-    ioj::sim::tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     ml::TimeSeriesData<Sample> samples;
     std::vector<RegistryEntityHandle> killed_capitals{};
@@ -79,19 +77,19 @@ void run_worldless_simultaneous_capital_reassignment(
     harness.timeline.at(1.0, [&] {
         auto const& capitals{harness.get_simulation().get_capital_ships()};
         auto const& registry{harness.get_registry()};
-        for (auto const team : {ioj::sim::Team::Green, ioj::sim::Team::Red}) {
+        for (auto const team : {Team::Green, Team::Red}) {
             RegistryEntityHandle victim;
             auto const count{capitals.get_num_instances()};
             for (std::int32_t i{}; i < count; ++i) {
                 auto const handle{capitals.get_handle(i)};
                 if (registry.get_team(handle) == team) {
                     victim = handle;
-                    if (team == ioj::sim::Team::Red) {
+                    if (team == Team::Red) {
                         break;
                     }
                 }
             }
-            if (ioj::sim::tests::expect_true(victim.is_valid(), "Team has a capital to kill")) {
+            if (tests::expect_true(victim.is_valid(), "Team has a capital to kill")) {
                 killed_capitals.push_back(victim);
             }
         }
@@ -100,32 +98,31 @@ void run_worldless_simultaneous_capital_reassignment(
             static_cast<std::size_t>(static_cast<std::int32_t>(killed_capitals.size()))});
     });
     harness.timeline.finish_at(2.0);
-    ioj::sim::tests::expect_true(harness.run_until_timeline_finished(10.0),
-                                 "Capital reassignment timeline completes");
-    ioj::sim::tests::expect_true(samples.num() > 1, "Capital reassignment samples are recorded");
+    tests::expect_true(harness.run_until_timeline_finished(10.0),
+                       "Capital reassignment timeline completes");
+    tests::expect_true(samples.num() > 1, "Capital reassignment samples are recorded");
     if (::testing::Test::HasFailure()) {
         return;
     }
 
     auto const& before{samples.value_at(samples.nearest_index(0.5))};
     auto const& after{samples.values().back()};
-    ioj::sim::tests::expect_equal(
+    tests::expect_equal(
         4, static_cast<std::int32_t>(before.capitals.size()), "Two capitals per team spawn");
-    ioj::sim::tests::expect_equal(
+    tests::expect_equal(
         2, static_cast<std::int32_t>(after.capitals.size()), "Both killed capitals are removed");
-    ioj::sim::tests::expect_greater(
+    tests::expect_greater(
         static_cast<std::int32_t>(before.fighters.size()), 0, "One fighter wave spawns");
-    ioj::sim::tests::expect_equal(static_cast<std::int32_t>(before.fighters.size()),
-                                  static_cast<std::int32_t>(after.fighters.size()),
-                                  "All fighters survive");
+    tests::expect_equal(static_cast<std::int32_t>(before.fighters.size()),
+                        static_cast<std::int32_t>(after.fighters.size()),
+                        "All fighters survive");
     std::set<RegistryEntityHandle> seen;
     std::int32_t offset{};
     auto const count{static_cast<std::int32_t>(after.capitals.size())};
     for (std::int32_t i{}; i < count; ++i) {
-        ioj::sim::tests::expect_true(!std::ranges::contains(killed_capitals, after.capitals[i]),
-                                     "Owner capital survives");
-        ioj::sim::tests::expect_equal(
-            offset, after.span_starts[i], "Ownership spans are contiguous");
+        tests::expect_true(!std::ranges::contains(killed_capitals, after.capitals[i]),
+                           "Owner capital survives");
+        tests::expect_equal(offset, after.span_starts[i], "Ownership spans are contiguous");
         std::int32_t expected_count{};
         auto const before_count{static_cast<std::int32_t>(before.capitals.size())};
         for (std::int32_t j{}; j < before_count; ++j) {
@@ -133,55 +130,55 @@ void run_worldless_simultaneous_capital_reassignment(
                 expected_count += static_cast<std::int32_t>(before.owned_fighters[j].size());
             }
         }
-        ioj::sim::tests::expect_equal(expected_count,
-                                      static_cast<std::int32_t>(after.owned_fighters[i].size()),
-                                      "Survivor owns both original waves on its team");
+        tests::expect_equal(expected_count,
+                            static_cast<std::int32_t>(after.owned_fighters[i].size()),
+                            "Survivor owns both original waves on its team");
         for (auto const fighter : after.owned_fighters[i]) {
-            ioj::sim::tests::expect_true(!std::ranges::contains(seen, fighter),
-                                         "Fighter ownership is unique");
+            tests::expect_true(!std::ranges::contains(seen, fighter),
+                               "Fighter ownership is unique");
             seen.insert(fighter);
-            ioj::sim::tests::expect_true(std::ranges::contains(before.fighters, fighter),
-                                         "Original fighter is preserved");
-            ioj::sim::tests::expect_true(std::ranges::contains(after.fighters, fighter),
-                                         "Owned fighter is in simulation");
-            ioj::sim::tests::expect_equal(after.capital_teams[i],
-                                          after.fighter_teams[offset],
-                                          "Fighter belongs to owner's team");
-            if (ioj::sim::tests::expect_true((offset >= 0 && static_cast<std::size_t>(offset) <
-                                                                 after.all_owned_fighters.size()),
-                                             "Span is within flat ownership array")) {
-                ioj::sim::tests::expect_equal(
+            tests::expect_true(std::ranges::contains(before.fighters, fighter),
+                               "Original fighter is preserved");
+            tests::expect_true(std::ranges::contains(after.fighters, fighter),
+                               "Owned fighter is in simulation");
+            tests::expect_equal(after.capital_teams[i],
+                                after.fighter_teams[offset],
+                                "Fighter belongs to owner's team");
+            if (tests::expect_true((offset >= 0 && static_cast<std::size_t>(offset) <
+                                                       after.all_owned_fighters.size()),
+                                   "Span is within flat ownership array")) {
+                tests::expect_equal(
                     fighter, after.all_owned_fighters[offset], "Span matches flat ownership array");
             }
             ++offset;
         }
     }
-    ioj::sim::tests::expect_equal(static_cast<std::int32_t>(after.fighters.size()),
-                                  static_cast<std::int32_t>(seen.size()),
-                                  "Every fighter has one owner");
-    ioj::sim::tests::expect_equal(offset,
-                                  static_cast<std::int32_t>(after.all_owned_fighters.size()),
-                                  "Spans cover ownership array");
+    tests::expect_equal(static_cast<std::int32_t>(after.fighters.size()),
+                        static_cast<std::int32_t>(seen.size()),
+                        "Every fighter has one owner");
+    tests::expect_equal(offset,
+                        static_cast<std::int32_t>(after.all_owned_fighters.size()),
+                        "Spans cover ownership array");
 }
 
 /* **************************************** */
 // Capital fighter handle lifecycle
 /* **************************************** */
-void run_worldless_fighter_handles(ioj::sim::tests::SimulationFixture const& config,
+void run_worldless_fighter_handles(tests::SimulationFixture const& config,
                                    FighterHandlesScenario const scenario) {
-    auto data{ioj::sim::tests::make_simulation_data(config)};
+    auto data{tests::make_simulation_data(config)};
     data.capital_ships.spawn_delay = 10.f;
     data.capital_ships.max_health = 10000;
     data.fighters.speed = 2000.f;
     data.fighters.laser.max_distance = 15000.f;
-    auto const green_index{ioj::sim::tests::add_capital_spawn(
-        data, {{-260800.f, -5060.f, 4360.f}}, ioj::sim::Team::Green, 1, 0.f, 6000.f)};
-    ioj::sim::tests::add_capital_spawn(
-        data, {{245260.f, -451630.f, 4360.f}}, ioj::sim::Team::Red, green_index, 0.f, 6000.f);
-    ioj::sim::tests::add_capital_spawn(
-        data, {{300450.f, 214000.f, 4360.f}}, ioj::sim::Team::Red, green_index, 0.f, 6000.f);
+    auto const green_index{tests::add_capital_spawn(
+        data, {{-260800.f, -5060.f, 4360.f}}, Team::Green, 1, 0.f, 6000.f)};
+    tests::add_capital_spawn(
+        data, {{245260.f, -451630.f, 4360.f}}, Team::Red, green_index, 0.f, 6000.f);
+    tests::add_capital_spawn(
+        data, {{300450.f, 214000.f, 4360.f}}, Team::Red, green_index, 0.f, 6000.f);
 
-    ioj::sim::tests::WorldlessSimulationTest harness{std::move(data)};
+    tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     auto const& fighters{harness.get_simulation().get_fighters()};
@@ -193,24 +190,22 @@ void run_worldless_fighter_handles(ioj::sim::tests::SimulationFixture const& con
     auto capital_kill_checked{scenario == FighterHandlesScenario::KillFightersOnly};
 
     harness.timeline.at(0.2, [&] {
-        ioj::sim::tests::expect_equal(
-            3, capitals.get_num_instances(), "Three capitals are registered");
+        tests::expect_equal(3, capitals.get_num_instances(), "Three capitals are registered");
         auto const expected_fighters{3 * capitals.get_fighter_spawn_slots()};
-        ioj::sim::tests::expect_equal(expected_fighters,
-                                      fighters.get_num_instances(),
-                                      "Every capital spawns its fighter slots");
-        ioj::sim::tests::expect_equal(
-            expected_fighters,
-            static_cast<std::int32_t>(capitals.get_fighter_handles().size()),
-            "Capital-owned and simulation fighter counts match");
+        tests::expect_equal(expected_fighters,
+                            fighters.get_num_instances(),
+                            "Every capital spawns its fighter slots");
+        tests::expect_equal(expected_fighters,
+                            static_cast<std::int32_t>(capitals.get_fighter_handles().size()),
+                            "Capital-owned and simulation fighter counts match");
         for (std::int32_t i{}; i < capitals.get_num_instances(); ++i) {
-            ioj::sim::tests::expect_not_equal(capitals.get_handle(i),
-                                              capitals.get_target_handle(i),
-                                              "Capital does not target itself",
-                                              i);
+            tests::expect_not_equal(capitals.get_handle(i),
+                                    capitals.get_target_handle(i),
+                                    "Capital does not target itself",
+                                    i);
         }
         for (auto const target : fighters.get_target_handles()) {
-            ioj::sim::tests::expect_true(target.is_valid(), "Spawned fighter has a target");
+            tests::expect_true(target.is_valid(), "Spawned fighter has a target");
         }
         initial_checked = true;
     });
@@ -228,16 +223,15 @@ void run_worldless_fighter_handles(ioj::sim::tests::SimulationFixture const& con
         });
         next_time += 0.2;
         harness.timeline.at(next_time, [&] {
-            ioj::sim::tests::expect_equal(static_cast<std::int32_t>(kept.size()),
-                                          fighters.get_num_instances(),
-                                          "Killed fighters are removed from the simulation");
-            ioj::sim::tests::expect_equal(
-                static_cast<std::int32_t>(kept.size()),
-                static_cast<std::int32_t>(capitals.get_fighter_handles().size()),
-                "Killed fighters are removed from capital ownership");
+            tests::expect_equal(static_cast<std::int32_t>(kept.size()),
+                                fighters.get_num_instances(),
+                                "Killed fighters are removed from the simulation");
+            tests::expect_equal(static_cast<std::int32_t>(kept.size()),
+                                static_cast<std::int32_t>(capitals.get_fighter_handles().size()),
+                                "Killed fighters are removed from capital ownership");
             for (auto const handle : destroyed) {
-                ioj::sim::tests::expect_true(harness.get_registry().is_valid_dead(handle),
-                                             "Destroyed fighter is dead");
+                tests::expect_true(harness.get_registry().is_valid_dead(handle),
+                                   "Destroyed fighter is dead");
             }
             fighter_kill_checked = true;
         });
@@ -246,7 +240,7 @@ void run_worldless_fighter_handles(ioj::sim::tests::SimulationFixture const& con
     if (scenario != FighterHandlesScenario::KillFightersOnly) {
         next_time += 0.2;
         harness.timeline.at(next_time, [&] {
-            auto const main_index{capitals.find_first_index_on_team(ioj::sim::Team::Green)};
+            auto const main_index{capitals.find_first_index_on_team(Team::Green)};
             assert(main_index.has_value());
             auto const owned{capitals.get_fighter_handles(*main_index)};
             green_fighters_before_capital_kill =
@@ -255,32 +249,32 @@ void run_worldless_fighter_handles(ioj::sim::tests::SimulationFixture const& con
         });
         next_time += 0.5;
         harness.timeline.at(next_time, [&] {
-            ioj::sim::tests::expect_equal(
+            tests::expect_equal(
                 2, capitals.get_num_instances(), "Killed capital is removed from the simulation");
-            auto const main_index{capitals.find_first_index_on_team(ioj::sim::Team::Green)};
-            ioj::sim::tests::expect_true(main_index.has_value(), "Green capital survives");
+            auto const main_index{capitals.find_first_index_on_team(Team::Green)};
+            tests::expect_true(main_index.has_value(), "Green capital survives");
             if (main_index.has_value()) {
                 auto const remaining{capitals.get_fighter_handles(*main_index)};
-                ioj::sim::tests::expect_equal(
+                tests::expect_equal(
                     static_cast<std::int32_t>(green_fighters_before_capital_kill.size()),
                     static_cast<std::int32_t>(remaining.size()),
                     "Surviving capital keeps its fighters");
                 for (auto const handle : remaining) {
-                    ioj::sim::tests::expect_true(
+                    tests::expect_true(
                         std::ranges::contains(green_fighters_before_capital_kill, handle),
                         "Surviving fighter retains capital ownership");
-                    ioj::sim::tests::expect_true(fighters.get_target_handle(handle).is_valid(),
-                                                 "Surviving fighter retargets");
+                    tests::expect_true(fighters.get_target_handle(handle).is_valid(),
+                                       "Surviving fighter retargets");
                 }
             }
             capital_kill_checked = true;
         });
     }
     harness.timeline.finish_at(next_time + 0.1);
-    ioj::sim::tests::expect_true(harness.run_until_timeline_finished(next_time + 0.2),
-                                 "Capital fighter handle timeline completes");
-    ioj::sim::tests::expect_true(initial_checked, "Initial fighter ownership is checked");
-    ioj::sim::tests::expect_true(fighter_kill_checked, "Fighter removal is checked");
-    ioj::sim::tests::expect_true(capital_kill_checked, "Capital removal is checked");
+    tests::expect_true(harness.run_until_timeline_finished(next_time + 0.2),
+                       "Capital fighter handle timeline completes");
+    tests::expect_true(initial_checked, "Initial fighter ownership is checked");
+    tests::expect_true(fighter_kill_checked, "Fighter removal is checked");
+    tests::expect_true(capital_kill_checked, "Capital removal is checked");
 }
 }

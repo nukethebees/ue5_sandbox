@@ -408,7 +408,7 @@
     :pass-by value))
 
 (type fighters_sim
-  :spelling "ioj::sim::fighters::Sim"
+  :spelling "Sim"
   :header "ioj/sim/fighters/sim.h")
 
 (type spawned_entity_handles
@@ -416,23 +416,23 @@
   :header "ioj/sim/spawned_entity_handles.h")
 
 (type player_sim
-  :spelling "ioj::sim::player::Sim"
+  :spelling "Sim"
   :header "ioj/sim/player/sim.h")
 
 (type lasers_sim
-  :spelling "ioj::sim::lasers::Sim"
+  :spelling "Sim"
   :header "ioj/sim/lasers/sim.h")
 
 (type capital_ships_sim
-  :spelling "ioj::sim::capital_ships::Sim"
+  :spelling "Sim"
   :header "ioj/sim/capital_ships/sim.h")
 
 (type turrets_sim
-  :spelling "ioj::sim::turrets::Sim"
+  :spelling "Sim"
   :header "ioj/sim/turrets/sim.h")
 
 (type spinners_sim
-  :spelling "ioj::sim::spinners::Sim"
+  :spelling "Sim"
   :header "ioj/sim/spinners/sim.h")
 
 (type laser_source

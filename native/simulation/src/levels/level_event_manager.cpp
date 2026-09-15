@@ -62,7 +62,7 @@ void LevelEventManager::initialise(CompiledLevelEvents data,
     mission_manager_.set_pending_objective_events(mission_tick_count);
 }
 
-auto LevelEventManager::dispatch_tick(ioj::sim::SimTick const tick) -> bool {
+auto LevelEventManager::dispatch_tick(SimTick const tick) -> bool {
     auto const event_tick_count{schedule_.execution_ticks.size()};
     if (static_cast<std::size_t>(next_event_index_) == event_tick_count) {
         return false;

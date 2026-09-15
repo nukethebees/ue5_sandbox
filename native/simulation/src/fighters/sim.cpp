@@ -106,7 +106,7 @@ auto make_fire_point_candidate(Vector3f const target_location,
 }
 }
 namespace diagnostic_detail {
-auto vector_string(ioj::sim::Vector3f const value) -> std::string {
+auto vector_string(Vector3f const value) -> std::string {
     return std::format("({}, {}, {})", value.X, value.Y, value.Z);
 }
 }
@@ -160,7 +160,7 @@ void Sim::set_config(FighterSimConfig const& new_config,
 Sim::Sim(SimClock const& clock,
          EntityRegistry& in_entity_registry,
          SpatialQueryManager const& in_spatial_query_manager,
-         ioj::sim::lasers::Sim& in_laser_simulation,
+         lasers::Sim& in_laser_simulation,
          std::pmr::memory_resource& in_frame_memory_resource) noexcept
     : simulation_clock{clock}
     , entity_registry{in_entity_registry}
@@ -173,18 +173,18 @@ Sim::Sim(SimClock const& clock,
 /* **************************************** */
 void Sim::begin_play() {
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::begin_play");
-    ioj::sim::profiling::plot("Sandbox/FighterCount", 0);
-    ioj::sim::profiling::plot("Sandbox/FightersAvoiding", 0);
-    ioj::sim::profiling::plot("Sandbox/FighterNavigationTraces", 0);
-    ioj::sim::profiling::plot("Sandbox/FightersSeparating", 0);
-    ioj::sim::profiling::plot("Sandbox/FighterSeparationQueries", 0);
-    ioj::sim::profiling::plot("Sandbox/FighterSeparationCandidates", 0);
-    ioj::sim::profiling::plot("Sandbox/FighterDenseDirectionSelections", 0);
-    ioj::sim::profiling::plot("Sandbox/FighterSteeringMemory", 0);
-    ioj::sim::profiling::plot("Sandbox/FighterNavigationClear", 0);
-    ioj::sim::profiling::plot("Sandbox/FighterNavigationNearby", 0);
-    ioj::sim::profiling::plot("Sandbox/FighterNavigationActive", 0);
-    ioj::sim::profiling::plot("Sandbox/FighterNavigationImmediate", 0);
+    profiling::plot("Sandbox/FighterCount", 0);
+    profiling::plot("Sandbox/FightersAvoiding", 0);
+    profiling::plot("Sandbox/FighterNavigationTraces", 0);
+    profiling::plot("Sandbox/FightersSeparating", 0);
+    profiling::plot("Sandbox/FighterSeparationQueries", 0);
+    profiling::plot("Sandbox/FighterSeparationCandidates", 0);
+    profiling::plot("Sandbox/FighterDenseDirectionSelections", 0);
+    profiling::plot("Sandbox/FighterSteeringMemory", 0);
+    profiling::plot("Sandbox/FighterNavigationClear", 0);
+    profiling::plot("Sandbox/FighterNavigationNearby", 0);
+    profiling::plot("Sandbox/FighterNavigationActive", 0);
+    profiling::plot("Sandbox/FighterNavigationImmediate", 0);
     awareness_cleaner_ = 0;
     reposition_cleaner_ = 0;
     attack_cleaner_ = 0;
@@ -275,7 +275,7 @@ void Sim::make_decisions() {
     auto const n{data.num()};
     std::array<RegistryEntityHandle, 128> nearby_entities;
     auto const dot_threshold{config.minimum_opportunistic_intercept_deviation_dot_product};
-    auto const registry{ioj::sim::make_native_query_view(entity_registry)};
+    auto const registry{make_native_query_view(entity_registry)};
 
     for (std::int32_t i{0}; i < n; ++i) {
         if (!ml::TickCountdownView<std::int8_t>{data.awareness_scan_countdowns,
@@ -408,10 +408,10 @@ void Sim::move(float const dt) {
 
     move(dt, move_view);
     move(dt, attack_view);
-    ioj::sim::distance_and_squared(attack_view.target_distances,
-                                   attack_view.target_distance_sq,
-                                   attack_view.locations.get_const_view(),
-                                   attack_view.target_locations.get_const_view());
+    distance_and_squared(attack_view.target_distances,
+                         attack_view.target_distance_sq,
+                         attack_view.locations.get_const_view(),
+                         attack_view.target_locations.get_const_view());
 }
 void Sim::queue_commands() {
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::queue_commands");
@@ -421,14 +421,14 @@ void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::resolve_damage_events");
 
     auto& data{entity_buffers.current()};
-    ioj::sim::batch::resolve_damage_events(entity_registry,
-                                           data.entity_handles,
-                                           data.healths,
-                                           local_indices_to_remove,
-                                           entity_death_info);
+    batch::resolve_damage_events(entity_registry,
+                                 data.entity_handles,
+                                 data.healths,
+                                 local_indices_to_remove,
+                                 entity_death_info);
 
     auto const& direct_damage{entity_registry.get_direct_damage_queue_view()};
-    auto const registry{ioj::sim::make_native_query_view(entity_registry)};
+    auto const registry{make_native_query_view(entity_registry)};
     auto const damage_events{direct_damage.get_const_view()};
     auto const damage_count{damage_events.num()};
     for (std::int32_t event_index{}; event_index < damage_count; ++event_index) {
@@ -474,7 +474,7 @@ void Sim::sync_from_registry() {
 }
 void Sim::end_tick() {
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::end_tick");
-    ioj::sim::profiling::plot("Sandbox/FighterCount", get_num_instances());
+    profiling::plot("Sandbox/FighterCount", get_num_instances());
     validate_array_sizes();
 }
 
@@ -567,7 +567,7 @@ void Sim::update_separation_observations(NavigationScratch& scratch) {
     auto const close_distance{std::max(separation_radius * 0.5f, immediate_distance)};
     auto const immediate_distance_sq{immediate_distance * immediate_distance};
     auto const close_distance_sq{close_distance * close_distance};
-    auto const registry_view{ioj::sim::make_native_query_view(entity_registry)};
+    auto const registry_view{make_native_query_view(entity_registry)};
 
     for (auto const fighter_index : scratch.ready_fighter_indices) {
         auto const goal_direction{data.movement_directions[fighter_index]};
@@ -575,7 +575,7 @@ void Sim::update_separation_observations(NavigationScratch& scratch) {
         if (ml::native_math::is_nearly_zero(
                 goal_direction.X, goal_direction.Y, goal_direction.Z, 1.e-4f) ||
             move_distance <= 0.f) {
-            data.separation_steering.set(fighter_index, ioj::sim::Vector3f{});
+            data.separation_steering.set(fighter_index, Vector3f{});
             data.avoidance_choice_indices[fighter_index] = direct_movement_choice;
             data.avoidance_clear_scan_counts[fighter_index] = 0;
             continue;
@@ -585,7 +585,7 @@ void Sim::update_separation_observations(NavigationScratch& scratch) {
         auto const fighter_handle{data.entity_handles[fighter_index]};
         auto const n_nearby{
             spatial_query_manager.collect_entities_of_type_in_range(fighter_location,
-                                                                    ioj::sim::EntityType::Fighter,
+                                                                    EntityType::Fighter,
                                                                     separation_radius,
                                                                     fighter_handle,
                                                                     nearby_fighters)};
@@ -602,7 +602,7 @@ void Sim::update_separation_observations(NavigationScratch& scratch) {
                 ? static_cast<float>(std::clamp(
                       1.0 - elapsed_since_scan / config.steering_memory_duration, 0.0, 1.0))
                 : 0.f};
-        auto const observation{ioj::sim::fighters::observe_separation(
+        auto const observation{fighters::observe_separation(
             registry_view.locations,
             registry_view.generations,
             fighter_location,
@@ -754,13 +754,12 @@ void Sim::execute_navigation_sweeps(NavigationScratch& scratch, float const clea
          static_cast<std::size_t>(scratch.line_of_sight_results.num())});
     scratch.trace_hits.set_num(trace_count);
     // Fighters contribute soft steering; solid entities (including the parent capital) block.
-    spatial_query_manager.sweep_closest_aabbs(
-        scratch.line_of_sight_starts.get_const_view(),
-        scratch.line_of_sight_ends.get_const_view(),
-        moving_half_extent,
-        scratch.trace_hits.get_view(),
-        {},
-        ioj::sim::collision::TraceEntityFilter::ExcludeFighters);
+    spatial_query_manager.sweep_closest_aabbs(scratch.line_of_sight_starts.get_const_view(),
+                                              scratch.line_of_sight_ends.get_const_view(),
+                                              moving_half_extent,
+                                              scratch.trace_hits.get_view(),
+                                              {},
+                                              collision::TraceEntityFilter::ExcludeFighters);
     navigation_telemetry.hard_trace_count += trace_count;
 }
 void Sim::select_navigation_alternatives(NavigationScratch& scratch,
@@ -779,7 +778,7 @@ void Sim::select_navigation_alternatives(NavigationScratch& scratch,
         auto const candidate_begin{blocked_index * n_avoidance_choices};
         auto const candidate_end{candidate_begin + n_avoidance_choices};
         auto const candidate_count{static_cast<std::size_t>(n_avoidance_choices)};
-        auto const chosen_choice{ioj::sim::fighters::choose_navigation_alternative(
+        auto const chosen_choice{fighters::choose_navigation_alternative(
             fighter_location,
             safe_progress_distance,
             {scratch.trace_choice_indices.data() + candidate_begin, candidate_count},
@@ -887,28 +886,22 @@ void Sim::apply_navigation_choices(NavigationScratch const& scratch) {
     }
 }
 void Sim::publish_navigation_telemetry() const {
-    ioj::sim::profiling::plot("Sandbox/FightersAvoiding",
-                              navigation_telemetry.avoiding_fighter_count);
-    ioj::sim::profiling::plot("Sandbox/FighterNavigationTraces",
-                              navigation_telemetry.hard_trace_count);
-    ioj::sim::profiling::plot("Sandbox/FightersSeparating",
-                              navigation_telemetry.separating_fighter_count);
-    ioj::sim::profiling::plot("Sandbox/FighterSeparationQueries",
-                              navigation_telemetry.separation_query_count);
-    ioj::sim::profiling::plot("Sandbox/FighterSeparationCandidates",
-                              navigation_telemetry.separation_candidate_count);
-    ioj::sim::profiling::plot("Sandbox/FighterDenseDirectionSelections",
-                              navigation_telemetry.dense_direction_selection_count);
-    ioj::sim::profiling::plot("Sandbox/FighterSteeringMemory",
-                              navigation_telemetry.steering_memory_fighter_count);
-    ioj::sim::profiling::plot("Sandbox/FighterNavigationClear",
-                              navigation_telemetry.clear_risk_count);
-    ioj::sim::profiling::plot("Sandbox/FighterNavigationNearby",
-                              navigation_telemetry.nearby_risk_count);
-    ioj::sim::profiling::plot("Sandbox/FighterNavigationActive",
-                              navigation_telemetry.active_risk_count);
-    ioj::sim::profiling::plot("Sandbox/FighterNavigationImmediate",
-                              navigation_telemetry.immediate_risk_count);
+    profiling::plot("Sandbox/FightersAvoiding", navigation_telemetry.avoiding_fighter_count);
+    profiling::plot("Sandbox/FighterNavigationTraces", navigation_telemetry.hard_trace_count);
+    profiling::plot("Sandbox/FightersSeparating", navigation_telemetry.separating_fighter_count);
+    profiling::plot("Sandbox/FighterSeparationQueries",
+                    navigation_telemetry.separation_query_count);
+    profiling::plot("Sandbox/FighterSeparationCandidates",
+                    navigation_telemetry.separation_candidate_count);
+    profiling::plot("Sandbox/FighterDenseDirectionSelections",
+                    navigation_telemetry.dense_direction_selection_count);
+    profiling::plot("Sandbox/FighterSteeringMemory",
+                    navigation_telemetry.steering_memory_fighter_count);
+    profiling::plot("Sandbox/FighterNavigationClear", navigation_telemetry.clear_risk_count);
+    profiling::plot("Sandbox/FighterNavigationNearby", navigation_telemetry.nearby_risk_count);
+    profiling::plot("Sandbox/FighterNavigationActive", navigation_telemetry.active_risk_count);
+    profiling::plot("Sandbox/FighterNavigationImmediate",
+                    navigation_telemetry.immediate_risk_count);
 }
 
 /* **************************************** */
@@ -937,14 +930,13 @@ auto Sim::get_target_handle(RegistryEntityHandle const fighter_handle) const noe
     -> RegistryEntityHandle {
     return entity_buffers.current().target_handles[find_index(fighter_handle)];
 }
-auto Sim::get_target_location(RegistryEntityHandle const fighter_handle) const
-    -> ioj::sim::Vector3f {
+auto Sim::get_target_location(RegistryEntityHandle const fighter_handle) const -> Vector3f {
     return entity_buffers.current().target_locations[find_index(fighter_handle)];
 }
 auto Sim::get_tasks() const -> std::span<Task const> {
     return entity_buffers.current().tasks;
 }
-auto Sim::get_teams() const -> std::span<ioj::sim::Team const> {
+auto Sim::get_teams() const -> std::span<Team const> {
     return entity_buffers.current().teams;
 }
 auto Sim::get_task_spans() const -> TaskSpans {
@@ -992,10 +984,10 @@ void Sim::refresh_target_data() {
     entity_registry.refresh_entity_data(
         data.target_handles, data.target_locations.get_view(), data.target_velocities.get_view());
     spatial_query_manager.copy_entity_radii(data.target_handles, data.target_radii);
-    ioj::sim::distance_and_squared(data.target_distances,
-                                   data.target_distance_sq,
-                                   data.locations.get_const_view(),
-                                   data.target_locations.get_const_view());
+    distance_and_squared(data.target_distances,
+                         data.target_distance_sq,
+                         data.locations.get_const_view(),
+                         data.target_locations.get_const_view());
 }
 
 /* **************************************** */
@@ -1044,8 +1036,7 @@ void Sim::prepare_entity_update_data() {
     registry_update_data.teams = data.teams;
     for (std::int32_t i{0}; i < n; ++i) {
         registry_update_data.alive[i] = static_cast<std::uint8_t>(data.healths[i] > 0);
-        registry_update_data.rotations.set(i,
-                                           ioj::sim::direction_to_rotation(data.aim_directions[i]));
+        registry_update_data.rotations.set(i, direction_to_rotation(data.aim_directions[i]));
     }
     registry_update_data.validate_array_sizes();
 }
@@ -1104,7 +1095,7 @@ void Sim::refresh_layout() {
 /* **************************************** */
 // Spawning
 /* **************************************** */
-auto Sim::queue_spawns(ioj::sim::FighterSpawnQueueConstView const new_spawns) -> std::int32_t {
+auto Sim::queue_spawns(FighterSpawnQueueConstView const new_spawns) -> std::int32_t {
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::queue_spawns");
     new_spawns.validate_array_sizes();
     if (new_spawns.teams.empty()) {
@@ -1178,12 +1169,11 @@ void Sim::commit_spawns() {
     for (std::int32_t i{0}; i < n_new; ++i) {
         auto const index{n_cur + i};
         new_spawn_entity_data.locations.set(i, data.locations[index]);
-        new_spawn_entity_data.rotations.set(
-            i, ioj::sim::direction_to_rotation(data.aim_directions[index]));
+        new_spawn_entity_data.rotations.set(i, direction_to_rotation(data.aim_directions[index]));
         new_spawn_entity_data.healths[i] = data.healths[index];
         new_spawn_entity_data.teams[i] = data.teams[index];
     }
-    std::ranges::fill(new_spawn_entity_data.entity_types, ioj::sim::EntityType::Fighter);
+    std::ranges::fill(new_spawn_entity_data.entity_types, EntityType::Fighter);
     new_spawn_entity_data.velocities.each_column(
         [](auto& column) { std::ranges::fill(column, 0.f); });
 
@@ -1208,7 +1198,7 @@ void Sim::commit_spawns() {
                 diagnostic_detail::vector_string(data.locations[index])));
         }
     }
-    ioj::sim::make_deterministic_biases(
+    make_deterministic_biases(
         std::span<std::int32_t const>{
             new_spawn_entity_handles.registry_handles.registry_indices.data(),
             static_cast<std::size_t>(n_new)},
@@ -1235,7 +1225,7 @@ void Sim::self_destruct_fighter(RegistryEntityHandle const handle) {
 void Sim::remove_dead_entities() {
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::remove_dead_entities");
     auto& data{entity_buffers.current()};
-    ioj::sim::batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
+    batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
     for (auto const index : local_indices_to_remove) {
         data.remove_at_swap(index, 1);
     }
@@ -1400,10 +1390,10 @@ void Sim::handle_firing(TaskView const& data) {
         auto const ship_location{data.locations[ship_index]};
         auto const direction{data.aim_directions[ship_index]};
         new_lasers.locations.set(i, ship_location + direction * fire_point_distance_);
-        new_lasers.rotations.set(i, ioj::sim::direction_to_rotation(direction));
+        new_lasers.rotations.set(i, direction_to_rotation(direction));
         new_lasers.base_velocities.set(i, data.velocities[ship_index]);
         new_lasers.instigator_handles[i] = data.entity_handles[ship_index];
-        new_lasers.sources[i] = {data.teams[ship_index], ioj::sim::EntityType::Fighter};
+        new_lasers.sources[i] = {data.teams[ship_index], EntityType::Fighter};
         data.attack_cooldowns[ship_index] = attack_restart_ticks_;
     }
 
@@ -1493,8 +1483,8 @@ void Sim::check_fighter_tasks() const {
             checked_task_spans[task_value].count = 1;
         } else {
             ml::fatal_error(std::format("Found task {} when current group was {}",
-                                        ioj::sim::to_string_view(task),
-                                        ioj::sim::to_string_view(current_task_group)));
+                                        to_string_view(task),
+                                        to_string_view(current_task_group)));
         }
     }
 
@@ -1512,7 +1502,7 @@ void Sim::check_fighter_tasks() const {
         std::string message{"Incorrect task spans."};
         for (std::size_t i{}; i < n_task_types; ++i) {
             message += std::format("\\n    {}: expected ({}, {}), got ({}, {})",
-                                   ioj::sim::to_string_view(static_cast<Task>(i)),
+                                   to_string_view(static_cast<Task>(i)),
                                    task_spans[i].offset,
                                    task_spans[i].count,
                                    checked_task_spans[i].offset,
@@ -1522,4 +1512,4 @@ void Sim::check_fighter_tasks() const {
     }
 }
 #endif
-} // namespace ioj::sim::fighters
+} // namespace fighters

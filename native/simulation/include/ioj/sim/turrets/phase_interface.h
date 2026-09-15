@@ -9,7 +9,7 @@
 namespace ioj::sim::turrets {
 class PhaseInterface {
     private:
-    PhaseInterface(ioj::sim::turrets::Sim& new_target);
+    PhaseInterface(Sim& new_target);
 
     void begin_play();
 
@@ -30,7 +30,7 @@ class PhaseInterface {
     void end_tick();
 
     friend struct ::ioj::sim::LevelSim;
-    ioj::sim::turrets::Sim& simulation;
+    Sim& simulation;
 };
 } // namespace ioj::sim::turrets
 // clang-format on

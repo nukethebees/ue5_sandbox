@@ -22,8 +22,7 @@ void WorldlessSimulationTest::queue_damage(std::span<RegistryEntityHandle const>
     for (auto const target : targets) {
         events.add(target, damage, instigator);
     }
-    ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation_,
-                                                               events.get_const_view());
+    LevelSimTestAccess::queue_direct_damage_events(simulation_, events.get_const_view());
 }
 
 void WorldlessSimulationTest::queue_kills(std::span<RegistryEntityHandle const> const targets,
@@ -35,8 +34,7 @@ void WorldlessSimulationTest::queue_kills(std::span<RegistryEntityHandle const> 
         auto const damage{std::max(1, get_registry().get_health(target))};
         events.add(target, damage, instigator);
     }
-    ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation_,
-                                                               events.get_const_view());
+    LevelSimTestAccess::queue_direct_damage_events(simulation_, events.get_const_view());
 }
 
 auto WorldlessSimulationTest::run_until_timeline_finished(time_type const maximum_time) -> bool {
@@ -44,8 +42,8 @@ auto WorldlessSimulationTest::run_until_timeline_finished(time_type const maximu
     assert(simulation_.get_state() == OrchestratorState::Paused);
     simulation_.start();
     auto const tick_period{simulation_.get_clock().get_tick_period()};
-    auto const maximum_ticks{static_cast<ioj::sim::SimTick>(std::ceil(maximum_time / tick_period))};
-    for (ioj::sim::SimTick tick{}; tick < maximum_ticks && !timeline.is_finished(); ++tick) {
+    auto const maximum_ticks{static_cast<SimTick>(std::ceil(maximum_time / tick_period))};
+    for (SimTick tick{}; tick < maximum_ticks && !timeline.is_finished(); ++tick) {
         simulation_.advance(tick_period);
     }
     simulation_.pause();
@@ -70,14 +68,13 @@ auto make_simulation_data(SimulationFixture const& fixture) -> LevelSimInitData 
     data.fighter_fire_point_distance = fixture.data.fighter_fire_point_distance;
     return data;
 }
-auto make_player_spawn(SimulationFixture const& fixture, ioj::sim::Transform3d transform)
-    -> ioj::sim::player::PlayerSpawnData {
+auto make_player_spawn(SimulationFixture const& fixture, Transform3d transform)
+    -> player::PlayerSpawnData {
     auto player{fixture.player};
     player.transform = transform;
     return player;
 }
-auto add_player_spawn(LevelSimInitData& data, ioj::sim::player::PlayerSpawnData spawn)
-    -> std::int32_t {
+auto add_player_spawn(LevelSimInitData& data, player::PlayerSpawnData spawn) -> std::int32_t {
     auto& initialisation{data.level_events.initialisation};
     auto const entity_index{initialisation.entity_count++};
     initialisation.player_entity_index = entity_index;
@@ -85,8 +82,8 @@ auto add_player_spawn(LevelSimInitData& data, ioj::sim::player::PlayerSpawnData 
     return entity_index;
 }
 auto add_capital_spawn(LevelSimInitData& data,
-                       ioj::sim::Vector3f location,
-                       ioj::sim::Team team,
+                       Vector3f location,
+                       Team team,
                        std::int32_t target_entity_index,
                        float initial_spawn_delay,
                        float spawn_cooldown,
@@ -105,9 +102,9 @@ auto add_capital_spawn(LevelSimInitData& data,
     return entity_index;
 }
 auto add_turret_spawn(LevelSimInitData& data,
-                      ioj::sim::Vector3f location,
-                      ioj::sim::Rotator3f rotation,
-                      ioj::sim::Team team,
+                      Vector3f location,
+                      Rotator3f rotation,
+                      Team team,
                       std::int32_t health,
                       std::int32_t laser_damage) -> std::int32_t {
     auto& events{data.level_events.initial_spawns.turret_spawns};
@@ -123,7 +120,7 @@ auto add_turret_spawn(LevelSimInitData& data,
     return entity_index;
 }
 auto add_spinner_spawn(LevelSimInitData& data,
-                       ioj::sim::Vector3f location,
+                       Vector3f location,
                        float const yaw,
                        std::int32_t const initial_fire_point_index) -> std::int32_t {
     auto& events{data.level_events.initial_spawns.spinner_spawns};

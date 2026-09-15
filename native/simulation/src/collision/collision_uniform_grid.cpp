@@ -403,32 +403,30 @@ void append_grid_overlaps(GridGeometry const geometry,
 }
 
 namespace {
-static_assert(ioj::sim::collision::EntityAABBs::space_ship_index ==
-              std::to_underlying(ioj::sim::EntityType::PlayerShip));
-static_assert(ioj::sim::collision::EntityAABBs::static_turret_index ==
-              std::to_underlying(ioj::sim::EntityType::Turret));
-static_assert(ioj::sim::collision::EntityAABBs::capital_ship_index ==
-              std::to_underlying(ioj::sim::EntityType::CapitalShip));
-static_assert(ioj::sim::collision::EntityAABBs::fighter_index ==
-              std::to_underlying(ioj::sim::EntityType::Fighter));
-static_assert(ioj::sim::collision::EntityAABBs::tube_spinner_index ==
-              std::to_underlying(ioj::sim::EntityType::TubeSpinner));
-static_assert(ioj::sim::collision::EntityAABBs::num_rows ==
-              std::to_underlying(ioj::sim::EntityType::COUNT));
+static_assert(collision::EntityAABBs::space_ship_index ==
+              std::to_underlying(EntityType::PlayerShip));
+static_assert(collision::EntityAABBs::static_turret_index ==
+              std::to_underlying(EntityType::Turret));
+static_assert(collision::EntityAABBs::capital_ship_index ==
+              std::to_underlying(EntityType::CapitalShip));
+static_assert(collision::EntityAABBs::fighter_index == std::to_underlying(EntityType::Fighter));
+static_assert(collision::EntityAABBs::tube_spinner_index ==
+              std::to_underlying(EntityType::TubeSpinner));
+static_assert(collision::EntityAABBs::num_rows == std::to_underlying(EntityType::COUNT));
 
 }
 
-auto CollisionUniformGrid::get_grid_dims() const noexcept -> ioj::sim::collision::CellCoord {
+auto CollisionUniformGrid::get_grid_dims() const noexcept -> collision::CellCoord {
     return geometry_.dimensions;
 }
-void CollisionUniformGrid::set_grid_dims(ioj::sim::collision::CellCoord const grid_dims) noexcept {
+void CollisionUniformGrid::set_grid_dims(collision::CellCoord const grid_dims) noexcept {
     geometry_.dimensions = grid_dims;
 }
 
-auto CollisionUniformGrid::get_cell_dims() const noexcept -> ioj::sim::Vector3f {
+auto CollisionUniformGrid::get_cell_dims() const noexcept -> Vector3f {
     return geometry_.cell_dimensions;
 }
-void CollisionUniformGrid::set_cell_dims(ioj::sim::Vector3f const cell_dims) noexcept {
+void CollisionUniformGrid::set_cell_dims(Vector3f const cell_dims) noexcept {
     geometry_.cell_dimensions = cell_dims;
 }
 
@@ -436,13 +434,13 @@ CollisionUniformGrid::CollisionUniformGrid(EntityRegistry const& entity_registry
     : entity_registry_{entity_registry} {}
 
 auto CollisionUniformGrid::is_configured() const noexcept -> bool {
-    return ioj::sim::collision::is_configured(geometry_);
+    return collision::is_configured(geometry_);
 }
 
 auto CollisionUniformGrid::num_cells() const -> std::int32_t {
-    return ioj::sim::collision::num_cells(geometry_);
+    return collision::num_cells(geometry_);
 }
-auto CollisionUniformGrid::get_cell_entities(ioj::sim::collision::CellCoord const cell_coord) const
+auto CollisionUniformGrid::get_cell_entities(collision::CellCoord const cell_coord) const
     -> std::span<RegistryEntityHandle const> {
     assert(is_cell_coord_in_bounds(cell_coord));
 
@@ -456,7 +454,7 @@ void CollisionUniformGrid::reset() {
     static_storage_.reset();
 }
 
-void CollisionUniformGrid::set_static_aabbs(ioj::sim::collision::WorldAABBs static_aabbs) {
+void CollisionUniformGrid::set_static_aabbs(collision::WorldAABBs static_aabbs) {
     SANDBOX_PROFILE_SCOPE("Sandbox::CollisionUniformGrid::set_static_aabbs");
 
     if (!is_configured()) {
@@ -468,8 +466,8 @@ void CollisionUniformGrid::set_static_aabbs(ioj::sim::collision::WorldAABBs stat
     rebuild_static_grid();
 }
 
-auto CollisionUniformGrid::add_static_aabb(ioj::sim::Vector3f const min_point,
-                                           ioj::sim::Vector3f const max_point) -> std::int32_t {
+auto CollisionUniformGrid::add_static_aabb(Vector3f const min_point, Vector3f const max_point)
+    -> std::int32_t {
     SANDBOX_PROFILE_SCOPE("Sandbox::CollisionUniformGrid::add_static_aabb");
 
     assert(is_configured());
@@ -496,7 +494,7 @@ void CollisionUniformGrid::rebuild_static_grid() {
     }
 }
 
-void CollisionUniformGrid::rebuild_grid(ioj::sim::collision::EntityAABBs const& entity_aabbs) {
+void CollisionUniformGrid::rebuild_grid(collision::EntityAABBs const& entity_aabbs) {
     SANDBOX_PROFILE_SCOPE("Sandbox::CollisionUniformGrid::rebuild_grid");
     telemetry_.record_rebuild();
     if (!is_configured()) {
@@ -517,13 +515,13 @@ void CollisionUniformGrid::rebuild_grid(ioj::sim::collision::EntityAABBs const& 
                 continue;
             }
             auto const entity_type{entity_data.entity_types[index]};
-            auto const bounds{ioj::sim::collision::make_entity_world_bounds(
-                entity_aabbs,
-                std::to_underlying(entity_type),
-                entity_data.locations[index],
-                ioj::sim::to_quaternion(entity_data.rotations[index]))};
+            auto const bounds{
+                collision::make_entity_world_bounds(entity_aabbs,
+                                                    std::to_underlying(entity_type),
+                                                    entity_data.locations[index],
+                                                    to_quaternion(entity_data.rotations[index]))};
             auto const [min_coord, max_coord]{
-                ioj::sim::collision::to_cell_coord_bounds(geometry, bounds.min, bounds.max)};
+                collision::to_cell_coord_bounds(geometry, bounds.min, bounds.max)};
             if (!is_cell_coord_in_bounds(min_coord, max_coord)) {
                 ml::fatal_error(std::format(
                     "Collision-grid entity {}:{} type {} has world AABB ({}, {}, {}) through "
@@ -551,7 +549,7 @@ void CollisionUniformGrid::rebuild_grid(ioj::sim::collision::EntityAABBs const& 
 }
 
 void CollisionUniformGrid::append_overlaps(
-    ioj::sim::collision::WorldAABB const& query_bounds,
+    collision::WorldAABB const& query_bounds,
     RegistryEntityHandle const ignored_entity,
     std::vector<RegistryEntityHandle>& out_entities,
     std::vector<std::int32_t>& out_static_geometry_indices) const {
@@ -559,34 +557,32 @@ void CollisionUniformGrid::append_overlaps(
 
     auto const geometry{geometry_};
     [[maybe_unused]] auto const [min_coord, max_coord]{
-        ioj::sim::collision::to_cell_coord_bounds(geometry, query_bounds.min, query_bounds.max)};
+        collision::to_cell_coord_bounds(geometry, query_bounds.min, query_bounds.max)};
     assert(is_cell_coord_in_bounds(min_coord, max_coord));
 
-    collision_uniform_grid_detail::append_grid_overlaps(
-        geometry_,
-        entity_storage_,
-        static_storage_,
-        ioj::sim::make_native_query_view(entity_registry_),
-        query_bounds,
-        ignored_entity,
-        out_entities,
-        out_static_geometry_indices);
+    collision_uniform_grid_detail::append_grid_overlaps(geometry_,
+                                                        entity_storage_,
+                                                        static_storage_,
+                                                        make_native_query_view(entity_registry_),
+                                                        query_bounds,
+                                                        ignored_entity,
+                                                        out_entities,
+                                                        out_static_geometry_indices);
 }
 
-void CollisionUniformGrid::trace_aabbs(ioj::sim::LineTracesConstView const& traces,
+void CollisionUniformGrid::trace_aabbs(LineTracesConstView const& traces,
                                        TraceHitsView const& hits) const {
     telemetry_.record_line_traces(static_cast<std::uint64_t>(traces.num()));
-    collision_uniform_grid_detail::trace_grid_lines(
-        geometry_,
-        entity_storage_,
-        static_storage_,
-        ioj::sim::make_native_query_view(entity_registry_),
-        traces,
-        hits);
+    collision_uniform_grid_detail::trace_grid_lines(geometry_,
+                                                    entity_storage_,
+                                                    static_storage_,
+                                                    make_native_query_view(entity_registry_),
+                                                    traces,
+                                                    hits);
 }
 
 void CollisionUniformGrid::trace_aabbs(
-    ioj::sim::LineTracesConstView const& traces,
+    LineTracesConstView const& traces,
     TraceHitsView const& hits,
     std::span<RegistryEntityHandle const> const ignored_entities) const {
     telemetry_.record_line_traces(static_cast<std::uint64_t>(traces.num()));
@@ -594,14 +590,14 @@ void CollisionUniformGrid::trace_aabbs(
         geometry_,
         entity_storage_,
         static_storage_,
-        ioj::sim::make_native_query_view(entity_registry_),
+        make_native_query_view(entity_registry_),
         traces,
         hits,
         {ignored_entities.data(), static_cast<std::size_t>(ignored_entities.size())});
 }
 
-void CollisionUniformGrid::sweep_aabbs(ioj::sim::LineTracesConstView const& centre_paths,
-                                       ioj::sim::Vector3f const moving_half_extent,
+void CollisionUniformGrid::sweep_aabbs(LineTracesConstView const& centre_paths,
+                                       Vector3f const moving_half_extent,
                                        TraceHitsView const& hits,
                                        std::span<RegistryEntityHandle const> const ignored_entities,
                                        TraceEntityFilter const entity_filter) const {
@@ -615,7 +611,7 @@ void CollisionUniformGrid::sweep_aabbs(ioj::sim::LineTracesConstView const& cent
         geometry_,
         entity_storage_,
         static_storage_,
-        ioj::sim::make_native_query_view(entity_registry_),
+        make_native_query_view(entity_registry_),
         centre_paths,
         moving_half_extent,
         hits,
@@ -633,52 +629,44 @@ auto CollisionUniformGrid::get_runtime_telemetry() const noexcept
 }
 
 auto CollisionUniformGrid::to_cell_x(float const value) const -> std::int32_t {
-    return ioj::sim::collision::to_cell_coord(
-        value, geometry_.cell_dimensions.X, geometry_.dimensions.x);
+    return collision::to_cell_coord(value, geometry_.cell_dimensions.X, geometry_.dimensions.x);
 }
 auto CollisionUniformGrid::to_cell_y(float const value) const -> std::int32_t {
-    return ioj::sim::collision::to_cell_coord(
-        value, geometry_.cell_dimensions.Y, geometry_.dimensions.y);
+    return collision::to_cell_coord(value, geometry_.cell_dimensions.Y, geometry_.dimensions.y);
 }
 auto CollisionUniformGrid::to_cell_z(float const value) const -> std::int32_t {
-    return ioj::sim::collision::to_cell_coord(
-        value, geometry_.cell_dimensions.Z, geometry_.dimensions.z);
+    return collision::to_cell_coord(value, geometry_.cell_dimensions.Z, geometry_.dimensions.z);
 }
-auto CollisionUniformGrid::to_cell_coord(ioj::sim::Vector3f const pos) const
-    -> ioj::sim::collision::CellCoord {
-    return ioj::sim::collision::to_cell_coord(geometry_, pos);
+auto CollisionUniformGrid::to_cell_coord(Vector3f const pos) const -> collision::CellCoord {
+    return collision::to_cell_coord(geometry_, pos);
 }
-auto CollisionUniformGrid::to_min_cell_coord(ioj::sim::Vector3f const pos) const
-    -> ioj::sim::collision::CellCoord {
+auto CollisionUniformGrid::to_min_cell_coord(Vector3f const pos) const -> collision::CellCoord {
     return to_cell_coord(pos);
 }
-auto CollisionUniformGrid::to_max_cell_coord(ioj::sim::Vector3f const pos) const
-    -> ioj::sim::collision::CellCoord {
-    return ioj::sim::collision::to_max_cell_coord(geometry_, pos);
+auto CollisionUniformGrid::to_max_cell_coord(Vector3f const pos) const -> collision::CellCoord {
+    return collision::to_max_cell_coord(geometry_, pos);
 }
-auto CollisionUniformGrid::to_cell_coord_bounds(ioj::sim::Vector3f const min_point,
-                                                ioj::sim::Vector3f const max_point) const
-    -> CellCoordBounds {
-    auto const bounds{ioj::sim::collision::to_cell_coord_bounds(geometry_, min_point, max_point)};
+auto CollisionUniformGrid::to_cell_coord_bounds(Vector3f const min_point,
+                                                Vector3f const max_point) const -> CellCoordBounds {
+    auto const bounds{collision::to_cell_coord_bounds(geometry_, min_point, max_point)};
     return {bounds.min, bounds.max};
 }
 auto CollisionUniformGrid::to_cell_min_x(std::int32_t const x) const -> float {
-    return ioj::sim::collision::to_cell_min(x, geometry_.cell_dimensions.X, geometry_.dimensions.x);
+    return collision::to_cell_min(x, geometry_.cell_dimensions.X, geometry_.dimensions.x);
 }
 auto CollisionUniformGrid::to_cell_min_y(std::int32_t const y) const -> float {
-    return ioj::sim::collision::to_cell_min(y, geometry_.cell_dimensions.Y, geometry_.dimensions.y);
+    return collision::to_cell_min(y, geometry_.cell_dimensions.Y, geometry_.dimensions.y);
 }
 auto CollisionUniformGrid::to_cell_min_z(std::int32_t const z) const -> float {
-    return ioj::sim::collision::to_cell_min(z, geometry_.cell_dimensions.Z, geometry_.dimensions.z);
+    return collision::to_cell_min(z, geometry_.cell_dimensions.Z, geometry_.dimensions.z);
 }
 auto CollisionUniformGrid::to_cell_min(std::int32_t const x,
                                        std::int32_t const y,
-                                       std::int32_t const z) const -> ioj::sim::Vector3f {
+                                       std::int32_t const z) const -> Vector3f {
     return ml::make_vector3f(to_cell_min_x(x), to_cell_min_y(y), to_cell_min_z(z));
 }
-auto CollisionUniformGrid::to_cell_min(ioj::sim::collision::CellCoord const coord) const
-    -> ioj::sim::Vector3f {
-    return ioj::sim::collision::to_cell_min(geometry_, coord);
+auto CollisionUniformGrid::to_cell_min(collision::CellCoord const coord) const -> Vector3f {
+    return collision::to_cell_min(geometry_, coord);
 }
 auto CollisionUniformGrid::to_cell_centre_x(std::int32_t const x) const -> float {
     return to_cell_min_x(x) + (geometry_.cell_dimensions.X * 0.5f);
@@ -691,23 +679,21 @@ auto CollisionUniformGrid::to_cell_centre_z(std::int32_t const z) const -> float
 }
 auto CollisionUniformGrid::to_cell_centre(std::int32_t const x,
                                           std::int32_t const y,
-                                          std::int32_t const z) const -> ioj::sim::Vector3f {
+                                          std::int32_t const z) const -> Vector3f {
     return ml::make_vector3f(to_cell_centre_x(x), to_cell_centre_y(y), to_cell_centre_z(z));
 }
-auto CollisionUniformGrid::to_cell_centre(ioj::sim::collision::CellCoord const coord) const
-    -> ioj::sim::Vector3f {
-    return ioj::sim::collision::to_cell_centre(geometry_, coord);
+auto CollisionUniformGrid::to_cell_centre(collision::CellCoord const coord) const -> Vector3f {
+    return collision::to_cell_centre(geometry_, coord);
 }
-auto CollisionUniformGrid::is_cell_coord_in_bounds(ioj::sim::collision::CellCoord const coord) const
+auto CollisionUniformGrid::is_cell_coord_in_bounds(collision::CellCoord const coord) const -> bool {
+    return collision::is_cell_coord_in_bounds(geometry_, coord);
+}
+auto CollisionUniformGrid::is_cell_coord_in_bounds(collision::CellCoord const min_coord,
+                                                   collision::CellCoord const max_coord) const
     -> bool {
-    return ioj::sim::collision::is_cell_coord_in_bounds(geometry_, coord);
-}
-auto CollisionUniformGrid::is_cell_coord_in_bounds(
-    ioj::sim::collision::CellCoord const min_coord,
-    ioj::sim::collision::CellCoord const max_coord) const -> bool {
     return is_cell_coord_in_bounds(min_coord) && is_cell_coord_in_bounds(max_coord);
 }
-void CollisionUniformGrid::are_spheres_in_bounds(ioj::sim::Vectors3fConstView const centres,
+void CollisionUniformGrid::are_spheres_in_bounds(Vectors3fConstView const centres,
                                                  float const radius,
                                                  std::span<std::uint8_t> const out_results) const {
     [[maybe_unused]] auto const count{centres.num()};
@@ -715,25 +701,24 @@ void CollisionUniformGrid::are_spheres_in_bounds(ioj::sim::Vectors3fConstView co
     assert(std::isfinite(radius));
     assert(radius >= 0.f);
 
-    ioj::sim::collision::are_spheres_in_bounds(
+    collision::are_spheres_in_bounds(
         geometry_,
         centres,
         radius,
         {out_results.data(), static_cast<std::size_t>(out_results.size())});
 }
-auto CollisionUniformGrid::to_string(ioj::sim::collision::CellCoord const value) -> std::string {
+auto CollisionUniformGrid::to_string(collision::CellCoord const value) -> std::string {
     return std::format("({}, {}, {})", value.x, value.y, value.z);
 }
 auto CollisionUniformGrid::to_index(std::int32_t const x,
                                     std::int32_t const y,
                                     std::int32_t const z) const -> std::int32_t {
-    return ioj::sim::collision::to_index(geometry_, {x, y, z});
+    return collision::to_index(geometry_, {x, y, z});
 }
-auto CollisionUniformGrid::to_index(ioj::sim::collision::CellCoord const coord) const
-    -> std::int32_t {
+auto CollisionUniformGrid::to_index(collision::CellCoord const coord) const -> std::int32_t {
     return to_index(coord.x, coord.y, coord.z);
 }
-auto CollisionUniformGrid::to_index(ioj::sim::Vector3f const pos) const -> std::int32_t {
+auto CollisionUniformGrid::to_index(Vector3f const pos) const -> std::int32_t {
     return to_index(to_cell_coord(pos));
 }
 }

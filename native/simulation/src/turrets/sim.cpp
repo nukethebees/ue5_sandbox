@@ -41,7 +41,7 @@ void Sim::set_config(TurretSimConfig const& new_config) noexcept {
 Sim::Sim(SimClock const& clock,
          EntityRegistry& in_entity_registry,
          SpatialQueryManager const& in_spatial_query_manager,
-         ioj::sim::lasers::Sim& in_laser_simulation,
+         lasers::Sim& in_laser_simulation,
          std::pmr::memory_resource& in_frame_memory_resource) noexcept
     : simulation_clock{clock}
     , entity_registry{in_entity_registry}
@@ -53,7 +53,7 @@ Sim::Sim(SimClock const& clock,
 // Spawning
 /* **************************************** */
 auto Sim::register_turrets(TurretSpawnDataConstView const spawn_data,
-                           ioj::sim::Rotators3fConstView const rotations)
+                           Rotators3fConstView const rotations)
     -> std::vector<RegistryEntityHandle> {
     SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::register_turrets");
     spawn_data.validate_array_sizes();
@@ -100,7 +100,7 @@ auto Sim::register_turrets(TurretSpawnDataConstView const spawn_data,
         entities.rotations.set(first_new_index + i, rotation);
     }
     new_entity_data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
-    std::ranges::fill(new_entity_data.entity_types, ioj::sim::EntityType::Turret);
+    std::ranges::fill(new_entity_data.entity_types, EntityType::Turret);
     for (std::int32_t i{}; i < n_to_add; ++i) {
         new_entity_data.healths[i] = spawn_data.healths[i];
         new_entity_data.teams[i] = spawn_data.teams[i];
@@ -115,11 +115,10 @@ auto Sim::register_turrets(TurretSpawnDataConstView const spawn_data,
     for (std::int32_t local_index{}; local_index < n_to_add; ++local_index) {
         entities.handles[first_new_index + local_index] = new_handles[local_index];
     }
-    ioj::sim::make_deterministic_biases(
-        std::span<RegistryEntityHandle const>{entities.handles}.subspan(
-            static_cast<std::size_t>(first_new_index), spawn_count),
-        std::span<std::uint32_t>{entities.integral_biases}.subspan(
-            static_cast<std::size_t>(first_new_index), spawn_count));
+    make_deterministic_biases(std::span<RegistryEntityHandle const>{entities.handles}.subspan(
+                                  static_cast<std::size_t>(first_new_index), spawn_count),
+                              std::span<std::uint32_t>{entities.integral_biases}.subspan(
+                                  static_cast<std::size_t>(first_new_index), spawn_count));
     validate_array_sizes();
     for (std::int32_t i{}; i < n_to_add; ++i) {
         auto const index{first_new_index + i};
@@ -142,7 +141,7 @@ void Sim::handle_dead_entities() {
         return;
     }
 
-    ioj::sim::batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
+    batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
 
     death_locations_.reserve(local_indices_to_remove.size());
     for (auto const index : local_indices_to_remove) {
@@ -161,7 +160,7 @@ void Sim::handle_dead_entities() {
 /* **************************************** */
 void Sim::begin_play() {
     SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::begin_play");
-    ioj::sim::profiling::plot("Sandbox/TurretCount", 0);
+    profiling::plot("Sandbox/TurretCount", 0);
     assert(config.search_slice_size > 0);
 
     auto const cooldown_tick_period{
@@ -193,11 +192,11 @@ void Sim::queue_commands() {
 void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::resolve_damage_events");
 
-    ioj::sim::batch::resolve_damage_events(entity_registry,
-                                           entities.handles,
-                                           entities.healths,
-                                           local_indices_to_remove,
-                                           entity_death_info);
+    batch::resolve_damage_events(entity_registry,
+                                 entities.handles,
+                                 entities.healths,
+                                 local_indices_to_remove,
+                                 entity_death_info);
     validate_array_sizes();
 }
 void Sim::update_entity_registry() {
@@ -223,7 +222,7 @@ void Sim::sync_from_registry() {
 }
 void Sim::end_tick() {
     SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::end_tick");
-    ioj::sim::profiling::plot("Sandbox/TurretCount", get_num_instances());
+    profiling::plot("Sandbox/TurretCount", get_num_instances());
 
     validate_array_sizes();
 }
@@ -244,7 +243,7 @@ void Sim::prepare_entity_update_data() {
     entity_update_data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
     entity_update_data.healths = entities.healths;
     entity_update_data.teams = entities.teams;
-    std::ranges::fill(entity_update_data.entity_types, ioj::sim::EntityType::Turret);
+    std::ranges::fill(entity_update_data.entity_types, EntityType::Turret);
 
     for (std::int32_t i{0}; i < n; ++i) {
         entity_update_data.alive[i] = static_cast<std::uint8_t>(entities.healths[i] > 0);
@@ -297,7 +296,7 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
                                   float const radius) {
     auto const begin{job_index * turrets_per_job};
     auto const end{std::min(begin + turrets_per_job, n_turrets)};
-    auto const registry_view{ioj::sim::make_native_query_view(entity_registry)};
+    auto const registry_view{make_native_query_view(entity_registry)};
     std::array<float, 128> candidate_xs;
     std::array<float, 128> candidate_ys;
     std::array<float, 128> candidate_zs;
@@ -325,10 +324,9 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
             auto const target_count{target_handles.num()};
             auto const count{static_cast<std::size_t>(target_count)};
             has_line_of_sight.set_num_uninitialised(target_count);
-            ioj::sim::Vectors3fView const candidate_locations_view{
-                std::span{candidate_xs}.first(count),
-                std::span{candidate_ys}.first(count),
-                std::span{candidate_zs}.first(count)};
+            Vectors3fView const candidate_locations_view{std::span{candidate_xs}.first(count),
+                                                         std::span{candidate_ys}.first(count),
+                                                         std::span{candidate_zs}.first(count)};
             for (std::int32_t target_index{}; target_index < target_count; ++target_index) {
                 candidate_locations_view.set(
                     target_index, entity_registry.get_location(target_handles[target_index]));
@@ -388,7 +386,7 @@ void Sim::fire_at_enemies() {
     starts.reserve(count);
     ends.reserve(count);
 
-    auto const registry{ioj::sim::make_native_query_view(entity_registry)};
+    auto const registry{make_native_query_view(entity_registry)};
     auto const disengage_radius{get_disengage_radius()};
     auto const disengage_radius_squared{disengage_radius * disengage_radius};
     auto cooldowns{
@@ -429,7 +427,7 @@ void Sim::fire_at_enemies() {
         ends.get_const_view(),
         {hit_handles.data(), static_cast<std::size_t>(candidate_count)});
 
-    ioj::sim::lasers::FrameSpawnRequests new_lasers{&frame_memory_resource};
+    lasers::FrameSpawnRequests new_lasers{&frame_memory_resource};
     new_lasers.reserve(candidate_count);
     for (std::int32_t candidate{}; candidate < candidate_count; ++candidate) {
         auto const index{candidate_indices[candidate]};
@@ -486,4 +484,4 @@ void Sim::validate_array_sizes() const {
 void Sim::validate_entity_handles() const {
     entity_registry.validate_handles(entities.handles);
 }
-} // namespace ioj::sim::turrets
+} // namespace turrets

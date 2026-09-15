@@ -36,7 +36,7 @@ void Sim::set_config(LaserSimConfig const& new_config) noexcept {
 
 void Sim::begin_play() {
     SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::begin_play");
-    ioj::sim::profiling::plot("Sandbox/LaserCount", 0);
+    profiling::plot("Sandbox/LaserCount", 0);
 
     number_spawned = 0;
     preallocate_instances();
@@ -64,7 +64,7 @@ void Sim::simulate(float const dt) {
 
 void Sim::end_tick() {
     SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::end_tick");
-    ioj::sim::profiling::plot("Sandbox/LaserCount", get_num_instances());
+    profiling::plot("Sandbox/LaserCount", get_num_instances());
     validate_array_sizes();
 }
 
@@ -75,7 +75,7 @@ auto Sim::get_num_instances() const noexcept -> std::int32_t {
 /* **************************************** */
 // Spawning
 /* **************************************** */
-void Sim::queue_laser_spawns(ioj::sim::lasers::SpawnRequestsConstView const spawn_data) {
+void Sim::queue_laser_spawns(lasers::SpawnRequestsConstView const spawn_data) {
     SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::queue_laser_spawns");
 
     spawn_data.validate_array_sizes();
@@ -196,7 +196,7 @@ void Sim::handle_collisions(float const dt) {
                 trace_ends.set(trace_index, start + trace_velocities[trace_index] * dt);
             }
 
-            auto const traces{ioj::sim::LineTracesConstView{
+            auto const traces{LineTracesConstView{
                 collision_scratch.trace_starts.get_const_view().slice(i_start, trace_count),
                 collision_scratch.trace_ends.get_const_view().slice(i_start, trace_count)}};
             auto const hits{collision_scratch.trace_hits.get_view().slice(i_start, trace_count)};
@@ -263,4 +263,4 @@ void Sim::clear_spawn_buffers() {
 void Sim::validate_array_sizes() const {
     entities.validate_array_sizes();
 }
-} // namespace ioj::sim::lasers
+} // namespace lasers

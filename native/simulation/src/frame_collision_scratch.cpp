@@ -11,4 +11,4 @@ void FrameCollisionScratch::set_num(std::int32_t const count) {
     trace_ends.set_num(count);
     trace_hits.set_num(count);
 }
-} // namespace ioj::sim::lasers
+} // namespace lasers

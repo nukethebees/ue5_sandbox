@@ -9,7 +9,7 @@
 namespace ioj::sim::capital_ships {
 class PhaseInterface {
     private:
-    PhaseInterface(ioj::sim::capital_ships::Sim& new_target);
+    PhaseInterface(Sim& new_target);
 
     void begin_play();
 
@@ -28,7 +28,7 @@ class PhaseInterface {
     void end_tick();
 
     friend struct ::ioj::sim::LevelSim;
-    ioj::sim::capital_ships::Sim& simulation;
+    Sim& simulation;
 };
 } // namespace ioj::sim::capital_ships
 // clang-format on
