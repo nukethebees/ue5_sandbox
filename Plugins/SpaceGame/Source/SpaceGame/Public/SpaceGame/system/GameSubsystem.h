@@ -100,7 +100,6 @@ struct SPACEGAME_API FLevelLaunchOptions {
     ELevelPresentationMode presentation_mode{ELevelPresentationMode::Visual};
     TOptional<double> simulated_duration_seconds{};
     bool stop_when_battle_resolved{};
-    bool detailed_timing{true};
     ELevelResultsNavigation results_navigation{ELevelResultsNavigation::None};
     EPlayerControlContext control_context{EPlayerControlContext::Player};
 };

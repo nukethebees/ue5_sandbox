@@ -25,7 +25,6 @@ void SScriptLevelSelectView::Construct(FArguments const& args) {
     on_battle_speed_changed_ = args._OnBattleSpeedChanged;
     on_battle_duration_changed_ = args._OnBattleDurationChanged;
     on_battle_simulation_only_changed_ = args._OnBattleSimulationOnlyChanged;
-    on_battle_detailed_timing_changed_ = args._OnBattleDetailedTimingChanged;
     on_launch_ = args._OnLaunch;
 
     ChildSlot[SlateGenerated::ml::s7::SScriptLevelSelectViewBuilder{*this}.BuildRoot(
@@ -295,14 +294,6 @@ auto SScriptLevelSelectView::build_details() -> TSharedRef<SWidget> {
                                            &SScriptLevelSelectView::handle_simulation_only_changed)
                           [SNew(STextBlock)
                                .Text(NSLOCTEXT("LevelSelect", "SimulationOnly", "Simulation only"))
-                               .TextStyle(&style_->text(EGameTextStyle::Body))]] +
-             SHorizontalBox::Slot().AutoWidth().Padding(FMargin{18.0f, 0.0f, 0.0f, 0.0f})
-                 [SNew(SCheckBox)
-                      .IsChecked(ECheckBoxState::Checked)
-                      .OnCheckStateChanged(this,
-                                           &SScriptLevelSelectView::handle_detailed_timing_changed)
-                          [SNew(STextBlock)
-                               .Text(NSLOCTEXT("LevelSelect", "DetailedTiming", "Detailed timing"))
                                .TextStyle(&style_->text(EGameTextStyle::Body))]]]};
 
     return SNew(SBorder)
@@ -434,10 +425,6 @@ void SScriptLevelSelectView::handle_simulation_only_changed(ECheckBoxState const
     battle_simulation_only_ = state == ECheckBoxState::Checked;
     handle_battle_duration_changed(battle_duration_input_->GetText());
     on_battle_simulation_only_changed_.ExecuteIfBound(battle_simulation_only_);
-}
-
-void SScriptLevelSelectView::handle_detailed_timing_changed(ECheckBoxState const state) {
-    on_battle_detailed_timing_changed_.ExecuteIfBound(state == ECheckBoxState::Checked);
 }
 
 void SScriptLevelSelectView::update_launch_availability() {

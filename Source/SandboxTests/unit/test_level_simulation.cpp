@@ -225,12 +225,7 @@ auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
     simulation.advance(dt);
     TestTrue(TEXT("Turret has no enemy before the scheduled spawn"),
              simulation.get_turrets().get_target_handles()[0].is_null());
-    auto const previous_rebuilds{
-        simulation.get_spatial_query_manager().get_runtime_telemetry().grid_rebuild_count};
     simulation.advance(dt);
-    TestEqual(TEXT("Spawn tick publishes collision queries once in Action"),
-              simulation.get_spatial_query_manager().get_runtime_telemetry().grid_rebuild_count,
-              previous_rebuilds + 1);
     TestTrue(TEXT("Thinking cannot acquire an entity created later in Action"),
              simulation.get_turrets().get_target_handles()[0].is_null());
     auto const spawned_handle{simulation.get_capital_ships().get_handle(1)};
@@ -704,7 +699,6 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
         .level_id = "telemetry-test",
         .level_display_name = "Telemetry Test",
         .launched_utc = "2026-09-06T12:00:00Z",
-        .detailed_timing = true,
     };
     ::ioj::sim::LevelSim simulation{MoveTemp(data)};
     simulation.finish_initialisation();
@@ -717,7 +711,6 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     if (!TestTrue(TEXT("Telemetry JSON fixture produces a run record"), record.has_value())) {
         return false;
     }
-    auto const& realtime{record->completed_ticks_by_real_time};
 
     FLevelTelemetryReport report{*record};
     auto const json{serialize_level_telemetry_run(report)};
@@ -731,124 +724,92 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("JSON records current schema version"),
               root->GetIntegerField(TEXT("schema_version")),
               ::ioj::sim::LevelTelemetryRunRecord::schema_version);
-    auto const realtime_json{root->GetObjectField(TEXT("completed_ticks_by_real_time"))};
-    TestEqual(TEXT("JSON contains realtime elapsed times"),
-              realtime_json->GetArrayField(TEXT("real_elapsed_seconds")).Num(),
-              realtime.num());
-    TestEqual(TEXT("JSON contains corresponding completed ticks"),
-              realtime_json->GetArrayField(TEXT("completed_ticks")).Num(),
-              realtime.num());
-    TestTrue(TEXT("JSON contains sparse workload series"),
-             root->GetObjectField(TEXT("tick_series")).IsValid());
+    TestFalse(TEXT("Reports do not contain wall-clock throughput history"),
+              root->HasField(TEXT("completed_ticks_by_real_time")));
+    TestFalse(TEXT("Reports do not contain performance windows"),
+              root->HasField(TEXT("performance_windows")));
+    auto const simulation_json{root->GetObjectField(TEXT("simulation"))};
+    TestFalse(TEXT("Reports do not contain timing configuration"),
+              simulation_json->HasField(TEXT("detailed_timing")) ||
+                  simulation_json->HasField(TEXT("detailed_timing_tick_stride")) ||
+                  simulation_json->HasField(TEXT("performance_window_seconds")));
+    TestFalse(TEXT("Reports do not contain measured run duration"),
+              root->GetObjectField(TEXT("completion"))->HasField(TEXT("wall_elapsed_seconds")));
+    auto const series_json{root->GetObjectField(TEXT("tick_series"))};
     auto const battle_samples_json{root->GetArrayField(TEXT("battle_samples"))};
-    TestTrue(TEXT("JSON battle samples contain compact workload counters"),
+    TestFalse(TEXT("Reports do not contain engineering metrics"),
+              series_json->HasField(TEXT("registry_slot_count")) ||
+                  series_json->HasField(TEXT("range_query_count")) ||
+                  series_json->HasField(TEXT("requested_time_scale")));
+    TestTrue(TEXT("Reports retain battle and projectile samples"),
              !battle_samples_json.IsEmpty() &&
-                 battle_samples_json.Last()->AsObject()->HasField(TEXT("range_query_count")));
+                 battle_samples_json.Last()->AsObject()->HasField(TEXT("combat")) &&
+                 battle_samples_json.Last()->AsObject()->HasField(TEXT("active_lasers")) &&
+                 !battle_samples_json.Last()->AsObject()->HasField(TEXT("range_query_count")));
 
+    auto parse_current_root = [&root]() {
+        FString mutated_json;
+        auto writer{TJsonWriterFactory<>::Create(&mutated_json)};
+        FJsonSerializer::Serialize(root.ToSharedRef(), writer);
+        return deserialize_level_telemetry_run(mutated_json);
+    };
     root->SetStringField(TEXT("future_field"), TEXT("ignored"));
-    FString json_with_unknown_field;
-    auto unknown_writer{TJsonWriterFactory<>::Create(&json_with_unknown_field)};
-    FJsonSerializer::Serialize(root.ToSharedRef(), unknown_writer);
-    auto const round_trip{deserialize_level_telemetry_run(json_with_unknown_field)};
-    if (TestTrue(TEXT("Current-schema JSON deserializes with unknown fields"),
-                 round_trip.has_value())) {
+    auto const round_trip{parse_current_root()};
+    if (TestTrue(TEXT("Current report round trips"), round_trip.has_value())) {
         TestEqual(TEXT("Round trip preserves the run id"),
                   round_trip->metadata.run_id,
                   report.metadata.run_id);
-        TestEqual(TEXT("Round trip preserves realtime mappings"),
-                  round_trip->completed_ticks_by_real_time.num(),
-                  realtime.num());
-        TestEqual(TEXT("Round trip preserves battle workload counters"),
-                  round_trip->battle_samples.Last().range_query_count,
-                  report.battle_samples.Last().range_query_count);
+        TestEqual(TEXT("Round trip preserves completed ticks"),
+                  round_trip->completion.completed_ticks,
+                  report.completion.completed_ticks);
+        TestTrue(TEXT("Round trip preserves force and combat history"),
+                 round_trip->battle_samples.Num() == report.battle_samples.Num() &&
+                     round_trip->battle_samples.Last().alive ==
+                         report.battle_samples.Last().alive &&
+                     round_trip->battle_samples.Last().combat.shots ==
+                         report.battle_samples.Last().combat.shots);
     }
-    auto const windows_json{root->GetArrayField(TEXT("performance_windows"))};
-    TestTrue(TEXT("Detailed timing produces performance windows"), !windows_json.IsEmpty());
-    if (!windows_json.IsEmpty()) {
-        auto const window{windows_json[0]->AsObject()};
-        auto const phases{window->GetArrayField(TEXT("phases"))};
-        auto const shares{window->GetArrayField(TEXT("phase_cpu_share"))};
-        TestEqual(TEXT("Current reports contain three phases"), phases.Num(), 3);
-        auto const names{window->GetArrayField(TEXT("phase_names"))};
-        TestTrue(TEXT("Current phase names describe the lifecycle"),
-                 names.Num() == 3 && names[0]->AsString() == TEXT("Preparation") &&
-                     names[1]->AsString() == TEXT("Thinking") &&
-                     names[2]->AsString() == TEXT("Action"));
-        TestEqual(TEXT("Per-system timing is retained beneath each phase"),
-                  window->GetArrayField(TEXT("phase_systems")).Num(),
-                  3);
 
-        TArray<TSharedPtr<FJsonValue>> old_phases;
-        TArray<TSharedPtr<FJsonValue>> old_shares;
-        for (int32 index{}; index < FHistoricalTelemetryPhases::phase_count; ++index) {
-            auto timing{MakeShared<FJsonObject>()};
-            timing->SetNumberField(TEXT("mean_ms"), index + 1.0);
-            timing->SetNumberField(TEXT("p95_ms"), index + 2.0);
-            timing->SetNumberField(TEXT("max_ms"), index + 3.0);
-            timing->SetNumberField(TEXT("sample_count"), index + 10);
-            old_phases.Add(MakeShared<FJsonValueObject>(timing));
-            old_shares.Add(MakeShared<FJsonValueNumber>((index + 1.0) / 15.0));
-        }
-        for (auto const& value : windows_json) {
-            value->AsObject()->SetArrayField(TEXT("phases"), old_phases);
-            value->AsObject()->SetArrayField(TEXT("phase_cpu_share"), old_shares);
-        }
-        root->SetNumberField(TEXT("schema_version"), 2);
-        FString historical_json;
-        auto historical_writer{TJsonWriterFactory<>::Create(&historical_json)};
-        FJsonSerializer::Serialize(root.ToSharedRef(), historical_writer);
-        auto const historical{deserialize_level_telemetry_run(historical_json)};
-        if (TestTrue(TEXT("Schema-v2 timing reports remain readable"), historical.has_value())) {
-            TestEqual(
-                TEXT("Historical schema remains identified"), historical->loaded_schema_version, 2);
-            TestTrue(TEXT("Old phase breakdown is explicitly historical"),
-                     historical->performance_windows[0].historical_phases.has_value());
-            if (historical->performance_windows[0].historical_phases.has_value()) {
-                TestEqual(TEXT("Old phase CPU shares retain their original positions"),
-                          historical->performance_windows[0].historical_phases->cpu_share[4],
-                          5.0 / 15.0);
-                TestEqual(TEXT("Historical timing values are not combined into Action"),
-                          historical->performance_windows[0].historical_phases->timings[4].mean_ms,
-                          5.0);
+    root->SetStringField(TEXT("performance_windows"), TEXT("discarded malformed timing data"));
+    root->SetStringField(TEXT("completed_ticks_by_real_time"), TEXT("discarded malformed mapping"));
+    simulation_json->SetStringField(TEXT("detailed_timing"), TEXT("discarded"));
+    simulation_json->SetStringField(TEXT("performance_window_seconds"), TEXT("discarded"));
+    root->GetObjectField(TEXT("completion"))
+        ->SetStringField(TEXT("wall_elapsed_seconds"), TEXT("discarded"));
+    series_json->SetStringField(TEXT("range_query_count"), TEXT("discarded"));
+    series_json->SetStringField(TEXT("requested_time_scale"), TEXT("discarded"));
+    battle_samples_json.Last()->AsObject()->SetStringField(TEXT("range_query_count"),
+                                                           TEXT("discarded"));
+    for (int32 version{1}; version <= 3; ++version) {
+        root->SetNumberField(TEXT("schema_version"), version);
+        auto const historical{parse_current_root()};
+        if (TestTrue(TEXT("Legacy reports ignore discarded performance fields"),
+                     historical.has_value())) {
+            TestEqual(TEXT("Legacy schema remains identified"),
+                      historical->loaded_schema_version,
+                      version);
+            TestEqual(TEXT("Legacy reports preserve completed ticks"),
+                      historical->completion.completed_ticks,
+                      report.completion.completed_ticks);
+            TestEqual(TEXT("Legacy reports preserve sparse force history"),
+                      historical->tick_series.active_entities.num(),
+                      report.tick_series.active_entities.num());
+            if (version == 1) {
+                TestTrue(TEXT("Version one does not fabricate combat history"),
+                         historical->battle_samples.IsEmpty());
+            } else {
+                TestTrue(TEXT("Legacy reports preserve battle history"),
+                         historical->battle_samples.Last().alive ==
+                             report.battle_samples.Last().alive);
             }
-            TestEqual(TEXT("Historical timings are not relabeled as current phases"),
-                      historical->performance_windows[0].phases[0].sample_count,
-                      uint64{0});
-            TestTrue(TEXT("Historical serialization preserves its format"),
-                     deserialize_level_telemetry_run(serialize_level_telemetry_run(*historical))
-                         .has_value());
-        }
-        for (int32 index{}; index < windows_json.Num(); ++index) {
-            auto const& original{report.performance_windows[index]};
-            TArray<TSharedPtr<FJsonValue>> original_phases;
-            TArray<TSharedPtr<FJsonValue>> original_shares;
-            for (int32 phase{}; phase < FLevelTelemetryPerformanceWindow::phase_count; ++phase) {
-                auto timing{MakeShared<FJsonObject>()};
-                timing->SetNumberField(TEXT("mean_ms"), original.phases[phase].mean_ms);
-                timing->SetNumberField(TEXT("p95_ms"), original.phases[phase].p95_ms);
-                timing->SetNumberField(TEXT("max_ms"), original.phases[phase].max_ms);
-                timing->SetNumberField(TEXT("sample_count"), original.phases[phase].sample_count);
-                original_phases.Add(MakeShared<FJsonValueObject>(timing));
-                original_shares.Add(MakeShared<FJsonValueNumber>(original.phase_cpu_share[phase]));
-            }
-            windows_json[index]->AsObject()->SetArrayField(TEXT("phases"),
-                                                           MoveTemp(original_phases));
-            windows_json[index]->AsObject()->SetArrayField(TEXT("phase_cpu_share"),
-                                                           MoveTemp(original_shares));
+            auto const upgraded{
+                deserialize_level_telemetry_run(serialize_level_telemetry_run(*historical))};
+            TestTrue(TEXT("Historical reports serialize using the current schema"),
+                     upgraded.has_value() &&
+                         upgraded->loaded_schema_version == FLevelTelemetryReport::schema_version);
         }
     }
-    root->SetNumberField(TEXT("schema_version"), 1);
-    FString legacy_json;
-    auto legacy_writer{TJsonWriterFactory<>::Create(&legacy_json)};
-    FJsonSerializer::Serialize(root.ToSharedRef(), legacy_writer);
-    auto const legacy_round_trip{deserialize_level_telemetry_run(legacy_json)};
-    if (TestTrue(TEXT("Schema-v1 JSON remains readable"), legacy_round_trip.has_value())) {
-        TestEqual(TEXT("Legacy schema is identified"), legacy_round_trip->loaded_schema_version, 1);
-        TestTrue(TEXT("Legacy runs do not expose v2 battle samples"),
-                 legacy_round_trip->battle_samples.IsEmpty());
-    }
-    root->SetNumberField(TEXT("schema_version"),
-                         ::ioj::sim::LevelTelemetryRunRecord::schema_version);
+    root->SetNumberField(TEXT("schema_version"), FLevelTelemetryReport::schema_version);
     TestFalse(TEXT("Malformed JSON returns an error"),
               deserialize_level_telemetry_run(TEXT("{")).has_value());
     root->SetNumberField(TEXT("schema_version"), 999);
@@ -860,20 +821,6 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     root->SetNumberField(TEXT("schema_version"),
                          ::ioj::sim::LevelTelemetryRunRecord::schema_version);
 
-    auto parse_current_root = [&root]() {
-        FString mutated_json;
-        auto writer{TJsonWriterFactory<>::Create(&mutated_json)};
-        FJsonSerializer::Serialize(root.ToSharedRef(), writer);
-        return deserialize_level_telemetry_run(mutated_json);
-    };
-    if (!windows_json.IsEmpty()) {
-        auto const window{windows_json[0]->AsObject()};
-        auto const matrix{window->GetArrayField(TEXT("phase_systems"))};
-        window->RemoveField(TEXT("phase_systems"));
-        TestFalse(TEXT("Current reports require fine-grained phase timings"),
-                  parse_current_root().has_value());
-        window->SetArrayField(TEXT("phase_systems"), matrix);
-    }
     auto const completion_json{root->GetObjectField(TEXT("completion"))};
     auto const original_reason{completion_json->GetStringField(TEXT("reason"))};
     completion_json->SetStringField(TEXT("reason"), TEXT("future_reason"));
@@ -889,31 +836,18 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     TestFalse(TEXT("Misaligned sparse arrays return an error"), parse_current_root().has_value());
     active_entities_json->SetArrayField(TEXT("values"), original_active_values);
 
-    auto const requested_json{tick_series_json->GetObjectField(TEXT("requested_time_scale"))};
-    auto const original_requested_ticks{requested_json->GetArrayField(TEXT("ticks"))};
-    auto unordered_requested_ticks{original_requested_ticks};
-    if (unordered_requested_ticks.Num() >= 2) {
-        unordered_requested_ticks[1] = unordered_requested_ticks[0];
-        requested_json->SetArrayField(TEXT("ticks"), MoveTemp(unordered_requested_ticks));
-        TestFalse(TEXT("Non-increasing sparse ticks return an error"),
-                  parse_current_root().has_value());
-        requested_json->SetArrayField(TEXT("ticks"), original_requested_ticks);
-    }
-
-    auto const original_realtime_values{realtime_json->GetArrayField(TEXT("real_elapsed_seconds"))};
-    auto unordered_realtime_values{original_realtime_values};
-    if (unordered_realtime_values.Num() >= 2) {
-        unordered_realtime_values[1] = unordered_realtime_values[0];
-        realtime_json->SetArrayField(TEXT("real_elapsed_seconds"),
-                                     MoveTemp(unordered_realtime_values));
-        TestFalse(TEXT("Non-increasing real-time coordinates return an error"),
-                  parse_current_root().has_value());
-        realtime_json->SetArrayField(TEXT("real_elapsed_seconds"), original_realtime_values);
-    }
-
     auto const spawned_json{tick_series_json->GetObjectField(TEXT("spawned_entities"))};
     auto const original_spawned_ticks{spawned_json->GetArrayField(TEXT("ticks"))};
     auto const original_spawned_values{spawned_json->GetArrayField(TEXT("values"))};
+    spawned_json->SetArrayField(
+        TEXT("ticks"), {MakeShared<FJsonValueNumber>(0.0), MakeShared<FJsonValueNumber>(0.0)});
+    spawned_json->SetArrayField(
+        TEXT("values"), {MakeShared<FJsonValueNumber>(1.0), MakeShared<FJsonValueNumber>(1.0)});
+    TestFalse(TEXT("Non-increasing sparse ticks return an error"),
+              parse_current_root().has_value());
+    spawned_json->SetArrayField(TEXT("ticks"), original_spawned_ticks);
+    spawned_json->SetArrayField(TEXT("values"), original_spawned_values);
+
     spawned_json->SetArrayField(TEXT("ticks"), {MakeShared<FJsonValueNumber>(0.0)});
     spawned_json->SetArrayField(TEXT("values"), {MakeShared<FJsonValueNumber>(-1.0)});
     TestFalse(TEXT("Negative counter values return an error"), parse_current_root().has_value());

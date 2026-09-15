@@ -41,23 +41,6 @@ auto make_series(Series const& series) -> TSharedRef<FJsonObject> {
     return result;
 }
 
-auto make_realtime_series(ml::TimeSeriesData<uint64> const& series) -> TSharedRef<FJsonObject> {
-    TArray<TSharedPtr<FJsonValue>> elapsed_seconds;
-    TArray<TSharedPtr<FJsonValue>> completed_ticks;
-    auto const count{series.num()};
-    ml::reserve(count, elapsed_seconds, completed_ticks);
-    for (int32 index{}; index < count; ++index) {
-        elapsed_seconds.Add(MakeShared<FJsonValueNumber>(series.time_at(index)));
-        completed_ticks.Add(
-            MakeShared<FJsonValueNumber>(static_cast<double>(series.value_at(index))));
-    }
-
-    auto result{MakeShared<FJsonObject>()};
-    result->SetArrayField(TEXT("real_elapsed_seconds"), MoveTemp(elapsed_seconds));
-    result->SetArrayField(TEXT("completed_ticks"), MoveTemp(completed_ticks));
-    return result;
-}
-
 auto make_tick_series(::ioj::sim::LevelTelemetryTickSeries const& source)
     -> TSharedRef<FJsonObject> {
     auto result{MakeShared<FJsonObject>()};
@@ -91,16 +74,8 @@ auto make_tick_series(::ioj::sim::LevelTelemetryTickSeries const& source)
     result->SetObjectField(TEXT("spawned_entities"), make_series(source.spawned_entities));
     result->SetObjectField(TEXT("destroyed_entities"), make_series(source.destroyed_entities));
     result->SetObjectField(TEXT("kills"), make_series(source.kills));
-    result->SetObjectField(TEXT("registry_slot_count"), make_series(source.registry_slot_count));
     result->SetObjectField(TEXT("active_lasers"), make_series(source.active_lasers));
     result->SetObjectField(TEXT("lasers_fired"), make_series(source.lasers_fired));
-    result->SetObjectField(TEXT("occupied_spatial_cell_count"),
-                           make_series(source.occupied_spatial_cell_count));
-    result->SetObjectField(TEXT("grid_rebuild_count"), make_series(source.grid_rebuild_count));
-    result->SetObjectField(TEXT("range_query_count"), make_series(source.range_query_count));
-    result->SetObjectField(TEXT("line_trace_count"), make_series(source.line_trace_count));
-    result->SetObjectField(TEXT("sweep_trace_count"), make_series(source.sweep_trace_count));
-    result->SetObjectField(TEXT("requested_time_scale"), make_series(source.requested_time_scale));
     return result;
 }
 
@@ -112,16 +87,6 @@ auto make_flat_counts(Counts const& source) -> TArray<TSharedPtr<FJsonValue>> {
             result.Add(MakeShared<FJsonValueNumber>(static_cast<double>(value)));
         }
     }
-    return result;
-}
-
-auto make_timing(::ioj::sim::LevelTelemetryTimingAggregate const& source)
-    -> TSharedRef<FJsonObject> {
-    auto result{MakeShared<FJsonObject>()};
-    result->SetNumberField(TEXT("mean_ms"), source.mean_ms);
-    result->SetNumberField(TEXT("p95_ms"), source.p95_ms);
-    result->SetNumberField(TEXT("max_ms"), source.max_ms);
-    result->SetNumberField(TEXT("sample_count"), static_cast<double>(source.sample_count));
     return result;
 }
 
@@ -152,77 +117,6 @@ auto make_battle_samples(TArray<::ioj::sim::LevelTelemetryBattleSample> const& s
         object->SetObjectField(TEXT("combat"), make_combat(sample.combat));
         object->SetNumberField(TEXT("active_lasers"), sample.active_lasers);
         object->SetNumberField(TEXT("lasers_fired"), sample.lasers_fired);
-        object->SetNumberField(TEXT("registry_slot_count"), sample.registry_slot_count);
-        object->SetNumberField(TEXT("occupied_spatial_cell_count"),
-                               sample.occupied_spatial_cell_count);
-        object->SetNumberField(TEXT("grid_rebuild_count"),
-                               static_cast<double>(sample.grid_rebuild_count));
-        object->SetNumberField(TEXT("range_query_count"),
-                               static_cast<double>(sample.range_query_count));
-        object->SetNumberField(TEXT("line_trace_count"),
-                               static_cast<double>(sample.line_trace_count));
-        object->SetNumberField(TEXT("sweep_trace_count"),
-                               static_cast<double>(sample.sweep_trace_count));
-        result.Add(MakeShared<FJsonValueObject>(object));
-    }
-    return result;
-}
-
-auto make_performance_windows(TArray<FLevelTelemetryPerformanceWindow> const& source)
-    -> TArray<TSharedPtr<FJsonValue>> {
-    TArray<TSharedPtr<FJsonValue>> result;
-    result.Reserve(source.Num());
-    for (auto const& window : source) {
-        auto object{MakeShared<FJsonObject>()};
-        object->SetNumberField(TEXT("real_elapsed_seconds"), window.real_elapsed_seconds);
-        object->SetNumberField(TEXT("completed_tick"), static_cast<double>(window.completed_tick));
-        object->SetObjectField(TEXT("frame"), make_timing(window.frame));
-        object->SetObjectField(TEXT("game_thread"), make_timing(window.game_thread));
-        object->SetObjectField(TEXT("render_thread"), make_timing(window.render_thread));
-        object->SetObjectField(TEXT("gpu"), make_timing(window.gpu));
-        object->SetObjectField(TEXT("simulation_tick"), make_timing(window.simulation_tick));
-        TArray<TSharedPtr<FJsonValue>> systems;
-        systems.Reserve(FLevelTelemetryPerformanceWindow::system_count);
-        for (auto const& timing : window.systems) {
-            systems.Add(MakeShared<FJsonValueObject>(make_timing(timing)));
-        }
-        object->SetArrayField(TEXT("systems"), MoveTemp(systems));
-        TArray<TSharedPtr<FJsonValue>> phases;
-        TArray<TSharedPtr<FJsonValue>> phase_cpu_share;
-        auto const phase_count{window.historical_phases.has_value()
-                                   ? FHistoricalTelemetryPhases::phase_count
-                                   : FLevelTelemetryPerformanceWindow::phase_count};
-        ml::reserve(phase_count, phases, phase_cpu_share);
-        TArray<TSharedPtr<FJsonValue>> phase_names;
-        static constexpr TCHAR const* current_names[]{
-            TEXT("Preparation"), TEXT("Thinking"), TEXT("Action")};
-        for (int32 index{}; index < phase_count; ++index) {
-            auto const& timing{window.historical_phases.has_value()
-                                   ? window.historical_phases->timings[index]
-                                   : window.phases[index]};
-            auto const share{window.historical_phases.has_value()
-                                 ? window.historical_phases->cpu_share[index]
-                                 : window.phase_cpu_share[index]};
-            phases.Add(MakeShared<FJsonValueObject>(make_timing(timing)));
-            phase_cpu_share.Add(MakeShared<FJsonValueNumber>(share));
-            phase_names.Add(MakeShared<FJsonValueString>(
-                window.historical_phases.has_value() ? FHistoricalTelemetryPhases::names[index]
-                                                     : current_names[index]));
-        }
-        object->SetArrayField(TEXT("phases"), MoveTemp(phases));
-        object->SetArrayField(TEXT("phase_cpu_share"), MoveTemp(phase_cpu_share));
-        object->SetArrayField(TEXT("phase_names"), MoveTemp(phase_names));
-        if (!window.historical_phases.has_value()) {
-            TArray<TSharedPtr<FJsonValue>> phase_systems;
-            for (auto const& phase : window.phase_systems) {
-                TArray<TSharedPtr<FJsonValue>> timings;
-                for (auto const& timing : phase) {
-                    timings.Add(MakeShared<FJsonValueObject>(make_timing(timing)));
-                }
-                phase_systems.Add(MakeShared<FJsonValueArray>(MoveTemp(timings)));
-            }
-            object->SetArrayField(TEXT("phase_systems"), MoveTemp(phase_systems));
-        }
         result.Add(MakeShared<FJsonValueObject>(object));
     }
     return result;
@@ -328,30 +222,6 @@ auto parse_flat_counts(FJsonObject const& source,
     return {};
 }
 
-auto parse_timing(FJsonObject const& source,
-                  TCHAR const* const field,
-                  FString const& path,
-                  ::ioj::sim::LevelTelemetryTimingAggregate& output)
-    -> std::expected<void, FString> {
-    auto const object{required_object(source, field, path)};
-    if (!object) {
-        return std::unexpected{object.error()};
-    }
-    auto mean{required_number(**object, TEXT("mean_ms"), path + TEXT(".mean_ms"))};
-    auto p95{required_number(**object, TEXT("p95_ms"), path + TEXT(".p95_ms"))};
-    auto maximum{required_number(**object, TEXT("max_ms"), path + TEXT(".max_ms"))};
-    auto count{
-        required_integer<uint64>(**object, TEXT("sample_count"), path + TEXT(".sample_count"))};
-    if (!mean || !p95 || !maximum || !count) {
-        return std::unexpected{!mean      ? mean.error()
-                               : !p95     ? p95.error()
-                               : !maximum ? maximum.error()
-                                          : count.error()};
-    }
-    output = {.mean_ms = *mean, .p95_ms = *p95, .max_ms = *maximum, .sample_count = *count};
-    return {};
-}
-
 auto parse_combat(FJsonObject const& source,
                   ::ioj::sim::telemetry::CombatTelemetryCounters& output,
                   FString const& path) -> std::expected<void, FString> {
@@ -444,52 +314,6 @@ auto validate_nonnegative_series(Series const& series, FString const& path)
     return {};
 }
 
-auto parse_realtime_series(FJsonObject const& parent, ml::TimeSeriesData<uint64>& output)
-    -> std::expected<void, FString> {
-    auto const path{FString{TEXT("completed_ticks_by_real_time")}};
-    auto const object{required_object(parent, TEXT("completed_ticks_by_real_time"), path)};
-    if (!object) {
-        return std::unexpected{object.error()};
-    }
-    TArray<TSharedPtr<FJsonValue>> const* times{};
-    TArray<TSharedPtr<FJsonValue>> const* ticks{};
-    if (!(*object)->TryGetArrayField(TEXT("real_elapsed_seconds"), times) ||
-        !(*object)->TryGetArrayField(TEXT("completed_ticks"), ticks) || !times || !ticks) {
-        return std::unexpected{
-            error_at(path, TEXT("real-time and completed-tick arrays are required"))};
-    }
-    if (times->Num() != ticks->Num()) {
-        return std::unexpected{
-            error_at(path, TEXT("real-time and completed-tick arrays are not aligned"))};
-    }
-    output.reserve(times->Num());
-    double previous_time{};
-    uint64 previous_tick{};
-    for (int32 index{}; index < times->Num(); ++index) {
-        double time{};
-        double tick_number{};
-        if (!(*times)[index].IsValid() || !(*times)[index]->TryGetNumber(time) ||
-            !FMath::IsFinite(time) || time < 0.0 || (index > 0 && time <= previous_time)) {
-            return std::unexpected{error_at(
-                path, TEXT("real-time coordinates must be finite, nonnegative, and increasing"))};
-        }
-        if (!(*ticks)[index].IsValid() || !(*ticks)[index]->TryGetNumber(tick_number) ||
-            !FMath::IsFinite(tick_number) || tick_number < 0.0 ||
-            FMath::TruncToDouble(tick_number) != tick_number ||
-            tick_number >= 18446744073709551616.0) {
-            return std::unexpected{error_at(path, TEXT("completed tick is not a valid uint64"))};
-        }
-        auto const tick{static_cast<uint64>(tick_number)};
-        if (index > 0 && tick < previous_tick) {
-            return std::unexpected{error_at(path, TEXT("completed ticks must be nondecreasing"))};
-        }
-        output.add(time, tick);
-        previous_time = time;
-        previous_tick = tick;
-    }
-    return {};
-}
-
 template <typename Enum>
 auto parse_serialized_enum(FString const& value, FString const& path)
     -> std::expected<Enum, FString> {
@@ -532,7 +356,8 @@ auto deserialize_level_telemetry_run(FString const& json)
     if (!schema) {
         return std::unexpected{schema.error()};
     }
-    if (*schema != 1 && *schema != 2 && *schema != FLevelTelemetryReport::schema_version) {
+    if (*schema != 1 && *schema != 2 && *schema != 3 &&
+        *schema != FLevelTelemetryReport::schema_version) {
         return std::unexpected{
             FString::Printf(TEXT("Unsupported telemetry schema version %d"), *schema)};
     }
@@ -653,18 +478,6 @@ auto deserialize_level_telemetry_run(FString const& json)
                       required_number(**simulation,
                                       TEXT("battle_sample_interval_seconds"),
                                       TEXT("simulation.battle_sample_interval_seconds")));
-        READ_REQUIRED(result.metadata.performance_window_seconds,
-                      required_number(**simulation,
-                                      TEXT("performance_window_seconds"),
-                                      TEXT("simulation.performance_window_seconds")));
-        READ_REQUIRED(result.metadata.detailed_timing_tick_stride,
-                      required_integer<uint32>(**simulation,
-                                               TEXT("detailed_timing_tick_stride"),
-                                               TEXT("simulation.detailed_timing_tick_stride")));
-        READ_REQUIRED(result.metadata.detailed_timing,
-                      required_bool(**simulation,
-                                    TEXT("detailed_timing"),
-                                    TEXT("simulation.detailed_timing")));
         auto const* duration{(*simulation)->Values.Find(TEXT("requested_duration_seconds"))};
         if (duration && (*duration)->Type != EJson::Null) {
             double value{};
@@ -701,12 +514,7 @@ auto deserialize_level_telemetry_run(FString const& json)
                   required_number(**completion,
                                   TEXT("simulated_elapsed_seconds"),
                                   TEXT("completion.simulated_elapsed_seconds")));
-    READ_REQUIRED(result.completion.wall_elapsed_seconds,
-                  required_number(**completion,
-                                  TEXT("wall_elapsed_seconds"),
-                                  TEXT("completion.wall_elapsed_seconds")));
-    if (result.completion.simulated_elapsed_seconds < 0.0 ||
-        result.completion.wall_elapsed_seconds < 0.0) {
+    if (result.completion.simulated_elapsed_seconds < 0.0) {
         return std::unexpected{FString{TEXT("completion durations must be nonnegative")}};
     }
     if (*schema >= 2) {
@@ -791,15 +599,8 @@ auto deserialize_level_telemetry_run(FString const& json)
     PARSE_SERIES(spawned_entities);
     PARSE_SERIES(destroyed_entities);
     PARSE_SERIES(kills);
-    PARSE_SERIES(registry_slot_count);
     PARSE_SERIES(active_lasers);
     PARSE_SERIES(lasers_fired);
-    PARSE_SERIES(occupied_spatial_cell_count);
-    PARSE_SERIES(grid_rebuild_count);
-    PARSE_SERIES(range_query_count);
-    PARSE_SERIES(line_trace_count);
-    PARSE_SERIES(sweep_trace_count);
-    PARSE_SERIES(requested_time_scale);
 #undef PARSE_SERIES
 #define VALIDATE_COUNT(field)                                                                    \
     do {                                                                                         \
@@ -813,16 +614,9 @@ auto deserialize_level_telemetry_run(FString const& json)
     VALIDATE_COUNT(spawned_entities);
     VALIDATE_COUNT(destroyed_entities);
     VALIDATE_COUNT(kills);
-    VALIDATE_COUNT(registry_slot_count);
     VALIDATE_COUNT(active_lasers);
     VALIDATE_COUNT(lasers_fired);
-    VALIDATE_COUNT(occupied_spatial_cell_count);
 #undef VALIDATE_COUNT
-    auto requested_valid{validate_nonnegative_series(result.tick_series.requested_time_scale,
-                                                     TEXT("tick_series.requested_time_scale"))};
-    if (!requested_valid) {
-        return std::unexpected{requested_valid.error()};
-    }
     auto const by_type{required_object(**tick_series,
                                        TEXT("active_entities_by_type"),
                                        TEXT("tick_series.active_entities_by_type"))};
@@ -880,10 +674,6 @@ auto deserialize_level_telemetry_run(FString const& json)
             }
         }
     }
-    auto realtime{parse_realtime_series(*root, result.completed_ticks_by_real_time)};
-    if (!realtime) {
-        return std::unexpected{realtime.error()};
-    }
     if (*schema >= 2) {
         TArray<TSharedPtr<FJsonValue>> const* battle_samples{};
         if (!root->TryGetArrayField(TEXT("battle_samples"), battle_samples) || !battle_samples) {
@@ -925,143 +715,8 @@ auto deserialize_level_telemetry_run(FString const& json)
     }
             PARSE_OPTIONAL_BATTLE_NUMBER(active_lasers);
             PARSE_OPTIONAL_BATTLE_NUMBER(lasers_fired);
-            PARSE_OPTIONAL_BATTLE_NUMBER(registry_slot_count);
-            PARSE_OPTIONAL_BATTLE_NUMBER(occupied_spatial_cell_count);
-            PARSE_OPTIONAL_BATTLE_NUMBER(grid_rebuild_count);
-            PARSE_OPTIONAL_BATTLE_NUMBER(range_query_count);
-            PARSE_OPTIONAL_BATTLE_NUMBER(line_trace_count);
-            PARSE_OPTIONAL_BATTLE_NUMBER(sweep_trace_count);
 #undef PARSE_OPTIONAL_BATTLE_NUMBER
             result.battle_samples.Add(MoveTemp(sample));
-        }
-
-        TArray<TSharedPtr<FJsonValue>> const* windows{};
-        if (!root->TryGetArrayField(TEXT("performance_windows"), windows) || !windows) {
-            return std::unexpected{FString{TEXT("performance_windows: required array is missing")}};
-        }
-        result.performance_windows.Reserve(windows->Num());
-        for (int32 index{}; index < windows->Num(); ++index) {
-            auto const object{(*windows)[index]->AsObject()};
-            auto const path{FString::Printf(TEXT("performance_windows[%d]"), index)};
-            if (!object.IsValid()) {
-                return std::unexpected{error_at(path, TEXT("window must be an object"))};
-            }
-            FLevelTelemetryPerformanceWindow window;
-            READ_REQUIRED(window.real_elapsed_seconds,
-                          required_number(*object,
-                                          TEXT("real_elapsed_seconds"),
-                                          path + TEXT(".real_elapsed_seconds")));
-            READ_REQUIRED(window.completed_tick,
-                          required_integer<uint64>(
-                              *object, TEXT("completed_tick"), path + TEXT(".completed_tick")));
-#define PARSE_TIMING(field)                                                                      \
-    do {                                                                                         \
-        auto parsed{parse_timing(*object, TEXT(#field), path + TEXT("." #field), window.field)}; \
-        if (!parsed) {                                                                           \
-            return std::unexpected{parsed.error()};                                              \
-        }                                                                                        \
-    } while (false)
-            PARSE_TIMING(frame);
-            PARSE_TIMING(game_thread);
-            PARSE_TIMING(render_thread);
-            PARSE_TIMING(gpu);
-            PARSE_TIMING(simulation_tick);
-#undef PARSE_TIMING
-            TArray<TSharedPtr<FJsonValue>> const* systems{};
-            if (!object->TryGetArrayField(TEXT("systems"), systems) || !systems ||
-                systems->Num() != FLevelTelemetryPerformanceWindow::system_count) {
-                return std::unexpected{
-                    error_at(path + TEXT(".systems"), TEXT("timing array is missing or invalid"))};
-            }
-            for (int32 system{}; system < systems->Num(); ++system) {
-                auto const timing_object{(*systems)[system]->AsObject()};
-                if (!timing_object.IsValid()) {
-                    return std::unexpected{
-                        error_at(path + TEXT(".systems"), TEXT("timing must be an object"))};
-                }
-                auto wrapper{MakeShared<FJsonObject>()};
-                wrapper->SetObjectField(TEXT("value"), timing_object);
-                auto parsed{parse_timing(
-                    *wrapper, TEXT("value"), path + TEXT(".systems"), window.systems[system])};
-                if (!parsed) {
-                    return std::unexpected{parsed.error()};
-                }
-            }
-            auto const phase_count{*schema >= 3 ? FLevelTelemetryPerformanceWindow::phase_count
-                                                : FHistoricalTelemetryPhases::phase_count};
-            if (*schema < 3) {
-                window.historical_phases.emplace();
-            }
-            TArray<TSharedPtr<FJsonValue>> const* phases{};
-            TArray<TSharedPtr<FJsonValue>> const* phase_cpu_share{};
-            if (!object->TryGetArrayField(TEXT("phases"), phases) || !phases ||
-                phases->Num() != phase_count ||
-                !object->TryGetArrayField(TEXT("phase_cpu_share"), phase_cpu_share) ||
-                !phase_cpu_share || phase_cpu_share->Num() != phase_count) {
-                return std::unexpected{
-                    error_at(path + TEXT(".phases"), TEXT("phase arrays are missing or invalid"))};
-            }
-            for (int32 phase{}; phase < phases->Num(); ++phase) {
-                auto const timing_object{(*phases)[phase]->AsObject()};
-                if (!timing_object.IsValid()) {
-                    return std::unexpected{
-                        error_at(path + TEXT(".phases"), TEXT("timing must be an object"))};
-                }
-                auto wrapper{MakeShared<FJsonObject>()};
-                wrapper->SetObjectField(TEXT("value"), timing_object);
-                auto parsed{parse_timing(*wrapper,
-                                         TEXT("value"),
-                                         path + TEXT(".phases"),
-                                         (window.historical_phases.has_value()
-                                              ? window.historical_phases->timings[phase]
-                                              : window.phases[phase]))};
-                if (!parsed) {
-                    return std::unexpected{parsed.error()};
-                }
-                auto const share{(*phase_cpu_share)[phase]->AsNumber()};
-                if (!FMath::IsFinite(share) || share < 0.0) {
-                    return std::unexpected{error_at(path + TEXT(".phase_cpu_share"),
-                                                    TEXT("shares must be nonnegative"))};
-                }
-                if (window.historical_phases.has_value()) {
-                    window.historical_phases->cpu_share[phase] = share;
-                } else {
-                    window.phase_cpu_share[phase] = share;
-                }
-            }
-            if (*schema >= 3) {
-                TArray<TSharedPtr<FJsonValue>> const* phase_systems{};
-                if (!object->TryGetArrayField(TEXT("phase_systems"), phase_systems) ||
-                    !phase_systems || phase_systems->Num() != phase_count) {
-                    return std::unexpected{error_at(path + TEXT(".phase_systems"),
-                                                    TEXT("timing matrix is missing or invalid"))};
-                }
-                for (int32 phase{}; phase < phase_count; ++phase) {
-                    TArray<TSharedPtr<FJsonValue>> const* timings{};
-                    if (!(*phase_systems)[phase]->TryGetArray(timings) || !timings ||
-                        timings->Num() != FLevelTelemetryPerformanceWindow::system_count) {
-                        return std::unexpected{error_at(path + TEXT(".phase_systems"),
-                                                        TEXT("system timing array is invalid"))};
-                    }
-                    for (int32 system{}; system < timings->Num(); ++system) {
-                        auto const timing_object{(*timings)[system]->AsObject()};
-                        if (!timing_object.IsValid()) {
-                            return std::unexpected{error_at(path + TEXT(".phase_systems"),
-                                                            TEXT("timing must be an object"))};
-                        }
-                        auto wrapper{MakeShared<FJsonObject>()};
-                        wrapper->SetObjectField(TEXT("value"), timing_object);
-                        auto parsed{parse_timing(*wrapper,
-                                                 TEXT("value"),
-                                                 path + TEXT(".phase_systems"),
-                                                 window.phase_systems[phase][system])};
-                        if (!parsed) {
-                            return std::unexpected{parsed.error()};
-                        }
-                    }
-                }
-            }
-            result.performance_windows.Add(MoveTemp(window));
         }
     }
 #undef READ_REQUIRED
@@ -1070,7 +725,7 @@ auto deserialize_level_telemetry_run(FString const& json)
 
 auto serialize_level_telemetry_run(FLevelTelemetryReport const& record) -> FString {
     auto root{MakeShared<FJsonObject>()};
-    root->SetNumberField(TEXT("schema_version"), record.loaded_schema_version);
+    root->SetNumberField(TEXT("schema_version"), FLevelTelemetryReport::schema_version);
     root->SetStringField(TEXT("run_id"), UTF8_TO_TCHAR(record.metadata.run_id.c_str()));
 
     auto level{MakeShared<FJsonObject>()};
@@ -1128,11 +783,6 @@ auto serialize_level_telemetry_run(FLevelTelemetryReport const& record) -> FStri
                         record.metadata.requested_duration_seconds);
     simulation->SetNumberField(TEXT("battle_sample_interval_seconds"),
                                record.metadata.battle_sample_interval_seconds);
-    simulation->SetNumberField(TEXT("performance_window_seconds"),
-                               record.metadata.performance_window_seconds);
-    simulation->SetNumberField(TEXT("detailed_timing_tick_stride"),
-                               record.metadata.detailed_timing_tick_stride);
-    simulation->SetBoolField(TEXT("detailed_timing"), record.metadata.detailed_timing);
     root->SetObjectField(TEXT("simulation"), simulation);
 
     auto completion{MakeShared<FJsonObject>()};
@@ -1163,8 +813,6 @@ auto serialize_level_telemetry_run(FLevelTelemetryReport const& record) -> FStri
                                static_cast<double>(record.completion.completed_ticks));
     completion->SetNumberField(TEXT("simulated_elapsed_seconds"),
                                record.completion.simulated_elapsed_seconds);
-    completion->SetNumberField(TEXT("wall_elapsed_seconds"),
-                               record.completion.wall_elapsed_seconds);
     if (record.completion.winning_team.has_value()) {
         completion->SetStringField(
             TEXT("winning_team"),
@@ -1173,12 +821,8 @@ auto serialize_level_telemetry_run(FLevelTelemetryReport const& record) -> FStri
         completion->SetField(TEXT("winning_team"), MakeShared<FJsonValueNull>());
     }
     root->SetObjectField(TEXT("completion"), completion);
-    root->SetObjectField(TEXT("completed_ticks_by_real_time"),
-                         make_realtime_series(record.completed_ticks_by_real_time));
     root->SetObjectField(TEXT("tick_series"), make_tick_series(record.tick_series));
     root->SetArrayField(TEXT("battle_samples"), make_battle_samples(record.battle_samples));
-    root->SetArrayField(TEXT("performance_windows"),
-                        make_performance_windows(record.performance_windows));
 
     FString output;
     auto writer{TJsonWriterFactory<TCHAR, TPrettyJsonPrintPolicy<TCHAR>>::Create(&output)};

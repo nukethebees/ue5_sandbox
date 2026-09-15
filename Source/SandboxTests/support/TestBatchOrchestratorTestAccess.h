@@ -16,11 +16,6 @@ struct FTestBatchOrchestratorTestAccess {
         ::ioj::sim::LevelSimTestAccess::begin_telemetry_run(
             orchestrator.level_simulation_.GetValue(), std::move(metadata));
     }
-    static void capture_realtime_telemetry_sample(ATestBatchOrchestrator& orchestrator) {
-        check(orchestrator.level_simulation_.IsSet());
-        ::ioj::sim::LevelSimTestAccess::capture_realtime_telemetry_sample(
-            orchestrator.level_simulation_.GetValue());
-    }
     static void complete_telemetry_run(ATestBatchOrchestrator& orchestrator,
                                        ::ioj::sim::LevelTelemetryRunEndReason reason) {
         check(orchestrator.level_simulation_.IsSet());

@@ -5,30 +5,6 @@
 #include <array>
 #include <optional>
 
-struct FHistoricalTelemetryPhases {
-    static constexpr int32 phase_count{5};
-    inline static constexpr TCHAR const* names[phase_count]{
-        TEXT("Setup"), TEXT("Decision"), TEXT("Simulation"), TEXT("Resolution"), TEXT("End")};
-    std::array<::ioj::sim::LevelTelemetryTimingAggregate, phase_count> timings{};
-    std::array<double, phase_count> cpu_share{};
-};
-
-enum class ELevelTelemetryTimingSystem : uint8 {
-    Player,
-    Capitals,
-    Fighters,
-    Turrets,
-    Spinners,
-    Lasers,
-    Registry,
-    SpatialQueries,
-    Mission,
-    Hud,
-    Presentation,
-    Telemetry,
-    COUNT,
-};
-
 struct FLevelTelemetryEnvironment {
     FString project_name{};
     FString project_version{};
@@ -57,27 +33,6 @@ struct FLevelTelemetryReportMetadata : ::ioj::sim::LevelTelemetryRunMetadata {
     FString presentation_mode{TEXT("simulation_only")};
 };
 
-struct FLevelTelemetryPerformanceWindow {
-    static constexpr int32 system_count{static_cast<int32>(ELevelTelemetryTimingSystem::COUNT)};
-    static constexpr int32 phase_count{
-        static_cast<int32>(::ioj::sim::LevelTelemetryTimingPhase::COUNT)};
-    using SystemTimingAggregates =
-        std::array<::ioj::sim::LevelTelemetryTimingAggregate, system_count>;
-    using PhaseSystemTimingAggregates = std::array<SystemTimingAggregates, phase_count>;
-    double real_elapsed_seconds{};
-    ::ioj::sim::SimTick completed_tick{};
-    ::ioj::sim::LevelTelemetryTimingAggregate frame{};
-    ::ioj::sim::LevelTelemetryTimingAggregate game_thread{};
-    ::ioj::sim::LevelTelemetryTimingAggregate render_thread{};
-    ::ioj::sim::LevelTelemetryTimingAggregate gpu{};
-    ::ioj::sim::LevelTelemetryTimingAggregate simulation_tick{};
-    SystemTimingAggregates systems{};
-    std::array<::ioj::sim::LevelTelemetryTimingAggregate, phase_count> phases{};
-    std::array<double, phase_count> phase_cpu_share{};
-    PhaseSystemTimingAggregates phase_systems{};
-    std::optional<FHistoricalTelemetryPhases> historical_phases{};
-};
-
 struct SPACEGAME_API FLevelTelemetryReport {
     static constexpr int32 schema_version{::ioj::sim::LevelTelemetryRunRecord::schema_version};
     FLevelTelemetryReport() = default;
@@ -87,15 +42,5 @@ struct SPACEGAME_API FLevelTelemetryReport {
     FLevelTelemetryReportMetadata metadata;
     ::ioj::sim::LevelTelemetryRunCompletion completion;
     ::ioj::sim::LevelTelemetryTickSeries tick_series;
-    ml::TimeSeriesData<::ioj::sim::SimTick> completed_ticks_by_real_time;
     TArray<::ioj::sim::LevelTelemetryBattleSample> battle_samples;
-    TArray<FLevelTelemetryPerformanceWindow> performance_windows;
 };
-
-struct FLevelExternalTimingSample {
-    int32 window_index{};
-    ELevelTelemetryTimingSystem system{};
-    double seconds{};
-};
-SPACEGAME_API void append_external_timings(FLevelTelemetryReport& report,
-                                           TConstArrayView<FLevelExternalTimingSample> samples);

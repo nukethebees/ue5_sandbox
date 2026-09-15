@@ -82,7 +82,6 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     void set_battle_time_scale(TOptional<double> time_scale);
     void set_battle_duration(TOptional<double> duration, bool valid);
     void set_battle_simulation_only(bool simulation_only);
-    void set_battle_detailed_timing(bool enabled);
     void apply_level_selection(int32 button_index);
 
     [[nodiscard]] auto get_active_playerless_time_scale() const noexcept
@@ -113,6 +112,5 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     TOptional<double> battle_duration_{300.0};
     bool battle_duration_valid_{true};
     bool battle_simulation_only_{};
-    bool battle_detailed_timing_{true};
 };
 }

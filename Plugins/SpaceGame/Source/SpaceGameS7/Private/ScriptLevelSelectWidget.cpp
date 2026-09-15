@@ -185,8 +185,6 @@ auto UScriptLevelSelectWidget::RebuildWidget() -> TSharedRef<SWidget> {
                 FOnBattleDurationChanged::CreateUObject(this, &ThisClass::set_battle_duration))
             .OnBattleSimulationOnlyChanged(
                 FOnBattleBoolChanged::CreateUObject(this, &ThisClass::set_battle_simulation_only))
-            .OnBattleDetailedTimingChanged(
-                FOnBattleBoolChanged::CreateUObject(this, &ThisClass::set_battle_detailed_timing))
             .OnLaunch(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_launch))};
     refresh_levels();
     return result;
@@ -496,7 +494,6 @@ void UScriptLevelSelectWidget::handle_launch() {
                                       : ml::ioj::ELevelPresentationMode::Visual;
         options.simulated_duration_seconds = battle_duration_;
         options.stop_when_battle_resolved = true;
-        options.detailed_timing = battle_detailed_timing_;
         options.results_navigation = ml::ioj::ELevelResultsNavigation::Telemetry;
     }
     launch_selected_level(MoveTemp(options));
@@ -509,10 +506,6 @@ void UScriptLevelSelectWidget::set_battle_duration(TOptional<double> duration, b
 
 void UScriptLevelSelectWidget::set_battle_simulation_only(bool const simulation_only) {
     battle_simulation_only_ = simulation_only;
-}
-
-void UScriptLevelSelectWidget::set_battle_detailed_timing(bool const enabled) {
-    battle_detailed_timing_ = enabled;
 }
 
 void UScriptLevelSelectWidget::publish_view() {

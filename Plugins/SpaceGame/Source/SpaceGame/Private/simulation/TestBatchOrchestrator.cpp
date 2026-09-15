@@ -49,7 +49,6 @@
 #include <GameFramework/PlayerController.h>
 #include <GameFramework/PlayerState.h>
 #include <GameFramework/WorldSettings.h>
-#include <HAL/PlatformTime.h>
 #include <Kismet/GameplayStatics.h>
 #include <Misc/DateTime.h>
 #include <SpaceGame/persistence/SpaceSaveGame.h>
@@ -534,7 +533,6 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
             result->telemetry_metadata->requested_duration_seconds =
                 launch_options_.simulated_duration_seconds.GetValue();
         }
-        result->telemetry_metadata->detailed_timing = launch_options_.detailed_timing;
         result->telemetry_metadata->stop_when_battle_resolved =
             launch_options_.stop_when_battle_resolved;
         if (auto* const game_subsystem{ml::ioj::UGameSubsystem::get(GetGameInstance())};
@@ -780,7 +778,6 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         get_spatial_query_manager().get_collision_system().get_uniform_grid())};
     level_simulation_->set_static_collision(MoveTemp(static_bounds));
 
-    external_timings_.Reset();
     telemetry_environment_ = make_level_telemetry_environment(*world);
     level_simulation_->finish_initialisation();
 
@@ -981,7 +978,7 @@ void ATestBatchOrchestrator::update_collision_bounds_visualization() {
 }
 
 /* **************************************** */
-// Simulation state and timing
+// Simulation state
 /* **************************************** */
 void ATestBatchOrchestrator::validate_entity_handles() {
     if (auto const* player{get_player_ship_simulation()}) {
@@ -1000,9 +997,6 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         return;
     }
 
-    auto const detailed_timing{get_level_telemetry_manager().detailed_timing_enabled()};
-    auto const timing_window{get_level_telemetry_manager().get_performance_window_count()};
-
     auto const fighter_diagnostics_enabled{
         ml::fighter_diagnostics::enabled.GetValueOnGameThread() != 0};
     level_simulation_->set_fighter_diagnostics_enabled(fighter_diagnostics_enabled);
@@ -1010,21 +1004,13 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
     update_collision_bounds_visualization();
 
     if (presentation_enabled) {
-        auto const hud_started_at{detailed_timing ? FPlatformTime::Seconds() : 0.0};
 
         hud_tick_loop.add_time(dt);
         while (hud_tick_loop.try_tick()) {
             hud_manager.tick(1);
         }
-
-        if (detailed_timing) {
-            record_external_timing(timing_window,
-                                   ELevelTelemetryTimingSystem::Hud,
-                                   FPlatformTime::Seconds() - hud_started_at);
-        }
     }
 
-    auto const presentation_started_at{detailed_timing ? FPlatformTime::Seconds() : 0.0};
     if (level_presentation_.IsSet()) {
         level_presentation_->tick(dt, level_simulation_->get_read_view());
     }
@@ -1034,12 +1020,6 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         if (IsValid(player_ship)) {
             player_ship->handle_simulation_death();
         }
-    }
-
-    if (detailed_timing) {
-        record_external_timing(timing_window,
-                               ELevelTelemetryTimingSystem::Presentation,
-                               FPlatformTime::Seconds() - presentation_started_at);
     }
 
     persist_finalized_telemetry_run();
@@ -1249,8 +1229,6 @@ auto ATestBatchOrchestrator::take_finalized_telemetry_report() -> TOptional<FLev
     report.metadata.presentation_enabled = presentation_enabled;
     report.metadata.presentation_mode =
         presentation_enabled ? TEXT("visual") : TEXT("simulation_only");
-    append_external_timings(report, external_timings_);
-    external_timings_.Reset();
     return report;
 }
 void ATestBatchOrchestrator::persist_finalized_telemetry_run() {
@@ -1271,9 +1249,4 @@ void ATestBatchOrchestrator::persist_finalized_telemetry_run() {
         UE_LOG(LogSandbox, Error, TEXT("Failed to write level telemetry run: %s"), *path.error());
         handle_telemetry_persisted(UTF8_TO_TCHAR(run_id.c_str()), path.error());
     }
-}
-void ATestBatchOrchestrator::record_external_timing(int32 const window_index,
-                                                    ELevelTelemetryTimingSystem const system,
-                                                    double const seconds) {
-    external_timings_.Add({window_index, system, seconds});
 }

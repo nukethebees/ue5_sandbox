@@ -140,9 +140,7 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
             return;
         }
         FTestBatchOrchestratorTestAccess::begin_telemetry_run(
-            orchestrator,
-            ::ioj::sim::LevelTelemetryRunMetadata{.run_id = "frame-ordering",
-                                                  .detailed_timing = true});
+            orchestrator, ::ioj::sim::LevelTelemetryRunMetadata{.run_id = "frame-ordering"});
         struct FFrameObservation {
             uint64 completed_ticks{};
             uint64 presentation_count{};
@@ -154,9 +152,6 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
                     owner.get_simulation_time(),
                     FFrameObservation{owner.get_completed_ticks(),
                                       owner.get_level_presentation()->get_tick_count()});
-                if (owner.get_completed_ticks() == 4) {
-                    FTestBatchOrchestratorTestAccess::capture_realtime_telemetry_sample(owner);
-                }
                 if (owner.get_completed_ticks() == 6) {
                     FTestBatchOrchestratorTestAccess::complete_telemetry_run(
                         owner, ::ioj::sim::LevelTelemetryRunEndReason::DurationReached);
@@ -201,26 +196,12 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
                          TEXT("Terminal presentation observes the final completed tick"));
         auto report{orchestrator.take_finalized_telemetry_report()};
         if (checks.is_true(report.IsSet(), TEXT("Terminal frame produces a telemetry report"))) {
-            for (auto const system :
-                 {ELevelTelemetryTimingSystem::Hud, ELevelTelemetryTimingSystem::Presentation}) {
-                uint64 sample_total{};
-                for (auto const& window : report->performance_windows) {
-                    sample_total += window.systems[static_cast<int32>(system)].sample_count;
-                }
-                checks.are_equal(
-                    uint64{3},
-                    sample_total,
-                    TEXT("Telemetry includes zero-step, multi-step and terminal frames"));
-                if (checks.is_true(!report->performance_windows.IsEmpty(),
-                                   TEXT("Frame timing windows are retained"))) {
-                    checks.are_equal(
-                        uint64{2},
-                        report->performance_windows[0]
-                            .systems[static_cast<int32>(system)]
-                            .sample_count,
-                        TEXT("Closing-frame timing belongs to the window that just closed"));
-                }
-            }
+            checks.are_equal(uint64{6},
+                             report->completion.completed_ticks,
+                             TEXT("Telemetry retains the final resolved tick"));
+            checks.is_true(!report->battle_samples.IsEmpty() &&
+                               report->battle_samples.Last().completed_tick == 6,
+                           TEXT("Terminal battle sample observes the final resolved tick"));
         }
         checks.is_true(!orchestrator.take_finalized_telemetry_report().IsSet(),
                        TEXT("Finalized report is consumed only once"));
@@ -254,7 +235,6 @@ void FTestBatchOrchestratorSetupScenario::begin_level_telemetry() {
 
     test_driver->orchestrator.start_simulation();
     initial_active_entity_count = test_driver->get_registry().get_num_alive_active_entities();
-    initial_registry_slot_count = test_driver->get_registry().get_num_elements();
     initial_issued_unique_id_count = test_driver->get_registry().get_num_unique_ids_issued();
     test_driver->orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateRaw(
         this, &FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick));
@@ -300,7 +280,6 @@ void FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick(
             .kill_sample_count = kill_count_data.num(),
             .last_kill_tick = kill_count_data.last_time(),
             .cumulative_kill_count = kill_count_data.last_value(),
-            .registry_slot_count = current_state.registry_slot_count,
             .issued_unique_id_count = current_state.spawned_entities,
         });
     test_driver->advance_timeline();
@@ -333,9 +312,6 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
         uint64{0}, initial_observation.last_kill_tick, TEXT("Kill baseline uses tick zero"));
     checks.are_equal(
         int32{0}, initial_observation.cumulative_kill_count, TEXT("Kill baseline starts at zero"));
-    checks.are_equal(initial_registry_slot_count,
-                     initial_observation.registry_slot_count,
-                     TEXT("Current state slots match the registry"));
     checks.are_equal(initial_issued_unique_id_count,
                      initial_observation.issued_unique_id_count,
                      TEXT("Current state issued IDs match the registry"));
@@ -381,9 +357,6 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
     checks.are_equal(int32{1},
                      changed_observation.cumulative_kill_count,
                      TEXT("Killed entity increments the cumulative kill count"));
-    checks.are_equal(initial_registry_slot_count,
-                     changed_observation.registry_slot_count,
-                     TEXT("Killing an entity preserves registry slots"));
     checks.are_equal(initial_issued_unique_id_count,
                      changed_observation.issued_unique_id_count,
                      TEXT("Killing an entity preserves issued IDs"));
@@ -448,8 +421,8 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     static_assert(FieldMask::index(Field::ActiveEntitiesByType) == 1);
     static_assert(FieldMask::index(Field::ActiveEntitiesByTeamAndType) == 6);
     static_assert(FieldMask::index(Field::SpawnedEntities) == 36);
-    static_assert(FieldMask::index(Field::RequestedTimeScale) == 47);
-    static_assert(FieldMask::field_count == 48);
+    static_assert(FieldMask::index(Field::LasersFired) == 40);
+    static_assert(FieldMask::field_count == 41);
     static_assert(sizeof(FieldMask) == sizeof(uint64));
 
     ::ioj::sim::SimClock clock;
@@ -463,7 +436,6 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
         clock,
         entity_registry,
         lasers,
-        spatial_queries,
         game_memory,
         {.block_bytes = 100u * 1024u},
     };
@@ -481,9 +453,7 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("Initial active-count sample records zero"), active_count_data.last_value(), 0);
     TestEqual(TEXT("Initialisation records one kill sample"), kill_count_data.num(), int32{1});
     TestEqual(TEXT("Initial kill sample records zero"), kill_count_data.last_value(), 0);
-    TestEqual(TEXT("Initial current state records zero slots"),
-              initial_state.registry_slot_count,
-              int32{0});
+
     TestEqual(TEXT("Initial current state records zero active lasers"),
               initial_state.active_lasers,
               int32{0});
@@ -496,30 +466,18 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("Initialisation merges all telemetry fields into one row"),
               initial_history.num(),
               int32{1});
-    TestEqual(TEXT("Initial row marks all 48 telemetry fields valid"),
+    TestEqual(TEXT("Initial row marks all 41 battle fields valid"),
               initial_history_columns.validity_masks[0].value(),
               (uint64{1} << ::ioj::sim::telemetry::HistoryFieldMask::field_count) - 1);
-    TestEqual(TEXT("Initial row performs one payload write per logical series"),
-              telemetry_manager.get_history_stats().payload_write_count,
-              uint64{48});
+
     TestEqual(TEXT("A legitimate zero-valued field is stored in a valid cell"),
               initial_history_columns.kills[0],
               int32{0});
     TestEqual(TEXT("A legitimate zero-valued field survives reconstruction"),
               tick_series.kills.last_value(),
               int32{0});
-    auto const telemetry_manager_size{sizeof(::ioj::sim::LevelTelemetryManager)};
-    // Account for the migrated container headers, not additional history or sample storage.
-    constexpr auto migrated_vector_count{5 +
-                                         ::ioj::sim::SimTelemetryPerformanceWindow::system_count +
-                                         ::ioj::sim::SimTelemetryPerformanceWindow::phase_count};
-    constexpr auto native_header_overhead{
-        migrated_vector_count * (sizeof(std::vector<double>) - sizeof(TArray<double>)) +
-        7 * (sizeof(std::string) - sizeof(FString)) + sizeof(std::string) - sizeof(FName)};
-    TestTrue(*FString::Printf(TEXT("Telemetry manager stays within its compact storage budget "
-                                   "plus native container headers (%llu bytes)"),
-                              static_cast<uint64>(telemetry_manager_size)),
-             telemetry_manager_size <= 1216 + native_header_overhead);
+    TestTrue(TEXT("Telemetry manager stays within its compact storage budget"),
+             sizeof(::ioj::sim::LevelTelemetryManager) <= 1216);
     bool columns_aligned{true};
     initial_history_columns.each_column([&columns_aligned](auto const column) {
         columns_aligned = columns_aligned && reinterpret_cast<UPTRINT>(column.data()) % 64 == 0;
@@ -535,9 +493,7 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("Unchanged laser count does not add a sample"),
               tick_series.active_lasers.num(),
               int32{1});
-    TestEqual(TEXT("Unchanged range-query count does not add a sample"),
-              tick_series.range_query_count.num(),
-              int32{1});
+
     TestEqual(TEXT("An unchanged tick emits no history row"),
               telemetry_manager.get_history_stats().used_sample_count,
               int32{1});
@@ -546,23 +502,9 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     clock.tick_loop.time_scale = 4.0;
     telemetry_manager.tick();
     tick_series = telemetry_manager.materialize_tick_series();
-    TestEqual(TEXT("Changed time scale adds one tick-indexed sample"),
-              tick_series.requested_time_scale.num(),
-              int32{2});
-    TestEqual(TEXT("Changed time scale records its simulation tick"),
-              tick_series.requested_time_scale.last_time(),
-              uint64{2});
-    auto const time_scale_columns{
-        ::ioj::sim::LevelTelemetryManagerTestAccess::history(telemetry_manager)
-            .block_view(0)
-            .columns()};
-    TestEqual(TEXT("A single changed field emits one additional row"),
-              time_scale_columns.num(),
-              int32{2});
-    TestEqual(TEXT("Single-field row marks only requested time scale valid"),
-              time_scale_columns.validity_masks[1].value(),
-              uint64{1} << ::ioj::sim::telemetry::HistoryFieldMask::index(
-                  ::ioj::sim::telemetry::HistoryField::RequestedTimeScale));
+    TestEqual(TEXT("Time scale changes do not emit battle history rows"),
+              telemetry_manager.get_history_stats().used_sample_count,
+              int32{1});
 
     clock.completed_ticks = 5;
     clock.tick_loop.tick_period = 0.25;
@@ -645,9 +587,7 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("Unchanged team/type count retains its initial sample"),
               tick_series.active_entities_by_team_and_type[white_index][player_ship_index].num(),
               int32{1});
-    TestEqual(TEXT("Entity additions update current slot count"),
-              entity_state.registry_slot_count,
-              int32{3});
+
     TestEqual(TEXT("Entity additions update current spawned count"),
               entity_state.spawned_entities,
               int32{3});
@@ -658,9 +598,9 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("Several entity fields changing together emit one row"),
               entity_change_columns.num(),
               int32{2});
-    TestEqual(TEXT("Entity change row marks all nine changed fields valid"),
+    TestEqual(TEXT("Entity change row marks all eight changed battle fields valid"),
               std::popcount(entity_change_columns.validity_masks[1].value()),
-              int32{9});
+              int32{8});
 
     clock.completed_ticks = 3;
     telemetry_manager.tick();
@@ -697,7 +637,6 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
         clock,
         entity_registry,
         lasers,
-        spatial_queries,
         game_memory,
         {.block_bytes = ::ioj::sim::telemetry::HistoryRowsSingleLayout::layout_bytes(1)},
     };
@@ -708,7 +647,7 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               int32{64});
     for (uint64 tick{1}; tick <= 64; ++tick) {
         clock.completed_ticks = tick;
-        clock.tick_loop.time_scale = static_cast<double>(tick + 1);
+        entity_registry.add_entities(fixture_entity_data.get_const_view().left(1));
         boundary_manager.tick();
     }
     TestEqual(TEXT("Appending beyond initial capacity preserves all emitted rows"),
@@ -718,7 +657,7 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               boundary_manager.get_history_stats().acquired_block_count,
               int32{2});
     TestEqual(TEXT("Growth preserves reconstruction through the boundary"),
-              boundary_manager.materialize_tick_series().requested_time_scale.num(),
+              boundary_manager.materialize_tick_series().active_entities.num(),
               int32{65});
     auto const grown_capacity{boundary_manager.get_history_stats().total_sample_capacity};
     boundary_manager.reset();

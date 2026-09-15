@@ -33,7 +33,6 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     SLATE_EVENT(FOnBattleSpeedChanged, OnBattleSpeedChanged)
     SLATE_EVENT(FOnBattleDurationChanged, OnBattleDurationChanged)
     SLATE_EVENT(FOnBattleBoolChanged, OnBattleSimulationOnlyChanged)
-    SLATE_EVENT(FOnBattleBoolChanged, OnBattleDetailedTimingChanged)
     SLATE_EVENT(FSimpleDelegate, OnLaunch)
     SLATE_END_ARGS()
 
@@ -60,7 +59,6 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     void handle_battle_speed_changed(FText const& text);
     void handle_battle_duration_changed(FText const& text);
     void handle_simulation_only_changed(ECheckBoxState state);
-    void handle_detailed_timing_changed(ECheckBoxState state);
     void update_launch_availability();
     void rebuild_catalog(FLevelSelectViewState const& state);
     void update_selection(int32 button_index);
@@ -74,7 +72,6 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     FOnBattleSpeedChanged on_battle_speed_changed_{};
     FOnBattleDurationChanged on_battle_duration_changed_{};
     FOnBattleBoolChanged on_battle_simulation_only_changed_{};
-    FOnBattleBoolChanged on_battle_detailed_timing_changed_{};
     FSimpleDelegate on_launch_{};
 
     TSharedPtr<SVerticalBox> catalog_rows_{};

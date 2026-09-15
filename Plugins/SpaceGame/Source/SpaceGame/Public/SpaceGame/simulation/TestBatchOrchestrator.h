@@ -219,9 +219,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void process_battle_run_end();
     void handle_telemetry_persisted(FString run_id, FString error);
     void persist_finalized_telemetry_run();
-    void record_external_timing(int32 window_index,
-                                ELevelTelemetryTimingSystem system,
-                                double seconds);
 
     /* **************************************** */
     // Presentation and proxies
@@ -261,7 +258,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     TOptional<::ioj::sim::LevelSim> level_simulation_;
     TOptional<FLevelPresentation> level_presentation_;
     TArray<FTransform> initial_turret_transforms_;
-    TArray<FLevelExternalTimingSample> external_timings_;
     FLevelTelemetryEnvironment telemetry_environment_;
     TOptional<ml::FLevelDefinition> level_definition_;
     bool launched_paused_{};
