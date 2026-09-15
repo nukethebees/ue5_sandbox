@@ -509,6 +509,9 @@ class Analyzer {
         if (head == "saturate") {
             return saturate(form);
         }
+        if (head == "step") {
+            return step(form);
+        }
         if (head == "time") {
             return time(form);
         }
@@ -720,6 +723,27 @@ class Analyzer {
         return add_node(Node{.kind = NodeKind::saturate,
                              .type = type,
                              .inputs = {*input},
+                             .span = material_span(form.token.span)});
+    }
+
+    auto step(Form const& form) -> std::optional<NodeHandle> {
+        if (form.children.size() != 3) {
+            fail(form.token.span, "step requires an edge and value");
+            return std::nullopt;
+        }
+        auto const edge{expression(form.children[1])};
+        auto const value{expression(form.children[2])};
+        if (!edge || !value) {
+            return std::nullopt;
+        }
+        if (material_.nodes[edge->index].type != ValueType::float1 ||
+            material_.nodes[value->index].type != ValueType::float1) {
+            fail(form.token.span, "step requires scalar operands");
+            return std::nullopt;
+        }
+        return add_node(Node{.kind = NodeKind::step,
+                             .type = ValueType::float1,
+                             .inputs = {*edge, *value},
                              .span = material_span(form.token.span)});
     }
 

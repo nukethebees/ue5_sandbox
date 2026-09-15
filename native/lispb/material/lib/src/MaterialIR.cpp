@@ -153,7 +153,7 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
     auto const node_count{material.nodes.size()};
     for (std::size_t index{}; index < node_count; ++index) {
         auto const& node{material.nodes[index]};
-        if (node.kind < NodeKind::constant || node.kind > NodeKind::camera_position ||
+        if (node.kind < NodeKind::constant || node.kind > NodeKind::step ||
             node.type == ValueType::invalid) {
             report(diagnostics, node.span, "invalid material node kind or type");
             continue;
@@ -227,6 +227,16 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
                  material.nodes[node.inputs[0].index].type != node.type) ||
                 !is_numeric(node.type)) {
                 report(diagnostics, node.span, "malformed saturate node");
+            }
+        } else if (node.kind == NodeKind::step) {
+            if (node.type != ValueType::float1 || node.inputs.size() != 2 ||
+                !valid_handle(material, node.inputs[0]) ||
+                !valid_handle(material, node.inputs[1]) ||
+                (valid_handle(material, node.inputs[0]) &&
+                 material.nodes[node.inputs[0].index].type != ValueType::float1) ||
+                (valid_handle(material, node.inputs[1]) &&
+                 material.nodes[node.inputs[1].index].type != ValueType::float1)) {
+                report(diagnostics, node.span, "malformed step node");
             }
         } else if (node.kind == NodeKind::sample) {
             if (node.inputs.size() != 2 || !valid_handle(material, node.inputs[0]) ||

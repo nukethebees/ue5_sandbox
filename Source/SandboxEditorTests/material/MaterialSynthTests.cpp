@@ -11,6 +11,7 @@
 #include "Materials/MaterialExpressionAppendVector.h"
 #include "Materials/MaterialExpressionComponentMask.h"
 #include "Materials/MaterialExpressionCustom.h"
+#include "Materials/MaterialExpressionIf.h"
 #include "Materials/MaterialExpressionLinearInterpolate.h"
 #include "Materials/MaterialExpressionMultiply.h"
 #include "Materials/MaterialExpressionPerInstanceCustomData.h"
@@ -268,6 +269,7 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
         int32 multiply_count{};
         int32 saturate_count{};
         int32 custom_count{};
+        int32 if_count{};
         for (auto const expression : material.GetExpressions()) {
             if (auto const* custom_data{
                     Cast<UMaterialExpressionPerInstanceCustomData>(expression)}) {
@@ -278,6 +280,7 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
             multiply_count += expression->IsA<UMaterialExpressionMultiply>() ? 1 : 0;
             saturate_count += expression->IsA<UMaterialExpressionSaturate>() ? 1 : 0;
             custom_count += expression->IsA<UMaterialExpressionCustom>() ? 1 : 0;
+            if_count += expression->IsA<UMaterialExpressionIf>() ? 1 : 0;
         }
         custom_data_indices.Sort();
         TestRunner->TestEqual(
@@ -288,20 +291,22 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
                                   index);
         }
         TestRunner->TestEqual(
-            TEXT("RGB construction emits two AppendVector nodes"), append_count, 2);
-        TestRunner->TestEqual(TEXT("Range intensity emits one Lerp node"), lerp_count, 1);
+            TEXT("RGB construction remains inside the procedural emissive node"), append_count, 0);
+        TestRunner->TestEqual(TEXT("Range intensity emits four Lerp nodes"), lerp_count, 4);
         TestRunner->TestEqual(
-            TEXT("Four-operand product emits three Multiply nodes"), multiply_count, 3);
-        TestRunner->TestEqual(TEXT("Range alpha emits one Saturate node"), saturate_count, 1);
-        TestRunner->TestEqual(TEXT("World material emits no Custom nodes"), custom_count, 0);
+            TEXT("Range and surface shaping emit eight Multiply nodes"), multiply_count, 8);
+        TestRunner->TestEqual(TEXT("Range and pulse emit two Saturate nodes"), saturate_count, 2);
+        TestRunner->TestEqual(
+            TEXT("World material retains two procedural Custom nodes"), custom_count, 2);
+        TestRunner->TestEqual(TEXT("Range lock emits one native If node"), if_count, 1);
 
         auto const* emissive{material.GetExpressionInputForProperty(MP_EmissiveColor)};
         auto const* opacity{material.GetExpressionInputForProperty(MP_Opacity)};
         TestRunner->TestTrue(TEXT("Emissive output is connected"),
                              emissive != nullptr && emissive->Expression != nullptr);
-        TestRunner->TestTrue(TEXT("Emissive output ends at native arithmetic"),
+        TestRunner->TestTrue(TEXT("Emissive output remains the procedural texture-flow node"),
                              emissive != nullptr &&
-                                 emissive->Expression->IsA<UMaterialExpressionMultiply>());
+                                 emissive->Expression->IsA<UMaterialExpressionCustom>());
         TestRunner->TestTrue(TEXT("Opacity output is connected"),
                              opacity != nullptr && opacity->Expression != nullptr);
     }

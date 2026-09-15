@@ -40,11 +40,7 @@
   (let range (saturate range_alpha))
   (let smooth_range (* (* range range) (- 3.0 (* 2.0 range))))
   (let buildup (* smooth_range smooth_range))
-  (let locked
-    (custom float
-      ((Range float range))
-      :description "Soft-target weapon-range lock"
-      "return step(0.999, Range);\n"))
+  (let locked (step 0.999 range))
   (let base_energy (lerp FarEmissive NearEmissive buildup))
   (let body_energy (lerp base_energy LockedEmissive locked))
   (let filament_energy (* FilamentEmissive locked))

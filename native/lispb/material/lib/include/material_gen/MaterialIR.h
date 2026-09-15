@@ -43,6 +43,7 @@ enum class NodeKind {
     scene_texture,
     shader_call,
     camera_position,
+    step,
 };
 
 struct NodeHandle {

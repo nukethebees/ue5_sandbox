@@ -17,6 +17,7 @@
 #include "Materials/MaterialExpressionCosine.h"
 #include "Materials/MaterialExpressionCustom.h"
 #include "Materials/MaterialExpressionDivide.h"
+#include "Materials/MaterialExpressionIf.h"
 #include "Materials/MaterialExpressionLinearInterpolate.h"
 #include "Materials/MaterialExpressionMultiply.h"
 #include "Materials/MaterialExpressionObjectPositionWS.h"
@@ -334,6 +335,23 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
             case NodeKind::saturate:
                 expression = create_expression(UMaterialExpressionSaturate::StaticClass());
                 break;
+            case NodeKind::step: {
+                auto* const step{CastChecked<UMaterialExpressionIf>(
+                    create_expression(UMaterialExpressionIf::StaticClass()))};
+                auto* const one{CastChecked<UMaterialExpressionConstant>(
+                    create_expression(UMaterialExpressionConstant::StaticClass()))};
+                auto* const zero{CastChecked<UMaterialExpressionConstant>(
+                    create_expression(UMaterialExpressionConstant::StaticClass()))};
+                one->R = 1.0f;
+                zero->R = 0.0f;
+                step->A.Connect(0, expressions[node.inputs[1].index].expression);
+                step->B.Connect(0, expressions[node.inputs[0].index].expression);
+                step->AGreaterThanB.Connect(0, one);
+                step->AEqualsB.Connect(0, one);
+                step->ALessThanB.Connect(0, zero);
+                expression = step;
+                break;
+            }
             case NodeKind::sample: {
                 auto* const sample{CastChecked<UMaterialExpressionTextureSample>(
                     create_expression(UMaterialExpressionTextureSample::StaticClass()))};
