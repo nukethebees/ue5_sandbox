@@ -10,7 +10,7 @@ void run_worldless_spatial_query_empty(ioj::sim::tests::SimulationFixture const&
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     ioj::sim::tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto& queries{harness.get_simulation().get_spatial_query_manager()};
+    auto const& queries{harness.get_simulation().get_spatial_query_manager()};
     std::vector<RegistryEntityHandle> handles{};
     ioj::sim::Vectors3f starts;
     ioj::sim::Vectors3f ends;

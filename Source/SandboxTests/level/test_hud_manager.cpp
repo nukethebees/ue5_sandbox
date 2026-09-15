@@ -644,7 +644,7 @@ auto FTestHUDManagerScenario::initialise_headless_hud_manager() -> bool {
         orchestrator->start_simulation();
     }
 
-    auto& entity_registry{orchestrator->get_entity_registry()};
+    auto const& entity_registry{orchestrator->get_entity_registry()};
 
     headless_hud_manager.Emplace();
     headless_hud_manager->initialise(orchestrator->get_hud_update_frequencies(),

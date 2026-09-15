@@ -311,8 +311,8 @@ void run_worldless_collision_uniform_grid_membership(
         simulation.get_spinners().get_read_view().entities.handles[0],
     };
     auto const& registry{harness.get_registry()};
-    auto& collision{simulation.get_spatial_query_manager().get_collision_system()};
-    auto& grid{collision.get_uniform_grid()};
+    auto const& collision{simulation.get_spatial_query_manager().get_collision_system()};
+    auto const& grid{collision.get_uniform_grid()};
     auto const& entity_aabbs{collision.get_entity_aabbs()};
     ioj::sim::tests::expect_true(
         grid.get_grid_dims() ==
