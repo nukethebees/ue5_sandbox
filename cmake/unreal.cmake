@@ -1,10 +1,20 @@
 function(add_unreal_target target_name unreal_target)
+  set(unreal_target_arguments)
+  if(unreal_target STREQUAL "SandboxEditor")
+    list(APPEND unreal_target_arguments -verify_editor_modules)
+  endif()
+
   add_custom_target(${target_name}
     COMMAND ${UE_JOBSERVER_COMMAND_PREFIX}
-      "${CMAKE_COMMAND}" -E env
-      "SANDBOX_NATIVE_TOOLCHAIN=${SANDBOX_NATIVE_TOOLCHAIN}"
-      "${UE_BUILD_SCRIPT}" ${unreal_target} ${UE_PLATFORM} ${UE_CONFIGURATION}
-      "-Project=${SANDBOX_UPROJECT}" -WaitMutex
+      "${POWERSHELL_EXECUTABLE}" -NoProfile -File
+      "${PROJECT_SOURCE_DIR}/PowerShell/BuildUnrealTarget.ps1"
+      -build_script "${UE_BUILD_SCRIPT}"
+      -target ${unreal_target}
+      -platform ${UE_PLATFORM}
+      -configuration ${UE_CONFIGURATION}
+      -project "${SANDBOX_UPROJECT}"
+      -native_toolchain "${SANDBOX_NATIVE_TOOLCHAIN}"
+      ${unreal_target_arguments}
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     COMMENT "Building ${unreal_target} ${UE_PLATFORM} ${UE_CONFIGURATION} through UnrealBuildTool"
     USES_TERMINAL

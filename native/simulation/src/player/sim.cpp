@@ -55,6 +55,9 @@ void Sim::configure(PlayerSpawnData const& spawn) noexcept {
     laser_fire_rate = spawn.laser_fire_rate;
     health = spawn.health;
 }
+void Sim::set_config(PlayerSimConfig const& new_config) noexcept {
+    config = new_config;
+}
 
 Sim::Sim(SimClock const& clock,
          EntityRegistry& in_entity_registry,
