@@ -12,10 +12,12 @@ inline constexpr TCHAR ownership_key[]{TEXT("MaterialSynth.Owner")};
 inline constexpr TCHAR source_key[]{TEXT("MaterialSynth.Source")};
 inline constexpr TCHAR source_hash_key[]{TEXT("MaterialSynth.SourceHash")};
 inline constexpr TCHAR version_key[]{TEXT("MaterialSynth.Version")};
-inline constexpr TCHAR generator_version[]{TEXT("1")};
+inline constexpr TCHAR generator_owner[]{TEXT("MaterialSynth")};
+inline constexpr TCHAR generator_version[]{TEXT("3")};
 
 struct EmitResult {
     UMaterial* material{};
+    bool changed{};
     TArray<FString> errors;
 };
 

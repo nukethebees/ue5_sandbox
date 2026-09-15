@@ -106,6 +106,22 @@ auto connect(ExpressionValue const& from,
         from.expression, from.output_name, to, input_name);
 }
 
+auto is_current(UMaterial& material, FString const& source_filename, FString const& source_hash)
+    -> bool {
+    auto& metadata{material.GetOutermost()->GetMetaData()};
+    return FString{metadata.GetValue(&material, ownership_key)} == generator_owner &&
+           FString{metadata.GetValue(&material, source_key)} == source_filename &&
+           FString{metadata.GetValue(&material, source_hash_key)} == source_hash &&
+           FString{metadata.GetValue(&material, version_key)} == generator_version;
+}
+
+auto is_owned(UMaterial& material) -> bool {
+    auto& metadata{material.GetOutermost()->GetMetaData()};
+    auto const owner{FString{metadata.GetValue(&material, ownership_key)}};
+    auto const version{FString{metadata.GetValue(&material, version_key)}};
+    return owner == generator_owner || (owner == TEXT("1") && version == TEXT("1"));
+}
+
 }
 
 auto emit(MaterialIR const& ir, FString const& source_filename, FString const& source_hash)
@@ -142,10 +158,12 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
         result.errors.Add(TEXT("Refusing to replace an existing non-material object."));
         return result;
     }
-    if (material != nullptr && !ir.settings.adopt_existing &&
-        FString{material->GetOutermost()->GetMetaData().GetValue(material, ownership_key)} !=
-            generator_version) {
+    if (material != nullptr && !ir.settings.adopt_existing && !is_owned(*material)) {
         result.errors.Add(TEXT("Refusing to modify a material not owned by MaterialSynth."));
+        return result;
+    }
+    if (material != nullptr && is_current(*material, source_filename, source_hash)) {
+        result.material = material;
         return result;
     }
 
@@ -536,7 +554,7 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
         return result;
     }
 
-    package->GetMetaData().SetValue(material, ownership_key, generator_version);
+    package->GetMetaData().SetValue(material, ownership_key, generator_owner);
     package->GetMetaData().SetValue(material, source_key, *source_filename);
     package->GetMetaData().SetValue(material, source_hash_key, *source_hash);
     package->GetMetaData().SetValue(material, version_key, generator_version);
@@ -559,6 +577,7 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
         return result;
     }
     result.material = material;
+    result.changed = true;
     return result;
 }
 

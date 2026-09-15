@@ -21,6 +21,7 @@
 #include "Materials/MaterialExpressionTextureSample.h"
 #include "Materials/MaterialExpressionVectorParameter.h"
 #include "Misc/FileHelper.h"
+#include "Misc/PackageName.h"
 #include "Misc/Paths.h"
 #include "UObject/Package.h"
 
@@ -44,6 +45,14 @@ auto topology(UMaterial const& material) -> TArray<FString> {
         result.Add(expression->GetClass()->GetPathName());
     }
     return result;
+}
+
+auto package_bytes(UMaterial const& material) -> TArray<uint8> {
+    auto const filename{FPackageName::LongPackageNameToFilename(
+        material.GetOutermost()->GetName(), FPackageName::GetAssetPackageExtension())};
+    TArray<uint8> bytes;
+    FFileHelper::LoadFileToArray(bytes, *filename);
+    return bytes;
 }
 
 }
@@ -122,7 +131,7 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
         TestRunner->TestEqual(
             TEXT("Ownership metadata is recorded"),
             FString{metadata.GetValue(first.material, material_synth::ownership_key)},
-            FString{material_synth::generator_version});
+            FString{material_synth::generator_owner});
         TestRunner->TestEqual(
             TEXT("Source metadata is recorded"),
             FString{metadata.GetValue(first.material, material_synth::source_key)},
@@ -136,11 +145,16 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
             FString{metadata.GetValue(first.material, material_synth::version_key)},
             FString{material_synth::generator_version});
 
+        auto const first_bytes{package_bytes(*first.material)};
         auto const second{material_synth::emit(compiled->material, source_path, source_hash)};
         if (TestRunner->TestTrue(TEXT("Second generation succeeds"),
                                  second.material != nullptr && second.errors.IsEmpty())) {
+            TestRunner->TestFalse(TEXT("Matching material generation does not save"),
+                                  second.changed);
             TestRunner->TestTrue(TEXT("Regeneration preserves structural topology"),
                                  topology(*second.material) == first_topology);
+            TestRunner->TestTrue(TEXT("Matching material generation preserves package bytes"),
+                                 package_bytes(*second.material) == first_bytes);
         }
 
         auto* const loaded_package{LoadPackage(
