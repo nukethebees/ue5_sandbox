@@ -470,9 +470,6 @@ void ATestBatchOrchestrator::set_presentation_enabled(bool const enabled) {
 auto ATestBatchOrchestrator::get_player_ship() const -> ATestSpaceShip const* {
     return player_ship.Get();
 }
-auto ATestBatchOrchestrator::get_player_ship_simulation() noexcept -> ::ioj::sim::player::Sim* {
-    return level_simulation_.IsSet() ? level_simulation_->get_player_ship_simulation() : nullptr;
-}
 auto ATestBatchOrchestrator::get_player_ship_simulation() const noexcept
     -> ::ioj::sim::player::Sim const* {
     return level_simulation_.IsSet() ? level_simulation_->get_player_ship_simulation() : nullptr;
@@ -772,12 +769,16 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     }
 
     if (IsValid(player_ship) && get_player_ship_simulation()) {
-        player_ship->bind_simulation(*get_player_ship_simulation());
+        player_ship->bind_simulation(*level_simulation_->get_player_ship_commands(),
+                                     *get_player_ship_simulation());
     }
 
     bind_and_destroy_proxies();
-    world_collision_.initialise_static_geometry(
-        *world, level_config->collision_grid, get_spatial_query_manager().get_collision_system());
+    auto static_bounds{world_collision_.initialise_static_geometry(
+        *world,
+        level_config->collision_grid,
+        get_spatial_query_manager().get_collision_system().get_uniform_grid())};
+    level_simulation_->set_static_collision(MoveTemp(static_bounds));
 
     external_timings_.Reset();
     telemetry_environment_ = make_level_telemetry_environment(*world);
@@ -1004,8 +1005,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
 
     auto const fighter_diagnostics_enabled{
         ml::fighter_diagnostics::enabled.GetValueOnGameThread() != 0};
-    level_simulation_->get_capital_ships().diagnostics_enabled = fighter_diagnostics_enabled;
-    level_simulation_->get_fighters().diagnostics_enabled = fighter_diagnostics_enabled;
+    level_simulation_->set_fighter_diagnostics_enabled(fighter_diagnostics_enabled);
     level_simulation_->advance(dt);
     update_collision_bounds_visualization();
 
@@ -1029,7 +1029,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         level_presentation_->tick(dt, level_simulation_->get_read_view());
     }
 
-    if (auto* player{get_player_ship_simulation()};
+    if (auto* player{level_simulation_->get_player_ship_commands()};
         player && player->consume_death_notification()) {
         if (IsValid(player_ship)) {
             player_ship->handle_simulation_death();
@@ -1120,12 +1120,15 @@ auto ATestBatchOrchestrator::make_presentation_resources() const -> FLevelPresen
 }
 auto ATestBatchOrchestrator::add_static_geometry(UPrimitiveComponent& component) -> bool {
     check(level_simulation_.IsSet());
-    auto const added{world_collision_.add_static_geometry(
-        component, get_spatial_query_manager().get_collision_system())};
-    if (added) {
-        update_collision_bounds_visualization();
+    auto const bounds{world_collision_.add_static_geometry(
+        component, get_spatial_query_manager().get_collision_system().get_uniform_grid())};
+    if (!bounds.has_value()) {
+        return false;
     }
-    return added;
+
+    level_simulation_->add_static_collision_aabb(bounds->min, bounds->max);
+    update_collision_bounds_visualization();
+    return true;
 }
 
 /* **************************************** */
@@ -1230,7 +1233,7 @@ auto ATestBatchOrchestrator::take_finalized_telemetry_report() -> TOptional<FLev
     if (!level_simulation_.IsSet()) {
         return {};
     }
-    auto record{get_level_telemetry_manager().take_finalized_run()};
+    auto record{level_simulation_->take_finalized_telemetry_run()};
     if (!record.has_value()) {
         return {};
     }

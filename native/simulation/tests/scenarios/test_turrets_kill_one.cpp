@@ -93,11 +93,8 @@ void run_worldless_turret_line_of_sight_blocking(ioj::sim::tests::SimulationFixt
             [&] {
                 spawn_count_before_blocker =
                     harness.get_simulation().get_lasers().get_number_spawned();
-                harness.get_simulation()
-                    .get_spatial_query_manager()
-                    .get_collision_system()
-                    .get_uniform_grid()
-                    .add_static_aabb({{-500.f, -3000.f, -3000.f}}, {{500.f, 3000.f, 3000.f}});
+                harness.get_simulation().add_static_collision_aabb({{-500.f, -3000.f, -3000.f}},
+                                                                   {{500.f, 3000.f, 3000.f}});
             })
         .finish_at(4.0);
     ioj::sim::tests::expect_true(harness.run_until_timeline_finished(4.5),
@@ -120,11 +117,8 @@ void run_worldless_turret_search_requires_line_of_sight(
     add_worldless_turrets(data, locations, teams, 0);
     ioj::sim::tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    harness.get_simulation()
-        .get_spatial_query_manager()
-        .get_collision_system()
-        .get_uniform_grid()
-        .add_static_aabb({{-100.f, -300.f, -3000.f}}, {{100.f, 300.f, 3000.f}});
+    harness.get_simulation().add_static_collision_aabb({{-100.f, -300.f, -3000.f}},
+                                                       {{100.f, 300.f, 3000.f}});
     harness.timeline.finish_at(1.0);
     ioj::sim::tests::expect_true(harness.run_until_timeline_finished(1.5),
                                  "Turret search timeline completes");

@@ -58,7 +58,7 @@ struct TestSimulationDriver {
     bool time_wait_completed() const;
 
     UWorld& world;
-    auto get_registry() const -> ::ioj::sim::EntityRegistry&;
+    auto get_registry() const -> ::ioj::sim::EntityRegistry const&;
     ATestBatchOrchestrator& orchestrator;
 
     uint64 tick_wait_end{0};

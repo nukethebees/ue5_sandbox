@@ -69,24 +69,28 @@ auto ATestSpaceShip::make_spawn_data() const -> ::ioj::sim::player::PlayerSpawnD
     return result;
 }
 
-void ATestSpaceShip::bind_simulation(::ioj::sim::player::Sim& new_simulation) {
+void ATestSpaceShip::bind_simulation(::ioj::sim::player::CommandInterface& new_commands,
+                                     ::ioj::sim::player::Sim const& new_simulation) {
+    bound_commands_ = &new_commands;
     bound_simulation = &new_simulation;
 #if WITH_EDITOR
-    bound_simulation->speed_sampling_enabled = true;
+    new_commands.set_speed_sampling_enabled(true);
 #endif
 }
 
 void ATestSpaceShip::unbind_simulation() {
+    bound_commands_ = nullptr;
     bound_simulation = nullptr;
 }
 
-auto ATestSpaceShip::simulation() -> ::ioj::sim::player::Sim& {
-    checkf(bound_simulation, TEXT("Player input requires a bound level simulation"));
-    return *bound_simulation;
+auto ATestSpaceShip::commands() -> ::ioj::sim::player::CommandInterface& {
+    checkf(bound_commands_, TEXT("Player input requires bound simulation commands"));
+    return *bound_commands_;
 }
 
 auto ATestSpaceShip::simulation() const -> ::ioj::sim::player::Sim const& {
-    return const_cast<ATestSpaceShip*>(this)->simulation();
+    checkf(bound_simulation, TEXT("Player status requires a bound level simulation"));
+    return *bound_simulation;
 }
 
 void ATestSpaceShip::handle_simulation_death() {
@@ -120,14 +124,14 @@ auto ATestSpaceShip::get_team() const noexcept -> ETestTeam {
 void ATestSpaceShip::set_team(ETestTeam const new_team) noexcept {
     team = new_team;
     if (bound_simulation) {
-        bound_simulation->team = ml::to_native(new_team);
+        commands().set_team(ml::to_native(new_team));
     }
 }
 
 void ATestSpaceShip::set_actor_config(FPlayerShipConfig const* const new_config) noexcept {
     actor_config = new_config;
     if (new_config && bound_simulation) {
-        bound_simulation->set_config(make_simulation_config(*new_config));
+        commands().set_config(make_simulation_config(*new_config));
     }
 }
 
@@ -139,47 +143,47 @@ auto ATestSpaceShip::get_kills() const -> int32 {
 // Flight controls
 /* **************************************** */
 void ATestSpaceShip::set_move_input(FVector2D const input) {
-    simulation().set_move_input(ml::to_native(input));
+    commands().set_move_input(ml::to_native(input));
 }
 
 void ATestSpaceShip::set_lateral_move_input(float const input) {
-    simulation().set_lateral_move_input(input);
+    commands().set_lateral_move_input(input);
 }
 
 void ATestSpaceShip::set_vertical_move_input(float const input) {
-    simulation().set_vertical_move_input(input);
+    commands().set_vertical_move_input(input);
 }
 
 void ATestSpaceShip::set_ship_2d_control(FVector2D const input) {
-    simulation().set_ship_2d_control(ml::to_native(input));
+    commands().set_ship_2d_control(ml::to_native(input));
 }
 
 void ATestSpaceShip::set_ship_1d_control_x(float const input) {
-    simulation().set_ship_1d_control_x(input);
+    commands().set_ship_1d_control_x(input);
 }
 
 void ATestSpaceShip::set_ship_1d_control_y(float const input) {
-    simulation().set_ship_1d_control_y(input);
+    commands().set_ship_1d_control_y(input);
 }
 
 void ATestSpaceShip::select_next_control_mode() {
-    simulation().select_next_control_mode();
+    commands().select_next_control_mode();
 }
 
 void ATestSpaceShip::select_previous_control_mode() {
-    simulation().select_previous_control_mode();
+    commands().select_previous_control_mode();
 }
 
 void ATestSpaceShip::start_sampling() {
-    simulation().start_sampling();
+    commands().start_sampling();
 }
 
 void ATestSpaceShip::stop_sampling() {
-    simulation().stop_sampling();
+    commands().stop_sampling();
 }
 
 void ATestSpaceShip::adjust_desired_forward_velocity(float const direction) {
-    simulation().adjust_desired_forward_velocity(direction);
+    commands().adjust_desired_forward_velocity(direction);
 }
 
 void ATestSpaceShip::turn(FVector2D const direction) {
@@ -188,23 +192,23 @@ void ATestSpaceShip::turn(FVector2D const direction) {
         UE_LOG(LogSandbox, Verbose, TEXT("Turning: %s"), *direction.ToString());
     }
 #endif
-    simulation().turn(ml::to_native(direction));
+    commands().turn(ml::to_native(direction));
 }
 
 void ATestSpaceShip::start_boost() {
-    simulation().start_boost();
+    commands().start_boost();
 }
 
 void ATestSpaceShip::stop_boost() {
-    simulation().stop_boost();
+    commands().stop_boost();
 }
 
 void ATestSpaceShip::start_brake() {
-    simulation().start_brake();
+    commands().start_brake();
 }
 
 void ATestSpaceShip::stop_brake() {
-    simulation().stop_brake();
+    commands().stop_brake();
 }
 
 auto ATestSpaceShip::get_velocity() const -> FVector {
@@ -220,7 +224,7 @@ auto ATestSpaceShip::get_speed() const -> float {
 }
 
 void ATestSpaceShip::roll(float const direction) {
-    simulation().roll(direction);
+    commands().roll(direction);
 }
 
 auto ATestSpaceShip::get_target_speed() const -> float {
@@ -242,7 +246,7 @@ auto ATestSpaceShip::get_flight_mode() const -> ETestSpaceShipFlightMode {
 void ATestSpaceShip::set_flight_mode(ETestSpaceShipFlightMode const new_flight_mode) noexcept {
     flight_mode = new_flight_mode;
     if (bound_simulation) {
-        bound_simulation->set_flight_mode(ml::to_native(new_flight_mode));
+        commands().set_flight_mode(ml::to_native(new_flight_mode));
     }
 }
 
@@ -278,15 +282,15 @@ auto ATestSpaceShip::get_lock_on_target() const -> ::ioj::sim::RegistryEntityHan
 }
 
 void ATestSpaceShip::start_fire_laser() {
-    simulation().start_fire_laser();
+    commands().start_fire_laser();
 }
 
 void ATestSpaceShip::stop_fire_laser() {
-    simulation().stop_fire_laser();
+    commands().stop_fire_laser();
 }
 
 void ATestSpaceShip::upgrade_laser() {
-    simulation().upgrade_laser();
+    commands().upgrade_laser();
 }
 
 auto ATestSpaceShip::get_laser_fire_rate() const noexcept -> ETestShipFireRate {
@@ -298,17 +302,17 @@ auto ATestSpaceShip::get_laser_firing_mode() const noexcept -> ELaserFiringState
 }
 
 void ATestSpaceShip::select_next_laser_fire_rate() noexcept {
-    simulation().select_next_laser_fire_rate();
+    commands().select_next_laser_fire_rate();
 }
 
 void ATestSpaceShip::select_previous_laser_fire_rate() noexcept {
-    simulation().select_previous_laser_fire_rate();
+    commands().select_previous_laser_fire_rate();
 }
 
 void ATestSpaceShip::set_laser_fire_rate(ETestShipFireRate const value) noexcept {
     laser_fire_rate = value;
     if (bound_simulation) {
-        bound_simulation->set_laser_fire_rate(ml::to_native(value));
+        commands().set_laser_fire_rate(ml::to_native(value));
     }
 }
 
@@ -316,8 +320,8 @@ void ATestSpaceShip::set_laser_fire_rate(ETestShipFireRate const value) noexcept
 // Health and collision
 /* **************************************** */
 void ATestSpaceShip::add_health(int32 const added_health) {
-    simulation().add_health(added_health);
-    if (simulation().consume_death_notification()) {
+    commands().add_health(added_health);
+    if (commands().consume_death_notification()) {
         handle_simulation_death();
     }
 }

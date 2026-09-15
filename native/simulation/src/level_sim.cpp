@@ -149,8 +149,7 @@ void LevelSim::set_time_scale(time_type scale) {
 // Subsystem setup
 /* **************************************** */
 void LevelSim::configure_subsystems(LevelSimInitData const& data) {
-    capital_ships_simulation_.diagnostics_enabled = data.fighter_diagnostics_enabled;
-    fighters_simulation_.diagnostics_enabled = data.fighter_diagnostics_enabled;
+    set_fighter_diagnostics_enabled(data.fighter_diagnostics_enabled);
     if (data.player.has_value()) {
         configure_player(data.player.value());
     }
@@ -173,6 +172,7 @@ void LevelSim::configure_player(ioj::sim::player::PlayerSpawnData const& spawn) 
     auto& player{player_ship_simulation_.emplace(
         clock_, entity_registry_, query_manager_, lasers_simulation_)};
     player_ship_phase_.emplace(player);
+    player_ship_commands_.emplace(player);
 
     player.set_config(spawn.config);
     player.team = spawn.team;
@@ -215,6 +215,23 @@ void LevelSim::initialise_events(CompiledLevelEvents events) {
 }
 
 /* **************************************** */
+// Configuration and commands
+/* **************************************** */
+void LevelSim::set_fighter_diagnostics_enabled(bool const enabled) noexcept {
+    capital_ships_simulation_.diagnostics_enabled = enabled;
+    fighters_simulation_.diagnostics_enabled = enabled;
+}
+void LevelSim::set_static_collision(ioj::sim::collision::WorldAABBs bounds) {
+    assert(state_ == OrchestratorState::Uninitialised);
+    query_manager_.get_collision_system().get_uniform_grid().set_static_aabbs(std::move(bounds));
+}
+auto LevelSim::add_static_collision_aabb(ioj::sim::Vector3f const min_point,
+                                         ioj::sim::Vector3f const max_point) -> std::int32_t {
+    return query_manager_.get_collision_system().get_uniform_grid().add_static_aabb(min_point,
+                                                                                    max_point);
+}
+
+/* **************************************** */
 // Telemetry and mission results
 /* **************************************** */
 void LevelSim::initialise_telemetry() {
@@ -245,6 +262,9 @@ auto LevelSim::take_mission_result() -> std::optional<LevelMissionResult> {
 
     level_telemetry_manager_.mark_mission_terminal(*result);
     return result;
+}
+auto LevelSim::take_finalized_telemetry_run() -> std::optional<LevelTelemetryRunRecord> {
+    return level_telemetry_manager_.take_finalized_run();
 }
 
 /* **************************************** */

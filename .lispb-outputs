@@ -70,6 +70,7 @@ native/simulation/include/ioj/sim/laser_hit_details.h
 native/simulation/include/ioj/sim/laser_soa.h
 native/simulation/include/ioj/sim/lasers/phase_interface.h
 native/simulation/include/ioj/sim/levels/level_runtime_events.h
+native/simulation/include/ioj/sim/player/command_interface.h
 native/simulation/include/ioj/sim/player/phase_interface.h
 native/simulation/include/ioj/sim/registry_entity_data.h
 native/simulation/include/ioj/sim/registry_entity_handles.h

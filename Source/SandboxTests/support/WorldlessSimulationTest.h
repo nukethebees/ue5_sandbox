@@ -42,7 +42,6 @@ class FWorldlessSimulationTest {
 
     auto get_simulation() -> ::ioj::sim::LevelSim& { return simulation_; }
     auto get_simulation() const -> ::ioj::sim::LevelSim const& { return simulation_; }
-    auto get_registry() -> ::ioj::sim::EntityRegistry& { return simulation_.get_entity_registry(); }
     auto get_registry() const -> ::ioj::sim::EntityRegistry const& {
         return simulation_.get_entity_registry();
     }

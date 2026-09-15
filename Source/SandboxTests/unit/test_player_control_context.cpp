@@ -1055,7 +1055,8 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         ml::FFrameMemoryResource frame_memory{1024 * 1024};
         ::ioj::sim::lasers::Sim lasers{clock, registry, queries, frame_memory};
         ::ioj::sim::player::Sim simulation{clock, registry, queries, lasers};
-        ship->bind_simulation(simulation);
+        ::ioj::sim::player::CommandInterface commands{simulation};
+        ship->bind_simulation(commands, simulation);
         TestRunner->TestTrue(TEXT("Ship context binds"), context.bind());
         TestRunner->TestTrue(TEXT("Ship context reports bound"), context.is_bound());
         TestRunner->TestTrue(TEXT("Ship mapping is active"),

@@ -7,6 +7,7 @@
 #include <SpaceGameSimulation/simulation/EntityAABBs.h>
 
 #include <expected>
+#include <optional>
 
 class UStaticMesh;
 class UWorld;
@@ -18,11 +19,13 @@ using FEntityBoundsExtractionResult = std::expected<FEntityAABBs, FLevelStartErr
 struct SPACEGAME_API FLevelCollisionHost {
     using EntityMeshes = TEnumArray<ETestEntityType, UStaticMesh const*>;
     static auto extract_entity_bounds(EntityMeshes const& meshes) -> FEntityBoundsExtractionResult;
-    void initialise_static_geometry(UWorld& world,
+    auto initialise_static_geometry(UWorld& world,
                                     FCollisionGridConfig const& config,
-                                    ::ioj::sim::collision::CollisionSystem& collision);
+                                    ::ioj::sim::collision::CollisionUniformGrid const& grid)
+        -> ::ioj::sim::collision::WorldAABBs;
     auto add_static_geometry(UPrimitiveComponent& component,
-                             ::ioj::sim::collision::CollisionSystem& collision) -> bool;
+                             ::ioj::sim::collision::CollisionUniformGrid const& grid)
+        -> std::optional<::ioj::sim::collision::WorldAABB>;
     void restore_collision();
     auto get_static_collision_sources() const noexcept -> FStaticCollisionSources::ConstView {
         return static_collision_sources_.get_const_view();

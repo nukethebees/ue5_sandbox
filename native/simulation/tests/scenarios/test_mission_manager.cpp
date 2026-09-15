@@ -1,3 +1,4 @@
+#include <ioj/sim/testing/level_sim_test_access.h>
 #include "../support/simulation_test_support.h"
 
 #include "test_mission_manager.h"
@@ -159,8 +160,9 @@ void run_worldless_mission_manager_scenario(ioj::sim::tests::SimulationFixture c
         harness.timeline.at(0.15, [&] { harness.queue_kills(std::array{hero}); });
     } else if (scenario == Scenario::ExplicitCompletionIsLatched) {
         harness.timeline.then_after(0.01, [&] {
-            first_completion_result = manager.complete_mission();
-            duplicate_completion_result = manager.complete_mission();
+            first_completion_result = ioj::sim::LevelSimTestAccess::complete_mission(simulation);
+            duplicate_completion_result =
+                ioj::sim::LevelSimTestAccess::complete_mission(simulation);
         });
     }
     auto const end_time{scenario == Scenario::RequiredKillsObjective ||

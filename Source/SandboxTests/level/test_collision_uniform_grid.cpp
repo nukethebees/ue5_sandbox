@@ -57,7 +57,7 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
         grid.set_grid_dims({configured_dims.X, configured_dims.Y, configured_dims.Z});
         grid.set_cell_dims(ml::to_native(config.cell_size));
         ml::ioj::FLevelCollisionHost collision_host;
-        collision_host.initialise_static_geometry(*world, config, collision);
+        grid.set_static_aabbs(collision_host.initialise_static_geometry(*world, config, grid));
 
         auto const sources{collision_host.get_static_collision_sources()};
         auto const source_count{sources.num()};
@@ -86,7 +86,7 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
         checks.is_true(unsupported_component->GetCollisionEnabled() == ECollisionEnabled::QueryOnly,
                        TEXT("Failed harvest leaves Unreal collision enabled"));
 
-        collision_host.initialise_static_geometry(*world, config, collision);
+        grid.set_static_aabbs(collision_host.initialise_static_geometry(*world, config, grid));
         checks.are_equal(source_count,
                          collision_host.get_static_collision_sources().num(),
                          TEXT("Reinitialization restores and reharvests static geometry"));

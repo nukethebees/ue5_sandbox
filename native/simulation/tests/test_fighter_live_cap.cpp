@@ -1,5 +1,6 @@
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/level_sim.h>
+#include <ioj/sim/testing/level_sim_test_access.h>
 #include "support/simulation_test_support.h"
 
 namespace ioj::sim::tests {
@@ -144,7 +145,8 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
     capital_damage.damaged_entities[0] = parent_death_simulation.get_capital_ships().get_handle(0);
     capital_damage.instigators[0] = parent_death_simulation.get_capital_ships().get_handle(1);
     capital_damage.damage_amounts[0] = 100;
-    parent_death_simulation.get_entity_registry().queue_direct_damage_events(capital_damage);
+    ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(parent_death_simulation,
+                                                               capital_damage.get_const_view());
     parent_death_simulation.advance(parent_death_simulation.get_clock().get_tick_period());
     parent_death_simulation.advance(parent_death_simulation.get_clock().get_tick_period());
     ioj::sim::tests::expect_equal(
@@ -168,7 +170,7 @@ TEST(FighterLiveCap, DeferredRemovalAndReconstruction) {
     damage.damaged_entities[0] = simulation.get_fighters().get_handles()[0];
     damage.instigators[0] = simulation.get_capital_ships().get_handle(0);
     damage.damage_amounts[0] = 100000;
-    simulation.get_entity_registry().queue_direct_damage_events(damage);
+    ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
     simulation.advance(simulation.get_clock().get_tick_period());
     ioj::sim::tests::expect_equal(simulation.get_fighters().get_num_instances(),
                                   0,

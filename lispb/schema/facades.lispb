@@ -24,6 +24,49 @@
       :const true
       :noexcept true)))
 
+(facade-module player_command_interface
+  :header "native/simulation/include/ioj/sim/player/command_interface.h"
+  :namespace ioj::sim::player
+  (facade CommandInterface @player_sim simulation
+    :target-storage reference
+    (method set_config void :noexcept true
+      (parameter config "ioj::sim::PlayerSimConfig const&"))
+    (method set_team void :noexcept true
+      (parameter team @native_team))
+    (method set_speed_sampling_enabled void :noexcept true
+      (parameter enabled bool))
+    (method set_move_input void :noexcept true
+      (parameter input "ml::Vector2d"))
+    (method set_lateral_move_input void :noexcept true
+      (parameter input float))
+    (method set_vertical_move_input void :noexcept true
+      (parameter input float))
+    (method set_ship_2d_control void (parameter input "ml::Vector2d"))
+    (method set_ship_1d_control_x void (parameter input float))
+    (method set_ship_1d_control_y void (parameter input float))
+    (method select_next_control_mode void)
+    (method select_previous_control_mode void)
+    (method start_sampling void :noexcept true)
+    (method stop_sampling void)
+    (method adjust_desired_forward_velocity void (parameter direction float))
+    (method turn void :noexcept true (parameter direction "ml::Vector2d"))
+    (method start_boost void)
+    (method stop_boost void)
+    (method start_brake void)
+    (method stop_brake void)
+    (method roll void :noexcept true (parameter direction float))
+    (method set_flight_mode void :noexcept true
+      (parameter mode "ioj::sim::SpaceShipFlightMode"))
+    (method start_fire_laser void)
+    (method stop_fire_laser void)
+    (method upgrade_laser void :noexcept true)
+    (method select_next_laser_fire_rate void :noexcept true)
+    (method select_previous_laser_fire_rate void :noexcept true)
+    (method set_laser_fire_rate void :noexcept true
+      (parameter rate "ioj::sim::ShipFireRate"))
+    (method add_health void (parameter added_health "std::int32_t"))
+    (method consume_death_notification bool :noexcept true)))
+
 (facade-module player_phase_interface
   :header "native/simulation/include/ioj/sim/player/phase_interface.h"
   :source "native/simulation/src/player/phase_interface.cpp"

@@ -1,4 +1,5 @@
 #include "WorldlessSimulationTest.h"
+#include <ioj/sim/testing/level_sim_test_access.h>
 #include <SpaceGame/simulation/SimulationConfigConversion.h>
 #include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
@@ -90,7 +91,8 @@ void FWorldlessSimulationTest::queue_damage(
     for (auto const target : targets) {
         events.add(target, damage, instigator);
     }
-    get_registry().queue_direct_damage_events(events);
+    ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation_,
+                                                               events.get_const_view());
 }
 
 void FWorldlessSimulationTest::queue_kills(
@@ -103,7 +105,8 @@ void FWorldlessSimulationTest::queue_kills(
         auto const damage{FMath::Max(1, get_registry().get_health(target))};
         events.add(target, damage, instigator);
     }
-    get_registry().queue_direct_damage_events(events);
+    ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation_,
+                                                               events.get_const_view());
 }
 
 auto FWorldlessSimulationTest::run_until_timeline_finished(time_type const maximum_time) -> bool {

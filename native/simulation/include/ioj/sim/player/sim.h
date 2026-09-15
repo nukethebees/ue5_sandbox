@@ -84,6 +84,8 @@ struct Sim {
                 boost_start_sequence_};
     }
     void set_config(PlayerSimConfig const& new_config) noexcept;
+    void set_team(ioj::sim::Team new_team) noexcept { team = new_team; }
+    void set_speed_sampling_enabled(bool enabled) noexcept { speed_sampling_enabled = enabled; }
 
     /* **************************************** */
     // Flight controls

@@ -1,4 +1,5 @@
 #include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestBatchOrchestratorTestAccess.h>
 #include "test_batch_orchestrator_setup_scenario.h"
 
 #include <SandboxTests/support/SoftTestAssertions.h>
@@ -138,8 +139,10 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
             SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
             return;
         }
-        orchestrator.get_level_telemetry_manager().begin_run(::ioj::sim::LevelTelemetryRunMetadata{
-            .run_id = "frame-ordering", .detailed_timing = true});
+        FTestBatchOrchestratorTestAccess::begin_telemetry_run(
+            orchestrator,
+            ::ioj::sim::LevelTelemetryRunMetadata{.run_id = "frame-ordering",
+                                                  .detailed_timing = true});
         struct FFrameObservation {
             uint64 completed_ticks{};
             uint64 presentation_count{};
@@ -152,11 +155,11 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
                     FFrameObservation{owner.get_completed_ticks(),
                                       owner.get_level_presentation()->get_tick_count()});
                 if (owner.get_completed_ticks() == 4) {
-                    owner.get_level_telemetry_manager().capture_realtime_sample();
+                    FTestBatchOrchestratorTestAccess::capture_realtime_telemetry_sample(owner);
                 }
                 if (owner.get_completed_ticks() == 6) {
-                    owner.get_level_simulation()->complete_telemetry_run(
-                        ::ioj::sim::LevelTelemetryRunEndReason::DurationReached);
+                    FTestBatchOrchestratorTestAccess::complete_telemetry_run(
+                        owner, ::ioj::sim::LevelTelemetryRunEndReason::DurationReached);
                 }
             }));
         auto const dt{orchestrator.get_level_simulation()->get_clock().get_tick_period()};

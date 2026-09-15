@@ -97,6 +97,7 @@ target_sources(native-simulation PRIVATE
   include/ioj/sim/navigation_telemetry.h
   include/ioj/sim/overlap_handler.h
   include/ioj/sim/player/control_mode.h
+  include/ioj/sim/player/command_interface.h
   include/ioj/sim/player/fire_rate.h
   include/ioj/sim/player/flight_mode.h
   include/ioj/sim/player/laser_firing_state.h
@@ -136,6 +137,7 @@ target_sources(native-simulation PRIVATE
   include/ioj/sim/telemetry/level_telemetry_run_end_reason.h
   include/ioj/sim/telemetry/level_telemetry_run_record.h
   include/ioj/sim/trace_hits.h
+  include/ioj/sim/testing/level_sim_test_access.h
   include/ioj/sim/transform3d.h
   include/ioj/sim/turret_entity_data.h
   include/ioj/sim/turret_spawn_data.h

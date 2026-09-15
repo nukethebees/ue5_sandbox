@@ -5,6 +5,7 @@
 #include <SpaceGameSimulation/ships/common/NativeShipHealth.h>
 #include <SpaceGameSimulation/ships/player/NativePlayerTypes.h>
 
+#include <ioj/sim/player/command_interface.h>
 #include <ioj/sim/player/sim.h>
 #include <SpaceGame/entities/TestEntity.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -41,7 +42,8 @@ class SPACEGAME_API ATestSpaceShip
     /* **************************************** */
     ATestSpaceShip();
     auto make_spawn_data() const -> ::ioj::sim::player::PlayerSpawnData;
-    void bind_simulation(::ioj::sim::player::Sim& new_simulation);
+    void bind_simulation(::ioj::sim::player::CommandInterface& new_commands,
+                         ::ioj::sim::player::Sim const& new_simulation);
     void unbind_simulation();
     auto has_simulation() const noexcept -> bool { return bound_simulation != nullptr; }
 
@@ -135,7 +137,7 @@ class SPACEGAME_API ATestSpaceShip
     /* **************************************** */
     auto GetVelocity() const -> FVector override;
 
-    auto simulation() -> ::ioj::sim::player::Sim&;
+    auto commands() -> ::ioj::sim::player::CommandInterface&;
     auto simulation() const -> ::ioj::sim::player::Sim const&;
 
     void handle_simulation_death();
@@ -185,5 +187,6 @@ class SPACEGAME_API ATestSpaceShip
     float debug_lock_on_sphere_radius{1000.f};
 #endif
 
-    ::ioj::sim::player::Sim* bound_simulation{nullptr};
+    ::ioj::sim::player::CommandInterface* bound_commands_{nullptr};
+    ::ioj::sim::player::Sim const* bound_simulation{nullptr};
 };

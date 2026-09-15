@@ -1,7 +1,32 @@
+#include <ioj/sim/testing/level_sim_test_access.h>
 #include <ioj/sim/world_aabb_operations.h>
+#include <type_traits>
+#include <utility>
 #include "support/simulation_test_support.h"
 
 namespace ioj::sim::tests {
+
+static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_lasers()), lasers::Sim const&>);
+static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_capital_ships()),
+                             capital_ships::Sim const&>);
+static_assert(
+    std::is_same_v<decltype(std::declval<LevelSim&>().get_fighters()), fighters::Sim const&>);
+static_assert(
+    std::is_same_v<decltype(std::declval<LevelSim&>().get_turrets()), turrets::Sim const&>);
+static_assert(
+    std::is_same_v<decltype(std::declval<LevelSim&>().get_spinners()), spinners::Sim const&>);
+static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_entity_registry()),
+                             EntityRegistry const&>);
+static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_mission_manager()),
+                             MissionManager const&>);
+static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_spatial_query_manager()),
+                             SpatialQueryManager const&>);
+static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_level_telemetry_manager()),
+                             LevelTelemetryManager const&>);
+static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_player_ship_simulation()),
+                             player::Sim const*>);
+static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_player_ship_commands()),
+                             player::CommandInterface*>);
 
 static_assert(std::is_const_v<std::remove_reference_t<
                   decltype(std::declval<CapitalReadView>().entities.locations.xs[0])>>);
@@ -61,7 +86,7 @@ void kill_enemy(LevelSim& simulation) {
     events.add(simulation.get_capital_ships().get_handle(1),
                100,
                simulation.get_capital_ships().get_handle(0));
-    simulation.get_entity_registry().queue_direct_damage_events(events);
+    ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation, events.get_const_view());
 }
 }
 
@@ -87,8 +112,7 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
     ioj::sim::tests::expect_equal(simulation.get_clock().get_completed_ticks(),
                                   std::uint64_t{1},
                                   "Only one simulation tick completes");
-    auto& telemetry{simulation.get_level_telemetry_manager()};
-    auto const record{telemetry.take_finalized_run()};
+    auto const record{simulation.take_finalized_telemetry_run()};
     if (ioj::sim::tests::expect_true(record.has_value(), "Completion yields a telemetry record")) {
         ioj::sim::tests::expect_equal(record->completion.reason,
                                       ioj::sim::LevelTelemetryRunEndReason::DurationReached,
@@ -102,7 +126,7 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
                                       std::uint64_t{1},
                                       "Completion records the current tick");
     }
-    ioj::sim::tests::expect_false(telemetry.take_finalized_run().has_value(),
+    ioj::sim::tests::expect_false(simulation.take_finalized_telemetry_run().has_value(),
                                   "Completion is consumed once");
     simulation.advance(dt * 10.0);
     ioj::sim::tests::expect_equal(simulation.get_clock().get_completed_ticks(),
@@ -143,7 +167,7 @@ TEST(NativeSimulation, LevelTelemetryMissionCompletionTest) {
         return;
     }
 
-    auto record{simulation.get_level_telemetry_manager().take_finalized_run()};
+    auto record{simulation.take_finalized_telemetry_run()};
     if (!ioj::sim::tests::expect_true(record.has_value(),
                                       "Taking the mission result finalizes telemetry")) {
         return;
@@ -180,7 +204,7 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
         requests.instigator_handles[0] = level.get_capital_ships().get_handle(0);
         requests.sources[0] =
             ioj::sim::LaserSource{ioj::sim::Team::Green, ioj::sim::EntityType::Fighter};
-        level.get_lasers().queue_laser_spawns(requests.get_const_view());
+        ::ioj::sim::LevelSimTestAccess::queue_laser_spawns(level, requests.get_const_view());
     };
     queue_shot(simulation);
     simulation.on_end_tick = [&](LevelSim& level) {
@@ -218,8 +242,10 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
 
 TEST(NativeSimulation, LevelSimInitialQueriesTest) {
     auto data{make_battle()};
-    ioj::sim::collision::add(data.static_bounds, {{-10.f, 490.f, -10.f}}, {{10.f, 510.f, 10.f}});
+    ioj::sim::collision::WorldAABBs static_bounds;
+    ioj::sim::collision::add(static_bounds, {{-10.f, 490.f, -10.f}}, {{10.f, 510.f, 10.f}});
     LevelSim simulation{std::move(data)};
+    simulation.set_static_collision(std::move(static_bounds));
     simulation.finish_initialisation();
     auto const& queries{simulation.get_spatial_query_manager()};
     ioj::sim::tests::expect_equal(queries.get_runtime_telemetry().grid_rebuild_count,
@@ -301,7 +327,7 @@ TEST(NativeSimulation, LevelSimReconstructionTest) {
     ioj::sim::tests::expect_equal(simulation->get_entity_registry().get_num_unique_ids_issued(),
                                   2,
                                   "Fresh registry has no prior history");
-    ioj::sim::tests::expect_false(simulation->get_mission_manager().take_result().has_value(),
+    ioj::sim::tests::expect_false(simulation->take_mission_result().has_value(),
                                   "No pending result survives reconstruction");
     return;
 }
@@ -325,7 +351,7 @@ TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
         return player->transform.inverse_transform_vector_no_scale(player->velocity);
     };
 
-    player->set_lateral_move_input(1.f);
+    simulation.get_player_ship_commands()->set_lateral_move_input(1.f);
     simulation.advance(dt);
     ioj::sim::tests::expect_true((std::abs(local_velocity().y - 3000.0) <= 0.1),
                                  "Held lateral input adds the configured local offset");
@@ -333,15 +359,15 @@ TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
                                   std::abs(player->target_local_planar_velocity_scale.y) <= 1.e-4),
                                  "Lateral input does not change desired planar velocity");
 
-    player->set_lateral_move_input(0.f);
-    player->set_vertical_move_input(1.f);
+    simulation.get_player_ship_commands()->set_lateral_move_input(0.f);
+    simulation.get_player_ship_commands()->set_vertical_move_input(1.f);
     simulation.advance(dt);
     ioj::sim::tests::expect_true((std::abs(local_velocity().z - 3000.0) <= 0.1),
                                  "Held vertical input adds the configured local offset");
     ioj::sim::tests::expect_true((std::abs(local_velocity().y) <= 0.1),
                                  "Released lateral input removes its local offset");
 
-    player->set_vertical_move_input(0.f);
+    simulation.get_player_ship_commands()->set_vertical_move_input(0.f);
     simulation.advance(dt);
     auto const released_velocity{local_velocity()};
     ioj::sim::tests::expect_true((std::abs(released_velocity.z) <= 0.1),
@@ -363,11 +389,11 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
         return;
     }
 
-    player->set_lateral_move_input(1.f);
+    simulation.get_player_ship_commands()->set_lateral_move_input(1.f);
     auto const player_handle{player->registry_handle};
     auto const capital{simulation.get_capital_ships().get_handle(0)};
     auto const player_id{simulation.get_entity_registry().find_unique_id(player_handle)};
-    auto& registry{simulation.get_entity_registry()};
+    auto const& registry{simulation.get_entity_registry()};
 
     for (std::int32_t overlap_detection{}; overlap_detection < 3; ++overlap_detection) {
         simulation.advance(dt);
@@ -447,14 +473,14 @@ TEST(NativeSimulation, WorldlessLevelSimulationTest) {
                                   "Damage removes only the first battle's enemy");
     ioj::sim::tests::expect_equal(
         second.get_capital_ships().get_num_instances(), 2, "Other battle is unaffected");
-    auto result{first.get_mission_manager().take_result()};
+    auto result{first.take_mission_result()};
     ioj::sim::tests::expect_true(result.has_value(), "Worldless mission produces a result");
     if (result.has_value()) {
         ioj::sim::tests::expect_equal(
             result->state, ioj::sim::MissionState::Succeeded, "Worldless battle succeeds");
         ioj::sim::tests::expect_equal(result->kills, 1, "Worldless battle attributes the kill");
     }
-    ioj::sim::tests::expect_false(first.get_mission_manager().take_result().has_value(),
+    ioj::sim::tests::expect_false(first.take_mission_result().has_value(),
                                   "Mission result is delivered once");
     first.pause();
     auto const paused_ticks{first.get_clock().get_completed_ticks()};
@@ -487,7 +513,7 @@ TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
                                  "Finishing starts telemetry while still paused");
     simulation.start();
 
-    auto& telemetry{simulation.get_level_telemetry_manager()};
+    auto const& telemetry{simulation.get_level_telemetry_manager()};
     ioj::sim::tests::expect_true(telemetry.is_run_recording(),
                                  "Simulation initialization starts telemetry recording");
 
@@ -500,12 +526,12 @@ TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
                                   OrchestratorState::Running,
                                   "Interrupted telemetry finalization does not pause simulation");
 
-    auto record{telemetry.take_finalized_run()};
+    auto record{simulation.take_finalized_telemetry_run()};
     if (!ioj::sim::tests::expect_true(record.has_value(),
                                       "Finalized manager yields one run record")) {
         return;
     }
-    ioj::sim::tests::expect_false(telemetry.take_finalized_run().has_value(),
+    ioj::sim::tests::expect_false(simulation.take_finalized_telemetry_run().has_value(),
                                   "A finalized run record is yielded only once");
     ioj::sim::tests::expect_equal(record->completion.reason,
                                   ioj::sim::LevelTelemetryRunEndReason::WorldEnd,

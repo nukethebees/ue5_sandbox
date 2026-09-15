@@ -20,6 +20,7 @@
 #include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/mission_manager.h>
 #include <ioj/sim/overlap_handler.h>
+#include <ioj/sim/player/command_interface.h>
 #include <ioj/sim/player/phase_interface.h>
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/spatial_query_manager.h>
@@ -33,6 +34,8 @@
 #include <sandbox/core/frame_memory_resource.h>
 
 namespace ioj::sim {
+
+struct LevelSimTestAccess;
 
 struct LevelSimInitData {
     ioj::sim::FixedTickLoop clock_settings{};
@@ -93,6 +96,19 @@ struct LevelSim {
     auto get_read_view() const -> LevelReadView;
 
     /* **************************************** */
+    // Configuration and commands
+    /* **************************************** */
+    void set_fighter_diagnostics_enabled(bool enabled) noexcept;
+    // Replaces static collision during initialization, before finish_initialisation().
+    void set_static_collision(ioj::sim::collision::WorldAABBs bounds);
+    auto add_static_collision_aabb(ioj::sim::Vector3f min_point, ioj::sim::Vector3f max_point)
+        -> std::int32_t;
+    // Borrowed until this LevelSim is destroyed; null when the level has no player.
+    auto get_player_ship_commands() noexcept -> ioj::sim::player::CommandInterface* {
+        return player_ship_commands_.has_value() ? &player_ship_commands_.value() : nullptr;
+    }
+
+    /* **************************************** */
     // Telemetry and mission results
     /* **************************************** */
     // Records interruption without changing simulation state.
@@ -103,6 +119,7 @@ struct LevelSim {
                                 std::optional<ioj::sim::Team> winning_team = {});
     // Consumes the result and marks telemetry terminal without pausing.
     auto take_mission_result() -> std::optional<LevelMissionResult>;
+    auto take_finalized_telemetry_run() -> std::optional<LevelTelemetryRunRecord>;
 
     /* **************************************** */
     // Accessors
@@ -113,32 +130,20 @@ struct LevelSim {
     auto has_future_authored_spawns() const noexcept -> bool {
         return event_manager_.has_future_spawns();
     }
-    auto get_player_ship_simulation() -> ioj::sim::player::Sim* {
-        return player_ship_simulation_.has_value() ? &player_ship_simulation_.value() : nullptr;
-    }
     auto get_player_ship_simulation() const -> ioj::sim::player::Sim const* {
         return player_ship_simulation_.has_value() ? &player_ship_simulation_.value() : nullptr;
     }
-    auto get_lasers() -> ioj::sim::lasers::Sim& { return lasers_simulation_; }
     auto get_lasers() const -> ioj::sim::lasers::Sim const& { return lasers_simulation_; }
-    auto get_capital_ships() -> ioj::sim::capital_ships::Sim& { return capital_ships_simulation_; }
     auto get_capital_ships() const -> ioj::sim::capital_ships::Sim const& {
         return capital_ships_simulation_;
     }
-    auto get_fighters() -> ioj::sim::fighters::Sim& { return fighters_simulation_; }
     auto get_fighters() const -> ioj::sim::fighters::Sim const& { return fighters_simulation_; }
     auto get_turrets() const -> ioj::sim::turrets::Sim const& { return turrets_simulation_; }
     auto get_spinners() const -> ioj::sim::spinners::Sim const& { return spinners_simulation_; }
-    auto get_entity_registry() -> EntityRegistry& { return entity_registry_; }
     auto get_entity_registry() const -> EntityRegistry const& { return entity_registry_; }
-    auto get_mission_manager() -> MissionManager& { return mission_manager_; }
     auto get_mission_manager() const -> MissionManager const& { return mission_manager_; }
-    auto get_spatial_query_manager() -> ioj::sim::SpatialQueryManager& { return query_manager_; }
     auto get_spatial_query_manager() const -> ioj::sim::SpatialQueryManager const& {
         return query_manager_;
-    }
-    auto get_level_telemetry_manager() -> LevelTelemetryManager& {
-        return level_telemetry_manager_;
     }
     auto get_level_telemetry_manager() const -> LevelTelemetryManager const& {
         return level_telemetry_manager_;
@@ -150,6 +155,8 @@ struct LevelSim {
     std::function<void()> on_mission_evaluated;
     std::function<void(LevelSim&)> on_end_tick;
   private:
+    friend struct LevelSimTestAccess;
+
     /* **************************************** */
     // Subsystem setup
     /* **************************************** */
@@ -181,6 +188,7 @@ struct LevelSim {
 
     std::optional<ioj::sim::player::Sim> player_ship_simulation_;
     std::optional<ioj::sim::player::PhaseInterface> player_ship_phase_;
+    std::optional<ioj::sim::player::CommandInterface> player_ship_commands_;
 
     ioj::sim::fighters::Sim fighters_simulation_;
     ioj::sim::fighters::PhaseInterface fighters_phase_;

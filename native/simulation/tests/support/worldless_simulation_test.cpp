@@ -1,6 +1,7 @@
 #include "worldless_simulation_test.h"
 #include <algorithm>
 #include <cmath>
+#include <ioj/sim/testing/level_sim_test_access.h>
 namespace ioj::sim::tests {
 WorldlessSimulationTest::WorldlessSimulationTest(LevelSimInitData data)
     : simulation_{std::move(data)} {
@@ -21,7 +22,8 @@ void WorldlessSimulationTest::queue_damage(std::span<RegistryEntityHandle const>
     for (auto const target : targets) {
         events.add(target, damage, instigator);
     }
-    get_registry().queue_direct_damage_events(events);
+    ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation_,
+                                                               events.get_const_view());
 }
 
 void WorldlessSimulationTest::queue_kills(std::span<RegistryEntityHandle const> const targets,
@@ -33,7 +35,8 @@ void WorldlessSimulationTest::queue_kills(std::span<RegistryEntityHandle const> 
         auto const damage{std::max(1, get_registry().get_health(target))};
         events.add(target, damage, instigator);
     }
-    get_registry().queue_direct_damage_events(events);
+    ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation_,
+                                                               events.get_const_view());
 }
 
 auto WorldlessSimulationTest::run_until_timeline_finished(time_type const maximum_time) -> bool {

@@ -9,7 +9,6 @@ class WorldlessSimulationTest {
     explicit WorldlessSimulationTest(LevelSimInitData data);
     auto get_simulation() -> LevelSim& { return simulation_; }
     auto get_simulation() const -> LevelSim const& { return simulation_; }
-    auto get_registry() -> EntityRegistry& { return simulation_.get_entity_registry(); }
     auto get_registry() const -> EntityRegistry const& { return simulation_.get_entity_registry(); }
     auto get_time() const -> time_type { return simulation_.get_clock().get_simulation_time(); }
     void finish_initialisation() { simulation_.finish_initialisation(); }

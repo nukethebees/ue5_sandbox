@@ -164,11 +164,11 @@ auto FLevelCollisionHost::extract_entity_bounds(EntityMeshes const& meshes)
     }
     return result;
 }
-void FLevelCollisionHost::initialise_static_geometry(
+auto FLevelCollisionHost::initialise_static_geometry(
     UWorld& world,
     FCollisionGridConfig const& config,
-    ::ioj::sim::collision::CollisionSystem& collision) {
-    auto& uniform_grid_{collision.get_uniform_grid()};
+    ::ioj::sim::collision::CollisionUniformGrid const& uniform_grid_)
+    -> ::ioj::sim::collision::WorldAABBs {
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::ioj::sim::collision::CollisionSystem::initialise_static_geometry);
     checkf(config.is_valid(), TEXT("Cannot harvest static collision with an invalid grid config"));
@@ -182,7 +182,6 @@ void FLevelCollisionHost::initialise_static_geometry(
         }
     }
     static_collision_sources_.reset();
-    uniform_grid_.set_static_aabbs({});
 
     WorldAABBs static_aabbs;
     int32 unexpected_actor_count{};
@@ -249,7 +248,6 @@ void FLevelCollisionHost::initialise_static_geometry(
         }
     }
 
-    uniform_grid_.set_static_aabbs(MoveTemp(static_aabbs));
     auto const sources{static_collision_sources_.get_const_view()};
     auto const source_count{sources.num()};
     for (int32 source_index{}; source_index < source_count; ++source_index) {
@@ -265,24 +263,26 @@ void FLevelCollisionHost::initialise_static_geometry(
            static_collision_sources_.num(),
            unsupported_component_count,
            unexpected_actor_count);
+    return static_aabbs;
 }
-auto FLevelCollisionHost::add_static_geometry(UPrimitiveComponent& component,
-                                              ::ioj::sim::collision::CollisionSystem& collision)
-    -> bool {
-    auto& uniform_grid_{collision.get_uniform_grid()};
+auto FLevelCollisionHost::add_static_geometry(
+    UPrimitiveComponent& component,
+    ::ioj::sim::collision::CollisionUniformGrid const& uniform_grid_)
+    -> std::optional<::ioj::sim::collision::WorldAABB> {
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::ioj::sim::collision::CollisionSystem::add_static_geometry);
 
     auto* const actor{component.GetOwner()};
-    auto const reject_component{[&](TCHAR const* const reason) {
-        UE_LOG(LogSandbox,
-               Warning,
-               TEXT("Cannot add runtime static collision component %s on actor %s: %s"),
-               *component.GetPathName(),
-               IsValid(actor) ? *actor->GetPathName() : TEXT("<invalid>"),
-               reason);
-        return false;
-    }};
+    auto const reject_component{
+        [&](TCHAR const* const reason) -> std::optional<::ioj::sim::collision::WorldAABB> {
+            UE_LOG(LogSandbox,
+                   Warning,
+                   TEXT("Cannot add runtime static collision component %s on actor %s: %s"),
+                   *component.GetPathName(),
+                   IsValid(actor) ? *actor->GetPathName() : TEXT("<invalid>"),
+                   reason);
+            return std::nullopt;
+        }};
 
     TCHAR const* rejection_reason{};
     auto const data{
@@ -291,12 +291,11 @@ auto FLevelCollisionHost::add_static_geometry(UPrimitiveComponent& component,
         return reject_component(rejection_reason);
     }
 
-    auto const static_index{uniform_grid_.add_static_aabb(ml::to_native(data->min_point),
-                                                          ml::to_native(data->max_point))};
-    check(static_index == static_collision_sources_.num());
+    check(uniform_grid_.get_static_aabbs().num() == static_collision_sources_.num());
     static_collision_sources_.add(&component, data->original_collision_mode);
     component.SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    return true;
+    return ::ioj::sim::collision::WorldAABB{ml::to_native(data->min_point),
+                                            ml::to_native(data->max_point)};
 }
 void FLevelCollisionHost::restore_collision() {
     auto const sources{static_collision_sources_.get_const_view()};

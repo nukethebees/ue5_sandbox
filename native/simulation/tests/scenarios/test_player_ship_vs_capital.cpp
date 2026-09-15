@@ -35,8 +35,9 @@ void run_worldless_player_ship_vs_capital(ioj::sim::tests::SimulationFixture con
     auto* const player{harness.get_simulation().get_player_ship_simulation()};
     auto const& fighters{harness.get_simulation().get_fighters()};
     assert(player);
-    player->set_flight_mode(ioj::sim::SpaceShipFlightMode::ForwardSpeed);
-    player->start_boost();
+    harness.get_simulation().get_player_ship_commands()->set_flight_mode(
+        ioj::sim::SpaceShipFlightMode::ForwardSpeed);
+    harness.get_simulation().get_player_ship_commands()->start_boost();
     auto const player_handle{player->registry_handle};
     struct Sample {
         ml::Vector3d player_location;

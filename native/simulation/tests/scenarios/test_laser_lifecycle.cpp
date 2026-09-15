@@ -1,4 +1,5 @@
 #include "test_laser_lifecycle.h"
+#include <ioj/sim/testing/level_sim_test_access.h>
 #include "../support/simulation_test_support.h"
 
 #include <ioj/sim/world_aabb_operations.h>
@@ -48,7 +49,7 @@ void run_worldless_laser_lifecycle(ioj::sim::tests::SimulationFixture const& con
 
     ioj::sim::tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    auto& lasers{harness.get_simulation().get_lasers()};
+    auto const& lasers{harness.get_simulation().get_lasers()};
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     auto const shooter{capitals.get_handle(0)};
     auto const target{capitals.get_handle(1)};
@@ -105,7 +106,8 @@ void run_worldless_laser_lifecycle(ioj::sim::tests::SimulationFixture const& con
             requests.sources[i] =
                 ioj::sim::LaserSource{ioj::sim::Team::White, ioj::sim::EntityType::TubeSpinner};
         }
-        lasers.queue_laser_spawns(requests.get_const_view());
+        ioj::sim::LevelSimTestAccess::queue_laser_spawns(harness.get_simulation(),
+                                                         requests.get_const_view());
     });
     auto const end_time{scenario == LaserLifecycleScenario::Miss ? expiry_test_end_time
                                                                  : collision_test_end_time};

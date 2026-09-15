@@ -1,4 +1,5 @@
 #include "TestSimulationDriver.h"
+#include <SandboxTests/support/TestBatchOrchestratorTestAccess.h>
 
 #include <SandboxTests/SandboxTestLogCategories.h>
 #include <SandboxTests/support/SpaceGameTestSettings.h>
@@ -37,7 +38,7 @@ auto TestSimulationDriver::from_world(UWorld& world) -> TestSimulationDriver {
     return TestSimulationDriver{world, *orchestrator};
 }
 
-auto TestSimulationDriver::get_registry() const -> ::ioj::sim::EntityRegistry& {
+auto TestSimulationDriver::get_registry() const -> ::ioj::sim::EntityRegistry const& {
     return orchestrator.get_entity_registry();
 }
 
@@ -69,7 +70,8 @@ void TestSimulationDriver::queue_damage(
         damage_events.add(target, damage, instigator);
     }
 
-    get_registry().queue_direct_damage_events(damage_events);
+    FTestBatchOrchestratorTestAccess::queue_direct_damage_events(orchestrator,
+                                                                 damage_events.get_const_view());
 }
 void TestSimulationDriver::queue_kills(
     std::span<::ioj::sim::RegistryEntityHandle const> const targets,

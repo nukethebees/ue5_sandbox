@@ -167,7 +167,7 @@ void run_worldless_collision_damage(ioj::sim::tests::SimulationFixture const& co
     auto const player_handle{player->registry_handle};
     auto const capital_handle{simulation.get_capital_ships().get_handle(0)};
     auto const capital_id{harness.get_registry().find_unique_id(capital_handle)};
-    player->set_lateral_move_input(1.f);
+    simulation.get_player_ship_commands()->set_lateral_move_input(1.f);
     ml::TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim& level) {
         auto const& registry{harness.get_registry()};

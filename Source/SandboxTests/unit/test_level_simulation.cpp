@@ -1,5 +1,6 @@
 #include <ioj/sim/level_sim.h>
 #include <ioj/sim/levels/level_event_manager.h>
+#include <ioj/sim/testing/level_sim_test_access.h>
 #include <ioj/sim/world_aabb_operations.h>
 #include <NiagaraComponent.h>
 #include <NiagaraSystem.h>
@@ -134,7 +135,7 @@ void kill_enemy(::ioj::sim::LevelSim& simulation) {
     events.add(simulation.get_capital_ships().get_handle(1),
                100,
                simulation.get_capital_ships().get_handle(0));
-    simulation.get_entity_registry().queue_direct_damage_events(events);
+    ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation, events.get_const_view());
 }
 }
 
@@ -336,8 +337,8 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
         TestTrue(TEXT("Presentation preserves entity teams and types"),
                  a.teams == b.teams && a.entity_types == b.entity_types);
     }
-    auto const a{headless.get_mission_manager().take_result()};
-    auto const b{visible.get_mission_manager().take_result()};
+    auto const a{headless.take_mission_result()};
+    auto const b{visible.take_mission_result()};
     TestTrue(TEXT("Both executions complete the mission"), a.has_value() && b.has_value());
     if (a.has_value() && b.has_value()) {
         TestEqual(TEXT("Mission outcomes match"), a->state, b->state);
@@ -394,7 +395,8 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
             damage.add(level.get_capital_ships().get_handle(1),
                        MAX_int32,
                        level.get_capital_ships().get_handle(0));
-            level.get_entity_registry().queue_direct_damage_events(damage);
+            ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(level,
+                                                                       damage.get_const_view());
         }
     };
     simulation.advance(dt * 4.25);
@@ -472,7 +474,8 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
             damage.add(level.get_capital_ships().get_handle(0),
                        MAX_int32,
                        level.get_capital_ships().get_handle(0));
-            level.get_entity_registry().queue_direct_damage_events(damage);
+            ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(level,
+                                                                       damage.get_const_view());
         }
     };
     deaths.start();
@@ -544,7 +547,7 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     resources.pulse = pulse;
     resources.engine = engine;
     FPlayerPresentation presentation{resources, config->player_ship, player->get_read_view()};
-    player->start_boost();
+    simulation.get_player_ship_commands()->start_boost();
     simulation.advance(0.325);
     auto const frame{player->get_read_view()};
     TestEqual(TEXT("Boost has already ended after multiple fixed ticks"),
@@ -591,7 +594,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
     add_mission(data);
     ::ioj::sim::LevelSim simulation{MoveTemp(data)};
     simulation.finish_initialisation();
-    auto& lasers{simulation.get_lasers()};
+    auto const& lasers{simulation.get_lasers()};
     FLaserPresentation presentation{*component};
 
     simulation.start();
@@ -628,7 +631,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
                  .spawn_time = static_cast<float>(simulation.get_clock().get_simulation_time())});
         }
 
-        lasers.queue_laser_spawns(requests.get_const_view());
+        ::ioj::sim::LevelSimTestAccess::queue_laser_spawns(simulation, requests.get_const_view());
         simulation.advance(dt);
         if ((tick % 3) != 2 && tick + 1 != tick_count) {
             continue;
@@ -701,7 +704,7 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     simulation.set_time_scale(4.0);
     simulation.advance(simulation.get_clock().get_tick_period());
     simulation.finalize_telemetry_run(::ioj::sim::LevelTelemetryRunEndReason::WorldEnd, "test");
-    auto record{simulation.get_level_telemetry_manager().take_finalized_run()};
+    auto record{simulation.take_finalized_telemetry_run()};
     if (!TestTrue(TEXT("Telemetry JSON fixture produces a run record"), record.has_value())) {
         return false;
     }

@@ -45,6 +45,7 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
     ml::FFrameMemoryResource frame_memory_{1024 * 1024};
     ::ioj::sim::lasers::Sim lasers_{clock_, registry_, queries_, frame_memory_};
     ::ioj::sim::player::Sim ship_simulation_{clock_, registry_, queries_, lasers_};
+    ::ioj::sim::player::CommandInterface ship_commands_{ship_simulation_};
 
     BEFORE_EACH()
     {
@@ -59,7 +60,7 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
         ship_ =
             ml::spawn_player_ship(world, config->classes.player_ship_class, &config->player_ship);
         if (IsValid(ship_)) {
-            ship_->bind_simulation(ship_simulation_);
+            ship_->bind_simulation(ship_commands_, ship_simulation_);
         }
         camera_ = world.SpawnActor<ACameraActor>();
         component_ = NewObject<UEnhancedInputComponent>(controller_);

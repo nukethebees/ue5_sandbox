@@ -240,7 +240,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
 
     auto const frame_memory{simulation.get_frame_memory_stats()};
     auto const telemetry_history{simulation.get_level_telemetry_manager().get_history_stats()};
-    auto telemetry_run{simulation.get_level_telemetry_manager().take_finalized_run()};
+    auto telemetry_run{simulation.take_finalized_telemetry_run()};
     double telemetry_cpu_ms{};
     double simulation_cpu_ms{};
     if (telemetry_run.has_value()) {
