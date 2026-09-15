@@ -52,7 +52,7 @@ Sim::Sim(SimClock const& clock,
 /* **************************************** */
 // Spawning
 /* **************************************** */
-auto Sim::register_turrets(SpawnDataConstView const spawn_data,
+auto Sim::register_turrets(TurretSpawnDataConstView const spawn_data,
                            ioj::sim::Rotators3fConstView const rotations)
     -> std::vector<RegistryEntityHandle> {
     SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::register_turrets");

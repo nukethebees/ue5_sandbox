@@ -3,7 +3,7 @@
 #include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
-#include <ioj/sim/entities/direct_damage_events.h>
+#include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entity_registry.h>
 #include <ioj/sim/sim_config.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>

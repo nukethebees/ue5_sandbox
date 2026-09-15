@@ -4,7 +4,7 @@
 #include <SandboxTests/support/SpaceGameTestSettings.h>
 
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/entities/direct_damage_events.h>
+#include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entity_registry.h>
 #include <ioj/sim/fighters/sim.h>
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>

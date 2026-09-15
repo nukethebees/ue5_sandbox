@@ -4,7 +4,7 @@
 #include <span>
 #include <vector>
 
-#include <ioj/sim/levels/level_event_group_counts.h>
+#include <ioj/sim/level_event_types.h>
 #include <ioj/sim/levels/level_mission_events.h>
 #include <ioj/sim/levels/level_runtime_events.h>
 #include <ioj/sim/sim_tick.h>

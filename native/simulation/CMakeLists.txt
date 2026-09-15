@@ -6,7 +6,6 @@ target_sources(native-simulation PRIVATE
   include/ioj/sim/capital_entity_data.h
   include/ioj/sim/capital_ships/phase_interface.h
   include/ioj/sim/capital_ships/sim.h
-  include/ioj/sim/capital_ships/spawn_data.h
   include/ioj/sim/capital_spawn_data.h
   include/ioj/sim/collision_events.h
   include/ioj/sim/collision_grid_entity_storage.h
@@ -17,9 +16,6 @@ target_sources(native-simulation PRIVATE
   include/ioj/sim/collision/collision_uniform_grid.h
   include/ioj/sim/deterministic_bias.h
   include/ioj/sim/direct_damage_events.h
-  include/ioj/sim/entities/direct_damage_events.h
-  include/ioj/sim/entities/entity_death_info.h
-  include/ioj/sim/entities/registry_handle_state.h
   include/ioj/sim/entities/team_list.h
   include/ioj/sim/entity_aabbs.h
   include/ioj/sim/entity_cell_data_operations.h
@@ -48,11 +44,8 @@ target_sources(native-simulation PRIVATE
   include/ioj/sim/fighter_spawn_queue.h
   include/ioj/sim/fighter_types.h
   include/ioj/sim/fighters/command_interface.h
-  include/ioj/sim/fighters/frame_spawn_queue.h
-  include/ioj/sim/fighters/order.h
   include/ioj/sim/fighters/phase_interface.h
   include/ioj/sim/fighters/sim.h
-  include/ioj/sim/fighters/spawn_queue.h
   include/ioj/sim/fixed_tick_loop.h
   include/ioj/sim/fixed_tick.h
   include/ioj/sim/frame_collision_scratch.h
@@ -83,11 +76,9 @@ target_sources(native-simulation PRIVATE
   include/ioj/sim/levels/compiled_level_events.h
   include/ioj/sim/levels/level_compilation.h
   include/ioj/sim/levels/level_definition.h
-  include/ioj/sim/levels/level_event_group_counts.h
   include/ioj/sim/levels/level_event_manager.h
   include/ioj/sim/levels/level_event_schedule.h
   include/ioj/sim/levels/level_initialisation_data.h
-  include/ioj/sim/levels/level_mission_event_type.h
   include/ioj/sim/levels/level_mission_events.h
   include/ioj/sim/levels/level_mission_initialisation_data.h
   include/ioj/sim/levels/level_mission_mode.h
@@ -150,7 +141,6 @@ target_sources(native-simulation PRIVATE
   include/ioj/sim/turret_spawn_data.h
   include/ioj/sim/turrets/phase_interface.h
   include/ioj/sim/turrets/sim.h
-  include/ioj/sim/turrets/spawn_data.h
   include/ioj/sim/vector_operations.h
   include/ioj/sim/vector_types.h
   include/ioj/sim/vectors3f.h

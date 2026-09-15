@@ -154,7 +154,8 @@ auto Sim::find_first_handle_on_team(ioj::sim::Team const team) const noexcept
 /* **************************************** */
 // Ship spawning
 /* **************************************** */
-auto Sim::register_ships(SpawnDataConstView const spawn_data) -> std::vector<RegistryEntityHandle> {
+auto Sim::register_ships(CapitalSpawnDataConstView const spawn_data)
+    -> std::vector<RegistryEntityHandle> {
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::register_ships");
     auto const n_to_add{spawn_data.num()};
     if (n_to_add == 0) {
@@ -199,7 +200,7 @@ auto Sim::register_ships(SpawnDataConstView const spawn_data) -> std::vector<Reg
     }
     return new_handles;
 }
-void Sim::spawn_ships(SpawnDataConstView const spawn_data) {
+void Sim::spawn_ships(CapitalSpawnDataConstView const spawn_data) {
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::spawn_ships");
     spawn_data.validate_array_sizes();
     auto const n_to_add{spawn_data.num()};

@@ -89,7 +89,7 @@ void LevelSpawnManager::spawn_capitals(LevelCapitalSpawnEventsConstView const ev
     }
 
     auto const size{static_cast<std::size_t>(count)};
-    capital_ships::SpawnDataConstView const spawn_data{
+    CapitalSpawnDataConstView const spawn_data{
         .target_handles = {target_handles_scratch_.data(), size},
         .locations = events.locations,
         .rotations = events.rotations,
@@ -117,7 +117,7 @@ void LevelSpawnManager::resolve_capital_targets(LevelCapitalSpawnEventsConstView
 
 void LevelSpawnManager::spawn_turrets(LevelTurretSpawnEventsConstView const events) {
     auto const size{static_cast<std::size_t>(events.num())};
-    turrets::SpawnDataConstView const spawn_data{
+    TurretSpawnDataConstView const spawn_data{
         .locations = events.locations,
         .teams = events.teams,
         .healths = {events.healths.data(), size},

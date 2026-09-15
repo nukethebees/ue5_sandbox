@@ -3,7 +3,7 @@
 #include <cassert>
 #include <cstdint>
 #include <format>
-#include <ioj/sim/capital_ships/spawn_data.h>
+#include <ioj/sim/capital_spawn_data.h>
 #include <ioj/sim/fighter_reassignment.h>
 #include <ioj/sim/sim_config.h>
 #include <optional>
@@ -46,7 +46,7 @@ class PhaseInterface;
 
 struct Sim {
     using RegistryEntityData = ioj::sim::RegistryEntityData;
-    using SpawnData = ioj::sim::capital_ships::SpawnData;
+    using SpawnData = ioj::sim::CapitalSpawnData;
     using EntityTickData = ioj::sim::FighterSpawnQueue;
     using EntityData = ioj::sim::CapitalEntityData;
     using FighterReassignment = ioj::sim::capital_ships::FighterReassignment;
@@ -141,8 +141,8 @@ struct Sim {
     /* **************************************** */
     // Ship spawning
     /* **************************************** */
-    auto register_ships(SpawnDataConstView spawn_data) -> std::vector<RegistryEntityHandle>;
-    void spawn_ships(SpawnDataConstView spawn_data);
+    auto register_ships(CapitalSpawnDataConstView spawn_data) -> std::vector<RegistryEntityHandle>;
+    void spawn_ships(CapitalSpawnDataConstView spawn_data);
 
     /* **************************************** */
     // Entity data

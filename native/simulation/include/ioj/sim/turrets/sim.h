@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <ioj/sim/system_read_views.h>
-#include <ioj/sim/turrets/spawn_data.h>
+#include <ioj/sim/turret_spawn_data.h>
 #include <optional>
 #include <span>
 #include <vector>
@@ -30,7 +30,7 @@ class PhaseInterface;
 struct Sim {
     using RegistryEntityData = ioj::sim::RegistryEntityData;
     using EntityData = ioj::sim::TurretEntityData;
-    using SpawnData = ioj::sim::turrets::SpawnData;
+    using SpawnData = ioj::sim::TurretSpawnData;
 
     Sim(SimClock const& clock,
         EntityRegistry& entity_registry,
@@ -86,7 +86,8 @@ struct Sim {
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    auto register_turrets(SpawnDataConstView spawn_data, ioj::sim::Rotators3fConstView rotations)
+    auto register_turrets(TurretSpawnDataConstView spawn_data,
+                          ioj::sim::Rotators3fConstView rotations)
         -> std::vector<RegistryEntityHandle>;
 
     /* **************************************** */

@@ -92,16 +92,6 @@
   :header "SpaceGameSimulation/entities/TestEntityType.h"
   :pass-by value)
 
-(type level_event_count
-  :spelling "ml::FLevelEventCount"
-  :header "ioj/sim/levels/LevelEventGroupCounts.h"
-  :pass-by value)
-
-(type level_mission_event_type
-  :spelling "ml::ELevelMissionEventType"
-  :header "ioj/sim/levels/LevelMissionEventType.h"
-  :pass-by value)
-
 (type fighter_order
   :spelling "ioj::sim::FighterOrder"
   :header "ioj/sim/fighter_types.h")
