@@ -1,0 +1,20 @@
+{
+  "version": 9,
+  "configurePresets": [{
+    "name": "fixture",
+    "generator": "Ninja",
+    "binaryDir": "$env{FIXTURE_BUILD}",
+    "cacheVariables": {
+      "SOURCE_ROOT": "$env{FIXTURE_SOURCE_ROOT}",
+      "CLIENT": "$env{FIXTURE_CLIENT}",
+      "HELPER": "$env{FIXTURE_HELPER}",
+      "ENGINE_ROOT": "$env{FIXTURE_ENGINE}",
+      "READY": "$env{FIXTURE_READY}"
+    }
+  }],
+  "buildPresets": [{"name": "fixture", "configurePreset": "fixture", "targets": ["writer"]}],
+  "workflowPresets": [{"name": "fixture", "steps": [
+    {"type": "configure", "name": "fixture"},
+    {"type": "build", "name": "fixture"}
+  ]}]
+}

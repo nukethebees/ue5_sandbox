@@ -90,7 +90,7 @@ function(add_unreal_packaging_targets)
   )
 
   add_custom_target(run-staged
-    COMMAND "${CMAKE_COMMAND}" -E chdir
+    COMMAND ${standard_activity_command} "${CMAKE_COMMAND}" -E chdir
       "${SANDBOX_GAME_STAGE_DIRECTORY}"
       "${SANDBOX_GAME_STAGE_EXECUTABLE}"
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
@@ -100,7 +100,7 @@ function(add_unreal_packaging_targets)
   )
 
   add_custom_target(verify-package
-    COMMAND "${POWERSHELL_EXECUTABLE}" -NoProfile -File
+    COMMAND ${unreal_standard_activity_command} "${POWERSHELL_EXECUTABLE}" -NoProfile -File
       "${PROJECT_SOURCE_DIR}/PowerShell/VerifyGamePackage.ps1"
       -ProjectRoot "${PROJECT_SOURCE_DIR}"
       -PackageRoot "${SANDBOX_GAME_ARCHIVE_DIRECTORY}"

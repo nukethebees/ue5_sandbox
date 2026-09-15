@@ -7,6 +7,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <string_view>
 #include <thread>
 
 namespace {
@@ -61,7 +62,7 @@ auto wmain(int argc, wchar_t** argv) -> int {
         std::this_thread::sleep_for(std::chrono::milliseconds{milliseconds});
         return 0;
     }
-    if (mode == L"ready-sleep" && argc == 3) {
+    if (mode == L"ready-sleep" && argc >= 3) {
         {
             std::ofstream ready{std::filesystem::path{argv[2]}};
             ready << GetCurrentProcessId();
@@ -69,7 +70,7 @@ auto wmain(int argc, wchar_t** argv) -> int {
         std::this_thread::sleep_for(std::chrono::seconds{60});
         return 0;
     }
-    if (mode == L"ready-tree" && argc == 4) {
+    if (mode == L"ready-tree" && argc >= 4) {
         STARTUPINFOW startup{};
         startup.cb = sizeof(STARTUPINFOW);
         PROCESS_INFORMATION child{};
@@ -92,6 +93,9 @@ auto wmain(int argc, wchar_t** argv) -> int {
         {
             std::ofstream ready{std::filesystem::path{argv[2]}};
             ready << GetCurrentProcessId();
+        }
+        if (argc >= 5 && std::wstring_view{argv[4]} == L"exit-root") {
+            return 0;
         }
         std::this_thread::sleep_for(std::chrono::seconds{60});
         return 0;

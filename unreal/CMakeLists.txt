@@ -126,18 +126,10 @@ endif()
 cmake_path(ABSOLUTE_PATH UE_ROOT BASE_DIRECTORY "${PROJECT_SOURCE_DIR}" NORMALIZE OUTPUT_VARIABLE UE_ROOT_ABSOLUTE)
 file(REAL_PATH "${UE_ROOT_ABSOLUTE}" UE_ROOT_CANONICAL)
 
-string(TOLOWER "${UE_ROOT_CANONICAL}" UE_BUILD_RESOURCE_IDENTITY)
-string(SHA256 UE_BUILD_RESOURCE_HASH "${UE_BUILD_RESOURCE_IDENTITY}")
-
-set(UE_JOBSERVER_COMMAND_PREFIX
-  "${SANDBOX_JOBSERVER_CLI}" run
-  --name "Unreal build: ${UE_ROOT_CANONICAL}"
-  --kind unreal-build
-  --worktree "${PROJECT_SOURCE_DIR}"
-  --shared machine
-  --resource "unreal-build/${UE_BUILD_RESOURCE_HASH}=1"
-  --
-)
+include("${PROJECT_SOURCE_DIR}/cmake/unreal_jobserver.cmake")
+sandbox_configure_unreal_jobserver("${UE_ROOT_CANONICAL}")
+sandbox_unreal_jobserver_command(unreal_standard_activity_command STANDARD "Unreal command")
+sandbox_unreal_jobserver_command(unreal_benchmark_activity_command BENCHMARK "Unreal benchmark")
 
 cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Build BatchFiles RunUBT.bat
   OUTPUT_VARIABLE UE_BUILD_SCRIPT
@@ -275,7 +267,7 @@ set_tests_properties(Sandbox.LiveCodingConfig PROPERTIES
 add_unreal_target(editor SandboxEditor)
 add_unreal_target(game Sandbox)
 add_custom_target(run-editor
-  COMMAND ${standard_activity_command} "${UE_EDITOR_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_EXE}" "${SANDBOX_UPROJECT}"
     "${SANDBOX_LIVE_CODING_DISABLED_ARGUMENT}"
   DEPENDS editor
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
@@ -284,7 +276,7 @@ add_custom_target(run-editor
   VERBATIM
 )
 add_custom_target(run-editor-debug
-  COMMAND ${standard_activity_command} "${UE_EDITOR_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_EXE}" "${SANDBOX_UPROJECT}"
     "${SANDBOX_LIVE_CODING_DISABLED_ARGUMENT}"
     -WaitForDebugger
   DEPENDS editor
@@ -607,7 +599,7 @@ else()
 endif()
 
 add_custom_target(resave-assets
-  COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=ResavePackages
     -projectonly
     -fixupredirects
@@ -620,7 +612,7 @@ add_custom_target(resave-assets
 )
 
 add_custom_target(generate-ui-glow-material
-  COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=MaterialSynth
     "-Artifact=${UI_GLOW_MATERIAL_ARTIFACT}"
     -Generate -RenderOffscreen -AllowCommandletRendering
@@ -632,7 +624,7 @@ add_custom_target(generate-ui-glow-material
 )
 
 add_custom_target(validate-ui-glow-material-unreal
-  COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=MaterialSynth
     "-Artifact=${UI_GLOW_MATERIAL_ARTIFACT}"
     -Validate -unattended -nop4 -nosplash -nullrhi -nosound -stdout
@@ -643,12 +635,12 @@ add_custom_target(validate-ui-glow-material-unreal
 )
 
 add_custom_target(generate-world-soft-target-assets
-  COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=MaterialSynth
     "-Artifact=${WORLD_SOFT_TARGET_MATERIAL_ARTIFACT}"
     -Generate -RenderOffscreen -AllowCommandletRendering
     -unattended -nop4 -nosplash -nosound -stdout
-  COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=GenerateWorldSoftTargetAssets -RenderOffscreen -AllowCommandletRendering
     -unattended -nop4 -nosplash -nosound -stdout
   DEPENDS editor
@@ -658,7 +650,7 @@ add_custom_target(generate-world-soft-target-assets
 )
 
 add_custom_target(generate-migrated-materials
-  COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=MaterialSynth
     "-ArtifactDirectory=${PROJECT_SOURCE_DIR}/Intermediate/MaterialGen"
     "-ArtifactList=UiGlowComposite,RadarDisplay,EnergyShield,SpaceEnergyField,GlowingCross,VertexRipple,ConstructionSpawn,PlanetAtmosphere,PlanetSurface,TacticalScan,CelestialAnalytic"
@@ -671,7 +663,7 @@ add_custom_target(generate-migrated-materials
 )
 
 add_custom_target(generate-celestial-analytic-material
-  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=MaterialSynth
     "-Artifact=${PROJECT_SOURCE_DIR}/Intermediate/MaterialGen/CelestialAnalytic.smat"
     -Generate -RenderOffscreen -AllowCommandletRendering
@@ -685,7 +677,7 @@ add_custom_target(generate-celestial-analytic-material
 
 add_test(
   NAME SandboxShaders.ShaderSmoke
-  COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     "-ExecCmds=Automation RunTests StartsWith:SandboxShaders.ShaderSmoke; Quit"
     -AllowCommandletRendering
     -unattended
@@ -698,7 +690,7 @@ add_test(
 
 add_test(
   NAME USFLoader.ShaderSmoke
-  COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     "-ExecCmds=Automation RunTests StartsWith:USFLoader.ShaderSmoke; Quit"
     -AllowCommandletRendering
     -unattended
@@ -711,7 +703,7 @@ add_test(
 
 add_test(
   NAME SandboxEditor.MaterialSynth
-  COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     "-ExecCmds=Automation RunTests SandboxEditor.MaterialSynth; Quit"
     -RenderOffscreen
     -AllowCommandletRendering
@@ -740,7 +732,7 @@ set_tests_properties(USFLoader.ShaderSmoke PROPERTIES
 
 add_test(
   NAME SandboxUI.EntityOverlayBenchmark
-  COMMAND ${benchmark_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${unreal_benchmark_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=EntityOverlayBenchmark
     -RenderOffscreen
     -AllowCommandletRendering
@@ -759,7 +751,7 @@ set_tests_properties(SandboxUI.EntityOverlayBenchmark PROPERTIES
 
 add_test(
   NAME SandboxShaders.GpuStarfieldBenchmark
-  COMMAND ${benchmark_activity_command} "${Python3_EXECUTABLE}"
+  COMMAND ${unreal_benchmark_activity_command} "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/Scripts/run-gpu-starfield-benchmark.py"
     "--editor=${UE_EDITOR_CMD_EXE}"
     "--project=${SANDBOX_UPROJECT}"
@@ -773,7 +765,7 @@ set_tests_properties(SandboxShaders.GpuStarfieldBenchmark PROPERTIES
 
 add_test(
   NAME SandboxShaders.GpuStarfieldMatrix
-  COMMAND ${benchmark_activity_command} "${Python3_EXECUTABLE}"
+  COMMAND ${unreal_benchmark_activity_command} "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/Scripts/run-gpu-starfield-benchmark.py"
     "--editor=${UE_EDITOR_CMD_EXE}"
     "--project=${SANDBOX_UPROJECT}"
@@ -790,7 +782,7 @@ set_tests_properties(SandboxShaders.GpuStarfieldMatrix PROPERTIES
 )
 
 add_custom_target(gpu-tutorial-shader-tests
-  COMMAND ${standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     "-ExecCmds=Automation RunTests StartsWith:SandboxGpuTutorials.UnitTests; Quit"
     -unattended
     -nop4

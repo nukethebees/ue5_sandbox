@@ -4,13 +4,6 @@ function Get-JobserverPath {
     Join-Path $env:LOCALAPPDATA 'NukeTheBees\jobserver\bin\jobserver.exe'
 }
 
-function Get-UnrealJobserverResource {
-    $engineRoot = [System.IO.Path]::GetFullPath($env:UE_ROOT).ToLowerInvariant()
-    $bytes = [System.Text.Encoding]::UTF8.GetBytes($engineRoot)
-    $hash = [System.Security.Cryptography.SHA256]::HashData($bytes)
-    'unreal-build/' + [Convert]::ToHexString($hash).ToLowerInvariant()
-}
-
 function Invoke-JobserverWorkflow {
     param(
         [Parameter(Mandatory)]
@@ -24,14 +17,8 @@ function Invoke-JobserverWorkflow {
         throw "The per-user jobserver is not installed. Run 'csetup' first."
     }
 
-    $unrealResource = Get-UnrealJobserverResource
-    & $jobserver run `
-        --name $Name `
-        --kind cmake-workflow `
-        --worktree $script:dev_project_root `
-        --shared machine `
-        --resource "$unrealResource=1" `
-        -- cmake --workflow --preset $Preset
+    Write-Host $Name
+    & cmake --workflow --preset $Preset
 }
 
 function Get-UbtEngineRoot {

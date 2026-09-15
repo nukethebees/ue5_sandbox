@@ -110,9 +110,20 @@ Built-in resources are:
 | `benchmark` | 1 | Identifying and serializing benchmarks |
 | `gpu` | 1 | Exclusive GPU work |
 
-Unknown named resources are created with capacity one. Unreal builds use a resource derived from
-the canonical engine checkout, so worktrees sharing an engine serialize with each other without
-blocking an unrelated engine checkout.
+Unknown named resources are created with capacity one. Unreal uses `unreal-build/<hash>` derived
+from the canonical engine checkout as a read/write gate: builds, project generation, and UAT
+packaging acquire it exclusively; editor launches, tests, commandlets, and package verification
+acquire it shared for their entire supervised process-tree lifetime. Readers can overlap, but
+cannot overlap a writer on the same engine. Other engines and ordinary native work remain
+independent. Staged games use copied package binaries and require only machine access.
+
+PowerShell build/setup helpers do not reserve an engine around the whole CMake workflow. Each
+CMake operation acquires its own claims, avoiding nested upgrades and unnecessary exclusion during
+test phases. Engine identity is generated only by CMake, including path/junction canonicalization.
+After adopting this change, reconfigure every participating worktree using its CMake presets and reload
+`PowerShell/UnrealBuild.ps1` in existing shells. Old generated commands do not claim the gate
+correctly. No daemon/protocol upgrade is required. Manually launched editors, Live Coding, and
+external VS/UBT builds remain outside this protection; do not overlap them with managed writers.
 
 Older conflicting requests take precedence. Independent jobs may pass each other, but later
 shared work cannot starve an older exclusive request. Requests larger than a resource's capacity
@@ -249,7 +260,7 @@ returns the child exit code.
 ```powershell
 cmake --preset debug-game
 cmake --build --preset debug-game --target jobserver jobserverd jobserver-tests
-ctest --test-dir out/build/debug-game -R jobserver-tests --output-on-failure
+ctest --test-dir out/build/debug-game -R '^jobserver-(tests|unreal-integration-tests)$' --output-on-failure
 ```
 
 Tests use a unique named pipe and temporary state directory, never the installed daemon or its
@@ -257,6 +268,11 @@ history. The integration suite starts real daemon and client processes and cover
 lease-client crashes, queued cancellation, restart, single-instance enforcement, and concurrent
 shutdown/admission. Small helper executables provide deterministic output, crashes, sleeps, and
 child process trees.
+
+`jobserver-unreal-integration-tests` runs the production CMake wrappers against tiny helper
+processes in separate temporary source/build trees. It checks reader/writer exclusion, reader
+concurrency, engine identity aliases, writer fairness, nested validation, PowerShell workflows,
+benchmark claims, and descendant lifetime without modifying live engine binaries.
 
 The opt-in system tests mutate the canonical per-user installation and create a temporary detached
 Git worktree. Run them only when no other local work is using the jobserver:
