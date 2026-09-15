@@ -7,6 +7,7 @@ add_library(jobserver::client ALIAS jobserver-client)
 target_sources(jobserver-client PRIVATE
   lib/src/authority.cpp
   lib/src/client.cpp
+  lib/src/environment.hpp
   lib/src/protocol.cpp
   lib/src/transport.cpp
   lib/src/types.cpp
@@ -40,7 +41,11 @@ target_include_directories(jobserver-supervisor PUBLIC
   daemon
   lib/include
 )
-target_link_libraries(jobserver-supervisor PUBLIC sandbox::warnings_as_errors)
+target_include_directories(jobserver-supervisor PRIVATE lib/src)
+target_link_libraries(jobserver-supervisor
+  PUBLIC sandbox::warnings_as_errors
+  PRIVATE jobserver::client
+)
 target_compile_definitions(jobserver-supervisor PRIVATE
   WIN32_LEAN_AND_MEAN
   NOMINMAX

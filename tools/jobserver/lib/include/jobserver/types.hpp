@@ -31,7 +31,7 @@ struct JobMetadata {
 struct Command {
     struct EnvironmentChange {
         std::string name;
-        std::string value;
+        std::optional<std::string> value;
     };
 
     std::filesystem::path executable;

@@ -1,5 +1,6 @@
 #include "jobserver/client.hpp"
 
+#include "environment.hpp"
 #include "jobserver/authority.hpp"
 #include "jobserver/protocol.hpp"
 #include "jobserver/transport.hpp"
@@ -77,6 +78,20 @@ auto quote_argument(std::wstring const& argument) -> std::wstring {
 }
 
 auto run_in_inherited_job(Command const& command) -> std::expected<int, Error> {
+    auto inherited_command{command};
+    auto const length{GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", nullptr, 0)};
+    std::wstring parent(length, L'\0');
+    auto const copied{GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", parent.data(), length)};
+    if (copied == 0 || copied >= length) {
+        return std::unexpected(Error{"nested_parent_not_active", "Nested parent ID changed"});
+    }
+    parent.resize(copied);
+    inherited_command.environment.push_back({.name = "NUKETHEBEES_JOBSERVER_JOB",
+                                             .value = path_to_utf8(std::filesystem::path{parent})});
+    auto environment{detail::make_environment(inherited_command)};
+    if (!environment) {
+        return std::unexpected(environment.error());
+    }
     std::wstring command_line{quote_argument(command.executable.wstring())};
     for (auto const& argument : command.arguments) {
         command_line.push_back(L' ');
@@ -84,6 +99,10 @@ auto run_in_inherited_job(Command const& command) -> std::expected<int, Error> {
     }
     STARTUPINFOW startup{};
     startup.cb = sizeof(STARTUPINFOW);
+    startup.dwFlags = STARTF_USESTDHANDLES;
+    startup.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+    startup.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+    startup.hStdError = GetStdHandle(STD_ERROR_HANDLE);
     PROCESS_INFORMATION process{};
     auto const working_directory{
         command.working_directory.empty() ? nullptr : command.working_directory.c_str()};
@@ -92,8 +111,8 @@ auto run_in_inherited_job(Command const& command) -> std::expected<int, Error> {
                         nullptr,
                         nullptr,
                         TRUE,
-                        CREATE_NO_WINDOW,
-                        nullptr,
+                        CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT,
+                        environment->data(),
                         working_directory,
                         &startup,
                         &process)) {
@@ -328,6 +347,43 @@ auto Client::acquire(AcquireRequest const& request) -> std::expected<Lease, Erro
 
 auto Client::run(SubmitRequest const& request, OutputCallback output) -> std::expected<int, Error> {
     if (GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", nullptr, 0) != 0) {
+        if (!request.resources.empty()) {
+            auto handle{connect_pipe()};
+            if (!handle) {
+                return std::unexpected(handle.error());
+            }
+            auto const length{GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", nullptr, 0)};
+            std::wstring parent(length, L'\0');
+            auto const copied{
+                GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", parent.data(), length)};
+            if (copied == 0 || copied >= length) {
+                close_handle(*handle);
+                return std::unexpected(
+                    Error{"nested_parent_not_active", "Nested parent ID changed"});
+            }
+            parent.resize(copied);
+            auto const message = Json{{"type", "validate_nested"},
+                                      {"parent_id", path_to_utf8(std::filesystem::path{parent})},
+                                      {"resources", claims_json(request.resources)}};
+            auto sent{transport::write_message(*handle, message.dump(), control_timeout())};
+            if (!sent) {
+                close_handle(*handle);
+                return std::unexpected(sent.error());
+            }
+            auto response{transport::read_message(*handle, control_timeout())};
+            close_handle(*handle);
+            if (!response) {
+                return std::unexpected(response.error());
+            }
+            auto const parsed = Json::parse(*response, nullptr, false);
+            if (!parsed.is_object() || parsed.value("type", "") != "nested_validated") {
+                return std::unexpected(
+                    Error{parsed.is_object() ? parsed.value("code", "invalid_response")
+                                             : "invalid_response",
+                          parsed.is_object() ? parsed.value("message", "Invalid nested response")
+                                             : "Invalid nested response"});
+            }
+        }
         return run_in_inherited_job(request.command);
     }
 
@@ -349,7 +405,7 @@ auto Client::run(SubmitRequest const& request, OutputCallback output) -> std::ex
     };
     for (auto const& change : request.command.environment) {
         message["command"]["environment"].push_back(
-            {{"name", change.name}, {"value", change.value}});
+            {{"name", change.name}, {"value", change.value ? Json(*change.value) : Json(nullptr)}});
     }
     if (request.timeout) {
         message["timeout_ms"] = request.timeout->count();

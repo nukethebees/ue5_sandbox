@@ -34,6 +34,7 @@ class Supervisor {
         -> std::expected<ProcessResult, Error>;
     void cancel();
     void kill();
+    [[nodiscard]] auto contains_process(std::uint32_t process_id) -> bool;
   private:
     void terminate(bool killed);
 

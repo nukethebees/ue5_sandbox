@@ -24,6 +24,7 @@ class Server {
     void serve_client(void* pipe);
     void handle_acquire(void* pipe, std::string const& message);
     void handle_submit(void* pipe, std::string const& message);
+    void handle_validate_nested(void* pipe, std::string const& message);
     void handle_status(void* pipe, bool include_history);
     void handle_cancel(void* pipe, std::string const& message, bool kill);
     void handle_shutdown(void* pipe);

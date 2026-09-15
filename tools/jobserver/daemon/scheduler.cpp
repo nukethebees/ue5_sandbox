@@ -73,6 +73,32 @@ auto Scheduler::validate_claims(std::vector<ResourceClaim> const& claims) const
     return {};
 }
 
+auto Scheduler::validate_nested_claims(std::string const& parent_id,
+                                       std::vector<ResourceClaim> const& claims) const
+    -> std::expected<void, Error> {
+    if (auto valid{validate_claims(claims)}; !valid) {
+        return valid;
+    }
+    std::scoped_lock const lock{mutex_};
+    auto const parent{std::ranges::find(entries_, parent_id, &QueueEntry::id)};
+    if (parent == entries_.end() || parent->state != JobState::running) {
+        return std::unexpected(Error{"nested_parent_not_active", "Nested parent is not running"});
+    }
+    for (auto const& claim : claims) {
+        auto const held{std::ranges::find(parent->claims, claim.name, &ResourceClaim::name)};
+        auto const covered{held != parent->claims.end() &&
+                           (held->mode == ClaimMode::exclusive ||
+                            (held->mode == claim.mode &&
+                             (claim.mode == ClaimMode::shared || claim.units <= held->units)))};
+        if (!covered) {
+            return std::unexpected(
+                Error{"nested_resource_not_held",
+                      "Parent does not hold the requested claim: " + claim.name});
+        }
+    }
+    return {};
+}
+
 auto Scheduler::enqueue(JobMetadata metadata, std::vector<ResourceClaim> claims) -> std::string {
     std::scoped_lock const lock{mutex_};
     auto const id{make_id()};

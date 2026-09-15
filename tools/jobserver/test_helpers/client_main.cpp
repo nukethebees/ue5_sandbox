@@ -13,6 +13,37 @@ auto main(int argc, char** argv) -> int {
         return 2;
     }
     auto const mode{std::string{argv[1]}};
+    if (mode == "nested-run" && argc >= 6) {
+        jobserver::SubmitRequest request{};
+        request.command.executable = JOBSERVER_TEST_HELPER_PATH;
+        request.command.working_directory = std::filesystem::current_path();
+        request.command.arguments.assign(argv + 5, argv + argc);
+        auto const claim_mode{jobserver::claim_mode_from_string(argv[2])};
+        if (!claim_mode) {
+            return 2;
+        }
+        if (std::string{argv[3]} != "none") {
+            request.resources.push_back({.name = argv[3],
+                                         .mode = *claim_mode,
+                                         .units = static_cast<std::uint32_t>(std::atoi(argv[4]))});
+        }
+        auto const result{jobserver::Client::run(request, [](auto const&, auto const&) {})};
+        if (!result) {
+            return result.error().code == "nested_resource_not_held" ? 124 : 125;
+        }
+        return *result;
+    }
+    if (mode == "nested-environment") {
+        jobserver::SubmitRequest request{};
+        request.command.executable = JOBSERVER_TEST_HELPER_PATH;
+        request.command.arguments = {"check-environment"};
+        request.command.environment = {{.name = "JOBSERVER_ENV_ADD", .value = "added"},
+                                       {.name = "jobserver_env_replace", .value = "replaced"},
+                                       {.name = "JOBSERVER_ENV_REMOVE", .value = std::nullopt},
+                                       {.name = "NUKETHEBEES_JOBSERVER_JOB", .value = "spoofed"}};
+        auto const result{jobserver::Client::run(request, [](auto const&, auto const&) {})};
+        return result ? *result : 125;
+    }
     auto const crash{mode == "lease-crash"};
     auto const hold{mode == "lease-hold" && argc == 5};
     auto const detached_run{mode == "detached-run" && argc == 3};

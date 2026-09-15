@@ -1,4 +1,5 @@
 #include "supervisor.hpp"
+#include "environment.hpp"
 #include "test_barrier.hpp"
 
 #include <Windows.h>
@@ -65,35 +66,6 @@ auto make_command_line(Command const& command) -> std::wstring {
     return result;
 }
 
-auto make_environment(Command const& command) -> std::vector<wchar_t> {
-    std::vector<std::wstring> entries;
-    auto const environment{GetEnvironmentStringsW()};
-    if (environment != nullptr) {
-        for (auto current{environment}; *current != L'\0'; current += std::wcslen(current) + 1) {
-            entries.emplace_back(current);
-        }
-        FreeEnvironmentStringsW(environment);
-    }
-    for (auto const& change : command.environment) {
-        auto const prefix{widen(change.name) + L'='};
-        std::erase_if(entries, [&](std::wstring const& entry) {
-            return entry.size() >= prefix.size() &&
-                   _wcsnicmp(entry.c_str(), prefix.c_str(), prefix.size()) == 0;
-        });
-        entries.push_back(prefix + widen(change.value));
-    }
-    std::ranges::sort(entries, [](std::wstring const& left, std::wstring const& right) {
-        return _wcsicmp(left.c_str(), right.c_str()) < 0;
-    });
-    std::vector<wchar_t> block;
-    for (auto const& entry : entries) {
-        block.insert(block.end(), entry.begin(), entry.end());
-        block.push_back(L'\0');
-    }
-    block.push_back(L'\0');
-    return block;
-}
-
 void close_if_valid(HANDLE const handle) {
     if (handle != nullptr && handle != INVALID_HANDLE_VALUE) {
         CloseHandle(handle);
@@ -132,6 +104,11 @@ auto Supervisor::run(Command const& command,
                      Health health,
                      std::function<bool()> connection_alive)
     -> std::expected<ProcessResult, Error> {
+    auto environment{detail::make_environment(command)};
+    if (!environment) {
+        return std::unexpected(environment.error());
+    }
+
     SECURITY_ATTRIBUTES pipe_security{};
     pipe_security.nLength = sizeof(SECURITY_ATTRIBUTES);
     pipe_security.bInheritHandle = TRUE;
@@ -202,7 +179,6 @@ auto Supervisor::run(Command const& command,
     startup.lpAttributeList = attributes;
     PROCESS_INFORMATION process{};
     auto command_line{make_command_line(command)};
-    auto environment{make_environment(command)};
     auto const working_directory{
         command.working_directory.empty() ? nullptr : command.working_directory.c_str()};
     if (!CreateProcessW(command.executable.c_str(),
@@ -212,7 +188,7 @@ auto Supervisor::run(Command const& command,
                         TRUE,
                         CREATE_NO_WINDOW | CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT |
                             EXTENDED_STARTUPINFO_PRESENT,
-                        environment.data(),
+                        environment->data(),
                         working_directory,
                         &startup.StartupInfo,
                         &process)) {
@@ -347,6 +323,23 @@ auto Supervisor::run(Command const& command,
 void Supervisor::cancel() {
     terminate(false);
 }
+auto Supervisor::contains_process(std::uint32_t const process_id) -> bool {
+    auto const process{OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, process_id)};
+    if (process == nullptr) {
+        return false;
+    }
+    BOOL contained{};
+    {
+        std::scoped_lock const lock{mutex_};
+        if (job_handle_ != nullptr) {
+            static_cast<void>(
+                IsProcessInJob(process, static_cast<HANDLE>(job_handle_), &contained));
+        }
+    }
+    CloseHandle(process);
+    return contained != FALSE;
+}
+
 void Supervisor::kill() {
     terminate(true);
 }

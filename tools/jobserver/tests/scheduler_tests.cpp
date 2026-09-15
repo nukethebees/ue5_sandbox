@@ -24,6 +24,53 @@ TEST(JobserverScheduler, TwoSharedJobsCanRunTogether) {
     EXPECT_TRUE(scheduler.try_grant(second));
 }
 
+TEST(JobserverScheduler, NestedClaimsMustFitRunningParentEnvelope) {
+    using jobserver::ClaimMode;
+    for (auto const parent_mode : {ClaimMode::shared, ClaimMode::counted, ClaimMode::exclusive}) {
+        for (auto const child_mode :
+             {ClaimMode::shared, ClaimMode::counted, ClaimMode::exclusive}) {
+            jobserver::Scheduler scheduler;
+            scheduler.set_capacity("nested", 4);
+            auto const parent{
+                scheduler.enqueue(metadata("parent"),
+                                  {{.name = "nested",
+                                    .mode = parent_mode,
+                                    .units = parent_mode == ClaimMode::counted ? 2U : 1U}})};
+            EXPECT_FALSE(scheduler.validate_nested_claims(parent, shared("nested")));
+            scheduler.set_state(parent, jobserver::JobState::running);
+            auto const result{
+                scheduler.validate_nested_claims(parent, {{.name = "nested", .mode = child_mode}})};
+            EXPECT_EQ(result.has_value(),
+                      parent_mode == ClaimMode::exclusive || parent_mode == child_mode);
+            auto const missing{scheduler.validate_nested_claims(parent, shared("missing"))};
+            ASSERT_FALSE(missing);
+            EXPECT_EQ(missing.error().code, "nested_resource_not_held");
+            if (parent_mode == ClaimMode::counted) {
+                EXPECT_TRUE(
+                    scheduler.validate_nested_claims(parent, {{.name = "nested", .units = 2}}));
+                EXPECT_FALSE(
+                    scheduler.validate_nested_claims(parent, {{.name = "nested", .units = 3}}));
+            }
+            scheduler.release(parent, jobserver::JobState::succeeded);
+            auto const completed{scheduler.validate_nested_claims(parent, {})};
+            ASSERT_FALSE(completed);
+            EXPECT_EQ(completed.error().code, "nested_parent_not_active");
+        }
+    }
+    jobserver::Scheduler scheduler;
+    EXPECT_FALSE(scheduler.validate_nested_claims("unknown", {}));
+    scheduler.set_capacity("cpu", 4);
+    auto const running{scheduler.enqueue(metadata("running"), exclusive("cpu"))};
+    auto const queued{scheduler.enqueue(metadata("queued"), exclusive("cpu"))};
+    scheduler.set_state(running, jobserver::JobState::running);
+    EXPECT_FALSE(scheduler.validate_nested_claims(queued, exclusive("cpu")));
+    EXPECT_FALSE(scheduler.validate_nested_claims(running, {{.name = "cpu", .units = 5}}));
+    EXPECT_FALSE(scheduler.validate_nested_claims(
+        running,
+        {{.name = "cpu", .mode = jobserver::ClaimMode::shared},
+         {.name = "cpu", .mode = jobserver::ClaimMode::exclusive}}));
+}
+
 TEST(JobserverScheduler, ExclusiveWaitsForSharedWorkToDrain) {
     jobserver::Scheduler scheduler;
     auto const build{scheduler.enqueue(metadata("build"), shared("machine"))};

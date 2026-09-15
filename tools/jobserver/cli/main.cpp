@@ -142,6 +142,10 @@ void print_status(std::string const& text) {
         std::cout << "  " << job.value("id", "?") << "  " << job.value("state", "UNKNOWN") << "  "
                   << job.value("kind", "") << "  " << job.value("name", "");
         auto const blockers{job.value("blockers", std::vector<std::string>{})};
+        for (auto const& claim : job.value("claims", Json::array())) {
+            std::cout << "  " << claim.value("name", "") << ':' << claim.value("mode", "") << '='
+                      << claim.value("units", 1U);
+        }
         if (!blockers.empty()) {
             std::cout << "  waiting on:";
             for (auto const& blocker : blockers) {

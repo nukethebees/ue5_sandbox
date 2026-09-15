@@ -34,12 +34,39 @@ auto wmain(int argc, wchar_t** argv) -> int {
         return 2;
     }
     auto const mode{std::wstring{argv[1]}};
+    if (mode == L"check-environment") {
+        wchar_t value[256]{};
+        if (GetEnvironmentVariableW(L"JOBSERVER_ENV_ADD", value, 256) == 0 ||
+            std::wstring{value} != L"added") {
+            return 10;
+        }
+        if (GetEnvironmentVariableW(L"JOBSERVER_ENV_REPLACE", value, 256) == 0 ||
+            std::wstring{value} != L"replaced") {
+            return 11;
+        }
+        if (GetEnvironmentVariableW(L"JOBSERVER_ENV_REMOVE", value, 256) != 0) {
+            return 12;
+        }
+        if (GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", value, 256) == 0 ||
+            std::wstring{value} == L"spoofed") {
+            return 13;
+        }
+        return 0;
+    }
     if (mode == L"exit") {
         return argc >= 3 ? _wtoi(argv[2]) : 0;
     }
     if (mode == L"sleep") {
         auto const milliseconds{argc >= 3 ? _wtoi(argv[2]) : 100};
         std::this_thread::sleep_for(std::chrono::milliseconds{milliseconds});
+        return 0;
+    }
+    if (mode == L"ready-sleep" && argc == 3) {
+        {
+            std::ofstream ready{std::filesystem::path{argv[2]}};
+            ready << GetCurrentProcessId();
+        }
+        std::this_thread::sleep_for(std::chrono::seconds{60});
         return 0;
     }
     if (mode == L"output") {

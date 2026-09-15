@@ -377,6 +377,8 @@ void Server::serve_client(void* const native_pipe) {
             handle_acquire(pipe, *request);
         } else if (type == "submit") {
             handle_submit(pipe, *request);
+        } else if (type == "validate_nested") {
+            handle_validate_nested(pipe, *request);
         } else if (type == "status") {
             handle_status(pipe, json.value("history", false));
         } else if (type == "ping") {
@@ -462,6 +464,45 @@ void Server::handle_acquire(void* const pipe, std::string const& message) {
     record_history(id);
 }
 
+void Server::handle_validate_nested(void* const pipe, std::string const& message) {
+    auto const json = Json::parse(message);
+    if (!json.contains("parent_id") || !json["parent_id"].is_string()) {
+        send_error(pipe, Error{"nested_parent_not_active", "Missing nested parent ID"});
+        return;
+    }
+    auto const parent_id{json["parent_id"].get<std::string>()};
+    auto claims{parse_claims(json.value("resources", Json::array()))};
+    if (!claims) {
+        send_error(pipe, claims.error());
+        return;
+    }
+    if (scheduler_.state(parent_id) != JobState::running) {
+        send_error(pipe, Error{"nested_parent_not_active", "Nested parent is not running"});
+        return;
+    }
+    std::shared_ptr<Supervisor> supervisor;
+    {
+        std::scoped_lock const lock{supervisors_mutex_};
+        auto const found{supervisors_.find(parent_id)};
+        if (found != supervisors_.end()) {
+            supervisor = found->second;
+        }
+    }
+    ULONG process_id{};
+    if (!supervisor || !GetNamedPipeClientProcessId(static_cast<HANDLE>(pipe), &process_id) ||
+        !supervisor->contains_process(process_id)) {
+        send_error(pipe,
+                   Error{"nested_parent_mismatch", "Caller is not in the parent's process tree"});
+        return;
+    }
+    if (auto valid{scheduler_.validate_nested_claims(parent_id, *claims)}; !valid) {
+        send_error(pipe, valid.error());
+        return;
+    }
+    static_cast<void>(
+        write_client(pipe, Json{{"type", "nested_validated"}, {"parent_id", parent_id}}.dump()));
+}
+
 void Server::handle_submit(void* const pipe, std::string const& message) {
     auto const json = Json::parse(message);
     auto claims{parse_claims(json.value("resources", Json::array()))};
@@ -523,6 +564,24 @@ void Server::handle_submit(void* const pipe, std::string const& message) {
         .working_directory = path_from_utf8(command_json.value("working_directory", "")),
         .environment = {},
     };
+    auto const changes = command_json.value("environment", Json::array());
+    if (!changes.is_array()) {
+        send_error(pipe, Error{"invalid_environment", "Environment must be an array"});
+        return;
+    }
+    for (auto const& change : changes) {
+        if (!change.is_object() || !change.contains("name") || !change["name"].is_string() ||
+            !change.contains("value") ||
+            (!change["value"].is_string() && !change["value"].is_null())) {
+            send_error(pipe, Error{"invalid_environment", "Invalid environment change"});
+            return;
+        }
+        command.environment.push_back(
+            {.name = change["name"].get<std::string>(),
+             .value = change["value"].is_null()
+                        ? std::nullopt
+                        : std::optional{change["value"].get<std::string>()}});
+    }
     command.environment.push_back({.name = "NUKETHEBEES_JOBSERVER_JOB", .value = id});
     std::optional<std::chrono::milliseconds> timeout;
     if (json.contains("timeout_ms")) {
@@ -627,8 +686,14 @@ void Server::handle_status(void* const pipe, bool const include_history) {
             entry.state == JobState::interrupted) {
             continue;
         }
+        auto claims = Json::array();
+        for (auto const& claim : entry.claims) {
+            claims.push_back(
+                {{"name", claim.name}, {"mode", to_string(claim.mode)}, {"units", claim.units}});
+        }
         entries.push_back({
             {"id", entry.id},
+            {"claims", std::move(claims)},
             {"name", entry.metadata.name},
             {"kind", entry.metadata.kind},
             {"worktree", path_to_utf8(entry.metadata.worktree)},

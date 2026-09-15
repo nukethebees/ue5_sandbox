@@ -48,6 +48,7 @@ class CompareOptions:
     process_timeout_seconds: float
     top: int
     runner_arguments: tuple[str, ...]
+    jobserver_child: bool = False
 
 
 @dataclass(frozen=True)
@@ -80,6 +81,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--b-preset", required=True)
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--skip-build", action="store_true")
+    parser.add_argument("--jobserver-child", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--connection-timeout-seconds", type=float, default=30.0)
     parser.add_argument("--process-timeout-seconds", type=float, default=1800.0)
     parser.add_argument("--top", type=int, default=5)
@@ -128,6 +130,7 @@ def parse_options(arguments: list[str]) -> CompareOptions:
         process_timeout_seconds=parsed.process_timeout_seconds,
         top=parsed.top,
         runner_arguments=runner_arguments,
+        jobserver_child=parsed.jobserver_child,
     )
 
 
@@ -299,6 +302,7 @@ def invoke_with_benchmark_access(options: CompareOptions) -> int:
         "--",
         sys.executable,
         str(SCRIPT),
+        "--jobserver-child",
         *_options_arguments(replace(options, skip_build=True)),
     ]
     return_code = subprocess.run(command, cwd=ROOT, check=False).returncode
@@ -724,7 +728,7 @@ def run_comparison(options: CompareOptions, manifest: JsonObject) -> int:
 
 def main(arguments: list[str]) -> int:
     options = parse_options(arguments)
-    inside_jobserver = bool(os.environ.get("NUKETHEBEES_JOBSERVER_JOB"))
+    inside_jobserver = options.jobserver_child and bool(os.environ.get("NUKETHEBEES_JOBSERVER_JOB"))
     if (
         options.output_dir_explicit
         and not inside_jobserver
@@ -738,6 +742,8 @@ def main(arguments: list[str]) -> int:
     write_json(options.output_dir / "manifest.json", manifest)
 
     try:
+        if options.jobserver_child and not inside_jobserver:
+            raise PipelineError("invalid_jobserver_child", "Jobserver child marker requires an active job")
         if not options.skip_build:
             build_prerequisites(options)
         if not inside_jobserver:

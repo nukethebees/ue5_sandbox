@@ -258,6 +258,36 @@ admission, allocation, process creation, process resume, output, descendant crea
 and history publication. Each case verifies that resources and test-process counts return to their
 baseline.
 
+## Nested commands and resource claims
+
+Commands launched inside an existing supervised job execute locally in its inherited Windows Job
+Object instead of entering the queue again. This prevents a nested command from waiting behind
+its own parent. Commands with no resource claims need no daemon round trip. Commands requesting
+resources must first obtain daemon validation: the caller must belong to the claimed parent's
+process tree, the parent must be running, and every requested claim must fit its allocation.
+
+An exclusive parent claim covers any valid claim on that resource. Shared covers only shared;
+counted covers only counted requests up to the parent's allocation. Insufficient claims fail with
+`nested_resource_not_held`; stale parents fail with `nested_parent_not_active`; copied job IDs from
+unrelated processes fail with `nested_parent_mismatch`. Nothing is queued or launched on rejection.
+Active claims are visible in `status` and `show`.
+
+Nested commands retain inherited output handles and their requested working directory, remain
+hidden, and are killed with the parent's process tree on cancellation or daemon failure. Nested
+timeouts, activity callbacks, and narrower hang policies are not independently applied: the
+parent's supervision policy governs their lifetime.
+
+`Command::EnvironmentChange` adds/replaces a variable when `value` contains a string and removes
+it when `value` is `std::nullopt`. Changes apply in order, case-insensitively; the last change wins.
+Both normal and nested launches apply these changes. The job ID variable is always daemon-owned
+and cannot be replaced or removed by command overrides.
+
+Protocol 1.1 adds nested validation and nullable environment values. New clients fail closed if an
+older daemon does not support nested validation. Upgrade the installed CLI and daemon together;
+rebuild native tools statically linked to the client library, since old binaries retain the previous
+nested bypass behavior. The Tracy comparison driver uses a private child marker rather than
+treating any enclosing job as permission to run benchmarks.
+
 The implementation uses Win32 directly rather than Boost.Process. Named-pipe security, suspended
 launch followed by Job Object assignment, process-tree accounting, and reliable tree termination
 all require native Windows APIs; adding the wider Boost headers would not remove that platform

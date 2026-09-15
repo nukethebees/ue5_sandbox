@@ -334,7 +334,7 @@ class OutputDirectoryTests(unittest.TestCase):
             standard_error = io.StringIO()
             arguments = [
                 "--level", __file__, "--seconds", "1", "--a-preset", "a",
-                "--b-preset", "b", "--output-dir", str(output), "--skip-build",
+                "--b-preset", "b", "--output-dir", str(output), "--skip-build", "--jobserver-child",
             ]
 
             with (
@@ -350,6 +350,71 @@ class OutputDirectoryTests(unittest.TestCase):
         self.assertEqual(comparison["status"], "failed")
         self.assertEqual(comparison["warnings"][0]["code"], "operating_system_error")
         self.assertIn("launch failed", standard_error.getvalue())
+
+
+class NestedJobserverTests(unittest.TestCase):
+    def test_submission_rejection_writes_structured_failure(self) -> None:
+        with temporary_directory() as directory:
+            output = Path(directory) / "result"
+            arguments = ["--level", __file__, "--seconds", "1", "--a-preset", "a",
+                         "--b-preset", "b", "--output-dir", str(output), "--skip-build"]
+            with (
+                mock.patch.dict(os.environ, {"NUKETHEBEES_JOBSERVER_JOB": "parent"}),
+                mock.patch.object(comparison_module, "invoke_with_benchmark_access",
+                                  side_effect=PipelineError("jobserver_failed", "nested claim rejected")),
+                mock.patch.object(comparison_module, "run_comparison") as run,
+                redirect_stderr(io.StringIO()),
+            ):
+                self.assertEqual(main(arguments), 1)
+                run.assert_not_called()
+            failure = json.loads((output / "comparison.json").read_text(encoding="utf-8"))
+            self.assertEqual(failure["warnings"][0]["code"], "jobserver_failed")
+
+    def test_only_marked_child_bypasses_submission(self) -> None:
+        for marked in (False, True):
+            with temporary_directory() as directory:
+                arguments = ["--level", __file__, "--seconds", "1", "--a-preset", "a",
+                             "--b-preset", "b", "--output-dir", str(Path(directory) / "result"),
+                             "--skip-build"]
+                if marked:
+                    arguments.append("--jobserver-child")
+                with (
+                    mock.patch.dict(os.environ, {"NUKETHEBEES_JOBSERVER_JOB": "parent"}),
+                    mock.patch.object(comparison_module, "invoke_with_benchmark_access", return_value=0) as submit,
+                    mock.patch.object(comparison_module, "run_comparison", return_value=0) as run,
+                ):
+                    self.assertEqual(main(arguments), 0)
+                self.assertEqual(submit.call_count, 0 if marked else 1)
+                self.assertEqual(run.call_count, 1 if marked else 0)
+
+    def test_marker_without_parent_fails_closed(self) -> None:
+        with temporary_directory() as directory:
+            arguments = ["--level", __file__, "--seconds", "1", "--a-preset", "a",
+                         "--b-preset", "b", "--output-dir", str(Path(directory) / "result"),
+                         "--skip-build", "--jobserver-child"]
+            with (
+                mock.patch.dict(os.environ, {"NUKETHEBEES_JOBSERVER_JOB": ""}),
+                mock.patch.object(comparison_module, "run_comparison") as run,
+                redirect_stderr(io.StringIO()),
+            ):
+                self.assertEqual(main(arguments), 1)
+                run.assert_not_called()
+
+    def test_submission_marks_child_and_requests_exclusive_resources(self) -> None:
+        with temporary_directory() as directory:
+            options = parse_options(["--level", __file__, "--seconds", "1", "--a-preset", "a",
+                                     "--b-preset", "b", "--output-dir", directory])
+            with (
+                mock.patch.object(comparison_module, "_require_file"),
+                mock.patch.object(subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run,
+            ):
+                comparison_module.invoke_with_benchmark_access(options)
+            command = run.call_args.args[0]
+            self.assertIn("--jobserver-child", command)
+            self.assertIn("--skip-build", command)
+            for resource in ("machine", "benchmark"):
+                self.assertTrue(any(command[index:index + 2] == ["--exclusive", resource]
+                                    for index in range(len(command) - 1)))
 
 
 if __name__ == "__main__":

@@ -46,6 +46,9 @@ class Scheduler {
     void set_capacity(std::string name, std::uint32_t capacity);
     [[nodiscard]] auto validate_claims(std::vector<ResourceClaim> const& claims) const
         -> std::expected<void, Error>;
+    [[nodiscard]] auto validate_nested_claims(std::string const& parent_id,
+                                              std::vector<ResourceClaim> const& claims) const
+        -> std::expected<void, Error>;
     [[nodiscard]] auto enqueue(JobMetadata metadata, std::vector<ResourceClaim> claims)
         -> std::string;
     [[nodiscard]] auto wait_until_granted(std::string const& id) -> bool;

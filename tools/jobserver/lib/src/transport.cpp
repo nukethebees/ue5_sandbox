@@ -2,8 +2,9 @@
 
 #include "jobserver/protocol.hpp"
 
-#include <sddl.h>
 #include <Windows.h>
+
+#include <sddl.h>
 
 #include <array>
 #include <chrono>

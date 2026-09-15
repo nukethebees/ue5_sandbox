@@ -954,36 +954,180 @@ TEST_F(JobserverIntegration, NestedCommandInheritsInvokingBuildDirectory) {
     std::filesystem::create_directories(build_directory);
     std::filesystem::create_directories(worktree);
 
-    ASSERT_EQ(_putenv_s("NUKETHEBEES_JOBSERVER_JOB", "test-parent"), 0);
-    auto child{launch(JOBSERVER_CLI_PATH,
-                      L"run --name nested-working-directory --kind test --worktree " +
-                          quote(worktree.wstring()) + L" -- " +
-                          quote(std::filesystem::path{JOBSERVER_TEST_HELPER_PATH}.wstring()) +
-                          L" marker-after " + marker.wstring() + L" 0",
-                      build_directory)};
-    ASSERT_EQ(_putenv_s("NUKETHEBEES_JOBSERVER_JOB", ""), 0);
-    ASSERT_NE(child.process, nullptr);
-    auto const exit_code{wait_for_exit(child, 3s)};
-    ASSERT_TRUE(exit_code.has_value());
-    EXPECT_EQ(*exit_code, 0U);
+    auto request{submit_request("nested directory",
+                                {{.name = "machine", .mode = jobserver::ClaimMode::exclusive}},
+                                {"run",
+                                 "--worktree",
+                                 jobserver::path_to_utf8(worktree),
+                                 "--shared",
+                                 "machine",
+                                 "--",
+                                 JOBSERVER_TEST_HELPER_PATH,
+                                 "marker-after",
+                                 marker.string(),
+                                 "0"})};
+    request.command.executable = JOBSERVER_CLI_PATH;
+    request.command.working_directory = build_directory;
+    auto const result{jobserver::Client::run(request, [](auto const&, auto const&) {})};
+    ASSERT_TRUE(result) << result.error().message;
+    EXPECT_EQ(*result, 0);
     EXPECT_TRUE(std::filesystem::exists(build_directory / marker));
     EXPECT_FALSE(std::filesystem::exists(worktree / marker));
-    close(child);
 }
 
 TEST_F(JobserverIntegration, NestedCommandDoesNotCreateAConsoleWindow) {
-    ASSERT_EQ(_putenv_s("NUKETHEBEES_JOBSERVER_JOB", "test-parent"), 0);
-    auto child{launch(JOBSERVER_CLI_PATH,
-                      L"run --name nested-no-console --kind test -- " +
-                          quote(std::filesystem::path{JOBSERVER_TEST_HELPER_PATH}.wstring()) +
-                          L" require-no-console",
-                      data_path_)};
+    auto request{submit_request("nested console",
+                                {{.name = "machine", .mode = jobserver::ClaimMode::exclusive}},
+                                {"nested-run", "shared", "machine", "1", "require-no-console"})};
+    request.command.executable = JOBSERVER_TEST_CLIENT_PATH;
+    auto const result{jobserver::Client::run(request, [](auto const&, auto const&) {})};
+    ASSERT_TRUE(result) << result.error().message;
+    EXPECT_EQ(*result, 0);
+}
+
+TEST_F(JobserverIntegration, NestedClaimsAreValidatedBeforeLaunching) {
+    for (auto const mode : {jobserver::ClaimMode::shared, jobserver::ClaimMode::exclusive}) {
+        auto const marker{data_path_ / (jobserver::to_string(mode) + "-nested.txt")};
+        auto request{submit_request(
+            "nested claims",
+            {{.name = "machine", .mode = mode}},
+            {"nested-run", "exclusive", "machine", "1", "marker-after", marker.string(), "0"})};
+        request.command.executable = JOBSERVER_TEST_CLIENT_PATH;
+        auto const result{jobserver::Client::run(request, [](auto const&, auto const&) {})};
+        ASSERT_TRUE(result) << result.error().message;
+        EXPECT_EQ(*result, mode == jobserver::ClaimMode::exclusive ? 0 : 124);
+        EXPECT_EQ(std::filesystem::exists(marker), mode == jobserver::ClaimMode::exclusive);
+    }
+    auto request{
+        submit_request("nested no claims", {}, {"nested-run", "shared", "none", "1", "exit", "0"})};
+    request.command.executable = JOBSERVER_TEST_CLIENT_PATH;
+    auto const result{jobserver::Client::run(request, [](auto const&, auto const&) {})};
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result, 0);
+}
+
+TEST_F(JobserverIntegration, NestedOutputFlowsThroughParentCapture) {
+    auto request{submit_request("nested output",
+                                {{.name = "machine", .mode = jobserver::ClaimMode::exclusive}},
+                                {"nested-run", "shared", "machine", "1", "output", "2"})};
+    request.command.executable = JOBSERVER_TEST_CLIENT_PATH;
+    std::string standard_output;
+    std::string standard_error;
+    auto const result{
+        jobserver::Client::run(request, [&](std::string const& stream, std::string const& data) {
+            (stream == "stdout" ? standard_output : standard_error) += data;
+        })};
+    ASSERT_TRUE(result) << result.error().message;
+    EXPECT_EQ(*result, 0);
+    EXPECT_NE(standard_output.find("stdout 1"), std::string::npos);
+    EXPECT_NE(standard_error.find("stderr 1"), std::string::npos);
+}
+
+TEST_F(JobserverIntegration, NestedClaimsRejectSpoofedAndStaleParentIds) {
+    auto parent{std::async(std::launch::async, [] {
+        return jobserver::Client::run(submit_request("spoof parent",
+                                                     {{.name = "integration-resource",
+                                                       .mode = jobserver::ClaimMode::exclusive}},
+                                                     {"sleep", "60000"},
+                                                     5s),
+                                      [](auto const&, auto const&) {});
+    })};
+    auto const running{find_job_in_state("spoof parent", "RUNNING")};
+    ASSERT_TRUE(running);
+    auto const status{jobserver::Client::status()};
+    ASSERT_TRUE(status);
+    auto const jobs = Json::parse(*status)["jobs"];
+    ASSERT_EQ(jobs.size(), 1U);
+    EXPECT_EQ(jobs[0]["claims"][0]["name"], "integration-resource");
+    auto request{
+        submit_request("spoofed nested",
+                       {{.name = "integration-resource", .mode = jobserver::ClaimMode::exclusive}},
+                       {"exit", "0"})};
+    auto const id{jobs[0]["id"].get<std::string>()};
+    ASSERT_EQ(_putenv_s("NUKETHEBEES_JOBSERVER_JOB", id.c_str()), 0);
+    auto const spoofed{jobserver::Client::run(request, [](auto const&, auto const&) {})};
+    ASSERT_EQ(_putenv_s("NUKETHEBEES_JOBSERVER_JOB", "unknown"), 0);
+    auto const stale{jobserver::Client::run(request, [](auto const&, auto const&) {})};
     ASSERT_EQ(_putenv_s("NUKETHEBEES_JOBSERVER_JOB", ""), 0);
-    ASSERT_NE(child.process, nullptr);
-    auto const exit_code{wait_for_exit(child, 3s)};
-    ASSERT_TRUE(exit_code.has_value());
-    EXPECT_EQ(*exit_code, 0U);
-    close(child);
+    EXPECT_TRUE(jobserver::Client::cancel(id, true));
+    EXPECT_EQ(parent.wait_for(3s), std::future_status::ready);
+    EXPECT_TRUE(parent.get());
+    ASSERT_FALSE(spoofed);
+    EXPECT_EQ(spoofed.error().code, "nested_parent_mismatch");
+    ASSERT_FALSE(stale);
+    EXPECT_EQ(stale.error().code, "nested_parent_not_active");
+}
+
+TEST_F(JobserverIntegration, SubmittedAndNestedCommandsApplyEnvironmentChanges) {
+    for (auto const nested : {false, true}) {
+        auto request{submit_request("environment changes",
+                                    {},
+                                    nested ? std::vector<std::string>{"nested-environment"}
+                                           : std::vector<std::string>{"check-environment"})};
+        request.command.environment = {
+            {.name = "JOBSERVER_ENV_ADD", .value = "added"},
+            {.name = "JOBSERVER_ENV_REPLACE", .value = "original"},
+            {.name = "jobserver_env_replace", .value = nested ? "original" : "replaced"},
+            {.name = "JOBSERVER_ENV_REMOVE", .value = "remove me"},
+            {.name = "NUKETHEBEES_JOBSERVER_JOB", .value = "spoofed"}};
+        if (nested) {
+            request.command.executable = JOBSERVER_TEST_CLIENT_PATH;
+        } else {
+            request.command.environment.push_back(
+                {.name = "JOBSERVER_ENV_REMOVE", .value = std::nullopt});
+        }
+        auto const result{jobserver::Client::run(request, [](auto const&, auto const&) {})};
+        ASSERT_TRUE(result) << result.error().message;
+        EXPECT_EQ(*result, 0);
+    }
+}
+
+TEST_F(JobserverIntegration, InvalidEnvironmentDoesNotLaunchOrStrandResources) {
+    auto request{submit_request("invalid environment",
+                                {{.name = "machine", .mode = jobserver::ClaimMode::exclusive}},
+                                {"exit", "0"})};
+    for (auto const& name : {std::string{}, std::string{"bad=name"}, std::string{"bad\0name", 8}}) {
+        request.command.environment = {{.name = name, .value = "value"}};
+        auto const result{jobserver::Client::run(request, [](auto const&, auto const&) {})};
+        ASSERT_FALSE(result);
+        EXPECT_EQ(result.error().code, "invalid_environment");
+    }
+    request.command.environment.clear();
+    auto const result{jobserver::Client::run(request, [](auto const&, auto const&) {})};
+    ASSERT_TRUE(result);
+    EXPECT_EQ(*result, 0);
+}
+
+TEST_F(JobserverIntegration, CancellingParentTerminatesValidatedNestedChild) {
+    auto const ready_path{data_path_ / "nested-child-ready.txt"};
+    auto request{
+        submit_request("nested cancellation",
+                       {{.name = "machine", .mode = jobserver::ClaimMode::exclusive}},
+                       {"nested-run", "shared", "machine", "1", "ready-sleep", ready_path.string()},
+                       5s)};
+    request.command.executable = JOBSERVER_TEST_CLIENT_PATH;
+    auto result{std::async(std::launch::async, [request] {
+        return jobserver::Client::run(request, [](auto const&, auto const&) {});
+    })};
+    auto const parent{find_job_in_state("nested cancellation", "RUNNING")};
+    ASSERT_TRUE(parent);
+    DWORD process_id{};
+    auto const deadline{std::chrono::steady_clock::now() + 3s};
+    while (process_id == 0 && std::chrono::steady_clock::now() < deadline) {
+        std::ifstream ready{ready_path};
+        ready >> process_id;
+        std::this_thread::sleep_for(10ms);
+    }
+    auto const child{process_id == 0 ? nullptr : OpenProcess(SYNCHRONIZE, FALSE, process_id)};
+    EXPECT_NE(child, nullptr);
+    EXPECT_TRUE(jobserver::Client::cancel(parent->value("id", ""), true));
+    if (child != nullptr) {
+        EXPECT_EQ(WaitForSingleObject(child, 3000), WAIT_OBJECT_0);
+        CloseHandle(child);
+    }
+    EXPECT_EQ(result.wait_for(3s), std::future_status::ready);
+    EXPECT_TRUE(result.get());
+    EXPECT_TRUE(wait_for_job_to_disappear("nested cancellation", 3s));
 }
 
 TEST_F(JobserverIntegration, CliResolvesExecutableFromSubmittingProcessPath) {
@@ -1433,14 +1577,12 @@ TEST_F(JobserverIntegration, SlowAndAbandonedOutputClientsDoNotBlockControlPlane
     if (!first_output) {
         CloseHandle(pipe);
         FAIL() << "Abandoned output client did not receive initial output";
-        return;
     }
     EXPECT_EQ(Json::parse(*first_output).value("type", ""), "output") << *first_output;
     auto const abandoned_job{find_job("abandoned output reader")};
     if (!abandoned_job) {
         CloseHandle(pipe);
         FAIL() << "Abandoned output job was not observable";
-        return;
     }
     status_start = std::chrono::steady_clock::now();
     EXPECT_TRUE(jobserver::Client::status().has_value());
