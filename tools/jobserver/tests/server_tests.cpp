@@ -22,6 +22,7 @@
 #include <ranges>
 #include <span>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -823,6 +824,55 @@ TEST_F(JobserverIntegration, QueuedClientReceivesPeriodicHeartbeat) {
     FAIL() << "Heartbeat waiter did not drain after its client disconnected";
 }
 
+TEST_F(JobserverIntegration, GrantBetweenQueuePollAndStateReadIsNotCancellation) {
+    stop_daemon();
+    for (auto const lease_mode : {false, true}) {
+        TestBarrier barrier{"after_queue_poll", lease_mode ? 302 : 301};
+        ASSERT_TRUE(barrier.valid());
+        start_daemon();
+        auto owner{jobserver::Client::acquire({
+            .metadata = {.name = "queue poll owner", .kind = "test", .worktree = {}},
+            .resources = {{.name = "queue-poll-race", .mode = jobserver::ClaimMode::exclusive}},
+        })};
+        ASSERT_TRUE(owner);
+        auto waiting{
+            std::async(std::launch::async, [lease_mode]() -> std::expected<int, jobserver::Error> {
+                if (lease_mode) {
+                    auto lease{jobserver::Client::acquire({
+                        .metadata = {.name = "queue poll waiter", .kind = "test", .worktree = {}},
+                        .resources = {{.name = "queue-poll-race",
+                                       .mode = jobserver::ClaimMode::exclusive}},
+                    })};
+                    if (!lease) {
+                        return std::unexpected(lease.error());
+                    }
+                    if (auto released{lease->release()}; !released) {
+                        return std::unexpected(released.error());
+                    }
+                    return 0;
+                }
+                return jobserver::Client::run(
+                    submit_request(
+                        "queue poll waiter",
+                        {{.name = "queue-poll-race", .mode = jobserver::ClaimMode::exclusive}},
+                        {"exit", "0"}),
+                    [](auto const&, auto const&) {});
+            })};
+        auto const reached{barrier.wait(2s)};
+        EXPECT_TRUE(owner->release());
+        auto const starting{find_job_in_state("queue poll waiter", "STARTING")};
+        barrier.release();
+        EXPECT_TRUE(reached);
+        EXPECT_TRUE(starting);
+        EXPECT_EQ(waiting.wait_for(3s), std::future_status::ready);
+        auto const result{waiting.get()};
+        ASSERT_TRUE(result) << result.error().message;
+        EXPECT_EQ(*result, 0);
+        stop_daemon();
+    }
+    start_daemon();
+}
+
 TEST_F(JobserverIntegration, ConflictingClientsAreGrantedInFifoOrder) {
     auto active{
         jobserver::Client::acquire(test_request("active shared", jobserver::ClaimMode::shared))};
@@ -1244,6 +1294,239 @@ TEST_F(JobserverIntegration, RejectsProtocolMismatchAndMalformedRequestWithoutSt
     EXPECT_TRUE(jobserver::Client::status().has_value());
 }
 
+TEST_F(JobserverIntegration, MalformedFieldsFailBeforeAdmissionOrExecution) {
+    auto const marker{data_path_ / "malformed-command-must-not-run.txt"};
+    auto base = raw_submit_message("malformed fields", {"marker-after", marker.string(), "0"});
+    base["resources"] =
+        Json::array({{{"name", "malformed-resource"}, {"mode", "counted"}, {"units", 1}}});
+    base["command"]["environment"] = Json::array({{{"name", "TEST_VALUE"}, {"value", "valid"}}});
+    std::vector<std::pair<std::string, Json>> const cases{
+        {"/type", nullptr},
+        {"/type", 1},
+        {"/type", true},
+        {"/type", ""},
+        {"/metadata", nullptr},
+        {"/metadata", Json::array()},
+        {"/metadata/name", 1},
+        {"/metadata/kind", false},
+        {"/metadata/worktree", Json::object()},
+        {"/resources", nullptr},
+        {"/resources", Json::object()},
+        {"/resources/0", nullptr},
+        {"/resources/0", "resource"},
+        {"/resources/0/name", 1},
+        {"/resources/0/mode", false},
+        {"/resources/0/mode", "invalid"},
+        {"/resources/0/units", "1"},
+        {"/resources/0/units", 1.5},
+        {"/resources/0/units", -1},
+        {"/resources/0/units", 0},
+        {"/resources/0/units", 4294967297ULL},
+        {"/command", nullptr},
+        {"/command", Json::array()},
+        {"/command/executable", false},
+        {"/command/executable", ""},
+        {"/command/executable", std::string("bad\0path", 8)},
+        {"/command/arguments", "argument"},
+        {"/command/arguments/0", nullptr},
+        {"/command/arguments/0", std::string("bad\0argument", 12)},
+        {"/command/working_directory", 1},
+        {"/command/environment", false},
+        {"/command/environment/0", nullptr},
+        {"/command/environment/0/name", false},
+        {"/command/environment/0/name", ""},
+        {"/command/environment/0/name", "bad=name"},
+        {"/command/environment/0/value", Json::object()},
+        {"/disconnect_policy", false},
+        {"/disconnect_policy", "invalid"},
+        {"/timeout_ms", nullptr},
+        {"/timeout_ms", "100"},
+        {"/timeout_ms", false},
+        {"/timeout_ms", 0},
+        {"/timeout_ms", -1},
+        {"/timeout_ms", 1.5},
+        {"/timeout_ms", 18446744073709551615ULL},
+        {"/suspect_after_ms", Json::array()},
+        {"/suspect_after_ms", -1},
+        {"/suspect_after_ms", 18446744073709551615ULL},
+    };
+    auto check = [&](Json const& request) {
+        SCOPED_TRACE(request.dump());
+        auto const pipe{connect_and_handshake_raw_pipe()};
+        ASSERT_NE(pipe, INVALID_HANDLE_VALUE);
+        auto const sent{jobserver::transport::write_message(pipe, request.dump(), 1s)};
+        auto const response{
+            sent ? jobserver::transport::read_message(pipe, 1s)
+                 : std::expected<std::string, jobserver::Error>{std::unexpected(sent.error())}};
+        CloseHandle(pipe);
+        ASSERT_TRUE(response) << response.error().message;
+        auto const json = Json::parse(*response, nullptr, false);
+        ASSERT_TRUE(json.is_object());
+        EXPECT_EQ(json.value("type", ""), "error");
+        EXPECT_FALSE(json.value("code", "").empty());
+        EXPECT_FALSE(json.value("message", "").empty());
+        EXPECT_FALSE(std::filesystem::exists(marker));
+        EXPECT_TRUE(jobserver::Client::ping());
+        auto const status{jobserver::Client::status()};
+        ASSERT_TRUE(status);
+        auto const state = Json::parse(*status);
+        EXPECT_EQ(state["daemon"]["scheduler_entries"], 0U);
+        EXPECT_EQ(state["daemon"]["supervised_jobs"], 0U);
+        EXPECT_EQ(state["daemon"]["leases"], 0U);
+        EXPECT_TRUE(state["jobs"].empty());
+        for (auto const& resource : state["resources"]) {
+            EXPECT_EQ(resource.value("used", 0U), 0U);
+            EXPECT_FALSE(resource.value("exclusive", false));
+        }
+    };
+    for (auto const& [path, value] : cases) {
+        auto request = base;
+        request[Json::json_pointer{path}] = value;
+        check(request);
+    }
+    for (auto const path : {"/type",
+                            "/command",
+                            "/command/executable",
+                            "/resources/0/name",
+                            "/resources/0/mode",
+                            "/command/environment/0/name",
+                            "/command/environment/0/value"}) {
+        auto request = base;
+        auto const pointer{Json::json_pointer{path}};
+        request[pointer.parent_pointer()].erase(pointer.back());
+        check(request);
+    }
+    check(Json{{"type", "status"}, {"history", "true"}});
+    check(Json{{"type", "cancel"}, {"id", false}});
+    check(Json{{"type", "kill"}, {"id", Json::array()}});
+    check(Json{{"type", "validate_nested"}, {"parent_id", 1}});
+    check(Json{{"type", "cancel"}});
+    check(Json{{"type", "unexpected_message"}});
+    check(Json::array());
+    check(Json(nullptr));
+    check(Json(true));
+    for (auto const type : {"acquire", "validate_nested"}) {
+        for (auto const& [path, value] : cases) {
+            if (path.starts_with("/resources") ||
+                (std::string_view{type} == "acquire" && path.starts_with("/metadata"))) {
+                auto request = base;
+                request["type"] = type;
+                request["parent_id"] = "unknown";
+                request[Json::json_pointer{path}] = value;
+                check(request);
+            }
+        }
+    }
+}
+
+TEST_F(JobserverIntegration, MalformedHandshakeVersionsNeverWrapOrCoerce) {
+    auto check = [&](Json const& hello) {
+        auto const pipe{connect_raw_pipe()};
+        ASSERT_NE(pipe, INVALID_HANDLE_VALUE);
+        SCOPED_TRACE(hello.dump());
+        ASSERT_TRUE(jobserver::transport::write_message(pipe, hello.dump(), 1s));
+        auto const response{jobserver::transport::read_message(pipe, 1s)};
+        CloseHandle(pipe);
+        ASSERT_TRUE(response);
+        auto const json = Json::parse(*response);
+        EXPECT_EQ(json.value("type", ""), "error");
+        EXPECT_EQ(json.value("code", ""), "protocol_mismatch");
+        EXPECT_TRUE(jobserver::Client::ping());
+    };
+    for (auto const field : {"major", "minor"}) {
+        for (auto const& value : std::vector<Json>{nullptr, true, "1", 1.5, -1, 4294967297ULL}) {
+            auto hello = Json{{"type", "hello"}, {"protocol", {{"major", 1}, {"minor", 0}}}};
+            hello["protocol"][field] = value;
+            check(hello);
+        }
+    }
+    check(Json::array());
+    check(Json{{"type", true}, {"protocol", {{"major", 1}}}});
+    check(Json{{"type", "hello"}, {"protocol", nullptr}});
+    check(Json{{"type", "hello"}, {"protocol", Json::array()}});
+    check(Json{{"type", "hello"}, {"protocol", Json::object()}});
+}
+
+TEST_F(JobserverIntegration, MalformedCommandIsRejectedWithoutWaitingForBusyResources) {
+    auto owner{jobserver::Client::acquire({
+        .metadata = {.name = "validation blocker", .kind = "test", .worktree = {}},
+        .resources = {{.name = "machine", .mode = jobserver::ClaimMode::exclusive}},
+    })};
+    ASSERT_TRUE(owner);
+    auto request = raw_submit_message("invalid waiting command", {"exit", "0"});
+    request["resources"] = Json::array({{{"name", "machine"}, {"mode", "shared"}}});
+    request["command"]["arguments"] = false;
+    auto const pipe{connect_and_handshake_raw_pipe()};
+    ASSERT_NE(pipe, INVALID_HANDLE_VALUE);
+    ASSERT_TRUE(jobserver::transport::write_message(pipe, request.dump(), 1s));
+    auto const response{jobserver::transport::read_message(pipe, 1s)};
+    CloseHandle(pipe);
+    ASSERT_TRUE(response);
+    auto const json = Json::parse(*response);
+    EXPECT_EQ(json.value("type", ""), "error");
+    EXPECT_EQ(json.value("code", ""), "invalid_request");
+    auto const status{jobserver::Client::status()};
+    ASSERT_TRUE(status);
+    auto const state = Json::parse(*status);
+    ASSERT_EQ(state["jobs"].size(), 1U);
+    EXPECT_EQ(state["jobs"][0]["id"], owner->id());
+    EXPECT_EQ(state["jobs"][0]["state"], "RUNNING");
+    EXPECT_TRUE(owner->release());
+}
+
+TEST_F(JobserverIntegration, ValidOptionalFieldsAndUnknownExtensionsRemainCompatible) {
+    auto const pipe{connect_and_handshake_raw_pipe()};
+    ASSERT_NE(pipe, INVALID_HANDLE_VALUE);
+    auto const request = Json{
+        {"type", "submit"},
+        {"command", {{"executable", JOBSERVER_TEST_HELPER_PATH}, {"arguments", {"exit", "0", ""}}}},
+        {"future_extension", Json::object()}};
+    ASSERT_TRUE(jobserver::transport::write_message(pipe, request.dump(), 1s));
+    auto const response{jobserver::transport::read_message(pipe, 1s)};
+    CloseHandle(pipe);
+    ASSERT_TRUE(response);
+    auto const json = Json::parse(*response);
+    EXPECT_EQ(json.value("type", ""), "completed");
+    EXPECT_EQ(json.value("exit_code", 1), 0);
+    EXPECT_TRUE(jobserver::Client::ping());
+}
+
+TEST_F(JobserverIntegration, MalformedLeaseReleaseRejectsFieldsAndStillReleasesOwnership) {
+    for (auto const& release : std::vector<Json>{nullptr,
+                                                 Json::array(),
+                                                 Json{{"type", "release"}},
+                                                 Json{{"type", "release"}, {"id", false}},
+                                                 Json{{"type", "release"}, {"id", "wrong-job"}},
+                                                 Json{{"type", false}, {"id", "wrong-job"}}}) {
+        SCOPED_TRACE(release.dump());
+        auto const pipe{connect_and_handshake_raw_pipe()};
+        ASSERT_NE(pipe, INVALID_HANDLE_VALUE);
+        auto const request = Json{
+            {"type", "acquire"},
+            {"resources", Json::array({{{"name", "malformed-release"}, {"mode", "exclusive"}}})}};
+        ASSERT_TRUE(jobserver::transport::write_message(pipe, request.dump(), 1s));
+        auto const granted{jobserver::transport::read_message(pipe, 1s)};
+        ASSERT_TRUE(granted);
+        EXPECT_EQ(Json::parse(*granted).value("type", ""), "granted");
+        ASSERT_TRUE(jobserver::transport::write_message(pipe, release.dump(), 1s));
+        auto const response{jobserver::transport::read_message(pipe, 1s)};
+        CloseHandle(pipe);
+        ASSERT_TRUE(response);
+        auto const json = Json::parse(*response);
+        EXPECT_EQ(json.value("type", ""), "error");
+        EXPECT_EQ(json.value("code", ""), "invalid_request");
+        auto const status{jobserver::Client::status()};
+        ASSERT_TRUE(status);
+        auto const state = Json::parse(*status);
+        EXPECT_EQ(state["daemon"]["scheduler_entries"], 0U);
+        EXPECT_EQ(state["daemon"]["leases"], 0U);
+        for (auto const& resource : state["resources"]) {
+            EXPECT_FALSE(resource.value("exclusive", false));
+        }
+        EXPECT_TRUE(jobserver::Client::ping());
+    }
+}
+
 TEST_F(JobserverIntegration, TruncatedAndOversizedFramesDoNotStopDaemon) {
     auto send_and_close = [](std::span<std::byte const> const bytes) {
         auto const pipe{connect_sync_raw_pipe()};
@@ -1538,7 +1821,16 @@ TEST_F(JobserverIntegration, MixedClientSoakDrainsWithoutLeakingHandles) {
         if (expected < 0) {
             EXPECT_NE(*result, 0);
         } else {
-            EXPECT_EQ(*result, expected);
+            std::string diagnostics;
+            if (*result != expected) {
+                std::ifstream log{data_path_ / "jobserverd.log"};
+                diagnostics.assign(std::istreambuf_iterator<char>{log},
+                                   std::istreambuf_iterator<char>{});
+                if (diagnostics.size() > 4096) {
+                    diagnostics.erase(0, diagnostics.size() - 4096);
+                }
+            }
+            EXPECT_EQ(*result, expected) << "soak job index " << index << '\n' << diagnostics;
         }
     }
 

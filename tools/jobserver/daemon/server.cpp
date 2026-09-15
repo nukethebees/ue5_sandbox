@@ -110,12 +110,34 @@ class JobCompletionGuard {
     std::function<void()> finish_;
 };
 
+auto valid_text(Json const& value, bool const allow_empty = true) -> bool {
+    return value.is_string() && (allow_empty || !value.get_ref<std::string const&>().empty()) &&
+           value.get_ref<std::string const&>().find('\0') == std::string::npos;
+}
+
+auto valid_integer(Json const& value, std::uint64_t const minimum, std::uint64_t const maximum)
+    -> bool {
+    if (!value.is_number_integer() ||
+        (!value.is_number_unsigned() && value.get<std::int64_t>() < 0)) {
+        return false;
+    }
+    auto const number{value.get<std::uint64_t>()};
+    return number >= minimum && number <= maximum;
+}
+
 auto parse_claims(Json const& json) -> std::expected<std::vector<ResourceClaim>, Error> {
     std::vector<ResourceClaim> result;
     if (!json.is_array()) {
         return std::unexpected(Error{"invalid_resources", "resources must be an array"});
     }
     for (auto const& item : json) {
+        if (!item.is_object() || !item.contains("name") || !valid_text(item["name"], false) ||
+            !item.contains("mode") || !valid_text(item["mode"], false) ||
+            (item.contains("units") &&
+             !valid_integer(item["units"], 1, std::numeric_limits<std::uint32_t>::max()))) {
+            return std::unexpected(
+                Error{"invalid_resource", "Invalid resource field types or unit range"});
+        }
         auto const mode{claim_mode_from_string(item.value("mode", ""))};
         auto const name{item.value("name", "")};
         auto const units{item.value("units", 1U)};
@@ -126,6 +148,97 @@ auto parse_claims(Json const& json) -> std::expected<std::vector<ResourceClaim>,
         result.push_back(ResourceClaim{.name = name, .mode = *mode, .units = units});
     }
     return result;
+}
+
+auto validate_request(Json const& json) -> std::expected<void, Error> {
+    auto invalid = [](std::string field) -> std::expected<void, Error> {
+        return std::unexpected(Error{"invalid_request", "Invalid or missing field: " + field});
+    };
+    if (!json.contains("type") || !valid_text(json["type"], false)) {
+        return invalid("type");
+    }
+    auto const type{json["type"].get<std::string>()};
+    if (type == "status" && json.contains("history") && !json["history"].is_boolean()) {
+        return invalid("history");
+    }
+    if (type == "cancel" || type == "kill" || type == "validate_nested") {
+        auto const field{type == "validate_nested" ? "parent_id" : "id"};
+        if (!json.contains(field) || !valid_text(json[field], false)) {
+            return invalid(field);
+        }
+    }
+    if (type != "acquire" && type != "submit" && type != "validate_nested") {
+        return {};
+    }
+    if (json.contains("resources")) {
+        if (auto claims{parse_claims(json["resources"])}; !claims) {
+            return std::unexpected(claims.error());
+        }
+    }
+    if (type == "validate_nested") {
+        return {};
+    }
+    if (json.contains("metadata")) {
+        auto const& metadata{json["metadata"]};
+        if (!metadata.is_object()) {
+            return invalid("metadata");
+        }
+        for (auto const field : {"name", "kind", "worktree"}) {
+            if (metadata.contains(field) && !valid_text(metadata[field])) {
+                return invalid(std::string{"metadata."} + field);
+            }
+        }
+    }
+    if (type != "submit") {
+        return {};
+    }
+    if (json.contains("disconnect_policy") &&
+        (!valid_text(json["disconnect_policy"]) ||
+         (json["disconnect_policy"] != "cancel" && json["disconnect_policy"] != "continue"))) {
+        return invalid("disconnect_policy");
+    }
+    auto const maximum_duration{std::chrono::duration_cast<std::chrono::milliseconds>(
+                                    std::chrono::steady_clock::duration::max())
+                                    .count()};
+    for (auto const field : {"timeout_ms", "suspect_after_ms"}) {
+        if (json.contains(field) &&
+            !valid_integer(json[field], 1, static_cast<std::uint64_t>(maximum_duration))) {
+            return invalid(field);
+        }
+    }
+    if (!json.contains("command") || !json["command"].is_object()) {
+        return invalid("command");
+    }
+    auto const& command{json["command"]};
+    if (!command.contains("executable") || !valid_text(command["executable"], false)) {
+        return invalid("command.executable");
+    }
+    if (command.contains("working_directory") && !valid_text(command["working_directory"])) {
+        return invalid("command.working_directory");
+    }
+    if (command.contains("arguments")) {
+        auto const& arguments{command["arguments"]};
+        if (!arguments.is_array() ||
+            !std::ranges::all_of(arguments, [](auto const& value) { return valid_text(value); })) {
+            return invalid("command.arguments");
+        }
+    }
+    if (command.contains("environment")) {
+        auto const& environment{command["environment"]};
+        if (!environment.is_array()) {
+            return std::unexpected(Error{"invalid_environment", "Environment must be an array"});
+        }
+        for (auto const& change : environment) {
+            if (!change.is_object() || !change.contains("name") ||
+                !valid_text(change["name"], false) ||
+                change["name"].get_ref<std::string const&>().find('=') != std::string::npos ||
+                !change.contains("value") ||
+                (!change["value"].is_null() && !valid_text(change["value"]))) {
+                return std::unexpected(Error{"invalid_environment", "Invalid environment change"});
+            }
+        }
+    }
+    return {};
 }
 
 auto parse_metadata(Json const& json) -> JobMetadata {
@@ -348,8 +461,14 @@ void Server::serve_client(void* const native_pipe) {
     compatible =
         compatible && hello_json.contains("protocol") && hello_json["protocol"].is_object();
     compatible = compatible && hello_json["protocol"].contains("major") &&
-                 hello_json["protocol"]["major"].is_number_unsigned() &&
-                 hello_json["protocol"]["major"].get<std::uint32_t>() == protocol::major_version;
+                 valid_integer(hello_json["protocol"]["major"],
+                               0,
+                               std::numeric_limits<std::uint32_t>::max()) &&
+                 hello_json["protocol"]["major"].get<std::uint64_t>() == protocol::major_version;
+    compatible = compatible && (!hello_json["protocol"].contains("minor") ||
+                                valid_integer(hello_json["protocol"]["minor"],
+                                              0,
+                                              std::numeric_limits<std::uint32_t>::max()));
     if (!compatible) {
         send_error(pipe,
                    Error{"protocol_mismatch", "Client and daemon protocol major versions differ"});
@@ -371,6 +490,8 @@ void Server::serve_client(void* const native_pipe) {
     auto const json = Json::parse(*request, nullptr, false);
     if (!json.is_object()) {
         send_error(pipe, Error{"invalid_json", "Request is not valid JSON"});
+    } else if (auto valid{validate_request(json)}; !valid) {
+        send_error(pipe, valid.error());
     } else {
         auto const type{json.contains("type") && json["type"].is_string()
                             ? json["type"].get<std::string>()
@@ -425,7 +546,11 @@ void Server::handle_acquire(void* const pipe, std::string const& message) {
     test_barrier("after_admission");
     auto next_heartbeat{std::chrono::steady_clock::now() + queue_heartbeat_interval()};
     while (!scheduler_.try_grant(id)) {
+        test_barrier("after_queue_poll");
         auto const state{scheduler_.state(id)};
+        if (state == JobState::starting) {
+            break;
+        }
         if (!state || *state != JobState::queued) {
             send_error(pipe, Error{"job_cancelled", "The queued lease request was cancelled"});
             return;
@@ -458,12 +583,21 @@ void Server::handle_acquire(void* const pipe, std::string const& message) {
         return;
     }
     auto const release{transport::read_message(pipe)};
-    scheduler_.release(id, release ? JobState::succeeded : JobState::interrupted);
+    auto const release_json = release ? Json::parse(*release, nullptr, false) : Json();
+    auto const valid_release{release_json.is_object() && release_json.contains("type") &&
+                             release_json["type"] == "release" && release_json.contains("id") &&
+                             valid_text(release_json["id"], false) && release_json["id"] == id};
+    scheduler_.release(id, valid_release ? JobState::succeeded : JobState::interrupted);
     {
         std::scoped_lock const lock{leases_mutex_};
         leases_.erase(id);
     }
     record_history(id);
+    if (release && !valid_release) {
+        send_error(
+            pipe,
+            Error{"invalid_request", "Lease release requires its granted ID and release type"});
+    }
 }
 
 void Server::handle_validate_nested(void* const pipe, std::string const& message) {
@@ -531,7 +665,11 @@ void Server::handle_submit(void* const pipe, std::string const& message) {
     test_barrier("after_admission");
     auto next_heartbeat{std::chrono::steady_clock::now() + queue_heartbeat_interval()};
     while (!scheduler_.try_grant(id)) {
+        test_barrier("after_queue_poll");
         auto const state{scheduler_.state(id)};
+        if (state == JobState::starting) {
+            break;
+        }
         if (!state || *state != JobState::queued) {
             static_cast<void>(write_client(pipe,
                                            Json{{"type", "completed"},

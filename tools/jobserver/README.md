@@ -29,6 +29,13 @@ the daemon then impersonates each client and rejects it unless its user SID matc
 user SID. Messages use a four-byte little-endian payload length followed by UTF-8 JSON. The current
 protocol version is `1.1`.
 
+Request fields are checked before queue admission or execution. Numeric fields must be integral
+and within their destination range; timeouts and hang-suspicion durations must be positive and
+representable by the supervisor clock. Invalid fields return structured errors instead of coercing
+values or closing the connection without a response. Unknown extra fields remain allowed for
+forward compatibility. A malformed lease release is rejected but still frees that connection's
+ownership, recording an interrupted lease rather than leaving it stuck.
+
 ## Installation and startup
 
 Configure and install the canonical per-user binaries with:
