@@ -14,10 +14,8 @@ DECLARE_DELEGATE_OneParam(FOnTelemetryBaselineSelected, FString);
 
 enum class ETelemetryDashboardSection : uint8 {
     Overview,
-    Timing,
     Workload,
     Activity,
-    Queries,
 };
 
 class STelemetryDashboardView final : public SCompoundWidget {
@@ -66,9 +64,7 @@ class STelemetryDashboardView final : public SCompoundWidget {
     FOnTelemetryBaselineSelected on_baseline_selected_{};
     TSharedPtr<SButton> primary_button_{};
     TSharedPtr<SScrollBox> detail_scroll_{};
-    TSharedPtr<SWidget> timing_section_{};
     TSharedPtr<SWidget> workload_section_{};
     TSharedPtr<SWidget> activity_section_{};
-    TSharedPtr<SWidget> queries_section_{};
 };
 } // namespace ml::ioj

@@ -178,47 +178,23 @@ void UTelemetryDashboardWidget::rebuild_state() {
                                                              FString::Join(warnings, TEXT(", ")));
         }
     }
-    auto const* requested_ratio{
-        state_.analysis.find_metric(ETelemetryDashboardMetric::RequestedTimeScaleRatio)};
-    auto const* observed{state_.analysis.find_metric(ETelemetryDashboardMetric::ObservedTimeScale)};
-    auto format_mean = [](FTelemetryMetricSeries const* metric) {
-        return metric && metric->weighted_mean.IsSet()
-                 ? FString::Printf(TEXT("%.3g"), metric->weighted_mean.GetValue())
-                 : FString{TEXT("—")};
-    };
     auto last_int = [](::ioj::sim::LevelTelemetryTickSeries::Int32Data const& series) {
         return series.is_empty() ? 0 : series.last_value();
     };
-    auto last_uint = [](::ioj::sim::LevelTelemetryTickSeries::Uint64Data const& series) {
-        return series.is_empty() ? uint64{0} : series.last_value();
-    };
-    state_.summary = FText::FromString(FString::Printf(
-        TEXT("COMPLETED TICKS  //  %llu\nSIMULATED / REAL  //  %.3fs / %.3fs\nMEAN OBSERVED  //  "
-             "%sx\nMEAN REQUESTED-SCALE RATIO  //  %s%%\nFINAL WORKLOAD  //  ENTITIES %d  LASERS "
-             "%d  SLOTS "
-             "%d  "
-             "CELLS %d\nFINAL COUNTERS  //  SPAWN %d  DESTROY %d  KILLS %d  FIRED %d\nQUERIES  //  "
-             "GRID %llu  RANGE %llu  LINE %llu  SWEEP %llu"),
+    auto summary{FString::Printf(
+        TEXT(
+            "COMPLETED TICKS  //  %llu\nSIMULATED TIME  //  %.3fs\nFINAL FORCES  //  "
+            "ENTITIES %d  LASERS %d\nFINAL COUNTERS  //  SPAWN %d  DESTROY %d  KILLS %d  FIRED %d"),
         record->completion.completed_ticks,
         record->completion.simulated_elapsed_seconds,
-        record->completion.wall_elapsed_seconds,
-        *format_mean(observed),
-        *format_mean(requested_ratio),
         last_int(record->tick_series.active_entities),
         last_int(record->tick_series.active_lasers),
-        last_int(record->tick_series.registry_slot_count),
-        last_int(record->tick_series.occupied_spatial_cell_count),
         last_int(record->tick_series.spawned_entities),
         last_int(record->tick_series.destroyed_entities),
         last_int(record->tick_series.kills),
-        last_int(record->tick_series.lasers_fired),
-        last_uint(record->tick_series.grid_rebuild_count),
-        last_uint(record->tick_series.range_query_count),
-        last_uint(record->tick_series.line_trace_count),
-        last_uint(record->tick_series.sweep_trace_count)));
-    auto summary{state_.summary.ToString()};
-    if (record->loaded_schema_version < 2 || record->battle_samples.IsEmpty()) {
-        summary += TEXT("\nBATTLE / PERFORMANCE METRICS  //  UNAVAILABLE (LEGACY V1 RUN)");
+        last_int(record->tick_series.lasers_fired))};
+    if (record->battle_samples.IsEmpty()) {
+        summary += TEXT("\nCOMBAT DETAILS  //  UNAVAILABLE");
     } else {
         auto sum_counts = [](auto const& counts) {
             using Result = std::remove_cvref_t<decltype(counts[0][0])>;
@@ -230,8 +206,7 @@ void UTelemetryDashboardWidget::rebuild_state() {
             }
             return total;
         };
-        auto const& battle{record->battle_samples.Last()};
-        auto const& combat{battle.combat};
+        auto const& combat{record->battle_samples.Last().combat};
         auto const winner{static_cast<ELevelTelemetryRunEndReason>(record->completion.reason) ==
                                   ELevelTelemetryRunEndReason::BattleResolved
                               ? (record->completion.winning_team.has_value()
@@ -241,57 +216,14 @@ void UTelemetryDashboardWidget::rebuild_state() {
                               : FString{TEXT("—")}};
         summary += FString::Printf(
             TEXT("\nBATTLE RESULT  //  %s    SAMPLES // %d\nCOMBAT  //  SHOTS %llu  HITS %llu  "
-                 "DAMAGE %.0f  KILLS %llu  LOSSES %llu\nPERFORMANCE WINDOWS  //  %d    "
-                 "DETAILED TIMING // %s"),
+                 "DAMAGE %.0f  KILLS %llu  LOSSES %llu"),
             *winner,
             record->battle_samples.Num(),
             sum_counts(combat.shots),
             sum_counts(combat.hits),
             sum_counts(combat.damage_dealt),
             sum_counts(combat.kills),
-            sum_counts(combat.losses),
-            record->performance_windows.Num(),
-            record->metadata.detailed_timing ? TEXT("ON") : TEXT("OFF"));
-        if (!record->performance_windows.IsEmpty()) {
-            auto const& window{record->performance_windows.Last()};
-            summary +=
-                FString::Printf(TEXT("\nLATEST WINDOW  //  FRAME MEAN/P95/MAX %.3f/%.3f/%.3f ms    "
-                                     "SIM TICK MEAN/MAX %.3f/%.3f ms"),
-                                window.frame.mean_ms,
-                                window.frame.p95_ms,
-                                window.frame.max_ms,
-                                window.simulation_tick.mean_ms,
-                                window.simulation_tick.max_ms);
-            summary += TEXT("\nPHASE CPU SHARE  // ");
-            if (window.historical_phases.has_value()) {
-                for (int32 index{}; index < FHistoricalTelemetryPhases::phase_count; ++index) {
-                    summary += FString::Printf(TEXT(" %s %.1f%%"),
-                                               FHistoricalTelemetryPhases::names[index],
-                                               window.historical_phases->cpu_share[index] * 100.0);
-                }
-            } else {
-                summary +=
-                    FString::Printf(TEXT(" PREPARATION %.1f%%  THINKING %.1f%%  ACTION %.1f%%"),
-                                    window.phase_cpu_share[0] * 100.0,
-                                    window.phase_cpu_share[1] * 100.0,
-                                    window.phase_cpu_share[2] * 100.0);
-            }
-        }
-    }
-    if (baseline) {
-        auto const* baseline_observed{
-            state_.baseline_analysis.find_metric(ETelemetryDashboardMetric::ObservedTimeScale)};
-        if (observed && observed->weighted_mean.IsSet() && baseline_observed &&
-            baseline_observed->weighted_mean.IsSet()) {
-            auto const current{observed->weighted_mean.GetValue()};
-            auto const base{baseline_observed->weighted_mean.GetValue()};
-            summary +=
-                FString::Printf(TEXT("\nBASELINE OBSERVED SPEED  //  CURRENT %.3gx  BASE %.3gx  "
-                                     "DELTA %+.3gx"),
-                                current,
-                                base,
-                                current - base);
-        }
+            sum_counts(combat.losses));
     }
     state_.summary = FText::FromString(MoveTemp(summary));
 }

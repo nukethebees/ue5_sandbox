@@ -6,10 +6,6 @@
 #include <expected>
 
 enum class ETelemetryDashboardMetric : uint8 {
-    RequestedTimeScaleRatio,
-    ObservedTimeScale,
-    TicksPerRealSecond,
-    RealSampleInterval,
     ActiveEntities,
     PlayerShips,
     Turrets,
@@ -17,33 +13,23 @@ enum class ETelemetryDashboardMetric : uint8 {
     CapitalShipFighters,
     TubeSpinners,
     ActiveLasers,
-    RegistrySlots,
-    OccupiedSpatialCells,
     SpawnRate,
     DestructionRate,
     KillRate,
     LaserFireRate,
-    GridRebuildRate,
-    RangeQueryRate,
-    LineTraceRate,
-    SweepTraceRate,
     COUNT,
 };
 
 struct SPACEGAME_API FTelemetryMetricSeries {
-    ETelemetryDashboardMetric metric{ETelemetryDashboardMetric::RequestedTimeScaleRatio};
+    ETelemetryDashboardMetric metric{ETelemetryDashboardMetric::ActiveEntities};
     FString title{};
     FString units{};
-    TArray<float> real_elapsed_seconds{};
+    TArray<float> simulated_elapsed_seconds{};
     TArray<float> values{};
     TOptional<double> weighted_mean{};
-    bool uses_simulated_time{};
 };
 
 struct SPACEGAME_API FTelemetryRunAnalysis {
-    TArray<float> throughput_real_elapsed_seconds{};
-    TArray<float> observed_time_scale{};
-    TArray<float> requested_time_scale{};
     TArray<FTelemetryMetricSeries> metrics{};
     TArray<float> battle_simulated_seconds{};
     TArray<float> battle_alive_entities{};

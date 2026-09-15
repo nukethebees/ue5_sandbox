@@ -24,7 +24,8 @@ auto read_summary(FString const& path) -> std::expected<FTelemetryRunSummary, FS
     }
     double schema{};
     if (!root->TryGetNumberField(TEXT("schema_version"), schema) ||
-        (schema != 1.0 && schema != 2.0 && schema != FLevelTelemetryReport::schema_version)) {
+        (schema != 1.0 && schema != 2.0 && schema != 3.0 &&
+         schema != FLevelTelemetryReport::schema_version)) {
         return std::unexpected{
             FString::Printf(TEXT("Unsupported or missing schema in '%s'"), *path)};
     }
@@ -66,26 +67,6 @@ auto as_of(Series const& series, uint64 const tick) -> typename Series::value_ty
     return nullptr;
 }
 
-auto requested_unchanged(::ioj::sim::LevelTelemetryTickSeries::DoubleData const& series,
-                         uint64 const begin_tick,
-                         uint64 const end_tick,
-                         double& output) -> bool {
-    auto const* const begin{as_of(series, begin_tick)};
-    auto const* const end{as_of(series, end_tick)};
-    if (!begin || !end || *begin <= 0.0 || !FMath::IsFinite(*begin) || *begin != *end) {
-        return false;
-    }
-    auto const count{series.num()};
-    for (int32 index{}; index < count; ++index) {
-        auto const tick{series.time_at(index)};
-        if (tick > begin_tick && tick <= end_tick && series.value_at(index) != *begin) {
-            return false;
-        }
-    }
-    output = *begin;
-    return true;
-}
-
 struct FMetricBuilder {
     FTelemetryMetricSeries series;
     double weighted_sum{};
@@ -101,7 +82,7 @@ struct FMetricBuilder {
             !FMath::IsFinite(weight)) {
             return;
         }
-        series.real_elapsed_seconds.Add(static_cast<float>(time));
+        series.simulated_elapsed_seconds.Add(static_cast<float>(time));
         series.values.Add(static_cast<float>(value));
         weighted_sum += value * weight;
         total_weight += weight;
@@ -149,14 +130,6 @@ void add_rate(FMetricBuilder& builder,
 /* **************************************** */
 auto telemetry_metric_title(ETelemetryDashboardMetric const metric) -> FString {
     switch (metric) {
-        case ETelemetryDashboardMetric::RequestedTimeScaleRatio:
-            return TEXT("Observed / requested time scale");
-        case ETelemetryDashboardMetric::ObservedTimeScale:
-            return TEXT("Observed time scale");
-        case ETelemetryDashboardMetric::TicksPerRealSecond:
-            return TEXT("Ticks per real second");
-        case ETelemetryDashboardMetric::RealSampleInterval:
-            return TEXT("Real sample interval");
         case ETelemetryDashboardMetric::ActiveEntities:
             return TEXT("Active entities");
         case ETelemetryDashboardMetric::PlayerShips:
@@ -171,10 +144,6 @@ auto telemetry_metric_title(ETelemetryDashboardMetric const metric) -> FString {
             return TEXT("Active tube spinners");
         case ETelemetryDashboardMetric::ActiveLasers:
             return TEXT("Active lasers");
-        case ETelemetryDashboardMetric::RegistrySlots:
-            return TEXT("Registry slots");
-        case ETelemetryDashboardMetric::OccupiedSpatialCells:
-            return TEXT("Occupied spatial cells");
         case ETelemetryDashboardMetric::SpawnRate:
             return TEXT("Spawn rate");
         case ETelemetryDashboardMetric::DestructionRate:
@@ -183,14 +152,6 @@ auto telemetry_metric_title(ETelemetryDashboardMetric const metric) -> FString {
             return TEXT("Kill rate");
         case ETelemetryDashboardMetric::LaserFireRate:
             return TEXT("Laser-fire rate");
-        case ETelemetryDashboardMetric::GridRebuildRate:
-            return TEXT("Grid-rebuild rate");
-        case ETelemetryDashboardMetric::RangeQueryRate:
-            return TEXT("Range-query rate");
-        case ETelemetryDashboardMetric::LineTraceRate:
-            return TEXT("Line-trace rate");
-        case ETelemetryDashboardMetric::SweepTraceRate:
-            return TEXT("Sweep-trace rate");
         case ETelemetryDashboardMetric::COUNT:
             break;
     }
@@ -199,22 +160,10 @@ auto telemetry_metric_title(ETelemetryDashboardMetric const metric) -> FString {
 
 auto telemetry_metric_units(ETelemetryDashboardMetric const metric) -> FString {
     switch (metric) {
-        case ETelemetryDashboardMetric::RequestedTimeScaleRatio:
-            return TEXT("%");
-        case ETelemetryDashboardMetric::ObservedTimeScale:
-            return TEXT("x");
-        case ETelemetryDashboardMetric::TicksPerRealSecond:
-            return TEXT("ticks/s");
-        case ETelemetryDashboardMetric::RealSampleInterval:
-            return TEXT("s");
         case ETelemetryDashboardMetric::SpawnRate:
         case ETelemetryDashboardMetric::DestructionRate:
         case ETelemetryDashboardMetric::KillRate:
         case ETelemetryDashboardMetric::LaserFireRate:
-        case ETelemetryDashboardMetric::GridRebuildRate:
-        case ETelemetryDashboardMetric::RangeQueryRate:
-        case ETelemetryDashboardMetric::LineTraceRate:
-        case ETelemetryDashboardMetric::SweepTraceRate:
             return TEXT("/s");
         case ETelemetryDashboardMetric::COUNT:
             break;
@@ -243,59 +192,26 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
     auto const use_battle_metrics{record.loaded_schema_version >= 2 &&
                                   record.battle_samples.Num() >= 2};
 
-    auto const& realtime{record.completed_ticks_by_real_time};
-    auto const count{realtime.num()};
-    constexpr int32 first_measured_sample_index{2};
-    auto const measured_interval_count{FMath::Max(0, count - first_measured_sample_index)};
-    ml::reserve(measured_interval_count,
-                result.throughput_real_elapsed_seconds,
-                result.observed_time_scale,
-                result.requested_time_scale);
-    for (int32 index{first_measured_sample_index}; index < count; ++index) {
-        auto const begin_time{realtime.time_at(index - 1)};
-        auto const end_time{realtime.time_at(index)};
-        auto const real_delta{end_time - begin_time};
-        auto const begin_tick{realtime.value_at(index - 1)};
-        auto const end_tick{realtime.value_at(index)};
-        if (!FMath::IsFinite(real_delta) || real_delta <= 0.0 || end_tick < begin_tick) {
-            continue;
-        }
-
-        auto const tick_delta{end_tick - begin_tick};
-        auto const ticks_per_second{static_cast<double>(tick_delta) / real_delta};
-        auto const observed{ticks_per_second * record.metadata.tick_period_seconds};
-        if (FMath::IsFinite(observed)) {
-            result.throughput_real_elapsed_seconds.Add(static_cast<float>(end_time));
-            result.observed_time_scale.Add(static_cast<float>(observed));
-            auto const* requested{as_of(record.tick_series.requested_time_scale, end_tick)};
-            result.requested_time_scale.Add(static_cast<float>(
-                requested ? *requested : record.metadata.initial_requested_time_scale));
-
-            builder(ETelemetryDashboardMetric::ObservedTimeScale)
-                .add(end_time, observed, real_delta);
-            builder(ETelemetryDashboardMetric::TicksPerRealSecond)
-                .add(end_time, ticks_per_second, real_delta);
-            builder(ETelemetryDashboardMetric::RealSampleInterval)
-                .add(end_time, real_delta, real_delta);
-
-            double stable_requested{};
-            if (requested_unchanged(record.tick_series.requested_time_scale,
-                                    begin_tick,
-                                    end_tick,
-                                    stable_requested)) {
-                builder(ETelemetryDashboardMetric::RequestedTimeScaleRatio)
-                    .add(end_time, observed / stable_requested * 100.0, real_delta);
+    if (!use_battle_metrics && record.metadata.tick_period_seconds > 0.0 &&
+        FMath::IsFinite(record.metadata.tick_period_seconds)) {
+        TArray<uint64> ticks;
+        auto collect_ticks = [&ticks](auto const& series) {
+            auto const count{series.num()};
+            for (int32 index{}; index < count; ++index) {
+                ticks.Add(series.time_at(index));
             }
+        };
+        collect_ticks(record.tick_series.active_entities);
+        collect_ticks(record.tick_series.spawned_entities);
+        collect_ticks(record.tick_series.destroyed_entities);
+        collect_ticks(record.tick_series.kills);
+        collect_ticks(record.tick_series.active_lasers);
+        collect_ticks(record.tick_series.lasers_fired);
+        for (auto const& series : record.tick_series.active_entities_by_type) {
+            collect_ticks(series);
         }
-
-        if (use_battle_metrics) {
-            continue;
-        }
-        add_gauge(builder(ETelemetryDashboardMetric::ActiveEntities),
-                  record.tick_series.active_entities,
-                  end_tick,
-                  end_time,
-                  real_delta);
+        ticks.Add(record.completion.completed_ticks);
+        ticks.Sort();
 
         constexpr ETelemetryDashboardMetric type_metrics[]{
             ETelemetryDashboardMetric::PlayerShips,
@@ -303,78 +219,59 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
             ETelemetryDashboardMetric::CapitalShips,
             ETelemetryDashboardMetric::CapitalShipFighters,
             ETelemetryDashboardMetric::TubeSpinners};
-        for (int32 type{}; type < ::ioj::sim::LevelTelemetryTickSeries::entity_type_count; ++type) {
-            add_gauge(builder(type_metrics[type]),
-                      record.tick_series.active_entities_by_type[type],
+        auto const count{ticks.Num()};
+        for (int32 index{1}; index < count; ++index) {
+            auto const begin_tick{ticks[index - 1]};
+            auto const end_tick{ticks[index]};
+            if (end_tick == begin_tick) {
+                continue;
+            }
+            auto const duration{static_cast<double>(end_tick - begin_tick) *
+                                record.metadata.tick_period_seconds};
+            auto const time{static_cast<double>(end_tick) * record.metadata.tick_period_seconds};
+            add_gauge(builder(ETelemetryDashboardMetric::ActiveEntities),
+                      record.tick_series.active_entities,
                       end_tick,
-                      end_time,
-                      real_delta);
+                      time,
+                      duration);
+            for (int32 type{}; type < ::ioj::sim::LevelTelemetryTickSeries::entity_type_count;
+                 ++type) {
+                add_gauge(builder(type_metrics[type]),
+                          record.tick_series.active_entities_by_type[type],
+                          end_tick,
+                          time,
+                          duration);
+            }
+            add_gauge(builder(ETelemetryDashboardMetric::ActiveLasers),
+                      record.tick_series.active_lasers,
+                      end_tick,
+                      time,
+                      duration);
+            add_rate(builder(ETelemetryDashboardMetric::SpawnRate),
+                     record.tick_series.spawned_entities,
+                     begin_tick,
+                     end_tick,
+                     time,
+                     duration);
+            add_rate(builder(ETelemetryDashboardMetric::DestructionRate),
+                     record.tick_series.destroyed_entities,
+                     begin_tick,
+                     end_tick,
+                     time,
+                     duration);
+            add_rate(builder(ETelemetryDashboardMetric::KillRate),
+                     record.tick_series.kills,
+                     begin_tick,
+                     end_tick,
+                     time,
+                     duration);
+            add_rate(builder(ETelemetryDashboardMetric::LaserFireRate),
+                     record.tick_series.lasers_fired,
+                     begin_tick,
+                     end_tick,
+                     time,
+                     duration);
         }
-
-        add_gauge(builder(ETelemetryDashboardMetric::ActiveLasers),
-                  record.tick_series.active_lasers,
-                  end_tick,
-                  end_time,
-                  real_delta);
-        add_gauge(builder(ETelemetryDashboardMetric::RegistrySlots),
-                  record.tick_series.registry_slot_count,
-                  end_tick,
-                  end_time,
-                  real_delta);
-        add_gauge(builder(ETelemetryDashboardMetric::OccupiedSpatialCells),
-                  record.tick_series.occupied_spatial_cell_count,
-                  end_tick,
-                  end_time,
-                  real_delta);
-
-        add_rate(builder(ETelemetryDashboardMetric::SpawnRate),
-                 record.tick_series.spawned_entities,
-                 begin_tick,
-                 end_tick,
-                 end_time,
-                 real_delta);
-        add_rate(builder(ETelemetryDashboardMetric::DestructionRate),
-                 record.tick_series.destroyed_entities,
-                 begin_tick,
-                 end_tick,
-                 end_time,
-                 real_delta);
-        add_rate(builder(ETelemetryDashboardMetric::KillRate),
-                 record.tick_series.kills,
-                 begin_tick,
-                 end_tick,
-                 end_time,
-                 real_delta);
-        add_rate(builder(ETelemetryDashboardMetric::LaserFireRate),
-                 record.tick_series.lasers_fired,
-                 begin_tick,
-                 end_tick,
-                 end_time,
-                 real_delta);
-        add_rate(builder(ETelemetryDashboardMetric::GridRebuildRate),
-                 record.tick_series.grid_rebuild_count,
-                 begin_tick,
-                 end_tick,
-                 end_time,
-                 real_delta);
-        add_rate(builder(ETelemetryDashboardMetric::RangeQueryRate),
-                 record.tick_series.range_query_count,
-                 begin_tick,
-                 end_tick,
-                 end_time,
-                 real_delta);
-        add_rate(builder(ETelemetryDashboardMetric::LineTraceRate),
-                 record.tick_series.line_trace_count,
-                 begin_tick,
-                 end_tick,
-                 end_time,
-                 real_delta);
-        add_rate(builder(ETelemetryDashboardMetric::SweepTraceRate),
-                 record.tick_series.sweep_trace_count,
-                 begin_tick,
-                 end_tick,
-                 end_time,
-                 real_delta);
     }
 
     auto sum_counts = [](auto const& counts) {
@@ -404,29 +301,6 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
     }
 
     if (use_battle_metrics) {
-        constexpr ETelemetryDashboardMetric simulated_metrics[]{
-            ETelemetryDashboardMetric::ActiveEntities,
-            ETelemetryDashboardMetric::PlayerShips,
-            ETelemetryDashboardMetric::Turrets,
-            ETelemetryDashboardMetric::CapitalShips,
-            ETelemetryDashboardMetric::CapitalShipFighters,
-            ETelemetryDashboardMetric::TubeSpinners,
-            ETelemetryDashboardMetric::ActiveLasers,
-            ETelemetryDashboardMetric::RegistrySlots,
-            ETelemetryDashboardMetric::OccupiedSpatialCells,
-            ETelemetryDashboardMetric::SpawnRate,
-            ETelemetryDashboardMetric::DestructionRate,
-            ETelemetryDashboardMetric::KillRate,
-            ETelemetryDashboardMetric::LaserFireRate,
-            ETelemetryDashboardMetric::GridRebuildRate,
-            ETelemetryDashboardMetric::RangeQueryRate,
-            ETelemetryDashboardMetric::LineTraceRate,
-            ETelemetryDashboardMetric::SweepTraceRate,
-        };
-        for (auto const metric : simulated_metrics) {
-            builder(metric).series.uses_simulated_time = true;
-        }
-
         constexpr ETelemetryDashboardMetric type_metrics[]{
             ETelemetryDashboardMetric::PlayerShips,
             ETelemetryDashboardMetric::Turrets,
@@ -471,10 +345,6 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
             }
 
             builder(ETelemetryDashboardMetric::ActiveLasers).add(time, end.active_lasers, duration);
-            builder(ETelemetryDashboardMetric::RegistrySlots)
-                .add(time, end.registry_slot_count, duration);
-            builder(ETelemetryDashboardMetric::OccupiedSpatialCells)
-                .add(time, end.occupied_spatial_cell_count, duration);
             add_rate(ETelemetryDashboardMetric::SpawnRate,
                      sum_counts(begin.combat.spawned),
                      sum_counts(end.combat.spawned),
@@ -493,26 +363,6 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
             add_rate(ETelemetryDashboardMetric::LaserFireRate,
                      begin.lasers_fired,
                      end.lasers_fired,
-                     time,
-                     duration);
-            add_rate(ETelemetryDashboardMetric::GridRebuildRate,
-                     begin.grid_rebuild_count,
-                     end.grid_rebuild_count,
-                     time,
-                     duration);
-            add_rate(ETelemetryDashboardMetric::RangeQueryRate,
-                     begin.range_query_count,
-                     end.range_query_count,
-                     time,
-                     duration);
-            add_rate(ETelemetryDashboardMetric::LineTraceRate,
-                     begin.line_trace_count,
-                     end.line_trace_count,
-                     time,
-                     duration);
-            add_rate(ETelemetryDashboardMetric::SweepTraceRate,
-                     begin.sweep_trace_count,
-                     end.sweep_trace_count,
                      time,
                      duration);
         }
