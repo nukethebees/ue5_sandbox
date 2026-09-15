@@ -1,0 +1,18 @@
+target_sources(native-simulation PRIVATE
+  ../../include/ioj/sim/levels/compiled_level_events.h
+  ../../include/ioj/sim/levels/level_compilation.h
+  ../../include/ioj/sim/levels/level_definition.h
+  ../../include/ioj/sim/levels/level_event_manager.h
+  ../../include/ioj/sim/levels/level_event_schedule.h
+  ../../include/ioj/sim/levels/level_initialisation_data.h
+  ../../include/ioj/sim/levels/level_mission_events.h
+  ../../include/ioj/sim/levels/level_mission_initialisation_data.h
+  ../../include/ioj/sim/levels/level_mission_mode.h
+  ../../include/ioj/sim/levels/level_runtime_events.h
+  ../../include/ioj/sim/levels/level_spawn_manager.h
+  level_compilation.cpp
+  level_definition.cpp
+  level_event_manager.cpp
+  level_event_schedule.cpp
+  level_spawn_manager.cpp
+)
