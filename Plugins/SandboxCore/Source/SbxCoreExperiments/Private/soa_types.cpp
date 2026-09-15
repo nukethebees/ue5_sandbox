@@ -911,6 +911,7 @@ auto EntityDataConstView::get_view(int32 const offset, int32 const count) const 
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -952,6 +953,7 @@ auto EntityDataConstView::get_const_view(int32 const offset, int32 const count) 
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -997,6 +999,7 @@ void EntityDataConstView::validate_array_sizes() const {
         ml::num(locations),
         ml::num(desired_move_locations),
         ml::num(aim_directions),
+        ml::num(planned_aim_directions),
         ml::num(desired_aiming_directions),
         ml::num(movement_directions),
         ml::num(velocities),
@@ -1050,6 +1053,7 @@ auto EntityDataView::get_view(int32 const offset, int32 const count) -> View {
         locations.get_view(offset, count),
         desired_move_locations.get_view(offset, count),
         aim_directions.get_view(offset, count),
+        planned_aim_directions.get_view(offset, count),
         desired_aiming_directions.get_view(offset, count),
         movement_directions.get_view(offset, count),
         velocities.get_view(offset, count),
@@ -1091,6 +1095,7 @@ auto EntityDataView::get_view(int32 const offset, int32 const count) const -> Co
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -1132,6 +1137,7 @@ auto EntityDataView::get_const_view(int32 const offset, int32 const count) const
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -1177,6 +1183,7 @@ void EntityDataView::validate_array_sizes() const {
         ml::num(locations),
         ml::num(desired_move_locations),
         ml::num(aim_directions),
+        ml::num(planned_aim_directions),
         ml::num(desired_aiming_directions),
         ml::num(movement_directions),
         ml::num(velocities),
@@ -1237,6 +1244,7 @@ void EntityData::reset() {
     ml::reset(locations);
     ml::reset(desired_move_locations);
     ml::reset(aim_directions);
+    ml::reset(planned_aim_directions);
     ml::reset(desired_aiming_directions);
     ml::reset(movement_directions);
     ml::reset(velocities);
@@ -1272,6 +1280,7 @@ void EntityData::reserve(int32 const count) {
     ml::reserve(locations, count);
     ml::reserve(desired_move_locations, count);
     ml::reserve(aim_directions, count);
+    ml::reserve(planned_aim_directions, count);
     ml::reserve(desired_aiming_directions, count);
     ml::reserve(movement_directions, count);
     ml::reserve(velocities, count);
@@ -1307,6 +1316,7 @@ void EntityData::add_uninitialised(int32 const count) {
     ml::add_uninitialised(locations, count);
     ml::add_uninitialised(desired_move_locations, count);
     ml::add_uninitialised(aim_directions, count);
+    ml::add_uninitialised(planned_aim_directions, count);
     ml::add_uninitialised(desired_aiming_directions, count);
     ml::add_uninitialised(movement_directions, count);
     ml::add_uninitialised(velocities, count);
@@ -1342,6 +1352,7 @@ void EntityData::add_defaulted(int32 const count) {
     ml::add_defaulted(locations, count);
     ml::add_defaulted(desired_move_locations, count);
     ml::add_defaulted(aim_directions, count);
+    ml::add_defaulted(planned_aim_directions, count);
     ml::add_defaulted(desired_aiming_directions, count);
     ml::add_defaulted(movement_directions, count);
     ml::add_defaulted(velocities, count);
@@ -1377,6 +1388,7 @@ void EntityData::set_num(int32 const count, EAllowShrinking const allow_shrinkin
     ml::set_num(locations, count, allow_shrinking);
     ml::set_num(desired_move_locations, count, allow_shrinking);
     ml::set_num(aim_directions, count, allow_shrinking);
+    ml::set_num(planned_aim_directions, count, allow_shrinking);
     ml::set_num(desired_aiming_directions, count, allow_shrinking);
     ml::set_num(movement_directions, count, allow_shrinking);
     ml::set_num(velocities, count, allow_shrinking);
@@ -1414,6 +1426,7 @@ void EntityData::apply_permutation(TArrayView<int32> indices) {
     ml::apply_permutation(locations, indices);
     ml::apply_permutation(desired_move_locations, indices);
     ml::apply_permutation(aim_directions, indices);
+    ml::apply_permutation(planned_aim_directions, indices);
     ml::apply_permutation(desired_aiming_directions, indices);
     ml::apply_permutation(movement_directions, indices);
     ml::apply_permutation(velocities, indices);
@@ -1454,6 +1467,7 @@ auto EntityData::get_view(int32 const offset, int32 const count) -> View {
         locations.get_view(offset, count),
         desired_move_locations.get_view(offset, count),
         aim_directions.get_view(offset, count),
+        planned_aim_directions.get_view(offset, count),
         desired_aiming_directions.get_view(offset, count),
         movement_directions.get_view(offset, count),
         velocities.get_view(offset, count),
@@ -1495,6 +1509,7 @@ auto EntityData::get_view(int32 const offset, int32 const count) const -> ConstV
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -1536,6 +1551,7 @@ auto EntityData::get_const_view(int32 const offset, int32 const count) const -> 
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -1581,6 +1597,7 @@ void EntityData::validate_array_sizes() const {
         ml::num(locations),
         ml::num(desired_move_locations),
         ml::num(aim_directions),
+        ml::num(planned_aim_directions),
         ml::num(desired_aiming_directions),
         ml::num(movement_directions),
         ml::num(velocities),
@@ -2874,6 +2891,7 @@ auto MimallocEntityDataConstView::get_view(int32 const offset, int32 const count
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -2916,6 +2934,7 @@ auto MimallocEntityDataConstView::get_const_view(int32 const offset, int32 const
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -2961,6 +2980,7 @@ void MimallocEntityDataConstView::validate_array_sizes() const {
         ml::num(locations),
         ml::num(desired_move_locations),
         ml::num(aim_directions),
+        ml::num(planned_aim_directions),
         ml::num(desired_aiming_directions),
         ml::num(movement_directions),
         ml::num(velocities),
@@ -3014,6 +3034,7 @@ auto MimallocEntityDataView::get_view(int32 const offset, int32 const count) -> 
         locations.get_view(offset, count),
         desired_move_locations.get_view(offset, count),
         aim_directions.get_view(offset, count),
+        planned_aim_directions.get_view(offset, count),
         desired_aiming_directions.get_view(offset, count),
         movement_directions.get_view(offset, count),
         velocities.get_view(offset, count),
@@ -3055,6 +3076,7 @@ auto MimallocEntityDataView::get_view(int32 const offset, int32 const count) con
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -3097,6 +3119,7 @@ auto MimallocEntityDataView::get_const_view(int32 const offset, int32 const coun
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -3142,6 +3165,7 @@ void MimallocEntityDataView::validate_array_sizes() const {
         ml::num(locations),
         ml::num(desired_move_locations),
         ml::num(aim_directions),
+        ml::num(planned_aim_directions),
         ml::num(desired_aiming_directions),
         ml::num(movement_directions),
         ml::num(velocities),
@@ -3202,6 +3226,7 @@ void MimallocEntityData::reset() {
     ml::reset(locations);
     ml::reset(desired_move_locations);
     ml::reset(aim_directions);
+    ml::reset(planned_aim_directions);
     ml::reset(desired_aiming_directions);
     ml::reset(movement_directions);
     ml::reset(velocities);
@@ -3237,6 +3262,7 @@ void MimallocEntityData::reserve(int32 const count) {
     ml::reserve(locations, count);
     ml::reserve(desired_move_locations, count);
     ml::reserve(aim_directions, count);
+    ml::reserve(planned_aim_directions, count);
     ml::reserve(desired_aiming_directions, count);
     ml::reserve(movement_directions, count);
     ml::reserve(velocities, count);
@@ -3272,6 +3298,7 @@ void MimallocEntityData::add_uninitialised(int32 const count) {
     ml::add_uninitialised(locations, count);
     ml::add_uninitialised(desired_move_locations, count);
     ml::add_uninitialised(aim_directions, count);
+    ml::add_uninitialised(planned_aim_directions, count);
     ml::add_uninitialised(desired_aiming_directions, count);
     ml::add_uninitialised(movement_directions, count);
     ml::add_uninitialised(velocities, count);
@@ -3307,6 +3334,7 @@ void MimallocEntityData::add_defaulted(int32 const count) {
     ml::add_defaulted(locations, count);
     ml::add_defaulted(desired_move_locations, count);
     ml::add_defaulted(aim_directions, count);
+    ml::add_defaulted(planned_aim_directions, count);
     ml::add_defaulted(desired_aiming_directions, count);
     ml::add_defaulted(movement_directions, count);
     ml::add_defaulted(velocities, count);
@@ -3342,6 +3370,7 @@ void MimallocEntityData::set_num(int32 const count, EAllowShrinking const allow_
     ml::set_num(locations, count, allow_shrinking);
     ml::set_num(desired_move_locations, count, allow_shrinking);
     ml::set_num(aim_directions, count, allow_shrinking);
+    ml::set_num(planned_aim_directions, count, allow_shrinking);
     ml::set_num(desired_aiming_directions, count, allow_shrinking);
     ml::set_num(movement_directions, count, allow_shrinking);
     ml::set_num(velocities, count, allow_shrinking);
@@ -3379,6 +3408,7 @@ void MimallocEntityData::apply_permutation(TArrayView<int32> indices) {
     ml::apply_permutation(locations, indices);
     ml::apply_permutation(desired_move_locations, indices);
     ml::apply_permutation(aim_directions, indices);
+    ml::apply_permutation(planned_aim_directions, indices);
     ml::apply_permutation(desired_aiming_directions, indices);
     ml::apply_permutation(movement_directions, indices);
     ml::apply_permutation(velocities, indices);
@@ -3419,6 +3449,7 @@ auto MimallocEntityData::get_view(int32 const offset, int32 const count) -> View
         locations.get_view(offset, count),
         desired_move_locations.get_view(offset, count),
         aim_directions.get_view(offset, count),
+        planned_aim_directions.get_view(offset, count),
         desired_aiming_directions.get_view(offset, count),
         movement_directions.get_view(offset, count),
         velocities.get_view(offset, count),
@@ -3460,6 +3491,7 @@ auto MimallocEntityData::get_view(int32 const offset, int32 const count) const -
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -3501,6 +3533,7 @@ auto MimallocEntityData::get_const_view(int32 const offset, int32 const count) c
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -3546,6 +3579,7 @@ void MimallocEntityData::validate_array_sizes() const {
         ml::num(locations),
         ml::num(desired_move_locations),
         ml::num(aim_directions),
+        ml::num(planned_aim_directions),
         ml::num(desired_aiming_directions),
         ml::num(movement_directions),
         ml::num(velocities),
@@ -4839,6 +4873,7 @@ auto MallocEntityDataConstView::get_view(int32 const offset, int32 const count) 
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -4881,6 +4916,7 @@ auto MallocEntityDataConstView::get_const_view(int32 const offset, int32 const c
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -4926,6 +4962,7 @@ void MallocEntityDataConstView::validate_array_sizes() const {
         ml::num(locations),
         ml::num(desired_move_locations),
         ml::num(aim_directions),
+        ml::num(planned_aim_directions),
         ml::num(desired_aiming_directions),
         ml::num(movement_directions),
         ml::num(velocities),
@@ -4979,6 +5016,7 @@ auto MallocEntityDataView::get_view(int32 const offset, int32 const count) -> Vi
         locations.get_view(offset, count),
         desired_move_locations.get_view(offset, count),
         aim_directions.get_view(offset, count),
+        planned_aim_directions.get_view(offset, count),
         desired_aiming_directions.get_view(offset, count),
         movement_directions.get_view(offset, count),
         velocities.get_view(offset, count),
@@ -5020,6 +5058,7 @@ auto MallocEntityDataView::get_view(int32 const offset, int32 const count) const
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -5062,6 +5101,7 @@ auto MallocEntityDataView::get_const_view(int32 const offset, int32 const count)
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -5107,6 +5147,7 @@ void MallocEntityDataView::validate_array_sizes() const {
         ml::num(locations),
         ml::num(desired_move_locations),
         ml::num(aim_directions),
+        ml::num(planned_aim_directions),
         ml::num(desired_aiming_directions),
         ml::num(movement_directions),
         ml::num(velocities),
@@ -5167,6 +5208,7 @@ void MallocEntityData::reset() {
     ml::reset(locations);
     ml::reset(desired_move_locations);
     ml::reset(aim_directions);
+    ml::reset(planned_aim_directions);
     ml::reset(desired_aiming_directions);
     ml::reset(movement_directions);
     ml::reset(velocities);
@@ -5202,6 +5244,7 @@ void MallocEntityData::reserve(int32 const count) {
     ml::reserve(locations, count);
     ml::reserve(desired_move_locations, count);
     ml::reserve(aim_directions, count);
+    ml::reserve(planned_aim_directions, count);
     ml::reserve(desired_aiming_directions, count);
     ml::reserve(movement_directions, count);
     ml::reserve(velocities, count);
@@ -5237,6 +5280,7 @@ void MallocEntityData::add_uninitialised(int32 const count) {
     ml::add_uninitialised(locations, count);
     ml::add_uninitialised(desired_move_locations, count);
     ml::add_uninitialised(aim_directions, count);
+    ml::add_uninitialised(planned_aim_directions, count);
     ml::add_uninitialised(desired_aiming_directions, count);
     ml::add_uninitialised(movement_directions, count);
     ml::add_uninitialised(velocities, count);
@@ -5272,6 +5316,7 @@ void MallocEntityData::add_defaulted(int32 const count) {
     ml::add_defaulted(locations, count);
     ml::add_defaulted(desired_move_locations, count);
     ml::add_defaulted(aim_directions, count);
+    ml::add_defaulted(planned_aim_directions, count);
     ml::add_defaulted(desired_aiming_directions, count);
     ml::add_defaulted(movement_directions, count);
     ml::add_defaulted(velocities, count);
@@ -5307,6 +5352,7 @@ void MallocEntityData::set_num(int32 const count, EAllowShrinking const allow_sh
     ml::set_num(locations, count, allow_shrinking);
     ml::set_num(desired_move_locations, count, allow_shrinking);
     ml::set_num(aim_directions, count, allow_shrinking);
+    ml::set_num(planned_aim_directions, count, allow_shrinking);
     ml::set_num(desired_aiming_directions, count, allow_shrinking);
     ml::set_num(movement_directions, count, allow_shrinking);
     ml::set_num(velocities, count, allow_shrinking);
@@ -5344,6 +5390,7 @@ void MallocEntityData::apply_permutation(TArrayView<int32> indices) {
     ml::apply_permutation(locations, indices);
     ml::apply_permutation(desired_move_locations, indices);
     ml::apply_permutation(aim_directions, indices);
+    ml::apply_permutation(planned_aim_directions, indices);
     ml::apply_permutation(desired_aiming_directions, indices);
     ml::apply_permutation(movement_directions, indices);
     ml::apply_permutation(velocities, indices);
@@ -5384,6 +5431,7 @@ auto MallocEntityData::get_view(int32 const offset, int32 const count) -> View {
         locations.get_view(offset, count),
         desired_move_locations.get_view(offset, count),
         aim_directions.get_view(offset, count),
+        planned_aim_directions.get_view(offset, count),
         desired_aiming_directions.get_view(offset, count),
         movement_directions.get_view(offset, count),
         velocities.get_view(offset, count),
@@ -5425,6 +5473,7 @@ auto MallocEntityData::get_view(int32 const offset, int32 const count) const -> 
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -5466,6 +5515,7 @@ auto MallocEntityData::get_const_view(int32 const offset, int32 const count) con
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -5511,6 +5561,7 @@ void MallocEntityData::validate_array_sizes() const {
         ml::num(locations),
         ml::num(desired_move_locations),
         ml::num(aim_directions),
+        ml::num(planned_aim_directions),
         ml::num(desired_aiming_directions),
         ml::num(movement_directions),
         ml::num(velocities),
@@ -6805,6 +6856,7 @@ auto ReallocEntityDataConstView::get_view(int32 const offset, int32 const count)
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -6847,6 +6899,7 @@ auto ReallocEntityDataConstView::get_const_view(int32 const offset, int32 const 
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -6892,6 +6945,7 @@ void ReallocEntityDataConstView::validate_array_sizes() const {
         ml::num(locations),
         ml::num(desired_move_locations),
         ml::num(aim_directions),
+        ml::num(planned_aim_directions),
         ml::num(desired_aiming_directions),
         ml::num(movement_directions),
         ml::num(velocities),
@@ -6945,6 +6999,7 @@ auto ReallocEntityDataView::get_view(int32 const offset, int32 const count) -> V
         locations.get_view(offset, count),
         desired_move_locations.get_view(offset, count),
         aim_directions.get_view(offset, count),
+        planned_aim_directions.get_view(offset, count),
         desired_aiming_directions.get_view(offset, count),
         movement_directions.get_view(offset, count),
         velocities.get_view(offset, count),
@@ -6986,6 +7041,7 @@ auto ReallocEntityDataView::get_view(int32 const offset, int32 const count) cons
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -7028,6 +7084,7 @@ auto ReallocEntityDataView::get_const_view(int32 const offset, int32 const count
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -7073,6 +7130,7 @@ void ReallocEntityDataView::validate_array_sizes() const {
         ml::num(locations),
         ml::num(desired_move_locations),
         ml::num(aim_directions),
+        ml::num(planned_aim_directions),
         ml::num(desired_aiming_directions),
         ml::num(movement_directions),
         ml::num(velocities),
@@ -7133,6 +7191,7 @@ void ReallocEntityData::reset() {
     ml::reset(locations);
     ml::reset(desired_move_locations);
     ml::reset(aim_directions);
+    ml::reset(planned_aim_directions);
     ml::reset(desired_aiming_directions);
     ml::reset(movement_directions);
     ml::reset(velocities);
@@ -7168,6 +7227,7 @@ void ReallocEntityData::reserve(int32 const count) {
     ml::reserve(locations, count);
     ml::reserve(desired_move_locations, count);
     ml::reserve(aim_directions, count);
+    ml::reserve(planned_aim_directions, count);
     ml::reserve(desired_aiming_directions, count);
     ml::reserve(movement_directions, count);
     ml::reserve(velocities, count);
@@ -7203,6 +7263,7 @@ void ReallocEntityData::add_uninitialised(int32 const count) {
     ml::add_uninitialised(locations, count);
     ml::add_uninitialised(desired_move_locations, count);
     ml::add_uninitialised(aim_directions, count);
+    ml::add_uninitialised(planned_aim_directions, count);
     ml::add_uninitialised(desired_aiming_directions, count);
     ml::add_uninitialised(movement_directions, count);
     ml::add_uninitialised(velocities, count);
@@ -7238,6 +7299,7 @@ void ReallocEntityData::add_defaulted(int32 const count) {
     ml::add_defaulted(locations, count);
     ml::add_defaulted(desired_move_locations, count);
     ml::add_defaulted(aim_directions, count);
+    ml::add_defaulted(planned_aim_directions, count);
     ml::add_defaulted(desired_aiming_directions, count);
     ml::add_defaulted(movement_directions, count);
     ml::add_defaulted(velocities, count);
@@ -7273,6 +7335,7 @@ void ReallocEntityData::set_num(int32 const count, EAllowShrinking const allow_s
     ml::set_num(locations, count, allow_shrinking);
     ml::set_num(desired_move_locations, count, allow_shrinking);
     ml::set_num(aim_directions, count, allow_shrinking);
+    ml::set_num(planned_aim_directions, count, allow_shrinking);
     ml::set_num(desired_aiming_directions, count, allow_shrinking);
     ml::set_num(movement_directions, count, allow_shrinking);
     ml::set_num(velocities, count, allow_shrinking);
@@ -7310,6 +7373,7 @@ void ReallocEntityData::apply_permutation(TArrayView<int32> indices) {
     ml::apply_permutation(locations, indices);
     ml::apply_permutation(desired_move_locations, indices);
     ml::apply_permutation(aim_directions, indices);
+    ml::apply_permutation(planned_aim_directions, indices);
     ml::apply_permutation(desired_aiming_directions, indices);
     ml::apply_permutation(movement_directions, indices);
     ml::apply_permutation(velocities, indices);
@@ -7350,6 +7414,7 @@ auto ReallocEntityData::get_view(int32 const offset, int32 const count) -> View 
         locations.get_view(offset, count),
         desired_move_locations.get_view(offset, count),
         aim_directions.get_view(offset, count),
+        planned_aim_directions.get_view(offset, count),
         desired_aiming_directions.get_view(offset, count),
         movement_directions.get_view(offset, count),
         velocities.get_view(offset, count),
@@ -7391,6 +7456,7 @@ auto ReallocEntityData::get_view(int32 const offset, int32 const count) const ->
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -7432,6 +7498,7 @@ auto ReallocEntityData::get_const_view(int32 const offset, int32 const count) co
         locations.get_const_view(offset, count),
         desired_move_locations.get_const_view(offset, count),
         aim_directions.get_const_view(offset, count),
+        planned_aim_directions.get_const_view(offset, count),
         desired_aiming_directions.get_const_view(offset, count),
         movement_directions.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
@@ -7477,6 +7544,7 @@ void ReallocEntityData::validate_array_sizes() const {
         ml::num(locations),
         ml::num(desired_move_locations),
         ml::num(aim_directions),
+        ml::num(planned_aim_directions),
         ml::num(desired_aiming_directions),
         ml::num(movement_directions),
         ml::num(velocities),

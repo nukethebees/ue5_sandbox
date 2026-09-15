@@ -29,6 +29,14 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
     EXPECT_NE(output.find("ColLayout<std::int32_t> Ids"), std::string::npos);
     EXPECT_NE(output.find("std::span<std::int32_t const> ids"), std::string::npos);
     EXPECT_NE(output.find("std::span<float> xs"), std::string::npos);
+    EXPECT_NE(output.find("void set(size_type const index, std::int32_t const new_ids, float const "
+                          "new_nested_xs) const"),
+              std::string::npos);
+    EXPECT_NE(output.find("nested.xs[static_cast<std::size_t>(index)] = new_nested_xs;"),
+              std::string::npos);
+    EXPECT_NE(
+        output.find("auto add(std::int32_t const new_ids, float const new_nested_xs) -> size_type"),
+        std::string::npos);
     EXPECT_NE(output.find("ColLayout<float> NestedXs{Ids}"), std::string::npos);
     EXPECT_NE(output.find("std::memcpy(destination.nested_xs"), std::string::npos);
     EXPECT_EQ(output.find("TArray"), std::string::npos);
@@ -47,6 +55,32 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
     EXPECT_EQ(output.find("CustomAllocator::free(data_, allocation_alignment)"), std::string::npos);
     EXPECT_NE(output.find("std::memcpy(destination.nested_xs, source.nested_xs, nested_xs_bytes);"),
               std::string::npos);
+}
+
+TEST(SingleAllocationSoa, StdlibRowOperationsUseNestedEquivalentValues) {
+    std::vector<SoaSchema> structs{
+        {.name = "Points",
+         .members = {{"xs", SoaMemberKind::array, TypeRef{"float"}},
+                     {"ys", SoaMemberKind::array, TypeRef{"float"}}},
+         .equivalent_type = TypeRef{"Point"},
+         .layout_only = true},
+        {.name = "Rows",
+         .members = {{"ids", SoaMemberKind::array, TypeRef{"std::int32_t"}},
+                     {"points", SoaMemberKind::nested, TypeRef{"Points"}, {}, "Points"}}}};
+    auto const files{render_modules(lower_modules(
+        Manifest{.schema_version = manifest_schema_version,
+                 .modules = {SoaModuleSchema{.settings = {.name = "native", .header = "Native.h"},
+                                             .structs = std::move(structs),
+                                             .backend = SoaBackend::standard_library}}}))};
+    auto const& output{files.front().content};
+    EXPECT_NE(output.find("void set(size_type const index, std::int32_t const new_ids, Point const "
+                          "new_points) const"),
+              std::string::npos);
+    EXPECT_NE(output.find("points.set(index, new_points);"), std::string::npos);
+    EXPECT_NE(
+        output.find("auto add(std::int32_t const new_ids, Point const new_points) -> size_type"),
+        std::string::npos);
+    EXPECT_NE(output.find("set(index, new_ids, new_points); return index;"), std::string::npos);
 }
 
 auto schemas() -> std::vector<SoaSchema> {

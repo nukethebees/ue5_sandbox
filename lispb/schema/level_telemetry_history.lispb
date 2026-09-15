@@ -13,12 +13,12 @@
       :mask-field true)
     (member active_entities_by_type array @level_telemetry_entity_type_counts
       :mask-field true
-      :mask-dimensions ((entity_type_index "ioj::sim::telemetry::entity_type_count")))
+      :mask-dimensions ((entity_type_index "entity_type_count")))
     (member active_entities_by_team_and_type array @level_telemetry_entity_counts
       :mask-field true
       :mask-dimensions (
-        (team_index "ioj::sim::telemetry::team_count")
-        (entity_type_index "ioj::sim::telemetry::entity_type_count")))
+        (team_index "team_count")
+        (entity_type_index "entity_type_count")))
     (member spawned_entities array int32
       :mask-field true)
     (member destroyed_entities array int32

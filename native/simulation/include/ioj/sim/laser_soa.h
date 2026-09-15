@@ -5,7 +5,9 @@
 
 #include "ioj/sim/entity_handle.h"
 #include "ioj/sim/laser_source.h"
+#include "ioj/sim/rotator_types.h"
 #include "ioj/sim/rotators3f.h"
+#include "ioj/sim/vector_types.h"
 #include "ioj/sim/vectors3f.h"
 #include "native_soa/storage.h"
 #include "sandbox/core/soa_permutation.h"
@@ -23,8 +25,8 @@ struct SpawnRequestsConstView {
     std::span<std::int32_t const> damages;
     std::span<float const> speeds;
     std::span<float const> max_distances;
-    std::span<ioj::sim::RegistryEntityHandle const> instigator_handles;
-    std::span<ioj::sim::LaserSource const> sources;
+    std::span<RegistryEntityHandle const> instigator_handles;
+    std::span<LaserSource const> sources;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -100,8 +102,8 @@ struct SpawnRequestsView {
     std::span<std::int32_t> damages;
     std::span<float> speeds;
     std::span<float> max_distances;
-    std::span<ioj::sim::RegistryEntityHandle> instigator_handles;
-    std::span<ioj::sim::LaserSource> sources;
+    std::span<RegistryEntityHandle> instigator_handles;
+    std::span<LaserSource> sources;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -166,6 +168,25 @@ struct SpawnRequestsView {
     auto right(size_type const count) const -> SpawnRequestsView {
         return slice(num() - count, count);
     }
+    void set(size_type const index,
+             Vector3f const new_locations,
+             Rotator3f const new_rotations,
+             Vector3f const new_base_velocities,
+             std::int32_t const new_damages,
+             float const new_speeds,
+             float const new_max_distances,
+             RegistryEntityHandle const new_instigator_handles,
+             LaserSource const new_sources) const {
+        ml::native_soa::require(index >= 0 && index < num());
+        locations.set(index, new_locations);
+        rotations.set(index, new_rotations);
+        base_velocities.set(index, new_base_velocities);
+        damages[static_cast<std::size_t>(index)] = new_damages;
+        speeds[static_cast<std::size_t>(index)] = new_speeds;
+        max_distances[static_cast<std::size_t>(index)] = new_max_distances;
+        instigator_handles[static_cast<std::size_t>(index)] = new_instigator_handles;
+        sources[static_cast<std::size_t>(index)] = new_sources;
+    }
 };
 struct SpawnRequests {
     using View = SpawnRequestsView;
@@ -177,8 +198,8 @@ struct SpawnRequests {
     ml::native_soa::Vector<std::int32_t> damages;
     ml::native_soa::Vector<float> speeds;
     ml::native_soa::Vector<float> max_distances;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> instigator_handles;
-    ml::native_soa::Vector<ioj::sim::LaserSource> sources;
+    ml::native_soa::Vector<RegistryEntityHandle> instigator_handles;
+    ml::native_soa::Vector<LaserSource> sources;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -324,6 +345,46 @@ struct SpawnRequests {
         }
         set_num(old_num - count);
     }
+    void set(size_type const index,
+             Vector3f const new_locations,
+             Rotator3f const new_rotations,
+             Vector3f const new_base_velocities,
+             std::int32_t const new_damages,
+             float const new_speeds,
+             float const new_max_distances,
+             RegistryEntityHandle const new_instigator_handles,
+             LaserSource const new_sources) {
+        get_view().set(index,
+                       new_locations,
+                       new_rotations,
+                       new_base_velocities,
+                       new_damages,
+                       new_speeds,
+                       new_max_distances,
+                       new_instigator_handles,
+                       new_sources);
+    }
+    auto add(Vector3f const new_locations,
+             Rotator3f const new_rotations,
+             Vector3f const new_base_velocities,
+             std::int32_t const new_damages,
+             float const new_speeds,
+             float const new_max_distances,
+             RegistryEntityHandle const new_instigator_handles,
+             LaserSource const new_sources) -> size_type {
+        auto const index{num()};
+        add_defaulted(1);
+        set(index,
+            new_locations,
+            new_rotations,
+            new_base_velocities,
+            new_damages,
+            new_speeds,
+            new_max_distances,
+            new_instigator_handles,
+            new_sources);
+        return index;
+    }
     void append_from(ConstView source) {
         auto const count{source.num()};
         ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
@@ -408,14 +469,13 @@ struct SpawnRequests {
             auto const begin{reinterpret_cast<std::uintptr_t>(instigator_handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + instigator_handles.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                                           sizeof(RegistryEntityHandle));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.sources.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(sources.data())};
             ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + sources.size() * sizeof(ioj::sim::LaserSource));
+                                    address >= begin + sources.size() * sizeof(LaserSource));
         }
         locations.xs.insert(
             locations.xs.end(), source.locations.xs.begin(), source.locations.xs.end());
@@ -544,13 +604,13 @@ struct EntitiesConstView {
     using View = EntitiesView;
     using ConstView = EntitiesConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::LaserSource const> sources;
+    std::span<LaserSource const> sources;
     Vectors3fConstView locations;
     Rotators3fConstView rotations;
     Vectors3fConstView velocities;
     std::span<std::int32_t const> damages;
     std::span<float const> lifetimes_remaining;
-    std::span<ioj::sim::RegistryEntityHandle const> instigator_handles;
+    std::span<RegistryEntityHandle const> instigator_handles;
     std::span<float const> initial_lifetimes;
     std::span<float const> spawn_times;
     auto num() const noexcept -> size_type { return static_cast<size_type>(sources.size()); }
@@ -626,13 +686,13 @@ struct EntitiesView {
     using View = EntitiesView;
     using ConstView = EntitiesConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::LaserSource> sources;
+    std::span<LaserSource> sources;
     Vectors3fView locations;
     Rotators3fView rotations;
     Vectors3fView velocities;
     std::span<std::int32_t> damages;
     std::span<float> lifetimes_remaining;
-    std::span<ioj::sim::RegistryEntityHandle> instigator_handles;
+    std::span<RegistryEntityHandle> instigator_handles;
     std::span<float> initial_lifetimes;
     std::span<float> spawn_times;
     auto num() const noexcept -> size_type { return static_cast<size_type>(sources.size()); }
@@ -701,18 +761,39 @@ struct EntitiesView {
     }
     auto left(size_type const count) const -> EntitiesView { return slice(0, count); }
     auto right(size_type const count) const -> EntitiesView { return slice(num() - count, count); }
+    void set(size_type const index,
+             LaserSource const new_sources,
+             Vector3f const new_locations,
+             Rotator3f const new_rotations,
+             Vector3f const new_velocities,
+             std::int32_t const new_damages,
+             float const new_lifetimes_remaining,
+             RegistryEntityHandle const new_instigator_handles,
+             float const new_initial_lifetimes,
+             float const new_spawn_times) const {
+        ml::native_soa::require(index >= 0 && index < num());
+        sources[static_cast<std::size_t>(index)] = new_sources;
+        locations.set(index, new_locations);
+        rotations.set(index, new_rotations);
+        velocities.set(index, new_velocities);
+        damages[static_cast<std::size_t>(index)] = new_damages;
+        lifetimes_remaining[static_cast<std::size_t>(index)] = new_lifetimes_remaining;
+        instigator_handles[static_cast<std::size_t>(index)] = new_instigator_handles;
+        initial_lifetimes[static_cast<std::size_t>(index)] = new_initial_lifetimes;
+        spawn_times[static_cast<std::size_t>(index)] = new_spawn_times;
+    }
 };
 struct Entities {
     using View = EntitiesView;
     using ConstView = EntitiesConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<ioj::sim::LaserSource> sources;
+    ml::native_soa::Vector<LaserSource> sources;
     Vectors3f locations;
     Rotators3f rotations;
     Vectors3f velocities;
     ml::native_soa::Vector<std::int32_t> damages;
     ml::native_soa::Vector<float> lifetimes_remaining;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> instigator_handles;
+    ml::native_soa::Vector<RegistryEntityHandle> instigator_handles;
     ml::native_soa::Vector<float> initial_lifetimes;
     ml::native_soa::Vector<float> spawn_times;
     auto num() const noexcept -> size_type { return static_cast<size_type>(sources.size()); }
@@ -868,6 +949,50 @@ struct Entities {
         }
         set_num(old_num - count);
     }
+    void set(size_type const index,
+             LaserSource const new_sources,
+             Vector3f const new_locations,
+             Rotator3f const new_rotations,
+             Vector3f const new_velocities,
+             std::int32_t const new_damages,
+             float const new_lifetimes_remaining,
+             RegistryEntityHandle const new_instigator_handles,
+             float const new_initial_lifetimes,
+             float const new_spawn_times) {
+        get_view().set(index,
+                       new_sources,
+                       new_locations,
+                       new_rotations,
+                       new_velocities,
+                       new_damages,
+                       new_lifetimes_remaining,
+                       new_instigator_handles,
+                       new_initial_lifetimes,
+                       new_spawn_times);
+    }
+    auto add(LaserSource const new_sources,
+             Vector3f const new_locations,
+             Rotator3f const new_rotations,
+             Vector3f const new_velocities,
+             std::int32_t const new_damages,
+             float const new_lifetimes_remaining,
+             RegistryEntityHandle const new_instigator_handles,
+             float const new_initial_lifetimes,
+             float const new_spawn_times) -> size_type {
+        auto const index{num()};
+        add_defaulted(1);
+        set(index,
+            new_sources,
+            new_locations,
+            new_rotations,
+            new_velocities,
+            new_damages,
+            new_lifetimes_remaining,
+            new_instigator_handles,
+            new_initial_lifetimes,
+            new_spawn_times);
+        return index;
+    }
     void append_from(ConstView source) {
         auto const count{source.num()};
         ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
@@ -879,8 +1004,7 @@ struct Entities {
             auto const address{reinterpret_cast<std::uintptr_t>(source.sources.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(sources.data())};
             ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + sources.size() * sizeof(ioj::sim::LaserSource));
+                                    address >= begin + sources.size() * sizeof(LaserSource));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.locations.xs.data())};
@@ -953,7 +1077,7 @@ struct Entities {
             auto const begin{reinterpret_cast<std::uintptr_t>(instigator_handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + instigator_handles.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                                           sizeof(RegistryEntityHandle));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.initial_lifetimes.data())};

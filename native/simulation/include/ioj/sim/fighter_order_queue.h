@@ -15,10 +15,10 @@ struct FighterOrderQueueConstView {
     using View = FighterOrderQueueView;
     using ConstView = FighterOrderQueueConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle const> handles;
-    std::span<ioj::sim::FighterOrder const> orders;
-    std::span<ioj::sim::FighterTask const> tasks;
-    std::span<ioj::sim::RegistryEntityHandle const> targets;
+    std::span<RegistryEntityHandle const> handles;
+    std::span<FighterOrder const> orders;
+    std::span<FighterTask const> tasks;
+    std::span<RegistryEntityHandle const> targets;
     auto num() const noexcept -> size_type { return static_cast<size_type>(handles.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -69,10 +69,10 @@ struct FighterOrderQueueView {
     using View = FighterOrderQueueView;
     using ConstView = FighterOrderQueueConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle> handles;
-    std::span<ioj::sim::FighterOrder> orders;
-    std::span<ioj::sim::FighterTask> tasks;
-    std::span<ioj::sim::RegistryEntityHandle> targets;
+    std::span<RegistryEntityHandle> handles;
+    std::span<FighterOrder> orders;
+    std::span<FighterTask> tasks;
+    std::span<RegistryEntityHandle> targets;
     auto num() const noexcept -> size_type { return static_cast<size_type>(handles.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -118,10 +118,10 @@ struct FighterOrderQueueView {
         return slice(num() - count, count);
     }
     void set(size_type const index,
-             ioj::sim::RegistryEntityHandle const new_handles,
-             ioj::sim::FighterOrder const new_orders,
-             ioj::sim::FighterTask const new_tasks,
-             ioj::sim::RegistryEntityHandle const new_targets) const {
+             RegistryEntityHandle const new_handles,
+             FighterOrder const new_orders,
+             FighterTask const new_tasks,
+             RegistryEntityHandle const new_targets) const {
         ml::native_soa::require(index >= 0 && index < num());
         handles[static_cast<std::size_t>(index)] = new_handles;
         orders[static_cast<std::size_t>(index)] = new_orders;
@@ -133,10 +133,10 @@ struct FighterOrderQueue {
     using View = FighterOrderQueueView;
     using ConstView = FighterOrderQueueConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> handles;
-    ml::native_soa::Vector<ioj::sim::FighterOrder> orders;
-    ml::native_soa::Vector<ioj::sim::FighterTask> tasks;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> targets;
+    ml::native_soa::Vector<RegistryEntityHandle> handles;
+    ml::native_soa::Vector<FighterOrder> orders;
+    ml::native_soa::Vector<FighterTask> tasks;
+    ml::native_soa::Vector<RegistryEntityHandle> targets;
     auto num() const noexcept -> size_type { return static_cast<size_type>(handles.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -203,16 +203,16 @@ struct FighterOrderQueue {
         set_num(old_num - count);
     }
     void set(size_type const index,
-             ioj::sim::RegistryEntityHandle const new_handles,
-             ioj::sim::FighterOrder const new_orders,
-             ioj::sim::FighterTask const new_tasks,
-             ioj::sim::RegistryEntityHandle const new_targets) {
+             RegistryEntityHandle const new_handles,
+             FighterOrder const new_orders,
+             FighterTask const new_tasks,
+             RegistryEntityHandle const new_targets) {
         get_view().set(index, new_handles, new_orders, new_tasks, new_targets);
     }
-    auto add(ioj::sim::RegistryEntityHandle const new_handles,
-             ioj::sim::FighterOrder const new_orders,
-             ioj::sim::FighterTask const new_tasks,
-             ioj::sim::RegistryEntityHandle const new_targets) -> size_type {
+    auto add(RegistryEntityHandle const new_handles,
+             FighterOrder const new_orders,
+             FighterTask const new_tasks,
+             RegistryEntityHandle const new_targets) -> size_type {
         auto const index{num()};
         add_defaulted(1);
         set(index, new_handles, new_orders, new_tasks, new_targets);
@@ -229,28 +229,27 @@ struct FighterOrderQueue {
             auto const address{reinterpret_cast<std::uintptr_t>(source.handles.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(handles.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + handles.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                    address >=
+                                        begin + handles.size() * sizeof(RegistryEntityHandle));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.orders.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(orders.data())};
             ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + orders.size() * sizeof(ioj::sim::FighterOrder));
+                                    address >= begin + orders.size() * sizeof(FighterOrder));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.tasks.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(tasks.data())};
-            ml::native_soa::require(
-                address < begin || address >= begin + tasks.size() * sizeof(ioj::sim::FighterTask));
+            ml::native_soa::require(address < begin ||
+                                    address >= begin + tasks.size() * sizeof(FighterTask));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.targets.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(targets.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + targets.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                    address >=
+                                        begin + targets.size() * sizeof(RegistryEntityHandle));
         }
         handles.insert(handles.end(), source.handles.begin(), source.handles.end());
         orders.insert(orders.end(), source.orders.begin(), source.orders.end());

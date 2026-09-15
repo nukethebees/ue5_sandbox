@@ -16,7 +16,7 @@ struct TurretSpawnDataConstView {
     using ConstView = TurretSpawnDataConstView;
     using size_type = std::int32_t;
     Vectors3fConstView locations;
-    std::span<ioj::sim::Team const> teams;
+    std::span<Team const> teams;
     std::span<std::int32_t const> healths;
     std::span<std::int32_t const> laser_damages;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
@@ -72,7 +72,7 @@ struct TurretSpawnDataView {
     using ConstView = TurretSpawnDataConstView;
     using size_type = std::int32_t;
     Vectors3fView locations;
-    std::span<ioj::sim::Team> teams;
+    std::span<Team> teams;
     std::span<std::int32_t> healths;
     std::span<std::int32_t> laser_damages;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
@@ -122,13 +122,28 @@ struct TurretSpawnDataView {
     auto right(size_type const count) const -> TurretSpawnDataView {
         return slice(num() - count, count);
     }
+    void set(size_type const index,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             Team const new_teams,
+             std::int32_t const new_healths,
+             std::int32_t const new_laser_damages) const {
+        ml::native_soa::require(index >= 0 && index < num());
+        locations.xs[static_cast<std::size_t>(index)] = new_locations_xs;
+        locations.ys[static_cast<std::size_t>(index)] = new_locations_ys;
+        locations.zs[static_cast<std::size_t>(index)] = new_locations_zs;
+        teams[static_cast<std::size_t>(index)] = new_teams;
+        healths[static_cast<std::size_t>(index)] = new_healths;
+        laser_damages[static_cast<std::size_t>(index)] = new_laser_damages;
+    }
 };
 struct TurretSpawnData {
     using View = TurretSpawnDataView;
     using ConstView = TurretSpawnDataConstView;
     using size_type = std::int32_t;
     Vectors3f locations;
-    ml::native_soa::Vector<ioj::sim::Team> teams;
+    ml::native_soa::Vector<Team> teams;
     ml::native_soa::Vector<std::int32_t> healths;
     ml::native_soa::Vector<std::int32_t> laser_damages;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
@@ -212,6 +227,38 @@ struct TurretSpawnData {
         }
         set_num(old_num - count);
     }
+    void set(size_type const index,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             Team const new_teams,
+             std::int32_t const new_healths,
+             std::int32_t const new_laser_damages) {
+        get_view().set(index,
+                       new_locations_xs,
+                       new_locations_ys,
+                       new_locations_zs,
+                       new_teams,
+                       new_healths,
+                       new_laser_damages);
+    }
+    auto add(float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             Team const new_teams,
+             std::int32_t const new_healths,
+             std::int32_t const new_laser_damages) -> size_type {
+        auto const index{num()};
+        add_defaulted(1);
+        set(index,
+            new_locations_xs,
+            new_locations_ys,
+            new_locations_zs,
+            new_teams,
+            new_healths,
+            new_laser_damages);
+        return index;
+    }
     void append_from(ConstView source) {
         auto const count{source.num()};
         ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
@@ -241,7 +288,7 @@ struct TurretSpawnData {
             auto const address{reinterpret_cast<std::uintptr_t>(source.teams.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(teams.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + teams.size() * sizeof(ioj::sim::Team));
+                                    address >= begin + teams.size() * sizeof(Team));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.healths.data())};

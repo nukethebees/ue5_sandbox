@@ -14,8 +14,8 @@ struct EntityEntityOverlapsConstView {
     using View = EntityEntityOverlapsView;
     using ConstView = EntityEntityOverlapsConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle const> first_entities;
-    std::span<ioj::sim::RegistryEntityHandle const> second_entities;
+    std::span<RegistryEntityHandle const> first_entities;
+    std::span<RegistryEntityHandle const> second_entities;
     auto num() const noexcept -> size_type { return static_cast<size_type>(first_entities.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -65,8 +65,8 @@ struct EntityEntityOverlapsView {
     using View = EntityEntityOverlapsView;
     using ConstView = EntityEntityOverlapsConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle> first_entities;
-    std::span<ioj::sim::RegistryEntityHandle> second_entities;
+    std::span<RegistryEntityHandle> first_entities;
+    std::span<RegistryEntityHandle> second_entities;
     auto num() const noexcept -> size_type { return static_cast<size_type>(first_entities.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -108,8 +108,8 @@ struct EntityEntityOverlapsView {
         return slice(num() - count, count);
     }
     void set(size_type const index,
-             ioj::sim::RegistryEntityHandle const new_first_entities,
-             ioj::sim::RegistryEntityHandle const new_second_entities) const {
+             RegistryEntityHandle const new_first_entities,
+             RegistryEntityHandle const new_second_entities) const {
         ml::native_soa::require(index >= 0 && index < num());
         first_entities[static_cast<std::size_t>(index)] = new_first_entities;
         second_entities[static_cast<std::size_t>(index)] = new_second_entities;
@@ -119,8 +119,8 @@ struct EntityEntityOverlaps {
     using View = EntityEntityOverlapsView;
     using ConstView = EntityEntityOverlapsConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> first_entities;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> second_entities;
+    ml::native_soa::Vector<RegistryEntityHandle> first_entities;
+    ml::native_soa::Vector<RegistryEntityHandle> second_entities;
     auto num() const noexcept -> size_type { return static_cast<size_type>(first_entities.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -171,12 +171,12 @@ struct EntityEntityOverlaps {
         set_num(old_num - count);
     }
     void set(size_type const index,
-             ioj::sim::RegistryEntityHandle const new_first_entities,
-             ioj::sim::RegistryEntityHandle const new_second_entities) {
+             RegistryEntityHandle const new_first_entities,
+             RegistryEntityHandle const new_second_entities) {
         get_view().set(index, new_first_entities, new_second_entities);
     }
-    auto add(ioj::sim::RegistryEntityHandle const new_first_entities,
-             ioj::sim::RegistryEntityHandle const new_second_entities) -> size_type {
+    auto add(RegistryEntityHandle const new_first_entities,
+             RegistryEntityHandle const new_second_entities) -> size_type {
         auto const index{num()};
         add_defaulted(1);
         set(index, new_first_entities, new_second_entities);
@@ -194,14 +194,14 @@ struct EntityEntityOverlaps {
             auto const begin{reinterpret_cast<std::uintptr_t>(first_entities.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + first_entities.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                                           sizeof(RegistryEntityHandle));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.second_entities.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(second_entities.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + second_entities.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                                           sizeof(RegistryEntityHandle));
         }
         first_entities.insert(
             first_entities.end(), source.first_entities.begin(), source.first_entities.end());
@@ -283,7 +283,7 @@ struct EntityStaticOverlapsConstView {
     using View = EntityStaticOverlapsView;
     using ConstView = EntityStaticOverlapsConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle const> entities;
+    std::span<RegistryEntityHandle const> entities;
     std::span<std::int32_t const> static_geometry_indices;
     auto num() const noexcept -> size_type { return static_cast<size_type>(entities.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
@@ -333,7 +333,7 @@ struct EntityStaticOverlapsView {
     using View = EntityStaticOverlapsView;
     using ConstView = EntityStaticOverlapsConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle> entities;
+    std::span<RegistryEntityHandle> entities;
     std::span<std::int32_t> static_geometry_indices;
     auto num() const noexcept -> size_type { return static_cast<size_type>(entities.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
@@ -375,7 +375,7 @@ struct EntityStaticOverlapsView {
         return slice(num() - count, count);
     }
     void set(size_type const index,
-             ioj::sim::RegistryEntityHandle const new_entities,
+             RegistryEntityHandle const new_entities,
              std::int32_t const new_static_geometry_indices) const {
         ml::native_soa::require(index >= 0 && index < num());
         entities[static_cast<std::size_t>(index)] = new_entities;
@@ -386,7 +386,7 @@ struct EntityStaticOverlaps {
     using View = EntityStaticOverlapsView;
     using ConstView = EntityStaticOverlapsConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> entities;
+    ml::native_soa::Vector<RegistryEntityHandle> entities;
     ml::native_soa::Vector<std::int32_t> static_geometry_indices;
     auto num() const noexcept -> size_type { return static_cast<size_type>(entities.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
@@ -438,11 +438,11 @@ struct EntityStaticOverlaps {
         set_num(old_num - count);
     }
     void set(size_type const index,
-             ioj::sim::RegistryEntityHandle const new_entities,
+             RegistryEntityHandle const new_entities,
              std::int32_t const new_static_geometry_indices) {
         get_view().set(index, new_entities, new_static_geometry_indices);
     }
-    auto add(ioj::sim::RegistryEntityHandle const new_entities,
+    auto add(RegistryEntityHandle const new_entities,
              std::int32_t const new_static_geometry_indices) -> size_type {
         auto const index{num()};
         add_defaulted(1);
@@ -460,8 +460,8 @@ struct EntityStaticOverlaps {
             auto const address{reinterpret_cast<std::uintptr_t>(source.entities.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(entities.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + entities.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                    address >=
+                                        begin + entities.size() * sizeof(RegistryEntityHandle));
         }
         {
             auto const address{

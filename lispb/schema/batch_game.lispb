@@ -21,6 +21,7 @@
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member desired_move_locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member aim_directions nested @native_vectors_3f :nested-schema Vectors3f)
+    (member planned_aim_directions nested @native_vectors_3f :nested-schema Vectors3f)
     (member desired_aiming_directions nested @native_vectors_3f :nested-schema Vectors3f)
     (member movement_directions nested @native_vectors_3f :nested-schema Vectors3f)
     (member velocities nested @native_vectors_3f :nested-schema Vectors3f)
@@ -80,11 +81,13 @@
   :namespace ioj::sim::lasers
   (struct Vectors3f
     :layout-only true
+    :equivalent-type @native_vector_3f
     (member xs array float)
     (member ys array float)
     (member zs array float))
   (struct Rotators3f
     :layout-only true
+    :equivalent-type @native_rotator_3f
     (member pitches array float)
     (member yaws array float)
     (member rolls array float))

@@ -15,9 +15,9 @@ struct EntityDeathInfoConstView {
     using View = EntityDeathInfoView;
     using ConstView = EntityDeathInfoConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::DeathReason const> reasons;
-    std::span<ioj::sim::RegistryEntityHandle const> victims;
-    std::span<ioj::sim::RegistryEntityHandle const> killers;
+    std::span<DeathReason const> reasons;
+    std::span<RegistryEntityHandle const> victims;
+    std::span<RegistryEntityHandle const> killers;
     auto num() const noexcept -> size_type { return static_cast<size_type>(reasons.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -64,9 +64,9 @@ struct EntityDeathInfoView {
     using View = EntityDeathInfoView;
     using ConstView = EntityDeathInfoConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::DeathReason> reasons;
-    std::span<ioj::sim::RegistryEntityHandle> victims;
-    std::span<ioj::sim::RegistryEntityHandle> killers;
+    std::span<DeathReason> reasons;
+    std::span<RegistryEntityHandle> victims;
+    std::span<RegistryEntityHandle> killers;
     auto num() const noexcept -> size_type { return static_cast<size_type>(reasons.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -109,9 +109,9 @@ struct EntityDeathInfoView {
         return slice(num() - count, count);
     }
     void set(size_type const index,
-             ioj::sim::DeathReason const new_reasons,
-             ioj::sim::RegistryEntityHandle const new_victims,
-             ioj::sim::RegistryEntityHandle const new_killers) const {
+             DeathReason const new_reasons,
+             RegistryEntityHandle const new_victims,
+             RegistryEntityHandle const new_killers) const {
         ml::native_soa::require(index >= 0 && index < num());
         reasons[static_cast<std::size_t>(index)] = new_reasons;
         victims[static_cast<std::size_t>(index)] = new_victims;
@@ -122,9 +122,9 @@ struct EntityDeathInfo {
     using View = EntityDeathInfoView;
     using ConstView = EntityDeathInfoConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<ioj::sim::DeathReason> reasons;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> victims;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> killers;
+    ml::native_soa::Vector<DeathReason> reasons;
+    ml::native_soa::Vector<RegistryEntityHandle> victims;
+    ml::native_soa::Vector<RegistryEntityHandle> killers;
     auto num() const noexcept -> size_type { return static_cast<size_type>(reasons.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -183,14 +183,14 @@ struct EntityDeathInfo {
         set_num(old_num - count);
     }
     void set(size_type const index,
-             ioj::sim::DeathReason const new_reasons,
-             ioj::sim::RegistryEntityHandle const new_victims,
-             ioj::sim::RegistryEntityHandle const new_killers) {
+             DeathReason const new_reasons,
+             RegistryEntityHandle const new_victims,
+             RegistryEntityHandle const new_killers) {
         get_view().set(index, new_reasons, new_victims, new_killers);
     }
-    auto add(ioj::sim::DeathReason const new_reasons,
-             ioj::sim::RegistryEntityHandle const new_victims,
-             ioj::sim::RegistryEntityHandle const new_killers) -> size_type {
+    auto add(DeathReason const new_reasons,
+             RegistryEntityHandle const new_victims,
+             RegistryEntityHandle const new_killers) -> size_type {
         auto const index{num()};
         add_defaulted(1);
         set(index, new_reasons, new_victims, new_killers);
@@ -207,22 +207,21 @@ struct EntityDeathInfo {
             auto const address{reinterpret_cast<std::uintptr_t>(source.reasons.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(reasons.data())};
             ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + reasons.size() * sizeof(ioj::sim::DeathReason));
+                                    address >= begin + reasons.size() * sizeof(DeathReason));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.victims.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(victims.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + victims.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                    address >=
+                                        begin + victims.size() * sizeof(RegistryEntityHandle));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.killers.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(killers.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + killers.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                    address >=
+                                        begin + killers.size() * sizeof(RegistryEntityHandle));
         }
         reasons.insert(reasons.end(), source.reasons.begin(), source.reasons.end());
         victims.insert(victims.end(), source.victims.begin(), source.victims.end());

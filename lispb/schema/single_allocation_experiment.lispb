@@ -38,6 +38,8 @@
       :nested-schema Vectors)
     (member aim_directions nested Vectors
       :nested-schema Vectors)
+    (member planned_aim_directions nested Vectors
+      :nested-schema Vectors)
     (member desired_aiming_directions nested Vectors
       :nested-schema Vectors)
     (member movement_directions nested Vectors

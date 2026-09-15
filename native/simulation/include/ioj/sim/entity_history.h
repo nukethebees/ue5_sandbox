@@ -20,13 +20,13 @@ struct EntityHistoryColumnsConstView {
     using View = EntityHistoryColumnsView;
     using ConstView = EntityHistoryColumnsConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle::index_type const> registry_indices;
-    std::span<ioj::sim::RegistryEntityHandle::generation_type const> registry_generations;
-    std::span<ioj::sim::EntityType const> entity_types;
-    std::span<ioj::sim::Team const> teams;
+    std::span<RegistryEntityHandle::index_type const> registry_indices;
+    std::span<RegistryEntityHandle::generation_type const> registry_generations;
+    std::span<EntityType const> entity_types;
+    std::span<Team const> teams;
     std::span<std::uint32_t const> kills;
-    std::span<ioj::sim::EntityUniqueId const> killed_by;
-    std::span<ioj::sim::LifeState const> life_state;
+    std::span<EntityUniqueId const> killed_by;
+    std::span<LifeState const> life_state;
     auto num() const noexcept -> size_type {
         return static_cast<size_type>(registry_indices.size());
     }
@@ -93,13 +93,13 @@ struct EntityHistoryColumnsView {
     using View = EntityHistoryColumnsView;
     using ConstView = EntityHistoryColumnsConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle::index_type> registry_indices;
-    std::span<ioj::sim::RegistryEntityHandle::generation_type> registry_generations;
-    std::span<ioj::sim::EntityType> entity_types;
-    std::span<ioj::sim::Team> teams;
+    std::span<RegistryEntityHandle::index_type> registry_indices;
+    std::span<RegistryEntityHandle::generation_type> registry_generations;
+    std::span<EntityType> entity_types;
+    std::span<Team> teams;
     std::span<std::uint32_t> kills;
-    std::span<ioj::sim::EntityUniqueId> killed_by;
-    std::span<ioj::sim::LifeState> life_state;
+    std::span<EntityUniqueId> killed_by;
+    std::span<LifeState> life_state;
     auto num() const noexcept -> size_type {
         return static_cast<size_type>(registry_indices.size());
     }
@@ -158,13 +158,13 @@ struct EntityHistoryColumnsView {
         return slice(num() - count, count);
     }
     void set(size_type const index,
-             ioj::sim::RegistryEntityHandle::index_type const new_registry_indices,
-             ioj::sim::RegistryEntityHandle::generation_type const new_registry_generations,
-             ioj::sim::EntityType const new_entity_types,
-             ioj::sim::Team const new_teams,
+             RegistryEntityHandle::index_type const new_registry_indices,
+             RegistryEntityHandle::generation_type const new_registry_generations,
+             EntityType const new_entity_types,
+             Team const new_teams,
              std::uint32_t const new_kills,
-             ioj::sim::EntityUniqueId const new_killed_by,
-             ioj::sim::LifeState const new_life_state) const {
+             EntityUniqueId const new_killed_by,
+             LifeState const new_life_state) const {
         ml::native_soa::require(index >= 0 && index < num());
         registry_indices[static_cast<std::size_t>(index)] = new_registry_indices;
         registry_generations[static_cast<std::size_t>(index)] = new_registry_generations;
@@ -179,13 +179,13 @@ struct EntityHistoryColumns {
     using View = EntityHistoryColumnsView;
     using ConstView = EntityHistoryColumnsConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle::index_type> registry_indices;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle::generation_type> registry_generations;
-    ml::native_soa::Vector<ioj::sim::EntityType> entity_types;
-    ml::native_soa::Vector<ioj::sim::Team> teams;
+    ml::native_soa::Vector<RegistryEntityHandle::index_type> registry_indices;
+    ml::native_soa::Vector<RegistryEntityHandle::generation_type> registry_generations;
+    ml::native_soa::Vector<EntityType> entity_types;
+    ml::native_soa::Vector<Team> teams;
     ml::native_soa::Vector<std::uint32_t> kills;
-    ml::native_soa::Vector<ioj::sim::EntityUniqueId> killed_by;
-    ml::native_soa::Vector<ioj::sim::LifeState> life_state;
+    ml::native_soa::Vector<EntityUniqueId> killed_by;
+    ml::native_soa::Vector<LifeState> life_state;
     auto num() const noexcept -> size_type {
         return static_cast<size_type>(registry_indices.size());
     }
@@ -278,13 +278,13 @@ struct EntityHistoryColumns {
         set_num(old_num - count);
     }
     void set(size_type const index,
-             ioj::sim::RegistryEntityHandle::index_type const new_registry_indices,
-             ioj::sim::RegistryEntityHandle::generation_type const new_registry_generations,
-             ioj::sim::EntityType const new_entity_types,
-             ioj::sim::Team const new_teams,
+             RegistryEntityHandle::index_type const new_registry_indices,
+             RegistryEntityHandle::generation_type const new_registry_generations,
+             EntityType const new_entity_types,
+             Team const new_teams,
              std::uint32_t const new_kills,
-             ioj::sim::EntityUniqueId const new_killed_by,
-             ioj::sim::LifeState const new_life_state) {
+             EntityUniqueId const new_killed_by,
+             LifeState const new_life_state) {
         get_view().set(index,
                        new_registry_indices,
                        new_registry_generations,
@@ -294,13 +294,13 @@ struct EntityHistoryColumns {
                        new_killed_by,
                        new_life_state);
     }
-    auto add(ioj::sim::RegistryEntityHandle::index_type const new_registry_indices,
-             ioj::sim::RegistryEntityHandle::generation_type const new_registry_generations,
-             ioj::sim::EntityType const new_entity_types,
-             ioj::sim::Team const new_teams,
+    auto add(RegistryEntityHandle::index_type const new_registry_indices,
+             RegistryEntityHandle::generation_type const new_registry_generations,
+             EntityType const new_entity_types,
+             Team const new_teams,
              std::uint32_t const new_kills,
-             ioj::sim::EntityUniqueId const new_killed_by,
-             ioj::sim::LifeState const new_life_state) -> size_type {
+             EntityUniqueId const new_killed_by,
+             LifeState const new_life_state) -> size_type {
         auto const index{num()};
         add_defaulted(1);
         set(index,
@@ -324,31 +324,29 @@ struct EntityHistoryColumns {
             auto const address{reinterpret_cast<std::uintptr_t>(source.registry_indices.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(registry_indices.data())};
             ml::native_soa::require(
-                address < begin ||
-                address >= begin + registry_indices.size() *
-                                       sizeof(ioj::sim::RegistryEntityHandle::index_type));
+                address < begin || address >= begin + registry_indices.size() *
+                                                          sizeof(RegistryEntityHandle::index_type));
         }
         {
             auto const address{
                 reinterpret_cast<std::uintptr_t>(source.registry_generations.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(registry_generations.data())};
-            ml::native_soa::require(
-                address < begin ||
-                address >= begin + registry_generations.size() *
-                                       sizeof(ioj::sim::RegistryEntityHandle::generation_type));
+            ml::native_soa::require(address < begin ||
+                                    address >=
+                                        begin + registry_generations.size() *
+                                                    sizeof(RegistryEntityHandle::generation_type));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.entity_types.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(entity_types.data())};
             ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + entity_types.size() * sizeof(ioj::sim::EntityType));
+                                    address >= begin + entity_types.size() * sizeof(EntityType));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.teams.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(teams.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + teams.size() * sizeof(ioj::sim::Team));
+                                    address >= begin + teams.size() * sizeof(Team));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.kills.data())};
@@ -360,15 +358,13 @@ struct EntityHistoryColumns {
             auto const address{reinterpret_cast<std::uintptr_t>(source.killed_by.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(killed_by.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + killed_by.size() *
-                                                           sizeof(ioj::sim::EntityUniqueId));
+                                    address >= begin + killed_by.size() * sizeof(EntityUniqueId));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.life_state.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(life_state.data())};
             ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + life_state.size() * sizeof(ioj::sim::LifeState));
+                                    address >= begin + life_state.size() * sizeof(LifeState));
         }
         registry_indices.insert(
             registry_indices.end(), source.registry_indices.begin(), source.registry_indices.end());
@@ -487,15 +483,15 @@ struct EntityHistoryColumnsSingleLayout {
     inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{
         capacity_granularity, column_gap, 64};
 
-    inline static constexpr ColLayout<ioj::sim::RegistryEntityHandle::index_type> RegistryIndices{
+    inline static constexpr ColLayout<RegistryEntityHandle::index_type> RegistryIndices{
         LayoutStart};
-    inline static constexpr ColLayout<ioj::sim::RegistryEntityHandle::generation_type>
-        RegistryGenerations{RegistryIndices};
-    inline static constexpr ColLayout<ioj::sim::EntityType> EntityTypes{RegistryGenerations};
-    inline static constexpr ColLayout<ioj::sim::Team> Teams{EntityTypes};
+    inline static constexpr ColLayout<RegistryEntityHandle::generation_type> RegistryGenerations{
+        RegistryIndices};
+    inline static constexpr ColLayout<EntityType> EntityTypes{RegistryGenerations};
+    inline static constexpr ColLayout<Team> Teams{EntityTypes};
     inline static constexpr ColLayout<std::uint32_t> Kills{Teams};
-    inline static constexpr ColLayout<ioj::sim::EntityUniqueId> KilledBy{Kills};
-    inline static constexpr ColLayout<ioj::sim::LifeState> LifeStateColumn{KilledBy};
+    inline static constexpr ColLayout<EntityUniqueId> KilledBy{Kills};
+    inline static constexpr ColLayout<LifeState> LifeStateColumn{KilledBy};
 
     inline static constexpr byte_size_type allocation_alignment{
         ml::native_soa::maximum_alignment(RegistryIndices,
@@ -519,19 +515,19 @@ struct EntityHistoryColumnsSingleLayout {
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
         static_assert(
-            ml::native_soa::supported_leaf<ioj::sim::RegistryEntityHandle::index_type>,
+            ml::native_soa::supported_leaf<RegistryEntityHandle::index_type>,
             "Single-allocation leaf registry_indices requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::native_soa::supported_leaf<ioj::sim::RegistryEntityHandle::generation_type>,
+            ml::native_soa::supported_leaf<RegistryEntityHandle::generation_type>,
             "Single-allocation leaf registry_generations requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::native_soa::supported_leaf<ioj::sim::EntityType>,
+            ml::native_soa::supported_leaf<EntityType>,
             "Single-allocation leaf entity_types requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::native_soa::supported_leaf<ioj::sim::Team>,
+            ml::native_soa::supported_leaf<Team>,
             "Single-allocation leaf teams requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
@@ -539,31 +535,31 @@ struct EntityHistoryColumnsSingleLayout {
             "Single-allocation leaf kills requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::native_soa::supported_leaf<ioj::sim::EntityUniqueId>,
+            ml::native_soa::supported_leaf<EntityUniqueId>,
             "Single-allocation leaf killed_by requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::native_soa::supported_leaf<ioj::sim::LifeState>,
+            ml::native_soa::supported_leaf<LifeState>,
             "Single-allocation leaf life_state requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
 
         static_assert(
             allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
             "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
-        static_assert(sizeof(ioj::sim::RegistryEntityHandle::index_type) <=
+        static_assert(sizeof(RegistryEntityHandle::index_type) <=
                       (max_allocation_size - RegistryIndices.block_offset) / capacity_granularity);
-        static_assert(sizeof(ioj::sim::RegistryEntityHandle::generation_type) <=
+        static_assert(sizeof(RegistryEntityHandle::generation_type) <=
                       (max_allocation_size - RegistryGenerations.block_offset) /
                           capacity_granularity);
-        static_assert(sizeof(ioj::sim::EntityType) <=
+        static_assert(sizeof(EntityType) <=
                       (max_allocation_size - EntityTypes.block_offset) / capacity_granularity);
-        static_assert(sizeof(ioj::sim::Team) <=
+        static_assert(sizeof(Team) <=
                       (max_allocation_size - Teams.block_offset) / capacity_granularity);
         static_assert(sizeof(std::uint32_t) <=
                       (max_allocation_size - Kills.block_offset) / capacity_granularity);
-        static_assert(sizeof(ioj::sim::EntityUniqueId) <=
+        static_assert(sizeof(EntityUniqueId) <=
                       (max_allocation_size - KilledBy.block_offset) / capacity_granularity);
-        static_assert(sizeof(ioj::sim::LifeState) <=
+        static_assert(sizeof(LifeState) <=
                       (max_allocation_size - LifeStateColumn.block_offset) / capacity_granularity);
         static_assert(6 <=
                       (max_allocation_size - ml::native_soa::layout_align(LifeStateColumn.block_end,
@@ -606,13 +602,13 @@ struct EntityHistoryStorage
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<ioj::sim::RegistryEntityHandle::index_type>* registry_indices{};
-        Element<ioj::sim::RegistryEntityHandle::generation_type>* registry_generations{};
-        Element<ioj::sim::EntityType>* entity_types{};
-        Element<ioj::sim::Team>* teams{};
+        Element<RegistryEntityHandle::index_type>* registry_indices{};
+        Element<RegistryEntityHandle::generation_type>* registry_generations{};
+        Element<EntityType>* entity_types{};
+        Element<Team>* teams{};
         Element<std::uint32_t>* kills{};
-        Element<ioj::sim::EntityUniqueId>* killed_by{};
-        Element<ioj::sim::LifeState>* life_state{};
+        Element<EntityUniqueId>* killed_by{};
+        Element<LifeState>* life_state{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (registry_indices == nullptr) {
                 return {};
@@ -670,15 +666,15 @@ struct EntityHistoryStorage
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        std::uninitialized_value_construct_n<ioj::sim::RegistryEntityHandle::index_type*>(
+        std::uninitialized_value_construct_n<RegistryEntityHandle::index_type*>(
             columns.registry_indices, count);
-        std::uninitialized_value_construct_n<ioj::sim::RegistryEntityHandle::generation_type*>(
+        std::uninitialized_value_construct_n<RegistryEntityHandle::generation_type*>(
             columns.registry_generations, count);
-        std::uninitialized_value_construct_n<ioj::sim::EntityType*>(columns.entity_types, count);
-        std::uninitialized_value_construct_n<ioj::sim::Team*>(columns.teams, count);
+        std::uninitialized_value_construct_n<EntityType*>(columns.entity_types, count);
+        std::uninitialized_value_construct_n<Team*>(columns.teams, count);
         std::uninitialized_value_construct_n<std::uint32_t*>(columns.kills, count);
-        std::uninitialized_value_construct_n<ioj::sim::EntityUniqueId*>(columns.killed_by, count);
-        std::uninitialized_value_construct_n<ioj::sim::LifeState*>(columns.life_state, count);
+        std::uninitialized_value_construct_n<EntityUniqueId*>(columns.killed_by, count);
+        std::uninitialized_value_construct_n<LifeState*>(columns.life_state, count);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -691,14 +687,14 @@ struct EntityHistoryStorage
                              size_type move_count) {
         auto const elements_to_move{static_cast<byte_size_type>(move_count)};
         auto const registry_indices_bytes{elements_to_move *
-                                          sizeof(ioj::sim::RegistryEntityHandle::index_type)};
-        auto const registry_generations_bytes{
-            elements_to_move * sizeof(ioj::sim::RegistryEntityHandle::generation_type)};
-        auto const entity_types_bytes{elements_to_move * sizeof(ioj::sim::EntityType)};
-        auto const teams_bytes{elements_to_move * sizeof(ioj::sim::Team)};
+                                          sizeof(RegistryEntityHandle::index_type)};
+        auto const registry_generations_bytes{elements_to_move *
+                                              sizeof(RegistryEntityHandle::generation_type)};
+        auto const entity_types_bytes{elements_to_move * sizeof(EntityType)};
+        auto const teams_bytes{elements_to_move * sizeof(Team)};
         auto const kills_bytes{elements_to_move * sizeof(std::uint32_t)};
-        auto const killed_by_bytes{elements_to_move * sizeof(ioj::sim::EntityUniqueId)};
-        auto const life_state_bytes{elements_to_move * sizeof(ioj::sim::LifeState)};
+        auto const killed_by_bytes{elements_to_move * sizeof(EntityUniqueId)};
+        auto const life_state_bytes{elements_to_move * sizeof(LifeState)};
         std::memcpy(columns.registry_indices + index,
                     columns.registry_indices + source,
                     registry_indices_bytes);
@@ -727,14 +723,14 @@ struct EntityHistoryStorage
         auto const destination{get_data(first)};
         auto const elements_to_copy{static_cast<byte_size_type>(count)};
         auto const registry_indices_bytes{elements_to_copy *
-                                          sizeof(ioj::sim::RegistryEntityHandle::index_type)};
-        auto const registry_generations_bytes{
-            elements_to_copy * sizeof(ioj::sim::RegistryEntityHandle::generation_type)};
-        auto const entity_types_bytes{elements_to_copy * sizeof(ioj::sim::EntityType)};
-        auto const teams_bytes{elements_to_copy * sizeof(ioj::sim::Team)};
+                                          sizeof(RegistryEntityHandle::index_type)};
+        auto const registry_generations_bytes{elements_to_copy *
+                                              sizeof(RegistryEntityHandle::generation_type)};
+        auto const entity_types_bytes{elements_to_copy * sizeof(EntityType)};
+        auto const teams_bytes{elements_to_copy * sizeof(Team)};
         auto const kills_bytes{elements_to_copy * sizeof(std::uint32_t)};
-        auto const killed_by_bytes{elements_to_copy * sizeof(ioj::sim::EntityUniqueId)};
-        auto const life_state_bytes{elements_to_copy * sizeof(ioj::sim::LifeState)};
+        auto const killed_by_bytes{elements_to_copy * sizeof(EntityUniqueId)};
+        auto const life_state_bytes{elements_to_copy * sizeof(LifeState)};
         std::memcpy(
             destination.registry_indices, source.registry_indices.data(), registry_indices_bytes);
         std::memcpy(destination.registry_generations,
@@ -758,14 +754,14 @@ struct EntityHistoryStorage
             auto const destination{make_data_unchecked(new_data, new_blocks)};
             auto const live_count{static_cast<byte_size_type>(num_)};
             auto const registry_indices_bytes{live_count *
-                                              sizeof(ioj::sim::RegistryEntityHandle::index_type)};
-            auto const registry_generations_bytes{
-                live_count * sizeof(ioj::sim::RegistryEntityHandle::generation_type)};
-            auto const entity_types_bytes{live_count * sizeof(ioj::sim::EntityType)};
-            auto const teams_bytes{live_count * sizeof(ioj::sim::Team)};
+                                              sizeof(RegistryEntityHandle::index_type)};
+            auto const registry_generations_bytes{live_count *
+                                                  sizeof(RegistryEntityHandle::generation_type)};
+            auto const entity_types_bytes{live_count * sizeof(EntityType)};
+            auto const teams_bytes{live_count * sizeof(Team)};
             auto const kills_bytes{live_count * sizeof(std::uint32_t)};
-            auto const killed_by_bytes{live_count * sizeof(ioj::sim::EntityUniqueId)};
-            auto const life_state_bytes{live_count * sizeof(ioj::sim::LifeState)};
+            auto const killed_by_bytes{live_count * sizeof(EntityUniqueId)};
+            auto const life_state_bytes{live_count * sizeof(LifeState)};
             std::memcpy(
                 destination.registry_indices, source.registry_indices, registry_indices_bytes);
             std::memcpy(destination.registry_generations,
@@ -794,40 +790,39 @@ struct EntityHistoryColumnsSingleConstView : ml::native_soa::CompactViewState<tr
     auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return slice(offset, count);
     }
-    auto registry_indices() const -> std::span<ioj::sim::RegistryEntityHandle::index_type const> {
-        return {column_data<ioj::sim::RegistryEntityHandle::index_type>(
+    auto registry_indices() const -> std::span<RegistryEntityHandle::index_type const> {
+        return {column_data<RegistryEntityHandle::index_type>(
                     EntityHistoryColumnsSingleLayout::RegistryIndices.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto registry_generations() const
-        -> std::span<ioj::sim::RegistryEntityHandle::generation_type const> {
+    auto registry_generations() const -> std::span<RegistryEntityHandle::generation_type const> {
         return {
-            column_data<ioj::sim::RegistryEntityHandle::generation_type>(
+            column_data<RegistryEntityHandle::generation_type>(
                 EntityHistoryColumnsSingleLayout::RegistryGenerations.offset(capacity_blocks())),
             static_cast<std::size_t>(count_)};
     }
-    auto entity_types() const -> std::span<ioj::sim::EntityType const> {
-        return {column_data<ioj::sim::EntityType>(
+    auto entity_types() const -> std::span<EntityType const> {
+        return {column_data<EntityType>(
                     EntityHistoryColumnsSingleLayout::EntityTypes.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto teams() const -> std::span<ioj::sim::Team const> {
-        return {column_data<ioj::sim::Team>(
-                    EntityHistoryColumnsSingleLayout::Teams.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
+    auto teams() const -> std::span<Team const> {
+        return {
+            column_data<Team>(EntityHistoryColumnsSingleLayout::Teams.offset(capacity_blocks())),
+            static_cast<std::size_t>(count_)};
     }
     auto kills() const -> std::span<std::uint32_t const> {
         return {column_data<std::uint32_t>(
                     EntityHistoryColumnsSingleLayout::Kills.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto killed_by() const -> std::span<ioj::sim::EntityUniqueId const> {
-        return {column_data<ioj::sim::EntityUniqueId>(
+    auto killed_by() const -> std::span<EntityUniqueId const> {
+        return {column_data<EntityUniqueId>(
                     EntityHistoryColumnsSingleLayout::KilledBy.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto life_state() const -> std::span<ioj::sim::LifeState const> {
-        return {column_data<ioj::sim::LifeState>(
+    auto life_state() const -> std::span<LifeState const> {
+        return {column_data<LifeState>(
                     EntityHistoryColumnsSingleLayout::LifeStateColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
@@ -838,25 +833,24 @@ struct EntityHistoryColumnsSingleConstView : ml::native_soa::CompactViewState<tr
         }
         auto const blocks{capacity_blocks()};
         return EntityHistoryColumnsConstView{
-            {column_data_unchecked<ioj::sim::RegistryEntityHandle::index_type>(
+            {column_data_unchecked<RegistryEntityHandle::index_type>(
                  EntityHistoryColumnsSingleLayout::RegistryIndices.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<ioj::sim::RegistryEntityHandle::generation_type>(
+            {column_data_unchecked<RegistryEntityHandle::generation_type>(
                  EntityHistoryColumnsSingleLayout::RegistryGenerations.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<ioj::sim::EntityType>(
+            {column_data_unchecked<EntityType>(
                  EntityHistoryColumnsSingleLayout::EntityTypes.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<ioj::sim::Team>(
-                 EntityHistoryColumnsSingleLayout::Teams.offset(blocks)),
+            {column_data_unchecked<Team>(EntityHistoryColumnsSingleLayout::Teams.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<std::uint32_t>(
                  EntityHistoryColumnsSingleLayout::Kills.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<ioj::sim::EntityUniqueId>(
+            {column_data_unchecked<EntityUniqueId>(
                  EntityHistoryColumnsSingleLayout::KilledBy.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<ioj::sim::LifeState>(
+            {column_data_unchecked<LifeState>(
                  EntityHistoryColumnsSingleLayout::LifeStateColumn.offset(blocks)),
              static_cast<std::size_t>(count_)}};
     }
@@ -877,40 +871,39 @@ struct EntityHistoryColumnsSingleView : ml::native_soa::CompactViewState<false> 
     auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return slice(offset, count);
     }
-    auto registry_indices() const -> std::span<ioj::sim::RegistryEntityHandle::index_type> {
-        return {column_data<ioj::sim::RegistryEntityHandle::index_type>(
+    auto registry_indices() const -> std::span<RegistryEntityHandle::index_type> {
+        return {column_data<RegistryEntityHandle::index_type>(
                     EntityHistoryColumnsSingleLayout::RegistryIndices.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto registry_generations() const
-        -> std::span<ioj::sim::RegistryEntityHandle::generation_type> {
+    auto registry_generations() const -> std::span<RegistryEntityHandle::generation_type> {
         return {
-            column_data<ioj::sim::RegistryEntityHandle::generation_type>(
+            column_data<RegistryEntityHandle::generation_type>(
                 EntityHistoryColumnsSingleLayout::RegistryGenerations.offset(capacity_blocks())),
             static_cast<std::size_t>(count_)};
     }
-    auto entity_types() const -> std::span<ioj::sim::EntityType> {
-        return {column_data<ioj::sim::EntityType>(
+    auto entity_types() const -> std::span<EntityType> {
+        return {column_data<EntityType>(
                     EntityHistoryColumnsSingleLayout::EntityTypes.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto teams() const -> std::span<ioj::sim::Team> {
-        return {column_data<ioj::sim::Team>(
-                    EntityHistoryColumnsSingleLayout::Teams.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
+    auto teams() const -> std::span<Team> {
+        return {
+            column_data<Team>(EntityHistoryColumnsSingleLayout::Teams.offset(capacity_blocks())),
+            static_cast<std::size_t>(count_)};
     }
     auto kills() const -> std::span<std::uint32_t> {
         return {column_data<std::uint32_t>(
                     EntityHistoryColumnsSingleLayout::Kills.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto killed_by() const -> std::span<ioj::sim::EntityUniqueId> {
-        return {column_data<ioj::sim::EntityUniqueId>(
+    auto killed_by() const -> std::span<EntityUniqueId> {
+        return {column_data<EntityUniqueId>(
                     EntityHistoryColumnsSingleLayout::KilledBy.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto life_state() const -> std::span<ioj::sim::LifeState> {
-        return {column_data<ioj::sim::LifeState>(
+    auto life_state() const -> std::span<LifeState> {
+        return {column_data<LifeState>(
                     EntityHistoryColumnsSingleLayout::LifeStateColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
@@ -921,25 +914,24 @@ struct EntityHistoryColumnsSingleView : ml::native_soa::CompactViewState<false> 
         }
         auto const blocks{capacity_blocks()};
         return EntityHistoryColumnsView{
-            {column_data_unchecked<ioj::sim::RegistryEntityHandle::index_type>(
+            {column_data_unchecked<RegistryEntityHandle::index_type>(
                  EntityHistoryColumnsSingleLayout::RegistryIndices.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<ioj::sim::RegistryEntityHandle::generation_type>(
+            {column_data_unchecked<RegistryEntityHandle::generation_type>(
                  EntityHistoryColumnsSingleLayout::RegistryGenerations.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<ioj::sim::EntityType>(
+            {column_data_unchecked<EntityType>(
                  EntityHistoryColumnsSingleLayout::EntityTypes.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<ioj::sim::Team>(
-                 EntityHistoryColumnsSingleLayout::Teams.offset(blocks)),
+            {column_data_unchecked<Team>(EntityHistoryColumnsSingleLayout::Teams.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<std::uint32_t>(
                  EntityHistoryColumnsSingleLayout::Kills.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<ioj::sim::EntityUniqueId>(
+            {column_data_unchecked<EntityUniqueId>(
                  EntityHistoryColumnsSingleLayout::KilledBy.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<ioj::sim::LifeState>(
+            {column_data_unchecked<LifeState>(
                  EntityHistoryColumnsSingleLayout::LifeStateColumn.offset(blocks)),
              static_cast<std::size_t>(count_)}};
     }

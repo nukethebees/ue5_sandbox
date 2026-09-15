@@ -1,29 +1,32 @@
 #include "fixed_soa_internal.h"
 #include "lowering_utils.h"
 
-#include <ranges>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
 
 namespace codegen::detail {
 namespace {
-auto all_members_are_arrays(FixedLayout const& layout) -> bool {
-    return std::ranges::all_of(layout.members, [](auto const& member) {
-        return member.schema->kind == SoaMemberKind::array;
-    });
-}
+struct RowParameter {
+    std::string type;
+    std::string name;
+    std::string column;
+    bool nested{};
+};
 
-void render_parameters(std::ostringstream& out, FixedLayout const& layout) {
-    for (auto const& member : layout.members) {
-        out << ", " << native_spelling(member.member.element_type.spelling) << " const new_"
-            << member.schema->name;
+void render_parameters(std::ostringstream& out,
+                       std::span<RowParameter const> const parameters,
+                       bool const leading_comma = true) {
+    auto separator{leading_comma ? ", " : ""};
+    for (auto const& parameter : parameters) {
+        out << separator << parameter.type << " const new_" << parameter.name;
+        separator = ", ";
     }
 }
 
-void render_arguments(std::ostringstream& out, FixedLayout const& layout) {
-    for (auto const& member : layout.members) {
-        out << ", new_" << member.schema->name;
+void render_arguments(std::ostringstream& out, std::span<RowParameter const> const parameters) {
+    for (auto const& parameter : parameters) {
+        out << ", new_" << parameter.name;
     }
 }
 }
@@ -61,6 +64,30 @@ auto lower_native_soa(SoaSchema const& schema,
         {"native_storage", "native_soa/storage.h", {}},
         {"soa_permutation", "sandbox/core/soa_permutation.h", {}},
     };
+    std::vector<RowParameter> row_parameters;
+    for (auto const& member : layout.members) {
+        if (member.schema->kind == SoaMemberKind::nested) {
+            auto const& child{*schemas.at(*member.schema->nested_schema)};
+            if (child.equivalent_type.has_value()) {
+                auto const type{resolve_type(*child.equivalent_type, types)};
+                dependencies.insert(
+                    dependencies.end(), type.dependencies.begin(), type.dependencies.end());
+                row_parameters.push_back({native_spelling(type.spelling),
+                                          member.schema->name,
+                                          member.schema->name,
+                                          true});
+                continue;
+            }
+        }
+        for (auto const& leaf : layout.leaves) {
+            if (leaf.path.front() == member.schema->name) {
+                row_parameters.push_back({native_spelling(leaf.type.spelling),
+                                          join(leaf.path, "_"),
+                                          join(leaf.path, "."),
+                                          false});
+            }
+        }
+    }
     if (equivalent_type.has_value()) {
         dependencies.insert(dependencies.end(),
                             equivalent_type->dependencies.begin(),
@@ -149,13 +176,17 @@ auto lower_native_soa(SoaSchema const& schema,
             << "auto right(size_type const count) const -> " << view_type
             << " { return slice(num() - count, count); }\n";
 
-        if (!immutable && all_members_are_arrays(layout)) {
+        if (!immutable) {
             out << "void set(size_type const index";
-            render_parameters(out, layout);
+            render_parameters(out, row_parameters);
             out << ") const { ml::native_soa::require(index >= 0 && index < num());\n";
-            for (auto const& member : layout.members) {
-                out << member.schema->name << "[static_cast<std::size_t>(index)] = new_"
-                    << member.schema->name << ";\n";
+            for (auto const& parameter : row_parameters) {
+                if (parameter.nested) {
+                    out << parameter.column << ".set(index, new_" << parameter.name << ");\n";
+                } else {
+                    out << parameter.column << "[static_cast<std::size_t>(index)] = new_"
+                        << parameter.name << ";\n";
+                }
             }
             out << "}\n";
             if (equivalent_type.has_value()) {
@@ -232,23 +263,16 @@ auto lower_native_soa(SoaSchema const& schema,
     }
     out << "set_num(old_num-count); }\n";
 
-    if (all_members_are_arrays(layout)) {
+    {
         out << "void set(size_type const index";
-        render_parameters(out, layout);
+        render_parameters(out, row_parameters);
         out << ") { get_view().set(index";
-        render_arguments(out, layout);
+        render_arguments(out, row_parameters);
         out << "); }\n"
             << "auto add(";
-        for (std::size_t index{}; index < layout.members.size(); ++index) {
-            auto const& member{layout.members[index]};
-            if (index > 0) {
-                out << ", ";
-            }
-            out << native_spelling(member.member.element_type.spelling) << " const new_"
-                << member.schema->name;
-        }
+        render_parameters(out, row_parameters, false);
         out << ") -> size_type { auto const index{num()}; add_defaulted(1); set(index";
-        render_arguments(out, layout);
+        render_arguments(out, row_parameters);
         out << "); return index; }\n";
         if (equivalent_type.has_value()) {
             out << "void set(size_type const index, equivalent_type const value) { "

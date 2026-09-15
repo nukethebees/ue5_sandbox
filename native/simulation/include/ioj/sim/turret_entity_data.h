@@ -17,17 +17,17 @@ struct TurretEntityDataConstView {
     using View = TurretEntityDataView;
     using ConstView = TurretEntityDataConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle const> handles;
+    std::span<RegistryEntityHandle const> handles;
     std::span<std::uint32_t const> integral_biases;
     Vectors3fConstView locations;
     Vectors3fConstView fire_point_locations;
     Rotators3fConstView rotations;
-    std::span<ioj::sim::Team const> teams;
+    std::span<Team const> teams;
     std::span<std::int16_t const> laser_cooldowns;
     std::span<std::int32_t const> laser_damages;
     std::span<std::int16_t const> target_refresh_countdowns_periods;
     std::span<std::int16_t const> target_refresh_countdowns_remaining_ticks;
-    std::span<ioj::sim::RegistryEntityHandle const> target_handles;
+    std::span<RegistryEntityHandle const> target_handles;
     Vectors3fConstView target_locations;
     Vectors3fConstView target_velocities;
     std::span<std::int32_t const> healths;
@@ -127,17 +127,17 @@ struct TurretEntityDataView {
     using View = TurretEntityDataView;
     using ConstView = TurretEntityDataConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle> handles;
+    std::span<RegistryEntityHandle> handles;
     std::span<std::uint32_t> integral_biases;
     Vectors3fView locations;
     Vectors3fView fire_point_locations;
     Rotators3fView rotations;
-    std::span<ioj::sim::Team> teams;
+    std::span<Team> teams;
     std::span<std::int16_t> laser_cooldowns;
     std::span<std::int32_t> laser_damages;
     std::span<std::int16_t> target_refresh_countdowns_periods;
     std::span<std::int16_t> target_refresh_countdowns_remaining_ticks;
-    std::span<ioj::sim::RegistryEntityHandle> target_handles;
+    std::span<RegistryEntityHandle> target_handles;
     Vectors3fView target_locations;
     Vectors3fView target_velocities;
     std::span<std::int32_t> healths;
@@ -231,22 +231,75 @@ struct TurretEntityDataView {
     auto right(size_type const count) const -> TurretEntityDataView {
         return slice(num() - count, count);
     }
+    void set(size_type const index,
+             RegistryEntityHandle const new_handles,
+             std::uint32_t const new_integral_biases,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_fire_point_locations_xs,
+             float const new_fire_point_locations_ys,
+             float const new_fire_point_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             Team const new_teams,
+             std::int16_t const new_laser_cooldowns,
+             std::int32_t const new_laser_damages,
+             std::int16_t const new_target_refresh_countdowns_periods,
+             std::int16_t const new_target_refresh_countdowns_remaining_ticks,
+             RegistryEntityHandle const new_target_handles,
+             float const new_target_locations_xs,
+             float const new_target_locations_ys,
+             float const new_target_locations_zs,
+             float const new_target_velocities_xs,
+             float const new_target_velocities_ys,
+             float const new_target_velocities_zs,
+             std::int32_t const new_healths) const {
+        ml::native_soa::require(index >= 0 && index < num());
+        handles[static_cast<std::size_t>(index)] = new_handles;
+        integral_biases[static_cast<std::size_t>(index)] = new_integral_biases;
+        locations.xs[static_cast<std::size_t>(index)] = new_locations_xs;
+        locations.ys[static_cast<std::size_t>(index)] = new_locations_ys;
+        locations.zs[static_cast<std::size_t>(index)] = new_locations_zs;
+        fire_point_locations.xs[static_cast<std::size_t>(index)] = new_fire_point_locations_xs;
+        fire_point_locations.ys[static_cast<std::size_t>(index)] = new_fire_point_locations_ys;
+        fire_point_locations.zs[static_cast<std::size_t>(index)] = new_fire_point_locations_zs;
+        rotations.pitches[static_cast<std::size_t>(index)] = new_rotations_pitches;
+        rotations.yaws[static_cast<std::size_t>(index)] = new_rotations_yaws;
+        rotations.rolls[static_cast<std::size_t>(index)] = new_rotations_rolls;
+        teams[static_cast<std::size_t>(index)] = new_teams;
+        laser_cooldowns[static_cast<std::size_t>(index)] = new_laser_cooldowns;
+        laser_damages[static_cast<std::size_t>(index)] = new_laser_damages;
+        target_refresh_countdowns_periods[static_cast<std::size_t>(index)] =
+            new_target_refresh_countdowns_periods;
+        target_refresh_countdowns_remaining_ticks[static_cast<std::size_t>(index)] =
+            new_target_refresh_countdowns_remaining_ticks;
+        target_handles[static_cast<std::size_t>(index)] = new_target_handles;
+        target_locations.xs[static_cast<std::size_t>(index)] = new_target_locations_xs;
+        target_locations.ys[static_cast<std::size_t>(index)] = new_target_locations_ys;
+        target_locations.zs[static_cast<std::size_t>(index)] = new_target_locations_zs;
+        target_velocities.xs[static_cast<std::size_t>(index)] = new_target_velocities_xs;
+        target_velocities.ys[static_cast<std::size_t>(index)] = new_target_velocities_ys;
+        target_velocities.zs[static_cast<std::size_t>(index)] = new_target_velocities_zs;
+        healths[static_cast<std::size_t>(index)] = new_healths;
+    }
 };
 struct TurretEntityData {
     using View = TurretEntityDataView;
     using ConstView = TurretEntityDataConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> handles;
+    ml::native_soa::Vector<RegistryEntityHandle> handles;
     ml::native_soa::Vector<std::uint32_t> integral_biases;
     Vectors3f locations;
     Vectors3f fire_point_locations;
     Rotators3f rotations;
-    ml::native_soa::Vector<ioj::sim::Team> teams;
+    ml::native_soa::Vector<Team> teams;
     ml::native_soa::Vector<std::int16_t> laser_cooldowns;
     ml::native_soa::Vector<std::int32_t> laser_damages;
     ml::native_soa::Vector<std::int16_t> target_refresh_countdowns_periods;
     ml::native_soa::Vector<std::int16_t> target_refresh_countdowns_remaining_ticks;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> target_handles;
+    ml::native_soa::Vector<RegistryEntityHandle> target_handles;
     Vectors3f target_locations;
     Vectors3f target_velocities;
     ml::native_soa::Vector<std::int32_t> healths;
@@ -477,6 +530,110 @@ struct TurretEntityData {
         }
         set_num(old_num - count);
     }
+    void set(size_type const index,
+             RegistryEntityHandle const new_handles,
+             std::uint32_t const new_integral_biases,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_fire_point_locations_xs,
+             float const new_fire_point_locations_ys,
+             float const new_fire_point_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             Team const new_teams,
+             std::int16_t const new_laser_cooldowns,
+             std::int32_t const new_laser_damages,
+             std::int16_t const new_target_refresh_countdowns_periods,
+             std::int16_t const new_target_refresh_countdowns_remaining_ticks,
+             RegistryEntityHandle const new_target_handles,
+             float const new_target_locations_xs,
+             float const new_target_locations_ys,
+             float const new_target_locations_zs,
+             float const new_target_velocities_xs,
+             float const new_target_velocities_ys,
+             float const new_target_velocities_zs,
+             std::int32_t const new_healths) {
+        get_view().set(index,
+                       new_handles,
+                       new_integral_biases,
+                       new_locations_xs,
+                       new_locations_ys,
+                       new_locations_zs,
+                       new_fire_point_locations_xs,
+                       new_fire_point_locations_ys,
+                       new_fire_point_locations_zs,
+                       new_rotations_pitches,
+                       new_rotations_yaws,
+                       new_rotations_rolls,
+                       new_teams,
+                       new_laser_cooldowns,
+                       new_laser_damages,
+                       new_target_refresh_countdowns_periods,
+                       new_target_refresh_countdowns_remaining_ticks,
+                       new_target_handles,
+                       new_target_locations_xs,
+                       new_target_locations_ys,
+                       new_target_locations_zs,
+                       new_target_velocities_xs,
+                       new_target_velocities_ys,
+                       new_target_velocities_zs,
+                       new_healths);
+    }
+    auto add(RegistryEntityHandle const new_handles,
+             std::uint32_t const new_integral_biases,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_fire_point_locations_xs,
+             float const new_fire_point_locations_ys,
+             float const new_fire_point_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             Team const new_teams,
+             std::int16_t const new_laser_cooldowns,
+             std::int32_t const new_laser_damages,
+             std::int16_t const new_target_refresh_countdowns_periods,
+             std::int16_t const new_target_refresh_countdowns_remaining_ticks,
+             RegistryEntityHandle const new_target_handles,
+             float const new_target_locations_xs,
+             float const new_target_locations_ys,
+             float const new_target_locations_zs,
+             float const new_target_velocities_xs,
+             float const new_target_velocities_ys,
+             float const new_target_velocities_zs,
+             std::int32_t const new_healths) -> size_type {
+        auto const index{num()};
+        add_defaulted(1);
+        set(index,
+            new_handles,
+            new_integral_biases,
+            new_locations_xs,
+            new_locations_ys,
+            new_locations_zs,
+            new_fire_point_locations_xs,
+            new_fire_point_locations_ys,
+            new_fire_point_locations_zs,
+            new_rotations_pitches,
+            new_rotations_yaws,
+            new_rotations_rolls,
+            new_teams,
+            new_laser_cooldowns,
+            new_laser_damages,
+            new_target_refresh_countdowns_periods,
+            new_target_refresh_countdowns_remaining_ticks,
+            new_target_handles,
+            new_target_locations_xs,
+            new_target_locations_ys,
+            new_target_locations_zs,
+            new_target_velocities_xs,
+            new_target_velocities_ys,
+            new_target_velocities_zs,
+            new_healths);
+        return index;
+    }
     void append_from(ConstView source) {
         auto const count{source.num()};
         ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
@@ -488,8 +645,8 @@ struct TurretEntityData {
             auto const address{reinterpret_cast<std::uintptr_t>(source.handles.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(handles.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + handles.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                    address >=
+                                        begin + handles.size() * sizeof(RegistryEntityHandle));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.integral_biases.data())};
@@ -562,7 +719,7 @@ struct TurretEntityData {
             auto const address{reinterpret_cast<std::uintptr_t>(source.teams.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(teams.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + teams.size() * sizeof(ioj::sim::Team));
+                                    address >= begin + teams.size() * sizeof(Team));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.laser_cooldowns.data())};
@@ -600,7 +757,7 @@ struct TurretEntityData {
             auto const begin{reinterpret_cast<std::uintptr_t>(target_handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_handles.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                                           sizeof(RegistryEntityHandle));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.target_locations.xs.data())};

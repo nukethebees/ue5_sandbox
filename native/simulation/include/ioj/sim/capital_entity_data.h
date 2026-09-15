@@ -18,15 +18,15 @@ struct CapitalEntityDataConstView {
     using View = CapitalEntityDataView;
     using ConstView = CapitalEntityDataConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle const> handles;
+    std::span<RegistryEntityHandle const> handles;
     Vectors3fConstView locations;
     Rotators3fConstView rotations;
     std::span<float const> fighter_spawn_timers;
     std::span<float const> fighter_spawn_cooldowns;
-    std::span<ioj::sim::Team const> teams;
+    std::span<Team const> teams;
     std::span<std::int32_t const> healths;
-    std::span<ioj::sim::IndexSpan const> fighter_handle_spans;
-    std::span<ioj::sim::RegistryEntityHandle const> target_handles;
+    std::span<IndexSpan const> fighter_handle_spans;
+    std::span<RegistryEntityHandle const> target_handles;
     auto num() const noexcept -> size_type { return static_cast<size_type>(handles.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -100,15 +100,15 @@ struct CapitalEntityDataView {
     using View = CapitalEntityDataView;
     using ConstView = CapitalEntityDataConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle> handles;
+    std::span<RegistryEntityHandle> handles;
     Vectors3fView locations;
     Rotators3fView rotations;
     std::span<float> fighter_spawn_timers;
     std::span<float> fighter_spawn_cooldowns;
-    std::span<ioj::sim::Team> teams;
+    std::span<Team> teams;
     std::span<std::int32_t> healths;
-    std::span<ioj::sim::IndexSpan> fighter_handle_spans;
-    std::span<ioj::sim::RegistryEntityHandle> target_handles;
+    std::span<IndexSpan> fighter_handle_spans;
+    std::span<RegistryEntityHandle> target_handles;
     auto num() const noexcept -> size_type { return static_cast<size_type>(handles.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -176,20 +176,49 @@ struct CapitalEntityDataView {
     auto right(size_type const count) const -> CapitalEntityDataView {
         return slice(num() - count, count);
     }
+    void set(size_type const index,
+             RegistryEntityHandle const new_handles,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             float const new_fighter_spawn_timers,
+             float const new_fighter_spawn_cooldowns,
+             Team const new_teams,
+             std::int32_t const new_healths,
+             IndexSpan const new_fighter_handle_spans,
+             RegistryEntityHandle const new_target_handles) const {
+        ml::native_soa::require(index >= 0 && index < num());
+        handles[static_cast<std::size_t>(index)] = new_handles;
+        locations.xs[static_cast<std::size_t>(index)] = new_locations_xs;
+        locations.ys[static_cast<std::size_t>(index)] = new_locations_ys;
+        locations.zs[static_cast<std::size_t>(index)] = new_locations_zs;
+        rotations.pitches[static_cast<std::size_t>(index)] = new_rotations_pitches;
+        rotations.yaws[static_cast<std::size_t>(index)] = new_rotations_yaws;
+        rotations.rolls[static_cast<std::size_t>(index)] = new_rotations_rolls;
+        fighter_spawn_timers[static_cast<std::size_t>(index)] = new_fighter_spawn_timers;
+        fighter_spawn_cooldowns[static_cast<std::size_t>(index)] = new_fighter_spawn_cooldowns;
+        teams[static_cast<std::size_t>(index)] = new_teams;
+        healths[static_cast<std::size_t>(index)] = new_healths;
+        fighter_handle_spans[static_cast<std::size_t>(index)] = new_fighter_handle_spans;
+        target_handles[static_cast<std::size_t>(index)] = new_target_handles;
+    }
 };
 struct CapitalEntityData {
     using View = CapitalEntityDataView;
     using ConstView = CapitalEntityDataConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> handles;
+    ml::native_soa::Vector<RegistryEntityHandle> handles;
     Vectors3f locations;
     Rotators3f rotations;
     ml::native_soa::Vector<float> fighter_spawn_timers;
     ml::native_soa::Vector<float> fighter_spawn_cooldowns;
-    ml::native_soa::Vector<ioj::sim::Team> teams;
+    ml::native_soa::Vector<Team> teams;
     ml::native_soa::Vector<std::int32_t> healths;
-    ml::native_soa::Vector<ioj::sim::IndexSpan> fighter_handle_spans;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> target_handles;
+    ml::native_soa::Vector<IndexSpan> fighter_handle_spans;
+    ml::native_soa::Vector<RegistryEntityHandle> target_handles;
     auto num() const noexcept -> size_type { return static_cast<size_type>(handles.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -327,6 +356,66 @@ struct CapitalEntityData {
         }
         set_num(old_num - count);
     }
+    void set(size_type const index,
+             RegistryEntityHandle const new_handles,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             float const new_fighter_spawn_timers,
+             float const new_fighter_spawn_cooldowns,
+             Team const new_teams,
+             std::int32_t const new_healths,
+             IndexSpan const new_fighter_handle_spans,
+             RegistryEntityHandle const new_target_handles) {
+        get_view().set(index,
+                       new_handles,
+                       new_locations_xs,
+                       new_locations_ys,
+                       new_locations_zs,
+                       new_rotations_pitches,
+                       new_rotations_yaws,
+                       new_rotations_rolls,
+                       new_fighter_spawn_timers,
+                       new_fighter_spawn_cooldowns,
+                       new_teams,
+                       new_healths,
+                       new_fighter_handle_spans,
+                       new_target_handles);
+    }
+    auto add(RegistryEntityHandle const new_handles,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             float const new_fighter_spawn_timers,
+             float const new_fighter_spawn_cooldowns,
+             Team const new_teams,
+             std::int32_t const new_healths,
+             IndexSpan const new_fighter_handle_spans,
+             RegistryEntityHandle const new_target_handles) -> size_type {
+        auto const index{num()};
+        add_defaulted(1);
+        set(index,
+            new_handles,
+            new_locations_xs,
+            new_locations_ys,
+            new_locations_zs,
+            new_rotations_pitches,
+            new_rotations_yaws,
+            new_rotations_rolls,
+            new_fighter_spawn_timers,
+            new_fighter_spawn_cooldowns,
+            new_teams,
+            new_healths,
+            new_fighter_handle_spans,
+            new_target_handles);
+        return index;
+    }
     void append_from(ConstView source) {
         auto const count{source.num()};
         ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
@@ -338,8 +427,8 @@ struct CapitalEntityData {
             auto const address{reinterpret_cast<std::uintptr_t>(source.handles.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(handles.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + handles.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                    address >=
+                                        begin + handles.size() * sizeof(RegistryEntityHandle));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.locations.xs.data())};
@@ -396,7 +485,7 @@ struct CapitalEntityData {
             auto const address{reinterpret_cast<std::uintptr_t>(source.teams.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(teams.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + teams.size() * sizeof(ioj::sim::Team));
+                                    address >= begin + teams.size() * sizeof(Team));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.healths.data())};
@@ -409,15 +498,15 @@ struct CapitalEntityData {
                 reinterpret_cast<std::uintptr_t>(source.fighter_handle_spans.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(fighter_handle_spans.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + fighter_handle_spans.size() *
-                                                           sizeof(ioj::sim::IndexSpan));
+                                    address >=
+                                        begin + fighter_handle_spans.size() * sizeof(IndexSpan));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.target_handles.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(target_handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_handles.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                                           sizeof(RegistryEntityHandle));
         }
         handles.insert(handles.end(), source.handles.begin(), source.handles.end());
         locations.xs.insert(

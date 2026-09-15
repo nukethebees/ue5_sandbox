@@ -17,10 +17,10 @@ struct CapitalSpawnDataConstView {
     using View = CapitalSpawnDataView;
     using ConstView = CapitalSpawnDataConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle const> target_handles;
+    std::span<RegistryEntityHandle const> target_handles;
     Vectors3fConstView locations;
     Rotators3fConstView rotations;
-    std::span<ioj::sim::Team const> teams;
+    std::span<Team const> teams;
     std::span<std::int32_t const> healths;
     std::span<float const> initial_spawn_delays;
     std::span<float const> spawn_cooldowns;
@@ -90,10 +90,10 @@ struct CapitalSpawnDataView {
     using View = CapitalSpawnDataView;
     using ConstView = CapitalSpawnDataConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle> target_handles;
+    std::span<RegistryEntityHandle> target_handles;
     Vectors3fView locations;
     Rotators3fView rotations;
-    std::span<ioj::sim::Team> teams;
+    std::span<Team> teams;
     std::span<std::int32_t> healths;
     std::span<float> initial_spawn_delays;
     std::span<float> spawn_cooldowns;
@@ -157,15 +157,40 @@ struct CapitalSpawnDataView {
     auto right(size_type const count) const -> CapitalSpawnDataView {
         return slice(num() - count, count);
     }
+    void set(size_type const index,
+             RegistryEntityHandle const new_target_handles,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             Team const new_teams,
+             std::int32_t const new_healths,
+             float const new_initial_spawn_delays,
+             float const new_spawn_cooldowns) const {
+        ml::native_soa::require(index >= 0 && index < num());
+        target_handles[static_cast<std::size_t>(index)] = new_target_handles;
+        locations.xs[static_cast<std::size_t>(index)] = new_locations_xs;
+        locations.ys[static_cast<std::size_t>(index)] = new_locations_ys;
+        locations.zs[static_cast<std::size_t>(index)] = new_locations_zs;
+        rotations.pitches[static_cast<std::size_t>(index)] = new_rotations_pitches;
+        rotations.yaws[static_cast<std::size_t>(index)] = new_rotations_yaws;
+        rotations.rolls[static_cast<std::size_t>(index)] = new_rotations_rolls;
+        teams[static_cast<std::size_t>(index)] = new_teams;
+        healths[static_cast<std::size_t>(index)] = new_healths;
+        initial_spawn_delays[static_cast<std::size_t>(index)] = new_initial_spawn_delays;
+        spawn_cooldowns[static_cast<std::size_t>(index)] = new_spawn_cooldowns;
+    }
 };
 struct CapitalSpawnData {
     using View = CapitalSpawnDataView;
     using ConstView = CapitalSpawnDataConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> target_handles;
+    ml::native_soa::Vector<RegistryEntityHandle> target_handles;
     Vectors3f locations;
     Rotators3f rotations;
-    ml::native_soa::Vector<ioj::sim::Team> teams;
+    ml::native_soa::Vector<Team> teams;
     ml::native_soa::Vector<std::int32_t> healths;
     ml::native_soa::Vector<float> initial_spawn_delays;
     ml::native_soa::Vector<float> spawn_cooldowns;
@@ -290,6 +315,58 @@ struct CapitalSpawnData {
         }
         set_num(old_num - count);
     }
+    void set(size_type const index,
+             RegistryEntityHandle const new_target_handles,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             Team const new_teams,
+             std::int32_t const new_healths,
+             float const new_initial_spawn_delays,
+             float const new_spawn_cooldowns) {
+        get_view().set(index,
+                       new_target_handles,
+                       new_locations_xs,
+                       new_locations_ys,
+                       new_locations_zs,
+                       new_rotations_pitches,
+                       new_rotations_yaws,
+                       new_rotations_rolls,
+                       new_teams,
+                       new_healths,
+                       new_initial_spawn_delays,
+                       new_spawn_cooldowns);
+    }
+    auto add(RegistryEntityHandle const new_target_handles,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             Team const new_teams,
+             std::int32_t const new_healths,
+             float const new_initial_spawn_delays,
+             float const new_spawn_cooldowns) -> size_type {
+        auto const index{num()};
+        add_defaulted(1);
+        set(index,
+            new_target_handles,
+            new_locations_xs,
+            new_locations_ys,
+            new_locations_zs,
+            new_rotations_pitches,
+            new_rotations_yaws,
+            new_rotations_rolls,
+            new_teams,
+            new_healths,
+            new_initial_spawn_delays,
+            new_spawn_cooldowns);
+        return index;
+    }
     void append_from(ConstView source) {
         auto const count{source.num()};
         ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
@@ -302,7 +379,7 @@ struct CapitalSpawnData {
             auto const begin{reinterpret_cast<std::uintptr_t>(target_handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_handles.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                                           sizeof(RegistryEntityHandle));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.locations.xs.data())};
@@ -344,7 +421,7 @@ struct CapitalSpawnData {
             auto const address{reinterpret_cast<std::uintptr_t>(source.teams.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(teams.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + teams.size() * sizeof(ioj::sim::Team));
+                                    address >= begin + teams.size() * sizeof(Team));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.healths.data())};

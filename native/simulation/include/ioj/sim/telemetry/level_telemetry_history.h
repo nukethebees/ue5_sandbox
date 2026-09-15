@@ -19,9 +19,9 @@ enum class HistoryField : std::uint8_t {
     ActiveEntities = 0,
     ActiveEntitiesByType = static_cast<std::uint8_t>(ActiveEntities) + 1,
     ActiveEntitiesByTeamAndType =
-        static_cast<std::uint8_t>(ActiveEntitiesByType) + (ioj::sim::telemetry::entity_type_count),
-    SpawnedEntities = static_cast<std::uint8_t>(ActiveEntitiesByTeamAndType) +
-                      (ioj::sim::telemetry::team_count) * (ioj::sim::telemetry::entity_type_count),
+        static_cast<std::uint8_t>(ActiveEntitiesByType) + (entity_type_count),
+    SpawnedEntities =
+        static_cast<std::uint8_t>(ActiveEntitiesByTeamAndType) + (team_count) * (entity_type_count),
     DestroyedEntities = static_cast<std::uint8_t>(SpawnedEntities) + 1,
     Kills = static_cast<std::uint8_t>(DestroyedEntities) + 1,
     RegistrySlotCount = static_cast<std::uint8_t>(Kills) + 1,
@@ -78,7 +78,7 @@ struct HistoryFieldMask {
         -> HistoryField {
         return static_cast<HistoryField>(
             static_cast<std::int32_t>(HistoryField::ActiveEntitiesByTeamAndType) +
-            team_index * (ioj::sim::telemetry::entity_type_count) + entity_type_index);
+            team_index * (entity_type_count) + entity_type_index);
     }
   private:
     [[nodiscard]] static constexpr auto bit(HistoryField const field) noexcept -> storage_type {
@@ -96,11 +96,11 @@ struct HistoryRowsConstView {
     using View = HistoryRowsView;
     using ConstView = HistoryRowsConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::SimTick const> completed_ticks;
+    std::span<SimTick const> completed_ticks;
     std::span<HistoryFieldMask const> validity_masks;
     std::span<std::int32_t const> active_entities;
-    std::span<ioj::sim::telemetry::EntityTypeCounts const> active_entities_by_type;
-    std::span<ioj::sim::telemetry::EntityCounts const> active_entities_by_team_and_type;
+    std::span<EntityTypeCounts const> active_entities_by_type;
+    std::span<EntityCounts const> active_entities_by_team_and_type;
     std::span<std::int32_t const> spawned_entities;
     std::span<std::int32_t const> destroyed_entities;
     std::span<std::int32_t const> kills;
@@ -218,11 +218,11 @@ struct HistoryRowsView {
     using View = HistoryRowsView;
     using ConstView = HistoryRowsConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::SimTick> completed_ticks;
+    std::span<SimTick> completed_ticks;
     std::span<HistoryFieldMask> validity_masks;
     std::span<std::int32_t> active_entities;
-    std::span<ioj::sim::telemetry::EntityTypeCounts> active_entities_by_type;
-    std::span<ioj::sim::telemetry::EntityCounts> active_entities_by_team_and_type;
+    std::span<EntityTypeCounts> active_entities_by_type;
+    std::span<EntityCounts> active_entities_by_team_and_type;
     std::span<std::int32_t> spawned_entities;
     std::span<std::int32_t> destroyed_entities;
     std::span<std::int32_t> kills;
@@ -336,11 +336,11 @@ struct HistoryRowsView {
         return slice(num() - count, count);
     }
     void set(size_type const index,
-             ioj::sim::SimTick const new_completed_ticks,
+             SimTick const new_completed_ticks,
              HistoryFieldMask const new_validity_masks,
              std::int32_t const new_active_entities,
-             ioj::sim::telemetry::EntityTypeCounts const new_active_entities_by_type,
-             ioj::sim::telemetry::EntityCounts const new_active_entities_by_team_and_type,
+             EntityTypeCounts const new_active_entities_by_type,
+             EntityCounts const new_active_entities_by_team_and_type,
              std::int32_t const new_spawned_entities,
              std::int32_t const new_destroyed_entities,
              std::int32_t const new_kills,
@@ -379,11 +379,11 @@ struct HistoryRows {
     using View = HistoryRowsView;
     using ConstView = HistoryRowsConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<ioj::sim::SimTick> completed_ticks;
+    ml::native_soa::Vector<SimTick> completed_ticks;
     ml::native_soa::Vector<HistoryFieldMask> validity_masks;
     ml::native_soa::Vector<std::int32_t> active_entities;
-    ml::native_soa::Vector<ioj::sim::telemetry::EntityTypeCounts> active_entities_by_type;
-    ml::native_soa::Vector<ioj::sim::telemetry::EntityCounts> active_entities_by_team_and_type;
+    ml::native_soa::Vector<EntityTypeCounts> active_entities_by_type;
+    ml::native_soa::Vector<EntityCounts> active_entities_by_team_and_type;
     ml::native_soa::Vector<std::int32_t> spawned_entities;
     ml::native_soa::Vector<std::int32_t> destroyed_entities;
     ml::native_soa::Vector<std::int32_t> kills;
@@ -569,11 +569,11 @@ struct HistoryRows {
         set_num(old_num - count);
     }
     void set(size_type const index,
-             ioj::sim::SimTick const new_completed_ticks,
+             SimTick const new_completed_ticks,
              HistoryFieldMask const new_validity_masks,
              std::int32_t const new_active_entities,
-             ioj::sim::telemetry::EntityTypeCounts const new_active_entities_by_type,
-             ioj::sim::telemetry::EntityCounts const new_active_entities_by_team_and_type,
+             EntityTypeCounts const new_active_entities_by_type,
+             EntityCounts const new_active_entities_by_team_and_type,
              std::int32_t const new_spawned_entities,
              std::int32_t const new_destroyed_entities,
              std::int32_t const new_kills,
@@ -605,11 +605,11 @@ struct HistoryRows {
                        new_sweep_trace_count,
                        new_requested_time_scale);
     }
-    auto add(ioj::sim::SimTick const new_completed_ticks,
+    auto add(SimTick const new_completed_ticks,
              HistoryFieldMask const new_validity_masks,
              std::int32_t const new_active_entities,
-             ioj::sim::telemetry::EntityTypeCounts const new_active_entities_by_type,
-             ioj::sim::telemetry::EntityCounts const new_active_entities_by_team_and_type,
+             EntityTypeCounts const new_active_entities_by_type,
+             EntityCounts const new_active_entities_by_team_and_type,
              std::int32_t const new_spawned_entities,
              std::int32_t const new_destroyed_entities,
              std::int32_t const new_kills,
@@ -655,8 +655,7 @@ struct HistoryRows {
             auto const address{reinterpret_cast<std::uintptr_t>(source.completed_ticks.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(completed_ticks.data())};
             ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + completed_ticks.size() * sizeof(ioj::sim::SimTick));
+                                    address >= begin + completed_ticks.size() * sizeof(SimTick));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.validity_masks.data())};
@@ -676,9 +675,8 @@ struct HistoryRows {
                 reinterpret_cast<std::uintptr_t>(source.active_entities_by_type.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(active_entities_by_type.data())};
             ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + active_entities_by_type.size() *
-                                                    sizeof(ioj::sim::telemetry::EntityTypeCounts));
+                                    address >= begin + active_entities_by_type.size() *
+                                                           sizeof(EntityTypeCounts));
         }
         {
             auto const address{
@@ -686,9 +684,8 @@ struct HistoryRows {
             auto const begin{
                 reinterpret_cast<std::uintptr_t>(active_entities_by_team_and_type.data())};
             ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + active_entities_by_team_and_type.size() *
-                                                    sizeof(ioj::sim::telemetry::EntityCounts));
+                                    address >= begin + active_entities_by_team_and_type.size() *
+                                                           sizeof(EntityCounts));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.spawned_entities.data())};
@@ -959,13 +956,12 @@ struct HistoryRowsSingleLayout {
     inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{
         capacity_granularity, column_gap, 64};
 
-    inline static constexpr ColLayout<ioj::sim::SimTick> CompletedTicks{LayoutStart};
+    inline static constexpr ColLayout<SimTick> CompletedTicks{LayoutStart};
     inline static constexpr ColLayout<HistoryFieldMask> ValidityMasks{CompletedTicks};
     inline static constexpr ColLayout<std::int32_t> ActiveEntities{ValidityMasks};
-    inline static constexpr ColLayout<ioj::sim::telemetry::EntityTypeCounts> ActiveEntitiesByType{
-        ActiveEntities};
-    inline static constexpr ColLayout<ioj::sim::telemetry::EntityCounts>
-        ActiveEntitiesByTeamAndType{ActiveEntitiesByType};
+    inline static constexpr ColLayout<EntityTypeCounts> ActiveEntitiesByType{ActiveEntities};
+    inline static constexpr ColLayout<EntityCounts> ActiveEntitiesByTeamAndType{
+        ActiveEntitiesByType};
     inline static constexpr ColLayout<std::int32_t> SpawnedEntities{ActiveEntitiesByTeamAndType};
     inline static constexpr ColLayout<std::int32_t> DestroyedEntities{SpawnedEntities};
     inline static constexpr ColLayout<std::int32_t> Kills{DestroyedEntities};
@@ -1011,7 +1007,7 @@ struct HistoryRowsSingleLayout {
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
         static_assert(
-            ml::native_soa::supported_leaf<ioj::sim::SimTick>,
+            ml::native_soa::supported_leaf<SimTick>,
             "Single-allocation leaf completed_ticks requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
@@ -1023,11 +1019,11 @@ struct HistoryRowsSingleLayout {
             "Single-allocation leaf active_entities requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::native_soa::supported_leaf<ioj::sim::telemetry::EntityTypeCounts>,
+            ml::native_soa::supported_leaf<EntityTypeCounts>,
             "Single-allocation leaf active_entities_by_type requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::native_soa::supported_leaf<ioj::sim::telemetry::EntityCounts>,
+            ml::native_soa::supported_leaf<EntityCounts>,
             "Single-allocation leaf active_entities_by_team_and_type requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
@@ -1042,16 +1038,16 @@ struct HistoryRowsSingleLayout {
         static_assert(
             allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
             "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
-        static_assert(sizeof(ioj::sim::SimTick) <=
+        static_assert(sizeof(SimTick) <=
                       (max_allocation_size - CompletedTicks.block_offset) / capacity_granularity);
         static_assert(sizeof(HistoryFieldMask) <=
                       (max_allocation_size - ValidityMasks.block_offset) / capacity_granularity);
         static_assert(sizeof(std::int32_t) <=
                       (max_allocation_size - ActiveEntities.block_offset) / capacity_granularity);
-        static_assert(sizeof(ioj::sim::telemetry::EntityTypeCounts) <=
+        static_assert(sizeof(EntityTypeCounts) <=
                       (max_allocation_size - ActiveEntitiesByType.block_offset) /
                           capacity_granularity);
-        static_assert(sizeof(ioj::sim::telemetry::EntityCounts) <=
+        static_assert(sizeof(EntityCounts) <=
                       (max_allocation_size - ActiveEntitiesByTeamAndType.block_offset) /
                           capacity_granularity);
         static_assert(sizeof(std::int32_t) <=
@@ -1124,11 +1120,11 @@ struct SingleAllocationHistoryRowsStorage
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<ioj::sim::SimTick>* completed_ticks{};
+        Element<SimTick>* completed_ticks{};
         Element<HistoryFieldMask>* validity_masks{};
         Element<std::int32_t>* active_entities{};
-        Element<ioj::sim::telemetry::EntityTypeCounts>* active_entities_by_type{};
-        Element<ioj::sim::telemetry::EntityCounts>* active_entities_by_team_and_type{};
+        Element<EntityTypeCounts>* active_entities_by_type{};
+        Element<EntityCounts>* active_entities_by_team_and_type{};
         Element<std::int32_t>* spawned_entities{};
         Element<std::int32_t>* destroyed_entities{};
         Element<std::int32_t>* kills{};
@@ -1218,12 +1214,12 @@ struct SingleAllocationHistoryRowsStorage
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        std::uninitialized_value_construct_n<ioj::sim::SimTick*>(columns.completed_ticks, count);
+        std::uninitialized_value_construct_n<SimTick*>(columns.completed_ticks, count);
         std::uninitialized_value_construct_n<HistoryFieldMask*>(columns.validity_masks, count);
         std::uninitialized_value_construct_n<std::int32_t*>(columns.active_entities, count);
-        std::uninitialized_value_construct_n<ioj::sim::telemetry::EntityTypeCounts*>(
-            columns.active_entities_by_type, count);
-        std::uninitialized_value_construct_n<ioj::sim::telemetry::EntityCounts*>(
+        std::uninitialized_value_construct_n<EntityTypeCounts*>(columns.active_entities_by_type,
+                                                                count);
+        std::uninitialized_value_construct_n<EntityCounts*>(
             columns.active_entities_by_team_and_type, count);
         std::uninitialized_value_construct_n<std::int32_t*>(columns.spawned_entities, count);
         std::uninitialized_value_construct_n<std::int32_t*>(columns.destroyed_entities, count);
@@ -1249,13 +1245,11 @@ struct SingleAllocationHistoryRowsStorage
                              size_type source,
                              size_type move_count) {
         auto const elements_to_move{static_cast<byte_size_type>(move_count)};
-        auto const completed_ticks_bytes{elements_to_move * sizeof(ioj::sim::SimTick)};
+        auto const completed_ticks_bytes{elements_to_move * sizeof(SimTick)};
         auto const validity_masks_bytes{elements_to_move * sizeof(HistoryFieldMask)};
         auto const active_entities_bytes{elements_to_move * sizeof(std::int32_t)};
-        auto const active_entities_by_type_bytes{elements_to_move *
-                                                 sizeof(ioj::sim::telemetry::EntityTypeCounts)};
-        auto const active_entities_by_team_and_type_bytes{
-            elements_to_move * sizeof(ioj::sim::telemetry::EntityCounts)};
+        auto const active_entities_by_type_bytes{elements_to_move * sizeof(EntityTypeCounts)};
+        auto const active_entities_by_team_and_type_bytes{elements_to_move * sizeof(EntityCounts)};
         auto const grid_rebuild_count_bytes{elements_to_move * sizeof(std::uint64_t)};
         auto const requested_time_scale_bytes{elements_to_move * sizeof(double)};
         std::memcpy(columns.completed_ticks + index,
@@ -1319,13 +1313,11 @@ struct SingleAllocationHistoryRowsStorage
     void append_columns(Columns const& source, size_type first, size_type count) {
         auto const destination{get_data(first)};
         auto const elements_to_copy{static_cast<byte_size_type>(count)};
-        auto const completed_ticks_bytes{elements_to_copy * sizeof(ioj::sim::SimTick)};
+        auto const completed_ticks_bytes{elements_to_copy * sizeof(SimTick)};
         auto const validity_masks_bytes{elements_to_copy * sizeof(HistoryFieldMask)};
         auto const active_entities_bytes{elements_to_copy * sizeof(std::int32_t)};
-        auto const active_entities_by_type_bytes{elements_to_copy *
-                                                 sizeof(ioj::sim::telemetry::EntityTypeCounts)};
-        auto const active_entities_by_team_and_type_bytes{
-            elements_to_copy * sizeof(ioj::sim::telemetry::EntityCounts)};
+        auto const active_entities_by_type_bytes{elements_to_copy * sizeof(EntityTypeCounts)};
+        auto const active_entities_by_team_and_type_bytes{elements_to_copy * sizeof(EntityCounts)};
         auto const grid_rebuild_count_bytes{elements_to_copy * sizeof(std::uint64_t)};
         auto const requested_time_scale_bytes{elements_to_copy * sizeof(double)};
         std::memcpy(
@@ -1379,13 +1371,11 @@ struct SingleAllocationHistoryRowsStorage
                 make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
             auto const destination{make_data_unchecked(new_data, new_blocks)};
             auto const live_count{static_cast<byte_size_type>(num_)};
-            auto const completed_ticks_bytes{live_count * sizeof(ioj::sim::SimTick)};
+            auto const completed_ticks_bytes{live_count * sizeof(SimTick)};
             auto const validity_masks_bytes{live_count * sizeof(HistoryFieldMask)};
             auto const active_entities_bytes{live_count * sizeof(std::int32_t)};
-            auto const active_entities_by_type_bytes{live_count *
-                                                     sizeof(ioj::sim::telemetry::EntityTypeCounts)};
-            auto const active_entities_by_team_and_type_bytes{
-                live_count * sizeof(ioj::sim::telemetry::EntityCounts)};
+            auto const active_entities_by_type_bytes{live_count * sizeof(EntityTypeCounts)};
+            auto const active_entities_by_team_and_type_bytes{live_count * sizeof(EntityCounts)};
             auto const grid_rebuild_count_bytes{live_count * sizeof(std::uint64_t)};
             auto const requested_time_scale_bytes{live_count * sizeof(double)};
             std::memcpy(destination.completed_ticks, source.completed_ticks, completed_ticks_bytes);
@@ -1439,10 +1429,10 @@ struct HistoryRowsSingleConstView : ml::native_soa::CompactViewState<true> {
     auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return slice(offset, count);
     }
-    auto completed_ticks() const -> std::span<ioj::sim::SimTick const> {
-        return {column_data<ioj::sim::SimTick>(
-                    HistoryRowsSingleLayout::CompletedTicks.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
+    auto completed_ticks() const -> std::span<SimTick const> {
+        return {
+            column_data<SimTick>(HistoryRowsSingleLayout::CompletedTicks.offset(capacity_blocks())),
+            static_cast<std::size_t>(count_)};
     }
     auto validity_masks() const -> std::span<HistoryFieldMask const> {
         return {column_data<HistoryFieldMask>(
@@ -1454,14 +1444,13 @@ struct HistoryRowsSingleConstView : ml::native_soa::CompactViewState<true> {
                     HistoryRowsSingleLayout::ActiveEntities.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto active_entities_by_type() const -> std::span<ioj::sim::telemetry::EntityTypeCounts const> {
-        return {column_data<ioj::sim::telemetry::EntityTypeCounts>(
+    auto active_entities_by_type() const -> std::span<EntityTypeCounts const> {
+        return {column_data<EntityTypeCounts>(
                     HistoryRowsSingleLayout::ActiveEntitiesByType.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto active_entities_by_team_and_type() const
-        -> std::span<ioj::sim::telemetry::EntityCounts const> {
-        return {column_data<ioj::sim::telemetry::EntityCounts>(
+    auto active_entities_by_team_and_type() const -> std::span<EntityCounts const> {
+        return {column_data<EntityCounts>(
                     HistoryRowsSingleLayout::ActiveEntitiesByTeamAndType.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
@@ -1531,8 +1520,7 @@ struct HistoryRowsSingleConstView : ml::native_soa::CompactViewState<true> {
         }
         auto const blocks{capacity_blocks()};
         return HistoryRowsConstView{
-            {column_data_unchecked<ioj::sim::SimTick>(
-                 HistoryRowsSingleLayout::CompletedTicks.offset(blocks)),
+            {column_data_unchecked<SimTick>(HistoryRowsSingleLayout::CompletedTicks.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<HistoryFieldMask>(
                  HistoryRowsSingleLayout::ValidityMasks.offset(blocks)),
@@ -1540,10 +1528,10 @@ struct HistoryRowsSingleConstView : ml::native_soa::CompactViewState<true> {
             {column_data_unchecked<std::int32_t>(
                  HistoryRowsSingleLayout::ActiveEntities.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<ioj::sim::telemetry::EntityTypeCounts>(
+            {column_data_unchecked<EntityTypeCounts>(
                  HistoryRowsSingleLayout::ActiveEntitiesByType.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<ioj::sim::telemetry::EntityCounts>(
+            {column_data_unchecked<EntityCounts>(
                  HistoryRowsSingleLayout::ActiveEntitiesByTeamAndType.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<std::int32_t>(
@@ -1599,10 +1587,10 @@ struct HistoryRowsSingleView : ml::native_soa::CompactViewState<false> {
     auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return slice(offset, count);
     }
-    auto completed_ticks() const -> std::span<ioj::sim::SimTick> {
-        return {column_data<ioj::sim::SimTick>(
-                    HistoryRowsSingleLayout::CompletedTicks.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
+    auto completed_ticks() const -> std::span<SimTick> {
+        return {
+            column_data<SimTick>(HistoryRowsSingleLayout::CompletedTicks.offset(capacity_blocks())),
+            static_cast<std::size_t>(count_)};
     }
     auto validity_masks() const -> std::span<HistoryFieldMask> {
         return {column_data<HistoryFieldMask>(
@@ -1614,13 +1602,13 @@ struct HistoryRowsSingleView : ml::native_soa::CompactViewState<false> {
                     HistoryRowsSingleLayout::ActiveEntities.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto active_entities_by_type() const -> std::span<ioj::sim::telemetry::EntityTypeCounts> {
-        return {column_data<ioj::sim::telemetry::EntityTypeCounts>(
+    auto active_entities_by_type() const -> std::span<EntityTypeCounts> {
+        return {column_data<EntityTypeCounts>(
                     HistoryRowsSingleLayout::ActiveEntitiesByType.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto active_entities_by_team_and_type() const -> std::span<ioj::sim::telemetry::EntityCounts> {
-        return {column_data<ioj::sim::telemetry::EntityCounts>(
+    auto active_entities_by_team_and_type() const -> std::span<EntityCounts> {
+        return {column_data<EntityCounts>(
                     HistoryRowsSingleLayout::ActiveEntitiesByTeamAndType.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
@@ -1690,8 +1678,7 @@ struct HistoryRowsSingleView : ml::native_soa::CompactViewState<false> {
         }
         auto const blocks{capacity_blocks()};
         return HistoryRowsView{
-            {column_data_unchecked<ioj::sim::SimTick>(
-                 HistoryRowsSingleLayout::CompletedTicks.offset(blocks)),
+            {column_data_unchecked<SimTick>(HistoryRowsSingleLayout::CompletedTicks.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<HistoryFieldMask>(
                  HistoryRowsSingleLayout::ValidityMasks.offset(blocks)),
@@ -1699,10 +1686,10 @@ struct HistoryRowsSingleView : ml::native_soa::CompactViewState<false> {
             {column_data_unchecked<std::int32_t>(
                  HistoryRowsSingleLayout::ActiveEntities.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<ioj::sim::telemetry::EntityTypeCounts>(
+            {column_data_unchecked<EntityTypeCounts>(
                  HistoryRowsSingleLayout::ActiveEntitiesByType.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<ioj::sim::telemetry::EntityCounts>(
+            {column_data_unchecked<EntityCounts>(
                  HistoryRowsSingleLayout::ActiveEntitiesByTeamAndType.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<std::int32_t>(

@@ -1,9 +1,9 @@
 (type level_telemetry_entity_type_counts
-  :spelling "ioj::sim::telemetry::EntityTypeCounts"
+  :spelling "EntityTypeCounts"
   :header "ioj/sim/entity_telemetry.h")
 
 (type level_telemetry_entity_counts
-  :spelling "ioj::sim::telemetry::EntityCounts"
+  :spelling "EntityCounts"
   :header "ioj/sim/entity_telemetry.h")
 
 (type soa_experiment_MimallocArrayAllocator
@@ -93,26 +93,26 @@
   :pass-by value)
 
 (type fighter_order
-  :spelling "ioj::sim::FighterOrder"
+  :spelling "FighterOrder"
   :header "ioj/sim/fighter_types.h")
 
 (type fighter_order_queue
-  :spelling "ioj::sim::FighterOrderQueue"
+  :spelling "FighterOrderQueue"
   :header "ioj/sim/fighter_order_queue.h"
   (operation remove-at-swap remove_at_swap))
 
 (type fighter_spawn_queue
-  :spelling "ioj::sim::FighterSpawnQueue"
+  :spelling "FighterSpawnQueue"
   :header "ioj/sim/fighter_spawn_queue.h"
   (operation remove-at-swap remove_at_swap))
 
 (type fighter_spawn_queue_const_view
-  :spelling "ioj::sim::FighterSpawnQueueConstView"
+  :spelling "FighterSpawnQueueConstView"
   :header "ioj/sim/fighter_spawn_queue.h"
   :pass-by value)
 
 (type fighter_task
-  :spelling "ioj::sim::FighterTask"
+  :spelling "FighterTask"
   :header "ioj/sim/fighter_types.h"
   :pass-by value)
 
@@ -175,17 +175,17 @@
   :pass-by value)
 
 (type native_registry_handle
-  :spelling "ioj::sim::RegistryEntityHandle"
+  :spelling "RegistryEntityHandle"
   :header "ioj/sim/entity_handle.h"
   :pass-by value)
 
 (type native_level_event_count
-  :spelling "ioj::sim::LevelEventCount"
+  :spelling "LevelEventCount"
   :header "ioj/sim/level_event_types.h"
   :pass-by value)
 
 (type native_sim_tick
-  :spelling "ioj::sim::SimTick"
+  :spelling "SimTick"
   :header "ioj/sim/sim_tick.h"
   :pass-by value)
 
@@ -195,52 +195,52 @@
   :pass-by value)
 
 (type native_level_mission_event_type
-  :spelling "ioj::sim::LevelMissionEventType"
+  :spelling "LevelMissionEventType"
   :header "ioj/sim/level_event_types.h"
   :pass-by value)
 
 (type native_death_reason
-  :spelling "ioj::sim::DeathReason"
+  :spelling "DeathReason"
   :header "ioj/sim/entity_life_state.h"
   :pass-by value)
 
 (type native_life_state
-  :spelling "ioj::sim::LifeState"
+  :spelling "LifeState"
   :header "ioj/sim/entity_life_state.h"
   :pass-by value)
 
 (type native_entity_type
-  :spelling "ioj::sim::EntityType"
+  :spelling "EntityType"
   :header "ioj/sim/entity_types.h"
   :pass-by value)
 
 (type native_team
-  :spelling "ioj::sim::Team"
+  :spelling "Team"
   :header "ioj/sim/entity_types.h"
   :pass-by value)
 
 (type native_unique_id
-  :spelling "ioj::sim::EntityUniqueId"
+  :spelling "EntityUniqueId"
   :header "ioj/sim/entity_types.h"
   :pass-by value)
 
 (type native_fighter_order
-  :spelling "ioj::sim::FighterOrder"
+  :spelling "FighterOrder"
   :header "ioj/sim/fighter_types.h"
   :pass-by value)
 
 (type native_fighter_task
-  :spelling "ioj::sim::FighterTask"
+  :spelling "FighterTask"
   :header "ioj/sim/fighter_types.h"
   :pass-by value)
 
 (type native_vector_3f
-  :spelling "ioj::sim::Vector3f"
+  :spelling "Vector3f"
   :header "ioj/sim/vector_types.h"
   :pass-by value)
 
 (type native_index_span
-  :spelling "ioj::sim::IndexSpan"
+  :spelling "IndexSpan"
   :header "ioj/sim/index_span.h"
   :pass-by value)
 
@@ -253,7 +253,7 @@
   :header "ioj/sim/rotators3f.h")
 
 (type native_rotator_3f
-  :spelling "ioj::sim::Rotator3f"
+  :spelling "Rotator3f"
   :header "ioj/sim/rotator_types.h"
   :pass-by value)
 
@@ -412,7 +412,7 @@
   :header "ioj/sim/fighters/sim.h")
 
 (type spawned_entity_handles
-  :spelling "ioj::sim::SpawnedEntityHandles"
+  :spelling "SpawnedEntityHandles"
   :header "ioj/sim/spawned_entity_handles.h")
 
 (type player_sim
@@ -436,6 +436,6 @@
   :header "ioj/sim/spinners/sim.h")
 
 (type laser_source
-  :spelling "ioj::sim::LaserSource"
+  :spelling "LaserSource"
   :header "ioj/sim/laser_source.h"
   :pass-by value)

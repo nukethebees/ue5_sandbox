@@ -14,7 +14,7 @@ struct Rotators3fConstView {
     using View = Rotators3fView;
     using ConstView = Rotators3fConstView;
     using size_type = std::int32_t;
-    using equivalent_type = ioj::sim::Rotator3f;
+    using equivalent_type = Rotator3f;
     auto operator[](size_type const index) const -> equivalent_type {
         return {pitches[static_cast<std::size_t>(index)],
                 yaws[static_cast<std::size_t>(index)],
@@ -69,7 +69,7 @@ struct Rotators3fView {
     using View = Rotators3fView;
     using ConstView = Rotators3fConstView;
     using size_type = std::int32_t;
-    using equivalent_type = ioj::sim::Rotator3f;
+    using equivalent_type = Rotator3f;
     auto operator[](size_type const index) const -> equivalent_type {
         return {pitches[static_cast<std::size_t>(index)],
                 yaws[static_cast<std::size_t>(index)],
@@ -136,7 +136,7 @@ struct Rotators3f {
     using View = Rotators3fView;
     using ConstView = Rotators3fConstView;
     using size_type = std::int32_t;
-    using equivalent_type = ioj::sim::Rotator3f;
+    using equivalent_type = Rotator3f;
     auto operator[](size_type const index) const -> equivalent_type {
         return get_const_view()[index];
     }

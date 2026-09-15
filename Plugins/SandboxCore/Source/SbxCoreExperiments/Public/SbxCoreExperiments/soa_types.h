@@ -738,6 +738,7 @@ struct SBXCOREEXPERIMENTS_API EntityDataConstView {
                                          self.locations,
                                          self.desired_move_locations,
                                          self.aim_directions,
+                                         self.planned_aim_directions,
                                          self.desired_aiming_directions,
                                          self.movement_directions,
                                          self.velocities,
@@ -783,6 +784,7 @@ struct SBXCOREEXPERIMENTS_API EntityDataConstView {
     Vectors::ConstView locations;
     Vectors::ConstView desired_move_locations;
     Vectors::ConstView aim_directions;
+    Vectors::ConstView planned_aim_directions;
     Vectors::ConstView desired_aiming_directions;
     Vectors::ConstView movement_directions;
     Vectors::ConstView velocities;
@@ -823,6 +825,7 @@ struct SBXCOREEXPERIMENTS_API EntityDataView {
                                          self.locations,
                                          self.desired_move_locations,
                                          self.aim_directions,
+                                         self.planned_aim_directions,
                                          self.desired_aiming_directions,
                                          self.movement_directions,
                                          self.velocities,
@@ -873,6 +876,7 @@ struct SBXCOREEXPERIMENTS_API EntityDataView {
     Vectors::View locations;
     Vectors::View desired_move_locations;
     Vectors::View aim_directions;
+    Vectors::View planned_aim_directions;
     Vectors::View desired_aiming_directions;
     Vectors::View movement_directions;
     Vectors::View velocities;
@@ -922,6 +926,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
         ml::remove_at_swap(locations, index, count, allow_shrinking);
         ml::remove_at_swap(desired_move_locations, index, count, allow_shrinking);
         ml::remove_at_swap(aim_directions, index, count, allow_shrinking);
+        ml::remove_at_swap(planned_aim_directions, index, count, allow_shrinking);
         ml::remove_at_swap(desired_aiming_directions, index, count, allow_shrinking);
         ml::remove_at_swap(movement_directions, index, count, allow_shrinking);
         ml::remove_at_swap(velocities, index, count, allow_shrinking);
@@ -960,6 +965,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
         ml::copy_element(locations, dst_i, other.locations, src_i);
         ml::copy_element(desired_move_locations, dst_i, other.desired_move_locations, src_i);
         ml::copy_element(aim_directions, dst_i, other.aim_directions, src_i);
+        ml::copy_element(planned_aim_directions, dst_i, other.planned_aim_directions, src_i);
         ml::copy_element(desired_aiming_directions, dst_i, other.desired_aiming_directions, src_i);
         ml::copy_element(movement_directions, dst_i, other.movement_directions, src_i);
         ml::copy_element(velocities, dst_i, other.velocities, src_i);
@@ -1004,6 +1010,8 @@ struct SBXCOREEXPERIMENTS_API EntityData {
         ml::copy_elements(
             desired_move_locations, dst_i, other.desired_move_locations, src_i, count);
         ml::copy_elements(aim_directions, dst_i, other.aim_directions, src_i, count);
+        ml::copy_elements(
+            planned_aim_directions, dst_i, other.planned_aim_directions, src_i, count);
         ml::copy_elements(
             desired_aiming_directions, dst_i, other.desired_aiming_directions, src_i, count);
         ml::copy_elements(movement_directions, dst_i, other.movement_directions, src_i, count);
@@ -1059,6 +1067,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
         locations.append_from(other.locations);
         desired_move_locations.append_from(other.desired_move_locations);
         aim_directions.append_from(other.aim_directions);
+        planned_aim_directions.append_from(other.planned_aim_directions);
         desired_aiming_directions.append_from(other.desired_aiming_directions);
         movement_directions.append_from(other.movement_directions);
         velocities.append_from(other.velocities);
@@ -1122,6 +1131,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
                                          self.locations,
                                          self.desired_move_locations,
                                          self.aim_directions,
+                                         self.planned_aim_directions,
                                          self.desired_aiming_directions,
                                          self.movement_directions,
                                          self.velocities,
@@ -1165,6 +1175,8 @@ struct SBXCOREEXPERIMENTS_API EntityData {
                                          other.desired_move_locations,
                                          self.aim_directions,
                                          other.aim_directions,
+                                         self.planned_aim_directions,
+                                         other.planned_aim_directions,
                                          self.desired_aiming_directions,
                                          other.desired_aiming_directions,
                                          self.movement_directions,
@@ -1240,6 +1252,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
     Vectors locations;
     Vectors desired_move_locations;
     Vectors aim_directions;
+    Vectors planned_aim_directions;
     Vectors desired_aiming_directions;
     Vectors movement_directions;
     Vectors velocities;
@@ -1296,7 +1309,10 @@ struct EntityDataSingleLayout {
     inline static constexpr ColLayout<float> AimDirectionsXs{DesiredMoveLocationsZs};
     inline static constexpr ColLayout<float> AimDirectionsYs{AimDirectionsXs};
     inline static constexpr ColLayout<float> AimDirectionsZs{AimDirectionsYs};
-    inline static constexpr ColLayout<float> DesiredAimingDirectionsXs{AimDirectionsZs};
+    inline static constexpr ColLayout<float> PlannedAimDirectionsXs{AimDirectionsZs};
+    inline static constexpr ColLayout<float> PlannedAimDirectionsYs{PlannedAimDirectionsXs};
+    inline static constexpr ColLayout<float> PlannedAimDirectionsZs{PlannedAimDirectionsYs};
+    inline static constexpr ColLayout<float> DesiredAimingDirectionsXs{PlannedAimDirectionsZs};
     inline static constexpr ColLayout<float> DesiredAimingDirectionsYs{DesiredAimingDirectionsXs};
     inline static constexpr ColLayout<float> DesiredAimingDirectionsZs{DesiredAimingDirectionsYs};
     inline static constexpr ColLayout<float> MovementDirectionsXs{DesiredAimingDirectionsZs};
@@ -1356,6 +1372,9 @@ struct EntityDataSingleLayout {
                                            AimDirectionsXs,
                                            AimDirectionsYs,
                                            AimDirectionsZs,
+                                           PlannedAimDirectionsXs,
+                                           PlannedAimDirectionsYs,
+                                           PlannedAimDirectionsZs,
                                            DesiredAimingDirectionsXs,
                                            DesiredAimingDirectionsYs,
                                            DesiredAimingDirectionsZs,
@@ -1401,7 +1420,7 @@ struct EntityDataSingleLayout {
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
         ml::soa_storage::layout_align(TargetRadii.block_end, allocation_alignment) +
-        52 * (column_gap + allocation_alignment - 1)};
+        55 * (column_gap + allocation_alignment - 1)};
     inline static constexpr size_type max_capacity{
         ml::soa_storage::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
@@ -1475,6 +1494,12 @@ struct EntityDataSingleLayout {
                       (max_allocation_size - AimDirectionsYs.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
                       (max_allocation_size - AimDirectionsZs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - PlannedAimDirectionsXs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - PlannedAimDirectionsYs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - PlannedAimDirectionsZs.block_offset) /
+                                           capacity_granularity);
         static_assert(sizeof(float) <=
                       (max_allocation_size - DesiredAimingDirectionsXs.block_offset) /
                           capacity_granularity);
@@ -1565,7 +1590,7 @@ struct EntityDataSingleLayout {
                       (max_allocation_size - TargetDistances.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
                       (max_allocation_size - TargetRadii.block_offset) / capacity_granularity);
-        static_assert(52 <=
+        static_assert(55 <=
                       (max_allocation_size -
                        ml::soa_storage::layout_align(TargetRadii.block_end, allocation_alignment)) /
                           (column_gap + allocation_alignment - 1));
@@ -1621,6 +1646,9 @@ struct SingleAllocationEntityDataStorage
         Element<float>* aim_directions_xs{};
         Element<float>* aim_directions_ys{};
         Element<float>* aim_directions_zs{};
+        Element<float>* planned_aim_directions_xs{};
+        Element<float>* planned_aim_directions_ys{};
+        Element<float>* planned_aim_directions_zs{};
         Element<float>* desired_aiming_directions_xs{};
         Element<float>* desired_aiming_directions_ys{};
         Element<float>* desired_aiming_directions_zs{};
@@ -1678,6 +1706,9 @@ struct SingleAllocationEntityDataStorage
                     aim_directions_xs + offset,
                     aim_directions_ys + offset,
                     aim_directions_zs + offset,
+                    planned_aim_directions_xs + offset,
+                    planned_aim_directions_ys + offset,
+                    planned_aim_directions_zs + offset,
                     desired_aiming_directions_xs + offset,
                     desired_aiming_directions_ys + offset,
                     desired_aiming_directions_zs + offset,
@@ -1760,6 +1791,9 @@ struct SingleAllocationEntityDataStorage
                 pointer_at(AimDirectionsXs),
                 pointer_at(AimDirectionsYs),
                 pointer_at(AimDirectionsZs),
+                pointer_at(PlannedAimDirectionsXs),
+                pointer_at(PlannedAimDirectionsYs),
+                pointer_at(PlannedAimDirectionsZs),
                 pointer_at(DesiredAimingDirectionsXs),
                 pointer_at(DesiredAimingDirectionsYs),
                 pointer_at(DesiredAimingDirectionsZs),
@@ -1823,6 +1857,9 @@ struct SingleAllocationEntityDataStorage
         DefaultConstructItems<float>(columns.aim_directions_xs, count);
         DefaultConstructItems<float>(columns.aim_directions_ys, count);
         DefaultConstructItems<float>(columns.aim_directions_zs, count);
+        DefaultConstructItems<float>(columns.planned_aim_directions_xs, count);
+        DefaultConstructItems<float>(columns.planned_aim_directions_ys, count);
+        DefaultConstructItems<float>(columns.planned_aim_directions_zs, count);
         DefaultConstructItems<float>(columns.desired_aiming_directions_xs, count);
         DefaultConstructItems<float>(columns.desired_aiming_directions_ys, count);
         DefaultConstructItems<float>(columns.desired_aiming_directions_zs, count);
@@ -1915,6 +1952,15 @@ struct SingleAllocationEntityDataStorage
                         float_biases_bytes);
         FMemory::Memcpy(columns.aim_directions_zs + index,
                         columns.aim_directions_zs + source,
+                        float_biases_bytes);
+        FMemory::Memcpy(columns.planned_aim_directions_xs + index,
+                        columns.planned_aim_directions_xs + source,
+                        float_biases_bytes);
+        FMemory::Memcpy(columns.planned_aim_directions_ys + index,
+                        columns.planned_aim_directions_ys + source,
+                        float_biases_bytes);
+        FMemory::Memcpy(columns.planned_aim_directions_zs + index,
+                        columns.planned_aim_directions_zs + source,
                         float_biases_bytes);
         FMemory::Memcpy(columns.desired_aiming_directions_xs + index,
                         columns.desired_aiming_directions_xs + source,
@@ -2075,6 +2121,15 @@ struct SingleAllocationEntityDataStorage
             destination.aim_directions_ys, source.aim_directions.ys.GetData(), float_biases_bytes);
         FMemory::Memcpy(
             destination.aim_directions_zs, source.aim_directions.zs.GetData(), float_biases_bytes);
+        FMemory::Memcpy(destination.planned_aim_directions_xs,
+                        source.planned_aim_directions.xs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.planned_aim_directions_ys,
+                        source.planned_aim_directions.ys.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.planned_aim_directions_zs,
+                        source.planned_aim_directions.zs.GetData(),
+                        float_biases_bytes);
         FMemory::Memcpy(destination.desired_aiming_directions_xs,
                         source.desired_aiming_directions.xs.GetData(),
                         float_biases_bytes);
@@ -2226,6 +2281,15 @@ struct SingleAllocationEntityDataStorage
                 destination.aim_directions_ys, source.aim_directions_ys, float_biases_bytes);
             FMemory::Memcpy(
                 destination.aim_directions_zs, source.aim_directions_zs, float_biases_bytes);
+            FMemory::Memcpy(destination.planned_aim_directions_xs,
+                            source.planned_aim_directions_xs,
+                            float_biases_bytes);
+            FMemory::Memcpy(destination.planned_aim_directions_ys,
+                            source.planned_aim_directions_ys,
+                            float_biases_bytes);
+            FMemory::Memcpy(destination.planned_aim_directions_zs,
+                            source.planned_aim_directions_zs,
+                            float_biases_bytes);
             FMemory::Memcpy(destination.desired_aiming_directions_xs,
                             source.desired_aiming_directions_xs,
                             float_biases_bytes);
@@ -2379,6 +2443,16 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
         auto const blocks{capacity_blocks()};
         auto const first{EntityDataSingleLayout::AimDirectionsXs.offset(blocks)};
         auto const stride{EntityDataSingleLayout::AimDirectionsYs.offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_planned_aim_directions() const -> ml::soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::PlannedAimDirectionsXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::PlannedAimDirectionsYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto view_desired_aiming_directions() const -> ml::soa::Vector3ConstView<float> {
@@ -2602,6 +2676,15 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
                                   EntityDataSingleLayout::AimDirectionsZs.offset(blocks)),
                               count_}},
             VectorsConstView{{column_data_unchecked<float>(
+                                  EntityDataSingleLayout::PlannedAimDirectionsXs.offset(blocks)),
+                              count_},
+                             {column_data_unchecked<float>(
+                                  EntityDataSingleLayout::PlannedAimDirectionsYs.offset(blocks)),
+                              count_},
+                             {column_data_unchecked<float>(
+                                  EntityDataSingleLayout::PlannedAimDirectionsZs.offset(blocks)),
+                              count_}},
+            VectorsConstView{{column_data_unchecked<float>(
                                   EntityDataSingleLayout::DesiredAimingDirectionsXs.offset(blocks)),
                               count_},
                              {column_data_unchecked<float>(
@@ -2775,6 +2858,16 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
         auto const blocks{capacity_blocks()};
         auto const first{EntityDataSingleLayout::AimDirectionsXs.offset(blocks)};
         auto const stride{EntityDataSingleLayout::AimDirectionsYs.offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_planned_aim_directions() const -> ml::soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::PlannedAimDirectionsXs.offset(blocks)};
+        auto const stride{EntityDataSingleLayout::PlannedAimDirectionsYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
     auto view_desired_aiming_directions() const -> ml::soa::Vector3View<float> {
@@ -2997,6 +3090,15 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
                              EntityDataSingleLayout::AimDirectionsZs.offset(blocks)),
                          count_}},
             VectorsView{{column_data_unchecked<float>(
+                             EntityDataSingleLayout::PlannedAimDirectionsXs.offset(blocks)),
+                         count_},
+                        {column_data_unchecked<float>(
+                             EntityDataSingleLayout::PlannedAimDirectionsYs.offset(blocks)),
+                         count_},
+                        {column_data_unchecked<float>(
+                             EntityDataSingleLayout::PlannedAimDirectionsZs.offset(blocks)),
+                         count_}},
+            VectorsView{{column_data_unchecked<float>(
                              EntityDataSingleLayout::DesiredAimingDirectionsXs.offset(blocks)),
                          count_},
                         {column_data_unchecked<float>(
@@ -3200,6 +3302,9 @@ struct FMemorySingleEntityDataStorage
         Element<float>* aim_directions_xs{};
         Element<float>* aim_directions_ys{};
         Element<float>* aim_directions_zs{};
+        Element<float>* planned_aim_directions_xs{};
+        Element<float>* planned_aim_directions_ys{};
+        Element<float>* planned_aim_directions_zs{};
         Element<float>* desired_aiming_directions_xs{};
         Element<float>* desired_aiming_directions_ys{};
         Element<float>* desired_aiming_directions_zs{};
@@ -3257,6 +3362,9 @@ struct FMemorySingleEntityDataStorage
                     aim_directions_xs + offset,
                     aim_directions_ys + offset,
                     aim_directions_zs + offset,
+                    planned_aim_directions_xs + offset,
+                    planned_aim_directions_ys + offset,
+                    planned_aim_directions_zs + offset,
                     desired_aiming_directions_xs + offset,
                     desired_aiming_directions_ys + offset,
                     desired_aiming_directions_zs + offset,
@@ -3339,6 +3447,9 @@ struct FMemorySingleEntityDataStorage
                 pointer_at(AimDirectionsXs),
                 pointer_at(AimDirectionsYs),
                 pointer_at(AimDirectionsZs),
+                pointer_at(PlannedAimDirectionsXs),
+                pointer_at(PlannedAimDirectionsYs),
+                pointer_at(PlannedAimDirectionsZs),
                 pointer_at(DesiredAimingDirectionsXs),
                 pointer_at(DesiredAimingDirectionsYs),
                 pointer_at(DesiredAimingDirectionsZs),
@@ -3402,6 +3513,9 @@ struct FMemorySingleEntityDataStorage
         DefaultConstructItems<float>(columns.aim_directions_xs, count);
         DefaultConstructItems<float>(columns.aim_directions_ys, count);
         DefaultConstructItems<float>(columns.aim_directions_zs, count);
+        DefaultConstructItems<float>(columns.planned_aim_directions_xs, count);
+        DefaultConstructItems<float>(columns.planned_aim_directions_ys, count);
+        DefaultConstructItems<float>(columns.planned_aim_directions_zs, count);
         DefaultConstructItems<float>(columns.desired_aiming_directions_xs, count);
         DefaultConstructItems<float>(columns.desired_aiming_directions_ys, count);
         DefaultConstructItems<float>(columns.desired_aiming_directions_zs, count);
@@ -3494,6 +3608,15 @@ struct FMemorySingleEntityDataStorage
                         float_biases_bytes);
         FMemory::Memcpy(columns.aim_directions_zs + index,
                         columns.aim_directions_zs + source,
+                        float_biases_bytes);
+        FMemory::Memcpy(columns.planned_aim_directions_xs + index,
+                        columns.planned_aim_directions_xs + source,
+                        float_biases_bytes);
+        FMemory::Memcpy(columns.planned_aim_directions_ys + index,
+                        columns.planned_aim_directions_ys + source,
+                        float_biases_bytes);
+        FMemory::Memcpy(columns.planned_aim_directions_zs + index,
+                        columns.planned_aim_directions_zs + source,
                         float_biases_bytes);
         FMemory::Memcpy(columns.desired_aiming_directions_xs + index,
                         columns.desired_aiming_directions_xs + source,
@@ -3654,6 +3777,15 @@ struct FMemorySingleEntityDataStorage
             destination.aim_directions_ys, source.aim_directions.ys.GetData(), float_biases_bytes);
         FMemory::Memcpy(
             destination.aim_directions_zs, source.aim_directions.zs.GetData(), float_biases_bytes);
+        FMemory::Memcpy(destination.planned_aim_directions_xs,
+                        source.planned_aim_directions.xs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.planned_aim_directions_ys,
+                        source.planned_aim_directions.ys.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.planned_aim_directions_zs,
+                        source.planned_aim_directions.zs.GetData(),
+                        float_biases_bytes);
         FMemory::Memcpy(destination.desired_aiming_directions_xs,
                         source.desired_aiming_directions.xs.GetData(),
                         float_biases_bytes);
@@ -3805,6 +3937,15 @@ struct FMemorySingleEntityDataStorage
                 destination.aim_directions_ys, source.aim_directions_ys, float_biases_bytes);
             FMemory::Memcpy(
                 destination.aim_directions_zs, source.aim_directions_zs, float_biases_bytes);
+            FMemory::Memcpy(destination.planned_aim_directions_xs,
+                            source.planned_aim_directions_xs,
+                            float_biases_bytes);
+            FMemory::Memcpy(destination.planned_aim_directions_ys,
+                            source.planned_aim_directions_ys,
+                            float_biases_bytes);
+            FMemory::Memcpy(destination.planned_aim_directions_zs,
+                            source.planned_aim_directions_zs,
+                            float_biases_bytes);
             FMemory::Memcpy(destination.desired_aiming_directions_xs,
                             source.desired_aiming_directions_xs,
                             float_biases_bytes);
@@ -5702,6 +5843,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityDataConstView {
                                          self.locations,
                                          self.desired_move_locations,
                                          self.aim_directions,
+                                         self.planned_aim_directions,
                                          self.desired_aiming_directions,
                                          self.movement_directions,
                                          self.velocities,
@@ -5747,6 +5889,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityDataConstView {
     MimallocVectors::ConstView locations;
     MimallocVectors::ConstView desired_move_locations;
     MimallocVectors::ConstView aim_directions;
+    MimallocVectors::ConstView planned_aim_directions;
     MimallocVectors::ConstView desired_aiming_directions;
     MimallocVectors::ConstView movement_directions;
     MimallocVectors::ConstView velocities;
@@ -5787,6 +5930,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityDataView {
                                          self.locations,
                                          self.desired_move_locations,
                                          self.aim_directions,
+                                         self.planned_aim_directions,
                                          self.desired_aiming_directions,
                                          self.movement_directions,
                                          self.velocities,
@@ -5837,6 +5981,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityDataView {
     MimallocVectors::View locations;
     MimallocVectors::View desired_move_locations;
     MimallocVectors::View aim_directions;
+    MimallocVectors::View planned_aim_directions;
     MimallocVectors::View desired_aiming_directions;
     MimallocVectors::View movement_directions;
     MimallocVectors::View velocities;
@@ -5886,6 +6031,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
         ml::remove_at_swap(locations, index, count, allow_shrinking);
         ml::remove_at_swap(desired_move_locations, index, count, allow_shrinking);
         ml::remove_at_swap(aim_directions, index, count, allow_shrinking);
+        ml::remove_at_swap(planned_aim_directions, index, count, allow_shrinking);
         ml::remove_at_swap(desired_aiming_directions, index, count, allow_shrinking);
         ml::remove_at_swap(movement_directions, index, count, allow_shrinking);
         ml::remove_at_swap(velocities, index, count, allow_shrinking);
@@ -5924,6 +6070,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
         ml::copy_element(locations, dst_i, other.locations, src_i);
         ml::copy_element(desired_move_locations, dst_i, other.desired_move_locations, src_i);
         ml::copy_element(aim_directions, dst_i, other.aim_directions, src_i);
+        ml::copy_element(planned_aim_directions, dst_i, other.planned_aim_directions, src_i);
         ml::copy_element(desired_aiming_directions, dst_i, other.desired_aiming_directions, src_i);
         ml::copy_element(movement_directions, dst_i, other.movement_directions, src_i);
         ml::copy_element(velocities, dst_i, other.velocities, src_i);
@@ -5968,6 +6115,8 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
         ml::copy_elements(
             desired_move_locations, dst_i, other.desired_move_locations, src_i, count);
         ml::copy_elements(aim_directions, dst_i, other.aim_directions, src_i, count);
+        ml::copy_elements(
+            planned_aim_directions, dst_i, other.planned_aim_directions, src_i, count);
         ml::copy_elements(
             desired_aiming_directions, dst_i, other.desired_aiming_directions, src_i, count);
         ml::copy_elements(movement_directions, dst_i, other.movement_directions, src_i, count);
@@ -6023,6 +6172,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
         locations.append_from(other.locations);
         desired_move_locations.append_from(other.desired_move_locations);
         aim_directions.append_from(other.aim_directions);
+        planned_aim_directions.append_from(other.planned_aim_directions);
         desired_aiming_directions.append_from(other.desired_aiming_directions);
         movement_directions.append_from(other.movement_directions);
         velocities.append_from(other.velocities);
@@ -6086,6 +6236,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
                                          self.locations,
                                          self.desired_move_locations,
                                          self.aim_directions,
+                                         self.planned_aim_directions,
                                          self.desired_aiming_directions,
                                          self.movement_directions,
                                          self.velocities,
@@ -6129,6 +6280,8 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
                                          other.desired_move_locations,
                                          self.aim_directions,
                                          other.aim_directions,
+                                         self.planned_aim_directions,
+                                         other.planned_aim_directions,
                                          self.desired_aiming_directions,
                                          other.desired_aiming_directions,
                                          self.movement_directions,
@@ -6204,6 +6357,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
     MimallocVectors locations;
     MimallocVectors desired_move_locations;
     MimallocVectors aim_directions;
+    MimallocVectors planned_aim_directions;
     MimallocVectors desired_aiming_directions;
     MimallocVectors movement_directions;
     MimallocVectors velocities;
@@ -7186,6 +7340,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityDataConstView {
                                          self.locations,
                                          self.desired_move_locations,
                                          self.aim_directions,
+                                         self.planned_aim_directions,
                                          self.desired_aiming_directions,
                                          self.movement_directions,
                                          self.velocities,
@@ -7231,6 +7386,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityDataConstView {
     MallocVectors::ConstView locations;
     MallocVectors::ConstView desired_move_locations;
     MallocVectors::ConstView aim_directions;
+    MallocVectors::ConstView planned_aim_directions;
     MallocVectors::ConstView desired_aiming_directions;
     MallocVectors::ConstView movement_directions;
     MallocVectors::ConstView velocities;
@@ -7271,6 +7427,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityDataView {
                                          self.locations,
                                          self.desired_move_locations,
                                          self.aim_directions,
+                                         self.planned_aim_directions,
                                          self.desired_aiming_directions,
                                          self.movement_directions,
                                          self.velocities,
@@ -7321,6 +7478,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityDataView {
     MallocVectors::View locations;
     MallocVectors::View desired_move_locations;
     MallocVectors::View aim_directions;
+    MallocVectors::View planned_aim_directions;
     MallocVectors::View desired_aiming_directions;
     MallocVectors::View movement_directions;
     MallocVectors::View velocities;
@@ -7370,6 +7528,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
         ml::remove_at_swap(locations, index, count, allow_shrinking);
         ml::remove_at_swap(desired_move_locations, index, count, allow_shrinking);
         ml::remove_at_swap(aim_directions, index, count, allow_shrinking);
+        ml::remove_at_swap(planned_aim_directions, index, count, allow_shrinking);
         ml::remove_at_swap(desired_aiming_directions, index, count, allow_shrinking);
         ml::remove_at_swap(movement_directions, index, count, allow_shrinking);
         ml::remove_at_swap(velocities, index, count, allow_shrinking);
@@ -7408,6 +7567,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
         ml::copy_element(locations, dst_i, other.locations, src_i);
         ml::copy_element(desired_move_locations, dst_i, other.desired_move_locations, src_i);
         ml::copy_element(aim_directions, dst_i, other.aim_directions, src_i);
+        ml::copy_element(planned_aim_directions, dst_i, other.planned_aim_directions, src_i);
         ml::copy_element(desired_aiming_directions, dst_i, other.desired_aiming_directions, src_i);
         ml::copy_element(movement_directions, dst_i, other.movement_directions, src_i);
         ml::copy_element(velocities, dst_i, other.velocities, src_i);
@@ -7452,6 +7612,8 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
         ml::copy_elements(
             desired_move_locations, dst_i, other.desired_move_locations, src_i, count);
         ml::copy_elements(aim_directions, dst_i, other.aim_directions, src_i, count);
+        ml::copy_elements(
+            planned_aim_directions, dst_i, other.planned_aim_directions, src_i, count);
         ml::copy_elements(
             desired_aiming_directions, dst_i, other.desired_aiming_directions, src_i, count);
         ml::copy_elements(movement_directions, dst_i, other.movement_directions, src_i, count);
@@ -7507,6 +7669,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
         locations.append_from(other.locations);
         desired_move_locations.append_from(other.desired_move_locations);
         aim_directions.append_from(other.aim_directions);
+        planned_aim_directions.append_from(other.planned_aim_directions);
         desired_aiming_directions.append_from(other.desired_aiming_directions);
         movement_directions.append_from(other.movement_directions);
         velocities.append_from(other.velocities);
@@ -7570,6 +7733,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
                                          self.locations,
                                          self.desired_move_locations,
                                          self.aim_directions,
+                                         self.planned_aim_directions,
                                          self.desired_aiming_directions,
                                          self.movement_directions,
                                          self.velocities,
@@ -7613,6 +7777,8 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
                                          other.desired_move_locations,
                                          self.aim_directions,
                                          other.aim_directions,
+                                         self.planned_aim_directions,
+                                         other.planned_aim_directions,
                                          self.desired_aiming_directions,
                                          other.desired_aiming_directions,
                                          self.movement_directions,
@@ -7688,6 +7854,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
     MallocVectors locations;
     MallocVectors desired_move_locations;
     MallocVectors aim_directions;
+    MallocVectors planned_aim_directions;
     MallocVectors desired_aiming_directions;
     MallocVectors movement_directions;
     MallocVectors velocities;
@@ -8670,6 +8837,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityDataConstView {
                                          self.locations,
                                          self.desired_move_locations,
                                          self.aim_directions,
+                                         self.planned_aim_directions,
                                          self.desired_aiming_directions,
                                          self.movement_directions,
                                          self.velocities,
@@ -8715,6 +8883,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityDataConstView {
     ReallocVectors::ConstView locations;
     ReallocVectors::ConstView desired_move_locations;
     ReallocVectors::ConstView aim_directions;
+    ReallocVectors::ConstView planned_aim_directions;
     ReallocVectors::ConstView desired_aiming_directions;
     ReallocVectors::ConstView movement_directions;
     ReallocVectors::ConstView velocities;
@@ -8755,6 +8924,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityDataView {
                                          self.locations,
                                          self.desired_move_locations,
                                          self.aim_directions,
+                                         self.planned_aim_directions,
                                          self.desired_aiming_directions,
                                          self.movement_directions,
                                          self.velocities,
@@ -8805,6 +8975,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityDataView {
     ReallocVectors::View locations;
     ReallocVectors::View desired_move_locations;
     ReallocVectors::View aim_directions;
+    ReallocVectors::View planned_aim_directions;
     ReallocVectors::View desired_aiming_directions;
     ReallocVectors::View movement_directions;
     ReallocVectors::View velocities;
@@ -8854,6 +9025,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
         ml::remove_at_swap(locations, index, count, allow_shrinking);
         ml::remove_at_swap(desired_move_locations, index, count, allow_shrinking);
         ml::remove_at_swap(aim_directions, index, count, allow_shrinking);
+        ml::remove_at_swap(planned_aim_directions, index, count, allow_shrinking);
         ml::remove_at_swap(desired_aiming_directions, index, count, allow_shrinking);
         ml::remove_at_swap(movement_directions, index, count, allow_shrinking);
         ml::remove_at_swap(velocities, index, count, allow_shrinking);
@@ -8892,6 +9064,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
         ml::copy_element(locations, dst_i, other.locations, src_i);
         ml::copy_element(desired_move_locations, dst_i, other.desired_move_locations, src_i);
         ml::copy_element(aim_directions, dst_i, other.aim_directions, src_i);
+        ml::copy_element(planned_aim_directions, dst_i, other.planned_aim_directions, src_i);
         ml::copy_element(desired_aiming_directions, dst_i, other.desired_aiming_directions, src_i);
         ml::copy_element(movement_directions, dst_i, other.movement_directions, src_i);
         ml::copy_element(velocities, dst_i, other.velocities, src_i);
@@ -8936,6 +9109,8 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
         ml::copy_elements(
             desired_move_locations, dst_i, other.desired_move_locations, src_i, count);
         ml::copy_elements(aim_directions, dst_i, other.aim_directions, src_i, count);
+        ml::copy_elements(
+            planned_aim_directions, dst_i, other.planned_aim_directions, src_i, count);
         ml::copy_elements(
             desired_aiming_directions, dst_i, other.desired_aiming_directions, src_i, count);
         ml::copy_elements(movement_directions, dst_i, other.movement_directions, src_i, count);
@@ -8991,6 +9166,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
         locations.append_from(other.locations);
         desired_move_locations.append_from(other.desired_move_locations);
         aim_directions.append_from(other.aim_directions);
+        planned_aim_directions.append_from(other.planned_aim_directions);
         desired_aiming_directions.append_from(other.desired_aiming_directions);
         movement_directions.append_from(other.movement_directions);
         velocities.append_from(other.velocities);
@@ -9054,6 +9230,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
                                          self.locations,
                                          self.desired_move_locations,
                                          self.aim_directions,
+                                         self.planned_aim_directions,
                                          self.desired_aiming_directions,
                                          self.movement_directions,
                                          self.velocities,
@@ -9097,6 +9274,8 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
                                          other.desired_move_locations,
                                          self.aim_directions,
                                          other.aim_directions,
+                                         self.planned_aim_directions,
+                                         other.planned_aim_directions,
                                          self.desired_aiming_directions,
                                          other.desired_aiming_directions,
                                          self.movement_directions,
@@ -9172,6 +9351,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
     ReallocVectors locations;
     ReallocVectors desired_move_locations;
     ReallocVectors aim_directions;
+    ReallocVectors planned_aim_directions;
     ReallocVectors desired_aiming_directions;
     ReallocVectors movement_directions;
     ReallocVectors velocities;

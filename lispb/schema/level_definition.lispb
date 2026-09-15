@@ -18,7 +18,6 @@
   :header "native/simulation/include/ioj/sim/levels/level_runtime_events.h"
   :backend standard-library
   :namespace ioj::sim
-  :prelude ("namespace ioj::sim { using ioj::sim::Vectors3f; using ioj::sim::Vectors3fView; using ioj::sim::Vectors3fConstView; using ioj::sim::Rotators3f; using ioj::sim::Rotators3fView; using ioj::sim::Rotators3fConstView; }")
   (struct Vectors3f
     :layout-only true
     (member xs array float)

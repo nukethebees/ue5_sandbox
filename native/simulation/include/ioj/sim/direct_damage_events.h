@@ -14,9 +14,9 @@ struct DirectDamageEventsConstView {
     using View = DirectDamageEventsView;
     using ConstView = DirectDamageEventsConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle const> damaged_entities;
+    std::span<RegistryEntityHandle const> damaged_entities;
     std::span<std::int32_t const> damage_amounts;
-    std::span<ioj::sim::RegistryEntityHandle const> instigators;
+    std::span<RegistryEntityHandle const> instigators;
     auto num() const noexcept -> size_type {
         return static_cast<size_type>(damaged_entities.size());
     }
@@ -70,9 +70,9 @@ struct DirectDamageEventsView {
     using View = DirectDamageEventsView;
     using ConstView = DirectDamageEventsConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle> damaged_entities;
+    std::span<RegistryEntityHandle> damaged_entities;
     std::span<std::int32_t> damage_amounts;
-    std::span<ioj::sim::RegistryEntityHandle> instigators;
+    std::span<RegistryEntityHandle> instigators;
     auto num() const noexcept -> size_type {
         return static_cast<size_type>(damaged_entities.size());
     }
@@ -119,9 +119,9 @@ struct DirectDamageEventsView {
         return slice(num() - count, count);
     }
     void set(size_type const index,
-             ioj::sim::RegistryEntityHandle const new_damaged_entities,
+             RegistryEntityHandle const new_damaged_entities,
              std::int32_t const new_damage_amounts,
-             ioj::sim::RegistryEntityHandle const new_instigators) const {
+             RegistryEntityHandle const new_instigators) const {
         ml::native_soa::require(index >= 0 && index < num());
         damaged_entities[static_cast<std::size_t>(index)] = new_damaged_entities;
         damage_amounts[static_cast<std::size_t>(index)] = new_damage_amounts;
@@ -132,9 +132,9 @@ struct DirectDamageEvents {
     using View = DirectDamageEventsView;
     using ConstView = DirectDamageEventsConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> damaged_entities;
+    ml::native_soa::Vector<RegistryEntityHandle> damaged_entities;
     ml::native_soa::Vector<std::int32_t> damage_amounts;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> instigators;
+    ml::native_soa::Vector<RegistryEntityHandle> instigators;
     auto num() const noexcept -> size_type {
         return static_cast<size_type>(damaged_entities.size());
     }
@@ -195,14 +195,14 @@ struct DirectDamageEvents {
         set_num(old_num - count);
     }
     void set(size_type const index,
-             ioj::sim::RegistryEntityHandle const new_damaged_entities,
+             RegistryEntityHandle const new_damaged_entities,
              std::int32_t const new_damage_amounts,
-             ioj::sim::RegistryEntityHandle const new_instigators) {
+             RegistryEntityHandle const new_instigators) {
         get_view().set(index, new_damaged_entities, new_damage_amounts, new_instigators);
     }
-    auto add(ioj::sim::RegistryEntityHandle const new_damaged_entities,
+    auto add(RegistryEntityHandle const new_damaged_entities,
              std::int32_t const new_damage_amounts,
-             ioj::sim::RegistryEntityHandle const new_instigators) -> size_type {
+             RegistryEntityHandle const new_instigators) -> size_type {
         auto const index{num()};
         add_defaulted(1);
         set(index, new_damaged_entities, new_damage_amounts, new_instigators);
@@ -220,7 +220,7 @@ struct DirectDamageEvents {
             auto const begin{reinterpret_cast<std::uintptr_t>(damaged_entities.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + damaged_entities.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                                           sizeof(RegistryEntityHandle));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.damage_amounts.data())};
@@ -232,8 +232,8 @@ struct DirectDamageEvents {
             auto const address{reinterpret_cast<std::uintptr_t>(source.instigators.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(instigators.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + instigators.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                    address >=
+                                        begin + instigators.size() * sizeof(RegistryEntityHandle));
         }
         damaged_entities.insert(
             damaged_entities.end(), source.damaged_entities.begin(), source.damaged_entities.end());

@@ -14,8 +14,8 @@ struct FighterReassignmentConstView {
     using View = FighterReassignmentView;
     using ConstView = FighterReassignmentConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle const> capital_handles;
-    std::span<ioj::sim::RegistryEntityHandle const> fighter_handles;
+    std::span<RegistryEntityHandle const> capital_handles;
+    std::span<RegistryEntityHandle const> fighter_handles;
     auto num() const noexcept -> size_type {
         return static_cast<size_type>(capital_handles.size());
     }
@@ -67,8 +67,8 @@ struct FighterReassignmentView {
     using View = FighterReassignmentView;
     using ConstView = FighterReassignmentConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle> capital_handles;
-    std::span<ioj::sim::RegistryEntityHandle> fighter_handles;
+    std::span<RegistryEntityHandle> capital_handles;
+    std::span<RegistryEntityHandle> fighter_handles;
     auto num() const noexcept -> size_type {
         return static_cast<size_type>(capital_handles.size());
     }
@@ -112,8 +112,8 @@ struct FighterReassignmentView {
         return slice(num() - count, count);
     }
     void set(size_type const index,
-             ioj::sim::RegistryEntityHandle const new_capital_handles,
-             ioj::sim::RegistryEntityHandle const new_fighter_handles) const {
+             RegistryEntityHandle const new_capital_handles,
+             RegistryEntityHandle const new_fighter_handles) const {
         ml::native_soa::require(index >= 0 && index < num());
         capital_handles[static_cast<std::size_t>(index)] = new_capital_handles;
         fighter_handles[static_cast<std::size_t>(index)] = new_fighter_handles;
@@ -123,8 +123,8 @@ struct FighterReassignment {
     using View = FighterReassignmentView;
     using ConstView = FighterReassignmentConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> capital_handles;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> fighter_handles;
+    ml::native_soa::Vector<RegistryEntityHandle> capital_handles;
+    ml::native_soa::Vector<RegistryEntityHandle> fighter_handles;
     auto num() const noexcept -> size_type {
         return static_cast<size_type>(capital_handles.size());
     }
@@ -177,12 +177,12 @@ struct FighterReassignment {
         set_num(old_num - count);
     }
     void set(size_type const index,
-             ioj::sim::RegistryEntityHandle const new_capital_handles,
-             ioj::sim::RegistryEntityHandle const new_fighter_handles) {
+             RegistryEntityHandle const new_capital_handles,
+             RegistryEntityHandle const new_fighter_handles) {
         get_view().set(index, new_capital_handles, new_fighter_handles);
     }
-    auto add(ioj::sim::RegistryEntityHandle const new_capital_handles,
-             ioj::sim::RegistryEntityHandle const new_fighter_handles) -> size_type {
+    auto add(RegistryEntityHandle const new_capital_handles,
+             RegistryEntityHandle const new_fighter_handles) -> size_type {
         auto const index{num()};
         add_defaulted(1);
         set(index, new_capital_handles, new_fighter_handles);
@@ -200,14 +200,14 @@ struct FighterReassignment {
             auto const begin{reinterpret_cast<std::uintptr_t>(capital_handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + capital_handles.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                                           sizeof(RegistryEntityHandle));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.fighter_handles.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(fighter_handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + fighter_handles.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                                           sizeof(RegistryEntityHandle));
         }
         capital_handles.insert(
             capital_handles.end(), source.capital_handles.begin(), source.capital_handles.end());

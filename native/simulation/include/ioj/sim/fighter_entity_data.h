@@ -17,21 +17,22 @@ struct FighterEntityDataConstView {
     using View = FighterEntityDataView;
     using ConstView = FighterEntityDataConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle const> entity_handles;
+    std::span<RegistryEntityHandle const> entity_handles;
     std::span<std::uint32_t const> integral_biases;
     std::span<float const> float_biases;
-    std::span<ioj::sim::FighterTask const> tasks;
+    std::span<FighterTask const> tasks;
     Vectors3fConstView locations;
     Vectors3fConstView desired_move_locations;
     Vectors3fConstView aim_directions;
+    Vectors3fConstView planned_aim_directions;
     Vectors3fConstView desired_aiming_directions;
     Vectors3fConstView movement_directions;
     Vectors3fConstView velocities;
     std::span<float const> move_distances;
     std::span<float const> speeds;
-    std::span<ioj::sim::Team const> teams;
+    std::span<Team const> teams;
     std::span<std::int32_t const> healths;
-    std::span<ioj::sim::RegistryEntityHandle const> parent_handles;
+    std::span<RegistryEntityHandle const> parent_handles;
     std::span<std::int8_t const> awareness_scan_countdowns;
     std::span<std::int16_t const> navigation_update_countdowns_remaining_ticks;
     std::span<std::int16_t const> navigation_update_countdowns_periods;
@@ -42,7 +43,7 @@ struct FighterEntityDataConstView {
     std::span<std::uint8_t const> avoidance_clear_scan_counts;
     std::span<std::int16_t const> attack_reposition_countdowns;
     std::span<std::int16_t const> attack_cooldowns;
-    std::span<ioj::sim::RegistryEntityHandle const> target_handles;
+    std::span<RegistryEntityHandle const> target_handles;
     Vectors3fConstView target_locations;
     Vectors3fConstView target_velocities;
     Vectors3fConstView target_directions;
@@ -67,6 +68,9 @@ struct FighterEntityDataConstView {
         fn(aim_directions.xs);
         fn(aim_directions.ys);
         fn(aim_directions.zs);
+        fn(planned_aim_directions.xs);
+        fn(planned_aim_directions.ys);
+        fn(planned_aim_directions.zs);
         fn(desired_aiming_directions.xs);
         fn(desired_aiming_directions.ys);
         fn(desired_aiming_directions.zs);
@@ -127,6 +131,7 @@ struct FighterEntityDataConstView {
             locations.slice(offset, count),
             desired_move_locations.slice(offset, count),
             aim_directions.slice(offset, count),
+            planned_aim_directions.slice(offset, count),
             desired_aiming_directions.slice(offset, count),
             movement_directions.slice(offset, count),
             velocities.slice(offset, count),
@@ -184,6 +189,7 @@ struct FighterEntityDataConstView {
             locations.get_const_view(),
             desired_move_locations.get_const_view(),
             aim_directions.get_const_view(),
+            planned_aim_directions.get_const_view(),
             desired_aiming_directions.get_const_view(),
             movement_directions.get_const_view(),
             velocities.get_const_view(),
@@ -224,21 +230,22 @@ struct FighterEntityDataView {
     using View = FighterEntityDataView;
     using ConstView = FighterEntityDataConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle> entity_handles;
+    std::span<RegistryEntityHandle> entity_handles;
     std::span<std::uint32_t> integral_biases;
     std::span<float> float_biases;
-    std::span<ioj::sim::FighterTask> tasks;
+    std::span<FighterTask> tasks;
     Vectors3fView locations;
     Vectors3fView desired_move_locations;
     Vectors3fView aim_directions;
+    Vectors3fView planned_aim_directions;
     Vectors3fView desired_aiming_directions;
     Vectors3fView movement_directions;
     Vectors3fView velocities;
     std::span<float> move_distances;
     std::span<float> speeds;
-    std::span<ioj::sim::Team> teams;
+    std::span<Team> teams;
     std::span<std::int32_t> healths;
-    std::span<ioj::sim::RegistryEntityHandle> parent_handles;
+    std::span<RegistryEntityHandle> parent_handles;
     std::span<std::int8_t> awareness_scan_countdowns;
     std::span<std::int16_t> navigation_update_countdowns_remaining_ticks;
     std::span<std::int16_t> navigation_update_countdowns_periods;
@@ -249,7 +256,7 @@ struct FighterEntityDataView {
     std::span<std::uint8_t> avoidance_clear_scan_counts;
     std::span<std::int16_t> attack_reposition_countdowns;
     std::span<std::int16_t> attack_cooldowns;
-    std::span<ioj::sim::RegistryEntityHandle> target_handles;
+    std::span<RegistryEntityHandle> target_handles;
     Vectors3fView target_locations;
     Vectors3fView target_velocities;
     Vectors3fView target_directions;
@@ -274,6 +281,9 @@ struct FighterEntityDataView {
         fn(aim_directions.xs);
         fn(aim_directions.ys);
         fn(aim_directions.zs);
+        fn(planned_aim_directions.xs);
+        fn(planned_aim_directions.ys);
+        fn(planned_aim_directions.zs);
         fn(desired_aiming_directions.xs);
         fn(desired_aiming_directions.ys);
         fn(desired_aiming_directions.zs);
@@ -334,6 +344,7 @@ struct FighterEntityDataView {
             locations.slice(offset, count),
             desired_move_locations.slice(offset, count),
             aim_directions.slice(offset, count),
+            planned_aim_directions.slice(offset, count),
             desired_aiming_directions.slice(offset, count),
             movement_directions.slice(offset, count),
             velocities.slice(offset, count),
@@ -390,6 +401,7 @@ struct FighterEntityDataView {
             locations.get_const_view(),
             desired_move_locations.get_const_view(),
             aim_directions.get_const_view(),
+            planned_aim_directions.get_const_view(),
             desired_aiming_directions.get_const_view(),
             movement_directions.get_const_view(),
             velocities.get_const_view(),
@@ -425,26 +437,150 @@ struct FighterEntityDataView {
     auto right(size_type const count) const -> FighterEntityDataView {
         return slice(num() - count, count);
     }
+    void set(size_type const index,
+             RegistryEntityHandle const new_entity_handles,
+             std::uint32_t const new_integral_biases,
+             float const new_float_biases,
+             FighterTask const new_tasks,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_desired_move_locations_xs,
+             float const new_desired_move_locations_ys,
+             float const new_desired_move_locations_zs,
+             float const new_aim_directions_xs,
+             float const new_aim_directions_ys,
+             float const new_aim_directions_zs,
+             float const new_planned_aim_directions_xs,
+             float const new_planned_aim_directions_ys,
+             float const new_planned_aim_directions_zs,
+             float const new_desired_aiming_directions_xs,
+             float const new_desired_aiming_directions_ys,
+             float const new_desired_aiming_directions_zs,
+             float const new_movement_directions_xs,
+             float const new_movement_directions_ys,
+             float const new_movement_directions_zs,
+             float const new_velocities_xs,
+             float const new_velocities_ys,
+             float const new_velocities_zs,
+             float const new_move_distances,
+             float const new_speeds,
+             Team const new_teams,
+             std::int32_t const new_healths,
+             RegistryEntityHandle const new_parent_handles,
+             std::int8_t const new_awareness_scan_countdowns,
+             std::int16_t const new_navigation_update_countdowns_remaining_ticks,
+             std::int16_t const new_navigation_update_countdowns_periods,
+             float const new_separation_steering_xs,
+             float const new_separation_steering_ys,
+             float const new_separation_steering_zs,
+             std::uint8_t const new_navigation_risk_tiers,
+             std::uint8_t const new_navigation_lower_risk_scan_counts,
+             std::int8_t const new_avoidance_choice_indices,
+             std::uint8_t const new_avoidance_clear_scan_counts,
+             std::int16_t const new_attack_reposition_countdowns,
+             std::int16_t const new_attack_cooldowns,
+             RegistryEntityHandle const new_target_handles,
+             float const new_target_locations_xs,
+             float const new_target_locations_ys,
+             float const new_target_locations_zs,
+             float const new_target_velocities_xs,
+             float const new_target_velocities_ys,
+             float const new_target_velocities_zs,
+             float const new_target_directions_xs,
+             float const new_target_directions_ys,
+             float const new_target_directions_zs,
+             float const new_intercept_times,
+             float const new_target_distance_sq,
+             float const new_target_distances,
+             float const new_target_radii) const {
+        ml::native_soa::require(index >= 0 && index < num());
+        entity_handles[static_cast<std::size_t>(index)] = new_entity_handles;
+        integral_biases[static_cast<std::size_t>(index)] = new_integral_biases;
+        float_biases[static_cast<std::size_t>(index)] = new_float_biases;
+        tasks[static_cast<std::size_t>(index)] = new_tasks;
+        locations.xs[static_cast<std::size_t>(index)] = new_locations_xs;
+        locations.ys[static_cast<std::size_t>(index)] = new_locations_ys;
+        locations.zs[static_cast<std::size_t>(index)] = new_locations_zs;
+        desired_move_locations.xs[static_cast<std::size_t>(index)] = new_desired_move_locations_xs;
+        desired_move_locations.ys[static_cast<std::size_t>(index)] = new_desired_move_locations_ys;
+        desired_move_locations.zs[static_cast<std::size_t>(index)] = new_desired_move_locations_zs;
+        aim_directions.xs[static_cast<std::size_t>(index)] = new_aim_directions_xs;
+        aim_directions.ys[static_cast<std::size_t>(index)] = new_aim_directions_ys;
+        aim_directions.zs[static_cast<std::size_t>(index)] = new_aim_directions_zs;
+        planned_aim_directions.xs[static_cast<std::size_t>(index)] = new_planned_aim_directions_xs;
+        planned_aim_directions.ys[static_cast<std::size_t>(index)] = new_planned_aim_directions_ys;
+        planned_aim_directions.zs[static_cast<std::size_t>(index)] = new_planned_aim_directions_zs;
+        desired_aiming_directions.xs[static_cast<std::size_t>(index)] =
+            new_desired_aiming_directions_xs;
+        desired_aiming_directions.ys[static_cast<std::size_t>(index)] =
+            new_desired_aiming_directions_ys;
+        desired_aiming_directions.zs[static_cast<std::size_t>(index)] =
+            new_desired_aiming_directions_zs;
+        movement_directions.xs[static_cast<std::size_t>(index)] = new_movement_directions_xs;
+        movement_directions.ys[static_cast<std::size_t>(index)] = new_movement_directions_ys;
+        movement_directions.zs[static_cast<std::size_t>(index)] = new_movement_directions_zs;
+        velocities.xs[static_cast<std::size_t>(index)] = new_velocities_xs;
+        velocities.ys[static_cast<std::size_t>(index)] = new_velocities_ys;
+        velocities.zs[static_cast<std::size_t>(index)] = new_velocities_zs;
+        move_distances[static_cast<std::size_t>(index)] = new_move_distances;
+        speeds[static_cast<std::size_t>(index)] = new_speeds;
+        teams[static_cast<std::size_t>(index)] = new_teams;
+        healths[static_cast<std::size_t>(index)] = new_healths;
+        parent_handles[static_cast<std::size_t>(index)] = new_parent_handles;
+        awareness_scan_countdowns[static_cast<std::size_t>(index)] = new_awareness_scan_countdowns;
+        navigation_update_countdowns_remaining_ticks[static_cast<std::size_t>(index)] =
+            new_navigation_update_countdowns_remaining_ticks;
+        navigation_update_countdowns_periods[static_cast<std::size_t>(index)] =
+            new_navigation_update_countdowns_periods;
+        separation_steering.xs[static_cast<std::size_t>(index)] = new_separation_steering_xs;
+        separation_steering.ys[static_cast<std::size_t>(index)] = new_separation_steering_ys;
+        separation_steering.zs[static_cast<std::size_t>(index)] = new_separation_steering_zs;
+        navigation_risk_tiers[static_cast<std::size_t>(index)] = new_navigation_risk_tiers;
+        navigation_lower_risk_scan_counts[static_cast<std::size_t>(index)] =
+            new_navigation_lower_risk_scan_counts;
+        avoidance_choice_indices[static_cast<std::size_t>(index)] = new_avoidance_choice_indices;
+        avoidance_clear_scan_counts[static_cast<std::size_t>(index)] =
+            new_avoidance_clear_scan_counts;
+        attack_reposition_countdowns[static_cast<std::size_t>(index)] =
+            new_attack_reposition_countdowns;
+        attack_cooldowns[static_cast<std::size_t>(index)] = new_attack_cooldowns;
+        target_handles[static_cast<std::size_t>(index)] = new_target_handles;
+        target_locations.xs[static_cast<std::size_t>(index)] = new_target_locations_xs;
+        target_locations.ys[static_cast<std::size_t>(index)] = new_target_locations_ys;
+        target_locations.zs[static_cast<std::size_t>(index)] = new_target_locations_zs;
+        target_velocities.xs[static_cast<std::size_t>(index)] = new_target_velocities_xs;
+        target_velocities.ys[static_cast<std::size_t>(index)] = new_target_velocities_ys;
+        target_velocities.zs[static_cast<std::size_t>(index)] = new_target_velocities_zs;
+        target_directions.xs[static_cast<std::size_t>(index)] = new_target_directions_xs;
+        target_directions.ys[static_cast<std::size_t>(index)] = new_target_directions_ys;
+        target_directions.zs[static_cast<std::size_t>(index)] = new_target_directions_zs;
+        intercept_times[static_cast<std::size_t>(index)] = new_intercept_times;
+        target_distance_sq[static_cast<std::size_t>(index)] = new_target_distance_sq;
+        target_distances[static_cast<std::size_t>(index)] = new_target_distances;
+        target_radii[static_cast<std::size_t>(index)] = new_target_radii;
+    }
 };
 struct FighterEntityData {
     using View = FighterEntityDataView;
     using ConstView = FighterEntityDataConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> entity_handles;
+    ml::native_soa::Vector<RegistryEntityHandle> entity_handles;
     ml::native_soa::Vector<std::uint32_t> integral_biases;
     ml::native_soa::Vector<float> float_biases;
-    ml::native_soa::Vector<ioj::sim::FighterTask> tasks;
+    ml::native_soa::Vector<FighterTask> tasks;
     Vectors3f locations;
     Vectors3f desired_move_locations;
     Vectors3f aim_directions;
+    Vectors3f planned_aim_directions;
     Vectors3f desired_aiming_directions;
     Vectors3f movement_directions;
     Vectors3f velocities;
     ml::native_soa::Vector<float> move_distances;
     ml::native_soa::Vector<float> speeds;
-    ml::native_soa::Vector<ioj::sim::Team> teams;
+    ml::native_soa::Vector<Team> teams;
     ml::native_soa::Vector<std::int32_t> healths;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> parent_handles;
+    ml::native_soa::Vector<RegistryEntityHandle> parent_handles;
     ml::native_soa::Vector<std::int8_t> awareness_scan_countdowns;
     ml::native_soa::Vector<std::int16_t> navigation_update_countdowns_remaining_ticks;
     ml::native_soa::Vector<std::int16_t> navigation_update_countdowns_periods;
@@ -455,7 +591,7 @@ struct FighterEntityData {
     ml::native_soa::Vector<std::uint8_t> avoidance_clear_scan_counts;
     ml::native_soa::Vector<std::int16_t> attack_reposition_countdowns;
     ml::native_soa::Vector<std::int16_t> attack_cooldowns;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> target_handles;
+    ml::native_soa::Vector<RegistryEntityHandle> target_handles;
     Vectors3f target_locations;
     Vectors3f target_velocities;
     Vectors3f target_directions;
@@ -480,6 +616,9 @@ struct FighterEntityData {
         fn(aim_directions.xs);
         fn(aim_directions.ys);
         fn(aim_directions.zs);
+        fn(planned_aim_directions.xs);
+        fn(planned_aim_directions.ys);
+        fn(planned_aim_directions.zs);
         fn(desired_aiming_directions.xs);
         fn(desired_aiming_directions.ys);
         fn(desired_aiming_directions.zs);
@@ -536,6 +675,9 @@ struct FighterEntityData {
         fn(aim_directions.xs);
         fn(aim_directions.ys);
         fn(aim_directions.zs);
+        fn(planned_aim_directions.xs);
+        fn(planned_aim_directions.ys);
+        fn(planned_aim_directions.zs);
         fn(desired_aiming_directions.xs);
         fn(desired_aiming_directions.ys);
         fn(desired_aiming_directions.zs);
@@ -593,6 +735,9 @@ struct FighterEntityData {
         aim_directions.xs.reserve(static_cast<std::size_t>(count));
         aim_directions.ys.reserve(static_cast<std::size_t>(count));
         aim_directions.zs.reserve(static_cast<std::size_t>(count));
+        planned_aim_directions.xs.reserve(static_cast<std::size_t>(count));
+        planned_aim_directions.ys.reserve(static_cast<std::size_t>(count));
+        planned_aim_directions.zs.reserve(static_cast<std::size_t>(count));
         desired_aiming_directions.xs.reserve(static_cast<std::size_t>(count));
         desired_aiming_directions.ys.reserve(static_cast<std::size_t>(count));
         desired_aiming_directions.zs.reserve(static_cast<std::size_t>(count));
@@ -648,6 +793,9 @@ struct FighterEntityData {
         aim_directions.xs.clear();
         aim_directions.ys.clear();
         aim_directions.zs.clear();
+        planned_aim_directions.xs.clear();
+        planned_aim_directions.ys.clear();
+        planned_aim_directions.zs.clear();
         desired_aiming_directions.xs.clear();
         desired_aiming_directions.ys.clear();
         desired_aiming_directions.zs.clear();
@@ -705,6 +853,9 @@ struct FighterEntityData {
         aim_directions.xs.resize(size);
         aim_directions.ys.resize(size);
         aim_directions.zs.resize(size);
+        planned_aim_directions.xs.resize(size);
+        planned_aim_directions.ys.resize(size);
+        planned_aim_directions.zs.resize(size);
         desired_aiming_directions.xs.resize(size);
         desired_aiming_directions.ys.resize(size);
         desired_aiming_directions.zs.resize(size);
@@ -797,6 +948,15 @@ struct FighterEntityData {
         }
         for (size_type i{}; i < moved; ++i) {
             aim_directions.zs[index + i] = aim_directions.zs[source + i];
+        }
+        for (size_type i{}; i < moved; ++i) {
+            planned_aim_directions.xs[index + i] = planned_aim_directions.xs[source + i];
+        }
+        for (size_type i{}; i < moved; ++i) {
+            planned_aim_directions.ys[index + i] = planned_aim_directions.ys[source + i];
+        }
+        for (size_type i{}; i < moved; ++i) {
+            planned_aim_directions.zs[index + i] = planned_aim_directions.zs[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
             desired_aiming_directions.xs[index + i] = desired_aiming_directions.xs[source + i];
@@ -923,6 +1083,238 @@ struct FighterEntityData {
         }
         set_num(old_num - count);
     }
+    void set(size_type const index,
+             RegistryEntityHandle const new_entity_handles,
+             std::uint32_t const new_integral_biases,
+             float const new_float_biases,
+             FighterTask const new_tasks,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_desired_move_locations_xs,
+             float const new_desired_move_locations_ys,
+             float const new_desired_move_locations_zs,
+             float const new_aim_directions_xs,
+             float const new_aim_directions_ys,
+             float const new_aim_directions_zs,
+             float const new_planned_aim_directions_xs,
+             float const new_planned_aim_directions_ys,
+             float const new_planned_aim_directions_zs,
+             float const new_desired_aiming_directions_xs,
+             float const new_desired_aiming_directions_ys,
+             float const new_desired_aiming_directions_zs,
+             float const new_movement_directions_xs,
+             float const new_movement_directions_ys,
+             float const new_movement_directions_zs,
+             float const new_velocities_xs,
+             float const new_velocities_ys,
+             float const new_velocities_zs,
+             float const new_move_distances,
+             float const new_speeds,
+             Team const new_teams,
+             std::int32_t const new_healths,
+             RegistryEntityHandle const new_parent_handles,
+             std::int8_t const new_awareness_scan_countdowns,
+             std::int16_t const new_navigation_update_countdowns_remaining_ticks,
+             std::int16_t const new_navigation_update_countdowns_periods,
+             float const new_separation_steering_xs,
+             float const new_separation_steering_ys,
+             float const new_separation_steering_zs,
+             std::uint8_t const new_navigation_risk_tiers,
+             std::uint8_t const new_navigation_lower_risk_scan_counts,
+             std::int8_t const new_avoidance_choice_indices,
+             std::uint8_t const new_avoidance_clear_scan_counts,
+             std::int16_t const new_attack_reposition_countdowns,
+             std::int16_t const new_attack_cooldowns,
+             RegistryEntityHandle const new_target_handles,
+             float const new_target_locations_xs,
+             float const new_target_locations_ys,
+             float const new_target_locations_zs,
+             float const new_target_velocities_xs,
+             float const new_target_velocities_ys,
+             float const new_target_velocities_zs,
+             float const new_target_directions_xs,
+             float const new_target_directions_ys,
+             float const new_target_directions_zs,
+             float const new_intercept_times,
+             float const new_target_distance_sq,
+             float const new_target_distances,
+             float const new_target_radii) {
+        get_view().set(index,
+                       new_entity_handles,
+                       new_integral_biases,
+                       new_float_biases,
+                       new_tasks,
+                       new_locations_xs,
+                       new_locations_ys,
+                       new_locations_zs,
+                       new_desired_move_locations_xs,
+                       new_desired_move_locations_ys,
+                       new_desired_move_locations_zs,
+                       new_aim_directions_xs,
+                       new_aim_directions_ys,
+                       new_aim_directions_zs,
+                       new_planned_aim_directions_xs,
+                       new_planned_aim_directions_ys,
+                       new_planned_aim_directions_zs,
+                       new_desired_aiming_directions_xs,
+                       new_desired_aiming_directions_ys,
+                       new_desired_aiming_directions_zs,
+                       new_movement_directions_xs,
+                       new_movement_directions_ys,
+                       new_movement_directions_zs,
+                       new_velocities_xs,
+                       new_velocities_ys,
+                       new_velocities_zs,
+                       new_move_distances,
+                       new_speeds,
+                       new_teams,
+                       new_healths,
+                       new_parent_handles,
+                       new_awareness_scan_countdowns,
+                       new_navigation_update_countdowns_remaining_ticks,
+                       new_navigation_update_countdowns_periods,
+                       new_separation_steering_xs,
+                       new_separation_steering_ys,
+                       new_separation_steering_zs,
+                       new_navigation_risk_tiers,
+                       new_navigation_lower_risk_scan_counts,
+                       new_avoidance_choice_indices,
+                       new_avoidance_clear_scan_counts,
+                       new_attack_reposition_countdowns,
+                       new_attack_cooldowns,
+                       new_target_handles,
+                       new_target_locations_xs,
+                       new_target_locations_ys,
+                       new_target_locations_zs,
+                       new_target_velocities_xs,
+                       new_target_velocities_ys,
+                       new_target_velocities_zs,
+                       new_target_directions_xs,
+                       new_target_directions_ys,
+                       new_target_directions_zs,
+                       new_intercept_times,
+                       new_target_distance_sq,
+                       new_target_distances,
+                       new_target_radii);
+    }
+    auto add(RegistryEntityHandle const new_entity_handles,
+             std::uint32_t const new_integral_biases,
+             float const new_float_biases,
+             FighterTask const new_tasks,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_desired_move_locations_xs,
+             float const new_desired_move_locations_ys,
+             float const new_desired_move_locations_zs,
+             float const new_aim_directions_xs,
+             float const new_aim_directions_ys,
+             float const new_aim_directions_zs,
+             float const new_planned_aim_directions_xs,
+             float const new_planned_aim_directions_ys,
+             float const new_planned_aim_directions_zs,
+             float const new_desired_aiming_directions_xs,
+             float const new_desired_aiming_directions_ys,
+             float const new_desired_aiming_directions_zs,
+             float const new_movement_directions_xs,
+             float const new_movement_directions_ys,
+             float const new_movement_directions_zs,
+             float const new_velocities_xs,
+             float const new_velocities_ys,
+             float const new_velocities_zs,
+             float const new_move_distances,
+             float const new_speeds,
+             Team const new_teams,
+             std::int32_t const new_healths,
+             RegistryEntityHandle const new_parent_handles,
+             std::int8_t const new_awareness_scan_countdowns,
+             std::int16_t const new_navigation_update_countdowns_remaining_ticks,
+             std::int16_t const new_navigation_update_countdowns_periods,
+             float const new_separation_steering_xs,
+             float const new_separation_steering_ys,
+             float const new_separation_steering_zs,
+             std::uint8_t const new_navigation_risk_tiers,
+             std::uint8_t const new_navigation_lower_risk_scan_counts,
+             std::int8_t const new_avoidance_choice_indices,
+             std::uint8_t const new_avoidance_clear_scan_counts,
+             std::int16_t const new_attack_reposition_countdowns,
+             std::int16_t const new_attack_cooldowns,
+             RegistryEntityHandle const new_target_handles,
+             float const new_target_locations_xs,
+             float const new_target_locations_ys,
+             float const new_target_locations_zs,
+             float const new_target_velocities_xs,
+             float const new_target_velocities_ys,
+             float const new_target_velocities_zs,
+             float const new_target_directions_xs,
+             float const new_target_directions_ys,
+             float const new_target_directions_zs,
+             float const new_intercept_times,
+             float const new_target_distance_sq,
+             float const new_target_distances,
+             float const new_target_radii) -> size_type {
+        auto const index{num()};
+        add_defaulted(1);
+        set(index,
+            new_entity_handles,
+            new_integral_biases,
+            new_float_biases,
+            new_tasks,
+            new_locations_xs,
+            new_locations_ys,
+            new_locations_zs,
+            new_desired_move_locations_xs,
+            new_desired_move_locations_ys,
+            new_desired_move_locations_zs,
+            new_aim_directions_xs,
+            new_aim_directions_ys,
+            new_aim_directions_zs,
+            new_planned_aim_directions_xs,
+            new_planned_aim_directions_ys,
+            new_planned_aim_directions_zs,
+            new_desired_aiming_directions_xs,
+            new_desired_aiming_directions_ys,
+            new_desired_aiming_directions_zs,
+            new_movement_directions_xs,
+            new_movement_directions_ys,
+            new_movement_directions_zs,
+            new_velocities_xs,
+            new_velocities_ys,
+            new_velocities_zs,
+            new_move_distances,
+            new_speeds,
+            new_teams,
+            new_healths,
+            new_parent_handles,
+            new_awareness_scan_countdowns,
+            new_navigation_update_countdowns_remaining_ticks,
+            new_navigation_update_countdowns_periods,
+            new_separation_steering_xs,
+            new_separation_steering_ys,
+            new_separation_steering_zs,
+            new_navigation_risk_tiers,
+            new_navigation_lower_risk_scan_counts,
+            new_avoidance_choice_indices,
+            new_avoidance_clear_scan_counts,
+            new_attack_reposition_countdowns,
+            new_attack_cooldowns,
+            new_target_handles,
+            new_target_locations_xs,
+            new_target_locations_ys,
+            new_target_locations_zs,
+            new_target_velocities_xs,
+            new_target_velocities_ys,
+            new_target_velocities_zs,
+            new_target_directions_xs,
+            new_target_directions_ys,
+            new_target_directions_zs,
+            new_intercept_times,
+            new_target_distance_sq,
+            new_target_distances,
+            new_target_radii);
+        return index;
+    }
     void append_from(ConstView source) {
         auto const count{source.num()};
         ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
@@ -935,7 +1327,7 @@ struct FighterEntityData {
             auto const begin{reinterpret_cast<std::uintptr_t>(entity_handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + entity_handles.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                                           sizeof(RegistryEntityHandle));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.integral_biases.data())};
@@ -953,8 +1345,8 @@ struct FighterEntityData {
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.tasks.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(tasks.data())};
-            ml::native_soa::require(
-                address < begin || address >= begin + tasks.size() * sizeof(ioj::sim::FighterTask));
+            ml::native_soa::require(address < begin ||
+                                    address >= begin + tasks.size() * sizeof(FighterTask));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.locations.xs.data())};
@@ -1015,6 +1407,30 @@ struct FighterEntityData {
             auto const begin{reinterpret_cast<std::uintptr_t>(aim_directions.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + aim_directions.zs.size() * sizeof(float));
+        }
+        {
+            auto const address{
+                reinterpret_cast<std::uintptr_t>(source.planned_aim_directions.xs.data())};
+            auto const begin{reinterpret_cast<std::uintptr_t>(planned_aim_directions.xs.data())};
+            ml::native_soa::require(address < begin ||
+                                    address >=
+                                        begin + planned_aim_directions.xs.size() * sizeof(float));
+        }
+        {
+            auto const address{
+                reinterpret_cast<std::uintptr_t>(source.planned_aim_directions.ys.data())};
+            auto const begin{reinterpret_cast<std::uintptr_t>(planned_aim_directions.ys.data())};
+            ml::native_soa::require(address < begin ||
+                                    address >=
+                                        begin + planned_aim_directions.ys.size() * sizeof(float));
+        }
+        {
+            auto const address{
+                reinterpret_cast<std::uintptr_t>(source.planned_aim_directions.zs.data())};
+            auto const begin{reinterpret_cast<std::uintptr_t>(planned_aim_directions.zs.data())};
+            ml::native_soa::require(address < begin ||
+                                    address >=
+                                        begin + planned_aim_directions.zs.size() * sizeof(float));
         }
         {
             auto const address{
@@ -1098,7 +1514,7 @@ struct FighterEntityData {
             auto const address{reinterpret_cast<std::uintptr_t>(source.teams.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(teams.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + teams.size() * sizeof(ioj::sim::Team));
+                                    address >= begin + teams.size() * sizeof(Team));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.healths.data())};
@@ -1111,7 +1527,7 @@ struct FighterEntityData {
             auto const begin{reinterpret_cast<std::uintptr_t>(parent_handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + parent_handles.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                                           sizeof(RegistryEntityHandle));
         }
         {
             auto const address{
@@ -1216,7 +1632,7 @@ struct FighterEntityData {
             auto const begin{reinterpret_cast<std::uintptr_t>(target_handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_handles.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                                           sizeof(RegistryEntityHandle));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.target_locations.xs.data())};
@@ -1333,6 +1749,15 @@ struct FighterEntityData {
         aim_directions.zs.insert(aim_directions.zs.end(),
                                  source.aim_directions.zs.begin(),
                                  source.aim_directions.zs.end());
+        planned_aim_directions.xs.insert(planned_aim_directions.xs.end(),
+                                         source.planned_aim_directions.xs.begin(),
+                                         source.planned_aim_directions.xs.end());
+        planned_aim_directions.ys.insert(planned_aim_directions.ys.end(),
+                                         source.planned_aim_directions.ys.begin(),
+                                         source.planned_aim_directions.ys.end());
+        planned_aim_directions.zs.insert(planned_aim_directions.zs.end(),
+                                         source.planned_aim_directions.zs.begin(),
+                                         source.planned_aim_directions.zs.end());
         desired_aiming_directions.xs.insert(desired_aiming_directions.xs.end(),
                                             source.desired_aiming_directions.xs.begin(),
                                             source.desired_aiming_directions.xs.end());
@@ -1449,6 +1874,7 @@ struct FighterEntityData {
             locations.get_view(),
             desired_move_locations.get_view(),
             aim_directions.get_view(),
+            planned_aim_directions.get_view(),
             desired_aiming_directions.get_view(),
             movement_directions.get_view(),
             velocities.get_view(),
@@ -1486,6 +1912,7 @@ struct FighterEntityData {
             locations.get_view(),
             desired_move_locations.get_view(),
             aim_directions.get_view(),
+            planned_aim_directions.get_view(),
             desired_aiming_directions.get_view(),
             movement_directions.get_view(),
             velocities.get_view(),
@@ -1547,6 +1974,7 @@ struct FighterEntityData {
         locations.copy_element(dst_index, other.locations, src_index);
         desired_move_locations.copy_element(dst_index, other.desired_move_locations, src_index);
         aim_directions.copy_element(dst_index, other.aim_directions, src_index);
+        planned_aim_directions.copy_element(dst_index, other.planned_aim_directions, src_index);
         desired_aiming_directions.copy_element(
             dst_index, other.desired_aiming_directions, src_index);
         movement_directions.copy_element(dst_index, other.movement_directions, src_index);

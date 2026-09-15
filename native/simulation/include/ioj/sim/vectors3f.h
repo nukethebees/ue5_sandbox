@@ -14,7 +14,7 @@ struct Vectors3fConstView {
     using View = Vectors3fView;
     using ConstView = Vectors3fConstView;
     using size_type = std::int32_t;
-    using equivalent_type = ioj::sim::Vector3f;
+    using equivalent_type = Vector3f;
     auto operator[](size_type const index) const -> equivalent_type {
         return HMM_V3(xs[static_cast<std::size_t>(index)],
                       ys[static_cast<std::size_t>(index)],
@@ -69,7 +69,7 @@ struct Vectors3fView {
     using View = Vectors3fView;
     using ConstView = Vectors3fConstView;
     using size_type = std::int32_t;
-    using equivalent_type = ioj::sim::Vector3f;
+    using equivalent_type = Vector3f;
     auto operator[](size_type const index) const -> equivalent_type {
         return HMM_V3(xs[static_cast<std::size_t>(index)],
                       ys[static_cast<std::size_t>(index)],
@@ -134,7 +134,7 @@ struct Vectors3f {
     using View = Vectors3fView;
     using ConstView = Vectors3fConstView;
     using size_type = std::int32_t;
-    using equivalent_type = ioj::sim::Vector3f;
+    using equivalent_type = Vector3f;
     auto operator[](size_type const index) const -> equivalent_type {
         return get_const_view()[index];
     }

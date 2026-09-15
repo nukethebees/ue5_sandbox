@@ -17,7 +17,7 @@ struct LaserHitDetailsConstView {
     using size_type = std::int32_t;
     Vectors3fConstView locations;
     Vectors3fConstView emission_directions;
-    std::span<ioj::sim::LaserSource const> sources;
+    std::span<LaserSource const> sources;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -70,7 +70,7 @@ struct LaserHitDetailsView {
     using size_type = std::int32_t;
     Vectors3fView locations;
     Vectors3fView emission_directions;
-    std::span<ioj::sim::LaserSource> sources;
+    std::span<LaserSource> sources;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -116,6 +116,23 @@ struct LaserHitDetailsView {
     auto right(size_type const count) const -> LaserHitDetailsView {
         return slice(num() - count, count);
     }
+    void set(size_type const index,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_emission_directions_xs,
+             float const new_emission_directions_ys,
+             float const new_emission_directions_zs,
+             LaserSource const new_sources) const {
+        ml::native_soa::require(index >= 0 && index < num());
+        locations.xs[static_cast<std::size_t>(index)] = new_locations_xs;
+        locations.ys[static_cast<std::size_t>(index)] = new_locations_ys;
+        locations.zs[static_cast<std::size_t>(index)] = new_locations_zs;
+        emission_directions.xs[static_cast<std::size_t>(index)] = new_emission_directions_xs;
+        emission_directions.ys[static_cast<std::size_t>(index)] = new_emission_directions_ys;
+        emission_directions.zs[static_cast<std::size_t>(index)] = new_emission_directions_zs;
+        sources[static_cast<std::size_t>(index)] = new_sources;
+    }
 };
 struct LaserHitDetails {
     using View = LaserHitDetailsView;
@@ -123,7 +140,7 @@ struct LaserHitDetails {
     using size_type = std::int32_t;
     Vectors3f locations;
     Vectors3f emission_directions;
-    ml::native_soa::Vector<ioj::sim::LaserSource> sources;
+    ml::native_soa::Vector<LaserSource> sources;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -213,6 +230,42 @@ struct LaserHitDetails {
         }
         set_num(old_num - count);
     }
+    void set(size_type const index,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_emission_directions_xs,
+             float const new_emission_directions_ys,
+             float const new_emission_directions_zs,
+             LaserSource const new_sources) {
+        get_view().set(index,
+                       new_locations_xs,
+                       new_locations_ys,
+                       new_locations_zs,
+                       new_emission_directions_xs,
+                       new_emission_directions_ys,
+                       new_emission_directions_zs,
+                       new_sources);
+    }
+    auto add(float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_emission_directions_xs,
+             float const new_emission_directions_ys,
+             float const new_emission_directions_zs,
+             LaserSource const new_sources) -> size_type {
+        auto const index{num()};
+        add_defaulted(1);
+        set(index,
+            new_locations_xs,
+            new_locations_ys,
+            new_locations_zs,
+            new_emission_directions_xs,
+            new_emission_directions_ys,
+            new_emission_directions_zs,
+            new_sources);
+        return index;
+    }
     void append_from(ConstView source) {
         auto const count{source.num()};
         ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
@@ -266,8 +319,7 @@ struct LaserHitDetails {
             auto const address{reinterpret_cast<std::uintptr_t>(source.sources.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(sources.data())};
             ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + sources.size() * sizeof(ioj::sim::LaserSource));
+                                    address >= begin + sources.size() * sizeof(LaserSource));
         }
         locations.xs.insert(
             locations.xs.end(), source.locations.xs.begin(), source.locations.xs.end());

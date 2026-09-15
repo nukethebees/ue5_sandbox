@@ -11,24 +11,15 @@
 #include "sandbox/core/soa_permutation.h"
 
 namespace ioj::sim {
-using ioj::sim::Rotators3f;
-using ioj::sim::Rotators3fConstView;
-using ioj::sim::Rotators3fView;
-using ioj::sim::Vectors3f;
-using ioj::sim::Vectors3fConstView;
-using ioj::sim::Vectors3fView;
-}
-
-namespace ioj::sim {
 struct LevelSpawnGroupsView;
 struct LevelSpawnGroupsConstView;
 struct LevelSpawnGroupsConstView {
     using View = LevelSpawnGroupsView;
     using ConstView = LevelSpawnGroupsConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::EntityType const> types;
+    std::span<EntityType const> types;
     std::span<std::int32_t const> offsets;
-    std::span<ioj::sim::LevelEventCount const> counts;
+    std::span<LevelEventCount const> counts;
     auto num() const noexcept -> size_type { return static_cast<size_type>(types.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -76,9 +67,9 @@ struct LevelSpawnGroupsView {
     using View = LevelSpawnGroupsView;
     using ConstView = LevelSpawnGroupsConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::EntityType> types;
+    std::span<EntityType> types;
     std::span<std::int32_t> offsets;
-    std::span<ioj::sim::LevelEventCount> counts;
+    std::span<LevelEventCount> counts;
     auto num() const noexcept -> size_type { return static_cast<size_type>(types.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -121,9 +112,9 @@ struct LevelSpawnGroupsView {
         return slice(num() - count, count);
     }
     void set(size_type const index,
-             ioj::sim::EntityType const new_types,
+             EntityType const new_types,
              std::int32_t const new_offsets,
-             ioj::sim::LevelEventCount const new_counts) const {
+             LevelEventCount const new_counts) const {
         ml::native_soa::require(index >= 0 && index < num());
         types[static_cast<std::size_t>(index)] = new_types;
         offsets[static_cast<std::size_t>(index)] = new_offsets;
@@ -134,9 +125,9 @@ struct LevelSpawnGroups {
     using View = LevelSpawnGroupsView;
     using ConstView = LevelSpawnGroupsConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<ioj::sim::EntityType> types;
+    ml::native_soa::Vector<EntityType> types;
     ml::native_soa::Vector<std::int32_t> offsets;
-    ml::native_soa::Vector<ioj::sim::LevelEventCount> counts;
+    ml::native_soa::Vector<LevelEventCount> counts;
     auto num() const noexcept -> size_type { return static_cast<size_type>(types.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -195,14 +186,14 @@ struct LevelSpawnGroups {
         set_num(old_num - count);
     }
     void set(size_type const index,
-             ioj::sim::EntityType const new_types,
+             EntityType const new_types,
              std::int32_t const new_offsets,
-             ioj::sim::LevelEventCount const new_counts) {
+             LevelEventCount const new_counts) {
         get_view().set(index, new_types, new_offsets, new_counts);
     }
-    auto add(ioj::sim::EntityType const new_types,
+    auto add(EntityType const new_types,
              std::int32_t const new_offsets,
-             ioj::sim::LevelEventCount const new_counts) -> size_type {
+             LevelEventCount const new_counts) -> size_type {
         auto const index{num()};
         add_defaulted(1);
         set(index, new_types, new_offsets, new_counts);
@@ -219,7 +210,7 @@ struct LevelSpawnGroups {
             auto const address{reinterpret_cast<std::uintptr_t>(source.types.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(types.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + types.size() * sizeof(ioj::sim::EntityType));
+                                    address >= begin + types.size() * sizeof(EntityType));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.offsets.data())};
@@ -231,8 +222,7 @@ struct LevelSpawnGroups {
             auto const address{reinterpret_cast<std::uintptr_t>(source.counts.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(counts.data())};
             ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + counts.size() * sizeof(ioj::sim::LevelEventCount));
+                                    address >= begin + counts.size() * sizeof(LevelEventCount));
         }
         types.insert(types.end(), source.types.begin(), source.types.end());
         offsets.insert(offsets.end(), source.offsets.begin(), source.offsets.end());
@@ -321,7 +311,7 @@ struct LevelCapitalSpawnEventsConstView {
     std::span<std::int32_t const> target_entity_indices;
     Vectors3fConstView locations;
     Rotators3fConstView rotations;
-    std::span<ioj::sim::Team const> teams;
+    std::span<Team const> teams;
     std::span<std::int32_t const> healths;
     std::span<float const> initial_fighter_spawn_delays;
     std::span<float const> fighter_spawn_cooldowns;
@@ -402,7 +392,7 @@ struct LevelCapitalSpawnEventsView {
     std::span<std::int32_t> target_entity_indices;
     Vectors3fView locations;
     Rotators3fView rotations;
-    std::span<ioj::sim::Team> teams;
+    std::span<Team> teams;
     std::span<std::int32_t> healths;
     std::span<float> initial_fighter_spawn_delays;
     std::span<float> fighter_spawn_cooldowns;
@@ -473,6 +463,34 @@ struct LevelCapitalSpawnEventsView {
     auto right(size_type const count) const -> LevelCapitalSpawnEventsView {
         return slice(num() - count, count);
     }
+    void set(size_type const index,
+             std::int32_t const new_entity_indices,
+             std::int32_t const new_target_entity_indices,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             Team const new_teams,
+             std::int32_t const new_healths,
+             float const new_initial_fighter_spawn_delays,
+             float const new_fighter_spawn_cooldowns) const {
+        ml::native_soa::require(index >= 0 && index < num());
+        entity_indices[static_cast<std::size_t>(index)] = new_entity_indices;
+        target_entity_indices[static_cast<std::size_t>(index)] = new_target_entity_indices;
+        locations.xs[static_cast<std::size_t>(index)] = new_locations_xs;
+        locations.ys[static_cast<std::size_t>(index)] = new_locations_ys;
+        locations.zs[static_cast<std::size_t>(index)] = new_locations_zs;
+        rotations.pitches[static_cast<std::size_t>(index)] = new_rotations_pitches;
+        rotations.yaws[static_cast<std::size_t>(index)] = new_rotations_yaws;
+        rotations.rolls[static_cast<std::size_t>(index)] = new_rotations_rolls;
+        teams[static_cast<std::size_t>(index)] = new_teams;
+        healths[static_cast<std::size_t>(index)] = new_healths;
+        initial_fighter_spawn_delays[static_cast<std::size_t>(index)] =
+            new_initial_fighter_spawn_delays;
+        fighter_spawn_cooldowns[static_cast<std::size_t>(index)] = new_fighter_spawn_cooldowns;
+    }
 };
 struct LevelCapitalSpawnEvents {
     using View = LevelCapitalSpawnEventsView;
@@ -482,7 +500,7 @@ struct LevelCapitalSpawnEvents {
     ml::native_soa::Vector<std::int32_t> target_entity_indices;
     Vectors3f locations;
     Rotators3f rotations;
-    ml::native_soa::Vector<ioj::sim::Team> teams;
+    ml::native_soa::Vector<Team> teams;
     ml::native_soa::Vector<std::int32_t> healths;
     ml::native_soa::Vector<float> initial_fighter_spawn_delays;
     ml::native_soa::Vector<float> fighter_spawn_cooldowns;
@@ -615,6 +633,62 @@ struct LevelCapitalSpawnEvents {
         }
         set_num(old_num - count);
     }
+    void set(size_type const index,
+             std::int32_t const new_entity_indices,
+             std::int32_t const new_target_entity_indices,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             Team const new_teams,
+             std::int32_t const new_healths,
+             float const new_initial_fighter_spawn_delays,
+             float const new_fighter_spawn_cooldowns) {
+        get_view().set(index,
+                       new_entity_indices,
+                       new_target_entity_indices,
+                       new_locations_xs,
+                       new_locations_ys,
+                       new_locations_zs,
+                       new_rotations_pitches,
+                       new_rotations_yaws,
+                       new_rotations_rolls,
+                       new_teams,
+                       new_healths,
+                       new_initial_fighter_spawn_delays,
+                       new_fighter_spawn_cooldowns);
+    }
+    auto add(std::int32_t const new_entity_indices,
+             std::int32_t const new_target_entity_indices,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             Team const new_teams,
+             std::int32_t const new_healths,
+             float const new_initial_fighter_spawn_delays,
+             float const new_fighter_spawn_cooldowns) -> size_type {
+        auto const index{num()};
+        add_defaulted(1);
+        set(index,
+            new_entity_indices,
+            new_target_entity_indices,
+            new_locations_xs,
+            new_locations_ys,
+            new_locations_zs,
+            new_rotations_pitches,
+            new_rotations_yaws,
+            new_rotations_rolls,
+            new_teams,
+            new_healths,
+            new_initial_fighter_spawn_delays,
+            new_fighter_spawn_cooldowns);
+        return index;
+    }
     void append_from(ConstView source) {
         auto const count{source.num()};
         ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
@@ -676,7 +750,7 @@ struct LevelCapitalSpawnEvents {
             auto const address{reinterpret_cast<std::uintptr_t>(source.teams.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(teams.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + teams.size() * sizeof(ioj::sim::Team));
+                                    address >= begin + teams.size() * sizeof(Team));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.healths.data())};
@@ -827,7 +901,7 @@ struct LevelTurretSpawnEventsConstView {
     std::span<std::int32_t const> entity_indices;
     Vectors3fConstView locations;
     Rotators3fConstView rotations;
-    std::span<ioj::sim::Team const> teams;
+    std::span<Team const> teams;
     std::span<std::int32_t const> healths;
     std::span<std::int32_t const> laser_damages;
     auto num() const noexcept -> size_type { return static_cast<size_type>(entity_indices.size()); }
@@ -898,7 +972,7 @@ struct LevelTurretSpawnEventsView {
     std::span<std::int32_t> entity_indices;
     Vectors3fView locations;
     Rotators3fView rotations;
-    std::span<ioj::sim::Team> teams;
+    std::span<Team> teams;
     std::span<std::int32_t> healths;
     std::span<std::int32_t> laser_damages;
     auto num() const noexcept -> size_type { return static_cast<size_type>(entity_indices.size()); }
@@ -958,6 +1032,29 @@ struct LevelTurretSpawnEventsView {
     auto right(size_type const count) const -> LevelTurretSpawnEventsView {
         return slice(num() - count, count);
     }
+    void set(size_type const index,
+             std::int32_t const new_entity_indices,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             Team const new_teams,
+             std::int32_t const new_healths,
+             std::int32_t const new_laser_damages) const {
+        ml::native_soa::require(index >= 0 && index < num());
+        entity_indices[static_cast<std::size_t>(index)] = new_entity_indices;
+        locations.xs[static_cast<std::size_t>(index)] = new_locations_xs;
+        locations.ys[static_cast<std::size_t>(index)] = new_locations_ys;
+        locations.zs[static_cast<std::size_t>(index)] = new_locations_zs;
+        rotations.pitches[static_cast<std::size_t>(index)] = new_rotations_pitches;
+        rotations.yaws[static_cast<std::size_t>(index)] = new_rotations_yaws;
+        rotations.rolls[static_cast<std::size_t>(index)] = new_rotations_rolls;
+        teams[static_cast<std::size_t>(index)] = new_teams;
+        healths[static_cast<std::size_t>(index)] = new_healths;
+        laser_damages[static_cast<std::size_t>(index)] = new_laser_damages;
+    }
 };
 struct LevelTurretSpawnEvents {
     using View = LevelTurretSpawnEventsView;
@@ -966,7 +1063,7 @@ struct LevelTurretSpawnEvents {
     ml::native_soa::Vector<std::int32_t> entity_indices;
     Vectors3f locations;
     Rotators3f rotations;
-    ml::native_soa::Vector<ioj::sim::Team> teams;
+    ml::native_soa::Vector<Team> teams;
     ml::native_soa::Vector<std::int32_t> healths;
     ml::native_soa::Vector<std::int32_t> laser_damages;
     auto num() const noexcept -> size_type { return static_cast<size_type>(entity_indices.size()); }
@@ -1082,6 +1179,54 @@ struct LevelTurretSpawnEvents {
         }
         set_num(old_num - count);
     }
+    void set(size_type const index,
+             std::int32_t const new_entity_indices,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             Team const new_teams,
+             std::int32_t const new_healths,
+             std::int32_t const new_laser_damages) {
+        get_view().set(index,
+                       new_entity_indices,
+                       new_locations_xs,
+                       new_locations_ys,
+                       new_locations_zs,
+                       new_rotations_pitches,
+                       new_rotations_yaws,
+                       new_rotations_rolls,
+                       new_teams,
+                       new_healths,
+                       new_laser_damages);
+    }
+    auto add(std::int32_t const new_entity_indices,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_rotations_pitches,
+             float const new_rotations_yaws,
+             float const new_rotations_rolls,
+             Team const new_teams,
+             std::int32_t const new_healths,
+             std::int32_t const new_laser_damages) -> size_type {
+        auto const index{num()};
+        add_defaulted(1);
+        set(index,
+            new_entity_indices,
+            new_locations_xs,
+            new_locations_ys,
+            new_locations_zs,
+            new_rotations_pitches,
+            new_rotations_yaws,
+            new_rotations_rolls,
+            new_teams,
+            new_healths,
+            new_laser_damages);
+        return index;
+    }
     void append_from(ConstView source) {
         auto const count{source.num()};
         ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
@@ -1135,7 +1280,7 @@ struct LevelTurretSpawnEvents {
             auto const address{reinterpret_cast<std::uintptr_t>(source.teams.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(teams.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + teams.size() * sizeof(ioj::sim::Team));
+                                    address >= begin + teams.size() * sizeof(Team));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.healths.data())};
@@ -1374,6 +1519,22 @@ struct LevelSpinnerSpawnEventsView {
     auto right(size_type const count) const -> LevelSpinnerSpawnEventsView {
         return slice(num() - count, count);
     }
+    void set(size_type const index,
+             std::int32_t const new_entity_indices,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_yaws,
+             std::int32_t const new_initial_fire_point_indices) const {
+        ml::native_soa::require(index >= 0 && index < num());
+        entity_indices[static_cast<std::size_t>(index)] = new_entity_indices;
+        locations.xs[static_cast<std::size_t>(index)] = new_locations_xs;
+        locations.ys[static_cast<std::size_t>(index)] = new_locations_ys;
+        locations.zs[static_cast<std::size_t>(index)] = new_locations_zs;
+        yaws[static_cast<std::size_t>(index)] = new_yaws;
+        initial_fire_point_indices[static_cast<std::size_t>(index)] =
+            new_initial_fire_point_indices;
+    }
 };
 struct LevelSpinnerSpawnEvents {
     using View = LevelSpinnerSpawnEventsView;
@@ -1463,6 +1624,38 @@ struct LevelSpinnerSpawnEvents {
             initial_fire_point_indices[index + i] = initial_fire_point_indices[source + i];
         }
         set_num(old_num - count);
+    }
+    void set(size_type const index,
+             std::int32_t const new_entity_indices,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_yaws,
+             std::int32_t const new_initial_fire_point_indices) {
+        get_view().set(index,
+                       new_entity_indices,
+                       new_locations_xs,
+                       new_locations_ys,
+                       new_locations_zs,
+                       new_yaws,
+                       new_initial_fire_point_indices);
+    }
+    auto add(std::int32_t const new_entity_indices,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_yaws,
+             std::int32_t const new_initial_fire_point_indices) -> size_type {
+        auto const index{num()};
+        add_defaulted(1);
+        set(index,
+            new_entity_indices,
+            new_locations_xs,
+            new_locations_ys,
+            new_locations_zs,
+            new_yaws,
+            new_initial_fire_point_indices);
+        return index;
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -1603,9 +1796,9 @@ struct LevelMissionEventGroupsConstView {
     using View = LevelMissionEventGroupsView;
     using ConstView = LevelMissionEventGroupsConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::LevelMissionEventType const> types;
+    std::span<LevelMissionEventType const> types;
     std::span<std::int32_t const> offsets;
-    std::span<ioj::sim::LevelEventCount const> counts;
+    std::span<LevelEventCount const> counts;
     auto num() const noexcept -> size_type { return static_cast<size_type>(types.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -1656,9 +1849,9 @@ struct LevelMissionEventGroupsView {
     using View = LevelMissionEventGroupsView;
     using ConstView = LevelMissionEventGroupsConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::LevelMissionEventType> types;
+    std::span<LevelMissionEventType> types;
     std::span<std::int32_t> offsets;
-    std::span<ioj::sim::LevelEventCount> counts;
+    std::span<LevelEventCount> counts;
     auto num() const noexcept -> size_type { return static_cast<size_type>(types.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -1704,9 +1897,9 @@ struct LevelMissionEventGroupsView {
         return slice(num() - count, count);
     }
     void set(size_type const index,
-             ioj::sim::LevelMissionEventType const new_types,
+             LevelMissionEventType const new_types,
              std::int32_t const new_offsets,
-             ioj::sim::LevelEventCount const new_counts) const {
+             LevelEventCount const new_counts) const {
         ml::native_soa::require(index >= 0 && index < num());
         types[static_cast<std::size_t>(index)] = new_types;
         offsets[static_cast<std::size_t>(index)] = new_offsets;
@@ -1717,9 +1910,9 @@ struct LevelMissionEventGroups {
     using View = LevelMissionEventGroupsView;
     using ConstView = LevelMissionEventGroupsConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<ioj::sim::LevelMissionEventType> types;
+    ml::native_soa::Vector<LevelMissionEventType> types;
     ml::native_soa::Vector<std::int32_t> offsets;
-    ml::native_soa::Vector<ioj::sim::LevelEventCount> counts;
+    ml::native_soa::Vector<LevelEventCount> counts;
     auto num() const noexcept -> size_type { return static_cast<size_type>(types.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -1778,14 +1971,14 @@ struct LevelMissionEventGroups {
         set_num(old_num - count);
     }
     void set(size_type const index,
-             ioj::sim::LevelMissionEventType const new_types,
+             LevelMissionEventType const new_types,
              std::int32_t const new_offsets,
-             ioj::sim::LevelEventCount const new_counts) {
+             LevelEventCount const new_counts) {
         get_view().set(index, new_types, new_offsets, new_counts);
     }
-    auto add(ioj::sim::LevelMissionEventType const new_types,
+    auto add(LevelMissionEventType const new_types,
              std::int32_t const new_offsets,
-             ioj::sim::LevelEventCount const new_counts) -> size_type {
+             LevelEventCount const new_counts) -> size_type {
         auto const index{num()};
         add_defaulted(1);
         set(index, new_types, new_offsets, new_counts);
@@ -1801,9 +1994,8 @@ struct LevelMissionEventGroups {
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.types.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(types.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + types.size() *
-                                                           sizeof(ioj::sim::LevelMissionEventType));
+            ml::native_soa::require(
+                address < begin || address >= begin + types.size() * sizeof(LevelMissionEventType));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.offsets.data())};
@@ -1815,8 +2007,7 @@ struct LevelMissionEventGroups {
             auto const address{reinterpret_cast<std::uintptr_t>(source.counts.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(counts.data())};
             ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + counts.size() * sizeof(ioj::sim::LevelEventCount));
+                                    address >= begin + counts.size() * sizeof(LevelEventCount));
         }
         types.insert(types.end(), source.types.begin(), source.types.end());
         offsets.insert(offsets.end(), source.offsets.begin(), source.offsets.end());

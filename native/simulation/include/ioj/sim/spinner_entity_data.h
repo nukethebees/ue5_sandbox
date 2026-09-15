@@ -15,7 +15,7 @@ struct SpinnerEntityDataConstView {
     using View = SpinnerEntityDataView;
     using ConstView = SpinnerEntityDataConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle const> handles;
+    std::span<RegistryEntityHandle const> handles;
     Vectors3fConstView locations;
     std::span<float const> yaws;
     std::span<std::int16_t const> laser_cooldowns;
@@ -77,7 +77,7 @@ struct SpinnerEntityDataView {
     using View = SpinnerEntityDataView;
     using ConstView = SpinnerEntityDataConstView;
     using size_type = std::int32_t;
-    std::span<ioj::sim::RegistryEntityHandle> handles;
+    std::span<RegistryEntityHandle> handles;
     Vectors3fView locations;
     std::span<float> yaws;
     std::span<std::int16_t> laser_cooldowns;
@@ -133,12 +133,29 @@ struct SpinnerEntityDataView {
     auto right(size_type const count) const -> SpinnerEntityDataView {
         return slice(num() - count, count);
     }
+    void set(size_type const index,
+             RegistryEntityHandle const new_handles,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_yaws,
+             std::int16_t const new_laser_cooldowns,
+             std::int32_t const new_next_fire_point_indices) const {
+        ml::native_soa::require(index >= 0 && index < num());
+        handles[static_cast<std::size_t>(index)] = new_handles;
+        locations.xs[static_cast<std::size_t>(index)] = new_locations_xs;
+        locations.ys[static_cast<std::size_t>(index)] = new_locations_ys;
+        locations.zs[static_cast<std::size_t>(index)] = new_locations_zs;
+        yaws[static_cast<std::size_t>(index)] = new_yaws;
+        laser_cooldowns[static_cast<std::size_t>(index)] = new_laser_cooldowns;
+        next_fire_point_indices[static_cast<std::size_t>(index)] = new_next_fire_point_indices;
+    }
 };
 struct SpinnerEntityData {
     using View = SpinnerEntityDataView;
     using ConstView = SpinnerEntityDataConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<ioj::sim::RegistryEntityHandle> handles;
+    ml::native_soa::Vector<RegistryEntityHandle> handles;
     Vectors3f locations;
     ml::native_soa::Vector<float> yaws;
     ml::native_soa::Vector<std::int16_t> laser_cooldowns;
@@ -232,6 +249,42 @@ struct SpinnerEntityData {
         }
         set_num(old_num - count);
     }
+    void set(size_type const index,
+             RegistryEntityHandle const new_handles,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_yaws,
+             std::int16_t const new_laser_cooldowns,
+             std::int32_t const new_next_fire_point_indices) {
+        get_view().set(index,
+                       new_handles,
+                       new_locations_xs,
+                       new_locations_ys,
+                       new_locations_zs,
+                       new_yaws,
+                       new_laser_cooldowns,
+                       new_next_fire_point_indices);
+    }
+    auto add(RegistryEntityHandle const new_handles,
+             float const new_locations_xs,
+             float const new_locations_ys,
+             float const new_locations_zs,
+             float const new_yaws,
+             std::int16_t const new_laser_cooldowns,
+             std::int32_t const new_next_fire_point_indices) -> size_type {
+        auto const index{num()};
+        add_defaulted(1);
+        set(index,
+            new_handles,
+            new_locations_xs,
+            new_locations_ys,
+            new_locations_zs,
+            new_yaws,
+            new_laser_cooldowns,
+            new_next_fire_point_indices);
+        return index;
+    }
     void append_from(ConstView source) {
         auto const count{source.num()};
         ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
@@ -243,8 +296,8 @@ struct SpinnerEntityData {
             auto const address{reinterpret_cast<std::uintptr_t>(source.handles.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(handles.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + handles.size() *
-                                                           sizeof(ioj::sim::RegistryEntityHandle));
+                                    address >=
+                                        begin + handles.size() * sizeof(RegistryEntityHandle));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.locations.xs.data())};
