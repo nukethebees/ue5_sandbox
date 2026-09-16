@@ -39,28 +39,27 @@ New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 $results = [Collections.Generic.List[object]]::new()
 $summary = [Collections.Generic.List[object]]::new()
 $expectedTicks = [int][Math]::Ceiling($Seconds * 60.0)
-$benchmarkBuilt = $SkipBuild.IsPresent
+$arguments = @{
+    Level = $level
+    Seconds = $Seconds
+    FighterStressCaps = $FighterCaps -join ','
+    WarmupSeconds = $WarmupSeconds
+    SaturationTimeoutSeconds = $SaturationTimeoutSeconds
+    SkipBuild = $SkipBuild.IsPresent
+}
+Write-Host "Running fighter caps $($FighterCaps -join ', ') in one native benchmark process..."
+$output = @(& $runner @arguments)
+if ($LASTEXITCODE -ne 0) {
+    throw "Fighter benchmark failed with exit code $LASTEXITCODE."
+}
+$jsonLines = @($output | Where-Object { $_.TrimStart().StartsWith('{') })
+if ($jsonLines.Count -ne $FighterCaps.Count) {
+    throw "Expected $($FighterCaps.Count) benchmark JSON results, found $($jsonLines.Count)."
+}
 
-foreach ($cap in $FighterCaps) {
-    Write-Host "Running fighter cap $cap..."
-    $arguments = @{
-        Level = $level
-        Seconds = $Seconds
-        FighterStressCap = $cap
-        WarmupSeconds = $WarmupSeconds
-        SaturationTimeoutSeconds = $SaturationTimeoutSeconds
-        SkipBuild = $benchmarkBuilt
-    }
-    $output = @(& $runner @arguments)
-    if ($LASTEXITCODE -ne 0) {
-        throw "Fighter benchmark failed for cap $cap with exit code $LASTEXITCODE."
-    }
-    $benchmarkBuilt = $true
-    $jsonLines = @($output | Where-Object { $_.TrimStart().StartsWith('{') })
-    if ($jsonLines.Count -ne 1) {
-        throw "Expected one benchmark JSON result for cap $cap, found $($jsonLines.Count)."
-    }
-    $result = $jsonLines[0] | ConvertFrom-Json
+for ($index = 0; $index -lt $FighterCaps.Count; ++$index) {
+    $cap = $FighterCaps[$index]
+    $result = $jsonLines[$index] | ConvertFrom-Json
 
     if ($result.level.id -ne 'fighter-scheduling-benchmark') {
         throw "Unexpected benchmark level id for cap ${cap}: $($result.level.id)"

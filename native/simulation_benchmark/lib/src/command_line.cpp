@@ -25,6 +25,11 @@ auto parse_command_line(int const argc, char const* const* argv) -> CommandLineR
                    options.fighter_stress_cap,
                    "Use the production fighter cap and require exact steady-state saturation")
         ->check(CLI::PositiveNumber);
+    app.add_option("--fighter-stress-caps",
+                   options.fighter_stress_caps,
+                   "Run one fighter stress benchmark for each cap in this process")
+        ->expected(1, -1)
+        ->check(CLI::PositiveNumber);
     auto* const warmup_option{app.add_option(
         "--warmup-seconds", options.warmup_seconds, "Post-saturation simulated warm-up seconds")};
     auto* const saturation_timeout_option{
@@ -59,7 +64,12 @@ auto parse_command_line(int const argc, char const* const* argv) -> CommandLineR
     if (!std::isfinite(options.saturation_timeout_seconds)) {
         return {.standard_error = "--saturation-timeout-seconds must be finite\n", .exit_code = 2};
     }
-    if (!options.fighter_stress_cap.has_value() &&
+    if (options.fighter_stress_cap.has_value() && !options.fighter_stress_caps.empty()) {
+        return {.standard_error = "--fighter-stress-cap and --fighter-stress-caps are mutually "
+                                  "exclusive\n",
+                .exit_code = 2};
+    }
+    if (!options.fighter_stress_cap.has_value() && options.fighter_stress_caps.empty() &&
         (warmup_option->count() > 0 || saturation_timeout_option->count() > 0)) {
         return {.standard_error = "--warmup-seconds and --saturation-timeout-seconds require "
                                   "--fighter-stress-cap\n",

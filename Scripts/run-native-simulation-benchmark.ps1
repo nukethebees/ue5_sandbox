@@ -11,6 +11,7 @@ param(
     [switch] $Telemetry,
     [ValidateRange(0, [uint32]::MaxValue)]
     [uint32] $FighterStressCap = 0,
+    [string] $FighterStressCaps = '',
     [ValidateRange(0.0, 86400.0)]
     [double] $WarmupSeconds = 5.0,
     [ValidateRange(0.1, 86400.0)]
@@ -22,6 +23,18 @@ param(
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 $levelPath = (Resolve-Path -LiteralPath $Level).Path
+$fighterStressCapValues = @()
+if ($FighterStressCaps) {
+    $fighterStressCapValues = @($FighterStressCaps -split ',' | ForEach-Object { [uint32]$_ })
+    if ($fighterStressCapValues.Count -eq 0 -or
+        @($fighterStressCapValues | Where-Object { $_ -eq 0 }).Count -ne 0) {
+        throw 'FighterStressCaps must contain positive comma-separated values.'
+    }
+}
+
+if ($FighterStressCap -gt 0 -and $fighterStressCapValues.Count -gt 0) {
+    throw 'FighterStressCap and FighterStressCaps are mutually exclusive.'
+}
 
 if (-not $SkipBuild) {
     Push-Location $repo
@@ -78,6 +91,16 @@ if (-not $env:NUKETHEBEES_JOBSERVER_JOB) {
             $SaturationTimeoutSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
         )
     }
+    if ($fighterStressCapValues.Count -gt 0) {
+        $activityArguments += '-FighterStressCaps'
+        $activityArguments += ($fighterStressCapValues -join ',')
+        $activityArguments += @(
+            '-WarmupSeconds'
+            $WarmupSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
+            '-SaturationTimeoutSeconds'
+            $SaturationTimeoutSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
+        )
+    }
     & $jobserver @activityArguments
     exit $LASTEXITCODE
 }
@@ -89,6 +112,14 @@ if ($Telemetry) { $arguments += '--telemetry' }
 if ($FighterStressCap -gt 0) {
     $arguments += @(
         '--fighter-stress-cap', $FighterStressCap,
+        '--warmup-seconds', $WarmupSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture),
+        '--saturation-timeout-seconds', $SaturationTimeoutSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
+    )
+}
+if ($fighterStressCapValues.Count -gt 0) {
+    $arguments += '--fighter-stress-caps'
+    $arguments += $fighterStressCapValues
+    $arguments += @(
         '--warmup-seconds', $WarmupSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture),
         '--saturation-timeout-seconds', $SaturationTimeoutSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
     )

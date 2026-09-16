@@ -195,6 +195,13 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         }
     }
 
+#if defined(SANDBOX_WITH_TRACY)
+    ZoneScopedN("Fighter simulation benchmark");
+    if (options.fighter_stress_cap.has_value()) {
+        ZoneNameF("Fighter simulation benchmark: %d fighters", *options.fighter_stress_cap);
+    }
+#endif
+
     ml::level_authoring::LevelDefinitionReader reader;
     auto level_result{reader.read_file(options.level_path)};
     if (!level_result) {

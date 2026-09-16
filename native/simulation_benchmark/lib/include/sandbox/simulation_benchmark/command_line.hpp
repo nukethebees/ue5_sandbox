@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace ml::simulation_benchmark {
 struct BenchmarkOptions {
@@ -12,6 +13,7 @@ struct BenchmarkOptions {
     std::uint32_t game_speed{1};
     std::optional<double> profiler_connection_timeout_seconds{};
     std::optional<std::int32_t> fighter_stress_cap{};
+    std::vector<std::int32_t> fighter_stress_caps{};
     double warmup_seconds{5.0};
     double saturation_timeout_seconds{60.0};
     bool telemetry_enabled{};

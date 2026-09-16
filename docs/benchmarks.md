@@ -48,6 +48,10 @@ The fighter runner verifies population stability, attacking state, active firing
 spawns, and frame-memory capacity before publishing results. Its outputs include raw details plus
 mean, median, p95, p99, tick rate, and realtime factor.
 
+When multiple fighter caps are requested, the runner executes them in one native process. A single
+Tracy capture therefore contains every case, with a formatted top-level zone such as `Fighter
+simulation benchmark: 4000 fighters` around each one.
+
 The workload waits for exact fighter saturation, applies a post-saturation warm-up, then measures
 steady-state simulation. It disables fighter laser damage and raises ship health so the population
 remains stable while normal fighter behaviour and collision work remain active.
