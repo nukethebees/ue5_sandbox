@@ -19,6 +19,9 @@ enable_language(C)
 set(tracy_source_dir "${PROJECT_SOURCE_DIR}/native/third_party/tracy")
 set(NO_STATISTICS OFF)
 set(VENDOR_GUI OFF)
+include("${tracy_source_dir}/cmake/CPM.cmake")
+# The capture and CSV tools do not use JSON, and the repository already defines this target.
+CPMRegisterPackage(json 3.12.0)
 include("${tracy_source_dir}/cmake/vendor.cmake")
 include("${tracy_source_dir}/cmake/server.cmake")
 

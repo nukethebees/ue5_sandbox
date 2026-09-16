@@ -40,7 +40,7 @@ if ($result.workload.completed_ticks -ne $result.workload.requested_ticks) {
 if ($result.workload.game_speed -ne 100) {
     throw "Unexpected frame-memory benchmark game speed: $($result.workload.game_speed)"
 }
-$expectedAdvanceCalls = [Math]::Ceiling([double]$result.workload.requested_ticks / 100.0)
+$expectedAdvanceCalls = $result.workload.requested_ticks
 if ($result.workload.advance_calls -ne $expectedAdvanceCalls) {
     throw "Unexpected deterministic advance count: $($result.workload.advance_calls)"
 }

@@ -3,6 +3,7 @@
 
 namespace ml::native_soa_tests {
 using namespace native_experiment;
+
 template <typename View>
 auto array_columns(View view) {
     if constexpr (requires { view.columns(); }) {

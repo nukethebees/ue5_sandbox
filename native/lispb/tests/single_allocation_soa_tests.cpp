@@ -420,6 +420,7 @@ TEST(SingleAllocationSoa, BenchmarkSchemaTracksFighterLeafOrderAndWidths) {
         {"@native_health", "int32"},
         {"@native_registry_handle", "@soa_experiment_Handle"},
         {"@native_fighter_task", "@soa_experiment_Task"},
+        {"@native_health", "int32"},
         {"@native_team", "@soa_experiment_Team"},
         {"@native_vectors_3f", "Vectors"}};
     for (std::size_t index{}; index < fighter.size(); ++index) {

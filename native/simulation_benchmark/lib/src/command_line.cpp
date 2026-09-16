@@ -15,7 +15,7 @@ auto parse_command_line(int const argc, char const* const* argv) -> CommandLineR
     app.add_option("--seconds", options.simulated_seconds, "In-game seconds to simulate")
         ->required()
         ->check(CLI::PositiveNumber);
-    app.add_option("--game-speed", options.game_speed, "Deterministic ticks per advance call")
+    app.add_option("--game-speed", options.game_speed, "Requested initial simulation time scale")
         ->check(CLI::PositiveNumber);
     app.add_option("--wait-for-profiler",
                    options.profiler_connection_timeout_seconds,
