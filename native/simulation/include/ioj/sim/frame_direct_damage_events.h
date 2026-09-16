@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ioj/sim/direct_damage_events.h"
-#include "ioj/sim/entity_handle.h"
+#include "ioj/sim/entity_unique_id.h"
 #include "sandbox/core/frame_array.h"
 
 #include <cstdint>
@@ -18,13 +18,11 @@ struct FrameDirectDamageEvents {
     ~FrameDirectDamageEvents() = default;
 
     void reserve(std::int32_t count);
-    void add(EntityUniqueId damaged_entity,
-             std::int32_t damage_amount,
-             RegistryEntityHandle instigator);
+    void add(EntityUniqueId damaged_entity, std::int32_t damage_amount, EntityUniqueId instigator);
     [[nodiscard]] auto get_const_view() const noexcept -> DirectDamageEventsConstView;
 
     ml::FrameArray<EntityUniqueId> damaged_entities;
     ml::FrameArray<std::int32_t> damage_amounts;
-    ml::FrameArray<RegistryEntityHandle> instigators;
+    ml::FrameArray<EntityUniqueId> instigators;
 };
 } // namespace ioj::sim::lasers

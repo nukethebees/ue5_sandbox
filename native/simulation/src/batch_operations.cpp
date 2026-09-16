@@ -56,7 +56,7 @@ void resolve_damage_events(DirectDamageEventsConstView damage_events,
 
         local_indices_to_remove[static_cast<std::size_t>(current_removal_count++)] = local_index;
         auto const instigator{damage_events.instigators[element]};
-        auto const reason{instigator.is_null() ? DeathReason::Unknown : DeathReason::Combat};
+        auto const reason{instigator.is_valid() ? DeathReason::Combat : DeathReason::Unknown};
         entity_death_info.set(
             current_death_count++, reason, entity_handles[local_element], instigator);
     }

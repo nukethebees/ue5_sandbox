@@ -146,7 +146,7 @@ void Sim::resolve_damage_events() {
 
     auto const damage_events{entity_registry.get_damage_events(EntityType::PlayerShip)};
     auto const original_health{health.health};
-    RegistryEntityHandle killer{};
+    EntityUniqueId killer{};
     auto const damage_count{damage_events.num()};
     for (std::int32_t event_index{}; event_index < damage_count; ++event_index) {
         auto const element{static_cast<std::size_t>(event_index)};
@@ -657,7 +657,7 @@ void Sim::add_health(Health const added_health) {
     set_health(health.health + added_health);
 }
 
-void Sim::set_health(Health const new_health, RegistryEntityHandle const killer) {
+void Sim::set_health(Health const new_health, EntityUniqueId const killer) {
     if (new_health == health.health || !health.is_alive()) {
         return;
     }
@@ -670,9 +670,9 @@ void Sim::set_health(Health const new_health, RegistryEntityHandle const killer)
     }
 }
 
-void Sim::die(RegistryEntityHandle const killer) {
+void Sim::die(EntityUniqueId const killer) {
     EntityDeathInfo death_info;
-    auto const reason{killer.is_null() ? DeathReason::Unknown : DeathReason::Combat};
+    auto const reason{killer.is_valid() ? DeathReason::Combat : DeathReason::Unknown};
     death_info.add(reason, registry_handle, killer);
     queue_entity_update(death_info);
     death_notification_pending = true;

@@ -235,8 +235,8 @@ struct Sim {
     /* **************************************** */
     // Health
     /* **************************************** */
-    void set_health(Health new_health, RegistryEntityHandle killer = {});
-    void die(RegistryEntityHandle killer);
+    void set_health(Health new_health, EntityUniqueId killer = {});
+    void die(EntityUniqueId killer);
 
     /* **************************************** */
     // Diagnostics

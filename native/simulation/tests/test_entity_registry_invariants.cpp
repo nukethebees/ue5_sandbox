@@ -131,7 +131,7 @@ TEST_F(EntityRegistryTest, MixedSlotReusePreservesDataAndHistoricalIdentity) {
     initial.healths[0] = 0;
     initial.healths[2] = 0;
     EntityDeathInfo deaths;
-    deaths.add(DeathReason::Combat, old_handles[0], old_handles[1]);
+    deaths.add(DeathReason::Combat, old_handles[0], registry_.find_unique_id(old_handles[1]));
     deaths.add(DeathReason::Unknown, old_handles[2], {});
     registry_.queue_entity_updates({old_handles, view_of(initial)}, deaths);
     registry_.commit_updates();
@@ -457,11 +457,11 @@ TEST_F(EntityRegistryTest, TeamChangesSynchronizeHistoryAndSubsequentCombatAttri
     check_counts();
     registry_.record_shots(std::vector{handles[0], RegistryEntityHandle{}});
     DirectDamageEvents damage;
-    damage.add(registry_.get_current_id(handles[1]), 17, handles[0]);
+    damage.add(registry_.get_current_id(handles[1]), 17, registry_.find_unique_id(handles[0]));
     registry_.queue_direct_damage_events(damage);
     data.healths[1] = 0;
     EntityDeathInfo deaths;
-    deaths.add(DeathReason::Combat, handles[1], handles[0]);
+    deaths.add(DeathReason::Combat, handles[1], registry_.find_unique_id(handles[0]));
     registry_.queue_entity_updates({handles, view_of(data)}, deaths);
     registry_.commit_updates();
     auto const& counters{registry_.get_combat_telemetry()};
@@ -499,10 +499,11 @@ TEST_F(EntityRegistryTest, StaleKillersRetainCreditAcrossTicksAndSlotReuse) {
     auto data{tests::registry::make_entities(3)};
     auto const handles{
         tests::registry::make_handles(registry_.add_entities(view_of(data)).registry_handles)};
+    auto const killer_id{registry_.get_current_id(handles[0])};
     data.healths[0] = 0;
     data.healths[1] = 0;
     EntityDeathInfo deaths;
-    deaths.add(DeathReason::Combat, handles[1], handles[0]);
+    deaths.add(DeathReason::Combat, handles[1], killer_id);
     deaths.add(DeathReason::Unknown, handles[0], {});
     registry_.queue_entity_updates({handles, view_of(data)}, deaths);
     registry_.commit_updates();
@@ -515,10 +516,14 @@ TEST_F(EntityRegistryTest, StaleKillersRetainCreditAcrossTicksAndSlotReuse) {
     auto const replacements{tests::registry::make_handles(
         registry_.add_entities(view_of(replacement)).registry_handles)};
     tests::expect_true(registry_.is_stale(handles[0]), "Killer handle is stale");
+    DirectDamageEvents damage;
+    damage.add(registry_.get_current_id(handles[2]), 17, killer_id);
+    registry_.queue_direct_damage_events(damage);
+    EXPECT_EQ(registry_.get_direct_damage_queue_view().instigators[0], killer_id);
     auto update{tests::registry::make_entities(1)};
     update.healths[0] = 0;
     deaths.reset();
-    deaths.add(DeathReason::Combat, handles[2], handles[0]);
+    deaths.add(DeathReason::Combat, handles[2], killer_id);
     registry_.queue_entity_updates({std::vector{handles[2]}, view_of(update)}, deaths);
     registry_.commit_updates();
     tests::expect_equal(registry_.get_kills(EntityUniqueId::make(
@@ -598,10 +603,10 @@ TEST_F(EntityRegistryTest, DamageQueuesPreserveBatchesAndResetStartsANewIdentity
     auto const handles{
         tests::registry::make_handles(registry_.add_entities(view_of(data)).registry_handles)};
     DirectDamageEvents first;
-    first.add(registry_.get_current_id(handles[1]), 5, handles[0]);
+    first.add(registry_.get_current_id(handles[1]), 5, registry_.find_unique_id(handles[0]));
     first.add(registry_.get_current_id(handles[0]), 8, {});
     DirectDamageEvents second;
-    second.add(registry_.get_current_id(handles[1]), 13, handles[0]);
+    second.add(registry_.get_current_id(handles[1]), 13, registry_.find_unique_id(handles[0]));
     registry_.queue_direct_damage_events(first);
     registry_.queue_direct_damage_events(second);
     first.damage_amounts[0] = 999;
@@ -615,10 +620,11 @@ TEST_F(EntityRegistryTest, DamageQueuesPreserveBatchesAndResetStartsANewIdentity
                                                      registry_.get_current_id(handles[0]),
                                                      registry_.get_current_id(handles[1])}),
                        "Damage victims preserved");
-    tests::expect_true(
-        std::ranges::equal(queued.instigators,
-                           std::array{handles[0], RegistryEntityHandle{}, handles[0]}),
-        "Damage instigators preserved");
+    tests::expect_true(std::ranges::equal(queued.instigators,
+                                          std::array{registry_.find_unique_id(handles[0]),
+                                                     EntityUniqueId{},
+                                                     registry_.find_unique_id(handles[0])}),
+                       "Damage instigators preserved");
     SimClock clock;
     AgentIndexes indexes{clock};
     std::array const turret_ids{registry_.get_current_id(handles[0])};
@@ -632,11 +638,11 @@ TEST_F(EntityRegistryTest, DamageQueuesPreserveBatchesAndResetStartsANewIdentity
     EXPECT_EQ(capital_damage.damage_amounts[0], 5);
     EXPECT_EQ(capital_damage.damage_amounts[1], 13);
     EXPECT_EQ(capital_damage.damaged_entities[0], capital_ids[0]);
-    EXPECT_EQ(capital_damage.instigators[1], handles[0]);
+    EXPECT_EQ(capital_damage.instigators[1], registry_.find_unique_id(handles[0]));
     auto const turret_damage{registry_.get_damage_events(EntityType::Turret)};
     ASSERT_EQ(turret_damage.num(), 1);
     EXPECT_EQ(turret_damage.damage_amounts[0], 8);
-    EXPECT_TRUE(turret_damage.instigators[0].is_null());
+    EXPECT_TRUE(!turret_damage.instigators[0].is_valid());
     EXPECT_TRUE(registry_.get_damage_events(EntityType::Fighter).is_empty());
     registry_.commit_updates();
     tests::expect_equal(queued.num(), 3, "Commit retains damage queue");
@@ -646,7 +652,7 @@ TEST_F(EntityRegistryTest, DamageQueuesPreserveBatchesAndResetStartsANewIdentity
     auto pending{data};
     pending.healths[1] = 0;
     EntityDeathInfo deaths;
-    deaths.add(DeathReason::Combat, handles[1], handles[0]);
+    deaths.add(DeathReason::Combat, handles[1], registry_.find_unique_id(handles[0]));
     registry_.queue_entity_updates({handles, view_of(pending)}, deaths);
     registry_.commit_updates();
     registry_.queue_direct_damage_events(second);

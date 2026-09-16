@@ -380,7 +380,7 @@ TEST(TickPhases, CapitalDeathPublishesExistingAndNewChildDeathsBeforeMissionEval
         auto const killer{capitals.get_handle(1)};
 
         DirectDamageEvents damage{};
-        damage.add(registry.get_current_id(victim), 100, killer);
+        damage.add(registry.get_current_id(victim), 100, registry.get_current_id(killer));
 
         LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
 

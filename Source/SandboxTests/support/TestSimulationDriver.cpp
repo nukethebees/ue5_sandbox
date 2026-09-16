@@ -67,7 +67,10 @@ void TestSimulationDriver::queue_damage(
     ::ioj::sim::DirectDamageEvents damage_events;
     damage_events.reserve(n);
     for (auto const target : targets) {
-        damage_events.add(get_registry().get_current_id(target), damage, instigator);
+        damage_events.add(get_registry().get_current_id(target),
+                          damage,
+                          instigator.is_valid() ? get_registry().find_unique_id(instigator)
+                                                : ::ioj::sim::EntityUniqueId{});
     }
 
     FTestBatchOrchestratorTestAccess::queue_direct_damage_events(orchestrator,

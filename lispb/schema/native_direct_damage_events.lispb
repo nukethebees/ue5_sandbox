@@ -6,4 +6,4 @@
     :operations (all)
     (member damaged_entities array @native_unique_id)
     (member damage_amounts array int32)
-    (member instigators array @native_registry_handle)))
+    (member instigators array @native_unique_id)))

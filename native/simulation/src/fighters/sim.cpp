@@ -519,12 +519,12 @@ void Sim::resolve_damage_events() {
         }
 
         auto const instigator{damage_events.instigators[event_element]};
-        auto const source{agents_.read_alive(entity_registry.get_current_id(instigator))};
+        auto const source{agents_.read_alive(instigator)};
         if (!source) {
             continue;
         }
         if (source->team != data.teams[fighter_index]) {
-            data.target_ids[fighter_index] = entity_registry.get_current_id(instigator);
+            data.target_ids[fighter_index] = instigator;
         }
     }
 

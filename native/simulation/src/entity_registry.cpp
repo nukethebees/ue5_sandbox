@@ -215,14 +215,13 @@ auto record_deaths(EntityRegistryBookkeeping& bookkeeping,
         if (!killer.is_valid()) {
             continue;
         }
-        auto const killer_id{find_unique_id(
-            bookkeeping.generations, bookkeeping.unique_ids, history.get_const_view(), killer)};
-        if (!killer_id) {
-            return std::unexpected{AccountingError{killer_id.error(), killer, index}};
+        auto const killer_element{ids.history_index(killer)};
+        if (killer_element < 0) {
+            ml::fatal_error(std::format(
+                "Death event {} references unknown killer ID {}", index, killer.raw_value()));
         }
 
-        auto const killer_element{ids.history_index(*killer_id)};
-        history.killed_by[victim_element] = *killer_id;
+        history.killed_by[victim_element] = killer;
         ++history.kills[killer_element];
         statistics.record_kill(history.teams[killer_element],
                                history.entity_types[killer_element],
@@ -231,13 +230,10 @@ auto record_deaths(EntityRegistryBookkeeping& bookkeeping,
     return {};
 }
 
-auto record_damage(EntityRegistryStatistics& statistics,
-                   std::span<std::int32_t const> const generations,
-                   std::span<EntityUniqueId const> const current_ids,
+void record_damage(EntityRegistryStatistics& statistics,
                    EntityIdAllocator const& ids,
                    EntityHistoryColumnsConstView const history,
-                   DirectDamageEventsConstView const events) noexcept
-    -> std::expected<void, AccountingError> {
+                   DirectDamageEventsConstView const events) noexcept {
     auto const count{events.num()};
     for (std::int32_t index{}; index < count; ++index) {
         auto const element{static_cast<std::size_t>(index)};
@@ -255,15 +251,15 @@ auto record_damage(EntityRegistryStatistics& statistics,
         if (!instigator.is_valid()) {
             continue;
         }
-        auto const attacker_id{find_unique_id(generations, current_ids, history, instigator)};
-        if (!attacker_id) {
-            return std::unexpected{AccountingError{attacker_id.error(), instigator, index}};
+        auto const attacker_element{ids.history_index(instigator)};
+        if (attacker_element < 0) {
+            ml::fatal_error(std::format("Damage event {} references unknown instigator ID {}",
+                                        index,
+                                        instigator.raw_value()));
         }
-        auto const attacker_element{ids.history_index(*attacker_id)};
         statistics.record_hit(
             history.teams[attacker_element], history.entity_types[attacker_element], damage);
     }
-    return {};
 }
 
 auto record_shots(EntityRegistryStatistics& statistics,
@@ -492,13 +488,8 @@ void EntityRegistry::queue_direct_damage_events(DirectDamageEventsConstView cons
     damage_events.validate_array_sizes();
 
     auto const unique_entities{unique_entity_history_.get_const_view().columns()};
-    auto const result{entity_registry_detail::record_damage(statistics_,
-                                                            bookkeeping_.generations,
-                                                            bookkeeping_.unique_ids,
-                                                            id_allocator_,
-                                                            unique_entities,
-                                                            damage_events)};
-    entity_registry_detail::check_accounting_result(result);
+    entity_registry_detail::record_damage(
+        statistics_, id_allocator_, unique_entities, damage_events);
 
     damage_queue_.append(damage_events);
 }
