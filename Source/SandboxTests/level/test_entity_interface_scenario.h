@@ -3,7 +3,6 @@
 #include <SandboxTests/support/SimulationTestScenario.h>
 
 #include <sandbox/core/time_series_data.h>
-#include <SandboxNative/RegistryEntityHandle.h>
 
 namespace ml {
 class FEntityInterfaceScenario final : public FSimulationTestScenario {

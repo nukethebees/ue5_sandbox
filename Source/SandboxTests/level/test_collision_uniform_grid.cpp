@@ -4,7 +4,6 @@
 #include <Engine/World.h>
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/collision/collision_system.h>
-#include <ioj/sim/entity_registry.h>
 #include <Misc/ScopeExit.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestCollisionActor.h>
@@ -51,7 +50,6 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
         config.omitted_collision_actor_classes.Add(
             ASandboxTestOmittedCollisionActor::StaticClass());
 
-        ::ioj::sim::EntityRegistry registry;
         ::ioj::sim::SimClock clock;
         ::ioj::sim::AgentIndexes indexes{clock};
         ::ioj::sim::AgentAccessor agents{indexes};

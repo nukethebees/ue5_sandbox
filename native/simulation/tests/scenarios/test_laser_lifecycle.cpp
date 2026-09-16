@@ -4,7 +4,6 @@
 
 #include <ioj/sim/world_aabb_operations.h>
 
-#include <ioj/sim/entity_registry.h>
 #include <ioj/sim/lasers/sim.h>
 
 namespace ioj::sim {
@@ -126,8 +125,8 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
                     Sample{lasers.get_num_instances(),
                            lasers.get_number_spawned(),
                            target_state ? target_state->health : 0,
-                           harness.get_registry().count_alive(),
-                           harness.get_registry().count_kills()});
+                           harness.get_ledger().count_alive(),
+                           harness.get_ledger().count_kills()});
     };
     harness.timeline.at(projectile_queue_time, [&] {
         auto const shooter_location{

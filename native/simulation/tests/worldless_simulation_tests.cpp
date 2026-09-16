@@ -1,6 +1,6 @@
 #include "scenarios/test_capital_command_fighters.h"
 #include "scenarios/test_collision_uniform_grid.h"
-#include "scenarios/test_entity_registry.h"
+#include "scenarios/test_entity_ledger.h"
 #include "scenarios/test_fighter_attack.h"
 #include "scenarios/test_fighter_handles.h"
 #include "scenarios/test_fighter_los_failure.h"
@@ -105,20 +105,20 @@ TEST(WorldlessSpaceGameSimulation, Fighters_NavigationFrequency) {
     run_worldless_fighter_navigation_frequency(config);
 }
 
-TEST(WorldlessSpaceGameSimulation, EntityRegistry_CountsTeams) {
+TEST(WorldlessSpaceGameSimulation, EntityLedger_CountsTeams) {
     auto const config{tests::make_fixture()};
-    run_worldless_entity_registry_scenario(config, EntityRegistryScenario::TeamCounts);
+    run_worldless_entity_ledger_scenario(config, EntityLedgerScenario::TeamCounts);
 }
 
-TEST(WorldlessSpaceGameSimulation, EntityRegistry_OnePlayerKill) {
+TEST(WorldlessSpaceGameSimulation, EntityLedger_OnePlayerKill) {
     auto const config{tests::make_fixture()};
-    run_worldless_entity_registry_scenario(config, EntityRegistryScenario::OnePlayerKill);
+    run_worldless_entity_ledger_scenario(config, EntityLedgerScenario::OnePlayerKill);
 }
 
-TEST(WorldlessSpaceGameSimulation, EntityRegistry_TwoPlayerKills) {
+TEST(WorldlessSpaceGameSimulation, EntityLedger_TwoPlayerKills) {
     auto const config{tests::make_fixture()};
 
-    run_worldless_entity_registry_scenario(config, EntityRegistryScenario::TwoPlayerKills);
+    run_worldless_entity_ledger_scenario(config, EntityLedgerScenario::TwoPlayerKills);
 }
 
 TEST(WorldlessSpaceGameSimulation, Orchestrator_FixedStepPauseResumeAndCatchUp) {

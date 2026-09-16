@@ -5,7 +5,6 @@
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <ioj/sim/direct_damage_events.h>
-#include <ioj/sim/entity_registry.h>
 #include <ioj/sim/sim_config.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
@@ -86,39 +85,6 @@ void FWorldlessSimulationTest::advance(time_type const dt) {
     }
 }
 
-void FWorldlessSimulationTest::queue_damage(
-    std::span<::ioj::sim::RegistryEntityHandle const> const targets,
-    int32 const damage,
-    ::ioj::sim::RegistryEntityHandle const instigator) {
-    auto const count{static_cast<int32>(targets.size())};
-    ::ioj::sim::DirectDamageEvents events;
-    events.reserve(count);
-    for (auto const target : targets) {
-        events.add(get_registry().get_current_id(target),
-                   damage,
-                   instigator.is_valid() ? get_registry().find_unique_id(instigator)
-                                         : ::ioj::sim::EntityUniqueId{});
-    }
-    ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation_,
-                                                               events.get_const_view());
-}
-
-void FWorldlessSimulationTest::queue_kills(
-    std::span<::ioj::sim::RegistryEntityHandle const> const targets,
-    ::ioj::sim::RegistryEntityHandle const instigator) {
-    ::ioj::sim::DirectDamageEvents events;
-    auto const count{static_cast<int32>(targets.size())};
-    events.reserve(count);
-    for (auto const target : targets) {
-        auto const damage{FMath::Max(1, get_registry().get_health(target))};
-        events.add(get_registry().get_current_id(target),
-                   damage,
-                   instigator.is_valid() ? get_registry().find_unique_id(instigator)
-                                         : ::ioj::sim::EntityUniqueId{});
-    }
-    ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation_,
-                                                               events.get_const_view());
-}
 void FWorldlessSimulationTest::queue_damage(
     std::span<::ioj::sim::EntityUniqueId const> const targets,
     int32 const damage,

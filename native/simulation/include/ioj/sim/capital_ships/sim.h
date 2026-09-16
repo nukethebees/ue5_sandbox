@@ -16,12 +16,10 @@
 
 #include <ioj/sim/capital_entity_data.h>
 #include <ioj/sim/entity_death_info.h>
-#include <ioj/sim/entity_handle.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/fighter_order_queue.h>
 #include <ioj/sim/fighters/command_interface.h>
 #include <ioj/sim/index_span.h>
-#include <ioj/sim/registry_entity_data.h>
 
 #include <memory_resource>
 #include <optional>
@@ -30,7 +28,6 @@
 namespace ioj::sim {
 struct LevelSim;
 struct CapitalShipSimConfig;
-struct EntityRegistry;
 class EntityLedger;
 class CombatEvents;
 class LevelSpawnManager;
@@ -45,13 +42,11 @@ namespace ioj::sim::capital_ships {
 class PhaseInterface;
 
 struct Sim {
-    using RegistryEntityData = sim::RegistryEntityData;
     using SpawnData = CapitalSpawnData;
     using EntityData = CapitalEntityData;
     using EntityStorage = SingleAllocationCapitalEntityData;
 
-    Sim(EntityRegistry& entity_registry,
-        EntityLedger const& ledger,
+    Sim(EntityLedger& ledger,
         CombatEvents const& combat_events,
         AgentAccessor const& agents,
         SpatialQueryManager const& spatial_query_manager,
@@ -84,11 +79,6 @@ struct Sim {
     /* **************************************** */
     auto get_num_instances() const noexcept -> std::int32_t;
     auto is_valid(EntityUniqueId id) const noexcept -> bool;
-    auto is_valid(RegistryEntityHandle handle) const noexcept -> bool;
-    auto get_entity_registry() const noexcept -> EntityRegistry const& { return entity_registry; }
-    auto get_handle(std::int32_t index) const -> RegistryEntityHandle {
-        return entities.get_const_view().handles()[index];
-    }
     auto get_id(std::int32_t index) const -> EntityUniqueId {
         return entities.get_const_view().entity_ids()[index];
     }
@@ -115,18 +105,14 @@ struct Sim {
         return entities.get_const_view().teams()[index];
     }
     auto get_team(EntityUniqueId id) const noexcept -> Team;
-    auto get_team(RegistryEntityHandle handle) const noexcept -> Team;
     auto get_health(EntityUniqueId id) const noexcept -> Health;
-    auto get_health(RegistryEntityHandle handle) const noexcept -> Health;
     auto find_first_index_on_team(Team team) const noexcept -> std::optional<std::int32_t>;
-    auto find_first_handle_on_team(Team team) const noexcept -> std::optional<RegistryEntityHandle>;
     auto find_first_id_on_team(Team team) const noexcept -> std::optional<EntityUniqueId>;
 
     /* **************************************** */
     // Checks
     /* **************************************** */
     void validate_array_sizes() const;
-    void validate_entity_handles() const;
     void set_target_id(EntityUniqueId ship_id, EntityUniqueId target_id);
   private:
     /* **************************************** */
@@ -138,7 +124,7 @@ struct Sim {
     void execute_fighter_self_destruct_requests();
     void resolve_damage_events();
     void resolve_fighters_of_dying_capitals();
-    void update_entity_registry();
+    void publish_deaths();
     void cleanup_entities();
     void finish_action();
 
@@ -151,7 +137,6 @@ struct Sim {
     /* **************************************** */
     // Entity data
     /* **************************************** */
-    void prepare_entity_update_data();
 
     /* **************************************** */
     // Fighter spawning
@@ -186,8 +171,7 @@ struct Sim {
 
     CapitalShipSimConfig config{};
     bool diagnostics_enabled_{};
-    EntityRegistry& entity_registry;
-    EntityLedger const& ledger_;
+    EntityLedger& ledger_;
     CombatEvents const& combat_events_;
     AgentAccessor const& agents_;
     SpatialQueryManager const& spatial_query_manager;
@@ -198,7 +182,6 @@ struct Sim {
     EntityDeathInfo entity_death_info;
     std::vector<EntityFrameChange> frame_changes_;
     std::vector<CapitalDeathEvent> deaths_;
-    SingleAllocationRegistryEntityData entity_update_data;
 
     fighters::CommandInterface fighters_interface;
     std::vector<EntityUniqueId> fighter_self_destruct_requests_;

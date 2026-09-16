@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ioj/sim/entity_registry.h"
+#include "ioj/sim/entity_telemetry.h"
 #include "ioj/sim/level_telemetry_snapshot.h"
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
@@ -26,7 +26,7 @@ class UMenuButtonWidget;
 
 struct FPauseMenuData {
     ::ioj::sim::LevelTelemetrySnapshot telemetry;
-    ::ioj::sim::EntityRegistry::EntityCounts alive_per_team_and_type{};
+    ::ioj::sim::telemetry::EntityCounts alive_per_team_and_type{};
     ml::ship_hud::FTopKillerEntries top_killers;
     ml::ship_hud::FTeamKillMatrix team_kill_matrix;
     FTeamColours team_colours;

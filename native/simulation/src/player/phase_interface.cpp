@@ -36,8 +36,8 @@ void PhaseInterface::resolve_damage_events() {
     simulation.resolve_damage_events();
 }
 
-void PhaseInterface::update_entity_registry() {
-    simulation.update_entity_registry();
+void PhaseInterface::publish_deaths() {
+    simulation.publish_deaths();
 }
 } // namespace ioj::sim::player
 // clang-format on

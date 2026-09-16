@@ -27,7 +27,7 @@ class PhaseInterface {
 
     void resolve_damage_events();
 
-    void update_entity_registry();
+    void publish_deaths();
 
     void cleanup_entities();
 

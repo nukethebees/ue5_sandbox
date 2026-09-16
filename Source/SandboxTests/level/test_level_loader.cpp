@@ -6,7 +6,6 @@
 #include <SandboxTests/support/PlayerControllerTestAccess.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
-#include <ioj/sim/entity_registry.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/levels/ExampleLevels.h>
 #include <SpaceGame/levels/LevelDefinition.h>
@@ -170,8 +169,7 @@ void FLevelLoaderCameraScenario::sample_runtime(ATestBatchOrchestrator& orchestr
     if (modal_samples_.num() == 0 && test_driver->get_time() > 0.0) {
         sample_modal_transitions();
     }
-    auto const& counts{
-        orchestrator.get_entity_registry().get_ledger().get_combat_telemetry().spawned};
+    auto const& counts{orchestrator.get_entity_ledger().get_combat_telemetry().spawned};
     auto const blue{std::to_underlying(ETestTeam::Blue)};
     auto const red{std::to_underlying(ETestTeam::Red)};
     auto const capital{std::to_underlying(ETestEntityType::CapitalShip)};
@@ -430,7 +428,7 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
     if (control_samples_.is_empty() && test_driver->get_time() > 0.0) {
         sample_controller_lifecycle();
     }
-    auto const& registry{orchestrator.get_entity_registry()};
+    auto const& registry{orchestrator.get_entity_ledger()};
     auto const& mission{orchestrator.get_mission_manager()};
     auto const counts{registry.count_alive_per_team_and_type()};
     auto const blue{std::to_underlying(ETestTeam::Blue)};
@@ -457,17 +455,22 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
         .mission_level_display_name = UTF8_TO_TCHAR(mission.get_level_display_name().c_str()),
         .saves_mission_results = mission.should_save_mission_results(),
     };
-    auto const& entity_data{registry.get_entity_data()};
-    auto const entity_count{entity_data.num()};
-    for (int32 i{0}; i < entity_count; ++i) {
-        auto const position{ml::to_unreal(entity_data.locations[i])};
-        auto const team{ml::to_unreal(entity_data.teams[i])};
-        auto const type{ml::to_unreal(entity_data.entity_types[i])};
-        if (type == ETestEntityType::CapitalShip && team == ETestTeam::Blue) {
+    auto const* level{orchestrator.get_level_simulation()};
+    check(level);
+    auto const capitals{level->get_capital_ships().get_read_view().entities};
+    for (int32 i{}; i < capitals.num(); ++i) {
+        auto const position{ml::to_unreal(capitals.locations[i])};
+        auto const team{ml::to_unreal(capitals.teams[i])};
+        if (team == ETestTeam::Blue) {
             sample.blue_capital_position = position;
-        } else if (type == ETestEntityType::CapitalShip && team == ETestTeam::Red) {
+        } else if (team == ETestTeam::Red) {
             sample.red_capital_position = position;
-        } else if (type == ETestEntityType::Turret && team == ETestTeam::Red) {
+        }
+    }
+    auto const turrets{level->get_turrets().get_read_view().entities};
+    for (int32 i{}; i < turrets.num(); ++i) {
+        if (ml::to_unreal(turrets.teams[i]) == ETestTeam::Red) {
+            auto const position{ml::to_unreal(turrets.locations[i])};
             sample.red_turret_position = position;
         }
     }

@@ -10,7 +10,7 @@
 #include "SpaceGame/levels/LevelLoader.h"
 #include "SpaceGame/system/GameSubsystem.h"
 
-#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/levels/level_initialisation_data.h>
 #include <ioj/sim/mission_manager.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
@@ -590,7 +590,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     if (presentation_enabled) {
         hud_manager.initialise(hud_update_frequencies,
                                get_mission_manager(),
-                               get_entity_registry().get_ledger(),
+                               get_entity_ledger(),
                                level_simulation_->get_agent_accessor(),
                                get_spatial_query_manager(),
                                get_player_ship_simulation(),
@@ -938,7 +938,7 @@ void ATestBatchOrchestrator::process_battle_run_end() {
 
     if (launch_options_.stop_when_battle_resolved &&
         !level_simulation_->has_future_authored_spawns()) {
-        auto const alive_by_team{get_entity_registry().count_alive_per_team()};
+        auto const alive_by_team{get_entity_ledger().count_alive_per_team()};
         int32 living_team_count{};
         std::optional<::ioj::sim::Team> winner;
         constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};

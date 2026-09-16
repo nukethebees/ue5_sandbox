@@ -1,20 +1,19 @@
-#include "test_entity_registry.h"
+#include "test_entity_ledger.h"
 #include "../support/simulation_test_support.h"
 
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/registry_entity_data.h>
 
 namespace ioj::sim {
 namespace {
 constexpr std::array<std::int32_t, 6> expected_team_counts{0, 1, 2, 3, 4, 5};
 }
 
-void run_worldless_entity_registry_scenario(tests::SimulationFixture const& config,
-                                            EntityRegistryScenario const scenario) {
+void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config,
+                                          EntityLedgerScenario const scenario) {
     auto data{tests::make_simulation_data(config)};
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
-    if (scenario != EntityRegistryScenario::TeamCounts) {
+    if (scenario != EntityLedgerScenario::TeamCounts) {
         tests::add_player_spawn(data, tests::make_player_spawn(config));
     }
     std::int32_t actor_index{};
@@ -36,12 +35,12 @@ void run_worldless_entity_registry_scenario(tests::SimulationFixture const& conf
 
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    if (scenario == EntityRegistryScenario::TeamCounts) {
-        EntityRegistry::TeamCounts counts{};
-        EntityRegistry::EntityCounts type_counts{};
+    if (scenario == EntityLedgerScenario::TeamCounts) {
+        telemetry::TeamCounts counts{};
+        telemetry::EntityCounts type_counts{};
         harness.on_end_tick = [&](LevelSim&) {
-            counts = harness.get_registry().count_alive_per_team();
-            type_counts = harness.get_registry().count_alive_per_team_and_type();
+            counts = harness.get_ledger().count_alive_per_team();
+            type_counts = harness.get_ledger().count_alive_per_team_and_type();
         };
         harness.timeline.finish_at(0.1);
         tests::expect_true(harness.run_until_timeline_finished(1.0),
@@ -70,17 +69,22 @@ void run_worldless_entity_registry_scenario(tests::SimulationFixture const& conf
         return;
     }
 
-    auto const expected_kills{scenario == EntityRegistryScenario::OnePlayerKill ? 1 : 2};
+    auto const expected_kills{scenario == EntityLedgerScenario::OnePlayerKill ? 1 : 2};
     auto const* player{harness.get_simulation().get_player_ship_simulation()};
     assert(player);
     auto const player_id{player->unique_entity_id};
-    auto const player_handle{player->registry_handle};
-    auto const initial_alive_count{harness.get_registry().count_alive()};
-    auto const available_targets{harness.get_registry().get_handles_not_in_team(player->team)};
+    auto const initial_alive_count{harness.get_ledger().count_alive()};
+    std::vector<EntityUniqueId> available_targets;
+    auto const capitals{harness.get_simulation().get_capital_ships().get_read_view().entities};
+    for (std::int32_t index{}; index < capitals.num(); ++index) {
+        if (capitals.teams[index] != player->team) {
+            available_targets.push_back(capitals.entity_ids[index]);
+        }
+    }
     tests::expect_greater(static_cast<std::int32_t>(available_targets.size()),
                           expected_kills - 1,
                           "Enough non-player-team targets are available");
-    auto const targets{std::span<RegistryEntityHandle const>{available_targets}.first(
+    auto const targets{std::span<EntityUniqueId const>{available_targets}.first(
         static_cast<std::size_t>(expected_kills))};
     struct Sample {
         std::int32_t player_kills{};
@@ -89,13 +93,13 @@ void run_worldless_entity_registry_scenario(tests::SimulationFixture const& conf
     };
     ml::TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim&) {
-        auto const& registry{harness.get_registry()};
+        auto const& registry{harness.get_ledger()};
         samples.add(harness.get_time(),
                     Sample{static_cast<std::int32_t>(registry.get_kills(player_id)),
                            registry.count_kills(),
                            registry.count_alive()});
     };
-    harness.timeline.then_after(0.1, [&] { harness.queue_kills(targets, player_handle); });
+    harness.timeline.then_after(0.1, [&] { harness.queue_kills(targets, player_id); });
     harness.timeline.finish_at(0.35);
     tests::expect_true(harness.run_until_timeline_finished(1.0), "Player-kill timeline completes");
     tests::expect_true(!samples.is_empty(), "Kill samples recorded");

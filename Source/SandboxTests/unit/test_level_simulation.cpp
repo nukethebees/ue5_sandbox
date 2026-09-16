@@ -299,12 +299,29 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
     headless.finish_initialisation();
     visible.finish_initialisation();
     FLevelPresentation presentation{resources, visible.get_read_view(), {}};
-    using Samples = ml::TimeSeriesData<::ioj::sim::EntityRegistry::EntityData>;
+    struct FEntitySnapshot {
+        std::vector<::ioj::sim::Health> healths;
+        std::vector<::ioj::sim::Vector3f> locations;
+        std::vector<::ioj::sim::Team> teams;
+        std::vector<::ioj::sim::EntityType> types;
+    };
+    using Samples = ml::TimeSeriesData<FEntitySnapshot>;
     Samples headless_samples;
     Samples visible_samples;
     auto record{[](Samples& samples, ::ioj::sim::LevelSim& simulation) {
-        ::ioj::sim::EntityRegistry::EntityData snapshot;
-        snapshot.append_from(simulation.get_entity_registry().get_entity_data());
+        FEntitySnapshot snapshot;
+        auto append = [&snapshot](auto const entities, ::ioj::sim::EntityType const type) {
+            for (int32 index{}; index < entities.num(); ++index) {
+                snapshot.healths.push_back(entities.healths[index]);
+                snapshot.locations.push_back(entities.locations[index]);
+                snapshot.teams.push_back(entities.teams[index]);
+                snapshot.types.push_back(type);
+            }
+        };
+        append(simulation.get_capital_ships().get_read_view().entities,
+               ::ioj::sim::EntityType::CapitalShip);
+        append(simulation.get_fighters().get_read_view().entities, ::ioj::sim::EntityType::Fighter);
+        append(simulation.get_turrets().get_read_view().entities, ::ioj::sim::EntityType::Turret);
         samples.add(simulation.get_clock().get_simulation_time(), std::move(snapshot));
     }};
     headless_harness.on_end_tick = [&](::ioj::sim::LevelSim& simulation) {
@@ -343,11 +360,9 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
         auto const& a{headless_samples.value_at(index)};
         auto const& b{visible_samples.value_at(index)};
         TestTrue(TEXT("Presentation preserves health and entity lifetime"), a.healths == b.healths);
-        TestTrue(TEXT("Presentation preserves locations"),
-                 a.locations.xs == b.locations.xs && a.locations.ys == b.locations.ys &&
-                     a.locations.zs == b.locations.zs);
+        TestTrue(TEXT("Presentation preserves locations"), a.locations == b.locations);
         TestTrue(TEXT("Presentation preserves entity teams and types"),
-                 a.teams == b.teams && a.entity_types == b.entity_types);
+                 a.teams == b.teams && a.types == b.types);
     }
     auto const a{headless.take_mission_result()};
     auto const b{visible.take_mission_result()};

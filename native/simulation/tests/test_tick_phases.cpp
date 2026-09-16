@@ -54,7 +54,7 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
 
-    auto const& registry{simulation.get_entity_registry()};
+    auto const& registry{simulation.get_entity_ledger()};
 
     auto const& queries{simulation.get_spatial_query_manager()};
 
@@ -72,7 +72,6 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     EXPECT_EQ(simulation.get_capital_ships().get_health(simulation.get_capital_ships().get_id(0)),
               75);
     EXPECT_EQ(simulation.get_lasers().get_number_spawned(), 0);
-    EXPECT_TRUE(registry.get_moved_entities_this_tick().empty());
 
     auto const events{queries.get_collision_system().get_aabb_overlap_events()};
     EXPECT_EQ(events.entity_entity_overlaps.num(), 1);
@@ -215,7 +214,7 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
 
-    auto const& registry{simulation.get_entity_registry()};
+    auto const& registry{simulation.get_entity_ledger()};
     auto const& capitals{simulation.get_capital_ships()};
 
     simulation.start();
@@ -358,7 +357,7 @@ TEST(TickPhases, CapitalDeathPublishesExistingAndNewChildDeathsBeforeMissionEval
         LevelSim simulation{std::move(data)};
         simulation.finish_initialisation();
 
-        auto const& registry{simulation.get_entity_registry()};
+        auto const& registry{simulation.get_entity_ledger()};
         auto const& capitals{simulation.get_capital_ships()};
         auto const& fighter_sim{simulation.get_fighters()};
 

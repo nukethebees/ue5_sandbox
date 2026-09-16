@@ -11,7 +11,6 @@
 
 #include <ioj/sim/entity_death_info.h>
 #include <ioj/sim/lasers/sim.h>
-#include <ioj/sim/registry_entity_data.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/turret_entity_data.h>
 
@@ -20,7 +19,7 @@
 namespace ioj::sim {
 struct LevelSim;
 struct TurretSimConfig;
-struct EntityRegistry;
+class EntityLedger;
 class CombatEvents;
 class LevelSpawnManager;
 struct SpatialQueryManager;
@@ -30,13 +29,12 @@ namespace ioj::sim::turrets {
 class PhaseInterface;
 
 struct Sim {
-    using RegistryEntityData = sim::RegistryEntityData;
     using EntityData = TurretEntityData;
     using EntityStorage = SingleAllocationTurretEntityData;
     using SpawnData = TurretSpawnData;
 
     Sim(SimClock const& clock,
-        EntityRegistry& entity_registry,
+        EntityLedger& ledger,
         CombatEvents const& combat_events,
         AgentAccessor const& agents,
         SpatialQueryManager const& spatial_query_manager,
@@ -64,14 +62,12 @@ struct Sim {
     /* **************************************** */
     auto get_num_instances() const noexcept -> std::int32_t;
     auto get_target_ids() const -> std::span<EntityUniqueId const>;
-    auto get_entity_registry() const -> EntityRegistry const& { return entity_registry; }
     auto get_laser_simulation() const -> lasers::Sim const& { return laser_simulation; }
 
     /* **************************************** */
     // Checks
     /* **************************************** */
     void validate_array_sizes() const;
-    void validate_entity_handles() const;
   private:
     /* **************************************** */
     // Sim phases
@@ -81,7 +77,7 @@ struct Sim {
     void think(float dt);
     void generate_fire_commands();
     void resolve_damage_events();
-    void update_entity_registry();
+    void publish_deaths();
     void cleanup_entities();
     void finish_action();
 
@@ -94,7 +90,6 @@ struct Sim {
     /* **************************************** */
     // Entity data
     /* **************************************** */
-    void prepare_entity_update_data();
 
     /* **************************************** */
     // Searching
@@ -129,7 +124,7 @@ struct Sim {
 
     TurretSimConfig config{};
     SimClock const& simulation_clock;
-    EntityRegistry& entity_registry;
+    EntityLedger& ledger_;
     CombatEvents const& combat_events_;
     AgentAccessor const& agents_;
     SpatialQueryManager const& spatial_query_manager;
@@ -139,7 +134,6 @@ struct Sim {
     EntityDeathInfo entity_death_info;
     std::vector<EntityFrameChange> frame_changes_;
     std::vector<Vector3f> death_locations_;
-    SingleAllocationRegistryEntityData entity_update_data;
     std::int32_t target_refresh_next_offset{0};
     std::int16_t cooldown_restart_ticks_{};
     std::int16_t cooldown_cleaner_{};

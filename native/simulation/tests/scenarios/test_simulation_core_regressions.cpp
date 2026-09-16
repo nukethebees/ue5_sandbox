@@ -2,7 +2,6 @@
 #include "../support/simulation_test_support.h"
 
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/entity_registry.h>
 #include <ioj/sim/player/sim.h>
 
 namespace ioj::sim {
@@ -84,7 +83,7 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
         samples.add(harness.get_time(),
                     DamageSample{
                         .capital_count = level.get_capital_ships().get_num_instances(),
-                        .registry_alive_count = harness.get_registry().count_alive(),
+                        .registry_alive_count = harness.get_ledger().count_alive(),
                         .health = state ? state->health : 0,
                         .telemetry_active_count = telemetry.last_value(),
                     });
@@ -116,7 +115,7 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     tests::expect_true(!harness.get_simulation().get_agent_accessor().is_alive(damaged_handle),
                        "Killed ID is dead");
     tests::expect_equal(
-        0, harness.get_registry().count_kills(), "Unattributed death does not create a kill");
+        0, harness.get_ledger().count_kills(), "Unattributed death does not create a kill");
 }
 
 void run_worldless_collision_damage(tests::SimulationFixture const& config) {
@@ -162,7 +161,7 @@ void run_worldless_collision_damage(tests::SimulationFixture const& config) {
                         .player_health = player->health.health,
                         .capital_health = capital ? capital->health : 0,
                         .dynamic_overlap_count = events.entity_entity_overlaps.num(),
-                        .kill_count = harness.get_registry().count_kills(),
+                        .kill_count = harness.get_ledger().count_kills(),
                         .player_alive = level.get_agent_accessor().is_alive(player_id),
                     });
     };
@@ -205,9 +204,9 @@ void run_worldless_collision_damage(tests::SimulationFixture const& config) {
     tests::expect_true(!harness.get_simulation().get_agent_accessor().is_alive(capital_id),
                        "Capital death commits in the third overlap tick");
     tests::expect_equal(0, third.kill_count, "Collision death grants no combat kill");
-    tests::expect_true(harness.get_registry()
+    tests::expect_true(harness.get_ledger()
                                .get_unique_entities()
-                               .life_state[harness.get_registry().get_history_index(capital_id)] ==
+                               .life_state[harness.get_ledger().get_history_index(capital_id)] ==
                            LifeState::Unknown,
                        "Collision death is environmental");
 }

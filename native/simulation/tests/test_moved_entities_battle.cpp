@@ -1,5 +1,5 @@
-#include <ioj/sim/entity_registry.h>
 #include <ioj/sim/level_sim.h>
+#include <ioj/sim/rotator_math.h>
 #include <map>
 #include <set>
 #include "support/simulation_test_support.h"
@@ -7,28 +7,15 @@
 namespace ioj::sim::tests {
 
 namespace {
-struct TransformSnapshot {
-    float x{};
-    float y{};
-    float z{};
-    float pitch{};
-    float yaw{};
-    float roll{};
+struct FighterTransformSnapshot {
+    Vector3f location{};
+    Rotator3f rotation{};
 
-    auto operator==(TransformSnapshot const&) const -> bool = default;
+    auto operator==(FighterTransformSnapshot const& other) const -> bool {
+        return location == other.location && rotation.pitch == other.rotation.pitch &&
+               rotation.yaw == other.rotation.yaw && rotation.roll == other.rotation.roll;
+    }
 };
-
-auto get_transform_snapshot(RegistryEntityDataConstView const data, std::int32_t const index)
-    -> TransformSnapshot {
-    return {
-        .x = data.locations.xs[index],
-        .y = data.locations.ys[index],
-        .z = data.locations.zs[index],
-        .pitch = data.rotations.pitches[index],
-        .yaw = data.rotations.yaws[index],
-        .roll = data.rotations.rolls[index],
-    };
-}
 
 auto make_long_running_battle() -> LevelSimInitData {
     LevelSimInitData data;
@@ -75,72 +62,53 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
     harness.finish_initialisation();
     auto& simulation{harness.get_simulation()};
 
-    std::map<RegistryEntityHandle, TransformSnapshot> previous_transforms;
-    auto capture_current_transforms = [&](EntityRegistry const& registry) {
+    std::map<EntityUniqueId, FighterTransformSnapshot> previous_transforms;
+    auto capture_current_transforms = [&](fighters::Sim const& fighters) {
         previous_transforms.clear();
-        auto const& data{registry.get_entity_data()};
-        auto const generations{registry.get_generations()};
-        auto const count{static_cast<std::int32_t>(generations.size())};
-        for (std::int32_t index{}; index < count; ++index) {
-            RegistryEntityHandle const handle{index, generations[index]};
-            previous_transforms.emplace(handle, get_transform_snapshot(data, index));
+        auto const entities{fighters.get_read_view().entities};
+        for (std::int32_t index{}; index < entities.num(); ++index) {
+            previous_transforms.emplace(
+                entities.entity_ids[index],
+                FighterTransformSnapshot{
+                    .location = entities.locations[index],
+                    .rotation = direction_to_rotation(entities.aim_directions[index])});
         }
     };
-    capture_current_transforms(simulation.get_entity_registry());
+    capture_current_transforms(simulation.get_fighters());
 
     std::int32_t observed_ticks{};
     std::int32_t observed_moved_fighters{};
     bool observed_empty_tick{};
     harness.on_end_tick = [&](LevelSim& level) {
-        auto const& registry{level.get_entity_registry()};
-        auto const& data{registry.get_entity_data()};
-        auto const generations{registry.get_generations()};
-        auto const count{static_cast<std::int32_t>(generations.size())};
-
-        std::set<RegistryEntityHandle> expected_moved;
-        for (std::int32_t index{}; index < count; ++index) {
-            RegistryEntityHandle const handle{index, generations[index]};
-            auto const current{get_transform_snapshot(data, index)};
-            if (auto const previous{previous_transforms.find(handle)};
-                previous != previous_transforms.end() && previous->second != current) {
-                expected_moved.insert(handle);
+        auto const entities{level.get_fighters().get_read_view().entities};
+        std::set<EntityUniqueId> expected_moved;
+        for (std::int32_t index{}; index < entities.num(); ++index) {
+            auto const id{entities.entity_ids[index]};
+            auto const current{FighterTransformSnapshot{
+                .location = entities.locations[index],
+                .rotation = direction_to_rotation(entities.aim_directions[index])}};
+            auto const previous{previous_transforms.find(id)};
+            if (previous != previous_transforms.end() && previous->second != current) {
+                expected_moved.insert(id);
             }
         }
 
-        auto const moved{registry.get_moved_entities_this_tick()};
-        std::set<RegistryEntityHandle> unique_moved;
-        for (auto const handle : moved) {
-            tests::expect_true(registry.is_valid_handle(handle),
-                               "Moved handle remains valid after registry end_tick");
-            tests::expect_false(std::ranges::contains(unique_moved, handle),
-                                "Moved handle occurs only once in its tick");
-            unique_moved.insert(handle);
-            if (!previous_transforms.contains(handle)) {
-                // Newly prepared fighters can move in their birth tick.
-                expected_moved.insert(handle);
-            }
-            tests::expect_true(std::ranges::contains(expected_moved, handle),
-                               "Moved handle changed from the prior committed transform");
-            if (registry.get_entity_type(handle) == EntityType::Fighter) {
-                ++observed_moved_fighters;
+        auto const moved{level.get_fighters().get_collision_dirty_entities()};
+        std::set<EntityUniqueId> const unique_moved{moved.begin(), moved.end()};
+        for (auto const id : unique_moved) {
+            if (!previous_transforms.contains(id)) {
+                expected_moved.insert(id);
             }
         }
         tests::expect_equal(static_cast<std::int32_t>(moved.size()),
-                            static_cast<std::int32_t>(expected_moved.size()),
-                            "Movement list exactly matches this tick's transform changes");
+                            static_cast<std::int32_t>(unique_moved.size()),
+                            "Moved ID occurs only once in its tick");
+        tests::expect_true(unique_moved == expected_moved,
+                           "Owner collision dirtiness exactly matches fighter movement");
         observed_empty_tick = observed_empty_tick || moved.empty();
-        auto const owner_dirty{level.get_fighters().get_collision_dirty_entities()};
-        std::set<EntityUniqueId> const owner_moved{owner_dirty.begin(), owner_dirty.end()};
-        std::set<EntityUniqueId> registry_moved_fighters;
-        for (auto const handle : moved) {
-            if (registry.get_entity_type(handle) == EntityType::Fighter) {
-                registry_moved_fighters.insert(registry.get_current_id(handle));
-            }
-        }
-        tests::expect_true(owner_moved == registry_moved_fighters,
-                           "Owner collision dirtiness matches exact committed fighter transforms");
+        observed_moved_fighters += static_cast<std::int32_t>(moved.size());
         ++observed_ticks;
-        capture_current_transforms(registry);
+        capture_current_transforms(level.get_fighters());
     };
 
     simulation.start();
@@ -162,4 +130,4 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
                         "Zero-damage battle preserves every fighter");
 }
 
-} // namespace tests
+} // namespace ioj::sim::tests

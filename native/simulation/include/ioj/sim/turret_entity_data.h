@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ioj/sim/entity_handle.h"
 #include "ioj/sim/entity_types.h"
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/health.h"
@@ -25,7 +24,6 @@ struct TurretEntityDataConstView {
     using ConstView = TurretEntityDataConstView;
     using size_type = std::int32_t;
     std::span<EntityUniqueId const> entity_ids;
-    std::span<RegistryEntityHandle const> handles;
     std::span<std::uint32_t const> integral_biases;
     Vectors3fConstView locations;
     Vectors3fConstView fire_point_locations;
@@ -44,7 +42,6 @@ struct TurretEntityDataConstView {
     template <typename Fn>
     void each_column(Fn&& fn) const {
         fn(entity_ids);
-        fn(handles);
         fn(integral_biases);
         fn(locations.xs_span());
         fn(locations.ys_span());
@@ -80,7 +77,6 @@ struct TurretEntityDataConstView {
                                 count <= num() - offset);
         return {
             entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            handles.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             integral_biases.subspan(static_cast<std::size_t>(offset),
                                     static_cast<std::size_t>(count)),
             locations.slice(offset, count),
@@ -109,7 +105,6 @@ struct TurretEntityDataConstView {
     auto get_const_view() const -> ConstView {
         return {
             entity_ids,
-            handles,
             integral_biases,
             locations.get_const_view(),
             fire_point_locations.get_const_view(),
@@ -138,7 +133,6 @@ struct TurretEntityDataView {
     using ConstView = TurretEntityDataConstView;
     using size_type = std::int32_t;
     std::span<EntityUniqueId> entity_ids;
-    std::span<RegistryEntityHandle> handles;
     std::span<std::uint32_t> integral_biases;
     Vectors3fView locations;
     Vectors3fView fire_point_locations;
@@ -157,7 +151,6 @@ struct TurretEntityDataView {
     template <typename Fn>
     void each_column(Fn&& fn) const {
         fn(entity_ids);
-        fn(handles);
         fn(integral_biases);
         fn(locations.xs_span());
         fn(locations.ys_span());
@@ -193,7 +186,6 @@ struct TurretEntityDataView {
                                 count <= num() - offset);
         return {
             entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            handles.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             integral_biases.subspan(static_cast<std::size_t>(offset),
                                     static_cast<std::size_t>(count)),
             locations.slice(offset, count),
@@ -221,7 +213,6 @@ struct TurretEntityDataView {
     auto get_const_view() const -> ConstView {
         return {
             entity_ids,
-            handles,
             integral_biases,
             locations.get_const_view(),
             fire_point_locations.get_const_view(),
@@ -246,7 +237,6 @@ struct TurretEntityDataView {
     }
     void set(size_type const index,
              EntityUniqueId const new_entity_ids,
-             RegistryEntityHandle const new_handles,
              std::uint32_t const new_integral_biases,
              float const new_locations_xs,
              float const new_locations_ys,
@@ -272,7 +262,6 @@ struct TurretEntityDataView {
              Health const new_healths) const {
         ml::native_soa::require(index >= 0 && index < num());
         entity_ids[static_cast<std::size_t>(index)] = new_entity_ids;
-        handles[static_cast<std::size_t>(index)] = new_handles;
         integral_biases[static_cast<std::size_t>(index)] = new_integral_biases;
         locations.xs[static_cast<std::size_t>(index)] = new_locations_xs;
         locations.ys[static_cast<std::size_t>(index)] = new_locations_ys;
@@ -305,7 +294,6 @@ struct TurretEntityData {
     using ConstView = TurretEntityDataConstView;
     using size_type = std::int32_t;
     ml::native_soa::Vector<EntityUniqueId> entity_ids;
-    ml::native_soa::Vector<RegistryEntityHandle> handles;
     ml::native_soa::Vector<std::uint32_t> integral_biases;
     Vectors3f locations;
     Vectors3f fire_point_locations;
@@ -324,7 +312,6 @@ struct TurretEntityData {
     template <typename Fn>
     void each_column(Fn&& fn) {
         fn(entity_ids);
-        fn(handles);
         fn(integral_biases);
         fn(locations.xs);
         fn(locations.ys);
@@ -352,7 +339,6 @@ struct TurretEntityData {
     template <typename Fn>
     void each_column(Fn&& fn) const {
         fn(entity_ids);
-        fn(handles);
         fn(integral_biases);
         fn(locations.xs);
         fn(locations.ys);
@@ -381,7 +367,6 @@ struct TurretEntityData {
     void reserve(size_type const count) {
         ml::native_soa::require(count >= 0);
         entity_ids.reserve(static_cast<std::size_t>(count));
-        handles.reserve(static_cast<std::size_t>(count));
         integral_biases.reserve(static_cast<std::size_t>(count));
         locations.xs.reserve(static_cast<std::size_t>(count));
         locations.ys.reserve(static_cast<std::size_t>(count));
@@ -408,7 +393,6 @@ struct TurretEntityData {
     }
     void reset() noexcept {
         entity_ids.clear();
-        handles.clear();
         integral_biases.clear();
         locations.xs.clear();
         locations.ys.clear();
@@ -437,7 +421,6 @@ struct TurretEntityData {
         ml::native_soa::require(count >= 0);
         auto const size{static_cast<std::size_t>(count)};
         entity_ids.resize(size);
-        handles.resize(size);
         integral_biases.resize(size);
         locations.xs.resize(size);
         locations.ys.resize(size);
@@ -477,9 +460,6 @@ struct TurretEntityData {
         auto const source{old_num - moved};
         for (size_type i{}; i < moved; ++i) {
             entity_ids[index + i] = entity_ids[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            handles[index + i] = handles[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
             integral_biases[index + i] = integral_biases[source + i];
@@ -556,7 +536,6 @@ struct TurretEntityData {
     }
     void set(size_type const index,
              EntityUniqueId const new_entity_ids,
-             RegistryEntityHandle const new_handles,
              std::uint32_t const new_integral_biases,
              float const new_locations_xs,
              float const new_locations_ys,
@@ -582,7 +561,6 @@ struct TurretEntityData {
              Health const new_healths) {
         get_view().set(index,
                        new_entity_ids,
-                       new_handles,
                        new_integral_biases,
                        new_locations_xs,
                        new_locations_ys,
@@ -608,7 +586,6 @@ struct TurretEntityData {
                        new_healths);
     }
     auto add(EntityUniqueId const new_entity_ids,
-             RegistryEntityHandle const new_handles,
              std::uint32_t const new_integral_biases,
              float const new_locations_xs,
              float const new_locations_ys,
@@ -636,7 +613,6 @@ struct TurretEntityData {
         add_defaulted(1);
         set(index,
             new_entity_ids,
-            new_handles,
             new_integral_biases,
             new_locations_xs,
             new_locations_ys,
@@ -674,13 +650,6 @@ struct TurretEntityData {
             auto const begin{ml::address_cast(entity_ids.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + entity_ids.size() * sizeof(EntityUniqueId));
-        }
-        {
-            auto const address{ml::address_cast(source.handles.data())};
-            auto const begin{ml::address_cast(handles.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + handles.size() * sizeof(RegistryEntityHandle));
         }
         {
             auto const address{ml::address_cast(source.integral_biases.data())};
@@ -830,7 +799,6 @@ struct TurretEntityData {
         }
         entity_ids.insert(
             entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
-        handles.insert(handles.end(), source.handles.data(), source.handles.data() + count);
         integral_biases.insert(integral_biases.end(),
                                source.integral_biases.data(),
                                source.integral_biases.data() + count);
@@ -894,7 +862,6 @@ struct TurretEntityData {
     auto get_view() -> View {
         return {
             entity_ids,
-            handles,
             integral_biases,
             locations.get_view(),
             fire_point_locations.get_view(),
@@ -913,7 +880,6 @@ struct TurretEntityData {
     auto get_view() const -> ConstView {
         return {
             entity_ids,
-            handles,
             integral_biases,
             locations.get_view(),
             fire_point_locations.get_view(),
@@ -953,8 +919,6 @@ struct TurretEntityData {
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
         entity_ids[static_cast<std::size_t>(dst_index)] =
             other.entity_ids[static_cast<std::size_t>(src_index)];
-        handles[static_cast<std::size_t>(dst_index)] =
-            other.handles[static_cast<std::size_t>(src_index)];
         integral_biases[static_cast<std::size_t>(dst_index)] =
             other.integral_biases[static_cast<std::size_t>(src_index)];
         locations.copy_element(dst_index, other.locations, src_index);
@@ -1024,8 +988,7 @@ struct TurretEntityDataSingleLayout {
         capacity_granularity, column_gap, 64};
 
     inline static constexpr ColLayout<EntityUniqueId> EntityIds{LayoutStart};
-    inline static constexpr ColLayout<RegistryEntityHandle> Handles{EntityIds};
-    inline static constexpr ColLayout<std::uint32_t> IntegralBiases{Handles};
+    inline static constexpr ColLayout<std::uint32_t> IntegralBiases{EntityIds};
     inline static constexpr ColLayout<float> LocationsXs{IntegralBiases};
     inline static constexpr ColLayout<float> LocationsYs{LocationsXs};
     inline static constexpr ColLayout<float> LocationsZs{LocationsYs};
@@ -1053,7 +1016,6 @@ struct TurretEntityDataSingleLayout {
 
     inline static constexpr byte_size_type allocation_alignment{
         ml::native_soa::maximum_alignment(EntityIds,
-                                          Handles,
                                           IntegralBiases,
                                           LocationsXs,
                                           LocationsYs,
@@ -1082,7 +1044,7 @@ struct TurretEntityDataSingleLayout {
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
         ml::native_soa::layout_align(Healths.block_end, allocation_alignment) +
-        24 * (column_gap + allocation_alignment - 1)};
+        23 * (column_gap + allocation_alignment - 1)};
     inline static constexpr size_type max_capacity{
         ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
@@ -1093,10 +1055,6 @@ struct TurretEntityDataSingleLayout {
         static_assert(
             ml::native_soa::supported_leaf<EntityUniqueId>,
             "Single-allocation leaf entity_ids requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::native_soa::supported_leaf<RegistryEntityHandle>,
-            "Single-allocation leaf handles requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
             ml::native_soa::supported_leaf<std::uint32_t>,
@@ -1128,8 +1086,6 @@ struct TurretEntityDataSingleLayout {
             "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
         static_assert(sizeof(EntityUniqueId) <=
                       (max_allocation_size - EntityIds.block_offset) / capacity_granularity);
-        static_assert(sizeof(RegistryEntityHandle) <=
-                      (max_allocation_size - Handles.block_offset) / capacity_granularity);
         static_assert(sizeof(std::uint32_t) <=
                       (max_allocation_size - IntegralBiases.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
@@ -1178,7 +1134,7 @@ struct TurretEntityDataSingleLayout {
                                            capacity_granularity);
         static_assert(sizeof(Health) <=
                       (max_allocation_size - Healths.block_offset) / capacity_granularity);
-        static_assert(24 <= (max_allocation_size - ml::native_soa::layout_align(
+        static_assert(23 <= (max_allocation_size - ml::native_soa::layout_align(
                                                        Healths.block_end, allocation_alignment)) /
                                 (column_gap + allocation_alignment - 1));
         static_assert(max_capacity >= capacity_granularity);
@@ -1244,7 +1200,6 @@ struct SingleAllocationTurretEntityDataStorage
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
         Element<EntityUniqueId>* entity_ids{};
-        Element<RegistryEntityHandle>* handles{};
         Element<std::uint32_t>* integral_biases{};
         Element<float>* locations_xs{};
         Element<float>* locations_ys{};
@@ -1273,7 +1228,6 @@ struct SingleAllocationTurretEntityDataStorage
                 return {};
             }
             return {entity_ids + offset,
-                    handles + offset,
                     integral_biases + offset,
                     locations_xs + offset,
                     locations_ys + offset,
@@ -1327,12 +1281,8 @@ struct SingleAllocationTurretEntityDataStorage
             return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
         auto const entity_ids_offset{byte_size_type{}};
-        auto const handles_offset{ml::native_soa::layout_align(
-            entity_ids_offset + blocks * capacity_granularity * sizeof(EntityUniqueId) + column_gap,
-            Handles.alignment)};
         auto const integral_biases_offset{ml::native_soa::layout_align(
-            handles_offset + blocks * capacity_granularity * sizeof(RegistryEntityHandle) +
-                column_gap,
+            entity_ids_offset + blocks * capacity_granularity * sizeof(EntityUniqueId) + column_gap,
             IntegralBiases.alignment)};
         auto const locations_xs_offset{ml::native_soa::layout_align(
             integral_biases_offset + blocks * capacity_granularity * sizeof(std::uint32_t) +
@@ -1413,7 +1363,6 @@ struct SingleAllocationTurretEntityDataStorage
             Healths.alignment)};
         return {
             pointer_at(EntityIds, entity_ids_offset),
-            pointer_at(Handles, handles_offset),
             pointer_at(IntegralBiases, integral_biases_offset),
             pointer_at(LocationsXs, locations_xs_offset),
             pointer_at(LocationsYs, locations_ys_offset),
@@ -1449,7 +1398,6 @@ struct SingleAllocationTurretEntityDataStorage
     void default_construct_columns(size_type const first, size_type const count) {
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         std::uninitialized_value_construct_n<EntityUniqueId*>(columns.entity_ids, count);
-        std::uninitialized_value_construct_n<RegistryEntityHandle*>(columns.handles, count);
         std::uninitialized_value_construct_n<std::uint32_t*>(columns.integral_biases, count);
         std::uninitialized_value_construct_n<float*>(columns.locations_xs, count);
         std::uninitialized_value_construct_n<float*>(columns.locations_ys, count);
@@ -1487,7 +1435,6 @@ struct SingleAllocationTurretEntityDataStorage
                              size_type move_count) {
         auto const elements_to_move{static_cast<byte_size_type>(move_count)};
         auto const entity_ids_bytes{elements_to_move * sizeof(EntityUniqueId)};
-        auto const handles_bytes{elements_to_move * sizeof(RegistryEntityHandle)};
         auto const integral_biases_bytes{elements_to_move * sizeof(std::uint32_t)};
         auto const locations_xs_bytes{elements_to_move * sizeof(float)};
         auto const teams_bytes{elements_to_move * sizeof(Team)};
@@ -1495,7 +1442,6 @@ struct SingleAllocationTurretEntityDataStorage
         auto const laser_damages_bytes{elements_to_move * sizeof(std::int32_t)};
         auto const healths_bytes{elements_to_move * sizeof(Health)};
         std::memcpy(columns.entity_ids + index, columns.entity_ids + source, entity_ids_bytes);
-        std::memcpy(columns.handles + index, columns.handles + source, handles_bytes);
         std::memcpy(columns.integral_biases + index,
                     columns.integral_biases + source,
                     integral_biases_bytes);
@@ -1575,11 +1521,10 @@ struct SingleAllocationTurretEntityDataStorage
             auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
             return address >= allocation_begin && address < allocation_end;
         };
-        return aliases(source.entity_ids.data()) || aliases(source.handles.data()) ||
-               aliases(source.integral_biases.data()) || aliases(source.locations.xs) ||
-               aliases(source.locations.ys) || aliases(source.locations.zs) ||
-               aliases(source.fire_point_locations.xs) || aliases(source.fire_point_locations.ys) ||
-               aliases(source.fire_point_locations.zs) ||
+        return aliases(source.entity_ids.data()) || aliases(source.integral_biases.data()) ||
+               aliases(source.locations.xs) || aliases(source.locations.ys) ||
+               aliases(source.locations.zs) || aliases(source.fire_point_locations.xs) ||
+               aliases(source.fire_point_locations.ys) || aliases(source.fire_point_locations.zs) ||
                aliases(source.rotations.pitches.data()) || aliases(source.rotations.yaws.data()) ||
                aliases(source.rotations.rolls.data()) || aliases(source.teams.data()) ||
                aliases(source.laser_cooldowns.data()) || aliases(source.laser_damages.data()) ||
@@ -1595,7 +1540,6 @@ struct SingleAllocationTurretEntityDataStorage
         auto const destination{get_data(first)};
         auto const elements_to_copy{static_cast<byte_size_type>(count)};
         auto const entity_ids_bytes{elements_to_copy * sizeof(EntityUniqueId)};
-        auto const handles_bytes{elements_to_copy * sizeof(RegistryEntityHandle)};
         auto const integral_biases_bytes{elements_to_copy * sizeof(std::uint32_t)};
         auto const locations_xs_bytes{elements_to_copy * sizeof(float)};
         auto const teams_bytes{elements_to_copy * sizeof(Team)};
@@ -1603,7 +1547,6 @@ struct SingleAllocationTurretEntityDataStorage
         auto const laser_damages_bytes{elements_to_copy * sizeof(std::int32_t)};
         auto const healths_bytes{elements_to_copy * sizeof(Health)};
         std::memcpy(destination.entity_ids, source.entity_ids.data(), entity_ids_bytes);
-        std::memcpy(destination.handles, source.handles.data(), handles_bytes);
         std::memcpy(
             destination.integral_biases, source.integral_biases.data(), integral_biases_bytes);
         std::memcpy(destination.locations_xs, source.locations.xs, locations_xs_bytes);
@@ -1659,7 +1602,6 @@ struct SingleAllocationTurretEntityDataStorage
             auto const destination{make_data_unchecked(new_data, new_blocks)};
             auto const live_count{static_cast<byte_size_type>(num_)};
             auto const entity_ids_bytes{live_count * sizeof(EntityUniqueId)};
-            auto const handles_bytes{live_count * sizeof(RegistryEntityHandle)};
             auto const integral_biases_bytes{live_count * sizeof(std::uint32_t)};
             auto const locations_xs_bytes{live_count * sizeof(float)};
             auto const teams_bytes{live_count * sizeof(Team)};
@@ -1667,7 +1609,6 @@ struct SingleAllocationTurretEntityDataStorage
             auto const laser_damages_bytes{live_count * sizeof(std::int32_t)};
             auto const healths_bytes{live_count * sizeof(Health)};
             std::memcpy(destination.entity_ids, source.entity_ids, entity_ids_bytes);
-            std::memcpy(destination.handles, source.handles, handles_bytes);
             std::memcpy(destination.integral_biases, source.integral_biases, integral_biases_bytes);
             std::memcpy(destination.locations_xs, source.locations_xs, locations_xs_bytes);
             std::memcpy(destination.locations_ys, source.locations_ys, locations_xs_bytes);
@@ -1729,11 +1670,6 @@ struct TurretEntityDataSingleConstView : ml::native_soa::CompactViewState<true> 
     auto entity_ids() const -> std::span<EntityUniqueId const> {
         return {column_data<EntityUniqueId>(
                     TurretEntityDataSingleLayout::EntityIds.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto handles() const -> std::span<RegistryEntityHandle const> {
-        return {column_data<RegistryEntityHandle>(
-                    TurretEntityDataSingleLayout::Handles.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto integral_biases() const -> std::span<std::uint32_t const> {
@@ -1845,9 +1781,6 @@ struct TurretEntityDataSingleConstView : ml::native_soa::CompactViewState<true> 
             {column_data_unchecked<EntityUniqueId>(
                  TurretEntityDataSingleLayout::EntityIds.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
-                 TurretEntityDataSingleLayout::Handles.offset(blocks)),
-             static_cast<std::size_t>(count_)},
             {column_data_unchecked<std::uint32_t>(
                  TurretEntityDataSingleLayout::IntegralBiases.offset(blocks)),
              static_cast<std::size_t>(count_)},
@@ -1939,11 +1872,6 @@ struct TurretEntityDataSingleView : ml::native_soa::CompactViewState<false> {
     auto entity_ids() const -> std::span<EntityUniqueId> {
         return {column_data<EntityUniqueId>(
                     TurretEntityDataSingleLayout::EntityIds.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto handles() const -> std::span<RegistryEntityHandle> {
-        return {column_data<RegistryEntityHandle>(
-                    TurretEntityDataSingleLayout::Handles.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto integral_biases() const -> std::span<std::uint32_t> {
@@ -2053,9 +1981,6 @@ struct TurretEntityDataSingleView : ml::native_soa::CompactViewState<false> {
         return TurretEntityDataView{
             {column_data_unchecked<EntityUniqueId>(
                  TurretEntityDataSingleLayout::EntityIds.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
-                 TurretEntityDataSingleLayout::Handles.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<std::uint32_t>(
                  TurretEntityDataSingleLayout::IntegralBiases.offset(blocks)),

@@ -9,7 +9,6 @@
 #include <ioj/sim/laser_hit_details.h>
 #include <ioj/sim/laser_soa.h>
 #include <ioj/sim/levels/compiled_level_events.h>
-#include <ioj/sim/registry_entity_data.h>
 #include <ioj/sim/spinner_entity_data.h>
 #include <ioj/sim/turret_entity_data.h>
 #include <sandbox/core/frame_memory_resource.h>
@@ -50,7 +49,6 @@ TEST(NativeSimulation, ProductionSingleAllocationSoaLifecycle) {
     expect_storage_lifecycle<SingleAllocationTurretEntityData>();
     expect_storage_lifecycle<lasers::SingleAllocationLaserEntities>();
     expect_storage_lifecycle<lasers::SingleAllocationLaserSpawnRequests>();
-    expect_storage_lifecycle<SingleAllocationRegistryEntityData>();
     expect_storage_lifecycle<SingleAllocationCapitalEntityData>();
     expect_storage_lifecycle<SingleAllocationCapitalSpawnData>();
     expect_storage_lifecycle<SingleAllocationFighterSpawnQueue>();

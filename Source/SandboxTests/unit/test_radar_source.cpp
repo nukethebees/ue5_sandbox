@@ -1,32 +1,30 @@
+#include <SandboxTests/support/DisplayEntityTestData.h>
 #include <SpaceGamePresentation/presentation/RadarSource.h>
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <CQTest.h>
-#include <ioj/sim/registry_entity_data.h>
 #include <vector>
 
 namespace ml::test_radar_source {
-auto make_view(::ioj::sim::RegistryEntityData const& entities,
+auto make_view(ml::tests::FDisplayEntityTestData const& entities,
                std::span<::ioj::sim::EntityUniqueId const> ids = {})
     -> std::vector<::ioj::sim::AgentDisplayBatch> {
     std::vector<::ioj::sim::AgentDisplayBatch> batches;
-    auto const view{entities.get_const_view()};
     auto const count{entities.num()};
     batches.reserve(count);
     for (int32 i{}; i < count; ++i) {
-        auto const row{view.get_view(i, 1)};
-        batches.push_back({row.entity_types[0],
+        batches.push_back({entities.entity_types[static_cast<std::size_t>(i)],
                            ids.empty() ? ids : ids.subspan(i, 1),
-                           row.locations,
-                           row.velocities,
-                           row.healths,
-                           row.teams});
+                           entities.locations.get_const_view(i, 1),
+                           entities.velocities.get_const_view(i, 1),
+                           std::span{entities.healths}.subspan(i, 1),
+                           std::span{entities.teams}.subspan(i, 1)});
     }
     return batches;
 }
 
-void add_entity(::ioj::sim::RegistryEntityData& entities,
+void add_entity(ml::tests::FDisplayEntityTestData& entities,
                 FVector3f const location,
                 ETestTeam const team,
                 ETestEntityType const type,
@@ -74,7 +72,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 {
     TEST_METHOD(FiltersMapsAndOrdersContacts)
     {
-        ::ioj::sim::RegistryEntityData entities;
+        ml::tests::FDisplayEntityTestData entities;
         ml::test_radar_source::add_entity(
             entities, FVector3f::ZeroVector, ETestTeam::Blue, ETestEntityType::PlayerShip);
         ml::test_radar_source::add_entity(
@@ -173,7 +171,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 
     TEST_METHOD(UsesPlayerRelativeContactColours)
     {
-        ::ioj::sim::RegistryEntityData entities;
+        ml::tests::FDisplayEntityTestData entities;
         ml::test_radar_source::add_entity(
             entities, FVector3f::ZeroVector, ETestTeam::Blue, ETestEntityType::PlayerShip);
         ml::test_radar_source::add_entity(
@@ -224,7 +222,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         auto const world_contact{
             FVector3f{player_location + no_roll_rotation.RotateVector(FVector{local_contact})}};
 
-        ::ioj::sim::RegistryEntityData entities;
+        ml::tests::FDisplayEntityTestData entities;
         ml::test_radar_source::add_entity(
             entities, FVector3f{player_location}, ETestTeam::Blue, ETestEntityType::PlayerShip);
         ml::test_radar_source::add_entity(
@@ -350,7 +348,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
     TEST_METHOD(ContactMappingDoesNotDependOnOtherContacts)
     {
         auto const settings{ml::test_radar_source::nonlinear_settings()};
-        ::ioj::sim::RegistryEntityData entities;
+        ml::tests::FDisplayEntityTestData entities;
         ml::test_radar_source::add_entity(
             entities, FVector3f::ZeroVector, ETestTeam::Blue, ETestEntityType::PlayerShip);
         ml::test_radar_source::add_entity(
@@ -402,7 +400,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
     TEST_METHOD(FixedMaximumRangeExcludesAllOutOfRangeContacts)
     {
         auto const settings{ml::test_radar_source::nonlinear_settings()};
-        ::ioj::sim::RegistryEntityData entities;
+        ml::tests::FDisplayEntityTestData entities;
         ml::test_radar_source::add_entity(
             entities, FVector3f::ZeroVector, ETestTeam::Blue, ETestEntityType::PlayerShip);
         ml::test_radar_source::add_entity(

@@ -73,19 +73,17 @@ TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
     EXPECT_FALSE(agents.read(id));
     check_bulk();
 
-    EntityRegistry registry;
-    RegistryEntityData initial;
     auto const type_count{static_cast<std::int32_t>(EntityType::COUNT)};
-    initial.add_defaulted(type_count);
-    for (std::int32_t i{}; i < type_count; ++i) {
-        initial.entity_types[i] = static_cast<EntityType>(i);
-        initial.locations.set(i, {{static_cast<float>(i + 1), 2.f, 3.f}});
-        initial.healths[i] = 100;
-        initial.teams[i] = Team::Green;
-    }
-    auto const spawned{registry.add_entities(initial.get_const_view())};
     CollisionAgentStorage owners;
-    owners.load(registry);
+    std::array<EntityUniqueId, static_cast<std::size_t>(EntityType::COUNT)> spawned{};
+    for (std::int32_t i{}; i < type_count; ++i) {
+        spawned[static_cast<std::size_t>(i)] = owners.spawn(static_cast<EntityType>(i),
+                                                            {{static_cast<float>(i + 1), 2.f, 3.f}},
+                                                            {},
+                                                            100,
+                                                            Team::Green);
+    }
+    owners.publish();
     std::vector<EntityUniqueId> ids;
     std::vector<std::int32_t> order(static_cast<std::size_t>(type_count * 2));
     std::vector<std::uint8_t> alive(order.size());
@@ -94,7 +92,7 @@ TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
     locations.add_defaulted(type_count * 2);
     for (std::int32_t i{}; i < type_count * 2; ++i) {
         auto const type{static_cast<EntityType>(type_count - 1 - i % type_count)};
-        ids.push_back(spawned.get_id(static_cast<std::int32_t>(type)));
+        ids.push_back(spawned[static_cast<std::size_t>(type)]);
     }
     auto const original{ids};
     owners.agents.gather_targets(ids, order, {locations.get_view(), {}, teams, alive});

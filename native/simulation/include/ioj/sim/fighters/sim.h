@@ -13,15 +13,12 @@
 #include <ioj/sim/sim_config.h>
 
 #include <ioj/sim/entity_death_info.h>
-#include <ioj/sim/entity_handle.h>
-#include <ioj/sim/entity_registry.h>
 #include <ioj/sim/fighter_entity_data.h>
 #include <ioj/sim/fighter_order_queue.h>
 #include <ioj/sim/fighter_spawn_queue.h>
 #include <ioj/sim/fighter_types.h>
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/lasers/sim.h>
-#include <ioj/sim/registry_entity_data.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/trace_hits.h>
 
@@ -32,7 +29,7 @@
 
 namespace ioj::sim {
 struct LevelSim;
-struct EntityRegistry;
+class EntityLedger;
 class CombatEvents;
 struct SpatialQueryManager;
 }
@@ -48,7 +45,6 @@ struct FighterLevelData {
 };
 
 struct Sim {
-    using RegistryEntityData = sim::RegistryEntityData;
     using EntityData = FighterEntityData;
     using EntityStorage = SingleAllocationFighterEntityData;
     using EntityBuffers = ml::MultiBuffer<EntityStorage, 2>;
@@ -60,7 +56,7 @@ struct Sim {
     using ConstTaskView = EntityData::ConstView;
 
     Sim(SimClock const& clock,
-        EntityRegistry& entity_registry,
+        EntityLedger& ledger,
         CombatEvents const& combat_events,
         AgentAccessor const& agents,
         SpatialQueryManager const& spatial_query_manager,
@@ -87,11 +83,9 @@ struct Sim {
     auto get_collision_dirty_entities() const noexcept -> std::span<EntityUniqueId const> {
         return collision_dirty_entities_;
     }
-    auto get_entity_registry() const noexcept -> EntityRegistry const& { return entity_registry; }
     auto get_laser_simulation() const noexcept -> lasers::Sim const& { return laser_simulation; }
     auto get_view(std::int32_t offset, std::int32_t width) -> EntityData::View;
     auto get_const_view(std::int32_t offset, std::int32_t width) const -> EntityData::ConstView;
-    auto get_handles() const noexcept -> std::span<RegistryEntityHandle const>;
     auto get_entity_ids() const -> std::span<EntityUniqueId const> {
         return entity_buffers.current().get_const_view().entity_ids();
     }
@@ -110,15 +104,12 @@ struct Sim {
     auto get_locations() const {
         return entity_buffers.current().get_const_view().columns().locations;
     }
-    auto has_handle(RegistryEntityHandle fighter_handle) const -> bool;
     auto has_id(EntityUniqueId fighter) const -> bool;
     auto get_target_ids() const noexcept -> std::span<EntityUniqueId const>;
-    auto get_target_id(RegistryEntityHandle fighter_handle) const noexcept -> EntityUniqueId;
     auto get_target_id(EntityUniqueId fighter) const noexcept -> EntityUniqueId;
     auto get_target_locations() const {
         return entity_buffers.current().get_const_view().columns().target_locations;
     }
-    auto get_target_location(RegistryEntityHandle fighter_handle) const -> Vector3f;
     auto get_target_location(EntityUniqueId fighter) const -> Vector3f;
     auto get_tasks() const -> std::span<Task const>;
     auto get_teams() const -> std::span<Team const>;
@@ -163,20 +154,15 @@ struct Sim {
     void apply_movement();
     void generate_fire_commands();
     void resolve_damage_events();
-    void update_entity_registry();
+    void publish_deaths();
     void cleanup_entities();
     void finish_action();
 
     /* **************************************** */
     // Accessors
     /* **************************************** */
-    auto get_new_spawn_entity_data() const -> RegistryEntityDataConstView {
-        return new_spawn_entity_data.get_const_view().columns();
-    }
-    auto get_new_spawn_entity_handles() const -> auto const& { return new_spawn_entity_handles; }
     auto get_task_view(Task task) noexcept -> TaskView;
     auto get_const_task_view(Task task) const noexcept -> ConstTaskView;
-    auto find_index(RegistryEntityHandle fighter_handle) const noexcept -> std::int32_t;
     auto find_index(EntityUniqueId fighter) const noexcept -> std::int32_t;
     auto get_task_spans() const -> TaskSpans;
     auto get_task_span(Task task) const -> IndexSpan;
@@ -223,7 +209,6 @@ struct Sim {
     /* **************************************** */
     // Entity data
     /* **************************************** */
-    void prepare_entity_update_data();
     bool tasks_are_contiguous() const noexcept;
     void refresh_layout();
 
@@ -231,7 +216,6 @@ struct Sim {
     // Targets
     /* **************************************** */
     void set_target_id_unchecked(std::int32_t fighter_index, EntityUniqueId new_target) noexcept;
-    void set_target_id(RegistryEntityHandle fighter_handle, EntityUniqueId new_target) noexcept;
     void set_target_id(EntityUniqueId fighter, EntityUniqueId new_target) noexcept;
     void refresh_target_data();
 
@@ -239,7 +223,6 @@ struct Sim {
     // Tasks
     /* **************************************** */
     void set_task_unchecked(std::int32_t index, Task task) noexcept;
-    void set_task(RegistryEntityHandle handle, Task task) noexcept;
     void set_task(EntityUniqueId fighter, Task task) noexcept;
 
     /* **************************************** */
@@ -278,16 +261,13 @@ struct Sim {
     std::int16_t attack_cleaner_{};
 
     EntityBuffers entity_buffers{};
-    EntityRegistry& entity_registry;
+    EntityLedger& ledger_;
     CombatEvents const& combat_events_;
     AgentAccessor const& agents_;
     SpatialQueryManager const& spatial_query_manager;
     std::pmr::memory_resource& frame_memory_resource;
-    SingleAllocationRegistryEntityData registry_update_data;
 
     SingleAllocationFighterSpawnQueue spawn_queue;
-    SingleAllocationRegistryEntityData new_spawn_entity_data;
-    SpawnedEntityHandles new_spawn_entity_handles;
 
     std::vector<std::int32_t> local_indices_to_remove;
     EntityDeathInfo entity_death_info;

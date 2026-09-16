@@ -5,9 +5,7 @@
 #include <ioj/sim/world_aabb_operations.h>
 
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/entity_registry.h>
 #include <ioj/sim/fighters/sim.h>
-#include <ioj/sim/registry_entity_data.h>
 
 namespace ioj::sim {
 namespace fighter_navigation_test {
@@ -346,7 +344,7 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
     };
     harness.timeline.finish_at(10.0);
     result.timeline_completed = harness.run_until_timeline_finished(10.5);
-    tests::expect_equal(harness.get_registry().get_issued_counts()[EntityType::Fighter],
+    tests::expect_equal(harness.get_ledger().get_issued_counts()[EntityType::Fighter],
                         static_cast<std::uint32_t>(fighter_count),
                         "Dense fixture spawns exactly one fighter wave");
     auto const locations{fighters.get_locations()};

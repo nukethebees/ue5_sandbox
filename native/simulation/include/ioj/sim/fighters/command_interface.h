@@ -8,7 +8,6 @@
 #include "ioj/sim/fighter_order_queue.h"
 #include "ioj/sim/fighter_spawn_queue.h"
 #include "ioj/sim/fighters/sim.h"
-#include "ioj/sim/spawned_entity_handles.h"
 
 namespace ioj::sim::fighters {
 class CommandInterface {
@@ -28,14 +27,6 @@ class CommandInterface {
 
     void self_destruct_fighter(EntityUniqueId const fighter) {
         fighters.self_destruct_fighter(fighter);
-    }
-
-    RegistryEntityDataConstView get_new_spawn_entity_data() const {
-        return fighters.get_new_spawn_entity_data();
-    }
-
-    SpawnedEntityHandles const& get_new_spawn_entity_handles() const {
-        return fighters.get_new_spawn_entity_handles();
     }
 
     std::int32_t get_num_instances() const noexcept {

@@ -1,8 +1,0 @@
-(soa-module native_registry_entity_handles
-  :header "native/simulation/include/ioj/sim/registry_entity_handles.h"
-  :backend standard-library
-  :namespace ioj::sim
-  (struct RegistryEntityHandles
-    :operations (all)
-    (member registry_indices array int32)
-    (member generations array int32)))

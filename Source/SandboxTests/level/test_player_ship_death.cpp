@@ -8,7 +8,6 @@
 
 #include <sandbox/core/time_series_data.h>
 
-#include <ioj/sim/entity_registry.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -70,7 +69,7 @@ void FTestPlayerShipDeathScenario::queue_player_ship_death() {
     player_ship = const_cast<ATestSpaceShip*>(ship);
     player_ship_id = ship->get_unique_id();
 
-    auto const& ledger{test_driver->orchestrator.get_entity_registry().get_ledger()};
+    auto const& ledger{test_driver->orchestrator.get_entity_ledger()};
     checks.is_true(ledger.is_valid_unique_id(player_ship_id), TEXT("Player ship ID is valid"));
 
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
@@ -86,9 +85,9 @@ void FTestPlayerShipDeathScenario::queue_player_ship_death() {
 }
 
 void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
-    auto const& unique_entities{test_driver->get_registry().get_unique_entities()};
+    auto const& unique_entities{test_driver->get_ledger().get_unique_entities()};
 
-    if (!checks.is_true(test_driver->get_registry().is_valid_unique_id(player_ship_id),
+    if (!checks.is_true(test_driver->get_ledger().is_valid_unique_id(player_ship_id),
                         TEXT("Check player id is valid"))) {
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
@@ -102,7 +101,7 @@ void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
                 player_ship_id),
             IsValid(player_ship.Get()),
             unique_entities
-                    .life_state[test_driver->get_registry().get_history_index(player_ship_id)] ==
+                    .life_state[test_driver->get_ledger().get_history_index(player_ship_id)] ==
                 ::ioj::sim::LifeState::Alive,
             IsValid(controller) && IsValid(controller->GetPawn()),
             IsValid(controller) &&

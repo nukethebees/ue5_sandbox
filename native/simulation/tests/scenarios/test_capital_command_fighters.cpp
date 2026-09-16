@@ -2,7 +2,6 @@
 #include "../support/simulation_test_support.h"
 
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/entity_registry.h>
 
 namespace ioj::sim {
 void run_worldless_capital_command_fighters(tests::SimulationFixture const& config) {
@@ -52,7 +51,13 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
                                         fighters.get_target_ids()[index],
                                         "Fighter follows the replacement capital target");
                 }
-                auto const enemies{harness.get_registry().get_handles_not_in_team(Team::Green)};
+                std::vector<EntityUniqueId> enemies;
+                auto const entities{capitals.get_read_view().entities};
+                for (std::int32_t index{}; index < entities.num(); ++index) {
+                    if (entities.teams[index] != Team::Green) {
+                        enemies.push_back(entities.entity_ids[index]);
+                    }
+                }
                 harness.queue_kills(enemies);
                 final_kill_tick = harness.get_simulation().get_clock().get_completed_ticks();
             })

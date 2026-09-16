@@ -14,7 +14,7 @@
 #include <algorithm>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entity_death_info.h>
-#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/ship_health.h>
 #include <ioj/sim/spatial_query_manager.h>
@@ -60,13 +60,11 @@ void Sim::set_config(PlayerSimConfig const& new_config) noexcept {
 }
 
 Sim::Sim(SimClock const& clock,
-         EntityRegistry& in_entity_registry,
-         EntityLedger const& ledger,
+         EntityLedger& ledger,
          CombatEvents const& combat_events,
          SpatialQueryManager const& in_spatial_query_manager,
          lasers::Sim& in_lasers)
-    : entity_registry{in_entity_registry}
-    , ledger_{ledger}
+    : ledger_{ledger}
     , combat_events_{combat_events}
     , spatial_query_manager{in_spatial_query_manager}
     , lasers{in_lasers}
@@ -87,7 +85,7 @@ void Sim::begin_play() {
     configure_speed_sampling();
     set_boost_brake_state(player::BoostBrakeState::None);
 
-    register_with_entity_registry();
+    register_entity();
     health.clamp_to_max();
 }
 
@@ -171,46 +169,19 @@ void Sim::resolve_damage_events() {
     }
 }
 
-void Sim::update_entity_registry() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::PlayerShipSim::update_entity_registry");
-    queue_entity_update(EntityDeathInfo{});
-}
+void Sim::publish_deaths() {}
 
 /* **************************************** */
-// Registry integration
+// Identity and accounting
 /* **************************************** */
-void Sim::register_with_entity_registry() {
-    auto const entity_data{get_entity_update_data()};
-    auto const new_entities{entity_registry.add_entities(entity_data.get_const_view().columns())};
-    registry_handle = new_entities.get_handle(0);
-    unique_entity_id = new_entities.get_id(0);
-    assert(entity_registry.is_valid_unique_id(unique_entity_id));
-
-    update_entity_registry();
+void Sim::register_entity() {
+    unique_entity_id = ledger_.record_spawn(EntityType::PlayerShip, team, health.is_alive());
 }
-
-auto Sim::get_entity_update_data() const -> SingleAllocationRegistryEntityData {
-    SingleAllocationRegistryEntityData entity_data;
-    entity_data.add_uninitialised(1);
-    auto const columns{entity_data.get_view().columns()};
-    columns.locations.set(0, to_float(movement_state_.transform.location));
-    columns.velocities.set(0, to_float(movement_state_.velocity));
-    columns.rotations.set(0, to_float(movement_state_.transform.rotator()));
-    columns.healths[0] = health.health;
-    columns.teams[0] = team;
-    columns.entity_types[0] = EntityType::PlayerShip;
-
-    return entity_data;
-}
-
-void Sim::queue_entity_update(EntityDeathInfo const& death_info) {
-    auto const entity_data{get_entity_update_data()};
-    entity_registry.queue_entity_updates(
-        EntityRegistry::ConstView{
-            {&registry_handle, 1},
-            entity_data.get_const_view().columns(),
-        },
-        death_info);
+void Sim::set_team(Team const new_team) noexcept {
+    team = new_team;
+    if (unique_entity_id.is_valid()) {
+        ledger_.record_status(unique_entity_id, team, health.is_alive());
+    }
 }
 
 /* **************************************** */
@@ -675,10 +646,8 @@ void Sim::set_health(Health const new_health, EntityUniqueId const killer) {
 }
 
 void Sim::die(EntityUniqueId const killer) {
-    EntityDeathInfo death_info;
     auto const reason{killer.is_valid() ? DeathReason::Combat : DeathReason::Unknown};
-    death_info.add(reason, unique_entity_id, killer);
-    queue_entity_update(death_info);
+    ledger_.record_death(unique_entity_id, killer, reason);
     death_notification_pending = true;
 }
 

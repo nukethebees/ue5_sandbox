@@ -411,7 +411,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         .attacking_fighters = count_task(ioj::sim::FighterTask::Attack),
         .initial_capital_ships = initial_capital_ships,
         .initial_turrets = initial_turrets,
-        .alive_entities = simulation.get_entity_registry().get_num_alive_active_entities(),
+        .alive_entities = simulation.get_entity_ledger().count_alive(),
         .capital_ships = simulation.get_capital_ships().get_num_instances(),
         .fighters = simulation.get_fighters().get_num_instances(),
         .turrets = simulation.get_turrets().get_num_instances(),

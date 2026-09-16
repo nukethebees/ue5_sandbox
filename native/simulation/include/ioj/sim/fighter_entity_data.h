@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ioj/sim/entity_handle.h"
 #include "ioj/sim/entity_types.h"
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/fighter_types.h"
@@ -25,7 +24,6 @@ struct FighterEntityDataConstView {
     using ConstView = FighterEntityDataConstView;
     using size_type = std::int32_t;
     std::span<EntityUniqueId const> entity_ids;
-    std::span<RegistryEntityHandle const> entity_handles;
     std::span<std::uint32_t const> integral_biases;
     std::span<float const> float_biases;
     std::span<FighterTask const> tasks;
@@ -64,7 +62,6 @@ struct FighterEntityDataConstView {
     template <typename Fn>
     void each_column(Fn&& fn) const {
         fn(entity_ids);
-        fn(entity_handles);
         fn(integral_biases);
         fn(float_biases);
         fn(tasks);
@@ -132,8 +129,6 @@ struct FighterEntityDataConstView {
                                 count <= num() - offset);
         return {
             entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            entity_handles.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
             integral_biases.subspan(static_cast<std::size_t>(offset),
                                     static_cast<std::size_t>(count)),
             float_biases.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -191,7 +186,6 @@ struct FighterEntityDataConstView {
     auto get_const_view() const -> ConstView {
         return {
             entity_ids,
-            entity_handles,
             integral_biases,
             float_biases,
             tasks,
@@ -240,7 +234,6 @@ struct FighterEntityDataView {
     using ConstView = FighterEntityDataConstView;
     using size_type = std::int32_t;
     std::span<EntityUniqueId> entity_ids;
-    std::span<RegistryEntityHandle> entity_handles;
     std::span<std::uint32_t> integral_biases;
     std::span<float> float_biases;
     std::span<FighterTask> tasks;
@@ -279,7 +272,6 @@ struct FighterEntityDataView {
     template <typename Fn>
     void each_column(Fn&& fn) const {
         fn(entity_ids);
-        fn(entity_handles);
         fn(integral_biases);
         fn(float_biases);
         fn(tasks);
@@ -347,8 +339,6 @@ struct FighterEntityDataView {
                                 count <= num() - offset);
         return {
             entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            entity_handles.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
             integral_biases.subspan(static_cast<std::size_t>(offset),
                                     static_cast<std::size_t>(count)),
             float_biases.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -405,7 +395,6 @@ struct FighterEntityDataView {
     auto get_const_view() const -> ConstView {
         return {
             entity_ids,
-            entity_handles,
             integral_biases,
             float_biases,
             tasks,
@@ -450,7 +439,6 @@ struct FighterEntityDataView {
     }
     void set(size_type const index,
              EntityUniqueId const new_entity_ids,
-             RegistryEntityHandle const new_entity_handles,
              std::uint32_t const new_integral_biases,
              float const new_float_biases,
              FighterTask const new_tasks,
@@ -508,7 +496,6 @@ struct FighterEntityDataView {
              float const new_target_radii) const {
         ml::native_soa::require(index >= 0 && index < num());
         entity_ids[static_cast<std::size_t>(index)] = new_entity_ids;
-        entity_handles[static_cast<std::size_t>(index)] = new_entity_handles;
         integral_biases[static_cast<std::size_t>(index)] = new_integral_biases;
         float_biases[static_cast<std::size_t>(index)] = new_float_biases;
         tasks[static_cast<std::size_t>(index)] = new_tasks;
@@ -579,7 +566,6 @@ struct FighterEntityData {
     using ConstView = FighterEntityDataConstView;
     using size_type = std::int32_t;
     ml::native_soa::Vector<EntityUniqueId> entity_ids;
-    ml::native_soa::Vector<RegistryEntityHandle> entity_handles;
     ml::native_soa::Vector<std::uint32_t> integral_biases;
     ml::native_soa::Vector<float> float_biases;
     ml::native_soa::Vector<FighterTask> tasks;
@@ -618,7 +604,6 @@ struct FighterEntityData {
     template <typename Fn>
     void each_column(Fn&& fn) {
         fn(entity_ids);
-        fn(entity_handles);
         fn(integral_biases);
         fn(float_biases);
         fn(tasks);
@@ -678,7 +663,6 @@ struct FighterEntityData {
     template <typename Fn>
     void each_column(Fn&& fn) const {
         fn(entity_ids);
-        fn(entity_handles);
         fn(integral_biases);
         fn(float_biases);
         fn(tasks);
@@ -739,7 +723,6 @@ struct FighterEntityData {
     void reserve(size_type const count) {
         ml::native_soa::require(count >= 0);
         entity_ids.reserve(static_cast<std::size_t>(count));
-        entity_handles.reserve(static_cast<std::size_t>(count));
         integral_biases.reserve(static_cast<std::size_t>(count));
         float_biases.reserve(static_cast<std::size_t>(count));
         tasks.reserve(static_cast<std::size_t>(count));
@@ -798,7 +781,6 @@ struct FighterEntityData {
     }
     void reset() noexcept {
         entity_ids.clear();
-        entity_handles.clear();
         integral_biases.clear();
         float_biases.clear();
         tasks.clear();
@@ -859,7 +841,6 @@ struct FighterEntityData {
         ml::native_soa::require(count >= 0);
         auto const size{static_cast<std::size_t>(count)};
         entity_ids.resize(size);
-        entity_handles.resize(size);
         integral_biases.resize(size);
         float_biases.resize(size);
         tasks.resize(size);
@@ -931,9 +912,6 @@ struct FighterEntityData {
         auto const source{old_num - moved};
         for (size_type i{}; i < moved; ++i) {
             entity_ids[index + i] = entity_ids[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            entity_handles[index + i] = entity_handles[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
             integral_biases[index + i] = integral_biases[source + i];
@@ -1107,7 +1085,6 @@ struct FighterEntityData {
     }
     void set(size_type const index,
              EntityUniqueId const new_entity_ids,
-             RegistryEntityHandle const new_entity_handles,
              std::uint32_t const new_integral_biases,
              float const new_float_biases,
              FighterTask const new_tasks,
@@ -1165,7 +1142,6 @@ struct FighterEntityData {
              float const new_target_radii) {
         get_view().set(index,
                        new_entity_ids,
-                       new_entity_handles,
                        new_integral_biases,
                        new_float_biases,
                        new_tasks,
@@ -1223,7 +1199,6 @@ struct FighterEntityData {
                        new_target_radii);
     }
     auto add(EntityUniqueId const new_entity_ids,
-             RegistryEntityHandle const new_entity_handles,
              std::uint32_t const new_integral_biases,
              float const new_float_biases,
              FighterTask const new_tasks,
@@ -1283,7 +1258,6 @@ struct FighterEntityData {
         add_defaulted(1);
         set(index,
             new_entity_ids,
-            new_entity_handles,
             new_integral_biases,
             new_float_biases,
             new_tasks,
@@ -1353,13 +1327,6 @@ struct FighterEntityData {
             auto const begin{ml::address_cast(entity_ids.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + entity_ids.size() * sizeof(EntityUniqueId));
-        }
-        {
-            auto const address{ml::address_cast(source.entity_handles.data())};
-            auto const begin{ml::address_cast(entity_handles.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + entity_handles.size() *
-                                                           sizeof(RegistryEntityHandle));
         }
         {
             auto const address{ml::address_cast(source.integral_biases.data())};
@@ -1720,9 +1687,6 @@ struct FighterEntityData {
         }
         entity_ids.insert(
             entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
-        entity_handles.insert(entity_handles.end(),
-                              source.entity_handles.data(),
-                              source.entity_handles.data() + count);
         integral_biases.insert(integral_biases.end(),
                                source.integral_biases.data(),
                                source.integral_biases.data() + count);
@@ -1871,7 +1835,6 @@ struct FighterEntityData {
     auto get_view() -> View {
         return {
             entity_ids,
-            entity_handles,
             integral_biases,
             float_biases,
             tasks,
@@ -1910,7 +1873,6 @@ struct FighterEntityData {
     auto get_view() const -> ConstView {
         return {
             entity_ids,
-            entity_handles,
             integral_biases,
             float_biases,
             tasks,
@@ -1970,8 +1932,6 @@ struct FighterEntityData {
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
         entity_ids[static_cast<std::size_t>(dst_index)] =
             other.entity_ids[static_cast<std::size_t>(src_index)];
-        entity_handles[static_cast<std::size_t>(dst_index)] =
-            other.entity_handles[static_cast<std::size_t>(src_index)];
         integral_biases[static_cast<std::size_t>(dst_index)] =
             other.integral_biases[static_cast<std::size_t>(src_index)];
         float_biases[static_cast<std::size_t>(dst_index)] =
@@ -2076,8 +2036,7 @@ struct FighterEntityDataSingleLayout {
         capacity_granularity, column_gap, 64};
 
     inline static constexpr ColLayout<EntityUniqueId> EntityIds{LayoutStart};
-    inline static constexpr ColLayout<RegistryEntityHandle> EntityHandles{EntityIds};
-    inline static constexpr ColLayout<std::uint32_t> IntegralBiases{EntityHandles};
+    inline static constexpr ColLayout<std::uint32_t> IntegralBiases{EntityIds};
     inline static constexpr ColLayout<float> FloatBiases{IntegralBiases};
     inline static constexpr ColLayout<FighterTask> Tasks{FloatBiases};
     inline static constexpr ColLayout<float> LocationsXs{Tasks};
@@ -2142,7 +2101,6 @@ struct FighterEntityDataSingleLayout {
 
     inline static constexpr byte_size_type allocation_alignment{
         ml::native_soa::maximum_alignment(EntityIds,
-                                          EntityHandles,
                                           IntegralBiases,
                                           FloatBiases,
                                           Tasks,
@@ -2203,7 +2161,7 @@ struct FighterEntityDataSingleLayout {
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
         ml::native_soa::layout_align(TargetRadii.block_end, allocation_alignment) +
-        56 * (column_gap + allocation_alignment - 1)};
+        55 * (column_gap + allocation_alignment - 1)};
     inline static constexpr size_type max_capacity{
         ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
@@ -2214,10 +2172,6 @@ struct FighterEntityDataSingleLayout {
         static_assert(
             ml::native_soa::supported_leaf<EntityUniqueId>,
             "Single-allocation leaf entity_ids requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::native_soa::supported_leaf<RegistryEntityHandle>,
-            "Single-allocation leaf entity_handles requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
             ml::native_soa::supported_leaf<std::uint32_t>,
@@ -2257,8 +2211,6 @@ struct FighterEntityDataSingleLayout {
             "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
         static_assert(sizeof(EntityUniqueId) <=
                       (max_allocation_size - EntityIds.block_offset) / capacity_granularity);
-        static_assert(sizeof(RegistryEntityHandle) <=
-                      (max_allocation_size - EntityHandles.block_offset) / capacity_granularity);
         static_assert(sizeof(std::uint32_t) <=
                       (max_allocation_size - IntegralBiases.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
@@ -2381,7 +2333,7 @@ struct FighterEntityDataSingleLayout {
                       (max_allocation_size - TargetDistances.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
                       (max_allocation_size - TargetRadii.block_offset) / capacity_granularity);
-        static_assert(56 <=
+        static_assert(55 <=
                       (max_allocation_size -
                        ml::native_soa::layout_align(TargetRadii.block_end, allocation_alignment)) /
                           (column_gap + allocation_alignment - 1));
@@ -2448,7 +2400,6 @@ struct SingleAllocationFighterEntityDataStorage
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
         Element<EntityUniqueId>* entity_ids{};
-        Element<RegistryEntityHandle>* entity_handles{};
         Element<std::uint32_t>* integral_biases{};
         Element<float>* float_biases{};
         Element<FighterTask>* tasks{};
@@ -2509,7 +2460,6 @@ struct SingleAllocationFighterEntityDataStorage
                 return {};
             }
             return {entity_ids + offset,
-                    entity_handles + offset,
                     integral_biases + offset,
                     float_biases + offset,
                     tasks + offset,
@@ -2595,12 +2545,8 @@ struct SingleAllocationFighterEntityDataStorage
             return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
         auto const entity_ids_offset{byte_size_type{}};
-        auto const entity_handles_offset{ml::native_soa::layout_align(
-            entity_ids_offset + blocks * capacity_granularity * sizeof(EntityUniqueId) + column_gap,
-            EntityHandles.alignment)};
         auto const integral_biases_offset{ml::native_soa::layout_align(
-            entity_handles_offset + blocks * capacity_granularity * sizeof(RegistryEntityHandle) +
-                column_gap,
+            entity_ids_offset + blocks * capacity_granularity * sizeof(EntityUniqueId) + column_gap,
             IntegralBiases.alignment)};
         auto const float_biases_offset{ml::native_soa::layout_align(
             integral_biases_offset + blocks * capacity_granularity * sizeof(std::uint32_t) +
@@ -2796,7 +2742,6 @@ struct SingleAllocationFighterEntityDataStorage
             target_distances_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
             TargetRadii.alignment)};
         return {pointer_at(EntityIds, entity_ids_offset),
-                pointer_at(EntityHandles, entity_handles_offset),
                 pointer_at(IntegralBiases, integral_biases_offset),
                 pointer_at(FloatBiases, float_biases_offset),
                 pointer_at(Tasks, tasks_offset),
@@ -2865,7 +2810,6 @@ struct SingleAllocationFighterEntityDataStorage
     void default_construct_columns(size_type const first, size_type const count) {
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         std::uninitialized_value_construct_n<EntityUniqueId*>(columns.entity_ids, count);
-        std::uninitialized_value_construct_n<RegistryEntityHandle*>(columns.entity_handles, count);
         std::uninitialized_value_construct_n<std::uint32_t*>(columns.integral_biases, count);
         std::uninitialized_value_construct_n<float*>(columns.float_biases, count);
         std::uninitialized_value_construct_n<FighterTask*>(columns.tasks, count);
@@ -2939,7 +2883,6 @@ struct SingleAllocationFighterEntityDataStorage
                              size_type move_count) {
         auto const elements_to_move{static_cast<byte_size_type>(move_count)};
         auto const entity_ids_bytes{elements_to_move * sizeof(EntityUniqueId)};
-        auto const entity_handles_bytes{elements_to_move * sizeof(RegistryEntityHandle)};
         auto const integral_biases_bytes{elements_to_move * sizeof(std::uint32_t)};
         auto const float_biases_bytes{elements_to_move * sizeof(float)};
         auto const tasks_bytes{elements_to_move * sizeof(FighterTask)};
@@ -2950,8 +2893,6 @@ struct SingleAllocationFighterEntityDataStorage
                                                                       sizeof(std::int16_t)};
         auto const navigation_risk_tiers_bytes{elements_to_move * sizeof(std::uint8_t)};
         std::memcpy(columns.entity_ids + index, columns.entity_ids + source, entity_ids_bytes);
-        std::memcpy(
-            columns.entity_handles + index, columns.entity_handles + source, entity_handles_bytes);
         std::memcpy(columns.integral_biases + index,
                     columns.integral_biases + source,
                     integral_biases_bytes);
@@ -3117,11 +3058,10 @@ struct SingleAllocationFighterEntityDataStorage
             auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
             return address >= allocation_begin && address < allocation_end;
         };
-        return aliases(source.entity_ids.data()) || aliases(source.entity_handles.data()) ||
-               aliases(source.integral_biases.data()) || aliases(source.float_biases.data()) ||
-               aliases(source.tasks.data()) || aliases(source.locations.xs) ||
-               aliases(source.locations.ys) || aliases(source.locations.zs) ||
-               aliases(source.desired_move_locations.xs) ||
+        return aliases(source.entity_ids.data()) || aliases(source.integral_biases.data()) ||
+               aliases(source.float_biases.data()) || aliases(source.tasks.data()) ||
+               aliases(source.locations.xs) || aliases(source.locations.ys) ||
+               aliases(source.locations.zs) || aliases(source.desired_move_locations.xs) ||
                aliases(source.desired_move_locations.ys) ||
                aliases(source.desired_move_locations.zs) || aliases(source.aim_directions.xs) ||
                aliases(source.aim_directions.ys) || aliases(source.aim_directions.zs) ||
@@ -3161,7 +3101,6 @@ struct SingleAllocationFighterEntityDataStorage
         auto const destination{get_data(first)};
         auto const elements_to_copy{static_cast<byte_size_type>(count)};
         auto const entity_ids_bytes{elements_to_copy * sizeof(EntityUniqueId)};
-        auto const entity_handles_bytes{elements_to_copy * sizeof(RegistryEntityHandle)};
         auto const integral_biases_bytes{elements_to_copy * sizeof(std::uint32_t)};
         auto const float_biases_bytes{elements_to_copy * sizeof(float)};
         auto const tasks_bytes{elements_to_copy * sizeof(FighterTask)};
@@ -3172,7 +3111,6 @@ struct SingleAllocationFighterEntityDataStorage
                                                                       sizeof(std::int16_t)};
         auto const navigation_risk_tiers_bytes{elements_to_copy * sizeof(std::uint8_t)};
         std::memcpy(destination.entity_ids, source.entity_ids.data(), entity_ids_bytes);
-        std::memcpy(destination.entity_handles, source.entity_handles.data(), entity_handles_bytes);
         std::memcpy(
             destination.integral_biases, source.integral_biases.data(), integral_biases_bytes);
         std::memcpy(destination.float_biases, source.float_biases.data(), float_biases_bytes);
@@ -3295,7 +3233,6 @@ struct SingleAllocationFighterEntityDataStorage
             auto const destination{make_data_unchecked(new_data, new_blocks)};
             auto const live_count{static_cast<byte_size_type>(num_)};
             auto const entity_ids_bytes{live_count * sizeof(EntityUniqueId)};
-            auto const entity_handles_bytes{live_count * sizeof(RegistryEntityHandle)};
             auto const integral_biases_bytes{live_count * sizeof(std::uint32_t)};
             auto const float_biases_bytes{live_count * sizeof(float)};
             auto const tasks_bytes{live_count * sizeof(FighterTask)};
@@ -3306,7 +3243,6 @@ struct SingleAllocationFighterEntityDataStorage
                                                                           sizeof(std::int16_t)};
             auto const navigation_risk_tiers_bytes{live_count * sizeof(std::uint8_t)};
             std::memcpy(destination.entity_ids, source.entity_ids, entity_ids_bytes);
-            std::memcpy(destination.entity_handles, source.entity_handles, entity_handles_bytes);
             std::memcpy(destination.integral_biases, source.integral_biases, integral_biases_bytes);
             std::memcpy(destination.float_biases, source.float_biases, float_biases_bytes);
             std::memcpy(destination.tasks, source.tasks, tasks_bytes);
@@ -3444,11 +3380,6 @@ struct FighterEntityDataSingleConstView : ml::native_soa::CompactViewState<true>
     auto entity_ids() const -> std::span<EntityUniqueId const> {
         return {column_data<EntityUniqueId>(
                     FighterEntityDataSingleLayout::EntityIds.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto entity_handles() const -> std::span<RegistryEntityHandle const> {
-        return {column_data<RegistryEntityHandle>(
-                    FighterEntityDataSingleLayout::EntityHandles.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto integral_biases() const -> std::span<std::uint32_t const> {
@@ -3691,9 +3622,6 @@ struct FighterEntityDataSingleConstView : ml::native_soa::CompactViewState<true>
             {column_data_unchecked<EntityUniqueId>(
                  FighterEntityDataSingleLayout::EntityIds.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
-                 FighterEntityDataSingleLayout::EntityHandles.offset(blocks)),
-             static_cast<std::size_t>(count_)},
             {column_data_unchecked<std::uint32_t>(
                  FighterEntityDataSingleLayout::IntegralBiases.offset(blocks)),
              static_cast<std::size_t>(count_)},
@@ -3886,11 +3814,6 @@ struct FighterEntityDataSingleView : ml::native_soa::CompactViewState<false> {
     auto entity_ids() const -> std::span<EntityUniqueId> {
         return {column_data<EntityUniqueId>(
                     FighterEntityDataSingleLayout::EntityIds.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto entity_handles() const -> std::span<RegistryEntityHandle> {
-        return {column_data<RegistryEntityHandle>(
-                    FighterEntityDataSingleLayout::EntityHandles.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto integral_biases() const -> std::span<std::uint32_t> {
@@ -4132,9 +4055,6 @@ struct FighterEntityDataSingleView : ml::native_soa::CompactViewState<false> {
         return FighterEntityDataView{
             {column_data_unchecked<EntityUniqueId>(
                  FighterEntityDataSingleLayout::EntityIds.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
-                 FighterEntityDataSingleLayout::EntityHandles.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<std::uint32_t>(
                  FighterEntityDataSingleLayout::IntegralBiases.offset(blocks)),

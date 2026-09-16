@@ -10,10 +10,6 @@
       (parameter queue (type-ref @fighter_order_queue :suffix " const&")))
     (method self_destruct_fighter void
       (parameter fighter (type-ref @native_unique_id :suffix " const")))
-    (method get_new_spawn_entity_data "RegistryEntityDataConstView"
-      :const true)
-    (method get_new_spawn_entity_handles (type-ref @spawned_entity_handles :suffix " const&")
-      :const true)
     (method get_num_instances "std::int32_t"
       :const true
       :noexcept true)
@@ -90,7 +86,7 @@
     (method apply_movement void)
     (method generate_fire_commands void)
     (method resolve_damage_events void)
-    (method update_entity_registry void)))
+    (method publish_deaths void)))
 
 (facade-module lasers_phase_interface
   :header "native/simulation/include/ioj/sim/lasers/phase_interface.h"
@@ -133,7 +129,7 @@
     (method execute_fighter_self_destruct_requests void)
     (method resolve_damage_events void)
     (method resolve_fighters_of_dying_capitals void)
-    (method update_entity_registry void)
+    (method publish_deaths void)
     (method cleanup_entities void)
     (method finish_action void)))
 
@@ -160,7 +156,7 @@
     (method generate_fire_commands void)
     (method commit_spawns void)
     (method resolve_damage_events void)
-    (method update_entity_registry void)
+    (method publish_deaths void)
     (method cleanup_entities void)
     (method finish_action void)))
 
@@ -184,7 +180,7 @@
       (parameter dt "float const"))
     (method generate_fire_commands void)
     (method resolve_damage_events void)
-    (method update_entity_registry void)
+    (method publish_deaths void)
     (method cleanup_entities void)
     (method finish_action void)))
 

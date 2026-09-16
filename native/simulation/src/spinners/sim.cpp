@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/lasers/frame_scratch.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_config.h>
@@ -24,11 +24,11 @@ void Sim::set_config(SpinnerSimConfig const& new_config) noexcept {
     config = new_config;
 }
 Sim::Sim(SimClock const& clock,
-         EntityRegistry& in_entity_registry,
+         EntityLedger& ledger,
          lasers::Sim& in_laser_simulation,
          std::pmr::memory_resource& in_frame_memory_resource) noexcept
     : simulation_clock{clock}
-    , entity_registry{in_entity_registry}
+    , ledger_{ledger}
     , laser_simulation{in_laser_simulation}
     , frame_memory_resource{in_frame_memory_resource} {}
 
@@ -97,7 +97,6 @@ auto Sim::spawn_instances(Vectors3fConstView const new_locations,
     entities.add_uninitialised(n);
     auto const appended{entities.right(n).columns()};
     for (std::int32_t i{}; i < n; ++i) {
-        appended.handles[i] = {};
         appended.locations.set(i, new_locations[i]);
         appended.yaws[i] = new_yaws[i];
         appended.laser_cooldowns[i] = 0;
@@ -106,25 +105,8 @@ auto Sim::spawn_instances(Vectors3fConstView const new_locations,
 
     entities.get_const_view().columns().validate_array_sizes();
 
-    SingleAllocationRegistryEntityData entity_data;
-    entity_data.add_uninitialised(n);
-    auto const entity_columns{entity_data.get_view().columns()};
-    for (std::int32_t i{}; i < n; ++i) {
-        entity_columns.locations.set(i, new_locations[i]);
-        entity_columns.rotations.set(i, {.pitch = 0.f, .yaw = new_yaws[i], .roll = 0.f});
-    }
-    entity_columns.velocities.each_column(
-        [](auto const column) { std::ranges::fill(column, 0.f); });
-    std::ranges::fill(entity_columns.healths, 1000000);
-    std::ranges::fill(entity_columns.teams, Team::White);
-    std::ranges::fill(entity_columns.entity_types, EntityType::TubeSpinner);
-    entity_columns.validate_array_sizes();
-
-    auto new_entities{entity_registry.add_entities(entity_data.get_const_view().columns())};
-
     for (std::int32_t i{0}; i < n; ++i) {
-        appended.entity_ids[i] = new_entities.get_id(i);
-        appended.handles[i] = new_entities.get_handle(i);
+        appended.entity_ids[i] = ledger_.record_spawn(EntityType::TubeSpinner, Team::White, true);
     }
 
     validate_array_sizes();

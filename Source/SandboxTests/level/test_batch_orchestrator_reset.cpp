@@ -97,7 +97,7 @@ void FTestBatchOrchestratorResetScenario::save_old_transient_actors(
 void FTestBatchOrchestratorResetScenario::sample(ATestBatchOrchestrator& orchestrator) {
     FSimulationSample const sample{
         .actor_count = count_actors(*test_driver->get_world()),
-        .registry_alive = test_driver->get_registry().count_alive(),
+        .registry_alive = test_driver->get_ledger().count_alive(),
         .capital_count = orchestrator.get_capital_ships()->get_num_instances(),
         .fighter_count = orchestrator.get_fighters()->get_num_instances(),
         .laser_count = orchestrator.get_lasers()->get_num_instances(),
@@ -161,7 +161,7 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
         test_driver->orchestrator.get_level_telemetry_manager().get_active_entity_count_data()};
     checks.are_equal(int32{1}, telemetry.num(), TEXT("Restart records one telemetry baseline"));
     checks.are_equal(uint64{0}, telemetry.last_time(), TEXT("Restart baseline uses tick zero"));
-    checks.are_equal(test_driver->get_registry().get_num_alive_active_entities(),
+    checks.are_equal(test_driver->get_ledger().count_alive(),
                      telemetry.last_value(),
                      TEXT("Restart baseline records active entities"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);

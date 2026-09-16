@@ -2,7 +2,6 @@
 #include <SGCollision/world_aabbs.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
-#include <ioj/sim/entity_registry.h>
 #include <ioj/sim/world_aabb_operations.h>
 #include <SGCollision/mesh_data_extraction.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>

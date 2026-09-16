@@ -119,12 +119,10 @@ forms remain supported.
 Shared types are top-level declarations in `types.lispb`:
 
 ```lisp
-(type registry_handle
-  :spelling "FRegistryEntityHandle"
-  :header "SandboxNative/RegistryEntityHandle.h"
-  :pass-by value
-  (operation add-element add :pass-by value)
-  (operation remove-at-swap remove_at_swap))
+(type native_unique_id
+  :spelling "EntityUniqueId"
+  :header "ioj/sim/entity_unique_id.h"
+  :pass-by value)
 ```
 
 Unknown and duplicate properties or declarations are errors. Syntax and schema diagnostics include

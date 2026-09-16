@@ -18,7 +18,7 @@ namespace ioj::sim {
 struct LevelSim;
 class LevelSpawnManager;
 struct SpinnerSimConfig;
-struct EntityRegistry;
+class EntityLedger;
 }
 
 namespace ioj::sim::spinners {
@@ -29,7 +29,7 @@ struct Sim {
     using EntityStorage = SingleAllocationSpinnerEntityData;
 
     Sim(SimClock const& clock,
-        EntityRegistry& entity_registry,
+        EntityLedger& ledger,
         lasers::Sim& laser_simulation,
         std::pmr::memory_resource& frame_memory_resource) noexcept;
     Sim(Sim const&) = delete;
@@ -47,7 +47,6 @@ struct Sim {
     // Accessors
     /* **************************************** */
     auto get_num_instances() const noexcept -> std::int32_t;
-    auto get_entity_registry() const -> EntityRegistry const& { return entity_registry; }
     auto get_laser_simulation() const -> lasers::Sim const& { return laser_simulation; }
 
     /* **************************************** */
@@ -95,7 +94,7 @@ struct Sim {
     std::int16_t cooldown_restart_ticks_{};
     std::int16_t cooldown_cleaner_{};
     SimClock const& simulation_clock;
-    EntityRegistry& entity_registry;
+    EntityLedger& ledger_;
     lasers::Sim& laser_simulation;
     std::pmr::memory_resource& frame_memory_resource;
     EntityStorage entities{};

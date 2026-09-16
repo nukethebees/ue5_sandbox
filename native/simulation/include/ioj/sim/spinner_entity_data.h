@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ioj/sim/entity_handle.h"
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/vectors3f.h"
 #include "native_soa/storage.h"
@@ -22,7 +21,6 @@ struct SpinnerEntityDataConstView {
     using ConstView = SpinnerEntityDataConstView;
     using size_type = std::int32_t;
     std::span<EntityUniqueId const> entity_ids;
-    std::span<RegistryEntityHandle const> handles;
     Vectors3fConstView locations;
     std::span<float const> yaws;
     std::span<std::int16_t const> laser_cooldowns;
@@ -32,7 +30,6 @@ struct SpinnerEntityDataConstView {
     template <typename Fn>
     void each_column(Fn&& fn) const {
         fn(entity_ids);
-        fn(handles);
         fn(locations.xs_span());
         fn(locations.ys_span());
         fn(locations.zs_span());
@@ -51,7 +48,6 @@ struct SpinnerEntityDataConstView {
                                 count <= num() - offset);
         return {
             entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            handles.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             locations.slice(offset, count),
             yaws.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             laser_cooldowns.subspan(static_cast<std::size_t>(offset),
@@ -68,7 +64,6 @@ struct SpinnerEntityDataConstView {
     auto get_const_view() const -> ConstView {
         return {
             entity_ids,
-            handles,
             locations.get_const_view(),
             yaws,
             laser_cooldowns,
@@ -88,7 +83,6 @@ struct SpinnerEntityDataView {
     using ConstView = SpinnerEntityDataConstView;
     using size_type = std::int32_t;
     std::span<EntityUniqueId> entity_ids;
-    std::span<RegistryEntityHandle> handles;
     Vectors3fView locations;
     std::span<float> yaws;
     std::span<std::int16_t> laser_cooldowns;
@@ -98,7 +92,6 @@ struct SpinnerEntityDataView {
     template <typename Fn>
     void each_column(Fn&& fn) const {
         fn(entity_ids);
-        fn(handles);
         fn(locations.xs_span());
         fn(locations.ys_span());
         fn(locations.zs_span());
@@ -117,7 +110,6 @@ struct SpinnerEntityDataView {
                                 count <= num() - offset);
         return {
             entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            handles.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             locations.slice(offset, count),
             yaws.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             laser_cooldowns.subspan(static_cast<std::size_t>(offset),
@@ -133,7 +125,6 @@ struct SpinnerEntityDataView {
     auto get_const_view() const -> ConstView {
         return {
             entity_ids,
-            handles,
             locations.get_const_view(),
             yaws,
             laser_cooldowns,
@@ -149,7 +140,6 @@ struct SpinnerEntityDataView {
     }
     void set(size_type const index,
              EntityUniqueId const new_entity_ids,
-             RegistryEntityHandle const new_handles,
              float const new_locations_xs,
              float const new_locations_ys,
              float const new_locations_zs,
@@ -158,7 +148,6 @@ struct SpinnerEntityDataView {
              std::int32_t const new_next_fire_point_indices) const {
         ml::native_soa::require(index >= 0 && index < num());
         entity_ids[static_cast<std::size_t>(index)] = new_entity_ids;
-        handles[static_cast<std::size_t>(index)] = new_handles;
         locations.xs[static_cast<std::size_t>(index)] = new_locations_xs;
         locations.ys[static_cast<std::size_t>(index)] = new_locations_ys;
         locations.zs[static_cast<std::size_t>(index)] = new_locations_zs;
@@ -172,7 +161,6 @@ struct SpinnerEntityData {
     using ConstView = SpinnerEntityDataConstView;
     using size_type = std::int32_t;
     ml::native_soa::Vector<EntityUniqueId> entity_ids;
-    ml::native_soa::Vector<RegistryEntityHandle> handles;
     Vectors3f locations;
     ml::native_soa::Vector<float> yaws;
     ml::native_soa::Vector<std::int16_t> laser_cooldowns;
@@ -182,7 +170,6 @@ struct SpinnerEntityData {
     template <typename Fn>
     void each_column(Fn&& fn) {
         fn(entity_ids);
-        fn(handles);
         fn(locations.xs);
         fn(locations.ys);
         fn(locations.zs);
@@ -193,7 +180,6 @@ struct SpinnerEntityData {
     template <typename Fn>
     void each_column(Fn&& fn) const {
         fn(entity_ids);
-        fn(handles);
         fn(locations.xs);
         fn(locations.ys);
         fn(locations.zs);
@@ -205,7 +191,6 @@ struct SpinnerEntityData {
     void reserve(size_type const count) {
         ml::native_soa::require(count >= 0);
         entity_ids.reserve(static_cast<std::size_t>(count));
-        handles.reserve(static_cast<std::size_t>(count));
         locations.xs.reserve(static_cast<std::size_t>(count));
         locations.ys.reserve(static_cast<std::size_t>(count));
         locations.zs.reserve(static_cast<std::size_t>(count));
@@ -215,7 +200,6 @@ struct SpinnerEntityData {
     }
     void reset() noexcept {
         entity_ids.clear();
-        handles.clear();
         locations.xs.clear();
         locations.ys.clear();
         locations.zs.clear();
@@ -227,7 +211,6 @@ struct SpinnerEntityData {
         ml::native_soa::require(count >= 0);
         auto const size{static_cast<std::size_t>(count)};
         entity_ids.resize(size);
-        handles.resize(size);
         locations.xs.resize(size);
         locations.ys.resize(size);
         locations.zs.resize(size);
@@ -252,9 +235,6 @@ struct SpinnerEntityData {
             entity_ids[index + i] = entity_ids[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
-            handles[index + i] = handles[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
             locations.xs[index + i] = locations.xs[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
@@ -276,7 +256,6 @@ struct SpinnerEntityData {
     }
     void set(size_type const index,
              EntityUniqueId const new_entity_ids,
-             RegistryEntityHandle const new_handles,
              float const new_locations_xs,
              float const new_locations_ys,
              float const new_locations_zs,
@@ -285,7 +264,6 @@ struct SpinnerEntityData {
              std::int32_t const new_next_fire_point_indices) {
         get_view().set(index,
                        new_entity_ids,
-                       new_handles,
                        new_locations_xs,
                        new_locations_ys,
                        new_locations_zs,
@@ -294,7 +272,6 @@ struct SpinnerEntityData {
                        new_next_fire_point_indices);
     }
     auto add(EntityUniqueId const new_entity_ids,
-             RegistryEntityHandle const new_handles,
              float const new_locations_xs,
              float const new_locations_ys,
              float const new_locations_zs,
@@ -305,7 +282,6 @@ struct SpinnerEntityData {
         add_defaulted(1);
         set(index,
             new_entity_ids,
-            new_handles,
             new_locations_xs,
             new_locations_ys,
             new_locations_zs,
@@ -326,13 +302,6 @@ struct SpinnerEntityData {
             auto const begin{ml::address_cast(entity_ids.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + entity_ids.size() * sizeof(EntityUniqueId));
-        }
-        {
-            auto const address{ml::address_cast(source.handles.data())};
-            auto const begin{ml::address_cast(handles.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + handles.size() * sizeof(RegistryEntityHandle));
         }
         {
             auto const address{ml::address_cast(source.locations.xs)};
@@ -373,7 +342,6 @@ struct SpinnerEntityData {
         }
         entity_ids.insert(
             entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
-        handles.insert(handles.end(), source.handles.data(), source.handles.data() + count);
         locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
         locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
         locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
@@ -388,7 +356,6 @@ struct SpinnerEntityData {
     auto get_view() -> View {
         return {
             entity_ids,
-            handles,
             locations.get_view(),
             yaws,
             laser_cooldowns,
@@ -398,7 +365,6 @@ struct SpinnerEntityData {
     auto get_view() const -> ConstView {
         return {
             entity_ids,
-            handles,
             locations.get_view(),
             yaws,
             laser_cooldowns,
@@ -429,8 +395,6 @@ struct SpinnerEntityData {
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
         entity_ids[static_cast<std::size_t>(dst_index)] =
             other.entity_ids[static_cast<std::size_t>(src_index)];
-        handles[static_cast<std::size_t>(dst_index)] =
-            other.handles[static_cast<std::size_t>(src_index)];
         locations.copy_element(dst_index, other.locations, src_index);
         yaws[static_cast<std::size_t>(dst_index)] = other.yaws[static_cast<std::size_t>(src_index)];
         laser_cooldowns[static_cast<std::size_t>(dst_index)] =
@@ -485,8 +449,7 @@ struct SpinnerEntityDataSingleLayout {
         capacity_granularity, column_gap, 64};
 
     inline static constexpr ColLayout<EntityUniqueId> EntityIds{LayoutStart};
-    inline static constexpr ColLayout<RegistryEntityHandle> Handles{EntityIds};
-    inline static constexpr ColLayout<float> LocationsXs{Handles};
+    inline static constexpr ColLayout<float> LocationsXs{EntityIds};
     inline static constexpr ColLayout<float> LocationsYs{LocationsXs};
     inline static constexpr ColLayout<float> LocationsZs{LocationsYs};
     inline static constexpr ColLayout<float> Yaws{LocationsZs};
@@ -495,7 +458,6 @@ struct SpinnerEntityDataSingleLayout {
 
     inline static constexpr byte_size_type allocation_alignment{
         ml::native_soa::maximum_alignment(EntityIds,
-                                          Handles,
                                           LocationsXs,
                                           LocationsYs,
                                           LocationsZs,
@@ -507,7 +469,7 @@ struct SpinnerEntityDataSingleLayout {
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
         ml::native_soa::layout_align(NextFirePointIndices.block_end, allocation_alignment) +
-        7 * (column_gap + allocation_alignment - 1)};
+        6 * (column_gap + allocation_alignment - 1)};
     inline static constexpr size_type max_capacity{
         ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
@@ -518,10 +480,6 @@ struct SpinnerEntityDataSingleLayout {
         static_assert(
             ml::native_soa::supported_leaf<EntityUniqueId>,
             "Single-allocation leaf entity_ids requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::native_soa::supported_leaf<RegistryEntityHandle>,
-            "Single-allocation leaf handles requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
             ml::native_soa::supported_leaf<float>,
@@ -541,8 +499,6 @@ struct SpinnerEntityDataSingleLayout {
             "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
         static_assert(sizeof(EntityUniqueId) <=
                       (max_allocation_size - EntityIds.block_offset) / capacity_granularity);
-        static_assert(sizeof(RegistryEntityHandle) <=
-                      (max_allocation_size - Handles.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
                       (max_allocation_size - LocationsXs.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
@@ -557,7 +513,7 @@ struct SpinnerEntityDataSingleLayout {
                       (max_allocation_size - NextFirePointIndices.block_offset) /
                           capacity_granularity);
         static_assert(
-            7 <= (max_allocation_size - ml::native_soa::layout_align(NextFirePointIndices.block_end,
+            6 <= (max_allocation_size - ml::native_soa::layout_align(NextFirePointIndices.block_end,
                                                                      allocation_alignment)) /
                      (column_gap + allocation_alignment - 1));
         static_assert(max_capacity >= capacity_granularity);
@@ -623,7 +579,6 @@ struct SingleAllocationSpinnerEntityDataStorage
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
         Element<EntityUniqueId>* entity_ids{};
-        Element<RegistryEntityHandle>* handles{};
         Element<float>* locations_xs{};
         Element<float>* locations_ys{};
         Element<float>* locations_zs{};
@@ -635,7 +590,6 @@ struct SingleAllocationSpinnerEntityDataStorage
                 return {};
             }
             return {entity_ids + offset,
-                    handles + offset,
                     locations_xs + offset,
                     locations_ys + offset,
                     locations_zs + offset,
@@ -672,12 +626,8 @@ struct SingleAllocationSpinnerEntityDataStorage
             return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
         auto const entity_ids_offset{byte_size_type{}};
-        auto const handles_offset{ml::native_soa::layout_align(
-            entity_ids_offset + blocks * capacity_granularity * sizeof(EntityUniqueId) + column_gap,
-            Handles.alignment)};
         auto const locations_xs_offset{ml::native_soa::layout_align(
-            handles_offset + blocks * capacity_granularity * sizeof(RegistryEntityHandle) +
-                column_gap,
+            entity_ids_offset + blocks * capacity_granularity * sizeof(EntityUniqueId) + column_gap,
             LocationsXs.alignment)};
         auto const locations_ys_offset{ml::native_soa::layout_align(
             locations_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
@@ -696,7 +646,6 @@ struct SingleAllocationSpinnerEntityDataStorage
                 column_gap,
             NextFirePointIndices.alignment)};
         return {pointer_at(EntityIds, entity_ids_offset),
-                pointer_at(Handles, handles_offset),
                 pointer_at(LocationsXs, locations_xs_offset),
                 pointer_at(LocationsYs, locations_ys_offset),
                 pointer_at(LocationsZs, locations_zs_offset),
@@ -714,7 +663,6 @@ struct SingleAllocationSpinnerEntityDataStorage
     void default_construct_columns(size_type const first, size_type const count) {
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         std::uninitialized_value_construct_n<EntityUniqueId*>(columns.entity_ids, count);
-        std::uninitialized_value_construct_n<RegistryEntityHandle*>(columns.handles, count);
         std::uninitialized_value_construct_n<float*>(columns.locations_xs, count);
         std::uninitialized_value_construct_n<float*>(columns.locations_ys, count);
         std::uninitialized_value_construct_n<float*>(columns.locations_zs, count);
@@ -733,12 +681,10 @@ struct SingleAllocationSpinnerEntityDataStorage
                              size_type move_count) {
         auto const elements_to_move{static_cast<byte_size_type>(move_count)};
         auto const entity_ids_bytes{elements_to_move * sizeof(EntityUniqueId)};
-        auto const handles_bytes{elements_to_move * sizeof(RegistryEntityHandle)};
         auto const locations_xs_bytes{elements_to_move * sizeof(float)};
         auto const laser_cooldowns_bytes{elements_to_move * sizeof(std::int16_t)};
         auto const next_fire_point_indices_bytes{elements_to_move * sizeof(std::int32_t)};
         std::memcpy(columns.entity_ids + index, columns.entity_ids + source, entity_ids_bytes);
-        std::memcpy(columns.handles + index, columns.handles + source, handles_bytes);
         std::memcpy(
             columns.locations_xs + index, columns.locations_xs + source, locations_xs_bytes);
         std::memcpy(
@@ -774,10 +720,9 @@ struct SingleAllocationSpinnerEntityDataStorage
             auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
             return address >= allocation_begin && address < allocation_end;
         };
-        return aliases(source.entity_ids.data()) || aliases(source.handles.data()) ||
-               aliases(source.locations.xs) || aliases(source.locations.ys) ||
-               aliases(source.locations.zs) || aliases(source.yaws.data()) ||
-               aliases(source.laser_cooldowns.data()) ||
+        return aliases(source.entity_ids.data()) || aliases(source.locations.xs) ||
+               aliases(source.locations.ys) || aliases(source.locations.zs) ||
+               aliases(source.yaws.data()) || aliases(source.laser_cooldowns.data()) ||
                aliases(source.next_fire_point_indices.data());
     }
     template <typename Columns>
@@ -785,12 +730,10 @@ struct SingleAllocationSpinnerEntityDataStorage
         auto const destination{get_data(first)};
         auto const elements_to_copy{static_cast<byte_size_type>(count)};
         auto const entity_ids_bytes{elements_to_copy * sizeof(EntityUniqueId)};
-        auto const handles_bytes{elements_to_copy * sizeof(RegistryEntityHandle)};
         auto const locations_xs_bytes{elements_to_copy * sizeof(float)};
         auto const laser_cooldowns_bytes{elements_to_copy * sizeof(std::int16_t)};
         auto const next_fire_point_indices_bytes{elements_to_copy * sizeof(std::int32_t)};
         std::memcpy(destination.entity_ids, source.entity_ids.data(), entity_ids_bytes);
-        std::memcpy(destination.handles, source.handles.data(), handles_bytes);
         std::memcpy(destination.locations_xs, source.locations.xs, locations_xs_bytes);
         std::memcpy(destination.locations_ys, source.locations.ys, locations_xs_bytes);
         std::memcpy(destination.locations_zs, source.locations.zs, locations_xs_bytes);
@@ -813,12 +756,10 @@ struct SingleAllocationSpinnerEntityDataStorage
             auto const destination{make_data_unchecked(new_data, new_blocks)};
             auto const live_count{static_cast<byte_size_type>(num_)};
             auto const entity_ids_bytes{live_count * sizeof(EntityUniqueId)};
-            auto const handles_bytes{live_count * sizeof(RegistryEntityHandle)};
             auto const locations_xs_bytes{live_count * sizeof(float)};
             auto const laser_cooldowns_bytes{live_count * sizeof(std::int16_t)};
             auto const next_fire_point_indices_bytes{live_count * sizeof(std::int32_t)};
             std::memcpy(destination.entity_ids, source.entity_ids, entity_ids_bytes);
-            std::memcpy(destination.handles, source.handles, handles_bytes);
             std::memcpy(destination.locations_xs, source.locations_xs, locations_xs_bytes);
             std::memcpy(destination.locations_ys, source.locations_ys, locations_xs_bytes);
             std::memcpy(destination.locations_zs, source.locations_zs, locations_xs_bytes);
@@ -848,11 +789,6 @@ struct SpinnerEntityDataSingleConstView : ml::native_soa::CompactViewState<true>
     auto entity_ids() const -> std::span<EntityUniqueId const> {
         return {column_data<EntityUniqueId>(
                     SpinnerEntityDataSingleLayout::EntityIds.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto handles() const -> std::span<RegistryEntityHandle const> {
-        return {column_data<RegistryEntityHandle>(
-                    SpinnerEntityDataSingleLayout::Handles.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto view_locations() const -> ml::native_soa::Vector3ConstView<float> {
@@ -888,9 +824,6 @@ struct SpinnerEntityDataSingleConstView : ml::native_soa::CompactViewState<true>
         return SpinnerEntityDataConstView{
             {column_data_unchecked<EntityUniqueId>(
                  SpinnerEntityDataSingleLayout::EntityIds.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
-                 SpinnerEntityDataSingleLayout::Handles.offset(blocks)),
              static_cast<std::size_t>(count_)},
             Vectors3fConstView{{column_data_unchecked<float>(
                                     SpinnerEntityDataSingleLayout::LocationsXs.offset(blocks)),
@@ -932,11 +865,6 @@ struct SpinnerEntityDataSingleView : ml::native_soa::CompactViewState<false> {
                     SpinnerEntityDataSingleLayout::EntityIds.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto handles() const -> std::span<RegistryEntityHandle> {
-        return {column_data<RegistryEntityHandle>(
-                    SpinnerEntityDataSingleLayout::Handles.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
     auto view_locations() const -> ml::native_soa::Vector3View<float> {
         validate();
         if (!state_ || !state_->data_) {
@@ -970,9 +898,6 @@ struct SpinnerEntityDataSingleView : ml::native_soa::CompactViewState<false> {
         return SpinnerEntityDataView{
             {column_data_unchecked<EntityUniqueId>(
                  SpinnerEntityDataSingleLayout::EntityIds.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
-                 SpinnerEntityDataSingleLayout::Handles.offset(blocks)),
              static_cast<std::size_t>(count_)},
             Vectors3fView{{column_data_unchecked<float>(
                                SpinnerEntityDataSingleLayout::LocationsXs.offset(blocks)),

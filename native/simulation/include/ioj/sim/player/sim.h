@@ -13,7 +13,6 @@
 
 #include <ioj/sim/sim_config.h>
 
-#include <ioj/sim/entity_handle.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/player/control_mode.h>
 #include <ioj/sim/player/fire_rate.h>
@@ -21,7 +20,6 @@
 #include <ioj/sim/player/laser_firing_state.h>
 #include <ioj/sim/player/ship_laser_mode.h>
 #include <ioj/sim/player/space_ship_common.h>
-#include <ioj/sim/registry_entity_data.h>
 #include <ioj/sim/ship_flight_model.h>
 #include <ioj/sim/sim_clock.h>
 
@@ -29,7 +27,6 @@ namespace ioj::sim {
 struct LevelSim;
 struct EntityDeathInfo;
 struct PlayerSimConfig;
-struct EntityRegistry;
 class EntityLedger;
 class CombatEvents;
 struct SpatialQueryManager;
@@ -80,14 +77,11 @@ struct MovementState {
 };
 
 struct Sim {
-    using RegistryEntityData = sim::RegistryEntityData;
-
     /* **************************************** */
     // Construction and configuration
     /* **************************************** */
     Sim(SimClock const& clock,
-        EntityRegistry& entity_registry,
-        EntityLedger const& ledger,
+        EntityLedger& ledger,
         CombatEvents const& combat_events,
         SpatialQueryManager const& spatial_query_manager,
         lasers::Sim& lasers);
@@ -108,7 +102,7 @@ struct Sim {
     auto get_movement_state() const noexcept -> MovementState const& { return movement_state_; }
     void configure(PlayerSpawnData const& spawn) noexcept;
     void set_config(PlayerSimConfig const& new_config) noexcept;
-    void set_team(Team new_team) noexcept { team = new_team; }
+    void set_team(Team new_team) noexcept;
     void set_speed_sampling_enabled(bool enabled) noexcept { speed_sampling_enabled = enabled; }
 
     /* **************************************** */
@@ -160,7 +154,6 @@ struct Sim {
     // Sim state
     /* **************************************** */
     EntityUniqueId unique_entity_id;
-    RegistryEntityHandle registry_handle{};
     Team team{Team::White};
 
     Transform3d left_socket{Transform3d{}};
@@ -204,14 +197,12 @@ struct Sim {
     void apply_movement();
     void generate_fire_commands();
     void resolve_damage_events();
-    void update_entity_registry();
+    void publish_deaths();
 
     /* **************************************** */
-    // Registry integration
+    // Identity and accounting
     /* **************************************** */
-    void register_with_entity_registry();
-    auto get_entity_update_data() const -> SingleAllocationRegistryEntityData;
-    void queue_entity_update(EntityDeathInfo const& death_info);
+    void register_entity();
 
     /* **************************************** */
     // Movement
@@ -255,8 +246,7 @@ struct Sim {
     friend struct sim::PlayerSimTestAccess;
 
     PlayerSimConfig config{};
-    EntityRegistry& entity_registry;
-    EntityLedger const& ledger_;
+    EntityLedger& ledger_;
     CombatEvents const& combat_events_;
     SpatialQueryManager const& spatial_query_manager;
     lasers::Sim& lasers;

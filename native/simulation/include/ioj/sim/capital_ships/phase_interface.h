@@ -23,7 +23,7 @@ class PhaseInterface {
 
     void resolve_fighters_of_dying_capitals();
 
-    void update_entity_registry();
+    void publish_deaths();
 
     void cleanup_entities();
 

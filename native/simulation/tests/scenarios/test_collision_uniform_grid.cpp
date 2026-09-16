@@ -8,7 +8,6 @@
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/collision/collision_system.h>
 #include <ioj/sim/collision/collision_uniform_grid.h>
-#include <ioj/sim/entity_registry.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/spatial_query_manager.h>
 #include <ioj/sim/trace_hits.h>
@@ -32,24 +31,18 @@ struct TraceFixture {
         auto const count{static_cast<std::int32_t>(locations.size())};
         assert(fixture_entity_types.empty() ||
                static_cast<std::int32_t>(fixture_entity_types.size()) == count);
-        RegistryEntityData entity_data;
-        entity_data.add_defaulted(count);
+        handles.reserve(static_cast<std::size_t>(count));
         for (std::int32_t i{}; i < count; ++i) {
-            entity_data.locations.set(i, locations[i]);
-            entity_data.rotations.set(i, rotation);
-            entity_data.healths[i] = 1;
-            entity_data.teams[i] = Team::Blue;
-            entity_data.entity_types[i] =
-                fixture_entity_types.empty() ? EntityType::CapitalShip : fixture_entity_types[i];
+            auto const type{fixture_entity_types.empty() ? EntityType::CapitalShip
+                                                         : fixture_entity_types[i]};
+            handles.push_back(owners.spawn(type, locations[i], rotation, 1, Team::Blue));
         }
-        auto const spawned{registry.add_entities(entity_data.get_const_view())};
-        handles = tests::copy_handles(spawned.registry_handles);
 
         set_entity_aabb(EntityType::CapitalShip, aabb_centre, half_extents);
 
         grid.set_grid_dims({fixture_grid_dims.x, fixture_grid_dims.y, fixture_grid_dims.z});
         grid.set_cell_dims(fixture_cell_dims);
-        owners.load(registry);
+        owners.publish();
         grid.rebuild_grid(aabbs);
     }
 
@@ -66,50 +59,24 @@ struct TraceFixture {
         auto const count{static_cast<std::int32_t>(handles.size())};
         assert(static_cast<std::int32_t>(locations.size()) == count);
         assert(static_cast<std::int32_t>(alive.size()) == count);
-
-        RegistryEntityData entity_data;
-        entity_data.add_defaulted(count);
         for (std::int32_t i{}; i < count; ++i) {
-            entity_data.locations.set(i, locations[i]);
-            entity_data.healths[i] = alive[i] != 0 ? 1 : 0;
-            entity_data.teams[i] = Team::Blue;
-            entity_data.entity_types[i] = EntityType::CapitalShip;
+            owners.set(handles[i], locations[i], {}, alive[i] != 0 ? 1 : 0);
         }
-        EntityRegistry::ConstView const updates{
-            .indices = {handles.data(), static_cast<std::size_t>(count)},
-            .data = entity_data.get_const_view(),
-        };
-        EntityDeathInfo death_info;
-        for (std::int32_t i{}; i < count; ++i) {
-            if (alive[i] == 0 && registry.get_alive(handles[i])) {
-                death_info.add(DeathReason::Unknown, registry.find_unique_id(handles[i]), {});
-            }
-        }
-        registry.queue_entity_updates(updates, death_info);
-        registry.commit_updates();
-        registry.end_tick();
-        owners.load(registry);
+        owners.publish();
         grid.rebuild_grid(aabbs);
     }
 
-    auto add_entity(Vector3f const location) -> RegistryEntityHandle {
-        RegistryEntityData entity_data;
-        entity_data.add_defaulted(1);
-        entity_data.locations.set(0, location);
-        entity_data.healths[0] = 1;
-        entity_data.teams[0] = Team::Blue;
-        entity_data.entity_types[0] = EntityType::CapitalShip;
-
-        auto const spawned{registry.add_entities(entity_data.get_const_view())};
-        owners.load(registry);
+    auto add_entity(Vector3f const location) -> EntityUniqueId {
+        auto const id{owners.spawn(EntityType::CapitalShip, location, {}, 1, Team::Blue)};
+        handles.push_back(id);
+        owners.publish();
         grid.rebuild_grid(aabbs);
-        return spawned.get_handle(0);
+        return id;
     }
 
-    EntityRegistry registry;
     tests::CollisionAgentStorage owners;
     collision::CollisionUniformGrid grid{owners.agents};
-    std::vector<RegistryEntityHandle> handles{};
+    std::vector<EntityUniqueId> handles{};
     collision::EntityAABBs aabbs;
 };
 
@@ -237,10 +204,9 @@ void check_traces(TraceFixture const& fixture, std::span<ExpectedTrace const> co
 
         std::string const entity_description{" resolves expected entity" +
                                              ::testing::PrintToString(trace_case.name)};
-        tests::expect_equal(
-            fixture.registry.get_current_id(fixture.handles[trace_case.expected_entity_index]),
-            hits.entities[i],
-            entity_description);
+        tests::expect_equal(fixture.handles[trace_case.expected_entity_index],
+                            hits.entities[i],
+                            entity_description);
 
         std::string const location_description{" resolves expected hit location" +
                                                ::testing::PrintToString(trace_case.name)};
@@ -437,10 +403,8 @@ void CollisionUniformGridTraceRunner::test_hits_and_misses() {
             continue;
         }
 
-        tests::expect_equal(fixture.registry.get_current_id(fixture.handles[0]),
-                            hits.entities[i],
-                            "Trace resolves expected entity",
-                            i);
+        tests::expect_equal(
+            fixture.handles[0], hits.entities[i], "Trace resolves expected entity", i);
         tests::expect_distance_near(expected_locations[i],
                                     hits.locations[i],
                                     hit_location_tolerance,
@@ -484,9 +448,8 @@ void CollisionUniformGridTraceRunner::test_returns_nearest_hit() {
     auto const hits{run_traces(fixture, starts, ends)};
 
     tests::expect_equal(std::uint8_t{1}, hits.hits[0], "Trace through two AABBs records a hit");
-    tests::expect_equal(fixture.registry.get_current_id(fixture.handles[1]),
-                        hits.entities[0],
-                        "Trace returns nearest intersecting entity");
+    tests::expect_equal(
+        fixture.handles[1], hits.entities[0], "Trace returns nearest intersecting entity");
     tests::expect_distance_near(expected_near_contact,
                                 hits.locations[0],
                                 hit_location_tolerance,
@@ -509,9 +472,8 @@ void CollisionUniformGridTraceRunner::test_handles_zero_length_traces() {
 
     tests::expect_equal(
         std::uint8_t{1}, hits.hits[0], "Stationary point inside AABB records a hit");
-    tests::expect_equal(fixture.registry.get_current_id(fixture.handles[0]),
-                        hits.entities[0],
-                        "Stationary point resolves containing entity");
+    tests::expect_equal(
+        fixture.handles[0], hits.entities[0], "Stationary point resolves containing entity");
     tests::expect_distance_near(starts[0],
                                 hits.locations[0],
                                 hit_location_tolerance,
@@ -538,9 +500,8 @@ void CollisionUniformGridTraceRunner::test_includes_negative_endpoint_boundary()
         return;
     }
 
-    tests::expect_equal(fixture.registry.get_current_id(fixture.handles[0]),
-                        hits.entities[0],
-                        "Endpoint trace resolves touched entity");
+    tests::expect_equal(
+        fixture.handles[0], hits.entities[0], "Endpoint trace resolves touched entity");
     tests::expect_distance_near(boundary_contact,
                                 hits.locations[0],
                                 hit_location_tolerance,
@@ -587,12 +548,11 @@ void CollisionUniformGridTraceRunner::test_applies_aabb_centre() {
         std::uint8_t{1}, updated_hits.hits[1], "Registry rotation update reaches grid queries");
     rotated.update_entities(std::vector<Vector3f>{Vector3f{}}, std::vector<std::uint8_t>{0});
     auto const reused_handle{rotated.add_entity(Vector3f{})};
-    tests::expect_equal(
-        rotated.handles[0].index, reused_handle.index, "Fixture reuses registry slot");
+    tests::expect_true(rotated.handles[0] != reused_handle,
+                       "Replacement receives a distinct monotonic ID");
     auto const reused_hits{run_traces(rotated, rotated_starts, rotated_ends)};
-    tests::expect_equal(rotated.registry.get_current_id(reused_handle),
-                        reused_hits.entities[1],
-                        "Reused slot has current bounds and generation");
+    tests::expect_equal(
+        reused_handle, reused_hits.entities[1], "Reused slot has current bounds and generation");
 
     Vector3f const entity_location{};
     Vector3f const local_aabb_centre{{40.f, 0.f, 0.f}};
@@ -613,9 +573,8 @@ void CollisionUniformGridTraceRunner::test_applies_aabb_centre() {
         return;
     }
 
-    tests::expect_equal(fixture.registry.get_current_id(fixture.handles[0]),
-                        hits.entities[0],
-                        "Trace resolves locally centred entity");
+    tests::expect_equal(
+        fixture.handles[0], hits.entities[0], "Trace resolves locally centred entity");
     tests::expect_distance_near(expected_contact,
                                 hits.locations[0],
                                 hit_location_tolerance,
@@ -679,7 +638,7 @@ void CollisionUniformGridTraceRunner::test_applies_aabb_centre() {
             continue;
         }
 
-        tests::expect_equal(mixed_fixture.registry.get_current_id(mixed_fixture.handles[i]),
+        tests::expect_equal(mixed_fixture.handles[i],
                             mixed_hits.entities[i],
                             "Mixed entity-type trace resolves its entity",
                             i);
@@ -1322,8 +1281,6 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
         };
         check_traces(authoritative, owner_cases);
         owner.healths[0] = 0;
-        tests::expect_true(authoritative.registry.get_alive(authoritative.handles[0]),
-                           "Registry deliberately retains old alive state");
         std::vector<ExpectedTrace> const dead_owner_cases{
             {"Logical owner death filters cached geometry without rebuild",
              {{moved_location.X - trace_offset, 0.f, 0.f}},
@@ -1370,12 +1327,8 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
     Vector3f const replacement_location{{250.f, 0.f, 0.f}};
     auto const old_handle{fixture.handles[0]};
     auto const replacement_handle{fixture.add_entity(replacement_location)};
-    tests::expect_equal(
-        old_handle.index, replacement_handle.index, "Replacement entity reuses dead registry slot");
-    tests::expect_true(old_handle.generation != replacement_handle.generation,
-                       "Replacement entity advances registry generation");
-    tests::expect_true(fixture.registry.is_stale(old_handle),
-                       "Reused collision handle becomes stale");
+    tests::expect_true(old_handle != replacement_handle,
+                       "Replacement entity receives a distinct monotonic ID");
 
     std::vector<Vector3f> const replacement_starts{
         {{replacement_location.X - trace_offset, 0.f, 0.f}},
@@ -1387,7 +1340,7 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
     tests::expect_equal(
         std::uint8_t{1}, replacement_hits.hits[0], "Replacement entity is added on rebuild");
     if (replacement_hits.hits[0] != 0) {
-        tests::expect_equal(fixture.registry.get_current_id(replacement_handle),
+        tests::expect_equal(replacement_handle,
                             replacement_hits.entities[0],
                             "Trace resolves replacement generation");
     }
@@ -1423,11 +1376,8 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
     Vector3f const sparse_replacement_location{{0.f, 200.f, 0.f}};
     auto const sparse_old_handle{sparse_fixture.handles[1]};
     auto const sparse_replacement_handle{sparse_fixture.add_entity(sparse_replacement_location)};
-    tests::expect_equal(sparse_old_handle.index,
-                        sparse_replacement_handle.index,
-                        "Sparse replacement reuses middle registry slot");
-    tests::expect_true(sparse_old_handle.generation != sparse_replacement_handle.generation,
-                       "Sparse replacement advances middle registry generation");
+    tests::expect_true(sparse_old_handle != sparse_replacement_handle,
+                       "Sparse replacement receives a distinct monotonic ID");
 
     std::vector<Vector3f> const sparse_replacement_starts{
         sparse_replacement_location - Vector3f{{0.f, trace_offset, 0.f}},
@@ -1441,7 +1391,7 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
                         sparse_replacement_hits.hits[0],
                         "Sparse replacement remains traceable beside surviving entities");
     if (sparse_replacement_hits.hits[0] != 0) {
-        tests::expect_equal(sparse_fixture.registry.get_current_id(sparse_replacement_handle),
+        tests::expect_equal(sparse_replacement_handle,
                             sparse_replacement_hits.entities[0],
                             "Sparse replacement trace resolves new generation");
     }
@@ -1523,7 +1473,7 @@ void CollisionUniformGridTraceRunner::test_deterministic_reference_sweep() {
                 continue;
             }
 
-            tests::expect_equal(fixture.registry.get_current_id(fixture.handles[nearest_entity]),
+            tests::expect_equal(fixture.handles[nearest_entity],
                                 hits.entities[i_trace],
                                 "Reference sweep trace resolves nearest entity",
                                 case_index);
@@ -1551,12 +1501,11 @@ void CollisionUniformGridTraceRunner::test_invariance_properties() {
     TraceFixture tied{std::vector<Vector3f>{Vector3f{}, Vector3f{}}, {{10.f, 10.f, 10.f}}};
     std::vector<Vector3f> const tied_starts{{{-20.f, 0.f, 0.f}}};
     std::vector<Vector3f> const tied_ends{{{20.f, 0.f, 0.f}}};
-    auto const expected_id{tied.registry.get_current_id(tied.handles[0])};
+    auto const expected_id{tied.handles[0]};
     EXPECT_EQ(run_traces(tied, tied_starts, tied_ends).entities[0], expected_id);
     tied.owners.capitals.get_view().columns().each_column(
         [](auto column) { std::ranges::reverse(column); });
-    tied.owners.indexes.bind(EntityType::CapitalShip,
-                             tied.owners.capitals.get_const_view().entity_ids());
+    tied.owners.publish();
     tied.grid.rebuild_grid(tied.aabbs);
     EXPECT_EQ(run_traces(tied, tied_starts, tied_ends).entities[0], expected_id);
     SpatialQueryManager const tied_queries{tied.owners.agents};
@@ -1739,7 +1688,7 @@ void CollisionUniformGridTraceRunner::test_empty_batches_and_output_reuse() {
 
     populated_fixture.grid.trace_aabbs(hit_trace.get_const_view(), reused_hits.get_view());
     tests::expect_equal(std::uint8_t{1}, reused_hits.hits[0], "Reused output records later hit");
-    tests::expect_equal(populated_fixture.registry.get_current_id(populated_fixture.handles[0]),
+    tests::expect_equal(populated_fixture.handles[0],
                         reused_hits.entities[0],
                         "Reused output records later entity");
 }
@@ -1775,9 +1724,8 @@ void CollisionUniformGridTraceRunner::test_dense_and_wide_aabbs() {
     for (std::int32_t x{min_coord.x}; x <= max_coord.x; ++x) {
         for (std::int32_t y{min_coord.y}; y <= max_coord.y; ++y) {
             for (std::int32_t z{min_coord.z}; z <= max_coord.z; ++z) {
-                membership_count +=
-                    count_id(wide_fixture.grid.get_cell_entities({x, y, z}),
-                             wide_fixture.registry.get_current_id(wide_fixture.handles[0]));
+                membership_count += count_id(wide_fixture.grid.get_cell_entities({x, y, z}),
+                                             wide_fixture.handles[0]);
             }
         }
     }
@@ -1893,7 +1841,7 @@ void CollisionUniformGridTraceRunner::test_static_geometry() {
 
     auto const fighter_masked_hits{
         run_sweeps(fighter_fixture, starts, ends, Vector3f{{20.f, 20.f, 20.f}})};
-    tests::expect_equal(fighter_fixture.registry.get_current_id(fighter_fixture.handles[0]),
+    tests::expect_equal(fighter_fixture.handles[0],
                         fighter_masked_hits.entities[0],
                         "Fighter is the closest sweep hit before static geometry");
     auto const static_geometry_hits{run_sweeps(fighter_fixture,
@@ -1920,15 +1868,14 @@ void CollisionUniformGridTraceRunner::test_static_geometry() {
 
     set_static_aabb({{140.f, -10.f, -10.f}}, {{160.f, 10.f, 10.f}});
     auto const dynamic_hits{run_traces(fixture, starts, ends)};
-    tests::expect_equal(fixture.registry.get_current_id(fixture.handles[0]),
+    tests::expect_equal(fixture.handles[0],
                         dynamic_hits.entities[0],
                         "Closer dynamic geometry wins over static geometry");
     tests::expect_equal(std::int32_t{-1},
                         dynamic_hits.static_geometry_indices[0],
                         "Dynamic hit clears static identity");
 
-    std::vector<EntityUniqueId> const ignored_entities{
-        fixture.registry.get_current_id(fixture.handles[0])};
+    std::vector<EntityUniqueId> const ignored_entities{fixture.handles[0]};
     auto const ignored_dynamic_hits{run_traces(fixture, starts, ends, ignored_entities)};
     tests::expect_true(!ignored_dynamic_hits.entities[0].is_valid(),
                        "Ignored dynamic entity is not returned");
@@ -1938,7 +1885,7 @@ void CollisionUniformGridTraceRunner::test_static_geometry() {
 
     set_static_aabb({{90.f, -10.f, -10.f}}, {{110.f, 10.f, 10.f}});
     auto const tied_hits{run_traces(fixture, starts, ends)};
-    tests::expect_equal(fixture.registry.get_current_id(fixture.handles[0]),
+    tests::expect_equal(fixture.handles[0],
                         tied_hits.entities[0],
                         "Dynamic geometry wins exact-distance static tie");
 
