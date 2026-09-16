@@ -41,5 +41,4 @@
     (member rotations nested @native_rotators_3f :nested-schema Rotators3f)
     (member healths array int32)
     (member teams array @native_team)
-    (member entity_types array @native_entity_type)
-    (member alive array uint8)))
+    (member entity_types array @native_entity_type)))

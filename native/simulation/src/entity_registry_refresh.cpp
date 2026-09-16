@@ -1,5 +1,7 @@
 #include "ioj/sim/entity_registry_refresh.h"
 
+#include <ioj/sim/health.h>
+
 #include <cassert>
 #include <cstddef>
 
@@ -23,7 +25,7 @@ auto refresh_registry_handles(EntityRegistryQueryView const registry,
                 handle.reset();
                 break;
             case RegistryHandleState::Active:
-                if (registry.alive[static_cast<std::size_t>(handle.index)] == 0) {
+                if (is_dead(registry.healths[static_cast<std::size_t>(handle.index)])) {
                     handle.reset();
                 }
                 break;

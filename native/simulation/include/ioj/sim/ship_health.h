@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/sim/health.h>
+
 #include <cstdint>
 
 namespace ioj::sim {
@@ -20,7 +22,7 @@ struct ShipHealth {
 
     auto operator==(ShipHealth const&) const noexcept -> bool = default;
     void upgrade_max_health() { max_health = upgraded_max_health; }
-    auto is_alive() const noexcept -> bool { return health > 0; }
+    auto is_alive() const noexcept -> bool { return sim::is_alive(health); }
     void clamp_to_max() noexcept { health = clamp_health_to_max(health, max_health); }
 
     std::int32_t health{default_max_health};

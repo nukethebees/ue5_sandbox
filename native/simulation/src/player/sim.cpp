@@ -152,14 +152,14 @@ void Sim::resolve_damage_events() {
             continue;
         }
 
-        auto const was_alive{health.health > 0};
+        auto const was_alive{is_alive(health.health)};
         health.health -= damage_events.damage_amounts[element];
-        if (was_alive && health.health <= 0) {
+        if (was_alive && is_dead(health.health)) {
             killer = damage_events.instigators[element];
         }
     }
 
-    if (original_health > 0 && health.health <= 0) {
+    if (is_alive(original_health) && is_dead(health.health)) {
         die(killer);
     }
 }
@@ -189,7 +189,6 @@ auto Sim::get_entity_update_data() const -> RegistryEntityData {
     entity_data.rotations.add(to_float(movement_state_.transform.rotator()));
     entity_data.healths.push_back(health.health);
     entity_data.teams.push_back(team);
-    entity_data.alive.push_back(static_cast<std::uint8_t>(health.is_alive()));
     entity_data.entity_types.push_back(EntityType::PlayerShip);
 
     return entity_data;

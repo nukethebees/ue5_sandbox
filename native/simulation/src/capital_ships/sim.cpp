@@ -17,6 +17,7 @@
 #include <ioj/sim/fighter_diagnostics.h>
 #include <ioj/sim/fighter_frame_spawn_queue.h>
 #include <ioj/sim/fighters/sim.h>
+#include <ioj/sim/health.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/spatial_query_manager.h>
 
@@ -184,7 +185,6 @@ auto Sim::register_ships(CapitalSpawnDataConstView const spawn_data)
     for (std::int32_t i{}; i < n_to_add; ++i) {
         new_entity_data.healths[i] = spawn_data.healths[i];
         new_entity_data.teams[i] = spawn_data.teams[i];
-        new_entity_data.alive[i] = spawn_data.healths[i] > 0;
     }
 
     auto const new_entities{entity_registry.add_entities(new_entity_data.get_const_view())};
@@ -241,9 +241,6 @@ void Sim::prepare_entity_update_data() {
     entity_update_data.healths = entities.healths;
     entity_update_data.teams = entities.teams;
     std::ranges::fill(entity_update_data.entity_types, EntityType::CapitalShip);
-    for (std::int32_t i{0}; i < n; ++i) {
-        entity_update_data.alive[i] = entities.healths[i] > 0;
-    }
 }
 
 /* **************************************** */
@@ -429,9 +426,9 @@ void Sim::queue_fighter_orders() {
             assert(found != all_fighters.end());
             auto const fighter_index{static_cast<std::size_t>(found - all_fighters.begin())};
             auto const target{fighter_targets[fighter_index]};
-            auto const target_is_dead{analyse_handle(registry, target) ==
-                                          RegistryHandleState::Active &&
-                                      registry.alive[static_cast<std::size_t>(target.index)] == 0};
+            auto const target_is_dead{
+                analyse_handle(registry, target) == RegistryHandleState::Active &&
+                is_dead(registry.healths[static_cast<std::size_t>(target.index)])};
             if (target.is_null() || target_is_dead) {
                 fighter_order_queue.add(
                     fighter, FighterOrder{.task = 0, .target = 1}, {}, capital_target);

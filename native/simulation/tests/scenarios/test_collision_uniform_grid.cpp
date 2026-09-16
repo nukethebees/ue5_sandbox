@@ -40,7 +40,6 @@ struct TraceFixture {
             entity_data.teams[i] = Team::Blue;
             entity_data.entity_types[i] =
                 fixture_entity_types.empty() ? EntityType::CapitalShip : fixture_entity_types[i];
-            entity_data.alive[i] = 1;
         }
         auto const spawned{registry.add_entities(entity_data.get_const_view())};
         handles = tests::copy_handles(spawned.registry_handles);
@@ -70,10 +69,9 @@ struct TraceFixture {
         entity_data.add_defaulted(count);
         for (std::int32_t i{}; i < count; ++i) {
             entity_data.locations.set(i, locations[i]);
-            entity_data.healths[i] = 1;
+            entity_data.healths[i] = alive[i] != 0 ? 1 : 0;
             entity_data.teams[i] = Team::Blue;
             entity_data.entity_types[i] = EntityType::CapitalShip;
-            entity_data.alive[i] = alive[i];
         }
         EntityRegistry::ConstView const updates{
             .indices = {handles.data(), static_cast<std::size_t>(count)},
@@ -98,7 +96,6 @@ struct TraceFixture {
         entity_data.healths[0] = 1;
         entity_data.teams[0] = Team::Blue;
         entity_data.entity_types[0] = EntityType::CapitalShip;
-        entity_data.alive[0] = 1;
 
         auto const spawned{registry.add_entities(entity_data.get_const_view())};
         grid.rebuild_grid(aabbs);

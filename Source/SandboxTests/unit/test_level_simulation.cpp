@@ -333,8 +333,7 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
     for (int32 index{}; index < headless_samples.num(); ++index) {
         auto const& a{headless_samples.value_at(index)};
         auto const& b{visible_samples.value_at(index)};
-        TestTrue(TEXT("Presentation preserves health and entity lifetime"),
-                 a.healths == b.healths && a.alive == b.alive);
+        TestTrue(TEXT("Presentation preserves health and entity lifetime"), a.healths == b.healths);
         TestTrue(TEXT("Presentation preserves locations"),
                  a.locations.xs == b.locations.xs && a.locations.ys == b.locations.ys &&
                      a.locations.zs == b.locations.zs);

@@ -113,7 +113,6 @@ auto Sim::spawn_instances(Vectors3fConstView const new_locations,
     std::ranges::fill(entity_data.healths, 1000000);
     std::ranges::fill(entity_data.teams, Team::White);
     std::ranges::fill(entity_data.entity_types, EntityType::TubeSpinner);
-    std::ranges::fill(entity_data.alive, std::uint8_t{1});
     entity_data.validate_array_sizes();
 
     auto new_entities{entity_registry.add_entities(entity_data.get_const_view())};

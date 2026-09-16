@@ -1056,7 +1056,6 @@ void Sim::prepare_entity_update_data() {
     registry_update_data.healths = data.healths;
     registry_update_data.teams = data.teams;
     for (std::int32_t i{0}; i < n; ++i) {
-        registry_update_data.alive[i] = static_cast<std::uint8_t>(data.healths[i] > 0);
         registry_update_data.rotations.set(i, direction_to_rotation(data.aim_directions[i]));
     }
     registry_update_data.validate_array_sizes();
@@ -1186,7 +1185,6 @@ void Sim::commit_spawns() {
     }
 
     new_spawn_entity_data.add_uninitialised(n_new);
-    std::ranges::fill(new_spawn_entity_data.alive, std::uint8_t{1});
     for (std::int32_t i{0}; i < n_new; ++i) {
         auto const index{n_cur + i};
         new_spawn_entity_data.locations.set(i, data.locations[index]);

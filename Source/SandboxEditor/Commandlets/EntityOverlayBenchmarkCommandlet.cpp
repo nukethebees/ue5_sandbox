@@ -56,7 +56,6 @@ auto write_debug_frames(FString const& output_directory) -> bool {
         entities.teams[index] =
             static_cast<::ioj::sim::Team>(index % static_cast<int32>(::ioj::sim::Team::COUNT));
         entities.entity_types[index] = ::ioj::sim::EntityType::Turret;
-        entities.alive[index] = 1;
     }
     static_cast<void>(registry.add_entities(make_view(entities)));
 

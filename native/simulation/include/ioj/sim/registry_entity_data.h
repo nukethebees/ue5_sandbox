@@ -22,7 +22,6 @@ struct RegistryEntityDataConstView {
     std::span<std::int32_t const> healths;
     std::span<Team const> teams;
     std::span<EntityType const> entity_types;
-    std::span<std::uint8_t const> alive;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -39,7 +38,6 @@ struct RegistryEntityDataConstView {
         fn(healths);
         fn(teams);
         fn(entity_types);
-        fn(alive);
     }
     void validate_array_sizes() const {
         auto const count{num()};
@@ -57,7 +55,6 @@ struct RegistryEntityDataConstView {
             healths.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             teams.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             entity_types.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            alive.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
         };
     }
     auto get_view() const -> RegistryEntityDataConstView { return *this; }
@@ -73,7 +70,6 @@ struct RegistryEntityDataConstView {
             healths,
             teams,
             entity_types,
-            alive,
         };
     }
     auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
@@ -96,7 +92,6 @@ struct RegistryEntityDataView {
     std::span<std::int32_t> healths;
     std::span<Team> teams;
     std::span<EntityType> entity_types;
-    std::span<std::uint8_t> alive;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -113,7 +108,6 @@ struct RegistryEntityDataView {
         fn(healths);
         fn(teams);
         fn(entity_types);
-        fn(alive);
     }
     void validate_array_sizes() const {
         auto const count{num()};
@@ -131,7 +125,6 @@ struct RegistryEntityDataView {
             healths.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             teams.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             entity_types.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            alive.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
         };
     }
     auto get_view() const -> RegistryEntityDataView { return *this; }
@@ -146,7 +139,6 @@ struct RegistryEntityDataView {
             healths,
             teams,
             entity_types,
-            alive,
         };
     }
     auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
@@ -168,8 +160,7 @@ struct RegistryEntityDataView {
              float const new_rotations_rolls,
              std::int32_t const new_healths,
              Team const new_teams,
-             EntityType const new_entity_types,
-             std::uint8_t const new_alive) const {
+             EntityType const new_entity_types) const {
         ml::native_soa::require(index >= 0 && index < num());
         locations.xs[static_cast<std::size_t>(index)] = new_locations_xs;
         locations.ys[static_cast<std::size_t>(index)] = new_locations_ys;
@@ -183,7 +174,6 @@ struct RegistryEntityDataView {
         healths[static_cast<std::size_t>(index)] = new_healths;
         teams[static_cast<std::size_t>(index)] = new_teams;
         entity_types[static_cast<std::size_t>(index)] = new_entity_types;
-        alive[static_cast<std::size_t>(index)] = new_alive;
     }
 };
 struct RegistryEntityData {
@@ -196,7 +186,6 @@ struct RegistryEntityData {
     ml::native_soa::Vector<std::int32_t> healths;
     ml::native_soa::Vector<Team> teams;
     ml::native_soa::Vector<EntityType> entity_types;
-    ml::native_soa::Vector<std::uint8_t> alive;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -213,7 +202,6 @@ struct RegistryEntityData {
         fn(healths);
         fn(teams);
         fn(entity_types);
-        fn(alive);
     }
     template <typename Fn>
     void each_column(Fn&& fn) const {
@@ -229,7 +217,6 @@ struct RegistryEntityData {
         fn(healths);
         fn(teams);
         fn(entity_types);
-        fn(alive);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
     void reserve(size_type const count) {
@@ -246,7 +233,6 @@ struct RegistryEntityData {
         healths.reserve(static_cast<std::size_t>(count));
         teams.reserve(static_cast<std::size_t>(count));
         entity_types.reserve(static_cast<std::size_t>(count));
-        alive.reserve(static_cast<std::size_t>(count));
     }
     void reset() noexcept {
         locations.xs.clear();
@@ -261,7 +247,6 @@ struct RegistryEntityData {
         healths.clear();
         teams.clear();
         entity_types.clear();
-        alive.clear();
     }
     void set_num(size_type const count) {
         ml::native_soa::require(count >= 0);
@@ -278,7 +263,6 @@ struct RegistryEntityData {
         healths.resize(size);
         teams.resize(size);
         entity_types.resize(size);
-        alive.resize(size);
     }
     void add_uninitialised(size_type const count) {
         auto const old_num{num()};
@@ -329,9 +313,6 @@ struct RegistryEntityData {
         for (size_type i{}; i < moved; ++i) {
             entity_types[index + i] = entity_types[source + i];
         }
-        for (size_type i{}; i < moved; ++i) {
-            alive[index + i] = alive[source + i];
-        }
         set_num(old_num - count);
     }
     void set(size_type const index,
@@ -346,8 +327,7 @@ struct RegistryEntityData {
              float const new_rotations_rolls,
              std::int32_t const new_healths,
              Team const new_teams,
-             EntityType const new_entity_types,
-             std::uint8_t const new_alive) {
+             EntityType const new_entity_types) {
         get_view().set(index,
                        new_locations_xs,
                        new_locations_ys,
@@ -360,8 +340,7 @@ struct RegistryEntityData {
                        new_rotations_rolls,
                        new_healths,
                        new_teams,
-                       new_entity_types,
-                       new_alive);
+                       new_entity_types);
     }
     auto add(float const new_locations_xs,
              float const new_locations_ys,
@@ -374,8 +353,7 @@ struct RegistryEntityData {
              float const new_rotations_rolls,
              std::int32_t const new_healths,
              Team const new_teams,
-             EntityType const new_entity_types,
-             std::uint8_t const new_alive) -> size_type {
+             EntityType const new_entity_types) -> size_type {
         auto const index{num()};
         add_defaulted(1);
         set(index,
@@ -390,8 +368,7 @@ struct RegistryEntityData {
             new_rotations_rolls,
             new_healths,
             new_teams,
-            new_entity_types,
-            new_alive);
+            new_entity_types);
         return index;
     }
     void append_from(ConstView source) {
@@ -473,12 +450,6 @@ struct RegistryEntityData {
             ml::native_soa::require(address < begin ||
                                     address >= begin + entity_types.size() * sizeof(EntityType));
         }
-        {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.alive.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(alive.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + alive.size() * sizeof(std::uint8_t));
-        }
         locations.xs.insert(
             locations.xs.end(), source.locations.xs.begin(), source.locations.xs.end());
         locations.ys.insert(
@@ -502,7 +473,6 @@ struct RegistryEntityData {
         teams.insert(teams.end(), source.teams.begin(), source.teams.end());
         entity_types.insert(
             entity_types.end(), source.entity_types.begin(), source.entity_types.end());
-        alive.insert(alive.end(), source.alive.begin(), source.alive.end());
     }
     auto get_view() -> View {
         return {
@@ -512,7 +482,6 @@ struct RegistryEntityData {
             healths,
             teams,
             entity_types,
-            alive,
         };
     }
     auto get_view() const -> ConstView {
@@ -523,7 +492,6 @@ struct RegistryEntityData {
             healths,
             teams,
             entity_types,
-            alive,
         };
     }
     auto get_const_view() const -> ConstView { return get_view(); }
@@ -557,8 +525,6 @@ struct RegistryEntityData {
             other.teams[static_cast<std::size_t>(src_index)];
         entity_types[static_cast<std::size_t>(dst_index)] =
             other.entity_types[static_cast<std::size_t>(src_index)];
-        alive[static_cast<std::size_t>(dst_index)] =
-            other.alive[static_cast<std::size_t>(src_index)];
     }
     template <typename Other>
     void copy_elements(size_type const dst_index,

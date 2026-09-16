@@ -79,7 +79,7 @@ auto register_spawned_entity(EntityRegistryBookkeeping& bookkeeping,
                              EntityUniqueId const unique_id,
                              Team const team,
                              EntityType const type,
-                             std::uint8_t const alive) noexcept -> RegistryEntityHandle {
+                             std::int32_t const health) noexcept -> RegistryEntityHandle {
     assert(slot_index >= 0);
     assert(static_cast<std::size_t>(slot_index) < bookkeeping.generations.size());
     assert(unique_id.id >= 0 && unique_id.id < history.num());
@@ -90,10 +90,11 @@ auto register_spawned_entity(EntityRegistryBookkeeping& bookkeeping,
     bookkeeping.unique_ids[slot] = unique_id;
     history.registry_indices[unique] = slot_index;
     history.registry_generations[unique] = generation;
-    history.life_state[unique] = alive != 0 ? LifeState::Alive : LifeState::Unknown;
+    auto const alive{is_alive(health)};
+    history.life_state[unique] = alive ? LifeState::Alive : LifeState::Unknown;
     history.entity_types[unique] = type;
     history.teams[unique] = team;
-    statistics.record_spawn(team, type, alive != 0);
+    statistics.record_spawn(team, type, alive);
     return {slot_index, generation};
 }
 
@@ -125,15 +126,14 @@ auto apply_entity_updates(EntityRegistryBookkeeping& bookkeeping,
             bookkeeping.record_moved(handle);
         }
 
-        auto const old_alive{entities.alive[slot] != 0};
-        auto const new_alive{updates.alive[update_element] != 0};
+        auto const old_alive{is_alive(entities.healths[slot])};
+        auto const new_alive{is_alive(updates.healths[update_element])};
         auto const old_team{entities.teams[slot_index]};
         auto const new_team{updates.teams[update_index]};
         auto const entity_type{entities.entity_types[slot_index]};
         statistics.apply_alive_transition(old_team, new_team, entity_type, old_alive, new_alive);
 
         entities.teams[slot_index] = new_team;
-        entities.alive[slot] = updates.alive[update_element];
         auto const unique{static_cast<std::size_t>(bookkeeping.unique_ids[slot].id)};
         if (new_alive) {
             history.life_state[unique] = LifeState::Alive;
@@ -318,8 +318,8 @@ void EntityRegistry::commit_updates() {
 void EntityRegistry::refresh_free_indices() {
     SANDBOX_PROFILE_SCOPE("Sandbox::EntityRegistry::refresh_free_indices");
 
-    bookkeeping_.refresh_free_indices(
-        std::span{entity_data.alive.data(), static_cast<std::size_t>(entity_data.alive.size())});
+    bookkeeping_.refresh_free_indices(std::span{
+        entity_data.healths.data(), static_cast<std::size_t>(entity_data.healths.size())});
 }
 void EntityRegistry::end_tick() {
     SANDBOX_PROFILE_SCOPE("Sandbox::EntityRegistry::end_tick");
@@ -367,7 +367,7 @@ auto EntityRegistry::add_entities(EntityData::ConstView const view) -> SpawnedEn
                                                             new_entities.first_id + source_index,
                                                             view.teams[source_index],
                                                             view.entity_types[source_index],
-                                                            view.alive[source_index])};
+                                                            view.healths[source_index])};
         new_entities.registry_handles.set(source_index, handle.index, handle.generation);
     }
 
@@ -386,7 +386,7 @@ auto EntityRegistry::add_entities(EntityData::ConstView const view) -> SpawnedEn
                                                             new_entities.first_id + source_index,
                                                             view.teams[source_index],
                                                             view.entity_types[source_index],
-                                                            view.alive[source_index])};
+                                                            view.healths[source_index])};
         new_entities.registry_handles.set(source_index, handle.index, handle.generation);
     }
 
@@ -547,7 +547,7 @@ auto EntityRegistry::get_entity_type(RegistryEntityHandle const handle) const ->
 }
 auto EntityRegistry::get_alive(RegistryEntityHandle const handle) const -> bool {
     assert(is_valid_handle(handle));
-    return static_cast<bool>(entity_data.alive[handle.index]);
+    return is_alive(entity_data.healths[handle.index]);
 }
 
 /* **************************************** */

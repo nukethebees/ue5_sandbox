@@ -2,6 +2,7 @@
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
+#include "ioj/sim/health.h"
 #include "SpaceGameSimulation/entities/TestEntityType.h"
 
 #include <limits>
@@ -151,7 +152,7 @@ auto select_soft_target(::ioj::sim::RegistryEntityData::ConstView const entities
 
     auto const count{entities.num()};
     for (int32 index{0}; index < count; ++index) {
-        if (entities.alive[index] == 0 ||
+        if (::ioj::sim::is_dead(entities.healths[index]) ||
             entities.teams[index] == ml::to_native(context.player_team) ||
             !is_supported_entity_type(ml::to_unreal(entities.entity_types[index]))) {
             continue;
@@ -307,7 +308,7 @@ auto collect_entity_overlay_instances(
     auto const count{entities.num()};
     output_instances.Reserve(count);
     for (int32 index{0}; index < count; ++index) {
-        if (entities.alive[index] == 0) {
+        if (::ioj::sim::is_dead(entities.healths[index])) {
             continue;
         }
 

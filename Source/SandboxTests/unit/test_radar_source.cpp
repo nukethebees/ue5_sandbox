@@ -18,10 +18,9 @@ void add_entity(::ioj::sim::RegistryEntityData& entities,
     auto const index{entities.num()};
     entities.add_defaulted(1);
     entities.locations.set(index, ml::to_native(location));
-    entities.healths[index] = 100;
+    entities.healths[index] = alive ? 100 : 0;
     entities.teams[index] = ml::to_native(team);
     entities.entity_types[index] = ml::to_native(type);
-    entities.alive[index] = alive ? 1 : 0;
 }
 
 auto glyph(FRadarInstance const& instance) -> ERadarGlyph {

@@ -104,7 +104,6 @@ auto Sim::register_turrets(TurretSpawnDataConstView const spawn_data,
     for (std::int32_t i{}; i < n_to_add; ++i) {
         new_entity_data.healths[i] = spawn_data.healths[i];
         new_entity_data.teams[i] = spawn_data.teams[i];
-        new_entity_data.alive[i] = static_cast<std::uint8_t>(spawn_data.healths[i] > 0);
     }
     auto const new_entities{entity_registry.add_entities(new_entity_data.get_const_view())};
     std::vector<RegistryEntityHandle> new_handles;
@@ -240,10 +239,6 @@ void Sim::prepare_entity_update_data() {
     entity_update_data.healths = entities.healths;
     entity_update_data.teams = entities.teams;
     std::ranges::fill(entity_update_data.entity_types, EntityType::Turret);
-
-    for (std::int32_t i{0}; i < n; ++i) {
-        entity_update_data.alive[i] = static_cast<std::uint8_t>(entities.healths[i] > 0);
-    }
 }
 
 /* **************************************** */

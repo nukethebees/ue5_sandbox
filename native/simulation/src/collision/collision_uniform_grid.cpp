@@ -4,6 +4,7 @@
 #include <ioj/sim/entity_cell_data_operations.h>
 #include <ioj/sim/entity_registry.h>
 #include <ioj/sim/entity_registry_view.h>
+#include <ioj/sim/health.h>
 #include <ioj/sim/trace_hits.h>
 
 #include <algorithm>
@@ -510,7 +511,7 @@ void CollisionUniformGrid::rebuild_grid(collision::EntityAABBs const& entity_aab
         SANDBOX_PROFILE_SCOPE("Sandbox::CollisionUniformGrid::rebuild_grid::count_loop");
 
         for (std::int32_t index{}; index < entity_count; ++index) {
-            if (entity_data.alive[index] == 0) {
+            if (is_dead(entity_data.healths[index])) {
                 continue;
             }
             auto const entity_type{entity_data.entity_types[index]};

@@ -35,10 +35,9 @@ void add_entity(::ioj::sim::RegistryEntityData& entities,
     entities.add_defaulted(1);
     entities.locations.set(index, ml::to_native(position));
     entity_type_radii[static_cast<std::size_t>(type)] = radius;
-    entities.healths[index] = health;
+    entities.healths[index] = alive ? health : 0;
     entities.teams[index] = ml::to_native(team);
     entities.entity_types[index] = ml::to_native(type);
-    entities.alive[index] = alive ? 1 : 0;
 }
 
 auto make_forward_x_view() -> FEntityOverlayView {
@@ -134,7 +133,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Capital radius is retained"), output[2].world_radius, 1000.0f);
     }
 
-    TEST_METHOD(ClampsHealthFromRegistry)
+    TEST_METHOD(ExcludesDeadAndClampsExcessHealth)
     {
         ::ioj::sim::RegistryEntityData entities;
         auto entity_type_radii{make_entity_type_radii()};
@@ -156,8 +155,8 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
                                                            output,
                                                            collector));
 
-        TestRunner->TestEqual(TEXT("Negative health clamps to zero"), output[0].health, 0.0f);
-        TestRunner->TestEqual(TEXT("Excess health clamps to one"), output[1].health, 1.0f);
+        TestRunner->TestEqual(TEXT("Only the living entity is collected"), output.Num(), 1);
+        TestRunner->TestEqual(TEXT("Excess health clamps to one"), output[0].health, 1.0f);
     }
 
     TEST_METHOD(SelectsOnlyTheBestValidHostile)
@@ -238,7 +237,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Valid on-screen lost target may fade"),
                              cleared.previous_target_can_fade);
 
-        entities.alive[1] = 0;
+        entities.healths[1] = 0;
         auto const dead{select_target(entities, entity_type_radii, {1, 0})};
         TestRunner->TestFalse(TEXT("Dead target may not fade"), dead.previous_target_can_fade);
     }

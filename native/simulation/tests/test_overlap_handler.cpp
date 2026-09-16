@@ -11,7 +11,6 @@ auto spawn_entity(EntityRegistry& registry, EntityType const type) -> RegistryEn
     data.healths[0] = 100;
     data.teams[0] = Team::Blue;
     data.entity_types[0] = type;
-    data.alive[0] = 1;
     return registry.add_entities(data.get_const_view()).get_handle(0);
 }
 
@@ -21,7 +20,6 @@ void mark_dead(EntityRegistry& registry, RegistryEntityHandle const handle) {
     update.add_defaulted(1);
     update.copy_element(0, current, handle.index);
     update.healths[0] = 0;
-    update.alive[0] = 0;
     EntityDeathInfo death;
     death.add(DeathReason::Unknown, handle, {});
     registry.queue_entity_updates({std::array{handle}, update.get_const_view()}, death);

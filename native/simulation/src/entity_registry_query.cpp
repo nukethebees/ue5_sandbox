@@ -1,6 +1,7 @@
 #include "ioj/sim/entity_registry_query.h"
 
 #include "ioj/sim/entity_registry_bookkeeping.h"
+#include "ioj/sim/health.h"
 
 #include <algorithm>
 #include <cmath>
@@ -97,7 +98,7 @@ auto analyse_handle(EntityRegistryQueryView const registry,
 auto is_valid_alive(EntityRegistryQueryView const registry,
                     RegistryEntityHandle const handle) noexcept -> bool {
     return analyse_handle(registry, handle) == RegistryHandleState::Active &&
-           registry.alive[static_cast<std::size_t>(handle.index)] != 0;
+           is_alive(registry.healths[static_cast<std::size_t>(handle.index)]);
 }
 
 auto collect_entities_in_range(EntityRegistryQueryView const registry,
@@ -139,7 +140,7 @@ auto collect_non_team_alive_entities(EntityRegistryQueryView const registry,
     for (std::int32_t index{}; index < count; ++index) {
         auto const element{static_cast<std::size_t>(index)};
         if (byte_value(registry.teams, index) == static_cast<std::uint8_t>(excluded_team) ||
-            registry.alive[element] == 0) {
+            is_dead(registry.healths[element])) {
             continue;
         }
 
@@ -203,7 +204,7 @@ auto find_any_non_team_entity(EntityRegistryQueryView const registry,
     auto const count{registry.num()};
     for (std::int32_t index{}; index < count; ++index) {
         auto const element{static_cast<std::size_t>(index)};
-        if (registry.alive[element] != 0 &&
+        if (is_alive(registry.healths[element]) &&
             byte_value(registry.teams, index) != static_cast<std::uint8_t>(excluded_team)) {
             return {index, registry.generations[element]};
         }
@@ -217,7 +218,7 @@ auto find_any_non_team_entity(EntityRegistryQueryView const registry,
     auto const count{registry.num()};
     for (std::int32_t index{}; index < count; ++index) {
         auto const element{static_cast<std::size_t>(index)};
-        if (registry.alive[element] != 0 &&
+        if (is_alive(registry.healths[element]) &&
             byte_value(registry.teams, index) != static_cast<std::uint8_t>(excluded_team) &&
             byte_value(registry.entity_types, index) == static_cast<std::uint8_t>(entity_type)) {
             return {index, registry.generations[element]};

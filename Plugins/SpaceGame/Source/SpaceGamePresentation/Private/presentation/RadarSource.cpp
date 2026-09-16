@@ -2,6 +2,7 @@
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
+#include "ioj/sim/health.h"
 #include "SpaceGameSimulation/entities/TestEntityType.h"
 
 namespace ml::radar_source {
@@ -179,7 +180,7 @@ auto collect_radar_instances(::ioj::sim::RegistryEntityData::ConstView const ent
     int32 candidate_count{0};
     for (int32 priority{0}; priority < 3; ++priority) {
         for (int32 index{0}; index < count; ++index) {
-            if (entities.alive[index] == 0) {
+            if (::ioj::sim::is_dead(entities.healths[index])) {
                 continue;
             }
 

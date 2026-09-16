@@ -1,5 +1,7 @@
 #include "ioj/sim/entity_registry_bookkeeping.h"
 
+#include <ioj/sim/health.h>
+
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
@@ -45,11 +47,11 @@ void EntityRegistryBookkeeping::clear_dead_entities() noexcept {
     dead_entities.clear();
 }
 
-void EntityRegistryBookkeeping::refresh_free_indices(std::span<std::uint8_t const> const alive) {
+void EntityRegistryBookkeeping::refresh_free_indices(std::span<std::int32_t const> const healths) {
     free_indices.clear();
-    auto const count{static_cast<size_type>(alive.size())};
+    auto const count{static_cast<size_type>(healths.size())};
     for (size_type index{}; index < count; ++index) {
-        if (alive[static_cast<std::size_t>(index)] == 0) {
+        if (is_dead(healths[static_cast<std::size_t>(index)])) {
             free_indices.push_back(index);
         }
     }

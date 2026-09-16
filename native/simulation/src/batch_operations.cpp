@@ -3,6 +3,7 @@
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entity_death_info.h>
 #include <ioj/sim/entity_registry.h>
+#include <ioj/sim/health.h>
 #include <ioj/sim/profiling.h>
 
 #include <algorithm>
@@ -47,7 +48,7 @@ void resolve_damage_events(EntityRegistry const& registry,
         healths[local_element] -= damage_events.damage_amounts[element];
         auto const removals{std::span{local_indices_to_remove}.first(
             static_cast<std::size_t>(current_removal_count))};
-        if (healths[local_element] > 0 ||
+        if (is_alive(healths[local_element]) ||
             std::ranges::find(removals, local_index) != removals.end()) {
             continue;
         }

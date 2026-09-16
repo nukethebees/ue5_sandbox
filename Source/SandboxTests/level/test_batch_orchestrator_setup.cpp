@@ -549,7 +549,6 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     fixture_entity_data.add_defaulted(fixture_count);
     for (int32 i{}; i < fixture_count; ++i) {
         fixture_entity_data.healths[i] = 100;
-        fixture_entity_data.alive[i] = 1;
         fixture_entity_data.teams[i] = ::ioj::sim::Team::Red;
     }
     fixture_entity_data.teams[0] = ::ioj::sim::Team::Green;

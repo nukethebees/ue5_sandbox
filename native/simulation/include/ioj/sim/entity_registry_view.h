@@ -21,7 +21,7 @@ inline auto make_native_query_view(EntityRegistry const& registry) noexcept
         .locations = data.locations.get_const_view(),
         .velocities = data.velocities.get_const_view(),
         .generations = {generations.data(), static_cast<std::size_t>(generations.size())},
-        .alive = {data.alive.data(), count},
+        .healths = {data.healths.data(), count},
         .teams = std::as_bytes(teams),
         .entity_types = std::as_bytes(entity_types),
     };

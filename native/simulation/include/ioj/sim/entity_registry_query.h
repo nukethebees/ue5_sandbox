@@ -17,7 +17,7 @@ struct EntityRegistryQueryView {
     Vectors3fConstView locations;
     Vectors3fConstView velocities;
     std::span<std::int32_t const> generations;
-    std::span<std::uint8_t const> alive;
+    std::span<std::int32_t const> healths;
     std::span<std::byte const> teams;
     std::span<std::byte const> entity_types;
 };

@@ -15,6 +15,7 @@
 #include <ioj/sim/entity_handle.h>
 #include <ioj/sim/entity_history.h>
 #include <ioj/sim/entity_types.h>
+#include <ioj/sim/health.h>
 #include <ioj/sim/registry_entity_handles.h>
 
 namespace ioj::sim {
@@ -69,7 +70,7 @@ struct EntityRegistry {
     // Queued updates
     /* **************************************** */
     // Each handle may occur once per commit. Entity type is spawn-only.
-    // Alive/team changes also update history and counts.
+    // Health/team changes also update history and alive counts.
     void queue_entity_updates(ConstView const view, EntityDeathInfo const& death_info);
 
     /* **************************************** */
@@ -180,7 +181,7 @@ struct EntityRegistry {
     // Queued updates
     /* **************************************** */
     void commit_entity_updates();
-    // Death events annotate history; live-state transitions own alive-count changes.
+    // Death events annotate history; health transitions own alive-count changes.
     void commit_death_updates();
 
     /* **************************************** */
@@ -194,8 +195,9 @@ struct EntityRegistry {
     EntityData entity_data;
     EntityRegistryBookkeeping bookkeeping_;
 
-    // Append-only rows indexed by unique ID until reset; handle/type stay fixed, team/alive track
-    // committed state. Old rows and their death/kill accounting survive slot reuse.
+    // Append-only rows indexed by unique ID until reset; handle/type stay fixed, while team and
+    // life state track committed state. Old rows and their death/kill accounting survive slot
+    // reuse.
     EntityHistory unique_entity_history_;
 
     // Queued updates
@@ -212,9 +214,9 @@ inline auto EntityRegistry::is_valid_handle(RegistryEntityHandle const handle) c
     return bookkeeping_.is_valid_handle(handle);
 }
 inline auto EntityRegistry::is_valid_alive(RegistryEntityHandle const handle) const -> bool {
-    return is_valid_handle(handle) && (entity_data.alive[handle.index] > 0);
+    return is_valid_handle(handle) && sim::is_alive(entity_data.healths[handle.index]);
 }
 inline auto EntityRegistry::is_valid_dead(RegistryEntityHandle const handle) const -> bool {
-    return is_valid_handle(handle) && (entity_data.alive[handle.index] == 0);
+    return is_valid_handle(handle) && sim::is_dead(entity_data.healths[handle.index]);
 }
 } // namespace ioj::sim

@@ -31,7 +31,6 @@ struct OverlapFixture {
         data.healths[0] = 100;
         data.teams[0] = Team::Blue;
         data.entity_types[0] = type;
-        data.alive[0] = 1;
         return registry.add_entities(data.get_const_view()).get_handle(0);
     }
 
@@ -72,8 +71,8 @@ struct OverlapFixture {
             updates.copy_element(index, current, handle.index);
             updates.locations.set(index, locations[index]);
             updates.rotations.set(index, rotations[index]);
-            updates.alive[index] = entity_alive;
             if (entity_alive == 0) {
+                updates.healths[index] = 0;
                 deaths.add(DeathReason::Unknown, handle, {});
             }
         }

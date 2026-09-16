@@ -26,7 +26,6 @@ auto make_entities(std::int32_t const count, std::int32_t const offset = 0)
         data.healths[index] = offset + index + 100;
         data.teams[index] = index % 2 == 0 ? Team::Red : Team::Blue;
         data.entity_types[index] = index % 2 == 0 ? EntityType::Turret : EntityType::CapitalShip;
-        data.alive[index] = 1;
     }
     return data;
 }
@@ -51,7 +50,7 @@ class EntityRegistryTest : public ::testing::Test {
         std::int32_t total{};
         auto const count{data.num()};
         for (std::int32_t slot{}; slot < count; ++slot) {
-            if (data.alive[slot] != 0) {
+            if (is_alive(data.healths[slot])) {
                 ++expected[static_cast<std::int32_t>(data.teams[slot])]
                           [static_cast<std::int32_t>(data.entity_types[slot])];
                 ++total;
@@ -108,14 +107,13 @@ class EntityRegistryTest : public ::testing::Test {
         tests::expect_equal(actual.healths[slot], source.healths[source_index], "Health");
         tests::expect_true(actual.teams[slot] == source.teams[source_index], "Team");
         tests::expect_true(actual.entity_types[slot] == source.entity_types[source_index], "Type");
-        tests::expect_equal(actual.alive[slot], source.alive[source_index], "Alive");
         auto const id{registry_.find_unique_id(handle)};
         auto const& history{registry_.get_unique_entities()};
         tests::expect_equal(history.registry_indices[id.id], slot, "Historical slot");
         tests::expect_equal(
             history.registry_generations[id.id], handle.generation, "Historical generation");
         tests::expect_equal(history.life_state[id.id] == LifeState::Alive,
-                            actual.alive[slot] != 0,
+                            is_alive(actual.healths[slot]),
                             "Historical alive");
         tests::expect_true(history.entity_types[id.id] == actual.entity_types[slot],
                            "Historical type");
@@ -128,8 +126,8 @@ TEST_F(EntityRegistryTest, MixedSlotReusePreservesDataAndHistoricalIdentity) {
     auto initial{tests::registry::make_entities(4)};
     auto const old_handles{
         tests::registry::make_handles(registry_.add_entities(view_of(initial)).registry_handles)};
-    initial.alive[0] = 0;
-    initial.alive[2] = 0;
+    initial.healths[0] = 0;
+    initial.healths[2] = 0;
     EntityDeathInfo deaths;
     deaths.add(DeathReason::Combat, old_handles[0], old_handles[1]);
     deaths.add(DeathReason::Unknown, old_handles[2], {});
@@ -177,7 +175,7 @@ TEST_F(EntityRegistryTest, MixedSlotReusePreservesDataAndHistoricalIdentity) {
 TEST_F(EntityRegistryTest, QueuedUpdateBatchesConsolidateEachEntityAndOnlyChangeMutableFields) {
 
     auto initial{tests::registry::make_entities(3)};
-    initial.alive[2] = 0;
+    initial.healths[2] = 0;
     auto const handles{
         tests::registry::make_handles(registry_.add_entities(view_of(initial)).registry_handles)};
     check_counts();
@@ -312,7 +310,7 @@ TEST_F(EntityRegistryTest, MovementIsPerTickAndGenerationSafeAcrossSlotReuse) {
     registry_.end_tick();
     registry_.begin_tick();
 
-    data.alive[0] = 0;
+    data.healths[0] = 0;
     EntityDeathInfo deaths;
     deaths.add(DeathReason::Unknown, old_handle, {});
     registry_.queue_entity_updates({std::vector{old_handle}, view_of(data)}, deaths);
@@ -374,14 +372,14 @@ TEST_F(EntityRegistryTest, MovementIsPerTickAndGenerationSafeAcrossSlotReuse) {
 TEST_F(EntityRegistryTest, FreeSlotsBecomeReusableAtEndTickAndGenerationsAdvanceEachReuse) {
 
     auto data{tests::registry::make_entities(1)};
-    data.alive[0] = 0;
+    data.healths[0] = 0;
     auto const first{registry_.add_entities(view_of(data)).get_handle(0)};
     check_counts();
     EntityDeathInfo deaths;
     deaths.add(DeathReason::Unknown, first, {});
     registry_.queue_entity_updates({{}, view_of(data, 0, 0)}, deaths);
     registry_.commit_updates();
-    data.alive[0] = 1;
+    data.healths[0] = 100;
     auto const before_cleanup{registry_.add_entities(view_of(data)).get_handle(0)};
     tests::expect_true(before_cleanup == RegistryEntityHandle{1, 0},
                        "Dead slot is not free until cleanup");
@@ -390,13 +388,13 @@ TEST_F(EntityRegistryTest, FreeSlotsBecomeReusableAtEndTickAndGenerationsAdvance
     auto const reused{registry_.add_entities(view_of(data)).get_handle(0)};
     tests::expect_true(reused == RegistryEntityHandle{0, 1},
                        "Empty spawn did not consume free slot");
-    data.alive[0] = 0;
+    data.healths[0] = 0;
     deaths.reset();
     deaths.add(DeathReason::Unknown, reused, {});
     registry_.queue_entity_updates({std::vector{reused}, view_of(data)}, deaths);
     registry_.commit_updates();
     registry_.end_tick();
-    data.alive[0] = 1;
+    data.healths[0] = 100;
     auto const next{registry_.add_entities(view_of(data)).get_handle(0)};
     tests::expect_true(next == RegistryEntityHandle{0, 2}, "Second reuse increments again");
     tests::expect_equal(registry_.find_unique_id(first).id, 0, "First occupant retains ID");
@@ -437,7 +435,7 @@ TEST_F(EntityRegistryTest, TeamChangesSynchronizeHistoryAndSubsequentCombatAttri
     DirectDamageEvents damage;
     damage.add(handles[1], 17, handles[0]);
     registry_.queue_direct_damage_events(damage);
-    data.alive[1] = 0;
+    data.healths[1] = 0;
     EntityDeathInfo deaths;
     deaths.add(DeathReason::Combat, handles[1], handles[0]);
     registry_.queue_entity_updates({handles, view_of(data)}, deaths);
@@ -477,8 +475,8 @@ TEST_F(EntityRegistryTest, StaleKillersRetainCreditAcrossTicksAndSlotReuse) {
     auto data{tests::registry::make_entities(3)};
     auto const handles{
         tests::registry::make_handles(registry_.add_entities(view_of(data)).registry_handles)};
-    data.alive[0] = 0;
-    data.alive[1] = 0;
+    data.healths[0] = 0;
+    data.healths[1] = 0;
     EntityDeathInfo deaths;
     deaths.add(DeathReason::Combat, handles[1], handles[0]);
     deaths.add(DeathReason::Unknown, handles[0], {});
@@ -494,7 +492,7 @@ TEST_F(EntityRegistryTest, StaleKillersRetainCreditAcrossTicksAndSlotReuse) {
         registry_.add_entities(view_of(replacement)).registry_handles)};
     tests::expect_true(registry_.is_stale(handles[0]), "Killer handle is stale");
     auto update{tests::registry::make_entities(1)};
-    update.alive[0] = 0;
+    update.healths[0] = 0;
     deaths.reset();
     deaths.add(DeathReason::Combat, handles[2], handles[0]);
     registry_.queue_entity_updates({std::vector{handles[2]}, view_of(update)}, deaths);
@@ -527,14 +525,14 @@ TEST_F(EntityRegistryTest, RefreshDistinguishesNullStaleDeadAndLiveHandles) {
                        "Out of range is invalid");
     tests::expect_true(registry_.analyse_handle({0, 1}) == RegistryHandleState::Invalid,
                        "Future generation is invalid");
-    data.alive[0] = 0;
+    data.healths[0] = 0;
     EntityDeathInfo deaths;
     deaths.add(DeathReason::Unknown, handles[0], {});
     registry_.queue_entity_updates({handles, view_of(data)}, deaths);
     registry_.commit_updates();
     registry_.end_tick();
     registry_.add_entities(view_of(data, 1, 1));
-    data.alive[1] = 0;
+    data.healths[1] = 0;
     deaths.reset();
     deaths.add(DeathReason::Unknown, handles[1], {});
     registry_.queue_entity_updates({std::vector{handles[1]}, view_of(data, 1, 1)}, deaths);
@@ -597,7 +595,7 @@ TEST_F(EntityRegistryTest, DamageQueuesPreserveBatchesAndResetStartsANewIdentity
     registry_.end_tick();
     tests::expect_equal(queued.num(), 0, "End tick clears damage queue");
     auto pending{data};
-    pending.alive[1] = 0;
+    pending.healths[1] = 0;
     EntityDeathInfo deaths;
     deaths.add(DeathReason::Combat, handles[1], handles[0]);
     registry_.queue_entity_updates({handles, view_of(pending)}, deaths);
