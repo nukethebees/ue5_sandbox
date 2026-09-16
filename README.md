@@ -40,5 +40,6 @@ For complete setup, build, testing, debugging, and packaging instructions, see
 
 - [Build, test, debug, and package](docs/build-and-test.md)
 - [Run benchmarks correctly](docs/benchmarks.md)
+- [Profile native level benchmarks with Tracy](docs/profiling.md)
 - [Regenerate committed code](Codegen/README.md)
 - [Author or find a level scenario](LevelScripts/README.md)

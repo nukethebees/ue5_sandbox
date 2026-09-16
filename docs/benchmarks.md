@@ -13,7 +13,7 @@ Results are disposable local data unless a specific experiment says otherwise; w
 | Measurement | Entry point | Notes |
 | --- | --- | --- |
 | Fighter scheduling simulation | `Scripts/run-fighter-simulation-benchmark.ps1` | Default 2,000- and 4,000-fighter cases; writes JSON and summary CSV. |
-| Generic native simulation | `Scripts/run-native-simulation-benchmark.ps1` | Shared jobserver-aware runner for an S7 level. |
+| Generic native simulation | `Scripts/run-native-simulation-benchmark.ps1` | Shared jobserver-aware wrapper around `native-simulation-benchmark` for an S7 level. |
 | Frame-memory level workload | `Scripts/run-frame-memory-level-benchmark.ps1` | Uses the batch benchmark scenario. |
 | Revision A/B frame-memory comparison | `Scripts/run-frame-memory-level-revision-ab.ps1` | Creates and evaluates a baseline worktree. |
 | Native SOA and kernel experiments | Scripts named `run-*-benchmark*` or `run-*-experiment*` | Pair their output with the matching `plot-*.py` utility. |
@@ -32,6 +32,14 @@ pwsh -NoProfile -File Scripts/run-fighter-simulation-benchmark.ps1 `
     -FighterCaps 1000,2000,4000,8000,16000
 ```
 
+Run a specific S7 level through the generic level benchmark runner with:
+
+```powershell
+pwsh -NoProfile -File Scripts/run-native-simulation-benchmark.ps1 `
+    -Level .\LevelScripts\BenchmarkFleet_10.scm `
+    -Seconds 20
+```
+
 Pass `-FighterCaps`, `-Seconds`, `-WarmupSeconds`, `-SaturationTimeoutSeconds`, or
 `-OutputDirectory` to change the workload or destination. Use `-SkipBuild` only after confirming
 the release benchmark binary is current.
@@ -46,3 +54,9 @@ remains stable while normal fighter behaviour and collision work remain active.
 
 For scripts and result plotters, see the [Scripts guide](../Scripts/README.md). For jobserver
 implementation details, see [tools/jobserver](../tools/jobserver/README.md).
+
+## Related documentation
+
+- [Profiling](profiling.md): capture native level benchmarks with Tracy.
+- [Level scripts](../LevelScripts/README.md): find benchmark scenarios and other S7 levels.
+- [Scripts](../Scripts/README.md): benchmark runners and analysis utilities.

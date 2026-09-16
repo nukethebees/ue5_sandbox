@@ -6,7 +6,9 @@
 ## Script groups
 
 - `run-*-benchmark*` and `run-*-experiment*`: benchmark runners. They acquire the jobserver before
-  collecting timings; see [Benchmarks](../docs/benchmarks.md).
+  collecting timings. `run-native-simulation-benchmark.ps1` is the shared runner for an S7 level;
+  the fighter and frame-memory scripts are focused wrappers around it. See
+  [Benchmarks](../docs/benchmarks.md) and [Profiling](../docs/profiling.md).
 - `plot-*.py`: convert benchmark JSON, CSV, or logs into plots and summaries.
 - `audit_module_migration.sh` and `check_space_game_layers.py`: read-only architecture and migration
   checks. See [AGENTS.md](AGENTS.md) for the migration-audit contract.

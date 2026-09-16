@@ -16,7 +16,8 @@ setup.
 
 The CMake modules in this directory own compiler warnings, sanitizers, precompiled headers, Unreal
 build/packaging integration, and jobserver claims. See [Build and test](../docs/build-and-test.md)
-for the supported workflows and [Benchmarks](../docs/benchmarks.md) for exclusive measurements.
+for the supported workflows, [Benchmarks](../docs/benchmarks.md) for exclusive measurements, and
+[Profiling](../docs/profiling.md) for native level benchmark capture.
 
 Native preset names encode platform, architecture, compiler, configuration, and optional features.
 The normal Unreal presets build `dev-core` (`editor`, `core-tests`, and `native-tests`); select a

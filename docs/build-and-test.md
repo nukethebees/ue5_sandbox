@@ -85,4 +85,5 @@ inspect it. Do not overlap manually launched Editors, Visual Studio builds, Live
 UBT work with a managed Unreal build.
 
 See [the CMake guide](../cmake/README.md) for preset structure and [the native guide](../native/README.md)
-for standalone-only workflows.
+for standalone-only workflows. Use [Benchmarks](benchmarks.md) for exclusive performance
+measurements and [Profiling](profiling.md) to capture native level benchmarks with Tracy.

@@ -38,6 +38,11 @@ Simulation tests live in `simulation/tests/`. Asset/configuration conversion and
 covered by Unreal tests. See [Build and test](../docs/build-and-test.md) for the full test workflows
 and [Code generation](../Codegen/README.md) for generated outputs.
 
+To run a deterministic S7 level as a native benchmark, use
+`Scripts/run-native-simulation-benchmark.ps1`; the fighter and frame-memory runners build on the
+same tool. See [Benchmarks](../docs/benchmarks.md) for supported workloads and
+[Profiling](../docs/profiling.md) for Tracy capture.
+
 The Windows clang-cl ASAN workflows exclude the code-generation error-path tests that inspect
 caught C++ exceptions because the LLVM 21 Windows ASAN runtime terminates while accessing them.
 The exclusions are explicit in `cmake/presets/features.py`; the corresponding non-ASAN clang-cl and
