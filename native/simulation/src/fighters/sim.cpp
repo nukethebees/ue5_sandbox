@@ -1335,14 +1335,16 @@ void Sim::commit_spawns() {
 /* **************************************** */
 // Destruction
 /* **************************************** */
-void Sim::self_destruct_fighter(RegistryEntityHandle const handle) {
+void Sim::self_destruct_fighter(EntityUniqueId const fighter) {
     auto const data{entity_buffers.current().get_view().columns()};
-    auto const index{find_index(handle)};
+    auto const index{fighter.is_valid() && fighter.entity_type() == EntityType::Fighter
+                         ? agents_.indexes().find(fighter)
+                         : -1};
     if (index < 0 || is_dead(data.healths[index])) {
         return;
     }
     data.healths[index] = 0;
-    entity_death_info.add(DeathReason::Unknown, handle, {});
+    entity_death_info.add(DeathReason::Unknown, data.entity_handles[index], {});
     if (!std::ranges::contains(local_indices_to_remove, index)) {
         local_indices_to_remove.push_back(index);
     }

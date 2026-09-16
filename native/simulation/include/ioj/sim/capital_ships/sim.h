@@ -164,7 +164,7 @@ struct Sim {
     // Death handling
     /* **************************************** */
     void handle_dead_entities();
-    void reassign_fighter_handles_of_dying_capital();
+    void reassign_fighters_of_dying_capital();
 
     /* **************************************** */
     // Misc
@@ -191,7 +191,7 @@ struct Sim {
     SingleAllocationRegistryEntityData entity_update_data;
 
     fighters::CommandInterface fighters_interface;
-    std::vector<RegistryEntityHandle> fighter_self_destruct_requests_;
+    std::vector<EntityUniqueId> fighter_self_destruct_requests_;
     std::vector<RegistryEntityHandle> fighter_handles;
     std::int32_t fighters_spawned{0};
     std::int32_t diagnostic_spawn_reports{};

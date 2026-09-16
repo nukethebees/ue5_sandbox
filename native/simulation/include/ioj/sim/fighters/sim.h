@@ -90,14 +90,18 @@ struct Sim {
     auto get_view(std::int32_t offset, std::int32_t width) -> EntityData::View;
     auto get_const_view(std::int32_t offset, std::int32_t width) const -> EntityData::ConstView;
     auto get_handles() const noexcept -> std::span<RegistryEntityHandle const>;
+    auto get_entity_ids() const -> std::span<EntityUniqueId const> {
+        return entity_buffers.current().get_const_view().entity_ids();
+    }
     auto get_parent_ids() const -> std::span<EntityUniqueId const> {
         return entity_buffers.current().get_const_view().parent_ids();
     }
     auto get_healths() const -> std::span<Health const> {
         return entity_buffers.current().get_const_view().healths();
     }
-    void set_parent_id(RegistryEntityHandle fighter, EntityUniqueId parent) {
-        auto const index{find_index(fighter)};
+    void set_parent_id(EntityUniqueId fighter, EntityUniqueId parent) {
+        assert(fighter.is_valid() && fighter.entity_type() == EntityType::Fighter);
+        auto const index{agents_.indexes().find(fighter)};
         assert(index >= 0);
         entity_buffers.current().get_view().parent_ids()[index] = parent;
     }
@@ -207,7 +211,7 @@ struct Sim {
     /* **************************************** */
     // Destruction
     /* **************************************** */
-    void self_destruct_fighter(RegistryEntityHandle handle);
+    void self_destruct_fighter(EntityUniqueId fighter);
     void remove_dead_entities();
 
     /* **************************************** */

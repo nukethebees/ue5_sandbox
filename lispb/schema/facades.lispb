@@ -9,7 +9,7 @@
     (method queue_orders void
       (parameter queue (type-ref @fighter_order_queue :suffix " const&")))
     (method self_destruct_fighter void
-      (parameter handle (type-ref @native_registry_handle :suffix " const")))
+      (parameter fighter (type-ref @native_unique_id :suffix " const")))
     (method get_new_spawn_entity_data "RegistryEntityDataConstView"
       :const true)
     (method get_new_spawn_entity_handles (type-ref @spawned_entity_handles :suffix " const&")
@@ -21,9 +21,10 @@
       :const true
       :noexcept true)
     (method get_parent_ids "std::span<EntityUniqueId const>" :const true)
+    (method get_entity_ids "std::span<EntityUniqueId const>" :const true)
     (method get_healths "std::span<Health const>" :const true)
     (method set_parent_id void
-      (parameter fighter @native_registry_handle)
+      (parameter fighter @native_unique_id)
       (parameter parent @native_unique_id))
     (method get_target_ids "std::span<EntityUniqueId const>"
       :const true

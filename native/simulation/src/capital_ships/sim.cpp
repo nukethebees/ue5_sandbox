@@ -104,7 +104,7 @@ void Sim::execute_fighter_self_destruct_requests() {
 }
 void Sim::resolve_fighters_of_dying_capitals() {
     batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
-    reassign_fighter_handles_of_dying_capital();
+    reassign_fighters_of_dying_capital();
     execute_fighter_self_destruct_requests();
 }
 void Sim::resolve_damage_events() {
@@ -467,7 +467,7 @@ void Sim::handle_dead_entities() {
         this->entities.remove_at_swap(index, 1);
     }
 }
-void Sim::reassign_fighter_handles_of_dying_capital() {
+void Sim::reassign_fighters_of_dying_capital() {
     auto const entities{this->entities.get_const_view().columns()};
     ml::EnumArray<Team, EntityUniqueId, static_cast<std::size_t>(Team::COUNT)> replacements{};
     auto const count{entities.num()};
@@ -478,10 +478,10 @@ void Sim::reassign_fighter_handles_of_dying_capital() {
             replacement = entities.entity_ids[index];
         }
     }
-    auto const handles{fighters_interface.get_handles()};
+    auto const ids{fighters_interface.get_entity_ids()};
     auto const parents{fighters_interface.get_parent_ids()};
     auto const healths{fighters_interface.get_healths()};
-    auto const fighter_count{handles.size()};
+    auto const fighter_count{ids.size()};
     for (auto const dying_index : local_indices_to_remove) {
         auto const parent{entities.entity_ids[dying_index]};
         auto const replacement{replacements[entities.teams[dying_index]]};
@@ -490,9 +490,9 @@ void Sim::reassign_fighter_handles_of_dying_capital() {
                 continue;
             }
             if (!replacement.is_valid()) {
-                fighter_self_destruct_requests_.push_back(handles[index]);
+                fighter_self_destruct_requests_.push_back(ids[index]);
             } else {
-                fighters_interface.set_parent_id(handles[index], replacement);
+                fighters_interface.set_parent_id(ids[index], replacement);
             }
         }
     }

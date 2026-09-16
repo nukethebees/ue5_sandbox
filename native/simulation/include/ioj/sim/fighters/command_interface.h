@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "ioj/sim/entity_handle.h"
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/fighter_order_queue.h"
 #include "ioj/sim/fighter_spawn_queue.h"
@@ -27,8 +26,8 @@ class CommandInterface {
         fighters.queue_orders(queue);
     }
 
-    void self_destruct_fighter(RegistryEntityHandle const handle) {
-        fighters.self_destruct_fighter(handle);
+    void self_destruct_fighter(EntityUniqueId const fighter) {
+        fighters.self_destruct_fighter(fighter);
     }
 
     RegistryEntityDataConstView get_new_spawn_entity_data() const {
@@ -51,11 +50,15 @@ class CommandInterface {
         return fighters.get_parent_ids();
     }
 
+    std::span<EntityUniqueId const> get_entity_ids() const {
+        return fighters.get_entity_ids();
+    }
+
     std::span<Health const> get_healths() const {
         return fighters.get_healths();
     }
 
-    void set_parent_id(RegistryEntityHandle fighter, EntityUniqueId parent) {
+    void set_parent_id(EntityUniqueId fighter, EntityUniqueId parent) {
         fighters.set_parent_id(fighter, parent);
     }
 
