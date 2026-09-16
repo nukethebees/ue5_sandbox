@@ -40,7 +40,7 @@ void append_spawn_requests(SingleAllocationLaserSpawnRequests& destination,
     std::ranges::copy(source.damages, output.damages.begin());
     std::ranges::copy(source.speeds, output.speeds.begin());
     std::ranges::copy(source.max_distances, output.max_distances.begin());
-    std::ranges::copy(source.instigator_handles, output.instigator_handles.begin());
+    std::ranges::copy(source.instigator_ids, output.instigator_ids.begin());
     std::ranges::copy(source.sources, output.sources.begin());
 }
 } // namespace
@@ -124,7 +124,7 @@ void Sim::process_pending_spawns() {
 
     pending_spawns.get_const_view().columns().validate_array_sizes();
     auto const n_to_add{pending_spawns.num()};
-    entity_registry.record_shots(pending_spawns.get_const_view().instigator_handles());
+    entity_registry.record_shots(pending_spawns.get_const_view().instigator_ids());
 
     if (n_to_add <= 0) {
         return;
@@ -154,7 +154,7 @@ void Sim::process_pending_spawns() {
                               requests.base_velocities[spawn_index] + forward_velocity);
         output.sources[spawn_index] = requests.sources[spawn_index];
         output.damages[spawn_index] = requests.damages[spawn_index];
-        output.instigator_handles[spawn_index] = requests.instigator_handles[spawn_index];
+        output.instigator_ids[spawn_index] = requests.instigator_ids[spawn_index];
         output.lifetimes_remaining[spawn_index] = lifetime;
         output.initial_lifetimes[spawn_index] = lifetime;
         output.spawn_times[spawn_index] = simulation_time;
@@ -248,8 +248,8 @@ void Sim::handle_collisions(float const dt) {
                 collision_scratch.trace_ends.get_const_view().slice(i_start, trace_count)}};
             auto const hits{collision_scratch.trace_hits.get_view().slice(i_start, trace_count)};
             auto const ignored_entities{
-                std::span<RegistryEntityHandle const>{entities.instigator_handles}.subspan(
-                    i_start, trace_count)};
+                std::span<EntityUniqueId const>{entities.instigator_ids}.subspan(i_start,
+                                                                                 trace_count)};
             query_manager.get_collision_system().get_uniform_grid().trace_aabbs(
                 traces, hits, ignored_entities);
         });
@@ -273,12 +273,10 @@ void Sim::handle_collisions(float const dt) {
         to_remove.add(entity_index);
         auto const damaged_entity{trace_hits.entities[element]};
         if (damaged_entity.is_valid()) {
-            auto const instigator{entities.instigator_handles[element]};
+            auto const instigator{entities.instigator_ids[element]};
             collision_damage_events.add(entity_registry.get_current_id(damaged_entity),
                                         entities.damages[element],
-                                        instigator.is_valid()
-                                            ? entity_registry.find_unique_id(instigator)
-                                            : EntityUniqueId{});
+                                        instigator);
         }
 
         auto const velocity{entities.velocities[entity_index]};

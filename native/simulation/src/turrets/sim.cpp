@@ -496,7 +496,7 @@ void Sim::fire_at_enemies() {
                        entities.laser_damages[element],
                        config.laser.projectile_speed,
                        config.laser.max_distance,
-                       entities.handles[element],
+                       entities.entity_ids[element],
                        {entities.teams[element], EntityType::Turret});
     }
     laser_simulation.queue_laser_spawns(new_lasers.get_const_view());

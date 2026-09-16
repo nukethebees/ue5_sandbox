@@ -262,28 +262,22 @@ void record_damage(EntityRegistryStatistics& statistics,
     }
 }
 
-auto record_shots(EntityRegistryStatistics& statistics,
-                  std::span<std::int32_t const> const generations,
-                  std::span<EntityUniqueId const> const current_ids,
+void record_shots(EntityRegistryStatistics& statistics,
                   EntityIdAllocator const& ids,
                   EntityHistoryColumnsConstView const history,
-                  std::span<RegistryEntityHandle const> const instigators) noexcept
-    -> std::expected<void, AccountingError> {
-    auto const count{static_cast<std::int32_t>(instigators.size())};
-    for (std::int32_t index{}; index < count; ++index) {
-        auto const instigator{instigators[static_cast<std::size_t>(index)]};
+                  std::span<EntityUniqueId const> const instigators) noexcept {
+    for (auto const instigator : instigators) {
         if (!instigator.is_valid()) {
             continue;
         }
-        auto const attacker_id{find_unique_id(generations, current_ids, history, instigator)};
-        if (!attacker_id) {
-            return std::unexpected{AccountingError{attacker_id.error(), instigator, index}};
+        auto const attacker_element{ids.history_index(instigator)};
+        if (attacker_element < 0) {
+            ml::fatal_error(
+                std::format("Shot references unknown instigator ID {}", instigator.raw_value()));
         }
-        auto const attacker_element{ids.history_index(*attacker_id)};
         statistics.record_shot(history.teams[attacker_element],
                                history.entity_types[attacker_element]);
     }
-    return {};
 }
 
 auto copy_entity_data(EntityRegistryQueryView const registry,
@@ -493,15 +487,9 @@ void EntityRegistry::queue_direct_damage_events(DirectDamageEventsConstView cons
 
     damage_queue_.append(damage_events);
 }
-void EntityRegistry::record_shots(std::span<RegistryEntityHandle const> const instigators) {
+void EntityRegistry::record_shots(std::span<EntityUniqueId const> const instigators) {
     auto const unique_entities{unique_entity_history_.get_const_view().columns()};
-    auto const result{entity_registry_detail::record_shots(statistics_,
-                                                           bookkeeping_.generations,
-                                                           bookkeeping_.unique_ids,
-                                                           id_allocator_,
-                                                           unique_entities,
-                                                           instigators)};
-    entity_registry_detail::check_accounting_result(result);
+    entity_registry_detail::record_shots(statistics_, id_allocator_, unique_entities, instigators);
 }
 auto EntityRegistry::get_direct_damage_queue_view() const -> DirectDamageEvents const& {
     return damage_queue_.all_events();

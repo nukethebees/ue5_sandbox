@@ -22,7 +22,7 @@ constexpr float miss_max_distance{500.f};
 
 TEST(NativeSimulation, LaserSpawnRequestRowOperationsKeepColumnsPaired) {
     lasers::SpawnRequests requests{};
-    RegistryEntityHandle const instigator{7, 3};
+    auto const instigator{EntityUniqueId::make(7, EntityType::CapitalShip)};
     LaserSource const source{Team::Green, EntityType::CapitalShip};
 
     auto expect_row = [&](std::int32_t const index, float const offset) {
@@ -38,7 +38,7 @@ TEST(NativeSimulation, LaserSpawnRequestRowOperationsKeepColumnsPaired) {
         EXPECT_EQ(requests.damages[index], static_cast<std::int32_t>(offset) + 10);
         EXPECT_FLOAT_EQ(requests.speeds[index], offset + 11.f);
         EXPECT_FLOAT_EQ(requests.max_distances[index], offset + 12.f);
-        EXPECT_EQ(requests.instigator_handles[index], instigator);
+        EXPECT_EQ(requests.instigator_ids[index], instigator);
         EXPECT_EQ(requests.sources[index], source);
     };
 
@@ -157,7 +157,7 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
             requests.max_distances[i] = scenario == LaserLifecycleScenario::Miss
                                           ? miss_max_distance
                                           : collision_max_distance;
-            requests.instigator_handles[i] = shooter;
+            requests.instigator_ids[i] = harness.get_registry().get_current_id(shooter);
             requests.sources[i] = LaserSource{Team::White, EntityType::TubeSpinner};
         }
         LevelSimTestAccess::queue_laser_spawns(harness.get_simulation(), requests.get_const_view());

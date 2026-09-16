@@ -83,7 +83,7 @@ struct EntityRegistry {
     void queue_direct_damage_events(DirectDamageEvents const& damage_events) {
         queue_direct_damage_events(damage_events.get_const_view());
     }
-    void record_shots(std::span<RegistryEntityHandle const> instigators);
+    void record_shots(std::span<EntityUniqueId const> instigators);
     auto get_direct_damage_queue_view() const -> DirectDamageEvents const&;
     void prepare_damage_events(AgentIndexes const& indexes, std::pmr::memory_resource& scratch) {
         damage_queue_.prepare(indexes, scratch);

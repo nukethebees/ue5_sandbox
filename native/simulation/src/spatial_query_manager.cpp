@@ -31,7 +31,7 @@ struct TraceRequest {
     ioj::sim::Vector3f scalar_end{};
     std::span<ioj::sim::EntityUniqueId const> targets{};
     ioj::sim::EntityRegistry const* registry{};
-    std::span<ioj::sim::RegistryEntityHandle const> ignored_entities{};
+    std::span<ioj::sim::EntityUniqueId const> ignored_entities{};
     std::span<ioj::sim::EntityUniqueId> out_entity_ids{};
     std::span<std::uint8_t> out_flags{};
 };
@@ -359,7 +359,7 @@ void SpatialQueryManager::have_clear_lines(
     Vectors3fConstView const start_locations,
     Vectors3fConstView const end_locations,
     std::span<std::uint8_t> const clear_lines,
-    std::span<RegistryEntityHandle const> const ignored_entities) const {
+    std::span<EntityUniqueId const> const ignored_entities) const {
     trace_impl<QueryMode::ClearLine>(*this,
                                      {.start_locations = start_locations,
                                       .end_locations = end_locations,
@@ -371,7 +371,7 @@ void SpatialQueryManager::trace_closest_lines(
     Vectors3fConstView const start_locations,
     Vectors3fConstView const end_locations,
     TraceHitsView const out_hits,
-    std::span<RegistryEntityHandle const> const ignored_entities) const {
+    std::span<EntityUniqueId const> const ignored_entities) const {
     SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::trace_closest_lines");
 
     [[maybe_unused]] auto const count{start_locations.num()};
@@ -392,7 +392,7 @@ void SpatialQueryManager::sweep_closest_aabbs(
     Vectors3fConstView const end_locations,
     Vector3f const moving_half_extent,
     TraceHitsView const out_hits,
-    std::span<RegistryEntityHandle const> const ignored_entities,
+    std::span<EntityUniqueId const> const ignored_entities,
     collision::TraceEntityFilter const entity_filter) const {
     SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::sweep_closest_aabbs");
 
@@ -413,15 +413,15 @@ void SpatialQueryManager::sweep_closest_aabbs(
 /* **************************************** */
 auto SpatialQueryManager::has_clear_line(Vector3f const start_location,
                                          Vector3f const end_location,
-                                         RegistryEntityHandle const ignored_entity) const -> bool {
+                                         EntityUniqueId const ignored_entity) const -> bool {
     return !trace_closest(start_location, end_location, ignored_entity).hit;
 }
 
 auto SpatialQueryManager::trace_closest(Vector3f const start_location,
                                         Vector3f const end_location,
-                                        RegistryEntityHandle const ignored_entity) const
+                                        EntityUniqueId const ignored_entity) const
     -> LineTraceResult {
-    std::array<RegistryEntityHandle, 1> ignored_entities{ignored_entity};
+    std::array<EntityUniqueId, 1> ignored_entities{ignored_entity};
     return trace_impl<QueryMode::ClosestHit>(*this,
                                              {.scalar_start = start_location,
                                               .scalar_end = end_location,

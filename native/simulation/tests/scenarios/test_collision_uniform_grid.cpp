@@ -166,7 +166,7 @@ auto make_line_traces(std::span<Vector3f const> const starts, std::span<Vector3f
 auto run_traces(TraceFixture const& fixture,
                 std::span<Vector3f const> const starts,
                 std::span<Vector3f const> const ends,
-                std::span<RegistryEntityHandle const> const ignored_entities = {}) -> TraceHits {
+                std::span<EntityUniqueId const> const ignored_entities = {}) -> TraceHits {
     auto const traces{make_line_traces(starts, ends)};
 
     TraceHits hits;
@@ -187,7 +187,7 @@ auto run_sweeps(TraceFixture const& fixture,
                 std::span<Vector3f const> const starts,
                 std::span<Vector3f const> const ends,
                 Vector3f const moving_half_extent,
-                std::span<RegistryEntityHandle const> const ignored_entities = {},
+                std::span<EntityUniqueId const> const ignored_entities = {},
                 collision::TraceEntityFilter const entity_filter =
                     collision::TraceEntityFilter::None) -> TraceHits {
     auto const traces{make_line_traces(starts, ends)};
@@ -1903,7 +1903,8 @@ void CollisionUniformGridTraceRunner::test_static_geometry() {
                         dynamic_hits.static_geometry_indices[0],
                         "Dynamic hit clears static identity");
 
-    std::vector<RegistryEntityHandle> const ignored_entities{fixture.handles[0]};
+    std::vector<EntityUniqueId> const ignored_entities{
+        fixture.registry.get_current_id(fixture.handles[0])};
     auto const ignored_dynamic_hits{run_traces(fixture, starts, ends, ignored_entities)};
     tests::expect_true(!ignored_dynamic_hits.entities[0].is_valid(),
                        "Ignored dynamic entity is not returned");

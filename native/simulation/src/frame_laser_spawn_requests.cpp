@@ -10,7 +10,7 @@ auto FrameSpawnRequests::get_const_view() const -> lasers::SpawnRequestsConstVie
             damages.view(),
             speeds.view(),
             max_distances.view(),
-            instigator_handles.view(),
+            instigator_ids.view(),
             sources.view()};
 }
 FrameSpawnRequests::FrameSpawnRequests(std::pmr::memory_resource* const resource)
@@ -20,7 +20,7 @@ FrameSpawnRequests::FrameSpawnRequests(std::pmr::memory_resource* const resource
     , damages{resource}
     , speeds{resource}
     , max_distances{resource}
-    , instigator_handles{resource}
+    , instigator_ids{resource}
     , sources{resource} {}
 
 void FrameSpawnRequests::reserve(std::int32_t const count) {
@@ -30,7 +30,7 @@ void FrameSpawnRequests::reserve(std::int32_t const count) {
     damages.reserve(count);
     speeds.reserve(count);
     max_distances.reserve(count);
-    instigator_handles.reserve(count);
+    instigator_ids.reserve(count);
     sources.reserve(count);
 }
 void FrameSpawnRequests::set_num(std::int32_t const count) {
@@ -40,7 +40,7 @@ void FrameSpawnRequests::set_num(std::int32_t const count) {
     damages.set_num(count);
     speeds.set_num(count);
     max_distances.set_num(count);
-    instigator_handles.set_num(count);
+    instigator_ids.set_num(count);
     sources.set_num(count);
 }
 void FrameSpawnRequests::add(Vector3f const location,
@@ -49,7 +49,7 @@ void FrameSpawnRequests::add(Vector3f const location,
                              std::int32_t const damage,
                              float const speed,
                              float const max_distance,
-                             RegistryEntityHandle const instigator_handle,
+                             EntityUniqueId const instigator_id,
                              LaserSource const source) {
     locations.add(location);
     rotations.add(rotation);
@@ -57,7 +57,7 @@ void FrameSpawnRequests::add(Vector3f const location,
     damages.add(damage);
     speeds.add(speed);
     max_distances.add(max_distance);
-    instigator_handles.add(instigator_handle);
+    instigator_ids.add(instigator_id);
     sources.add(source);
 }
 void FrameSpawnRequests::set_damages(std::int32_t const value) {

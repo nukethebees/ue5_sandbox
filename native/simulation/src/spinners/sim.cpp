@@ -176,7 +176,7 @@ void Sim::materialize_fire_commands() {
         new_lasers.damages[request_index] = config.laser.damage;
         new_lasers.speeds[request_index] = config.laser.projectile_speed;
         new_lasers.max_distances[request_index] = config.laser.max_distance;
-        new_lasers.instigator_handles[request_index] = entity_columns.handles[element];
+        new_lasers.instigator_ids[request_index] = entity_columns.entity_ids[element];
         new_lasers.sources[request_index] = {Team::White, EntityType::TubeSpinner};
         next_fire_point = (next_fire_point + 1) % fire_point_count;
     }

@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "ioj/sim/entity_handle.h"
+#include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/laser_source.h"
 #include "ioj/sim/rotator_types.h"
 #include "ioj/sim/rotators3f.h"
@@ -30,7 +30,7 @@ struct SpawnRequestsConstView {
     std::span<std::int32_t const> damages;
     std::span<float const> speeds;
     std::span<float const> max_distances;
-    std::span<RegistryEntityHandle const> instigator_handles;
+    std::span<EntityUniqueId const> instigator_ids;
     std::span<LaserSource const> sources;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.num()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
@@ -48,7 +48,7 @@ struct SpawnRequestsConstView {
         fn(damages);
         fn(speeds);
         fn(max_distances);
-        fn(instigator_handles);
+        fn(instigator_ids);
         fn(sources);
     }
     void validate_array_sizes() const {
@@ -68,8 +68,8 @@ struct SpawnRequestsConstView {
             speeds.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             max_distances.subspan(static_cast<std::size_t>(offset),
                                   static_cast<std::size_t>(count)),
-            instigator_handles.subspan(static_cast<std::size_t>(offset),
-                                       static_cast<std::size_t>(count)),
+            instigator_ids.subspan(static_cast<std::size_t>(offset),
+                                   static_cast<std::size_t>(count)),
             sources.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
         };
     }
@@ -85,7 +85,7 @@ struct SpawnRequestsConstView {
             damages,
             speeds,
             max_distances,
-            instigator_handles,
+            instigator_ids,
             sources,
         };
     }
@@ -107,7 +107,7 @@ struct SpawnRequestsView {
     std::span<std::int32_t> damages;
     std::span<float> speeds;
     std::span<float> max_distances;
-    std::span<RegistryEntityHandle> instigator_handles;
+    std::span<EntityUniqueId> instigator_ids;
     std::span<LaserSource> sources;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.num()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
@@ -125,7 +125,7 @@ struct SpawnRequestsView {
         fn(damages);
         fn(speeds);
         fn(max_distances);
-        fn(instigator_handles);
+        fn(instigator_ids);
         fn(sources);
     }
     void validate_array_sizes() const {
@@ -145,8 +145,8 @@ struct SpawnRequestsView {
             speeds.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             max_distances.subspan(static_cast<std::size_t>(offset),
                                   static_cast<std::size_t>(count)),
-            instigator_handles.subspan(static_cast<std::size_t>(offset),
-                                       static_cast<std::size_t>(count)),
+            instigator_ids.subspan(static_cast<std::size_t>(offset),
+                                   static_cast<std::size_t>(count)),
             sources.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
         };
     }
@@ -162,7 +162,7 @@ struct SpawnRequestsView {
             damages,
             speeds,
             max_distances,
-            instigator_handles,
+            instigator_ids,
             sources,
         };
     }
@@ -180,7 +180,7 @@ struct SpawnRequestsView {
              std::int32_t const new_damages,
              float const new_speeds,
              float const new_max_distances,
-             RegistryEntityHandle const new_instigator_handles,
+             EntityUniqueId const new_instigator_ids,
              LaserSource const new_sources) const {
         ml::native_soa::require(index >= 0 && index < num());
         locations.set(index, new_locations);
@@ -189,7 +189,7 @@ struct SpawnRequestsView {
         damages[static_cast<std::size_t>(index)] = new_damages;
         speeds[static_cast<std::size_t>(index)] = new_speeds;
         max_distances[static_cast<std::size_t>(index)] = new_max_distances;
-        instigator_handles[static_cast<std::size_t>(index)] = new_instigator_handles;
+        instigator_ids[static_cast<std::size_t>(index)] = new_instigator_ids;
         sources[static_cast<std::size_t>(index)] = new_sources;
     }
 };
@@ -203,7 +203,7 @@ struct SpawnRequests {
     ml::native_soa::Vector<std::int32_t> damages;
     ml::native_soa::Vector<float> speeds;
     ml::native_soa::Vector<float> max_distances;
-    ml::native_soa::Vector<RegistryEntityHandle> instigator_handles;
+    ml::native_soa::Vector<EntityUniqueId> instigator_ids;
     ml::native_soa::Vector<LaserSource> sources;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
@@ -221,7 +221,7 @@ struct SpawnRequests {
         fn(damages);
         fn(speeds);
         fn(max_distances);
-        fn(instigator_handles);
+        fn(instigator_ids);
         fn(sources);
     }
     template <typename Fn>
@@ -238,7 +238,7 @@ struct SpawnRequests {
         fn(damages);
         fn(speeds);
         fn(max_distances);
-        fn(instigator_handles);
+        fn(instigator_ids);
         fn(sources);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
@@ -256,7 +256,7 @@ struct SpawnRequests {
         damages.reserve(static_cast<std::size_t>(count));
         speeds.reserve(static_cast<std::size_t>(count));
         max_distances.reserve(static_cast<std::size_t>(count));
-        instigator_handles.reserve(static_cast<std::size_t>(count));
+        instigator_ids.reserve(static_cast<std::size_t>(count));
         sources.reserve(static_cast<std::size_t>(count));
     }
     void reset() noexcept {
@@ -272,7 +272,7 @@ struct SpawnRequests {
         damages.clear();
         speeds.clear();
         max_distances.clear();
-        instigator_handles.clear();
+        instigator_ids.clear();
         sources.clear();
     }
     void set_num(size_type const count) {
@@ -290,7 +290,7 @@ struct SpawnRequests {
         damages.resize(size);
         speeds.resize(size);
         max_distances.resize(size);
-        instigator_handles.resize(size);
+        instigator_ids.resize(size);
         sources.resize(size);
     }
     void add_uninitialised(size_type const count) {
@@ -343,7 +343,7 @@ struct SpawnRequests {
             max_distances[index + i] = max_distances[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
-            instigator_handles[index + i] = instigator_handles[source + i];
+            instigator_ids[index + i] = instigator_ids[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
             sources[index + i] = sources[source + i];
@@ -357,7 +357,7 @@ struct SpawnRequests {
              std::int32_t const new_damages,
              float const new_speeds,
              float const new_max_distances,
-             RegistryEntityHandle const new_instigator_handles,
+             EntityUniqueId const new_instigator_ids,
              LaserSource const new_sources) {
         get_view().set(index,
                        new_locations,
@@ -366,7 +366,7 @@ struct SpawnRequests {
                        new_damages,
                        new_speeds,
                        new_max_distances,
-                       new_instigator_handles,
+                       new_instigator_ids,
                        new_sources);
     }
     auto add(Vector3f const new_locations,
@@ -375,7 +375,7 @@ struct SpawnRequests {
              std::int32_t const new_damages,
              float const new_speeds,
              float const new_max_distances,
-             RegistryEntityHandle const new_instigator_handles,
+             EntityUniqueId const new_instigator_ids,
              LaserSource const new_sources) -> size_type {
         auto const index{num()};
         add_defaulted(1);
@@ -386,7 +386,7 @@ struct SpawnRequests {
             new_damages,
             new_speeds,
             new_max_distances,
-            new_instigator_handles,
+            new_instigator_ids,
             new_sources);
         return index;
     }
@@ -470,11 +470,11 @@ struct SpawnRequests {
                                     address >= begin + max_distances.size() * sizeof(float));
         }
         {
-            auto const address{ml::address_cast(source.instigator_handles.data())};
-            auto const begin{ml::address_cast(instigator_handles.data())};
+            auto const address{ml::address_cast(source.instigator_ids.data())};
+            auto const begin{ml::address_cast(instigator_ids.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + instigator_handles.size() *
-                                                           sizeof(RegistryEntityHandle));
+                                    address >=
+                                        begin + instigator_ids.size() * sizeof(EntityUniqueId));
         }
         {
             auto const address{ml::address_cast(source.sources.data())};
@@ -504,9 +504,9 @@ struct SpawnRequests {
         speeds.insert(speeds.end(), source.speeds.data(), source.speeds.data() + count);
         max_distances.insert(
             max_distances.end(), source.max_distances.data(), source.max_distances.data() + count);
-        instigator_handles.insert(instigator_handles.end(),
-                                  source.instigator_handles.data(),
-                                  source.instigator_handles.data() + count);
+        instigator_ids.insert(instigator_ids.end(),
+                              source.instigator_ids.data(),
+                              source.instigator_ids.data() + count);
         sources.insert(sources.end(), source.sources.data(), source.sources.data() + count);
     }
     auto get_view() -> View {
@@ -517,7 +517,7 @@ struct SpawnRequests {
             damages,
             speeds,
             max_distances,
-            instigator_handles,
+            instigator_ids,
             sources,
         };
     }
@@ -529,7 +529,7 @@ struct SpawnRequests {
             damages,
             speeds,
             max_distances,
-            instigator_handles,
+            instigator_ids,
             sources,
         };
     }
@@ -564,8 +564,8 @@ struct SpawnRequests {
             other.speeds[static_cast<std::size_t>(src_index)];
         max_distances[static_cast<std::size_t>(dst_index)] =
             other.max_distances[static_cast<std::size_t>(src_index)];
-        instigator_handles[static_cast<std::size_t>(dst_index)] =
-            other.instigator_handles[static_cast<std::size_t>(src_index)];
+        instigator_ids[static_cast<std::size_t>(dst_index)] =
+            other.instigator_ids[static_cast<std::size_t>(src_index)];
         sources[static_cast<std::size_t>(dst_index)] =
             other.sources[static_cast<std::size_t>(src_index)];
     }
@@ -627,8 +627,8 @@ struct SpawnRequestsSingleLayout {
     inline static constexpr ColLayout<std::int32_t> Damages{BaseVelocitiesZs};
     inline static constexpr ColLayout<float> Speeds{Damages};
     inline static constexpr ColLayout<float> MaxDistances{Speeds};
-    inline static constexpr ColLayout<RegistryEntityHandle> InstigatorHandles{MaxDistances};
-    inline static constexpr ColLayout<LaserSource> Sources{InstigatorHandles};
+    inline static constexpr ColLayout<EntityUniqueId> InstigatorIds{MaxDistances};
+    inline static constexpr ColLayout<LaserSource> Sources{InstigatorIds};
 
     inline static constexpr byte_size_type allocation_alignment{
         ml::native_soa::maximum_alignment(LocationsXs,
@@ -643,7 +643,7 @@ struct SpawnRequestsSingleLayout {
                                           Damages,
                                           Speeds,
                                           MaxDistances,
-                                          InstigatorHandles,
+                                          InstigatorIds,
                                           Sources)};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
@@ -667,8 +667,8 @@ struct SpawnRequestsSingleLayout {
             "Single-allocation leaf damages requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::native_soa::supported_leaf<RegistryEntityHandle>,
-            "Single-allocation leaf instigator_handles requires a non-cv, trivially "
+            ml::native_soa::supported_leaf<EntityUniqueId>,
+            "Single-allocation leaf instigator_ids requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
             ml::native_soa::supported_leaf<LaserSource>,
@@ -702,9 +702,8 @@ struct SpawnRequestsSingleLayout {
                       (max_allocation_size - Speeds.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
                       (max_allocation_size - MaxDistances.block_offset) / capacity_granularity);
-        static_assert(sizeof(RegistryEntityHandle) <=
-                      (max_allocation_size - InstigatorHandles.block_offset) /
-                          capacity_granularity);
+        static_assert(sizeof(EntityUniqueId) <=
+                      (max_allocation_size - InstigatorIds.block_offset) / capacity_granularity);
         static_assert(sizeof(LaserSource) <=
                       (max_allocation_size - Sources.block_offset) / capacity_granularity);
         static_assert(13 <= (max_allocation_size - ml::native_soa::layout_align(
@@ -784,7 +783,7 @@ struct SingleAllocationLaserSpawnRequestsStorage
         Element<std::int32_t>* damages{};
         Element<float>* speeds{};
         Element<float>* max_distances{};
-        Element<RegistryEntityHandle>* instigator_handles{};
+        Element<EntityUniqueId>* instigator_ids{};
         Element<LaserSource>* sources{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (locations_xs == nullptr) {
@@ -802,7 +801,7 @@ struct SingleAllocationLaserSpawnRequestsStorage
                     damages + offset,
                     speeds + offset,
                     max_distances + offset,
-                    instigator_handles + offset,
+                    instigator_ids + offset,
                     sources + offset};
         }
     };
@@ -867,12 +866,12 @@ struct SingleAllocationLaserSpawnRequestsStorage
         auto const max_distances_offset{ml::native_soa::layout_align(
             speeds_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
             MaxDistances.alignment)};
-        auto const instigator_handles_offset{ml::native_soa::layout_align(
+        auto const instigator_ids_offset{ml::native_soa::layout_align(
             max_distances_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            InstigatorHandles.alignment)};
+            InstigatorIds.alignment)};
         auto const sources_offset{ml::native_soa::layout_align(
-            instigator_handles_offset +
-                blocks * capacity_granularity * sizeof(RegistryEntityHandle) + column_gap,
+            instigator_ids_offset + blocks * capacity_granularity * sizeof(EntityUniqueId) +
+                column_gap,
             Sources.alignment)};
         return {pointer_at(LocationsXs, locations_xs_offset),
                 pointer_at(LocationsYs, locations_ys_offset),
@@ -886,7 +885,7 @@ struct SingleAllocationLaserSpawnRequestsStorage
                 pointer_at(Damages, damages_offset),
                 pointer_at(Speeds, speeds_offset),
                 pointer_at(MaxDistances, max_distances_offset),
-                pointer_at(InstigatorHandles, instigator_handles_offset),
+                pointer_at(InstigatorIds, instigator_ids_offset),
                 pointer_at(Sources, sources_offset)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
@@ -910,8 +909,7 @@ struct SingleAllocationLaserSpawnRequestsStorage
         std::uninitialized_value_construct_n<std::int32_t*>(columns.damages, count);
         std::uninitialized_value_construct_n<float*>(columns.speeds, count);
         std::uninitialized_value_construct_n<float*>(columns.max_distances, count);
-        std::uninitialized_value_construct_n<RegistryEntityHandle*>(columns.instigator_handles,
-                                                                    count);
+        std::uninitialized_value_construct_n<EntityUniqueId*>(columns.instigator_ids, count);
         std::uninitialized_value_construct_n<LaserSource*>(columns.sources, count);
     }
     void swap_remove_columns(size_type const index,
@@ -926,7 +924,7 @@ struct SingleAllocationLaserSpawnRequestsStorage
         auto const elements_to_move{static_cast<byte_size_type>(move_count)};
         auto const locations_xs_bytes{elements_to_move * sizeof(float)};
         auto const damages_bytes{elements_to_move * sizeof(std::int32_t)};
-        auto const instigator_handles_bytes{elements_to_move * sizeof(RegistryEntityHandle)};
+        auto const instigator_ids_bytes{elements_to_move * sizeof(EntityUniqueId)};
         auto const sources_bytes{elements_to_move * sizeof(LaserSource)};
         std::memcpy(
             columns.locations_xs + index, columns.locations_xs + source, locations_xs_bytes);
@@ -954,9 +952,8 @@ struct SingleAllocationLaserSpawnRequestsStorage
         std::memcpy(columns.speeds + index, columns.speeds + source, locations_xs_bytes);
         std::memcpy(
             columns.max_distances + index, columns.max_distances + source, locations_xs_bytes);
-        std::memcpy(columns.instigator_handles + index,
-                    columns.instigator_handles + source,
-                    instigator_handles_bytes);
+        std::memcpy(
+            columns.instigator_ids + index, columns.instigator_ids + source, instigator_ids_bytes);
         std::memcpy(columns.sources + index, columns.sources + source, sources_bytes);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
@@ -986,7 +983,7 @@ struct SingleAllocationLaserSpawnRequestsStorage
                aliases(source.base_velocities.xs) || aliases(source.base_velocities.ys) ||
                aliases(source.base_velocities.zs) || aliases(source.damages.data()) ||
                aliases(source.speeds.data()) || aliases(source.max_distances.data()) ||
-               aliases(source.instigator_handles.data()) || aliases(source.sources.data());
+               aliases(source.instigator_ids.data()) || aliases(source.sources.data());
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {
@@ -994,7 +991,7 @@ struct SingleAllocationLaserSpawnRequestsStorage
         auto const elements_to_copy{static_cast<byte_size_type>(count)};
         auto const locations_xs_bytes{elements_to_copy * sizeof(float)};
         auto const damages_bytes{elements_to_copy * sizeof(std::int32_t)};
-        auto const instigator_handles_bytes{elements_to_copy * sizeof(RegistryEntityHandle)};
+        auto const instigator_ids_bytes{elements_to_copy * sizeof(EntityUniqueId)};
         auto const sources_bytes{elements_to_copy * sizeof(LaserSource)};
         std::memcpy(destination.locations_xs, source.locations.xs, locations_xs_bytes);
         std::memcpy(destination.locations_ys, source.locations.ys, locations_xs_bytes);
@@ -1009,9 +1006,7 @@ struct SingleAllocationLaserSpawnRequestsStorage
         std::memcpy(destination.damages, source.damages.data(), damages_bytes);
         std::memcpy(destination.speeds, source.speeds.data(), locations_xs_bytes);
         std::memcpy(destination.max_distances, source.max_distances.data(), locations_xs_bytes);
-        std::memcpy(destination.instigator_handles,
-                    source.instigator_handles.data(),
-                    instigator_handles_bytes);
+        std::memcpy(destination.instigator_ids, source.instigator_ids.data(), instigator_ids_bytes);
         std::memcpy(destination.sources, source.sources.data(), sources_bytes);
     }
     void reallocate(size_type const new_capacity) {
@@ -1027,7 +1022,7 @@ struct SingleAllocationLaserSpawnRequestsStorage
             auto const live_count{static_cast<byte_size_type>(num_)};
             auto const locations_xs_bytes{live_count * sizeof(float)};
             auto const damages_bytes{live_count * sizeof(std::int32_t)};
-            auto const instigator_handles_bytes{live_count * sizeof(RegistryEntityHandle)};
+            auto const instigator_ids_bytes{live_count * sizeof(EntityUniqueId)};
             auto const sources_bytes{live_count * sizeof(LaserSource)};
             std::memcpy(destination.locations_xs, source.locations_xs, locations_xs_bytes);
             std::memcpy(destination.locations_ys, source.locations_ys, locations_xs_bytes);
@@ -1045,9 +1040,7 @@ struct SingleAllocationLaserSpawnRequestsStorage
             std::memcpy(destination.damages, source.damages, damages_bytes);
             std::memcpy(destination.speeds, source.speeds, locations_xs_bytes);
             std::memcpy(destination.max_distances, source.max_distances, locations_xs_bytes);
-            std::memcpy(destination.instigator_handles,
-                        source.instigator_handles,
-                        instigator_handles_bytes);
+            std::memcpy(destination.instigator_ids, source.instigator_ids, instigator_ids_bytes);
             std::memcpy(destination.sources, source.sources, sources_bytes);
         }
         ml::native_soa::free(data_, allocation_alignment);
@@ -1116,9 +1109,9 @@ struct SpawnRequestsSingleConstView : ml::native_soa::CompactViewState<true> {
             column_data<float>(SpawnRequestsSingleLayout::MaxDistances.offset(capacity_blocks())),
             static_cast<std::size_t>(count_)};
     }
-    auto instigator_handles() const -> std::span<RegistryEntityHandle const> {
-        return {column_data<RegistryEntityHandle>(
-                    SpawnRequestsSingleLayout::InstigatorHandles.offset(capacity_blocks())),
+    auto instigator_ids() const -> std::span<EntityUniqueId const> {
+        return {column_data<EntityUniqueId>(
+                    SpawnRequestsSingleLayout::InstigatorIds.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto sources() const -> std::span<LaserSource const> {
@@ -1166,8 +1159,8 @@ struct SpawnRequestsSingleConstView : ml::native_soa::CompactViewState<true> {
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<float>(SpawnRequestsSingleLayout::MaxDistances.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
-                 SpawnRequestsSingleLayout::InstigatorHandles.offset(blocks)),
+            {column_data_unchecked<EntityUniqueId>(
+                 SpawnRequestsSingleLayout::InstigatorIds.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<LaserSource>(SpawnRequestsSingleLayout::Sources.offset(blocks)),
              static_cast<std::size_t>(count_)}};
@@ -1238,9 +1231,9 @@ struct SpawnRequestsSingleView : ml::native_soa::CompactViewState<false> {
             column_data<float>(SpawnRequestsSingleLayout::MaxDistances.offset(capacity_blocks())),
             static_cast<std::size_t>(count_)};
     }
-    auto instigator_handles() const -> std::span<RegistryEntityHandle> {
-        return {column_data<RegistryEntityHandle>(
-                    SpawnRequestsSingleLayout::InstigatorHandles.offset(capacity_blocks())),
+    auto instigator_ids() const -> std::span<EntityUniqueId> {
+        return {column_data<EntityUniqueId>(
+                    SpawnRequestsSingleLayout::InstigatorIds.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto sources() const -> std::span<LaserSource> {
@@ -1288,8 +1281,8 @@ struct SpawnRequestsSingleView : ml::native_soa::CompactViewState<false> {
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<float>(SpawnRequestsSingleLayout::MaxDistances.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
-                 SpawnRequestsSingleLayout::InstigatorHandles.offset(blocks)),
+            {column_data_unchecked<EntityUniqueId>(
+                 SpawnRequestsSingleLayout::InstigatorIds.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<LaserSource>(SpawnRequestsSingleLayout::Sources.offset(blocks)),
              static_cast<std::size_t>(count_)}};
@@ -1357,7 +1350,7 @@ struct EntitiesConstView {
     Vectors3fConstView velocities;
     std::span<std::int32_t const> damages;
     std::span<float const> lifetimes_remaining;
-    std::span<RegistryEntityHandle const> instigator_handles;
+    std::span<EntityUniqueId const> instigator_ids;
     std::span<float const> initial_lifetimes;
     std::span<float const> spawn_times;
     auto num() const noexcept -> size_type { return static_cast<size_type>(active.size()); }
@@ -1377,7 +1370,7 @@ struct EntitiesConstView {
         fn(velocities.zs_span());
         fn(damages);
         fn(lifetimes_remaining);
-        fn(instigator_handles);
+        fn(instigator_ids);
         fn(initial_lifetimes);
         fn(spawn_times);
     }
@@ -1399,8 +1392,8 @@ struct EntitiesConstView {
             damages.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             lifetimes_remaining.subspan(static_cast<std::size_t>(offset),
                                         static_cast<std::size_t>(count)),
-            instigator_handles.subspan(static_cast<std::size_t>(offset),
-                                       static_cast<std::size_t>(count)),
+            instigator_ids.subspan(static_cast<std::size_t>(offset),
+                                   static_cast<std::size_t>(count)),
             initial_lifetimes.subspan(static_cast<std::size_t>(offset),
                                       static_cast<std::size_t>(count)),
             spawn_times.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -1419,7 +1412,7 @@ struct EntitiesConstView {
             velocities.get_const_view(),
             damages,
             lifetimes_remaining,
-            instigator_handles,
+            instigator_ids,
             initial_lifetimes,
             spawn_times,
         };
@@ -1443,7 +1436,7 @@ struct EntitiesView {
     Vectors3fView velocities;
     std::span<std::int32_t> damages;
     std::span<float> lifetimes_remaining;
-    std::span<RegistryEntityHandle> instigator_handles;
+    std::span<EntityUniqueId> instigator_ids;
     std::span<float> initial_lifetimes;
     std::span<float> spawn_times;
     auto num() const noexcept -> size_type { return static_cast<size_type>(active.size()); }
@@ -1463,7 +1456,7 @@ struct EntitiesView {
         fn(velocities.zs_span());
         fn(damages);
         fn(lifetimes_remaining);
-        fn(instigator_handles);
+        fn(instigator_ids);
         fn(initial_lifetimes);
         fn(spawn_times);
     }
@@ -1485,8 +1478,8 @@ struct EntitiesView {
             damages.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             lifetimes_remaining.subspan(static_cast<std::size_t>(offset),
                                         static_cast<std::size_t>(count)),
-            instigator_handles.subspan(static_cast<std::size_t>(offset),
-                                       static_cast<std::size_t>(count)),
+            instigator_ids.subspan(static_cast<std::size_t>(offset),
+                                   static_cast<std::size_t>(count)),
             initial_lifetimes.subspan(static_cast<std::size_t>(offset),
                                       static_cast<std::size_t>(count)),
             spawn_times.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -1505,7 +1498,7 @@ struct EntitiesView {
             velocities.get_const_view(),
             damages,
             lifetimes_remaining,
-            instigator_handles,
+            instigator_ids,
             initial_lifetimes,
             spawn_times,
         };
@@ -1523,7 +1516,7 @@ struct EntitiesView {
              Vector3f const new_velocities,
              std::int32_t const new_damages,
              float const new_lifetimes_remaining,
-             RegistryEntityHandle const new_instigator_handles,
+             EntityUniqueId const new_instigator_ids,
              float const new_initial_lifetimes,
              float const new_spawn_times) const {
         ml::native_soa::require(index >= 0 && index < num());
@@ -1534,7 +1527,7 @@ struct EntitiesView {
         velocities.set(index, new_velocities);
         damages[static_cast<std::size_t>(index)] = new_damages;
         lifetimes_remaining[static_cast<std::size_t>(index)] = new_lifetimes_remaining;
-        instigator_handles[static_cast<std::size_t>(index)] = new_instigator_handles;
+        instigator_ids[static_cast<std::size_t>(index)] = new_instigator_ids;
         initial_lifetimes[static_cast<std::size_t>(index)] = new_initial_lifetimes;
         spawn_times[static_cast<std::size_t>(index)] = new_spawn_times;
     }
@@ -1550,7 +1543,7 @@ struct Entities {
     Vectors3f velocities;
     ml::native_soa::Vector<std::int32_t> damages;
     ml::native_soa::Vector<float> lifetimes_remaining;
-    ml::native_soa::Vector<RegistryEntityHandle> instigator_handles;
+    ml::native_soa::Vector<EntityUniqueId> instigator_ids;
     ml::native_soa::Vector<float> initial_lifetimes;
     ml::native_soa::Vector<float> spawn_times;
     auto num() const noexcept -> size_type { return static_cast<size_type>(active.size()); }
@@ -1570,7 +1563,7 @@ struct Entities {
         fn(velocities.zs);
         fn(damages);
         fn(lifetimes_remaining);
-        fn(instigator_handles);
+        fn(instigator_ids);
         fn(initial_lifetimes);
         fn(spawn_times);
     }
@@ -1589,7 +1582,7 @@ struct Entities {
         fn(velocities.zs);
         fn(damages);
         fn(lifetimes_remaining);
-        fn(instigator_handles);
+        fn(instigator_ids);
         fn(initial_lifetimes);
         fn(spawn_times);
     }
@@ -1609,7 +1602,7 @@ struct Entities {
         velocities.zs.reserve(static_cast<std::size_t>(count));
         damages.reserve(static_cast<std::size_t>(count));
         lifetimes_remaining.reserve(static_cast<std::size_t>(count));
-        instigator_handles.reserve(static_cast<std::size_t>(count));
+        instigator_ids.reserve(static_cast<std::size_t>(count));
         initial_lifetimes.reserve(static_cast<std::size_t>(count));
         spawn_times.reserve(static_cast<std::size_t>(count));
     }
@@ -1627,7 +1620,7 @@ struct Entities {
         velocities.zs.clear();
         damages.clear();
         lifetimes_remaining.clear();
-        instigator_handles.clear();
+        instigator_ids.clear();
         initial_lifetimes.clear();
         spawn_times.clear();
     }
@@ -1647,7 +1640,7 @@ struct Entities {
         velocities.zs.resize(size);
         damages.resize(size);
         lifetimes_remaining.resize(size);
-        instigator_handles.resize(size);
+        instigator_ids.resize(size);
         initial_lifetimes.resize(size);
         spawn_times.resize(size);
     }
@@ -1704,7 +1697,7 @@ struct Entities {
             lifetimes_remaining[index + i] = lifetimes_remaining[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
-            instigator_handles[index + i] = instigator_handles[source + i];
+            instigator_ids[index + i] = instigator_ids[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
             initial_lifetimes[index + i] = initial_lifetimes[source + i];
@@ -1722,7 +1715,7 @@ struct Entities {
              Vector3f const new_velocities,
              std::int32_t const new_damages,
              float const new_lifetimes_remaining,
-             RegistryEntityHandle const new_instigator_handles,
+             EntityUniqueId const new_instigator_ids,
              float const new_initial_lifetimes,
              float const new_spawn_times) {
         get_view().set(index,
@@ -1733,7 +1726,7 @@ struct Entities {
                        new_velocities,
                        new_damages,
                        new_lifetimes_remaining,
-                       new_instigator_handles,
+                       new_instigator_ids,
                        new_initial_lifetimes,
                        new_spawn_times);
     }
@@ -1744,7 +1737,7 @@ struct Entities {
              Vector3f const new_velocities,
              std::int32_t const new_damages,
              float const new_lifetimes_remaining,
-             RegistryEntityHandle const new_instigator_handles,
+             EntityUniqueId const new_instigator_ids,
              float const new_initial_lifetimes,
              float const new_spawn_times) -> size_type {
         auto const index{num()};
@@ -1757,7 +1750,7 @@ struct Entities {
             new_velocities,
             new_damages,
             new_lifetimes_remaining,
-            new_instigator_handles,
+            new_instigator_ids,
             new_initial_lifetimes,
             new_spawn_times);
         return index;
@@ -1848,11 +1841,11 @@ struct Entities {
                                     address >= begin + lifetimes_remaining.size() * sizeof(float));
         }
         {
-            auto const address{ml::address_cast(source.instigator_handles.data())};
-            auto const begin{ml::address_cast(instigator_handles.data())};
+            auto const address{ml::address_cast(source.instigator_ids.data())};
+            auto const begin{ml::address_cast(instigator_ids.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + instigator_handles.size() *
-                                                           sizeof(RegistryEntityHandle));
+                                    address >=
+                                        begin + instigator_ids.size() * sizeof(EntityUniqueId));
         }
         {
             auto const address{ml::address_cast(source.initial_lifetimes.data())};
@@ -1890,9 +1883,9 @@ struct Entities {
         lifetimes_remaining.insert(lifetimes_remaining.end(),
                                    source.lifetimes_remaining.data(),
                                    source.lifetimes_remaining.data() + count);
-        instigator_handles.insert(instigator_handles.end(),
-                                  source.instigator_handles.data(),
-                                  source.instigator_handles.data() + count);
+        instigator_ids.insert(instigator_ids.end(),
+                              source.instigator_ids.data(),
+                              source.instigator_ids.data() + count);
         initial_lifetimes.insert(initial_lifetimes.end(),
                                  source.initial_lifetimes.data(),
                                  source.initial_lifetimes.data() + count);
@@ -1908,7 +1901,7 @@ struct Entities {
             velocities.get_view(),
             damages,
             lifetimes_remaining,
-            instigator_handles,
+            instigator_ids,
             initial_lifetimes,
             spawn_times,
         };
@@ -1922,7 +1915,7 @@ struct Entities {
             velocities.get_view(),
             damages,
             lifetimes_remaining,
-            instigator_handles,
+            instigator_ids,
             initial_lifetimes,
             spawn_times,
         };
@@ -1960,8 +1953,8 @@ struct Entities {
             other.damages[static_cast<std::size_t>(src_index)];
         lifetimes_remaining[static_cast<std::size_t>(dst_index)] =
             other.lifetimes_remaining[static_cast<std::size_t>(src_index)];
-        instigator_handles[static_cast<std::size_t>(dst_index)] =
-            other.instigator_handles[static_cast<std::size_t>(src_index)];
+        instigator_ids[static_cast<std::size_t>(dst_index)] =
+            other.instigator_ids[static_cast<std::size_t>(src_index)];
         initial_lifetimes[static_cast<std::size_t>(dst_index)] =
             other.initial_lifetimes[static_cast<std::size_t>(src_index)];
         spawn_times[static_cast<std::size_t>(dst_index)] =
@@ -2026,8 +2019,8 @@ struct EntitiesSingleLayout {
     inline static constexpr ColLayout<float> VelocitiesZs{VelocitiesYs};
     inline static constexpr ColLayout<std::int32_t> Damages{VelocitiesZs};
     inline static constexpr ColLayout<float> LifetimesRemaining{Damages};
-    inline static constexpr ColLayout<RegistryEntityHandle> InstigatorHandles{LifetimesRemaining};
-    inline static constexpr ColLayout<float> InitialLifetimes{InstigatorHandles};
+    inline static constexpr ColLayout<EntityUniqueId> InstigatorIds{LifetimesRemaining};
+    inline static constexpr ColLayout<float> InitialLifetimes{InstigatorIds};
     inline static constexpr ColLayout<float> SpawnTimes{InitialLifetimes};
 
     inline static constexpr byte_size_type allocation_alignment{
@@ -2044,7 +2037,7 @@ struct EntitiesSingleLayout {
                                           VelocitiesZs,
                                           Damages,
                                           LifetimesRemaining,
-                                          InstigatorHandles,
+                                          InstigatorIds,
                                           InitialLifetimes,
                                           SpawnTimes)};
 
@@ -2077,8 +2070,8 @@ struct EntitiesSingleLayout {
             "Single-allocation leaf damages requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::native_soa::supported_leaf<RegistryEntityHandle>,
-            "Single-allocation leaf instigator_handles requires a non-cv, trivially "
+            ml::native_soa::supported_leaf<EntityUniqueId>,
+            "Single-allocation leaf instigator_ids requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
 
         static_assert(
@@ -2110,9 +2103,8 @@ struct EntitiesSingleLayout {
                       (max_allocation_size - Damages.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <= (max_allocation_size - LifetimesRemaining.block_offset) /
                                            capacity_granularity);
-        static_assert(sizeof(RegistryEntityHandle) <=
-                      (max_allocation_size - InstigatorHandles.block_offset) /
-                          capacity_granularity);
+        static_assert(sizeof(EntityUniqueId) <=
+                      (max_allocation_size - InstigatorIds.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
                       (max_allocation_size - InitialLifetimes.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
@@ -2192,7 +2184,7 @@ struct SingleAllocationLaserEntitiesStorage
         Element<float>* velocities_zs{};
         Element<std::int32_t>* damages{};
         Element<float>* lifetimes_remaining{};
-        Element<RegistryEntityHandle>* instigator_handles{};
+        Element<EntityUniqueId>* instigator_ids{};
         Element<float>* initial_lifetimes{};
         Element<float>* spawn_times{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
@@ -2212,7 +2204,7 @@ struct SingleAllocationLaserEntitiesStorage
                     velocities_zs + offset,
                     damages + offset,
                     lifetimes_remaining + offset,
-                    instigator_handles + offset,
+                    instigator_ids + offset,
                     initial_lifetimes + offset,
                     spawn_times + offset};
         }
@@ -2281,12 +2273,12 @@ struct SingleAllocationLaserEntitiesStorage
         auto const lifetimes_remaining_offset{ml::native_soa::layout_align(
             damages_offset + blocks * capacity_granularity * sizeof(std::int32_t) + column_gap,
             LifetimesRemaining.alignment)};
-        auto const instigator_handles_offset{ml::native_soa::layout_align(
+        auto const instigator_ids_offset{ml::native_soa::layout_align(
             lifetimes_remaining_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            InstigatorHandles.alignment)};
+            InstigatorIds.alignment)};
         auto const initial_lifetimes_offset{ml::native_soa::layout_align(
-            instigator_handles_offset +
-                blocks * capacity_granularity * sizeof(RegistryEntityHandle) + column_gap,
+            instigator_ids_offset + blocks * capacity_granularity * sizeof(EntityUniqueId) +
+                column_gap,
             InitialLifetimes.alignment)};
         auto const spawn_times_offset{ml::native_soa::layout_align(
             initial_lifetimes_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
@@ -2304,7 +2296,7 @@ struct SingleAllocationLaserEntitiesStorage
                 pointer_at(VelocitiesZs, velocities_zs_offset),
                 pointer_at(Damages, damages_offset),
                 pointer_at(LifetimesRemaining, lifetimes_remaining_offset),
-                pointer_at(InstigatorHandles, instigator_handles_offset),
+                pointer_at(InstigatorIds, instigator_ids_offset),
                 pointer_at(InitialLifetimes, initial_lifetimes_offset),
                 pointer_at(SpawnTimes, spawn_times_offset)};
     }
@@ -2330,8 +2322,7 @@ struct SingleAllocationLaserEntitiesStorage
         std::uninitialized_value_construct_n<float*>(columns.velocities_zs, count);
         std::uninitialized_value_construct_n<std::int32_t*>(columns.damages, count);
         std::uninitialized_value_construct_n<float*>(columns.lifetimes_remaining, count);
-        std::uninitialized_value_construct_n<RegistryEntityHandle*>(columns.instigator_handles,
-                                                                    count);
+        std::uninitialized_value_construct_n<EntityUniqueId*>(columns.instigator_ids, count);
         std::uninitialized_value_construct_n<float*>(columns.initial_lifetimes, count);
         std::uninitialized_value_construct_n<float*>(columns.spawn_times, count);
     }
@@ -2349,7 +2340,7 @@ struct SingleAllocationLaserEntitiesStorage
         auto const sources_bytes{elements_to_move * sizeof(LaserSource)};
         auto const locations_xs_bytes{elements_to_move * sizeof(float)};
         auto const damages_bytes{elements_to_move * sizeof(std::int32_t)};
-        auto const instigator_handles_bytes{elements_to_move * sizeof(RegistryEntityHandle)};
+        auto const instigator_ids_bytes{elements_to_move * sizeof(EntityUniqueId)};
         std::memcpy(columns.active + index, columns.active + source, active_bytes);
         std::memcpy(columns.sources + index, columns.sources + source, sources_bytes);
         std::memcpy(
@@ -2375,9 +2366,8 @@ struct SingleAllocationLaserEntitiesStorage
         std::memcpy(columns.lifetimes_remaining + index,
                     columns.lifetimes_remaining + source,
                     locations_xs_bytes);
-        std::memcpy(columns.instigator_handles + index,
-                    columns.instigator_handles + source,
-                    instigator_handles_bytes);
+        std::memcpy(
+            columns.instigator_ids + index, columns.instigator_ids + source, instigator_ids_bytes);
         std::memcpy(columns.initial_lifetimes + index,
                     columns.initial_lifetimes + source,
                     locations_xs_bytes);
@@ -2410,8 +2400,8 @@ struct SingleAllocationLaserEntitiesStorage
                aliases(source.velocities.xs) || aliases(source.velocities.ys) ||
                aliases(source.velocities.zs) || aliases(source.damages.data()) ||
                aliases(source.lifetimes_remaining.data()) ||
-               aliases(source.instigator_handles.data()) ||
-               aliases(source.initial_lifetimes.data()) || aliases(source.spawn_times.data());
+               aliases(source.instigator_ids.data()) || aliases(source.initial_lifetimes.data()) ||
+               aliases(source.spawn_times.data());
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {
@@ -2421,7 +2411,7 @@ struct SingleAllocationLaserEntitiesStorage
         auto const sources_bytes{elements_to_copy * sizeof(LaserSource)};
         auto const locations_xs_bytes{elements_to_copy * sizeof(float)};
         auto const damages_bytes{elements_to_copy * sizeof(std::int32_t)};
-        auto const instigator_handles_bytes{elements_to_copy * sizeof(RegistryEntityHandle)};
+        auto const instigator_ids_bytes{elements_to_copy * sizeof(EntityUniqueId)};
         std::memcpy(destination.active, source.active.data(), active_bytes);
         std::memcpy(destination.sources, source.sources.data(), sources_bytes);
         std::memcpy(destination.locations_xs, source.locations.xs, locations_xs_bytes);
@@ -2437,9 +2427,7 @@ struct SingleAllocationLaserEntitiesStorage
         std::memcpy(destination.damages, source.damages.data(), damages_bytes);
         std::memcpy(
             destination.lifetimes_remaining, source.lifetimes_remaining.data(), locations_xs_bytes);
-        std::memcpy(destination.instigator_handles,
-                    source.instigator_handles.data(),
-                    instigator_handles_bytes);
+        std::memcpy(destination.instigator_ids, source.instigator_ids.data(), instigator_ids_bytes);
         std::memcpy(
             destination.initial_lifetimes, source.initial_lifetimes.data(), locations_xs_bytes);
         std::memcpy(destination.spawn_times, source.spawn_times.data(), locations_xs_bytes);
@@ -2459,7 +2447,7 @@ struct SingleAllocationLaserEntitiesStorage
             auto const sources_bytes{live_count * sizeof(LaserSource)};
             auto const locations_xs_bytes{live_count * sizeof(float)};
             auto const damages_bytes{live_count * sizeof(std::int32_t)};
-            auto const instigator_handles_bytes{live_count * sizeof(RegistryEntityHandle)};
+            auto const instigator_ids_bytes{live_count * sizeof(EntityUniqueId)};
             std::memcpy(destination.active, source.active, active_bytes);
             std::memcpy(destination.sources, source.sources, sources_bytes);
             std::memcpy(destination.locations_xs, source.locations_xs, locations_xs_bytes);
@@ -2475,9 +2463,7 @@ struct SingleAllocationLaserEntitiesStorage
             std::memcpy(destination.damages, source.damages, damages_bytes);
             std::memcpy(
                 destination.lifetimes_remaining, source.lifetimes_remaining, locations_xs_bytes);
-            std::memcpy(destination.instigator_handles,
-                        source.instigator_handles,
-                        instigator_handles_bytes);
+            std::memcpy(destination.instigator_ids, source.instigator_ids, instigator_ids_bytes);
             std::memcpy(
                 destination.initial_lifetimes, source.initial_lifetimes, locations_xs_bytes);
             std::memcpy(destination.spawn_times, source.spawn_times, locations_xs_bytes);
@@ -2550,9 +2536,9 @@ struct EntitiesSingleConstView : ml::native_soa::CompactViewState<true> {
             column_data<float>(EntitiesSingleLayout::LifetimesRemaining.offset(capacity_blocks())),
             static_cast<std::size_t>(count_)};
     }
-    auto instigator_handles() const -> std::span<RegistryEntityHandle const> {
-        return {column_data<RegistryEntityHandle>(
-                    EntitiesSingleLayout::InstigatorHandles.offset(capacity_blocks())),
+    auto instigator_ids() const -> std::span<EntityUniqueId const> {
+        return {column_data<EntityUniqueId>(
+                    EntitiesSingleLayout::InstigatorIds.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto initial_lifetimes() const -> std::span<float const> {
@@ -2601,8 +2587,8 @@ struct EntitiesSingleConstView : ml::native_soa::CompactViewState<true> {
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<float>(EntitiesSingleLayout::LifetimesRemaining.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
-                 EntitiesSingleLayout::InstigatorHandles.offset(blocks)),
+            {column_data_unchecked<EntityUniqueId>(
+                 EntitiesSingleLayout::InstigatorIds.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<float>(EntitiesSingleLayout::InitialLifetimes.offset(blocks)),
              static_cast<std::size_t>(count_)},
@@ -2677,9 +2663,9 @@ struct EntitiesSingleView : ml::native_soa::CompactViewState<false> {
             column_data<float>(EntitiesSingleLayout::LifetimesRemaining.offset(capacity_blocks())),
             static_cast<std::size_t>(count_)};
     }
-    auto instigator_handles() const -> std::span<RegistryEntityHandle> {
-        return {column_data<RegistryEntityHandle>(
-                    EntitiesSingleLayout::InstigatorHandles.offset(capacity_blocks())),
+    auto instigator_ids() const -> std::span<EntityUniqueId> {
+        return {column_data<EntityUniqueId>(
+                    EntitiesSingleLayout::InstigatorIds.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto initial_lifetimes() const -> std::span<float> {
@@ -2728,8 +2714,8 @@ struct EntitiesSingleView : ml::native_soa::CompactViewState<false> {
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<float>(EntitiesSingleLayout::LifetimesRemaining.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
-                 EntitiesSingleLayout::InstigatorHandles.offset(blocks)),
+            {column_data_unchecked<EntityUniqueId>(
+                 EntitiesSingleLayout::InstigatorIds.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<float>(EntitiesSingleLayout::InitialLifetimes.offset(blocks)),
              static_cast<std::size_t>(count_)},

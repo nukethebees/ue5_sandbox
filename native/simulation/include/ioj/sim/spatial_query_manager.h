@@ -71,17 +71,17 @@ struct SpatialQueryManager {
     void have_clear_lines(Vectors3fConstView start_locations,
                           Vectors3fConstView end_locations,
                           std::span<std::uint8_t> clear_lines,
-                          std::span<RegistryEntityHandle const> ignored_entities = {}) const;
+                          std::span<EntityUniqueId const> ignored_entities = {}) const;
     void trace_closest_lines(Vectors3fConstView start_locations,
                              Vectors3fConstView end_locations,
                              TraceHitsView out_hits,
-                             std::span<RegistryEntityHandle const> ignored_entities = {}) const;
+                             std::span<EntityUniqueId const> ignored_entities = {}) const;
     void sweep_closest_aabbs(
         Vectors3fConstView start_locations,
         Vectors3fConstView end_locations,
         Vector3f moving_half_extent,
         TraceHitsView out_hits,
-        std::span<RegistryEntityHandle const> ignored_entities = {},
+        std::span<EntityUniqueId const> ignored_entities = {},
         collision::TraceEntityFilter entity_filter = collision::TraceEntityFilter::None) const;
 
     /* **************************************** */
@@ -89,10 +89,10 @@ struct SpatialQueryManager {
     /* **************************************** */
     auto has_clear_line(Vector3f start_location,
                         Vector3f end_location,
-                        RegistryEntityHandle ignored_entity = {}) const -> bool;
+                        EntityUniqueId ignored_entity = {}) const -> bool;
     auto trace_closest(Vector3f start_location,
                        Vector3f end_location,
-                       RegistryEntityHandle ignored_entity = {}) const -> LineTraceResult;
+                       EntityUniqueId ignored_entity = {}) const -> LineTraceResult;
 
     auto collect_non_team_entities_in_range(Vector3f const& origin,
                                             Team const team,

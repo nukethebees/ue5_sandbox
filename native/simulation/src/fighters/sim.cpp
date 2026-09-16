@@ -483,7 +483,7 @@ void Sim::apply_movement() {
                      config.laser.damage,
                      config.laser.projectile_speed,
                      config.laser.max_distance,
-                     data.entity_handles[index],
+                     data.entity_ids[index],
                      {data.teams[index], EntityType::Fighter});
     }
     laser_simulation.queue_laser_spawns(requests.get_const_view());
@@ -1386,7 +1386,7 @@ void Sim::handle_firing(TaskView const& data) {
     FrameVectors3f line_of_sight_starts{&frame_memory_resource};
     FrameVectors3f line_of_sight_ends{&frame_memory_resource};
     ml::FrameArray<std::uint8_t> line_of_sight_results{&frame_memory_resource};
-    ml::FrameArray<RegistryEntityHandle> firing_ignored_entities{&frame_memory_resource};
+    ml::FrameArray<EntityUniqueId> firing_ignored_entities{&frame_memory_resource};
     ml::FrameArray<std::int32_t> firing_position_fighter_indices{&frame_memory_resource};
     FrameVectors3f firing_position_candidates{&frame_memory_resource};
 
@@ -1430,7 +1430,7 @@ void Sim::handle_firing(TaskView const& data) {
         auto const element{static_cast<std::size_t>(fighter_index)};
         auto const direction{data.planned_aim_directions[fighter_index]};
         auto const end_offset{los_check_buffer + data.target_radii[element]};
-        firing_ignored_entities[index] = data.entity_handles[element];
+        firing_ignored_entities[index] = data.entity_ids[element];
         line_of_sight_starts.set(
             index, predicted_location(fighter_index) + direction * fire_point_distance_);
         line_of_sight_ends.set(index,
@@ -1479,7 +1479,7 @@ void Sim::handle_firing(TaskView const& data) {
 
         for (std::int32_t i{}; i < n_fighters; ++i) {
             auto const ship_index{firing_position_fighter_indices[i]};
-            firing_ignored_entities[i] = data.entity_handles[ship_index];
+            firing_ignored_entities[i] = data.entity_ids[ship_index];
             auto const candidate{firing_detail::make_fire_point_candidate(
                 data.target_locations[ship_index],
                 data.desired_move_locations[ship_index],

@@ -95,11 +95,11 @@ struct CollisionUniformGrid {
     void trace_aabbs(LineTracesConstView const& traces, TraceHitsView const& hits) const;
     void trace_aabbs(LineTracesConstView const& traces,
                      TraceHitsView const& hits,
-                     std::span<RegistryEntityHandle const> ignored_entities) const;
+                     std::span<EntityUniqueId const> ignored_entities) const;
     void sweep_aabbs(LineTracesConstView const& centre_paths,
                      Vector3f moving_half_extent,
                      TraceHitsView const& hits,
-                     std::span<RegistryEntityHandle const> ignored_entities = {},
+                     std::span<EntityUniqueId const> ignored_entities = {},
                      TraceEntityFilter entity_filter = TraceEntityFilter::None) const;
   private:
     auto to_cell_x(float value) const -> std::int32_t;

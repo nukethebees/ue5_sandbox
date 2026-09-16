@@ -39,7 +39,7 @@ void trace_grid_aabbs(GridGeometry const geometry,
                       AgentAccessor const& agents,
                       LineTracesConstView const traces,
                       TraceHitsView const hits,
-                      std::span<RegistryEntityHandle const> const ignored_entities,
+                      std::span<EntityUniqueId const> const ignored_entities,
                       Vector3f const moving_half_extent) {
     traces.validate_array_sizes();
     hits.validate_array_sizes();
@@ -86,7 +86,7 @@ void trace_grid_aabbs(GridGeometry const geometry,
         auto nearest_t{std::numeric_limits<float>::infinity()};
         RegistryEntityHandle nearest_entity;
         std::int32_t nearest_static_index{-1};
-        RegistryEntityHandle ignored_entity{};
+        EntityUniqueId ignored_entity{};
         if constexpr (IgnoredMode == IgnoredEntityMode::PerTrace) {
             ignored_entity = ignored_entities[output_index];
         }
@@ -103,7 +103,7 @@ void trace_grid_aabbs(GridGeometry const geometry,
                         continue;
                     }
                     if constexpr (IgnoredMode == IgnoredEntityMode::PerTrace) {
-                        if (entity == ignored_entity) {
+                        if (id == ignored_entity) {
                             continue;
                         }
                     }
@@ -266,7 +266,7 @@ void dispatch_ignored_mode(GridGeometry const geometry,
                            AgentAccessor const& agents,
                            LineTracesConstView const traces,
                            TraceHitsView const hits,
-                           std::span<RegistryEntityHandle const> const ignored_entities,
+                           std::span<EntityUniqueId const> const ignored_entities,
                            Vector3f const moving_half_extent,
                            TraceEntityFilter const entity_filter) {
     auto const dispatch_filter{[&]<IgnoredEntityMode IgnoredMode>() {
@@ -316,15 +316,14 @@ void trace_grid_lines(GridGeometry const geometry,
         geometry, entity_storage, static_storage, registry, agents, traces, hits, {}, {});
 }
 
-void trace_grid_lines_ignoring_entities(
-    GridGeometry const geometry,
-    CollisionGridEntityStorage const& entity_storage,
-    CollisionGridStaticStorage const& static_storage,
-    EntityRegistry const& registry,
-    AgentAccessor const& agents,
-    LineTracesConstView const traces,
-    TraceHitsView const hits,
-    std::span<RegistryEntityHandle const> const ignored_entities) {
+void trace_grid_lines_ignoring_entities(GridGeometry const geometry,
+                                        CollisionGridEntityStorage const& entity_storage,
+                                        CollisionGridStaticStorage const& static_storage,
+                                        EntityRegistry const& registry,
+                                        AgentAccessor const& agents,
+                                        LineTracesConstView const traces,
+                                        TraceHitsView const hits,
+                                        std::span<EntityUniqueId const> const ignored_entities) {
     trace_grid_aabbs<TraceKind::Line, IgnoredEntityMode::PerTrace, TraceEntityFilter::None>(
         geometry,
         entity_storage,
@@ -345,7 +344,7 @@ void sweep_grid_aabbs(GridGeometry const geometry,
                       LineTracesConstView const centre_paths,
                       Vector3f const moving_half_extent,
                       TraceHitsView const hits,
-                      std::span<RegistryEntityHandle const> const ignored_entities,
+                      std::span<EntityUniqueId const> const ignored_entities,
                       TraceEntityFilter const entity_filter) {
     dispatch_ignored_mode<TraceKind::Sweep>(geometry,
                                             entity_storage,
@@ -599,7 +598,7 @@ void CollisionUniformGrid::trace_aabbs(LineTracesConstView const& traces,
 void CollisionUniformGrid::trace_aabbs(
     LineTracesConstView const& traces,
     TraceHitsView const& hits,
-    std::span<RegistryEntityHandle const> const ignored_entities) const {
+    std::span<EntityUniqueId const> const ignored_entities) const {
     collision_uniform_grid_detail::trace_grid_lines_ignoring_entities(
         geometry_,
         entity_storage_,
@@ -614,7 +613,7 @@ void CollisionUniformGrid::trace_aabbs(
 void CollisionUniformGrid::sweep_aabbs(LineTracesConstView const& centre_paths,
                                        Vector3f const moving_half_extent,
                                        TraceHitsView const& hits,
-                                       std::span<RegistryEntityHandle const> const ignored_entities,
+                                       std::span<EntityUniqueId const> const ignored_entities,
                                        TraceEntityFilter const entity_filter) const {
     assert(std::isfinite(moving_half_extent.X) && std::isfinite(moving_half_extent.Y) &&
            std::isfinite(moving_half_extent.Z));

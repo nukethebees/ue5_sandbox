@@ -103,7 +103,7 @@
     (member damages array int32)
     (member speeds array float)
     (member max_distances array float)
-    (member instigator_handles array @native_registry_handle)
+    (member instigator_ids array @native_unique_id)
     (member sources array @laser_source)
     (single-allocation SingleAllocationLaserSpawnRequests))
   (struct Entities
@@ -115,7 +115,7 @@
     (member velocities nested @native_vectors_3f :nested-schema Vectors3f)
     (member damages array int32)
     (member lifetimes_remaining array float)
-    (member instigator_handles array @native_registry_handle)
+    (member instigator_ids array @native_unique_id)
     (member initial_lifetimes array float)
     (member spawn_times array float)
     (single-allocation SingleAllocationLaserEntities)))

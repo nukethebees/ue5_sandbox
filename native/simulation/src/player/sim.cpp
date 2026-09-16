@@ -531,7 +531,7 @@ void Sim::update_laser_firing() {
             auto const start{middle.location};
             auto const end{start + middle.forward() * config.laser_lock_on_distance};
             auto const hit{spatial_query_manager.trace_closest(
-                to_float(start), to_float(end), registry_handle)};
+                to_float(start), to_float(end), unique_entity_id)};
 
             if (hit.hit && hit.entity.is_valid()) {
                 set_lock_on_target(hit.entity);
@@ -603,7 +603,7 @@ void Sim::fire_lasers_from(std::span<Transform3d const> const fire_points) {
     std::ranges::fill(laser_columns.speeds, config.laser.projectile_speed);
     std::ranges::fill(laser_columns.max_distances, config.laser.max_distance);
     std::ranges::fill(laser_columns.sources, LaserSource{team, EntityType::PlayerShip});
-    std::ranges::fill(laser_columns.instigator_handles, registry_handle);
+    std::ranges::fill(laser_columns.instigator_ids, unique_entity_id);
     lasers.queue_laser_spawns(new_lasers.get_const_view().columns());
 }
 

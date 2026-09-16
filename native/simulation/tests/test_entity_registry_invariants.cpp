@@ -446,7 +446,7 @@ TEST_F(EntityRegistryTest, TeamChangesSynchronizeHistoryAndSubsequentCombatAttri
     auto data{tests::registry::make_entities(2)};
     auto const handles{
         tests::registry::make_handles(registry_.add_entities(view_of(data)).registry_handles)};
-    registry_.record_shots(std::vector{handles[0]});
+    registry_.record_shots(std::vector{registry_.get_current_id(handles[0])});
     data.teams[0] = Team::Green;
     data.teams[1] = Team::Yellow;
     registry_.queue_entity_updates({handles, view_of(data)}, {});
@@ -455,7 +455,7 @@ TEST_F(EntityRegistryTest, TeamChangesSynchronizeHistoryAndSubsequentCombatAttri
     check_row(data, 0, handles[0]);
     check_row(data, 1, handles[1]);
     check_counts();
-    registry_.record_shots(std::vector{handles[0], RegistryEntityHandle{}});
+    registry_.record_shots(std::vector{registry_.get_current_id(handles[0]), EntityUniqueId{}});
     DirectDamageEvents damage;
     damage.add(registry_.get_current_id(handles[1]), 17, registry_.find_unique_id(handles[0]));
     registry_.queue_direct_damage_events(damage);

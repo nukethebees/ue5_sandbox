@@ -121,7 +121,8 @@ TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
 
     auto const& queries{simulation.get_spatial_query_manager()};
 
-    auto const hit{queries.trace_closest({{-20.f, 0.f, 0.f}}, {{20.f, 0.f, 0.f}}, parent)};
+    auto const hit{queries.trace_closest(
+        {{-20.f, 0.f, 0.f}}, {{20.f, 0.f, 0.f}}, registry.get_current_id(parent))};
     EXPECT_TRUE(hit.hit);
     EXPECT_EQ(hit.entity, fighter);
     EXPECT_EQ(queries.get_collision_system().get_aabb_overlap_events().entity_entity_overlaps.num(),
@@ -175,7 +176,8 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
              25,
              1000.f,
              10000.f,
-             simulation.get_capital_ships().get_handle(0),
+             simulation.get_entity_registry().get_current_id(
+                 simulation.get_capital_ships().get_handle(0)),
              {Team::White, EntityType::CapitalShip});
 
     LevelSimTestAccess::queue_laser_spawns(simulation, shot.get_const_view());
@@ -269,7 +271,8 @@ TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndQueriesAdvanceAfterw
              25,
              1000.f,
              10000.f,
-             simulation.get_capital_ships().get_handle(0),
+             simulation.get_entity_registry().get_current_id(
+                 simulation.get_capital_ships().get_handle(0)),
              {Team::White, EntityType::CapitalShip});
 
     LevelSimTestAccess::queue_laser_spawns(simulation, shot.get_const_view());

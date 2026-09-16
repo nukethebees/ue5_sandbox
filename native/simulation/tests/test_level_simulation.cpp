@@ -188,14 +188,15 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
     simulation.finish_initialisation();
     auto queue_shot = [](LevelSim& level, float const location) {
         lasers::SpawnRequests requests;
-        requests.add({{location, 0.f, 0.f}},
-                     {},
-                     {},
-                     1,
-                     2000.f,
-                     10000.f,
-                     level.get_capital_ships().get_handle(0),
-                     {Team::Green, EntityType::Fighter});
+        requests.add(
+            {{location, 0.f, 0.f}},
+            {},
+            {},
+            1,
+            2000.f,
+            10000.f,
+            level.get_entity_registry().get_current_id(level.get_capital_ships().get_handle(0)),
+            {Team::Green, EntityType::Fighter});
         LevelSimTestAccess::queue_laser_spawns(level, requests.get_const_view());
     };
     queue_shot(simulation, 700.f);

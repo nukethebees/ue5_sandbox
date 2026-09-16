@@ -642,7 +642,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
             requests.damages[spawn] = 1;
             requests.speeds[spawn] = 1000.0f;
             requests.max_distances[spawn] = requests.speeds[spawn] * initial_lifetime;
-            requests.instigator_handles[spawn] = {};
+            requests.instigator_ids[spawn] = {};
             requests.sources[spawn] =
                 ml::make_laser_source(ETestTeam::White, ETestEntityType::TubeSpinner);
             expected_material_data.Add(
