@@ -1,4 +1,5 @@
 target_sources(native-simulation PRIVATE
+  agent_accessor.cpp
   ../include/ioj/sim/agent_indexes.h
   ../include/ioj/sim/agent_accessor.h
   ../include/ioj/sim/attack_distance_band.h

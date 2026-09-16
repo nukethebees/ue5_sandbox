@@ -4,6 +4,7 @@
   :namespace ioj::sim
   (struct EntityHistoryColumns
     :operations (all)
+    (member entity_ids array @native_unique_id)
     (member registry_indices array (type-ref @native_registry_handle :nested "index_type"))
     (member registry_generations array (type-ref @native_registry_handle :nested "generation_type"))
     (member entity_types array @native_entity_type)

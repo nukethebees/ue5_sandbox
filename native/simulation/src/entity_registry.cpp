@@ -79,8 +79,7 @@ auto find_unique_id(std::span<std::int32_t const> const generations,
         auto const element{static_cast<std::size_t>(index)};
         if (history.registry_indices[element] == handle.index &&
             history.registry_generations[element] == handle.generation) {
-            return EntityUniqueId::make(static_cast<EntityUniqueId::index_type>(index),
-                                        history.entity_types[element]);
+            return history.entity_ids[element];
         }
     }
     return std::unexpected{UniqueIdLookupError::MissingStaleHandle};
@@ -113,15 +112,16 @@ auto register_spawned_entity(EntityRegistryBookkeeping& bookkeeping,
                              EntityHistoryColumnsView const history,
                              std::int32_t const slot_index,
                              EntityUniqueId const unique_id,
+                             std::int32_t const unique,
                              Team const team,
                              EntityType const type,
                              Health const health) noexcept -> RegistryEntityHandle {
     assert(slot_index >= 0);
     assert(static_cast<std::size_t>(slot_index) < bookkeeping.generations.size());
-    assert(unique_id.index() < static_cast<EntityUniqueId::index_type>(history.num()));
+    assert(unique >= 0 && unique < history.num());
 
     auto const slot{static_cast<std::size_t>(slot_index)};
-    auto const unique{unique_id.index()};
+    history.entity_ids[unique] = unique_id;
     auto const generation{bookkeeping.generations[slot]};
     bookkeeping.unique_ids[slot] = unique_id;
     history.registry_indices[unique] = slot_index;
@@ -136,6 +136,7 @@ auto register_spawned_entity(EntityRegistryBookkeeping& bookkeeping,
 
 auto apply_entity_updates(EntityRegistryBookkeeping& bookkeeping,
                           EntityRegistryStatistics& statistics,
+                          EntityIdAllocator const& ids,
                           EntityHistoryColumnsView const history,
                           RegistryEntityData::View const entities,
                           RegistryEntityData::ConstView const updates) noexcept -> std::int32_t {
@@ -170,7 +171,7 @@ auto apply_entity_updates(EntityRegistryBookkeeping& bookkeeping,
         statistics.apply_alive_transition(old_team, new_team, entity_type, old_alive, new_alive);
 
         entities.teams[slot_index] = new_team;
-        auto const unique{bookkeeping.unique_ids[slot].index()};
+        auto const unique{ids.history_index(bookkeeping.unique_ids[slot])};
         if (new_alive) {
             history.life_state[unique] = LifeState::Alive;
         } else if (old_alive) {
@@ -190,6 +191,7 @@ auto apply_entity_updates(EntityRegistryBookkeeping& bookkeeping,
 
 auto record_deaths(EntityRegistryBookkeeping& bookkeeping,
                    EntityRegistryStatistics& statistics,
+                   EntityIdAllocator const& ids,
                    EntityHistoryColumnsView const history,
                    EntityDeathInfoConstView const events) noexcept
     -> std::expected<void, AccountingError> {
@@ -204,7 +206,7 @@ auto record_deaths(EntityRegistryBookkeeping& bookkeeping,
         }
 
         bookkeeping.record_dead(victim);
-        auto const victim_element{victim_id->index()};
+        auto const victim_element{ids.history_index(*victim_id)};
         history.life_state[victim_element] = static_cast<LifeState>(events.reasons[element]);
         statistics.record_destroyed(history.teams[victim_element],
                                     history.entity_types[victim_element]);
@@ -219,7 +221,7 @@ auto record_deaths(EntityRegistryBookkeeping& bookkeeping,
             return std::unexpected{AccountingError{killer_id.error(), killer, index}};
         }
 
-        auto const killer_element{killer_id->index()};
+        auto const killer_element{ids.history_index(*killer_id)};
         history.killed_by[victim_element] = *killer_id;
         ++history.kills[killer_element];
         statistics.record_kill(history.teams[killer_element],
@@ -232,6 +234,7 @@ auto record_deaths(EntityRegistryBookkeeping& bookkeeping,
 auto record_damage(EntityRegistryStatistics& statistics,
                    std::span<std::int32_t const> const generations,
                    std::span<EntityUniqueId const> const current_ids,
+                   EntityIdAllocator const& ids,
                    EntityHistoryColumnsConstView const history,
                    DirectDamageEventsConstView const events) noexcept
     -> std::expected<void, AccountingError> {
@@ -244,7 +247,7 @@ auto record_damage(EntityRegistryStatistics& statistics,
             return std::unexpected{AccountingError{victim_id.error(), victim, index}};
         }
 
-        auto const victim_element{victim_id->index()};
+        auto const victim_element{ids.history_index(*victim_id)};
         auto const damage{static_cast<double>(events.damage_amounts[element])};
         statistics.record_damage_received(
             history.teams[victim_element], history.entity_types[victim_element], damage);
@@ -257,7 +260,7 @@ auto record_damage(EntityRegistryStatistics& statistics,
         if (!attacker_id) {
             return std::unexpected{AccountingError{attacker_id.error(), instigator, index}};
         }
-        auto const attacker_element{attacker_id->index()};
+        auto const attacker_element{ids.history_index(*attacker_id)};
         statistics.record_hit(
             history.teams[attacker_element], history.entity_types[attacker_element], damage);
     }
@@ -267,6 +270,7 @@ auto record_damage(EntityRegistryStatistics& statistics,
 auto record_shots(EntityRegistryStatistics& statistics,
                   std::span<std::int32_t const> const generations,
                   std::span<EntityUniqueId const> const current_ids,
+                  EntityIdAllocator const& ids,
                   EntityHistoryColumnsConstView const history,
                   std::span<RegistryEntityHandle const> const instigators) noexcept
     -> std::expected<void, AccountingError> {
@@ -280,7 +284,7 @@ auto record_shots(EntityRegistryStatistics& statistics,
         if (!attacker_id) {
             return std::unexpected{AccountingError{attacker_id.error(), instigator, index}};
         }
-        auto const attacker_element{attacker_id->index()};
+        auto const attacker_element{ids.history_index(*attacker_id)};
         statistics.record_shot(history.teams[attacker_element],
                                history.entity_types[attacker_element]);
     }
@@ -330,6 +334,7 @@ void EntityRegistry::reset() {
     entity_data.reset();
     queued_entity_data.reset();
     unique_entity_history_.reset();
+    id_allocator_.reset();
     queued_death_infos.reset();
     queued_direct_damage_events.reset();
     bookkeeping_.reset();
@@ -384,12 +389,12 @@ auto EntityRegistry::add_entities(EntityData::ConstView const view) -> SpawnedEn
         return new_entities;
     }
 
-    auto const first_index{static_cast<EntityUniqueId::index_type>(unique_entity_history_.num())};
-    if (!EntityUniqueId::index_range_fits(first_index, static_cast<std::uint32_t>(count))) {
-        ml::fatal_error("Entity unique ID index space exhausted");
+    auto const first_index{unique_entity_history_.num()};
+    new_entities.entity_ids.reserve(static_cast<std::size_t>(count));
+    for (std::int32_t i{}; i < count; ++i) {
+        new_entities.entity_ids.push_back(
+            id_allocator_.allocate(view.entity_types[i], first_index + i));
     }
-
-    new_entities.first_id = EntityUniqueId::make(first_index, view.entity_types[0]);
     unique_entity_history_.add_defaulted(count);
     new_entities.registry_handles.add_uninitialised(count);
     auto const unique_entities{unique_entity_history_.get_view().columns()};
@@ -400,15 +405,16 @@ auto EntityRegistry::add_entities(EntityData::ConstView const view) -> SpawnedEn
         entity_registry_detail::copy_entity_rows(
             entity_data.get_view().columns(), slot_index, view, source_index, 1);
 
-        auto const handle{entity_registry_detail::register_spawned_entity(
-            bookkeeping_,
-            statistics_,
-            unique_entities,
-            slot_index,
-            EntityUniqueId::make(first_index + source_index, view.entity_types[source_index]),
-            view.teams[source_index],
-            view.entity_types[source_index],
-            view.healths[source_index])};
+        auto const handle{
+            entity_registry_detail::register_spawned_entity(bookkeeping_,
+                                                            statistics_,
+                                                            unique_entities,
+                                                            slot_index,
+                                                            new_entities.get_id(source_index),
+                                                            first_index + source_index,
+                                                            view.teams[source_index],
+                                                            view.entity_types[source_index],
+                                                            view.healths[source_index])};
         new_entities.registry_handles.set(source_index, handle.index, handle.generation);
     }
 
@@ -420,15 +426,16 @@ auto EntityRegistry::add_entities(EntityData::ConstView const view) -> SpawnedEn
 
     for (std::int32_t offset{}; offset < append_count; ++offset) {
         auto const source_index{reuse_count + offset};
-        auto const handle{entity_registry_detail::register_spawned_entity(
-            bookkeeping_,
-            statistics_,
-            unique_entities,
-            first_slot_index + offset,
-            EntityUniqueId::make(first_index + source_index, view.entity_types[source_index]),
-            view.teams[source_index],
-            view.entity_types[source_index],
-            view.healths[source_index])};
+        auto const handle{
+            entity_registry_detail::register_spawned_entity(bookkeeping_,
+                                                            statistics_,
+                                                            unique_entities,
+                                                            first_slot_index + offset,
+                                                            new_entities.get_id(source_index),
+                                                            first_index + source_index,
+                                                            view.teams[source_index],
+                                                            view.entity_types[source_index],
+                                                            view.healths[source_index])};
         new_entities.registry_handles.set(source_index, handle.index, handle.generation);
     }
 
@@ -460,6 +467,7 @@ void EntityRegistry::commit_entity_updates() {
     [[maybe_unused]] auto const invalid_update{entity_registry_detail::apply_entity_updates(
         bookkeeping_,
         statistics_,
+        id_allocator_,
         unique_entities,
         entity_data.get_view().columns(),
         queued_entity_data.get_const_view().columns())};
@@ -470,8 +478,11 @@ void EntityRegistry::commit_death_updates() {
 
     queued_death_infos.validate_array_sizes();
     auto const unique_entities{unique_entity_history_.get_view().columns()};
-    auto const result{entity_registry_detail::record_deaths(
-        bookkeeping_, statistics_, unique_entities, queued_death_infos.get_const_view())};
+    auto const result{entity_registry_detail::record_deaths(bookkeeping_,
+                                                            statistics_,
+                                                            id_allocator_,
+                                                            unique_entities,
+                                                            queued_death_infos.get_const_view())};
     entity_registry_detail::check_accounting_result(result);
 }
 
@@ -485,6 +496,7 @@ void EntityRegistry::queue_direct_damage_events(DirectDamageEventsConstView cons
     auto const result{entity_registry_detail::record_damage(statistics_,
                                                             bookkeeping_.generations,
                                                             bookkeeping_.unique_ids,
+                                                            id_allocator_,
                                                             unique_entities,
                                                             damage_events)};
     entity_registry_detail::check_accounting_result(result);
@@ -496,6 +508,7 @@ void EntityRegistry::record_shots(std::span<RegistryEntityHandle const> const in
     auto const result{entity_registry_detail::record_shots(statistics_,
                                                            bookkeeping_.generations,
                                                            bookkeeping_.unique_ids,
+                                                           id_allocator_,
                                                            unique_entities,
                                                            instigators)};
     entity_registry_detail::check_accounting_result(result);
@@ -647,13 +660,7 @@ auto EntityRegistry::count_alive_not_on_team(Team const team) const noexcept -> 
 // Unique entity queries
 /* **************************************** */
 auto EntityRegistry::is_valid_unique_id(EntityUniqueId const id) const -> bool {
-    if (!id.is_valid() ||
-        id.index() >= static_cast<EntityUniqueId::index_type>(get_num_unique_ids_issued())) {
-        return false;
-    }
-
-    auto const unique_entities{unique_entity_history_.get_const_view().columns()};
-    return unique_entities.entity_types[id.index()] == id.entity_type();
+    return get_history_index(id) >= 0;
 }
 auto EntityRegistry::find_unique_id(RegistryEntityHandle const handle) const -> EntityUniqueId {
     auto const unique_entities{unique_entity_history_.get_const_view().columns()};
@@ -676,7 +683,7 @@ auto EntityRegistry::find_unique_id(RegistryEntityHandle const handle) const -> 
 auto EntityRegistry::get_kills(EntityUniqueId const id) const -> std::uint32_t {
     assert(is_valid_unique_id(id));
     auto const unique_entities{unique_entity_history_.get_const_view().columns()};
-    return unique_entities.kills[id.index()];
+    return unique_entities.kills[get_history_index(id)];
 }
 
 /* **************************************** */
@@ -738,7 +745,7 @@ void EntityRegistry::validate_unique_ids() const {
             ml::fatal_error(
                 std::format("Invalid unique entity ID: id[{}] = {}", i, unique_id.raw_value()));
         }
-        [[maybe_unused]] auto const index{unique_id.index()};
+        [[maybe_unused]] auto const index{get_history_index(unique_id)};
         assert(unique_entities.registry_indices[index] == i);
         assert(unique_entities.registry_generations[index] == bookkeeping_.generations[i]);
         assert(unique_entities.entity_types[index] == unique_id.entity_type());

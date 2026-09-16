@@ -403,9 +403,10 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
     tests::expect_equal(registry.get_health(capital),
                         4850,
                         "The capital receives one contribution per detected tick");
-    tests::expect_true(registry.get_unique_entities().life_state[player_id.index()] ==
-                           LifeState::Unknown,
-                       "Overlap death uses the environmental death path");
+    tests::expect_true(
+        registry.get_unique_entities().life_state[registry.get_history_index(player_id)] ==
+            LifeState::Unknown,
+        "Overlap death uses the environmental death path");
     tests::expect_equal(
         registry.count_kills(), 0, "Environmental overlap death gives no combat kill");
     return;

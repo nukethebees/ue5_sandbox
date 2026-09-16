@@ -4,6 +4,7 @@
 #include <span>
 #include <vector>
 
+#include <ioj/sim/entity_id_allocator.h>
 #include <ioj/sim/entity_registry_bookkeeping.h>
 #include <ioj/sim/entity_registry_statistics.h>
 #include <ioj/sim/spawned_entity_handles.h>
@@ -157,6 +158,12 @@ struct EntityRegistry {
         return {bookkeeping_.unique_ids.data(), bookkeeping_.unique_ids.size()};
     }
     auto is_valid_unique_id(EntityUniqueId const id) const -> bool;
+    auto get_history_index(EntityUniqueId const id) const noexcept -> std::int32_t {
+        return id_allocator_.history_index(id);
+    }
+    auto get_issued_counts() const noexcept -> EntityTypeSizes const& {
+        return id_allocator_.issued_counts();
+    }
     auto get_num_unique_ids_issued() const -> std::int32_t { return unique_entity_history_.num(); }
     auto find_unique_id(RegistryEntityHandle const handle) const -> EntityUniqueId;
     auto get_current_id(RegistryEntityHandle const handle) const -> EntityUniqueId {
@@ -201,10 +208,11 @@ struct EntityRegistry {
     EntityStorage entity_data;
     EntityRegistryBookkeeping bookkeeping_;
 
-    // Append-only rows indexed by unique-ID index until reset; handle/type stay fixed, while team
-    // and life state track committed state. Old rows and their death/kill accounting survive slot
-    // reuse.
+    // Dense append-only rows; get_history_index resolves partitioned IDs. Handle/type stay fixed,
+    // while team and life state track committed state. Old rows and their death/kill accounting
+    // survive slot reuse.
     EntityHistory unique_entity_history_;
+    EntityIdAllocator id_allocator_;
 
     // Queued updates
     EntityStorage queued_entity_data;

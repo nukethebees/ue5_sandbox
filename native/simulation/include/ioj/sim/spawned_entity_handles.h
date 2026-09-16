@@ -7,21 +7,21 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 namespace ioj::sim {
 struct SpawnedEntityHandles {
     [[nodiscard]] auto num() const noexcept -> std::int32_t { return registry_handles.num(); }
 
-    [[nodiscard]] auto get_id(std::int32_t const index, EntityType const type) const noexcept
-        -> EntityUniqueId {
+    [[nodiscard]] auto get_id(std::int32_t const index) const noexcept -> EntityUniqueId {
         assert(index >= 0 && index < num());
-        return EntityUniqueId::make(
-            first_id.index() + static_cast<EntityUniqueId::index_type>(index), type);
+        return entity_ids[index];
     }
 
-    void reset() noexcept { registry_handles.reset(); }
-    void add_defaulted(std::int32_t const count) { registry_handles.add_defaulted(count); }
-    void add_uninitialised(std::int32_t const count) { registry_handles.add_uninitialised(count); }
+    void reset() noexcept {
+        registry_handles.reset();
+        entity_ids.clear();
+    }
 
     [[nodiscard]] auto get_handle(std::int32_t const index) const noexcept -> RegistryEntityHandle {
         assert(index >= 0 && index < num());
@@ -30,8 +30,8 @@ struct SpawnedEntityHandles {
                 registry_handles.generations[storage_index]};
     }
 
-    // Handles retain input order; first_id belongs to input index zero.
+    // Both columns retain input order, including mixed-type batches.
     RegistryEntityHandles registry_handles;
-    EntityUniqueId first_id;
+    std::vector<EntityUniqueId> entity_ids;
 };
 } // namespace ioj::sim

@@ -35,12 +35,25 @@ struct AgentSpatialState {
     Team team{};
 };
 
+struct AgentTargetView {
+    Vectors3fView locations;
+    Vectors3fView velocities;
+    std::span<Team> teams;
+    std::span<std::uint8_t> alive;
+};
+
 class AgentAccessor {
   public:
-    explicit AgentAccessor(AgentIndexes const& indexes) noexcept
+    explicit AgentAccessor(AgentIndexes& indexes) noexcept
         : indexes_{indexes} {}
 
-    auto indexes() const noexcept -> AgentIndexes const& { return indexes_; }
+    auto indexes() const noexcept -> AgentIndexes& { return indexes_; }
+
+    // Sorts a scratch row permutation; IDs and destination SOA rows stay in caller order.
+    // Velocities and teams may be omitted. Missing/dead targets produce zeroed fields.
+    void gather_targets(std::span<EntityUniqueId const> ids,
+                        std::span<std::int32_t> order,
+                        AgentTargetView output) const;
 
     [[nodiscard]] auto read_spatial(EntityUniqueId const id) const
         -> std::optional<AgentSpatialState> {
@@ -158,7 +171,7 @@ class AgentAccessor {
         return result && result->is_alive() ? result : std::nullopt;
     }
   private:
-    AgentIndexes const& indexes_;
+    AgentIndexes& indexes_;
     CapitalEntityData::ConstView capitals_{};
     FighterEntityData::ConstView fighters_{};
     TurretEntityData::ConstView turrets_{};

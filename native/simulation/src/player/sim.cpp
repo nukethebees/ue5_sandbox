@@ -179,7 +179,7 @@ void Sim::register_with_entity_registry() {
     auto const entity_data{get_entity_update_data()};
     auto const new_entities{entity_registry.add_entities(entity_data.get_const_view().columns())};
     registry_handle = new_entities.get_handle(0);
-    unique_entity_id = new_entities.first_id;
+    unique_entity_id = new_entities.get_id(0);
     assert(entity_registry.is_valid_unique_id(unique_entity_id));
 
     update_entity_registry();

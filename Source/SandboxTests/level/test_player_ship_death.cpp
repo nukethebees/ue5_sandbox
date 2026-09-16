@@ -98,14 +98,15 @@ void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
 
     auto const* const controller{
         Cast<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
-    samples.add(test_driver->get_time(),
-                FSimulationSample{test_driver->get_registry().is_valid_dead(player_ship_handle),
-                                  IsValid(player_ship.Get()),
-                                  unique_entities.life_state[player_ship_id.index()] ==
-                                      ::ioj::sim::LifeState::Alive,
-                                  IsValid(controller) && IsValid(controller->GetPawn()),
-                                  IsValid(controller) && controller->get_active_control_context() ==
-                                                             EPlayerControlContext::Player});
+    samples.add(
+        test_driver->get_time(),
+        FSimulationSample{test_driver->get_registry().is_valid_dead(player_ship_handle),
+                          IsValid(player_ship.Get()),
+                          unique_entities.life_state[test_driver->get_registry().get_history_index(
+                              player_ship_id)] == ::ioj::sim::LifeState::Alive,
+                          IsValid(controller) && IsValid(controller->GetPawn()),
+                          IsValid(controller) && controller->get_active_control_context() ==
+                                                     EPlayerControlContext::Player});
 }
 
 void FTestPlayerShipDeathScenario::check_player_ship_death() {

@@ -123,7 +123,7 @@ auto Sim::spawn_instances(Vectors3fConstView const new_locations,
     auto new_entities{entity_registry.add_entities(entity_data.get_const_view().columns())};
 
     for (std::int32_t i{0}; i < n; ++i) {
-        appended.entity_ids[i] = new_entities.get_id(i, EntityType::TubeSpinner);
+        appended.entity_ids[i] = new_entities.get_id(i);
         appended.handles[i] = new_entities.get_handle(i);
     }
 

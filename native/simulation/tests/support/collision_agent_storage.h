@@ -21,6 +21,7 @@ struct CollisionAgentStorage {
     Team player_team{};
 
     void load(EntityRegistry const& registry) {
+        indexes.reset();
         capitals.reset();
         fighters.reset();
         turrets.reset();

@@ -229,8 +229,7 @@ auto Sim::register_ships(CapitalSpawnDataConstView const spawn_data)
         new_handles.push_back(new_entities.get_handle(i));
     }
     for (std::int32_t i{}; i < n_to_add; ++i) {
-        this->entities.get_view().entity_ids()[first_new_index + i] =
-            new_entities.get_id(i, EntityType::CapitalShip);
+        this->entities.get_view().entity_ids()[first_new_index + i] = new_entities.get_id(i);
         this->entities.get_view().handles()[first_new_index + i] = new_handles[i];
     }
     validate_array_sizes();
@@ -465,6 +464,7 @@ void Sim::handle_dead_entities() {
     }
 
     for (auto const index : local_indices_to_remove) {
+        agents_.indexes().retire(entities.entity_ids[index]);
         this->entities.remove_at_swap(index, 1);
     }
 }

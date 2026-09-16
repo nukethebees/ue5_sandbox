@@ -1073,17 +1073,28 @@ void Sim::set_target_handle(RegistryEntityHandle const fighter_handle,
 }
 void Sim::refresh_target_data() {
     auto const data{entity_buffers.current().get_view().columns()};
-    auto const count{data.target_handles.size()};
-    for (std::size_t index{}; index < count; ++index) {
+    auto const count{data.num()};
+    ml::FrameArray<EntityUniqueId> target_ids{&frame_memory_resource};
+    ml::FrameArray<std::int32_t> order{&frame_memory_resource};
+    ml::FrameArray<std::uint8_t> alive{&frame_memory_resource};
+    target_ids.set_num(count);
+    order.set_num(count);
+    alive.set_num(count);
+    for (std::int32_t index{}; index < count; ++index) {
         auto const target_id{entity_registry.get_current_id(data.target_handles[index])};
-        auto const target{agents_.read_alive(target_id)};
-        if (!target) {
-            data.target_handles[index] = {};
-        }
-        data.target_locations.set(index, target ? target->location : Vector3f{});
-        data.target_velocities.set(index, target ? target->velocity : Vector3f{});
+        target_ids[index] = target_id;
         data.target_radii[index] =
-            target ? spatial_query_manager.get_entity_type_radius(target_id.entity_type()) : 0.f;
+            target_id.is_valid()
+                ? spatial_query_manager.get_entity_type_radius(target_id.entity_type())
+                : 0.f;
+    }
+    agents_.gather_targets(
+        target_ids, order, {data.target_locations, data.target_velocities, {}, alive});
+    for (std::int32_t index{}; index < count; ++index) {
+        if (!alive[index]) {
+            data.target_handles[index] = {};
+            data.target_radii[index] = 0.f;
+        }
     }
     distance_and_squared(data.target_distances,
                          data.target_distance_sq,
@@ -1295,7 +1306,7 @@ void Sim::commit_spawns() {
         entity_registry.add_entities(new_spawn_entity_data.get_const_view().columns());
     auto const& registry_handles{new_spawn_entity_handles.registry_handles};
     for (std::int32_t i{}; i < n_new; ++i) {
-        data.entity_ids[n_cur + i] = new_spawn_entity_handles.get_id(i, EntityType::Fighter);
+        data.entity_ids[n_cur + i] = new_spawn_entity_handles.get_id(i);
         data.entity_handles[n_cur + i] = {registry_handles.registry_indices[i],
                                           registry_handles.generations[i]};
     }
@@ -1346,6 +1357,7 @@ void Sim::remove_dead_entities() {
     auto& data{entity_buffers.current()};
     batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
     for (auto const index : local_indices_to_remove) {
+        agents_.indexes().retire(data.get_const_view().entity_ids()[index]);
         data.remove_at_swap(index, 1);
     }
     validate_array_sizes();

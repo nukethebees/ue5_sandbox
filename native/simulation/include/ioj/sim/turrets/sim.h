@@ -101,6 +101,7 @@ struct Sim {
     // Searching
     /* **************************************** */
     void perform_search();
+    void refresh_target_data();
     void perform_search_on_slice(std::int32_t job_index,
                                  std::int32_t n_turrets,
                                  std::int32_t turrets_per_job,

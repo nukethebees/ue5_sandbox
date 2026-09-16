@@ -108,7 +108,7 @@ class EntityRegistryTest : public ::testing::Test {
         tests::expect_true(actual.teams[slot] == source.teams[source_index], "Team");
         tests::expect_true(actual.entity_types[slot] == source.entity_types[source_index], "Type");
         auto const id{registry_.find_unique_id(handle)};
-        auto const index{id.index()};
+        auto const index{registry_.get_history_index(id)};
         auto const& history{registry_.get_unique_entities()};
         tests::expect_equal(history.registry_indices[index], slot, "Historical slot");
         tests::expect_equal(
@@ -143,8 +143,9 @@ TEST_F(EntityRegistryTest, MixedSlotReusePreservesDataAndHistoricalIdentity) {
     auto const added{tests::registry::make_entities(3, 20)};
     auto const spawned{registry_.add_entities(view_of(added))};
     auto const handles{tests::registry::make_handles(spawned.registry_handles)};
-    tests::expect_equal(spawned.first_id.index(), std::uint32_t{4}, "New IDs start after history");
-    tests::expect_true(spawned.first_id.entity_type() == added.entity_types[0],
+    tests::expect_equal(
+        registry_.get_history_index(spawned.get_id(0)), 4, "History appends densely");
+    tests::expect_true(spawned.get_id(0).entity_type() == added.entity_types[0],
                        "First ID embeds type");
     tests::expect_equal(registry_.get_num_elements(), 5, "Only remainder appended");
     tests::expect_true(handles[0] == RegistryEntityHandle{2, 1},
@@ -156,7 +157,7 @@ TEST_F(EntityRegistryTest, MixedSlotReusePreservesDataAndHistoricalIdentity) {
         check_row(added, index, handles[index]);
         auto const id{registry_.find_unique_id(handles[index])};
         tests::expect_equal(
-            id.index(), static_cast<std::uint32_t>(4 + index), "ID indices follow input order");
+            registry_.get_history_index(id), 4 + index, "History rows follow input order");
         tests::expect_true(id.entity_type() == added.entity_types[index], "ID embeds input type");
     }
     for (auto const slot : {0, 2}) {
@@ -165,13 +166,14 @@ TEST_F(EntityRegistryTest, MixedSlotReusePreservesDataAndHistoricalIdentity) {
                             "Old handle invalid for current data");
         auto const old_id{registry_.find_unique_id(old_handles[slot])};
         tests::expect_equal(
-            old_id.index(), static_cast<std::uint32_t>(slot), "Old handle resolves historical ID");
+            registry_.get_history_index(old_id), slot, "Old handle resolves historical ID");
         tests::expect_true(old_id.entity_type() == initial.entity_types[slot],
                            "Historical ID retains type");
     }
     auto const& history{registry_.get_unique_entities()};
     tests::expect_true(history.life_state[0] == LifeState::Combat, "Death reason survives reuse");
-    tests::expect_equal(history.killed_by[0].index(), std::uint32_t{1}, "Killer survives reuse");
+    tests::expect_equal(
+        registry_.get_history_index(history.killed_by[0]), 1, "Killer survives reuse");
     tests::expect_false(history.killed_by[2].is_valid(), "Unattributed death has no killer");
     tests::expect_true(history.life_state[0] != LifeState::Alive, "Historical victim stays dead");
     check_row(initial, 1, old_handles[1]);
@@ -405,19 +407,23 @@ TEST_F(EntityRegistryTest, FreeSlotsBecomeReusableAtEndTickAndGenerationsAdvance
     data.healths[0] = 100;
     auto const next{registry_.add_entities(view_of(data)).get_handle(0)};
     tests::expect_true(next == RegistryEntityHandle{0, 2}, "Second reuse increments again");
-    tests::expect_equal(
-        registry_.find_unique_id(first).index(), std::uint32_t{0}, "First occupant retains ID");
-    tests::expect_equal(
-        registry_.find_unique_id(reused).index(), std::uint32_t{2}, "Second occupant retains ID");
-    tests::expect_equal(
-        registry_.find_unique_id(next).index(), std::uint32_t{3}, "Third occupant receives new ID");
+    tests::expect_equal(registry_.get_history_index(registry_.find_unique_id(first)),
+                        0,
+                        "First occupant retains ID");
+    tests::expect_equal(registry_.get_history_index(registry_.find_unique_id(reused)),
+                        2,
+                        "Second occupant retains ID");
+    tests::expect_equal(registry_.get_history_index(registry_.find_unique_id(next)),
+                        3,
+                        "Third occupant receives new ID");
     check_counts();
     registry_.end_tick();
 }
 
 TEST_F(EntityRegistryTest, UniqueIdValidationRejectsInvalidUnissuedAndMismatchedIds) {
 
-    auto const first_id{EntityUniqueId::make(0, EntityType::Turret)};
+    auto const first_id{
+        EntityUniqueId::make(entity_identity_offset(EntityType::Turret, 0), EntityType::Turret)};
     tests::expect_false(registry_.is_valid_unique_id(EntityUniqueId{std::uint32_t{0xffffffff}}),
                         "Out-of-domain raw ID rejected in empty registry");
     tests::expect_false(registry_.is_valid_unique_id(first_id), "Zero is initially unissued");
@@ -426,7 +432,8 @@ TEST_F(EntityRegistryTest, UniqueIdValidationRejectsInvalidUnissuedAndMismatched
     tests::expect_false(registry_.is_valid_unique_id(EntityUniqueId{std::uint32_t{0xffffffff}}),
                         "Out-of-domain raw ID rejected after spawn");
     tests::expect_false(registry_.is_valid_unique_id({}), "Null ID rejected");
-    tests::expect_false(registry_.is_valid_unique_id(EntityUniqueId::make(1, EntityType::Turret)),
+    tests::expect_false(registry_.is_valid_unique_id(EntityUniqueId::make(
+                            entity_identity_offset(EntityType::Turret, 1), EntityType::Turret)),
                         "Next ID is unissued");
     tests::expect_false(
         registry_.is_valid_unique_id(EntityUniqueId::make(0, EntityType::PlayerShip)),
@@ -514,11 +521,12 @@ TEST_F(EntityRegistryTest, StaleKillersRetainCreditAcrossTicksAndSlotReuse) {
     deaths.add(DeathReason::Combat, handles[2], handles[0]);
     registry_.queue_entity_updates({std::vector{handles[2]}, view_of(update)}, deaths);
     registry_.commit_updates();
-    tests::expect_equal(registry_.get_kills(EntityUniqueId::make(0, EntityType::Turret)),
+    tests::expect_equal(registry_.get_kills(EntityUniqueId::make(
+                            entity_identity_offset(EntityType::Turret, 0), EntityType::Turret)),
                         std::uint32_t{2},
                         "Historical killer gains credit");
-    tests::expect_equal(registry_.get_unique_entities().killed_by[2].index(),
-                        std::uint32_t{0},
+    tests::expect_equal(registry_.get_history_index(registry_.get_unique_entities().killed_by[2]),
+                        0,
                         "Victim records historical killer");
     tests::expect_equal(registry_.get_kills(registry_.find_unique_id(replacements[1])),
                         std::uint32_t{0},
@@ -631,9 +639,11 @@ TEST_F(EntityRegistryTest, DamageQueuesPreserveBatchesAndResetStartsANewIdentity
     check_counts();
     auto const empty{registry_.add_entities(view_of(data, 0, 0))};
     tests::expect_equal(empty.registry_handles.num(), 0, "Empty spawn returns no handles");
-    tests::expect_false(empty.first_id.is_valid(), "Empty spawn has null first ID");
+    tests::expect_true(empty.entity_ids.empty(), "Empty spawn has no IDs");
     auto const spawned{registry_.add_entities(view_of(data))};
-    tests::expect_equal(spawned.first_id.index(), std::uint32_t{0}, "Reset restarts IDs");
+    tests::expect_equal(spawned.get_id(0).index(),
+                        entity_identity_offsets[data.entity_types[0]],
+                        "Reset restarts IDs");
     tests::expect_true(tests::registry::make_handles(spawned.registry_handles) == handles,
                        "Reset restarts generations");
     registry_.commit_updates();

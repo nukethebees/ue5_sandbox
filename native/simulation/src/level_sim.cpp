@@ -295,8 +295,7 @@ void LevelSim::advance(time_type const dt) {
             // Resolve last tick's orders while every previous-tick index is still valid.
             fighters_phase_.commit_orders();
 
-            auto const first_new_id{static_cast<EntityUniqueId::index_type>(
-                entity_registry_.get_num_unique_ids_issued())};
+            auto const previous_issued_counts{entity_registry_.get_issued_counts()};
             event_manager_.execute_tick(clock_.completed_ticks + 1);
             auto const previous_fighter_count{fighters_simulation_.get_num_instances()};
             fighters_phase_.commit_spawns();
@@ -307,7 +306,10 @@ void LevelSim::advance(time_type const dt) {
             auto collect_new = [&](auto const data, auto const handles) {
                 auto const count{data.entity_ids.size()};
                 for (std::size_t index{}; index < count; ++index) {
-                    if (data.entity_ids[index].index() >= first_new_id) {
+                    auto const id{data.entity_ids[index]};
+                    if (id.index() >=
+                        entity_identity_offset(id.entity_type(),
+                                               previous_issued_counts[id.entity_type()])) {
                         collision_dirty_entities_.push_back(handles[index]);
                     }
                 }
@@ -473,7 +475,9 @@ void LevelSim::rebuild_agent_indexes() {
                        &player.health.health,
                        &player.team};
     } else {
-        agent_indexes_.bind(EntityType::PlayerShip, {});
+        if (player_ship_simulation_) {
+            agent_indexes_.retire(player_ship_simulation_->unique_entity_id);
+        }
     }
     agent_accessor_.bind(capitals, fighters, turrets, spinners, player_view);
 }
