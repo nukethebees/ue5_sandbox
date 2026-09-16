@@ -39,6 +39,10 @@ class Fields {
 
 [[nodiscard]] auto text(Form const& form, std::string_view purpose, FailureHandler failure)
     -> std::string;
+[[nodiscard]] auto raw_text(Form const& form,
+                            std::string_view expected_tag,
+                            std::string_view purpose,
+                            FailureHandler failure) -> std::string;
 [[nodiscard]] auto boolean(Form const& form, std::string_view purpose, FailureHandler failure)
     -> bool;
 [[nodiscard]] auto integer(Form const& form, std::string_view purpose, FailureHandler failure)

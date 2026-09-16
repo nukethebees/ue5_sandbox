@@ -1,6 +1,7 @@
 #include <codegen/sexpr/lexer.h>
 
 #include <cctype>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -23,7 +24,9 @@ class Lexer {
                 return result;
             }
 
-            if (peek() == '(') {
+            if (auto raw_literal{lex_raw_literal()}; raw_literal.has_value()) {
+                result.push_back(std::move(*raw_literal));
+            } else if (peek() == '(') {
                 advance();
                 result.push_back(Token{TokenKind::left_parenthesis, "(", span});
             } else if (peek() == ')') {
@@ -65,6 +68,48 @@ class Lexer {
     static auto is_delimiter(char const value) -> bool {
         return value == '\0' || value == '(' || value == ')' || value == '"' || value == ';' ||
                std::isspace(static_cast<unsigned char>(value)) != 0;
+    }
+
+    static auto is_tag_start(char const value) -> bool { return value >= 'a' && value <= 'z'; }
+
+    static auto is_tag_character(char const value) -> bool {
+        return is_tag_start(value) || (value >= '0' && value <= '9') || value == '-';
+    }
+
+    auto lex_raw_literal() -> std::optional<Token> {
+        if (peek() != '#' || index_ + 1 >= source_.size() || !is_tag_start(source_[index_ + 1])) {
+            return std::nullopt;
+        }
+
+        auto tag_end{index_ + 2};
+        while (tag_end < source_.size() && is_tag_character(source_[tag_end])) {
+            ++tag_end;
+        }
+        if (tag_end >= source_.size() || source_[tag_end] != '{') {
+            return std::nullopt;
+        }
+
+        auto const span{current_span()};
+        auto const tag{std::string{source_.substr(index_ + 1, tag_end - index_ - 1)}};
+        auto const closing{"}" + tag + "#"};
+        while (index_ <= tag_end) {
+            advance();
+        }
+
+        auto const payload_start{index_};
+        auto const closing_start{source_.find(closing, payload_start)};
+        if (closing_start == std::string_view::npos) {
+            throw SourceError{path_,
+                              span,
+                              "unterminated raw literal '#" + tag + "{'; expected '" + closing +
+                                  "'"};
+        }
+
+        auto text{std::string{source_.substr(payload_start, closing_start - payload_start)}};
+        while (index_ < closing_start + closing.size()) {
+            advance();
+        }
+        return Token{TokenKind::raw_literal, std::move(text), span, tag};
     }
 
     void skip_trivia() {

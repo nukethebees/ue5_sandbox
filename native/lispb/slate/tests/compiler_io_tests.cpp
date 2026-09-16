@@ -190,6 +190,21 @@ TEST(SlateCompiler, ExpandsIncludedMacrosWithoutChangingGeneratedCpp) {
     EXPECT_EQ(compile(project, {"panel.lispb"}, {"shared"}, true), 1);
 }
 
+TEST(SlateCompiler, ExpansionPreservesOpaqueRawMacroArguments) {
+    TemporaryProject project{"raw-macro-expansion"};
+    project.write("raw.lispb", R"lisp(
+(defmacro passthrough (value) $value)
+(passthrough #cpp{if ($value) {
+    use("C:\\generated");
+}}cpp#)
+)lisp");
+
+    EXPECT_EQ(expand(project, {"raw.lispb"}),
+              "#cpp{if ($value) {\n"
+              "    use(\"C:\\\\generated\");\n"
+              "}}cpp#\n");
+}
+
 TEST(SlateCompiler, ResolvesIncludesLocallyThenInDirectoryOrder) {
     TemporaryProject project{"include-order"};
     project.write("local/panel.lispb", R"(

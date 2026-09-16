@@ -237,6 +237,88 @@ TEST(SourceLoader, LoadsStructuredTypeReferencesAndFacadeStorage) {
     EXPECT_TRUE(facade.methods.front().is_const);
 }
 
+TEST(SourceLoader, LoadsOpaqueCppBlocksAndKeepsQuotedBodiesCompatible) {
+    TemporaryManifest files;
+    files.write_root(
+        "(soa-module example\n"
+        "  :header \"Generated.h\"\n"
+        "  :prelude #cpp{class FForward;\n"
+        "#define GENERATED_PATH \"C:\\\\generated\"}cpp#\n"
+        "  (struct FData\n"
+        "    (member values array int32)\n"
+        "    (function update void\n"
+        "      :body #cpp{if (dt <= 0.0f) {\n"
+        "    return;\n"
+        "}\n"
+        "\n"
+        "values[0] += dt;}cpp#\n"
+        "      (parameter dt float))\n"
+        "    (function reset void\n"
+        "      :body (\"values[0] = 0;\"))))\n"
+        "(facade-module facade\n"
+        "  :header \"Facade.h\"\n"
+        "  (facade FFacade Target target\n"
+        "    :validation #cpp{checkf(target != nullptr, TEXT(\"missing target\"));}cpp#))");
+
+    auto const manifest{files.load()};
+    ASSERT_EQ(manifest.modules.size(), 2);
+#ifdef _WIN32
+    auto const newline{std::string{"\r\n"}};
+#else
+    auto const newline{std::string{"\n"}};
+#endif
+
+    auto const& soa{std::get<SoaModuleSchema>(manifest.modules[0])};
+    ASSERT_EQ(soa.settings.prelude_lines.size(), 1);
+    EXPECT_EQ(soa.settings.prelude_lines[0],
+              "class FForward;" + newline + "#define GENERATED_PATH \"C:\\\\generated\"");
+    ASSERT_EQ(soa.structs[0].functions.size(), 2);
+    ASSERT_EQ(soa.structs[0].functions[0].body_lines.size(), 1);
+    EXPECT_EQ(soa.structs[0].functions[0].body_lines[0],
+              "if (dt <= 0.0f) {" + newline + "    return;" + newline + "}" + newline + newline +
+                  "values[0] += dt;");
+    EXPECT_EQ(soa.structs[0].functions[1].body_lines, (std::vector<std::string>{"values[0] = 0;"}));
+
+    auto const& facade{std::get<FacadeModuleSchema>(manifest.modules[1]).facade};
+    EXPECT_EQ(facade.validation_lines,
+              (std::vector<std::string>{"checkf(target != nullptr, TEXT(\"missing target\"));"}));
+}
+
+TEST(SourceLoader, AcceptsEmptyCppBodyAndRejectsWrongRawTag) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(soa-module example
+  :header "Generated.h"
+  (struct FData
+    (function empty void :body #cpp{}cpp#)))
+)");
+    auto const manifest{files.load()};
+    auto const& function{std::get<SoaModuleSchema>(manifest.modules[0]).structs[0].functions[0]};
+    EXPECT_TRUE(function.body_lines.empty());
+
+    files.write_root(R"(
+(soa-module example
+  :header "Generated.h"
+  (struct FData
+    (function wrong void :body #hlsl{return 0;}hlsl#)))
+)");
+    try {
+        static_cast<void>(files.load());
+        FAIL() << "Expected manifest error";
+    } catch (ManifestError const& error) {
+        auto const message{std::string{error.what()}};
+        EXPECT_TRUE(message.contains("body requires a #cpp raw literal; got #hlsl"));
+        EXPECT_TRUE(message.contains("modules.lispb:5:32"));
+    }
+}
+
+TEST(SourceLoader, RejectsRawLiteralForOrdinaryTextField) {
+    TemporaryManifest files;
+    files.write_root("(umbrella-module all :header #cpp{Generated.h}cpp# :headers ())");
+
+    EXPECT_THROW(files.load(), ManifestError);
+}
+
 TEST(SourceLoader, LoadsSettingsControls) {
     TemporaryManifest files;
     files.write_root(R"(

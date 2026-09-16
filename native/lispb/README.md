@@ -57,7 +57,7 @@ properties, and owned declarations are nested forms:
       :noexcept true
       :definition-in-source true
       :dependencies (array_math)
-      :body ("ml::subtract_in_place(remaining_times, dt);")
+      :body #cpp{ml::subtract_in_place(remaining_times, dt);}cpp#
       (parameter dt (type-ref float :suffix " const")))))
 ```
 
@@ -94,9 +94,27 @@ dimensions reserve a contiguous row-major range for an indexed field:
 ```
 
 A type reference is normally an atom or quoted C++ spelling. Use `(type-ref <name> :suffix <text>
-:nested <name>)` when a reference needs additional structure. Arbitrary C++ lines, paths, labels,
+:nested <name>)` when a reference needs additional structure. Paths, labels, scalar C++ fragments,
 and other text containing whitespace or semicolons must be quoted. Strings support `\\`, `\"`,
 `\n`, `\r`, and `\t` escapes.
+
+Function `:body`, module `:prelude`, and facade `:validation` may instead use an opaque C++ raw
+literal:
+
+```lisp
+:body #cpp{if (dt <= 0.0f) {
+    return;
+}
+
+ml::subtract_in_place(remaining_times, dt);}cpp#
+```
+
+Everything between `#cpp{` and the first exact `}cpp#` is preserved as text. LispB does not
+interpret escapes, comments, strings, parentheses, or balanced braces inside it. Leading and
+trailing newlines and indentation are part of the value; place the first and last C++ characters
+next to the delimiters when those framing newlines are not wanted. The exact closing sequence
+cannot occur in the embedded C++; use the existing quoted-list syntax in that rare case. Quoted
+forms remain supported.
 
 Shared types are top-level declarations in `types.lispb`:
 

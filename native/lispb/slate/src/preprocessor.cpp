@@ -31,6 +31,9 @@ auto read_file(std::filesystem::path const& path) -> std::string {
 }
 
 auto format_token(Token const& token) -> std::string {
+    if (token.kind == TokenKind::raw_literal) {
+        return "#" + token.tag + "{" + token.text + "}" + token.tag + "#";
+    }
     if (token.kind == TokenKind::keyword) {
         return ":" + token.text;
     }

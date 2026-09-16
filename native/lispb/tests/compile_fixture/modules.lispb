@@ -144,7 +144,7 @@
     (member ids array int32)
     (member weights array float)
     (function first_id int32
-      :body ("return ids[0];")
+      :body #cpp{return ids[0];}cpp#
       :inline true)
     (function weight_sum float
       :body ("return weights[0] + weights[1];")

@@ -72,6 +72,22 @@ auto text_list_or(Fields const& fields, std::string_view const name) -> std::vec
     return value == nullptr ? std::vector<std::string>{} : text_list(*value, name);
 }
 
+auto cpp_lines_or(Fields const& fields, std::string_view const name) -> std::vector<std::string> {
+    auto const* value{fields.optional(name)};
+    if (value == nullptr) {
+        return {};
+    }
+    if (value->token.kind != sexpr::TokenKind::raw_literal) {
+        return text_list(*value, name);
+    }
+
+    auto source{sexpr::raw_text(*value, "cpp", name, fail)};
+    if (source.empty()) {
+        return {};
+    }
+    return {std::move(source)};
+}
+
 auto boolean_or(Fields const& fields, std::string_view const name, bool const fallback = false)
     -> bool {
     auto const* value{fields.optional(name)};
@@ -149,7 +165,7 @@ auto parse_function(Form const& form) -> FunctionSchema {
         .name = text(fields.positional(0), "function name"),
         .return_type = parse_type_ref(fields.positional(1)),
         .parameters = std::move(parameters),
-        .body_lines = text_list_or(fields, "body"),
+        .body_lines = cpp_lines_or(fields, "body"),
         .dependencies = text_list_or(fields, "dependencies"),
         .trailing_return_type = std::move(trailing_return_type),
         .is_const = boolean_or(fields, "const"),
@@ -340,7 +356,7 @@ auto parse_module_settings(Fields const& fields) -> ModuleSettings {
         .header_include = optional_text(fields, "header-include"),
         .namespace_name = optional_text(fields, "namespace"),
         .include_order = text_list_or(fields, "include-order"),
-        .prelude_lines = text_list_or(fields, "prelude"),
+        .prelude_lines = cpp_lines_or(fields, "prelude"),
     };
 }
 
@@ -543,7 +559,7 @@ auto parse_facade(Form const& form) -> FacadeSchema {
         .target_type = parse_type_ref(fields.positional(1)),
         .target_member_name = text(fields.positional(2), "facade target member name"),
         .methods = std::move(methods),
-        .validation_lines = text_list_or(fields, "validation"),
+        .validation_lines = cpp_lines_or(fields, "validation"),
         .validation_dependencies = text_list_or(fields, "validation-dependencies"),
         .export_specifier = optional_text(fields, "export-specifier"),
         .bind_access = optional_text(fields, "bind-access").value_or("public"),

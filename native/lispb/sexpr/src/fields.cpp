@@ -116,6 +116,24 @@ auto text(Form const& form, std::string_view const purpose, FailureHandler const
     return form.token.text;
 }
 
+auto raw_text(Form const& form,
+              std::string_view const expected_tag,
+              std::string_view const purpose,
+              FailureHandler const failure) -> std::string {
+    if (form.is_list() || form.token.kind != TokenKind::raw_literal) {
+        report(failure,
+               form.token.span,
+               std::string{purpose} + " must be a #" + std::string{expected_tag} + " raw literal");
+    }
+    if (form.token.tag != expected_tag) {
+        report(failure,
+               form.token.span,
+               std::string{purpose} + " requires a #" + std::string{expected_tag} +
+                   " raw literal; got #" + form.token.tag);
+    }
+    return form.token.text;
+}
+
 auto boolean(Form const& form, std::string_view const purpose, FailureHandler const failure)
     -> bool {
     if (!form.is_list() && form.token.kind == TokenKind::atom) {

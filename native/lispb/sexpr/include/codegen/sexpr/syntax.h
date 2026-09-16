@@ -37,6 +37,7 @@ enum class TokenKind {
     atom,
     keyword,
     string,
+    raw_literal,
     left_parenthesis,
     right_parenthesis,
     end,
@@ -46,6 +47,7 @@ struct Token {
     TokenKind kind;
     std::string text;
     SourceSpan span;
+    std::string tag{};
 };
 
 }
