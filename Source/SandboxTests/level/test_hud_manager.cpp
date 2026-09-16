@@ -87,11 +87,11 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     auto& mission{simulation.get_mission_manager()};
     auto const& capitals{simulation.get_capital_ships()};
     auto const first_capital{first_capital_index == INDEX_NONE
-                                 ? ::ioj::sim::RegistryEntityHandle{}
-                                 : capitals.get_handle(first_capital_index)};
+                                 ? ::ioj::sim::EntityUniqueId{}
+                                 : capitals.get_id(first_capital_index)};
     auto const second_capital{second_capital_index == INDEX_NONE
-                                  ? ::ioj::sim::RegistryEntityHandle{}
-                                  : capitals.get_handle(second_capital_index)};
+                                  ? ::ioj::sim::EntityUniqueId{}
+                                  : capitals.get_id(second_capital_index)};
     harness.finish_initialisation();
 
     FHUDManager hud;
@@ -125,9 +125,9 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
             harness.queue_kills(std::array{first_capital});
         });
     } else if (needs_player) {
-        auto const player_handle{simulation.get_player_ship_simulation()->registry_handle};
+        auto const player_id{simulation.get_player_ship_simulation()->unique_entity_id};
         harness.timeline.then_after(
-            0.1, [&] { harness.queue_kills(std::array{first_capital}, player_handle); });
+            0.1, [&] { harness.queue_kills(std::array{first_capital}, player_id); });
     }
     harness.on_end_tick = [&](::ioj::sim::LevelSim&) { hud.force_sample(); };
     harness.timeline.finish_at(0.35);
@@ -587,7 +587,7 @@ void FTestHUDManagerScenario::entity_count_begin() {
 
     auto const& capitals{test_driver->get_capital_ships()};
     check(capitals.get_num_instances() == 1);
-    std::array<::ioj::sim::RegistryEntityHandle, 1> const targets{capitals.get_handle(0)};
+    std::array<::ioj::sim::EntityUniqueId, 1> const targets{capitals.get_id(0)};
     test_driver->timeline.then_after(damage_queue_time,
                                      [this, targets] { test_driver->queue_kills(targets); });
     begin_timed_sampling(test_duration,

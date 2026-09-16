@@ -45,11 +45,15 @@ void Sim::set_config(CapitalShipSimConfig const& new_config) noexcept {
     config = new_config;
 }
 Sim::Sim(EntityRegistry& in_entity_registry,
+         EntityLedger const& ledger,
+         CombatEvents const& combat_events,
          AgentAccessor const& agents,
          SpatialQueryManager const& in_spatial_query_manager,
          fighters::Sim& fighters,
          std::pmr::memory_resource& in_frame_memory_resource)
     : entity_registry{in_entity_registry}
+    , ledger_{ledger}
+    , combat_events_{combat_events}
     , agents_{agents}
     , spatial_query_manager{in_spatial_query_manager}
     , frame_memory_resource{in_frame_memory_resource}
@@ -110,7 +114,7 @@ void Sim::resolve_fighters_of_dying_capitals() {
 void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::resolve_damage_events");
     auto const entities{this->entities.get_view().columns()};
-    batch::resolve_damage_events(entity_registry.get_damage_events(EntityType::CapitalShip),
+    batch::resolve_damage_events(combat_events_.events_for(EntityType::CapitalShip),
                                  agents_.indexes(),
                                  entities.entity_ids,
                                  entities.healths,
@@ -147,6 +151,10 @@ void Sim::finish_action() {
 auto Sim::get_num_instances() const noexcept -> std::int32_t {
     return entities.num();
 }
+auto Sim::is_valid(EntityUniqueId const id) const noexcept -> bool {
+    return id.is_valid() && id.entity_type() == EntityType::CapitalShip &&
+           agents_.indexes().find(id) >= 0;
+}
 auto Sim::is_valid(RegistryEntityHandle const handle) const noexcept -> bool {
     auto const entities{this->entities.get_const_view().columns()};
     return handle.is_valid() &&
@@ -170,11 +178,21 @@ auto Sim::get_team(RegistryEntityHandle const handle) const noexcept -> Team {
 
     ml::fatal_error("Invalid capital ship handle passed");
 }
+auto Sim::get_team(EntityUniqueId const id) const noexcept -> Team {
+    auto const index{agents_.indexes().find(id)};
+    assert(index >= 0);
+    return entities.get_const_view().teams()[index];
+}
 auto Sim::get_health(RegistryEntityHandle const handle) const noexcept -> Health {
     auto const entities{this->entities.get_const_view().columns()};
     auto const found{std::ranges::find(entities.handles, handle)};
     assert(found != entities.handles.end());
     return entities.healths[found - entities.handles.begin()];
+}
+auto Sim::get_health(EntityUniqueId const id) const noexcept -> Health {
+    auto const index{agents_.indexes().find(id)};
+    assert(index >= 0);
+    return entities.get_const_view().healths()[index];
 }
 auto Sim::find_first_index_on_team(Team const team) const noexcept -> std::optional<std::int32_t> {
     auto const entities{this->entities.get_const_view().columns()};
@@ -189,6 +207,11 @@ auto Sim::find_first_handle_on_team(Team const team) const noexcept
     auto const entities{this->entities.get_const_view().columns()};
     auto const result{find_first_index_on_team(team)};
     return result ? std::optional<RegistryEntityHandle>{entities.handles[*result]} : std::nullopt;
+}
+auto Sim::find_first_id_on_team(Team const team) const noexcept -> std::optional<EntityUniqueId> {
+    auto const result{find_first_index_on_team(team)};
+    return result ? std::optional<EntityUniqueId>{entities.get_const_view().entity_ids()[*result]}
+                  : std::nullopt;
 }
 
 /* **************************************** */
@@ -437,7 +460,7 @@ void Sim::queue_fighter_orders() {
 // Targets
 /* **************************************** */
 void Sim::set_target_id(EntityUniqueId const ship_id, EntityUniqueId const target_id) {
-    assert(entity_registry.is_valid_unique_id(target_id));
+    assert(ledger_.is_valid_unique_id(target_id));
     auto const entity_index{agents_.indexes().find(ship_id)};
     auto const entities{this->entities.get_view().columns()};
     assert(entity_index >= 0 && entity_index < entities.num());

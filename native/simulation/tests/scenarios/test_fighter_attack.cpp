@@ -534,7 +534,7 @@ void run_worldless_fighter_attack(tests::SimulationFixture const& config) {
     harness.finish_initialisation();
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     auto const& fighters{harness.get_simulation().get_fighters()};
-    auto const enemy{capitals.get_handle(1)};
+    auto const enemy{capitals.get_id(1)};
     struct Sample {
         std::int32_t enemy_health{};
         std::vector<Team> fighter_teams{};

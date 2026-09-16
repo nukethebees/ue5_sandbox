@@ -41,9 +41,9 @@ void run_worldless_fighters_intercept_capital(tests::SimulationFixture const& co
     harness.finish_initialisation();
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     auto const& fighters{harness.get_simulation().get_fighters()};
-    auto const hero{capitals.get_handle(0)};
-    auto const original_target{harness.get_registry().get_current_id(capitals.get_handle(1))};
-    auto const intercept_target{harness.get_registry().get_current_id(capitals.get_handle(2))};
+    auto const hero{capitals.get_id(0)};
+    auto const original_target{capitals.get_id(1)};
+    auto const intercept_target{capitals.get_id(2)};
 
     struct Sample {
         EntityUniqueId parent_target;
@@ -90,7 +90,7 @@ void run_worldless_fighters_intercept_capital(tests::SimulationFixture const& co
         static_cast<std::int32_t>(std::ranges::count(end.fighter_targets, intercept_target))};
     tests::expect_greater(
         intercept_count, std::int32_t{0}, "At least one fighter intercepts the blue capital");
-    tests::expect_equal(hero, capitals.get_handle(0), "Hero capital handle remains stable");
+    tests::expect_equal(hero, capitals.get_id(0), "Hero capital ID remains stable");
 }
 
 }

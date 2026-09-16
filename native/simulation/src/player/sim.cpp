@@ -61,9 +61,13 @@ void Sim::set_config(PlayerSimConfig const& new_config) noexcept {
 
 Sim::Sim(SimClock const& clock,
          EntityRegistry& in_entity_registry,
+         EntityLedger const& ledger,
+         CombatEvents const& combat_events,
          SpatialQueryManager const& in_spatial_query_manager,
          lasers::Sim& in_lasers)
     : entity_registry{in_entity_registry}
+    , ledger_{ledger}
+    , combat_events_{combat_events}
     , spatial_query_manager{in_spatial_query_manager}
     , lasers{in_lasers}
     , simulation_clock{clock} {}
@@ -144,7 +148,7 @@ void Sim::generate_fire_commands() {
 void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("Sandbox::PlayerShipSim::resolve_damage_events");
 
-    auto const damage_events{entity_registry.get_damage_events(EntityType::PlayerShip)};
+    auto const damage_events{combat_events_.events_for(EntityType::PlayerShip)};
     auto const original_health{health.health};
     EntityUniqueId killer{};
     auto const damage_count{damage_events.num()};
@@ -683,7 +687,7 @@ auto Sim::consume_death_notification() noexcept -> bool {
 }
 
 auto Sim::get_kills() const -> std::int32_t {
-    return entity_registry.get_kills(unique_entity_id);
+    return static_cast<std::int32_t>(ledger_.get_kills(unique_entity_id));
 }
 
 auto Sim::get_speed() const noexcept -> float {

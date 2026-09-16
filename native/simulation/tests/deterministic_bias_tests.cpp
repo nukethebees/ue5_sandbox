@@ -65,13 +65,16 @@ TEST(DeterministicBias, AcceptsEmptyBatches) {
     EXPECT_TRUE(make_deterministic_biases(inputs, inputs, integral_out, floating_out));
 }
 
-TEST(DeterministicBias, GeneratesIntegralBiasesFromEntityHandles) {
-    std::array const handles{RegistryEntityHandle{42, 7}, RegistryEntityHandle{43, 8}};
+TEST(DeterministicBias, GeneratesIntegralBiasesFromEntityIds) {
+    std::array const ids{EntityUniqueId::make(42, EntityType::Fighter),
+                         EntityUniqueId::make(43, EntityType::Fighter)};
     std::array<std::uint32_t, 2> integral_out{};
 
-    ASSERT_TRUE(make_deterministic_biases(handles, integral_out));
-    EXPECT_EQ(integral_out[0], make_deterministic_integral_bias(42, 7));
-    EXPECT_EQ(integral_out[1], make_deterministic_integral_bias(43, 8));
+    ASSERT_TRUE(make_deterministic_biases(ids, integral_out));
+    EXPECT_EQ(integral_out[0],
+              make_deterministic_integral_bias(static_cast<std::int32_t>(ids[0].raw_value()), 0));
+    EXPECT_EQ(integral_out[1],
+              make_deterministic_integral_bias(static_cast<std::int32_t>(ids[1].raw_value()), 0));
 }
 
 TEST(DeterministicBias, RejectsMismatchedBatchSizes) {

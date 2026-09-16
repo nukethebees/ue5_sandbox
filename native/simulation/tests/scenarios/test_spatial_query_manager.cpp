@@ -21,7 +21,7 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     std::vector<EntityUniqueId> expected{};
     for (std::int32_t i{}; i < static_cast<std::int32_t>(locations.size()); ++i) {
-        expected.push_back(harness.get_registry().get_current_id(capitals.get_handle(i)));
+        expected.push_back(capitals.get_id(i));
     }
 
     Vectors3f starts;

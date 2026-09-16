@@ -166,6 +166,7 @@ struct EntityRegistry {
         return ledger_.get_unique_entities();
     }
     auto get_combat_events() noexcept -> CombatEvents& { return combat_events_; }
+    auto get_ledger() noexcept -> EntityLedger& { return ledger_; }
     auto get_ledger() const noexcept -> EntityLedger const& { return ledger_; }
     // Slot-to-ID mapping includes current dead occupants until their slots are reused.
     auto get_active_unique_ids() const noexcept -> std::span<EntityUniqueId const> {

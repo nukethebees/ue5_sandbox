@@ -47,7 +47,12 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
     ::ioj::sim::SpatialQueryManager queries_{agents_};
     ml::FFrameMemoryResource frame_memory_{1024 * 1024};
     ::ioj::sim::lasers::Sim lasers_{clock_, registry_.get_combat_events(), queries_, frame_memory_};
-    ::ioj::sim::player::Sim ship_simulation_{clock_, registry_, queries_, lasers_};
+    ::ioj::sim::player::Sim ship_simulation_{clock_,
+                                             registry_,
+                                             registry_.get_ledger(),
+                                             registry_.get_combat_events(),
+                                             queries_,
+                                             lasers_};
     ::ioj::sim::player::CommandInterface ship_commands_{ship_simulation_};
 
     BEFORE_EACH()

@@ -161,7 +161,6 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
 
     DirectDamageEvents damage;
     damage.add_uninitialised(1);
-    auto const original_handle{simulation.get_fighters().get_handles()[0]};
     damage.damaged_entities[0] = simulation.get_fighters().get_entity_ids()[0];
     auto const original_id{simulation.get_read_view().fighters.entities.entity_ids[0]};
     damage.instigators[0] = simulation.get_read_view().capitals.entities.entity_ids[0];
@@ -186,7 +185,6 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
 
     auto const replacement_id{simulation.get_read_view().fighters.entities.entity_ids[0]};
     EXPECT_NE(replacement_id, original_id);
-    EXPECT_EQ(simulation.get_fighters().get_handles()[0].index, original_handle.index);
     stale_orders.add(simulation.get_read_view().capitals.entities.entity_ids[0],
                      FighterOrder{.task = 1},
                      FighterTask::Standby,

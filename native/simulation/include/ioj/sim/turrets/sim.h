@@ -21,6 +21,7 @@ namespace ioj::sim {
 struct LevelSim;
 struct TurretSimConfig;
 struct EntityRegistry;
+class CombatEvents;
 class LevelSpawnManager;
 struct SpatialQueryManager;
 }
@@ -36,6 +37,7 @@ struct Sim {
 
     Sim(SimClock const& clock,
         EntityRegistry& entity_registry,
+        CombatEvents const& combat_events,
         AgentAccessor const& agents,
         SpatialQueryManager const& spatial_query_manager,
         lasers::Sim& laser_simulation,
@@ -128,6 +130,7 @@ struct Sim {
     TurretSimConfig config{};
     SimClock const& simulation_clock;
     EntityRegistry& entity_registry;
+    CombatEvents const& combat_events_;
     AgentAccessor const& agents_;
     SpatialQueryManager const& spatial_query_manager;
     lasers::Sim& laser_simulation;

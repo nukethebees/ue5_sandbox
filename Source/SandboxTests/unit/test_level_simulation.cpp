@@ -138,11 +138,8 @@ void add_mission(::ioj::sim::LevelSimInitData& data) {
 
 void kill_enemy(::ioj::sim::LevelSim& simulation) {
     ::ioj::sim::DirectDamageEvents events;
-    events.add(simulation.get_entity_registry().get_current_id(
-                   simulation.get_capital_ships().get_handle(1)),
-               100,
-               simulation.get_entity_registry().get_current_id(
-                   simulation.get_capital_ships().get_handle(0)));
+    events.add(
+        simulation.get_capital_ships().get_id(1), 100, simulation.get_capital_ships().get_id(0));
     ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation, events.get_const_view());
 }
 }
@@ -237,19 +234,16 @@ auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
     simulation.advance(dt);
     TestEqual(TEXT("Thinking acquires the entity created in Preparation"),
               simulation.get_turrets().get_target_ids()[0],
-              simulation.get_entity_registry().get_current_id(
-                  simulation.get_capital_ships().get_handle(1)));
-    auto const spawned_handle{simulation.get_capital_ships().get_handle(1)};
+              simulation.get_capital_ships().get_id(1));
+    auto const spawned_id{simulation.get_capital_ships().get_id(1)};
     auto const spawn_hit{simulation.get_spatial_query_manager().trace_closest(
         ml::make_vector3f(980.f, 0.f, 0.f), ml::make_vector3f(1020.f, 0.f, 0.f))};
     TestTrue(TEXT("Preparation publishes the new entity to spatial queries"),
-             spawn_hit.hit && spawn_hit.entity ==
-                                  simulation.get_entity_registry().get_current_id(spawned_handle));
+             spawn_hit.hit && spawn_hit.entity == spawned_id);
     simulation.advance(dt);
     TestTrue(TEXT("Thinking retains the spawned enemy on the following tick"),
              simulation.get_turrets().get_target_ids()[0] ==
-                 simulation.get_entity_registry().get_current_id(
-                     simulation.get_capital_ships().get_handle(1)));
+                 simulation.get_capital_ships().get_id(1));
     return true;
 }
 
@@ -485,9 +479,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     FLevelPresentation death_effects{resources, deaths.get_read_view(), {}};
     ::ioj::sim::DirectDamageEvents damage;
     damage.add(
-        deaths.get_entity_registry().get_current_id(deaths.get_capital_ships().get_handle(0)),
-        MAX_int32,
-        deaths.get_entity_registry().get_current_id(deaths.get_capital_ships().get_handle(1)));
+        deaths.get_capital_ships().get_id(0), MAX_int32, deaths.get_capital_ships().get_id(1));
     ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(deaths, damage.get_const_view());
     ::ioj::sim::lasers::SpawnRequests shot;
     shot.add({700.f, 0.f, 0.f},

@@ -15,7 +15,7 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
     harness.finish_initialisation();
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     auto const& fighters{harness.get_simulation().get_fighters()};
-    auto const first_target{capitals.get_handle(1)};
+    auto const first_target{capitals.get_id(1)};
     EntityUniqueId second_target;
     SimTick final_kill_tick{};
     harness.on_end_tick = [&](LevelSim& simulation) {
@@ -30,7 +30,7 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
     harness.timeline
         .then_after(2.0 / 60.0,
                     [&] {
-                        tests::expect_equal(harness.get_registry().get_current_id(first_target),
+                        tests::expect_equal(first_target,
                                             capitals.get_target_id(0),
                                             "Capital initially retains its configured target");
                         tests::expect_greater(
@@ -43,9 +43,7 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
             3.0 / 60.0,
             [&] {
                 second_target = capitals.get_target_id(0);
-                tests::expect_true(second_target.is_valid() &&
-                                       second_target !=
-                                           harness.get_registry().get_current_id(first_target),
+                tests::expect_true(second_target.is_valid() && second_target != first_target,
                                    "Capital retargets after its first target dies");
                 for (auto const fighter_id : capitals.get_fighter_ids(0)) {
                     auto const index{

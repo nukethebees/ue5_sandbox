@@ -81,11 +81,8 @@ void add_mission(LevelSimInitData& data) {
 
 void kill_enemy(LevelSim& simulation) {
     DirectDamageEvents events;
-    events.add(simulation.get_entity_registry().get_current_id(
-                   simulation.get_capital_ships().get_handle(1)),
-               100,
-               simulation.get_entity_registry().get_current_id(
-                   simulation.get_capital_ships().get_handle(0)));
+    events.add(
+        simulation.get_capital_ships().get_id(1), 100, simulation.get_capital_ships().get_id(0));
     LevelSimTestAccess::queue_direct_damage_events(simulation, events.get_const_view());
 }
 }
@@ -187,15 +184,14 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
     simulation.finish_initialisation();
     auto queue_shot = [](LevelSim& level, float const location) {
         lasers::SpawnRequests requests;
-        requests.add(
-            {{location, 0.f, 0.f}},
-            {},
-            {},
-            1,
-            2000.f,
-            10000.f,
-            level.get_entity_registry().get_current_id(level.get_capital_ships().get_handle(0)),
-            {Team::Green, EntityType::Fighter});
+        requests.add({{location, 0.f, 0.f}},
+                     {},
+                     {},
+                     1,
+                     2000.f,
+                     10000.f,
+                     level.get_capital_ships().get_id(0),
+                     {Team::Green, EntityType::Fighter});
         LevelSimTestAccess::queue_laser_spawns(level, requests.get_const_view());
     };
     queue_shot(simulation, 700.f);
@@ -237,8 +233,7 @@ TEST(NativeSimulation, LevelSimInitialQueriesTest) {
     auto const& queries{simulation.get_spatial_query_manager()};
     auto const dynamic_hit{queries.trace_closest({{-1100.f, 0.f, 0.f}}, {{-900.f, 0.f, 0.f}})};
     tests::expect_true(dynamic_hit.hit &&
-                           dynamic_hit.entity == simulation.get_entity_registry().get_current_id(
-                                                     simulation.get_capital_ships().get_handle(0)),
+                           dynamic_hit.entity == simulation.get_capital_ships().get_id(0),
                        "Initial capital is queryable before the first tick");
     auto const static_hit{queries.trace_closest({{-100.f, 500.f, 0.f}}, {{100.f, 500.f, 0.f}})};
     tests::expect_true(static_hit.hit && static_hit.static_geometry_index == 0,
@@ -262,8 +257,7 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     auto const& capitals{simulation.get_capital_ships()};
-    tests::expect_true(capitals.get_target_id(0) ==
-                           simulation.get_entity_registry().get_current_id(capitals.get_handle(1)),
+    tests::expect_true(capitals.get_target_id(0) == capitals.get_id(1),
                        "Compiled capital target index maps to its registered handle");
     auto const* player{simulation.get_player_ship_simulation()};
     tests::expect_true(capitals.get_target_id(1) == player->unique_entity_id,
@@ -377,9 +371,8 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
     }
 
     simulation.get_player_ship_commands()->set_lateral_move_input(1.f);
-    auto const player_handle{player->registry_handle};
-    auto const capital{simulation.get_capital_ships().get_handle(0)};
-    auto const player_id{simulation.get_entity_registry().find_unique_id(player_handle)};
+    auto const player_id{player->unique_entity_id};
+    auto const capital{simulation.get_capital_ships().get_id(0)};
     auto const& registry{simulation.get_entity_registry()};
 
     for (std::int32_t overlap_detection{}; overlap_detection < 3; ++overlap_detection) {
@@ -392,19 +385,19 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
         tests::expect_equal(
             events.entity_static_overlaps.num(), 0, "The tick captures no static overlap");
 
-        tests::expect_equal(registry.get_health(capital),
+        tests::expect_equal(simulation.get_agent_accessor().read(capital)->health,
                             5000 - (overlap_detection + 1) * 50,
                             "The high-health capital receives damage in the detection tick");
         if (overlap_detection < 2) {
-            tests::expect_equal(registry.get_health(player_handle),
+            tests::expect_equal(simulation.get_agent_accessor().read(player_id)->health,
                                 150 - (overlap_detection + 1) * 50,
                                 "The low-health entity receives damage in the detection tick");
         }
     }
 
-    tests::expect_false(registry.is_valid_alive(player_handle),
+    tests::expect_false(simulation.get_agent_accessor().is_alive(player_id),
                         "The low-health entity dies after three detected overlaps");
-    tests::expect_equal(registry.get_health(capital),
+    tests::expect_equal(simulation.get_agent_accessor().read(capital)->health,
                         4850,
                         "The capital receives one contribution per detected tick");
     tests::expect_true(

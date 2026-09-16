@@ -119,6 +119,31 @@ void FWorldlessSimulationTest::queue_kills(
     ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation_,
                                                                events.get_const_view());
 }
+void FWorldlessSimulationTest::queue_damage(
+    std::span<::ioj::sim::EntityUniqueId const> const targets,
+    int32 const damage,
+    ::ioj::sim::EntityUniqueId const instigator) {
+    ::ioj::sim::DirectDamageEvents events;
+    events.reserve(static_cast<int32>(targets.size()));
+    for (auto const target : targets) {
+        events.add(target, damage, instigator);
+    }
+    ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation_,
+                                                               events.get_const_view());
+}
+void
+    FWorldlessSimulationTest::queue_kills(std::span<::ioj::sim::EntityUniqueId const> const targets,
+                                          ::ioj::sim::EntityUniqueId const instigator) {
+    ::ioj::sim::DirectDamageEvents events;
+    events.reserve(static_cast<int32>(targets.size()));
+    for (auto const target : targets) {
+        auto const state{simulation_.get_agent_accessor().read(target)};
+        check(state);
+        events.add(target, FMath::Max(1, state->health), instigator);
+    }
+    ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation_,
+                                                               events.get_const_view());
+}
 
 auto FWorldlessSimulationTest::run_until_timeline_finished(time_type const maximum_time) -> bool {
     check(maximum_time > 0.0);

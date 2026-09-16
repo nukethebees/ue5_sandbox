@@ -30,6 +30,8 @@ struct LevelSim;
 struct EntityDeathInfo;
 struct PlayerSimConfig;
 struct EntityRegistry;
+class EntityLedger;
+class CombatEvents;
 struct SpatialQueryManager;
 struct PlayerSimTestAccess;
 }
@@ -85,6 +87,8 @@ struct Sim {
     /* **************************************** */
     Sim(SimClock const& clock,
         EntityRegistry& entity_registry,
+        EntityLedger const& ledger,
+        CombatEvents const& combat_events,
         SpatialQueryManager const& spatial_query_manager,
         lasers::Sim& lasers);
     Sim(Sim const&) = delete;
@@ -252,6 +256,8 @@ struct Sim {
 
     PlayerSimConfig config{};
     EntityRegistry& entity_registry;
+    EntityLedger const& ledger_;
+    CombatEvents const& combat_events_;
     SpatialQueryManager const& spatial_query_manager;
     lasers::Sim& lasers;
     SimClock const& simulation_clock;

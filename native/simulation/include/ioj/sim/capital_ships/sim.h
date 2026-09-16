@@ -31,6 +31,8 @@ namespace ioj::sim {
 struct LevelSim;
 struct CapitalShipSimConfig;
 struct EntityRegistry;
+class EntityLedger;
+class CombatEvents;
 class LevelSpawnManager;
 struct SpatialQueryManager;
 }
@@ -49,6 +51,8 @@ struct Sim {
     using EntityStorage = SingleAllocationCapitalEntityData;
 
     Sim(EntityRegistry& entity_registry,
+        EntityLedger const& ledger,
+        CombatEvents const& combat_events,
         AgentAccessor const& agents,
         SpatialQueryManager const& spatial_query_manager,
         fighters::Sim& fighters,
@@ -79,10 +83,14 @@ struct Sim {
     // Accessors
     /* **************************************** */
     auto get_num_instances() const noexcept -> std::int32_t;
+    auto is_valid(EntityUniqueId id) const noexcept -> bool;
     auto is_valid(RegistryEntityHandle handle) const noexcept -> bool;
     auto get_entity_registry() const noexcept -> EntityRegistry const& { return entity_registry; }
     auto get_handle(std::int32_t index) const -> RegistryEntityHandle {
         return entities.get_const_view().handles()[index];
+    }
+    auto get_id(std::int32_t index) const -> EntityUniqueId {
+        return entities.get_const_view().entity_ids()[index];
     }
     auto get_fighter_spawn_slots() const noexcept -> std::int32_t;
     auto get_fighters_spawned() const noexcept -> std::int32_t { return fighters_spawned; }
@@ -106,10 +114,13 @@ struct Sim {
     auto get_team(std::int32_t index) const noexcept -> Team {
         return entities.get_const_view().teams()[index];
     }
+    auto get_team(EntityUniqueId id) const noexcept -> Team;
     auto get_team(RegistryEntityHandle handle) const noexcept -> Team;
+    auto get_health(EntityUniqueId id) const noexcept -> Health;
     auto get_health(RegistryEntityHandle handle) const noexcept -> Health;
     auto find_first_index_on_team(Team team) const noexcept -> std::optional<std::int32_t>;
     auto find_first_handle_on_team(Team team) const noexcept -> std::optional<RegistryEntityHandle>;
+    auto find_first_id_on_team(Team team) const noexcept -> std::optional<EntityUniqueId>;
 
     /* **************************************** */
     // Checks
@@ -176,6 +187,8 @@ struct Sim {
     CapitalShipSimConfig config{};
     bool diagnostics_enabled_{};
     EntityRegistry& entity_registry;
+    EntityLedger const& ledger_;
+    CombatEvents const& combat_events_;
     AgentAccessor const& agents_;
     SpatialQueryManager const& spatial_query_manager;
     std::pmr::memory_resource& frame_memory_resource;

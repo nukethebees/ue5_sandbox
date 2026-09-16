@@ -182,12 +182,14 @@ void Sim::set_config(FighterSimConfig const& new_config,
 }
 Sim::Sim(SimClock const& clock,
          EntityRegistry& in_entity_registry,
+         CombatEvents const& combat_events,
          AgentAccessor const& agents,
          SpatialQueryManager const& in_spatial_query_manager,
          lasers::Sim& in_laser_simulation,
          std::pmr::memory_resource& in_frame_memory_resource) noexcept
     : simulation_clock{clock}
     , entity_registry{in_entity_registry}
+    , combat_events_{combat_events}
     , agents_{agents}
     , spatial_query_manager{in_spatial_query_manager}
     , frame_memory_resource{in_frame_memory_resource}
@@ -497,7 +499,7 @@ void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::resolve_damage_events");
 
     auto const data{entity_buffers.current().get_view().columns()};
-    auto const damage_events{entity_registry.get_damage_events(EntityType::Fighter)};
+    auto const damage_events{combat_events_.events_for(EntityType::Fighter)};
     batch::resolve_damage_events(damage_events,
                                  agents_.indexes(),
                                  data.entity_ids,
@@ -1010,6 +1012,9 @@ auto Sim::get_handles() const noexcept -> std::span<RegistryEntityHandle const> 
 auto Sim::has_handle(RegistryEntityHandle const fighter_handle) const -> bool {
     return find_index(fighter_handle) != -1;
 }
+auto Sim::has_id(EntityUniqueId const fighter) const -> bool {
+    return find_index(fighter) != -1;
+}
 auto Sim::get_target_ids() const noexcept -> std::span<EntityUniqueId const> {
     return entity_buffers.current().get_const_view().target_ids();
 }
@@ -1017,9 +1022,16 @@ auto Sim::get_target_id(RegistryEntityHandle const fighter_handle) const noexcep
     -> EntityUniqueId {
     return entity_buffers.current().get_const_view().target_ids()[find_index(fighter_handle)];
 }
+auto Sim::get_target_id(EntityUniqueId const fighter) const noexcept -> EntityUniqueId {
+    return entity_buffers.current().get_const_view().target_ids()[find_index(fighter)];
+}
 auto Sim::get_target_location(RegistryEntityHandle const fighter_handle) const -> Vector3f {
     return entity_buffers.current().get_const_view().columns().target_locations[find_index(
         fighter_handle)];
+}
+auto Sim::get_target_location(EntityUniqueId const fighter) const -> Vector3f {
+    return entity_buffers.current().get_const_view().columns().target_locations[find_index(
+        fighter)];
 }
 auto Sim::get_tasks() const -> std::span<Task const> {
     return entity_buffers.current().get_const_view().tasks();
@@ -1054,6 +1066,11 @@ auto Sim::find_index(RegistryEntityHandle const fighter_handle) const noexcept -
     return id.is_valid() && id.entity_type() == EntityType::Fighter ? agents_.indexes().find(id)
                                                                     : -1;
 }
+auto Sim::find_index(EntityUniqueId const fighter) const noexcept -> std::int32_t {
+    return fighter.is_valid() && fighter.entity_type() == EntityType::Fighter
+             ? agents_.indexes().find(fighter)
+             : -1;
+}
 auto Sim::get_task_span(Task const task) const -> IndexSpan {
     return task_spans[std::to_underlying(task)];
 }
@@ -1068,6 +1085,9 @@ void Sim::set_target_id_unchecked(std::int32_t const fighter_index,
 void Sim::set_target_id(RegistryEntityHandle const fighter_handle,
                         EntityUniqueId const new_target) noexcept {
     set_target_id_unchecked(find_index(fighter_handle), new_target);
+}
+void Sim::set_target_id(EntityUniqueId const fighter, EntityUniqueId const new_target) noexcept {
+    set_target_id_unchecked(find_index(fighter), new_target);
 }
 void Sim::refresh_target_data() {
     auto const data{entity_buffers.current().get_view().columns()};
@@ -1113,6 +1133,9 @@ void Sim::set_task_unchecked(std::int32_t const index, Task const task) noexcept
 void Sim::set_task(RegistryEntityHandle const handle, Task const task) noexcept {
     order_queue.add(
         entity_registry.get_current_id(handle), FighterOrder{.task = 1, .target = 0}, task, {});
+}
+void Sim::set_task(EntityUniqueId const fighter, Task const task) noexcept {
+    order_queue.add(fighter, FighterOrder{.task = 1, .target = 0}, task, {});
 }
 /* **************************************** */
 // Entity data
@@ -1323,11 +1346,7 @@ void Sim::commit_spawns() {
         }
     }
     make_deterministic_biases(
-        std::span<std::int32_t const>{
-            new_spawn_entity_handles.registry_handles.registry_indices.data(),
-            static_cast<std::size_t>(n_new)},
-        std::span<std::int32_t const>{new_spawn_entity_handles.registry_handles.generations.data(),
-                                      static_cast<std::size_t>(n_new)},
+        std::span<EntityUniqueId const>{data.entity_ids}.subspan(n_cur, n_new),
         std::span<std::uint32_t>{data.integral_biases}.subspan(n_cur, n_new),
         std::span<float>{data.float_biases}.subspan(n_cur, n_new));
 

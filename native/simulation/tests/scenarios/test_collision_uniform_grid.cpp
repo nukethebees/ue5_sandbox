@@ -287,21 +287,21 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
 
     auto& simulation{harness.get_simulation()};
     auto const* const player{simulation.get_player_ship_simulation()};
-    auto const fighter_handles{simulation.get_fighters().get_handles()};
+    auto const fighter_ids{simulation.get_fighters().get_entity_ids()};
     tests::expect_not_null(player, "Collision-grid player ship is available");
-    tests::expect_true(!fighter_handles.empty(), "Collision-grid fighter is placed");
+    tests::expect_true(!fighter_ids.empty(), "Collision-grid fighter is placed");
     if (::testing::Test::HasFailure()) {
         return;
     }
 
-    std::array<RegistryEntityHandle, 5> const expected_handles{
-        player->registry_handle,
-        simulation.get_capital_ships().get_handle(0),
-        fighter_handles[0],
-        simulation.get_turrets().get_read_view().entities.handles[0],
-        simulation.get_spinners().get_read_view().entities.handles[0],
+    std::array<EntityUniqueId, 5> const expected_ids{
+        player->unique_entity_id,
+        simulation.get_capital_ships().get_id(0),
+        fighter_ids[0],
+        simulation.get_turrets().get_read_view().entities.entity_ids[0],
+        simulation.get_spinners().get_read_view().entities.entity_ids[0],
     };
-    auto const& registry{harness.get_registry()};
+    auto const& agents{simulation.get_agent_accessor()};
     auto const& collision{simulation.get_spatial_query_manager().get_collision_system()};
     auto const& grid{collision.get_uniform_grid()};
     auto const& entity_aabbs{collision.get_entity_aabbs()};
@@ -311,19 +311,18 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
     auto const cell_dimensions_match{grid.get_cell_dims() == cell_dims};
     tests::expect_true(cell_dimensions_match != 0, "Collision grid uses the production cell size");
 
-    auto const handle_count{static_cast<std::int32_t>(expected_handles.size())};
-    for (std::int32_t i{}; i < handle_count; ++i) {
-        auto const handle{expected_handles[i]};
+    auto const id_count{static_cast<std::int32_t>(expected_ids.size())};
+    for (std::int32_t i{}; i < id_count; ++i) {
+        auto const id{expected_ids[i]};
         auto const entity_type{static_cast<EntityType>(i)};
-        if (!tests::expect_true(registry.is_valid_alive(handle),
+        if (!tests::expect_true(agents.is_alive(id),
                                 "Expected collision-grid  entity is alive" +
                                     ::testing::PrintToString(entity_type))) {
             continue;
         }
 
-        auto const registered_type{registry.get_entity_type(handle)};
-        auto const aabb_index{std::to_underlying(registered_type)};
-        auto const entity_location{registry.get_location(handle)};
+        auto const aabb_index{std::to_underlying(id.entity_type())};
+        auto const entity_location{agents.read(id)->location};
         auto const local_aabb_centre{entity_aabbs.get_centre(aabb_index)};
         auto const half_extents{entity_aabbs.get_half_extents(aabb_index)};
         auto const world_aabb_centre{entity_location + local_aabb_centre};
@@ -341,8 +340,7 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
             for (std::int32_t y{min_coord.y}; y <= max_coord.y; ++y) {
                 for (std::int32_t z{min_coord.z}; z <= max_coord.z; ++z) {
                     ++expected_cell_count;
-                    found_cell_count += count_id(grid.get_cell_entities({x, y, z}),
-                                                 registry.get_current_id(handle));
+                    found_cell_count += count_id(grid.get_cell_entities({x, y, z}), id);
                 }
             }
         }

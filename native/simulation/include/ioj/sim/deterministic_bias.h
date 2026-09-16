@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ioj/sim/entity_handle.h"
+#include "ioj/sim/entity_unique_id.h"
 
 #include <cstdint>
 #include <span>
@@ -61,6 +61,9 @@ auto make_deterministic_biases(std::span<std::int32_t const> first,
                                std::span<std::int32_t const> second,
                                std::span<std::uint32_t> integral_out,
                                std::span<float> floating_out) noexcept -> bool;
-auto make_deterministic_biases(std::span<RegistryEntityHandle const> handles,
+auto make_deterministic_biases(std::span<EntityUniqueId const> ids,
                                std::span<std::uint32_t> integral_out) noexcept -> bool;
+auto make_deterministic_biases(std::span<EntityUniqueId const> ids,
+                               std::span<std::uint32_t> integral_out,
+                               std::span<float> floating_out) noexcept -> bool;
 }

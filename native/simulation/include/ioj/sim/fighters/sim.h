@@ -33,6 +33,7 @@
 namespace ioj::sim {
 struct LevelSim;
 struct EntityRegistry;
+class CombatEvents;
 struct SpatialQueryManager;
 }
 
@@ -60,6 +61,7 @@ struct Sim {
 
     Sim(SimClock const& clock,
         EntityRegistry& entity_registry,
+        CombatEvents const& combat_events,
         AgentAccessor const& agents,
         SpatialQueryManager const& spatial_query_manager,
         lasers::Sim& laser_simulation,
@@ -109,12 +111,15 @@ struct Sim {
         return entity_buffers.current().get_const_view().columns().locations;
     }
     auto has_handle(RegistryEntityHandle fighter_handle) const -> bool;
+    auto has_id(EntityUniqueId fighter) const -> bool;
     auto get_target_ids() const noexcept -> std::span<EntityUniqueId const>;
     auto get_target_id(RegistryEntityHandle fighter_handle) const noexcept -> EntityUniqueId;
+    auto get_target_id(EntityUniqueId fighter) const noexcept -> EntityUniqueId;
     auto get_target_locations() const {
         return entity_buffers.current().get_const_view().columns().target_locations;
     }
     auto get_target_location(RegistryEntityHandle fighter_handle) const -> Vector3f;
+    auto get_target_location(EntityUniqueId fighter) const -> Vector3f;
     auto get_tasks() const -> std::span<Task const>;
     auto get_teams() const -> std::span<Team const>;
     auto get_navigation_telemetry() const noexcept -> NavigationTelemetrySnapshot const& {
@@ -172,6 +177,7 @@ struct Sim {
     auto get_task_view(Task task) noexcept -> TaskView;
     auto get_const_task_view(Task task) const noexcept -> ConstTaskView;
     auto find_index(RegistryEntityHandle fighter_handle) const noexcept -> std::int32_t;
+    auto find_index(EntityUniqueId fighter) const noexcept -> std::int32_t;
     auto get_task_spans() const -> TaskSpans;
     auto get_task_span(Task task) const -> IndexSpan;
     auto get_task_counts() const -> TaskCounts;
@@ -226,6 +232,7 @@ struct Sim {
     /* **************************************** */
     void set_target_id_unchecked(std::int32_t fighter_index, EntityUniqueId new_target) noexcept;
     void set_target_id(RegistryEntityHandle fighter_handle, EntityUniqueId new_target) noexcept;
+    void set_target_id(EntityUniqueId fighter, EntityUniqueId new_target) noexcept;
     void refresh_target_data();
 
     /* **************************************** */
@@ -233,6 +240,7 @@ struct Sim {
     /* **************************************** */
     void set_task_unchecked(std::int32_t index, Task task) noexcept;
     void set_task(RegistryEntityHandle handle, Task task) noexcept;
+    void set_task(EntityUniqueId fighter, Task task) noexcept;
 
     /* **************************************** */
     // Orders
@@ -271,6 +279,7 @@ struct Sim {
 
     EntityBuffers entity_buffers{};
     EntityRegistry& entity_registry;
+    CombatEvents const& combat_events_;
     AgentAccessor const& agents_;
     SpatialQueryManager const& spatial_query_manager;
     std::pmr::memory_resource& frame_memory_resource;

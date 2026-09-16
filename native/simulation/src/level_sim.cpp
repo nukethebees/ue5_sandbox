@@ -79,12 +79,15 @@ LevelSim::LevelSim(LevelSimInitData data)
     , lasers_phase_{lasers_simulation_}
     , fighters_simulation_{clock_,
                            entity_registry_,
+                           entity_registry_.get_combat_events(),
                            agent_accessor_,
                            query_manager_,
                            lasers_simulation_,
                            frame_memory_}
     , fighters_phase_{fighters_simulation_}
     , capital_ships_simulation_{entity_registry_,
+                                entity_registry_.get_ledger(),
+                                entity_registry_.get_combat_events(),
                                 agent_accessor_,
                                 query_manager_,
                                 fighters_simulation_,
@@ -92,6 +95,7 @@ LevelSim::LevelSim(LevelSimInitData data)
     , capital_ships_phase_{capital_ships_simulation_}
     , turrets_simulation_{clock_,
                           entity_registry_,
+                          entity_registry_.get_combat_events(),
                           agent_accessor_,
                           query_manager_,
                           lasers_simulation_,
@@ -170,8 +174,12 @@ void LevelSim::configure_subsystems(LevelSimInitData const& data) {
     spinners_simulation_.set_config(data.spinners);
 }
 void LevelSim::configure_player(player::PlayerSpawnData const& spawn) {
-    auto& player{player_ship_simulation_.emplace(
-        clock_, entity_registry_, query_manager_, lasers_simulation_)};
+    auto& player{player_ship_simulation_.emplace(clock_,
+                                                 entity_registry_,
+                                                 entity_registry_.get_ledger(),
+                                                 entity_registry_.get_combat_events(),
+                                                 query_manager_,
+                                                 lasers_simulation_)};
     player_ship_phase_.emplace(player);
     player_ship_commands_.emplace(player);
 

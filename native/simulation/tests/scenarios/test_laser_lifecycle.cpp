@@ -109,8 +109,8 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
     harness.finish_initialisation();
     auto const& lasers{harness.get_simulation().get_lasers()};
     auto const& capitals{harness.get_simulation().get_capital_ships()};
-    auto const shooter{capitals.get_handle(0)};
-    auto const target{capitals.get_handle(1)};
+    auto const shooter{capitals.get_id(0)};
+    auto const target{capitals.get_id(1)};
 
     struct Sample {
         std::int32_t active_lasers{};
@@ -120,20 +120,23 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
         std::int32_t kills{};
     };
     ml::TimeSeriesData<Sample> samples;
-    harness.on_end_tick = [&](LevelSim&) {
+    harness.on_end_tick = [&](LevelSim& simulation) {
+        auto const target_state{simulation.get_agent_accessor().read(target)};
         samples.add(harness.get_time(),
                     Sample{lasers.get_num_instances(),
                            lasers.get_number_spawned(),
-                           harness.get_registry().get_health(target),
+                           target_state ? target_state->health : 0,
                            harness.get_registry().count_alive(),
                            harness.get_registry().count_kills()});
     };
     harness.timeline.at(projectile_queue_time, [&] {
-        auto const shooter_location{harness.get_registry().get_location(shooter)};
-        auto const target_location{harness.get_registry().get_location(target)};
+        auto const shooter_location{
+            harness.get_simulation().get_agent_accessor().read(shooter)->location};
+        auto const target_location{
+            harness.get_simulation().get_agent_accessor().read(target)->location};
         auto const shooter_radius{
             harness.get_simulation().get_spatial_query_manager().get_entity_type_radius(
-                harness.get_registry().get_entity_type(shooter))};
+                shooter.entity_type())};
         auto const target_direction{HMM_NormV3(target_location - shooter_location)};
         auto start{shooter_location + target_direction * (shooter_radius + 100.f)};
         auto fire_direction{target_direction};
@@ -157,7 +160,7 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
             requests.max_distances[i] = scenario == LaserLifecycleScenario::Miss
                                           ? miss_max_distance
                                           : collision_max_distance;
-            requests.instigator_ids[i] = harness.get_registry().get_current_id(shooter);
+            requests.instigator_ids[i] = shooter;
             requests.sources[i] = LaserSource{Team::White, EntityType::TubeSpinner};
         }
         LevelSimTestAccess::queue_laser_spawns(harness.get_simulation(), requests.get_const_view());

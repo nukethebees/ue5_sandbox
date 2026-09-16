@@ -53,6 +53,11 @@ class FWorldlessSimulationTest {
                       ::ioj::sim::RegistryEntityHandle instigator = {});
     void queue_kills(std::span<::ioj::sim::RegistryEntityHandle const> targets,
                      ::ioj::sim::RegistryEntityHandle instigator = {});
+    void queue_damage(std::span<::ioj::sim::EntityUniqueId const> targets,
+                      int32 damage,
+                      ::ioj::sim::EntityUniqueId instigator = {});
+    void queue_kills(std::span<::ioj::sim::EntityUniqueId const> targets,
+                     ::ioj::sim::EntityUniqueId instigator = {});
     void advance(time_type dt);
     auto run_until_timeline_finished(time_type maximum_time) -> bool;
 

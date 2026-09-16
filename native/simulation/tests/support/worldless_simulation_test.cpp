@@ -46,6 +46,27 @@ void WorldlessSimulationTest::queue_kills(std::span<RegistryEntityHandle const> 
     }
     LevelSimTestAccess::queue_direct_damage_events(simulation_, events.get_const_view());
 }
+void WorldlessSimulationTest::queue_damage(std::span<EntityUniqueId const> const targets,
+                                           std::int32_t const damage,
+                                           EntityUniqueId const instigator) {
+    DirectDamageEvents events;
+    events.reserve(static_cast<std::int32_t>(targets.size()));
+    for (auto const target : targets) {
+        events.add(target, damage, instigator);
+    }
+    LevelSimTestAccess::queue_direct_damage_events(simulation_, events.get_const_view());
+}
+void WorldlessSimulationTest::queue_kills(std::span<EntityUniqueId const> const targets,
+                                          EntityUniqueId const instigator) {
+    DirectDamageEvents events;
+    events.reserve(static_cast<std::int32_t>(targets.size()));
+    for (auto const target : targets) {
+        auto const state{simulation_.get_agent_accessor().read(target)};
+        assert(state);
+        events.add(target, std::max(1, state->health), instigator);
+    }
+    LevelSimTestAccess::queue_direct_damage_events(simulation_, events.get_const_view());
+}
 
 auto WorldlessSimulationTest::run_until_timeline_finished(time_type const maximum_time) -> bool {
     assert(maximum_time > 0.0);

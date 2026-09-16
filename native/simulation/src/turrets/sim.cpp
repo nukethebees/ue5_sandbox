@@ -52,12 +52,14 @@ void Sim::set_config(TurretSimConfig const& new_config) noexcept {
 }
 Sim::Sim(SimClock const& clock,
          EntityRegistry& in_entity_registry,
+         CombatEvents const& combat_events,
          AgentAccessor const& agents,
          SpatialQueryManager const& in_spatial_query_manager,
          lasers::Sim& in_laser_simulation,
          std::pmr::memory_resource& in_frame_memory_resource) noexcept
     : simulation_clock{clock}
     , entity_registry{in_entity_registry}
+    , combat_events_{combat_events}
     , agents_{agents}
     , spatial_query_manager{in_spatial_query_manager}
     , laser_simulation{in_laser_simulation}
@@ -133,7 +135,7 @@ auto Sim::register_turrets(TurretSpawnDataConstView const spawn_data,
         entities.entity_ids[first_new_index + local_index] = new_entities.get_id(local_index);
         entities.handles[first_new_index + local_index] = new_handles[local_index];
     }
-    make_deterministic_biases(std::span<RegistryEntityHandle const>{entities.handles}.subspan(
+    make_deterministic_biases(std::span<EntityUniqueId const>{entities.entity_ids}.subspan(
                                   static_cast<std::size_t>(first_new_index), spawn_count),
                               std::span<std::uint32_t>{entities.integral_biases}.subspan(
                                   static_cast<std::size_t>(first_new_index), spawn_count));
@@ -227,7 +229,7 @@ void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::resolve_damage_events");
 
     auto const entities{this->entities.get_view().columns()};
-    batch::resolve_damage_events(entity_registry.get_damage_events(EntityType::Turret),
+    batch::resolve_damage_events(combat_events_.events_for(EntityType::Turret),
                                  agents_.indexes(),
                                  entities.entity_ids,
                                  entities.healths,
