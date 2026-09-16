@@ -30,6 +30,7 @@ class PhaseInterface;
 struct Sim {
     using RegistryEntityData = sim::RegistryEntityData;
     using EntityData = TurretEntityData;
+    using EntityStorage = SingleAllocationTurretEntityData;
     using SpawnData = TurretSpawnData;
 
     Sim(SimClock const& clock,
@@ -46,7 +47,10 @@ struct Sim {
     // Configuration
     /* **************************************** */
     auto get_read_view() const -> TurretReadView {
-        return {entities.get_const_view(), &entity_registry, frame_changes_, death_locations_};
+        return {entities.get_const_view().columns(),
+                &entity_registry,
+                frame_changes_,
+                death_locations_};
     }
     void reset_frame_output() {
         frame_changes_.clear();
@@ -127,11 +131,11 @@ struct Sim {
     SpatialQueryManager const& spatial_query_manager;
     lasers::Sim& laser_simulation;
     std::pmr::memory_resource& frame_memory_resource;
-    EntityData entities{};
+    EntityStorage entities{};
     EntityDeathInfo entity_death_info;
     std::vector<EntityFrameChange> frame_changes_;
     std::vector<Vector3f> death_locations_;
-    RegistryEntityData entity_update_data;
+    SingleAllocationRegistryEntityData entity_update_data;
     std::int32_t target_refresh_next_offset{0};
     std::int16_t cooldown_restart_ticks_{};
     std::int16_t cooldown_cleaner_{};

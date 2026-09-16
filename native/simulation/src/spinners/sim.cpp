@@ -103,19 +103,21 @@ auto Sim::spawn_instances(Vectors3fConstView const new_locations,
 
     entities.validate_array_sizes();
 
-    RegistryEntityData entity_data;
+    SingleAllocationRegistryEntityData entity_data;
     entity_data.add_uninitialised(n);
+    auto const entity_columns{entity_data.get_view().columns()};
     for (std::int32_t i{}; i < n; ++i) {
-        entity_data.locations.set(i, new_locations[i]);
-        entity_data.rotations.set(i, {.pitch = 0.f, .yaw = new_yaws[i], .roll = 0.f});
+        entity_columns.locations.set(i, new_locations[i]);
+        entity_columns.rotations.set(i, {.pitch = 0.f, .yaw = new_yaws[i], .roll = 0.f});
     }
-    entity_data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
-    std::ranges::fill(entity_data.healths, 1000000);
-    std::ranges::fill(entity_data.teams, Team::White);
-    std::ranges::fill(entity_data.entity_types, EntityType::TubeSpinner);
-    entity_data.validate_array_sizes();
+    entity_columns.velocities.each_column(
+        [](auto const column) { std::ranges::fill(column, 0.f); });
+    std::ranges::fill(entity_columns.healths, 1000000);
+    std::ranges::fill(entity_columns.teams, Team::White);
+    std::ranges::fill(entity_columns.entity_types, EntityType::TubeSpinner);
+    entity_columns.validate_array_sizes();
 
-    auto new_entities{entity_registry.add_entities(entity_data.get_const_view())};
+    auto new_entities{entity_registry.add_entities(entity_data.get_const_view().columns())};
 
     for (std::int32_t i{0}; i < n; ++i) {
         appended.handles[i] = new_entities.get_handle(i);

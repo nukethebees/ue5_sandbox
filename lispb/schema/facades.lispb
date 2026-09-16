@@ -10,7 +10,7 @@
       (parameter queue (type-ref @fighter_order_queue :suffix " const&")))
     (method self_destruct_fighter void
       (parameter handle (type-ref @native_registry_handle :suffix " const")))
-    (method get_new_spawn_entity_data (type-ref @fighters_sim :suffix " const&" :nested "RegistryEntityData")
+    (method get_new_spawn_entity_data "RegistryEntityDataConstView"
       :const true)
     (method get_new_spawn_entity_handles (type-ref @spawned_entity_handles :suffix " const&")
       :const true)

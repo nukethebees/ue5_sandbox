@@ -206,7 +206,7 @@ struct Sim {
     // Registry integration
     /* **************************************** */
     void register_with_entity_registry();
-    auto get_entity_update_data() const -> RegistryEntityData;
+    auto get_entity_update_data() const -> SingleAllocationRegistryEntityData;
     void queue_entity_update(EntityDeathInfo const& death_info);
 
     /* **************************************** */

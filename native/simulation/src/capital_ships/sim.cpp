@@ -25,6 +25,18 @@
 #include <sandbox/core/frame_array.h>
 
 namespace ioj::sim::capital_ships {
+namespace {
+void copy_vectors(Vectors3fView const destination, Vectors3fConstView const source) {
+    std::ranges::copy(source.xs, destination.xs.begin());
+    std::ranges::copy(source.ys, destination.ys.begin());
+    std::ranges::copy(source.zs, destination.zs.begin());
+}
+void copy_rotators(Rotators3fView const destination, Rotators3fConstView const source) {
+    std::ranges::copy(source.pitches, destination.pitches.begin());
+    std::ranges::copy(source.yaws, destination.yaws.begin());
+    std::ranges::copy(source.rolls, destination.rolls.begin());
+}
+} // namespace
 
 /* **************************************** */
 // Configuration
@@ -56,6 +68,7 @@ void Sim::prepare_tick(float const dt) {
     tick_buffers.cycle();
     clear_tick_buffers();
     fighter_self_destruct_requests_.clear();
+    auto const entities{this->entities.get_view().columns()};
     ml::tick_countdowns(entities.fighter_spawn_timers, dt);
 }
 void Sim::think(float const) {
@@ -64,6 +77,7 @@ void Sim::think(float const) {
     queue_fighter_spawns();
     refresh_fighter_handles();
     fighter_reassignment_queue.reset();
+    auto const entities{this->entities.get_view().columns()};
     entity_registry.refresh_handles(entities.target_handles);
     ml::FrameArray<std::int32_t> indices_without_targets{&frame_memory_resource};
     auto const n_capitals{static_cast<std::int32_t>(entities.target_handles.size())};
@@ -92,6 +106,7 @@ void Sim::resolve_fighters_of_dying_capitals() {
 }
 void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::resolve_damage_events");
+    auto const entities{this->entities.get_view().columns()};
     batch::resolve_damage_events(entity_registry,
                                  entities.handles,
                                  entities.healths,
@@ -101,8 +116,9 @@ void Sim::resolve_damage_events() {
 void Sim::update_entity_registry() {
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::update_entity_registry");
     prepare_entity_update_data();
-    entity_registry.queue_entity_updates({entities.handles, entity_update_data.get_const_view()},
-                                         entity_death_info);
+    auto const entities{this->entities.get_const_view().columns()};
+    entity_registry.queue_entity_updates(
+        {entities.handles, entity_update_data.get_const_view().columns()}, entity_death_info);
 }
 void Sim::cleanup_entities() {
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::cleanup_entities");
@@ -122,11 +138,13 @@ auto Sim::get_num_instances() const noexcept -> std::int32_t {
     return entities.num();
 }
 auto Sim::is_valid(RegistryEntityHandle const handle) const noexcept -> bool {
+    auto const entities{this->entities.get_const_view().columns()};
     return handle.is_valid() &&
            std::ranges::find(entities.handles, handle) != entities.handles.end();
 }
 auto Sim::get_fighter_handles(std::int32_t const index) const noexcept
     -> std::span<RegistryEntityHandle const> {
+    auto const entities{this->entities.get_const_view().columns()};
     return get_fighter_handles(entities.fighter_handle_spans[index]);
 }
 auto Sim::get_fighter_handles(IndexSpan const span) const noexcept
@@ -135,6 +153,7 @@ auto Sim::get_fighter_handles(IndexSpan const span) const noexcept
                                          static_cast<std::size_t>(span.count));
 }
 auto Sim::get_team(RegistryEntityHandle const handle) const noexcept -> Team {
+    auto const entities{this->entities.get_const_view().columns()};
     auto const found{std::ranges::find(entities.handles, handle)};
     if (found != entities.handles.end()) {
         return entities.teams[found - entities.handles.begin()];
@@ -143,11 +162,13 @@ auto Sim::get_team(RegistryEntityHandle const handle) const noexcept -> Team {
     ml::fatal_error("Invalid capital ship handle passed");
 }
 auto Sim::get_health(RegistryEntityHandle const handle) const noexcept -> Health {
+    auto const entities{this->entities.get_const_view().columns()};
     auto const found{std::ranges::find(entities.handles, handle)};
     assert(found != entities.handles.end());
     return entities.healths[found - entities.handles.begin()];
 }
 auto Sim::find_first_index_on_team(Team const team) const noexcept -> std::optional<std::int32_t> {
+    auto const entities{this->entities.get_const_view().columns()};
     auto const found{std::ranges::find(entities.teams, team)};
     if (found == entities.teams.end()) {
         return std::nullopt;
@@ -156,6 +177,7 @@ auto Sim::find_first_index_on_team(Team const team) const noexcept -> std::optio
 }
 auto Sim::find_first_handle_on_team(Team const team) const noexcept
     -> std::optional<RegistryEntityHandle> {
+    auto const entities{this->entities.get_const_view().columns()};
     auto const result{find_first_index_on_team(team)};
     return result ? std::optional<RegistryEntityHandle>{entities.handles[*result]} : std::nullopt;
 }
@@ -174,29 +196,33 @@ auto Sim::register_ships(CapitalSpawnDataConstView const spawn_data)
     auto const first_new_index{entities.num()};
     spawn_ships(spawn_data);
 
-    RegistryEntityData new_entity_data;
+    SingleAllocationRegistryEntityData new_entity_data;
     new_entity_data.add_uninitialised(n_to_add);
+    auto const new_entity_columns{new_entity_data.get_view().columns()};
     for (std::int32_t i{}; i < n_to_add; ++i) {
-        new_entity_data.locations.set(i, spawn_data.locations[i]);
-        new_entity_data.rotations.set(i, spawn_data.rotations[i]);
+        new_entity_columns.locations.set(i, spawn_data.locations[i]);
+        new_entity_columns.rotations.set(i, spawn_data.rotations[i]);
     }
-    new_entity_data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
-    std::ranges::fill(new_entity_data.entity_types, EntityType::CapitalShip);
+    new_entity_columns.velocities.each_column(
+        [](auto const column) { std::ranges::fill(column, 0.f); });
+    std::ranges::fill(new_entity_columns.entity_types, EntityType::CapitalShip);
     for (std::int32_t i{}; i < n_to_add; ++i) {
-        new_entity_data.healths[i] = spawn_data.healths[i];
-        new_entity_data.teams[i] = spawn_data.teams[i];
+        new_entity_columns.healths[i] = spawn_data.healths[i];
+        new_entity_columns.teams[i] = spawn_data.teams[i];
     }
 
-    auto const new_entities{entity_registry.add_entities(new_entity_data.get_const_view())};
+    auto const new_entities{
+        entity_registry.add_entities(new_entity_data.get_const_view().columns())};
     std::vector<RegistryEntityHandle> new_handles;
     new_handles.reserve(static_cast<std::size_t>(n_to_add));
     for (std::int32_t i{}; i < n_to_add; ++i) {
         new_handles.push_back(new_entities.get_handle(i));
     }
     for (std::int32_t i{}; i < n_to_add; ++i) {
-        entities.handles[first_new_index + i] = new_handles[i];
+        this->entities.get_view().handles()[first_new_index + i] = new_handles[i];
     }
     validate_array_sizes();
+    auto const entities{this->entities.get_const_view().columns()};
     for (std::int32_t i{}; i < n_to_add; ++i) {
         auto const index{first_new_index + i};
         frame_changes_.push_back({.kind = EntityFrameChangeKind::Spawn,
@@ -214,7 +240,7 @@ void Sim::spawn_ships(CapitalSpawnDataConstView const spawn_data) {
     auto const n_to_add{spawn_data.num()};
 
     entities.add_defaulted(n_to_add);
-    auto const appended{entities.right(n_to_add)};
+    auto const appended{entities.right(n_to_add).columns()};
     for (std::int32_t index{}; index < n_to_add; ++index) {
         appended.locations.set(index, spawn_data.locations[index]);
         appended.rotations.set(index, spawn_data.rotations[index]);
@@ -235,12 +261,14 @@ void Sim::prepare_entity_update_data() {
     entity_update_data.reset();
     auto const n{get_num_instances()};
     entity_update_data.add_uninitialised(n);
-    entity_update_data.locations = entities.locations;
-    entity_update_data.rotations = entities.rotations;
-    entity_update_data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
-    entity_update_data.healths = entities.healths;
-    entity_update_data.teams = entities.teams;
-    std::ranges::fill(entity_update_data.entity_types, EntityType::CapitalShip);
+    auto const entities{this->entities.get_const_view().columns()};
+    auto const updates{entity_update_data.get_view().columns()};
+    copy_vectors(updates.locations, entities.locations);
+    copy_rotators(updates.rotations, entities.rotations);
+    updates.velocities.each_column([](auto const column) { std::ranges::fill(column, 0.f); });
+    std::ranges::copy(entities.healths, updates.healths.begin());
+    std::ranges::copy(entities.teams, updates.teams.begin());
+    std::ranges::fill(updates.entity_types, EntityType::CapitalShip);
 }
 
 /* **************************************** */
@@ -257,6 +285,7 @@ void Sim::queue_fighter_spawns() {
 
     auto& fighter_queue{tick_buffers.current()};
     fighter_queue.reset();
+    auto const entities{this->entities.get_view().columns()};
 
     auto const n_capital_ships{get_num_instances()};
     ml::FrameArray<std::int32_t> ships_ready_to_spawn_fighters_indices{&frame_memory_resource};
@@ -308,7 +337,16 @@ void Sim::queue_fighter_spawns() {
         }
         auto const spawn_wave{fighter_spawn_wave.get_const_view()};
         auto const accepted_count{fighters_interface.queue_spawns(spawn_wave)};
-        fighter_queue.append_from(spawn_wave.left(accepted_count));
+        auto const old_count{fighter_queue.num()};
+        fighter_queue.add_uninitialised(accepted_count);
+        auto const destination{
+            fighter_queue.get_view().columns().get_view(old_count, accepted_count)};
+        auto const source{spawn_wave.left(accepted_count)};
+        copy_vectors(destination.locations, source.locations);
+        copy_rotators(destination.rotations, source.rotations);
+        std::ranges::copy(source.teams, destination.teams.begin());
+        std::ranges::copy(source.parents, destination.parents.begin());
+        std::ranges::copy(source.targets, destination.targets.begin());
         entities.fighter_spawn_timers[capital_index] =
             entities.fighter_spawn_cooldowns[capital_index];
     }
@@ -316,12 +354,12 @@ void Sim::queue_fighter_spawns() {
 void Sim::refresh_fighter_handles() {
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::refresh_fighter_handles");
 
-    auto const& previous{tick_buffers.previous()};
+    auto const previous{tick_buffers.previous().get_const_view().columns()};
     [[maybe_unused]] auto const invalid_index{
         refresh_registry_handles(make_native_query_view(entity_registry), fighter_handles)};
     assert(invalid_index < 0);
 
-    auto const& spawn_data{fighters_interface.get_new_spawn_entity_data()};
+    auto const spawn_data{fighters_interface.get_new_spawn_entity_data()};
     spawn_data.validate_array_sizes();
     assert(previous.num() == spawn_data.num());
 
@@ -330,8 +368,8 @@ void Sim::refresh_fighter_handles() {
     auto const n_capitals{get_num_instances()};
     auto const queue_count{static_cast<std::size_t>(previous.num())};
     ml::FrameArray<RegistryEntityHandle> fighters_to_self_destruct{&frame_memory_resource};
-    auto const capital_handles{std::span<RegistryEntityHandle const>{
-        entities.handles.data(), static_cast<std::size_t>(n_capitals)}};
+    auto const entities{this->entities.get_view().columns()};
+    auto const capital_handles{entities.handles};
     auto const registry{make_native_query_view(entity_registry)};
     auto const spawn_count{std::min(static_cast<std::size_t>(spawn_handles.num()), queue_count)};
     [[maybe_unused]] std::int32_t surviving_spawn_count{};
@@ -404,6 +442,7 @@ void Sim::queue_fighter_orders() {
     auto const all_fighters{fighters_interface.get_handles()};
     auto const fighter_targets{fighters_interface.get_target_handles()};
     auto const registry{make_native_query_view(entity_registry)};
+    auto const entities{this->entities.get_const_view().columns()};
     fighter_order_queue.reset();
     for (std::int32_t capital_index{}; capital_index < n_capitals; ++capital_index) {
         auto const capital_target{entities.target_handles[capital_index]};
@@ -448,6 +487,7 @@ void Sim::set_target_handle(RegistryEntityHandle const ship_handle,
                             RegistryEntityHandle const target_handle) {
     assert(entity_registry.is_valid_handle(ship_handle));
     assert(entity_registry.is_valid_handle(target_handle));
+    auto const entities{this->entities.get_view().columns()};
     auto const found{std::ranges::find(entities.handles, ship_handle)};
     assert(found != entities.handles.end());
     auto const entity_index{std::distance(entities.handles.begin(), found)};
@@ -464,6 +504,7 @@ void Sim::handle_dead_entities() {
     }
 
     batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
+    auto const entities{this->entities.get_const_view().columns()};
 
     auto const batch_index{static_cast<std::int32_t>(deaths_.size())};
     deaths_.reserve(deaths_.size() + static_cast<std::size_t>(local_indices_to_remove.size()));
@@ -475,7 +516,7 @@ void Sim::handle_dead_entities() {
     }
 
     for (auto const index : local_indices_to_remove) {
-        entities.remove_at_swap(index, 1);
+        this->entities.remove_at_swap(index, 1);
     }
 }
 void Sim::reassign_fighter_handles_of_dying_capital() {
@@ -485,6 +526,7 @@ void Sim::reassign_fighter_handles_of_dying_capital() {
     std::array<std::int32_t, team_count> replacements{};
     replacements.fill(-1);
     std::array<bool, team_count> needs_replacement{};
+    auto const entities{this->entities.get_const_view().columns()};
 
     for (auto const capital_index : local_indices_to_remove) {
         assert(capital_index >= 0 && capital_index < n);
@@ -522,7 +564,7 @@ void Sim::reassign_fighter_handles_of_dying_capital() {
         }
     }
 
-    auto const& new_spawns{tick_buffers.current()};
+    auto const new_spawns{tick_buffers.current().get_const_view().columns()};
     auto const& new_handles{fighters_interface.get_new_spawn_entity_handles()};
     assert(new_spawns.num() == new_handles.num());
     auto const new_count{new_spawns.num()};
@@ -558,9 +600,9 @@ void Sim::clear_tick_buffers() {
 // Checks
 /* **************************************** */
 void Sim::validate_array_sizes() const {
-    entities.validate_array_sizes();
+    entities.get_const_view().columns().validate_array_sizes();
 }
 void Sim::validate_entity_handles() const {
-    entity_registry.validate_handles(entities.handles);
+    entity_registry.validate_handles(entities.get_const_view().handles());
 }
 } // namespace capital_ships

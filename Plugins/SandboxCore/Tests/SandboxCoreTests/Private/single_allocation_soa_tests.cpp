@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <limits>
 #include <type_traits>
+#include <vector>
 
 namespace ml::single_allocation_tests {
 using namespace single_allocation_experiment;
@@ -284,10 +285,9 @@ TEST_CASE("SandboxCore.SingleAllocation.Swap removal matches generated TArray ow
             baseline.remove_at_swap(index, count, EAllowShrinking::No);
             CHECK(values.capacity() == 64);
             CHECK(values.num() == baseline.num());
-            std::array<void const*, entity_leaf_count> expected{};
-            int32 leaf{};
-            each_leaf(array_columns(baseline.get_const_view()), [&](auto column) { expected[leaf++] = column.GetData(); });
-            leaf = 0;
+            std::vector<void const*> expected;
+            each_leaf(array_columns(baseline.get_const_view()), [&](auto column) { expected.push_back(column.GetData()); });
+            std::size_t leaf{};
             each_leaf(array_columns(values.get_const_view()), [&](auto column) {
                 using Element = std::remove_cvref_t<decltype(column[0])>;
                 if (values.num() > 0) {

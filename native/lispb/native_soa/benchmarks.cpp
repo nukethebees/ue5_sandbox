@@ -187,7 +187,7 @@ void register_owner(char const* name) {
 }
 
 inline auto const registered{[] {
-    benchmark::AddCustomContext("soa_schema", "fighter equivalent: 53 leaves, 195 bytes per row");
+    benchmark::AddCustomContext("soa_schema", "fighter equivalent: 56 leaves, 207 bytes per row");
     benchmark::AddCustomContext("soa_allocation",
                                 "std::vector default allocator vs aligned operator new/delete");
     benchmark::AddCustomContext("soa_capacity_granularity", "64");

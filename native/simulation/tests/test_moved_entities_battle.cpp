@@ -18,7 +18,7 @@ struct TransformSnapshot {
     auto operator==(TransformSnapshot const&) const -> bool = default;
 };
 
-auto get_transform_snapshot(EntityRegistry::EntityData const& data, std::int32_t const index)
+auto get_transform_snapshot(RegistryEntityDataConstView const data, std::int32_t const index)
     -> TransformSnapshot {
     return {
         .x = data.locations.xs[index],

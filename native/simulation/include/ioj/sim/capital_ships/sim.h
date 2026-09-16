@@ -48,9 +48,11 @@ struct Sim {
     using RegistryEntityData = sim::RegistryEntityData;
     using SpawnData = CapitalSpawnData;
     using EntityTickData = FighterSpawnQueue;
+    using EntityTickStorage = SingleAllocationFighterSpawnQueue;
     using EntityData = CapitalEntityData;
+    using EntityStorage = SingleAllocationCapitalEntityData;
     using FighterReassignment = capital_ships::FighterReassignment;
-    using EntityBuffers = ml::MultiBuffer<EntityTickData, 2>;
+    using EntityBuffers = ml::MultiBuffer<EntityTickStorage, 2>;
 
     Sim(EntityRegistry& entity_registry,
         SpatialQueryManager const& spatial_query_manager,
@@ -65,7 +67,7 @@ struct Sim {
     // Configuration
     /* **************************************** */
     auto get_read_view() const -> CapitalReadView {
-        return {entities.get_const_view(),
+        return {entities.get_const_view().columns(),
                 &entity_registry,
                 get_fighter_handles(),
                 frame_changes_,
@@ -85,30 +87,32 @@ struct Sim {
     auto is_valid(RegistryEntityHandle handle) const noexcept -> bool;
     auto get_entity_registry() const noexcept -> EntityRegistry const& { return entity_registry; }
     auto get_handle(std::int32_t index) const -> RegistryEntityHandle {
-        return entities.handles[index];
+        return entities.get_const_view().handles()[index];
     }
     auto get_fighter_spawn_slots() const noexcept -> std::int32_t;
     auto get_fighters_spawned() const noexcept -> std::int32_t { return fighters_spawned; }
     auto get_fighter_handles() const noexcept -> std::span<RegistryEntityHandle const> {
         return {fighter_handles.data(), fighter_handles.size()};
     }
-    auto get_fighter_handle_spans() const noexcept -> auto const& {
-        return entities.fighter_handle_spans;
+    auto get_fighter_handle_spans() const noexcept -> std::span<IndexSpan const> {
+        return entities.get_const_view().fighter_handle_spans();
     }
     auto get_fighter_handle_span(std::int32_t index) const noexcept -> IndexSpan {
-        return entities.fighter_handle_spans[index];
+        return entities.get_const_view().fighter_handle_spans()[index];
     }
     auto get_fighter_handles(std::int32_t index) const noexcept
         -> std::span<RegistryEntityHandle const>;
     auto get_fighter_handles(IndexSpan span) const noexcept
         -> std::span<RegistryEntityHandle const>;
     auto get_target_handle(std::int32_t index) const noexcept -> RegistryEntityHandle {
-        return entities.target_handles[index];
+        return entities.get_const_view().target_handles()[index];
     }
     auto get_target_handles() const noexcept -> std::span<RegistryEntityHandle const> {
-        return entities.target_handles;
+        return entities.get_const_view().target_handles();
     }
-    auto get_team(std::int32_t index) const noexcept -> Team { return entities.teams[index]; }
+    auto get_team(std::int32_t index) const noexcept -> Team {
+        return entities.get_const_view().teams()[index];
+    }
     auto get_team(RegistryEntityHandle handle) const noexcept -> Team;
     auto get_health(RegistryEntityHandle handle) const noexcept -> Health;
     auto find_first_index_on_team(Team team) const noexcept -> std::optional<std::int32_t>;
@@ -182,13 +186,13 @@ struct Sim {
     SpatialQueryManager const& spatial_query_manager;
     std::pmr::memory_resource& frame_memory_resource;
 
-    EntityData entities{};
+    EntityStorage entities{};
     EntityBuffers tick_buffers{};
     std::vector<std::int32_t> local_indices_to_remove;
     EntityDeathInfo entity_death_info;
     std::vector<EntityFrameChange> frame_changes_;
     std::vector<CapitalDeathEvent> deaths_;
-    RegistryEntityData entity_update_data;
+    SingleAllocationRegistryEntityData entity_update_data;
 
     fighters::CommandInterface fighters_interface;
     std::vector<RegistryEntityHandle> fighter_self_destruct_requests_;

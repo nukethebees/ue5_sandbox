@@ -18,6 +18,10 @@ auto make_view(::ioj::sim::EntityRegistry::EntityData const& entities)
     -> ::ioj::sim::EntityRegistry::EntityData::ConstView {
     return entities.get_const_view();
 }
+auto make_view(::ioj::sim::EntityRegistry::EntityData::ConstView const entities)
+    -> ::ioj::sim::EntityRegistry::EntityData::ConstView {
+    return entities;
+}
 
 auto make_team_colours() -> FEntityOverlayTeamColours {
     FTeamColours colours;

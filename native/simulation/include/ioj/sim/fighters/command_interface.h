@@ -30,7 +30,7 @@ class CommandInterface {
         fighters.self_destruct_fighter(handle);
     }
 
-    Sim::RegistryEntityData const& get_new_spawn_entity_data() const {
+    RegistryEntityDataConstView get_new_spawn_entity_data() const {
         return fighters.get_new_spawn_entity_data();
     }
 

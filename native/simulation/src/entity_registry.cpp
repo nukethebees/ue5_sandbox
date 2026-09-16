@@ -23,6 +23,41 @@ namespace ioj::sim {
 namespace entity_registry_detail {
 enum class UniqueIdLookupError : std::uint8_t { InvalidHandle, MissingStaleHandle };
 
+void copy_entity_rows(RegistryEntityDataView const destination,
+                      std::int32_t const destination_offset,
+                      RegistryEntityDataConstView const source,
+                      std::int32_t const source_offset,
+                      std::int32_t const count) {
+    if (count == 0) {
+        return;
+    }
+
+    auto copy_span = [destination_offset, source_offset, count](auto const source_column,
+                                                                auto const destination_column) {
+        std::ranges::copy(source_column.subspan(source_offset, count),
+                          destination_column.subspan(destination_offset, count).begin());
+    };
+    copy_span(source.locations.xs, destination.locations.xs);
+    copy_span(source.locations.ys, destination.locations.ys);
+    copy_span(source.locations.zs, destination.locations.zs);
+    copy_span(source.velocities.xs, destination.velocities.xs);
+    copy_span(source.velocities.ys, destination.velocities.ys);
+    copy_span(source.velocities.zs, destination.velocities.zs);
+    copy_span(source.rotations.pitches, destination.rotations.pitches);
+    copy_span(source.rotations.yaws, destination.rotations.yaws);
+    copy_span(source.rotations.rolls, destination.rotations.rolls);
+    copy_span(source.healths, destination.healths);
+    copy_span(source.teams, destination.teams);
+    copy_span(source.entity_types, destination.entity_types);
+}
+
+void append_entity_rows(SingleAllocationRegistryEntityData& destination,
+                        RegistryEntityDataConstView const source) {
+    auto const destination_offset{destination.num()};
+    destination.add_uninitialised(source.num());
+    copy_entity_rows(destination.get_view().columns(), destination_offset, source, 0, source.num());
+}
+
 auto find_unique_id(std::span<std::int32_t const> const generations,
                     std::span<EntityUniqueId const> const current_ids,
                     EntityHistoryColumnsConstView const history,
@@ -318,8 +353,7 @@ void EntityRegistry::commit_updates() {
 void EntityRegistry::refresh_free_indices() {
     SANDBOX_PROFILE_SCOPE("Sandbox::EntityRegistry::refresh_free_indices");
 
-    bookkeeping_.refresh_free_indices(std::span{
-        entity_data.healths.data(), static_cast<std::size_t>(entity_data.healths.size())});
+    bookkeeping_.refresh_free_indices(entity_data.get_const_view().healths());
 }
 void EntityRegistry::end_tick() {
     SANDBOX_PROFILE_SCOPE("Sandbox::EntityRegistry::end_tick");
@@ -357,7 +391,8 @@ auto EntityRegistry::add_entities(EntityData::ConstView const view) -> SpawnedEn
     auto const reuse_count{std::min(bookkeeping_.available_free_slot_count(), count)};
     for (std::int32_t source_index{}; source_index < reuse_count; ++source_index) {
         auto const slot_index{bookkeeping_.take_free_slot()};
-        entity_data.copy_element(slot_index, view, source_index);
+        entity_registry_detail::copy_entity_rows(
+            entity_data.get_view().columns(), slot_index, view, source_index, 1);
 
         auto const handle{
             entity_registry_detail::register_spawned_entity(bookkeeping_,
@@ -374,7 +409,8 @@ auto EntityRegistry::add_entities(EntityData::ConstView const view) -> SpawnedEn
     auto const append_count{count - reuse_count};
     auto const first_slot_index{entity_data.num()};
     bookkeeping_.append_slots(append_count);
-    entity_data.append_from(view.get_view(reuse_count, append_count));
+    entity_registry_detail::append_entity_rows(entity_data,
+                                               view.get_view(reuse_count, append_count));
 
     for (std::int32_t offset{}; offset < append_count; ++offset) {
         auto const source_index{reuse_count + offset};
@@ -402,7 +438,7 @@ void EntityRegistry::queue_entity_updates(ConstView const view, EntityDeathInfo 
     SANDBOX_PROFILE_SCOPE("Sandbox::EntityRegistry::queue_entity_updates");
 
     assert(view.indices.size() == static_cast<std::size_t>(view.data.num()));
-    queued_entity_data.append_from(view.data);
+    entity_registry_detail::append_entity_rows(queued_entity_data, view.data);
     bookkeeping_.queue_update_handles(
         std::span{view.indices.data(), static_cast<std::size_t>(view.indices.size())});
 
@@ -415,12 +451,12 @@ void EntityRegistry::commit_entity_updates() {
     [[maybe_unused]] auto const count{queued_entity_data.num()};
     assert(static_cast<std::int32_t>(bookkeeping_.queued_update_handles.size()) == count);
     auto const unique_entities{unique_entity_history_.get_view().columns()};
-    [[maybe_unused]] auto const invalid_update{
-        entity_registry_detail::apply_entity_updates(bookkeeping_,
-                                                     statistics_,
-                                                     unique_entities,
-                                                     entity_data.get_view(),
-                                                     queued_entity_data.get_const_view())};
+    [[maybe_unused]] auto const invalid_update{entity_registry_detail::apply_entity_updates(
+        bookkeeping_,
+        statistics_,
+        unique_entities,
+        entity_data.get_view().columns(),
+        queued_entity_data.get_const_view().columns())};
     assert(invalid_update < 0);
 }
 void EntityRegistry::commit_death_updates() {
@@ -527,27 +563,27 @@ void EntityRegistry::refresh_entity_data(std::span<RegistryEntityHandle> handles
 /* **************************************** */
 auto EntityRegistry::get_location(RegistryEntityHandle const handle) const -> Vector3f {
     assert(is_valid_handle(handle));
-    return entity_data.locations[handle.index];
+    return entity_data.get_const_view().columns().locations[handle.index];
 }
 auto EntityRegistry::get_velocity(RegistryEntityHandle const handle) const -> Vector3f {
     assert(is_valid_handle(handle));
-    return entity_data.velocities[handle.index];
+    return entity_data.get_const_view().columns().velocities[handle.index];
 }
 auto EntityRegistry::get_health(RegistryEntityHandle const handle) const -> Health {
     assert(is_valid_handle(handle));
-    return entity_data.healths[handle.index];
+    return entity_data.get_const_view().healths()[handle.index];
 }
 auto EntityRegistry::get_team(RegistryEntityHandle const handle) const -> Team {
     assert(is_valid_handle(handle));
-    return entity_data.teams[handle.index];
+    return entity_data.get_const_view().teams()[handle.index];
 }
 auto EntityRegistry::get_entity_type(RegistryEntityHandle const handle) const -> EntityType {
     assert(is_valid_handle(handle));
-    return entity_data.entity_types[handle.index];
+    return entity_data.get_const_view().entity_types()[handle.index];
 }
 auto EntityRegistry::get_alive(RegistryEntityHandle const handle) const -> bool {
     assert(is_valid_handle(handle));
-    return is_alive(entity_data.healths[handle.index]);
+    return is_alive(entity_data.get_const_view().healths()[handle.index]);
 }
 
 /* **************************************** */
@@ -667,11 +703,11 @@ void EntityRegistry::validate_array_sizes() const {
         ml::fatal_error("Entity registry column counts differ");
     }
 
-    entity_data.validate_array_sizes();
+    entity_data.get_const_view().columns().validate_array_sizes();
     queued_direct_damage_events.validate_array_sizes();
 
 #ifndef NDEBUG
-    queued_entity_data.validate_array_sizes();
+    queued_entity_data.get_const_view().columns().validate_array_sizes();
     unique_entity_history_.get_const_view().columns().validate_array_sizes();
     assert(queued_entity_data.num() ==
            static_cast<std::int32_t>(bookkeeping_.queued_update_handles.size()));

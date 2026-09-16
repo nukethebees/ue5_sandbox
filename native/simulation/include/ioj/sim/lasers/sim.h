@@ -26,6 +26,8 @@ class PhaseInterface;
 struct Sim {
     using SpawnRequests = lasers::SpawnRequests;
     using Entities = lasers::Entities;
+    using SpawnRequestStorage = SingleAllocationLaserSpawnRequests;
+    using EntityStorage = SingleAllocationLaserEntities;
 
     /* **************************************** */
     // Construction and access
@@ -40,7 +42,7 @@ struct Sim {
     auto operator=(Sim&&) -> Sim& = delete;
 
     auto get_read_view() const -> LaserReadView {
-        return {entities.get_const_view(),
+        return {entities.get_const_view().columns(),
                 frame_output_.hits.get_const_view(),
                 frame_output_.hit_ticks,
                 frame_output_.hit_ordinals};
@@ -96,8 +98,8 @@ struct Sim {
     SimClock const& simulation_clock;
     LaserSimConfig config{};
 
-    Entities entities;
-    SpawnRequests pending_spawns;
+    EntityStorage entities;
+    SpawnRequestStorage pending_spawns;
 
     FrameOutput frame_output_;
 

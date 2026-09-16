@@ -417,6 +417,7 @@ TEST(SingleAllocationSoa, BenchmarkSchemaTracksFighterLeafOrderAndWidths) {
     }
     ASSERT_EQ(fighter.size(), experiment.size());
     std::map<std::string, std::string> const equivalents{
+        {"@native_health", "int32"},
         {"@native_registry_handle", "@soa_experiment_Handle"},
         {"@native_fighter_task", "@soa_experiment_Task"},
         {"@native_team", "@soa_experiment_Team"},

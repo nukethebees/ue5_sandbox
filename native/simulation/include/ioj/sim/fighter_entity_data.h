@@ -11,6 +11,10 @@
 #include "native_soa/storage.h"
 #include "sandbox/core/soa_permutation.h"
 
+#include <cstring>
+#include <memory>
+#include <utility>
+
 namespace ioj::sim {
 struct FighterEntityDataView;
 struct FighterEntityDataConstView;
@@ -2053,4 +2057,2008 @@ struct FighterEntityData {
     }
 };
 
+struct FighterEntityDataSingleView;
+struct FighterEntityDataSingleConstView;
+struct FighterEntityDataSingleLayout {
+    using size_type = std::int32_t;
+    using byte_size_type = std::size_t;
+
+    inline static constexpr byte_size_type max_allocation_size{
+        std::numeric_limits<byte_size_type>::max()};
+    inline static constexpr size_type capacity_granularity{64};
+    inline static constexpr byte_size_type column_gap{192};
+
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{
+        capacity_granularity, column_gap, 64};
+
+    inline static constexpr ColLayout<RegistryEntityHandle> EntityHandles{LayoutStart};
+    inline static constexpr ColLayout<std::uint32_t> IntegralBiases{EntityHandles};
+    inline static constexpr ColLayout<float> FloatBiases{IntegralBiases};
+    inline static constexpr ColLayout<FighterTask> Tasks{FloatBiases};
+    inline static constexpr ColLayout<float> LocationsXs{Tasks};
+    inline static constexpr ColLayout<float> LocationsYs{LocationsXs};
+    inline static constexpr ColLayout<float> LocationsZs{LocationsYs};
+    inline static constexpr ColLayout<float> DesiredMoveLocationsXs{LocationsZs};
+    inline static constexpr ColLayout<float> DesiredMoveLocationsYs{DesiredMoveLocationsXs};
+    inline static constexpr ColLayout<float> DesiredMoveLocationsZs{DesiredMoveLocationsYs};
+    inline static constexpr ColLayout<float> AimDirectionsXs{DesiredMoveLocationsZs};
+    inline static constexpr ColLayout<float> AimDirectionsYs{AimDirectionsXs};
+    inline static constexpr ColLayout<float> AimDirectionsZs{AimDirectionsYs};
+    inline static constexpr ColLayout<float> PlannedAimDirectionsXs{AimDirectionsZs};
+    inline static constexpr ColLayout<float> PlannedAimDirectionsYs{PlannedAimDirectionsXs};
+    inline static constexpr ColLayout<float> PlannedAimDirectionsZs{PlannedAimDirectionsYs};
+    inline static constexpr ColLayout<float> DesiredAimingDirectionsXs{PlannedAimDirectionsZs};
+    inline static constexpr ColLayout<float> DesiredAimingDirectionsYs{DesiredAimingDirectionsXs};
+    inline static constexpr ColLayout<float> DesiredAimingDirectionsZs{DesiredAimingDirectionsYs};
+    inline static constexpr ColLayout<float> MovementDirectionsXs{DesiredAimingDirectionsZs};
+    inline static constexpr ColLayout<float> MovementDirectionsYs{MovementDirectionsXs};
+    inline static constexpr ColLayout<float> MovementDirectionsZs{MovementDirectionsYs};
+    inline static constexpr ColLayout<float> VelocitiesXs{MovementDirectionsZs};
+    inline static constexpr ColLayout<float> VelocitiesYs{VelocitiesXs};
+    inline static constexpr ColLayout<float> VelocitiesZs{VelocitiesYs};
+    inline static constexpr ColLayout<float> MoveDistances{VelocitiesZs};
+    inline static constexpr ColLayout<float> Speeds{MoveDistances};
+    inline static constexpr ColLayout<Team> Teams{Speeds};
+    inline static constexpr ColLayout<Health> Healths{Teams};
+    inline static constexpr ColLayout<RegistryEntityHandle> ParentHandles{Healths};
+    inline static constexpr ColLayout<std::int8_t> AwarenessScanCountdowns{ParentHandles};
+    inline static constexpr ColLayout<std::int16_t> NavigationUpdateCountdownsRemainingTicks{
+        AwarenessScanCountdowns};
+    inline static constexpr ColLayout<std::int16_t> NavigationUpdateCountdownsPeriods{
+        NavigationUpdateCountdownsRemainingTicks};
+    inline static constexpr ColLayout<float> SeparationSteeringXs{
+        NavigationUpdateCountdownsPeriods};
+    inline static constexpr ColLayout<float> SeparationSteeringYs{SeparationSteeringXs};
+    inline static constexpr ColLayout<float> SeparationSteeringZs{SeparationSteeringYs};
+    inline static constexpr ColLayout<std::uint8_t> NavigationRiskTiers{SeparationSteeringZs};
+    inline static constexpr ColLayout<std::uint8_t> NavigationLowerRiskScanCounts{
+        NavigationRiskTiers};
+    inline static constexpr ColLayout<std::int8_t> AvoidanceChoiceIndices{
+        NavigationLowerRiskScanCounts};
+    inline static constexpr ColLayout<std::uint8_t> AvoidanceClearScanCounts{
+        AvoidanceChoiceIndices};
+    inline static constexpr ColLayout<std::int16_t> AttackRepositionCountdowns{
+        AvoidanceClearScanCounts};
+    inline static constexpr ColLayout<std::int16_t> AttackCooldowns{AttackRepositionCountdowns};
+    inline static constexpr ColLayout<RegistryEntityHandle> TargetHandles{AttackCooldowns};
+    inline static constexpr ColLayout<float> TargetLocationsXs{TargetHandles};
+    inline static constexpr ColLayout<float> TargetLocationsYs{TargetLocationsXs};
+    inline static constexpr ColLayout<float> TargetLocationsZs{TargetLocationsYs};
+    inline static constexpr ColLayout<float> TargetVelocitiesXs{TargetLocationsZs};
+    inline static constexpr ColLayout<float> TargetVelocitiesYs{TargetVelocitiesXs};
+    inline static constexpr ColLayout<float> TargetVelocitiesZs{TargetVelocitiesYs};
+    inline static constexpr ColLayout<float> TargetDirectionsXs{TargetVelocitiesZs};
+    inline static constexpr ColLayout<float> TargetDirectionsYs{TargetDirectionsXs};
+    inline static constexpr ColLayout<float> TargetDirectionsZs{TargetDirectionsYs};
+    inline static constexpr ColLayout<float> InterceptTimes{TargetDirectionsZs};
+    inline static constexpr ColLayout<float> TargetDistanceSq{InterceptTimes};
+    inline static constexpr ColLayout<float> TargetDistances{TargetDistanceSq};
+    inline static constexpr ColLayout<float> TargetRadii{TargetDistances};
+
+    inline static constexpr byte_size_type allocation_alignment{
+        ml::native_soa::maximum_alignment(EntityHandles,
+                                          IntegralBiases,
+                                          FloatBiases,
+                                          Tasks,
+                                          LocationsXs,
+                                          LocationsYs,
+                                          LocationsZs,
+                                          DesiredMoveLocationsXs,
+                                          DesiredMoveLocationsYs,
+                                          DesiredMoveLocationsZs,
+                                          AimDirectionsXs,
+                                          AimDirectionsYs,
+                                          AimDirectionsZs,
+                                          PlannedAimDirectionsXs,
+                                          PlannedAimDirectionsYs,
+                                          PlannedAimDirectionsZs,
+                                          DesiredAimingDirectionsXs,
+                                          DesiredAimingDirectionsYs,
+                                          DesiredAimingDirectionsZs,
+                                          MovementDirectionsXs,
+                                          MovementDirectionsYs,
+                                          MovementDirectionsZs,
+                                          VelocitiesXs,
+                                          VelocitiesYs,
+                                          VelocitiesZs,
+                                          MoveDistances,
+                                          Speeds,
+                                          Teams,
+                                          Healths,
+                                          ParentHandles,
+                                          AwarenessScanCountdowns,
+                                          NavigationUpdateCountdownsRemainingTicks,
+                                          NavigationUpdateCountdownsPeriods,
+                                          SeparationSteeringXs,
+                                          SeparationSteeringYs,
+                                          SeparationSteeringZs,
+                                          NavigationRiskTiers,
+                                          NavigationLowerRiskScanCounts,
+                                          AvoidanceChoiceIndices,
+                                          AvoidanceClearScanCounts,
+                                          AttackRepositionCountdowns,
+                                          AttackCooldowns,
+                                          TargetHandles,
+                                          TargetLocationsXs,
+                                          TargetLocationsYs,
+                                          TargetLocationsZs,
+                                          TargetVelocitiesXs,
+                                          TargetVelocitiesYs,
+                                          TargetVelocitiesZs,
+                                          TargetDirectionsXs,
+                                          TargetDirectionsYs,
+                                          TargetDirectionsZs,
+                                          InterceptTimes,
+                                          TargetDistanceSq,
+                                          TargetDistances,
+                                          TargetRadii)};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    inline static constexpr byte_size_type capacity_block_bound{
+        ml::native_soa::layout_align(TargetRadii.block_end, allocation_alignment) +
+        55 * (column_gap + allocation_alignment - 1)};
+    inline static constexpr size_type max_capacity{
+        ml::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : TargetRadii.data_end(blocks);
+    }
+  private:
+    inline static constexpr auto validate_layout = []() consteval -> bool {
+        static_assert(
+            ml::native_soa::supported_leaf<RegistryEntityHandle>,
+            "Single-allocation leaf entity_handles requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::native_soa::supported_leaf<std::uint32_t>,
+            "Single-allocation leaf integral_biases requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::native_soa::supported_leaf<float>,
+            "Single-allocation leaf float_biases requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::native_soa::supported_leaf<FighterTask>,
+            "Single-allocation leaf tasks requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::native_soa::supported_leaf<Team>,
+            "Single-allocation leaf teams requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::native_soa::supported_leaf<Health>,
+            "Single-allocation leaf healths requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::native_soa::supported_leaf<std::int8_t>,
+            "Single-allocation leaf awareness_scan_countdowns requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(ml::native_soa::supported_leaf<std::int16_t>,
+                      "Single-allocation leaf navigation_update_countdowns_remaining_ticks "
+                      "requires a non-cv, trivially copyable/copy-constructible/destructible, "
+                      "nothrow default-constructible object type.");
+        static_assert(
+            ml::native_soa::supported_leaf<std::uint8_t>,
+            "Single-allocation leaf navigation_risk_tiers requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+
+        static_assert(
+            allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
+            "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
+        static_assert(sizeof(RegistryEntityHandle) <=
+                      (max_allocation_size - EntityHandles.block_offset) / capacity_granularity);
+        static_assert(sizeof(std::uint32_t) <=
+                      (max_allocation_size - IntegralBiases.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - FloatBiases.block_offset) / capacity_granularity);
+        static_assert(sizeof(FighterTask) <=
+                      (max_allocation_size - Tasks.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - LocationsXs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - LocationsYs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - LocationsZs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - DesiredMoveLocationsXs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - DesiredMoveLocationsYs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - DesiredMoveLocationsZs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - AimDirectionsXs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - AimDirectionsYs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - AimDirectionsZs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - PlannedAimDirectionsXs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - PlannedAimDirectionsYs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - PlannedAimDirectionsZs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - DesiredAimingDirectionsXs.block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - DesiredAimingDirectionsYs.block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - DesiredAimingDirectionsZs.block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - MovementDirectionsXs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - MovementDirectionsYs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - MovementDirectionsZs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - VelocitiesXs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - VelocitiesYs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - VelocitiesZs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - MoveDistances.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - Speeds.block_offset) / capacity_granularity);
+        static_assert(sizeof(Team) <=
+                      (max_allocation_size - Teams.block_offset) / capacity_granularity);
+        static_assert(sizeof(Health) <=
+                      (max_allocation_size - Healths.block_offset) / capacity_granularity);
+        static_assert(sizeof(RegistryEntityHandle) <=
+                      (max_allocation_size - ParentHandles.block_offset) / capacity_granularity);
+        static_assert(sizeof(std::int8_t) <=
+                      (max_allocation_size - AwarenessScanCountdowns.block_offset) /
+                          capacity_granularity);
+        static_assert(
+            sizeof(std::int16_t) <=
+            (max_allocation_size - NavigationUpdateCountdownsRemainingTicks.block_offset) /
+                capacity_granularity);
+        static_assert(sizeof(std::int16_t) <=
+                      (max_allocation_size - NavigationUpdateCountdownsPeriods.block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - SeparationSteeringXs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - SeparationSteeringYs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - SeparationSteeringZs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(std::uint8_t) <=
+                      (max_allocation_size - NavigationRiskTiers.block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(std::uint8_t) <=
+                      (max_allocation_size - NavigationLowerRiskScanCounts.block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(std::int8_t) <=
+                      (max_allocation_size - AvoidanceChoiceIndices.block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(std::uint8_t) <=
+                      (max_allocation_size - AvoidanceClearScanCounts.block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(std::int16_t) <=
+                      (max_allocation_size - AttackRepositionCountdowns.block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(std::int16_t) <=
+                      (max_allocation_size - AttackCooldowns.block_offset) / capacity_granularity);
+        static_assert(sizeof(RegistryEntityHandle) <=
+                      (max_allocation_size - TargetHandles.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - TargetLocationsXs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - TargetLocationsYs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - TargetLocationsZs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - TargetVelocitiesXs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - TargetVelocitiesYs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - TargetVelocitiesZs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - TargetDirectionsXs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - TargetDirectionsYs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - TargetDirectionsZs.block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - InterceptTimes.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - TargetDistanceSq.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - TargetDistances.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - TargetRadii.block_offset) / capacity_granularity);
+        static_assert(55 <=
+                      (max_allocation_size -
+                       ml::native_soa::layout_align(TargetRadii.block_end, allocation_alignment)) /
+                          (column_gap + allocation_alignment - 1));
+        static_assert(max_capacity >= capacity_granularity);
+        return true;
+    };
+    static_assert(validate_layout());
+};
+
+struct SingleAllocationFighterEntityDataStorage
+    : FighterEntityDataSingleLayout
+    , protected ml::native_soa::StorageState
+    , ml::native_soa::StorageOperations {
+    using View = FighterEntityDataSingleView;
+    using ConstView = FighterEntityDataSingleConstView;
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    SingleAllocationFighterEntityDataStorage() noexcept = default;
+    ~SingleAllocationFighterEntityDataStorage() {
+        ml::native_soa::free(data_, allocation_alignment);
+    }
+    SingleAllocationFighterEntityDataStorage(SingleAllocationFighterEntityDataStorage const&) =
+        delete;
+    auto operator=(SingleAllocationFighterEntityDataStorage const&)
+        -> SingleAllocationFighterEntityDataStorage& = delete;
+    SingleAllocationFighterEntityDataStorage(
+        SingleAllocationFighterEntityDataStorage&& other) noexcept
+        : StorageState{std::exchange(other.data_, nullptr),
+                       std::exchange(other.num_, 0),
+                       std::exchange(other.capacity_, 0)} {}
+    auto operator=(SingleAllocationFighterEntityDataStorage&& other) noexcept
+        -> SingleAllocationFighterEntityDataStorage& {
+        if (this != &other) {
+            ml::native_soa::free(data_, allocation_alignment);
+            data_ = std::exchange(other.data_, nullptr);
+            num_ = std::exchange(other.num_, 0);
+            capacity_ = std::exchange(other.capacity_, 0);
+        }
+        return *this;
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<RegistryEntityHandle>* entity_handles{};
+        Element<std::uint32_t>* integral_biases{};
+        Element<float>* float_biases{};
+        Element<FighterTask>* tasks{};
+        Element<float>* locations_xs{};
+        Element<float>* locations_ys{};
+        Element<float>* locations_zs{};
+        Element<float>* desired_move_locations_xs{};
+        Element<float>* desired_move_locations_ys{};
+        Element<float>* desired_move_locations_zs{};
+        Element<float>* aim_directions_xs{};
+        Element<float>* aim_directions_ys{};
+        Element<float>* aim_directions_zs{};
+        Element<float>* planned_aim_directions_xs{};
+        Element<float>* planned_aim_directions_ys{};
+        Element<float>* planned_aim_directions_zs{};
+        Element<float>* desired_aiming_directions_xs{};
+        Element<float>* desired_aiming_directions_ys{};
+        Element<float>* desired_aiming_directions_zs{};
+        Element<float>* movement_directions_xs{};
+        Element<float>* movement_directions_ys{};
+        Element<float>* movement_directions_zs{};
+        Element<float>* velocities_xs{};
+        Element<float>* velocities_ys{};
+        Element<float>* velocities_zs{};
+        Element<float>* move_distances{};
+        Element<float>* speeds{};
+        Element<Team>* teams{};
+        Element<Health>* healths{};
+        Element<RegistryEntityHandle>* parent_handles{};
+        Element<std::int8_t>* awareness_scan_countdowns{};
+        Element<std::int16_t>* navigation_update_countdowns_remaining_ticks{};
+        Element<std::int16_t>* navigation_update_countdowns_periods{};
+        Element<float>* separation_steering_xs{};
+        Element<float>* separation_steering_ys{};
+        Element<float>* separation_steering_zs{};
+        Element<std::uint8_t>* navigation_risk_tiers{};
+        Element<std::uint8_t>* navigation_lower_risk_scan_counts{};
+        Element<std::int8_t>* avoidance_choice_indices{};
+        Element<std::uint8_t>* avoidance_clear_scan_counts{};
+        Element<std::int16_t>* attack_reposition_countdowns{};
+        Element<std::int16_t>* attack_cooldowns{};
+        Element<RegistryEntityHandle>* target_handles{};
+        Element<float>* target_locations_xs{};
+        Element<float>* target_locations_ys{};
+        Element<float>* target_locations_zs{};
+        Element<float>* target_velocities_xs{};
+        Element<float>* target_velocities_ys{};
+        Element<float>* target_velocities_zs{};
+        Element<float>* target_directions_xs{};
+        Element<float>* target_directions_ys{};
+        Element<float>* target_directions_zs{};
+        Element<float>* intercept_times{};
+        Element<float>* target_distance_sq{};
+        Element<float>* target_distances{};
+        Element<float>* target_radii{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (entity_handles == nullptr) {
+                return {};
+            }
+            return {entity_handles + offset,
+                    integral_biases + offset,
+                    float_biases + offset,
+                    tasks + offset,
+                    locations_xs + offset,
+                    locations_ys + offset,
+                    locations_zs + offset,
+                    desired_move_locations_xs + offset,
+                    desired_move_locations_ys + offset,
+                    desired_move_locations_zs + offset,
+                    aim_directions_xs + offset,
+                    aim_directions_ys + offset,
+                    aim_directions_zs + offset,
+                    planned_aim_directions_xs + offset,
+                    planned_aim_directions_ys + offset,
+                    planned_aim_directions_zs + offset,
+                    desired_aiming_directions_xs + offset,
+                    desired_aiming_directions_ys + offset,
+                    desired_aiming_directions_zs + offset,
+                    movement_directions_xs + offset,
+                    movement_directions_ys + offset,
+                    movement_directions_zs + offset,
+                    velocities_xs + offset,
+                    velocities_ys + offset,
+                    velocities_zs + offset,
+                    move_distances + offset,
+                    speeds + offset,
+                    teams + offset,
+                    healths + offset,
+                    parent_handles + offset,
+                    awareness_scan_countdowns + offset,
+                    navigation_update_countdowns_remaining_ticks + offset,
+                    navigation_update_countdowns_periods + offset,
+                    separation_steering_xs + offset,
+                    separation_steering_ys + offset,
+                    separation_steering_zs + offset,
+                    navigation_risk_tiers + offset,
+                    navigation_lower_risk_scan_counts + offset,
+                    avoidance_choice_indices + offset,
+                    avoidance_clear_scan_counts + offset,
+                    attack_reposition_countdowns + offset,
+                    attack_cooldowns + offset,
+                    target_handles + offset,
+                    target_locations_xs + offset,
+                    target_locations_ys + offset,
+                    target_locations_zs + offset,
+                    target_velocities_xs + offset,
+                    target_velocities_ys + offset,
+                    target_velocities_zs + offset,
+                    target_directions_xs + offset,
+                    target_directions_ys + offset,
+                    target_directions_zs + offset,
+                    intercept_times + offset,
+                    target_distance_sq + offset,
+                    target_distances + offset,
+                    target_radii + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    friend struct ml::native_soa::StorageOperations;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+            using Column = std::remove_cvref_t<decltype(column)>;
+            using Pointer = std::conditional_t<std::is_const_v<Byte>,
+                                               typename Column::const_pointer,
+                                               typename Column::pointer>;
+            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
+        };
+        return {pointer_at(EntityHandles),
+                pointer_at(IntegralBiases),
+                pointer_at(FloatBiases),
+                pointer_at(Tasks),
+                pointer_at(LocationsXs),
+                pointer_at(LocationsYs),
+                pointer_at(LocationsZs),
+                pointer_at(DesiredMoveLocationsXs),
+                pointer_at(DesiredMoveLocationsYs),
+                pointer_at(DesiredMoveLocationsZs),
+                pointer_at(AimDirectionsXs),
+                pointer_at(AimDirectionsYs),
+                pointer_at(AimDirectionsZs),
+                pointer_at(PlannedAimDirectionsXs),
+                pointer_at(PlannedAimDirectionsYs),
+                pointer_at(PlannedAimDirectionsZs),
+                pointer_at(DesiredAimingDirectionsXs),
+                pointer_at(DesiredAimingDirectionsYs),
+                pointer_at(DesiredAimingDirectionsZs),
+                pointer_at(MovementDirectionsXs),
+                pointer_at(MovementDirectionsYs),
+                pointer_at(MovementDirectionsZs),
+                pointer_at(VelocitiesXs),
+                pointer_at(VelocitiesYs),
+                pointer_at(VelocitiesZs),
+                pointer_at(MoveDistances),
+                pointer_at(Speeds),
+                pointer_at(Teams),
+                pointer_at(Healths),
+                pointer_at(ParentHandles),
+                pointer_at(AwarenessScanCountdowns),
+                pointer_at(NavigationUpdateCountdownsRemainingTicks),
+                pointer_at(NavigationUpdateCountdownsPeriods),
+                pointer_at(SeparationSteeringXs),
+                pointer_at(SeparationSteeringYs),
+                pointer_at(SeparationSteeringZs),
+                pointer_at(NavigationRiskTiers),
+                pointer_at(NavigationLowerRiskScanCounts),
+                pointer_at(AvoidanceChoiceIndices),
+                pointer_at(AvoidanceClearScanCounts),
+                pointer_at(AttackRepositionCountdowns),
+                pointer_at(AttackCooldowns),
+                pointer_at(TargetHandles),
+                pointer_at(TargetLocationsXs),
+                pointer_at(TargetLocationsYs),
+                pointer_at(TargetLocationsZs),
+                pointer_at(TargetVelocitiesXs),
+                pointer_at(TargetVelocitiesYs),
+                pointer_at(TargetVelocitiesZs),
+                pointer_at(TargetDirectionsXs),
+                pointer_at(TargetDirectionsYs),
+                pointer_at(TargetDirectionsZs),
+                pointer_at(InterceptTimes),
+                pointer_at(TargetDistanceSq),
+                pointer_at(TargetDistances),
+                pointer_at(TargetRadii)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        std::uninitialized_value_construct_n<RegistryEntityHandle*>(columns.entity_handles, count);
+        std::uninitialized_value_construct_n<std::uint32_t*>(columns.integral_biases, count);
+        std::uninitialized_value_construct_n<float*>(columns.float_biases, count);
+        std::uninitialized_value_construct_n<FighterTask*>(columns.tasks, count);
+        std::uninitialized_value_construct_n<float*>(columns.locations_xs, count);
+        std::uninitialized_value_construct_n<float*>(columns.locations_ys, count);
+        std::uninitialized_value_construct_n<float*>(columns.locations_zs, count);
+        std::uninitialized_value_construct_n<float*>(columns.desired_move_locations_xs, count);
+        std::uninitialized_value_construct_n<float*>(columns.desired_move_locations_ys, count);
+        std::uninitialized_value_construct_n<float*>(columns.desired_move_locations_zs, count);
+        std::uninitialized_value_construct_n<float*>(columns.aim_directions_xs, count);
+        std::uninitialized_value_construct_n<float*>(columns.aim_directions_ys, count);
+        std::uninitialized_value_construct_n<float*>(columns.aim_directions_zs, count);
+        std::uninitialized_value_construct_n<float*>(columns.planned_aim_directions_xs, count);
+        std::uninitialized_value_construct_n<float*>(columns.planned_aim_directions_ys, count);
+        std::uninitialized_value_construct_n<float*>(columns.planned_aim_directions_zs, count);
+        std::uninitialized_value_construct_n<float*>(columns.desired_aiming_directions_xs, count);
+        std::uninitialized_value_construct_n<float*>(columns.desired_aiming_directions_ys, count);
+        std::uninitialized_value_construct_n<float*>(columns.desired_aiming_directions_zs, count);
+        std::uninitialized_value_construct_n<float*>(columns.movement_directions_xs, count);
+        std::uninitialized_value_construct_n<float*>(columns.movement_directions_ys, count);
+        std::uninitialized_value_construct_n<float*>(columns.movement_directions_zs, count);
+        std::uninitialized_value_construct_n<float*>(columns.velocities_xs, count);
+        std::uninitialized_value_construct_n<float*>(columns.velocities_ys, count);
+        std::uninitialized_value_construct_n<float*>(columns.velocities_zs, count);
+        std::uninitialized_value_construct_n<float*>(columns.move_distances, count);
+        std::uninitialized_value_construct_n<float*>(columns.speeds, count);
+        std::uninitialized_value_construct_n<Team*>(columns.teams, count);
+        std::uninitialized_value_construct_n<Health*>(columns.healths, count);
+        std::uninitialized_value_construct_n<RegistryEntityHandle*>(columns.parent_handles, count);
+        std::uninitialized_value_construct_n<std::int8_t*>(columns.awareness_scan_countdowns,
+                                                           count);
+        std::uninitialized_value_construct_n<std::int16_t*>(
+            columns.navigation_update_countdowns_remaining_ticks, count);
+        std::uninitialized_value_construct_n<std::int16_t*>(
+            columns.navigation_update_countdowns_periods, count);
+        std::uninitialized_value_construct_n<float*>(columns.separation_steering_xs, count);
+        std::uninitialized_value_construct_n<float*>(columns.separation_steering_ys, count);
+        std::uninitialized_value_construct_n<float*>(columns.separation_steering_zs, count);
+        std::uninitialized_value_construct_n<std::uint8_t*>(columns.navigation_risk_tiers, count);
+        std::uninitialized_value_construct_n<std::uint8_t*>(
+            columns.navigation_lower_risk_scan_counts, count);
+        std::uninitialized_value_construct_n<std::int8_t*>(columns.avoidance_choice_indices, count);
+        std::uninitialized_value_construct_n<std::uint8_t*>(columns.avoidance_clear_scan_counts,
+                                                            count);
+        std::uninitialized_value_construct_n<std::int16_t*>(columns.attack_reposition_countdowns,
+                                                            count);
+        std::uninitialized_value_construct_n<std::int16_t*>(columns.attack_cooldowns, count);
+        std::uninitialized_value_construct_n<RegistryEntityHandle*>(columns.target_handles, count);
+        std::uninitialized_value_construct_n<float*>(columns.target_locations_xs, count);
+        std::uninitialized_value_construct_n<float*>(columns.target_locations_ys, count);
+        std::uninitialized_value_construct_n<float*>(columns.target_locations_zs, count);
+        std::uninitialized_value_construct_n<float*>(columns.target_velocities_xs, count);
+        std::uninitialized_value_construct_n<float*>(columns.target_velocities_ys, count);
+        std::uninitialized_value_construct_n<float*>(columns.target_velocities_zs, count);
+        std::uninitialized_value_construct_n<float*>(columns.target_directions_xs, count);
+        std::uninitialized_value_construct_n<float*>(columns.target_directions_ys, count);
+        std::uninitialized_value_construct_n<float*>(columns.target_directions_zs, count);
+        std::uninitialized_value_construct_n<float*>(columns.intercept_times, count);
+        std::uninitialized_value_construct_n<float*>(columns.target_distance_sq, count);
+        std::uninitialized_value_construct_n<float*>(columns.target_distances, count);
+        std::uninitialized_value_construct_n<float*>(columns.target_radii, count);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        auto const elements_to_move{static_cast<byte_size_type>(move_count)};
+        auto const entity_handles_bytes{elements_to_move * sizeof(RegistryEntityHandle)};
+        auto const integral_biases_bytes{elements_to_move * sizeof(std::uint32_t)};
+        auto const float_biases_bytes{elements_to_move * sizeof(float)};
+        auto const tasks_bytes{elements_to_move * sizeof(FighterTask)};
+        auto const teams_bytes{elements_to_move * sizeof(Team)};
+        auto const healths_bytes{elements_to_move * sizeof(Health)};
+        auto const awareness_scan_countdowns_bytes{elements_to_move * sizeof(std::int8_t)};
+        auto const navigation_update_countdowns_remaining_ticks_bytes{elements_to_move *
+                                                                      sizeof(std::int16_t)};
+        auto const navigation_risk_tiers_bytes{elements_to_move * sizeof(std::uint8_t)};
+        std::memcpy(
+            columns.entity_handles + index, columns.entity_handles + source, entity_handles_bytes);
+        std::memcpy(columns.integral_biases + index,
+                    columns.integral_biases + source,
+                    integral_biases_bytes);
+        std::memcpy(
+            columns.float_biases + index, columns.float_biases + source, float_biases_bytes);
+        std::memcpy(columns.tasks + index, columns.tasks + source, tasks_bytes);
+        std::memcpy(
+            columns.locations_xs + index, columns.locations_xs + source, float_biases_bytes);
+        std::memcpy(
+            columns.locations_ys + index, columns.locations_ys + source, float_biases_bytes);
+        std::memcpy(
+            columns.locations_zs + index, columns.locations_zs + source, float_biases_bytes);
+        std::memcpy(columns.desired_move_locations_xs + index,
+                    columns.desired_move_locations_xs + source,
+                    float_biases_bytes);
+        std::memcpy(columns.desired_move_locations_ys + index,
+                    columns.desired_move_locations_ys + source,
+                    float_biases_bytes);
+        std::memcpy(columns.desired_move_locations_zs + index,
+                    columns.desired_move_locations_zs + source,
+                    float_biases_bytes);
+        std::memcpy(columns.aim_directions_xs + index,
+                    columns.aim_directions_xs + source,
+                    float_biases_bytes);
+        std::memcpy(columns.aim_directions_ys + index,
+                    columns.aim_directions_ys + source,
+                    float_biases_bytes);
+        std::memcpy(columns.aim_directions_zs + index,
+                    columns.aim_directions_zs + source,
+                    float_biases_bytes);
+        std::memcpy(columns.planned_aim_directions_xs + index,
+                    columns.planned_aim_directions_xs + source,
+                    float_biases_bytes);
+        std::memcpy(columns.planned_aim_directions_ys + index,
+                    columns.planned_aim_directions_ys + source,
+                    float_biases_bytes);
+        std::memcpy(columns.planned_aim_directions_zs + index,
+                    columns.planned_aim_directions_zs + source,
+                    float_biases_bytes);
+        std::memcpy(columns.desired_aiming_directions_xs + index,
+                    columns.desired_aiming_directions_xs + source,
+                    float_biases_bytes);
+        std::memcpy(columns.desired_aiming_directions_ys + index,
+                    columns.desired_aiming_directions_ys + source,
+                    float_biases_bytes);
+        std::memcpy(columns.desired_aiming_directions_zs + index,
+                    columns.desired_aiming_directions_zs + source,
+                    float_biases_bytes);
+        std::memcpy(columns.movement_directions_xs + index,
+                    columns.movement_directions_xs + source,
+                    float_biases_bytes);
+        std::memcpy(columns.movement_directions_ys + index,
+                    columns.movement_directions_ys + source,
+                    float_biases_bytes);
+        std::memcpy(columns.movement_directions_zs + index,
+                    columns.movement_directions_zs + source,
+                    float_biases_bytes);
+        std::memcpy(
+            columns.velocities_xs + index, columns.velocities_xs + source, float_biases_bytes);
+        std::memcpy(
+            columns.velocities_ys + index, columns.velocities_ys + source, float_biases_bytes);
+        std::memcpy(
+            columns.velocities_zs + index, columns.velocities_zs + source, float_biases_bytes);
+        std::memcpy(
+            columns.move_distances + index, columns.move_distances + source, float_biases_bytes);
+        std::memcpy(columns.speeds + index, columns.speeds + source, float_biases_bytes);
+        std::memcpy(columns.teams + index, columns.teams + source, teams_bytes);
+        std::memcpy(columns.healths + index, columns.healths + source, healths_bytes);
+        std::memcpy(
+            columns.parent_handles + index, columns.parent_handles + source, entity_handles_bytes);
+        std::memcpy(columns.awareness_scan_countdowns + index,
+                    columns.awareness_scan_countdowns + source,
+                    awareness_scan_countdowns_bytes);
+        std::memcpy(columns.navigation_update_countdowns_remaining_ticks + index,
+                    columns.navigation_update_countdowns_remaining_ticks + source,
+                    navigation_update_countdowns_remaining_ticks_bytes);
+        std::memcpy(columns.navigation_update_countdowns_periods + index,
+                    columns.navigation_update_countdowns_periods + source,
+                    navigation_update_countdowns_remaining_ticks_bytes);
+        std::memcpy(columns.separation_steering_xs + index,
+                    columns.separation_steering_xs + source,
+                    float_biases_bytes);
+        std::memcpy(columns.separation_steering_ys + index,
+                    columns.separation_steering_ys + source,
+                    float_biases_bytes);
+        std::memcpy(columns.separation_steering_zs + index,
+                    columns.separation_steering_zs + source,
+                    float_biases_bytes);
+        std::memcpy(columns.navigation_risk_tiers + index,
+                    columns.navigation_risk_tiers + source,
+                    navigation_risk_tiers_bytes);
+        std::memcpy(columns.navigation_lower_risk_scan_counts + index,
+                    columns.navigation_lower_risk_scan_counts + source,
+                    navigation_risk_tiers_bytes);
+        std::memcpy(columns.avoidance_choice_indices + index,
+                    columns.avoidance_choice_indices + source,
+                    awareness_scan_countdowns_bytes);
+        std::memcpy(columns.avoidance_clear_scan_counts + index,
+                    columns.avoidance_clear_scan_counts + source,
+                    navigation_risk_tiers_bytes);
+        std::memcpy(columns.attack_reposition_countdowns + index,
+                    columns.attack_reposition_countdowns + source,
+                    navigation_update_countdowns_remaining_ticks_bytes);
+        std::memcpy(columns.attack_cooldowns + index,
+                    columns.attack_cooldowns + source,
+                    navigation_update_countdowns_remaining_ticks_bytes);
+        std::memcpy(
+            columns.target_handles + index, columns.target_handles + source, entity_handles_bytes);
+        std::memcpy(columns.target_locations_xs + index,
+                    columns.target_locations_xs + source,
+                    float_biases_bytes);
+        std::memcpy(columns.target_locations_ys + index,
+                    columns.target_locations_ys + source,
+                    float_biases_bytes);
+        std::memcpy(columns.target_locations_zs + index,
+                    columns.target_locations_zs + source,
+                    float_biases_bytes);
+        std::memcpy(columns.target_velocities_xs + index,
+                    columns.target_velocities_xs + source,
+                    float_biases_bytes);
+        std::memcpy(columns.target_velocities_ys + index,
+                    columns.target_velocities_ys + source,
+                    float_biases_bytes);
+        std::memcpy(columns.target_velocities_zs + index,
+                    columns.target_velocities_zs + source,
+                    float_biases_bytes);
+        std::memcpy(columns.target_directions_xs + index,
+                    columns.target_directions_xs + source,
+                    float_biases_bytes);
+        std::memcpy(columns.target_directions_ys + index,
+                    columns.target_directions_ys + source,
+                    float_biases_bytes);
+        std::memcpy(columns.target_directions_zs + index,
+                    columns.target_directions_zs + source,
+                    float_biases_bytes);
+        std::memcpy(
+            columns.intercept_times + index, columns.intercept_times + source, float_biases_bytes);
+        std::memcpy(columns.target_distance_sq + index,
+                    columns.target_distance_sq + source,
+                    float_biases_bytes);
+        std::memcpy(columns.target_distances + index,
+                    columns.target_distances + source,
+                    float_biases_bytes);
+        std::memcpy(
+            columns.target_radii + index, columns.target_radii + source, float_biases_bytes);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ml::soa_storage_detail::for_each_removal_run(
+            num_,
+            indices,
+            ml::native_soa::require,
+            [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source, size_type first, size_type count) {
+        auto const destination{get_data(first)};
+        auto const elements_to_copy{static_cast<byte_size_type>(count)};
+        auto const entity_handles_bytes{elements_to_copy * sizeof(RegistryEntityHandle)};
+        auto const integral_biases_bytes{elements_to_copy * sizeof(std::uint32_t)};
+        auto const float_biases_bytes{elements_to_copy * sizeof(float)};
+        auto const tasks_bytes{elements_to_copy * sizeof(FighterTask)};
+        auto const teams_bytes{elements_to_copy * sizeof(Team)};
+        auto const healths_bytes{elements_to_copy * sizeof(Health)};
+        auto const awareness_scan_countdowns_bytes{elements_to_copy * sizeof(std::int8_t)};
+        auto const navigation_update_countdowns_remaining_ticks_bytes{elements_to_copy *
+                                                                      sizeof(std::int16_t)};
+        auto const navigation_risk_tiers_bytes{elements_to_copy * sizeof(std::uint8_t)};
+        std::memcpy(destination.entity_handles, source.entity_handles.data(), entity_handles_bytes);
+        std::memcpy(
+            destination.integral_biases, source.integral_biases.data(), integral_biases_bytes);
+        std::memcpy(destination.float_biases, source.float_biases.data(), float_biases_bytes);
+        std::memcpy(destination.tasks, source.tasks.data(), tasks_bytes);
+        std::memcpy(destination.locations_xs, source.locations.xs.data(), float_biases_bytes);
+        std::memcpy(destination.locations_ys, source.locations.ys.data(), float_biases_bytes);
+        std::memcpy(destination.locations_zs, source.locations.zs.data(), float_biases_bytes);
+        std::memcpy(destination.desired_move_locations_xs,
+                    source.desired_move_locations.xs.data(),
+                    float_biases_bytes);
+        std::memcpy(destination.desired_move_locations_ys,
+                    source.desired_move_locations.ys.data(),
+                    float_biases_bytes);
+        std::memcpy(destination.desired_move_locations_zs,
+                    source.desired_move_locations.zs.data(),
+                    float_biases_bytes);
+        std::memcpy(
+            destination.aim_directions_xs, source.aim_directions.xs.data(), float_biases_bytes);
+        std::memcpy(
+            destination.aim_directions_ys, source.aim_directions.ys.data(), float_biases_bytes);
+        std::memcpy(
+            destination.aim_directions_zs, source.aim_directions.zs.data(), float_biases_bytes);
+        std::memcpy(destination.planned_aim_directions_xs,
+                    source.planned_aim_directions.xs.data(),
+                    float_biases_bytes);
+        std::memcpy(destination.planned_aim_directions_ys,
+                    source.planned_aim_directions.ys.data(),
+                    float_biases_bytes);
+        std::memcpy(destination.planned_aim_directions_zs,
+                    source.planned_aim_directions.zs.data(),
+                    float_biases_bytes);
+        std::memcpy(destination.desired_aiming_directions_xs,
+                    source.desired_aiming_directions.xs.data(),
+                    float_biases_bytes);
+        std::memcpy(destination.desired_aiming_directions_ys,
+                    source.desired_aiming_directions.ys.data(),
+                    float_biases_bytes);
+        std::memcpy(destination.desired_aiming_directions_zs,
+                    source.desired_aiming_directions.zs.data(),
+                    float_biases_bytes);
+        std::memcpy(destination.movement_directions_xs,
+                    source.movement_directions.xs.data(),
+                    float_biases_bytes);
+        std::memcpy(destination.movement_directions_ys,
+                    source.movement_directions.ys.data(),
+                    float_biases_bytes);
+        std::memcpy(destination.movement_directions_zs,
+                    source.movement_directions.zs.data(),
+                    float_biases_bytes);
+        std::memcpy(destination.velocities_xs, source.velocities.xs.data(), float_biases_bytes);
+        std::memcpy(destination.velocities_ys, source.velocities.ys.data(), float_biases_bytes);
+        std::memcpy(destination.velocities_zs, source.velocities.zs.data(), float_biases_bytes);
+        std::memcpy(destination.move_distances, source.move_distances.data(), float_biases_bytes);
+        std::memcpy(destination.speeds, source.speeds.data(), float_biases_bytes);
+        std::memcpy(destination.teams, source.teams.data(), teams_bytes);
+        std::memcpy(destination.healths, source.healths.data(), healths_bytes);
+        std::memcpy(destination.parent_handles, source.parent_handles.data(), entity_handles_bytes);
+        std::memcpy(destination.awareness_scan_countdowns,
+                    source.awareness_scan_countdowns.data(),
+                    awareness_scan_countdowns_bytes);
+        std::memcpy(destination.navigation_update_countdowns_remaining_ticks,
+                    source.navigation_update_countdowns_remaining_ticks.data(),
+                    navigation_update_countdowns_remaining_ticks_bytes);
+        std::memcpy(destination.navigation_update_countdowns_periods,
+                    source.navigation_update_countdowns_periods.data(),
+                    navigation_update_countdowns_remaining_ticks_bytes);
+        std::memcpy(destination.separation_steering_xs,
+                    source.separation_steering.xs.data(),
+                    float_biases_bytes);
+        std::memcpy(destination.separation_steering_ys,
+                    source.separation_steering.ys.data(),
+                    float_biases_bytes);
+        std::memcpy(destination.separation_steering_zs,
+                    source.separation_steering.zs.data(),
+                    float_biases_bytes);
+        std::memcpy(destination.navigation_risk_tiers,
+                    source.navigation_risk_tiers.data(),
+                    navigation_risk_tiers_bytes);
+        std::memcpy(destination.navigation_lower_risk_scan_counts,
+                    source.navigation_lower_risk_scan_counts.data(),
+                    navigation_risk_tiers_bytes);
+        std::memcpy(destination.avoidance_choice_indices,
+                    source.avoidance_choice_indices.data(),
+                    awareness_scan_countdowns_bytes);
+        std::memcpy(destination.avoidance_clear_scan_counts,
+                    source.avoidance_clear_scan_counts.data(),
+                    navigation_risk_tiers_bytes);
+        std::memcpy(destination.attack_reposition_countdowns,
+                    source.attack_reposition_countdowns.data(),
+                    navigation_update_countdowns_remaining_ticks_bytes);
+        std::memcpy(destination.attack_cooldowns,
+                    source.attack_cooldowns.data(),
+                    navigation_update_countdowns_remaining_ticks_bytes);
+        std::memcpy(destination.target_handles, source.target_handles.data(), entity_handles_bytes);
+        std::memcpy(
+            destination.target_locations_xs, source.target_locations.xs.data(), float_biases_bytes);
+        std::memcpy(
+            destination.target_locations_ys, source.target_locations.ys.data(), float_biases_bytes);
+        std::memcpy(
+            destination.target_locations_zs, source.target_locations.zs.data(), float_biases_bytes);
+        std::memcpy(destination.target_velocities_xs,
+                    source.target_velocities.xs.data(),
+                    float_biases_bytes);
+        std::memcpy(destination.target_velocities_ys,
+                    source.target_velocities.ys.data(),
+                    float_biases_bytes);
+        std::memcpy(destination.target_velocities_zs,
+                    source.target_velocities.zs.data(),
+                    float_biases_bytes);
+        std::memcpy(destination.target_directions_xs,
+                    source.target_directions.xs.data(),
+                    float_biases_bytes);
+        std::memcpy(destination.target_directions_ys,
+                    source.target_directions.ys.data(),
+                    float_biases_bytes);
+        std::memcpy(destination.target_directions_zs,
+                    source.target_directions.zs.data(),
+                    float_biases_bytes);
+        std::memcpy(destination.intercept_times, source.intercept_times.data(), float_biases_bytes);
+        std::memcpy(
+            destination.target_distance_sq, source.target_distance_sq.data(), float_biases_bytes);
+        std::memcpy(
+            destination.target_distances, source.target_distances.data(), float_biases_bytes);
+        std::memcpy(destination.target_radii, source.target_radii.data(), float_biases_bytes);
+    }
+    void reallocate(size_type const new_capacity) {
+        auto* const new_data{ml::native_soa::allocate(
+            layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)),
+            static_cast<std::uint32_t>(allocation_alignment))};
+        if (num_ > 0) {
+            auto const old_blocks{capacity_blocks()};
+            auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+            auto const source{
+                make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+            auto const destination{make_data_unchecked(new_data, new_blocks)};
+            auto const live_count{static_cast<byte_size_type>(num_)};
+            auto const entity_handles_bytes{live_count * sizeof(RegistryEntityHandle)};
+            auto const integral_biases_bytes{live_count * sizeof(std::uint32_t)};
+            auto const float_biases_bytes{live_count * sizeof(float)};
+            auto const tasks_bytes{live_count * sizeof(FighterTask)};
+            auto const teams_bytes{live_count * sizeof(Team)};
+            auto const healths_bytes{live_count * sizeof(Health)};
+            auto const awareness_scan_countdowns_bytes{live_count * sizeof(std::int8_t)};
+            auto const navigation_update_countdowns_remaining_ticks_bytes{live_count *
+                                                                          sizeof(std::int16_t)};
+            auto const navigation_risk_tiers_bytes{live_count * sizeof(std::uint8_t)};
+            std::memcpy(destination.entity_handles, source.entity_handles, entity_handles_bytes);
+            std::memcpy(destination.integral_biases, source.integral_biases, integral_biases_bytes);
+            std::memcpy(destination.float_biases, source.float_biases, float_biases_bytes);
+            std::memcpy(destination.tasks, source.tasks, tasks_bytes);
+            std::memcpy(destination.locations_xs, source.locations_xs, float_biases_bytes);
+            std::memcpy(destination.locations_ys, source.locations_ys, float_biases_bytes);
+            std::memcpy(destination.locations_zs, source.locations_zs, float_biases_bytes);
+            std::memcpy(destination.desired_move_locations_xs,
+                        source.desired_move_locations_xs,
+                        float_biases_bytes);
+            std::memcpy(destination.desired_move_locations_ys,
+                        source.desired_move_locations_ys,
+                        float_biases_bytes);
+            std::memcpy(destination.desired_move_locations_zs,
+                        source.desired_move_locations_zs,
+                        float_biases_bytes);
+            std::memcpy(
+                destination.aim_directions_xs, source.aim_directions_xs, float_biases_bytes);
+            std::memcpy(
+                destination.aim_directions_ys, source.aim_directions_ys, float_biases_bytes);
+            std::memcpy(
+                destination.aim_directions_zs, source.aim_directions_zs, float_biases_bytes);
+            std::memcpy(destination.planned_aim_directions_xs,
+                        source.planned_aim_directions_xs,
+                        float_biases_bytes);
+            std::memcpy(destination.planned_aim_directions_ys,
+                        source.planned_aim_directions_ys,
+                        float_biases_bytes);
+            std::memcpy(destination.planned_aim_directions_zs,
+                        source.planned_aim_directions_zs,
+                        float_biases_bytes);
+            std::memcpy(destination.desired_aiming_directions_xs,
+                        source.desired_aiming_directions_xs,
+                        float_biases_bytes);
+            std::memcpy(destination.desired_aiming_directions_ys,
+                        source.desired_aiming_directions_ys,
+                        float_biases_bytes);
+            std::memcpy(destination.desired_aiming_directions_zs,
+                        source.desired_aiming_directions_zs,
+                        float_biases_bytes);
+            std::memcpy(destination.movement_directions_xs,
+                        source.movement_directions_xs,
+                        float_biases_bytes);
+            std::memcpy(destination.movement_directions_ys,
+                        source.movement_directions_ys,
+                        float_biases_bytes);
+            std::memcpy(destination.movement_directions_zs,
+                        source.movement_directions_zs,
+                        float_biases_bytes);
+            std::memcpy(destination.velocities_xs, source.velocities_xs, float_biases_bytes);
+            std::memcpy(destination.velocities_ys, source.velocities_ys, float_biases_bytes);
+            std::memcpy(destination.velocities_zs, source.velocities_zs, float_biases_bytes);
+            std::memcpy(destination.move_distances, source.move_distances, float_biases_bytes);
+            std::memcpy(destination.speeds, source.speeds, float_biases_bytes);
+            std::memcpy(destination.teams, source.teams, teams_bytes);
+            std::memcpy(destination.healths, source.healths, healths_bytes);
+            std::memcpy(destination.parent_handles, source.parent_handles, entity_handles_bytes);
+            std::memcpy(destination.awareness_scan_countdowns,
+                        source.awareness_scan_countdowns,
+                        awareness_scan_countdowns_bytes);
+            std::memcpy(destination.navigation_update_countdowns_remaining_ticks,
+                        source.navigation_update_countdowns_remaining_ticks,
+                        navigation_update_countdowns_remaining_ticks_bytes);
+            std::memcpy(destination.navigation_update_countdowns_periods,
+                        source.navigation_update_countdowns_periods,
+                        navigation_update_countdowns_remaining_ticks_bytes);
+            std::memcpy(destination.separation_steering_xs,
+                        source.separation_steering_xs,
+                        float_biases_bytes);
+            std::memcpy(destination.separation_steering_ys,
+                        source.separation_steering_ys,
+                        float_biases_bytes);
+            std::memcpy(destination.separation_steering_zs,
+                        source.separation_steering_zs,
+                        float_biases_bytes);
+            std::memcpy(destination.navigation_risk_tiers,
+                        source.navigation_risk_tiers,
+                        navigation_risk_tiers_bytes);
+            std::memcpy(destination.navigation_lower_risk_scan_counts,
+                        source.navigation_lower_risk_scan_counts,
+                        navigation_risk_tiers_bytes);
+            std::memcpy(destination.avoidance_choice_indices,
+                        source.avoidance_choice_indices,
+                        awareness_scan_countdowns_bytes);
+            std::memcpy(destination.avoidance_clear_scan_counts,
+                        source.avoidance_clear_scan_counts,
+                        navigation_risk_tiers_bytes);
+            std::memcpy(destination.attack_reposition_countdowns,
+                        source.attack_reposition_countdowns,
+                        navigation_update_countdowns_remaining_ticks_bytes);
+            std::memcpy(destination.attack_cooldowns,
+                        source.attack_cooldowns,
+                        navigation_update_countdowns_remaining_ticks_bytes);
+            std::memcpy(destination.target_handles, source.target_handles, entity_handles_bytes);
+            std::memcpy(
+                destination.target_locations_xs, source.target_locations_xs, float_biases_bytes);
+            std::memcpy(
+                destination.target_locations_ys, source.target_locations_ys, float_biases_bytes);
+            std::memcpy(
+                destination.target_locations_zs, source.target_locations_zs, float_biases_bytes);
+            std::memcpy(
+                destination.target_velocities_xs, source.target_velocities_xs, float_biases_bytes);
+            std::memcpy(
+                destination.target_velocities_ys, source.target_velocities_ys, float_biases_bytes);
+            std::memcpy(
+                destination.target_velocities_zs, source.target_velocities_zs, float_biases_bytes);
+            std::memcpy(
+                destination.target_directions_xs, source.target_directions_xs, float_biases_bytes);
+            std::memcpy(
+                destination.target_directions_ys, source.target_directions_ys, float_biases_bytes);
+            std::memcpy(
+                destination.target_directions_zs, source.target_directions_zs, float_biases_bytes);
+            std::memcpy(destination.intercept_times, source.intercept_times, float_biases_bytes);
+            std::memcpy(
+                destination.target_distance_sq, source.target_distance_sq, float_biases_bytes);
+            std::memcpy(destination.target_distances, source.target_distances, float_biases_bytes);
+            std::memcpy(destination.target_radii, source.target_radii, float_biases_bytes);
+        }
+        ml::native_soa::free(data_, allocation_alignment);
+        data_ = new_data;
+        capacity_ = new_capacity;
+    }
+};
+
+struct FighterEntityDataSingleConstView : ml::native_soa::CompactViewState<true> {
+    using Base = ml::native_soa::CompactViewState<true>;
+    using Base::Base;
+    using View = FighterEntityDataSingleView;
+    using ConstView = FighterEntityDataSingleConstView;
+    FighterEntityDataSingleConstView() = default;
+    FighterEntityDataSingleConstView(FighterEntityDataSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    auto entity_handles() const -> std::span<RegistryEntityHandle const> {
+        return {column_data<RegistryEntityHandle>(
+                    FighterEntityDataSingleLayout::EntityHandles.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto integral_biases() const -> std::span<std::uint32_t const> {
+        return {column_data<std::uint32_t>(
+                    FighterEntityDataSingleLayout::IntegralBiases.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto float_biases() const -> std::span<float const> {
+        return {column_data<float>(
+                    FighterEntityDataSingleLayout::FloatBiases.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto tasks() const -> std::span<FighterTask const> {
+        return {column_data<FighterTask>(
+                    FighterEntityDataSingleLayout::Tasks.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto view_locations() const -> ml::native_soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::LocationsXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::LocationsYs.offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_desired_move_locations() const -> ml::native_soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::DesiredMoveLocationsXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::DesiredMoveLocationsYs.offset(blocks) -
+                          first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_aim_directions() const -> ml::native_soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::AimDirectionsXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::AimDirectionsYs.offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_planned_aim_directions() const -> ml::native_soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::PlannedAimDirectionsXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::PlannedAimDirectionsYs.offset(blocks) -
+                          first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_desired_aiming_directions() const -> ml::native_soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::DesiredAimingDirectionsXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::DesiredAimingDirectionsYs.offset(blocks) -
+                          first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_movement_directions() const -> ml::native_soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::MovementDirectionsXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::MovementDirectionsYs.offset(blocks) -
+                          first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_velocities() const -> ml::native_soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::VelocitiesXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::VelocitiesYs.offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto move_distances() const -> std::span<float const> {
+        return {column_data<float>(
+                    FighterEntityDataSingleLayout::MoveDistances.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto speeds() const -> std::span<float const> {
+        return {column_data<float>(FighterEntityDataSingleLayout::Speeds.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto teams() const -> std::span<Team const> {
+        return {column_data<Team>(FighterEntityDataSingleLayout::Teams.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto healths() const -> std::span<Health const> {
+        return {
+            column_data<Health>(FighterEntityDataSingleLayout::Healths.offset(capacity_blocks())),
+            static_cast<std::size_t>(count_)};
+    }
+    auto parent_handles() const -> std::span<RegistryEntityHandle const> {
+        return {column_data<RegistryEntityHandle>(
+                    FighterEntityDataSingleLayout::ParentHandles.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto awareness_scan_countdowns() const -> std::span<std::int8_t const> {
+        return {
+            column_data<std::int8_t>(
+                FighterEntityDataSingleLayout::AwarenessScanCountdowns.offset(capacity_blocks())),
+            static_cast<std::size_t>(count_)};
+    }
+    auto navigation_update_countdowns_remaining_ticks() const -> std::span<std::int16_t const> {
+        return {column_data<std::int16_t>(
+                    FighterEntityDataSingleLayout::NavigationUpdateCountdownsRemainingTicks.offset(
+                        capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto navigation_update_countdowns_periods() const -> std::span<std::int16_t const> {
+        return {column_data<std::int16_t>(
+                    FighterEntityDataSingleLayout::NavigationUpdateCountdownsPeriods.offset(
+                        capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto view_separation_steering() const -> ml::native_soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::SeparationSteeringXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::SeparationSteeringYs.offset(blocks) -
+                          first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto navigation_risk_tiers() const -> std::span<std::uint8_t const> {
+        return {column_data<std::uint8_t>(
+                    FighterEntityDataSingleLayout::NavigationRiskTiers.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto navigation_lower_risk_scan_counts() const -> std::span<std::uint8_t const> {
+        return {column_data<std::uint8_t>(
+                    FighterEntityDataSingleLayout::NavigationLowerRiskScanCounts.offset(
+                        capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto avoidance_choice_indices() const -> std::span<std::int8_t const> {
+        return {
+            column_data<std::int8_t>(
+                FighterEntityDataSingleLayout::AvoidanceChoiceIndices.offset(capacity_blocks())),
+            static_cast<std::size_t>(count_)};
+    }
+    auto avoidance_clear_scan_counts() const -> std::span<std::uint8_t const> {
+        return {
+            column_data<std::uint8_t>(
+                FighterEntityDataSingleLayout::AvoidanceClearScanCounts.offset(capacity_blocks())),
+            static_cast<std::size_t>(count_)};
+    }
+    auto attack_reposition_countdowns() const -> std::span<std::int16_t const> {
+        return {column_data<std::int16_t>(
+                    FighterEntityDataSingleLayout::AttackRepositionCountdowns.offset(
+                        capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto attack_cooldowns() const -> std::span<std::int16_t const> {
+        return {column_data<std::int16_t>(
+                    FighterEntityDataSingleLayout::AttackCooldowns.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto target_handles() const -> std::span<RegistryEntityHandle const> {
+        return {column_data<RegistryEntityHandle>(
+                    FighterEntityDataSingleLayout::TargetHandles.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto view_target_locations() const -> ml::native_soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::TargetLocationsXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::TargetLocationsYs.offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_target_velocities() const -> ml::native_soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::TargetVelocitiesXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::TargetVelocitiesYs.offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_target_directions() const -> ml::native_soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::TargetDirectionsXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::TargetDirectionsYs.offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto intercept_times() const -> std::span<float const> {
+        return {column_data<float>(
+                    FighterEntityDataSingleLayout::InterceptTimes.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto target_distance_sq() const -> std::span<float const> {
+        return {column_data<float>(
+                    FighterEntityDataSingleLayout::TargetDistanceSq.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto target_distances() const -> std::span<float const> {
+        return {column_data<float>(
+                    FighterEntityDataSingleLayout::TargetDistances.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto target_radii() const -> std::span<float const> {
+        return {column_data<float>(
+                    FighterEntityDataSingleLayout::TargetRadii.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto columns() const -> FighterEntityDataConstView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return FighterEntityDataConstView{
+            {column_data_unchecked<RegistryEntityHandle>(
+                 FighterEntityDataSingleLayout::EntityHandles.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::uint32_t>(
+                 FighterEntityDataSingleLayout::IntegralBiases.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<float>(
+                 FighterEntityDataSingleLayout::FloatBiases.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<FighterTask>(
+                 FighterEntityDataSingleLayout::Tasks.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            Vectors3fConstView{{column_data_unchecked<float>(
+                                    FighterEntityDataSingleLayout::LocationsXs.offset(blocks)),
+                                static_cast<std::size_t>(count_)},
+                               {column_data_unchecked<float>(
+                                    FighterEntityDataSingleLayout::LocationsYs.offset(blocks)),
+                                static_cast<std::size_t>(count_)},
+                               {column_data_unchecked<float>(
+                                    FighterEntityDataSingleLayout::LocationsZs.offset(blocks)),
+                                static_cast<std::size_t>(count_)}},
+            Vectors3fConstView{
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::DesiredMoveLocationsXs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::DesiredMoveLocationsYs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::DesiredMoveLocationsZs.offset(blocks)),
+                 static_cast<std::size_t>(count_)}},
+            Vectors3fConstView{{column_data_unchecked<float>(
+                                    FighterEntityDataSingleLayout::AimDirectionsXs.offset(blocks)),
+                                static_cast<std::size_t>(count_)},
+                               {column_data_unchecked<float>(
+                                    FighterEntityDataSingleLayout::AimDirectionsYs.offset(blocks)),
+                                static_cast<std::size_t>(count_)},
+                               {column_data_unchecked<float>(
+                                    FighterEntityDataSingleLayout::AimDirectionsZs.offset(blocks)),
+                                static_cast<std::size_t>(count_)}},
+            Vectors3fConstView{
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::PlannedAimDirectionsXs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::PlannedAimDirectionsYs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::PlannedAimDirectionsZs.offset(blocks)),
+                 static_cast<std::size_t>(count_)}},
+            Vectors3fConstView{
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::DesiredAimingDirectionsXs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::DesiredAimingDirectionsYs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::DesiredAimingDirectionsZs.offset(blocks)),
+                 static_cast<std::size_t>(count_)}},
+            Vectors3fConstView{
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::MovementDirectionsXs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::MovementDirectionsYs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::MovementDirectionsZs.offset(blocks)),
+                 static_cast<std::size_t>(count_)}},
+            Vectors3fConstView{{column_data_unchecked<float>(
+                                    FighterEntityDataSingleLayout::VelocitiesXs.offset(blocks)),
+                                static_cast<std::size_t>(count_)},
+                               {column_data_unchecked<float>(
+                                    FighterEntityDataSingleLayout::VelocitiesYs.offset(blocks)),
+                                static_cast<std::size_t>(count_)},
+                               {column_data_unchecked<float>(
+                                    FighterEntityDataSingleLayout::VelocitiesZs.offset(blocks)),
+                                static_cast<std::size_t>(count_)}},
+            {column_data_unchecked<float>(
+                 FighterEntityDataSingleLayout::MoveDistances.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<float>(FighterEntityDataSingleLayout::Speeds.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<Team>(FighterEntityDataSingleLayout::Teams.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<Health>(FighterEntityDataSingleLayout::Healths.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<RegistryEntityHandle>(
+                 FighterEntityDataSingleLayout::ParentHandles.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::int8_t>(
+                 FighterEntityDataSingleLayout::AwarenessScanCountdowns.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::int16_t>(
+                 FighterEntityDataSingleLayout::NavigationUpdateCountdownsRemainingTicks.offset(
+                     blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::int16_t>(
+                 FighterEntityDataSingleLayout::NavigationUpdateCountdownsPeriods.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            Vectors3fConstView{
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::SeparationSteeringXs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::SeparationSteeringYs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::SeparationSteeringZs.offset(blocks)),
+                 static_cast<std::size_t>(count_)}},
+            {column_data_unchecked<std::uint8_t>(
+                 FighterEntityDataSingleLayout::NavigationRiskTiers.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::uint8_t>(
+                 FighterEntityDataSingleLayout::NavigationLowerRiskScanCounts.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::int8_t>(
+                 FighterEntityDataSingleLayout::AvoidanceChoiceIndices.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::uint8_t>(
+                 FighterEntityDataSingleLayout::AvoidanceClearScanCounts.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::int16_t>(
+                 FighterEntityDataSingleLayout::AttackRepositionCountdowns.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::int16_t>(
+                 FighterEntityDataSingleLayout::AttackCooldowns.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<RegistryEntityHandle>(
+                 FighterEntityDataSingleLayout::TargetHandles.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            Vectors3fConstView{
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::TargetLocationsXs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::TargetLocationsYs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::TargetLocationsZs.offset(blocks)),
+                 static_cast<std::size_t>(count_)}},
+            Vectors3fConstView{
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::TargetVelocitiesXs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::TargetVelocitiesYs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::TargetVelocitiesZs.offset(blocks)),
+                 static_cast<std::size_t>(count_)}},
+            Vectors3fConstView{
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::TargetDirectionsXs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::TargetDirectionsYs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::TargetDirectionsZs.offset(blocks)),
+                 static_cast<std::size_t>(count_)}},
+            {column_data_unchecked<float>(
+                 FighterEntityDataSingleLayout::InterceptTimes.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<float>(
+                 FighterEntityDataSingleLayout::TargetDistanceSq.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<float>(
+                 FighterEntityDataSingleLayout::TargetDistances.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<float>(
+                 FighterEntityDataSingleLayout::TargetRadii.offset(blocks)),
+             static_cast<std::size_t>(count_)}};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        columns().each_column(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(FighterEntityDataSingleConstView) == 16);
+static_assert(std::is_trivially_copyable_v<FighterEntityDataSingleConstView>);
+struct FighterEntityDataSingleView : ml::native_soa::CompactViewState<false> {
+    using Base = ml::native_soa::CompactViewState<false>;
+    using Base::Base;
+    using View = FighterEntityDataSingleView;
+    using ConstView = FighterEntityDataSingleConstView;
+    FighterEntityDataSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    auto entity_handles() const -> std::span<RegistryEntityHandle> {
+        return {column_data<RegistryEntityHandle>(
+                    FighterEntityDataSingleLayout::EntityHandles.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto integral_biases() const -> std::span<std::uint32_t> {
+        return {column_data<std::uint32_t>(
+                    FighterEntityDataSingleLayout::IntegralBiases.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto float_biases() const -> std::span<float> {
+        return {column_data<float>(
+                    FighterEntityDataSingleLayout::FloatBiases.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto tasks() const -> std::span<FighterTask> {
+        return {column_data<FighterTask>(
+                    FighterEntityDataSingleLayout::Tasks.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto view_locations() const -> ml::native_soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::LocationsXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::LocationsYs.offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_desired_move_locations() const -> ml::native_soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::DesiredMoveLocationsXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::DesiredMoveLocationsYs.offset(blocks) -
+                          first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_aim_directions() const -> ml::native_soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::AimDirectionsXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::AimDirectionsYs.offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_planned_aim_directions() const -> ml::native_soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::PlannedAimDirectionsXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::PlannedAimDirectionsYs.offset(blocks) -
+                          first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_desired_aiming_directions() const -> ml::native_soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::DesiredAimingDirectionsXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::DesiredAimingDirectionsYs.offset(blocks) -
+                          first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_movement_directions() const -> ml::native_soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::MovementDirectionsXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::MovementDirectionsYs.offset(blocks) -
+                          first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_velocities() const -> ml::native_soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::VelocitiesXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::VelocitiesYs.offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto move_distances() const -> std::span<float> {
+        return {column_data<float>(
+                    FighterEntityDataSingleLayout::MoveDistances.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto speeds() const -> std::span<float> {
+        return {column_data<float>(FighterEntityDataSingleLayout::Speeds.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto teams() const -> std::span<Team> {
+        return {column_data<Team>(FighterEntityDataSingleLayout::Teams.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto healths() const -> std::span<Health> {
+        return {
+            column_data<Health>(FighterEntityDataSingleLayout::Healths.offset(capacity_blocks())),
+            static_cast<std::size_t>(count_)};
+    }
+    auto parent_handles() const -> std::span<RegistryEntityHandle> {
+        return {column_data<RegistryEntityHandle>(
+                    FighterEntityDataSingleLayout::ParentHandles.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto awareness_scan_countdowns() const -> std::span<std::int8_t> {
+        return {
+            column_data<std::int8_t>(
+                FighterEntityDataSingleLayout::AwarenessScanCountdowns.offset(capacity_blocks())),
+            static_cast<std::size_t>(count_)};
+    }
+    auto navigation_update_countdowns_remaining_ticks() const -> std::span<std::int16_t> {
+        return {column_data<std::int16_t>(
+                    FighterEntityDataSingleLayout::NavigationUpdateCountdownsRemainingTicks.offset(
+                        capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto navigation_update_countdowns_periods() const -> std::span<std::int16_t> {
+        return {column_data<std::int16_t>(
+                    FighterEntityDataSingleLayout::NavigationUpdateCountdownsPeriods.offset(
+                        capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto view_separation_steering() const -> ml::native_soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::SeparationSteeringXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::SeparationSteeringYs.offset(blocks) -
+                          first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto navigation_risk_tiers() const -> std::span<std::uint8_t> {
+        return {column_data<std::uint8_t>(
+                    FighterEntityDataSingleLayout::NavigationRiskTiers.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto navigation_lower_risk_scan_counts() const -> std::span<std::uint8_t> {
+        return {column_data<std::uint8_t>(
+                    FighterEntityDataSingleLayout::NavigationLowerRiskScanCounts.offset(
+                        capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto avoidance_choice_indices() const -> std::span<std::int8_t> {
+        return {
+            column_data<std::int8_t>(
+                FighterEntityDataSingleLayout::AvoidanceChoiceIndices.offset(capacity_blocks())),
+            static_cast<std::size_t>(count_)};
+    }
+    auto avoidance_clear_scan_counts() const -> std::span<std::uint8_t> {
+        return {
+            column_data<std::uint8_t>(
+                FighterEntityDataSingleLayout::AvoidanceClearScanCounts.offset(capacity_blocks())),
+            static_cast<std::size_t>(count_)};
+    }
+    auto attack_reposition_countdowns() const -> std::span<std::int16_t> {
+        return {column_data<std::int16_t>(
+                    FighterEntityDataSingleLayout::AttackRepositionCountdowns.offset(
+                        capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto attack_cooldowns() const -> std::span<std::int16_t> {
+        return {column_data<std::int16_t>(
+                    FighterEntityDataSingleLayout::AttackCooldowns.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto target_handles() const -> std::span<RegistryEntityHandle> {
+        return {column_data<RegistryEntityHandle>(
+                    FighterEntityDataSingleLayout::TargetHandles.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto view_target_locations() const -> ml::native_soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::TargetLocationsXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::TargetLocationsYs.offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_target_velocities() const -> ml::native_soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::TargetVelocitiesXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::TargetVelocitiesYs.offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_target_directions() const -> ml::native_soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{FighterEntityDataSingleLayout::TargetDirectionsXs.offset(blocks)};
+        auto const stride{FighterEntityDataSingleLayout::TargetDirectionsYs.offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto intercept_times() const -> std::span<float> {
+        return {column_data<float>(
+                    FighterEntityDataSingleLayout::InterceptTimes.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto target_distance_sq() const -> std::span<float> {
+        return {column_data<float>(
+                    FighterEntityDataSingleLayout::TargetDistanceSq.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto target_distances() const -> std::span<float> {
+        return {column_data<float>(
+                    FighterEntityDataSingleLayout::TargetDistances.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto target_radii() const -> std::span<float> {
+        return {column_data<float>(
+                    FighterEntityDataSingleLayout::TargetRadii.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto columns() const -> FighterEntityDataView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return FighterEntityDataView{
+            {column_data_unchecked<RegistryEntityHandle>(
+                 FighterEntityDataSingleLayout::EntityHandles.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::uint32_t>(
+                 FighterEntityDataSingleLayout::IntegralBiases.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<float>(
+                 FighterEntityDataSingleLayout::FloatBiases.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<FighterTask>(
+                 FighterEntityDataSingleLayout::Tasks.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            Vectors3fView{{column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::LocationsXs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::LocationsYs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::LocationsZs.offset(blocks)),
+                           static_cast<std::size_t>(count_)}},
+            Vectors3fView{
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::DesiredMoveLocationsXs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::DesiredMoveLocationsYs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::DesiredMoveLocationsZs.offset(blocks)),
+                 static_cast<std::size_t>(count_)}},
+            Vectors3fView{{column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::AimDirectionsXs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::AimDirectionsYs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::AimDirectionsZs.offset(blocks)),
+                           static_cast<std::size_t>(count_)}},
+            Vectors3fView{
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::PlannedAimDirectionsXs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::PlannedAimDirectionsYs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::PlannedAimDirectionsZs.offset(blocks)),
+                 static_cast<std::size_t>(count_)}},
+            Vectors3fView{
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::DesiredAimingDirectionsXs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::DesiredAimingDirectionsYs.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     FighterEntityDataSingleLayout::DesiredAimingDirectionsZs.offset(blocks)),
+                 static_cast<std::size_t>(count_)}},
+            Vectors3fView{{column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::MovementDirectionsXs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::MovementDirectionsYs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::MovementDirectionsZs.offset(blocks)),
+                           static_cast<std::size_t>(count_)}},
+            Vectors3fView{{column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::VelocitiesXs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::VelocitiesYs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::VelocitiesZs.offset(blocks)),
+                           static_cast<std::size_t>(count_)}},
+            {column_data_unchecked<float>(
+                 FighterEntityDataSingleLayout::MoveDistances.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<float>(FighterEntityDataSingleLayout::Speeds.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<Team>(FighterEntityDataSingleLayout::Teams.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<Health>(FighterEntityDataSingleLayout::Healths.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<RegistryEntityHandle>(
+                 FighterEntityDataSingleLayout::ParentHandles.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::int8_t>(
+                 FighterEntityDataSingleLayout::AwarenessScanCountdowns.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::int16_t>(
+                 FighterEntityDataSingleLayout::NavigationUpdateCountdownsRemainingTicks.offset(
+                     blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::int16_t>(
+                 FighterEntityDataSingleLayout::NavigationUpdateCountdownsPeriods.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            Vectors3fView{{column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::SeparationSteeringXs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::SeparationSteeringYs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::SeparationSteeringZs.offset(blocks)),
+                           static_cast<std::size_t>(count_)}},
+            {column_data_unchecked<std::uint8_t>(
+                 FighterEntityDataSingleLayout::NavigationRiskTiers.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::uint8_t>(
+                 FighterEntityDataSingleLayout::NavigationLowerRiskScanCounts.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::int8_t>(
+                 FighterEntityDataSingleLayout::AvoidanceChoiceIndices.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::uint8_t>(
+                 FighterEntityDataSingleLayout::AvoidanceClearScanCounts.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::int16_t>(
+                 FighterEntityDataSingleLayout::AttackRepositionCountdowns.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::int16_t>(
+                 FighterEntityDataSingleLayout::AttackCooldowns.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<RegistryEntityHandle>(
+                 FighterEntityDataSingleLayout::TargetHandles.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            Vectors3fView{{column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::TargetLocationsXs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::TargetLocationsYs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::TargetLocationsZs.offset(blocks)),
+                           static_cast<std::size_t>(count_)}},
+            Vectors3fView{{column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::TargetVelocitiesXs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::TargetVelocitiesYs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::TargetVelocitiesZs.offset(blocks)),
+                           static_cast<std::size_t>(count_)}},
+            Vectors3fView{{column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::TargetDirectionsXs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::TargetDirectionsYs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               FighterEntityDataSingleLayout::TargetDirectionsZs.offset(blocks)),
+                           static_cast<std::size_t>(count_)}},
+            {column_data_unchecked<float>(
+                 FighterEntityDataSingleLayout::InterceptTimes.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<float>(
+                 FighterEntityDataSingleLayout::TargetDistanceSq.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<float>(
+                 FighterEntityDataSingleLayout::TargetDistances.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<float>(
+                 FighterEntityDataSingleLayout::TargetRadii.offset(blocks)),
+             static_cast<std::size_t>(count_)}};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        columns().each_column(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(FighterEntityDataSingleView) == 16);
+static_assert(std::is_trivially_copyable_v<FighterEntityDataSingleView>);
+inline FighterEntityDataSingleConstView::FighterEntityDataSingleConstView(
+    FighterEntityDataSingleView const& other)
+    : Base{other} {}
+struct SingleAllocationFighterEntityData : SingleAllocationFighterEntityDataStorage {
+    SingleAllocationFighterEntityData() noexcept = default;
+    SingleAllocationFighterEntityData(SingleAllocationFighterEntityData const&) = delete;
+    auto operator=(SingleAllocationFighterEntityData const&)
+        -> SingleAllocationFighterEntityData& = delete;
+    SingleAllocationFighterEntityData(SingleAllocationFighterEntityData&&) noexcept = default;
+    auto operator=(SingleAllocationFighterEntityData&&) noexcept
+        -> SingleAllocationFighterEntityData& = default;
+    auto get_view() & -> View { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) & -> View { return {this, offset, count}; }
+    auto slice(size_type offset, size_type count) & -> View { return get_view(offset, count); }
+    auto left(size_type count) & -> View { return get_view().left(count); }
+    auto right(size_type count) & -> View { return get_view().right(count); }
+    auto get_view() && -> View = delete;
+    auto get_view(size_type, size_type) && -> View = delete;
+    auto slice(size_type, size_type) && -> View = delete;
+    auto left(size_type) && -> View = delete;
+    auto right(size_type) && -> View = delete;
+    auto get_view() const& -> ConstView { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) const& -> ConstView {
+        return {this, offset, count};
+    }
+    auto slice(size_type offset, size_type count) const& -> ConstView {
+        return get_view(offset, count);
+    }
+    auto left(size_type count) const& -> ConstView { return get_view().left(count); }
+    auto right(size_type count) const& -> ConstView { return get_view().right(count); }
+    auto get_view() const&& -> ConstView = delete;
+    auto get_view(size_type, size_type) const&& -> ConstView = delete;
+    auto slice(size_type, size_type) const&& -> ConstView = delete;
+    auto left(size_type) const&& -> ConstView = delete;
+    auto right(size_type) const&& -> ConstView = delete;
+    auto get_const_view() const& -> ConstView { return get_view(); }
+    auto get_const_view(size_type offset, size_type count) const& -> ConstView {
+        return get_view(offset, count);
+    }
+    auto get_const_view() const&& -> ConstView = delete;
+    auto get_const_view(size_type, size_type) const&& -> ConstView = delete;
+};
 } // namespace ioj::sim

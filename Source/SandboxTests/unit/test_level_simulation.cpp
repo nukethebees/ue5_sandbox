@@ -295,8 +295,9 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
     Samples headless_samples;
     Samples visible_samples;
     auto record{[](Samples& samples, ::ioj::sim::LevelSim& simulation) {
-        samples.add(simulation.get_clock().get_simulation_time(),
-                    simulation.get_entity_registry().get_entity_data());
+        ::ioj::sim::EntityRegistry::EntityData snapshot;
+        snapshot.append_from(simulation.get_entity_registry().get_entity_data());
+        samples.add(simulation.get_clock().get_simulation_time(), std::move(snapshot));
     }};
     headless_harness.on_end_tick = [&](::ioj::sim::LevelSim& simulation) {
         record(headless_samples, simulation);

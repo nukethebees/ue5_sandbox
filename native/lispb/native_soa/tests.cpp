@@ -113,8 +113,14 @@ TEST(NativeSoa, MatchingSchemaAndMutations) {
         ++columns;
         row_bytes += sizeof(typename decltype(column)::value_type);
     });
-    EXPECT_EQ(columns, 53);
-    EXPECT_EQ(row_bytes, 195);
+    std::size_t single_columns{};
+    std::size_t single_row_bytes{};
+    b.each_column([&](auto column) {
+        ++single_columns;
+        single_row_bytes += sizeof(typename decltype(column)::value_type);
+    });
+    EXPECT_EQ(columns, single_columns);
+    EXPECT_EQ(row_bytes, single_row_bytes);
     for (std::int32_t i{}; i < baseline.num(); ++i) {
         a.healths[i] = b.healths[i] = i;
     }

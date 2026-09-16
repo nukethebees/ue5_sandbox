@@ -18,6 +18,33 @@
 #include <sandbox/core/generated/array_math_kernels.h>
 
 namespace ioj::sim::lasers {
+namespace {
+void copy_vectors(Vectors3fView const destination, Vectors3fConstView const source) {
+    std::ranges::copy(source.xs, destination.xs.begin());
+    std::ranges::copy(source.ys, destination.ys.begin());
+    std::ranges::copy(source.zs, destination.zs.begin());
+}
+void copy_rotators(Rotators3fView const destination, Rotators3fConstView const source) {
+    std::ranges::copy(source.pitches, destination.pitches.begin());
+    std::ranges::copy(source.yaws, destination.yaws.begin());
+    std::ranges::copy(source.rolls, destination.rolls.begin());
+}
+void append_spawn_requests(SingleAllocationLaserSpawnRequests& destination,
+                           SpawnRequestsConstView const source) {
+    auto const old_count{destination.num()};
+    destination.add_uninitialised(source.num());
+    auto const output{destination.get_view().columns().get_view(old_count, source.num())};
+    copy_vectors(output.locations, source.locations);
+    copy_rotators(output.rotations, source.rotations);
+    copy_vectors(output.base_velocities, source.base_velocities);
+    std::ranges::copy(source.damages, output.damages.begin());
+    std::ranges::copy(source.speeds, output.speeds.begin());
+    std::ranges::copy(source.max_distances, output.max_distances.begin());
+    std::ranges::copy(source.instigator_handles, output.instigator_handles.begin());
+    std::ranges::copy(source.sources, output.sources.begin());
+}
+} // namespace
+
 /* **************************************** */
 // Construction and tick phases
 /* **************************************** */
@@ -75,7 +102,7 @@ void Sim::queue_laser_spawns(lasers::SpawnRequestsConstView const spawn_data) {
     SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::queue_laser_spawns");
 
     spawn_data.validate_array_sizes();
-    pending_spawns.append_from(spawn_data);
+    append_spawn_requests(pending_spawns, spawn_data);
 }
 
 void Sim::preallocate_instances() {
@@ -85,20 +112,20 @@ void Sim::preallocate_instances() {
 void Sim::process_pending_spawns() {
     SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::process_pending_spawns");
 
-    pending_spawns.validate_array_sizes();
+    pending_spawns.get_const_view().columns().validate_array_sizes();
     auto const n_to_add{pending_spawns.num()};
-    entity_registry.record_shots(pending_spawns.instigator_handles);
+    entity_registry.record_shots(pending_spawns.get_const_view().instigator_handles());
 
     if (n_to_add <= 0) {
         return;
     }
 
-    auto const requests{pending_spawns.get_const_view()};
+    auto const requests{pending_spawns.get_const_view().columns()};
     auto const tick_period{static_cast<float>(simulation_clock.get_tick_period())};
     auto const simulation_time{static_cast<float>(simulation_clock.get_simulation_time())};
     constexpr float fixed_spawn_offset{10.f};
     entities.add_defaulted(n_to_add);
-    auto const output{entities.get_view().right(n_to_add)};
+    auto const output{entities.get_view().right(n_to_add).columns()};
     for (std::int32_t spawn_index{}; spawn_index < n_to_add; ++spawn_index) {
         auto const speed{requests.speeds[spawn_index]};
         auto const lifetime{requests.max_distances[spawn_index] / speed};
@@ -132,6 +159,7 @@ void Sim::process_pending_spawns() {
 // Movement and collision
 /* **************************************** */
 void Sim::expire_instances(float const dt) {
+    auto const entities{this->entities.get_view().columns()};
     ml::subtract_in_place(std::span<float>{entities.lifetimes_remaining}, dt);
 
     ml::FrameArray<std::int32_t> expired_indices{&frame_memory_resource};
@@ -145,6 +173,7 @@ void Sim::expire_instances(float const dt) {
     remove_instances(expired_indices.view());
 }
 void Sim::update_locations(float const dt) {
+    auto const entities{this->entities.get_view().columns()};
     ml::add_scaled_in_place(entities.locations.xs, entities.velocities.xs, dt);
     ml::add_scaled_in_place(entities.locations.ys, entities.velocities.ys, dt);
     ml::add_scaled_in_place(entities.locations.zs, entities.velocities.zs, dt);
@@ -159,6 +188,7 @@ void Sim::handle_collisions(float const dt) {
 
     FrameCollisionScratch collision_scratch{&frame_memory_resource};
     collision_scratch.set_num(n);
+    auto const entities{this->entities.get_const_view().columns()};
     auto const locations{entities.locations.get_const_view()};
     auto const velocities{entities.velocities.get_const_view()};
     assert(config.collision_jobs > 0);
@@ -257,6 +287,6 @@ void Sim::clear_spawn_buffers() {
 }
 
 void Sim::validate_array_sizes() const {
-    entities.validate_array_sizes();
+    entities.get_const_view().columns().validate_array_sizes();
 }
 } // namespace lasers

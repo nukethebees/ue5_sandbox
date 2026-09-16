@@ -10,6 +10,10 @@
 #include "native_soa/storage.h"
 #include "sandbox/core/soa_permutation.h"
 
+#include <cstring>
+#include <memory>
+#include <utility>
+
 namespace ioj::sim {
 struct RegistryEntityDataView;
 struct RegistryEntityDataConstView;
@@ -557,4 +561,610 @@ struct RegistryEntityData {
     }
 };
 
+struct RegistryEntityDataSingleView;
+struct RegistryEntityDataSingleConstView;
+struct RegistryEntityDataSingleLayout {
+    using size_type = std::int32_t;
+    using byte_size_type = std::size_t;
+
+    inline static constexpr byte_size_type max_allocation_size{
+        std::numeric_limits<byte_size_type>::max()};
+    inline static constexpr size_type capacity_granularity{64};
+    inline static constexpr byte_size_type column_gap{192};
+
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{
+        capacity_granularity, column_gap, 64};
+
+    inline static constexpr ColLayout<float> LocationsXs{LayoutStart};
+    inline static constexpr ColLayout<float> LocationsYs{LocationsXs};
+    inline static constexpr ColLayout<float> LocationsZs{LocationsYs};
+    inline static constexpr ColLayout<float> VelocitiesXs{LocationsZs};
+    inline static constexpr ColLayout<float> VelocitiesYs{VelocitiesXs};
+    inline static constexpr ColLayout<float> VelocitiesZs{VelocitiesYs};
+    inline static constexpr ColLayout<float> RotationsPitches{VelocitiesZs};
+    inline static constexpr ColLayout<float> RotationsYaws{RotationsPitches};
+    inline static constexpr ColLayout<float> RotationsRolls{RotationsYaws};
+    inline static constexpr ColLayout<Health> Healths{RotationsRolls};
+    inline static constexpr ColLayout<Team> Teams{Healths};
+    inline static constexpr ColLayout<EntityType> EntityTypes{Teams};
+
+    inline static constexpr byte_size_type allocation_alignment{
+        ml::native_soa::maximum_alignment(LocationsXs,
+                                          LocationsYs,
+                                          LocationsZs,
+                                          VelocitiesXs,
+                                          VelocitiesYs,
+                                          VelocitiesZs,
+                                          RotationsPitches,
+                                          RotationsYaws,
+                                          RotationsRolls,
+                                          Healths,
+                                          Teams,
+                                          EntityTypes)};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    inline static constexpr byte_size_type capacity_block_bound{
+        ml::native_soa::layout_align(EntityTypes.block_end, allocation_alignment) +
+        11 * (column_gap + allocation_alignment - 1)};
+    inline static constexpr size_type max_capacity{
+        ml::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : EntityTypes.data_end(blocks);
+    }
+  private:
+    inline static constexpr auto validate_layout = []() consteval -> bool {
+        static_assert(
+            ml::native_soa::supported_leaf<float>,
+            "Single-allocation leaf locations.xs requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::native_soa::supported_leaf<Health>,
+            "Single-allocation leaf healths requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::native_soa::supported_leaf<Team>,
+            "Single-allocation leaf teams requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::native_soa::supported_leaf<EntityType>,
+            "Single-allocation leaf entity_types requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+
+        static_assert(
+            allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
+            "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - LocationsXs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - LocationsYs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - LocationsZs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - VelocitiesXs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - VelocitiesYs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - VelocitiesZs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - RotationsPitches.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - RotationsYaws.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - RotationsRolls.block_offset) / capacity_granularity);
+        static_assert(sizeof(Health) <=
+                      (max_allocation_size - Healths.block_offset) / capacity_granularity);
+        static_assert(sizeof(Team) <=
+                      (max_allocation_size - Teams.block_offset) / capacity_granularity);
+        static_assert(sizeof(EntityType) <=
+                      (max_allocation_size - EntityTypes.block_offset) / capacity_granularity);
+        static_assert(11 <=
+                      (max_allocation_size -
+                       ml::native_soa::layout_align(EntityTypes.block_end, allocation_alignment)) /
+                          (column_gap + allocation_alignment - 1));
+        static_assert(max_capacity >= capacity_granularity);
+        return true;
+    };
+    static_assert(validate_layout());
+};
+
+struct SingleAllocationRegistryEntityDataStorage
+    : RegistryEntityDataSingleLayout
+    , protected ml::native_soa::StorageState
+    , ml::native_soa::StorageOperations {
+    using View = RegistryEntityDataSingleView;
+    using ConstView = RegistryEntityDataSingleConstView;
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    SingleAllocationRegistryEntityDataStorage() noexcept = default;
+    ~SingleAllocationRegistryEntityDataStorage() {
+        ml::native_soa::free(data_, allocation_alignment);
+    }
+    SingleAllocationRegistryEntityDataStorage(SingleAllocationRegistryEntityDataStorage const&) =
+        delete;
+    auto operator=(SingleAllocationRegistryEntityDataStorage const&)
+        -> SingleAllocationRegistryEntityDataStorage& = delete;
+    SingleAllocationRegistryEntityDataStorage(
+        SingleAllocationRegistryEntityDataStorage&& other) noexcept
+        : StorageState{std::exchange(other.data_, nullptr),
+                       std::exchange(other.num_, 0),
+                       std::exchange(other.capacity_, 0)} {}
+    auto operator=(SingleAllocationRegistryEntityDataStorage&& other) noexcept
+        -> SingleAllocationRegistryEntityDataStorage& {
+        if (this != &other) {
+            ml::native_soa::free(data_, allocation_alignment);
+            data_ = std::exchange(other.data_, nullptr);
+            num_ = std::exchange(other.num_, 0);
+            capacity_ = std::exchange(other.capacity_, 0);
+        }
+        return *this;
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<float>* locations_xs{};
+        Element<float>* locations_ys{};
+        Element<float>* locations_zs{};
+        Element<float>* velocities_xs{};
+        Element<float>* velocities_ys{};
+        Element<float>* velocities_zs{};
+        Element<float>* rotations_pitches{};
+        Element<float>* rotations_yaws{};
+        Element<float>* rotations_rolls{};
+        Element<Health>* healths{};
+        Element<Team>* teams{};
+        Element<EntityType>* entity_types{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (locations_xs == nullptr) {
+                return {};
+            }
+            return {locations_xs + offset,
+                    locations_ys + offset,
+                    locations_zs + offset,
+                    velocities_xs + offset,
+                    velocities_ys + offset,
+                    velocities_zs + offset,
+                    rotations_pitches + offset,
+                    rotations_yaws + offset,
+                    rotations_rolls + offset,
+                    healths + offset,
+                    teams + offset,
+                    entity_types + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    friend struct ml::native_soa::StorageOperations;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+            using Column = std::remove_cvref_t<decltype(column)>;
+            using Pointer = std::conditional_t<std::is_const_v<Byte>,
+                                               typename Column::const_pointer,
+                                               typename Column::pointer>;
+            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
+        };
+        return {pointer_at(LocationsXs),
+                pointer_at(LocationsYs),
+                pointer_at(LocationsZs),
+                pointer_at(VelocitiesXs),
+                pointer_at(VelocitiesYs),
+                pointer_at(VelocitiesZs),
+                pointer_at(RotationsPitches),
+                pointer_at(RotationsYaws),
+                pointer_at(RotationsRolls),
+                pointer_at(Healths),
+                pointer_at(Teams),
+                pointer_at(EntityTypes)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        std::uninitialized_value_construct_n<float*>(columns.locations_xs, count);
+        std::uninitialized_value_construct_n<float*>(columns.locations_ys, count);
+        std::uninitialized_value_construct_n<float*>(columns.locations_zs, count);
+        std::uninitialized_value_construct_n<float*>(columns.velocities_xs, count);
+        std::uninitialized_value_construct_n<float*>(columns.velocities_ys, count);
+        std::uninitialized_value_construct_n<float*>(columns.velocities_zs, count);
+        std::uninitialized_value_construct_n<float*>(columns.rotations_pitches, count);
+        std::uninitialized_value_construct_n<float*>(columns.rotations_yaws, count);
+        std::uninitialized_value_construct_n<float*>(columns.rotations_rolls, count);
+        std::uninitialized_value_construct_n<Health*>(columns.healths, count);
+        std::uninitialized_value_construct_n<Team*>(columns.teams, count);
+        std::uninitialized_value_construct_n<EntityType*>(columns.entity_types, count);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        auto const elements_to_move{static_cast<byte_size_type>(move_count)};
+        auto const locations_xs_bytes{elements_to_move * sizeof(float)};
+        auto const healths_bytes{elements_to_move * sizeof(Health)};
+        auto const teams_bytes{elements_to_move * sizeof(Team)};
+        auto const entity_types_bytes{elements_to_move * sizeof(EntityType)};
+        std::memcpy(
+            columns.locations_xs + index, columns.locations_xs + source, locations_xs_bytes);
+        std::memcpy(
+            columns.locations_ys + index, columns.locations_ys + source, locations_xs_bytes);
+        std::memcpy(
+            columns.locations_zs + index, columns.locations_zs + source, locations_xs_bytes);
+        std::memcpy(
+            columns.velocities_xs + index, columns.velocities_xs + source, locations_xs_bytes);
+        std::memcpy(
+            columns.velocities_ys + index, columns.velocities_ys + source, locations_xs_bytes);
+        std::memcpy(
+            columns.velocities_zs + index, columns.velocities_zs + source, locations_xs_bytes);
+        std::memcpy(columns.rotations_pitches + index,
+                    columns.rotations_pitches + source,
+                    locations_xs_bytes);
+        std::memcpy(
+            columns.rotations_yaws + index, columns.rotations_yaws + source, locations_xs_bytes);
+        std::memcpy(
+            columns.rotations_rolls + index, columns.rotations_rolls + source, locations_xs_bytes);
+        std::memcpy(columns.healths + index, columns.healths + source, healths_bytes);
+        std::memcpy(columns.teams + index, columns.teams + source, teams_bytes);
+        std::memcpy(
+            columns.entity_types + index, columns.entity_types + source, entity_types_bytes);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ml::soa_storage_detail::for_each_removal_run(
+            num_,
+            indices,
+            ml::native_soa::require,
+            [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source, size_type first, size_type count) {
+        auto const destination{get_data(first)};
+        auto const elements_to_copy{static_cast<byte_size_type>(count)};
+        auto const locations_xs_bytes{elements_to_copy * sizeof(float)};
+        auto const healths_bytes{elements_to_copy * sizeof(Health)};
+        auto const teams_bytes{elements_to_copy * sizeof(Team)};
+        auto const entity_types_bytes{elements_to_copy * sizeof(EntityType)};
+        std::memcpy(destination.locations_xs, source.locations.xs.data(), locations_xs_bytes);
+        std::memcpy(destination.locations_ys, source.locations.ys.data(), locations_xs_bytes);
+        std::memcpy(destination.locations_zs, source.locations.zs.data(), locations_xs_bytes);
+        std::memcpy(destination.velocities_xs, source.velocities.xs.data(), locations_xs_bytes);
+        std::memcpy(destination.velocities_ys, source.velocities.ys.data(), locations_xs_bytes);
+        std::memcpy(destination.velocities_zs, source.velocities.zs.data(), locations_xs_bytes);
+        std::memcpy(
+            destination.rotations_pitches, source.rotations.pitches.data(), locations_xs_bytes);
+        std::memcpy(destination.rotations_yaws, source.rotations.yaws.data(), locations_xs_bytes);
+        std::memcpy(destination.rotations_rolls, source.rotations.rolls.data(), locations_xs_bytes);
+        std::memcpy(destination.healths, source.healths.data(), healths_bytes);
+        std::memcpy(destination.teams, source.teams.data(), teams_bytes);
+        std::memcpy(destination.entity_types, source.entity_types.data(), entity_types_bytes);
+    }
+    void reallocate(size_type const new_capacity) {
+        auto* const new_data{ml::native_soa::allocate(
+            layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)),
+            static_cast<std::uint32_t>(allocation_alignment))};
+        if (num_ > 0) {
+            auto const old_blocks{capacity_blocks()};
+            auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+            auto const source{
+                make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+            auto const destination{make_data_unchecked(new_data, new_blocks)};
+            auto const live_count{static_cast<byte_size_type>(num_)};
+            auto const locations_xs_bytes{live_count * sizeof(float)};
+            auto const healths_bytes{live_count * sizeof(Health)};
+            auto const teams_bytes{live_count * sizeof(Team)};
+            auto const entity_types_bytes{live_count * sizeof(EntityType)};
+            std::memcpy(destination.locations_xs, source.locations_xs, locations_xs_bytes);
+            std::memcpy(destination.locations_ys, source.locations_ys, locations_xs_bytes);
+            std::memcpy(destination.locations_zs, source.locations_zs, locations_xs_bytes);
+            std::memcpy(destination.velocities_xs, source.velocities_xs, locations_xs_bytes);
+            std::memcpy(destination.velocities_ys, source.velocities_ys, locations_xs_bytes);
+            std::memcpy(destination.velocities_zs, source.velocities_zs, locations_xs_bytes);
+            std::memcpy(
+                destination.rotations_pitches, source.rotations_pitches, locations_xs_bytes);
+            std::memcpy(destination.rotations_yaws, source.rotations_yaws, locations_xs_bytes);
+            std::memcpy(destination.rotations_rolls, source.rotations_rolls, locations_xs_bytes);
+            std::memcpy(destination.healths, source.healths, healths_bytes);
+            std::memcpy(destination.teams, source.teams, teams_bytes);
+            std::memcpy(destination.entity_types, source.entity_types, entity_types_bytes);
+        }
+        ml::native_soa::free(data_, allocation_alignment);
+        data_ = new_data;
+        capacity_ = new_capacity;
+    }
+};
+
+struct RegistryEntityDataSingleConstView : ml::native_soa::CompactViewState<true> {
+    using Base = ml::native_soa::CompactViewState<true>;
+    using Base::Base;
+    using View = RegistryEntityDataSingleView;
+    using ConstView = RegistryEntityDataSingleConstView;
+    RegistryEntityDataSingleConstView() = default;
+    RegistryEntityDataSingleConstView(RegistryEntityDataSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    auto view_locations() const -> ml::native_soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{RegistryEntityDataSingleLayout::LocationsXs.offset(blocks)};
+        auto const stride{RegistryEntityDataSingleLayout::LocationsYs.offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_velocities() const -> ml::native_soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{RegistryEntityDataSingleLayout::VelocitiesXs.offset(blocks)};
+        auto const stride{RegistryEntityDataSingleLayout::VelocitiesYs.offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_rotations() const -> Rotators3fConstView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return Rotators3fConstView{
+            {column_data_unchecked<float>(
+                 RegistryEntityDataSingleLayout::RotationsPitches.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<float>(
+                 RegistryEntityDataSingleLayout::RotationsYaws.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<float>(
+                 RegistryEntityDataSingleLayout::RotationsRolls.offset(blocks)),
+             static_cast<std::size_t>(count_)}};
+    }
+    auto healths() const -> std::span<Health const> {
+        return {
+            column_data<Health>(RegistryEntityDataSingleLayout::Healths.offset(capacity_blocks())),
+            static_cast<std::size_t>(count_)};
+    }
+    auto teams() const -> std::span<Team const> {
+        return {column_data<Team>(RegistryEntityDataSingleLayout::Teams.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto entity_types() const -> std::span<EntityType const> {
+        return {column_data<EntityType>(
+                    RegistryEntityDataSingleLayout::EntityTypes.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto columns() const -> RegistryEntityDataConstView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return RegistryEntityDataConstView{
+            Vectors3fConstView{{column_data_unchecked<float>(
+                                    RegistryEntityDataSingleLayout::LocationsXs.offset(blocks)),
+                                static_cast<std::size_t>(count_)},
+                               {column_data_unchecked<float>(
+                                    RegistryEntityDataSingleLayout::LocationsYs.offset(blocks)),
+                                static_cast<std::size_t>(count_)},
+                               {column_data_unchecked<float>(
+                                    RegistryEntityDataSingleLayout::LocationsZs.offset(blocks)),
+                                static_cast<std::size_t>(count_)}},
+            Vectors3fConstView{{column_data_unchecked<float>(
+                                    RegistryEntityDataSingleLayout::VelocitiesXs.offset(blocks)),
+                                static_cast<std::size_t>(count_)},
+                               {column_data_unchecked<float>(
+                                    RegistryEntityDataSingleLayout::VelocitiesYs.offset(blocks)),
+                                static_cast<std::size_t>(count_)},
+                               {column_data_unchecked<float>(
+                                    RegistryEntityDataSingleLayout::VelocitiesZs.offset(blocks)),
+                                static_cast<std::size_t>(count_)}},
+            Rotators3fConstView{
+                {column_data_unchecked<float>(
+                     RegistryEntityDataSingleLayout::RotationsPitches.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     RegistryEntityDataSingleLayout::RotationsYaws.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {column_data_unchecked<float>(
+                     RegistryEntityDataSingleLayout::RotationsRolls.offset(blocks)),
+                 static_cast<std::size_t>(count_)}},
+            {column_data_unchecked<Health>(RegistryEntityDataSingleLayout::Healths.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<Team>(RegistryEntityDataSingleLayout::Teams.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<EntityType>(
+                 RegistryEntityDataSingleLayout::EntityTypes.offset(blocks)),
+             static_cast<std::size_t>(count_)}};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        columns().each_column(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(RegistryEntityDataSingleConstView) == 16);
+static_assert(std::is_trivially_copyable_v<RegistryEntityDataSingleConstView>);
+struct RegistryEntityDataSingleView : ml::native_soa::CompactViewState<false> {
+    using Base = ml::native_soa::CompactViewState<false>;
+    using Base::Base;
+    using View = RegistryEntityDataSingleView;
+    using ConstView = RegistryEntityDataSingleConstView;
+    RegistryEntityDataSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    auto view_locations() const -> ml::native_soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{RegistryEntityDataSingleLayout::LocationsXs.offset(blocks)};
+        auto const stride{RegistryEntityDataSingleLayout::LocationsYs.offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_velocities() const -> ml::native_soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{RegistryEntityDataSingleLayout::VelocitiesXs.offset(blocks)};
+        auto const stride{RegistryEntityDataSingleLayout::VelocitiesYs.offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_rotations() const -> Rotators3fView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return Rotators3fView{{column_data_unchecked<float>(
+                                   RegistryEntityDataSingleLayout::RotationsPitches.offset(blocks)),
+                               static_cast<std::size_t>(count_)},
+                              {column_data_unchecked<float>(
+                                   RegistryEntityDataSingleLayout::RotationsYaws.offset(blocks)),
+                               static_cast<std::size_t>(count_)},
+                              {column_data_unchecked<float>(
+                                   RegistryEntityDataSingleLayout::RotationsRolls.offset(blocks)),
+                               static_cast<std::size_t>(count_)}};
+    }
+    auto healths() const -> std::span<Health> {
+        return {
+            column_data<Health>(RegistryEntityDataSingleLayout::Healths.offset(capacity_blocks())),
+            static_cast<std::size_t>(count_)};
+    }
+    auto teams() const -> std::span<Team> {
+        return {column_data<Team>(RegistryEntityDataSingleLayout::Teams.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto entity_types() const -> std::span<EntityType> {
+        return {column_data<EntityType>(
+                    RegistryEntityDataSingleLayout::EntityTypes.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto columns() const -> RegistryEntityDataView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return RegistryEntityDataView{
+            Vectors3fView{{column_data_unchecked<float>(
+                               RegistryEntityDataSingleLayout::LocationsXs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               RegistryEntityDataSingleLayout::LocationsYs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               RegistryEntityDataSingleLayout::LocationsZs.offset(blocks)),
+                           static_cast<std::size_t>(count_)}},
+            Vectors3fView{{column_data_unchecked<float>(
+                               RegistryEntityDataSingleLayout::VelocitiesXs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               RegistryEntityDataSingleLayout::VelocitiesYs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               RegistryEntityDataSingleLayout::VelocitiesZs.offset(blocks)),
+                           static_cast<std::size_t>(count_)}},
+            Rotators3fView{{column_data_unchecked<float>(
+                                RegistryEntityDataSingleLayout::RotationsPitches.offset(blocks)),
+                            static_cast<std::size_t>(count_)},
+                           {column_data_unchecked<float>(
+                                RegistryEntityDataSingleLayout::RotationsYaws.offset(blocks)),
+                            static_cast<std::size_t>(count_)},
+                           {column_data_unchecked<float>(
+                                RegistryEntityDataSingleLayout::RotationsRolls.offset(blocks)),
+                            static_cast<std::size_t>(count_)}},
+            {column_data_unchecked<Health>(RegistryEntityDataSingleLayout::Healths.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<Team>(RegistryEntityDataSingleLayout::Teams.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<EntityType>(
+                 RegistryEntityDataSingleLayout::EntityTypes.offset(blocks)),
+             static_cast<std::size_t>(count_)}};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        columns().each_column(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(RegistryEntityDataSingleView) == 16);
+static_assert(std::is_trivially_copyable_v<RegistryEntityDataSingleView>);
+inline RegistryEntityDataSingleConstView::RegistryEntityDataSingleConstView(
+    RegistryEntityDataSingleView const& other)
+    : Base{other} {}
+struct SingleAllocationRegistryEntityData : SingleAllocationRegistryEntityDataStorage {
+    SingleAllocationRegistryEntityData() noexcept = default;
+    SingleAllocationRegistryEntityData(SingleAllocationRegistryEntityData const&) = delete;
+    auto operator=(SingleAllocationRegistryEntityData const&)
+        -> SingleAllocationRegistryEntityData& = delete;
+    SingleAllocationRegistryEntityData(SingleAllocationRegistryEntityData&&) noexcept = default;
+    auto operator=(SingleAllocationRegistryEntityData&&) noexcept
+        -> SingleAllocationRegistryEntityData& = default;
+    auto get_view() & -> View { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) & -> View { return {this, offset, count}; }
+    auto slice(size_type offset, size_type count) & -> View { return get_view(offset, count); }
+    auto left(size_type count) & -> View { return get_view().left(count); }
+    auto right(size_type count) & -> View { return get_view().right(count); }
+    auto get_view() && -> View = delete;
+    auto get_view(size_type, size_type) && -> View = delete;
+    auto slice(size_type, size_type) && -> View = delete;
+    auto left(size_type) && -> View = delete;
+    auto right(size_type) && -> View = delete;
+    auto get_view() const& -> ConstView { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) const& -> ConstView {
+        return {this, offset, count};
+    }
+    auto slice(size_type offset, size_type count) const& -> ConstView {
+        return get_view(offset, count);
+    }
+    auto left(size_type count) const& -> ConstView { return get_view().left(count); }
+    auto right(size_type count) const& -> ConstView { return get_view().right(count); }
+    auto get_view() const&& -> ConstView = delete;
+    auto get_view(size_type, size_type) const&& -> ConstView = delete;
+    auto slice(size_type, size_type) const&& -> ConstView = delete;
+    auto left(size_type) const&& -> ConstView = delete;
+    auto right(size_type) const&& -> ConstView = delete;
+    auto get_const_view() const& -> ConstView { return get_view(); }
+    auto get_const_view(size_type offset, size_type count) const& -> ConstView {
+        return get_view(offset, count);
+    }
+    auto get_const_view() const&& -> ConstView = delete;
+    auto get_const_view(size_type, size_type) const&& -> ConstView = delete;
+};
 } // namespace ioj::sim

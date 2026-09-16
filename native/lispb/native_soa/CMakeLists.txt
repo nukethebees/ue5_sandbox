@@ -22,9 +22,12 @@ target_link_libraries(native-soa-tests PRIVATE native-soa GTest::gtest_main)
 add_test(NAME native-soa-tests COMMAND native-soa-tests)
 set_tests_properties(native-soa-tests PROPERTIES LABELS "native-soa")
 
-add_executable(native-soa-benchmarks benchmarks.cpp bulk_benchmarks.cpp)
+add_executable(native-soa-benchmarks benchmarks.cpp bulk_benchmarks.cpp production_benchmarks.cpp)
 set_target_properties(native-soa-benchmarks PROPERTIES UNITY_BUILD OFF)
 target_link_libraries(native-soa-benchmarks PRIVATE native-soa benchmark::benchmark_main)
+target_include_directories(native-soa-benchmarks PRIVATE
+  "${PROJECT_SOURCE_DIR}/native/simulation/include")
+target_link_libraries(native-soa-benchmarks PRIVATE sandbox::handmade_math)
 add_executable(native-soa-reserve-matrix reserve_matrix.cpp)
 target_link_libraries(native-soa-reserve-matrix PRIVATE native-soa benchmark::benchmark_main)
 target_compile_definitions(native-soa-reserve-matrix PRIVATE NATIVE_SOA_MIMALLOC=0)
@@ -52,6 +55,7 @@ target_link_libraries(native-soa-benchmarks PRIVATE
   sandbox::fp_precise
 )
 add_test(NAME native-soa-dry-run COMMAND native-soa-benchmarks --benchmark_dry_run
+  "--benchmark_filter=^(Vector|Single)/"
   "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-dry-run.json" --benchmark_out_format=json)
 set_tests_properties(native-soa-dry-run PROPERTIES LABELS "native-soa" FIXTURES_SETUP native-soa-json)
 add_test(NAME native-soa-plot-smoke COMMAND "${UV_EXECUTABLE}" run "${PROJECT_SOURCE_DIR}/Scripts/plot-native-soa-benchmarks.py"
@@ -66,6 +70,14 @@ add_custom_target(native-soa-reserve-report
     "--benchmark_out=${NATIVE_SOA_RESULTS}" --benchmark_out_format=json
   COMMAND "${UV_EXECUTABLE}" run "${PROJECT_SOURCE_DIR}/Scripts/plot-native-soa-benchmarks.py"
     --input "${NATIVE_SOA_RESULTS}" --output-dir "${CMAKE_BINARY_DIR}/native-soa-plots"
+  DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)
+
+add_custom_target(native-soa-production-report
+  COMMAND ${benchmark_activity_command} native-soa-benchmarks
+    "--benchmark_filter=Production/" --benchmark_repetitions=7
+    --benchmark_enable_random_interleaving=true --benchmark_min_time=0.1s
+    "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-production-results.json"
+    --benchmark_out_format=json
   DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)
 
 add_custom_target(native-soa-reserve-matrix-report

@@ -41,4 +41,5 @@
     (member rotations nested @native_rotators_3f :nested-schema Rotators3f)
     (member healths array @native_health)
     (member teams array @native_team)
-    (member entity_types array @native_entity_type)))
+    (member entity_types array @native_entity_type)
+    (single-allocation SingleAllocationRegistryEntityData)))

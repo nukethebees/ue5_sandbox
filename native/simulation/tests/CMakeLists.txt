@@ -12,6 +12,7 @@ target_sources(native-simulation-tests PRIVATE
   test_moved_entities_battle.cpp
   test_spinner_spawning.cpp
   fighter_entity_data_test.cpp
+  single_allocation_production_soa_test.cpp
   scenarios/test_capital_command_fighters.cpp
   scenarios/test_fighter_handles.cpp
   scenarios/test_collision_uniform_grid.cpp

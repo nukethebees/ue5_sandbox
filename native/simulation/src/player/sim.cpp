@@ -173,8 +173,8 @@ void Sim::update_entity_registry() {
 // Registry integration
 /* **************************************** */
 void Sim::register_with_entity_registry() {
-    auto const new_entities{
-        entity_registry.add_entities(get_entity_update_data().get_const_view())};
+    auto const entity_data{get_entity_update_data()};
+    auto const new_entities{entity_registry.add_entities(entity_data.get_const_view().columns())};
     registry_handle = new_entities.get_handle(0);
     unique_entity_id = new_entities.first_id;
     assert(entity_registry.is_valid_unique_id(unique_entity_id));
@@ -182,23 +182,26 @@ void Sim::register_with_entity_registry() {
     update_entity_registry();
 }
 
-auto Sim::get_entity_update_data() const -> RegistryEntityData {
-    RegistryEntityData entity_data;
-    entity_data.locations.add(to_float(movement_state_.transform.location));
-    entity_data.velocities.add(to_float(movement_state_.velocity));
-    entity_data.rotations.add(to_float(movement_state_.transform.rotator()));
-    entity_data.healths.push_back(health.health);
-    entity_data.teams.push_back(team);
-    entity_data.entity_types.push_back(EntityType::PlayerShip);
+auto Sim::get_entity_update_data() const -> SingleAllocationRegistryEntityData {
+    SingleAllocationRegistryEntityData entity_data;
+    entity_data.add_uninitialised(1);
+    auto const columns{entity_data.get_view().columns()};
+    columns.locations.set(0, to_float(movement_state_.transform.location));
+    columns.velocities.set(0, to_float(movement_state_.velocity));
+    columns.rotations.set(0, to_float(movement_state_.transform.rotator()));
+    columns.healths[0] = health.health;
+    columns.teams[0] = team;
+    columns.entity_types[0] = EntityType::PlayerShip;
 
     return entity_data;
 }
 
 void Sim::queue_entity_update(EntityDeathInfo const& death_info) {
+    auto const entity_data{get_entity_update_data()};
     entity_registry.queue_entity_updates(
         EntityRegistry::ConstView{
             {&registry_handle, 1},
-            get_entity_update_data().get_const_view(),
+            entity_data.get_const_view().columns(),
         },
         death_info);
 }
@@ -579,22 +582,23 @@ void Sim::fire_laser() {
 }
 
 void Sim::fire_lasers_from(std::span<Transform3d const> const fire_points) {
-    lasers::SpawnRequests new_lasers;
+    lasers::SingleAllocationLaserSpawnRequests new_lasers;
     auto const laser_count{static_cast<std::int32_t>(fire_points.size())};
     new_lasers.add_defaulted(laser_count);
+    auto const laser_columns{new_lasers.get_view().columns()};
 
     for (std::int32_t i{0}; i < laser_count; ++i) {
-        new_lasers.locations.set(i, to_float(fire_points[i].location));
-        new_lasers.rotations.set(i, to_float(fire_points[i].rotator()));
-        new_lasers.base_velocities.set(i, to_float(planned_movement_.velocity));
+        laser_columns.locations.set(i, to_float(fire_points[i].location));
+        laser_columns.rotations.set(i, to_float(fire_points[i].rotator()));
+        laser_columns.base_velocities.set(i, to_float(planned_movement_.velocity));
     }
 
-    std::ranges::fill(new_lasers.damages, config.laser.damage);
-    std::ranges::fill(new_lasers.speeds, config.laser.projectile_speed);
-    std::ranges::fill(new_lasers.max_distances, config.laser.max_distance);
-    std::ranges::fill(new_lasers.sources, LaserSource{team, EntityType::PlayerShip});
-    std::ranges::fill(new_lasers.instigator_handles, registry_handle);
-    lasers.queue_laser_spawns(new_lasers.get_const_view());
+    std::ranges::fill(laser_columns.damages, config.laser.damage);
+    std::ranges::fill(laser_columns.speeds, config.laser.projectile_speed);
+    std::ranges::fill(laser_columns.max_distances, config.laser.max_distance);
+    std::ranges::fill(laser_columns.sources, LaserSource{team, EntityType::PlayerShip});
+    std::ranges::fill(laser_columns.instigator_handles, registry_handle);
+    lasers.queue_laser_spawns(new_lasers.get_const_view().columns());
 }
 
 void Sim::upgrade_laser() noexcept {

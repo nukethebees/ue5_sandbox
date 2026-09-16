@@ -36,6 +36,30 @@
 #include <sandbox/core/vector_normalization.h>
 
 namespace ioj::sim::fighters {
+namespace {
+void copy_vectors(Vectors3fView const destination, Vectors3fConstView const source) {
+    std::ranges::copy(source.xs, destination.xs.begin());
+    std::ranges::copy(source.ys, destination.ys.begin());
+    std::ranges::copy(source.zs, destination.zs.begin());
+}
+void copy_rotators(Rotators3fView const destination, Rotators3fConstView const source) {
+    std::ranges::copy(source.pitches, destination.pitches.begin());
+    std::ranges::copy(source.yaws, destination.yaws.begin());
+    std::ranges::copy(source.rolls, destination.rolls.begin());
+}
+void append_fighter_spawns(SingleAllocationFighterSpawnQueue& destination,
+                           FighterSpawnQueueConstView const source) {
+    auto const old_count{destination.num()};
+    destination.add_uninitialised(source.num());
+    auto const output{destination.get_view().columns().get_view(old_count, source.num())};
+    copy_vectors(output.locations, source.locations);
+    copy_rotators(output.rotations, source.rotations);
+    std::ranges::copy(source.teams, output.teams.begin());
+    std::ranges::copy(source.parents, output.parents.begin());
+    std::ranges::copy(source.targets, output.targets.begin());
+}
+} // namespace
+
 namespace firing_detail {
 struct FirePointCandidate {
     Vector3f location;
@@ -121,7 +145,7 @@ auto Sim::get_navigation_tick_period(NavigationRiskTier const tier) const -> std
 }
 void Sim::reset_navigation_state(std::int32_t const fighter_index,
                                  NavigationRiskTier const initial_tier) {
-    auto& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_view().columns()};
     assert(fighter_index >= 0 && fighter_index < data.num());
     data.separation_steering.set(fighter_index, HMM_V3(0.f, 0.f, 0.f));
     data.navigation_risk_tiers[fighter_index] = static_cast<std::uint8_t>(initial_tier);
@@ -238,10 +262,9 @@ void Sim::prepare_tick(float const dt) {
     if (!tasks_are_contiguous()) {
         refresh_layout();
     }
-    refresh_task_views();
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::prepare_tick");
 
-    auto& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_view().columns()};
     ml::tick_countdowns<std::int8_t>(data.awareness_scan_countdowns, awareness_cleaner_, 64);
     ml::tick_countdowns<std::int16_t>(
         data.attack_reposition_countdowns, reposition_cleaner_, 16384);
@@ -268,7 +291,7 @@ void Sim::think(float const dt) {
     refresh_target_data();
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::think");
 
-    auto& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_view().columns()};
     auto const awareness_radius{config.awareness_radius};
     auto const attack_engagement_threshold{config.attack_engagement_threshold};
     auto const attack_engagement_threshold_sq{attack_engagement_threshold *
@@ -321,12 +344,12 @@ void Sim::plan_movement(float const dt) {
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::plan_movement");
 
     auto const d_turn{std::min(1.f, config.turn_speed_unitless * dt)};
-    auto& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_view().columns()};
     if (data.num() < 1) {
         return;
     }
 
-    data.planned_aim_directions = data.aim_directions;
+    copy_vectors(data.planned_aim_directions, data.aim_directions.get_const_view());
 
     auto const& move_view{get_task_view(Task::MoveToDestination)};
     auto const& attack_view{get_task_view(Task::Attack)};
@@ -431,9 +454,9 @@ void Sim::plan_movement(float const dt) {
 }
 void Sim::apply_movement() {
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::apply_movement");
-    auto& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_view().columns()};
     data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
-    data.aim_directions = data.planned_aim_directions;
+    copy_vectors(data.aim_directions, data.planned_aim_directions.get_const_view());
     move(movement_tick_period_, get_task_view(Task::MoveToDestination));
     move(movement_tick_period_, get_task_view(Task::Attack));
 }
@@ -444,7 +467,7 @@ void Sim::generate_fire_commands() {
 void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::resolve_damage_events");
 
-    auto& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_view().columns()};
     batch::resolve_damage_events(entity_registry,
                                  data.entity_handles,
                                  data.healths,
@@ -479,8 +502,8 @@ void Sim::resolve_damage_events() {
 void Sim::update_entity_registry() {
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::update_entity_registry");
     prepare_entity_update_data();
-    EntityRegistry::ConstView const view{entity_buffers.current().entity_handles,
-                                         registry_update_data.get_const_view()};
+    EntityRegistry::ConstView const view{entity_buffers.current().get_const_view().entity_handles(),
+                                         registry_update_data.get_const_view().columns()};
     entity_registry.queue_entity_updates(view, entity_death_info);
 }
 void Sim::cleanup_entities() {
@@ -492,7 +515,6 @@ void Sim::cleanup_entities() {
     if (!tasks_are_contiguous()) {
         refresh_layout();
     }
-    refresh_task_views();
     validate_array_sizes();
 }
 void Sim::finish_action() {
@@ -554,7 +576,7 @@ void Sim::update_navigation_steering() {
     publish_navigation_telemetry();
 }
 void Sim::collect_navigation_updates(NavigationScratch& scratch) {
-    auto& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_view().columns()};
     std::array const active_spans{get_task_span(Task::MoveToDestination),
                                   get_task_span(Task::Attack)};
     ml::PeriodicTickCountdownView<std::int16_t> const countdowns{
@@ -580,7 +602,7 @@ void Sim::collect_navigation_updates(NavigationScratch& scratch) {
     }
 }
 void Sim::update_separation_observations(NavigationScratch& scratch) {
-    auto& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_view().columns()};
     // Fixed capacity bounds scoring work and keeps neighbour storage off the heap.
     std::array<RegistryEntityHandle, max_separation_neighbours> nearby_fighters;
     auto const separation_radius{config.separation_radius};
@@ -650,7 +672,7 @@ void Sim::update_separation_observations(NavigationScratch& scratch) {
     }
 }
 void Sim::apply_separation_steering() {
-    auto& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_view().columns()};
     std::array const active_spans{get_task_span(Task::MoveToDestination),
                                   get_task_span(Task::Attack)};
     for (auto const span : active_spans) {
@@ -670,7 +692,7 @@ void Sim::scan_preferred_navigation(NavigationScratch& scratch,
                                     float const clearance,
                                     float const avoidance_lookahead_time,
                                     float const minimum_lookahead_distance) {
-    auto& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_view().columns()};
     auto const count{scratch.ready_fighter_indices.num()};
     scratch.line_of_sight_starts.reserve(count);
     scratch.line_of_sight_ends.reserve(count);
@@ -725,7 +747,7 @@ void Sim::scan_alternative_navigation(NavigationScratch& scratch,
                                       float const clearance,
                                       float const avoidance_lookahead_time,
                                       float const minimum_lookahead_distance) {
-    auto const& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_const_view().columns()};
     scratch.trace_fighter_indices.clear();
     scratch.trace_choice_indices.clear();
     scratch.line_of_sight_starts.clear();
@@ -785,7 +807,7 @@ void Sim::execute_navigation_sweeps(NavigationScratch& scratch, float const clea
 }
 void Sim::select_navigation_alternatives(NavigationScratch& scratch,
                                          float const safe_progress_time) {
-    auto& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_view().columns()};
     if (!diagnostics_enabled_) {
         diagnostic_stop_reports = 0;
     }
@@ -844,7 +866,7 @@ void Sim::select_navigation_alternatives(NavigationScratch& scratch,
     }
 }
 void Sim::apply_navigation_choices(NavigationScratch const& scratch) {
-    auto& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_view().columns()};
     std::array const active_spans{get_task_span(Task::MoveToDestination),
                                   get_task_span(Task::Attack)};
     for (auto const index : scratch.ready_fighter_indices) {
@@ -932,40 +954,41 @@ auto Sim::get_num_instances() const noexcept -> std::int32_t {
     return entity_buffers.current().num();
 }
 auto Sim::get_view(std::int32_t const offset, std::int32_t const width) -> EntityData::View {
-    return entity_buffers.current().get_view(offset, width);
+    return entity_buffers.current().get_view(offset, width).columns();
 }
 auto Sim::get_const_view(std::int32_t const offset, std::int32_t const width) const
     -> EntityData::ConstView {
-    return entity_buffers.current().get_const_view(offset, width);
+    return entity_buffers.current().get_const_view(offset, width).columns();
 }
 auto Sim::get_handles() const noexcept -> std::span<RegistryEntityHandle const> {
-    return entity_buffers.current().entity_handles;
+    return entity_buffers.current().get_const_view().entity_handles();
 }
 auto Sim::has_handle(RegistryEntityHandle const fighter_handle) const -> bool {
     return find_index(fighter_handle) != -1;
 }
 auto Sim::get_target_handles() const noexcept -> std::span<RegistryEntityHandle const> {
-    return entity_buffers.current().target_handles;
+    return entity_buffers.current().get_const_view().target_handles();
 }
 auto Sim::get_target_handle(RegistryEntityHandle const fighter_handle) const noexcept
     -> RegistryEntityHandle {
-    return entity_buffers.current().target_handles[find_index(fighter_handle)];
+    return entity_buffers.current().get_const_view().target_handles()[find_index(fighter_handle)];
 }
 auto Sim::get_target_location(RegistryEntityHandle const fighter_handle) const -> Vector3f {
-    return entity_buffers.current().target_locations[find_index(fighter_handle)];
+    return entity_buffers.current().get_const_view().columns().target_locations[find_index(
+        fighter_handle)];
 }
 auto Sim::get_tasks() const -> std::span<Task const> {
-    return entity_buffers.current().tasks;
+    return entity_buffers.current().get_const_view().tasks();
 }
 auto Sim::get_teams() const -> std::span<Team const> {
-    return entity_buffers.current().teams;
+    return entity_buffers.current().get_const_view().teams();
 }
 auto Sim::get_task_spans() const -> TaskSpans {
     check_fighter_tasks();
     return task_spans;
 }
 auto Sim::get_task_counts() const -> TaskCounts {
-    auto const& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_const_view().columns()};
     TaskCounts counts{};
     for (auto const task : data.tasks) {
         auto const group{static_cast<std::size_t>(task)};
@@ -974,14 +997,16 @@ auto Sim::get_task_counts() const -> TaskCounts {
     }
     return counts;
 }
-auto Sim::get_task_view(Task const task) noexcept -> TaskView const& {
-    return task_views[std::to_underlying(task)];
+auto Sim::get_task_view(Task const task) noexcept -> TaskView {
+    auto const span{get_task_span(task)};
+    return entity_buffers.current().get_view(span.offset, span.count).columns();
 }
-auto Sim::get_const_task_view(Task const task) const noexcept -> ConstTaskView const& {
-    return const_task_views[std::to_underlying(task)];
+auto Sim::get_const_task_view(Task const task) const noexcept -> ConstTaskView {
+    auto const span{get_task_span(task)};
+    return entity_buffers.current().get_const_view(span.offset, span.count).columns();
 }
 auto Sim::find_index(RegistryEntityHandle const fighter_handle) const noexcept -> std::int32_t {
-    auto const& handles{entity_buffers.current().entity_handles};
+    auto const handles{entity_buffers.current().get_const_view().entity_handles()};
     auto const found{std::ranges::find(handles, fighter_handle)};
     return found == handles.end() ? -1 : static_cast<std::int32_t>(found - handles.begin());
 }
@@ -994,14 +1019,14 @@ auto Sim::get_task_span(Task const task) const -> IndexSpan {
 /* **************************************** */
 void Sim::set_target_handle_unchecked(std::int32_t const fighter_index,
                                       RegistryEntityHandle const new_target) noexcept {
-    entity_buffers.current().target_handles[fighter_index] = new_target;
+    entity_buffers.current().get_view().target_handles()[fighter_index] = new_target;
 }
 void Sim::set_target_handle(RegistryEntityHandle const fighter_handle,
                             RegistryEntityHandle const new_target) noexcept {
     set_target_handle_unchecked(find_index(fighter_handle), new_target);
 }
 void Sim::refresh_target_data() {
-    auto& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_view().columns()};
     entity_registry.refresh_entity_data(
         data.target_handles, data.target_locations.get_view(), data.target_velocities.get_view());
     spatial_query_manager.copy_entity_radii(data.target_handles, data.target_radii);
@@ -1015,7 +1040,7 @@ void Sim::refresh_target_data() {
 // Tasks
 /* **************************************** */
 void Sim::set_task_unchecked(std::int32_t const index, Task const task) noexcept {
-    auto& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_view().columns()};
     if (data.tasks[index] == task) {
         return;
     }
@@ -1027,23 +1052,13 @@ void Sim::set_task_unchecked(std::int32_t const index, Task const task) noexcept
 void Sim::set_task(RegistryEntityHandle const handle, Task const task) noexcept {
     set_task_unchecked(find_index(handle), task);
 }
-void Sim::refresh_task_views() {
-    auto const n{static_cast<std::int32_t>(task_spans.size())};
-    auto& data{entity_buffers.current()};
-    for (std::int32_t i{0}; i < n; ++i) {
-        auto const span{task_spans[i]};
-        const_task_views[i] = data.get_const_view(span.offset, span.count);
-        task_views[i] = data.get_view(span.offset, span.count);
-    }
-}
-
 /* **************************************** */
 // Entity data
 /* **************************************** */
 void Sim::prepare_entity_update_data() {
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::prepare_entity_update_data");
 
-    auto const& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_const_view().columns()};
     auto const n{get_num_instances()};
     registry_update_data.reset();
     if (n < 1) {
@@ -1051,19 +1066,20 @@ void Sim::prepare_entity_update_data() {
     }
 
     registry_update_data.add_uninitialised(n);
-    registry_update_data.locations = data.locations;
-    registry_update_data.velocities = data.velocities;
-    registry_update_data.healths = data.healths;
-    registry_update_data.teams = data.teams;
+    auto const updates{registry_update_data.get_view().columns()};
+    copy_vectors(updates.locations, data.locations);
+    copy_vectors(updates.velocities, data.velocities);
+    std::ranges::copy(data.healths, updates.healths.begin());
+    std::ranges::copy(data.teams, updates.teams.begin());
     for (std::int32_t i{0}; i < n; ++i) {
-        registry_update_data.rotations.set(i, direction_to_rotation(data.aim_directions[i]));
+        updates.rotations.set(i, direction_to_rotation(data.aim_directions[i]));
     }
-    registry_update_data.validate_array_sizes();
+    registry_update_data.get_const_view().columns().validate_array_sizes();
 }
 bool Sim::tasks_are_contiguous() const noexcept {
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::tasks_are_contiguous");
 
-    auto const& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_const_view().columns()};
     auto current_task{Task::Standby};
     for (auto const task : data.tasks) {
         if (task < current_task || task >= Task::COUNT) {
@@ -1100,15 +1116,17 @@ void Sim::refresh_layout() {
     auto const& old_data{entity_buffers.previous()};
     auto& new_data{entity_buffers.current()};
     new_data.reset();
-    new_data.add_uninitialised(n_fighters);
-    assert(old_data.num() == new_data.num());
-
-    for (std::int32_t i{0}; i < n_fighters; ++i) {
-        auto const group{static_cast<std::size_t>(old_data.tasks[i])};
-        assert(group < n_task_types);
-        auto const write_index{write_indices[group]++};
-        new_data.copy_element(write_index, old_data, i);
+    new_data.reserve(n_fighters);
+    auto const old_tasks{old_data.get_const_view().tasks()};
+    for (std::size_t group{}; group < n_task_types; ++group) {
+        for (std::int32_t index{}; index < n_fighters; ++index) {
+            if (static_cast<std::size_t>(old_tasks[index]) == group) {
+                new_data.append_from(old_data.slice(index, 1));
+                ++write_indices[group];
+            }
+        }
     }
+    assert(old_data.num() == new_data.num());
     check_fighter_tasks();
 }
 
@@ -1142,7 +1160,7 @@ auto Sim::queue_spawns(FighterSpawnQueueConstView const new_spawns) -> std::int3
     auto const accepted_count{std::min(new_spawns.num(), capacity)};
     capacity -= accepted_count;
     if (accepted_count > 0) {
-        spawn_queue.append_from(new_spawns.left(accepted_count));
+        append_fighter_spawns(spawn_queue, new_spawns.left(accepted_count));
     }
     return accepted_count;
 }
@@ -1154,18 +1172,18 @@ void Sim::commit_spawns() {
     }
     new_spawn_entity_handles.reset();
     new_spawn_entity_data.reset();
-    auto& data{entity_buffers.current()};
     auto const n_cur{get_num_instances()};
     auto const n_new{spawn_queue.num()};
 
-    spawn_queue.validate_array_sizes();
+    spawn_queue.get_const_view().columns().validate_array_sizes();
     if (n_new < 1) {
         return;
     }
 
-    data.add_defaulted(n_new);
+    entity_buffers.current().add_defaulted(n_new);
+    auto const data{entity_buffers.current().get_view().columns()};
     auto const new_data{data.get_view(n_cur, n_new)};
-    auto const spawns{spawn_queue.get_const_view()};
+    auto const spawns{spawn_queue.get_const_view().columns()};
     auto const navigation_period{get_navigation_tick_period(NavigationRiskTier::Nearby)};
     for (std::int32_t index{}; index < n_new; ++index) {
         auto const location{spawns.locations[index]};
@@ -1185,18 +1203,20 @@ void Sim::commit_spawns() {
     }
 
     new_spawn_entity_data.add_uninitialised(n_new);
+    auto const new_spawn_columns{new_spawn_entity_data.get_view().columns()};
     for (std::int32_t i{0}; i < n_new; ++i) {
         auto const index{n_cur + i};
-        new_spawn_entity_data.locations.set(i, data.locations[index]);
-        new_spawn_entity_data.rotations.set(i, direction_to_rotation(data.aim_directions[index]));
-        new_spawn_entity_data.healths[i] = data.healths[index];
-        new_spawn_entity_data.teams[i] = data.teams[index];
+        new_spawn_columns.locations.set(i, data.locations[index]);
+        new_spawn_columns.rotations.set(i, direction_to_rotation(data.aim_directions[index]));
+        new_spawn_columns.healths[i] = data.healths[index];
+        new_spawn_columns.teams[i] = data.teams[index];
     }
-    std::ranges::fill(new_spawn_entity_data.entity_types, EntityType::Fighter);
-    new_spawn_entity_data.velocities.each_column(
-        [](auto& column) { std::ranges::fill(column, 0.f); });
+    std::ranges::fill(new_spawn_columns.entity_types, EntityType::Fighter);
+    new_spawn_columns.velocities.each_column(
+        [](auto const column) { std::ranges::fill(column, 0.f); });
 
-    new_spawn_entity_handles = entity_registry.add_entities(new_spawn_entity_data.get_const_view());
+    new_spawn_entity_handles =
+        entity_registry.add_entities(new_spawn_entity_data.get_const_view().columns());
     auto const& registry_handles{new_spawn_entity_handles.registry_handles};
     for (std::int32_t i{}; i < n_new; ++i) {
         data.entity_handles[n_cur + i] = {registry_handles.registry_indices[i],
@@ -1233,7 +1253,7 @@ void Sim::commit_spawns() {
 // Destruction
 /* **************************************** */
 void Sim::self_destruct_fighter(RegistryEntityHandle const handle) {
-    auto& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_view().columns()};
     auto const index{find_index(handle)};
     assert(index != -1);
     data.healths[index] = 0;
@@ -1440,7 +1460,7 @@ void Sim::queue_orders(FighterOrderQueue const& queue) {
 void Sim::commit_orders() {
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::commit_orders");
 
-    auto& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_view().columns()};
     auto const n_orders{order_queue.num()};
     if (n_orders < 1) {
         return;
@@ -1490,14 +1510,14 @@ void Sim::clear_tick_buffers() {
 /* **************************************** */
 #ifndef NDEBUG
 void Sim::validate_array_sizes() const {
-    entity_buffers.current().validate_array_sizes();
+    entity_buffers.current().get_const_view().columns().validate_array_sizes();
 }
 void Sim::check_fighter_tasks() const {
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::check_fighter_tasks");
 
     auto current_task_group{Task::Standby};
     TaskSpans checked_task_spans{};
-    auto const& data{entity_buffers.current()};
+    auto const data{entity_buffers.current().get_const_view().columns()};
     auto const n_tasks{data.num()};
     for (std::int32_t i{}; i < n_tasks; ++i) {
         auto const task{data.tasks[i]};

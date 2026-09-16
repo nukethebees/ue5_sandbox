@@ -48,15 +48,14 @@ struct FighterLevelData {
 struct Sim {
     using RegistryEntityData = sim::RegistryEntityData;
     using EntityData = FighterEntityData;
-    using EntityBuffers = ml::MultiBuffer<EntityData, 2>;
+    using EntityStorage = SingleAllocationFighterEntityData;
+    using EntityBuffers = ml::MultiBuffer<EntityStorage, 2>;
     using Task = FighterTask;
     static constexpr auto n_task_types{static_cast<std::size_t>(Task::COUNT)};
     using TaskSpans = std::array<IndexSpan, n_task_types>;
     using TaskCounts = std::array<std::int32_t, n_task_types>;
     using TaskView = EntityData::View;
     using ConstTaskView = EntityData::ConstView;
-    using TaskViews = std::array<TaskView, n_task_types>;
-    using ConstTaskViews = std::array<ConstTaskView, n_task_types>;
 
     Sim(SimClock const& clock,
         EntityRegistry& entity_registry,
@@ -72,7 +71,7 @@ struct Sim {
     // Configuration
     /* **************************************** */
     auto get_read_view() const -> FighterReadView {
-        return {entity_buffers.current().get_const_view(), &entity_registry};
+        return {entity_buffers.current().get_const_view().columns(), &entity_registry};
     }
     void set_config(FighterSimConfig const& new_config, FighterLevelData level_data) noexcept;
     void set_diagnostics_enabled(bool enabled) noexcept { diagnostics_enabled_ = enabled; }
@@ -86,13 +85,15 @@ struct Sim {
     auto get_view(std::int32_t offset, std::int32_t width) -> EntityData::View;
     auto get_const_view(std::int32_t offset, std::int32_t width) const -> EntityData::ConstView;
     auto get_handles() const noexcept -> std::span<RegistryEntityHandle const>;
-    auto get_locations() const { return entity_buffers.current().locations.get_view(); }
+    auto get_locations() const {
+        return entity_buffers.current().get_const_view().columns().locations;
+    }
     auto has_handle(RegistryEntityHandle fighter_handle) const -> bool;
     auto get_target_handles() const noexcept -> std::span<RegistryEntityHandle const>;
     auto get_target_handle(RegistryEntityHandle fighter_handle) const noexcept
         -> RegistryEntityHandle;
     auto get_target_locations() const {
-        return entity_buffers.current().target_locations.get_view();
+        return entity_buffers.current().get_const_view().columns().target_locations;
     }
     auto get_target_location(RegistryEntityHandle fighter_handle) const -> Vector3f;
     auto get_tasks() const -> std::span<Task const>;
@@ -145,10 +146,12 @@ struct Sim {
     /* **************************************** */
     // Accessors
     /* **************************************** */
-    auto get_new_spawn_entity_data() const -> auto const& { return new_spawn_entity_data; }
+    auto get_new_spawn_entity_data() const -> RegistryEntityDataConstView {
+        return new_spawn_entity_data.get_const_view().columns();
+    }
     auto get_new_spawn_entity_handles() const -> auto const& { return new_spawn_entity_handles; }
-    auto get_task_view(Task task) noexcept -> TaskView const&;
-    auto get_const_task_view(Task task) const noexcept -> ConstTaskView const&;
+    auto get_task_view(Task task) noexcept -> TaskView;
+    auto get_const_task_view(Task task) const noexcept -> ConstTaskView;
     auto find_index(RegistryEntityHandle fighter_handle) const noexcept -> std::int32_t;
     auto get_task_spans() const -> TaskSpans;
     auto get_task_span(Task task) const -> IndexSpan;
@@ -213,7 +216,6 @@ struct Sim {
     /* **************************************** */
     void set_task_unchecked(std::int32_t index, Task task) noexcept;
     void set_task(RegistryEntityHandle handle, Task task) noexcept;
-    void refresh_task_views();
 
     /* **************************************** */
     // Orders
@@ -254,18 +256,16 @@ struct Sim {
     EntityRegistry& entity_registry;
     SpatialQueryManager const& spatial_query_manager;
     std::pmr::memory_resource& frame_memory_resource;
-    RegistryEntityData registry_update_data;
+    SingleAllocationRegistryEntityData registry_update_data;
 
-    FighterSpawnQueue spawn_queue;
-    RegistryEntityData new_spawn_entity_data;
+    SingleAllocationFighterSpawnQueue spawn_queue;
+    SingleAllocationRegistryEntityData new_spawn_entity_data;
     SpawnedEntityHandles new_spawn_entity_handles;
 
     std::vector<std::int32_t> local_indices_to_remove;
     EntityDeathInfo entity_death_info;
 
     TaskSpans task_spans{};
-    TaskViews task_views{};
-    ConstTaskViews const_task_views{};
     FighterOrderQueue order_queue{};
 
     lasers::Sim& laser_simulation;

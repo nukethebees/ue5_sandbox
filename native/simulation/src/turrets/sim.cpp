@@ -32,6 +32,18 @@
 #include <sandbox/core/loop_bounds.h>
 
 namespace ioj::sim::turrets {
+namespace {
+void copy_vectors(Vectors3fView const destination, Vectors3fConstView const source) {
+    std::ranges::copy(source.xs, destination.xs.begin());
+    std::ranges::copy(source.ys, destination.ys.begin());
+    std::ranges::copy(source.zs, destination.zs.begin());
+}
+void copy_rotators(Rotators3fView const destination, Rotators3fConstView const source) {
+    std::ranges::copy(source.pitches, destination.pitches.begin());
+    std::ranges::copy(source.yaws, destination.yaws.begin());
+    std::ranges::copy(source.rolls, destination.rolls.begin());
+}
+} // namespace
 /* **************************************** */
 // Configuration
 /* **************************************** */
@@ -72,6 +84,7 @@ auto Sim::register_turrets(TurretSpawnDataConstView const spawn_data,
 
     auto const first_new_index{entities.num()};
     entities.add_defaulted(n_to_add);
+    auto const entities{this->entities.get_view().columns()};
     auto const spawn_count{static_cast<std::size_t>(n_to_add)};
     for (std::int32_t local_index{}; local_index < n_to_add; ++local_index) {
         auto const index{first_new_index + local_index};
@@ -90,22 +103,25 @@ auto Sim::register_turrets(TurretSpawnDataConstView const spawn_data,
         }
     }
 
-    RegistryEntityData new_entity_data;
+    SingleAllocationRegistryEntityData new_entity_data;
     new_entity_data.add_uninitialised(n_to_add);
+    auto const new_entity_columns{new_entity_data.get_view().columns()};
 
     for (std::int32_t i{}; i < n_to_add; ++i) {
         auto const rotation{rotations[i]};
-        new_entity_data.locations.set(i, spawn_data.locations[i]);
-        new_entity_data.rotations.set(i, rotation);
+        new_entity_columns.locations.set(i, spawn_data.locations[i]);
+        new_entity_columns.rotations.set(i, rotation);
         entities.rotations.set(first_new_index + i, rotation);
     }
-    new_entity_data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
-    std::ranges::fill(new_entity_data.entity_types, EntityType::Turret);
+    new_entity_columns.velocities.each_column(
+        [](auto const column) { std::ranges::fill(column, 0.f); });
+    std::ranges::fill(new_entity_columns.entity_types, EntityType::Turret);
     for (std::int32_t i{}; i < n_to_add; ++i) {
-        new_entity_data.healths[i] = spawn_data.healths[i];
-        new_entity_data.teams[i] = spawn_data.teams[i];
+        new_entity_columns.healths[i] = spawn_data.healths[i];
+        new_entity_columns.teams[i] = spawn_data.teams[i];
     }
-    auto const new_entities{entity_registry.add_entities(new_entity_data.get_const_view())};
+    auto const new_entities{
+        entity_registry.add_entities(new_entity_data.get_const_view().columns())};
     std::vector<RegistryEntityHandle> new_handles;
     new_handles.reserve(spawn_count);
     for (std::int32_t i{}; i < n_to_add; ++i) {
@@ -141,6 +157,7 @@ void Sim::handle_dead_entities() {
     }
 
     batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
+    auto const entities{this->entities.get_const_view().columns()};
 
     death_locations_.reserve(local_indices_to_remove.size());
     for (auto const index : local_indices_to_remove) {
@@ -150,7 +167,7 @@ void Sim::handle_dead_entities() {
                                   .handle = entities.handles[index]});
     }
     for (auto const index : local_indices_to_remove) {
-        entities.remove_at_swap(index, 1);
+        this->entities.remove_at_swap(index, 1);
     }
 }
 
@@ -173,10 +190,12 @@ void Sim::prepare_tick(float const) {
     SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::prepare_tick");
     clear_tick_buffers();
 
+    auto const entities{this->entities.get_view().columns()};
     ml::tick_countdowns<std::int16_t>(entities.laser_cooldowns, cooldown_cleaner_, 16384);
     ml::tick_periodic_countdowns<std::int16_t>(entities.target_refresh_countdowns_remaining_ticks);
 }
 void Sim::think(float const) {
+    auto const entities{this->entities.get_view().columns()};
     entity_registry.refresh_entity_data(entities.target_handles,
                                         entities.target_locations.get_view(),
                                         entities.target_velocities.get_view());
@@ -191,6 +210,7 @@ void Sim::generate_fire_commands() {
 void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::resolve_damage_events");
 
+    auto const entities{this->entities.get_view().columns()};
     batch::resolve_damage_events(entity_registry,
                                  entities.handles,
                                  entities.healths,
@@ -203,10 +223,11 @@ void Sim::update_entity_registry() {
 
     prepare_entity_update_data();
 
+    auto const entities{this->entities.get_const_view().columns()};
     entity_registry.queue_entity_updates(
         {
             .indices = entities.handles,
-            .data = entity_update_data.get_const_view(),
+            .data = entity_update_data.get_const_view().columns(),
         },
         entity_death_info);
 }
@@ -233,12 +254,14 @@ void Sim::prepare_entity_update_data() {
 
     entity_update_data.add_uninitialised(n);
 
-    entity_update_data.locations = entities.locations;
-    entity_update_data.rotations = entities.rotations;
-    entity_update_data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
-    entity_update_data.healths = entities.healths;
-    entity_update_data.teams = entities.teams;
-    std::ranges::fill(entity_update_data.entity_types, EntityType::Turret);
+    auto const entities{this->entities.get_const_view().columns()};
+    auto const updates{entity_update_data.get_view().columns()};
+    copy_vectors(updates.locations, entities.locations);
+    copy_rotators(updates.rotations, entities.rotations);
+    updates.velocities.each_column([](auto const column) { std::ranges::fill(column, 0.f); });
+    std::ranges::copy(entities.healths, updates.healths.begin());
+    std::ranges::copy(entities.teams, updates.teams.begin());
+    std::ranges::fill(updates.entity_types, EntityType::Turret);
 }
 
 /* **************************************** */
@@ -248,7 +271,7 @@ auto Sim::get_num_instances() const noexcept -> std::int32_t {
     return entities.num();
 }
 auto Sim::get_target_handles() const -> std::span<RegistryEntityHandle const> {
-    return entities.target_handles;
+    return entities.get_const_view().target_handles();
 }
 
 /* **************************************** */
@@ -292,6 +315,7 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
     std::array<float, 128> candidate_ys;
     std::array<float, 128> candidate_zs;
     ml::FixedArray<std::uint8_t, 128> has_line_of_sight;
+    auto const entities{this->entities.get_view().columns()};
 
     ml::PeriodicTickCountdownView<std::int16_t> const refresh_countdowns{
         entities.target_refresh_countdowns_remaining_ticks,
@@ -378,6 +402,7 @@ void Sim::fire_at_enemies() {
     ends.reserve(count);
 
     auto const registry{make_native_query_view(entity_registry)};
+    auto const entities{this->entities.get_view().columns()};
     auto const disengage_radius{get_disengage_radius()};
     auto const disengage_radius_squared{disengage_radius * disengage_radius};
     auto cooldowns{
@@ -470,9 +495,9 @@ void Sim::clear_tick_buffers() {
 // Checks
 /* **************************************** */
 void Sim::validate_array_sizes() const {
-    entities.validate_array_sizes();
+    entities.get_const_view().columns().validate_array_sizes();
 }
 void Sim::validate_entity_handles() const {
-    entity_registry.validate_handles(entities.handles);
+    entity_registry.validate_handles(entities.get_const_view().handles());
 }
 } // namespace turrets

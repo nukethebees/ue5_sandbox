@@ -6,27 +6,30 @@
 namespace ioj::sim::tests {
 
 TEST(NativeSimulation, FighterEntityBiasPackedDataTest) {
-    using EntityData = FighterEntityData;
+    using EntityData = SingleAllocationFighterEntityData;
 
     EntityData source;
     source.add_defaulted(3);
-    source.entity_handles = {
-        RegistryEntityHandle{10, 1},
-        RegistryEntityHandle{20, 2},
-        RegistryEntityHandle{30, 3},
-    };
-    source.integral_biases = {100u, 200u, 300u};
-    source.float_biases = {0.1f, 0.2f, 0.3f};
-    source.validate_array_sizes();
+    auto source_columns{source.get_view().columns()};
+    source_columns.entity_handles[0] = {10, 1};
+    source_columns.entity_handles[1] = {20, 2};
+    source_columns.entity_handles[2] = {30, 3};
+    source_columns.integral_biases[0] = 100u;
+    source_columns.integral_biases[1] = 200u;
+    source_columns.integral_biases[2] = 300u;
+    source_columns.float_biases[0] = 0.1f;
+    source_columns.float_biases[1] = 0.2f;
+    source_columns.float_biases[2] = 0.3f;
+    source_columns.validate_array_sizes();
 
-    auto view{source.get_view(1, 2)};
+    auto view{source.get_view(1, 2).columns()};
     static_assert(std::is_same_v<decltype(view.integral_biases), std::span<std::uint32_t>>);
     static_assert(std::is_same_v<decltype(view.float_biases), std::span<float>>);
     tests::expect_equal(view.integral_biases[0], 200u, "Mutable view integral bias");
     tests::expect_equal(view.float_biases[1], 0.3f, "Mutable view float bias");
 
     EntityData const& const_source{source};
-    auto const_view{const_source.get_const_view(1, 2)};
+    auto const_view{const_source.get_const_view(1, 2).columns()};
     static_assert(
         std::is_same_v<decltype(const_view.integral_biases), std::span<std::uint32_t const>>);
     static_assert(std::is_same_v<decltype(const_view.float_biases), std::span<float const>>);
@@ -34,29 +37,26 @@ TEST(NativeSimulation, FighterEntityBiasPackedDataTest) {
     tests::expect_equal(const_view.float_biases[0], 0.2f, "Const view float bias");
 
     ml::MultiBuffer<EntityData, 2> buffers;
-    buffers.current().add_defaulted(3);
-    buffers.current().copy_element(0, source, 0);
-    buffers.current().copy_element(1, source, 1);
-    buffers.current().copy_element(2, source, 2);
+    buffers.current().append_from(source.get_const_view());
     buffers.cycle();
-    buffers.current().add_defaulted(3);
-    buffers.current().copy_element(0, buffers.previous(), 2);
-    buffers.current().copy_element(1, buffers.previous(), 0);
-    buffers.current().copy_element(2, buffers.previous(), 1);
+    buffers.current().append_from(buffers.previous().slice(2, 1));
+    buffers.current().append_from(buffers.previous().slice(0, 2));
 
     auto& reordered{buffers.current()};
-    reordered.validate_array_sizes();
-    tests::expect_true(reordered.entity_handles[0] == RegistryEntityHandle{30, 3},
+    auto reordered_columns{reordered.get_view().columns()};
+    reordered_columns.validate_array_sizes();
+    tests::expect_true(reordered_columns.entity_handles[0] == RegistryEntityHandle{30, 3},
                        "Buffered copy keeps handle paired with integral bias");
-    tests::expect_equal(reordered.integral_biases[0], 300u, "Buffered copy integral bias");
-    tests::expect_equal(reordered.float_biases[0], 0.3f, "Buffered copy float bias");
+    tests::expect_equal(reordered_columns.integral_biases[0], 300u, "Buffered copy integral bias");
+    tests::expect_equal(reordered_columns.float_biases[0], 0.3f, "Buffered copy float bias");
 
     reordered.remove_at_swap(0, 1);
-    reordered.validate_array_sizes();
-    tests::expect_true(reordered.entity_handles[0] == RegistryEntityHandle{20, 2},
+    reordered_columns = reordered.get_view().columns();
+    reordered_columns.validate_array_sizes();
+    tests::expect_true(reordered_columns.entity_handles[0] == RegistryEntityHandle{20, 2},
                        "Swap removal keeps handle paired with integral bias");
-    tests::expect_equal(reordered.integral_biases[0], 200u, "Swap removal integral bias");
-    tests::expect_equal(reordered.float_biases[0], 0.2f, "Swap removal float bias");
+    tests::expect_equal(reordered_columns.integral_biases[0], 200u, "Swap removal integral bias");
+    tests::expect_equal(reordered_columns.float_biases[0], 0.2f, "Swap removal float bias");
 
     return;
 }
