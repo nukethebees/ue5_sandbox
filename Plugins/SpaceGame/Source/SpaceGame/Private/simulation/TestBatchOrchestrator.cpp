@@ -681,12 +681,14 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
 
     auto const turret_count{turret_proxies.Num()};
     for (int32 i{}; i < turret_count; ++i) {
-        turret_proxies[i]->set_entity_handle(get_turrets()->get_read_view().entities.handles[i]);
+        turret_proxies[i]->set_entity_handle(
+            level_simulation_->get_turrets().get_read_view().entities.handles[i]);
     }
 
     auto const spinner_count{spinner_proxies.Num()};
     for (int32 i{}; i < spinner_count; ++i) {
-        spinner_proxies[i]->set_entity_handle(get_spinners()->get_read_view().entities.handles[i]);
+        spinner_proxies[i]->set_entity_handle(
+            level_simulation_->get_spinners().get_read_view().entities.handles[i]);
     }
 
     validate_entity_handles();
@@ -978,7 +980,7 @@ void ATestBatchOrchestrator::validate_entity_handles() {
         check(get_entity_registry().is_valid_handle(player->registry_handle));
     }
     get_capital_ships()->validate_entity_handles();
-    get_turrets()->validate_entity_handles();
+    level_simulation_->get_turrets().validate_entity_handles();
 }
 void ATestBatchOrchestrator::Tick(float dt) {
     Super::Tick(dt);
@@ -1097,19 +1099,6 @@ auto ATestBatchOrchestrator::make_presentation_resources() const -> FLevelPresen
                 ? TOptional<FPlayerPresentationResources>{player_ship->get_presentation_resources()}
                 : NullOpt};
 }
-auto ATestBatchOrchestrator::add_static_geometry(UPrimitiveComponent& component) -> bool {
-    check(level_simulation_.IsSet());
-    auto const bounds{world_collision_.add_static_geometry(
-        component, get_spatial_query_manager().get_collision_system().get_uniform_grid())};
-    if (!bounds.has_value()) {
-        return false;
-    }
-
-    level_simulation_->add_static_collision_aabb(bounds->min, bounds->max);
-    update_collision_bounds_visualization();
-    return true;
-}
-
 /* **************************************** */
 // Mission and telemetry
 /* **************************************** */
