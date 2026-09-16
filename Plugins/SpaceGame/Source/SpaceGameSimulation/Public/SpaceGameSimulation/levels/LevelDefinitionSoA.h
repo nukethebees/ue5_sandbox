@@ -6,7 +6,6 @@
 
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
-#include "SandboxCore/soa_concepts.h"
 #include "SandboxCore/soa_rotators.h"
 #include "SandboxCore/soa_vectors_3d.h"
 
@@ -15,6 +14,7 @@
 #include "Containers/ArrayView.h"
 #include "CoreMinimal.h"
 #include "SpaceGameSimulation/levels/LevelTypes.h"
+#include "sandbox/core/soa_concepts.h"
 
 #include <utility>
 

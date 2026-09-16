@@ -6,12 +6,12 @@
 
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
-#include "SandboxCore/soa_concepts.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
 #include "CoreMinimal.h"
+#include "sandbox/core/soa_concepts.h"
 
 #include <utility>
 

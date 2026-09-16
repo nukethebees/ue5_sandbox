@@ -9,7 +9,7 @@
 #include "ShooterGame/combat/bullets/BulletTypeIndex.h"
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "ShooterGame/logging/ShooterGameLogCategories.h"
-#include "SandboxCore/lock_free_mpsc_queue.h"
+#include "sandbox/core/lock_free_mpsc_queue.h"
 #include "SandboxCore/monitored_lock_free_mpsc_queue.h"
 
 #include "MassBulletVisualizationActor.generated.h"

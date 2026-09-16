@@ -1,4 +1,4 @@
-#include "SandboxCore/lock_free_mpsc_queue.h"
+#include "sandbox/core/lock_free_mpsc_queue.h"
 
 #include "TestHarness.h"
 

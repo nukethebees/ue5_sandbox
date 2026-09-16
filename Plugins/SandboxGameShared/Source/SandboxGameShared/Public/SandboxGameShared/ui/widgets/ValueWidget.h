@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SandboxCore/numeric.h>
+#include <sandbox/core/numeric.h>
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"

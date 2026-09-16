@@ -2,7 +2,7 @@
 
 #include <SandboxTests/support/SimulationTestScenario.h>
 
-#include <SandboxCore/time_series_data.h>
+#include <sandbox/core/time_series_data.h>
 #include <SpaceGameSimulation/missions/TestMissionMode.h>
 #include <SpaceGameSimulation/missions/TestMissionState.h>
 #include <UObject/StrongObjectPtr.h>

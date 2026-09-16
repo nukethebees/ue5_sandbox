@@ -5,10 +5,10 @@
 #include "SGLegacy/learning/TestTurretsConfig.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
+#include <sandbox/core/invoke.h>
+#include <sandbox/core/rotation.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/interpolation.h>
-#include <SandboxCore/invoke.h>
-#include <SandboxCore/rotation.h>
 #include <SandboxCoreEngine/actor_components.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 

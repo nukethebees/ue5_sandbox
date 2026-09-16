@@ -1,5 +1,5 @@
+#include <sandbox/core/fixed_storage.h>
 #include <SandboxCore/fixed_array.h>
-#include <SandboxCore/fixed_storage.h>
 
 #include "CoreMinimal.h"
 #include "TestHarness.h"

@@ -7,7 +7,7 @@
 #include <SandboxTests/support/WorldlessSimulationTest.h>
 #include "test_hud_manager_scenario.h"
 
-#include <SandboxCore/time_series_data.h>
+#include <sandbox/core/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
 #include <ioj/sim/capital_ships/sim.h>

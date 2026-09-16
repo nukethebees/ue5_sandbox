@@ -5,7 +5,6 @@
 #pragma once
 
 #include "SandboxCore/array_utils.h"
-#include "SandboxCore/fixed_storage.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
@@ -13,6 +12,7 @@
 #include "CoreMinimal.h"
 #include "Templates/SharedPointer.h"
 #include "Templates/UnrealTemplate.h"
+#include "sandbox/core/fixed_storage.h"
 
 #include <memory>
 #include <type_traits>

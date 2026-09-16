@@ -11,9 +11,9 @@
 #include "Project/Vector3f.h"
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
-#include "SandboxCore/fixed_storage.h"
-#include "SandboxCore/soa_concepts.h"
 #include "Templates/UnrealTemplate.h"
+#include "sandbox/core/fixed_storage.h"
+#include "sandbox/core/soa_concepts.h"
 
 #include <memory>
 #include <type_traits>

@@ -6,14 +6,14 @@
 
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
-#include "SandboxCore/fixed_storage.h"
-#include "SandboxCore/soa_concepts.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
 #include "CoreMinimal.h"
 #include "Templates/UnrealTemplate.h"
+#include "sandbox/core/fixed_storage.h"
+#include "sandbox/core/soa_concepts.h"
 
 #include <memory>
 #include <type_traits>

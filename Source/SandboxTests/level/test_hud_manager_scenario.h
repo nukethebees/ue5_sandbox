@@ -7,7 +7,7 @@
 #include <SpaceGameSimulation/entities/TestTeam.h>
 #include <SpaceGameSimulation/missions/TestMissionState.h>
 
-#include <SandboxCore/time_series_data.h>
+#include <sandbox/core/time_series_data.h>
 
 namespace ml {
 enum class EHUDManagerScenario : uint8 {

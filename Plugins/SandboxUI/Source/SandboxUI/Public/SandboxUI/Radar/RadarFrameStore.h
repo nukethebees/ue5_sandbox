@@ -2,7 +2,7 @@
 
 #include "SandboxUI/Radar/RadarTypes.h"
 
-#include "SandboxCore/multi_buffer.h"
+#include "sandbox/core/multi_buffer.h"
 #include "Templates/SharedPointer.h"
 
 class SANDBOXUI_API FRadarFrameStore final {

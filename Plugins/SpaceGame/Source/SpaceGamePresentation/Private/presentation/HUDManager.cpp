@@ -16,7 +16,7 @@
 #include "SpaceGameSimulation/entities/NativeEntityTypes.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
-#include <SandboxCore/timing.h>
+#include <sandbox/core/timing.h>
 
 #include <Algo/Sort.h>
 #include <Blueprint/WidgetLayoutLibrary.h>

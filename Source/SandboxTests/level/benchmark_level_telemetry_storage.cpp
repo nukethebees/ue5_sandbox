@@ -2,8 +2,8 @@
 #include <ioj/sim/telemetry/level_telemetry_block_history.h>
 
 #include <Containers/StaticArray.h>
+#include <sandbox/core/time_series_data.h>
 #include <SandboxCore/mimalloc_storage_allocator.h>
-#include <SandboxCore/time_series_data.h>
 
 #include <HAL/PlatformTime.h>
 #include <Misc/AutomationTest.h>

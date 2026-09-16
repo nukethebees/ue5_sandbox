@@ -7,8 +7,8 @@
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "ShooterGame/logging/ShooterGameLogCategories.h"
 #include "ShooterGame/mass_entity/EntityDefinition.h"
-#include "SandboxCore/lock_free_mpsc_queue.h"
-#include "SandboxCore/lock_free_mpsc_queue_soa.h"
+#include "sandbox/core/lock_free_mpsc_queue.h"
+#include "sandbox/core/lock_free_mpsc_queue_soa.h"
 #include "SandboxCore/monitored_lock_free_mpsc_queue.h"
 
 #include "CoreMinimal.h"

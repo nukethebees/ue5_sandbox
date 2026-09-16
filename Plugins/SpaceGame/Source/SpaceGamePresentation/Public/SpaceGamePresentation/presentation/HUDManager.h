@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ioj/sim/entity_registry.h>
-#include <SandboxCore/multi_buffer.h>
+#include <sandbox/core/multi_buffer.h>
 #include <SandboxCore/periodic_tick_countdown.h>
 #include <SandboxUI/EntityOverlay/EntityOverlayFrameStore.h>
 #include <SandboxUI/EntityOverlay/EntityOverlayTypes.h>

@@ -1,8 +1,8 @@
 #pragma once
 
+#include <sandbox/core/soa_concepts.h>
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/container_ops.h>
-#include <SandboxCore/soa_concepts.h>
 
 #include <Containers/AllowShrinking.h>
 #include <HAL/Platform.h>

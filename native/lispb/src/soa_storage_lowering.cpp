@@ -11,7 +11,7 @@ namespace {
 TypeDependency const tarray_view{"TArrayView", "Containers/ArrayView.h", {}};
 TypeDependency const allow_shrinking{"EAllowShrinking", "Containers/AllowShrinking.h", {}};
 TypeDependency const soa_concepts{
-    "ml::SupportsApplyArrayPairsWith", "SandboxCore/soa_concepts.h", {}};
+    "ml::SupportsApplyArrayPairsWith", "sandbox/core/soa_concepts.h", {}};
 TypeDependency const soa_permutation{"ml::apply_permutation", "SandboxCore/soa_permutation.h", {}};
 TypeDependency const fill_indices{"ml::fill_indices", "SandboxCore/array_utils.h", {}};
 TypeDependency const check_dependency{"check", "CoreMinimal.h", {}};

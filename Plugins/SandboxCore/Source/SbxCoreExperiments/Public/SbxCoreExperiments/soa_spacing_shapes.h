@@ -9,12 +9,12 @@
 #include "Containers/ArrayView.h"
 #include "HAL/UnrealMemory.h"
 #include "sandbox/core/single_allocation/removal.h"
+#include "sandbox/core/soa_concepts.h"
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/mimalloc_storage_allocator.h"
 #include "SandboxCore/single_allocation/operations.h"
 #include "SandboxCore/single_allocation/vector_views.h"
-#include "SandboxCore/soa_concepts.h"
 #include "SbxCoreExperiments/soa_leaf_types.h"
 #include "Templates/MemoryOps.h"
 

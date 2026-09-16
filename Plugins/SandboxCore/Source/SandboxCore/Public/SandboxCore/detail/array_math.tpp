@@ -3,7 +3,7 @@
 #include <sandbox/core/array_math.h>
 
 #include "SandboxCore/array_checks.h"
-#include <SandboxCore/numeric.h>
+#include <sandbox/core/numeric.h>
 
 #include "CoreMinimal.h"
 

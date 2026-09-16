@@ -27,8 +27,8 @@
 #include <SpaceGamePresentation/support/mesh.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
+#include <sandbox/core/invoke.h>
 #include <SandboxCore/array_utils.h>
-#include <SandboxCore/invoke.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCoreEngine/actor_utils.h>

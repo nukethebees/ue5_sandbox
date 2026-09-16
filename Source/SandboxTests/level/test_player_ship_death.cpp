@@ -6,7 +6,7 @@
 #include <SandboxTests/support/time_series_test_data.h>
 #include "test_player_ship_death_scenario.h"
 
-#include <SandboxCore/time_series_data.h>
+#include <sandbox/core/time_series_data.h>
 
 #include <ioj/sim/entity_registry.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>

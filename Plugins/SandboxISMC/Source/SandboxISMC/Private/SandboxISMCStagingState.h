@@ -2,7 +2,7 @@
 
 #include "SandboxISMCStagingBuffer.h"
 
-#include "SandboxCore/multi_buffer.h"
+#include "sandbox/core/multi_buffer.h"
 
 struct FSandboxISMCStagingState {
     ml::MultiBuffer<FSandboxISMCStagingBuffer, 3> buffers;

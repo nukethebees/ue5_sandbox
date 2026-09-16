@@ -11,7 +11,7 @@
 #include "Project/Scalar1f.h"
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
-#include "SandboxCore/soa_concepts.h"
+#include "sandbox/core/soa_concepts.h"
 
 #include <utility>
 

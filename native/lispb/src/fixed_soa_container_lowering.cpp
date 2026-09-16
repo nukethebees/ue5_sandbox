@@ -12,7 +12,7 @@ TypeDependency const tarray_view{"TArrayView", "Containers/ArrayView.h", {}};
 TypeDependency const allow_shrinking{"EAllowShrinking", "Containers/AllowShrinking.h", {}};
 TypeDependency const check_dependency{"check", "CoreMinimal.h", {}};
 TypeDependency const fixed_storage_dependency{
-    "ml::TFixedStorage", "SandboxCore/fixed_storage.h", {}};
+    "ml::TFixedStorage", "sandbox/core/fixed_storage.h", {}};
 TypeDependency const move_temp{"MoveTemp", "Templates/UnrealTemplate.h", {}};
 TypeDependency const std_memory{"std::addressof", "memory", {}};
 TypeDependency const std_type_traits{"std::is_constructible_v", "type_traits", {}};

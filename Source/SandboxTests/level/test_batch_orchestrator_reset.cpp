@@ -16,7 +16,7 @@
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
-#include <SandboxCore/time_series_data.h>
+#include <sandbox/core/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
 #include <Engine/LevelScriptActor.h>

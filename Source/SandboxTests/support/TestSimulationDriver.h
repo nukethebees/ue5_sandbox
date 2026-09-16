@@ -3,7 +3,7 @@
 
 #include <SandboxNative/RegistryEntityHandle.h>
 
-#include <SandboxCore/test_timeline.h>
+#include <sandbox/core/test_timeline.h>
 
 #include <HAL/Platform.h>
 

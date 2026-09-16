@@ -2,7 +2,7 @@
 
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 
-#include "SandboxCore/multi_buffer.h"
+#include "sandbox/core/multi_buffer.h"
 #include "Templates/SharedPointer.h"
 
 class SANDBOXUI_API FEntityOverlayFrameStore final {

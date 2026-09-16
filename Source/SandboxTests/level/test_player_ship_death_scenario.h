@@ -4,7 +4,7 @@
 
 #include <ioj/sim/entity_types.h>
 
-#include <SandboxCore/time_series_data.h>
+#include <sandbox/core/time_series_data.h>
 #include <SandboxNative/RegistryEntityHandle.h>
 
 class ATestSpaceShip;

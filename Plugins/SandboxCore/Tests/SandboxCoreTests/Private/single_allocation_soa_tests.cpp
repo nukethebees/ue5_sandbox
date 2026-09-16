@@ -33,6 +33,8 @@ static_assert(!supported_leaf<ThrowingDefault>);
 static_assert(!supported_leaf<FString>);
 static_assert(supported_leaf<Handle>);
 static_assert(!std::is_trivially_default_constructible_v<Handle>);
+
+inline constexpr int32 entity_leaf_count{56};
 static_assert(!std::is_copy_constructible_v<SingleAllocationEntityData>);
 static_assert(!std::is_copy_assignable_v<SingleAllocationEntityData>);
 static_assert(std::is_nothrow_move_constructible_v<SingleAllocationEntityData>);
@@ -180,7 +182,7 @@ void check_row_patterns(SingleAllocationEntityData const& values) {
             REQUIRE(FMemory::Memcmp(&column[row], expected.data(), sizeof(Element)) == 0);
         }
     });
-    CHECK(columns == 53);
+    CHECK(columns == entity_leaf_count);
 }
 
 TEST_CASE("SandboxCore.SingleAllocation.Every leaf survives repeated coordinated growth") {
@@ -282,7 +284,7 @@ TEST_CASE("SandboxCore.SingleAllocation.Swap removal matches generated TArray ow
             baseline.remove_at_swap(index, count, EAllowShrinking::No);
             CHECK(values.capacity() == 64);
             CHECK(values.num() == baseline.num());
-            std::array<void const*, 53> expected{};
+            std::array<void const*, entity_leaf_count> expected{};
             int32 leaf{};
             each_leaf(array_columns(baseline.get_const_view()), [&](auto column) { expected[leaf++] = column.GetData(); });
             leaf = 0;

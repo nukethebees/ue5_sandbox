@@ -3,7 +3,7 @@
 #include "SandboxGameShared/health/HealthChange.h"
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "SandboxGameShared/logging/SandboxGameSharedLogCategories.h"
-#include "SandboxCore/lock_free_mpsc_queue.h"
+#include "sandbox/core/lock_free_mpsc_queue.h"
 #include "SandboxCore/monitored_lock_free_mpsc_queue.h"
 
 #include "CoreMinimal.h"

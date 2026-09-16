@@ -1,7 +1,7 @@
 #pragma once
 
-#include <SandboxCore/single_allocation/layout.h>
-#include <SandboxCore/single_allocation/view.h>
+#include <sandbox/core/single_allocation/layout.h>
+#include <sandbox/core/single_allocation/view.h>
 
 #include <Containers/ContainerAllocationPolicies.h>
 #include <Misc/AssertionMacros.h>

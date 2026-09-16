@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SandboxCore/compact_vector_view.h>
+#include <sandbox/core/compact_vector_view.h>
 #include <SandboxCore/single_allocation/runtime.h>
 
 #include <Containers/ArrayView.h>
