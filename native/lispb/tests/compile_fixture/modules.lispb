@@ -147,7 +147,7 @@
       :body #cpp{return ids[0];}cpp#
       :inline true)
     (function weight_sum float
-      :body ("return weights[0] + weights[1];")
+      :body #cpp{return weights[0] + weights[1];}cpp#
       :definition-in-source true)
     (function manual_value int32
       :const true))
@@ -254,7 +254,7 @@
   :header "InlineFacade.h"
   :namespace codegen_compile_fixture
   (facade FInlineFacade @target target
-    :validation ("check(target != nullptr);")
+    :validation #cpp{check(target != nullptr);}cpp#
     :validation-dependencies (check)
     (method get int32
       :const true
@@ -280,7 +280,7 @@
   :header-include "SourceFacade.h"
   :namespace codegen_compile_fixture
   (facade FSourceFacade @target target
-    :validation ("check(target != nullptr);")
+    :validation #cpp{check(target != nullptr);}cpp#
     :validation-dependencies (check)
     :definitions-in-source true
     (method set_value void

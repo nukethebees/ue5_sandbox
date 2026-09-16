@@ -3,7 +3,8 @@
   :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/CollisionDamageEventsSoA.cpp"
   :header-include "SpaceGameSimulation/entities/CollisionDamageEventsSoA.h"
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  :prelude ("class AActor;" "class UActorComponent;")
+  :prelude #cpp{class AActor;
+class UActorComponent;}cpp#
   (struct UnresolvedCollisionDamageEvents
     :operations (all)
     :export-specifier SPACEGAMESIMULATION_API

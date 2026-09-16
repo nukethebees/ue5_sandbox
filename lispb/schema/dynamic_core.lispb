@@ -8,7 +8,7 @@
     :export-specifier SANDBOXCORE_API
     (member remaining_times array float)
     (function tick void
-      :body ("ml::subtract_in_place(remaining_times, dt);")
+      :body #cpp{ml::subtract_in_place(remaining_times, dt);}cpp#
       :dependencies (array_math)
       :noexcept true
       :definition-in-source true

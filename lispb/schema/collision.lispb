@@ -10,7 +10,8 @@
     (member components array @primitive_component_weak_ptr)
     (member original_collision_modes array @collision_enabled)
     (function add void
-      :body ("components.Add(component);" "original_collision_modes.Add(original_collision_mode);")
+      :body #cpp{components.Add(component);
+original_collision_modes.Add(original_collision_mode);}cpp#
       :definition-in-source true
       (parameter component @primitive_component_ptr)
       (parameter original_collision_mode (type-ref @collision_enabled :suffix " const")))))
