@@ -99,7 +99,7 @@ LevelSim::LevelSim(LevelSimInitData data)
     , turrets_phase_{turrets_simulation_}
     , spinners_simulation_{clock_, entity_registry_, lasers_simulation_, frame_memory_}
     , spinners_phase_{spinners_simulation_}
-    , mission_manager_{clock_, entity_registry_, agent_accessor_}
+    , mission_manager_{clock_, entity_registry_.get_ledger(), agent_accessor_}
     , event_manager_{capital_ships_simulation_,
                      turrets_simulation_,
                      spinners_simulation_,
@@ -197,10 +197,10 @@ void LevelSim::begin_subsystems() {
     lasers_phase_.begin_play();
 }
 void LevelSim::initialise_events(CompiledLevelEvents events) {
-    auto const player_handle{player_ship_simulation_.has_value()
-                                 ? player_ship_simulation_->registry_handle
-                                 : RegistryEntityHandle{}};
-    event_manager_.initialise(std::move(events), player_handle);
+    auto const player_id{player_ship_simulation_.has_value()
+                             ? player_ship_simulation_->unique_entity_id
+                             : EntityUniqueId{}};
+    event_manager_.initialise(std::move(events), player_id);
 }
 void LevelSim::validate_entity_handles() const {
     if (player_ship_simulation_.has_value()) {

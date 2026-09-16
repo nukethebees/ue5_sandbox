@@ -300,10 +300,10 @@ void FTestHUDManagerScenario::defence_begin() {
                    TEXT("Required-kill entity starts healthy"));
 
     auto const handles{
-        test_driver->orchestrator.get_mission_manager().get_entity_handles_that_must_survive()};
+        test_driver->orchestrator.get_mission_manager().get_entity_ids_that_must_survive()};
     check(handles.size() == 1);
     auto const required_handles{
-        test_driver->orchestrator.get_mission_manager().get_entity_handles_required_to_kill()};
+        test_driver->orchestrator.get_mission_manager().get_entity_ids_required_to_kill()};
     check(required_handles.size() == 1);
     test_driver->timeline.then_after(damage_queue_time, [this, handles, required_handles] {
         test_driver->queue_kills(required_handles);

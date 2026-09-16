@@ -25,15 +25,14 @@ void LevelSpawnManager::initialise(std::int32_t const entity_count,
                                    LevelTurretSpawnEventsConstView const turret_payloads) {
     capital_payloads_ = capital_payloads;
     turret_payloads_ = turret_payloads;
-    entity_handles_.clear();
-    entity_handles_.resize(static_cast<std::size_t>(entity_count));
+    entity_ids_.clear();
+    entity_ids_.resize(static_cast<std::size_t>(entity_count));
 }
 
-void LevelSpawnManager::set_entity_handle(std::int32_t const entity_index,
-                                          RegistryEntityHandle const handle) {
-    assert(entity_index >= 0 && static_cast<std::size_t>(entity_index) < entity_handles_.size());
-    assert(handle.is_valid());
-    entity_handles_[entity_index] = handle;
+void LevelSpawnManager::set_entity_id(std::int32_t const entity_index, EntityUniqueId const id) {
+    assert(entity_index >= 0 && static_cast<std::size_t>(entity_index) < entity_ids_.size());
+    assert(id.is_valid());
+    entity_ids_[entity_index] = id;
 }
 
 void LevelSpawnManager::spawn_initial(LevelCapitalSpawnEventsConstView const capital_events,
@@ -98,11 +97,10 @@ void LevelSpawnManager::spawn_capitals(LevelCapitalSpawnEventsConstView const ev
         .initial_spawn_delays = {events.initial_fighter_spawn_delays.data(), size},
         .spawn_cooldowns = {events.fighter_spawn_cooldowns.data(), size},
     };
-    auto const handles{capital_ships_.register_ships(spawn_data)};
-    spawned_handles_this_tick_.insert(
-        spawned_handles_this_tick_.end(), handles.begin(), handles.end());
+    auto const ids{capital_ships_.register_ships(spawn_data)};
+    spawned_ids_this_tick_.insert(spawned_ids_this_tick_.end(), ids.begin(), ids.end());
     for (std::int32_t i{}; i < count; ++i) {
-        set_entity_handle(events.entity_indices[i], handles[i]);
+        set_entity_id(events.entity_indices[i], ids[i]);
     }
 }
 
@@ -111,10 +109,8 @@ void LevelSpawnManager::resolve_capital_targets(LevelCapitalSpawnEventsConstView
     for (std::int32_t i{}; i < count; ++i) {
         auto const target_index{events.target_entity_indices[i]};
         if (target_index != -1) {
-            auto const source_handle{get_handle(events.entity_indices[i])};
-            capital_ships_.set_target_id(
-                source_handle,
-                capital_ships_.get_entity_registry().get_current_id(get_handle(target_index)));
+            auto const source_id{get_id(events.entity_indices[i])};
+            capital_ships_.set_target_id(source_id, get_id(target_index));
         }
     }
 }
@@ -127,28 +123,27 @@ void LevelSpawnManager::spawn_turrets(LevelTurretSpawnEventsConstView const even
         .healths = {events.healths.data(), size},
         .laser_damages = {events.laser_damages.data(), size},
     };
-    auto const handles{turrets_.register_turrets(spawn_data, events.rotations)};
-    spawned_handles_this_tick_.insert(
-        spawned_handles_this_tick_.end(), handles.begin(), handles.end());
+    auto const ids{turrets_.register_turrets(spawn_data, events.rotations)};
+    spawned_ids_this_tick_.insert(spawned_ids_this_tick_.end(), ids.begin(), ids.end());
     auto const count{events.num()};
     for (std::int32_t i{}; i < count; ++i) {
-        set_entity_handle(events.entity_indices[i], handles[i]);
+        set_entity_id(events.entity_indices[i], ids[i]);
     }
 }
 
 void LevelSpawnManager::spawn_spinners(LevelSpinnerSpawnEventsConstView const events) {
-    auto const handles{spinners_.spawn_instances(
+    auto const ids{spinners_.spawn_instances(
         events.locations, events.yaws, events.initial_fire_point_indices)};
     auto const count{events.num()};
     for (std::int32_t i{}; i < count; ++i) {
-        set_entity_handle(events.entity_indices[i], handles[i]);
+        set_entity_id(events.entity_indices[i], ids[i]);
     }
 }
 
-auto LevelSpawnManager::get_handle(std::int32_t const entity_index) const -> RegistryEntityHandle {
-    assert(entity_index >= 0 && static_cast<std::size_t>(entity_index) < entity_handles_.size());
-    auto const handle{entity_handles_[entity_index]};
-    assert(handle.is_valid());
-    return handle;
+auto LevelSpawnManager::get_id(std::int32_t const entity_index) const -> EntityUniqueId {
+    assert(entity_index >= 0 && static_cast<std::size_t>(entity_index) < entity_ids_.size());
+    auto const id{entity_ids_[entity_index]};
+    assert(id.is_valid());
+    return id;
 }
 }

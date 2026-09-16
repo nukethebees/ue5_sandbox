@@ -67,8 +67,7 @@ Sim::Sim(SimClock const& clock,
 // Spawning
 /* **************************************** */
 auto Sim::register_turrets(TurretSpawnDataConstView const spawn_data,
-                           Rotators3fConstView const rotations)
-    -> std::vector<RegistryEntityHandle> {
+                           Rotators3fConstView const rotations) -> std::vector<EntityUniqueId> {
     SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::register_turrets");
     agents_.indexes().assert_preparation_mutation_allowed();
     spawn_data.validate_array_sizes();
@@ -148,7 +147,7 @@ auto Sim::register_turrets(TurretSpawnDataConstView const spawn_data,
                                   .team = entities.teams[index],
                                   .handle = entities.handles[index]});
     }
-    return new_handles;
+    return new_entities.entity_ids;
 }
 
 /* **************************************** */

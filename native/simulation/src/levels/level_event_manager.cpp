@@ -17,8 +17,7 @@ LevelEventManager::LevelEventManager(capital_ships::Sim& capital_ships,
     : spawn_manager_{capital_ships, turrets, spinners}
     , mission_manager_{mission_manager} {}
 
-void LevelEventManager::initialise(CompiledLevelEvents data,
-                                   RegistryEntityHandle const player_handle) {
+void LevelEventManager::initialise(CompiledLevelEvents data, EntityUniqueId const player_id) {
     initialisation_ = std::move(data.initialisation);
     schedule_ = std::move(data.schedule);
     auto const event_tick_count{schedule_.execution_ticks.size()};
@@ -31,14 +30,14 @@ void LevelEventManager::initialise(CompiledLevelEvents data,
                               schedule_.capital_spawns.get_const_view().columns(),
                               schedule_.turret_spawns.get_const_view().columns());
     if (initialisation_.player_entity_index != -1) {
-        spawn_manager_.set_entity_handle(initialisation_.player_entity_index, player_handle);
+        spawn_manager_.set_entity_id(initialisation_.player_entity_index, player_id);
     }
     spawn_manager_.spawn_initial(data.initial_spawns.capital_spawns.get_const_view().columns(),
                                  data.initial_spawns.turret_spawns.get_const_view().columns(),
                                  data.initial_spawns.spinner_spawns.get_const_view().columns());
 
     mission_manager_.bind_level_event_data(schedule_.mission_events.values,
-                                           spawn_manager_.get_entity_handles());
+                                           spawn_manager_.get_entity_ids());
 
     [[maybe_unused]] std::int32_t spawn_group_count{};
     [[maybe_unused]] std::int32_t mission_group_count{};
@@ -90,20 +89,19 @@ void LevelEventManager::execute_tick(SimTick const tick) {
     ++next_event_index_;
 }
 
-auto LevelEventManager::get_spawned_handles() const -> std::span<RegistryEntityHandle const> {
-    return spawn_manager_.get_spawned_handles();
+auto LevelEventManager::get_spawned_ids() const -> std::span<EntityUniqueId const> {
+    return spawn_manager_.get_spawned_ids();
 }
 
 void LevelEventManager::configure_mission() {
     if (initialisation_.mission.has_value()) {
         mission_manager_.initialise_level_mission(initialisation_.mission.value(),
-                                                  spawn_manager_.get_entity_handles());
+                                                  spawn_manager_.get_entity_ids());
     }
 }
 
-auto LevelEventManager::get_entity_handle(std::int32_t const entity_index) const
-    -> RegistryEntityHandle {
-    return spawn_manager_.get_handle(entity_index);
+auto LevelEventManager::get_entity_id(std::int32_t const entity_index) const -> EntityUniqueId {
+    return spawn_manager_.get_id(entity_index);
 }
 
 auto LevelEventManager::has_future_spawns() const noexcept -> bool {

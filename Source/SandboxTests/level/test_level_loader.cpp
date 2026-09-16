@@ -159,10 +159,10 @@ void FLevelLoaderCameraScenario::load_fixture() {
                        TEXT("Exiting benchmark retains the camera transform"));
     }
 
-    begin_timed_sampling(0.05,
-                         FOrchestratorEndTickTestHook::CreateRaw(
-                             this, &FLevelLoaderCameraScenario::sample_runtime),
-                         entity_counts_);
+    begin_timed_sampling(
+        0.05,
+        FOrchestratorEndTickTestHook::CreateRaw(this, &FLevelLoaderCameraScenario::sample_runtime),
+        entity_counts_);
     context_.orchestrator.start_simulation();
 }
 
@@ -170,14 +170,15 @@ void FLevelLoaderCameraScenario::sample_runtime(ATestBatchOrchestrator& orchestr
     if (modal_samples_.num() == 0 && test_driver->get_time() > 0.0) {
         sample_modal_transitions();
     }
-    auto const counts{orchestrator.get_entity_registry().count_alive_per_team_and_type()};
+    auto const& counts{
+        orchestrator.get_entity_registry().get_ledger().get_combat_telemetry().spawned};
     auto const blue{std::to_underlying(ETestTeam::Blue)};
     auto const red{std::to_underlying(ETestTeam::Red)};
     auto const capital{std::to_underlying(ETestEntityType::CapitalShip)};
     auto const turret{std::to_underlying(ETestEntityType::Turret)};
     entity_counts_.add(test_driver->get_time(),
-                       counts[blue][capital] + counts[blue][turret] + counts[red][capital] +
-                           counts[red][turret]);
+                       static_cast<int32>(counts[blue][capital] + counts[blue][turret] +
+                                          counts[red][capital] + counts[red][turret]));
 }
 
 void FLevelLoaderCameraScenario::sample_modal_transitions() {
@@ -278,10 +279,10 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
                      count_actors<ACameraActor>(context_.world),
                      TEXT("Headless loader does not spawn a camera"));
 
-    begin_timed_sampling(0.05,
-                         FOrchestratorEndTickTestHook::CreateRaw(
-                             this, &FLevelLoaderCameraScenario::sample_runtime),
-                         entity_counts_);
+    begin_timed_sampling(
+        0.05,
+        FOrchestratorEndTickTestHook::CreateRaw(this, &FLevelLoaderCameraScenario::sample_runtime),
+        entity_counts_);
     orchestrator.start_simulation();
     checks.is_true(orchestrator.get_level_simulation() && !orchestrator.is_presentation_enabled(),
                    TEXT("Headless startup has no presentation state"));
@@ -295,7 +296,7 @@ void FLevelLoaderCameraScenario::check_runtime() {
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     checks.are_equal(4,
                      entity_counts_.last_value(),
-                     TEXT("All playerless authored entities reach the registry"));
+                     TEXT("All playerless authored entities have recorded spawns"));
     checks.is_true(!modal_samples_.is_empty(), TEXT("Modal transitions were sampled"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     auto const& modal{modal_samples_.last_value()};
@@ -418,10 +419,10 @@ void FLevelLoaderScenario::load_fixture() {
                          TEXT("Loader applies the player position"));
     }
 
-    begin_timed_sampling(0.05,
-                         FOrchestratorEndTickTestHook::CreateRaw(
-                             this, &FLevelLoaderScenario::sample_runtime),
-                         samples);
+    begin_timed_sampling(
+        0.05,
+        FOrchestratorEndTickTestHook::CreateRaw(this, &FLevelLoaderScenario::sample_runtime),
+        samples);
     context_.orchestrator.start_simulation();
 }
 
@@ -448,11 +449,10 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
         .mission_mode = ml::to_unreal(mission.get_mission_mode()),
         .mission_state = ml::to_unreal(mission.get_mission_state()),
         .mission_kill_target = mission.get_kill_target(),
-        .mission_heroes = static_cast<int32>(mission.get_hero_entity_handles().size()),
-        .mission_survivors =
-            static_cast<int32>(mission.get_entity_handles_that_must_survive().size()),
+        .mission_heroes = static_cast<int32>(mission.get_hero_entity_ids().size()),
+        .mission_survivors = static_cast<int32>(mission.get_entity_ids_that_must_survive().size()),
         .mission_required_kills =
-            static_cast<int32>(mission.get_entity_handles_required_to_kill().size()),
+            static_cast<int32>(mission.get_entity_ids_required_to_kill().size()),
         .mission_level_name = FName{UTF8_TO_TCHAR(mission.get_level_id().c_str())},
         .mission_level_display_name = UTF8_TO_TCHAR(mission.get_level_display_name().c_str()),
         .saves_mission_results = mission.should_save_mission_results(),

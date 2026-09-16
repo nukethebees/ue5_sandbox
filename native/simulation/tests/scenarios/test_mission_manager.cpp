@@ -129,9 +129,10 @@ void run_worldless_mission_manager_scenario(tests::SimulationFixture const& conf
         sample.fail_reason = manager.get_mission_fail_reason();
         sample.kills = manager.get_mission_kills();
         sample.kill_target = manager.get_kill_target();
-        auto const survivors{manager.get_entity_handles_that_must_survive()};
+        auto const survivors{manager.get_entity_ids_that_must_survive()};
         sample.survivor_alive =
-            !survivors.empty() && harness.get_registry().is_valid_alive(survivors[0]);
+            !survivors.empty() &&
+            harness.get_simulation().get_agent_accessor().is_alive(survivors[0]);
         auto const survivor_health{manager.get_entity_health_that_must_survive()};
         sample.survivor_health = survivor_health.empty() ? 0 : survivor_health[0].health;
         auto const required_health{manager.get_entity_health_required_to_kill()};

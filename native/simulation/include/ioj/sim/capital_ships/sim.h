@@ -117,7 +117,7 @@ struct Sim {
     /* **************************************** */
     void validate_array_sizes() const;
     void validate_entity_handles() const;
-    void set_target_id(RegistryEntityHandle ship_handle, EntityUniqueId target_id);
+    void set_target_id(EntityUniqueId ship_id, EntityUniqueId target_id);
   private:
     /* **************************************** */
     // Sim phases
@@ -135,7 +135,7 @@ struct Sim {
     /* **************************************** */
     // Ship spawning
     /* **************************************** */
-    auto register_ships(CapitalSpawnDataConstView spawn_data) -> std::vector<RegistryEntityHandle>;
+    auto register_ships(CapitalSpawnDataConstView spawn_data) -> std::vector<EntityUniqueId>;
     void spawn_ships(CapitalSpawnDataConstView spawn_data);
 
     /* **************************************** */

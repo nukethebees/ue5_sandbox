@@ -85,7 +85,7 @@ auto Sim::get_num_instances() const noexcept -> std::int32_t {
 auto Sim::spawn_instances(Vectors3fConstView const new_locations,
                           std::span<float const> const new_yaws,
                           std::span<std::int32_t const> const new_fire_point_indices)
-    -> std::span<RegistryEntityHandle const> {
+    -> std::span<EntityUniqueId const> {
     SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::spawn_instances");
     assert(simulation_clock.permits_preparation_mutation());
 
@@ -128,7 +128,7 @@ auto Sim::spawn_instances(Vectors3fConstView const new_locations,
     }
 
     validate_array_sizes();
-    return appended.handles;
+    return appended.entity_ids;
 }
 
 /* **************************************** */

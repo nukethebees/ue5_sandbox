@@ -90,7 +90,7 @@ struct Sim {
     // Spawning
     /* **************************************** */
     auto register_turrets(TurretSpawnDataConstView spawn_data, Rotators3fConstView rotations)
-        -> std::vector<RegistryEntityHandle>;
+        -> std::vector<EntityUniqueId>;
 
     /* **************************************** */
     // Entity data

@@ -422,20 +422,20 @@ void FHUDManager::update_entity_overlay_objective_roles() {
         return;
     }
 
-    auto const assign_role = [this](std::span<::ioj::sim::RegistryEntityHandle const> const handles,
+    auto const assign_role = [this](std::span<::ioj::sim::EntityUniqueId const> const ids,
                                     EEntityOverlayObjectiveRole const role) {
-        for (auto const handle : handles) {
-            if (!entity_registry->is_valid_alive(handle)) {
-                continue;
+        auto const active_ids{entity_registry->get_active_unique_ids()};
+        auto const count{active_ids.size()};
+        for (std::size_t index{}; index < count; ++index) {
+            auto const id{active_ids[index]};
+            if (std::ranges::contains(ids, id) && agents_->is_alive(id)) {
+                entity_overlay_objective_roles_[static_cast<int32>(index)] = role;
             }
-
-            check(entity_overlay_objective_roles_.IsValidIndex(handle.index));
-            entity_overlay_objective_roles_[handle.index] = role;
         }
     };
-    assign_role(mission_manager->get_entity_handles_that_must_survive(),
+    assign_role(mission_manager->get_entity_ids_that_must_survive(),
                 EEntityOverlayObjectiveRole::Defend);
-    assign_role(mission_manager->get_entity_handles_required_to_kill(),
+    assign_role(mission_manager->get_entity_ids_required_to_kill(),
                 EEntityOverlayObjectiveRole::Destroy);
 }
 

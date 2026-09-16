@@ -186,7 +186,7 @@ auto FLevelSimScheduledEventsTest::RunTest(FString const&) -> bool {
               2);
     TestEqual(TEXT("The same-tick objective resolves the spawned entity handle"),
               static_cast<int32>(
-                  simulation.get_mission_manager().get_entity_handles_required_to_kill().size()),
+                  simulation.get_mission_manager().get_entity_ids_required_to_kill().size()),
               1);
     TestFalse(TEXT("All authored objective events have been dispatched"),
               simulation.get_mission_manager().has_pending_objective_events());

@@ -81,6 +81,15 @@ void TestSimulationDriver::queue_kills(
     ::ioj::sim::RegistryEntityHandle const instigator) {
     queue_damage(targets, std::numeric_limits<int32>::max(), instigator);
 }
+void TestSimulationDriver::queue_kills(std::span<::ioj::sim::EntityUniqueId const> const targets) {
+    ::ioj::sim::DirectDamageEvents events;
+    events.reserve(static_cast<int32>(targets.size()));
+    for (auto const id : targets) {
+        events.add(id, std::numeric_limits<int32>::max(), {});
+    }
+    FTestBatchOrchestratorTestAccess::queue_direct_damage_events(orchestrator,
+                                                                 events.get_const_view());
+}
 bool TestSimulationDriver::should_export_results() const {
 #if WITH_EDITOR
     auto const* settings{GetDefault<USandboxDeveloperSettings>()};

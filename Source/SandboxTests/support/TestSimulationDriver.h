@@ -1,4 +1,5 @@
 #pragma once
+#include <ioj/sim/entity_unique_id.h>
 #include <span>
 
 #include <SandboxNative/RegistryEntityHandle.h>
@@ -44,6 +45,7 @@ struct TestSimulationDriver {
                       ::ioj::sim::RegistryEntityHandle instigator = {});
     void queue_kills(std::span<::ioj::sim::RegistryEntityHandle const> targets,
                      ::ioj::sim::RegistryEntityHandle instigator = {});
+    void queue_kills(std::span<::ioj::sim::EntityUniqueId const> targets);
     bool should_export_results() const;
 
     void set_time_scale(time_type scale);

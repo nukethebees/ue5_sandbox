@@ -195,7 +195,7 @@ auto Sim::find_first_handle_on_team(Team const team) const noexcept
 // Ship spawning
 /* **************************************** */
 auto Sim::register_ships(CapitalSpawnDataConstView const spawn_data)
-    -> std::vector<RegistryEntityHandle> {
+    -> std::vector<EntityUniqueId> {
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::register_ships");
     auto const n_to_add{spawn_data.num()};
     if (n_to_add == 0) {
@@ -242,7 +242,8 @@ auto Sim::register_ships(CapitalSpawnDataConstView const spawn_data)
                                   .team = entities.teams[index],
                                   .handle = entities.handles[index]});
     }
-    return new_handles;
+    agents_.indexes().bind(EntityType::CapitalShip, entities.entity_ids);
+    return new_entities.entity_ids;
 }
 void Sim::spawn_ships(CapitalSpawnDataConstView const spawn_data) {
     agents_.indexes().assert_preparation_mutation_allowed();
@@ -435,13 +436,12 @@ void Sim::queue_fighter_orders() {
 /* **************************************** */
 // Targets
 /* **************************************** */
-void Sim::set_target_id(RegistryEntityHandle const ship_handle, EntityUniqueId const target_id) {
-    assert(entity_registry.is_valid_handle(ship_handle));
+void Sim::set_target_id(EntityUniqueId const ship_id, EntityUniqueId const target_id) {
     assert(entity_registry.is_valid_unique_id(target_id));
+    auto const entity_index{agents_.indexes().find(ship_id)};
     auto const entities{this->entities.get_view().columns()};
-    auto const found{std::ranges::find(entities.handles, ship_handle)};
-    assert(found != entities.handles.end());
-    auto const entity_index{std::distance(entities.handles.begin(), found)};
+    assert(entity_index >= 0 && entity_index < entities.num());
+    assert(entities.entity_ids[entity_index] == ship_id);
     entities.target_ids[entity_index] = target_id;
 }
 
