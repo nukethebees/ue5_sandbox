@@ -1,4 +1,5 @@
 #include "SpaceGame/simulation/LevelSimulationBuilder.h"
+#include <ioj/sim/levels/fighter_spawn_slot_validation.h>
 #include <ioj/sim/rotator_math.h>
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
@@ -24,109 +25,59 @@
 #include <vector>
 
 namespace ml::level_simulation_builder {
-auto intersects(::ioj::sim::collision::WorldAABB const& first,
-                ::ioj::sim::collision::WorldAABB const& second,
-                float const first_clearance,
-                float const second_clearance) noexcept -> bool {
-    return first.min.X - first_clearance <= second.max.X + second_clearance &&
-           first.max.X + first_clearance >= second.min.X - second_clearance &&
-           first.min.Y - first_clearance <= second.max.Y + second_clearance &&
-           first.max.Y + first_clearance >= second.min.Y - second_clearance &&
-           first.min.Z - first_clearance <= second.max.Z + second_clearance &&
-           first.max.Z + first_clearance >= second.min.Z - second_clearance;
+void append_fighter_spawn_slot_errors(
+    std::vector<::ioj::sim::levels::FighterSpawnSlotValidationError> const& validation_errors,
+    ::ioj::sim::CapitalShipSimConfig const& capital_config,
+    FLevelStartErrors& errors) {
+    for (auto const& error : validation_errors) {
+        switch (error.kind) {
+            case ::ioj::sim::levels::FighterSpawnSlotValidationErrorKind::IntersectsCapital: {
+                auto const location{::ioj::sim::to_float(
+                    capital_config.fighter_spawn_slots_relative_transforms[error.first_slot]
+                        .location)};
+                errors.add(FString::Printf(
+                    TEXT("fighter spawn slot %d at %s intersects the capital collision bounds plus "
+                         "fighter clearance"),
+                    error.first_slot,
+                    *ml::to_unreal(location).ToString()));
+                break;
+            }
+            case ::ioj::sim::levels::FighterSpawnSlotValidationErrorKind::SlotsOverlap:
+                errors.add(FString::Printf(
+                    TEXT("fighter spawn slots %d and %d have overlapping collision bounds plus "
+                         "%.1f cm clearance"),
+                    error.first_slot,
+                    error.second_slot,
+                    error.clearance));
+                break;
+            case ::ioj::sim::levels::FighterSpawnSlotValidationErrorKind::WorldIntersectsCapital:
+                errors.add(FString::Printf(
+                    TEXT("Capital at %s rotation %s: fighter spawn slot %d intersects world "
+                         "collision bounds plus fighter clearance"),
+                    *ml::to_unreal(error.capital_position).ToString(),
+                    *ml::to_unreal(error.capital_rotation).ToString(),
+                    error.first_slot));
+                break;
+        }
+    }
 }
 
 void validate_fighter_spawn_slots(::ioj::sim::CapitalShipSimConfig const& capital_config,
                                   ::ioj::sim::FighterSimConfig const& fighter_config,
                                   ::ioj::sim::collision::EntityAABBs const& entity_bounds,
                                   FLevelStartErrors& errors) {
-    auto const capital_index{ioj::FEntityAABBs::capital_ship_index};
-    auto const fighter_index{ioj::FEntityAABBs::fighter_index};
-    auto const capital_bounds{::ioj::sim::collision::make_entity_world_bounds(
-        entity_bounds, capital_index, {}, ml::make_quaternion4f(0.0f, 0.0f, 0.0f, 1.0f))};
-    auto const clearance{fighter_config.avoidance_clearance_buffer};
-    auto const& spawn_slots{capital_config.fighter_spawn_slots_relative_transforms};
-    auto const slot_count{static_cast<int32>(spawn_slots.size())};
-    std::vector<::ioj::sim::collision::WorldAABB> fighter_bounds;
-    fighter_bounds.reserve(static_cast<std::size_t>(slot_count));
-
-    for (int32 slot_index{}; slot_index < slot_count; ++slot_index) {
-        auto const& slot{spawn_slots[slot_index]};
-        auto const location{::ioj::sim::to_float(slot.location)};
-        auto const orientation{
-            ::ioj::sim::to_quaternion(::ioj::sim::to_float(::ioj::sim::to_rotator(slot.rotation)))};
-        fighter_bounds.push_back(::ioj::sim::collision::make_entity_world_bounds(
-            entity_bounds, fighter_index, location, orientation));
-        if (intersects(capital_bounds, fighter_bounds.back(), 0.0f, clearance)) {
-            errors.add(FString::Printf(
-                TEXT("fighter spawn slot %d at %s intersects the capital collision bounds plus "
-                     "fighter clearance"),
-                slot_index,
-                *ml::to_unreal(location).ToString()));
-        }
-    }
-
-    for (int32 first_index{}; first_index < slot_count; ++first_index) {
-        for (int32 second_index{first_index + 1}; second_index < slot_count; ++second_index) {
-            if (intersects(fighter_bounds[first_index],
-                           fighter_bounds[second_index],
-                           clearance,
-                           clearance)) {
-                errors.add(FString::Printf(
-                    TEXT("fighter spawn slots %d and %d have overlapping collision bounds plus "
-                         "%.1f cm clearance"),
-                    first_index,
-                    second_index,
-                    clearance));
-            }
-        }
-    }
+    append_fighter_spawn_slot_errors(::ioj::sim::levels::validate_fighter_spawn_slots(
+                                         capital_config, fighter_config, entity_bounds),
+                                     capital_config,
+                                     errors);
 }
 }
 
 namespace ml {
 void validate_world_fighter_spawn_slots(::ioj::sim::LevelSimInitData const& data,
                                         FLevelStartErrors& errors) {
-    auto const capital_index{ioj::FEntityAABBs::capital_ship_index};
-    auto const fighter_index{ioj::FEntityAABBs::fighter_index};
-    auto const clearance{data.fighters.avoidance_clearance_buffer};
-    auto const& slots{data.capital_ships.fighter_spawn_slots_relative_transforms};
-    auto const validate{[&](::ioj::sim::Vectors3fConstView const locations,
-                            ::ioj::sim::Rotators3fConstView const rotations) {
-        auto const count{locations.num()};
-        for (int32 i{}; i < count; ++i) {
-            auto const position{ml::to_unreal(locations[i])};
-            auto const rotation{ml::to_unreal(rotations[i])};
-            auto const capital_orientation{::ioj::sim::to_quaternion(rotations[i])};
-            auto const capital_bounds{::ioj::sim::collision::make_entity_world_bounds(
-                data.entity_bounds, capital_index, locations[i], capital_orientation)};
-            auto const slot_count{static_cast<int32>(slots.size())};
-            for (int32 slot_index{}; slot_index < slot_count; ++slot_index) {
-                auto const& slot{slots[slot_index]};
-                auto const slot_location{::ioj::sim::to_float(slot.location)};
-                auto const spawn{position + rotation.RotateVector(ml::to_unreal(slot_location))};
-                auto const slot_rotation{
-                    ::ioj::sim::to_float(::ioj::sim::to_rotator(slot.rotation))};
-                auto const fighter_orientation{capital_orientation *
-                                               ::ioj::sim::to_quaternion(slot_rotation)};
-                auto const fighter_bounds{::ioj::sim::collision::make_entity_world_bounds(
-                    data.entity_bounds, fighter_index, ml::to_native(spawn), fighter_orientation)};
-                if (level_simulation_builder::intersects(
-                        capital_bounds, fighter_bounds, 0.0f, clearance)) {
-                    errors.add(FString::Printf(
-                        TEXT("Capital at %s rotation %s: fighter spawn slot %d intersects world "
-                             "collision bounds plus fighter clearance"),
-                        *position.ToString(),
-                        *rotation.ToString(),
-                        slot_index));
-                }
-            }
-        }
-    }};
-    auto const& initial{data.level_events.initial_spawns.capital_spawns};
-    validate(initial.locations.get_const_view(), initial.rotations.get_const_view());
-    auto const& scheduled{data.level_events.schedule.capital_spawns};
-    validate(scheduled.locations.get_const_view(), scheduled.rotations.get_const_view());
+    level_simulation_builder::append_fighter_spawn_slot_errors(
+        ::ioj::sim::levels::validate_world_fighter_spawn_slots(data), data.capital_ships, errors);
 }
 
 auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,

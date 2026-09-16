@@ -2,6 +2,8 @@
 
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
 
+#include <ioj/sim/telemetry/level_telemetry_analysis.h>
+
 #include <SandboxCore/container_ops.h>
 
 #include <Algo/Sort.h>
@@ -178,7 +180,8 @@ auto FTelemetryRunAnalysis::find_metric(ETelemetryDashboardMetric const metric) 
     return metrics.FindByPredicate([metric](auto const& value) { return value.metric == metric; });
 }
 
-auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTelemetryRunAnalysis {
+auto legacy_analyze_level_telemetry_run(FLevelTelemetryReport const& record)
+    -> FTelemetryRunAnalysis {
     using namespace telemetry_dashboard;
     FTelemetryRunAnalysis result;
     TArray<FMetricBuilder> builders;
@@ -373,6 +376,47 @@ auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTeleme
         result.metrics.Add(value.finish());
     }
 
+    return result;
+}
+
+auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTelemetryRunAnalysis {
+    auto const native{::ioj::sim::telemetry::analyze({
+        .loaded_schema_version = record.loaded_schema_version,
+        .metadata = record.metadata,
+        .completion = record.completion,
+        .tick_series = record.tick_series,
+        .battle_samples = {record.battle_samples.GetData(),
+                           static_cast<std::size_t>(record.battle_samples.Num())},
+    })};
+    static_assert(static_cast<std::uint8_t>(::ioj::sim::telemetry::Metric::Count) ==
+                  static_cast<std::uint8_t>(ETelemetryDashboardMetric::COUNT));
+
+    FTelemetryRunAnalysis result;
+    result.metrics.Reserve(static_cast<int32>(native.metrics.size()));
+    for (auto const& metric : native.metrics) {
+        FTelemetryMetricSeries series{
+            .metric = static_cast<ETelemetryDashboardMetric>(metric.metric),
+            .title = telemetry_metric_title(static_cast<ETelemetryDashboardMetric>(metric.metric)),
+            .units = telemetry_metric_units(static_cast<ETelemetryDashboardMetric>(metric.metric)),
+        };
+        if (metric.weighted_mean) {
+            series.weighted_mean = *metric.weighted_mean;
+        }
+        series.simulated_elapsed_seconds.Append(
+            metric.simulated_elapsed_seconds.data(),
+            static_cast<int32>(metric.simulated_elapsed_seconds.size()));
+        series.values.Append(metric.values.data(), static_cast<int32>(metric.values.size()));
+        result.metrics.Add(MoveTemp(series));
+    }
+    auto const append{[](TArray<float>& destination, std::vector<float> const& source) {
+        destination.Append(source.data(), static_cast<int32>(source.size()));
+    }};
+    append(result.battle_simulated_seconds, native.battle_simulated_seconds);
+    append(result.battle_alive_entities, native.battle_alive_entities);
+    append(result.battle_shots, native.battle_shots);
+    append(result.battle_hits, native.battle_hits);
+    append(result.battle_damage_dealt, native.battle_damage_dealt);
+    append(result.battle_kills, native.battle_kills);
     return result;
 }
 

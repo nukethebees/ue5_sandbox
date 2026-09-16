@@ -1,5 +1,6 @@
 target_sources(native-simulation PRIVATE
   ../../include/ioj/sim/levels/compiled_level_events.h
+  ../../include/ioj/sim/levels/fighter_spawn_slot_validation.h
   ../../include/ioj/sim/levels/level_compilation.h
   ../../include/ioj/sim/levels/level_definition.h
   ../../include/ioj/sim/levels/level_event_manager.h
@@ -11,6 +12,7 @@ target_sources(native-simulation PRIVATE
   ../../include/ioj/sim/levels/level_runtime_events.h
   ../../include/ioj/sim/levels/level_spawn_manager.h
   level_compilation.cpp
+  fighter_spawn_slot_validation.cpp
   level_definition.cpp
   level_event_manager.cpp
   level_event_schedule.cpp
