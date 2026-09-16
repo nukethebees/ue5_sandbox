@@ -1,6 +1,6 @@
 ###############################################################################
-# Set default behavior to automatically normalize line endings.
-* text=auto
+# Normalize all text files to LF in both the repository and working tree.
+* text=auto eol=lf
 
 # Set default behavior for command prompt diff.
 #
@@ -48,4 +48,5 @@
 #*.rtf   diff=astextplain
 #*.RTF   diff=astextplain
 *.uasset filter=lfs diff=lfs merge=lfs -text
+*.umap -text
 *.fbx filter=lfs diff=lfs merge=lfs -text
