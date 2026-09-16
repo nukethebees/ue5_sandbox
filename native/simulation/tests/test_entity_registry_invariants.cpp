@@ -619,10 +619,30 @@ TEST_F(EntityRegistryTest, DamageQueuesPreserveBatchesAndResetStartsANewIdentity
         std::ranges::equal(queued.instigators,
                            std::array{handles[0], RegistryEntityHandle{}, handles[0]}),
         "Damage instigators preserved");
+    SimClock clock;
+    AgentIndexes indexes{clock};
+    std::array const turret_ids{registry_.get_current_id(handles[0])};
+    std::array const capital_ids{registry_.get_current_id(handles[1])};
+    indexes.bind(EntityType::Turret, turret_ids);
+    indexes.bind(EntityType::CapitalShip, capital_ids);
+    std::pmr::monotonic_buffer_resource scratch;
+    registry_.prepare_damage_events(indexes, scratch);
+    auto const capital_damage{registry_.get_damage_events(EntityType::CapitalShip)};
+    ASSERT_EQ(capital_damage.num(), 2);
+    EXPECT_EQ(capital_damage.damage_amounts[0], 5);
+    EXPECT_EQ(capital_damage.damage_amounts[1], 13);
+    EXPECT_EQ(capital_damage.damaged_entities[0], capital_ids[0]);
+    EXPECT_EQ(capital_damage.instigators[1], handles[0]);
+    auto const turret_damage{registry_.get_damage_events(EntityType::Turret)};
+    ASSERT_EQ(turret_damage.num(), 1);
+    EXPECT_EQ(turret_damage.damage_amounts[0], 8);
+    EXPECT_TRUE(turret_damage.instigators[0].is_null());
+    EXPECT_TRUE(registry_.get_damage_events(EntityType::Fighter).is_empty());
     registry_.commit_updates();
     tests::expect_equal(queued.num(), 3, "Commit retains damage queue");
     registry_.end_tick();
     tests::expect_equal(queued.num(), 0, "End tick clears damage queue");
+    EXPECT_TRUE(registry_.get_damage_events(EntityType::CapitalShip).is_empty());
     auto pending{data};
     pending.healths[1] = 0;
     EntityDeathInfo deaths;
@@ -630,6 +650,10 @@ TEST_F(EntityRegistryTest, DamageQueuesPreserveBatchesAndResetStartsANewIdentity
     registry_.queue_entity_updates({handles, view_of(pending)}, deaths);
     registry_.commit_updates();
     registry_.queue_direct_damage_events(second);
+    indexes.retire(capital_ids[0]);
+    registry_.prepare_damage_events(indexes, scratch);
+    EXPECT_TRUE(registry_.get_damage_events(EntityType::CapitalShip).is_empty());
+    EXPECT_EQ(queued.num(), 0);
     registry_.reset();
     tests::expect_equal(registry_.get_num_elements(), 0, "Reset clears slots");
     tests::expect_equal(registry_.get_num_unique_ids_issued(), 0, "Reset clears history");

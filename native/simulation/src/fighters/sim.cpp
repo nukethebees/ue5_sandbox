@@ -497,7 +497,8 @@ void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::resolve_damage_events");
 
     auto const data{entity_buffers.current().get_view().columns()};
-    batch::resolve_damage_events(entity_registry,
+    auto const damage_events{entity_registry.get_damage_events(EntityType::Fighter)};
+    batch::resolve_damage_events(damage_events,
                                  agents_.indexes(),
                                  data.entity_handles,
                                  data.entity_ids,
@@ -505,17 +506,15 @@ void Sim::resolve_damage_events() {
                                  local_indices_to_remove,
                                  entity_death_info);
 
-    auto const& direct_damage{entity_registry.get_direct_damage_queue_view()};
-    auto const damage_events{direct_damage.get_const_view()};
     auto const damage_count{damage_events.num()};
     for (std::int32_t event_index{}; event_index < damage_count; ++event_index) {
         auto const event_element{static_cast<std::size_t>(event_index)};
         auto const damaged_id{damage_events.damaged_entities[event_element]};
-        if (!damaged_id.is_valid() || damaged_id.entity_type() != EntityType::Fighter) {
-            continue;
-        }
+        assert(damaged_id.is_valid() && damaged_id.entity_type() == EntityType::Fighter);
         auto const fighter_index{agents_.indexes().find(damaged_id)};
-        if (fighter_index < 0 || is_dead(data.healths[fighter_index])) {
+        assert(fighter_index >= 0 && fighter_index < data.num());
+        assert(data.entity_ids[fighter_index] == damaged_id);
+        if (is_dead(data.healths[fighter_index])) {
             continue;
         }
 

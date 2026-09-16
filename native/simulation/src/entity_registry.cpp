@@ -335,7 +335,7 @@ void EntityRegistry::reset() {
     unique_entity_history_.reset();
     id_allocator_.reset();
     queued_death_infos.reset();
-    queued_direct_damage_events.reset();
+    damage_queue_.reset();
     bookkeeping_.reset();
     statistics_.reset();
 }
@@ -365,7 +365,7 @@ void EntityRegistry::end_tick() {
 
     refresh_free_indices();
 
-    queued_direct_damage_events.reset();
+    damage_queue_.reset();
     bookkeeping_.clear_dead_entities();
 
     validate_array_sizes();
@@ -500,7 +500,7 @@ void EntityRegistry::queue_direct_damage_events(DirectDamageEventsConstView cons
                                                             damage_events)};
     entity_registry_detail::check_accounting_result(result);
 
-    queued_direct_damage_events.append_from(damage_events);
+    damage_queue_.append(damage_events);
 }
 void EntityRegistry::record_shots(std::span<RegistryEntityHandle const> const instigators) {
     auto const unique_entities{unique_entity_history_.get_const_view().columns()};
@@ -513,7 +513,7 @@ void EntityRegistry::record_shots(std::span<RegistryEntityHandle const> const in
     entity_registry_detail::check_accounting_result(result);
 }
 auto EntityRegistry::get_direct_damage_queue_view() const -> DirectDamageEvents const& {
-    return queued_direct_damage_events;
+    return damage_queue_.all_events();
 }
 
 /* **************************************** */
@@ -722,7 +722,7 @@ void EntityRegistry::validate_array_sizes() const {
     }
 
     entity_data.get_const_view().columns().validate_array_sizes();
-    queued_direct_damage_events.validate_array_sizes();
+    damage_queue_.all_events().validate_array_sizes();
 
 #ifndef NDEBUG
     queued_entity_data.get_const_view().columns().validate_array_sizes();

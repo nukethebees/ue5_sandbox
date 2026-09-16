@@ -110,7 +110,7 @@ void Sim::resolve_fighters_of_dying_capitals() {
 void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::resolve_damage_events");
     auto const entities{this->entities.get_view().columns()};
-    batch::resolve_damage_events(entity_registry,
+    batch::resolve_damage_events(entity_registry.get_damage_events(EntityType::CapitalShip),
                                  agents_.indexes(),
                                  entities.handles,
                                  entities.entity_ids,

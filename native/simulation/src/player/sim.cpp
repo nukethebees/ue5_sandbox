@@ -144,14 +144,14 @@ void Sim::generate_fire_commands() {
 void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("Sandbox::PlayerShipSim::resolve_damage_events");
 
-    auto const& direct_damage{entity_registry.get_direct_damage_queue_view()};
+    auto const damage_events{entity_registry.get_damage_events(EntityType::PlayerShip)};
     auto const original_health{health.health};
     RegistryEntityHandle killer{};
-    auto const damage_events{direct_damage.get_const_view()};
     auto const damage_count{damage_events.num()};
     for (std::int32_t event_index{}; event_index < damage_count; ++event_index) {
         auto const element{static_cast<std::size_t>(event_index)};
-        if (damage_events.damaged_entities[element] != unique_entity_id || is_dead(health.health)) {
+        assert(damage_events.damaged_entities[element] == unique_entity_id);
+        if (is_dead(health.health)) {
             continue;
         }
 

@@ -237,9 +237,10 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         player.transform.location = {player_definition->position.x,
                                      player_definition->position.y,
                                      player_definition->position.z};
-        player.transform.rotation = ioj::sim::to_quaternion({player_definition->rotation.pitch,
-                                                             player_definition->rotation.yaw,
-                                                             player_definition->rotation.roll});
+        player.transform.rotation =
+            ioj::sim::to_quaternion(ioj::sim::Rotator3d{player_definition->rotation.pitch,
+                                                        player_definition->rotation.yaw,
+                                                        player_definition->rotation.roll});
         data.player = std::move(player);
     }
 

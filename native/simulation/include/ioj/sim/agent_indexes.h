@@ -77,7 +77,7 @@ class AgentIndexes {
                                                  entity_lifetime_capacities[type]);
     }
   private:
-    SimClock const& clock_;
+    [[maybe_unused]] SimClock const& clock_;
     std::pmr::vector<std::uint32_t> local_indexes_;
 };
 }

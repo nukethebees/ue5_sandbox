@@ -408,6 +408,8 @@ void LevelSim::advance(time_type const dt) {
             SANDBOX_PROFILE_SCOPE("Sandbox::LevelSim::Resolution");
             clock_.phase = SimulationPhase::Resolution;
 
+            entity_registry_.prepare_damage_events(agent_indexes_, frame_memory_);
+
             if (player_active) {
                 player_ship_phase_->resolve_damage_events();
             }

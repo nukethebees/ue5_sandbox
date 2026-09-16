@@ -11,6 +11,7 @@
 
 #include "ioj/sim/registry_entity_data.h"
 
+#include <ioj/sim/damage_queue.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entity_death_info.h>
 #include <ioj/sim/entity_handle.h>
@@ -84,6 +85,12 @@ struct EntityRegistry {
     }
     void record_shots(std::span<RegistryEntityHandle const> instigators);
     auto get_direct_damage_queue_view() const -> DirectDamageEvents const&;
+    void prepare_damage_events(AgentIndexes const& indexes, std::pmr::memory_resource& scratch) {
+        damage_queue_.prepare(indexes, scratch);
+    }
+    auto get_damage_events(EntityType type) const -> DirectDamageEventsConstView {
+        return damage_queue_.events_for(type);
+    }
 
     /* **************************************** */
     // Handle queries
@@ -219,7 +226,7 @@ struct EntityRegistry {
     EntityDeathInfo queued_death_infos;
 
     // Queued damage events
-    DirectDamageEvents queued_direct_damage_events;
+    DamageQueue damage_queue_;
 
     EntityRegistryStatistics statistics_;
 };
