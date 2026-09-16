@@ -520,10 +520,13 @@ void Sim::update_entity_registry() {
     entity_registry.queue_entity_updates(view, entity_death_info);
 }
 void Sim::cleanup_entities() {
-    agents_.indexes().assert_structural_mutation_allowed();
+    agents_.indexes().assert_removal_allowed();
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::cleanup_entities");
 
     remove_dead_entities();
+    if (!local_indices_to_remove.empty()) {
+        refresh_layout();
+    }
     local_indices_to_remove.clear();
     entity_death_info.reset();
     validate_array_sizes();
@@ -1194,7 +1197,7 @@ auto Sim::queue_spawns(FighterSpawnQueueConstView const new_spawns) -> std::int3
     return accepted_count;
 }
 void Sim::commit_spawns() {
-    agents_.indexes().assert_structural_mutation_allowed();
+    agents_.indexes().assert_preparation_mutation_allowed();
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::commit_spawns");
 
     if (!diagnostics_enabled_) {

@@ -22,6 +22,14 @@ class AgentIndexes {
         assert(clock_.permits_structural_mutation());
     }
 
+    void assert_preparation_mutation_allowed() const noexcept {
+        assert(clock_.permits_preparation_mutation());
+    }
+
+    void assert_removal_allowed() const noexcept {
+        assert(clock_.phase == SimulationPhase::ResolutionCommit);
+    }
+
     void retire(EntityUniqueId const id) noexcept {
         assert_structural_mutation_allowed();
         if (id.is_valid() && id.index() < local_indexes_.size()) {

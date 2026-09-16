@@ -294,10 +294,6 @@ void LevelSim::advance(time_type const dt) {
             entity_registry_.begin_tick();
             // Resolve last tick's orders while every previous-tick index is still valid.
             fighters_phase_.commit_orders();
-            capital_ships_phase_.cleanup_entities();
-            fighters_phase_.cleanup_entities();
-            turrets_phase_.cleanup_entities();
-            lasers_phase_.cleanup_entities();
 
             auto const first_new_id{static_cast<EntityUniqueId::index_type>(
                 entity_registry_.get_num_unique_ids_issued())};
@@ -407,6 +403,17 @@ void LevelSim::advance(time_type const dt) {
             // Queue final rows before compaction; include all capital-death consequences.
             publish_entity_state();
             frame_memory_.reclaim();
+
+            // All index-based damage and ownership work is complete. No readers
+            // may run between the first removal and rebinding every owner view.
+            clock_.phase = SimulationPhase::ResolutionCommit;
+            capital_ships_phase_.cleanup_entities();
+            fighters_phase_.cleanup_entities();
+            turrets_phase_.cleanup_entities();
+            lasers_phase_.cleanup_entities();
+            rebuild_agent_indexes();
+            capital_ships_simulation_.refresh_fighter_handles();
+            clock_.phase = SimulationPhase::Resolution;
 
             mission_manager_.mission_tick();
             capital_ships_phase_.finish_action();

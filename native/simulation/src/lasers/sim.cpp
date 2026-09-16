@@ -71,14 +71,14 @@ void Sim::begin_play() {
 }
 
 void Sim::commit_spawns() {
-    assert(simulation_clock.permits_structural_mutation());
+    assert(simulation_clock.permits_preparation_mutation());
     SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::commit_spawns");
     process_pending_spawns();
     clear_spawn_buffers();
 }
 
 void Sim::cleanup_entities() {
-    assert(simulation_clock.permits_structural_mutation());
+    assert(simulation_clock.phase == SimulationPhase::ResolutionCommit);
     std::ranges::sort(pending_removals_, std::greater{});
     auto const duplicate{std::ranges::unique(pending_removals_)};
     pending_removals_.erase(duplicate.begin(), duplicate.end());

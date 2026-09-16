@@ -87,7 +87,7 @@ auto Sim::spawn_instances(Vectors3fConstView const new_locations,
                           std::span<std::int32_t const> const new_fire_point_indices)
     -> std::span<RegistryEntityHandle const> {
     SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::spawn_instances");
-    assert(simulation_clock.permits_structural_mutation());
+    assert(simulation_clock.permits_preparation_mutation());
 
     auto const n{new_locations.num()};
 

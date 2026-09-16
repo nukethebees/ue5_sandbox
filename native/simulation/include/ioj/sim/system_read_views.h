@@ -15,7 +15,7 @@ namespace ioj::sim {
 
 struct EntityRegistry;
 
-enum class EntityFrameChangeKind : std::uint8_t { Spawn, Died, RemoveSwap };
+enum class EntityFrameChangeKind : std::uint8_t { Spawn, RemoveSwap };
 
 struct EntityFrameChange {
     EntityFrameChangeKind kind{};

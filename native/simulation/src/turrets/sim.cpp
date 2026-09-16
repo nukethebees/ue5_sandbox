@@ -70,7 +70,7 @@ auto Sim::register_turrets(TurretSpawnDataConstView const spawn_data,
                            Rotators3fConstView const rotations)
     -> std::vector<RegistryEntityHandle> {
     SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::register_turrets");
-    agents_.indexes().assert_structural_mutation_allowed();
+    agents_.indexes().assert_preparation_mutation_allowed();
     spawn_data.validate_array_sizes();
     auto const n_to_add{spawn_data.num()};
     if (n_to_add == 0) {
@@ -237,9 +237,6 @@ void Sim::resolve_damage_events() {
                                  entity_death_info);
     for (auto const index : local_indices_to_remove) {
         death_locations_.push_back(entities.locations[index]);
-        frame_changes_.push_back({.kind = EntityFrameChangeKind::Died,
-                                  .index = index,
-                                  .handle = entities.handles[index]});
     }
     validate_array_sizes();
 }
@@ -257,7 +254,7 @@ void Sim::update_entity_registry() {
         entity_death_info);
 }
 void Sim::cleanup_entities() {
-    agents_.indexes().assert_structural_mutation_allowed();
+    agents_.indexes().assert_removal_allowed();
     SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::cleanup_entities");
 
     handle_dead_entities();

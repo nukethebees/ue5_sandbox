@@ -72,11 +72,7 @@ void FTurretPresentation::update_visual_data() {
     auto const colours{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
     for (auto const& change : view().changes) {
-        if (change.kind == ::ioj::sim::EntityFrameChangeKind::Died) {
-            auto& transform{ismc_transforms[change.index]};
-            transform.SetScale3D(FVector::ZeroVector);
-            instances->UpdateInstanceTransform(change.index, transform, is_world_space, false);
-        } else if (change.kind == ::ioj::sim::EntityFrameChangeKind::RemoveSwap) {
+        if (change.kind == ::ioj::sim::EntityFrameChangeKind::RemoveSwap) {
             ismc_transforms.RemoveAtSwap(change.index, EAllowShrinking::No);
             instances->RemoveInstance(change.index);
         } else {

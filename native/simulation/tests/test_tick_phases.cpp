@@ -224,11 +224,16 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
     simulation.start();
     simulation.advance(simulation.get_clock().get_tick_period());
 
-    EXPECT_EQ(simulation.get_turrets().get_num_instances(), 1);
-    EXPECT_TRUE(is_dead(simulation.get_read_view().turrets.entities.healths[0]));
-    auto const dead_id{simulation.get_read_view().turrets.entities.entity_ids[0]};
-    EXPECT_EQ(simulation.get_agent_indexes().find(dead_id), 0);
-    ASSERT_TRUE(simulation.get_agent_accessor().read(dead_id));
+    EXPECT_EQ(simulation.get_turrets().get_num_instances(), 0);
+    auto const turret_view{simulation.get_read_view().turrets};
+    ASSERT_EQ(turret_view.changes.size(), 2);
+    EXPECT_EQ(turret_view.changes[0].kind, EntityFrameChangeKind::Spawn);
+    EXPECT_EQ(turret_view.changes[1].kind, EntityFrameChangeKind::RemoveSwap);
+    EXPECT_EQ(turret_view.changes[0].handle, turret_view.changes[1].handle);
+    EXPECT_EQ(turret_view.death_locations.size(), 1);
+    auto const dead_id{registry.get_current_id(turret_view.changes[1].handle)};
+    EXPECT_EQ(simulation.get_agent_indexes().find(dead_id), -1);
+    EXPECT_FALSE(simulation.get_agent_accessor().read(dead_id));
     EXPECT_FALSE(simulation.get_agent_accessor().read_alive(dead_id));
     EXPECT_EQ(registry.count_alive(), 1);
     EXPECT_EQ(registry.get_health(capitals.get_handle(0)), 900);
@@ -325,7 +330,7 @@ TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_EQ(simulation.get_read_view().capitals.entities.healths[0], 75);
     EXPECT_EQ(simulation.get_lasers().get_num_instances(), 0);
-    EXPECT_EQ(simulation.get_read_view().lasers.entities.num(), 1);
+    EXPECT_EQ(simulation.get_read_view().lasers.entities.num(), 0);
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_EQ(simulation.get_read_view().lasers.entities.num(), 0);
 }
@@ -386,12 +391,52 @@ TEST(TickPhases, CapitalDeathPublishesExistingAndNewChildDeathsBeforeMissionEval
         simulation.advance(period);
 
         EXPECT_FALSE(registry.is_valid_alive(victim));
-        EXPECT_EQ(fighter_sim.get_num_instances(), kill_tick == 1 ? 0 : 2);
+        EXPECT_EQ(fighter_sim.get_num_instances(), kill_tick == 1 ? 0 : 1);
+        EXPECT_EQ(capitals.get_num_instances(), 1);
+        auto const capital_view{simulation.get_read_view().capitals};
+        ASSERT_FALSE(capital_view.changes.empty());
+        EXPECT_EQ(capital_view.changes.back().kind, EntityFrameChangeKind::RemoveSwap);
+        EXPECT_EQ(capital_view.changes.back().handle, victim);
+        ASSERT_EQ(capital_view.deaths.size(), 1);
+        EXPECT_EQ(simulation.get_agent_indexes().find(registry.get_current_id(victim)), -1);
+        EXPECT_EQ(simulation.get_agent_indexes().find(registry.get_current_id(killer)), 0);
         EXPECT_EQ(registry.count_alive(), kill_tick == 1 ? 1 : 2);
         EXPECT_EQ(simulation.get_mission_manager().get_mission_state(), MissionState::Succeeded);
         EXPECT_FALSE(queries.trace_closest({{-2020.f, 0.f, 0.f}}, {{-1980.f, 0.f, 0.f}}).hit);
         EXPECT_FALSE(queries.trace_closest({{-2020.f, 500.f, 0.f}}, {{-1980.f, 500.f, 0.f}}).hit);
     }
+
+    auto data{make_world()};
+    for (auto const x : {-2000.f, 0.f, 2000.f}) {
+        add_capital_spawn(data, {{x, 0.f, 0.f}}, Team::White, -1, 60.f, 60.f, 100);
+    }
+    LevelSim simulation{std::move(data)};
+    simulation.finish_initialisation();
+    auto const initial{simulation.get_read_view().capitals.entities};
+    std::vector<RegistryEntityHandle> visual_handles{initial.handles.begin(),
+                                                     initial.handles.end()};
+    auto const survivor_id{initial.entity_ids[2]};
+    DirectDamageEvents damage;
+    damage.add(initial.handles[0], 100, {});
+    damage.add(initial.handles[1], 100, {});
+    LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
+    simulation.start();
+    simulation.advance(simulation.get_clock().get_tick_period() * 2.0);
+    auto const final{simulation.get_read_view().capitals};
+    ASSERT_EQ(final.changes.size(), 2);
+    EXPECT_EQ(final.deaths.size(), 2);
+    for (auto const& change : final.changes) {
+        EXPECT_EQ(change.kind, EntityFrameChangeKind::RemoveSwap);
+        ASSERT_LT(static_cast<std::size_t>(change.index), visual_handles.size());
+        EXPECT_EQ(visual_handles[change.index], change.handle);
+        visual_handles[change.index] = visual_handles.back();
+        visual_handles.pop_back();
+    }
+    ASSERT_EQ(visual_handles.size(), 1);
+    ASSERT_EQ(final.entities.num(), 1);
+    EXPECT_EQ(visual_handles[0], final.entities.handles[0]);
+    EXPECT_EQ(simulation.get_agent_indexes().find(survivor_id), 0);
+    EXPECT_TRUE(simulation.get_agent_accessor().read_alive(survivor_id));
 }
 
 }

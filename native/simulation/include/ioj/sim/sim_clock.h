@@ -6,7 +6,15 @@
 
 namespace ioj::sim {
 
-enum class SimulationPhase { Initialisation, Preparation, Thinking, Action, Resolution, Idle };
+enum class SimulationPhase {
+    Initialisation,
+    Preparation,
+    Thinking,
+    Action,
+    Resolution,
+    ResolutionCommit,
+    Idle
+};
 
 struct SimClock {
     using tick_type = SimTick;
@@ -39,6 +47,9 @@ struct SimClock {
     SimulationPhase phase{SimulationPhase::Initialisation};
 
     auto permits_structural_mutation() const noexcept -> bool {
+        return permits_preparation_mutation() || phase == SimulationPhase::ResolutionCommit;
+    }
+    auto permits_preparation_mutation() const noexcept -> bool {
         return phase == SimulationPhase::Initialisation || phase == SimulationPhase::Preparation;
     }
 };

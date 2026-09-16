@@ -119,9 +119,6 @@ void Sim::resolve_damage_events() {
     auto const batch_index{static_cast<std::int32_t>(deaths_.size())};
     for (auto const index : local_indices_to_remove) {
         deaths_.push_back({entities.locations[index], batch_index});
-        frame_changes_.push_back({.kind = EntityFrameChangeKind::Died,
-                                  .index = index,
-                                  .handle = entities.handles[index]});
     }
 }
 void Sim::update_entity_registry() {
@@ -132,7 +129,7 @@ void Sim::update_entity_registry() {
         {entities.handles, entity_update_data.get_const_view().columns()}, entity_death_info);
 }
 void Sim::cleanup_entities() {
-    agents_.indexes().assert_structural_mutation_allowed();
+    agents_.indexes().assert_removal_allowed();
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::cleanup_entities");
     handle_dead_entities();
     local_indices_to_remove.clear();
@@ -250,7 +247,7 @@ auto Sim::register_ships(CapitalSpawnDataConstView const spawn_data)
     return new_handles;
 }
 void Sim::spawn_ships(CapitalSpawnDataConstView const spawn_data) {
-    agents_.indexes().assert_structural_mutation_allowed();
+    agents_.indexes().assert_preparation_mutation_allowed();
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::spawn_ships");
     spawn_data.validate_array_sizes();
     auto const n_to_add{spawn_data.num()};

@@ -149,7 +149,7 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
         "A pending launch from a dead parent is cancelled, not adopted");
 }
 
-TEST(FighterLiveCap, DeferredRemovalAndReconstruction) {
+TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
 
     std::vector<Team> const capitals{Team::White};
     auto make_data{[&] { return make_cap_battle(capitals, capitals, 1, 1, 0.f); }};
@@ -167,9 +167,11 @@ TEST(FighterLiveCap, DeferredRemovalAndReconstruction) {
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
     simulation.advance(simulation.get_clock().get_tick_period());
     tests::expect_equal(simulation.get_fighters().get_num_instances(),
-                        1,
-                        "Dead fighter remains resident until Preparation");
-    EXPECT_TRUE(is_dead(simulation.get_read_view().fighters.entities.healths[0]));
+                        0,
+                        "Dead fighter is removed at the end of Resolution");
+    EXPECT_EQ(simulation.get_agent_indexes().find(original_id), -1);
+    EXPECT_FALSE(simulation.get_agent_accessor().read(original_id));
+    EXPECT_TRUE(simulation.get_capital_ships().get_fighter_handles(0).empty());
     FighterOrderQueue stale_orders;
     stale_orders.add(original_id, FighterOrder{.task = 1}, FighterTask::Standby, {});
     LevelSimTestAccess::queue_fighter_orders(simulation, stale_orders);
