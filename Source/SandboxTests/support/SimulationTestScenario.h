@@ -2,6 +2,7 @@
 
 #include "SoftTestAssertions.h"
 #include "TestSimulationDriver.h"
+#include "time_series_test_data.h"
 
 #include <CoreMinimal.h>
 #include <CQTest.h>
@@ -47,8 +48,26 @@ class FSimulationTestScenario {
                                      FTimespan const timeout,
                                      Completion&& completion) {
         TestCommandBuilder.Do(Forward<Setup>(setup))
-            .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
+            .Until(
+                [this] {
+                    return !checks.all_passed ||
+                           (test_driver.IsSet() && test_driver->timeline.is_finished());
+                },
+                timeout)
             .Then(Forward<Completion>(completion));
+    }
+
+    void set_timeline_end_tick_hook(FOrchestratorEndTickTestHook sample_hook);
+
+    template <typename... ValueTypes>
+    void begin_timed_sampling(time_type const duration,
+                              FOrchestratorEndTickTestHook sample_hook,
+                              TimeSeriesData<ValueTypes>&... samples) {
+        check(test_driver.IsSet());
+
+        reset_and_reserve_time_series(test_driver->orchestrator, duration, samples...);
+        test_driver->timeline.finish_at(duration);
+        set_timeline_end_tick_hook(MoveTemp(sample_hook));
     }
 
     virtual void on_tear_down() {}

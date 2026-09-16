@@ -159,10 +159,10 @@ void FLevelLoaderCameraScenario::load_fixture() {
                        TEXT("Exiting benchmark retains the camera transform"));
     }
 
-    reset_and_reserve_time_series(context_.orchestrator, 0.05, entity_counts_);
-    context_.orchestrator.set_end_tick_test_hook(
-        FOrchestratorEndTickTestHook::CreateRaw(this, &FLevelLoaderCameraScenario::sample_runtime));
-    test_driver->timeline.finish_at(0.05);
+    begin_timed_sampling(0.05,
+                         FOrchestratorEndTickTestHook::CreateRaw(
+                             this, &FLevelLoaderCameraScenario::sample_runtime),
+                         entity_counts_);
     context_.orchestrator.start_simulation();
 }
 
@@ -178,7 +178,6 @@ void FLevelLoaderCameraScenario::sample_runtime(ATestBatchOrchestrator& orchestr
     entity_counts_.add(test_driver->get_time(),
                        counts[blue][capital] + counts[blue][turret] + counts[red][capital] +
                            counts[red][turret]);
-    test_driver->advance_timeline();
 }
 
 void FLevelLoaderCameraScenario::sample_modal_transitions() {
@@ -279,10 +278,10 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
                      count_actors<ACameraActor>(context_.world),
                      TEXT("Headless loader does not spawn a camera"));
 
-    reset_and_reserve_time_series(orchestrator, 0.05, entity_counts_);
-    orchestrator.set_end_tick_test_hook(
-        FOrchestratorEndTickTestHook::CreateRaw(this, &FLevelLoaderCameraScenario::sample_runtime));
-    test_driver->timeline.finish_at(0.05);
+    begin_timed_sampling(0.05,
+                         FOrchestratorEndTickTestHook::CreateRaw(
+                             this, &FLevelLoaderCameraScenario::sample_runtime),
+                         entity_counts_);
     orchestrator.start_simulation();
     checks.is_true(orchestrator.get_level_simulation() && !orchestrator.is_presentation_enabled(),
                    TEXT("Headless startup has no presentation state"));
@@ -419,10 +418,10 @@ void FLevelLoaderScenario::load_fixture() {
                          TEXT("Loader applies the player position"));
     }
 
-    reset_and_reserve_time_series(context_.orchestrator, 0.05, samples);
-    context_.orchestrator.set_end_tick_test_hook(
-        FOrchestratorEndTickTestHook::CreateRaw(this, &FLevelLoaderScenario::sample_runtime));
-    test_driver->timeline.finish_at(0.05);
+    begin_timed_sampling(0.05,
+                         FOrchestratorEndTickTestHook::CreateRaw(
+                             this, &FLevelLoaderScenario::sample_runtime),
+                         samples);
     context_.orchestrator.start_simulation();
 }
 
@@ -474,7 +473,6 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
     }
 
     samples.add(test_driver->get_time(), MoveTemp(sample));
-    test_driver->advance_timeline();
 }
 
 void FLevelLoaderScenario::check_runtime() {

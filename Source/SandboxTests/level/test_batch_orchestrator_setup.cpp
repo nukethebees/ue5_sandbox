@@ -210,14 +210,9 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
 }
 
 void FTestBatchOrchestratorSetupScenario::level_telemetry() {
-    TestCommandBuilder.Do([this] { begin_level_telemetry(); })
-        .Until(
-            [this] {
-                return !checks.all_passed ||
-                       (test_driver.IsSet() && test_driver->timeline.is_finished());
-            },
-            FTimespan{0, 0, 1})
-        .Then([this] { check_level_telemetry(); });
+    run_until_timeline_finished([this] { begin_level_telemetry(); },
+                                FTimespan{0, 0, 1},
+                                [this] { check_level_telemetry(); });
 }
 
 void FTestBatchOrchestratorSetupScenario::begin_level_telemetry() {
@@ -236,7 +231,7 @@ void FTestBatchOrchestratorSetupScenario::begin_level_telemetry() {
     test_driver->orchestrator.start_simulation();
     initial_active_entity_count = test_driver->get_registry().get_num_alive_active_entities();
     initial_issued_unique_id_count = test_driver->get_registry().get_num_unique_ids_issued();
-    test_driver->orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateRaw(
+    set_timeline_end_tick_hook(FOrchestratorEndTickTestHook::CreateRaw(
         this, &FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick));
     test_driver->timeline.then_after(0.05, [this] { kill_telemetry_test_entity(); });
     test_driver->timeline.finish_at(0.15);
@@ -282,7 +277,6 @@ void FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick(
             .cumulative_kill_count = kill_count_data.last_value(),
             .issued_unique_id_count = current_state.spawned_entities,
         });
-    test_driver->advance_timeline();
 }
 
 void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {

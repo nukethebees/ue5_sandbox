@@ -79,14 +79,13 @@ void FTestPlayerShipDeathScenario::queue_player_ship_death() {
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
     std::vector<::ioj::sim::RegistryEntityHandle> const targets{player_ship_handle};
-    test_driver->timeline
-        .then_after(kill_time, [this, targets] { test_driver->queue_kills(targets); })
-        .finish_after(post_kill_time);
+    test_driver->timeline.then_after(kill_time,
+                                     [this, targets] { test_driver->queue_kills(targets); });
 
-    ml::reset_and_reserve_time_series(
-        test_driver->orchestrator, kill_time + post_kill_time, samples);
-    test_driver->orchestrator.set_end_tick_test_hook(
-        FOrchestratorEndTickTestHook::CreateRaw(this, &FTestPlayerShipDeathScenario::on_end_tick));
+    begin_timed_sampling(kill_time + post_kill_time,
+                         FOrchestratorEndTickTestHook::CreateRaw(
+                             this, &FTestPlayerShipDeathScenario::on_end_tick),
+                         samples);
 }
 
 void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
@@ -107,7 +106,6 @@ void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
                                   IsValid(controller) && IsValid(controller->GetPawn()),
                                   IsValid(controller) && controller->get_active_control_context() ==
                                                              EPlayerControlContext::Player});
-    test_driver->advance_timeline();
 }
 
 void FTestPlayerShipDeathScenario::check_player_ship_death() {

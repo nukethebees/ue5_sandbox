@@ -114,16 +114,14 @@ void FEntityInterfaceScenario::spawn_fixture() {
 void FEntityInterfaceScenario::initial_setup() {
     initialise_test_driver();
     test_driver->orchestrator.start_simulation();
-    reset_and_reserve_time_series(test_driver->orchestrator,
-                                  test_time,
-                                  capital_proxy_counts,
-                                  turret_proxy_counts,
-                                  spinner_proxy_counts,
-                                  capital_target_handles,
-                                  capital_target_alive);
-    test_driver->orchestrator.set_end_tick_test_hook(
-        FOrchestratorEndTickTestHook::CreateRaw(this, &FEntityInterfaceScenario::on_end_tick));
-    test_driver->timeline.finish_at(test_time);
+    begin_timed_sampling(test_time,
+                         FOrchestratorEndTickTestHook::CreateRaw(
+                             this, &FEntityInterfaceScenario::on_end_tick),
+                         capital_proxy_counts,
+                         turret_proxy_counts,
+                         spinner_proxy_counts,
+                         capital_target_handles,
+                         capital_target_alive);
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -151,7 +149,6 @@ void FEntityInterfaceScenario::sample_values() {
 
 void FEntityInterfaceScenario::on_end_tick(ATestBatchOrchestrator&) {
     sample_values();
-    test_driver->advance_timeline();
 }
 
 void FEntityInterfaceScenario::check_no_proxies_alive(int32 const sample_index) {

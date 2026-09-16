@@ -308,10 +308,10 @@ void FTestHUDManagerScenario::defence_begin() {
         test_driver->queue_kills(required_handles);
         test_driver->queue_kills(handles);
     });
-    ml::reset_and_reserve_time_series(test_driver->orchestrator, test_duration, defence_samples);
-    test_driver->orchestrator.set_end_tick_test_hook(
-        FOrchestratorEndTickTestHook::CreateRaw(this, &FTestHUDManagerScenario::defence_on_tick));
-    test_driver->timeline.finish_at(test_duration);
+    begin_timed_sampling(test_duration,
+                         FOrchestratorEndTickTestHook::CreateRaw(
+                             this, &FTestHUDManagerScenario::defence_on_tick),
+                         defence_samples);
 }
 
 void FTestHUDManagerScenario::defence_on_tick(ATestBatchOrchestrator&) {
@@ -329,7 +329,6 @@ void FTestHUDManagerScenario::defence_on_tick(ATestBatchOrchestrator&) {
         sample.required_kill_entity_health = data.status_data.required_kill_entity_health[0].health;
     }
     defence_samples.add(test_driver->get_time(), sample);
-    test_driver->advance_timeline();
 }
 
 void FTestHUDManagerScenario::defence_process_samples() {
@@ -363,11 +362,10 @@ void FTestHUDManagerScenario::mission_time_begin() {
     if (!initialise_headless_hud_manager()) {
         return;
     }
-    ml::reset_and_reserve_time_series(
-        test_driver->orchestrator, test_duration, mission_time_samples);
-    test_driver->orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateRaw(
-        this, &FTestHUDManagerScenario::mission_time_on_tick));
-    test_driver->timeline.finish_at(test_duration);
+    begin_timed_sampling(test_duration,
+                         FOrchestratorEndTickTestHook::CreateRaw(
+                             this, &FTestHUDManagerScenario::mission_time_on_tick),
+                         mission_time_samples);
 }
 
 void FTestHUDManagerScenario::mission_time_on_tick(ATestBatchOrchestrator& orchestrator) {
@@ -380,7 +378,6 @@ void FTestHUDManagerScenario::mission_time_on_tick(ATestBatchOrchestrator& orche
                              FMissionTimeSample{mission_data.status_data.mission_stopwatch,
                                                 mission_manager.get_mission_stopwatch(),
                                                 hud_manager.get_registered_hud_count()});
-    test_driver->advance_timeline();
 }
 
 void FTestHUDManagerScenario::mission_time_process_samples() {
@@ -441,10 +438,10 @@ void FTestHUDManagerScenario::player_kill_begin() {
     test_driver->timeline.then_after(damage_queue_time, [this, targets, instigator] {
         test_driver->queue_kills(targets, instigator);
     });
-    ml::reset_and_reserve_time_series(test_driver->orchestrator, test_duration, player_samples);
-    test_driver->orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateRaw(
-        this, &FTestHUDManagerScenario::player_kill_on_tick));
-    test_driver->timeline.finish_at(test_duration);
+    begin_timed_sampling(test_duration,
+                         FOrchestratorEndTickTestHook::CreateRaw(
+                             this, &FTestHUDManagerScenario::player_kill_on_tick),
+                         player_samples);
 }
 
 void FTestHUDManagerScenario::player_kill_on_tick(ATestBatchOrchestrator&) {
@@ -473,7 +470,6 @@ void FTestHUDManagerScenario::player_kill_on_tick(ATestBatchOrchestrator&) {
                                      top_killer_kills,
                                      player_team_matrix_kills,
                                      hud_manager.get_registered_hud_count()});
-    test_driver->advance_timeline();
 }
 
 void FTestHUDManagerScenario::player_kill_process_samples() {
@@ -592,11 +588,10 @@ void FTestHUDManagerScenario::entity_count_begin() {
     std::array<::ioj::sim::RegistryEntityHandle, 1> const targets{capitals.get_handle(0)};
     test_driver->timeline.then_after(damage_queue_time,
                                      [this, targets] { test_driver->queue_kills(targets); });
-    ml::reset_and_reserve_time_series(
-        test_driver->orchestrator, test_duration, entity_count_samples);
-    test_driver->orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateRaw(
-        this, &FTestHUDManagerScenario::entity_count_on_tick));
-    test_driver->timeline.finish_at(test_duration);
+    begin_timed_sampling(test_duration,
+                         FOrchestratorEndTickTestHook::CreateRaw(
+                             this, &FTestHUDManagerScenario::entity_count_on_tick),
+                         entity_count_samples);
 }
 
 void FTestHUDManagerScenario::entity_count_on_tick(ATestBatchOrchestrator& orchestrator) {
@@ -605,7 +600,6 @@ void FTestHUDManagerScenario::entity_count_on_tick(ATestBatchOrchestrator& orche
         test_driver->get_time(),
         FEntityCountSample{count_cached_entities(get_headless_hud_manager()),
                            orchestrator.get_hud_manager().get_registered_hud_count()});
-    test_driver->advance_timeline();
 }
 
 void FTestHUDManagerScenario::entity_count_process_samples() {
