@@ -22,12 +22,12 @@ inline constexpr std::int32_t collision_resilient_health{1'000'000};
 void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture const& config) {
     struct Sample {
         std::vector<RegistryEntityHandle> capitals{};
-        std::vector<std::vector<RegistryEntityHandle>> owned_fighters{};
+        std::vector<std::vector<EntityUniqueId>> owned_fighters{};
         std::vector<Team> capital_teams{};
         std::vector<Team> fighter_teams{};
         std::vector<std::int32_t> span_starts{};
-        std::vector<RegistryEntityHandle> all_owned_fighters{};
-        std::vector<RegistryEntityHandle> fighters{};
+        std::vector<EntityUniqueId> all_owned_fighters{};
+        std::vector<EntityUniqueId> fighters{};
     };
 
     auto data{tests::make_simulation_data(config)};
@@ -60,17 +60,18 @@ void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture co
             auto const handle{capitals.get_handle(i)};
             sample.capitals.push_back(handle);
             sample.capital_teams.push_back(registry.get_team(handle));
-            sample.span_starts.push_back(capitals.get_fighter_handle_span(i).start());
-            auto const owned{capitals.get_fighter_handles(i)};
+            sample.span_starts.push_back(capitals.get_fighter_id_span(i).start());
+            auto const owned{capitals.get_fighter_ids(i)};
             sample.owned_fighters.emplace_back(owned.begin(), owned.end());
-            for (auto const fighter : capitals.get_fighter_handles(i)) {
-                sample.fighter_teams.push_back(registry.get_team(fighter));
+            for (auto const fighter : capitals.get_fighter_ids(i)) {
+                sample.fighter_teams.push_back(
+                    simulation.get_agent_accessor().read_alive(fighter)->team);
             }
         }
-        auto const owned{capitals.get_fighter_handles()};
+        auto const owned{capitals.get_fighter_ids()};
         sample.all_owned_fighters.insert(
             sample.all_owned_fighters.end(), owned.begin(), owned.end());
-        auto const live{simulation.get_fighters().get_handles()};
+        auto const live{simulation.get_fighters().get_entity_ids()};
         sample.fighters.insert(sample.fighters.end(), live.begin(), live.end());
         samples.add(harness.get_time(), std::move(sample));
     };
@@ -116,7 +117,7 @@ void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture co
     tests::expect_equal(static_cast<std::int32_t>(before.fighters.size()),
                         static_cast<std::int32_t>(after.fighters.size()),
                         "All fighters survive");
-    std::set<RegistryEntityHandle> seen;
+    std::set<EntityUniqueId> seen;
     std::int32_t offset{};
     auto const count{static_cast<std::int32_t>(after.capitals.size())};
     for (std::int32_t i{}; i < count; ++i) {
@@ -184,7 +185,7 @@ void run_worldless_fighter_handles(tests::SimulationFixture const& config,
     auto const& fighters{harness.get_simulation().get_fighters()};
     std::vector<RegistryEntityHandle> destroyed{};
     std::vector<RegistryEntityHandle> kept{};
-    std::vector<RegistryEntityHandle> green_fighters_before_capital_kill{};
+    std::vector<EntityUniqueId> green_fighters_before_capital_kill{};
     auto initial_checked{false};
     auto fighter_kill_checked{scenario == FighterHandlesScenario::KillCapital};
     auto capital_kill_checked{scenario == FighterHandlesScenario::KillFightersOnly};
@@ -196,7 +197,7 @@ void run_worldless_fighter_handles(tests::SimulationFixture const& config,
                             fighters.get_num_instances(),
                             "Every capital spawns its fighter slots");
         tests::expect_equal(expected_fighters,
-                            static_cast<std::int32_t>(capitals.get_fighter_handles().size()),
+                            static_cast<std::int32_t>(capitals.get_fighter_ids().size()),
                             "Capital-owned and simulation fighter counts match");
         for (std::int32_t i{}; i < capitals.get_num_instances(); ++i) {
             tests::expect_not_equal(harness.get_registry().get_current_id(capitals.get_handle(i)),
@@ -213,9 +214,12 @@ void run_worldless_fighter_handles(tests::SimulationFixture const& config,
     auto next_time{0.4};
     if (scenario != FighterHandlesScenario::KillCapital) {
         harness.timeline.at(next_time, [&] {
-            auto const handles{capitals.get_fighter_handles()};
-            for (std::int32_t i{}; i < static_cast<std::int32_t>(handles.size()); ++i) {
-                (i % 2 == 0 ? destroyed : kept).push_back(handles[i]);
+            auto const ids{capitals.get_fighter_ids()};
+            auto const count{static_cast<std::int32_t>(ids.size())};
+            for (std::int32_t i{}; i < count; ++i) {
+                auto const row{
+                    harness.get_simulation().get_agent_accessor().indexes().find(ids[i])};
+                (i % 2 == 0 ? destroyed : kept).push_back(fighters.get_handles()[row]);
             }
             harness.queue_kills(std::span<RegistryEntityHandle const>{
                 destroyed.data(),
@@ -227,7 +231,7 @@ void run_worldless_fighter_handles(tests::SimulationFixture const& config,
                                 fighters.get_num_instances(),
                                 "Killed fighters are removed from the simulation");
             tests::expect_equal(static_cast<std::int32_t>(kept.size()),
-                                static_cast<std::int32_t>(capitals.get_fighter_handles().size()),
+                                static_cast<std::int32_t>(capitals.get_fighter_ids().size()),
                                 "Killed fighters are removed from capital ownership");
             for (auto const handle : destroyed) {
                 tests::expect_true(harness.get_registry().is_valid_dead(handle),
@@ -242,9 +246,9 @@ void run_worldless_fighter_handles(tests::SimulationFixture const& config,
         harness.timeline.at(next_time, [&] {
             auto const main_index{capitals.find_first_index_on_team(Team::Green)};
             assert(main_index.has_value());
-            auto const owned{capitals.get_fighter_handles(*main_index)};
+            auto const owned{capitals.get_fighter_ids(*main_index)};
             green_fighters_before_capital_kill =
-                std::vector<RegistryEntityHandle>{owned.begin(), owned.end()};
+                std::vector<EntityUniqueId>{owned.begin(), owned.end()};
             auto const id{capitals.get_target_id(*main_index)};
             auto const row{harness.get_registry().get_history_index(id)};
             auto const history{harness.get_registry().get_unique_entities()};
@@ -258,16 +262,18 @@ void run_worldless_fighter_handles(tests::SimulationFixture const& config,
             auto const main_index{capitals.find_first_index_on_team(Team::Green)};
             tests::expect_true(main_index.has_value(), "Green capital survives");
             if (main_index.has_value()) {
-                auto const remaining{capitals.get_fighter_handles(*main_index)};
+                auto const remaining{capitals.get_fighter_ids(*main_index)};
                 tests::expect_equal(
                     static_cast<std::int32_t>(green_fighters_before_capital_kill.size()),
                     static_cast<std::int32_t>(remaining.size()),
                     "Surviving capital keeps its fighters");
-                for (auto const handle : remaining) {
+                for (auto const id : remaining) {
                     tests::expect_true(
-                        std::ranges::contains(green_fighters_before_capital_kill, handle),
+                        std::ranges::contains(green_fighters_before_capital_kill, id),
                         "Surviving fighter retains capital ownership");
-                    tests::expect_true(fighters.get_target_id(handle).is_valid(),
+                    auto const index{
+                        harness.get_simulation().get_agent_accessor().indexes().find(id)};
+                    tests::expect_true(fighters.get_target_ids()[index].is_valid(),
                                        "Surviving fighter retargets");
                 }
             }

@@ -75,7 +75,7 @@
     (member fighter_spawn_cooldowns array float)
     (member teams array @native_team)
     (member healths array @native_health)
-    (member fighter_handle_spans array @native_index_span)
+    (member fighter_id_spans array @native_index_span)
     (member target_ids array @native_unique_id)
     (single-allocation SingleAllocationCapitalEntityData)))
 

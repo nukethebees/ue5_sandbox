@@ -152,15 +152,14 @@ auto Sim::is_valid(RegistryEntityHandle const handle) const noexcept -> bool {
     return handle.is_valid() &&
            std::ranges::find(entities.handles, handle) != entities.handles.end();
 }
-auto Sim::get_fighter_handles(std::int32_t const index) const noexcept
-    -> std::span<RegistryEntityHandle const> {
+auto Sim::get_fighter_ids(std::int32_t const index) const noexcept
+    -> std::span<EntityUniqueId const> {
     auto const entities{this->entities.get_const_view().columns()};
-    return get_fighter_handles(entities.fighter_handle_spans[index]);
+    return get_fighter_ids(entities.fighter_id_spans[index]);
 }
-auto Sim::get_fighter_handles(IndexSpan const span) const noexcept
-    -> std::span<RegistryEntityHandle const> {
-    return get_fighter_handles().subspan(static_cast<std::size_t>(span.offset),
-                                         static_cast<std::size_t>(span.count));
+auto Sim::get_fighter_ids(IndexSpan const span) const noexcept -> std::span<EntityUniqueId const> {
+    return get_fighter_ids().subspan(static_cast<std::size_t>(span.offset),
+                                     static_cast<std::size_t>(span.count));
 }
 auto Sim::get_team(RegistryEntityHandle const handle) const noexcept -> Team {
     auto const entities{this->entities.get_const_view().columns()};
@@ -351,15 +350,18 @@ void Sim::queue_fighter_spawns() {
             entities.fighter_spawn_cooldowns[capital_index];
     }
 }
-void Sim::refresh_fighter_handles() {
+void Sim::refresh_fighter_ids() {
     auto const entities{this->entities.get_view().columns()};
-    auto const handles{fighters_interface.get_handles()};
+    auto const ids{fighters_interface.get_entity_ids()};
     auto const parents{fighters_interface.get_parent_ids()};
     auto const healths{fighters_interface.get_healths()};
     auto const capital_count{entities.num()};
-    auto const fighter_count{handles.size()};
-    std::vector<std::int32_t> counts(static_cast<std::size_t>(capital_count));
-    std::vector<std::int32_t> owners(fighter_count, -1);
+    auto const fighter_count{ids.size()};
+    ml::FrameArray<std::int32_t> counts{&frame_memory_resource};
+    ml::FrameArray<std::int32_t> owners{&frame_memory_resource};
+    counts.set_num(capital_count);
+    owners.set_num(static_cast<std::int32_t>(fighter_count));
+    std::ranges::fill(owners, -1);
     for (std::size_t index{}; index < fighter_count; ++index) {
         if (is_dead(healths[index])) {
             continue;
@@ -377,14 +379,14 @@ void Sim::refresh_fighter_handles() {
     std::int32_t offset{};
     for (std::int32_t index{}; index < capital_count; ++index) {
         auto const count{counts[index]};
-        entities.fighter_handle_spans[index] = {offset, count};
+        entities.fighter_id_spans[index] = {offset, count};
         counts[index] = offset;
         offset += count;
     }
-    fighter_handles.resize(static_cast<std::size_t>(offset));
+    fighter_ids.resize(static_cast<std::size_t>(offset));
     for (std::size_t index{}; index < fighter_count; ++index) {
         if (owners[index] >= 0) {
-            fighter_handles[counts[owners[index]]++] = handles[index];
+            fighter_ids[counts[owners[index]]++] = ids[index];
         }
     }
 }
@@ -400,14 +402,13 @@ void Sim::queue_fighter_orders() {
     fighter_order_queue.reset();
     for (std::int32_t capital_index{}; capital_index < n_capitals; ++capital_index) {
         auto const capital_target{entities.target_ids[capital_index]};
-        auto const span{entities.fighter_handle_spans[capital_index]};
+        auto const span{entities.fighter_id_spans[capital_index]};
         auto const end{span.end()};
         assert(span.offset >= 0 && span.count >= 0);
-        assert(static_cast<std::size_t>(end) <= fighter_handles.size());
+        assert(static_cast<std::size_t>(end) <= fighter_ids.size());
 
         for (auto index{span.start()}; index < end; ++index) {
-            auto const fighter{fighter_handles[static_cast<std::size_t>(index)]};
-            auto const fighter_id{entity_registry.get_current_id(fighter)};
+            auto const fighter_id{fighter_ids[static_cast<std::size_t>(index)]};
             if (!capital_target.is_valid()) {
                 fighter_order_queue.add(fighter_id,
                                         FighterOrder{.task = 1, .target = 1},

@@ -122,10 +122,10 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
 
     simulation.advance(simulation.get_clock().get_tick_period());
     auto const& capital_simulation{simulation.get_capital_ships()};
-    tests::expect_equal(static_cast<std::int32_t>(capital_simulation.get_fighter_handles(0).size()),
+    tests::expect_equal(static_cast<std::int32_t>(capital_simulation.get_fighter_ids(0).size()),
                         4,
                         "First capital owns its full accepted wave");
-    tests::expect_equal(static_cast<std::int32_t>(capital_simulation.get_fighter_handles(1).size()),
+    tests::expect_equal(static_cast<std::int32_t>(capital_simulation.get_fighter_ids(1).size()),
                         2,
                         "Second capital owns only its accepted prefix");
 
@@ -142,11 +142,10 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
                                                    capital_damage.get_const_view());
     parent_death_simulation.advance(parent_death_simulation.get_clock().get_tick_period());
     parent_death_simulation.advance(parent_death_simulation.get_clock().get_tick_period());
-    tests::expect_equal(
-        static_cast<std::int32_t>(
-            parent_death_simulation.get_capital_ships().get_fighter_handles(0).size()),
-        1,
-        "A pending launch from a dead parent is cancelled, not adopted");
+    tests::expect_equal(static_cast<std::int32_t>(
+                            parent_death_simulation.get_capital_ships().get_fighter_ids(0).size()),
+                        1,
+                        "A pending launch from a dead parent is cancelled, not adopted");
 }
 
 TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
@@ -171,7 +170,7 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
                         "Dead fighter is removed at the end of Resolution");
     EXPECT_EQ(simulation.get_agent_indexes().find(original_id), -1);
     EXPECT_FALSE(simulation.get_agent_accessor().read(original_id));
-    EXPECT_TRUE(simulation.get_capital_ships().get_fighter_handles(0).empty());
+    EXPECT_TRUE(simulation.get_capital_ships().get_fighter_ids(0).empty());
     FighterOrderQueue stale_orders;
     stale_orders.add(original_id, FighterOrder{.task = 1}, FighterTask::Standby, {});
     LevelSimTestAccess::queue_fighter_orders(simulation, stale_orders);

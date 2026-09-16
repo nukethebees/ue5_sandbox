@@ -17,9 +17,6 @@
     (method get_num_instances "std::int32_t"
       :const true
       :noexcept true)
-    (method get_handles "std::span<RegistryEntityHandle const>"
-      :const true
-      :noexcept true)
     (method get_parent_ids "std::span<EntityUniqueId const>" :const true)
     (method get_entity_ids "std::span<EntityUniqueId const>" :const true)
     (method get_healths "std::span<Health const>" :const true)

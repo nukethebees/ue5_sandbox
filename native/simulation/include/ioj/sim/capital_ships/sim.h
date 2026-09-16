@@ -64,7 +64,7 @@ struct Sim {
     auto get_read_view() const -> CapitalReadView {
         return {entities.get_const_view().columns(),
                 &entity_registry,
-                get_fighter_handles(),
+                get_fighter_ids(),
                 frame_changes_,
                 deaths_,
                 &agents_};
@@ -87,19 +87,17 @@ struct Sim {
     }
     auto get_fighter_spawn_slots() const noexcept -> std::int32_t;
     auto get_fighters_spawned() const noexcept -> std::int32_t { return fighters_spawned; }
-    auto get_fighter_handles() const noexcept -> std::span<RegistryEntityHandle const> {
-        return {fighter_handles.data(), fighter_handles.size()};
+    auto get_fighter_ids() const noexcept -> std::span<EntityUniqueId const> {
+        return {fighter_ids.data(), fighter_ids.size()};
     }
-    auto get_fighter_handle_spans() const noexcept -> std::span<IndexSpan const> {
-        return entities.get_const_view().fighter_handle_spans();
+    auto get_fighter_id_spans() const noexcept -> std::span<IndexSpan const> {
+        return entities.get_const_view().fighter_id_spans();
     }
-    auto get_fighter_handle_span(std::int32_t index) const noexcept -> IndexSpan {
-        return entities.get_const_view().fighter_handle_spans()[index];
+    auto get_fighter_id_span(std::int32_t index) const noexcept -> IndexSpan {
+        return entities.get_const_view().fighter_id_spans()[index];
     }
-    auto get_fighter_handles(std::int32_t index) const noexcept
-        -> std::span<RegistryEntityHandle const>;
-    auto get_fighter_handles(IndexSpan span) const noexcept
-        -> std::span<RegistryEntityHandle const>;
+    auto get_fighter_ids(std::int32_t index) const noexcept -> std::span<EntityUniqueId const>;
+    auto get_fighter_ids(IndexSpan span) const noexcept -> std::span<EntityUniqueId const>;
     auto get_target_id(std::int32_t index) const noexcept -> EntityUniqueId {
         return entities.get_const_view().target_ids()[index];
     }
@@ -149,7 +147,7 @@ struct Sim {
     // Fighter spawning
     /* **************************************** */
     void queue_fighter_spawns();
-    void refresh_fighter_handles();
+    void refresh_fighter_ids();
 
     /* **************************************** */
     // Orders
@@ -192,7 +190,7 @@ struct Sim {
 
     fighters::CommandInterface fighters_interface;
     std::vector<EntityUniqueId> fighter_self_destruct_requests_;
-    std::vector<RegistryEntityHandle> fighter_handles;
+    std::vector<EntityUniqueId> fighter_ids;
     std::int32_t fighters_spawned{0};
     std::int32_t diagnostic_spawn_reports{};
 

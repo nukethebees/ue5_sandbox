@@ -328,6 +328,7 @@ void LevelSim::advance(time_type const dt) {
             turrets_phase_.prepare_tick(tick_period);
             spinners_phase_.prepare_tick(tick_period);
             rebuild_agent_indexes();
+            capital_ships_simulation_.refresh_fighter_ids();
             query_manager_.get_collision_system().refresh_queries();
         }
         frame_memory_.reclaim();
@@ -338,7 +339,6 @@ void LevelSim::advance(time_type const dt) {
         {
             SANDBOX_PROFILE_SCOPE("Sandbox::LevelSim::Thinking");
             clock_.phase = SimulationPhase::Thinking;
-            capital_ships_simulation_.refresh_fighter_handles();
             turrets_phase_.think(tick_period);
             capital_ships_phase_.think(tick_period);
             fighters_phase_.think(tick_period);
@@ -428,7 +428,7 @@ void LevelSim::advance(time_type const dt) {
             turrets_phase_.cleanup_entities();
             lasers_phase_.cleanup_entities();
             rebuild_agent_indexes();
-            capital_ships_simulation_.refresh_fighter_handles();
+            capital_ships_simulation_.refresh_fighter_ids();
             clock_.phase = SimulationPhase::Resolution;
 
             mission_manager_.mission_tick();

@@ -30,14 +30,14 @@ struct EntityFrameChange {
 struct CapitalReadView {
     CapitalEntityData::ConstView entities;
     EntityRegistry const* registry{};
-    std::span<RegistryEntityHandle const> fighter_handles;
+    std::span<EntityUniqueId const> fighter_ids;
     std::span<EntityFrameChange const> changes;
     std::span<CapitalDeathEvent const> deaths;
     AgentAccessor const* agents{};
     auto get_num_instances() const -> std::int32_t { return entities.num(); }
-    auto get_fighter_handles(std::int32_t index) const -> std::span<RegistryEntityHandle const> {
-        auto const span{entities.fighter_handle_spans[index]};
-        return fighter_handles.subspan(span.offset, span.count);
+    auto get_fighter_ids(std::int32_t index) const -> std::span<EntityUniqueId const> {
+        auto const span{entities.fighter_id_spans[index]};
+        return fighter_ids.subspan(span.offset, span.count);
     }
 };
 struct FighterReadView {

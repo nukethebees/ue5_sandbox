@@ -42,10 +42,6 @@ class CommandInterface {
         return fighters.get_num_instances();
     }
 
-    std::span<RegistryEntityHandle const> get_handles() const noexcept {
-        return fighters.get_handles();
-    }
-
     std::span<EntityUniqueId const> get_parent_ids() const {
         return fighters.get_parent_ids();
     }

@@ -34,7 +34,7 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
                                             capitals.get_target_id(0),
                                             "Capital initially retains its configured target");
                         tests::expect_greater(
-                            static_cast<std::int32_t>(capitals.get_fighter_handles(0).size()),
+                            static_cast<std::int32_t>(capitals.get_fighter_ids(0).size()),
                             std::int32_t{0},
                             "Main capital spawned fighters");
                         harness.queue_kills(std::array{first_target});
@@ -47,9 +47,11 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
                                        second_target !=
                                            harness.get_registry().get_current_id(first_target),
                                    "Capital retargets after its first target dies");
-                for (auto const fighter_handle : capitals.get_fighter_handles(0)) {
+                for (auto const fighter_id : capitals.get_fighter_ids(0)) {
+                    auto const index{
+                        harness.get_simulation().get_agent_accessor().indexes().find(fighter_id)};
                     tests::expect_equal(second_target,
-                                        fighters.get_target_id(fighter_handle),
+                                        fighters.get_target_ids()[index],
                                         "Fighter follows the replacement capital target");
                 }
                 auto const enemies{harness.get_registry().get_handles_not_in_team(Team::Green)};
