@@ -20,27 +20,46 @@ auto parameter_type(ExpandedVariant const& expanded, std::size_t const operand_i
 auto parameters(ExpandedVariant const& expanded) -> std::string {
     std::string result;
     for (std::size_t index{}; index < expanded.operation->operands.size(); ++index) {
-        if (!result.empty()) {
-            result += ", ";
+        for (auto const& name : operand_names(expanded, index)) {
+            if (!result.empty()) {
+                result += ", ";
+            }
+            result += parameter_type(expanded, index) + " " + name;
         }
-        result += parameter_type(expanded, index) + " " + expanded.operation->operands[index].name;
     }
     if (expanded.variant->kind == VariantKind::out_of_place) {
-        result += ", std::span<" + standard_type(expanded.type) + "> " + expanded.operation->output;
+        for (auto const& name : output_names(expanded)) {
+            if (!result.empty()) {
+                result += ", ";
+            }
+            result += "std::span<" + standard_type(expanded.type) + "> " + name;
+        }
     }
     return result;
 }
 
 auto signature_key(ExpandedVariant const& expanded) -> std::string {
     auto result{expanded.variant->public_name + "("};
+    bool first{true};
     for (std::size_t index{}; index < expanded.operation->operands.size(); ++index) {
-        if (index != 0) {
-            result += ",";
+        for (auto const& unused : operand_names(expanded, index)) {
+            static_cast<void>(unused);
+            if (!first) {
+                result += ",";
+            }
+            first = false;
+            result += parameter_type(expanded, index);
         }
-        result += parameter_type(expanded, index);
     }
     if (expanded.variant->kind == VariantKind::out_of_place) {
-        result += ",std::span<" + standard_type(expanded.type) + ">";
+        for (auto const& unused : output_names(expanded)) {
+            static_cast<void>(unused);
+            if (!first) {
+                result += ",";
+            }
+            first = false;
+            result += "std::span<" + standard_type(expanded.type) + ">";
+        }
     }
     return result + ")";
 }
@@ -57,14 +76,17 @@ auto raw_parameter_type(ExpandedVariant const& expanded, std::size_t const opera
 auto raw_parameters(ExpandedVariant const& expanded) -> std::string {
     std::string result;
     for (std::size_t index{}; index < expanded.operation->operands.size(); ++index) {
-        if (!result.empty()) {
-            result += ", ";
+        for (auto const& name : operand_names(expanded, index)) {
+            if (!result.empty()) {
+                result += ", ";
+            }
+            result += raw_parameter_type(expanded, index) + " " + name;
         }
-        result +=
-            raw_parameter_type(expanded, index) + " " + expanded.operation->operands[index].name;
     }
     if (expanded.variant->kind == VariantKind::out_of_place) {
-        result += ", " + standard_type(expanded.type) + "* " + expanded.operation->output;
+        for (auto const& name : output_names(expanded)) {
+            result += ", " + standard_type(expanded.type) + "* " + name;
+        }
     }
     return result + ", std::size_t const count";
 }
@@ -72,24 +94,33 @@ auto raw_parameters(ExpandedVariant const& expanded) -> std::string {
 auto arguments(ExpandedVariant const& expanded) -> std::string {
     std::string result;
     for (std::size_t index{}; index < expanded.operation->operands.size(); ++index) {
-        if (!result.empty()) {
-            result += ", ";
+        for (auto const& name : operand_names(expanded, index)) {
+            if (!result.empty()) {
+                result += ", ";
+            }
+            result += expanded.storage[index] == StorageKind::array ? name + ".data()" : name;
         }
-        auto const& name{expanded.operation->operands[index].name};
-        result += expanded.storage[index] == StorageKind::array ? name + ".data()" : name;
     }
     if (expanded.variant->kind == VariantKind::out_of_place) {
-        result += ", " + expanded.operation->output + ".data()";
+        for (auto const& name : output_names(expanded)) {
+            result += ", " + name + ".data()";
+        }
     }
     return result + ", count";
 }
 
-void append_overlap_check(std::string& output, std::string const& lhs, std::string const& rhs) {
-    output += "    require(!ranges_overlap(" + lhs + ".data(), " + lhs + ".size_bytes(), " + rhs +
-              ".data(), " + rhs + ".size_bytes()));\n";
+void append_overlap_check(std::string& output,
+                          std::string const& detail_namespace,
+                          std::string const& lhs,
+                          std::string const& rhs) {
+    output += "    " + detail_namespace + "::require(!" + detail_namespace + "::ranges_overlap(" +
+              lhs + ".data(), " + lhs + ".size_bytes(), " + rhs + ".data(), " + rhs +
+              ".size_bytes()));\n";
 }
 
-void append_public_definition(std::string& output, ExpandedVariant const& expanded) {
+void append_public_definition(std::string& output,
+                              ExpandedVariant const& expanded,
+                              std::string const& detail_namespace) {
     output +=
         "void " + expanded.variant->public_name + "(" + parameters(expanded) + ") noexcept {\n";
     auto const source{count_source(expanded)};
@@ -97,29 +128,40 @@ void append_public_definition(std::string& output, ExpandedVariant const& expand
     auto const arrays{array_names(expanded)};
     for (auto const& array : arrays) {
         if (array != source) {
-            output += "    require(" + array + ".size() == count);\n";
+            output += "    " + detail_namespace + "::require(" + array + ".size() == count);\n";
         }
     }
-    if (expanded.operation->aliasing == Aliasing::pairwise_disjoint) {
+    if (expanded.operation->kind == OperationKind::component_map ||
+        expanded.operation->aliasing == Aliasing::pairwise_disjoint) {
         for (std::size_t lhs{}; lhs < arrays.size(); ++lhs) {
             for (std::size_t rhs{lhs + 1}; rhs < arrays.size(); ++rhs) {
-                append_overlap_check(output, arrays[lhs], arrays[rhs]);
+                append_overlap_check(output, detail_namespace, arrays[lhs], arrays[rhs]);
             }
         }
     } else if (expanded.variant->kind == VariantKind::out_of_place) {
-        for (auto const& array : arrays) {
-            if (array != expanded.operation->output) {
-                append_overlap_check(output, expanded.operation->output, array);
+        for (auto const& output_name : output_names(expanded)) {
+            for (auto const& array : arrays) {
+                if (array != output_name) {
+                    append_overlap_check(output, detail_namespace, output_name, array);
+                }
             }
         }
     } else {
-        for (auto const& array : arrays) {
-            if (array != *expanded.variant->target) {
-                append_overlap_check(output, *expanded.variant->target, array);
+        auto const target_index{static_cast<std::size_t>(
+            std::ranges::find_if(
+                expanded.operation->operands,
+                [&](auto const& operand) { return operand.name == *expanded.variant->target; }) -
+            expanded.operation->operands.begin())};
+        for (auto const& target : operand_names(expanded, target_index)) {
+            for (auto const& array : arrays) {
+                if (array != target) {
+                    append_overlap_check(output, detail_namespace, target, array);
+                }
             }
         }
     }
-    output += "    " + raw_name(expanded) + "(" + arguments(expanded) + ");\n}\n\n";
+    output += "    " + detail_namespace + "::" + raw_name(expanded) + "(" + arguments(expanded) +
+              ");\n}\n\n";
 }
 
 }
@@ -153,8 +195,10 @@ auto render_standard_source(KernelModule const& module,
         })) {
         result += "#include <limits>\n";
     }
+    auto const detail_namespace{module.name + "_detail"};
     result +=
-        "\nnamespace {\n\n[[noreturn]] void invariant_failed() noexcept { std::abort(); }\n\n"
+        "\nnamespace " + detail_namespace +
+        " {\n\n[[noreturn]] void invariant_failed() noexcept { std::abort(); }\n\n"
         "void require(bool const condition) noexcept {\n"
         "    if (!condition) {\n        invariant_failed();\n    }\n}\n\n"
         "auto ranges_overlap(void const* const lhs, std::size_t const lhs_size,\n"
@@ -168,19 +212,35 @@ auto render_standard_source(KernelModule const& module,
     for (auto const& expanded : variants) {
         result += "void " + raw_name(expanded) + "(" + raw_parameters(expanded) +
                   ") noexcept {\n    for (std::size_t i{}; i < count; ++i) {\n";
-        auto const destination{expanded.variant->kind == VariantKind::in_place
-                                   ? *expanded.variant->target
-                                   : expanded.operation->output};
-        result += "        " + destination + "[i] = " +
-                  render_expression(expanded.operation->expression,
-                                    *expanded.operation,
-                                    expanded.storage,
-                                    standard_type(expanded.type)) +
-                  ";\n    }\n}\n\n";
+        auto const destinations{
+            expanded.variant->kind == VariantKind::in_place
+                ? operand_names(expanded,
+                                static_cast<std::size_t>(
+                                    std::ranges::find_if(expanded.operation->operands,
+                                                         [&](auto const& operand) {
+                                                             return operand.name ==
+                                                                  *expanded.variant->target;
+                                                         }) -
+                                    expanded.operation->operands.begin()))
+                : output_names(expanded)};
+        for (std::size_t component_index{}; component_index < destinations.size();
+             ++component_index) {
+            auto const component{expanded.operation->kind == OperationKind::component_map
+                                     ? expanded.operation->components[component_index]
+                                     : std::string{}};
+            result += "        " + destinations[component_index] + "[i] = " +
+                      render_expression(expanded.operation->expression,
+                                        *expanded.operation,
+                                        expanded.storage,
+                                        standard_type(expanded.type),
+                                        component) +
+                      ";\n";
+        }
+        result += "    }\n}\n\n";
     }
     result += "}\n\nnamespace " + emission.cpp_namespace + " {\n\n";
     for (auto const& expanded : variants) {
-        append_public_definition(result, expanded);
+        append_public_definition(result, expanded, detail_namespace);
     }
     return result + "}\n";
 }

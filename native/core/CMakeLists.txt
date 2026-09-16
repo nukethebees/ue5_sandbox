@@ -14,6 +14,7 @@ target_sources(native-core PRIVATE
   include/sandbox/core/tick_countdown.h
   include/sandbox/core/vector_normalization.h
   src/generated/array_math_kernels.cpp
+  src/generated/vector_lerp_kernels.cpp
   src/array_math.cpp
   src/array_utils.cpp
   src/countdown.cpp
@@ -46,6 +47,7 @@ add_executable(native-core-tests)
 
 target_sources(native-core-tests PRIVATE
   tests/generated/array_math_kernels_tests.cpp
+  tests/vector_lerp_tests.cpp
   tests/array_utils_tests.cpp
   tests/container_tests.cpp
   tests/countdown_tests.cpp
@@ -72,6 +74,33 @@ target_link_libraries(native-core-tests PRIVATE GTest::gtest_main)
 
 add_test(NAME native-core-tests COMMAND native-core-tests)
 set_tests_properties(native-core-tests PROPERTIES LABELS "unit;all;native-core")
+
+if(SANDBOX_KERNEL_BENCHMARKS)
+  add_executable(native-core-vector-lerp-benchmarks)
+  target_sources(native-core-vector-lerp-benchmarks PRIVATE benchmarks/vector_lerp_benchmarks.cpp)
+  target_compile_features(native-core-vector-lerp-benchmarks PRIVATE cxx_std_23)
+  target_link_libraries(native-core-vector-lerp-benchmarks PRIVATE
+    native-core
+    benchmark::benchmark
+    benchmark::benchmark_main
+    sandbox::warnings_as_errors
+  )
+
+  add_custom_target(native-core-vector-lerp-benchmark-report
+    COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/out/benchmarks/native-core"
+    COMMAND ${benchmark_activity_command} native-core-vector-lerp-benchmarks
+      --benchmark_repetitions=7
+      --benchmark_min_time=0.05s
+      --benchmark_enable_random_interleaving=true
+      --benchmark_display_aggregates_only=true
+      "--benchmark_out=${PROJECT_SOURCE_DIR}/out/benchmarks/native-core/vector-lerp-results.json"
+      --benchmark_out_format=json
+    DEPENDS native-core-vector-lerp-benchmarks
+    COMMENT "Benchmarking fused native 3D lerp against three 1D lerps"
+    USES_TERMINAL
+    VERBATIM
+  )
+endif()
 
 add_library(native-core-static-string-view-reject-automatic OBJECT EXCLUDE_FROM_ALL)
 target_sources(native-core-static-string-view-reject-automatic PRIVATE

@@ -96,7 +96,9 @@
       :profile native-x86-simd-lab
       :output-root (build-path "native/lispb/kernel/native-simd-generated")))
   (kernel native-core-kernels
-    :sources ("Plugins/SandboxCore/Source/SandboxCore/Kernels/array_math.lispb")
+    :sources (
+      "Plugins/SandboxCore/Source/SandboxCore/Kernels/array_math.lispb"
+      "native/core/Kernels/vector_lerp.lispb")
     (emission kernel-native-core
       :profile standard
       :output-root (project-path "native/core")))

@@ -86,6 +86,7 @@ set(KERNEL_PRODUCTION_ROOT
   "${PROJECT_SOURCE_DIR}/Plugins/SandboxCore/Source/SandboxCore"
 )
 set(KERNEL_PRODUCTION_DOCUMENT "${KERNEL_PRODUCTION_ROOT}/Kernels/array_math.lispb")
+set(KERNEL_NATIVE_VECTOR_LERP_DOCUMENT "${PROJECT_SOURCE_DIR}/native/core/Kernels/vector_lerp.lispb")
 set(KERNEL_CANDIDATE_DOCUMENT "${KERNEL_PRODUCTION_ROOT}/Kernels/candidate_math.lispb")
 
 set(KERNEL_STANDARD_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/standard-generated")
@@ -170,6 +171,7 @@ add_custom_target(generate-native-core-kernels
     lispb
     "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     "${KERNEL_PRODUCTION_DOCUMENT}"
+    "${KERNEL_NATIVE_VECTOR_LERP_DOCUMENT}"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Generating committed native-core kernels"
   USES_TERMINAL
@@ -185,6 +187,7 @@ add_custom_target(check-generated-native-core-kernels
     lispb
     "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     "${KERNEL_PRODUCTION_DOCUMENT}"
+    "${KERNEL_NATIVE_VECTOR_LERP_DOCUMENT}"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Checking committed native-core kernels"
   USES_TERMINAL

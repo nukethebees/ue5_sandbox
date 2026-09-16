@@ -54,6 +54,27 @@ constexpr std::string_view standard_source = R"(
       (in-place lhs multiply_in_place))))
 )";
 
+constexpr std::string_view component_standard_source = R"(
+(kernel-module vector_lerp
+  (emit standard
+    (header "standard/VectorLerp.h")
+    (source "standard/VectorLerp.cpp")
+    (header-include "standard/VectorLerp.h")
+    (namespace ml::standard))
+  (type-set floating float)
+  (component-map lerp_3d
+    (components x y z)
+    (types floating)
+    (component-operand from array)
+    (component-operand to array)
+    (operand alpha (array scalar))
+    (output out)
+    (expression (+ from (* alpha (- to from))))
+    (variants
+      (out-of-place lerp_3d)
+      (in-place from lerp_3d_in_place))))
+)";
+
 constexpr std::string_view avx2_lab_source = R"(
 (kernel-module arithmetic
   (emit unreal-avx2-lab
@@ -190,6 +211,45 @@ TEST(KernelRenderer, GeneratesStandardLibraryBindingsAndTests) {
     EXPECT_TRUE(files[2].content.contains("std::array<float, Count> expected{"));
     EXPECT_TRUE(files[2].content.contains("EXPECT_FLOAT_EQ("));
     EXPECT_FALSE(files[2].content.contains("expected[i] ="));
+}
+
+TEST(KernelRenderer, GeneratesFusedComponentMapBindings) {
+    auto const document{
+        parse("test.lispb", codegen::sexpr::read_forms("test.lispb", component_standard_source))};
+    auto const files{render(document.modules[0], Profile::standard)};
+
+    ASSERT_EQ(files.size(), 2);
+    EXPECT_TRUE(files[0].content.contains("std::span<float const> from_x"));
+    EXPECT_TRUE(files[0].content.contains("std::span<float const> from_y"));
+    EXPECT_TRUE(files[0].content.contains("std::span<float const> from_z"));
+    EXPECT_TRUE(files[0].content.contains("void lerp_3d_in_place("));
+    EXPECT_TRUE(
+        files[1].content.contains("from_x[i] = (from_x[i] + (alpha * (to_x[i] - from_x[i])));"));
+    EXPECT_TRUE(
+        files[1].content.contains("from_y[i] = (from_y[i] + (alpha * (to_y[i] - from_y[i])));"));
+    EXPECT_TRUE(
+        files[1].content.contains("from_z[i] = (from_z[i] + (alpha * (to_z[i] - from_z[i])));"));
+}
+
+TEST(KernelParser, RejectsInvalidComponentMapDeclarations) {
+    auto duplicate_component_source{std::string{component_standard_source}};
+    duplicate_component_source.replace(duplicate_component_source.find("(components x y z)"),
+                                       std::string{"(components x y z)"}.size(),
+                                       "(components x x)");
+
+    EXPECT_THROW(
+        static_cast<void>(parse(
+            "test.lispb", codegen::sexpr::read_forms("test.lispb", duplicate_component_source))),
+        codegen::sexpr::SourceError);
+
+    auto scalar_target_source{std::string{component_standard_source}};
+    scalar_target_source.replace(scalar_target_source.find("(in-place from lerp_3d_in_place)"),
+                                 std::string{"(in-place from lerp_3d_in_place)"}.size(),
+                                 "(in-place alpha lerp_3d_in_place)");
+
+    EXPECT_THROW(static_cast<void>(parse(
+                     "test.lispb", codegen::sexpr::read_forms("test.lispb", scalar_target_source))),
+                 codegen::sexpr::SourceError);
 }
 
 TEST(KernelRenderer, GeneratesOneSelectedAvx2LabVariant) {
@@ -567,12 +627,15 @@ TEST(KernelRenderer, StandardPairwiseDisjointChecksEveryArray) {
     auto const document{parse("test.lispb", codegen::sexpr::read_forms("test.lispb", source))};
     auto const files{render(document.modules[0], Profile::standard)};
 
-    EXPECT_TRUE(files[1].content.contains(
-        "require(!ranges_overlap(lhs.data(), lhs.size_bytes(), rhs.data(), rhs.size_bytes()))"));
-    EXPECT_TRUE(files[1].content.contains(
-        "require(!ranges_overlap(lhs.data(), lhs.size_bytes(), out.data(), out.size_bytes()))"));
-    EXPECT_TRUE(files[1].content.contains(
-        "require(!ranges_overlap(rhs.data(), rhs.size_bytes(), out.data(), out.size_bytes()))"));
+    EXPECT_TRUE(
+        files[1].content.contains("arithmetic_detail::require(!arithmetic_detail::ranges_overlap("
+                                  "lhs.data(), lhs.size_bytes(), rhs.data(), rhs.size_bytes()))"));
+    EXPECT_TRUE(
+        files[1].content.contains("arithmetic_detail::require(!arithmetic_detail::ranges_overlap("
+                                  "lhs.data(), lhs.size_bytes(), out.data(), out.size_bytes()))"));
+    EXPECT_TRUE(
+        files[1].content.contains("arithmetic_detail::require(!arithmetic_detail::ranges_overlap("
+                                  "rhs.data(), rhs.size_bytes(), out.data(), out.size_bytes()))"));
 }
 
 TEST(KernelRenderer, RendersNamedConstantsForEachConcreteFloatingType) {

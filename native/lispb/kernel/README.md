@@ -32,11 +32,15 @@ vector3_group := "(" identifier identifier identifier identifier ")"
 type_set      := "(" "type-set" identifier concrete_type+ ")"
 concrete_type := "int32" | "uint32" | "float" | "double"
 map           := "(" "map" identifier map_item+ ")"
+component_map := "(" "component-map" identifier component_map_item+ ")"
 map_item      := types | operand | output | expression | variants | aliasing
+component_map_item := types | components | operand | component_operand | output | expression | variants | aliasing
 sum           := "(" "sum" identifier sum_item+ ")"
 sum_item      := types | operand | expression | aliasing
 types         := "(" "types" identifier ")"
 operand       := "(" "operand" identifier storage ")"
+component_operand := "(" "component-operand" identifier storage ")"
+components    := "(" "components" identifier identifier+ ")"
 storage       := "array" | "scalar" | "(" ("array" | "scalar")+ ")"
 output        := "(" "output" identifier ")"
 expression    := "(" "expression" expr ")"
@@ -56,6 +60,11 @@ initial reduction form is intentionally narrow: it accepts only `float` array op
 `pairwise-disjoint`, and is available only to `native-x86-simd-lab`. It is enough to describe a dot
 product without introducing arbitrary loop bodies, configurable identities, or a general reduction
 language.
+
+A `component-map` applies one expression to each named component within the same element loop.
+Component operands and output names are expanded as `<name>_<component>`; ordinary operands, such
+as a scalar or per-element alpha, are shared across those component assignments. Component maps are
+currently emitted only by the standard C++ profile.
 
 The default aliasing policy is `output-disjoint`: a separate output may not overlap an input, and
 an in-place target may not overlap another array operand. Read-only inputs may alias each other.

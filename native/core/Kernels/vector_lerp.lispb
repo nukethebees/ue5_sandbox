@@ -1,0 +1,32 @@
+(kernel-module vector_lerp
+  (emit standard
+    (header "include/sandbox/core/generated/vector_lerp_kernels.h")
+    (source "src/generated/vector_lerp_kernels.cpp")
+    (header-include "sandbox/core/generated/vector_lerp_kernels.h")
+    (namespace ml))
+
+  (type-set floating float double)
+
+  (component-map lerp_2d
+    (components x y)
+    (types floating)
+    (component-operand from array)
+    (component-operand to array)
+    (operand alpha (array scalar))
+    (output out)
+    (expression (+ from (* alpha (- to from))))
+    (variants
+      (out-of-place lerp_2d)
+      (in-place from lerp_2d_in_place)))
+
+  (component-map lerp_3d
+    (components x y z)
+    (types floating)
+    (component-operand from array)
+    (component-operand to array)
+    (operand alpha (array scalar))
+    (output out)
+    (expression (+ from (* alpha (- to from))))
+    (variants
+      (out-of-place lerp_3d)
+      (in-place from lerp_3d_in_place))))

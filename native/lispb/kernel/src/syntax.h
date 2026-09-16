@@ -16,7 +16,7 @@ enum class StorageKind { array, scalar };
 enum class Profile { unreal, standard, unreal_avx2_lab, native_x86_simd_lab };
 enum class ExpressionKind { reference, literal, constant, binary };
 enum class ConstantKind { nan, infinity, negative_infinity };
-enum class OperationKind { map, sum };
+enum class OperationKind { map, component_map, sum };
 enum class VariantKind { out_of_place, in_place, sum };
 enum class Aliasing { output_disjoint, pairwise_disjoint };
 enum class FloatingPointMode { strict, relaxed };
@@ -33,6 +33,7 @@ struct Operand {
     std::string name;
     std::vector<StorageKind> storage;
     SourceSpan span;
+    bool is_component{};
 };
 
 struct Variant {
@@ -47,6 +48,7 @@ struct Operation {
     std::string name;
     std::string type_set;
     std::vector<Operand> operands;
+    std::vector<std::string> components;
     std::string output;
     Expression expression;
     std::vector<Variant> variants;

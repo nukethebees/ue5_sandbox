@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <cstdlib>
 
-namespace {
+namespace array_math_detail {
 
 [[noreturn]] void invariant_failed() noexcept { std::abort(); }
 
@@ -376,495 +376,495 @@ namespace ml {
 
 void add_in_place(std::span<std::int32_t> data, std::int32_t value) noexcept {
     auto const count{data.size()};
-    add_int32_array_scalar_in_place_raw(data.data(), value, count);
+    array_math_detail::add_int32_array_scalar_in_place_raw(data.data(), value, count);
 }
 
 void add_in_place(std::span<float> data, float value) noexcept {
     auto const count{data.size()};
-    add_float_array_scalar_in_place_raw(data.data(), value, count);
+    array_math_detail::add_float_array_scalar_in_place_raw(data.data(), value, count);
 }
 
 void add_in_place(std::span<double> data, double value) noexcept {
     auto const count{data.size()};
-    add_double_array_scalar_in_place_raw(data.data(), value, count);
+    array_math_detail::add_double_array_scalar_in_place_raw(data.data(), value, count);
 }
 
 void subtract_in_place(std::span<std::int32_t> data, std::int32_t value) noexcept {
     auto const count{data.size()};
-    subtract_int32_array_scalar_in_place_raw(data.data(), value, count);
+    array_math_detail::subtract_int32_array_scalar_in_place_raw(data.data(), value, count);
 }
 
 void subtract_in_place(std::span<float> data, float value) noexcept {
     auto const count{data.size()};
-    subtract_float_array_scalar_in_place_raw(data.data(), value, count);
+    array_math_detail::subtract_float_array_scalar_in_place_raw(data.data(), value, count);
 }
 
 void subtract_in_place(std::span<double> data, double value) noexcept {
     auto const count{data.size()};
-    subtract_double_array_scalar_in_place_raw(data.data(), value, count);
+    array_math_detail::subtract_double_array_scalar_in_place_raw(data.data(), value, count);
 }
 
 void multiply(std::span<std::int32_t const> lhs, std::span<std::int32_t const> rhs, std::span<std::int32_t> out) noexcept {
     auto const count{lhs.size()};
-    require(rhs.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), lhs.data(), lhs.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), rhs.data(), rhs.size_bytes()));
-    multiply_int32_array_array_raw(lhs.data(), rhs.data(), out.data(), count);
+    array_math_detail::require(rhs.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), lhs.data(), lhs.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), rhs.data(), rhs.size_bytes()));
+    array_math_detail::multiply_int32_array_array_raw(lhs.data(), rhs.data(), out.data(), count);
 }
 
 void multiply(std::span<std::int32_t const> lhs, std::int32_t rhs, std::span<std::int32_t> out) noexcept {
     auto const count{lhs.size()};
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), lhs.data(), lhs.size_bytes()));
-    multiply_int32_array_scalar_raw(lhs.data(), rhs, out.data(), count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), lhs.data(), lhs.size_bytes()));
+    array_math_detail::multiply_int32_array_scalar_raw(lhs.data(), rhs, out.data(), count);
 }
 
 void multiply(std::span<float const> lhs, std::span<float const> rhs, std::span<float> out) noexcept {
     auto const count{lhs.size()};
-    require(rhs.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), lhs.data(), lhs.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), rhs.data(), rhs.size_bytes()));
-    multiply_float_array_array_raw(lhs.data(), rhs.data(), out.data(), count);
+    array_math_detail::require(rhs.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), lhs.data(), lhs.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), rhs.data(), rhs.size_bytes()));
+    array_math_detail::multiply_float_array_array_raw(lhs.data(), rhs.data(), out.data(), count);
 }
 
 void multiply(std::span<float const> lhs, float rhs, std::span<float> out) noexcept {
     auto const count{lhs.size()};
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), lhs.data(), lhs.size_bytes()));
-    multiply_float_array_scalar_raw(lhs.data(), rhs, out.data(), count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), lhs.data(), lhs.size_bytes()));
+    array_math_detail::multiply_float_array_scalar_raw(lhs.data(), rhs, out.data(), count);
 }
 
 void multiply(std::span<double const> lhs, std::span<double const> rhs, std::span<double> out) noexcept {
     auto const count{lhs.size()};
-    require(rhs.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), lhs.data(), lhs.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), rhs.data(), rhs.size_bytes()));
-    multiply_double_array_array_raw(lhs.data(), rhs.data(), out.data(), count);
+    array_math_detail::require(rhs.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), lhs.data(), lhs.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), rhs.data(), rhs.size_bytes()));
+    array_math_detail::multiply_double_array_array_raw(lhs.data(), rhs.data(), out.data(), count);
 }
 
 void multiply(std::span<double const> lhs, double rhs, std::span<double> out) noexcept {
     auto const count{lhs.size()};
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), lhs.data(), lhs.size_bytes()));
-    multiply_double_array_scalar_raw(lhs.data(), rhs, out.data(), count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), lhs.data(), lhs.size_bytes()));
+    array_math_detail::multiply_double_array_scalar_raw(lhs.data(), rhs, out.data(), count);
 }
 
 void multiply_in_place(std::span<std::int32_t> lhs, std::span<std::int32_t const> rhs) noexcept {
     auto const count{lhs.size()};
-    require(rhs.size() == count);
-    require(!ranges_overlap(lhs.data(), lhs.size_bytes(), rhs.data(), rhs.size_bytes()));
-    multiply_int32_array_array_in_place_raw(lhs.data(), rhs.data(), count);
+    array_math_detail::require(rhs.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(lhs.data(), lhs.size_bytes(), rhs.data(), rhs.size_bytes()));
+    array_math_detail::multiply_int32_array_array_in_place_raw(lhs.data(), rhs.data(), count);
 }
 
 void multiply_in_place(std::span<std::int32_t> lhs, std::int32_t rhs) noexcept {
     auto const count{lhs.size()};
-    multiply_int32_array_scalar_in_place_raw(lhs.data(), rhs, count);
+    array_math_detail::multiply_int32_array_scalar_in_place_raw(lhs.data(), rhs, count);
 }
 
 void multiply_in_place(std::span<float> lhs, std::span<float const> rhs) noexcept {
     auto const count{lhs.size()};
-    require(rhs.size() == count);
-    require(!ranges_overlap(lhs.data(), lhs.size_bytes(), rhs.data(), rhs.size_bytes()));
-    multiply_float_array_array_in_place_raw(lhs.data(), rhs.data(), count);
+    array_math_detail::require(rhs.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(lhs.data(), lhs.size_bytes(), rhs.data(), rhs.size_bytes()));
+    array_math_detail::multiply_float_array_array_in_place_raw(lhs.data(), rhs.data(), count);
 }
 
 void multiply_in_place(std::span<float> lhs, float rhs) noexcept {
     auto const count{lhs.size()};
-    multiply_float_array_scalar_in_place_raw(lhs.data(), rhs, count);
+    array_math_detail::multiply_float_array_scalar_in_place_raw(lhs.data(), rhs, count);
 }
 
 void multiply_in_place(std::span<double> lhs, std::span<double const> rhs) noexcept {
     auto const count{lhs.size()};
-    require(rhs.size() == count);
-    require(!ranges_overlap(lhs.data(), lhs.size_bytes(), rhs.data(), rhs.size_bytes()));
-    multiply_double_array_array_in_place_raw(lhs.data(), rhs.data(), count);
+    array_math_detail::require(rhs.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(lhs.data(), lhs.size_bytes(), rhs.data(), rhs.size_bytes()));
+    array_math_detail::multiply_double_array_array_in_place_raw(lhs.data(), rhs.data(), count);
 }
 
 void multiply_in_place(std::span<double> lhs, double rhs) noexcept {
     auto const count{lhs.size()};
-    multiply_double_array_scalar_in_place_raw(lhs.data(), rhs, count);
+    array_math_detail::multiply_double_array_scalar_in_place_raw(lhs.data(), rhs, count);
 }
 
 void divide_in_place(std::span<std::int32_t> data, std::int32_t value) noexcept {
     auto const count{data.size()};
-    divide_int32_array_scalar_in_place_raw(data.data(), value, count);
+    array_math_detail::divide_int32_array_scalar_in_place_raw(data.data(), value, count);
 }
 
 void divide_in_place(std::span<float> data, float value) noexcept {
     auto const count{data.size()};
-    divide_float_array_scalar_in_place_raw(data.data(), value, count);
+    array_math_detail::divide_float_array_scalar_in_place_raw(data.data(), value, count);
 }
 
 void divide_in_place(std::span<double> data, double value) noexcept {
     auto const count{data.size()};
-    divide_double_array_scalar_in_place_raw(data.data(), value, count);
+    array_math_detail::divide_double_array_scalar_in_place_raw(data.data(), value, count);
 }
 
 void add_arrays(std::span<std::int32_t const> lhs, std::span<std::int32_t const> rhs, std::span<std::int32_t> out) noexcept {
     auto const count{lhs.size()};
-    require(rhs.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), lhs.data(), lhs.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), rhs.data(), rhs.size_bytes()));
-    add_arrays_int32_array_array_raw(lhs.data(), rhs.data(), out.data(), count);
+    array_math_detail::require(rhs.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), lhs.data(), lhs.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), rhs.data(), rhs.size_bytes()));
+    array_math_detail::add_arrays_int32_array_array_raw(lhs.data(), rhs.data(), out.data(), count);
 }
 
 void add_arrays(std::span<float const> lhs, std::span<float const> rhs, std::span<float> out) noexcept {
     auto const count{lhs.size()};
-    require(rhs.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), lhs.data(), lhs.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), rhs.data(), rhs.size_bytes()));
-    add_arrays_float_array_array_raw(lhs.data(), rhs.data(), out.data(), count);
+    array_math_detail::require(rhs.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), lhs.data(), lhs.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), rhs.data(), rhs.size_bytes()));
+    array_math_detail::add_arrays_float_array_array_raw(lhs.data(), rhs.data(), out.data(), count);
 }
 
 void add_arrays(std::span<double const> lhs, std::span<double const> rhs, std::span<double> out) noexcept {
     auto const count{lhs.size()};
-    require(rhs.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), lhs.data(), lhs.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), rhs.data(), rhs.size_bytes()));
-    add_arrays_double_array_array_raw(lhs.data(), rhs.data(), out.data(), count);
+    array_math_detail::require(rhs.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), lhs.data(), lhs.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), rhs.data(), rhs.size_bytes()));
+    array_math_detail::add_arrays_double_array_array_raw(lhs.data(), rhs.data(), out.data(), count);
 }
 
 void add_arrays_in_place(std::span<std::int32_t> lhs, std::span<std::int32_t const> rhs) noexcept {
     auto const count{lhs.size()};
-    require(rhs.size() == count);
-    require(!ranges_overlap(lhs.data(), lhs.size_bytes(), rhs.data(), rhs.size_bytes()));
-    add_arrays_int32_array_array_in_place_raw(lhs.data(), rhs.data(), count);
+    array_math_detail::require(rhs.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(lhs.data(), lhs.size_bytes(), rhs.data(), rhs.size_bytes()));
+    array_math_detail::add_arrays_int32_array_array_in_place_raw(lhs.data(), rhs.data(), count);
 }
 
 void add_arrays_in_place(std::span<float> lhs, std::span<float const> rhs) noexcept {
     auto const count{lhs.size()};
-    require(rhs.size() == count);
-    require(!ranges_overlap(lhs.data(), lhs.size_bytes(), rhs.data(), rhs.size_bytes()));
-    add_arrays_float_array_array_in_place_raw(lhs.data(), rhs.data(), count);
+    array_math_detail::require(rhs.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(lhs.data(), lhs.size_bytes(), rhs.data(), rhs.size_bytes()));
+    array_math_detail::add_arrays_float_array_array_in_place_raw(lhs.data(), rhs.data(), count);
 }
 
 void add_arrays_in_place(std::span<double> lhs, std::span<double const> rhs) noexcept {
     auto const count{lhs.size()};
-    require(rhs.size() == count);
-    require(!ranges_overlap(lhs.data(), lhs.size_bytes(), rhs.data(), rhs.size_bytes()));
-    add_arrays_double_array_array_in_place_raw(lhs.data(), rhs.data(), count);
+    array_math_detail::require(rhs.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(lhs.data(), lhs.size_bytes(), rhs.data(), rhs.size_bytes()));
+    array_math_detail::add_arrays_double_array_array_in_place_raw(lhs.data(), rhs.data(), count);
 }
 
 void lerp_1d(std::span<float const> from, std::span<float const> to, std::span<float const> alpha, std::span<float> out) noexcept {
     auto const count{from.size()};
-    require(to.size() == count);
-    require(alpha.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), from.data(), from.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), to.data(), to.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), alpha.data(), alpha.size_bytes()));
-    lerp_float_array_array_array_raw(from.data(), to.data(), alpha.data(), out.data(), count);
+    array_math_detail::require(to.size() == count);
+    array_math_detail::require(alpha.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), from.data(), from.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), to.data(), to.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), alpha.data(), alpha.size_bytes()));
+    array_math_detail::lerp_float_array_array_array_raw(from.data(), to.data(), alpha.data(), out.data(), count);
 }
 
 void lerp_1d(std::span<float const> from, std::span<float const> to, float alpha, std::span<float> out) noexcept {
     auto const count{from.size()};
-    require(to.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), from.data(), from.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), to.data(), to.size_bytes()));
-    lerp_float_array_array_scalar_raw(from.data(), to.data(), alpha, out.data(), count);
+    array_math_detail::require(to.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), from.data(), from.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), to.data(), to.size_bytes()));
+    array_math_detail::lerp_float_array_array_scalar_raw(from.data(), to.data(), alpha, out.data(), count);
 }
 
 void lerp_1d(std::span<double const> from, std::span<double const> to, std::span<double const> alpha, std::span<double> out) noexcept {
     auto const count{from.size()};
-    require(to.size() == count);
-    require(alpha.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), from.data(), from.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), to.data(), to.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), alpha.data(), alpha.size_bytes()));
-    lerp_double_array_array_array_raw(from.data(), to.data(), alpha.data(), out.data(), count);
+    array_math_detail::require(to.size() == count);
+    array_math_detail::require(alpha.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), from.data(), from.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), to.data(), to.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), alpha.data(), alpha.size_bytes()));
+    array_math_detail::lerp_double_array_array_array_raw(from.data(), to.data(), alpha.data(), out.data(), count);
 }
 
 void lerp_1d(std::span<double const> from, std::span<double const> to, double alpha, std::span<double> out) noexcept {
     auto const count{from.size()};
-    require(to.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), from.data(), from.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), to.data(), to.size_bytes()));
-    lerp_double_array_array_scalar_raw(from.data(), to.data(), alpha, out.data(), count);
+    array_math_detail::require(to.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), from.data(), from.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), to.data(), to.size_bytes()));
+    array_math_detail::lerp_double_array_array_scalar_raw(from.data(), to.data(), alpha, out.data(), count);
 }
 
 void lerp_1d_in_place(std::span<float> from, std::span<float const> to, std::span<float const> alpha) noexcept {
     auto const count{from.size()};
-    require(to.size() == count);
-    require(alpha.size() == count);
-    require(!ranges_overlap(from.data(), from.size_bytes(), to.data(), to.size_bytes()));
-    require(!ranges_overlap(from.data(), from.size_bytes(), alpha.data(), alpha.size_bytes()));
-    lerp_float_array_array_array_in_place_raw(from.data(), to.data(), alpha.data(), count);
+    array_math_detail::require(to.size() == count);
+    array_math_detail::require(alpha.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(from.data(), from.size_bytes(), to.data(), to.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(from.data(), from.size_bytes(), alpha.data(), alpha.size_bytes()));
+    array_math_detail::lerp_float_array_array_array_in_place_raw(from.data(), to.data(), alpha.data(), count);
 }
 
 void lerp_1d_in_place(std::span<float> from, std::span<float const> to, float alpha) noexcept {
     auto const count{from.size()};
-    require(to.size() == count);
-    require(!ranges_overlap(from.data(), from.size_bytes(), to.data(), to.size_bytes()));
-    lerp_float_array_array_scalar_in_place_raw(from.data(), to.data(), alpha, count);
+    array_math_detail::require(to.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(from.data(), from.size_bytes(), to.data(), to.size_bytes()));
+    array_math_detail::lerp_float_array_array_scalar_in_place_raw(from.data(), to.data(), alpha, count);
 }
 
 void lerp_1d_in_place(std::span<double> from, std::span<double const> to, std::span<double const> alpha) noexcept {
     auto const count{from.size()};
-    require(to.size() == count);
-    require(alpha.size() == count);
-    require(!ranges_overlap(from.data(), from.size_bytes(), to.data(), to.size_bytes()));
-    require(!ranges_overlap(from.data(), from.size_bytes(), alpha.data(), alpha.size_bytes()));
-    lerp_double_array_array_array_in_place_raw(from.data(), to.data(), alpha.data(), count);
+    array_math_detail::require(to.size() == count);
+    array_math_detail::require(alpha.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(from.data(), from.size_bytes(), to.data(), to.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(from.data(), from.size_bytes(), alpha.data(), alpha.size_bytes()));
+    array_math_detail::lerp_double_array_array_array_in_place_raw(from.data(), to.data(), alpha.data(), count);
 }
 
 void lerp_1d_in_place(std::span<double> from, std::span<double const> to, double alpha) noexcept {
     auto const count{from.size()};
-    require(to.size() == count);
-    require(!ranges_overlap(from.data(), from.size_bytes(), to.data(), to.size_bytes()));
-    lerp_double_array_array_scalar_in_place_raw(from.data(), to.data(), alpha, count);
+    array_math_detail::require(to.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(from.data(), from.size_bytes(), to.data(), to.size_bytes()));
+    array_math_detail::lerp_double_array_array_scalar_in_place_raw(from.data(), to.data(), alpha, count);
 }
 
 void add_scaled(std::span<float const> base, std::span<float const> value, std::span<float const> scale, std::span<float> out) noexcept {
     auto const count{base.size()};
-    require(value.size() == count);
-    require(scale.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
-    require(!ranges_overlap(base.data(), base.size_bytes(), scale.data(), scale.size_bytes()));
-    require(!ranges_overlap(base.data(), base.size_bytes(), out.data(), out.size_bytes()));
-    require(!ranges_overlap(value.data(), value.size_bytes(), scale.data(), scale.size_bytes()));
-    require(!ranges_overlap(value.data(), value.size_bytes(), out.data(), out.size_bytes()));
-    require(!ranges_overlap(scale.data(), scale.size_bytes(), out.data(), out.size_bytes()));
-    add_scaled_float_array_array_array_raw(base.data(), value.data(), scale.data(), out.data(), count);
+    array_math_detail::require(value.size() == count);
+    array_math_detail::require(scale.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), scale.data(), scale.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), out.data(), out.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(value.data(), value.size_bytes(), scale.data(), scale.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(value.data(), value.size_bytes(), out.data(), out.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(scale.data(), scale.size_bytes(), out.data(), out.size_bytes()));
+    array_math_detail::add_scaled_float_array_array_array_raw(base.data(), value.data(), scale.data(), out.data(), count);
 }
 
 void add_scaled(std::span<float const> base, std::span<float const> value, float scale, std::span<float> out) noexcept {
     auto const count{base.size()};
-    require(value.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
-    require(!ranges_overlap(base.data(), base.size_bytes(), out.data(), out.size_bytes()));
-    require(!ranges_overlap(value.data(), value.size_bytes(), out.data(), out.size_bytes()));
-    add_scaled_float_array_array_scalar_raw(base.data(), value.data(), scale, out.data(), count);
+    array_math_detail::require(value.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), out.data(), out.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(value.data(), value.size_bytes(), out.data(), out.size_bytes()));
+    array_math_detail::add_scaled_float_array_array_scalar_raw(base.data(), value.data(), scale, out.data(), count);
 }
 
 void add_scaled(std::span<double const> base, std::span<double const> value, std::span<double const> scale, std::span<double> out) noexcept {
     auto const count{base.size()};
-    require(value.size() == count);
-    require(scale.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
-    require(!ranges_overlap(base.data(), base.size_bytes(), scale.data(), scale.size_bytes()));
-    require(!ranges_overlap(base.data(), base.size_bytes(), out.data(), out.size_bytes()));
-    require(!ranges_overlap(value.data(), value.size_bytes(), scale.data(), scale.size_bytes()));
-    require(!ranges_overlap(value.data(), value.size_bytes(), out.data(), out.size_bytes()));
-    require(!ranges_overlap(scale.data(), scale.size_bytes(), out.data(), out.size_bytes()));
-    add_scaled_double_array_array_array_raw(base.data(), value.data(), scale.data(), out.data(), count);
+    array_math_detail::require(value.size() == count);
+    array_math_detail::require(scale.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), scale.data(), scale.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), out.data(), out.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(value.data(), value.size_bytes(), scale.data(), scale.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(value.data(), value.size_bytes(), out.data(), out.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(scale.data(), scale.size_bytes(), out.data(), out.size_bytes()));
+    array_math_detail::add_scaled_double_array_array_array_raw(base.data(), value.data(), scale.data(), out.data(), count);
 }
 
 void add_scaled(std::span<double const> base, std::span<double const> value, double scale, std::span<double> out) noexcept {
     auto const count{base.size()};
-    require(value.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
-    require(!ranges_overlap(base.data(), base.size_bytes(), out.data(), out.size_bytes()));
-    require(!ranges_overlap(value.data(), value.size_bytes(), out.data(), out.size_bytes()));
-    add_scaled_double_array_array_scalar_raw(base.data(), value.data(), scale, out.data(), count);
+    array_math_detail::require(value.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), out.data(), out.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(value.data(), value.size_bytes(), out.data(), out.size_bytes()));
+    array_math_detail::add_scaled_double_array_array_scalar_raw(base.data(), value.data(), scale, out.data(), count);
 }
 
 void add_scaled_in_place(std::span<float> base, std::span<float const> value, std::span<float const> scale) noexcept {
     auto const count{base.size()};
-    require(value.size() == count);
-    require(scale.size() == count);
-    require(!ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
-    require(!ranges_overlap(base.data(), base.size_bytes(), scale.data(), scale.size_bytes()));
-    require(!ranges_overlap(value.data(), value.size_bytes(), scale.data(), scale.size_bytes()));
-    add_scaled_float_array_array_array_in_place_raw(base.data(), value.data(), scale.data(), count);
+    array_math_detail::require(value.size() == count);
+    array_math_detail::require(scale.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), scale.data(), scale.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(value.data(), value.size_bytes(), scale.data(), scale.size_bytes()));
+    array_math_detail::add_scaled_float_array_array_array_in_place_raw(base.data(), value.data(), scale.data(), count);
 }
 
 void add_scaled_in_place(std::span<float> base, std::span<float const> value, float scale) noexcept {
     auto const count{base.size()};
-    require(value.size() == count);
-    require(!ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
-    add_scaled_float_array_array_scalar_in_place_raw(base.data(), value.data(), scale, count);
+    array_math_detail::require(value.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
+    array_math_detail::add_scaled_float_array_array_scalar_in_place_raw(base.data(), value.data(), scale, count);
 }
 
 void add_scaled_in_place(std::span<double> base, std::span<double const> value, std::span<double const> scale) noexcept {
     auto const count{base.size()};
-    require(value.size() == count);
-    require(scale.size() == count);
-    require(!ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
-    require(!ranges_overlap(base.data(), base.size_bytes(), scale.data(), scale.size_bytes()));
-    require(!ranges_overlap(value.data(), value.size_bytes(), scale.data(), scale.size_bytes()));
-    add_scaled_double_array_array_array_in_place_raw(base.data(), value.data(), scale.data(), count);
+    array_math_detail::require(value.size() == count);
+    array_math_detail::require(scale.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), scale.data(), scale.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(value.data(), value.size_bytes(), scale.data(), scale.size_bytes()));
+    array_math_detail::add_scaled_double_array_array_array_in_place_raw(base.data(), value.data(), scale.data(), count);
 }
 
 void add_scaled_in_place(std::span<double> base, std::span<double const> value, double scale) noexcept {
     auto const count{base.size()};
-    require(value.size() == count);
-    require(!ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
-    add_scaled_double_array_array_scalar_in_place_raw(base.data(), value.data(), scale, count);
+    array_math_detail::require(value.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
+    array_math_detail::add_scaled_double_array_array_scalar_in_place_raw(base.data(), value.data(), scale, count);
 }
 
 void subtract_scaled(std::span<float const> base, std::span<float const> value, std::span<float const> scale, std::span<float> out) noexcept {
     auto const count{base.size()};
-    require(value.size() == count);
-    require(scale.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), base.data(), base.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), value.data(), value.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), scale.data(), scale.size_bytes()));
-    subtract_scaled_float_array_array_array_raw(base.data(), value.data(), scale.data(), out.data(), count);
+    array_math_detail::require(value.size() == count);
+    array_math_detail::require(scale.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), base.data(), base.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), value.data(), value.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), scale.data(), scale.size_bytes()));
+    array_math_detail::subtract_scaled_float_array_array_array_raw(base.data(), value.data(), scale.data(), out.data(), count);
 }
 
 void subtract_scaled(std::span<float const> base, std::span<float const> value, float scale, std::span<float> out) noexcept {
     auto const count{base.size()};
-    require(value.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), base.data(), base.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), value.data(), value.size_bytes()));
-    subtract_scaled_float_array_array_scalar_raw(base.data(), value.data(), scale, out.data(), count);
+    array_math_detail::require(value.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), base.data(), base.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), value.data(), value.size_bytes()));
+    array_math_detail::subtract_scaled_float_array_array_scalar_raw(base.data(), value.data(), scale, out.data(), count);
 }
 
 void subtract_scaled(std::span<double const> base, std::span<double const> value, std::span<double const> scale, std::span<double> out) noexcept {
     auto const count{base.size()};
-    require(value.size() == count);
-    require(scale.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), base.data(), base.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), value.data(), value.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), scale.data(), scale.size_bytes()));
-    subtract_scaled_double_array_array_array_raw(base.data(), value.data(), scale.data(), out.data(), count);
+    array_math_detail::require(value.size() == count);
+    array_math_detail::require(scale.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), base.data(), base.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), value.data(), value.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), scale.data(), scale.size_bytes()));
+    array_math_detail::subtract_scaled_double_array_array_array_raw(base.data(), value.data(), scale.data(), out.data(), count);
 }
 
 void subtract_scaled(std::span<double const> base, std::span<double const> value, double scale, std::span<double> out) noexcept {
     auto const count{base.size()};
-    require(value.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), base.data(), base.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), value.data(), value.size_bytes()));
-    subtract_scaled_double_array_array_scalar_raw(base.data(), value.data(), scale, out.data(), count);
+    array_math_detail::require(value.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), base.data(), base.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), value.data(), value.size_bytes()));
+    array_math_detail::subtract_scaled_double_array_array_scalar_raw(base.data(), value.data(), scale, out.data(), count);
 }
 
 void subtract_scaled_in_place(std::span<float> base, std::span<float const> value, std::span<float const> scale) noexcept {
     auto const count{base.size()};
-    require(value.size() == count);
-    require(scale.size() == count);
-    require(!ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
-    require(!ranges_overlap(base.data(), base.size_bytes(), scale.data(), scale.size_bytes()));
-    subtract_scaled_float_array_array_array_in_place_raw(base.data(), value.data(), scale.data(), count);
+    array_math_detail::require(value.size() == count);
+    array_math_detail::require(scale.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), scale.data(), scale.size_bytes()));
+    array_math_detail::subtract_scaled_float_array_array_array_in_place_raw(base.data(), value.data(), scale.data(), count);
 }
 
 void subtract_scaled_in_place(std::span<float> base, std::span<float const> value, float scale) noexcept {
     auto const count{base.size()};
-    require(value.size() == count);
-    require(!ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
-    subtract_scaled_float_array_array_scalar_in_place_raw(base.data(), value.data(), scale, count);
+    array_math_detail::require(value.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
+    array_math_detail::subtract_scaled_float_array_array_scalar_in_place_raw(base.data(), value.data(), scale, count);
 }
 
 void subtract_scaled_in_place(std::span<double> base, std::span<double const> value, std::span<double const> scale) noexcept {
     auto const count{base.size()};
-    require(value.size() == count);
-    require(scale.size() == count);
-    require(!ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
-    require(!ranges_overlap(base.data(), base.size_bytes(), scale.data(), scale.size_bytes()));
-    subtract_scaled_double_array_array_array_in_place_raw(base.data(), value.data(), scale.data(), count);
+    array_math_detail::require(value.size() == count);
+    array_math_detail::require(scale.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), scale.data(), scale.size_bytes()));
+    array_math_detail::subtract_scaled_double_array_array_array_in_place_raw(base.data(), value.data(), scale.data(), count);
 }
 
 void subtract_scaled_in_place(std::span<double> base, std::span<double const> value, double scale) noexcept {
     auto const count{base.size()};
-    require(value.size() == count);
-    require(!ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
-    subtract_scaled_double_array_array_scalar_in_place_raw(base.data(), value.data(), scale, count);
+    array_math_detail::require(value.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(base.data(), base.size_bytes(), value.data(), value.size_bytes()));
+    array_math_detail::subtract_scaled_double_array_array_scalar_in_place_raw(base.data(), value.data(), scale, count);
 }
 
 void size_squared_3d(std::span<float const> x, std::span<float const> y, std::span<float const> z, std::span<float> out) noexcept {
     auto const count{x.size()};
-    require(y.size() == count);
-    require(z.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), x.data(), x.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), y.data(), y.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), z.data(), z.size_bytes()));
-    size_squared_3d_float_array_array_array_raw(x.data(), y.data(), z.data(), out.data(), count);
+    array_math_detail::require(y.size() == count);
+    array_math_detail::require(z.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), x.data(), x.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), y.data(), y.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), z.data(), z.size_bytes()));
+    array_math_detail::size_squared_3d_float_array_array_array_raw(x.data(), y.data(), z.data(), out.data(), count);
 }
 
 void size_squared_3d(std::span<double const> x, std::span<double const> y, std::span<double const> z, std::span<double> out) noexcept {
     auto const count{x.size()};
-    require(y.size() == count);
-    require(z.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), x.data(), x.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), y.data(), y.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), z.data(), z.size_bytes()));
-    size_squared_3d_double_array_array_array_raw(x.data(), y.data(), z.data(), out.data(), count);
+    array_math_detail::require(y.size() == count);
+    array_math_detail::require(z.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), x.data(), x.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), y.data(), y.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), z.data(), z.size_bytes()));
+    array_math_detail::size_squared_3d_double_array_array_array_raw(x.data(), y.data(), z.data(), out.data(), count);
 }
 
 void distance_squared_3d(std::span<float const> ax, std::span<float const> ay, std::span<float const> az, std::span<float const> bx, std::span<float const> by, std::span<float const> bz, std::span<float> out) noexcept {
     auto const count{ax.size()};
-    require(ay.size() == count);
-    require(az.size() == count);
-    require(bx.size() == count);
-    require(by.size() == count);
-    require(bz.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), ax.data(), ax.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), ay.data(), ay.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), az.data(), az.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), bx.data(), bx.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), by.data(), by.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), bz.data(), bz.size_bytes()));
-    distance_squared_3d_float_array_array_array_array_array_array_raw(ax.data(), ay.data(), az.data(), bx.data(), by.data(), bz.data(), out.data(), count);
+    array_math_detail::require(ay.size() == count);
+    array_math_detail::require(az.size() == count);
+    array_math_detail::require(bx.size() == count);
+    array_math_detail::require(by.size() == count);
+    array_math_detail::require(bz.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), ax.data(), ax.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), ay.data(), ay.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), az.data(), az.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), bx.data(), bx.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), by.data(), by.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), bz.data(), bz.size_bytes()));
+    array_math_detail::distance_squared_3d_float_array_array_array_array_array_array_raw(ax.data(), ay.data(), az.data(), bx.data(), by.data(), bz.data(), out.data(), count);
 }
 
 void distance_squared_3d(std::span<double const> ax, std::span<double const> ay, std::span<double const> az, std::span<double const> bx, std::span<double const> by, std::span<double const> bz, std::span<double> out) noexcept {
     auto const count{ax.size()};
-    require(ay.size() == count);
-    require(az.size() == count);
-    require(bx.size() == count);
-    require(by.size() == count);
-    require(bz.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), ax.data(), ax.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), ay.data(), ay.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), az.data(), az.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), bx.data(), bx.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), by.data(), by.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), bz.data(), bz.size_bytes()));
-    distance_squared_3d_double_array_array_array_array_array_array_raw(ax.data(), ay.data(), az.data(), bx.data(), by.data(), bz.data(), out.data(), count);
+    array_math_detail::require(ay.size() == count);
+    array_math_detail::require(az.size() == count);
+    array_math_detail::require(bx.size() == count);
+    array_math_detail::require(by.size() == count);
+    array_math_detail::require(bz.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), ax.data(), ax.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), ay.data(), ay.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), az.data(), az.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), bx.data(), bx.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), by.data(), by.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), bz.data(), bz.size_bytes()));
+    array_math_detail::distance_squared_3d_double_array_array_array_array_array_array_raw(ax.data(), ay.data(), az.data(), bx.data(), by.data(), bz.data(), out.data(), count);
 }
 
 void dot_product_3d(std::span<float const> ax, std::span<float const> ay, std::span<float const> az, std::span<float const> bx, std::span<float const> by, std::span<float const> bz, std::span<float> out) noexcept {
     auto const count{ax.size()};
-    require(ay.size() == count);
-    require(az.size() == count);
-    require(bx.size() == count);
-    require(by.size() == count);
-    require(bz.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), ax.data(), ax.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), ay.data(), ay.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), az.data(), az.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), bx.data(), bx.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), by.data(), by.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), bz.data(), bz.size_bytes()));
-    dot_product_3d_float_array_array_array_array_array_array_raw(ax.data(), ay.data(), az.data(), bx.data(), by.data(), bz.data(), out.data(), count);
+    array_math_detail::require(ay.size() == count);
+    array_math_detail::require(az.size() == count);
+    array_math_detail::require(bx.size() == count);
+    array_math_detail::require(by.size() == count);
+    array_math_detail::require(bz.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), ax.data(), ax.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), ay.data(), ay.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), az.data(), az.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), bx.data(), bx.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), by.data(), by.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), bz.data(), bz.size_bytes()));
+    array_math_detail::dot_product_3d_float_array_array_array_array_array_array_raw(ax.data(), ay.data(), az.data(), bx.data(), by.data(), bz.data(), out.data(), count);
 }
 
 void dot_product_3d(std::span<double const> ax, std::span<double const> ay, std::span<double const> az, std::span<double const> bx, std::span<double const> by, std::span<double const> bz, std::span<double> out) noexcept {
     auto const count{ax.size()};
-    require(ay.size() == count);
-    require(az.size() == count);
-    require(bx.size() == count);
-    require(by.size() == count);
-    require(bz.size() == count);
-    require(out.size() == count);
-    require(!ranges_overlap(out.data(), out.size_bytes(), ax.data(), ax.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), ay.data(), ay.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), az.data(), az.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), bx.data(), bx.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), by.data(), by.size_bytes()));
-    require(!ranges_overlap(out.data(), out.size_bytes(), bz.data(), bz.size_bytes()));
-    dot_product_3d_double_array_array_array_array_array_array_raw(ax.data(), ay.data(), az.data(), bx.data(), by.data(), bz.data(), out.data(), count);
+    array_math_detail::require(ay.size() == count);
+    array_math_detail::require(az.size() == count);
+    array_math_detail::require(bx.size() == count);
+    array_math_detail::require(by.size() == count);
+    array_math_detail::require(bz.size() == count);
+    array_math_detail::require(out.size() == count);
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), ax.data(), ax.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), ay.data(), ay.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), az.data(), az.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), bx.data(), bx.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), by.data(), by.size_bytes()));
+    array_math_detail::require(!array_math_detail::ranges_overlap(out.data(), out.size_bytes(), bz.data(), bz.size_bytes()));
+    array_math_detail::dot_product_3d_double_array_array_array_array_array_array_raw(ax.data(), ay.data(), az.data(), bx.data(), by.data(), bz.data(), out.data(), count);
 }
 
 }

@@ -418,9 +418,7 @@ void Sim::plan_movement(float const dt) {
     update_navigation_steering();
     if (do_move) {
         auto const movement_directions{move_view.movement_directions.get_const_view()};
-        ml::lerp_1d_in_place(move_view.planned_aim_directions.xs, movement_directions.xs, d_turn);
-        ml::lerp_1d_in_place(move_view.planned_aim_directions.ys, movement_directions.ys, d_turn);
-        ml::lerp_1d_in_place(move_view.planned_aim_directions.zs, movement_directions.zs, d_turn);
+        lerp_in_place(move_view.planned_aim_directions, movement_directions, d_turn);
     }
     if (do_attack) {
         for (std::int32_t index{}; index < n_attack; ++index) {

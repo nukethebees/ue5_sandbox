@@ -65,6 +65,34 @@ auto is_target(ExpandedVariant const& expanded, std::size_t const operand_index)
            expanded.operation->operands[operand_index].name == *expanded.variant->target;
 }
 
+auto operand_names(ExpandedVariant const& expanded, std::size_t const operand_index)
+    -> std::vector<std::string> {
+    auto const& operand{expanded.operation->operands[operand_index]};
+    if (!operand.is_component) {
+        return {operand.name};
+    }
+
+    std::vector<std::string> result;
+    result.reserve(expanded.operation->components.size());
+    for (auto const& component : expanded.operation->components) {
+        result.push_back(operand.name + "_" + component);
+    }
+    return result;
+}
+
+auto output_names(ExpandedVariant const& expanded) -> std::vector<std::string> {
+    if (expanded.operation->kind != OperationKind::component_map) {
+        return {expanded.operation->output};
+    }
+
+    std::vector<std::string> result;
+    result.reserve(expanded.operation->components.size());
+    for (auto const& component : expanded.operation->components) {
+        result.push_back(expanded.operation->output + "_" + component);
+    }
+    return result;
+}
+
 auto raw_name(ExpandedVariant const& expanded) -> std::string {
     auto result{expanded.operation->name + "_" + expanded.type};
     for (auto const storage : expanded.storage) {
@@ -89,22 +117,29 @@ auto array_names(ExpandedVariant const& expanded) -> std::vector<std::string> {
     std::vector<std::string> result;
     for (std::size_t index{}; index < expanded.operation->operands.size(); ++index) {
         if (expanded.storage[index] == StorageKind::array) {
-            result.push_back(expanded.operation->operands[index].name);
+            auto const names{operand_names(expanded, index)};
+            result.insert(result.end(), names.begin(), names.end());
         }
     }
     if (expanded.variant->kind == VariantKind::out_of_place) {
-        result.push_back(expanded.operation->output);
+        auto const names{output_names(expanded)};
+        result.insert(result.end(), names.begin(), names.end());
     }
     return result;
 }
 
 auto count_source(ExpandedVariant const& expanded) -> std::string {
     if (expanded.variant->kind == VariantKind::in_place) {
-        return *expanded.variant->target;
+        auto const target_index{static_cast<std::size_t>(
+            std::ranges::find_if(
+                expanded.operation->operands,
+                [&](auto const& operand) { return operand.name == *expanded.variant->target; }) -
+            expanded.operation->operands.begin())};
+        return operand_names(expanded, target_index).front();
     }
     for (std::size_t index{}; index < expanded.operation->operands.size(); ++index) {
         if (expanded.storage[index] == StorageKind::array) {
-            return expanded.operation->operands[index].name;
+            return operand_names(expanded, index).front();
         }
     }
     throw std::logic_error{"out-of-place kernel has no array input"};
@@ -123,7 +158,8 @@ auto standard_type(std::string_view const type) -> std::string {
 auto render_expression(Expression const& expression,
                        Operation const& operation,
                        std::vector<StorageKind> const& storage,
-                       std::string const& concrete_type) -> std::string {
+                       std::string const& concrete_type,
+                       std::string_view const component) -> std::string {
     if (expression.kind == ExpressionKind::literal) {
         return "static_cast<" + concrete_type + ">(" + expression.value + ")";
     }
@@ -132,7 +168,9 @@ auto render_expression(Expression const& expression,
             return operand.name == expression.value;
         })};
         auto const index{static_cast<std::size_t>(found - operation.operands.begin())};
-        return expression.value + (storage[index] == StorageKind::array ? "[i]" : "");
+        auto const& operand{operation.operands[index]};
+        return expression.value + (operand.is_component ? "_" + std::string{component} : "") +
+               (storage[index] == StorageKind::array ? "[i]" : "");
     }
     if (expression.kind == ExpressionKind::constant) {
         switch (expression.constant) {
@@ -144,9 +182,13 @@ auto render_expression(Expression const& expression,
                 return "(-std::numeric_limits<" + concrete_type + ">::infinity())";
         }
     }
-    return "(" + render_expression(expression.arguments[0], operation, storage, concrete_type) +
+    return "(" +
+           render_expression(
+               expression.arguments[0], operation, storage, concrete_type, component) +
            " " + expression.value + " " +
-           render_expression(expression.arguments[1], operation, storage, concrete_type) + ")";
+           render_expression(
+               expression.arguments[1], operation, storage, concrete_type, component) +
+           ")";
 }
 
 }

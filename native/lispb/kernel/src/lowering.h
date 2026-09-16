@@ -20,6 +20,9 @@ struct ExpandedVariant {
 
 auto expand(KernelModule const& module) -> std::vector<ExpandedVariant>;
 auto is_target(ExpandedVariant const& expanded, std::size_t operand_index) -> bool;
+auto operand_names(ExpandedVariant const& expanded, std::size_t operand_index)
+    -> std::vector<std::string>;
+auto output_names(ExpandedVariant const& expanded) -> std::vector<std::string>;
 auto raw_name(ExpandedVariant const& expanded) -> std::string;
 auto contains_constant(Expression const& expression) -> bool;
 auto array_names(ExpandedVariant const& expanded) -> std::vector<std::string>;
@@ -28,6 +31,7 @@ auto standard_type(std::string_view type) -> std::string;
 auto render_expression(Expression const& expression,
                        Operation const& operation,
                        std::vector<StorageKind> const& storage,
-                       std::string const& concrete_type) -> std::string;
+                       std::string const& concrete_type,
+                       std::string_view component = {}) -> std::string;
 
 }

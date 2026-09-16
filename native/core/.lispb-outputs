@@ -1,4 +1,6 @@
 lispb-outputs-v1
 include/sandbox/core/generated/array_math_kernels.h
+include/sandbox/core/generated/vector_lerp_kernels.h
 src/generated/array_math_kernels.cpp
+src/generated/vector_lerp_kernels.cpp
 tests/generated/array_math_kernels_tests.cpp

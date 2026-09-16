@@ -345,15 +345,18 @@ class Parser {
     }
 
     auto parse_operation(Form const& form) const -> Operation {
-        if (head(form, "map") != "map" || form.children.size() < 2) {
-            fail(form.token.span, "expected '(map name ...)'");
+        auto const form_head{head(form, "map or component-map")};
+        if ((form_head != "map" && form_head != "component-map") || form.children.size() < 2) {
+            fail(form.token.span, "expected '(map|component-map name ...)'");
         }
+        auto const is_component_map{form_head == "component-map"};
         auto const& name{atom(form.children[1], "expected map name")};
         if (!is_identifier(name)) {
             fail(form.children[1].token.span, "map name must be a C++ identifier");
         }
 
-        Operation result{.kind = OperationKind::map,
+        Operation result{.kind =
+                             is_component_map ? OperationKind::component_map : OperationKind::map,
                          .name = name,
                          .expression = Expression{ExpressionKind::literal, {}, {}, {}},
                          .span = form.token.span};
@@ -363,7 +366,10 @@ class Parser {
         for (std::size_t index{2}; index < form.children.size(); ++index) {
             auto const& field{form.children[index]};
             auto const& field_name{head(field, "map field")};
-            if (field_name == "operand") {
+            if (field_name == "operand" || field_name == "component-operand") {
+                if (field_name == "component-operand" && !is_component_map) {
+                    fail(field.token.span, "component-operand is valid only in component-map");
+                }
                 require_size(field, 3, "'(operand name storage)'");
                 auto operand_name{atom(field.children[1], "expected operand name")};
                 if (!is_identifier(operand_name)) {
@@ -372,14 +378,31 @@ class Parser {
                 if (!operand_names.insert(operand_name).second) {
                     fail(field.children[1].token.span, "duplicate operand '" + operand_name + "'");
                 }
-                result.operands.push_back(Operand{
-                    std::move(operand_name), parse_storage(field.children[2]), field.token.span});
+                result.operands.push_back(Operand{std::move(operand_name),
+                                                  parse_storage(field.children[2]),
+                                                  field.token.span,
+                                                  field_name == "component-operand"});
                 continue;
             }
             if (!fields.insert(field_name).second) {
                 fail(field.token.span, "duplicate map field '" + field_name + "'");
             }
-            if (field_name == "types") {
+            if (field_name == "components") {
+                if (!is_component_map || field.children.size() < 3) {
+                    fail(field.token.span, "component-map requires at least two component names");
+                }
+                std::set<std::string> components;
+                for (std::size_t component_index{1}; component_index < field.children.size();
+                     ++component_index) {
+                    auto component{
+                        atom(field.children[component_index], "expected component name")};
+                    if (!is_identifier(component) || !components.insert(component).second) {
+                        fail(field.children[component_index].token.span,
+                             "component names must be unique C++ identifiers");
+                    }
+                    result.components.push_back(std::move(component));
+                }
+            } else if (field_name == "types") {
                 require_size(field, 2, "'(types type_set)'");
                 result.type_set = atom(field.children[1], "expected type-set name");
             } else if (field_name == "output") {
@@ -418,6 +441,13 @@ class Parser {
         if (result.type_set.empty() || result.output.empty() || result.operands.empty() ||
             result.variants.empty() || !has_expression) {
             fail(form.token.span, "map requires types, operands, output, expression, and variants");
+        }
+        if (is_component_map && (result.components.empty() ||
+                                 std::ranges::none_of(result.operands, [](auto const& operand) {
+                                     return operand.is_component;
+                                 }))) {
+            fail(form.token.span,
+                 "component-map requires components and at least one component-operand");
         }
         if (operand_names.contains(result.output)) {
             fail(form.token.span, "output name must differ from operand names");
@@ -464,6 +494,13 @@ class Parser {
                 }
             } else if (!operand_names.contains(*variant.target)) {
                 fail(variant.span, "unknown in-place target '" + *variant.target + "'");
+            } else if (is_component_map) {
+                auto const target{std::ranges::find_if(result.operands, [&](auto const& operand) {
+                    return operand.name == *variant.target;
+                })};
+                if (!target->is_component) {
+                    fail(variant.span, "component-map in-place target must be a component-operand");
+                }
             }
         }
         return result;
@@ -909,7 +946,7 @@ class Parser {
                 result.type_sets.push_back(std::move(type_set));
                 continue;
             }
-            if (field_name == "map") {
+            if (field_name == "map" || field_name == "component-map") {
                 auto operation{parse_operation(field)};
                 if (!operation_names.insert(operation.name).second) {
                     fail(operation.span, "duplicate operation '" + operation.name + "'");
@@ -949,6 +986,16 @@ class Parser {
             })) {
             fail(form.token.span,
                  "sum operations are supported only by native-x86-simd-lab emissions");
+        }
+        auto const has_component_map{
+            std::ranges::any_of(result.operations, [](auto const& operation) {
+                return operation.kind == OperationKind::component_map;
+            })};
+        if (has_component_map && std::ranges::any_of(result.emissions, [](auto const& emission) {
+                return emission.profile != Profile::standard;
+            })) {
+            fail(form.token.span,
+                 "component-map operations are supported only by standard emissions");
         }
         for (auto const& operation : result.operations) {
             auto const operation_types{
