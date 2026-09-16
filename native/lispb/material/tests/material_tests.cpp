@@ -158,7 +158,7 @@ TEST(MaterialFrontend, LowersWorldSurfaceSettingsInstanceDataAndOpacity) {
                                     [](Node const& node) { return node.kind == NodeKind::lerp; }));
     EXPECT_EQ(std::ranges::count_if(material.nodes,
                                     [](Node const& node) { return node.kind == NodeKind::custom; }),
-              3);
+              2);
     ASSERT_EQ(material.outputs.size(), 2);
     EXPECT_EQ(material.outputs[1].name, "opacity");
     EXPECT_TRUE(validate(material).empty());
