@@ -1350,6 +1350,7 @@ struct EntitiesConstView {
     using View = EntitiesView;
     using ConstView = EntitiesConstView;
     using size_type = std::int32_t;
+    std::span<std::uint8_t const> active;
     std::span<LaserSource const> sources;
     Vectors3fConstView locations;
     Rotators3fConstView rotations;
@@ -1359,10 +1360,11 @@ struct EntitiesConstView {
     std::span<RegistryEntityHandle const> instigator_handles;
     std::span<float const> initial_lifetimes;
     std::span<float const> spawn_times;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(sources.size()); }
+    auto num() const noexcept -> size_type { return static_cast<size_type>(active.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
     void each_column(Fn&& fn) const {
+        fn(active);
         fn(sources);
         fn(locations.xs_span());
         fn(locations.ys_span());
@@ -1389,6 +1391,7 @@ struct EntitiesConstView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
         return {
+            active.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             sources.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             locations.slice(offset, count),
             rotations.slice(offset, count),
@@ -1409,6 +1412,7 @@ struct EntitiesConstView {
     }
     auto get_const_view() const -> ConstView {
         return {
+            active,
             sources,
             locations.get_const_view(),
             rotations.get_const_view(),
@@ -1432,6 +1436,7 @@ struct EntitiesView {
     using View = EntitiesView;
     using ConstView = EntitiesConstView;
     using size_type = std::int32_t;
+    std::span<std::uint8_t> active;
     std::span<LaserSource> sources;
     Vectors3fView locations;
     Rotators3fView rotations;
@@ -1441,10 +1446,11 @@ struct EntitiesView {
     std::span<RegistryEntityHandle> instigator_handles;
     std::span<float> initial_lifetimes;
     std::span<float> spawn_times;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(sources.size()); }
+    auto num() const noexcept -> size_type { return static_cast<size_type>(active.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
     void each_column(Fn&& fn) const {
+        fn(active);
         fn(sources);
         fn(locations.xs_span());
         fn(locations.ys_span());
@@ -1471,6 +1477,7 @@ struct EntitiesView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
         return {
+            active.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             sources.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             locations.slice(offset, count),
             rotations.slice(offset, count),
@@ -1491,6 +1498,7 @@ struct EntitiesView {
     }
     auto get_const_view() const -> ConstView {
         return {
+            active,
             sources,
             locations.get_const_view(),
             rotations.get_const_view(),
@@ -1508,6 +1516,7 @@ struct EntitiesView {
     auto left(size_type const count) const -> EntitiesView { return slice(0, count); }
     auto right(size_type const count) const -> EntitiesView { return slice(num() - count, count); }
     void set(size_type const index,
+             std::uint8_t const new_active,
              LaserSource const new_sources,
              Vector3f const new_locations,
              Rotator3f const new_rotations,
@@ -1518,6 +1527,7 @@ struct EntitiesView {
              float const new_initial_lifetimes,
              float const new_spawn_times) const {
         ml::native_soa::require(index >= 0 && index < num());
+        active[static_cast<std::size_t>(index)] = new_active;
         sources[static_cast<std::size_t>(index)] = new_sources;
         locations.set(index, new_locations);
         rotations.set(index, new_rotations);
@@ -1533,6 +1543,7 @@ struct Entities {
     using View = EntitiesView;
     using ConstView = EntitiesConstView;
     using size_type = std::int32_t;
+    ml::native_soa::Vector<std::uint8_t> active;
     ml::native_soa::Vector<LaserSource> sources;
     Vectors3f locations;
     Rotators3f rotations;
@@ -1542,10 +1553,11 @@ struct Entities {
     ml::native_soa::Vector<RegistryEntityHandle> instigator_handles;
     ml::native_soa::Vector<float> initial_lifetimes;
     ml::native_soa::Vector<float> spawn_times;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(sources.size()); }
+    auto num() const noexcept -> size_type { return static_cast<size_type>(active.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
     void each_column(Fn&& fn) {
+        fn(active);
         fn(sources);
         fn(locations.xs);
         fn(locations.ys);
@@ -1564,6 +1576,7 @@ struct Entities {
     }
     template <typename Fn>
     void each_column(Fn&& fn) const {
+        fn(active);
         fn(sources);
         fn(locations.xs);
         fn(locations.ys);
@@ -1583,6 +1596,7 @@ struct Entities {
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
     void reserve(size_type const count) {
         ml::native_soa::require(count >= 0);
+        active.reserve(static_cast<std::size_t>(count));
         sources.reserve(static_cast<std::size_t>(count));
         locations.xs.reserve(static_cast<std::size_t>(count));
         locations.ys.reserve(static_cast<std::size_t>(count));
@@ -1600,6 +1614,7 @@ struct Entities {
         spawn_times.reserve(static_cast<std::size_t>(count));
     }
     void reset() noexcept {
+        active.clear();
         sources.clear();
         locations.xs.clear();
         locations.ys.clear();
@@ -1619,6 +1634,7 @@ struct Entities {
     void set_num(size_type const count) {
         ml::native_soa::require(count >= 0);
         auto const size{static_cast<std::size_t>(count)};
+        active.resize(size);
         sources.resize(size);
         locations.xs.resize(size);
         locations.ys.resize(size);
@@ -1648,6 +1664,9 @@ struct Entities {
                                 count <= old_num - index);
         auto const moved{std::min(count, old_num - index - count)};
         auto const source{old_num - moved};
+        for (size_type i{}; i < moved; ++i) {
+            active[index + i] = active[source + i];
+        }
         for (size_type i{}; i < moved; ++i) {
             sources[index + i] = sources[source + i];
         }
@@ -1696,6 +1715,7 @@ struct Entities {
         set_num(old_num - count);
     }
     void set(size_type const index,
+             std::uint8_t const new_active,
              LaserSource const new_sources,
              Vector3f const new_locations,
              Rotator3f const new_rotations,
@@ -1706,6 +1726,7 @@ struct Entities {
              float const new_initial_lifetimes,
              float const new_spawn_times) {
         get_view().set(index,
+                       new_active,
                        new_sources,
                        new_locations,
                        new_rotations,
@@ -1716,7 +1737,8 @@ struct Entities {
                        new_initial_lifetimes,
                        new_spawn_times);
     }
-    auto add(LaserSource const new_sources,
+    auto add(std::uint8_t const new_active,
+             LaserSource const new_sources,
              Vector3f const new_locations,
              Rotator3f const new_rotations,
              Vector3f const new_velocities,
@@ -1728,6 +1750,7 @@ struct Entities {
         auto const index{num()};
         add_defaulted(1);
         set(index,
+            new_active,
             new_sources,
             new_locations,
             new_rotations,
@@ -1745,6 +1768,12 @@ struct Entities {
         source.validate_array_sizes();
         if (count == 0) {
             return;
+        }
+        {
+            auto const address{ml::address_cast(source.active.data())};
+            auto const begin{ml::address_cast(active.data())};
+            ml::native_soa::require(address < begin ||
+                                    address >= begin + active.size() * sizeof(std::uint8_t));
         }
         {
             auto const address{ml::address_cast(source.sources.data())};
@@ -1837,6 +1866,7 @@ struct Entities {
             ml::native_soa::require(address < begin ||
                                     address >= begin + spawn_times.size() * sizeof(float));
         }
+        active.insert(active.end(), source.active.data(), source.active.data() + count);
         sources.insert(sources.end(), source.sources.data(), source.sources.data() + count);
         locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
         locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
@@ -1871,6 +1901,7 @@ struct Entities {
     }
     auto get_view() -> View {
         return {
+            active,
             sources,
             locations.get_view(),
             rotations.get_view(),
@@ -1884,6 +1915,7 @@ struct Entities {
     }
     auto get_view() const -> ConstView {
         return {
+            active,
             sources,
             locations.get_view(),
             rotations.get_view(),
@@ -1917,6 +1949,8 @@ struct Entities {
     auto right(size_type const count) const -> ConstView { return slice(num() - count, count); }
     template <typename Other>
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
+        active[static_cast<std::size_t>(dst_index)] =
+            other.active[static_cast<std::size_t>(src_index)];
         sources[static_cast<std::size_t>(dst_index)] =
             other.sources[static_cast<std::size_t>(src_index)];
         locations.copy_element(dst_index, other.locations, src_index);
@@ -1979,7 +2013,8 @@ struct EntitiesSingleLayout {
     inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{
         capacity_granularity, column_gap, 64};
 
-    inline static constexpr ColLayout<LaserSource> Sources{LayoutStart};
+    inline static constexpr ColLayout<std::uint8_t> Active{LayoutStart};
+    inline static constexpr ColLayout<LaserSource> Sources{Active};
     inline static constexpr ColLayout<float> LocationsXs{Sources};
     inline static constexpr ColLayout<float> LocationsYs{LocationsXs};
     inline static constexpr ColLayout<float> LocationsZs{LocationsYs};
@@ -1996,7 +2031,8 @@ struct EntitiesSingleLayout {
     inline static constexpr ColLayout<float> SpawnTimes{InitialLifetimes};
 
     inline static constexpr byte_size_type allocation_alignment{
-        ml::native_soa::maximum_alignment(Sources,
+        ml::native_soa::maximum_alignment(Active,
+                                          Sources,
                                           LocationsXs,
                                           LocationsYs,
                                           LocationsZs,
@@ -2016,7 +2052,7 @@ struct EntitiesSingleLayout {
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
         ml::native_soa::layout_align(SpawnTimes.block_end, allocation_alignment) +
-        14 * (column_gap + allocation_alignment - 1)};
+        15 * (column_gap + allocation_alignment - 1)};
     inline static constexpr size_type max_capacity{
         ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
@@ -2024,6 +2060,10 @@ struct EntitiesSingleLayout {
     }
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
+        static_assert(
+            ml::native_soa::supported_leaf<std::uint8_t>,
+            "Single-allocation leaf active requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
             ml::native_soa::supported_leaf<LaserSource>,
             "Single-allocation leaf sources requires a non-cv, trivially "
@@ -2044,6 +2084,8 @@ struct EntitiesSingleLayout {
         static_assert(
             allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
             "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
+        static_assert(sizeof(std::uint8_t) <=
+                      (max_allocation_size - Active.block_offset) / capacity_granularity);
         static_assert(sizeof(LaserSource) <=
                       (max_allocation_size - Sources.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
@@ -2075,7 +2117,7 @@ struct EntitiesSingleLayout {
                       (max_allocation_size - InitialLifetimes.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
                       (max_allocation_size - SpawnTimes.block_offset) / capacity_granularity);
-        static_assert(14 <=
+        static_assert(15 <=
                       (max_allocation_size -
                        ml::native_soa::layout_align(SpawnTimes.block_end, allocation_alignment)) /
                           (column_gap + allocation_alignment - 1));
@@ -2137,6 +2179,7 @@ struct SingleAllocationLaserEntitiesStorage
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<std::uint8_t>* active{};
         Element<LaserSource>* sources{};
         Element<float>* locations_xs{};
         Element<float>* locations_ys{};
@@ -2153,10 +2196,11 @@ struct SingleAllocationLaserEntitiesStorage
         Element<float>* initial_lifetimes{};
         Element<float>* spawn_times{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (sources == nullptr) {
+            if (active == nullptr) {
                 return {};
             }
-            return {sources + offset,
+            return {active + offset,
+                    sources + offset,
                     locations_xs + offset,
                     locations_ys + offset,
                     locations_zs + offset,
@@ -2200,7 +2244,10 @@ struct SingleAllocationLaserEntitiesStorage
                                                typename Column::pointer>;
             return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        auto const sources_offset{byte_size_type{}};
+        auto const active_offset{byte_size_type{}};
+        auto const sources_offset{ml::native_soa::layout_align(
+            active_offset + blocks * capacity_granularity * sizeof(std::uint8_t) + column_gap,
+            Sources.alignment)};
         auto const locations_xs_offset{ml::native_soa::layout_align(
             sources_offset + blocks * capacity_granularity * sizeof(LaserSource) + column_gap,
             LocationsXs.alignment)};
@@ -2244,7 +2291,8 @@ struct SingleAllocationLaserEntitiesStorage
         auto const spawn_times_offset{ml::native_soa::layout_align(
             initial_lifetimes_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
             SpawnTimes.alignment)};
-        return {pointer_at(Sources, sources_offset),
+        return {pointer_at(Active, active_offset),
+                pointer_at(Sources, sources_offset),
                 pointer_at(LocationsXs, locations_xs_offset),
                 pointer_at(LocationsYs, locations_ys_offset),
                 pointer_at(LocationsZs, locations_zs_offset),
@@ -2269,6 +2317,7 @@ struct SingleAllocationLaserEntitiesStorage
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        std::uninitialized_value_construct_n<std::uint8_t*>(columns.active, count);
         std::uninitialized_value_construct_n<LaserSource*>(columns.sources, count);
         std::uninitialized_value_construct_n<float*>(columns.locations_xs, count);
         std::uninitialized_value_construct_n<float*>(columns.locations_ys, count);
@@ -2296,10 +2345,12 @@ struct SingleAllocationLaserEntitiesStorage
                              size_type source,
                              size_type move_count) {
         auto const elements_to_move{static_cast<byte_size_type>(move_count)};
+        auto const active_bytes{elements_to_move * sizeof(std::uint8_t)};
         auto const sources_bytes{elements_to_move * sizeof(LaserSource)};
         auto const locations_xs_bytes{elements_to_move * sizeof(float)};
         auto const damages_bytes{elements_to_move * sizeof(std::int32_t)};
         auto const instigator_handles_bytes{elements_to_move * sizeof(RegistryEntityHandle)};
+        std::memcpy(columns.active + index, columns.active + source, active_bytes);
         std::memcpy(columns.sources + index, columns.sources + source, sources_bytes);
         std::memcpy(
             columns.locations_xs + index, columns.locations_xs + source, locations_xs_bytes);
@@ -2352,12 +2403,13 @@ struct SingleAllocationLaserEntitiesStorage
             auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
             return address >= allocation_begin && address < allocation_end;
         };
-        return aliases(source.sources.data()) || aliases(source.locations.xs) ||
-               aliases(source.locations.ys) || aliases(source.locations.zs) ||
-               aliases(source.rotations.pitches.data()) || aliases(source.rotations.yaws.data()) ||
-               aliases(source.rotations.rolls.data()) || aliases(source.velocities.xs) ||
-               aliases(source.velocities.ys) || aliases(source.velocities.zs) ||
-               aliases(source.damages.data()) || aliases(source.lifetimes_remaining.data()) ||
+        return aliases(source.active.data()) || aliases(source.sources.data()) ||
+               aliases(source.locations.xs) || aliases(source.locations.ys) ||
+               aliases(source.locations.zs) || aliases(source.rotations.pitches.data()) ||
+               aliases(source.rotations.yaws.data()) || aliases(source.rotations.rolls.data()) ||
+               aliases(source.velocities.xs) || aliases(source.velocities.ys) ||
+               aliases(source.velocities.zs) || aliases(source.damages.data()) ||
+               aliases(source.lifetimes_remaining.data()) ||
                aliases(source.instigator_handles.data()) ||
                aliases(source.initial_lifetimes.data()) || aliases(source.spawn_times.data());
     }
@@ -2365,10 +2417,12 @@ struct SingleAllocationLaserEntitiesStorage
     void append_columns(Columns const& source, size_type first, size_type count) {
         auto const destination{get_data(first)};
         auto const elements_to_copy{static_cast<byte_size_type>(count)};
+        auto const active_bytes{elements_to_copy * sizeof(std::uint8_t)};
         auto const sources_bytes{elements_to_copy * sizeof(LaserSource)};
         auto const locations_xs_bytes{elements_to_copy * sizeof(float)};
         auto const damages_bytes{elements_to_copy * sizeof(std::int32_t)};
         auto const instigator_handles_bytes{elements_to_copy * sizeof(RegistryEntityHandle)};
+        std::memcpy(destination.active, source.active.data(), active_bytes);
         std::memcpy(destination.sources, source.sources.data(), sources_bytes);
         std::memcpy(destination.locations_xs, source.locations.xs, locations_xs_bytes);
         std::memcpy(destination.locations_ys, source.locations.ys, locations_xs_bytes);
@@ -2401,10 +2455,12 @@ struct SingleAllocationLaserEntitiesStorage
                 make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
             auto const destination{make_data_unchecked(new_data, new_blocks)};
             auto const live_count{static_cast<byte_size_type>(num_)};
+            auto const active_bytes{live_count * sizeof(std::uint8_t)};
             auto const sources_bytes{live_count * sizeof(LaserSource)};
             auto const locations_xs_bytes{live_count * sizeof(float)};
             auto const damages_bytes{live_count * sizeof(std::int32_t)};
             auto const instigator_handles_bytes{live_count * sizeof(RegistryEntityHandle)};
+            std::memcpy(destination.active, source.active, active_bytes);
             std::memcpy(destination.sources, source.sources, sources_bytes);
             std::memcpy(destination.locations_xs, source.locations_xs, locations_xs_bytes);
             std::memcpy(destination.locations_ys, source.locations_ys, locations_xs_bytes);
@@ -2442,6 +2498,10 @@ struct EntitiesSingleConstView : ml::native_soa::CompactViewState<true> {
     auto get_const_view() const -> ConstView { return *this; }
     auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return slice(offset, count);
+    }
+    auto active() const -> std::span<std::uint8_t const> {
+        return {column_data<std::uint8_t>(EntitiesSingleLayout::Active.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
     }
     auto sources() const -> std::span<LaserSource const> {
         return {column_data<LaserSource>(EntitiesSingleLayout::Sources.offset(capacity_blocks())),
@@ -2511,6 +2571,8 @@ struct EntitiesSingleConstView : ml::native_soa::CompactViewState<true> {
         }
         auto const blocks{capacity_blocks()};
         return EntitiesConstView{
+            {column_data_unchecked<std::uint8_t>(EntitiesSingleLayout::Active.offset(blocks)),
+             static_cast<std::size_t>(count_)},
             {column_data_unchecked<LaserSource>(EntitiesSingleLayout::Sources.offset(blocks)),
              static_cast<std::size_t>(count_)},
             Vectors3fConstView{
@@ -2563,6 +2625,10 @@ struct EntitiesSingleView : ml::native_soa::CompactViewState<false> {
     auto get_const_view() const -> ConstView { return *this; }
     auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return slice(offset, count);
+    }
+    auto active() const -> std::span<std::uint8_t> {
+        return {column_data<std::uint8_t>(EntitiesSingleLayout::Active.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
     }
     auto sources() const -> std::span<LaserSource> {
         return {column_data<LaserSource>(EntitiesSingleLayout::Sources.offset(capacity_blocks())),
@@ -2632,6 +2698,8 @@ struct EntitiesSingleView : ml::native_soa::CompactViewState<false> {
         }
         auto const blocks{capacity_blocks()};
         return EntitiesView{
+            {column_data_unchecked<std::uint8_t>(EntitiesSingleLayout::Active.offset(blocks)),
+             static_cast<std::size_t>(count_)},
             {column_data_unchecked<LaserSource>(EntitiesSingleLayout::Sources.offset(blocks)),
              static_cast<std::size_t>(count_)},
             Vectors3fView{

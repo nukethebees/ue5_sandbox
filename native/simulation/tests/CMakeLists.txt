@@ -1,5 +1,6 @@
 add_executable(native-simulation-tests)
 target_sources(native-simulation-tests PRIVATE
+  agent_indexes_tests.cpp
   entity_unique_id_tests.cpp
   test_tick_phases.cpp
   test_level_simulation.cpp

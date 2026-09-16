@@ -14,6 +14,7 @@
     (member rolls array float))
   (struct FighterEntityData
     :operations (all)
+    (member entity_ids array @native_unique_id)
     (member entity_handles array @native_registry_handle)
     (member integral_biases array uint32)
     (member float_biases array float)
@@ -66,6 +67,7 @@
     (member rolls array float))
   (struct CapitalEntityData
     :operations (all)
+    (member entity_ids array @native_unique_id)
     (member handles array @native_registry_handle)
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member rotations nested @native_rotators_3f :nested-schema Rotators3f)
@@ -106,6 +108,7 @@
     (single-allocation SingleAllocationLaserSpawnRequests))
   (struct Entities
     :operations (all)
+    (member active array uint8)
     (member sources array @laser_source)
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member rotations nested @native_rotators_3f :nested-schema Rotators3f)
@@ -156,6 +159,7 @@
     (member rolls array float))
   (struct TurretEntityData
     :operations (all)
+    (member entity_ids array @native_unique_id)
     (member handles array @native_registry_handle)
     (member integral_biases array uint32)
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
@@ -188,6 +192,7 @@
     (member rolls array float))
   (struct SpinnerEntityData
     :operations (all)
+    (member entity_ids array @native_unique_id)
     (member handles array @native_registry_handle)
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member yaws array float)

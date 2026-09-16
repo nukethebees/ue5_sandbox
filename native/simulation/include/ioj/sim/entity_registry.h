@@ -159,6 +159,9 @@ struct EntityRegistry {
     auto is_valid_unique_id(EntityUniqueId const id) const -> bool;
     auto get_num_unique_ids_issued() const -> std::int32_t { return unique_entity_history_.num(); }
     auto find_unique_id(RegistryEntityHandle const handle) const -> EntityUniqueId;
+    auto get_current_id(RegistryEntityHandle const handle) const -> EntityUniqueId {
+        return is_valid_handle(handle) ? bookkeeping_.unique_ids[handle.index] : EntityUniqueId{};
+    }
     auto get_kills(EntityUniqueId const id) const -> std::uint32_t;
 
     /* **************************************** */

@@ -12,6 +12,13 @@ namespace ioj::sim {
 struct SpawnedEntityHandles {
     [[nodiscard]] auto num() const noexcept -> std::int32_t { return registry_handles.num(); }
 
+    [[nodiscard]] auto get_id(std::int32_t const index, EntityType const type) const noexcept
+        -> EntityUniqueId {
+        assert(index >= 0 && index < num());
+        return EntityUniqueId::make(
+            first_id.index() + static_cast<EntityUniqueId::index_type>(index), type);
+    }
+
     void reset() noexcept { registry_handles.reset(); }
     void add_defaulted(std::int32_t const count) { registry_handles.add_defaulted(count); }
     void add_uninitialised(std::int32_t const count) { registry_handles.add_uninitialised(count); }
