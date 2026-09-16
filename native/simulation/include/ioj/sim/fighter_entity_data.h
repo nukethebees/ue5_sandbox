@@ -40,7 +40,7 @@ struct FighterEntityDataConstView {
     std::span<float const> speeds;
     std::span<Team const> teams;
     std::span<Health const> healths;
-    std::span<RegistryEntityHandle const> parent_handles;
+    std::span<EntityUniqueId const> parent_ids;
     std::span<std::int8_t const> awareness_scan_countdowns;
     std::span<std::int16_t const> navigation_update_countdowns_remaining_ticks;
     std::span<std::int16_t const> navigation_update_countdowns_periods;
@@ -93,7 +93,7 @@ struct FighterEntityDataConstView {
         fn(speeds);
         fn(teams);
         fn(healths);
-        fn(parent_handles);
+        fn(parent_ids);
         fn(awareness_scan_countdowns);
         fn(navigation_update_countdowns_remaining_ticks);
         fn(navigation_update_countdowns_periods);
@@ -150,8 +150,7 @@ struct FighterEntityDataConstView {
             speeds.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             teams.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             healths.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            parent_handles.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
+            parent_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             awareness_scan_countdowns.subspan(static_cast<std::size_t>(offset),
                                               static_cast<std::size_t>(count)),
             navigation_update_countdowns_remaining_ticks.subspan(static_cast<std::size_t>(offset),
@@ -208,7 +207,7 @@ struct FighterEntityDataConstView {
             speeds,
             teams,
             healths,
-            parent_handles,
+            parent_ids,
             awareness_scan_countdowns,
             navigation_update_countdowns_remaining_ticks,
             navigation_update_countdowns_periods,
@@ -257,7 +256,7 @@ struct FighterEntityDataView {
     std::span<float> speeds;
     std::span<Team> teams;
     std::span<Health> healths;
-    std::span<RegistryEntityHandle> parent_handles;
+    std::span<EntityUniqueId> parent_ids;
     std::span<std::int8_t> awareness_scan_countdowns;
     std::span<std::int16_t> navigation_update_countdowns_remaining_ticks;
     std::span<std::int16_t> navigation_update_countdowns_periods;
@@ -310,7 +309,7 @@ struct FighterEntityDataView {
         fn(speeds);
         fn(teams);
         fn(healths);
-        fn(parent_handles);
+        fn(parent_ids);
         fn(awareness_scan_countdowns);
         fn(navigation_update_countdowns_remaining_ticks);
         fn(navigation_update_countdowns_periods);
@@ -367,8 +366,7 @@ struct FighterEntityDataView {
             speeds.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             teams.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             healths.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            parent_handles.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
+            parent_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             awareness_scan_countdowns.subspan(static_cast<std::size_t>(offset),
                                               static_cast<std::size_t>(count)),
             navigation_update_countdowns_remaining_ticks.subspan(static_cast<std::size_t>(offset),
@@ -424,7 +422,7 @@ struct FighterEntityDataView {
             speeds,
             teams,
             healths,
-            parent_handles,
+            parent_ids,
             awareness_scan_countdowns,
             navigation_update_countdowns_remaining_ticks,
             navigation_update_countdowns_periods,
@@ -483,7 +481,7 @@ struct FighterEntityDataView {
              float const new_speeds,
              Team const new_teams,
              Health const new_healths,
-             RegistryEntityHandle const new_parent_handles,
+             EntityUniqueId const new_parent_ids,
              std::int8_t const new_awareness_scan_countdowns,
              std::int16_t const new_navigation_update_countdowns_remaining_ticks,
              std::int16_t const new_navigation_update_countdowns_periods,
@@ -544,7 +542,7 @@ struct FighterEntityDataView {
         speeds[static_cast<std::size_t>(index)] = new_speeds;
         teams[static_cast<std::size_t>(index)] = new_teams;
         healths[static_cast<std::size_t>(index)] = new_healths;
-        parent_handles[static_cast<std::size_t>(index)] = new_parent_handles;
+        parent_ids[static_cast<std::size_t>(index)] = new_parent_ids;
         awareness_scan_countdowns[static_cast<std::size_t>(index)] = new_awareness_scan_countdowns;
         navigation_update_countdowns_remaining_ticks[static_cast<std::size_t>(index)] =
             new_navigation_update_countdowns_remaining_ticks;
@@ -598,7 +596,7 @@ struct FighterEntityData {
     ml::native_soa::Vector<float> speeds;
     ml::native_soa::Vector<Team> teams;
     ml::native_soa::Vector<Health> healths;
-    ml::native_soa::Vector<RegistryEntityHandle> parent_handles;
+    ml::native_soa::Vector<EntityUniqueId> parent_ids;
     ml::native_soa::Vector<std::int8_t> awareness_scan_countdowns;
     ml::native_soa::Vector<std::int16_t> navigation_update_countdowns_remaining_ticks;
     ml::native_soa::Vector<std::int16_t> navigation_update_countdowns_periods;
@@ -651,7 +649,7 @@ struct FighterEntityData {
         fn(speeds);
         fn(teams);
         fn(healths);
-        fn(parent_handles);
+        fn(parent_ids);
         fn(awareness_scan_countdowns);
         fn(navigation_update_countdowns_remaining_ticks);
         fn(navigation_update_countdowns_periods);
@@ -711,7 +709,7 @@ struct FighterEntityData {
         fn(speeds);
         fn(teams);
         fn(healths);
-        fn(parent_handles);
+        fn(parent_ids);
         fn(awareness_scan_countdowns);
         fn(navigation_update_countdowns_remaining_ticks);
         fn(navigation_update_countdowns_periods);
@@ -772,7 +770,7 @@ struct FighterEntityData {
         speeds.reserve(static_cast<std::size_t>(count));
         teams.reserve(static_cast<std::size_t>(count));
         healths.reserve(static_cast<std::size_t>(count));
-        parent_handles.reserve(static_cast<std::size_t>(count));
+        parent_ids.reserve(static_cast<std::size_t>(count));
         awareness_scan_countdowns.reserve(static_cast<std::size_t>(count));
         navigation_update_countdowns_remaining_ticks.reserve(static_cast<std::size_t>(count));
         navigation_update_countdowns_periods.reserve(static_cast<std::size_t>(count));
@@ -831,7 +829,7 @@ struct FighterEntityData {
         speeds.clear();
         teams.clear();
         healths.clear();
-        parent_handles.clear();
+        parent_ids.clear();
         awareness_scan_countdowns.clear();
         navigation_update_countdowns_remaining_ticks.clear();
         navigation_update_countdowns_periods.clear();
@@ -892,7 +890,7 @@ struct FighterEntityData {
         speeds.resize(size);
         teams.resize(size);
         healths.resize(size);
-        parent_handles.resize(size);
+        parent_ids.resize(size);
         awareness_scan_countdowns.resize(size);
         navigation_update_countdowns_remaining_ticks.resize(size);
         navigation_update_countdowns_periods.resize(size);
@@ -1024,7 +1022,7 @@ struct FighterEntityData {
             healths[index + i] = healths[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
-            parent_handles[index + i] = parent_handles[source + i];
+            parent_ids[index + i] = parent_ids[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
             awareness_scan_countdowns[index + i] = awareness_scan_countdowns[source + i];
@@ -1140,7 +1138,7 @@ struct FighterEntityData {
              float const new_speeds,
              Team const new_teams,
              Health const new_healths,
-             RegistryEntityHandle const new_parent_handles,
+             EntityUniqueId const new_parent_ids,
              std::int8_t const new_awareness_scan_countdowns,
              std::int16_t const new_navigation_update_countdowns_remaining_ticks,
              std::int16_t const new_navigation_update_countdowns_periods,
@@ -1198,7 +1196,7 @@ struct FighterEntityData {
                        new_speeds,
                        new_teams,
                        new_healths,
-                       new_parent_handles,
+                       new_parent_ids,
                        new_awareness_scan_countdowns,
                        new_navigation_update_countdowns_remaining_ticks,
                        new_navigation_update_countdowns_periods,
@@ -1256,7 +1254,7 @@ struct FighterEntityData {
              float const new_speeds,
              Team const new_teams,
              Health const new_healths,
-             RegistryEntityHandle const new_parent_handles,
+             EntityUniqueId const new_parent_ids,
              std::int8_t const new_awareness_scan_countdowns,
              std::int16_t const new_navigation_update_countdowns_remaining_ticks,
              std::int16_t const new_navigation_update_countdowns_periods,
@@ -1316,7 +1314,7 @@ struct FighterEntityData {
             new_speeds,
             new_teams,
             new_healths,
-            new_parent_handles,
+            new_parent_ids,
             new_awareness_scan_countdowns,
             new_navigation_update_countdowns_remaining_ticks,
             new_navigation_update_countdowns_periods,
@@ -1547,11 +1545,10 @@ struct FighterEntityData {
                                     address >= begin + healths.size() * sizeof(Health));
         }
         {
-            auto const address{ml::address_cast(source.parent_handles.data())};
-            auto const begin{ml::address_cast(parent_handles.data())};
+            auto const address{ml::address_cast(source.parent_ids.data())};
+            auto const begin{ml::address_cast(parent_ids.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + parent_handles.size() *
-                                                           sizeof(RegistryEntityHandle));
+                                    address >= begin + parent_ids.size() * sizeof(EntityUniqueId));
         }
         {
             auto const address{ml::address_cast(source.awareness_scan_countdowns.data())};
@@ -1792,9 +1789,8 @@ struct FighterEntityData {
         speeds.insert(speeds.end(), source.speeds.data(), source.speeds.data() + count);
         teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
         healths.insert(healths.end(), source.healths.data(), source.healths.data() + count);
-        parent_handles.insert(parent_handles.end(),
-                              source.parent_handles.data(),
-                              source.parent_handles.data() + count);
+        parent_ids.insert(
+            parent_ids.end(), source.parent_ids.data(), source.parent_ids.data() + count);
         awareness_scan_countdowns.insert(awareness_scan_countdowns.end(),
                                          source.awareness_scan_countdowns.data(),
                                          source.awareness_scan_countdowns.data() + count);
@@ -1894,7 +1890,7 @@ struct FighterEntityData {
             speeds,
             teams,
             healths,
-            parent_handles,
+            parent_ids,
             awareness_scan_countdowns,
             navigation_update_countdowns_remaining_ticks,
             navigation_update_countdowns_periods,
@@ -1933,7 +1929,7 @@ struct FighterEntityData {
             speeds,
             teams,
             healths,
-            parent_handles,
+            parent_ids,
             awareness_scan_countdowns,
             navigation_update_countdowns_remaining_ticks,
             navigation_update_countdowns_periods,
@@ -2002,8 +1998,8 @@ struct FighterEntityData {
             other.teams[static_cast<std::size_t>(src_index)];
         healths[static_cast<std::size_t>(dst_index)] =
             other.healths[static_cast<std::size_t>(src_index)];
-        parent_handles[static_cast<std::size_t>(dst_index)] =
-            other.parent_handles[static_cast<std::size_t>(src_index)];
+        parent_ids[static_cast<std::size_t>(dst_index)] =
+            other.parent_ids[static_cast<std::size_t>(src_index)];
         awareness_scan_countdowns[static_cast<std::size_t>(dst_index)] =
             other.awareness_scan_countdowns[static_cast<std::size_t>(src_index)];
         navigation_update_countdowns_remaining_ticks[static_cast<std::size_t>(dst_index)] =
@@ -2113,8 +2109,8 @@ struct FighterEntityDataSingleLayout {
     inline static constexpr ColLayout<float> Speeds{MoveDistances};
     inline static constexpr ColLayout<Team> Teams{Speeds};
     inline static constexpr ColLayout<Health> Healths{Teams};
-    inline static constexpr ColLayout<RegistryEntityHandle> ParentHandles{Healths};
-    inline static constexpr ColLayout<std::int8_t> AwarenessScanCountdowns{ParentHandles};
+    inline static constexpr ColLayout<EntityUniqueId> ParentIds{Healths};
+    inline static constexpr ColLayout<std::int8_t> AwarenessScanCountdowns{ParentIds};
     inline static constexpr ColLayout<std::int16_t> NavigationUpdateCountdownsRemainingTicks{
         AwarenessScanCountdowns};
     inline static constexpr ColLayout<std::int16_t> NavigationUpdateCountdownsPeriods{
@@ -2179,7 +2175,7 @@ struct FighterEntityDataSingleLayout {
                                           Speeds,
                                           Teams,
                                           Healths,
-                                          ParentHandles,
+                                          ParentIds,
                                           AwarenessScanCountdowns,
                                           NavigationUpdateCountdownsRemainingTicks,
                                           NavigationUpdateCountdownsPeriods,
@@ -2326,8 +2322,8 @@ struct FighterEntityDataSingleLayout {
                       (max_allocation_size - Teams.block_offset) / capacity_granularity);
         static_assert(sizeof(Health) <=
                       (max_allocation_size - Healths.block_offset) / capacity_granularity);
-        static_assert(sizeof(RegistryEntityHandle) <=
-                      (max_allocation_size - ParentHandles.block_offset) / capacity_granularity);
+        static_assert(sizeof(EntityUniqueId) <=
+                      (max_allocation_size - ParentIds.block_offset) / capacity_granularity);
         static_assert(sizeof(std::int8_t) <=
                       (max_allocation_size - AwarenessScanCountdowns.block_offset) /
                           capacity_granularity);
@@ -2485,7 +2481,7 @@ struct SingleAllocationFighterEntityDataStorage
         Element<float>* speeds{};
         Element<Team>* teams{};
         Element<Health>* healths{};
-        Element<RegistryEntityHandle>* parent_handles{};
+        Element<EntityUniqueId>* parent_ids{};
         Element<std::int8_t>* awareness_scan_countdowns{};
         Element<std::int16_t>* navigation_update_countdowns_remaining_ticks{};
         Element<std::int16_t>* navigation_update_countdowns_periods{};
@@ -2546,7 +2542,7 @@ struct SingleAllocationFighterEntityDataStorage
                     speeds + offset,
                     teams + offset,
                     healths + offset,
-                    parent_handles + offset,
+                    parent_ids + offset,
                     awareness_scan_countdowns + offset,
                     navigation_update_countdowns_remaining_ticks + offset,
                     navigation_update_countdowns_periods + offset,
@@ -2704,12 +2700,11 @@ struct SingleAllocationFighterEntityDataStorage
         auto const healths_offset{ml::native_soa::layout_align(
             teams_offset + blocks * capacity_granularity * sizeof(Team) + column_gap,
             Healths.alignment)};
-        auto const parent_handles_offset{ml::native_soa::layout_align(
+        auto const parent_ids_offset{ml::native_soa::layout_align(
             healths_offset + blocks * capacity_granularity * sizeof(Health) + column_gap,
-            ParentHandles.alignment)};
+            ParentIds.alignment)};
         auto const awareness_scan_countdowns_offset{ml::native_soa::layout_align(
-            parent_handles_offset + blocks * capacity_granularity * sizeof(RegistryEntityHandle) +
-                column_gap,
+            parent_ids_offset + blocks * capacity_granularity * sizeof(EntityUniqueId) + column_gap,
             AwarenessScanCountdowns.alignment)};
         auto const navigation_update_countdowns_remaining_ticks_offset{ml::native_soa::layout_align(
             awareness_scan_countdowns_offset + blocks * capacity_granularity * sizeof(std::int8_t) +
@@ -2835,7 +2830,7 @@ struct SingleAllocationFighterEntityDataStorage
                 pointer_at(Speeds, speeds_offset),
                 pointer_at(Teams, teams_offset),
                 pointer_at(Healths, healths_offset),
-                pointer_at(ParentHandles, parent_handles_offset),
+                pointer_at(ParentIds, parent_ids_offset),
                 pointer_at(AwarenessScanCountdowns, awareness_scan_countdowns_offset),
                 pointer_at(NavigationUpdateCountdownsRemainingTicks,
                            navigation_update_countdowns_remaining_ticks_offset),
@@ -2904,7 +2899,7 @@ struct SingleAllocationFighterEntityDataStorage
         std::uninitialized_value_construct_n<float*>(columns.speeds, count);
         std::uninitialized_value_construct_n<Team*>(columns.teams, count);
         std::uninitialized_value_construct_n<Health*>(columns.healths, count);
-        std::uninitialized_value_construct_n<RegistryEntityHandle*>(columns.parent_handles, count);
+        std::uninitialized_value_construct_n<EntityUniqueId*>(columns.parent_ids, count);
         std::uninitialized_value_construct_n<std::int8_t*>(columns.awareness_scan_countdowns,
                                                            count);
         std::uninitialized_value_construct_n<std::int16_t*>(
@@ -3030,8 +3025,7 @@ struct SingleAllocationFighterEntityDataStorage
         std::memcpy(columns.speeds + index, columns.speeds + source, float_biases_bytes);
         std::memcpy(columns.teams + index, columns.teams + source, teams_bytes);
         std::memcpy(columns.healths + index, columns.healths + source, healths_bytes);
-        std::memcpy(
-            columns.parent_handles + index, columns.parent_handles + source, entity_handles_bytes);
+        std::memcpy(columns.parent_ids + index, columns.parent_ids + source, entity_ids_bytes);
         std::memcpy(columns.awareness_scan_countdowns + index,
                     columns.awareness_scan_countdowns + source,
                     awareness_scan_countdowns_bytes);
@@ -3148,7 +3142,7 @@ struct SingleAllocationFighterEntityDataStorage
                aliases(source.velocities.ys) || aliases(source.velocities.zs) ||
                aliases(source.move_distances.data()) || aliases(source.speeds.data()) ||
                aliases(source.teams.data()) || aliases(source.healths.data()) ||
-               aliases(source.parent_handles.data()) ||
+               aliases(source.parent_ids.data()) ||
                aliases(source.awareness_scan_countdowns.data()) ||
                aliases(source.navigation_update_countdowns_remaining_ticks.data()) ||
                aliases(source.navigation_update_countdowns_periods.data()) ||
@@ -3235,7 +3229,7 @@ struct SingleAllocationFighterEntityDataStorage
         std::memcpy(destination.speeds, source.speeds.data(), float_biases_bytes);
         std::memcpy(destination.teams, source.teams.data(), teams_bytes);
         std::memcpy(destination.healths, source.healths.data(), healths_bytes);
-        std::memcpy(destination.parent_handles, source.parent_handles.data(), entity_handles_bytes);
+        std::memcpy(destination.parent_ids, source.parent_ids.data(), entity_ids_bytes);
         std::memcpy(destination.awareness_scan_countdowns,
                     source.awareness_scan_countdowns.data(),
                     awareness_scan_countdowns_bytes);
@@ -3374,7 +3368,7 @@ struct SingleAllocationFighterEntityDataStorage
             std::memcpy(destination.speeds, source.speeds, float_biases_bytes);
             std::memcpy(destination.teams, source.teams, teams_bytes);
             std::memcpy(destination.healths, source.healths, healths_bytes);
-            std::memcpy(destination.parent_handles, source.parent_handles, entity_handles_bytes);
+            std::memcpy(destination.parent_ids, source.parent_ids, entity_ids_bytes);
             std::memcpy(destination.awareness_scan_countdowns,
                         source.awareness_scan_countdowns,
                         awareness_scan_countdowns_bytes);
@@ -3570,9 +3564,9 @@ struct FighterEntityDataSingleConstView : ml::native_soa::CompactViewState<true>
             column_data<Health>(FighterEntityDataSingleLayout::Healths.offset(capacity_blocks())),
             static_cast<std::size_t>(count_)};
     }
-    auto parent_handles() const -> std::span<RegistryEntityHandle const> {
-        return {column_data<RegistryEntityHandle>(
-                    FighterEntityDataSingleLayout::ParentHandles.offset(capacity_blocks())),
+    auto parent_ids() const -> std::span<EntityUniqueId const> {
+        return {column_data<EntityUniqueId>(
+                    FighterEntityDataSingleLayout::ParentIds.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto awareness_scan_countdowns() const -> std::span<std::int8_t const> {
@@ -3791,8 +3785,8 @@ struct FighterEntityDataSingleConstView : ml::native_soa::CompactViewState<true>
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<Health>(FighterEntityDataSingleLayout::Healths.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
-                 FighterEntityDataSingleLayout::ParentHandles.offset(blocks)),
+            {column_data_unchecked<EntityUniqueId>(
+                 FighterEntityDataSingleLayout::ParentIds.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<std::int8_t>(
                  FighterEntityDataSingleLayout::AwarenessScanCountdowns.offset(blocks)),
@@ -4012,9 +4006,9 @@ struct FighterEntityDataSingleView : ml::native_soa::CompactViewState<false> {
             column_data<Health>(FighterEntityDataSingleLayout::Healths.offset(capacity_blocks())),
             static_cast<std::size_t>(count_)};
     }
-    auto parent_handles() const -> std::span<RegistryEntityHandle> {
-        return {column_data<RegistryEntityHandle>(
-                    FighterEntityDataSingleLayout::ParentHandles.offset(capacity_blocks())),
+    auto parent_ids() const -> std::span<EntityUniqueId> {
+        return {column_data<EntityUniqueId>(
+                    FighterEntityDataSingleLayout::ParentIds.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto awareness_scan_countdowns() const -> std::span<std::int8_t> {
@@ -4232,8 +4226,8 @@ struct FighterEntityDataSingleView : ml::native_soa::CompactViewState<false> {
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<Health>(FighterEntityDataSingleLayout::Healths.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
-                 FighterEntityDataSingleLayout::ParentHandles.offset(blocks)),
+            {column_data_unchecked<EntityUniqueId>(
+                 FighterEntityDataSingleLayout::ParentIds.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<std::int8_t>(
                  FighterEntityDataSingleLayout::AwarenessScanCountdowns.offset(blocks)),

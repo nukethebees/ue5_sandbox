@@ -342,7 +342,7 @@ void Sim::queue_fighter_spawns() {
             fighter_spawn_wave.add(to_float(new_transform.location),
                                    to_float(new_transform.rotator()),
                                    entities.teams[capital_index],
-                                   entities.handles[capital_index],
+                                   entities.entity_ids[capital_index],
                                    entities.target_handles[capital_index]);
         }
         auto const spawn_wave{fighter_spawn_wave.get_const_view()};
@@ -354,7 +354,7 @@ void Sim::queue_fighter_spawns() {
 void Sim::refresh_fighter_handles() {
     auto const entities{this->entities.get_view().columns()};
     auto const handles{fighters_interface.get_handles()};
-    auto const parents{fighters_interface.get_parent_handles()};
+    auto const parents{fighters_interface.get_parent_ids()};
     auto const healths{fighters_interface.get_healths()};
     auto const capital_count{entities.num()};
     auto const fighter_count{handles.size()};
@@ -364,7 +364,7 @@ void Sim::refresh_fighter_handles() {
         if (is_dead(healths[index])) {
             continue;
         }
-        auto const parent{entity_registry.get_current_id(parents[index])};
+        auto const parent{parents[index]};
         if (!parent.is_valid() || parent.entity_type() != EntityType::CapitalShip) {
             continue;
         }
@@ -470,31 +470,30 @@ void Sim::handle_dead_entities() {
 }
 void Sim::reassign_fighter_handles_of_dying_capital() {
     auto const entities{this->entities.get_const_view().columns()};
-    std::array<RegistryEntityHandle, static_cast<std::size_t>(Team::COUNT)> replacements{};
+    ml::EnumArray<Team, EntityUniqueId, static_cast<std::size_t>(Team::COUNT)> replacements{};
     auto const count{entities.num()};
     for (std::int32_t index{}; index < count; ++index) {
-        auto& replacement{replacements[static_cast<std::size_t>(entities.teams[index])]};
+        auto& replacement{replacements[entities.teams[index]]};
         if (is_alive(entities.healths[index]) &&
-            (replacement.is_null() || entities.entity_ids[index].index() <
-                                          entity_registry.get_current_id(replacement).index())) {
-            replacement = entities.handles[index];
+            (!replacement.is_valid() || entities.entity_ids[index] < replacement)) {
+            replacement = entities.entity_ids[index];
         }
     }
     auto const handles{fighters_interface.get_handles()};
-    auto const parents{fighters_interface.get_parent_handles()};
+    auto const parents{fighters_interface.get_parent_ids()};
     auto const healths{fighters_interface.get_healths()};
     auto const fighter_count{handles.size()};
     for (auto const dying_index : local_indices_to_remove) {
-        auto const parent{entities.handles[dying_index]};
-        auto const replacement{replacements[static_cast<std::size_t>(entities.teams[dying_index])]};
+        auto const parent{entities.entity_ids[dying_index]};
+        auto const replacement{replacements[entities.teams[dying_index]]};
         for (std::size_t index{}; index < fighter_count; ++index) {
             if (parents[index] != parent || is_dead(healths[index])) {
                 continue;
             }
-            if (replacement.is_null()) {
+            if (!replacement.is_valid()) {
                 fighter_self_destruct_requests_.push_back(handles[index]);
             } else {
-                fighters_interface.set_parent_handle(handles[index], replacement);
+                fighters_interface.set_parent_id(handles[index], replacement);
             }
         }
     }

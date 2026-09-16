@@ -48,19 +48,21 @@ void run_worldless_spatial_query_range(tests::SimulationFixture const& config) {
         tests::expect_equal(boundary_enemy, results[0], "Boundary enemy is included");
     }
 
+    std::array<EntityUniqueId, 4> ids;
     auto const type_count{
         harness.get_simulation().get_spatial_query_manager().collect_entities_of_type_in_range(
             ml::make_vector3f(0.f, 0.f, 0.f),
             EntityType::CapitalShip,
             1000.f,
-            ignored_origin,
-            results)};
+            harness.get_registry().get_current_id(ignored_origin),
+            ids)};
     tests::expect_equal(
         type_count, 2, "Type-filtered query ignores self and includes two capitals");
     if (type_count == 2) {
-        tests::expect_equal(friendly, results[0], "Type-filtered order is deterministic");
-        tests::expect_equal(
-            boundary_enemy, results[1], "Type-filtered query includes the boundary entity");
+        tests::expect_true(harness.get_registry().get_current_id(friendly) == ids[0],
+                           "Type-filtered order is deterministic");
+        tests::expect_true(harness.get_registry().get_current_id(boundary_enemy) == ids[1],
+                           "Type-filtered query includes the boundary entity");
     }
 }
 

@@ -90,16 +90,16 @@ struct Sim {
     auto get_view(std::int32_t offset, std::int32_t width) -> EntityData::View;
     auto get_const_view(std::int32_t offset, std::int32_t width) const -> EntityData::ConstView;
     auto get_handles() const noexcept -> std::span<RegistryEntityHandle const>;
-    auto get_parent_handles() const -> std::span<RegistryEntityHandle const> {
-        return entity_buffers.current().get_const_view().parent_handles();
+    auto get_parent_ids() const -> std::span<EntityUniqueId const> {
+        return entity_buffers.current().get_const_view().parent_ids();
     }
     auto get_healths() const -> std::span<Health const> {
         return entity_buffers.current().get_const_view().healths();
     }
-    void set_parent_handle(RegistryEntityHandle fighter, RegistryEntityHandle parent) {
+    void set_parent_id(RegistryEntityHandle fighter, EntityUniqueId parent) {
         auto const index{find_index(fighter)};
         assert(index >= 0);
-        entity_buffers.current().get_view().parent_handles()[index] = parent;
+        entity_buffers.current().get_view().parent_ids()[index] = parent;
     }
     auto get_locations() const {
         return entity_buffers.current().get_const_view().columns().locations;

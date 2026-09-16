@@ -643,7 +643,7 @@ void Sim::collect_navigation_updates(NavigationScratch& scratch) {
 void Sim::update_separation_observations(NavigationScratch& scratch) {
     auto const data{entity_buffers.current().get_view().columns()};
     // Fixed capacity bounds scoring work and keeps neighbour storage off the heap.
-    std::array<RegistryEntityHandle, max_separation_neighbours> nearby_fighters;
+    std::array<EntityUniqueId, max_separation_neighbours> nearby_fighters;
     std::array<SeparationNeighbour, max_separation_neighbours> neighbours;
     auto const separation_radius{config.separation_radius};
     auto const immediate_distance{collision_radius_ * 2.f};
@@ -664,19 +664,15 @@ void Sim::update_separation_observations(NavigationScratch& scratch) {
         }
 
         auto const fighter_location{data.locations[fighter_index]};
-        auto const fighter_handle{data.entity_handles[fighter_index]};
-        auto const n_nearby{
-            spatial_query_manager.collect_entities_of_type_in_range(fighter_location,
-                                                                    EntityType::Fighter,
-                                                                    separation_radius,
-                                                                    fighter_handle,
-                                                                    nearby_fighters)};
+        auto const fighter_id{data.entity_ids[fighter_index]};
+        auto const n_nearby{spatial_query_manager.collect_entities_of_type_in_range(
+            fighter_location, EntityType::Fighter, separation_radius, fighter_id, nearby_fighters)};
         ++navigation_telemetry.separation_query_count;
         navigation_telemetry.separation_candidate_count += n_nearby;
 
         std::int32_t neighbour_count{};
         for (std::int32_t index{}; index < n_nearby; ++index) {
-            auto const local_index{find_index(nearby_fighters[index])};
+            auto const local_index{agents_.indexes().find(nearby_fighters[index])};
             if (local_index >= 0 && is_alive(data.healths[local_index])) {
                 neighbours[neighbour_count++] = {data.entity_ids[local_index],
                                                  data.locations[local_index]};
@@ -1245,7 +1241,9 @@ void Sim::commit_spawns() {
     auto const pending_count{spawn_queue.num()};
     auto pending{spawn_queue.get_view().columns()};
     for (auto index{0}; index < pending_count; ++index) {
-        if (entity_registry.is_valid_alive(pending.parents[index])) {
+        // ResolutionCommit retired dead parents. Preparation may already have
+        // invalidated owner views, but surviving IDs still have table entries.
+        if (agents_.indexes().find(pending.parents[index]) >= 0) {
             pending.set(accepted_count++,
                         pending.locations.xs[index],
                         pending.locations.ys[index],
@@ -1281,7 +1279,7 @@ void Sim::commit_spawns() {
         new_data.speeds[index] = config.speed;
         new_data.teams[index] = spawns.teams[index];
         new_data.healths[index] = config.health;
-        new_data.parent_handles[index] = spawns.parents[index];
+        new_data.parent_ids[index] = spawns.parents[index];
         new_data.target_handles[index] = spawns.targets[index];
         new_data.navigation_risk_tiers[index] =
             static_cast<std::uint8_t>(NavigationRiskTier::Nearby);
@@ -1316,13 +1314,13 @@ void Sim::commit_spawns() {
                 break;
             }
             auto const index{n_cur + i};
-            ml::log_error(std::format(
-                "[FighterSpawn] Committed fighterRegistryIndex={} parentRegistryIndex={} "
-                "targetRegistryIndex={} world={}",
-                data.entity_handles[index].index,
-                data.parent_handles[index].index,
-                data.target_handles[index].index,
-                diagnostic_detail::vector_string(data.locations[index])));
+            ml::log_error(
+                std::format("[FighterSpawn] Committed fighterRegistryIndex={} parentId={} "
+                            "targetRegistryIndex={} world={}",
+                            data.entity_handles[index].index,
+                            data.parent_ids[index].raw_value(),
+                            data.target_handles[index].index,
+                            diagnostic_detail::vector_string(data.locations[index])));
         }
     }
     make_deterministic_biases(

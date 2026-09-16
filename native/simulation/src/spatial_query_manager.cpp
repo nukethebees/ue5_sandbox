@@ -164,7 +164,7 @@ auto ThreadBufferLease::get() const -> ThreadBuffers& {
 
 namespace ioj::sim {
 namespace {
-template <typename IncludeEntity>
+template <typename Entity, typename IncludeEntity, typename ProjectEntity>
 auto collect_entities_in_range(collision::GridGeometry const geometry,
                                collision::CollisionGridEntityStorage const& grid_entities,
                                EntityRegistry const& registry,
@@ -172,8 +172,9 @@ auto collect_entities_in_range(collision::GridGeometry const geometry,
                                QueryThreadBuffers& buffers,
                                Vector3f const origin,
                                float const radius,
-                               std::span<RegistryEntityHandle> const out_entities,
-                               IncludeEntity&& include_entity) -> std::int32_t {
+                               std::span<Entity> const out_entities,
+                               IncludeEntity&& include_entity,
+                               ProjectEntity&& project_entity) -> std::int32_t {
     if (out_entities.empty()) {
         return 0;
     }
@@ -231,7 +232,7 @@ auto collect_entities_in_range(collision::GridGeometry const geometry,
                         continue;
                     }
 
-                    out_entities[static_cast<std::size_t>(count++)] = handle;
+                    out_entities[static_cast<std::size_t>(count++)] = project_entity(handle, id);
                     if (count >= static_cast<std::int32_t>(out_entities.size())) {
                         return count;
                     }
@@ -452,7 +453,8 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
             out_entities,
             [team](RegistryEntityHandle, EntityUniqueId, AgentSpatialState const& state) {
                 return state.team != team;
-            });
+            },
+            [](RegistryEntityHandle const handle, EntityUniqueId) { return handle; });
     }
 }
 
@@ -460,8 +462,8 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
     Vector3f const& origin,
     EntityType const entity_type,
     float const radius,
-    RegistryEntityHandle const ignored_entity,
-    std::span<RegistryEntityHandle> const out_entities) const -> std::int32_t {
+    EntityUniqueId const ignored_entity,
+    std::span<EntityUniqueId> const out_entities) const -> std::int32_t {
     SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::collect_entities_of_type_in_range");
 
     if (out_entities.empty()) {
@@ -480,10 +482,11 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
         origin,
         radius,
         out_entities,
-        [entity_type, ignored_entity](
-            RegistryEntityHandle const handle, EntityUniqueId const id, AgentSpatialState const&) {
-            return handle != ignored_entity && id.entity_type() == entity_type;
-        });
+        [entity_type,
+         ignored_entity](RegistryEntityHandle, EntityUniqueId const id, AgentSpatialState const&) {
+            return id != ignored_entity && id.entity_type() == entity_type;
+        },
+        [](RegistryEntityHandle, EntityUniqueId const id) { return id; });
 }
 
 auto SpatialQueryManager::get_any_non_team_entity(Team const team) const -> RegistryEntityHandle {

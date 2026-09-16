@@ -30,7 +30,7 @@
     (member speeds array float)
     (member teams array @native_team)
     (member healths array @native_health)
-    (member parent_handles array @native_registry_handle)
+    (member parent_ids array @native_unique_id)
     (member awareness_scan_countdowns array int8)
     (member navigation_update_countdowns_remaining_ticks array int16)
     (member navigation_update_countdowns_periods array int16)
@@ -139,7 +139,7 @@
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member rotations nested @native_rotators_3f :nested-schema Rotators3f)
     (member teams array @native_team)
-    (member parents array @native_registry_handle)
+    (member parents array @native_unique_id)
     (member targets array @native_registry_handle)
     (single-allocation SingleAllocationFighterSpawnQueue)))
 

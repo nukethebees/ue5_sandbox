@@ -195,10 +195,14 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
     EXPECT_EQ(queries.get_any_non_team_entity(Team::Blue), stationary);
     EXPECT_EQ(queries.get_any_non_team_entity(Team::Blue, EntityType::CapitalShip), stationary);
     EXPECT_TRUE(queries.get_any_non_team_entity(Team::Blue, EntityType::Turret).is_null());
-    EXPECT_EQ(queries.collect_entities_of_type_in_range(
-                  {{300.f, 0.f, 0.f}}, EntityType::CapitalShip, 20.f, stationary, nearby),
+    std::array<EntityUniqueId, 2> nearby_ids{};
+    EXPECT_EQ(queries.collect_entities_of_type_in_range({{300.f, 0.f, 0.f}},
+                                                        EntityType::CapitalShip,
+                                                        20.f,
+                                                        fixture.registry.get_current_id(stationary),
+                                                        nearby_ids),
               1);
-    EXPECT_EQ(nearby[0], moved);
+    EXPECT_EQ(nearby_ids[0], fixture.registry.get_current_id(moved));
     owner.healths[0] = 0;
     EXPECT_EQ(
         queries.collect_non_team_entities_in_range({{300.f, 0.f, 0.f}}, Team::Blue, 20.f, nearby),

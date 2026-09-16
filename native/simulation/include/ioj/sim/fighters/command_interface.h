@@ -5,6 +5,7 @@
 #pragma once
 
 #include "ioj/sim/entity_handle.h"
+#include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/fighter_order_queue.h"
 #include "ioj/sim/fighter_spawn_queue.h"
 #include "ioj/sim/fighters/sim.h"
@@ -46,16 +47,16 @@ class CommandInterface {
         return fighters.get_handles();
     }
 
-    std::span<RegistryEntityHandle const> get_parent_handles() const {
-        return fighters.get_parent_handles();
+    std::span<EntityUniqueId const> get_parent_ids() const {
+        return fighters.get_parent_ids();
     }
 
     std::span<Health const> get_healths() const {
         return fighters.get_healths();
     }
 
-    void set_parent_handle(RegistryEntityHandle fighter, RegistryEntityHandle parent) {
-        fighters.set_parent_handle(fighter, parent);
+    void set_parent_id(RegistryEntityHandle fighter, EntityUniqueId parent) {
+        fighters.set_parent_id(fighter, parent);
     }
 
     std::span<RegistryEntityHandle const> get_target_handles() const noexcept {

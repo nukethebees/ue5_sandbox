@@ -103,8 +103,8 @@ struct SpatialQueryManager {
     auto collect_entities_of_type_in_range(Vector3f const& origin,
                                            EntityType entity_type,
                                            float radius,
-                                           RegistryEntityHandle ignored_entity,
-                                           std::span<RegistryEntityHandle> out_entities) const
+                                           EntityUniqueId ignored_entity,
+                                           std::span<EntityUniqueId> out_entities) const
         -> std::int32_t;
     auto get_any_non_team_entity(Team const team) const -> RegistryEntityHandle;
     auto get_any_non_team_entity(Team const team, EntityType const entity_type) const

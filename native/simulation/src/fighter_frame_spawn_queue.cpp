@@ -24,7 +24,7 @@ void FrameSpawnQueue::clear() {
 void FrameSpawnQueue::add(Vector3f const location,
                           Rotator3f const rotation,
                           Team const team,
-                          RegistryEntityHandle const parent,
+                          EntityUniqueId const parent,
                           RegistryEntityHandle const target) {
     locations.add(location);
     rotations.add(rotation);
