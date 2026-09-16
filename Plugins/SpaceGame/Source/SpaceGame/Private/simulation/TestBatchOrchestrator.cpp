@@ -788,8 +788,6 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     }
     update_collision_bounds_visualization();
 
-    level_simulation_->on_mission_evaluated = [this] { process_mission_result(); };
-
     if (presentation_enabled) {
         hud_manager.initialise(hud_update_frequencies,
                                get_mission_manager(),
