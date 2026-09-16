@@ -31,6 +31,10 @@ target_link_libraries(native-core
   PUBLIC sandbox::handmade_math
   PRIVATE sandbox::warnings_as_errors
 )
+if(SANDBOX_WITH_TRACY)
+  target_compile_definitions(native-core PRIVATE SANDBOX_WITH_TRACY)
+  target_link_libraries(native-core PRIVATE sandbox::profiling)
+endif()
 
 set_target_properties(native-core PROPERTIES
   OUTPUT_NAME SandboxNativeCore

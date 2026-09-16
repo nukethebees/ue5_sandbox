@@ -5,6 +5,10 @@
 #include <stdexcept>
 #include <utility>
 
+#if defined(SANDBOX_WITH_TRACY)
+#include <sandbox/profiling/memory.h>
+#endif
+
 namespace ml::memory {
 namespace {
 auto allocate_backing(std::size_t const capacity_bytes) -> std::byte* {
@@ -12,8 +16,13 @@ auto allocate_backing(std::size_t const capacity_bytes) -> std::byte* {
         throw std::invalid_argument{"Backing capacity must be greater than zero"};
     }
 
-    return static_cast<std::byte*>(
-        ::operator new(capacity_bytes, std::align_val_t{Backing::alignment}));
+    auto* const allocation{static_cast<std::byte*>(
+        ::operator new(capacity_bytes, std::align_val_t{Backing::alignment}))};
+#if defined(SANDBOX_WITH_TRACY)
+    profiling::record_memory_allocation(
+        profiling::MemoryDomain::PersistentRoot, allocation, capacity_bytes);
+#endif
+    return allocation;
 }
 }
 
@@ -62,6 +71,9 @@ Backing::Backing(std::size_t const capacity_bytes)
 
 Backing::~Backing() {
     assert(!leased_);
+#if defined(SANDBOX_WITH_TRACY)
+    profiling::record_memory_free(profiling::MemoryDomain::PersistentRoot, data_);
+#endif
     ::operator delete(data_, std::align_val_t{alignment});
 }
 

@@ -7,6 +7,10 @@ target_sources(native-memory PRIVATE
 target_compile_features(native-memory PUBLIC cxx_std_23)
 target_include_directories(native-memory PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(native-memory PRIVATE sandbox::warnings_as_errors)
+if(SANDBOX_WITH_TRACY)
+  target_compile_definitions(native-memory PRIVATE SANDBOX_WITH_TRACY)
+  target_link_libraries(native-memory PRIVATE sandbox::profiling)
+endif()
 
 set_target_properties(native-memory PROPERTIES
   OUTPUT_NAME SandboxNativeMemory

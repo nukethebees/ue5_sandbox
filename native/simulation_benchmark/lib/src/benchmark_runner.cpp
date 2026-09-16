@@ -126,6 +126,26 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         return std::unexpected{requested_ticks.error()};
     }
 
+    if (options.profiler_connection_timeout_seconds.has_value()) {
+        if (!ioj::sim::profiling::available) {
+            return std::unexpected{"profiler support is not enabled in this benchmark build"};
+        }
+
+        if (profiler_ready != nullptr) {
+            profiler_ready();
+        }
+
+        auto const timeout{
+            std::chrono::duration<double>{*options.profiler_connection_timeout_seconds}};
+        auto const deadline{std::chrono::steady_clock::now() + timeout};
+        while (!ioj::sim::profiling::is_connected()) {
+            if (std::chrono::steady_clock::now() >= deadline) {
+                return std::unexpected{"timed out waiting for a profiler connection"};
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds{10});
+        }
+    }
+
     ml::level_authoring::LevelDefinitionReader reader;
     auto level_result{reader.read_file(options.level_path)};
     if (!level_result) {
@@ -193,26 +213,6 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     auto const initial_turrets{simulation.get_turrets().get_num_instances()};
     simulation.set_time_scale(1.0);
     simulation.start();
-
-    if (options.profiler_connection_timeout_seconds.has_value()) {
-        if (!ioj::sim::profiling::available) {
-            return std::unexpected{"profiler support is not enabled in this benchmark build"};
-        }
-
-        if (profiler_ready != nullptr) {
-            profiler_ready();
-        }
-
-        auto const timeout{
-            std::chrono::duration<double>{*options.profiler_connection_timeout_seconds}};
-        auto const deadline{std::chrono::steady_clock::now() + timeout};
-        while (!ioj::sim::profiling::is_connected()) {
-            if (std::chrono::steady_clock::now() >= deadline) {
-                return std::unexpected{"timed out waiting for a profiler connection"};
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds{10});
-        }
-    }
 
     auto const tick_period{simulation.get_clock().get_tick_period()};
     std::uint64_t advance_calls{};

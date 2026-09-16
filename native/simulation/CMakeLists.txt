@@ -26,10 +26,14 @@ foreach(native_simulation_target IN LISTS native_simulation_targets)
   )
   if(SANDBOX_WITH_TRACY)
     target_compile_definitions(${native_simulation_target} PRIVATE SANDBOX_WITH_TRACY)
+    target_link_libraries(${native_simulation_target} PUBLIC sandbox::profiling-api)
     if(native_simulation_target STREQUAL "native-simulation-unreal")
       target_link_libraries(${native_simulation_target} PRIVATE TracyClientUnreal)
     else()
-      target_link_libraries(${native_simulation_target} PRIVATE Tracy::TracyClient)
+      target_link_libraries(${native_simulation_target} PRIVATE
+        Tracy::TracyClient
+        sandbox::profiling
+      )
     endif()
   endif()
 

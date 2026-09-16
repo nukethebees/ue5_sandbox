@@ -7,6 +7,10 @@
 #include <new>
 #include <stdexcept>
 
+#if defined(SANDBOX_WITH_TRACY)
+#include <sandbox/profiling/memory.h>
+#endif
+
 namespace ml {
 namespace frame_memory_resource {
 inline constexpr std::size_t backing_alignment{64};
@@ -60,6 +64,10 @@ auto FrameMemoryResource::try_allocate(std::size_t const bytes,
                    !frame_peak_claimed_bytes_.compare_exchange_weak(
                        frame_peak, next, std::memory_order_relaxed, std::memory_order_relaxed)) {}
             update_peak(next);
+#if defined(SANDBOX_WITH_TRACY)
+            profiling::record_memory_allocation(
+                profiling::MemoryDomain::FrameScratch, aligned_pointer, bytes);
+#endif
             return aligned_pointer;
         }
     }
@@ -135,6 +143,9 @@ void FrameMemoryResource::do_deallocate(void* const pointer, std::size_t const, 
     if (previous == 0) {
         std::terminate();
     }
+#if defined(SANDBOX_WITH_TRACY)
+    profiling::record_memory_free(profiling::MemoryDomain::FrameScratch, pointer);
+#endif
 }
 
 auto FrameMemoryResource::do_is_equal(std::pmr::memory_resource const& other) const noexcept

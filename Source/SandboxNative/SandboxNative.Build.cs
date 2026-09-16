@@ -39,6 +39,8 @@ public class SandboxNative : ModuleRules
         PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "simulation", "include"));
         PublicSystemIncludePaths.Add(
             Path.Combine(repositoryRoot, "native", "lispb", "native_soa", "include"));
+        PublicSystemIncludePaths.Add(
+            Path.Combine(repositoryRoot, "native", "profiling", "include"));
 
         bool withTracy = Target.Configuration == UnrealTargetConfiguration.Debug ||
                          Target.Configuration == UnrealTargetConfiguration.DebugGame ||

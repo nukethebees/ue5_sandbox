@@ -4,6 +4,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <new>
 #include <thread>
 
@@ -48,6 +49,32 @@ auto reallocation_preserves_data_and_alignment() -> bool {
     return true;
 }
 
+auto reallocation_edge_cases_preserve_allocator_semantics() -> bool {
+    auto* const zero_allocation{sbx::memory::allocate_aligned(0, 64)};
+    if (zero_allocation == nullptr || !sbx::memory::owns(zero_allocation)) {
+        return false;
+    }
+
+    auto* const zero_reallocation{sbx::memory::reallocate_aligned(zero_allocation, 0, 64)};
+    if (zero_reallocation == nullptr || !sbx::memory::owns(zero_reallocation)) {
+        return false;
+    }
+    sbx::memory::free(zero_reallocation);
+
+    auto* const from_null{sbx::memory::reallocate_aligned(nullptr, 128, 64)};
+    if (from_null == nullptr || !sbx::memory::owns(from_null)) {
+        return false;
+    }
+
+    auto* const failed{
+        sbx::memory::reallocate_aligned(from_null, std::numeric_limits<std::size_t>::max(), 64)};
+    if (failed != nullptr || !sbx::memory::owns(from_null)) {
+        return false;
+    }
+    sbx::memory::free(from_null);
+    return true;
+}
+
 auto independent_worker_threads_succeed() -> bool {
     std::array<std::thread, 8> threads;
     std::atomic_bool succeeded{true};
@@ -76,8 +103,11 @@ auto main() -> int {
     if (!reallocation_preserves_data_and_alignment()) {
         return 2;
     }
-    if (!independent_worker_threads_succeed()) {
+    if (!reallocation_edge_cases_preserve_allocator_semantics()) {
         return 3;
     }
-    return sbx::memory::version() > 0 ? 0 : 4;
+    if (!independent_worker_threads_succeed()) {
+        return 4;
+    }
+    return sbx::memory::version() > 0 ? 0 : 5;
 }

@@ -106,5 +106,35 @@ public class SandboxCore : ModuleRules
                 "bcrypt.lib",
             }
             );
+
+        bool withTracy = Target.Configuration == UnrealTargetConfiguration.Debug ||
+                         Target.Configuration == UnrealTargetConfiguration.DebugGame ||
+                         Target.Configuration == UnrealTargetConfiguration.Development;
+        if (withTracy && !Target.bGenerateProjectFiles)
+        {
+            string tracyDirectory = Path.Combine(
+                repositoryRoot,
+                "Binaries",
+                "Native",
+                "Tracy",
+                nativeToolchain,
+                Target.Platform.ToString(),
+                Target.Configuration.ToString());
+            string tracyLibrary = Path.Combine(tracyDirectory, "SandboxTracyClient.lib");
+            string tracyRuntime = Path.Combine(tracyDirectory, "SandboxTracyClient.dll");
+            if (!File.Exists(tracyLibrary) || !File.Exists(tracyRuntime))
+            {
+                throw new BuildException(
+                    "SandboxCore expected the CMake-built Tracy library and runtime under '{0}'. " +
+                    "Build Unreal targets through a repository CMake workflow.",
+                    tracyDirectory);
+            }
+
+            PublicAdditionalLibraries.Add(tracyLibrary);
+            PublicDelayLoadDLLs.Add("SandboxTracyClient.dll");
+            RuntimeDependencies.Add("$(TargetOutputDir)/SandboxTracyClient.dll", tracyRuntime);
+            ExternalDependencies.Add(tracyLibrary);
+            ExternalDependencies.Add(tracyRuntime);
+        }
     }
 }

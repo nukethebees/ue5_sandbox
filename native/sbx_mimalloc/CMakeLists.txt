@@ -93,6 +93,10 @@ target_link_libraries(sbx-mimalloc
   PUBLIC sandbox::cxx_standard psapi shell32 user32 advapi32 bcrypt
   PRIVATE sandbox::warnings_as_errors
 )
+if(SANDBOX_WITH_TRACY)
+  target_compile_definitions(sbx-mimalloc PRIVATE SANDBOX_WITH_TRACY)
+  target_link_libraries(sbx-mimalloc PRIVATE sandbox::profiling)
+endif()
 set_property(TARGET sbx-mimalloc PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
 target_compile_definitions(sbx-mimalloc PRIVATE _ITERATOR_DEBUG_LEVEL=0)
 add_dependencies(sbx-mimalloc sbx-mimalloc-symbol-audit)

@@ -31,14 +31,18 @@ if(UE_CONFIGURATION MATCHES "^(Debug|DebugGame|Development)$")
 
   if(SANDBOX_WITH_UNREAL)
     add_library(TracyClientUnreal SHARED)
-    target_sources(TracyClientUnreal PRIVATE third_party/tracy/public/TracyClient.cpp)
+    target_sources(TracyClientUnreal PRIVATE
+      third_party/tracy/public/TracyClient.cpp
+      profiling/src/memory.cpp
+    )
     target_compile_features(TracyClientUnreal PUBLIC cxx_std_11)
+    target_include_directories(TracyClientUnreal PUBLIC profiling/include)
     target_include_directories(TracyClientUnreal SYSTEM PUBLIC third_party/tracy/public)
     get_target_property(tracy_definitions TracyClient INTERFACE_COMPILE_DEFINITIONS)
     get_target_property(tracy_libraries TracyClient INTERFACE_LINK_LIBRARIES)
     target_compile_definitions(TracyClientUnreal
       PUBLIC ${tracy_definitions} TRACY_MANUAL_LIFETIME TRACY_IMPORTS
-      PRIVATE TRACY_EXPORTS _ITERATOR_DEBUG_LEVEL=0
+      PRIVATE TRACY_EXPORTS SANDBOX_TRACY_MEMORY_EXPORTS _ITERATOR_DEBUG_LEVEL=0
     )
     target_link_libraries(TracyClientUnreal PUBLIC ${tracy_libraries})
     set_property(TARGET TracyClientUnreal PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
@@ -57,6 +61,7 @@ if(UE_CONFIGURATION MATCHES "^(Debug|DebugGame|Development)$")
   endif()
 endif()
 
+add_subdirectory(profiling)
 add_subdirectory(sbx_mimalloc)
 add_subdirectory(lispb)
 add_subdirectory(memory)
