@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 4.4.2)
 project(UnrealJobserverFixture LANGUAGES NONE)
 enable_testing()
+find_program(POWERSHELL_EXECUTABLE pwsh REQUIRED)
 include("${SOURCE_ROOT}/cmake/unreal_jobserver.cmake")
 set(SANDBOX_JOBSERVER_CLI "${CLIENT}")
 sandbox_configure_unreal_jobserver("${ENGINE_ROOT}")
