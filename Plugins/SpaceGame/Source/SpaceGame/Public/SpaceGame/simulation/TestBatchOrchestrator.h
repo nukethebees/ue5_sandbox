@@ -2,7 +2,6 @@
 #include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/missions/MissionCompletion.h>
 #include <SpaceGame/telemetry/LevelTelemetryReport.h>
-#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/support/FixedTickLoop.h>
 
 #include <ioj/sim/level_sim.h>
@@ -122,12 +121,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto get_fighters() const noexcept -> ::ioj::sim::fighters::Sim const* {
         return level_simulation_.IsSet() ? &level_simulation_->get_fighters() : nullptr;
     }
-    auto get_turrets() const noexcept -> ::ioj::sim::turrets::Sim const* {
-        return level_simulation_.IsSet() ? &level_simulation_->get_turrets() : nullptr;
-    }
-    auto get_spinners() const noexcept -> ::ioj::sim::spinners::Sim const* {
-        return level_simulation_.IsSet() ? &level_simulation_->get_spinners() : nullptr;
-    }
 
     /* **************************************** */
     // Simulation services
@@ -139,9 +132,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto get_level_telemetry_manager() const noexcept -> ::ioj::sim::LevelTelemetryManager const& {
         check(level_simulation_.IsSet());
         return level_simulation_->get_level_telemetry_manager();
-    }
-    auto get_entity_type(::ioj::sim::RegistryEntityHandle const handle) const -> ETestEntityType {
-        return ml::to_unreal(get_entity_registry().get_entity_type(handle));
     }
     auto get_spatial_query_manager() const noexcept -> ::ioj::sim::SpatialQueryManager const& {
         check(level_simulation_.IsSet());
@@ -180,10 +170,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         return level_presentation_.IsSet() ? &level_presentation_.GetValue() : nullptr;
     }
     auto take_finalized_telemetry_report() -> TOptional<FLevelTelemetryReport>;
-    auto get_world_collision() const -> ml::ioj::FLevelCollisionHost const& {
-        return world_collision_;
-    }
-    auto add_static_geometry(UPrimitiveComponent& component) -> bool;
     auto get_presentation_resources() const -> FLevelPresentationResources {
         return make_presentation_resources();
     }
