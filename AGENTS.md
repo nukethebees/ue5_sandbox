@@ -53,6 +53,7 @@ Unreal Engine 5.8 project.
 * Once enough context exists, implement rather than continuing exploration.
 * Prefer the smallest coherent change that fully implements the requested design.
 * Prefer reusable repository scripts over feeding inline Python code to the interpreter.
+* Treat obvious temporary contention for shared resources, locks, job slots, or capacity as a wait condition: do not repeatedly retry across consecutive turns; sleep within the shell/tool invocation before retrying with 10s, then 30s, then 60s backoff (capped at 60s). Investigate or report the failure if it changes, appears non-transient, or persists unreasonably.
 * Do not preserve architecture the user asked to replace through compatibility wrappers or indirection merely to reduce the diff. Avoid unrelated refactors.
 * When explicitly granted autonomy, use judgement to resolve reasonable ambiguities while keeping scope controlled.
 * Store local development roadmaps under `.local/plans/`; never commit them.
