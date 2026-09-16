@@ -9,7 +9,6 @@
 #include <thread>
 
 #include <ioj/sim/agent_accessor.h>
-#include <ioj/sim/entity_registry.h>
 
 namespace ioj::sim::collision {
 void CollisionSystem::initialise(collision::EntityAABBs const& bounds) {
@@ -33,10 +32,9 @@ auto CollisionSystem::update(std::span<EntityUniqueId const> const collision_dir
 void CollisionSystem::reset_frame_events() {
     overlap_event_storage_.reset();
 }
-CollisionSystem::CollisionSystem(EntityRegistry const& registry,
-                                 AgentAccessor const& agents) noexcept
+CollisionSystem::CollisionSystem(AgentAccessor const& agents) noexcept
     : agents_{agents}
-    , uniform_grid_{registry, agents} {}
+    , uniform_grid_{agents} {}
 void CollisionSystem::rebuild_grid() {
     SANDBOX_PROFILE_SCOPE("Sandbox::CollisionSystem::rebuild_grid");
     uniform_grid_.rebuild_grid(entity_aabbs_);

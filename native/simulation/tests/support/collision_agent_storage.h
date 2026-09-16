@@ -104,7 +104,12 @@ struct CollisionAgentStorage {
                     fighters.get_const_view().columns(),
                     turrets.get_const_view().columns(),
                     spinners.get_const_view().columns(),
-                    {&player_transform, &player_velocity, &player_health, &player_team});
+                    player_ids.empty() ? PlayerAgentView{}
+                                       : PlayerAgentView{&player_transform,
+                                                         &player_velocity,
+                                                         &player_health,
+                                                         &player_team,
+                                                         player_ids[0]});
     }
 };
 }

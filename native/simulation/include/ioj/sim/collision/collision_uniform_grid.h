@@ -14,7 +14,6 @@
 #include <vector>
 
 namespace ioj::sim {
-struct EntityRegistry;
 class AgentAccessor;
 }
 
@@ -27,8 +26,7 @@ enum class TraceEntityFilter : std::uint8_t {
 struct CollisionUniformGrid {
     static inline Vector3f const origin{};
 
-    CollisionUniformGrid(EntityRegistry const& entity_registry,
-                         AgentAccessor const& agents) noexcept;
+    explicit CollisionUniformGrid(AgentAccessor const& agents) noexcept;
     CollisionUniformGrid(CollisionUniformGrid const&) = delete;
     CollisionUniformGrid(CollisionUniformGrid&&) = delete;
     auto operator=(CollisionUniformGrid const&) -> CollisionUniformGrid& = delete;
@@ -109,7 +107,6 @@ struct CollisionUniformGrid {
     auto to_index(Vector3f pos) const -> std::int32_t;
     void rebuild_static_grid();
 
-    EntityRegistry const& entity_registry_;
     AgentAccessor const& agents_;
 
     GridGeometry geometry_{};

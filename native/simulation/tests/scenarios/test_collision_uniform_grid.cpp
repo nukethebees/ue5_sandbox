@@ -108,7 +108,7 @@ struct TraceFixture {
 
     EntityRegistry registry;
     tests::CollisionAgentStorage owners;
-    collision::CollisionUniformGrid grid{registry, owners.agents};
+    collision::CollisionUniformGrid grid{owners.agents};
     std::vector<RegistryEntityHandle> handles{};
     collision::EntityAABBs aabbs;
 };
@@ -1550,6 +1550,20 @@ void CollisionUniformGridTraceRunner::test_deterministic_reference_sweep() {
 }
 
 void CollisionUniformGridTraceRunner::test_invariance_properties() {
+    TraceFixture tied{std::vector<Vector3f>{Vector3f{}, Vector3f{}}, {{10.f, 10.f, 10.f}}};
+    std::vector<Vector3f> const tied_starts{{{-20.f, 0.f, 0.f}}};
+    std::vector<Vector3f> const tied_ends{{{20.f, 0.f, 0.f}}};
+    auto const expected_id{tied.registry.get_current_id(tied.handles[0])};
+    EXPECT_EQ(run_traces(tied, tied_starts, tied_ends).entities[0], expected_id);
+    tied.owners.capitals.get_view().columns().each_column(
+        [](auto column) { std::ranges::reverse(column); });
+    tied.owners.indexes.bind(EntityType::CapitalShip,
+                             tied.owners.capitals.get_const_view().entity_ids());
+    tied.grid.rebuild_grid(tied.aabbs);
+    EXPECT_EQ(run_traces(tied, tied_starts, tied_ends).entities[0], expected_id);
+    SpatialQueryManager const tied_queries{tied.owners.agents};
+    EXPECT_EQ(tied_queries.get_any_non_team_entity(Team::Green), expected_id);
+
     Vector3f const aabb_half_extents{{18.f, 22.f, 15.f}};
     Vector3f const local_aabb_centre{{4.f, -3.f, 5.f}};
     std::vector<Vector3f> const entity_locations{

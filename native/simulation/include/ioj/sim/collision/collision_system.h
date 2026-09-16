@@ -14,15 +14,11 @@
 
 #include <vector>
 
-namespace ioj::sim {
-struct EntityRegistry;
-}
-
 namespace ioj::sim::collision {
 
 struct CollisionSystem {
   public:
-    CollisionSystem(EntityRegistry const& registry, AgentAccessor const& agents) noexcept;
+    explicit CollisionSystem(AgentAccessor const& agents) noexcept;
     CollisionSystem(CollisionSystem const&) = delete;
     CollisionSystem(CollisionSystem&&) = delete;
     auto operator=(CollisionSystem const&) -> CollisionSystem& = delete;

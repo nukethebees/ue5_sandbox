@@ -759,7 +759,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         ::ioj::sim::EntityRegistry registry;
         ::ioj::sim::AgentIndexes indexes{clock};
         ::ioj::sim::AgentAccessor agents{indexes};
-        ::ioj::sim::SpatialQueryManager queries{registry, agents};
+        ::ioj::sim::SpatialQueryManager queries{agents};
         ml::FFrameMemoryResource frame_memory{1024 * 1024};
         ::ioj::sim::lasers::Sim lasers{clock, registry, queries, frame_memory};
         ::ioj::sim::player::Sim simulation{clock, registry, queries, lasers};
@@ -788,7 +788,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         ::ioj::sim::EntityRegistry registry;
         ::ioj::sim::AgentIndexes indexes{clock};
         ::ioj::sim::AgentAccessor agents{indexes};
-        ::ioj::sim::SpatialQueryManager queries{registry, agents};
+        ::ioj::sim::SpatialQueryManager queries{agents};
         ml::FFrameMemoryResource frame_memory{1024 * 1024};
         ::ioj::sim::lasers::Sim lasers{clock, registry, queries, frame_memory};
         ::ioj::sim::player::Sim simulation{clock, registry, queries, lasers};
@@ -1060,7 +1060,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         ::ioj::sim::EntityRegistry registry;
         ::ioj::sim::AgentIndexes indexes{clock};
         ::ioj::sim::AgentAccessor agents{indexes};
-        ::ioj::sim::SpatialQueryManager queries{registry, agents};
+        ::ioj::sim::SpatialQueryManager queries{agents};
         ml::FFrameMemoryResource frame_memory{1024 * 1024};
         ::ioj::sim::lasers::Sim lasers{clock, registry, queries, frame_memory};
         ::ioj::sim::player::Sim simulation{clock, registry, queries, lasers};

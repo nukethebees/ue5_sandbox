@@ -46,7 +46,7 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     EntityRegistry registry;
     AgentIndexes indexes{clock};
     AgentAccessor agents{indexes};
-    SpatialQueryManager queries{registry, agents};
+    SpatialQueryManager queries{agents};
     ml::FrameMemoryResource frame_memory{1024 * 1024};
     lasers::Sim lasers{clock, registry, queries, frame_memory};
     spinners::Sim simulation{clock, registry, lasers, frame_memory};

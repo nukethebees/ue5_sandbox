@@ -426,7 +426,7 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     ::ioj::sim::EntityRegistry entity_registry;
     ::ioj::sim::AgentIndexes indexes{clock};
     ::ioj::sim::AgentAccessor agents{indexes};
-    ::ioj::sim::SpatialQueryManager spatial_queries{entity_registry, agents};
+    ::ioj::sim::SpatialQueryManager spatial_queries{agents};
     ml::FFrameMemoryResource frame_memory{1024 * 1024};
     ::ioj::sim::lasers::Sim lasers{clock, entity_registry, spatial_queries, frame_memory};
     ::ioj::sim::GameMemory game_memory{{.root_capacity_bytes = 2u * 1024u * 1024u}};

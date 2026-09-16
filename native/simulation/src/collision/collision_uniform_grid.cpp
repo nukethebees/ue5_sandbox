@@ -3,7 +3,6 @@
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/collision_grid.h>
 #include <ioj/sim/entity_cell_data_operations.h>
-#include <ioj/sim/entity_registry.h>
 #include <ioj/sim/health.h>
 #include <ioj/sim/trace_hits.h>
 
@@ -118,7 +117,8 @@ void trace_grid_aabbs(GridGeometry const geometry,
                                                 min_at(aabbs, entity_index),
                                                 max_at(aabbs, entity_index),
                                                 moving_half_extent)};
-                    if (hit_t < nearest_t) {
+                    if (hit_t < nearest_t ||
+                        (std::isfinite(hit_t) && hit_t == nearest_t && id < nearest_entity)) {
                         nearest_t = hit_t;
                         nearest_entity = id;
                         nearest_static_index = -1;
@@ -429,10 +429,8 @@ void CollisionUniformGrid::set_cell_dims(Vector3f const cell_dims) noexcept {
     geometry_.cell_dimensions = cell_dims;
 }
 
-CollisionUniformGrid::CollisionUniformGrid(EntityRegistry const& entity_registry,
-                                           AgentAccessor const& agents) noexcept
-    : entity_registry_{entity_registry}
-    , agents_{agents} {}
+CollisionUniformGrid::CollisionUniformGrid(AgentAccessor const& agents) noexcept
+    : agents_{agents} {}
 
 auto CollisionUniformGrid::is_configured() const noexcept -> bool {
     return collision::is_configured(geometry_);
@@ -501,23 +499,19 @@ void CollisionUniformGrid::rebuild_grid(collision::EntityAABBs const& entity_aab
         ml::fatal_error("Cannot rebuild an unconfigured collision grid");
     }
 
-    auto const ids{entity_registry_.get_active_unique_ids()};
     auto const geometry{geometry_};
     entity_storage_.begin_rebuild(geometry.dimensions);
 
     {
         SANDBOX_PROFILE_SCOPE("Sandbox::CollisionUniformGrid::rebuild_grid::count_loop");
 
-        for (auto const id : ids) {
-            auto const state{agents_.read_alive(id)};
-            if (!state) {
-                continue;
-            }
+        agents_.for_each_alive_spatial([&](EntityUniqueId const id,
+                                           Vector3f const location,
+                                           Rotator3f const rotation,
+                                           Team) {
             auto const entity_type{id.entity_type()};
-            auto const bounds{collision::make_entity_world_bounds(entity_aabbs,
-                                                                  std::to_underlying(entity_type),
-                                                                  state->location,
-                                                                  to_quaternion(state->rotation))};
+            auto const bounds{collision::make_entity_world_bounds(
+                entity_aabbs, std::to_underlying(entity_type), location, to_quaternion(rotation))};
             auto const [min_coord, max_coord]{
                 collision::to_cell_coord_bounds(geometry, bounds.min, bounds.max)};
             if (!is_cell_coord_in_bounds(min_coord, max_coord)) {
@@ -537,7 +531,7 @@ void CollisionUniformGrid::rebuild_grid(collision::EntityAABBs const& entity_aab
                     to_string(geometry.dimensions)));
             }
             entity_storage_.add(bounds.min, bounds.max, min_coord, max_coord, id);
-        }
+        });
     }
     if (!entity_storage_.finish_rebuild()) {
         ml::fatal_error("Collision grid entity membership index is inconsistent");

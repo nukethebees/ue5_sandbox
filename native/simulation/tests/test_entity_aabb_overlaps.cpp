@@ -10,7 +10,7 @@ struct OverlapFixture {
     explicit OverlapFixture(Vector3f const capital_half_extents = {{10.f, 10.f, 10.f}},
                             Vector3f const capital_centre = Vector3f{},
                             Vector3f const turret_half_extents = {{10.f, 10.f, 10.f}})
-        : query_manager{registry, owners.agents} {
+        : query_manager{owners.agents} {
         auto const type_count{collision::EntityAABBs::num()};
         for (std::int32_t type_index{}; type_index < type_count; ++type_index) {
             set_bounds(type_index, Vector3f{}, Vector3f{{10.f, 10.f, 10.f}});

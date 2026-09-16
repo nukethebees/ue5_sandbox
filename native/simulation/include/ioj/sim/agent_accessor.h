@@ -27,6 +27,7 @@ struct PlayerAgentView {
     ml::Vector3d const* velocity{};
     Health const* health{};
     Team const* team{};
+    EntityUniqueId id{};
 };
 
 struct AgentSpatialState {
@@ -57,6 +58,51 @@ class AgentAccessor {
         counts[EntityType::Turret] = static_cast<std::uint32_t>(turrets_.num());
         counts[EntityType::TubeSpinner] = static_cast<std::uint32_t>(spinners_.num());
         return counts;
+    }
+
+    // Visits owning rows directly; callbacks must not mutate storage.
+    template <typename Visitor>
+    void for_each_alive_spatial(Visitor&& visit) const {
+        if (player_.transform != nullptr && sim::is_alive(*player_.health)) {
+            visit(player_.id,
+                  to_float(player_.transform->location),
+                  to_float(player_.transform->rotator()),
+                  *player_.team);
+        }
+        auto const capital_count{capitals_.num()};
+        for (std::int32_t i{}; i < capital_count; ++i) {
+            if (sim::is_alive(capitals_.healths[i])) {
+                visit(capitals_.entity_ids[i],
+                      capitals_.locations[i],
+                      capitals_.rotations[i],
+                      capitals_.teams[i]);
+            }
+        }
+        auto const turret_count{turrets_.num()};
+        for (std::int32_t i{}; i < turret_count; ++i) {
+            if (sim::is_alive(turrets_.healths[i])) {
+                visit(turrets_.entity_ids[i],
+                      turrets_.locations[i],
+                      turrets_.rotations[i],
+                      turrets_.teams[i]);
+            }
+        }
+        auto const fighter_count{fighters_.num()};
+        for (std::int32_t i{}; i < fighter_count; ++i) {
+            if (sim::is_alive(fighters_.healths[i])) {
+                visit(fighters_.entity_ids[i],
+                      fighters_.locations[i],
+                      direction_to_rotation(fighters_.aim_directions[i]),
+                      fighters_.teams[i]);
+            }
+        }
+        auto const spinner_count{spinners_.num()};
+        for (std::int32_t i{}; i < spinner_count; ++i) {
+            visit(spinners_.entity_ids[i],
+                  spinners_.locations[i],
+                  Rotator3f{.pitch = 0.f, .yaw = spinners_.yaws[i], .roll = 0.f},
+                  Team::White);
+        }
     }
 
     // Sorts a scratch row permutation; IDs and destination SOA rows stay in caller order.

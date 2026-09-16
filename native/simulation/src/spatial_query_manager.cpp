@@ -11,7 +11,6 @@
 #include <thread>
 
 #include <ioj/sim/agent_accessor.h>
-#include <ioj/sim/entity_registry.h>
 
 #include <cstddef>
 #include <utility>
@@ -250,24 +249,17 @@ auto collect_entities_in_range(collision::GridGeometry const geometry,
 
     return count;
 }
-auto find_any_non_team_entity(EntityRegistry const& registry,
-                              AgentAccessor const& agents,
+auto find_any_non_team_entity(AgentAccessor const& agents,
                               Team const excluded_team,
                               std::optional<EntityType> const type = {}) -> EntityUniqueId {
-    auto const generations{registry.get_generations()};
-    auto const count{registry.get_num_elements()};
-    for (std::int32_t index{}; index < count; ++index) {
-        auto const handle{RegistryEntityHandle{index, generations[index]}};
-        auto const id{registry.get_current_id(handle)};
-        if (!id.is_valid() || (type && id.entity_type() != *type)) {
-            continue;
-        }
-        auto const state{agents.read_spatial(id)};
-        if (state && is_alive(state->health) && state->team != excluded_team) {
-            return id;
-        }
-    }
-    return {};
+    EntityUniqueId result;
+    agents.for_each_alive_spatial(
+        [&](EntityUniqueId const id, Vector3f, Rotator3f, Team const team) {
+            if (team != excluded_team && (!type || id.entity_type() == *type) && id < result) {
+                result = id;
+            }
+        });
+    return result;
 }
 } // namespace
 
@@ -306,11 +298,9 @@ void SpatialQueryManager::release_thread_buffer(std::int32_t const index) const 
 /* **************************************** */
 // Construction and setup
 /* **************************************** */
-SpatialQueryManager::SpatialQueryManager(EntityRegistry const& in_entity_registry,
-                                         AgentAccessor const& agents)
-    : entity_registry{in_entity_registry}
-    , agents_{agents}
-    , collision{in_entity_registry, agents} {}
+SpatialQueryManager::SpatialQueryManager(AgentAccessor const& agents)
+    : agents_{agents}
+    , collision{agents} {}
 
 void SpatialQueryManager::initialise(collision::CellCoord const grid_dimensions,
                                      Vector3f const cell_size,
@@ -490,13 +480,13 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
 }
 
 auto SpatialQueryManager::get_any_non_team_entity(Team const team) const -> EntityUniqueId {
-    return find_any_non_team_entity(entity_registry, agents_, team);
+    return find_any_non_team_entity(agents_, team);
 }
 
 auto SpatialQueryManager::get_any_non_team_entity(Team const team,
                                                   EntityType const entity_type) const
     -> EntityUniqueId {
-    return find_any_non_team_entity(entity_registry, agents_, team, entity_type);
+    return find_any_non_team_entity(agents_, team, entity_type);
 }
 
 void SpatialQueryManager::are_spheres_in_bounds(Vectors3fConstView const centres,

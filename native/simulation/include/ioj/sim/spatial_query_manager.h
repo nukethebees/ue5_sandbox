@@ -14,8 +14,6 @@
 
 #include <utility>
 
-struct EntityRegistry;
-
 namespace ioj::sim {
 struct SpatialQueryManager;
 }
@@ -46,7 +44,7 @@ struct SpatialQueryManager {
     /* **************************************** */
     // Construction and setup
     /* **************************************** */
-    SpatialQueryManager(EntityRegistry const& entity_registry, AgentAccessor const& agents);
+    explicit SpatialQueryManager(AgentAccessor const& agents);
     SpatialQueryManager(SpatialQueryManager const&) = delete;
     SpatialQueryManager(SpatialQueryManager&&) = delete;
     auto operator=(SpatialQueryManager const&) -> SpatialQueryManager& = delete;
@@ -139,7 +137,6 @@ struct SpatialQueryManager {
     /* **************************************** */
     // State
     /* **************************************** */
-    EntityRegistry const& entity_registry;
     AgentAccessor const& agents_;
 
     mutable QueryThreadBufferPool thread_buffer_pool_;
