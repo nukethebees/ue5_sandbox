@@ -78,7 +78,12 @@ void FCapitalPresentation::update_visual_data() {
     auto const colours{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
     for (auto const& change : view().changes) {
-        if (change.kind == ::ioj::sim::EntityFrameChangeKind::RemoveSwap) {
+        if (change.kind == ::ioj::sim::EntityFrameChangeKind::Died) {
+            FTransform transform;
+            instances->GetInstanceTransform(change.index, transform, is_world_space);
+            transform.SetScale3D(FVector::ZeroVector);
+            instances->UpdateInstanceTransform(change.index, transform, is_world_space, false);
+        } else if (change.kind == ::ioj::sim::EntityFrameChangeKind::RemoveSwap) {
             instances->RemoveInstance(change.index);
         } else {
             FTransform const transform{FRotator{ml::to_unreal(change.rotation)},

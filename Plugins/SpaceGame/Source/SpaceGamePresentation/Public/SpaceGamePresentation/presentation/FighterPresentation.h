@@ -35,6 +35,7 @@ struct SPACEGAMEPRESENTATION_API FFighterPresentation {
 
     FFighterConfig const* actor_config{nullptr};
     FTeamColours team_colours_;
+    TArray<int32> visible_indices_;
 
     FDrawDebugConfig debug_drawer;
     bool enable_target_debug_drawing{false};

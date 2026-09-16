@@ -15,6 +15,8 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
     data.grid_dimensions = {16, 16, 4};
     data.cell_size = {{1000.f, 1000.f, 1000.f}};
     data.lasers.n_preallocated_instances = 32;
+    data.overlap_response.damage_per_overlap_detection = 1;
+    data.fighters.health = 1000;
     data.fighters.max_live_fighters = max_live_fighters;
     for (auto const team : participating_teams) {
         data.participating_teams.add(team);
@@ -48,6 +50,7 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
 void start_and_tick(LevelSim& simulation) {
     simulation.finish_initialisation();
     simulation.start();
+    simulation.advance(simulation.get_clock().get_tick_period());
     simulation.advance(simulation.get_clock().get_tick_period());
 }
 
@@ -142,8 +145,8 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
     tests::expect_equal(
         static_cast<std::int32_t>(
             parent_death_simulation.get_capital_ships().get_fighter_handles(0).size()),
-        2,
-        "A surviving same-team capital adopts a new fighter from a dead parent");
+        1,
+        "A pending launch from a dead parent is cancelled, not adopted");
 }
 
 TEST(FighterLiveCap, DeferredRemovalAndReconstruction) {
@@ -163,8 +166,11 @@ TEST(FighterLiveCap, DeferredRemovalAndReconstruction) {
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
     simulation.advance(simulation.get_clock().get_tick_period());
     tests::expect_equal(simulation.get_fighters().get_num_instances(),
-                        0,
-                        "Deferred removal finishes before capacity is reusable");
+                        1,
+                        "Dead fighter remains resident until Preparation");
+    EXPECT_TRUE(is_dead(simulation.get_read_view().fighters.entities.healths[0]));
+    simulation.advance(simulation.get_clock().get_tick_period());
+    EXPECT_EQ(simulation.get_fighters().get_num_instances(), 0);
     simulation.advance(simulation.get_clock().get_tick_period());
     tests::expect_equal(simulation.get_fighters().get_num_instances(),
                         1,

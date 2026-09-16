@@ -103,6 +103,9 @@ void trace_grid_aabbs(GridGeometry const geometry,
                 auto const aabbs{entity_storage.aabbs_for_cell(cell_index)};
                 for (std::int32_t entity_index{}; entity_index < entity_count; ++entity_index) {
                     auto const entity{entities[static_cast<std::size_t>(entity_index)]};
+                    if (!is_valid_alive(registry, entity)) {
+                        continue;
+                    }
                     if constexpr (IgnoredMode == IgnoredEntityMode::PerTrace) {
                         if (entity == ignored_entity) {
                             continue;

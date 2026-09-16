@@ -67,6 +67,7 @@ struct Sim {
     /* **************************************** */
     void begin_play();
     void commit_spawns();
+    void cleanup_entities();
     void simulate(float dt);
     void finish_action();
 
@@ -104,5 +105,6 @@ struct Sim {
     FrameOutput frame_output_;
 
     std::int32_t number_spawned{0};
+    std::vector<std::int32_t> pending_removals_;
 };
 } // namespace ioj::sim::lasers

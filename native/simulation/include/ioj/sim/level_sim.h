@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/capital_ships/phase_interface.h>
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/entities/team_list.h>
@@ -139,6 +140,8 @@ struct LevelSim {
     auto get_turrets() const -> turrets::Sim const& { return turrets_simulation_; }
     auto get_spinners() const -> spinners::Sim const& { return spinners_simulation_; }
     auto get_entity_registry() const -> EntityRegistry const& { return entity_registry_; }
+    auto get_agent_indexes() const -> AgentIndexes const& { return agent_indexes_; }
+    auto get_agent_accessor() const -> AgentAccessor const& { return agent_accessor_; }
     auto get_mission_manager() const -> MissionManager const& { return mission_manager_; }
     auto get_spatial_query_manager() const -> SpatialQueryManager const& { return query_manager_; }
     auto get_level_telemetry_manager() const -> LevelTelemetryManager const& {
@@ -159,6 +162,7 @@ struct LevelSim {
     void begin_subsystems();
     void initialise_events(CompiledLevelEvents events);
     void validate_entity_handles() const;
+    void rebuild_agent_indexes();
 
     /* **************************************** */
     // Telemetry
@@ -173,6 +177,8 @@ struct LevelSim {
 
     ml::FrameMemoryResource frame_memory_;
     EntityRegistry entity_registry_;
+    AgentIndexes agent_indexes_{clock_};
+    AgentAccessor agent_accessor_{agent_indexes_};
     SpatialQueryManager query_manager_;
     OverlapHandler overlap_handler_;
     std::vector<RegistryEntityHandle> collision_dirty_entities_;

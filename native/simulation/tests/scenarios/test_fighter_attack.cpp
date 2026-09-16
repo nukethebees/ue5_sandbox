@@ -195,6 +195,9 @@ void run_worldless_fighter_clear_navigation(tests::SimulationFixture const& conf
         if (!recorded_first) {
             first_location = last_location;
             recorded_first = true;
+            recorded_first_movement = true;
+            scanned_before_first_movement =
+                fighters.get_navigation_telemetry().hard_trace_count > 0;
         }
         auto const& telemetry{fighters.get_navigation_telemetry()};
         if (!recorded_first_movement && !(std::abs(last_location.X - first_location.X) <= 1.e-4f &&

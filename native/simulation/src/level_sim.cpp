@@ -76,17 +76,20 @@ LevelSim::LevelSim(LevelSimInitData data)
     , lasers_phase_{lasers_simulation_}
     , fighters_simulation_{clock_,
                            entity_registry_,
+                           agent_accessor_,
                            query_manager_,
                            lasers_simulation_,
                            frame_memory_}
     , fighters_phase_{fighters_simulation_}
     , capital_ships_simulation_{entity_registry_,
+                                agent_accessor_,
                                 query_manager_,
                                 fighters_simulation_,
                                 frame_memory_}
     , capital_ships_phase_{capital_ships_simulation_}
     , turrets_simulation_{clock_,
                           entity_registry_,
+                          agent_accessor_,
                           query_manager_,
                           lasers_simulation_,
                           frame_memory_}
@@ -116,6 +119,7 @@ void LevelSim::finish_initialisation() {
     assert(state_ == OrchestratorState::Uninitialised);
 
     entity_registry_.commit_updates();
+    rebuild_agent_indexes();
     query_manager_.update(clock_.get_completed_ticks());
     entity_registry_.end_tick();
 
@@ -125,6 +129,7 @@ void LevelSim::finish_initialisation() {
     mission_manager_.begin_play();
 
     state_ = OrchestratorState::Paused;
+    clock_.phase = SimulationPhase::Idle;
 }
 void LevelSim::start() {
     assert(state_ == OrchestratorState::Paused);
@@ -285,7 +290,38 @@ void LevelSim::advance(time_type const dt) {
         /* -------------------------------------------------------------------------------- */
         {
             SANDBOX_PROFILE_SCOPE("Sandbox::LevelSim::Preparation");
+            clock_.phase = SimulationPhase::Preparation;
             entity_registry_.begin_tick();
+            // Resolve last tick's orders while every previous-tick index is still valid.
+            fighters_phase_.commit_orders();
+            capital_ships_phase_.cleanup_entities();
+            fighters_phase_.cleanup_entities();
+            turrets_phase_.cleanup_entities();
+            lasers_phase_.cleanup_entities();
+
+            auto const first_new_id{static_cast<EntityUniqueId::index_type>(
+                entity_registry_.get_num_unique_ids_issued())};
+            event_manager_.execute_tick(clock_.completed_ticks + 1);
+            auto const previous_fighter_count{fighters_simulation_.get_num_instances()};
+            fighters_phase_.commit_spawns();
+            capital_ships_simulation_.fighters_spawned +=
+                fighters_simulation_.get_num_instances() - previous_fighter_count;
+            lasers_phase_.commit_spawns();
+            collision_dirty_entities_.clear();
+            auto collect_new = [&](auto const data, auto const handles) {
+                auto const count{data.entity_ids.size()};
+                for (std::size_t index{}; index < count; ++index) {
+                    if (data.entity_ids[index].index() >= first_new_id) {
+                        collision_dirty_entities_.push_back(handles[index]);
+                    }
+                }
+            };
+            auto const capitals{capital_ships_simulation_.get_read_view().entities};
+            auto const fighters{fighters_simulation_.get_read_view().entities};
+            auto const turrets{turrets_simulation_.get_read_view().entities};
+            collect_new(capitals, capitals.handles);
+            collect_new(fighters, fighters.entity_handles);
+            collect_new(turrets, turrets.handles);
             if (player_active) {
                 player_ship_phase_->prepare_tick(tick_period);
             }
@@ -293,6 +329,8 @@ void LevelSim::advance(time_type const dt) {
             fighters_phase_.prepare_tick(tick_period);
             turrets_phase_.prepare_tick(tick_period);
             spinners_phase_.prepare_tick(tick_period);
+            rebuild_agent_indexes();
+            query_manager_.get_collision_system().refresh_queries();
         }
         frame_memory_.reclaim();
 
@@ -301,6 +339,8 @@ void LevelSim::advance(time_type const dt) {
         /* -------------------------------------------------------------------------------- */
         {
             SANDBOX_PROFILE_SCOPE("Sandbox::LevelSim::Thinking");
+            clock_.phase = SimulationPhase::Thinking;
+            capital_ships_simulation_.refresh_fighter_handles();
             turrets_phase_.think(tick_period);
             capital_ships_phase_.think(tick_period);
             fighters_phase_.think(tick_period);
@@ -323,6 +363,7 @@ void LevelSim::advance(time_type const dt) {
         /* -------------------------------------------------------------------------------- */
         {
             SANDBOX_PROFILE_SCOPE("Sandbox::LevelSim::Action");
+            clock_.phase = SimulationPhase::Action;
 
             // Existing projectiles retain pre-movement collision geometry.
             lasers_phase_.simulate(tick_period);
@@ -335,34 +376,25 @@ void LevelSim::advance(time_type const dt) {
             spinners_phase_.apply_movement();
             frame_memory_.reclaim();
 
-            event_manager_.execute_tick(clock_.completed_ticks + 1);
-            fighters_phase_.commit_spawns();
-            capital_ships_phase_.execute_fighter_self_destruct_requests();
-            lasers_phase_.commit_spawns();
-            frame_memory_.reclaim();
-
             // Collision observes moved and newly created entities, before resolved deaths.
             publish_entity_state();
-            collision::DetectedOverlapsView overlaps;
-            {
-                auto const authored_spawns{event_manager_.get_spawned_handles()};
-                if (authored_spawns.empty()) {
-                    overlaps = query_manager_.update(clock_.completed_ticks + 1);
-                } else {
-                    auto const moved{entity_registry_.get_moved_entities_this_tick()};
-                    collision_dirty_entities_.assign(moved.begin(), moved.end());
-                    collision_dirty_entities_.insert(collision_dirty_entities_.end(),
-                                                     authored_spawns.begin(),
-                                                     authored_spawns.end());
-                    // Carrier fighters remain queryable but retain their unmoved launch boundary.
-                    std::ranges::sort(collision_dirty_entities_);
-                    auto const duplicates{std::ranges::unique(collision_dirty_entities_)};
-                    collision_dirty_entities_.erase(duplicates.begin(), duplicates.end());
-                    overlaps = query_manager_.get_collision_system().update(
-                        collision_dirty_entities_, clock_.completed_ticks + 1);
-                }
-                overlap_handler_.handle(overlaps);
-            }
+            auto const moved{entity_registry_.get_moved_entities_this_tick()};
+            collision_dirty_entities_.insert(
+                collision_dirty_entities_.end(), moved.begin(), moved.end());
+            std::ranges::sort(collision_dirty_entities_);
+            auto const duplicates{std::ranges::unique(collision_dirty_entities_)};
+            collision_dirty_entities_.erase(duplicates.begin(), duplicates.end());
+            auto const overlaps{query_manager_.get_collision_system().update(
+                collision_dirty_entities_, clock_.completed_ticks + 1)};
+            overlap_handler_.handle(overlaps);
+        }
+
+        /* -------------------------------------------------------------------------------- */
+        // Resolution
+        /* -------------------------------------------------------------------------------- */
+        {
+            SANDBOX_PROFILE_SCOPE("Sandbox::LevelSim::Resolution");
+            clock_.phase = SimulationPhase::Resolution;
 
             if (player_active) {
                 player_ship_phase_->resolve_damage_events();
@@ -374,14 +406,6 @@ void LevelSim::advance(time_type const dt) {
 
             // Queue final rows before compaction; include all capital-death consequences.
             publish_entity_state();
-            auto const queries_need_refresh{
-                !entity_registry_.get_dead_entities_this_frame().empty()};
-            capital_ships_phase_.cleanup_entities();
-            fighters_phase_.cleanup_entities();
-            turrets_phase_.cleanup_entities();
-            if (queries_need_refresh) {
-                query_manager_.get_collision_system().refresh_queries();
-            }
             frame_memory_.reclaim();
 
             mission_manager_.mission_tick();
@@ -397,6 +421,7 @@ void LevelSim::advance(time_type const dt) {
             frame_memory_.reset();
         }
         profiling::mark_frame("Simulation");
+        clock_.phase = SimulationPhase::Idle;
 
         if (state_ != OrchestratorState::Running) {
             break;
@@ -407,6 +432,30 @@ void LevelSim::advance(time_type const dt) {
 /* **************************************** */
 // Read views
 /* **************************************** */
+
+void LevelSim::rebuild_agent_indexes() {
+    assert(clock_.permits_structural_mutation());
+    auto const capitals{capital_ships_simulation_.get_read_view().entities};
+    auto const fighters{fighters_simulation_.get_read_view().entities};
+    auto const turrets{turrets_simulation_.get_read_view().entities};
+    auto const spinners{spinners_simulation_.get_read_view().entities};
+    agent_indexes_.bind(EntityType::CapitalShip, capitals.entity_ids);
+    agent_indexes_.bind(EntityType::Fighter, fighters.entity_ids);
+    agent_indexes_.bind(EntityType::Turret, turrets.entity_ids);
+    agent_indexes_.bind(EntityType::TubeSpinner, spinners.entity_ids);
+    PlayerAgentView player_view{};
+    if (player_ship_simulation_ && player_ship_simulation_->health.is_alive()) {
+        auto const& player{*player_ship_simulation_};
+        agent_indexes_.bind(EntityType::PlayerShip, {&player.unique_entity_id, 1});
+        player_view = {&player.get_movement_state().transform,
+                       &player.get_movement_state().velocity,
+                       &player.health.health,
+                       &player.team};
+    } else {
+        agent_indexes_.bind(EntityType::PlayerShip, {});
+    }
+    agent_accessor_.bind(capitals, fighters, turrets, spinners, player_view);
+}
 
 auto LevelSim::get_read_view() const -> LevelReadView {
     return {frame_sequence_,

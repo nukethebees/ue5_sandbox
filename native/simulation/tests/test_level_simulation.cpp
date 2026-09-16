@@ -448,6 +448,9 @@ TEST(NativeSimulation, WorldlessLevelSimulationTest) {
     kill_enemy(first);
     first.advance(dt);
     second.advance(dt);
+    tests::expect_equal(
+        first.get_entity_registry().count_alive(), 1, "Death is effective before physical removal");
+    first.advance(dt);
     tests::expect_equal(first.get_capital_ships().get_num_instances(),
                         1,
                         "Damage removes only the first battle's enemy");

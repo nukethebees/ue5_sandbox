@@ -16,6 +16,10 @@ void PhaseInterface::begin_play() {
     simulation.begin_play();
 }
 
+void PhaseInterface::commit_orders() {
+    simulation.commit_orders();
+}
+
 void PhaseInterface::prepare_tick(float const dt) {
     simulation.prepare_tick(dt);
 }

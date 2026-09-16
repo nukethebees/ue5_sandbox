@@ -115,6 +115,10 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
             tests::expect_false(std::ranges::contains(unique_moved, handle),
                                 "Moved handle occurs only once in its tick");
             unique_moved.insert(handle);
+            if (!previous_transforms.contains(handle)) {
+                // Newly prepared fighters can move in their birth tick.
+                expected_moved.insert(handle);
+            }
             tests::expect_true(std::ranges::contains(expected_moved, handle),
                                "Moved handle changed from the prior committed transform");
             if (registry.get_entity_type(handle) == EntityType::Fighter) {

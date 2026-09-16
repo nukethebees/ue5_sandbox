@@ -18,6 +18,7 @@ void sort_and_deduplicate_removal_indices(std::vector<std::int32_t>& local_indic
 }
 
 void resolve_damage_events(EntityRegistry const& registry,
+                           AgentIndexes const& indexes,
                            std::span<RegistryEntityHandle const> entity_handles,
                            std::span<Health> healths,
                            std::vector<std::int32_t>& local_indices_to_remove,
@@ -38,13 +39,19 @@ void resolve_damage_events(EntityRegistry const& registry,
     for (std::int32_t event_index{}; event_index < n_direct_events; ++event_index) {
         auto const element{static_cast<std::size_t>(event_index)};
         auto const damaged_handle{damage_events.damaged_entities[element]};
-        auto const entity{std::ranges::find(entity_handles, damaged_handle)};
-        if (entity == entity_handles.end()) {
+        if (!registry.is_valid_handle(damaged_handle)) {
             continue;
         }
-
-        auto const local_index{static_cast<std::int32_t>(entity - entity_handles.begin())};
+        auto const id{registry.get_active_unique_ids()[damaged_handle.index]};
+        auto const local_index{indexes.find(id)};
+        if (local_index < 0 || static_cast<std::size_t>(local_index) >= entity_handles.size() ||
+            entity_handles[local_index] != damaged_handle) {
+            continue;
+        }
         auto const local_element{static_cast<std::size_t>(local_index)};
+        if (is_dead(healths[local_element])) {
+            continue;
+        }
         healths[local_element] -= damage_events.damage_amounts[element];
         auto const removals{std::span{local_indices_to_remove}.first(
             static_cast<std::size_t>(current_removal_count))};

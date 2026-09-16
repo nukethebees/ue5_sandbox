@@ -17,6 +17,8 @@ class PhaseInterface {
 
     void commit_spawns();
 
+    void cleanup_entities();
+
     void finish_action();
 
     friend struct sim::LevelSim;

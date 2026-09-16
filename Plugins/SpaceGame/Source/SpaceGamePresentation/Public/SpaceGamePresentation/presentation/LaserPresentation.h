@@ -50,6 +50,7 @@ struct SPACEGAMEPRESENTATION_API FLaserPresentation {
 
     USandboxISMCComponent* instances{nullptr};
     TArray<FMaterialData> material_data;
+    TArray<int32> visible_indices_;
 
     FSparkEffects* spark_effects_{nullptr};
 

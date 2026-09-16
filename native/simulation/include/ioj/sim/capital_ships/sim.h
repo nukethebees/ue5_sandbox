@@ -3,8 +3,8 @@
 #include <cassert>
 #include <cstdint>
 #include <format>
+#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/capital_spawn_data.h>
-#include <ioj/sim/fighter_reassignment.h>
 #include <ioj/sim/sim_config.h>
 #include <optional>
 #include <sandbox/core/countdown.h>
@@ -22,8 +22,6 @@
 #include <ioj/sim/fighters/command_interface.h>
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/registry_entity_data.h>
-
-#include <sandbox/core/multi_buffer.h>
 
 #include <memory_resource>
 #include <optional>
@@ -47,14 +45,11 @@ class PhaseInterface;
 struct Sim {
     using RegistryEntityData = sim::RegistryEntityData;
     using SpawnData = CapitalSpawnData;
-    using EntityTickData = FighterSpawnQueue;
-    using EntityTickStorage = SingleAllocationFighterSpawnQueue;
     using EntityData = CapitalEntityData;
     using EntityStorage = SingleAllocationCapitalEntityData;
-    using FighterReassignment = capital_ships::FighterReassignment;
-    using EntityBuffers = ml::MultiBuffer<EntityTickStorage, 2>;
 
     Sim(EntityRegistry& entity_registry,
+        AgentAccessor const& agents,
         SpatialQueryManager const& spatial_query_manager,
         fighters::Sim& fighters,
         std::pmr::memory_resource& frame_memory_resource);
@@ -183,11 +178,11 @@ struct Sim {
     CapitalShipSimConfig config{};
     bool diagnostics_enabled_{};
     EntityRegistry& entity_registry;
+    AgentAccessor const& agents_;
     SpatialQueryManager const& spatial_query_manager;
     std::pmr::memory_resource& frame_memory_resource;
 
     EntityStorage entities{};
-    EntityBuffers tick_buffers{};
     std::vector<std::int32_t> local_indices_to_remove;
     EntityDeathInfo entity_death_info;
     std::vector<EntityFrameChange> frame_changes_;
@@ -197,8 +192,6 @@ struct Sim {
     fighters::CommandInterface fighters_interface;
     std::vector<RegistryEntityHandle> fighter_self_destruct_requests_;
     std::vector<RegistryEntityHandle> fighter_handles;
-    std::vector<RegistryEntityHandle> fighter_handles_scratch;
-    FighterReassignment fighter_reassignment_queue;
     std::int32_t fighters_spawned{0};
     std::int32_t diagnostic_spawn_reports{};
 

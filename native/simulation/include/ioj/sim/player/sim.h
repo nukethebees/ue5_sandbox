@@ -228,6 +228,8 @@ struct Sim {
     void set_laser_mode(LaserFiringState mode) noexcept;
     void update_laser_firing();
     void fire_laser();
+    void materialize_fire_command();
+    bool fire_requested_{};
     void fire_lasers_from(std::span<Transform3d const> fire_points);
 
     /* **************************************** */

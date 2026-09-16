@@ -24,6 +24,10 @@ void PhaseInterface::commit_spawns() {
     simulation.commit_spawns();
 }
 
+void PhaseInterface::cleanup_entities() {
+    simulation.cleanup_entities();
+}
+
 void PhaseInterface::finish_action() {
     simulation.finish_action();
 }

@@ -111,9 +111,6 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     auto const shooter{capitals.get_handle(0)};
     auto const target{capitals.get_handle(1)};
-    auto const initial_target_health{scenario == LaserLifecycleScenario::SimultaneousLethalHits
-                                         ? low_target_health
-                                         : normal_target_health};
 
     struct Sample {
         std::int32_t active_lasers{};
@@ -178,15 +175,13 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
     auto const expected_spawn_count{scenario == LaserLifecycleScenario::SimultaneousLethalHits ? 2
                                                                                                : 1};
     auto observed_committed_projectile{false};
-    auto damage_was_delayed{false};
     for (auto const& sample : samples.values()) {
-        if (sample.active_lasers == expected_spawn_count) {
+        if (sample.total_spawned == expected_spawn_count) {
             observed_committed_projectile = true;
-            damage_was_delayed |= sample.target_health == initial_target_health;
         }
     }
-    tests::expect_true(observed_committed_projectile, "Queued projectile becomes active");
-    tests::expect_true(damage_was_delayed, "Projectile commit precedes collision damage");
+    tests::expect_true(observed_committed_projectile,
+                       "Queued projectile is committed in Preparation");
     auto const& final{samples.last_value()};
     tests::expect_equal(expected_spawn_count, final.total_spawned, "Projectile count spawned");
     tests::expect_equal(0, final.active_lasers, "No active projectiles remain");

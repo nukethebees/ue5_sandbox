@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/fighter_navigation.h>
 #include <ioj/sim/fighter_navigation_scratch.h>
 #include <ioj/sim/navigation_telemetry.h>
@@ -59,6 +60,7 @@ struct Sim {
 
     Sim(SimClock const& clock,
         EntityRegistry& entity_registry,
+        AgentAccessor const& agents,
         SpatialQueryManager const& spatial_query_manager,
         lasers::Sim& laser_simulation,
         std::pmr::memory_resource& frame_memory_resource) noexcept;
@@ -85,6 +87,17 @@ struct Sim {
     auto get_view(std::int32_t offset, std::int32_t width) -> EntityData::View;
     auto get_const_view(std::int32_t offset, std::int32_t width) const -> EntityData::ConstView;
     auto get_handles() const noexcept -> std::span<RegistryEntityHandle const>;
+    auto get_parent_handles() const -> std::span<RegistryEntityHandle const> {
+        return entity_buffers.current().get_const_view().parent_handles();
+    }
+    auto get_healths() const -> std::span<Health const> {
+        return entity_buffers.current().get_const_view().healths();
+    }
+    void set_parent_handle(RegistryEntityHandle fighter, RegistryEntityHandle parent) {
+        auto const index{find_index(fighter)};
+        assert(index >= 0);
+        entity_buffers.current().get_view().parent_handles()[index] = parent;
+    }
     auto get_locations() const {
         return entity_buffers.current().get_const_view().columns().locations;
     }
@@ -254,6 +267,7 @@ struct Sim {
 
     EntityBuffers entity_buffers{};
     EntityRegistry& entity_registry;
+    AgentAccessor const& agents_;
     SpatialQueryManager const& spatial_query_manager;
     std::pmr::memory_resource& frame_memory_resource;
     SingleAllocationRegistryEntityData registry_update_data;
@@ -269,6 +283,7 @@ struct Sim {
     FighterOrderQueue order_queue{};
 
     lasers::Sim& laser_simulation;
+    std::vector<std::int32_t> pending_fire_indices_;
 
     NavigationTelemetrySnapshot navigation_telemetry;
     std::int32_t diagnostic_stop_reports{};

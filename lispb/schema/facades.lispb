@@ -20,6 +20,11 @@
     (method get_handles "std::span<RegistryEntityHandle const>"
       :const true
       :noexcept true)
+    (method get_parent_handles "std::span<RegistryEntityHandle const>" :const true)
+    (method get_healths "std::span<Health const>" :const true)
+    (method set_parent_handle void
+      (parameter fighter @native_registry_handle)
+      (parameter parent @native_registry_handle))
     (method get_target_handles "std::span<RegistryEntityHandle const>"
       :const true
       :noexcept true)))
@@ -106,6 +111,7 @@
     (method simulate void
       (parameter dt "float const"))
     (method commit_spawns void)
+    (method cleanup_entities void)
     (method finish_action void)))
 
 (facade-module capital_ships_phase_interface
@@ -147,6 +153,7 @@
     :definitions-in-source true
     :target-storage reference
     (method begin_play void)
+    (method commit_orders void)
     (method prepare_tick void
       (parameter dt "float const"))
     (method think void

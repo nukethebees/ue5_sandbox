@@ -63,6 +63,8 @@ struct Sim {
     void think(float dt);
     void apply_movement();
     void generate_fire_commands();
+    void materialize_fire_commands();
+    std::vector<std::int32_t> pending_fire_indices_;
     void finish_action();
 
     /* **************************************** */

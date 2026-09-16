@@ -131,6 +131,9 @@ void Sim::think(float const dt) {
 void Sim::apply_movement() {
     SANDBOX_PROFILE_SCOPE("Sandbox::PlayerShipSim::apply_movement");
     movement_state_ = planned_movement_;
+    if (std::exchange(fire_requested_, false)) {
+        materialize_fire_command();
+    }
 }
 
 void Sim::generate_fire_commands() {
@@ -148,7 +151,7 @@ void Sim::resolve_damage_events() {
     auto const damage_count{damage_events.num()};
     for (std::int32_t event_index{}; event_index < damage_count; ++event_index) {
         auto const element{static_cast<std::size_t>(event_index)};
-        if (damage_events.damaged_entities[element] != registry_handle) {
+        if (damage_events.damaged_entities[element] != registry_handle || is_dead(health.health)) {
             continue;
         }
 
@@ -557,18 +560,24 @@ void Sim::stop_fire_laser() {
 }
 
 void Sim::fire_laser() {
+    fire_requested_ = true;
+    ++lasers_fired_this_burst;
+    laser_shot_cooldown = config.laser.fire_cooldown;
+}
+
+void Sim::materialize_fire_command() {
     switch (laser_mode) {
         case ShipLaserMode::Single: {
             std::array<Transform3d, 1> const fire_points{
-                (middle_socket * planned_movement_.body_transform * planned_movement_.transform)};
+                (middle_socket * movement_state_.body_transform * movement_state_.transform)};
             fire_lasers_from(fire_points);
             break;
         }
         case ShipLaserMode::Double:
         case ShipLaserMode::Hyper: {
             std::array<Transform3d, 2> const fire_points{
-                left_socket * planned_movement_.body_transform * planned_movement_.transform,
-                right_socket * planned_movement_.body_transform * planned_movement_.transform};
+                left_socket * movement_state_.body_transform * movement_state_.transform,
+                right_socket * movement_state_.body_transform * movement_state_.transform};
             fire_lasers_from(fire_points);
             break;
         }
@@ -576,9 +585,6 @@ void Sim::fire_laser() {
             ml::fatal_error("Unhandled player laser mode.");
         }
     }
-
-    ++lasers_fired_this_burst;
-    laser_shot_cooldown = config.laser.fire_cooldown;
 }
 
 void Sim::fire_lasers_from(std::span<Transform3d const> const fire_points) {
@@ -590,7 +596,7 @@ void Sim::fire_lasers_from(std::span<Transform3d const> const fire_points) {
     for (std::int32_t i{0}; i < laser_count; ++i) {
         laser_columns.locations.set(i, to_float(fire_points[i].location));
         laser_columns.rotations.set(i, to_float(fire_points[i].rotator()));
-        laser_columns.base_velocities.set(i, to_float(planned_movement_.velocity));
+        laser_columns.base_velocities.set(i, to_float(movement_state_.velocity));
     }
 
     std::ranges::fill(laser_columns.damages, config.laser.damage);
@@ -645,11 +651,14 @@ void Sim::set_laser_fire_rate(ShipFireRate const value) noexcept {
 // Health and status
 /* **************************************** */
 void Sim::add_health(Health const added_health) {
+    if (!health.is_alive()) {
+        return;
+    }
     set_health(health.health + added_health);
 }
 
 void Sim::set_health(Health const new_health, RegistryEntityHandle const killer) {
-    if (new_health == health.health) {
+    if (new_health == health.health || !health.is_alive()) {
         return;
     }
 

@@ -101,7 +101,11 @@ void FLaserPresentation::synchronize_material_data() {
     auto const& entities{view().entities};
     auto const count{entities.num()};
     material_data.SetNum(count, EAllowShrinking::No);
+    visible_indices_.Reset();
     for (int32 i{}; i < count; ++i) {
+        if (entities.active[i] != 0) {
+            visible_indices_.Add(i);
+        }
         auto const colour{source_colour(entities.sources[i])};
         material_data[i] = {
             {colour.R, colour.G, colour.B}, entities.initial_lifetimes[i], entities.spawn_times[i]};
@@ -112,13 +116,13 @@ void FLaserPresentation::update_ismc() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::update_ismc);
 
     auto const& laser_simulation{view()};
-    auto const count{laser_simulation.get_num_instances()};
+    auto const count{visible_indices_.Num()};
     instances->set_instances(
         count, ESandboxISMCParallelism::Auto, [this, &laser_simulation](auto& chunk) {
             auto const first_index{chunk.first_index()};
             auto const chunk_count{chunk.num()};
             for (int32 local_index{0}; local_index < chunk_count; ++local_index) {
-                auto const index{first_index + local_index};
+                auto const index{visible_indices_[first_index + local_index]};
                 auto const& locations{laser_simulation.entities.locations};
                 auto const location{
                     FVector3f{locations.xs[index], locations.ys[index], locations.zs[index]}};
@@ -170,6 +174,9 @@ void FLaserPresentation::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(view().get_num_instances()),
         SANDBOX_NAMED_NUM(material_data.Num()),
+    });
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(visible_indices_.Num()),
         SANDBOX_NAMED_NUM(instances->get_instance_count()),
     });
 }

@@ -13,6 +13,8 @@ class PhaseInterface {
 
     void begin_play();
 
+    void commit_orders();
+
     void prepare_tick(float const dt);
 
     void think(float const dt);

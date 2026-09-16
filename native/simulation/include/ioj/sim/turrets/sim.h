@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/system_read_views.h>
 #include <ioj/sim/turret_spawn_data.h>
 #include <optional>
@@ -35,6 +36,7 @@ struct Sim {
 
     Sim(SimClock const& clock,
         EntityRegistry& entity_registry,
+        AgentAccessor const& agents,
         SpatialQueryManager const& spatial_query_manager,
         lasers::Sim& laser_simulation,
         std::pmr::memory_resource& frame_memory_resource) noexcept;
@@ -128,6 +130,7 @@ struct Sim {
     TurretSimConfig config{};
     SimClock const& simulation_clock;
     EntityRegistry& entity_registry;
+    AgentAccessor const& agents_;
     SpatialQueryManager const& spatial_query_manager;
     lasers::Sim& laser_simulation;
     std::pmr::memory_resource& frame_memory_resource;

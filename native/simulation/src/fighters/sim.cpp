@@ -183,11 +183,13 @@ void Sim::set_config(FighterSimConfig const& new_config,
 }
 Sim::Sim(SimClock const& clock,
          EntityRegistry& in_entity_registry,
+         AgentAccessor const& agents,
          SpatialQueryManager const& in_spatial_query_manager,
          lasers::Sim& in_laser_simulation,
          std::pmr::memory_resource& in_frame_memory_resource) noexcept
     : simulation_clock{clock}
     , entity_registry{in_entity_registry}
+    , agents_{agents}
     , spatial_query_manager{in_spatial_query_manager}
     , frame_memory_resource{in_frame_memory_resource}
     , laser_simulation{in_laser_simulation} {}
@@ -299,7 +301,6 @@ void Sim::think(float const dt) {
     auto const n{data.num()};
     std::array<RegistryEntityHandle, 128> nearby_entities;
     auto const dot_threshold{config.minimum_opportunistic_intercept_deviation_dot_product};
-    auto const registry{make_native_query_view(entity_registry)};
 
     {
         SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::awareness_scan");
@@ -312,7 +313,7 @@ void Sim::think(float const dt) {
 
             auto const fighter_location{data.locations[i]};
             auto const target_handle{data.target_handles[i]};
-            if (entity_registry.is_valid_alive(target_handle) &&
+            if (agents_.read_alive(entity_registry.get_current_id(target_handle)) &&
                 data.target_distance_sq[i] <= attack_engagement_threshold_sq) {
                 continue;
             }
@@ -323,12 +324,12 @@ void Sim::think(float const dt) {
             RegistryEntityHandle selected_target{};
             for (std::int32_t nearby_index{}; nearby_index < n_nearby_entities; ++nearby_index) {
                 auto const candidate{nearby_entities[nearby_index]};
-                assert(candidate.index >= 0 && candidate.index < registry.num());
-                assert(registry.generations[static_cast<std::size_t>(candidate.index)] ==
-                       candidate.generation);
-
-                auto const direction{ml::native_math::safe_normal(
-                    registry.locations[candidate.index] - fighter_location, 1.e-8f)};
+                auto const state{agents_.read_alive(entity_registry.get_current_id(candidate))};
+                if (!state) {
+                    continue;
+                }
+                auto const direction{
+                    ml::native_math::safe_normal(state->location - fighter_location, 1.e-8f)};
                 if (HMM_DotV3(aim_direction, direction) > dot_threshold) {
                     selected_target = candidate;
                     break;
@@ -459,6 +460,20 @@ void Sim::apply_movement() {
     copy_vectors(data.aim_directions, data.planned_aim_directions.get_const_view());
     move(movement_tick_period_, get_task_view(Task::MoveToDestination));
     move(movement_tick_period_, get_task_view(Task::Attack));
+    lasers::FrameSpawnRequests requests{&frame_memory_resource};
+    for (auto const index : pending_fire_indices_) {
+        auto const direction{data.aim_directions[index]};
+        requests.add(data.locations[index] + direction * fire_point_distance_,
+                     direction_to_rotation(direction),
+                     data.velocities[index],
+                     config.laser.damage,
+                     config.laser.projectile_speed,
+                     config.laser.max_distance,
+                     data.entity_handles[index],
+                     {data.teams[index], EntityType::Fighter});
+    }
+    laser_simulation.queue_laser_spawns(requests.get_const_view());
+    pending_fire_indices_.clear();
 }
 void Sim::generate_fire_commands() {
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::generate_fire_commands");
@@ -469,30 +484,29 @@ void Sim::resolve_damage_events() {
 
     auto const data{entity_buffers.current().get_view().columns()};
     batch::resolve_damage_events(entity_registry,
+                                 agents_.indexes(),
                                  data.entity_handles,
                                  data.healths,
                                  local_indices_to_remove,
                                  entity_death_info);
 
     auto const& direct_damage{entity_registry.get_direct_damage_queue_view()};
-    auto const registry{make_native_query_view(entity_registry)};
     auto const damage_events{direct_damage.get_const_view()};
     auto const damage_count{damage_events.num()};
     for (std::int32_t event_index{}; event_index < damage_count; ++event_index) {
         auto const event_element{static_cast<std::size_t>(event_index)};
         auto const damaged_handle{damage_events.damaged_entities[event_element]};
-        auto const fighter{std::ranges::find(data.entity_handles, damaged_handle)};
-        if (fighter == data.entity_handles.end()) {
+        auto const fighter_index{find_index(damaged_handle)};
+        if (fighter_index < 0 || is_dead(data.healths[fighter_index])) {
             continue;
         }
 
         auto const instigator{damage_events.instigators[event_element]};
-        if (analyse_handle(registry, instigator) != RegistryHandleState::Active) {
+        auto const source{agents_.read_alive(entity_registry.get_current_id(instigator))};
+        if (!source) {
             continue;
         }
-        auto const fighter_index{static_cast<std::size_t>(fighter - data.entity_handles.begin())};
-        auto const instigator_index{static_cast<std::size_t>(instigator.index)};
-        if (registry.teams[instigator_index] != static_cast<std::byte>(data.teams[fighter_index])) {
+        if (source->team != data.teams[fighter_index]) {
             data.target_handles[fighter_index] = instigator;
         }
     }
@@ -507,14 +521,12 @@ void Sim::update_entity_registry() {
     entity_registry.queue_entity_updates(view, entity_death_info);
 }
 void Sim::cleanup_entities() {
+    agents_.indexes().assert_structural_mutation_allowed();
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::cleanup_entities");
 
-    tasks_are_contiguous();
     remove_dead_entities();
-    commit_orders();
-    if (!tasks_are_contiguous()) {
-        refresh_layout();
-    }
+    local_indices_to_remove.clear();
+    entity_death_info.reset();
     validate_array_sizes();
 }
 void Sim::finish_action() {
@@ -1006,9 +1018,9 @@ auto Sim::get_const_task_view(Task const task) const noexcept -> ConstTaskView {
     return entity_buffers.current().get_const_view(span.offset, span.count).columns();
 }
 auto Sim::find_index(RegistryEntityHandle const fighter_handle) const noexcept -> std::int32_t {
-    auto const handles{entity_buffers.current().get_const_view().entity_handles()};
-    auto const found{std::ranges::find(handles, fighter_handle)};
-    return found == handles.end() ? -1 : static_cast<std::int32_t>(found - handles.begin());
+    auto const id{entity_registry.get_current_id(fighter_handle)};
+    return id.is_valid() && id.entity_type() == EntityType::Fighter ? agents_.indexes().find(id)
+                                                                    : -1;
 }
 auto Sim::get_task_span(Task const task) const -> IndexSpan {
     return task_spans[std::to_underlying(task)];
@@ -1027,8 +1039,16 @@ void Sim::set_target_handle(RegistryEntityHandle const fighter_handle,
 }
 void Sim::refresh_target_data() {
     auto const data{entity_buffers.current().get_view().columns()};
-    entity_registry.refresh_entity_data(
-        data.target_handles, data.target_locations.get_view(), data.target_velocities.get_view());
+    auto const count{data.target_handles.size()};
+    for (std::size_t index{}; index < count; ++index) {
+        auto const target{
+            agents_.read_alive(entity_registry.get_current_id(data.target_handles[index]))};
+        if (!target) {
+            data.target_handles[index] = {};
+        }
+        data.target_locations.set(index, target ? target->location : Vector3f{});
+        data.target_velocities.set(index, target ? target->velocity : Vector3f{});
+    }
     spatial_query_manager.copy_entity_radii(data.target_handles, data.target_radii);
     distance_and_squared(data.target_distances,
                          data.target_distance_sq,
@@ -1050,7 +1070,7 @@ void Sim::set_task_unchecked(std::int32_t const index, Task const task) noexcept
         index, task == Task::Standby ? NavigationRiskTier::Clear : NavigationRiskTier::Nearby);
 }
 void Sim::set_task(RegistryEntityHandle const handle, Task const task) noexcept {
-    set_task_unchecked(find_index(handle), task);
+    order_queue.add(handle, FighterOrder{.task = 1, .target = 0}, task, {});
 }
 /* **************************************** */
 // Entity data
@@ -1099,6 +1119,7 @@ bool Sim::tasks_are_contiguous() const noexcept {
     return true;
 }
 void Sim::refresh_layout() {
+    agents_.indexes().assert_structural_mutation_allowed();
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::refresh_layout");
 
     auto const task_counts{get_task_counts()};
@@ -1165,6 +1186,7 @@ auto Sim::queue_spawns(FighterSpawnQueueConstView const new_spawns) -> std::int3
     return accepted_count;
 }
 void Sim::commit_spawns() {
+    agents_.indexes().assert_structural_mutation_allowed();
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::commit_spawns");
 
     if (!diagnostics_enabled_) {
@@ -1172,6 +1194,24 @@ void Sim::commit_spawns() {
     }
     new_spawn_entity_handles.reset();
     new_spawn_entity_data.reset();
+    auto accepted_count{0};
+    auto const pending_count{spawn_queue.num()};
+    auto pending{spawn_queue.get_view().columns()};
+    for (auto index{0}; index < pending_count; ++index) {
+        if (entity_registry.is_valid_alive(pending.parents[index])) {
+            pending.set(accepted_count++,
+                        pending.locations.xs[index],
+                        pending.locations.ys[index],
+                        pending.locations.zs[index],
+                        pending.rotations.pitches[index],
+                        pending.rotations.yaws[index],
+                        pending.rotations.rolls[index],
+                        pending.teams[index],
+                        pending.parents[index],
+                        pending.targets[index]);
+        }
+    }
+    spawn_queue.set_num(accepted_count);
     auto const n_cur{get_num_instances()};
     auto const n_new{spawn_queue.num()};
 
@@ -1219,6 +1259,7 @@ void Sim::commit_spawns() {
         entity_registry.add_entities(new_spawn_entity_data.get_const_view().columns());
     auto const& registry_handles{new_spawn_entity_handles.registry_handles};
     for (std::int32_t i{}; i < n_new; ++i) {
+        data.entity_ids[n_cur + i] = new_spawn_entity_handles.get_id(i, EntityType::Fighter);
         data.entity_handles[n_cur + i] = {registry_handles.registry_indices[i],
                                           registry_handles.generations[i]};
     }
@@ -1255,8 +1296,11 @@ void Sim::commit_spawns() {
 void Sim::self_destruct_fighter(RegistryEntityHandle const handle) {
     auto const data{entity_buffers.current().get_view().columns()};
     auto const index{find_index(handle)};
-    assert(index != -1);
+    if (index < 0 || is_dead(data.healths[index])) {
+        return;
+    }
     data.healths[index] = 0;
+    entity_death_info.add(DeathReason::Unknown, handle, {});
     if (!std::ranges::contains(local_indices_to_remove, index)) {
         local_indices_to_remove.push_back(index);
     }
@@ -1280,22 +1324,15 @@ void Sim::handle_firing(TaskView const& data) {
     auto predicted_location = [&data](std::int32_t const index) {
         return data.locations[index] + data.movement_directions[index] * data.move_distances[index];
     };
-    auto predicted_velocity = [this, &data](std::int32_t const index) {
-        return data.movement_directions[index] *
-               (data.move_distances[index] / movement_tick_period_);
-    };
 
     auto const n_ships{data.num()};
     auto const aim_threshold{config.fire_dot_product_threshold};
-    auto const laser_damage{config.laser.damage};
-    auto const laser_speed{config.laser.projectile_speed};
     auto const laser_max_distance{config.laser.max_distance};
     auto const laser_max_distance_sq{laser_max_distance * laser_max_distance};
     auto const desired_attack_distance{laser_max_distance *
                                        config.attack_distance_band.desired_ratio};
     auto const arrival_distance{config.arrival_distance};
     auto const attack_position_arrival_distance_sq{arrival_distance * arrival_distance};
-    lasers::FrameSpawnRequests new_lasers{&frame_memory_resource};
     ml::FrameArray<float> aiming_dot_products{&frame_memory_resource};
     ml::FrameArray<std::int32_t> can_fire{&frame_memory_resource};
     FrameVectors3f line_of_sight_starts{&frame_memory_resource};
@@ -1305,7 +1342,6 @@ void Sim::handle_firing(TaskView const& data) {
     ml::FrameArray<std::int32_t> firing_position_fighter_indices{&frame_memory_resource};
     FrameVectors3f firing_position_candidates{&frame_memory_resource};
 
-    new_lasers.set_num(n_ships);
     firing_position_fighter_indices.reserve(n_ships);
     firing_position_candidates.reserve(n_ships);
 
@@ -1431,23 +1467,12 @@ void Sim::handle_firing(TaskView const& data) {
     }
 
     auto const n_can_fire{can_fire.num()};
-    new_lasers.set_num(n_can_fire);
+    auto const attack_offset{get_task_span(Task::Attack).offset};
     for (std::int32_t i{0}; i < n_can_fire; ++i) {
         auto const ship_index{can_fire[i]};
-        auto const ship_location{predicted_location(ship_index)};
-        auto const direction{data.planned_aim_directions[ship_index]};
-        new_lasers.locations.set(i, ship_location + direction * fire_point_distance_);
-        new_lasers.rotations.set(i, direction_to_rotation(direction));
-        new_lasers.base_velocities.set(i, predicted_velocity(ship_index));
-        new_lasers.instigator_handles[i] = data.entity_handles[ship_index];
-        new_lasers.sources[i] = {data.teams[ship_index], EntityType::Fighter};
+        pending_fire_indices_.push_back(attack_offset + ship_index);
         data.attack_cooldowns[ship_index] = attack_restart_ticks_;
     }
-
-    new_lasers.set_damages(laser_damage);
-    new_lasers.set_speeds(laser_speed);
-    new_lasers.set_max_distances(laser_max_distance);
-    laser_simulation.queue_laser_spawns(new_lasers.get_const_view());
 }
 
 /* **************************************** */
@@ -1458,6 +1483,7 @@ void Sim::queue_orders(FighterOrderQueue const& queue) {
     order_queue.append_from(queue.get_const_view());
 }
 void Sim::commit_orders() {
+    assert(simulation_clock.phase == SimulationPhase::Preparation);
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::commit_orders");
 
     auto const data{entity_buffers.current().get_view().columns()};
@@ -1469,13 +1495,12 @@ void Sim::commit_orders() {
     auto const orders{order_queue.get_const_view()};
     for (std::int32_t index{}; index < n_orders; ++index) {
         auto const order_index{static_cast<std::size_t>(index)};
-        auto const found{std::ranges::find(data.entity_handles, orders.handles[order_index])};
-        if (found == data.entity_handles.end()) {
+        auto const fighter_index{find_index(orders.handles[order_index])};
+        if (fighter_index < 0 || is_dead(data.healths[fighter_index])) {
             continue;
         }
 
-        auto const element{static_cast<std::size_t>(found - data.entity_handles.begin())};
-        auto const fighter_index{static_cast<std::int32_t>(element)};
+        auto const element{static_cast<std::size_t>(fighter_index)};
         auto const order{orders.orders[order_index]};
         if (order.task) {
             auto const old_task{data.tasks[element]};
@@ -1493,6 +1518,7 @@ void Sim::commit_orders() {
             data.target_handles[element] = orders.targets[order_index];
         }
     }
+    order_queue.reset();
 }
 
 /* **************************************** */
@@ -1502,7 +1528,6 @@ void Sim::clear_tick_buffers() {
     local_indices_to_remove.clear();
     entity_death_info.reset();
     spawn_queue.reset();
-    order_queue.reset();
 }
 
 /* **************************************** */

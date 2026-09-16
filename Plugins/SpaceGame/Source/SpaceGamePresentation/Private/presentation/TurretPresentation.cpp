@@ -59,11 +59,9 @@ void FTurretPresentation::begin_play_presentation(TArray<FTransform> initial_tra
     configure_ismc();
     ismc_transforms = MoveTemp(initial_transforms);
     auto const& entities{view().entities};
-    auto const& registry{view().registry->get_entity_data()};
     auto const count{entities.num()};
     for (auto i{ismc_transforms.Num()}; i < count; ++i) {
-        auto const index{entities.handles[i].index};
-        ismc_transforms.Emplace(FRotator{ml::to_unreal(registry.rotations[index])},
+        ismc_transforms.Emplace(FRotator{ml::to_unreal(entities.rotations[i])},
                                 FVector{ml::to_unreal(entities.locations[i])});
     }
     add_initial_visual_instances();
@@ -74,7 +72,11 @@ void FTurretPresentation::update_visual_data() {
     auto const colours{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
     for (auto const& change : view().changes) {
-        if (change.kind == ::ioj::sim::EntityFrameChangeKind::RemoveSwap) {
+        if (change.kind == ::ioj::sim::EntityFrameChangeKind::Died) {
+            auto& transform{ismc_transforms[change.index]};
+            transform.SetScale3D(FVector::ZeroVector);
+            instances->UpdateInstanceTransform(change.index, transform, is_world_space, false);
+        } else if (change.kind == ::ioj::sim::EntityFrameChangeKind::RemoveSwap) {
             ismc_transforms.RemoveAtSwap(change.index, EAllowShrinking::No);
             instances->RemoveInstance(change.index);
         } else {

@@ -17,6 +17,16 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
     auto const& fighters{harness.get_simulation().get_fighters()};
     auto const first_target{capitals.get_handle(1)};
     RegistryEntityHandle second_target;
+    SimTick final_kill_tick{};
+    harness.on_end_tick = [&](LevelSim& simulation) {
+        if (final_kill_tick != 0 &&
+            simulation.get_clock().get_completed_ticks() == final_kill_tick + 2) {
+            for (auto const task : fighters.get_tasks()) {
+                tests::expect_equal(
+                    Task::Attack, task, "Capital orders do not change effective tasks in Thinking");
+            }
+        }
+    };
     harness.timeline
         .then_after(2.0 / 60.0,
                     [&] {
@@ -30,7 +40,7 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
                         harness.queue_kills(std::array{first_target});
                     })
         .then_after(
-            2.0 / 60.0,
+            3.0 / 60.0,
             [&] {
                 second_target = capitals.get_target_handle(0);
                 tests::expect_true(second_target.is_valid() && second_target != first_target,
@@ -42,8 +52,9 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
                 }
                 auto const enemies{harness.get_registry().get_handles_not_in_team(Team::Green)};
                 harness.queue_kills(enemies);
+                final_kill_tick = harness.get_simulation().get_clock().get_completed_ticks();
             })
-        .then_after(2.0 / 60.0,
+        .then_after(3.0 / 60.0,
                     [&] {
                         for (auto const task : fighters.get_tasks()) {
                             tests::expect_equal(

@@ -46,6 +46,18 @@ class CommandInterface {
         return fighters.get_handles();
     }
 
+    std::span<RegistryEntityHandle const> get_parent_handles() const {
+        return fighters.get_parent_handles();
+    }
+
+    std::span<Health const> get_healths() const {
+        return fighters.get_healths();
+    }
+
+    void set_parent_handle(RegistryEntityHandle fighter, RegistryEntityHandle parent) {
+        fighters.set_parent_handle(fighter, parent);
+    }
+
     std::span<RegistryEntityHandle const> get_target_handles() const noexcept {
         return fighters.get_target_handles();
     }
