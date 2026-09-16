@@ -97,7 +97,7 @@ void FTestBatchOrchestratorResetScenario::save_old_transient_actors(
 void FTestBatchOrchestratorResetScenario::sample(ATestBatchOrchestrator& orchestrator) {
     FSimulationSample const sample{
         .actor_count = count_actors(*test_driver->get_world()),
-        .registry_alive = test_driver->get_ledger().count_alive(),
+        .ledger_alive = test_driver->get_ledger().count_alive(),
         .capital_count = orchestrator.get_capital_ships()->get_num_instances(),
         .fighter_count = orchestrator.get_fighters()->get_num_instances(),
         .laser_count = orchestrator.get_lasers()->get_num_instances(),
@@ -129,7 +129,7 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
     check(!initial_samples.is_empty());
 
     initial_actor_count = initial_samples.last_value().actor_count;
-    initial_registry_alive = initial_samples.last_value().registry_alive;
+    initial_ledger_alive = initial_samples.last_value().ledger_alive;
     save_old_owned_actors(test_driver->orchestrator);
     save_old_transient_actors(test_driver->orchestrator);
     auto const& initial_telemetry{
@@ -175,8 +175,8 @@ void FTestBatchOrchestratorResetScenario::check_reset() {
     auto const& reset_sample{reset_samples.last_value()};
     checks.is_true(reset_sample.actor_count < initial_actor_count,
                    TEXT("Reset removes transient level actors"));
-    checks.are_equal(1, initial_registry_alive, TEXT("Initial simulation contains one entity"));
-    checks.are_equal(0, reset_sample.registry_alive, TEXT("Reset clears registry entities"));
+    checks.are_equal(1, initial_ledger_alive, TEXT("Initial simulation contains one entity"));
+    checks.are_equal(0, reset_sample.ledger_alive, TEXT("Reset clears ledger entities"));
     checks.are_equal(0, reset_sample.capital_count, TEXT("Reset clears capital instances"));
     checks.are_equal(0, reset_sample.fighter_count, TEXT("Reset clears fighter instances"));
     checks.are_equal(0, reset_sample.laser_count, TEXT("Reset clears projectile instances"));

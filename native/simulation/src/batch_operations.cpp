@@ -2,6 +2,7 @@
 
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entity_death_info.h>
+#include <ioj/sim/entity_ledger.h>
 
 #include <ioj/sim/health.h>
 #include <ioj/sim/profiling.h>
@@ -22,7 +23,8 @@ void resolve_damage_events(DirectDamageEventsConstView damage_events,
                            [[maybe_unused]] std::span<EntityUniqueId const> entity_ids,
                            std::span<Health> healths,
                            std::vector<std::int32_t>& local_indices_to_remove,
-                           EntityDeathInfo& entity_death_info) {
+                           EntityDeathInfo& entity_death_info,
+                           EntityLedger& ledger) {
     SANDBOX_PROFILE_SCOPE("batch::resolve_damage_events");
 
     auto const n_direct_events{damage_events.num()};
@@ -44,7 +46,14 @@ void resolve_damage_events(DirectDamageEventsConstView damage_events,
         if (is_dead(healths[local_element])) {
             continue;
         }
-        healths[local_element] -= damage_events.damage_amounts[element];
+        auto const requested_damage{damage_events.damage_amounts[element]};
+        assert(requested_damage >= 0);
+        if (requested_damage == 0) {
+            continue;
+        }
+        auto const applied_damage{std::min(healths[local_element], requested_damage)};
+        healths[local_element] -= requested_damage;
+        ledger.record_damage(id, damage_events.instigators[element], applied_damage);
         auto const removals{std::span{local_indices_to_remove}.first(
             static_cast<std::size_t>(current_removal_count))};
         if (is_alive(healths[local_element]) ||

@@ -511,7 +511,8 @@ void Sim::resolve_damage_events() {
                                  data.entity_ids,
                                  data.healths,
                                  local_indices_to_remove,
-                                 entity_death_info);
+                                 entity_death_info,
+                                 ledger_);
 
     auto const damage_count{damage_events.num()};
     for (std::int32_t event_index{}; event_index < damage_count; ++event_index) {

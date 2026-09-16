@@ -54,11 +54,11 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
 
-    auto const& registry{simulation.get_entity_ledger()};
+    auto const& ledger{simulation.get_entity_ledger()};
 
     auto const& queries{simulation.get_spatial_query_manager()};
 
-    EXPECT_EQ(registry.count_alive(), 1);
+    EXPECT_EQ(ledger.count_alive(), 1);
     EXPECT_EQ(simulation.get_turrets().get_num_instances(), 0);
 
     simulation.start();
@@ -79,7 +79,7 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     simulation.advance(simulation.get_clock().get_tick_period());
 
     EXPECT_EQ(simulation.get_agent_accessor().read(turret)->health, 75);
-    EXPECT_EQ(registry.count_alive(), 2);
+    EXPECT_EQ(ledger.count_alive(), 2);
     EXPECT_EQ(simulation.get_turrets().get_num_instances(), 1);
 }
 
@@ -214,7 +214,7 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
 
-    auto const& registry{simulation.get_entity_ledger()};
+    auto const& ledger{simulation.get_entity_ledger()};
     auto const& capitals{simulation.get_capital_ships()};
 
     simulation.start();
@@ -231,7 +231,7 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
     EXPECT_EQ(simulation.get_agent_indexes().find(dead_id), -1);
     EXPECT_FALSE(simulation.get_agent_accessor().read(dead_id));
     EXPECT_FALSE(simulation.get_agent_accessor().read_alive(dead_id));
-    EXPECT_EQ(registry.count_alive(), 1);
+    EXPECT_EQ(ledger.count_alive(), 1);
     EXPECT_EQ(capitals.get_health(capitals.get_id(0)), 900);
     EXPECT_EQ(simulation.get_mission_manager().get_mission_state(), MissionState::Failed);
 
@@ -357,7 +357,7 @@ TEST(TickPhases, CapitalDeathPublishesExistingAndNewChildDeathsBeforeMissionEval
         LevelSim simulation{std::move(data)};
         simulation.finish_initialisation();
 
-        auto const& registry{simulation.get_entity_ledger()};
+        auto const& ledger{simulation.get_entity_ledger()};
         auto const& capitals{simulation.get_capital_ships()};
         auto const& fighter_sim{simulation.get_fighters()};
 
@@ -396,7 +396,7 @@ TEST(TickPhases, CapitalDeathPublishesExistingAndNewChildDeathsBeforeMissionEval
         ASSERT_EQ(capital_view.deaths.size(), 1);
         EXPECT_EQ(simulation.get_agent_indexes().find(victim), -1);
         EXPECT_EQ(simulation.get_agent_indexes().find(killer), 0);
-        EXPECT_EQ(registry.count_alive(), kill_tick == 1 ? 1 : 2);
+        EXPECT_EQ(ledger.count_alive(), kill_tick == 1 ? 1 : 2);
         EXPECT_EQ(simulation.get_mission_manager().get_mission_state(), MissionState::Succeeded);
         EXPECT_FALSE(queries.trace_closest({{-2020.f, 0.f, 0.f}}, {{-1980.f, 0.f, 0.f}}).hit);
         EXPECT_FALSE(queries.trace_closest({{-2020.f, 500.f, 0.f}}, {{-1980.f, 500.f, 0.f}}).hit);

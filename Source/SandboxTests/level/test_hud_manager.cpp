@@ -107,7 +107,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     checks.are_equal(EHUDManagerState::Active, hud.get_state(), TEXT("HUD manager is active"));
     checks.are_equal(harness.get_ledger().count_alive(),
                      count_worldless_hud_entities(hud),
-                     TEXT("Initial entity cache matches registry"));
+                     TEXT("Initial entity cache matches ledger"));
     checks.are_equal(ml::to_unreal(mission.get_mission_state()),
                      hud.get_mission_data().status_data.mission_state,
                      TEXT("Mission state is cached"));
@@ -194,7 +194,7 @@ void FTestHUDManagerScenario::initial_caches_process_samples() {
     }
 
     auto const& hud_manager{get_headless_hud_manager()};
-    auto const& registry{orchestrator->get_entity_ledger()};
+    auto const& ledger{orchestrator->get_entity_ledger()};
     auto const& mission_manager{orchestrator->get_mission_manager()};
     auto const* const player_ship{orchestrator->get_player_ship()};
 
@@ -202,9 +202,9 @@ void FTestHUDManagerScenario::initial_caches_process_samples() {
         0, hud_manager.get_registered_hud_count(), TEXT("No HUD widgets are registered"));
     checks.are_equal(
         EHUDManagerState::Active, hud_manager.get_state(), TEXT("HUD manager is active"));
-    checks.are_equal(registry.count_alive(),
+    checks.are_equal(ledger.count_alive(),
                      count_cached_entities(hud_manager),
-                     TEXT("Initial entity count cache matches the registry"));
+                     TEXT("Initial entity count cache matches the ledger"));
 
     auto const& mission_data{hud_manager.get_mission_data()};
     checks.are_equal(ml::to_unreal(mission_manager.get_mission_state()),

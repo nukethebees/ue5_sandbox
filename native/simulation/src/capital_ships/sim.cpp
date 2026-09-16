@@ -104,7 +104,8 @@ void Sim::resolve_damage_events() {
                                  entities.entity_ids,
                                  entities.healths,
                                  local_indices_to_remove,
-                                 entity_death_info);
+                                 entity_death_info,
+                                 ledger_);
     auto const batch_index{static_cast<std::int32_t>(deaths_.size())};
     for (auto const index : local_indices_to_remove) {
         deaths_.push_back({entities.locations[index], batch_index});
@@ -236,9 +237,7 @@ auto Sim::get_fighter_spawn_slots() const noexcept -> std::int32_t {
 }
 void Sim::queue_fighter_spawns() {
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::queue_fighter_spawns");
-    if (!diagnostics_enabled_) {
-        diagnostic_spawn_reports = 0;
-    }
+    if (!diagnostics_enabled_) {}
 
     auto const entities{this->entities.get_view().columns()};
 
@@ -274,16 +273,6 @@ void Sim::queue_fighter_spawns() {
 
         for (auto const& relative_transform : relative_transforms) {
             auto const new_transform{relative_transform * base_transform};
-            if (fighters::diagnostics::take_report(
-                    diagnostics_enabled_, diagnostic_spawn_reports, 64)) {
-                /* ml::log_error(std::format("[FighterSpawn] Enqueue parentRegistryIndex={}
-                   capitalIndex={} base=({}, {}, {}) slot=({}, {}, {}) world=({}, {}, {})",
-                    entities.handles[capital_index].index, capital_index,
-                    base_transform.location.x, base_transform.location.y, base_transform.location.z,
-                    relative_transform.location.x, relative_transform.location.y,
-                   relative_transform.location.z, new_transform.location.x,
-                   new_transform.location.y, new_transform.location.z)); */
-            }
             fighter_spawn_wave.add(to_float(new_transform.location),
                                    to_float(new_transform.rotator()),
                                    entities.teams[capital_index],

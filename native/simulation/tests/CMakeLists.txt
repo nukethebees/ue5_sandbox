@@ -1,6 +1,7 @@
 add_executable(native-simulation-tests)
 target_sources(native-simulation-tests PRIVATE
   agent_indexes_tests.cpp
+  entity_ledger_tests.cpp
   entity_unique_id_tests.cpp
   test_tick_phases.cpp
   test_level_simulation.cpp
@@ -15,7 +16,7 @@ target_sources(native-simulation-tests PRIVATE
   fighter_entity_data_test.cpp
   single_allocation_production_soa_test.cpp
   scenarios/test_capital_command_fighters.cpp
-  scenarios/test_fighter_handles.cpp
+  scenarios/test_fighter_ownership.cpp
   scenarios/test_collision_uniform_grid.cpp
   scenarios/test_entity_ledger.cpp
   scenarios/test_fighter_attack.cpp

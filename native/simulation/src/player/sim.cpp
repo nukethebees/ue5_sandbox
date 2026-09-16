@@ -157,8 +157,15 @@ void Sim::resolve_damage_events() {
             continue;
         }
 
+        auto const requested_damage{damage_events.damage_amounts[element]};
+        assert(requested_damage >= 0);
+        if (requested_damage == 0) {
+            continue;
+        }
         auto const was_alive{is_alive(health.health)};
-        health.health -= damage_events.damage_amounts[element];
+        auto const applied_damage{std::min(health.health, requested_damage)};
+        health.health -= requested_damage;
+        ledger_.record_damage(unique_entity_id, damage_events.instigators[element], applied_damage);
         if (was_alive && is_dead(health.health)) {
             killer = damage_events.instigators[element];
         }
@@ -168,8 +175,6 @@ void Sim::resolve_damage_events() {
         die(killer);
     }
 }
-
-void Sim::publish_deaths() {}
 
 /* **************************************** */
 // Identity and accounting

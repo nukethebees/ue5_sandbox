@@ -298,10 +298,10 @@ TEST(NativeSimulation, LevelSimReconstructionTest) {
                         std::uint64_t{0},
                         "Fresh clock starts at zero");
     tests::expect_equal(
-        simulation->get_entity_ledger().count_alive(), 2, "Fresh registry contains both entities");
+        simulation->get_entity_ledger().count_alive(), 2, "Fresh ledger contains both entities");
     tests::expect_equal(simulation->get_entity_ledger().get_num_unique_ids_issued(),
                         2,
-                        "Fresh registry has no prior history");
+                        "Fresh ledger has no prior history");
     tests::expect_false(simulation->take_mission_result().has_value(),
                         "No pending result survives reconstruction");
     return;
@@ -367,7 +367,7 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
     simulation.get_player_ship_commands()->set_lateral_move_input(1.f);
     auto const player_id{player->unique_entity_id};
     auto const capital{simulation.get_capital_ships().get_id(0)};
-    auto const& registry{simulation.get_entity_ledger()};
+    auto const& ledger{simulation.get_entity_ledger()};
 
     for (std::int32_t overlap_detection{}; overlap_detection < 3; ++overlap_detection) {
         simulation.advance(dt);
@@ -395,11 +395,11 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
                         4850,
                         "The capital receives one contribution per detected tick");
     tests::expect_true(
-        registry.get_unique_entities().life_state[registry.get_history_index(player_id)] ==
+        ledger.get_unique_entities().life_state[ledger.get_history_index(player_id)] ==
             LifeState::Unknown,
         "Overlap death uses the environmental death path");
     tests::expect_equal(
-        registry.count_kills(), 0, "Environmental overlap death gives no combat kill");
+        ledger.count_kills(), 0, "Environmental overlap death gives no combat kill");
     return;
 }
 

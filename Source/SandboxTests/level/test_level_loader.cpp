@@ -428,9 +428,9 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
     if (control_samples_.is_empty() && test_driver->get_time() > 0.0) {
         sample_controller_lifecycle();
     }
-    auto const& registry{orchestrator.get_entity_ledger()};
+    auto const& ledger{orchestrator.get_entity_ledger()};
     auto const& mission{orchestrator.get_mission_manager()};
-    auto const counts{registry.count_alive_per_team_and_type()};
+    auto const counts{ledger.count_alive_per_team_and_type()};
     auto const blue{std::to_underlying(ETestTeam::Blue)};
     auto const red{std::to_underlying(ETestTeam::Red)};
     auto const player_type{std::to_underlying(ETestEntityType::PlayerShip)};
@@ -502,11 +502,12 @@ void FLevelLoaderScenario::check_runtime() {
                    TEXT("Closing pause restores the newly possessed ship"));
     checks.is_true(control.bindings_restored,
                    TEXT("Possession and modal transitions retain exactly one set of bindings"));
-    checks.are_equal(4, sample.authored_entities, TEXT("All authored entities reach the registry"));
-    checks.are_equal(1, sample.blue_players, TEXT("Registry contains the blue player"));
-    checks.are_equal(1, sample.blue_capitals, TEXT("Registry contains the blue capital"));
-    checks.are_equal(1, sample.red_capitals, TEXT("Registry contains the red capital"));
-    checks.are_equal(1, sample.red_turrets, TEXT("Registry contains the red turret"));
+    checks.are_equal(
+        4, sample.authored_entities, TEXT("All authored entities reach the entity ledger"));
+    checks.are_equal(1, sample.blue_players, TEXT("Entity ledger contains the blue player"));
+    checks.are_equal(1, sample.blue_capitals, TEXT("Entity ledger contains the blue capital"));
+    checks.are_equal(1, sample.red_capitals, TEXT("Entity ledger contains the red capital"));
+    checks.are_equal(1, sample.red_turrets, TEXT("Entity ledger contains the red turret"));
     checks.are_equal(ETestMissionMode::KillEnemies,
                      sample.mission_mode,
                      TEXT("Loader configures the authored mission mode"));

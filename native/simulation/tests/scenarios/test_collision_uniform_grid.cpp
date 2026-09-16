@@ -541,11 +541,10 @@ void CollisionUniformGridTraceRunner::test_applies_aabb_centre() {
 
     rotated.update_entities(std::vector<Vector3f>{Vector3f{}}, std::vector<std::uint8_t>{1});
     auto const updated_hits{run_traces(rotated, rotated_starts, rotated_ends)};
-    tests::expect_equal(std::uint8_t{0},
-                        updated_hits.hits[0],
-                        "Registry rotation update removes old rotated bounds");
     tests::expect_equal(
-        std::uint8_t{1}, updated_hits.hits[1], "Registry rotation update reaches grid queries");
+        std::uint8_t{0}, updated_hits.hits[0], "Owner rotation update removes old rotated bounds");
+    tests::expect_equal(
+        std::uint8_t{1}, updated_hits.hits[1], "Owner rotation update reaches grid queries");
     rotated.update_entities(std::vector<Vector3f>{Vector3f{}}, std::vector<std::uint8_t>{0});
     auto const reused_handle{rotated.add_entity(Vector3f{})};
     tests::expect_true(rotated.handles[0] != reused_handle,
@@ -1273,7 +1272,7 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
         check_traces(authoritative, initial_cases);
         authoritative.grid.rebuild_grid(authoritative.aabbs);
         std::vector<ExpectedTrace> const owner_cases{
-            {"Rebuild uses owner location without registry publication",
+            {"Rebuild uses owner location without intermediary publication",
              {{moved_location.X - trace_offset, 0.f, 0.f}},
              {{moved_location.X + trace_offset, 0.f, 0.f}},
              1,
@@ -1360,7 +1359,7 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
          1,
          {{-250.f - aabb_half_extents.X, 0.f, 0.f}},
          0},
-        {"Dead middle registry slot is omitted",
+        {"Dead middle owner row is omitted",
          {{-trace_offset, 0.f, 0.f}},
          {{trace_offset, 0.f, 0.f}},
          0},

@@ -1,9 +1,9 @@
 #pragma once
 
 #include <ioj/sim/combat_statistics.h>
-#include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entity_history.h>
 #include <ioj/sim/entity_id_allocator.h>
+#include <ioj/sim/health.h>
 
 namespace ioj::sim {
 // Level-lifetime identity, history and combat accounting; no live agent storage.
@@ -13,7 +13,7 @@ class EntityLedger {
     auto record_spawn(EntityType type, Team team, bool alive) -> EntityUniqueId;
     void record_status(EntityUniqueId id, Team team, bool alive);
     void record_death(EntityUniqueId victim, EntityUniqueId killer, DeathReason reason);
-    void record_damage(DirectDamageEventsConstView events);
+    void record_damage(EntityUniqueId victim, EntityUniqueId attacker, Health damage);
     void record_shots(std::span<EntityUniqueId const> instigators);
 
     auto get_unique_entities() const noexcept -> EntityHistoryColumnsConstView {

@@ -206,7 +206,8 @@ void Sim::resolve_damage_events() {
                                  entities.entity_ids,
                                  entities.healths,
                                  local_indices_to_remove,
-                                 entity_death_info);
+                                 entity_death_info,
+                                 ledger_);
     for (auto const index : local_indices_to_remove) {
         death_locations_.push_back(entities.locations[index]);
     }

@@ -72,7 +72,7 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     auto const damaged_handle{simulation.get_capital_ships().get_id(0)};
     struct DamageSample {
         std::int32_t capital_count{};
-        std::int32_t registry_alive_count{};
+        std::int32_t ledger_alive_count{};
         std::int32_t health{};
         std::int32_t telemetry_active_count{};
     };
@@ -83,7 +83,7 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
         samples.add(harness.get_time(),
                     DamageSample{
                         .capital_count = level.get_capital_ships().get_num_instances(),
-                        .registry_alive_count = harness.get_ledger().count_alive(),
+                        .ledger_alive_count = harness.get_ledger().count_alive(),
                         .health = state ? state->health : 0,
                         .telemetry_active_count = telemetry.last_value(),
                     });
@@ -108,10 +108,10 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     tests::expect_equal(75, nonlethal.health, "Nonlethal damage is applied once");
     tests::expect_equal(
         0, lethal.capital_count, "Lethal damage removes batch entity in the same Action phase");
-    tests::expect_equal(0, lethal.registry_alive_count, "Registry death commits in the same tick");
+    tests::expect_equal(0, lethal.ledger_alive_count, "Ledger death commits in the same tick");
     tests::expect_equal(
         0, lethal.telemetry_active_count, "Telemetry observes committed death before hook");
-    tests::expect_equal(0, lethal.health, "Registry retains terminal health for the dead handle");
+    tests::expect_equal(0, lethal.health, "Owner retains terminal health for the dead handle");
     tests::expect_true(!harness.get_simulation().get_agent_accessor().is_alive(damaged_handle),
                        "Killed ID is dead");
     tests::expect_equal(

@@ -61,19 +61,19 @@ void EntityLedger::record_death(EntityUniqueId const victim,
     ++history.kills[killer_row];
     statistics_.record_kill(history.teams[killer_row], killer.entity_type(), team);
 }
-void EntityLedger::record_damage(DirectDamageEventsConstView const events) {
+void EntityLedger::record_damage(EntityUniqueId const victim,
+                                 EntityUniqueId const attacker,
+                                 Health const damage) {
+    assert(damage > 0);
     auto const history{get_unique_entities()};
-    auto const count{events.num()};
-    for (std::int32_t i{}; i < count; ++i) {
-        auto const victim{events.damaged_entities[i]};
-        auto const row{require_history_index(victim)};
-        auto const damage{static_cast<double>(events.damage_amounts[i])};
-        statistics_.record_damage_received(history.teams[row], victim.entity_type(), damage);
-        auto const attacker{events.instigators[i]};
-        if (attacker.is_valid()) {
-            auto const attacker_row{require_history_index(attacker)};
-            statistics_.record_hit(history.teams[attacker_row], attacker.entity_type(), damage);
-        }
+    auto const victim_row{require_history_index(victim)};
+    assert(history.life_state[victim_row] == LifeState::Alive);
+    auto const applied_damage{static_cast<double>(damage)};
+    statistics_.record_damage_received(
+        history.teams[victim_row], victim.entity_type(), applied_damage);
+    if (attacker.is_valid()) {
+        auto const attacker_row{require_history_index(attacker)};
+        statistics_.record_hit(history.teams[attacker_row], attacker.entity_type(), applied_damage);
     }
 }
 void EntityLedger::record_shots(std::span<EntityUniqueId const> const instigators) {

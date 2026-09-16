@@ -1,4 +1,4 @@
-#include "test_fighter_handles.h"
+#include "test_fighter_ownership.h"
 #include <set>
 #include "../support/simulation_test_support.h"
 
@@ -11,7 +11,7 @@ The assumption is that there is one wave of fighters total.
 */
 
 namespace ioj::sim {
-namespace fighter_handles_test {
+namespace fighter_ownership_test {
 inline constexpr std::int32_t collision_resilient_health{1'000'000};
 }
 
@@ -31,9 +31,9 @@ void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture co
 
     auto data{tests::make_simulation_data(config)};
     data.capital_ships.spawn_delay = 6000.f;
-    data.capital_ships.max_health = fighter_handles_test::collision_resilient_health;
+    data.capital_ships.max_health = fighter_ownership_test::collision_resilient_health;
     data.fighters.laser.damage = 0;
-    data.fighters.health = fighter_handles_test::collision_resilient_health;
+    data.fighters.health = fighter_ownership_test::collision_resilient_health;
     for (std::int32_t i{}; i < 4; ++i) {
         tests::add_capital_spawn(data,
                                  Vector3f{{static_cast<float>((i % 2 == 0 ? -1.0 : 1.0) * 250000.0),
@@ -43,7 +43,7 @@ void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture co
                                  i ^ 1,
                                  0.f,
                                  6000.f,
-                                 fighter_handles_test::collision_resilient_health);
+                                 fighter_ownership_test::collision_resilient_health);
     }
 
     tests::WorldlessSimulationTest harness{std::move(data)};
@@ -160,15 +160,15 @@ void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture co
 }
 
 /* **************************************** */
-// Capital fighter handle lifecycle
+// Capital fighter ownership lifecycle
 /* **************************************** */
-void run_worldless_fighter_handles(tests::SimulationFixture const& config,
-                                   FighterHandlesScenario const scenario) {
+void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
+                                     FighterOwnershipScenario const scenario) {
     auto data{tests::make_simulation_data(config)};
     data.capital_ships.spawn_delay = 10.f;
     data.capital_ships.max_health = 10000;
     data.fighters.speed = 2000.f;
-    data.fighters.health = fighter_handles_test::collision_resilient_health;
+    data.fighters.health = fighter_ownership_test::collision_resilient_health;
     data.fighters.laser.damage = 0;
     data.fighters.laser.max_distance = 15000.f;
     auto const green_index{tests::add_capital_spawn(
@@ -186,8 +186,8 @@ void run_worldless_fighter_handles(tests::SimulationFixture const& config,
     std::vector<EntityUniqueId> kept{};
     std::vector<EntityUniqueId> green_fighters_before_capital_kill{};
     auto initial_checked{false};
-    auto fighter_kill_checked{scenario == FighterHandlesScenario::KillCapital};
-    auto capital_kill_checked{scenario == FighterHandlesScenario::KillFightersOnly};
+    auto fighter_kill_checked{scenario == FighterOwnershipScenario::KillCapital};
+    auto capital_kill_checked{scenario == FighterOwnershipScenario::KillFightersOnly};
 
     harness.timeline.at(0.2, [&] {
         tests::expect_equal(3, capitals.get_num_instances(), "Three capitals are registered");
@@ -209,7 +209,7 @@ void run_worldless_fighter_handles(tests::SimulationFixture const& config,
     });
 
     auto next_time{0.4};
-    if (scenario != FighterHandlesScenario::KillCapital) {
+    if (scenario != FighterOwnershipScenario::KillCapital) {
         harness.timeline.at(next_time, [&] {
             auto const ids{capitals.get_fighter_ids()};
             auto const count{static_cast<std::int32_t>(ids.size())};
@@ -238,7 +238,7 @@ void run_worldless_fighter_handles(tests::SimulationFixture const& config,
         });
     }
 
-    if (scenario != FighterHandlesScenario::KillFightersOnly) {
+    if (scenario != FighterOwnershipScenario::KillFightersOnly) {
         next_time += 0.2;
         harness.timeline.at(next_time, [&] {
             auto const main_index{capitals.find_first_index_on_team(Team::Green)};

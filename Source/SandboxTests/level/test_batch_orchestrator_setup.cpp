@@ -271,7 +271,7 @@ void FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick(
             .telemetry_player_ship_count =
                 current_state
                     .active_entities_by_team_and_type[telemetry_player_team_index][player_type],
-            .registry_player_ship_count =
+            .ledger_player_ship_count =
                 alive_entity_counts[telemetry_player_team_index][player_type],
             .kill_sample_count = kill_count_data.num(),
             .last_kill_tick = kill_count_data.last_time(),
@@ -298,7 +298,7 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
     checks.are_equal(initial_active_entity_count,
                      initial_observation.telemetry_entity_count,
                      TEXT("Baseline records initial active entities"));
-    checks.are_equal(initial_observation.registry_player_ship_count,
+    checks.are_equal(initial_observation.ledger_player_ship_count,
                      initial_observation.telemetry_player_ship_count,
                      TEXT("Current state records the player ship"));
     checks.are_equal(
@@ -309,7 +309,7 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
         int32{0}, initial_observation.cumulative_kill_count, TEXT("Kill baseline starts at zero"));
     checks.are_equal(initial_issued_unique_id_count,
                      initial_observation.issued_unique_id_count,
-                     TEXT("Current state issued IDs match the registry"));
+                     TEXT("Current state issued IDs match the ledger"));
 
     int32 changed_observation_index{INDEX_NONE};
     auto const observation_count{telemetry_observations.num()};
@@ -335,11 +335,11 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
                      TEXT("Telemetry records the first tick after damage is queued"));
     checks.are_equal(changed_observation.alive_entity_count,
                      changed_observation.telemetry_entity_count,
-                     TEXT("Telemetry records the active registry count"));
+                     TEXT("Telemetry records the active ledger count"));
     checks.are_equal(initial_active_entity_count - 1,
                      changed_observation.telemetry_entity_count,
                      TEXT("Killed entity changes the telemetry count"));
-    checks.are_equal(changed_observation.registry_player_ship_count,
+    checks.are_equal(changed_observation.ledger_player_ship_count,
                      changed_observation.telemetry_player_ship_count,
                      TEXT("Current state records the destroyed player ship"));
     checks.are_equal(int32{0},

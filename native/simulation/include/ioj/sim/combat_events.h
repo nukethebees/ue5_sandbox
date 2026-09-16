@@ -4,7 +4,7 @@
 #include <ioj/sim/entity_ledger.h>
 
 namespace ioj::sim {
-// Tick-local damage transport. Attribution is recorded before retired recipients are filtered.
+// Tick-local damage transport. Owning simulations record applied damage during resolution.
 class CombatEvents {
   public:
     explicit CombatEvents(EntityLedger& ledger) noexcept
@@ -12,7 +12,6 @@ class CombatEvents {
     void reset() { damage_.reset(); }
     void queue_damage(DirectDamageEventsConstView events) {
         events.validate_array_sizes();
-        ledger_.record_damage(events);
         damage_.append(events);
     }
     void queue_damage(DirectDamageEvents const& events) { queue_damage(events.get_const_view()); }

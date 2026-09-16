@@ -187,7 +187,6 @@ struct Sim {
     std::vector<EntityUniqueId> fighter_self_destruct_requests_;
     std::vector<EntityUniqueId> fighter_ids;
     std::int32_t fighters_spawned{0};
-    std::int32_t diagnostic_spawn_reports{};
 
     FighterOrderQueue fighter_order_queue{};
 };

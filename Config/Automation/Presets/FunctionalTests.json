@@ -3,9 +3,6 @@
 	"name": "FunctionalTests",
 	"enabledTests": [
 		"Sandbox.LevelTests.SharedSimulation.CapitalCommandFighters_RetargetAfterKills",
-		"Sandbox.LevelTests.SharedSimulation.CapitalFighterHandles_All",
-		"Sandbox.LevelTests.SharedSimulation.CapitalFighterHandles_KillCapital",
-		"Sandbox.LevelTests.SharedSimulation.CapitalFighterHandles_KillFightersOnly",
 		"Sandbox.LevelTests.SharedSimulation.CapitalShipProxy_HealthOverridesConfig",
 		"Sandbox.LevelTests.SharedSimulation.Collision_UniformGridContainsAllEntityTypes",
 		"Sandbox.LevelTests.SharedSimulation.Entities_NonLethalThenLethalDamageCleansUpAtomically",

@@ -19,9 +19,6 @@ struct FPlayerShipVsCapitalResultRow : public FTableRowBase {
     FVector player_ship_location{FVector::ZeroVector};
 
     UPROPERTY()
-    FVector player_ship_registry_location{FVector::ZeroVector};
-
-    UPROPERTY()
     TArray<FVector> fighter_target_locations;
 
     UPROPERTY()

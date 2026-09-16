@@ -117,12 +117,6 @@ struct CollisionAgentStorage {
         }
     }
 
-    void set_health(EntityUniqueId id, Health health) {
-        auto const state{agents.read(id)};
-        assert(state);
-        set(id, state->location, {}, health);
-    }
-
     void remove(EntityUniqueId id) {
         clock.phase = SimulationPhase::Preparation;
         auto const row{find_row(id)};

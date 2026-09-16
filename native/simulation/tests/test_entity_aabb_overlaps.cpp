@@ -176,7 +176,7 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
     collision.update(fixture.ids(handles), ++fixture.current_tick);
     tests::expect_equal(fixture.get_entity_overlaps().num(),
                         0,
-                        "Overlap generation reads owner health without registry publication");
+                        "Overlap generation reads owner health without intermediary publication");
 }
 
 TEST(EntityAABBOverlaps, TwoMovedEntitiesProduceOnePair) {

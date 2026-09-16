@@ -197,7 +197,6 @@ struct Sim {
     void apply_movement();
     void generate_fire_commands();
     void resolve_damage_events();
-    void publish_deaths();
 
     /* **************************************** */
     // Identity and accounting

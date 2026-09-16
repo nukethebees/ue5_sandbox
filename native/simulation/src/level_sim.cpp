@@ -266,11 +266,8 @@ void LevelSim::advance(time_type const dt) {
         auto const tick_period{static_cast<float>(clock_.tick_loop.tick_period)};
         auto const player_active{player_ship_simulation_.has_value() &&
                                  player_ship_simulation_->health.is_alive()};
-        auto publish_entity_state = [&] {
-            SANDBOX_PROFILE_SCOPE("Sandbox::LevelSim::advance::publish_entity_state");
-            if (player_ship_simulation_.has_value() && player_ship_simulation_->health.is_alive()) {
-                player_ship_phase_->publish_deaths();
-            }
+        auto publish_entity_deaths = [&] {
+            SANDBOX_PROFILE_SCOPE("Sandbox::LevelSim::advance::publish_entity_deaths");
             capital_ships_phase_.publish_deaths();
             fighters_phase_.publish_deaths();
             turrets_phase_.publish_deaths();
@@ -410,7 +407,7 @@ void LevelSim::advance(time_type const dt) {
             capital_ships_phase_.resolve_fighters_of_dying_capitals();
 
             // Queue final rows before compaction; include all capital-death consequences.
-            publish_entity_state();
+            publish_entity_deaths();
             frame_memory_.reclaim();
 
             // All index-based damage and ownership work is complete. No readers

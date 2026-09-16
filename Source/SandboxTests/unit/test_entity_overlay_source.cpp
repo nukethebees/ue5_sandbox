@@ -101,7 +101,7 @@ auto select_target(ml::tests::FDisplayEntityTestData const& entities,
 }
 }
 
-TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
+TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
 {
     TEST_METHOD(FiltersEligibilityRangeAndNormalizesHealth)
     {

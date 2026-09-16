@@ -85,8 +85,7 @@
       (parameter dt "float const"))
     (method apply_movement void)
     (method generate_fire_commands void)
-    (method resolve_damage_events void)
-    (method publish_deaths void)))
+    (method resolve_damage_events void)))
 
 (facade-module lasers_phase_interface
   :header "native/simulation/include/ioj/sim/lasers/phase_interface.h"

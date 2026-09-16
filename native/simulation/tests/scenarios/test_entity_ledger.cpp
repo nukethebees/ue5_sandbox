@@ -93,11 +93,11 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
     };
     ml::TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim&) {
-        auto const& registry{harness.get_ledger()};
+        auto const& ledger{harness.get_ledger()};
         samples.add(harness.get_time(),
-                    Sample{static_cast<std::int32_t>(registry.get_kills(player_id)),
-                           registry.count_kills(),
-                           registry.count_alive()});
+                    Sample{static_cast<std::int32_t>(ledger.get_kills(player_id)),
+                           ledger.count_kills(),
+                           ledger.count_alive()});
     };
     harness.timeline.then_after(0.1, [&] { harness.queue_kills(targets, player_id); });
     harness.timeline.finish_at(0.35);

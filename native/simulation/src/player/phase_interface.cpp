@@ -35,9 +35,5 @@ void PhaseInterface::generate_fire_commands() {
 void PhaseInterface::resolve_damage_events() {
     simulation.resolve_damage_events();
 }
-
-void PhaseInterface::publish_deaths() {
-    simulation.publish_deaths();
-}
 } // namespace ioj::sim::player
 // clang-format on
