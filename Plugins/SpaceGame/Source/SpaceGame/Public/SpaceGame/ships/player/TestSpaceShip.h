@@ -97,7 +97,7 @@ class SPACEGAME_API ATestSpaceShip
     auto energy_is_full() const -> bool;
     auto get_energy() const -> float;
 
-    auto get_lock_on_target() const -> ::ioj::sim::RegistryEntityHandle;
+    auto get_lock_on_target() const -> ::ioj::sim::EntityUniqueId;
     void start_fire_laser();
     void stop_fire_laser();
     void upgrade_laser();

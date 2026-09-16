@@ -150,18 +150,18 @@ auto sanitize_radar_settings(FRadarSettings settings) -> FRadarSettings {
 }
 
 auto collect_radar_instances(::ioj::sim::RegistryEntityData::ConstView const entities,
-                             TConstArrayView<int32> const generations,
+                             std::span<::ioj::sim::EntityUniqueId const> const ids,
                              TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
                              FRadarContactColours const& contact_colours,
                              FTransform const& player_transform,
-                             ::ioj::sim::RegistryEntityHandle const player_handle,
-                             ::ioj::sim::RegistryEntityHandle const selected_handle,
+                             ::ioj::sim::EntityUniqueId const player_id,
+                             ::ioj::sim::EntityUniqueId const selected_id,
                              ETestTeam const player_team,
                              FRadarSettings const& settings,
                              FRadarFrame& output_frame) -> FRadarCollectionResult {
     TRACE_CPUPROFILER_EVENT_SCOPE(Radar::CollectRegistrySource);
     entities.validate_array_sizes();
-    check(generations.Num() == entities.num());
+    check(ids.size() == static_cast<std::size_t>(entities.num()));
     check(objective_roles.Num() == entities.num());
     output_frame.instances.Reset();
 
@@ -184,8 +184,8 @@ auto collect_radar_instances(::ioj::sim::RegistryEntityData::ConstView const ent
                 continue;
             }
 
-            ::ioj::sim::RegistryEntityHandle const handle{index, generations[index]};
-            if (handle == player_handle ||
+            auto const id{ids[index]};
+            if (id == player_id ||
                 entities.entity_types[index] == ::ioj::sim::EntityType::PlayerShip) {
                 continue;
             }
@@ -194,7 +194,7 @@ auto collect_radar_instances(::ioj::sim::RegistryEntityData::ConstView const ent
             }
 
             auto const contact_flags{
-                ml::radar_source::flags(objective_roles[index], handle == selected_handle)};
+                ml::radar_source::flags(objective_roles[index], id == selected_id)};
             if (ml::radar_source::draw_priority(contact_flags) != priority) {
                 continue;
             }

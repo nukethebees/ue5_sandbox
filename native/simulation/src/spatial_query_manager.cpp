@@ -30,7 +30,6 @@ struct TraceRequest {
     ioj::sim::Vector3f scalar_start{};
     ioj::sim::Vector3f scalar_end{};
     std::span<ioj::sim::EntityUniqueId const> targets{};
-    ioj::sim::EntityRegistry const* registry{};
     std::span<ioj::sim::EntityUniqueId const> ignored_entities{};
     std::span<ioj::sim::EntityUniqueId> out_entity_ids{};
     std::span<std::uint8_t> out_flags{};
@@ -114,7 +113,7 @@ auto trace_impl(ioj::sim::SpatialQueryManager const& manager, TraceRequest const
     } else {
         if constexpr (Mode == QueryMode::HitEntity) {
             for (std::int32_t i{}; i < count; ++i) {
-                request.out_entity_ids[i] = request.registry->get_current_id(hits.entities[i]);
+                request.out_entity_ids[i] = hits.entities[i];
             }
         } else if constexpr (Mode == QueryMode::ClearLine) {
             for (std::int32_t i{}; i < count; ++i) {
@@ -123,8 +122,7 @@ auto trace_impl(ioj::sim::SpatialQueryManager const& manager, TraceRequest const
         } else if constexpr (Mode == QueryMode::TargetLineOfSight) {
             for (std::int32_t i{}; i < count; ++i) {
                 request.out_flags[i] = static_cast<std::uint8_t>(
-                    hits.hits[i] == 0 ||
-                    request.registry->get_current_id(hits.entities[i]) == request.targets[i]);
+                    hits.hits[i] == 0 || hits.entities[i] == request.targets[i]);
             }
         }
 
@@ -336,7 +334,6 @@ void
     trace_impl<QueryMode::HitEntity>(*this,
                                      {.start_locations = start_locations,
                                       .end_locations = end_locations,
-                                      .registry = &entity_registry,
                                       .out_entity_ids = out_entity_ids});
 }
 
@@ -351,7 +348,6 @@ void
                                              {.end_locations = end_locations,
                                               .scalar_start = start_location,
                                               .targets = targets,
-                                              .registry = &entity_registry,
                                               .out_flags = has_los});
 }
 

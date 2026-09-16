@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ioj/sim/entity_handle.h"
+#include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/frame_vectors3f.h"
 #include "ioj/sim/trace_hits.h"
 #include "sandbox/core/frame_array.h"
@@ -25,7 +25,7 @@ struct FrameTraceHits {
     [[nodiscard]] auto num() const noexcept -> std::int32_t;
 
     FrameVectors3f locations;
-    ml::FrameArray<RegistryEntityHandle> entities;
+    ml::FrameArray<EntityUniqueId> entities;
     ml::FrameArray<std::int32_t> static_geometry_indices;
     ml::FrameArray<std::uint8_t> hits;
 };

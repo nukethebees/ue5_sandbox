@@ -644,7 +644,7 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               int32{64});
     for (uint64 tick{1}; tick <= 64; ++tick) {
         clock.completed_ticks = tick;
-        entity_registry.add_entities(fixture_entity_data.get_const_view().left(1));
+        entity_registry.add_entities(fixture_entity_data.get_const_view().slice(1, 1));
         boundary_manager.tick();
     }
     TestEqual(TEXT("Appending beyond initial capacity preserves all emitted rows"),

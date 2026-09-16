@@ -278,7 +278,7 @@ auto ATestSpaceShip::get_energy() const -> float {
     return simulation().get_energy();
 }
 
-auto ATestSpaceShip::get_lock_on_target() const -> ::ioj::sim::RegistryEntityHandle {
+auto ATestSpaceShip::get_lock_on_target() const -> ::ioj::sim::EntityUniqueId {
     return simulation().lock_on_target;
 }
 

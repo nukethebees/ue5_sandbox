@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ioj/sim/entity_handle.h"
+#include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/frame_rotators3f.h"
 #include "ioj/sim/frame_vectors3f.h"
 #include "ioj/sim/laser_soa.h"

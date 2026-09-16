@@ -124,7 +124,7 @@ TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
     auto const hit{queries.trace_closest(
         {{-20.f, 0.f, 0.f}}, {{20.f, 0.f, 0.f}}, registry.get_current_id(parent))};
     EXPECT_TRUE(hit.hit);
-    EXPECT_EQ(hit.entity, fighter);
+    EXPECT_EQ(hit.entity, registry.get_current_id(fighter));
     EXPECT_EQ(queries.get_collision_system().get_aabb_overlap_events().entity_entity_overlaps.num(),
               1);
 }
@@ -194,7 +194,7 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
     EXPECT_EQ(simulation.get_spatial_query_manager()
                   .trace_closest({{480.f, 100.f, 0.f}}, {{520.f, 100.f, 0.f}})
                   .entity,
-              turret);
+              registry.get_current_id(turret));
 
     simulation.advance(period);
 
@@ -245,7 +245,7 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
     EXPECT_EQ(queries.get_collision_system().get_aabb_overlap_events().entity_entity_overlaps.num(),
               1);
     EXPECT_EQ(queries.trace_closest({{-20.f, 0.f, 0.f}}, {{20.f, 0.f, 0.f}}).entity,
-              capitals.get_handle(0));
+              registry.get_current_id(capitals.get_handle(0)));
 
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_EQ(simulation.get_turrets().get_num_instances(), 0);
@@ -296,7 +296,7 @@ TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndQueriesAdvanceAfterw
 
     auto const moved_hit{queries.trace_closest({{480.f, 200.f, 0.f}}, {{520.f, 200.f, 0.f}})};
     EXPECT_TRUE(moved_hit.hit);
-    EXPECT_EQ(moved_hit.entity, player->registry_handle);
+    EXPECT_EQ(moved_hit.entity, player->unique_entity_id);
     EXPECT_FALSE(queries.trace_closest({{480.f, 100.f, 0.f}}, {{520.f, 100.f, 0.f}}).hit);
 }
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ioj/sim/entity_handle.h"
+#include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/vector_types.h"
 #include "ioj/sim/vectors3f.h"
 #include "native_soa/storage.h"
@@ -14,7 +14,7 @@
 namespace ioj::sim {
 struct LineTraceResult {
     Vector3f location{};
-    RegistryEntityHandle entity;
+    EntityUniqueId entity;
     std::int32_t static_geometry_index{-1};
     bool hit{false};
 };
@@ -27,7 +27,7 @@ struct TraceHitsConstView {
     using size_type = std::int32_t;
 
     Vectors3fConstView locations;
-    std::span<RegistryEntityHandle const> entities;
+    std::span<EntityUniqueId const> entities;
     std::span<std::int32_t const> static_geometry_indices;
     std::span<std::uint8_t const> hits;
 
@@ -72,7 +72,7 @@ struct TraceHitsView {
     using size_type = std::int32_t;
 
     Vectors3fView locations;
-    std::span<RegistryEntityHandle> entities;
+    std::span<EntityUniqueId> entities;
     std::span<std::int32_t> static_geometry_indices;
     std::span<std::uint8_t> hits;
 
@@ -81,7 +81,7 @@ struct TraceHitsView {
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
     void set(size_type const index,
              Vector3f const location,
-             RegistryEntityHandle const entity,
+             EntityUniqueId const entity,
              std::int32_t const static_geometry_index,
              std::uint8_t const hit) const {
         ml::native_soa::require(index >= 0 && index < num());
@@ -124,7 +124,7 @@ struct TraceHits {
     using size_type = std::int32_t;
 
     Vectors3f locations;
-    ml::native_soa::Vector<RegistryEntityHandle> entities;
+    ml::native_soa::Vector<EntityUniqueId> entities;
     ml::native_soa::Vector<std::int32_t> static_geometry_indices;
     ml::native_soa::Vector<std::uint8_t> hits;
 
@@ -180,13 +180,13 @@ struct TraceHits {
     }
     void set(size_type const index,
              Vector3f const location,
-             RegistryEntityHandle const entity,
+             EntityUniqueId const entity,
              std::int32_t const static_geometry_index,
              std::uint8_t const hit) {
         get_view().set(index, location, entity, static_geometry_index, hit);
     }
     auto add(Vector3f const location,
-             RegistryEntityHandle const entity,
+             EntityUniqueId const entity,
              std::int32_t const static_geometry_index,
              std::uint8_t const hit) -> size_type {
         auto const index{num()};

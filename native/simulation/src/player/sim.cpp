@@ -493,7 +493,7 @@ void Sim::set_flight_mode(SpaceShipFlightMode const new_flight_mode) noexcept {
 /* **************************************** */
 // Weapons
 /* **************************************** */
-void Sim::set_lock_on_target(RegistryEntityHandle const target) noexcept {
+void Sim::set_lock_on_target(EntityUniqueId const target) noexcept {
     lock_on_target = target;
 }
 

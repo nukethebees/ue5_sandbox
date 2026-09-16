@@ -274,9 +274,7 @@ void Sim::handle_collisions(float const dt) {
         auto const damaged_entity{trace_hits.entities[element]};
         if (damaged_entity.is_valid()) {
             auto const instigator{entities.instigator_ids[element]};
-            collision_damage_events.add(entity_registry.get_current_id(damaged_entity),
-                                        entities.damages[element],
-                                        instigator);
+            collision_damage_events.add(damaged_entity, entities.damages[element], instigator);
         }
 
         auto const velocity{entities.velocities[entity_index]};

@@ -238,7 +238,8 @@ TEST(NativeSimulation, LevelSimInitialQueriesTest) {
     auto const& queries{simulation.get_spatial_query_manager()};
     auto const dynamic_hit{queries.trace_closest({{-1100.f, 0.f, 0.f}}, {{-900.f, 0.f, 0.f}})};
     tests::expect_true(dynamic_hit.hit &&
-                           dynamic_hit.entity == simulation.get_capital_ships().get_handle(0),
+                           dynamic_hit.entity == simulation.get_entity_registry().get_current_id(
+                                                     simulation.get_capital_ships().get_handle(0)),
                        "Initial capital is queryable before the first tick");
     auto const static_hit{queries.trace_closest({{-100.f, 500.f, 0.f}}, {{100.f, 500.f, 0.f}})};
     tests::expect_true(static_hit.hit && static_hit.static_geometry_index == 0,

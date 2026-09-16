@@ -894,13 +894,13 @@ void Sim::select_navigation_alternatives(NavigationScratch& scratch,
                  ++trace_index) {
                 ml::log_error(std::format(
                     "[FighterStop] choice={} end={} inWorld={} hit={} "
-                    "blockerRegistryIndex={} staticIndex={} hitDistance={:.2f}",
+                    "blockerId={} staticIndex={} hitDistance={:.2f}",
                     scratch.trace_choice_indices[trace_index],
                     diagnostic_detail::vector_string(
                         scratch.line_of_sight_ends.get_const_view()[trace_index]),
                     scratch.line_of_sight_results[trace_index],
                     scratch.trace_hits.hits[trace_index],
-                    scratch.trace_hits.entities[trace_index].index,
+                    scratch.trace_hits.entities[trace_index].raw_value(),
                     scratch.trace_hits.static_geometry_indices[trace_index],
                     scratch.trace_hits.hits[trace_index]
                         ? HMM_LenV3(fighter_location -

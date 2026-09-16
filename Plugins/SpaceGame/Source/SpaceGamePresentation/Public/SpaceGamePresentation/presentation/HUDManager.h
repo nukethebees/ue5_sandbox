@@ -34,6 +34,7 @@ class UInstancedStaticMeshComponent;
 namespace ioj::sim {
 struct MissionManager;
 struct SpatialQueryManager;
+class AgentAccessor;
 }
 namespace ioj::sim::player {
 struct Sim;
@@ -161,6 +162,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     void initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
                     ::ioj::sim::MissionManager const& new_mission_manager,
                     ::ioj::sim::EntityRegistry const& new_entity_registry,
+                    ::ioj::sim::AgentAccessor const& new_agents,
                     ::ioj::sim::SpatialQueryManager const& new_spatial_query_manager,
                     ::ioj::sim::player::Sim const* new_player_ship,
                     FLevelVisualConfig const& level_config,
@@ -270,6 +272,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     ::ioj::sim::player::Sim const* player_ship{nullptr};
     ::ioj::sim::MissionManager const* mission_manager{nullptr};
     ::ioj::sim::EntityRegistry const* entity_registry{nullptr};
+    ::ioj::sim::AgentAccessor const* agents_{nullptr};
     ::ioj::sim::SpatialQueryManager const* spatial_query_manager{nullptr};
     FFixedTickLoop tick_loop_{};
     FPeriodicTickCountdown8 update_timers;

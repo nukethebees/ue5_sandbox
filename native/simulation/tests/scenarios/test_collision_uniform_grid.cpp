@@ -237,9 +237,10 @@ void check_traces(TraceFixture const& fixture, std::span<ExpectedTrace const> co
 
         std::string const entity_description{" resolves expected entity" +
                                              ::testing::PrintToString(trace_case.name)};
-        tests::expect_equal(fixture.handles[trace_case.expected_entity_index],
-                            hits.entities[i],
-                            entity_description);
+        tests::expect_equal(
+            fixture.registry.get_current_id(fixture.handles[trace_case.expected_entity_index]),
+            hits.entities[i],
+            entity_description);
 
         std::string const location_description{" resolves expected hit location" +
                                                ::testing::PrintToString(trace_case.name)};
@@ -437,8 +438,10 @@ void CollisionUniformGridTraceRunner::test_hits_and_misses() {
             continue;
         }
 
-        tests::expect_equal(
-            fixture.handles[0], hits.entities[i], "Trace resolves expected entity", i);
+        tests::expect_equal(fixture.registry.get_current_id(fixture.handles[0]),
+                            hits.entities[i],
+                            "Trace resolves expected entity",
+                            i);
         tests::expect_distance_near(expected_locations[i],
                                     hits.locations[i],
                                     hit_location_tolerance,
@@ -482,8 +485,9 @@ void CollisionUniformGridTraceRunner::test_returns_nearest_hit() {
     auto const hits{run_traces(fixture, starts, ends)};
 
     tests::expect_equal(std::uint8_t{1}, hits.hits[0], "Trace through two AABBs records a hit");
-    tests::expect_equal(
-        fixture.handles[1], hits.entities[0], "Trace returns nearest intersecting entity");
+    tests::expect_equal(fixture.registry.get_current_id(fixture.handles[1]),
+                        hits.entities[0],
+                        "Trace returns nearest intersecting entity");
     tests::expect_distance_near(expected_near_contact,
                                 hits.locations[0],
                                 hit_location_tolerance,
@@ -506,8 +510,9 @@ void CollisionUniformGridTraceRunner::test_handles_zero_length_traces() {
 
     tests::expect_equal(
         std::uint8_t{1}, hits.hits[0], "Stationary point inside AABB records a hit");
-    tests::expect_equal(
-        fixture.handles[0], hits.entities[0], "Stationary point resolves containing entity");
+    tests::expect_equal(fixture.registry.get_current_id(fixture.handles[0]),
+                        hits.entities[0],
+                        "Stationary point resolves containing entity");
     tests::expect_distance_near(starts[0],
                                 hits.locations[0],
                                 hit_location_tolerance,
@@ -534,8 +539,9 @@ void CollisionUniformGridTraceRunner::test_includes_negative_endpoint_boundary()
         return;
     }
 
-    tests::expect_equal(
-        fixture.handles[0], hits.entities[0], "Endpoint trace resolves touched entity");
+    tests::expect_equal(fixture.registry.get_current_id(fixture.handles[0]),
+                        hits.entities[0],
+                        "Endpoint trace resolves touched entity");
     tests::expect_distance_near(boundary_contact,
                                 hits.locations[0],
                                 hit_location_tolerance,
@@ -585,8 +591,9 @@ void CollisionUniformGridTraceRunner::test_applies_aabb_centre() {
     tests::expect_equal(
         rotated.handles[0].index, reused_handle.index, "Fixture reuses registry slot");
     auto const reused_hits{run_traces(rotated, rotated_starts, rotated_ends)};
-    tests::expect_equal(
-        reused_handle, reused_hits.entities[1], "Reused slot has current bounds and generation");
+    tests::expect_equal(rotated.registry.get_current_id(reused_handle),
+                        reused_hits.entities[1],
+                        "Reused slot has current bounds and generation");
 
     Vector3f const entity_location{};
     Vector3f const local_aabb_centre{{40.f, 0.f, 0.f}};
@@ -607,8 +614,9 @@ void CollisionUniformGridTraceRunner::test_applies_aabb_centre() {
         return;
     }
 
-    tests::expect_equal(
-        fixture.handles[0], hits.entities[0], "Trace resolves locally centred entity");
+    tests::expect_equal(fixture.registry.get_current_id(fixture.handles[0]),
+                        hits.entities[0],
+                        "Trace resolves locally centred entity");
     tests::expect_distance_near(expected_contact,
                                 hits.locations[0],
                                 hit_location_tolerance,
@@ -672,7 +680,7 @@ void CollisionUniformGridTraceRunner::test_applies_aabb_centre() {
             continue;
         }
 
-        tests::expect_equal(mixed_fixture.handles[i],
+        tests::expect_equal(mixed_fixture.registry.get_current_id(mixed_fixture.handles[i]),
                             mixed_hits.entities[i],
                             "Mixed entity-type trace resolves its entity",
                             i);
@@ -1380,7 +1388,7 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
     tests::expect_equal(
         std::uint8_t{1}, replacement_hits.hits[0], "Replacement entity is added on rebuild");
     if (replacement_hits.hits[0] != 0) {
-        tests::expect_equal(replacement_handle,
+        tests::expect_equal(fixture.registry.get_current_id(replacement_handle),
                             replacement_hits.entities[0],
                             "Trace resolves replacement generation");
     }
@@ -1434,7 +1442,7 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
                         sparse_replacement_hits.hits[0],
                         "Sparse replacement remains traceable beside surviving entities");
     if (sparse_replacement_hits.hits[0] != 0) {
-        tests::expect_equal(sparse_replacement_handle,
+        tests::expect_equal(sparse_fixture.registry.get_current_id(sparse_replacement_handle),
                             sparse_replacement_hits.entities[0],
                             "Sparse replacement trace resolves new generation");
     }
@@ -1516,7 +1524,7 @@ void CollisionUniformGridTraceRunner::test_deterministic_reference_sweep() {
                 continue;
             }
 
-            tests::expect_equal(fixture.handles[nearest_entity],
+            tests::expect_equal(fixture.registry.get_current_id(fixture.handles[nearest_entity]),
                                 hits.entities[i_trace],
                                 "Reference sweep trace resolves nearest entity",
                                 case_index);
@@ -1567,23 +1575,25 @@ void CollisionUniformGridTraceRunner::test_invariance_properties() {
 
     TraceFixture const baseline_fixture{entity_locations, aabb_half_extents, local_aabb_centre};
     auto const baseline_hits{run_traces(baseline_fixture, starts, ends)};
-    auto const compare_same_entity_order{[&baseline_hits](TraceHits const& candidate_hits,
-                                                          char const* const description) {
-        auto const count{baseline_hits.num()};
-        for (std::int32_t i{}; i < count; ++i) {
-            tests::expect_equal(baseline_hits.hits[i], candidate_hits.hits[i], description, i);
-            if (baseline_hits.hits[i] == 0 || candidate_hits.hits[i] == 0) {
-                continue;
+    auto const compare_same_entity_order{
+        [&baseline_hits](TraceHits const& candidate_hits, char const* const description) {
+            auto const count{baseline_hits.num()};
+            for (std::int32_t i{}; i < count; ++i) {
+                tests::expect_equal(baseline_hits.hits[i], candidate_hits.hits[i], description, i);
+                if (baseline_hits.hits[i] == 0 || candidate_hits.hits[i] == 0) {
+                    continue;
+                }
+                tests::expect_equal(baseline_hits.entities[i].raw_value(),
+                                    candidate_hits.entities[i].raw_value(),
+                                    description,
+                                    i);
+                tests::expect_distance_near(baseline_hits.locations[i],
+                                            candidate_hits.locations[i],
+                                            hit_location_tolerance,
+                                            description,
+                                            i);
             }
-            tests::expect_equal(
-                baseline_hits.entities[i].index, candidate_hits.entities[i].index, description, i);
-            tests::expect_distance_near(baseline_hits.locations[i],
-                                        candidate_hits.locations[i],
-                                        hit_location_tolerance,
-                                        description,
-                                        i);
-        }
-    }};
+        }};
 
     TraceFixture const coarse_fixture{
         entity_locations, aabb_half_extents, local_aabb_centre, {4, 4, 4}, {{200.f, 200.f, 200.f}}};
@@ -1666,8 +1676,8 @@ void CollisionUniformGridTraceRunner::test_invariance_properties() {
                             "Whole-cell translation preserves hit flag",
                             i);
         if (baseline_hits.hits[i] != 0 && translated_hits.hits[i] != 0) {
-            tests::expect_equal(baseline_hits.entities[i].index,
-                                translated_hits.entities[i].index,
+            tests::expect_equal(baseline_hits.entities[i].raw_value(),
+                                translated_hits.entities[i].raw_value(),
                                 "Whole-cell translation preserves entity",
                                 i);
             tests::expect_distance_near(baseline_hits.locations[i] + translation,
@@ -1716,7 +1726,7 @@ void CollisionUniformGridTraceRunner::test_empty_batches_and_output_reuse() {
 
     populated_fixture.grid.trace_aabbs(hit_trace.get_const_view(), reused_hits.get_view());
     tests::expect_equal(std::uint8_t{1}, reused_hits.hits[0], "Reused output records later hit");
-    tests::expect_equal(populated_fixture.handles[0],
+    tests::expect_equal(populated_fixture.registry.get_current_id(populated_fixture.handles[0]),
                         reused_hits.entities[0],
                         "Reused output records later entity");
 }
@@ -1869,7 +1879,7 @@ void CollisionUniformGridTraceRunner::test_static_geometry() {
 
     auto const fighter_masked_hits{
         run_sweeps(fighter_fixture, starts, ends, Vector3f{{20.f, 20.f, 20.f}})};
-    tests::expect_equal(fighter_fixture.handles[0],
+    tests::expect_equal(fighter_fixture.registry.get_current_id(fighter_fixture.handles[0]),
                         fighter_masked_hits.entities[0],
                         "Fighter is the closest sweep hit before static geometry");
     auto const static_geometry_hits{run_sweeps(fighter_fixture,
@@ -1896,7 +1906,7 @@ void CollisionUniformGridTraceRunner::test_static_geometry() {
 
     set_static_aabb({{140.f, -10.f, -10.f}}, {{160.f, 10.f, 10.f}});
     auto const dynamic_hits{run_traces(fixture, starts, ends)};
-    tests::expect_equal(fixture.handles[0],
+    tests::expect_equal(fixture.registry.get_current_id(fixture.handles[0]),
                         dynamic_hits.entities[0],
                         "Closer dynamic geometry wins over static geometry");
     tests::expect_equal(std::int32_t{-1},
@@ -1914,7 +1924,7 @@ void CollisionUniformGridTraceRunner::test_static_geometry() {
 
     set_static_aabb({{90.f, -10.f, -10.f}}, {{110.f, 10.f, 10.f}});
     auto const tied_hits{run_traces(fixture, starts, ends)};
-    tests::expect_equal(fixture.handles[0],
+    tests::expect_equal(fixture.registry.get_current_id(fixture.handles[0]),
                         tied_hits.entities[0],
                         "Dynamic geometry wins exact-distance static tie");
 

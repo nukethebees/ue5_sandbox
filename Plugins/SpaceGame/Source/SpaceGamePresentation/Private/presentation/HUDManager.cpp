@@ -7,6 +7,7 @@
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
+#include "ioj/sim/agent_accessor.h"
 #include "ioj/sim/mission_manager.h"
 #include "ioj/sim/player/sim.h"
 #include "ioj/sim/spatial_query_manager.h"
@@ -41,6 +42,7 @@ TRACE_DECLARE_INT_COUNTER(SandboxRadarUploadBytes, TEXT("Sandbox/Radar/UploadByt
 void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
                              ::ioj::sim::MissionManager const& new_mission_manager,
                              ::ioj::sim::EntityRegistry const& new_entity_registry,
+                             ::ioj::sim::AgentAccessor const& new_agents,
                              ::ioj::sim::SpatialQueryManager const& new_spatial_query_manager,
                              ::ioj::sim::player::Sim const* const new_player_ship,
                              FLevelVisualConfig const& level_config,
@@ -82,6 +84,7 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
 
     mission_manager = &new_mission_manager;
     entity_registry = &new_entity_registry;
+    agents_ = &new_agents;
     spatial_query_manager = &new_spatial_query_manager;
     player_ship = new_player_ship;
     entity_overlay_settings_ = entity_overlay_settings;
@@ -224,6 +227,7 @@ void FHUDManager::deactivate() {
     player_ship = nullptr;
     mission_manager = nullptr;
     entity_registry = nullptr;
+    agents_ = nullptr;
     spatial_query_manager = nullptr;
     mission_data_buffers = {};
     entity_count_data_buffers = {};
@@ -783,18 +787,17 @@ void FHUDManager::update_radar(FRegisteredHud& registration) {
     }
 
     check(entity_registry);
-    auto const result{collect_radar_instances(
-        entity_registry->get_entity_data().get_const_view(),
-        TConstArrayView<int32>{entity_registry->get_generations().data(),
-                               static_cast<int32>(entity_registry->get_generations().size())},
-        entity_overlay_objective_roles_,
-        radar_contact_colours_,
-        ml::to_unreal(player_ship->get_movement_state().transform),
-        player_ship->registry_handle,
-        player_ship->lock_on_target,
-        ml::to_unreal(player_ship->team),
-        radar_settings_,
-        frame)};
+    auto const result{
+        collect_radar_instances(entity_registry->get_entity_data().get_const_view(),
+                                entity_registry->get_active_unique_ids(),
+                                entity_overlay_objective_roles_,
+                                radar_contact_colours_,
+                                ml::to_unreal(player_ship->get_movement_state().transform),
+                                player_ship->unique_entity_id,
+                                player_ship->lock_on_target,
+                                ml::to_unreal(player_ship->team),
+                                radar_settings_,
+                                frame)};
     registration.radar_frame_store->publish();
 
     TRACE_COUNTER_SET(SandboxRadarCandidateCount, result.candidate_count);
@@ -967,10 +970,10 @@ bool FHUDManager::collect_player_flight_data() {
         next_data.flight_mode = ml::to_unreal(player_ship->flight_mode);
         next_data.crosshair_origin = ml::to_unreal(ship_socket.location);
         next_data.crosshair_direction = ml::to_unreal(ship_socket.forward());
-        next_data.has_lock_on_target = entity_registry->is_valid_handle(lock_on_target);
+        auto const target{agents_->read_spatial(lock_on_target)};
+        next_data.has_lock_on_target = target.has_value() && ::ioj::sim::is_alive(target->health);
         if (next_data.has_lock_on_target) {
-            next_data.lock_on_target_position =
-                FVector{ml::to_unreal(entity_registry->get_location(lock_on_target))};
+            next_data.lock_on_target_position = FVector{ml::to_unreal(target->location)};
         }
     }
 

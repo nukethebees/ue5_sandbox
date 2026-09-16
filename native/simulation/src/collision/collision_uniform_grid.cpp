@@ -64,7 +64,7 @@ void trace_grid_aabbs(GridGeometry const geometry,
     for (std::int32_t trace_index{}; trace_index < trace_count; ++trace_index) {
         auto const output_index{static_cast<std::size_t>(trace_index)};
         hits.hits[output_index] = 0;
-        hits.entities[output_index] = RegistryEntityHandle{};
+        hits.entities[output_index] = EntityUniqueId{};
         hits.static_geometry_indices[output_index] = -1;
 
         auto const start{traces.starts[trace_index]};
@@ -84,7 +84,7 @@ void trace_grid_aabbs(GridGeometry const geometry,
         }
 
         auto nearest_t{std::numeric_limits<float>::infinity()};
-        RegistryEntityHandle nearest_entity;
+        EntityUniqueId nearest_entity;
         std::int32_t nearest_static_index{-1};
         EntityUniqueId ignored_entity{};
         if constexpr (IgnoredMode == IgnoredEntityMode::PerTrace) {
@@ -121,7 +121,7 @@ void trace_grid_aabbs(GridGeometry const geometry,
                                                 moving_half_extent)};
                     if (hit_t < nearest_t) {
                         nearest_t = hit_t;
-                        nearest_entity = entity;
+                        nearest_entity = id;
                         nearest_static_index = -1;
                     }
                 }
@@ -137,7 +137,7 @@ void trace_grid_aabbs(GridGeometry const geometry,
                                             moving_half_extent)};
                 if (hit_t < nearest_t) {
                     nearest_t = hit_t;
-                    nearest_entity = RegistryEntityHandle{};
+                    nearest_entity = EntityUniqueId{};
                     nearest_static_index = static_index;
                 }
             }

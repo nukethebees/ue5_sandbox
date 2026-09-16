@@ -3,6 +3,7 @@
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <CQTest.h>
+#include <vector>
 
 namespace ml::test_radar_source {
 auto make_view(::ioj::sim::RegistryEntityData const& entities)
@@ -76,8 +77,11 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         ml::test_radar_source::add_entity(
             entities, {101.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::CapitalShip);
 
-        TArray<int32> generations;
-        generations.Init(7, entities.num());
+        std::vector<::ioj::sim::EntityUniqueId> ids;
+        for (int32 index{}; index < entities.num(); ++index) {
+            ids.push_back(::ioj::sim::EntityUniqueId::make(static_cast<std::uint32_t>(index),
+                                                           entities.entity_types[index]));
+        }
         TArray<EEntityOverlayObjectiveRole> objective_roles;
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
         objective_roles[2] = EEntityOverlayObjectiveRole::Defend;
@@ -90,12 +94,12 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         FRadarFrame frame;
         auto& instances{frame.instances};
         auto const result{collect_radar_instances(ml::test_radar_source::make_view(entities),
-                                                  generations,
+                                                  ids,
                                                   objective_roles,
                                                   colours,
                                                   FTransform::Identity,
-                                                  {0, 7},
-                                                  {2, 7},
+                                                  ids[0],
+                                                  ids[2],
                                                   ETestTeam::Blue,
                                                   ml::test_radar_source::linear_settings(),
                                                   frame)};
@@ -141,11 +145,11 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         zero_range_settings.combat_display_radius = 1.0f;
         auto const zero_range_result{
             collect_radar_instances(ml::test_radar_source::make_view(entities),
-                                    generations,
+                                    ids,
                                     objective_roles,
                                     colours,
                                     FTransform::Identity,
-                                    {0, 7},
+                                    ids[0],
                                     {},
                                     ETestTeam::Blue,
                                     zero_range_settings,
@@ -166,8 +170,11 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         ml::test_radar_source::add_entity(
             entities, {30.0f, 0.0f, 0.0f}, ETestTeam::White, ETestEntityType::Turret);
 
-        TArray<int32> generations;
-        generations.Init(2, entities.num());
+        std::vector<::ioj::sim::EntityUniqueId> ids;
+        for (int32 index{}; index < entities.num(); ++index) {
+            ids.push_back(::ioj::sim::EntityUniqueId::make(static_cast<std::uint32_t>(index),
+                                                           entities.entity_types[index]));
+        }
         TArray<EEntityOverlayObjectiveRole> objective_roles;
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
         FRadarContactColours colours{
@@ -179,11 +186,11 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         auto& instances{frame.instances};
 
         static_cast<void>(collect_radar_instances(ml::test_radar_source::make_view(entities),
-                                                  generations,
+                                                  ids,
                                                   objective_roles,
                                                   colours,
                                                   FTransform::Identity,
-                                                  {0, 2},
+                                                  ids[0],
                                                   {},
                                                   ETestTeam::Blue,
                                                   ml::test_radar_source::linear_settings(),
@@ -210,8 +217,11 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
             entities, FVector3f{player_location}, ETestTeam::Blue, ETestEntityType::PlayerShip);
         ml::test_radar_source::add_entity(
             entities, world_contact, ETestTeam::Red, ETestEntityType::Fighter);
-        TArray<int32> generations;
-        generations.Init(3, entities.num());
+        std::vector<::ioj::sim::EntityUniqueId> ids;
+        for (int32 index{}; index < entities.num(); ++index) {
+            ids.push_back(::ioj::sim::EntityUniqueId::make(static_cast<std::uint32_t>(index),
+                                                           entities.entity_types[index]));
+        }
         TArray<EEntityOverlayObjectiveRole> objective_roles;
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
         FRadarContactColours colours;
@@ -221,22 +231,22 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         auto& rolled_instances{rolled_frame.instances};
 
         static_cast<void>(collect_radar_instances(ml::test_radar_source::make_view(entities),
-                                                  generations,
+                                                  ids,
                                                   objective_roles,
                                                   colours,
                                                   FTransform{no_roll_rotation, player_location},
-                                                  {0, 3},
+                                                  ids[0],
                                                   {},
                                                   ETestTeam::Blue,
                                                   ml::test_radar_source::linear_settings(),
                                                   no_roll_frame));
         static_cast<void>(
             collect_radar_instances(ml::test_radar_source::make_view(entities),
-                                    generations,
+                                    ids,
                                     objective_roles,
                                     colours,
                                     FTransform{FRotator{28.0, 37.0, 120.0}, player_location},
-                                    {0, 3},
+                                    ids[0],
                                     {},
                                     ETestTeam::Blue,
                                     ml::test_radar_source::linear_settings(),
@@ -335,19 +345,22 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
             entities, FVector3f::ZeroVector, ETestTeam::Blue, ETestEntityType::PlayerShip);
         ml::test_radar_source::add_entity(
             entities, {250.0f, -80.0f, 40.0f}, ETestTeam::Red, ETestEntityType::Fighter);
-        TArray<int32> generations;
-        generations.Init(1, entities.num());
+        std::vector<::ioj::sim::EntityUniqueId> ids;
+        for (int32 index{}; index < entities.num(); ++index) {
+            ids.push_back(::ioj::sim::EntityUniqueId::make(static_cast<std::uint32_t>(index),
+                                                           entities.entity_types[index]));
+        }
         TArray<EEntityOverlayObjectiveRole> objective_roles;
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
         FRadarContactColours colours;
         FRadarFrame frame;
 
         static_cast<void>(collect_radar_instances(ml::test_radar_source::make_view(entities),
-                                                  generations,
+                                                  ids,
                                                   objective_roles,
                                                   colours,
                                                   FTransform::Identity,
-                                                  {0, 1},
+                                                  ids[0],
                                                   {},
                                                   ETestTeam::Blue,
                                                   settings,
@@ -356,14 +369,15 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 
         ml::test_radar_source::add_entity(
             entities, {1500.0f, 100.0f, 0.0f}, ETestTeam::Green, ETestEntityType::CapitalShip);
-        generations.Add(1);
+        ids.push_back(::ioj::sim::EntityUniqueId::make(
+            static_cast<std::uint32_t>(entities.num() - 1), entities.entity_types.back()));
         objective_roles.Add(EEntityOverlayObjectiveRole::None);
         static_cast<void>(collect_radar_instances(ml::test_radar_source::make_view(entities),
-                                                  generations,
+                                                  ids,
                                                   objective_roles,
                                                   colours,
                                                   FTransform::Identity,
-                                                  {0, 1},
+                                                  ids[0],
                                                   {},
                                                   ETestTeam::Blue,
                                                   settings,
@@ -389,8 +403,11 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
             entities, {2000.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::CapitalShip);
         ml::test_radar_source::add_entity(
             entities, {1600.0f, 0.0f, 1200.0f}, ETestTeam::Red, ETestEntityType::Turret);
-        TArray<int32> generations;
-        generations.Init(1, entities.num());
+        std::vector<::ioj::sim::EntityUniqueId> ids;
+        for (int32 index{}; index < entities.num(); ++index) {
+            ids.push_back(::ioj::sim::EntityUniqueId::make(static_cast<std::uint32_t>(index),
+                                                           entities.entity_types[index]));
+        }
         TArray<EEntityOverlayObjectiveRole> objective_roles;
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
         objective_roles[2] = EEntityOverlayObjectiveRole::Destroy;
@@ -398,12 +415,12 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         FRadarFrame frame;
 
         auto const result{collect_radar_instances(ml::test_radar_source::make_view(entities),
-                                                  generations,
+                                                  ids,
                                                   objective_roles,
                                                   FRadarContactColours{},
                                                   FTransform::Identity,
-                                                  {0, 1},
-                                                  {2, 1},
+                                                  ids[0],
+                                                  ids[2],
                                                   ETestTeam::Blue,
                                                   settings,
                                                   frame)};
