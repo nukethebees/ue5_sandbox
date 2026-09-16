@@ -4,6 +4,7 @@
 #pragma once
 
 #include "native_soa/storage.h"
+#include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
 
 namespace ioj::sim {
@@ -194,20 +195,22 @@ struct RegistryEntityHandles {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.registry_indices.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(registry_indices.data())};
+            auto const address{ml::address_cast(source.registry_indices.data())};
+            auto const begin{ml::address_cast(registry_indices.data())};
             ml::native_soa::require(address < begin || address >= begin + registry_indices.size() *
                                                                               sizeof(std::int32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.generations.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(generations.data())};
+            auto const address{ml::address_cast(source.generations.data())};
+            auto const begin{ml::address_cast(generations.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + generations.size() * sizeof(std::int32_t));
         }
-        registry_indices.insert(
-            registry_indices.end(), source.registry_indices.begin(), source.registry_indices.end());
-        generations.insert(generations.end(), source.generations.begin(), source.generations.end());
+        registry_indices.insert(registry_indices.end(),
+                                source.registry_indices.data(),
+                                source.registry_indices.data() + count);
+        generations.insert(
+            generations.end(), source.generations.data(), source.generations.data() + count);
     }
     auto get_view() -> View {
         return {

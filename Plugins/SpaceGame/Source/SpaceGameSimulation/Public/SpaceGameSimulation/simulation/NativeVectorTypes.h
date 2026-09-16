@@ -6,8 +6,6 @@
 #include <CoreMinimal.h>
 #include <SandboxCore/soa_vectors_3f.h>
 
-#include <cstddef>
-
 namespace ml {
 inline auto to_native(FVector3f const value) noexcept -> ::ioj::sim::Vector3f {
     return make_vector3f(value.X, value.Y, value.Z);
@@ -18,17 +16,15 @@ inline auto to_unreal(::ioj::sim::Vector3f const value) noexcept -> FVector3f {
 }
 
 inline auto to_native(FVectors3f::ConstView const view) noexcept -> ::ioj::sim::Vectors3fConstView {
-    auto const count{static_cast<std::size_t>(view.num())};
-    return {{view.xs.GetData(), count}, {view.ys.GetData(), count}, {view.zs.GetData(), count}};
+    return {view.xs.GetData(), view.ys.GetData(), view.zs.GetData(), view.num()};
 }
 
 inline auto to_native(FVectors3f::View const view) noexcept -> ::ioj::sim::Vectors3fView {
-    auto const count{static_cast<std::size_t>(view.num())};
-    return {{view.xs.GetData(), count}, {view.ys.GetData(), count}, {view.zs.GetData(), count}};
+    return {view.xs.GetData(), view.ys.GetData(), view.zs.GetData(), view.num()};
 }
 
 inline auto to_unreal(::ioj::sim::Vectors3fConstView const view) noexcept -> FVectors3f::ConstView {
     auto const count{view.num()};
-    return {{view.xs.data(), count}, {view.ys.data(), count}, {view.zs.data(), count}};
+    return {{view.xs, count}, {view.ys, count}, {view.zs, count}};
 }
 }

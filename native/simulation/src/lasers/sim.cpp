@@ -20,9 +20,9 @@
 namespace ioj::sim::lasers {
 namespace {
 void copy_vectors(Vectors3fView const destination, Vectors3fConstView const source) {
-    std::ranges::copy(source.xs, destination.xs.begin());
-    std::ranges::copy(source.ys, destination.ys.begin());
-    std::ranges::copy(source.zs, destination.zs.begin());
+    std::ranges::copy(source.xs_span(), destination.xs);
+    std::ranges::copy(source.ys_span(), destination.ys);
+    std::ranges::copy(source.zs_span(), destination.zs);
 }
 void copy_rotators(Rotators3fView const destination, Rotators3fConstView const source) {
     std::ranges::copy(source.pitches, destination.pitches.begin());
@@ -174,9 +174,9 @@ void Sim::expire_instances(float const dt) {
 }
 void Sim::update_locations(float const dt) {
     auto const entities{this->entities.get_view().columns()};
-    ml::add_scaled_in_place(entities.locations.xs, entities.velocities.xs, dt);
-    ml::add_scaled_in_place(entities.locations.ys, entities.velocities.ys, dt);
-    ml::add_scaled_in_place(entities.locations.zs, entities.velocities.zs, dt);
+    ml::add_scaled_in_place(entities.locations.xs_span(), entities.velocities.xs_span(), dt);
+    ml::add_scaled_in_place(entities.locations.ys_span(), entities.velocities.ys_span(), dt);
+    ml::add_scaled_in_place(entities.locations.zs_span(), entities.velocities.zs_span(), dt);
 }
 void Sim::handle_collisions(float const dt) {
     SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::handle_collisions");

@@ -2,8 +2,8 @@
 #include <SandboxCore/projectile_intercept.h>
 
 namespace {
-auto make_native_view(FVectors3f::ConstView const values) -> ml::Vector3fSoAView {
-    return {values.xs.GetData(), values.ys.GetData(), values.zs.GetData()};
+auto make_native_view(FVectors3f::ConstView const values) -> ml::Vector3fSoAConstView {
+    return {values.xs.GetData(), values.ys.GetData(), values.zs.GetData(), values.num()};
 }
 
 template <typename Solve>
@@ -20,8 +20,7 @@ void solve_intercept_times_adapter(Solve const solve,
           make_native_view(shooter_positions),
           make_native_view(target_positions),
           make_native_view(target_velocities),
-          projectile_speed,
-          out_intercept_times.Num());
+          projectile_speed);
 }
 }
 
@@ -45,11 +44,10 @@ void solve_intercept_times(TArrayView<float> const out_intercept_times,
                            float const projectile_speed) {
     solve_intercept_times_adapter(
         static_cast<void (*)(float*,
-                             Vector3fSoAView,
-                             Vector3fSoAView,
-                             Vector3fSoAView,
-                             float,
-                             std::int32_t) noexcept>(
+                             Vector3fSoAConstView,
+                             Vector3fSoAConstView,
+                             Vector3fSoAConstView,
+                             float) noexcept>(
             &ml::detail::solve_intercept_times_aos::solve_intercept_times),
         out_intercept_times,
         shooter_positions,
@@ -67,11 +65,10 @@ void solve_intercept_times(TArrayView<float> const out_intercept_times,
                            float const projectile_speed) {
     solve_intercept_times_adapter(
         static_cast<void (*)(float*,
-                             Vector3fSoAView,
-                             Vector3fSoAView,
-                             Vector3fSoAView,
-                             float,
-                             std::int32_t) noexcept>(
+                             Vector3fSoAConstView,
+                             Vector3fSoAConstView,
+                             Vector3fSoAConstView,
+                             float) noexcept>(
             &ml::detail::solve_intercept_times_struct_loop::solve_intercept_times),
         out_intercept_times,
         shooter_positions,
@@ -89,11 +86,10 @@ void solve_intercept_times(TArrayView<float> const out_intercept_times,
                            float const projectile_speed) {
     solve_intercept_times_adapter(
         static_cast<void (*)(float*,
-                             Vector3fSoAView,
-                             Vector3fSoAView,
-                             Vector3fSoAView,
-                             float,
-                             std::int32_t) noexcept>(
+                             Vector3fSoAConstView,
+                             Vector3fSoAConstView,
+                             Vector3fSoAConstView,
+                             float) noexcept>(
             &ml::detail::solve_intercept_times_soa_loop::solve_intercept_times),
         out_intercept_times,
         shooter_positions,

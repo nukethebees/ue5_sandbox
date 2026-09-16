@@ -38,9 +38,9 @@
 namespace ioj::sim::fighters {
 namespace {
 void copy_vectors(Vectors3fView const destination, Vectors3fConstView const source) {
-    std::ranges::copy(source.xs, destination.xs.begin());
-    std::ranges::copy(source.ys, destination.ys.begin());
-    std::ranges::copy(source.zs, destination.zs.begin());
+    std::ranges::copy(source.xs_span(), destination.xs);
+    std::ranges::copy(source.ys_span(), destination.ys);
+    std::ranges::copy(source.zs_span(), destination.zs);
 }
 void copy_rotators(Rotators3fView const destination, Rotators3fConstView const source) {
     std::ranges::copy(source.pitches, destination.pitches.begin());
@@ -363,16 +363,15 @@ void Sim::plan_movement(float const dt) {
     auto const outer_attack_distance{laser_max_distance * attack_distance_band.maximum_ratio};
 
     if (do_attack) {
-        auto const locations{attack_view.locations.get_const_view()};
-        auto const target_locations{attack_view.target_locations.get_const_view()};
-        auto const target_velocities{attack_view.target_velocities.get_const_view()};
+        auto const& locations{attack_view.locations};
+        auto const& target_locations{attack_view.target_locations};
+        auto const& target_velocities{attack_view.target_velocities};
         ml::detail::solve_intercept_times_soa_loop::solve_intercept_times(
             attack_view.intercept_times.data(),
-            {locations.xs.data(), locations.ys.data(), locations.zs.data()},
-            {target_locations.xs.data(), target_locations.ys.data(), target_locations.zs.data()},
-            {target_velocities.xs.data(), target_velocities.ys.data(), target_velocities.zs.data()},
-            config.laser.projectile_speed,
-            n_attack);
+            locations,
+            target_locations,
+            target_velocities,
+            config.laser.projectile_speed);
 
         auto reposition_countdowns{ml::TickCountdownView<std::int16_t>{
             attack_view.attack_reposition_countdowns, reposition_restart_ticks_}};
@@ -402,22 +401,22 @@ void Sim::plan_movement(float const dt) {
         }
     }
 
-    auto const locations{data.locations.get_const_view()};
-    auto const destinations{data.desired_move_locations.get_const_view()};
-    ml::native_math::direction_and_distance(data.movement_directions.xs.data(),
-                                            data.movement_directions.ys.data(),
-                                            data.movement_directions.zs.data(),
+    auto const& locations{data.locations};
+    auto const& destinations{data.desired_move_locations};
+    ml::native_math::direction_and_distance(data.movement_directions.xs,
+                                            data.movement_directions.ys,
+                                            data.movement_directions.zs,
                                             data.move_distances.data(),
-                                            locations.xs.data(),
-                                            locations.ys.data(),
-                                            locations.zs.data(),
-                                            destinations.xs.data(),
-                                            destinations.ys.data(),
-                                            destinations.zs.data(),
+                                            locations.xs,
+                                            locations.ys,
+                                            locations.zs,
+                                            destinations.xs,
+                                            destinations.ys,
+                                            destinations.zs,
                                             data.num());
     update_navigation_steering();
     if (do_move) {
-        auto const movement_directions{move_view.movement_directions.get_const_view()};
+        auto const& movement_directions{move_view.movement_directions};
         lerp_in_place(move_view.planned_aim_directions, movement_directions, d_turn);
     }
     if (do_attack) {
@@ -535,12 +534,12 @@ void Sim::move(float const dt, TaskView const& fighters) {
         fighters.velocities.ys[index] = directions.ys[index] * velocity_scale;
         fighters.velocities.zs[index] = directions.zs[index] * velocity_scale;
     }
-    ml::native_math::add_scaled_product_in_place(fighters.locations.xs.data(),
-                                                 fighters.locations.ys.data(),
-                                                 fighters.locations.zs.data(),
-                                                 directions.xs.data(),
-                                                 directions.ys.data(),
-                                                 directions.zs.data(),
+    ml::native_math::add_scaled_product_in_place(fighters.locations.xs,
+                                                 fighters.locations.ys,
+                                                 fighters.locations.zs,
+                                                 directions.xs,
+                                                 directions.ys,
+                                                 directions.zs,
                                                  fighters.move_distances.data(),
                                                  1.f,
                                                  count);
@@ -1312,12 +1311,12 @@ void Sim::handle_firing(TaskView const& data) {
         std::span<std::int16_t>{data.attack_cooldowns}, attack_retry_cooldown_tick_value};
     aiming_dot_products.set_num(n_ships);
     ml::native_math::dot_product_vector(aiming_dot_products.data(),
-                                        data.planned_aim_directions.xs.data(),
-                                        data.planned_aim_directions.ys.data(),
-                                        data.planned_aim_directions.zs.data(),
-                                        data.desired_aiming_directions.xs.data(),
-                                        data.desired_aiming_directions.ys.data(),
-                                        data.desired_aiming_directions.zs.data(),
+                                        data.planned_aim_directions.xs,
+                                        data.planned_aim_directions.ys,
+                                        data.planned_aim_directions.zs,
+                                        data.desired_aiming_directions.xs,
+                                        data.desired_aiming_directions.ys,
+                                        data.desired_aiming_directions.zs,
                                         n_ships);
 
     can_fire.reserve(n_ships);

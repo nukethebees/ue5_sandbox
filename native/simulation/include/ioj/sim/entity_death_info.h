@@ -6,6 +6,7 @@
 #include "ioj/sim/entity_handle.h"
 #include "ioj/sim/entity_life_state.h"
 #include "native_soa/storage.h"
+#include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
 
 namespace ioj::sim {
@@ -204,28 +205,28 @@ struct EntityDeathInfo {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.reasons.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(reasons.data())};
+            auto const address{ml::address_cast(source.reasons.data())};
+            auto const begin{ml::address_cast(reasons.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + reasons.size() * sizeof(DeathReason));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.victims.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(victims.data())};
+            auto const address{ml::address_cast(source.victims.data())};
+            auto const begin{ml::address_cast(victims.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + victims.size() * sizeof(RegistryEntityHandle));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.killers.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(killers.data())};
+            auto const address{ml::address_cast(source.killers.data())};
+            auto const begin{ml::address_cast(killers.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + killers.size() * sizeof(RegistryEntityHandle));
         }
-        reasons.insert(reasons.end(), source.reasons.begin(), source.reasons.end());
-        victims.insert(victims.end(), source.victims.begin(), source.victims.end());
-        killers.insert(killers.end(), source.killers.begin(), source.killers.end());
+        reasons.insert(reasons.end(), source.reasons.data(), source.reasons.data() + count);
+        victims.insert(victims.end(), source.victims.data(), source.victims.data() + count);
+        killers.insert(killers.end(), source.killers.data(), source.killers.data() + count);
     }
     auto get_view() -> View {
         return {

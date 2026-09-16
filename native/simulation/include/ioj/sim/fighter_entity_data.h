@@ -9,6 +9,7 @@
 #include "ioj/sim/health.h"
 #include "ioj/sim/vectors3f.h"
 #include "native_soa/storage.h"
+#include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
 
 #include <cstring>
@@ -64,27 +65,27 @@ struct FighterEntityDataConstView {
         fn(integral_biases);
         fn(float_biases);
         fn(tasks);
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
-        fn(desired_move_locations.xs);
-        fn(desired_move_locations.ys);
-        fn(desired_move_locations.zs);
-        fn(aim_directions.xs);
-        fn(aim_directions.ys);
-        fn(aim_directions.zs);
-        fn(planned_aim_directions.xs);
-        fn(planned_aim_directions.ys);
-        fn(planned_aim_directions.zs);
-        fn(desired_aiming_directions.xs);
-        fn(desired_aiming_directions.ys);
-        fn(desired_aiming_directions.zs);
-        fn(movement_directions.xs);
-        fn(movement_directions.ys);
-        fn(movement_directions.zs);
-        fn(velocities.xs);
-        fn(velocities.ys);
-        fn(velocities.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
+        fn(desired_move_locations.xs_span());
+        fn(desired_move_locations.ys_span());
+        fn(desired_move_locations.zs_span());
+        fn(aim_directions.xs_span());
+        fn(aim_directions.ys_span());
+        fn(aim_directions.zs_span());
+        fn(planned_aim_directions.xs_span());
+        fn(planned_aim_directions.ys_span());
+        fn(planned_aim_directions.zs_span());
+        fn(desired_aiming_directions.xs_span());
+        fn(desired_aiming_directions.ys_span());
+        fn(desired_aiming_directions.zs_span());
+        fn(movement_directions.xs_span());
+        fn(movement_directions.ys_span());
+        fn(movement_directions.zs_span());
+        fn(velocities.xs_span());
+        fn(velocities.ys_span());
+        fn(velocities.zs_span());
         fn(move_distances);
         fn(speeds);
         fn(teams);
@@ -93,9 +94,9 @@ struct FighterEntityDataConstView {
         fn(awareness_scan_countdowns);
         fn(navigation_update_countdowns_remaining_ticks);
         fn(navigation_update_countdowns_periods);
-        fn(separation_steering.xs);
-        fn(separation_steering.ys);
-        fn(separation_steering.zs);
+        fn(separation_steering.xs_span());
+        fn(separation_steering.ys_span());
+        fn(separation_steering.zs_span());
         fn(navigation_risk_tiers);
         fn(navigation_lower_risk_scan_counts);
         fn(avoidance_choice_indices);
@@ -103,15 +104,15 @@ struct FighterEntityDataConstView {
         fn(attack_reposition_countdowns);
         fn(attack_cooldowns);
         fn(target_handles);
-        fn(target_locations.xs);
-        fn(target_locations.ys);
-        fn(target_locations.zs);
-        fn(target_velocities.xs);
-        fn(target_velocities.ys);
-        fn(target_velocities.zs);
-        fn(target_directions.xs);
-        fn(target_directions.ys);
-        fn(target_directions.zs);
+        fn(target_locations.xs_span());
+        fn(target_locations.ys_span());
+        fn(target_locations.zs_span());
+        fn(target_velocities.xs_span());
+        fn(target_velocities.ys_span());
+        fn(target_velocities.zs_span());
+        fn(target_directions.xs_span());
+        fn(target_directions.ys_span());
+        fn(target_directions.zs_span());
         fn(intercept_times);
         fn(target_distance_sq);
         fn(target_distances);
@@ -277,27 +278,27 @@ struct FighterEntityDataView {
         fn(integral_biases);
         fn(float_biases);
         fn(tasks);
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
-        fn(desired_move_locations.xs);
-        fn(desired_move_locations.ys);
-        fn(desired_move_locations.zs);
-        fn(aim_directions.xs);
-        fn(aim_directions.ys);
-        fn(aim_directions.zs);
-        fn(planned_aim_directions.xs);
-        fn(planned_aim_directions.ys);
-        fn(planned_aim_directions.zs);
-        fn(desired_aiming_directions.xs);
-        fn(desired_aiming_directions.ys);
-        fn(desired_aiming_directions.zs);
-        fn(movement_directions.xs);
-        fn(movement_directions.ys);
-        fn(movement_directions.zs);
-        fn(velocities.xs);
-        fn(velocities.ys);
-        fn(velocities.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
+        fn(desired_move_locations.xs_span());
+        fn(desired_move_locations.ys_span());
+        fn(desired_move_locations.zs_span());
+        fn(aim_directions.xs_span());
+        fn(aim_directions.ys_span());
+        fn(aim_directions.zs_span());
+        fn(planned_aim_directions.xs_span());
+        fn(planned_aim_directions.ys_span());
+        fn(planned_aim_directions.zs_span());
+        fn(desired_aiming_directions.xs_span());
+        fn(desired_aiming_directions.ys_span());
+        fn(desired_aiming_directions.zs_span());
+        fn(movement_directions.xs_span());
+        fn(movement_directions.ys_span());
+        fn(movement_directions.zs_span());
+        fn(velocities.xs_span());
+        fn(velocities.ys_span());
+        fn(velocities.zs_span());
         fn(move_distances);
         fn(speeds);
         fn(teams);
@@ -306,9 +307,9 @@ struct FighterEntityDataView {
         fn(awareness_scan_countdowns);
         fn(navigation_update_countdowns_remaining_ticks);
         fn(navigation_update_countdowns_periods);
-        fn(separation_steering.xs);
-        fn(separation_steering.ys);
-        fn(separation_steering.zs);
+        fn(separation_steering.xs_span());
+        fn(separation_steering.ys_span());
+        fn(separation_steering.zs_span());
         fn(navigation_risk_tiers);
         fn(navigation_lower_risk_scan_counts);
         fn(avoidance_choice_indices);
@@ -316,15 +317,15 @@ struct FighterEntityDataView {
         fn(attack_reposition_countdowns);
         fn(attack_cooldowns);
         fn(target_handles);
-        fn(target_locations.xs);
-        fn(target_locations.ys);
-        fn(target_locations.zs);
-        fn(target_velocities.xs);
-        fn(target_velocities.ys);
-        fn(target_velocities.zs);
-        fn(target_directions.xs);
-        fn(target_directions.ys);
-        fn(target_directions.zs);
+        fn(target_locations.xs_span());
+        fn(target_locations.ys_span());
+        fn(target_locations.zs_span());
+        fn(target_velocities.xs_span());
+        fn(target_velocities.ys_span());
+        fn(target_velocities.zs_span());
+        fn(target_directions.xs_span());
+        fn(target_directions.ys_span());
+        fn(target_directions.zs_span());
         fn(intercept_times);
         fn(target_distance_sq);
         fn(target_distances);
@@ -1328,547 +1329,520 @@ struct FighterEntityData {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.entity_handles.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(entity_handles.data())};
+            auto const address{ml::address_cast(source.entity_handles.data())};
+            auto const begin{ml::address_cast(entity_handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + entity_handles.size() *
                                                            sizeof(RegistryEntityHandle));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.integral_biases.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(integral_biases.data())};
+            auto const address{ml::address_cast(source.integral_biases.data())};
+            auto const begin{ml::address_cast(integral_biases.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + integral_biases.size() * sizeof(std::uint32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.float_biases.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(float_biases.data())};
+            auto const address{ml::address_cast(source.float_biases.data())};
+            auto const begin{ml::address_cast(float_biases.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + float_biases.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.tasks.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(tasks.data())};
+            auto const address{ml::address_cast(source.tasks.data())};
+            auto const begin{ml::address_cast(tasks.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + tasks.size() * sizeof(FighterTask));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.xs.data())};
+            auto const address{ml::address_cast(source.locations.xs)};
+            auto const begin{ml::address_cast(locations.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.ys.data())};
+            auto const address{ml::address_cast(source.locations.ys)};
+            auto const begin{ml::address_cast(locations.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.zs.data())};
+            auto const address{ml::address_cast(source.locations.zs)};
+            auto const begin{ml::address_cast(locations.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.zs.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.desired_move_locations.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(desired_move_locations.xs.data())};
+            auto const address{ml::address_cast(source.desired_move_locations.xs)};
+            auto const begin{ml::address_cast(desired_move_locations.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + desired_move_locations.xs.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.desired_move_locations.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(desired_move_locations.ys.data())};
+            auto const address{ml::address_cast(source.desired_move_locations.ys)};
+            auto const begin{ml::address_cast(desired_move_locations.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + desired_move_locations.ys.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.desired_move_locations.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(desired_move_locations.zs.data())};
+            auto const address{ml::address_cast(source.desired_move_locations.zs)};
+            auto const begin{ml::address_cast(desired_move_locations.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + desired_move_locations.zs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.aim_directions.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(aim_directions.xs.data())};
+            auto const address{ml::address_cast(source.aim_directions.xs)};
+            auto const begin{ml::address_cast(aim_directions.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + aim_directions.xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.aim_directions.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(aim_directions.ys.data())};
+            auto const address{ml::address_cast(source.aim_directions.ys)};
+            auto const begin{ml::address_cast(aim_directions.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + aim_directions.ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.aim_directions.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(aim_directions.zs.data())};
+            auto const address{ml::address_cast(source.aim_directions.zs)};
+            auto const begin{ml::address_cast(aim_directions.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + aim_directions.zs.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.planned_aim_directions.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(planned_aim_directions.xs.data())};
+            auto const address{ml::address_cast(source.planned_aim_directions.xs)};
+            auto const begin{ml::address_cast(planned_aim_directions.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + planned_aim_directions.xs.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.planned_aim_directions.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(planned_aim_directions.ys.data())};
+            auto const address{ml::address_cast(source.planned_aim_directions.ys)};
+            auto const begin{ml::address_cast(planned_aim_directions.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + planned_aim_directions.ys.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.planned_aim_directions.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(planned_aim_directions.zs.data())};
+            auto const address{ml::address_cast(source.planned_aim_directions.zs)};
+            auto const begin{ml::address_cast(planned_aim_directions.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + planned_aim_directions.zs.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.desired_aiming_directions.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(desired_aiming_directions.xs.data())};
+            auto const address{ml::address_cast(source.desired_aiming_directions.xs)};
+            auto const begin{ml::address_cast(desired_aiming_directions.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + desired_aiming_directions.xs.size() *
                                                            sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.desired_aiming_directions.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(desired_aiming_directions.ys.data())};
+            auto const address{ml::address_cast(source.desired_aiming_directions.ys)};
+            auto const begin{ml::address_cast(desired_aiming_directions.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + desired_aiming_directions.ys.size() *
                                                            sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.desired_aiming_directions.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(desired_aiming_directions.zs.data())};
+            auto const address{ml::address_cast(source.desired_aiming_directions.zs)};
+            auto const begin{ml::address_cast(desired_aiming_directions.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + desired_aiming_directions.zs.size() *
                                                            sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.movement_directions.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(movement_directions.xs.data())};
+            auto const address{ml::address_cast(source.movement_directions.xs)};
+            auto const begin{ml::address_cast(movement_directions.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + movement_directions.xs.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.movement_directions.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(movement_directions.ys.data())};
+            auto const address{ml::address_cast(source.movement_directions.ys)};
+            auto const begin{ml::address_cast(movement_directions.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + movement_directions.ys.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.movement_directions.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(movement_directions.zs.data())};
+            auto const address{ml::address_cast(source.movement_directions.zs)};
+            auto const begin{ml::address_cast(movement_directions.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + movement_directions.zs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.velocities.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(velocities.xs.data())};
+            auto const address{ml::address_cast(source.velocities.xs)};
+            auto const begin{ml::address_cast(velocities.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + velocities.xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.velocities.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(velocities.ys.data())};
+            auto const address{ml::address_cast(source.velocities.ys)};
+            auto const begin{ml::address_cast(velocities.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + velocities.ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.velocities.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(velocities.zs.data())};
+            auto const address{ml::address_cast(source.velocities.zs)};
+            auto const begin{ml::address_cast(velocities.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + velocities.zs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.move_distances.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(move_distances.data())};
+            auto const address{ml::address_cast(source.move_distances.data())};
+            auto const begin{ml::address_cast(move_distances.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + move_distances.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.speeds.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(speeds.data())};
+            auto const address{ml::address_cast(source.speeds.data())};
+            auto const begin{ml::address_cast(speeds.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + speeds.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.teams.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(teams.data())};
+            auto const address{ml::address_cast(source.teams.data())};
+            auto const begin{ml::address_cast(teams.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + teams.size() * sizeof(Team));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.healths.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(healths.data())};
+            auto const address{ml::address_cast(source.healths.data())};
+            auto const begin{ml::address_cast(healths.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + healths.size() * sizeof(Health));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.parent_handles.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(parent_handles.data())};
+            auto const address{ml::address_cast(source.parent_handles.data())};
+            auto const begin{ml::address_cast(parent_handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + parent_handles.size() *
                                                            sizeof(RegistryEntityHandle));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.awareness_scan_countdowns.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(awareness_scan_countdowns.data())};
+            auto const address{ml::address_cast(source.awareness_scan_countdowns.data())};
+            auto const begin{ml::address_cast(awareness_scan_countdowns.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + awareness_scan_countdowns.size() *
                                                            sizeof(std::int8_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(
-                source.navigation_update_countdowns_remaining_ticks.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(
-                navigation_update_countdowns_remaining_ticks.data())};
+            auto const address{
+                ml::address_cast(source.navigation_update_countdowns_remaining_ticks.data())};
+            auto const begin{ml::address_cast(navigation_update_countdowns_remaining_ticks.data())};
             ml::native_soa::require(
                 address < begin ||
                 address >= begin + navigation_update_countdowns_remaining_ticks.size() *
                                        sizeof(std::int16_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(
-                source.navigation_update_countdowns_periods.data())};
-            auto const begin{
-                reinterpret_cast<std::uintptr_t>(navigation_update_countdowns_periods.data())};
+            auto const address{
+                ml::address_cast(source.navigation_update_countdowns_periods.data())};
+            auto const begin{ml::address_cast(navigation_update_countdowns_periods.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + navigation_update_countdowns_periods.size() *
                                                            sizeof(std::int16_t));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.separation_steering.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(separation_steering.xs.data())};
+            auto const address{ml::address_cast(source.separation_steering.xs)};
+            auto const begin{ml::address_cast(separation_steering.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + separation_steering.xs.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.separation_steering.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(separation_steering.ys.data())};
+            auto const address{ml::address_cast(source.separation_steering.ys)};
+            auto const begin{ml::address_cast(separation_steering.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + separation_steering.ys.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.separation_steering.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(separation_steering.zs.data())};
+            auto const address{ml::address_cast(source.separation_steering.zs)};
+            auto const begin{ml::address_cast(separation_steering.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + separation_steering.zs.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.navigation_risk_tiers.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(navigation_risk_tiers.data())};
+            auto const address{ml::address_cast(source.navigation_risk_tiers.data())};
+            auto const begin{ml::address_cast(navigation_risk_tiers.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + navigation_risk_tiers.size() *
                                                            sizeof(std::uint8_t));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.navigation_lower_risk_scan_counts.data())};
-            auto const begin{
-                reinterpret_cast<std::uintptr_t>(navigation_lower_risk_scan_counts.data())};
+            auto const address{ml::address_cast(source.navigation_lower_risk_scan_counts.data())};
+            auto const begin{ml::address_cast(navigation_lower_risk_scan_counts.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + navigation_lower_risk_scan_counts.size() *
                                                            sizeof(std::uint8_t));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.avoidance_choice_indices.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(avoidance_choice_indices.data())};
+            auto const address{ml::address_cast(source.avoidance_choice_indices.data())};
+            auto const begin{ml::address_cast(avoidance_choice_indices.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + avoidance_choice_indices.size() *
                                                            sizeof(std::int8_t));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.avoidance_clear_scan_counts.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(avoidance_clear_scan_counts.data())};
+            auto const address{ml::address_cast(source.avoidance_clear_scan_counts.data())};
+            auto const begin{ml::address_cast(avoidance_clear_scan_counts.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + avoidance_clear_scan_counts.size() *
                                                            sizeof(std::uint8_t));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.attack_reposition_countdowns.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(attack_reposition_countdowns.data())};
+            auto const address{ml::address_cast(source.attack_reposition_countdowns.data())};
+            auto const begin{ml::address_cast(attack_reposition_countdowns.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + attack_reposition_countdowns.size() *
                                                            sizeof(std::int16_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.attack_cooldowns.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(attack_cooldowns.data())};
+            auto const address{ml::address_cast(source.attack_cooldowns.data())};
+            auto const begin{ml::address_cast(attack_cooldowns.data())};
             ml::native_soa::require(address < begin || address >= begin + attack_cooldowns.size() *
                                                                               sizeof(std::int16_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.target_handles.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(target_handles.data())};
+            auto const address{ml::address_cast(source.target_handles.data())};
+            auto const begin{ml::address_cast(target_handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_handles.size() *
                                                            sizeof(RegistryEntityHandle));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.target_locations.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(target_locations.xs.data())};
+            auto const address{ml::address_cast(source.target_locations.xs)};
+            auto const begin{ml::address_cast(target_locations.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_locations.xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.target_locations.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(target_locations.ys.data())};
+            auto const address{ml::address_cast(source.target_locations.ys)};
+            auto const begin{ml::address_cast(target_locations.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_locations.ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.target_locations.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(target_locations.zs.data())};
+            auto const address{ml::address_cast(source.target_locations.zs)};
+            auto const begin{ml::address_cast(target_locations.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_locations.zs.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.target_velocities.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(target_velocities.xs.data())};
+            auto const address{ml::address_cast(source.target_velocities.xs)};
+            auto const begin{ml::address_cast(target_velocities.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_velocities.xs.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.target_velocities.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(target_velocities.ys.data())};
+            auto const address{ml::address_cast(source.target_velocities.ys)};
+            auto const begin{ml::address_cast(target_velocities.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_velocities.ys.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.target_velocities.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(target_velocities.zs.data())};
+            auto const address{ml::address_cast(source.target_velocities.zs)};
+            auto const begin{ml::address_cast(target_velocities.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_velocities.zs.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.target_directions.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(target_directions.xs.data())};
+            auto const address{ml::address_cast(source.target_directions.xs)};
+            auto const begin{ml::address_cast(target_directions.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_directions.xs.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.target_directions.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(target_directions.ys.data())};
+            auto const address{ml::address_cast(source.target_directions.ys)};
+            auto const begin{ml::address_cast(target_directions.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_directions.ys.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.target_directions.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(target_directions.zs.data())};
+            auto const address{ml::address_cast(source.target_directions.zs)};
+            auto const begin{ml::address_cast(target_directions.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_directions.zs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.intercept_times.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(intercept_times.data())};
+            auto const address{ml::address_cast(source.intercept_times.data())};
+            auto const begin{ml::address_cast(intercept_times.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + intercept_times.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.target_distance_sq.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(target_distance_sq.data())};
+            auto const address{ml::address_cast(source.target_distance_sq.data())};
+            auto const begin{ml::address_cast(target_distance_sq.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_distance_sq.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.target_distances.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(target_distances.data())};
+            auto const address{ml::address_cast(source.target_distances.data())};
+            auto const begin{ml::address_cast(target_distances.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_distances.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.target_radii.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(target_radii.data())};
+            auto const address{ml::address_cast(source.target_radii.data())};
+            auto const begin{ml::address_cast(target_radii.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_radii.size() * sizeof(float));
         }
-        entity_handles.insert(
-            entity_handles.end(), source.entity_handles.begin(), source.entity_handles.end());
-        integral_biases.insert(
-            integral_biases.end(), source.integral_biases.begin(), source.integral_biases.end());
+        entity_handles.insert(entity_handles.end(),
+                              source.entity_handles.data(),
+                              source.entity_handles.data() + count);
+        integral_biases.insert(integral_biases.end(),
+                               source.integral_biases.data(),
+                               source.integral_biases.data() + count);
         float_biases.insert(
-            float_biases.end(), source.float_biases.begin(), source.float_biases.end());
-        tasks.insert(tasks.end(), source.tasks.begin(), source.tasks.end());
-        locations.xs.insert(
-            locations.xs.end(), source.locations.xs.begin(), source.locations.xs.end());
-        locations.ys.insert(
-            locations.ys.end(), source.locations.ys.begin(), source.locations.ys.end());
-        locations.zs.insert(
-            locations.zs.end(), source.locations.zs.begin(), source.locations.zs.end());
+            float_biases.end(), source.float_biases.data(), source.float_biases.data() + count);
+        tasks.insert(tasks.end(), source.tasks.data(), source.tasks.data() + count);
+        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
+        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
+        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
         desired_move_locations.xs.insert(desired_move_locations.xs.end(),
-                                         source.desired_move_locations.xs.begin(),
-                                         source.desired_move_locations.xs.end());
+                                         source.desired_move_locations.xs,
+                                         source.desired_move_locations.xs + count);
         desired_move_locations.ys.insert(desired_move_locations.ys.end(),
-                                         source.desired_move_locations.ys.begin(),
-                                         source.desired_move_locations.ys.end());
+                                         source.desired_move_locations.ys,
+                                         source.desired_move_locations.ys + count);
         desired_move_locations.zs.insert(desired_move_locations.zs.end(),
-                                         source.desired_move_locations.zs.begin(),
-                                         source.desired_move_locations.zs.end());
-        aim_directions.xs.insert(aim_directions.xs.end(),
-                                 source.aim_directions.xs.begin(),
-                                 source.aim_directions.xs.end());
-        aim_directions.ys.insert(aim_directions.ys.end(),
-                                 source.aim_directions.ys.begin(),
-                                 source.aim_directions.ys.end());
-        aim_directions.zs.insert(aim_directions.zs.end(),
-                                 source.aim_directions.zs.begin(),
-                                 source.aim_directions.zs.end());
+                                         source.desired_move_locations.zs,
+                                         source.desired_move_locations.zs + count);
+        aim_directions.xs.insert(
+            aim_directions.xs.end(), source.aim_directions.xs, source.aim_directions.xs + count);
+        aim_directions.ys.insert(
+            aim_directions.ys.end(), source.aim_directions.ys, source.aim_directions.ys + count);
+        aim_directions.zs.insert(
+            aim_directions.zs.end(), source.aim_directions.zs, source.aim_directions.zs + count);
         planned_aim_directions.xs.insert(planned_aim_directions.xs.end(),
-                                         source.planned_aim_directions.xs.begin(),
-                                         source.planned_aim_directions.xs.end());
+                                         source.planned_aim_directions.xs,
+                                         source.planned_aim_directions.xs + count);
         planned_aim_directions.ys.insert(planned_aim_directions.ys.end(),
-                                         source.planned_aim_directions.ys.begin(),
-                                         source.planned_aim_directions.ys.end());
+                                         source.planned_aim_directions.ys,
+                                         source.planned_aim_directions.ys + count);
         planned_aim_directions.zs.insert(planned_aim_directions.zs.end(),
-                                         source.planned_aim_directions.zs.begin(),
-                                         source.planned_aim_directions.zs.end());
+                                         source.planned_aim_directions.zs,
+                                         source.planned_aim_directions.zs + count);
         desired_aiming_directions.xs.insert(desired_aiming_directions.xs.end(),
-                                            source.desired_aiming_directions.xs.begin(),
-                                            source.desired_aiming_directions.xs.end());
+                                            source.desired_aiming_directions.xs,
+                                            source.desired_aiming_directions.xs + count);
         desired_aiming_directions.ys.insert(desired_aiming_directions.ys.end(),
-                                            source.desired_aiming_directions.ys.begin(),
-                                            source.desired_aiming_directions.ys.end());
+                                            source.desired_aiming_directions.ys,
+                                            source.desired_aiming_directions.ys + count);
         desired_aiming_directions.zs.insert(desired_aiming_directions.zs.end(),
-                                            source.desired_aiming_directions.zs.begin(),
-                                            source.desired_aiming_directions.zs.end());
+                                            source.desired_aiming_directions.zs,
+                                            source.desired_aiming_directions.zs + count);
         movement_directions.xs.insert(movement_directions.xs.end(),
-                                      source.movement_directions.xs.begin(),
-                                      source.movement_directions.xs.end());
+                                      source.movement_directions.xs,
+                                      source.movement_directions.xs + count);
         movement_directions.ys.insert(movement_directions.ys.end(),
-                                      source.movement_directions.ys.begin(),
-                                      source.movement_directions.ys.end());
+                                      source.movement_directions.ys,
+                                      source.movement_directions.ys + count);
         movement_directions.zs.insert(movement_directions.zs.end(),
-                                      source.movement_directions.zs.begin(),
-                                      source.movement_directions.zs.end());
+                                      source.movement_directions.zs,
+                                      source.movement_directions.zs + count);
         velocities.xs.insert(
-            velocities.xs.end(), source.velocities.xs.begin(), source.velocities.xs.end());
+            velocities.xs.end(), source.velocities.xs, source.velocities.xs + count);
         velocities.ys.insert(
-            velocities.ys.end(), source.velocities.ys.begin(), source.velocities.ys.end());
+            velocities.ys.end(), source.velocities.ys, source.velocities.ys + count);
         velocities.zs.insert(
-            velocities.zs.end(), source.velocities.zs.begin(), source.velocities.zs.end());
-        move_distances.insert(
-            move_distances.end(), source.move_distances.begin(), source.move_distances.end());
-        speeds.insert(speeds.end(), source.speeds.begin(), source.speeds.end());
-        teams.insert(teams.end(), source.teams.begin(), source.teams.end());
-        healths.insert(healths.end(), source.healths.begin(), source.healths.end());
-        parent_handles.insert(
-            parent_handles.end(), source.parent_handles.begin(), source.parent_handles.end());
+            velocities.zs.end(), source.velocities.zs, source.velocities.zs + count);
+        move_distances.insert(move_distances.end(),
+                              source.move_distances.data(),
+                              source.move_distances.data() + count);
+        speeds.insert(speeds.end(), source.speeds.data(), source.speeds.data() + count);
+        teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
+        healths.insert(healths.end(), source.healths.data(), source.healths.data() + count);
+        parent_handles.insert(parent_handles.end(),
+                              source.parent_handles.data(),
+                              source.parent_handles.data() + count);
         awareness_scan_countdowns.insert(awareness_scan_countdowns.end(),
-                                         source.awareness_scan_countdowns.begin(),
-                                         source.awareness_scan_countdowns.end());
+                                         source.awareness_scan_countdowns.data(),
+                                         source.awareness_scan_countdowns.data() + count);
         navigation_update_countdowns_remaining_ticks.insert(
             navigation_update_countdowns_remaining_ticks.end(),
-            source.navigation_update_countdowns_remaining_ticks.begin(),
-            source.navigation_update_countdowns_remaining_ticks.end());
+            source.navigation_update_countdowns_remaining_ticks.data(),
+            source.navigation_update_countdowns_remaining_ticks.data() + count);
         navigation_update_countdowns_periods.insert(
             navigation_update_countdowns_periods.end(),
-            source.navigation_update_countdowns_periods.begin(),
-            source.navigation_update_countdowns_periods.end());
+            source.navigation_update_countdowns_periods.data(),
+            source.navigation_update_countdowns_periods.data() + count);
         separation_steering.xs.insert(separation_steering.xs.end(),
-                                      source.separation_steering.xs.begin(),
-                                      source.separation_steering.xs.end());
+                                      source.separation_steering.xs,
+                                      source.separation_steering.xs + count);
         separation_steering.ys.insert(separation_steering.ys.end(),
-                                      source.separation_steering.ys.begin(),
-                                      source.separation_steering.ys.end());
+                                      source.separation_steering.ys,
+                                      source.separation_steering.ys + count);
         separation_steering.zs.insert(separation_steering.zs.end(),
-                                      source.separation_steering.zs.begin(),
-                                      source.separation_steering.zs.end());
+                                      source.separation_steering.zs,
+                                      source.separation_steering.zs + count);
         navigation_risk_tiers.insert(navigation_risk_tiers.end(),
-                                     source.navigation_risk_tiers.begin(),
-                                     source.navigation_risk_tiers.end());
+                                     source.navigation_risk_tiers.data(),
+                                     source.navigation_risk_tiers.data() + count);
         navigation_lower_risk_scan_counts.insert(navigation_lower_risk_scan_counts.end(),
-                                                 source.navigation_lower_risk_scan_counts.begin(),
-                                                 source.navigation_lower_risk_scan_counts.end());
+                                                 source.navigation_lower_risk_scan_counts.data(),
+                                                 source.navigation_lower_risk_scan_counts.data() +
+                                                     count);
         avoidance_choice_indices.insert(avoidance_choice_indices.end(),
-                                        source.avoidance_choice_indices.begin(),
-                                        source.avoidance_choice_indices.end());
+                                        source.avoidance_choice_indices.data(),
+                                        source.avoidance_choice_indices.data() + count);
         avoidance_clear_scan_counts.insert(avoidance_clear_scan_counts.end(),
-                                           source.avoidance_clear_scan_counts.begin(),
-                                           source.avoidance_clear_scan_counts.end());
+                                           source.avoidance_clear_scan_counts.data(),
+                                           source.avoidance_clear_scan_counts.data() + count);
         attack_reposition_countdowns.insert(attack_reposition_countdowns.end(),
-                                            source.attack_reposition_countdowns.begin(),
-                                            source.attack_reposition_countdowns.end());
-        attack_cooldowns.insert(
-            attack_cooldowns.end(), source.attack_cooldowns.begin(), source.attack_cooldowns.end());
-        target_handles.insert(
-            target_handles.end(), source.target_handles.begin(), source.target_handles.end());
+                                            source.attack_reposition_countdowns.data(),
+                                            source.attack_reposition_countdowns.data() + count);
+        attack_cooldowns.insert(attack_cooldowns.end(),
+                                source.attack_cooldowns.data(),
+                                source.attack_cooldowns.data() + count);
+        target_handles.insert(target_handles.end(),
+                              source.target_handles.data(),
+                              source.target_handles.data() + count);
         target_locations.xs.insert(target_locations.xs.end(),
-                                   source.target_locations.xs.begin(),
-                                   source.target_locations.xs.end());
+                                   source.target_locations.xs,
+                                   source.target_locations.xs + count);
         target_locations.ys.insert(target_locations.ys.end(),
-                                   source.target_locations.ys.begin(),
-                                   source.target_locations.ys.end());
+                                   source.target_locations.ys,
+                                   source.target_locations.ys + count);
         target_locations.zs.insert(target_locations.zs.end(),
-                                   source.target_locations.zs.begin(),
-                                   source.target_locations.zs.end());
+                                   source.target_locations.zs,
+                                   source.target_locations.zs + count);
         target_velocities.xs.insert(target_velocities.xs.end(),
-                                    source.target_velocities.xs.begin(),
-                                    source.target_velocities.xs.end());
+                                    source.target_velocities.xs,
+                                    source.target_velocities.xs + count);
         target_velocities.ys.insert(target_velocities.ys.end(),
-                                    source.target_velocities.ys.begin(),
-                                    source.target_velocities.ys.end());
+                                    source.target_velocities.ys,
+                                    source.target_velocities.ys + count);
         target_velocities.zs.insert(target_velocities.zs.end(),
-                                    source.target_velocities.zs.begin(),
-                                    source.target_velocities.zs.end());
+                                    source.target_velocities.zs,
+                                    source.target_velocities.zs + count);
         target_directions.xs.insert(target_directions.xs.end(),
-                                    source.target_directions.xs.begin(),
-                                    source.target_directions.xs.end());
+                                    source.target_directions.xs,
+                                    source.target_directions.xs + count);
         target_directions.ys.insert(target_directions.ys.end(),
-                                    source.target_directions.ys.begin(),
-                                    source.target_directions.ys.end());
+                                    source.target_directions.ys,
+                                    source.target_directions.ys + count);
         target_directions.zs.insert(target_directions.zs.end(),
-                                    source.target_directions.zs.begin(),
-                                    source.target_directions.zs.end());
-        intercept_times.insert(
-            intercept_times.end(), source.intercept_times.begin(), source.intercept_times.end());
+                                    source.target_directions.zs,
+                                    source.target_directions.zs + count);
+        intercept_times.insert(intercept_times.end(),
+                               source.intercept_times.data(),
+                               source.intercept_times.data() + count);
         target_distance_sq.insert(target_distance_sq.end(),
-                                  source.target_distance_sq.begin(),
-                                  source.target_distance_sq.end());
-        target_distances.insert(
-            target_distances.end(), source.target_distances.begin(), source.target_distances.end());
+                                  source.target_distance_sq.data(),
+                                  source.target_distance_sq.data() + count);
+        target_distances.insert(target_distances.end(),
+                                source.target_distances.data(),
+                                source.target_distances.data() + count);
         target_radii.insert(
-            target_radii.end(), source.target_radii.begin(), source.target_radii.end());
+            target_radii.end(), source.target_radii.data(), source.target_radii.data() + count);
     }
     auto get_view() -> View {
         return {
@@ -2889,54 +2863,48 @@ struct SingleAllocationFighterEntityDataStorage
             destination.integral_biases, source.integral_biases.data(), integral_biases_bytes);
         std::memcpy(destination.float_biases, source.float_biases.data(), float_biases_bytes);
         std::memcpy(destination.tasks, source.tasks.data(), tasks_bytes);
-        std::memcpy(destination.locations_xs, source.locations.xs.data(), float_biases_bytes);
-        std::memcpy(destination.locations_ys, source.locations.ys.data(), float_biases_bytes);
-        std::memcpy(destination.locations_zs, source.locations.zs.data(), float_biases_bytes);
+        std::memcpy(destination.locations_xs, source.locations.xs, float_biases_bytes);
+        std::memcpy(destination.locations_ys, source.locations.ys, float_biases_bytes);
+        std::memcpy(destination.locations_zs, source.locations.zs, float_biases_bytes);
         std::memcpy(destination.desired_move_locations_xs,
-                    source.desired_move_locations.xs.data(),
+                    source.desired_move_locations.xs,
                     float_biases_bytes);
         std::memcpy(destination.desired_move_locations_ys,
-                    source.desired_move_locations.ys.data(),
+                    source.desired_move_locations.ys,
                     float_biases_bytes);
         std::memcpy(destination.desired_move_locations_zs,
-                    source.desired_move_locations.zs.data(),
+                    source.desired_move_locations.zs,
                     float_biases_bytes);
-        std::memcpy(
-            destination.aim_directions_xs, source.aim_directions.xs.data(), float_biases_bytes);
-        std::memcpy(
-            destination.aim_directions_ys, source.aim_directions.ys.data(), float_biases_bytes);
-        std::memcpy(
-            destination.aim_directions_zs, source.aim_directions.zs.data(), float_biases_bytes);
+        std::memcpy(destination.aim_directions_xs, source.aim_directions.xs, float_biases_bytes);
+        std::memcpy(destination.aim_directions_ys, source.aim_directions.ys, float_biases_bytes);
+        std::memcpy(destination.aim_directions_zs, source.aim_directions.zs, float_biases_bytes);
         std::memcpy(destination.planned_aim_directions_xs,
-                    source.planned_aim_directions.xs.data(),
+                    source.planned_aim_directions.xs,
                     float_biases_bytes);
         std::memcpy(destination.planned_aim_directions_ys,
-                    source.planned_aim_directions.ys.data(),
+                    source.planned_aim_directions.ys,
                     float_biases_bytes);
         std::memcpy(destination.planned_aim_directions_zs,
-                    source.planned_aim_directions.zs.data(),
+                    source.planned_aim_directions.zs,
                     float_biases_bytes);
         std::memcpy(destination.desired_aiming_directions_xs,
-                    source.desired_aiming_directions.xs.data(),
+                    source.desired_aiming_directions.xs,
                     float_biases_bytes);
         std::memcpy(destination.desired_aiming_directions_ys,
-                    source.desired_aiming_directions.ys.data(),
+                    source.desired_aiming_directions.ys,
                     float_biases_bytes);
         std::memcpy(destination.desired_aiming_directions_zs,
-                    source.desired_aiming_directions.zs.data(),
+                    source.desired_aiming_directions.zs,
                     float_biases_bytes);
-        std::memcpy(destination.movement_directions_xs,
-                    source.movement_directions.xs.data(),
-                    float_biases_bytes);
-        std::memcpy(destination.movement_directions_ys,
-                    source.movement_directions.ys.data(),
-                    float_biases_bytes);
-        std::memcpy(destination.movement_directions_zs,
-                    source.movement_directions.zs.data(),
-                    float_biases_bytes);
-        std::memcpy(destination.velocities_xs, source.velocities.xs.data(), float_biases_bytes);
-        std::memcpy(destination.velocities_ys, source.velocities.ys.data(), float_biases_bytes);
-        std::memcpy(destination.velocities_zs, source.velocities.zs.data(), float_biases_bytes);
+        std::memcpy(
+            destination.movement_directions_xs, source.movement_directions.xs, float_biases_bytes);
+        std::memcpy(
+            destination.movement_directions_ys, source.movement_directions.ys, float_biases_bytes);
+        std::memcpy(
+            destination.movement_directions_zs, source.movement_directions.zs, float_biases_bytes);
+        std::memcpy(destination.velocities_xs, source.velocities.xs, float_biases_bytes);
+        std::memcpy(destination.velocities_ys, source.velocities.ys, float_biases_bytes);
+        std::memcpy(destination.velocities_zs, source.velocities.zs, float_biases_bytes);
         std::memcpy(destination.move_distances, source.move_distances.data(), float_biases_bytes);
         std::memcpy(destination.speeds, source.speeds.data(), float_biases_bytes);
         std::memcpy(destination.teams, source.teams.data(), teams_bytes);
@@ -2951,15 +2919,12 @@ struct SingleAllocationFighterEntityDataStorage
         std::memcpy(destination.navigation_update_countdowns_periods,
                     source.navigation_update_countdowns_periods.data(),
                     navigation_update_countdowns_remaining_ticks_bytes);
-        std::memcpy(destination.separation_steering_xs,
-                    source.separation_steering.xs.data(),
-                    float_biases_bytes);
-        std::memcpy(destination.separation_steering_ys,
-                    source.separation_steering.ys.data(),
-                    float_biases_bytes);
-        std::memcpy(destination.separation_steering_zs,
-                    source.separation_steering.zs.data(),
-                    float_biases_bytes);
+        std::memcpy(
+            destination.separation_steering_xs, source.separation_steering.xs, float_biases_bytes);
+        std::memcpy(
+            destination.separation_steering_ys, source.separation_steering.ys, float_biases_bytes);
+        std::memcpy(
+            destination.separation_steering_zs, source.separation_steering.zs, float_biases_bytes);
         std::memcpy(destination.navigation_risk_tiers,
                     source.navigation_risk_tiers.data(),
                     navigation_risk_tiers_bytes);
@@ -2980,29 +2945,23 @@ struct SingleAllocationFighterEntityDataStorage
                     navigation_update_countdowns_remaining_ticks_bytes);
         std::memcpy(destination.target_handles, source.target_handles.data(), entity_handles_bytes);
         std::memcpy(
-            destination.target_locations_xs, source.target_locations.xs.data(), float_biases_bytes);
+            destination.target_locations_xs, source.target_locations.xs, float_biases_bytes);
         std::memcpy(
-            destination.target_locations_ys, source.target_locations.ys.data(), float_biases_bytes);
+            destination.target_locations_ys, source.target_locations.ys, float_biases_bytes);
         std::memcpy(
-            destination.target_locations_zs, source.target_locations.zs.data(), float_biases_bytes);
-        std::memcpy(destination.target_velocities_xs,
-                    source.target_velocities.xs.data(),
-                    float_biases_bytes);
-        std::memcpy(destination.target_velocities_ys,
-                    source.target_velocities.ys.data(),
-                    float_biases_bytes);
-        std::memcpy(destination.target_velocities_zs,
-                    source.target_velocities.zs.data(),
-                    float_biases_bytes);
-        std::memcpy(destination.target_directions_xs,
-                    source.target_directions.xs.data(),
-                    float_biases_bytes);
-        std::memcpy(destination.target_directions_ys,
-                    source.target_directions.ys.data(),
-                    float_biases_bytes);
-        std::memcpy(destination.target_directions_zs,
-                    source.target_directions.zs.data(),
-                    float_biases_bytes);
+            destination.target_locations_zs, source.target_locations.zs, float_biases_bytes);
+        std::memcpy(
+            destination.target_velocities_xs, source.target_velocities.xs, float_biases_bytes);
+        std::memcpy(
+            destination.target_velocities_ys, source.target_velocities.ys, float_biases_bytes);
+        std::memcpy(
+            destination.target_velocities_zs, source.target_velocities.zs, float_biases_bytes);
+        std::memcpy(
+            destination.target_directions_xs, source.target_directions.xs, float_biases_bytes);
+        std::memcpy(
+            destination.target_directions_ys, source.target_directions.ys, float_biases_bytes);
+        std::memcpy(
+            destination.target_directions_zs, source.target_directions.zs, float_biases_bytes);
         std::memcpy(destination.intercept_times, source.intercept_times.data(), float_biases_bytes);
         std::memcpy(
             destination.target_distance_sq, source.target_distance_sq.data(), float_biases_bytes);

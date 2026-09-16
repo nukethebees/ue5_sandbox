@@ -4,6 +4,7 @@
 #pragma once
 
 #include "native_soa/storage.h"
+#include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
 
 #include <cstring>
@@ -271,47 +272,47 @@ struct WorldAABBsColumns {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.min_xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(min_xs.data())};
+            auto const address{ml::address_cast(source.min_xs.data())};
+            auto const begin{ml::address_cast(min_xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + min_xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.min_ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(min_ys.data())};
+            auto const address{ml::address_cast(source.min_ys.data())};
+            auto const begin{ml::address_cast(min_ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + min_ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.min_zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(min_zs.data())};
+            auto const address{ml::address_cast(source.min_zs.data())};
+            auto const begin{ml::address_cast(min_zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + min_zs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.max_xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(max_xs.data())};
+            auto const address{ml::address_cast(source.max_xs.data())};
+            auto const begin{ml::address_cast(max_xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + max_xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.max_ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(max_ys.data())};
+            auto const address{ml::address_cast(source.max_ys.data())};
+            auto const begin{ml::address_cast(max_ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + max_ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.max_zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(max_zs.data())};
+            auto const address{ml::address_cast(source.max_zs.data())};
+            auto const begin{ml::address_cast(max_zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + max_zs.size() * sizeof(float));
         }
-        min_xs.insert(min_xs.end(), source.min_xs.begin(), source.min_xs.end());
-        min_ys.insert(min_ys.end(), source.min_ys.begin(), source.min_ys.end());
-        min_zs.insert(min_zs.end(), source.min_zs.begin(), source.min_zs.end());
-        max_xs.insert(max_xs.end(), source.max_xs.begin(), source.max_xs.end());
-        max_ys.insert(max_ys.end(), source.max_ys.begin(), source.max_ys.end());
-        max_zs.insert(max_zs.end(), source.max_zs.begin(), source.max_zs.end());
+        min_xs.insert(min_xs.end(), source.min_xs.data(), source.min_xs.data() + count);
+        min_ys.insert(min_ys.end(), source.min_ys.data(), source.min_ys.data() + count);
+        min_zs.insert(min_zs.end(), source.min_zs.data(), source.min_zs.data() + count);
+        max_xs.insert(max_xs.end(), source.max_xs.data(), source.max_xs.data() + count);
+        max_ys.insert(max_ys.end(), source.max_ys.data(), source.max_ys.data() + count);
+        max_zs.insert(max_zs.end(), source.max_zs.data(), source.max_zs.data() + count);
     }
     auto get_view() -> View {
         return {

@@ -37,12 +37,12 @@ void copy_entity_rows(RegistryEntityDataView const destination,
         std::ranges::copy(source_column.subspan(source_offset, count),
                           destination_column.subspan(destination_offset, count).begin());
     };
-    copy_span(source.locations.xs, destination.locations.xs);
-    copy_span(source.locations.ys, destination.locations.ys);
-    copy_span(source.locations.zs, destination.locations.zs);
-    copy_span(source.velocities.xs, destination.velocities.xs);
-    copy_span(source.velocities.ys, destination.velocities.ys);
-    copy_span(source.velocities.zs, destination.velocities.zs);
+    copy_span(source.locations.xs_span(), destination.locations.xs_span());
+    copy_span(source.locations.ys_span(), destination.locations.ys_span());
+    copy_span(source.locations.zs_span(), destination.locations.zs_span());
+    copy_span(source.velocities.xs_span(), destination.velocities.xs_span());
+    copy_span(source.velocities.ys_span(), destination.velocities.ys_span());
+    copy_span(source.velocities.zs_span(), destination.velocities.zs_span());
     copy_span(source.rotations.pitches, destination.rotations.pitches);
     copy_span(source.rotations.yaws, destination.rotations.yaws);
     copy_span(source.rotations.rolls, destination.rotations.rolls);

@@ -10,6 +10,7 @@
 #include "ioj/sim/vector_types.h"
 #include "ioj/sim/vectors3f.h"
 #include "native_soa/storage.h"
+#include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
 
 #include <cstring>
@@ -31,19 +32,19 @@ struct SpawnRequestsConstView {
     std::span<float const> max_distances;
     std::span<RegistryEntityHandle const> instigator_handles;
     std::span<LaserSource const> sources;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
+    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.num()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
     void each_column(Fn&& fn) const {
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
         fn(rotations.pitches);
         fn(rotations.yaws);
         fn(rotations.rolls);
-        fn(base_velocities.xs);
-        fn(base_velocities.ys);
-        fn(base_velocities.zs);
+        fn(base_velocities.xs_span());
+        fn(base_velocities.ys_span());
+        fn(base_velocities.zs_span());
         fn(damages);
         fn(speeds);
         fn(max_distances);
@@ -108,19 +109,19 @@ struct SpawnRequestsView {
     std::span<float> max_distances;
     std::span<RegistryEntityHandle> instigator_handles;
     std::span<LaserSource> sources;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
+    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.num()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
     void each_column(Fn&& fn) const {
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
         fn(rotations.pitches);
         fn(rotations.yaws);
         fn(rotations.rolls);
-        fn(base_velocities.xs);
-        fn(base_velocities.ys);
-        fn(base_velocities.zs);
+        fn(base_velocities.xs_span());
+        fn(base_velocities.ys_span());
+        fn(base_velocities.zs_span());
         fn(damages);
         fn(speeds);
         fn(max_distances);
@@ -397,120 +398,116 @@ struct SpawnRequests {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.xs.data())};
+            auto const address{ml::address_cast(source.locations.xs)};
+            auto const begin{ml::address_cast(locations.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.ys.data())};
+            auto const address{ml::address_cast(source.locations.ys)};
+            auto const begin{ml::address_cast(locations.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.zs.data())};
+            auto const address{ml::address_cast(source.locations.zs)};
+            auto const begin{ml::address_cast(locations.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.zs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.rotations.pitches.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(rotations.pitches.data())};
+            auto const address{ml::address_cast(source.rotations.pitches.data())};
+            auto const begin{ml::address_cast(rotations.pitches.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + rotations.pitches.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.rotations.yaws.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(rotations.yaws.data())};
+            auto const address{ml::address_cast(source.rotations.yaws.data())};
+            auto const begin{ml::address_cast(rotations.yaws.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + rotations.yaws.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.rotations.rolls.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(rotations.rolls.data())};
+            auto const address{ml::address_cast(source.rotations.rolls.data())};
+            auto const begin{ml::address_cast(rotations.rolls.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + rotations.rolls.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.base_velocities.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(base_velocities.xs.data())};
+            auto const address{ml::address_cast(source.base_velocities.xs)};
+            auto const begin{ml::address_cast(base_velocities.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + base_velocities.xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.base_velocities.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(base_velocities.ys.data())};
+            auto const address{ml::address_cast(source.base_velocities.ys)};
+            auto const begin{ml::address_cast(base_velocities.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + base_velocities.ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.base_velocities.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(base_velocities.zs.data())};
+            auto const address{ml::address_cast(source.base_velocities.zs)};
+            auto const begin{ml::address_cast(base_velocities.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + base_velocities.zs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.damages.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(damages.data())};
+            auto const address{ml::address_cast(source.damages.data())};
+            auto const begin{ml::address_cast(damages.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + damages.size() * sizeof(std::int32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.speeds.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(speeds.data())};
+            auto const address{ml::address_cast(source.speeds.data())};
+            auto const begin{ml::address_cast(speeds.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + speeds.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.max_distances.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(max_distances.data())};
+            auto const address{ml::address_cast(source.max_distances.data())};
+            auto const begin{ml::address_cast(max_distances.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + max_distances.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.instigator_handles.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(instigator_handles.data())};
+            auto const address{ml::address_cast(source.instigator_handles.data())};
+            auto const begin{ml::address_cast(instigator_handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + instigator_handles.size() *
                                                            sizeof(RegistryEntityHandle));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.sources.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(sources.data())};
+            auto const address{ml::address_cast(source.sources.data())};
+            auto const begin{ml::address_cast(sources.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + sources.size() * sizeof(LaserSource));
         }
-        locations.xs.insert(
-            locations.xs.end(), source.locations.xs.begin(), source.locations.xs.end());
-        locations.ys.insert(
-            locations.ys.end(), source.locations.ys.begin(), source.locations.ys.end());
-        locations.zs.insert(
-            locations.zs.end(), source.locations.zs.begin(), source.locations.zs.end());
+        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
+        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
+        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
         rotations.pitches.insert(rotations.pitches.end(),
-                                 source.rotations.pitches.begin(),
-                                 source.rotations.pitches.end());
-        rotations.yaws.insert(
-            rotations.yaws.end(), source.rotations.yaws.begin(), source.rotations.yaws.end());
-        rotations.rolls.insert(
-            rotations.rolls.end(), source.rotations.rolls.begin(), source.rotations.rolls.end());
-        base_velocities.xs.insert(base_velocities.xs.end(),
-                                  source.base_velocities.xs.begin(),
-                                  source.base_velocities.xs.end());
-        base_velocities.ys.insert(base_velocities.ys.end(),
-                                  source.base_velocities.ys.begin(),
-                                  source.base_velocities.ys.end());
-        base_velocities.zs.insert(base_velocities.zs.end(),
-                                  source.base_velocities.zs.begin(),
-                                  source.base_velocities.zs.end());
-        damages.insert(damages.end(), source.damages.begin(), source.damages.end());
-        speeds.insert(speeds.end(), source.speeds.begin(), source.speeds.end());
+                                 source.rotations.pitches.data(),
+                                 source.rotations.pitches.data() + count);
+        rotations.yaws.insert(rotations.yaws.end(),
+                              source.rotations.yaws.data(),
+                              source.rotations.yaws.data() + count);
+        rotations.rolls.insert(rotations.rolls.end(),
+                               source.rotations.rolls.data(),
+                               source.rotations.rolls.data() + count);
+        base_velocities.xs.insert(
+            base_velocities.xs.end(), source.base_velocities.xs, source.base_velocities.xs + count);
+        base_velocities.ys.insert(
+            base_velocities.ys.end(), source.base_velocities.ys, source.base_velocities.ys + count);
+        base_velocities.zs.insert(
+            base_velocities.zs.end(), source.base_velocities.zs, source.base_velocities.zs + count);
+        damages.insert(damages.end(), source.damages.data(), source.damages.data() + count);
+        speeds.insert(speeds.end(), source.speeds.data(), source.speeds.data() + count);
         max_distances.insert(
-            max_distances.end(), source.max_distances.begin(), source.max_distances.end());
+            max_distances.end(), source.max_distances.data(), source.max_distances.data() + count);
         instigator_handles.insert(instigator_handles.end(),
-                                  source.instigator_handles.begin(),
-                                  source.instigator_handles.end());
-        sources.insert(sources.end(), source.sources.begin(), source.sources.end());
+                                  source.instigator_handles.data(),
+                                  source.instigator_handles.data() + count);
+        sources.insert(sources.end(), source.sources.data(), source.sources.data() + count);
     }
     auto get_view() -> View {
         return {
@@ -920,19 +917,16 @@ struct SingleAllocationLaserSpawnRequestsStorage
         auto const damages_bytes{elements_to_copy * sizeof(std::int32_t)};
         auto const instigator_handles_bytes{elements_to_copy * sizeof(RegistryEntityHandle)};
         auto const sources_bytes{elements_to_copy * sizeof(LaserSource)};
-        std::memcpy(destination.locations_xs, source.locations.xs.data(), locations_xs_bytes);
-        std::memcpy(destination.locations_ys, source.locations.ys.data(), locations_xs_bytes);
-        std::memcpy(destination.locations_zs, source.locations.zs.data(), locations_xs_bytes);
+        std::memcpy(destination.locations_xs, source.locations.xs, locations_xs_bytes);
+        std::memcpy(destination.locations_ys, source.locations.ys, locations_xs_bytes);
+        std::memcpy(destination.locations_zs, source.locations.zs, locations_xs_bytes);
         std::memcpy(
             destination.rotations_pitches, source.rotations.pitches.data(), locations_xs_bytes);
         std::memcpy(destination.rotations_yaws, source.rotations.yaws.data(), locations_xs_bytes);
         std::memcpy(destination.rotations_rolls, source.rotations.rolls.data(), locations_xs_bytes);
-        std::memcpy(
-            destination.base_velocities_xs, source.base_velocities.xs.data(), locations_xs_bytes);
-        std::memcpy(
-            destination.base_velocities_ys, source.base_velocities.ys.data(), locations_xs_bytes);
-        std::memcpy(
-            destination.base_velocities_zs, source.base_velocities.zs.data(), locations_xs_bytes);
+        std::memcpy(destination.base_velocities_xs, source.base_velocities.xs, locations_xs_bytes);
+        std::memcpy(destination.base_velocities_ys, source.base_velocities.ys, locations_xs_bytes);
+        std::memcpy(destination.base_velocities_zs, source.base_velocities.zs, locations_xs_bytes);
         std::memcpy(destination.damages, source.damages.data(), damages_bytes);
         std::memcpy(destination.speeds, source.speeds.data(), locations_xs_bytes);
         std::memcpy(destination.max_distances, source.max_distances.data(), locations_xs_bytes);
@@ -1291,15 +1285,15 @@ struct EntitiesConstView {
     template <typename Fn>
     void each_column(Fn&& fn) const {
         fn(sources);
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
         fn(rotations.pitches);
         fn(rotations.yaws);
         fn(rotations.rolls);
-        fn(velocities.xs);
-        fn(velocities.ys);
-        fn(velocities.zs);
+        fn(velocities.xs_span());
+        fn(velocities.ys_span());
+        fn(velocities.zs_span());
         fn(damages);
         fn(lifetimes_remaining);
         fn(instigator_handles);
@@ -1373,15 +1367,15 @@ struct EntitiesView {
     template <typename Fn>
     void each_column(Fn&& fn) const {
         fn(sources);
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
         fn(rotations.pitches);
         fn(rotations.yaws);
         fn(rotations.rolls);
-        fn(velocities.xs);
-        fn(velocities.ys);
-        fn(velocities.zs);
+        fn(velocities.xs_span());
+        fn(velocities.ys_span());
+        fn(velocities.zs_span());
         fn(damages);
         fn(lifetimes_remaining);
         fn(instigator_handles);
@@ -1674,127 +1668,127 @@ struct Entities {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.sources.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(sources.data())};
+            auto const address{ml::address_cast(source.sources.data())};
+            auto const begin{ml::address_cast(sources.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + sources.size() * sizeof(LaserSource));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.xs.data())};
+            auto const address{ml::address_cast(source.locations.xs)};
+            auto const begin{ml::address_cast(locations.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.ys.data())};
+            auto const address{ml::address_cast(source.locations.ys)};
+            auto const begin{ml::address_cast(locations.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.zs.data())};
+            auto const address{ml::address_cast(source.locations.zs)};
+            auto const begin{ml::address_cast(locations.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.zs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.rotations.pitches.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(rotations.pitches.data())};
+            auto const address{ml::address_cast(source.rotations.pitches.data())};
+            auto const begin{ml::address_cast(rotations.pitches.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + rotations.pitches.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.rotations.yaws.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(rotations.yaws.data())};
+            auto const address{ml::address_cast(source.rotations.yaws.data())};
+            auto const begin{ml::address_cast(rotations.yaws.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + rotations.yaws.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.rotations.rolls.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(rotations.rolls.data())};
+            auto const address{ml::address_cast(source.rotations.rolls.data())};
+            auto const begin{ml::address_cast(rotations.rolls.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + rotations.rolls.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.velocities.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(velocities.xs.data())};
+            auto const address{ml::address_cast(source.velocities.xs)};
+            auto const begin{ml::address_cast(velocities.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + velocities.xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.velocities.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(velocities.ys.data())};
+            auto const address{ml::address_cast(source.velocities.ys)};
+            auto const begin{ml::address_cast(velocities.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + velocities.ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.velocities.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(velocities.zs.data())};
+            auto const address{ml::address_cast(source.velocities.zs)};
+            auto const begin{ml::address_cast(velocities.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + velocities.zs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.damages.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(damages.data())};
+            auto const address{ml::address_cast(source.damages.data())};
+            auto const begin{ml::address_cast(damages.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + damages.size() * sizeof(std::int32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.lifetimes_remaining.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(lifetimes_remaining.data())};
+            auto const address{ml::address_cast(source.lifetimes_remaining.data())};
+            auto const begin{ml::address_cast(lifetimes_remaining.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + lifetimes_remaining.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.instigator_handles.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(instigator_handles.data())};
+            auto const address{ml::address_cast(source.instigator_handles.data())};
+            auto const begin{ml::address_cast(instigator_handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + instigator_handles.size() *
                                                            sizeof(RegistryEntityHandle));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.initial_lifetimes.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(initial_lifetimes.data())};
+            auto const address{ml::address_cast(source.initial_lifetimes.data())};
+            auto const begin{ml::address_cast(initial_lifetimes.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + initial_lifetimes.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.spawn_times.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(spawn_times.data())};
+            auto const address{ml::address_cast(source.spawn_times.data())};
+            auto const begin{ml::address_cast(spawn_times.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + spawn_times.size() * sizeof(float));
         }
-        sources.insert(sources.end(), source.sources.begin(), source.sources.end());
-        locations.xs.insert(
-            locations.xs.end(), source.locations.xs.begin(), source.locations.xs.end());
-        locations.ys.insert(
-            locations.ys.end(), source.locations.ys.begin(), source.locations.ys.end());
-        locations.zs.insert(
-            locations.zs.end(), source.locations.zs.begin(), source.locations.zs.end());
+        sources.insert(sources.end(), source.sources.data(), source.sources.data() + count);
+        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
+        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
+        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
         rotations.pitches.insert(rotations.pitches.end(),
-                                 source.rotations.pitches.begin(),
-                                 source.rotations.pitches.end());
-        rotations.yaws.insert(
-            rotations.yaws.end(), source.rotations.yaws.begin(), source.rotations.yaws.end());
-        rotations.rolls.insert(
-            rotations.rolls.end(), source.rotations.rolls.begin(), source.rotations.rolls.end());
+                                 source.rotations.pitches.data(),
+                                 source.rotations.pitches.data() + count);
+        rotations.yaws.insert(rotations.yaws.end(),
+                              source.rotations.yaws.data(),
+                              source.rotations.yaws.data() + count);
+        rotations.rolls.insert(rotations.rolls.end(),
+                               source.rotations.rolls.data(),
+                               source.rotations.rolls.data() + count);
         velocities.xs.insert(
-            velocities.xs.end(), source.velocities.xs.begin(), source.velocities.xs.end());
+            velocities.xs.end(), source.velocities.xs, source.velocities.xs + count);
         velocities.ys.insert(
-            velocities.ys.end(), source.velocities.ys.begin(), source.velocities.ys.end());
+            velocities.ys.end(), source.velocities.ys, source.velocities.ys + count);
         velocities.zs.insert(
-            velocities.zs.end(), source.velocities.zs.begin(), source.velocities.zs.end());
-        damages.insert(damages.end(), source.damages.begin(), source.damages.end());
+            velocities.zs.end(), source.velocities.zs, source.velocities.zs + count);
+        damages.insert(damages.end(), source.damages.data(), source.damages.data() + count);
         lifetimes_remaining.insert(lifetimes_remaining.end(),
-                                   source.lifetimes_remaining.begin(),
-                                   source.lifetimes_remaining.end());
+                                   source.lifetimes_remaining.data(),
+                                   source.lifetimes_remaining.data() + count);
         instigator_handles.insert(instigator_handles.end(),
-                                  source.instigator_handles.begin(),
-                                  source.instigator_handles.end());
+                                  source.instigator_handles.data(),
+                                  source.instigator_handles.data() + count);
         initial_lifetimes.insert(initial_lifetimes.end(),
-                                 source.initial_lifetimes.begin(),
-                                 source.initial_lifetimes.end());
-        spawn_times.insert(spawn_times.end(), source.spawn_times.begin(), source.spawn_times.end());
+                                 source.initial_lifetimes.data(),
+                                 source.initial_lifetimes.data() + count);
+        spawn_times.insert(
+            spawn_times.end(), source.spawn_times.data(), source.spawn_times.data() + count);
     }
     auto get_view() -> View {
         return {
@@ -2215,16 +2209,16 @@ struct SingleAllocationLaserEntitiesStorage
         auto const damages_bytes{elements_to_copy * sizeof(std::int32_t)};
         auto const instigator_handles_bytes{elements_to_copy * sizeof(RegistryEntityHandle)};
         std::memcpy(destination.sources, source.sources.data(), sources_bytes);
-        std::memcpy(destination.locations_xs, source.locations.xs.data(), locations_xs_bytes);
-        std::memcpy(destination.locations_ys, source.locations.ys.data(), locations_xs_bytes);
-        std::memcpy(destination.locations_zs, source.locations.zs.data(), locations_xs_bytes);
+        std::memcpy(destination.locations_xs, source.locations.xs, locations_xs_bytes);
+        std::memcpy(destination.locations_ys, source.locations.ys, locations_xs_bytes);
+        std::memcpy(destination.locations_zs, source.locations.zs, locations_xs_bytes);
         std::memcpy(
             destination.rotations_pitches, source.rotations.pitches.data(), locations_xs_bytes);
         std::memcpy(destination.rotations_yaws, source.rotations.yaws.data(), locations_xs_bytes);
         std::memcpy(destination.rotations_rolls, source.rotations.rolls.data(), locations_xs_bytes);
-        std::memcpy(destination.velocities_xs, source.velocities.xs.data(), locations_xs_bytes);
-        std::memcpy(destination.velocities_ys, source.velocities.ys.data(), locations_xs_bytes);
-        std::memcpy(destination.velocities_zs, source.velocities.zs.data(), locations_xs_bytes);
+        std::memcpy(destination.velocities_xs, source.velocities.xs, locations_xs_bytes);
+        std::memcpy(destination.velocities_ys, source.velocities.ys, locations_xs_bytes);
+        std::memcpy(destination.velocities_zs, source.velocities.zs, locations_xs_bytes);
         std::memcpy(destination.damages, source.damages.data(), damages_bytes);
         std::memcpy(
             destination.lifetimes_remaining, source.lifetimes_remaining.data(), locations_xs_bytes);

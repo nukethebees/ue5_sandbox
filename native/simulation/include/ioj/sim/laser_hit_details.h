@@ -6,6 +6,7 @@
 #include "ioj/sim/laser_source.h"
 #include "ioj/sim/vectors3f.h"
 #include "native_soa/storage.h"
+#include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
 
 namespace ioj::sim {
@@ -18,16 +19,16 @@ struct LaserHitDetailsConstView {
     Vectors3fConstView locations;
     Vectors3fConstView emission_directions;
     std::span<LaserSource const> sources;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
+    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.num()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
     void each_column(Fn&& fn) const {
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
-        fn(emission_directions.xs);
-        fn(emission_directions.ys);
-        fn(emission_directions.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
+        fn(emission_directions.xs_span());
+        fn(emission_directions.ys_span());
+        fn(emission_directions.zs_span());
         fn(sources);
     }
     void validate_array_sizes() const {
@@ -71,16 +72,16 @@ struct LaserHitDetailsView {
     Vectors3fView locations;
     Vectors3fView emission_directions;
     std::span<LaserSource> sources;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
+    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.num()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
     void each_column(Fn&& fn) const {
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
-        fn(emission_directions.xs);
-        fn(emission_directions.ys);
-        fn(emission_directions.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
+        fn(emission_directions.xs_span());
+        fn(emission_directions.ys_span());
+        fn(emission_directions.zs_span());
         fn(sources);
     }
     void validate_array_sizes() const {
@@ -274,69 +275,63 @@ struct LaserHitDetails {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.xs.data())};
+            auto const address{ml::address_cast(source.locations.xs)};
+            auto const begin{ml::address_cast(locations.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.ys.data())};
+            auto const address{ml::address_cast(source.locations.ys)};
+            auto const begin{ml::address_cast(locations.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.zs.data())};
+            auto const address{ml::address_cast(source.locations.zs)};
+            auto const begin{ml::address_cast(locations.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.zs.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.emission_directions.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(emission_directions.xs.data())};
+            auto const address{ml::address_cast(source.emission_directions.xs)};
+            auto const begin{ml::address_cast(emission_directions.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + emission_directions.xs.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.emission_directions.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(emission_directions.ys.data())};
+            auto const address{ml::address_cast(source.emission_directions.ys)};
+            auto const begin{ml::address_cast(emission_directions.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + emission_directions.ys.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.emission_directions.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(emission_directions.zs.data())};
+            auto const address{ml::address_cast(source.emission_directions.zs)};
+            auto const begin{ml::address_cast(emission_directions.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + emission_directions.zs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.sources.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(sources.data())};
+            auto const address{ml::address_cast(source.sources.data())};
+            auto const begin{ml::address_cast(sources.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + sources.size() * sizeof(LaserSource));
         }
-        locations.xs.insert(
-            locations.xs.end(), source.locations.xs.begin(), source.locations.xs.end());
-        locations.ys.insert(
-            locations.ys.end(), source.locations.ys.begin(), source.locations.ys.end());
-        locations.zs.insert(
-            locations.zs.end(), source.locations.zs.begin(), source.locations.zs.end());
+        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
+        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
+        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
         emission_directions.xs.insert(emission_directions.xs.end(),
-                                      source.emission_directions.xs.begin(),
-                                      source.emission_directions.xs.end());
+                                      source.emission_directions.xs,
+                                      source.emission_directions.xs + count);
         emission_directions.ys.insert(emission_directions.ys.end(),
-                                      source.emission_directions.ys.begin(),
-                                      source.emission_directions.ys.end());
+                                      source.emission_directions.ys,
+                                      source.emission_directions.ys + count);
         emission_directions.zs.insert(emission_directions.zs.end(),
-                                      source.emission_directions.zs.begin(),
-                                      source.emission_directions.zs.end());
-        sources.insert(sources.end(), source.sources.begin(), source.sources.end());
+                                      source.emission_directions.zs,
+                                      source.emission_directions.zs + count);
+        sources.insert(sources.end(), source.sources.data(), source.sources.data() + count);
     }
     auto get_view() -> View {
         return {

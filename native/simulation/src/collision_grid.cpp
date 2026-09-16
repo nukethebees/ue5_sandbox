@@ -187,9 +187,7 @@ void are_spheres_in_bounds(GridGeometry const geometry,
                            Vectors3fConstView const centres,
                            float const radius,
                            std::span<std::uint8_t> const results) noexcept {
-    assert(centres.xs.size() == centres.ys.size());
-    assert(centres.xs.size() == centres.zs.size());
-    assert(centres.xs.size() == results.size());
+    assert(static_cast<std::size_t>(centres.num()) == results.size());
     assert(std::isfinite(radius));
     assert(radius >= 0.0f);
 
@@ -201,7 +199,7 @@ void are_spheres_in_bounds(GridGeometry const geometry,
     auto const max_y{half_size.Y - radius};
     auto const max_z{half_size.Z - radius};
 
-    auto const count{centres.xs.size()};
+    auto const count{static_cast<std::size_t>(centres.num())};
     for (std::size_t index{}; index < count; ++index) {
         auto const is_in_bounds{centres.xs[index] >= min_x && centres.xs[index] <= max_x &&
                                 centres.ys[index] >= min_y && centres.ys[index] <= max_y &&

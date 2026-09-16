@@ -1,13 +1,9 @@
 #pragma once
 
-#include "ioj/sim/vector_types.h"
+#include "ioj/sim/vectors3f.h"
 
 #include <cstdint>
 #include <span>
-
-namespace ioj::sim {
-struct Vectors3fConstView;
-}
 
 namespace ioj::sim::collision {
 using Vec3f = Vector3f;

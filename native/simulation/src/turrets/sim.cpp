@@ -34,9 +34,9 @@
 namespace ioj::sim::turrets {
 namespace {
 void copy_vectors(Vectors3fView const destination, Vectors3fConstView const source) {
-    std::ranges::copy(source.xs, destination.xs.begin());
-    std::ranges::copy(source.ys, destination.ys.begin());
-    std::ranges::copy(source.zs, destination.zs.begin());
+    std::ranges::copy(source.xs_span(), destination.xs);
+    std::ranges::copy(source.ys_span(), destination.ys);
+    std::ranges::copy(source.zs_span(), destination.zs);
 }
 void copy_rotators(Rotators3fView const destination, Rotators3fConstView const source) {
     std::ranges::copy(source.pitches, destination.pitches.begin());

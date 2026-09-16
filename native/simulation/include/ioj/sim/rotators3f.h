@@ -5,6 +5,7 @@
 
 #include "ioj/sim/rotator_types.h"
 #include "native_soa/storage.h"
+#include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
 
 namespace ioj::sim {
@@ -227,26 +228,26 @@ struct Rotators3f {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.pitches.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(pitches.data())};
+            auto const address{ml::address_cast(source.pitches.data())};
+            auto const begin{ml::address_cast(pitches.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + pitches.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.yaws.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(yaws.data())};
+            auto const address{ml::address_cast(source.yaws.data())};
+            auto const begin{ml::address_cast(yaws.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + yaws.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.rolls.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(rolls.data())};
+            auto const address{ml::address_cast(source.rolls.data())};
+            auto const begin{ml::address_cast(rolls.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + rolls.size() * sizeof(float));
         }
-        pitches.insert(pitches.end(), source.pitches.begin(), source.pitches.end());
-        yaws.insert(yaws.end(), source.yaws.begin(), source.yaws.end());
-        rolls.insert(rolls.end(), source.rolls.begin(), source.rolls.end());
+        pitches.insert(pitches.end(), source.pitches.data(), source.pitches.data() + count);
+        yaws.insert(yaws.end(), source.yaws.data(), source.yaws.data() + count);
+        rolls.insert(rolls.end(), source.rolls.data(), source.rolls.data() + count);
     }
     auto get_view() -> View {
         return {

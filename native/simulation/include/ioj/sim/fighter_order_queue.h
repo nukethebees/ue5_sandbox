@@ -6,6 +6,7 @@
 #include "ioj/sim/entity_handle.h"
 #include "ioj/sim/fighter_types.h"
 #include "native_soa/storage.h"
+#include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
 
 namespace ioj::sim {
@@ -226,35 +227,35 @@ struct FighterOrderQueue {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.handles.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(handles.data())};
+            auto const address{ml::address_cast(source.handles.data())};
+            auto const begin{ml::address_cast(handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + handles.size() * sizeof(RegistryEntityHandle));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.orders.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(orders.data())};
+            auto const address{ml::address_cast(source.orders.data())};
+            auto const begin{ml::address_cast(orders.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + orders.size() * sizeof(FighterOrder));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.tasks.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(tasks.data())};
+            auto const address{ml::address_cast(source.tasks.data())};
+            auto const begin{ml::address_cast(tasks.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + tasks.size() * sizeof(FighterTask));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.targets.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(targets.data())};
+            auto const address{ml::address_cast(source.targets.data())};
+            auto const begin{ml::address_cast(targets.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + targets.size() * sizeof(RegistryEntityHandle));
         }
-        handles.insert(handles.end(), source.handles.begin(), source.handles.end());
-        orders.insert(orders.end(), source.orders.begin(), source.orders.end());
-        tasks.insert(tasks.end(), source.tasks.begin(), source.tasks.end());
-        targets.insert(targets.end(), source.targets.begin(), source.targets.end());
+        handles.insert(handles.end(), source.handles.data(), source.handles.data() + count);
+        orders.insert(orders.end(), source.orders.data(), source.orders.data() + count);
+        tasks.insert(tasks.end(), source.tasks.data(), source.tasks.data() + count);
+        targets.insert(targets.end(), source.targets.data(), source.targets.data() + count);
     }
     auto get_view() -> View {
         return {

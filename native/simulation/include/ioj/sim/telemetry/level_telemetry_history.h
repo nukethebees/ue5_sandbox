@@ -6,6 +6,7 @@
 #include "ioj/sim/entity_telemetry.h"
 #include "ioj/sim/sim_tick.h"
 #include "native_soa/storage.h"
+#include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
 
 #include <cstdint>
@@ -469,94 +470,96 @@ struct HistoryRows {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.completed_ticks.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(completed_ticks.data())};
+            auto const address{ml::address_cast(source.completed_ticks.data())};
+            auto const begin{ml::address_cast(completed_ticks.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + completed_ticks.size() * sizeof(SimTick));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.validity_masks.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(validity_masks.data())};
+            auto const address{ml::address_cast(source.validity_masks.data())};
+            auto const begin{ml::address_cast(validity_masks.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + validity_masks.size() * sizeof(HistoryFieldMask));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.active_entities.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(active_entities.data())};
+            auto const address{ml::address_cast(source.active_entities.data())};
+            auto const begin{ml::address_cast(active_entities.data())};
             ml::native_soa::require(address < begin || address >= begin + active_entities.size() *
                                                                               sizeof(std::int32_t));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.active_entities_by_type.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(active_entities_by_type.data())};
+            auto const address{ml::address_cast(source.active_entities_by_type.data())};
+            auto const begin{ml::address_cast(active_entities_by_type.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + active_entities_by_type.size() *
                                                            sizeof(EntityTypeCounts));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.active_entities_by_team_and_type.data())};
-            auto const begin{
-                reinterpret_cast<std::uintptr_t>(active_entities_by_team_and_type.data())};
+            auto const address{ml::address_cast(source.active_entities_by_team_and_type.data())};
+            auto const begin{ml::address_cast(active_entities_by_team_and_type.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + active_entities_by_team_and_type.size() *
                                                            sizeof(EntityCounts));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.spawned_entities.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(spawned_entities.data())};
+            auto const address{ml::address_cast(source.spawned_entities.data())};
+            auto const begin{ml::address_cast(spawned_entities.data())};
             ml::native_soa::require(address < begin || address >= begin + spawned_entities.size() *
                                                                               sizeof(std::int32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.destroyed_entities.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(destroyed_entities.data())};
+            auto const address{ml::address_cast(source.destroyed_entities.data())};
+            auto const begin{ml::address_cast(destroyed_entities.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + destroyed_entities.size() * sizeof(std::int32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.kills.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(kills.data())};
+            auto const address{ml::address_cast(source.kills.data())};
+            auto const begin{ml::address_cast(kills.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + kills.size() * sizeof(std::int32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.active_lasers.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(active_lasers.data())};
+            auto const address{ml::address_cast(source.active_lasers.data())};
+            auto const begin{ml::address_cast(active_lasers.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + active_lasers.size() * sizeof(std::int32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.lasers_fired.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(lasers_fired.data())};
+            auto const address{ml::address_cast(source.lasers_fired.data())};
+            auto const begin{ml::address_cast(lasers_fired.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + lasers_fired.size() * sizeof(std::int32_t));
         }
-        completed_ticks.insert(
-            completed_ticks.end(), source.completed_ticks.begin(), source.completed_ticks.end());
-        validity_masks.insert(
-            validity_masks.end(), source.validity_masks.begin(), source.validity_masks.end());
-        active_entities.insert(
-            active_entities.end(), source.active_entities.begin(), source.active_entities.end());
+        completed_ticks.insert(completed_ticks.end(),
+                               source.completed_ticks.data(),
+                               source.completed_ticks.data() + count);
+        validity_masks.insert(validity_masks.end(),
+                              source.validity_masks.data(),
+                              source.validity_masks.data() + count);
+        active_entities.insert(active_entities.end(),
+                               source.active_entities.data(),
+                               source.active_entities.data() + count);
         active_entities_by_type.insert(active_entities_by_type.end(),
-                                       source.active_entities_by_type.begin(),
-                                       source.active_entities_by_type.end());
+                                       source.active_entities_by_type.data(),
+                                       source.active_entities_by_type.data() + count);
         active_entities_by_team_and_type.insert(active_entities_by_team_and_type.end(),
-                                                source.active_entities_by_team_and_type.begin(),
-                                                source.active_entities_by_team_and_type.end());
-        spawned_entities.insert(
-            spawned_entities.end(), source.spawned_entities.begin(), source.spawned_entities.end());
+                                                source.active_entities_by_team_and_type.data(),
+                                                source.active_entities_by_team_and_type.data() +
+                                                    count);
+        spawned_entities.insert(spawned_entities.end(),
+                                source.spawned_entities.data(),
+                                source.spawned_entities.data() + count);
         destroyed_entities.insert(destroyed_entities.end(),
-                                  source.destroyed_entities.begin(),
-                                  source.destroyed_entities.end());
-        kills.insert(kills.end(), source.kills.begin(), source.kills.end());
+                                  source.destroyed_entities.data(),
+                                  source.destroyed_entities.data() + count);
+        kills.insert(kills.end(), source.kills.data(), source.kills.data() + count);
         active_lasers.insert(
-            active_lasers.end(), source.active_lasers.begin(), source.active_lasers.end());
+            active_lasers.end(), source.active_lasers.data(), source.active_lasers.data() + count);
         lasers_fired.insert(
-            lasers_fired.end(), source.lasers_fired.begin(), source.lasers_fired.end());
+            lasers_fired.end(), source.lasers_fired.data(), source.lasers_fired.data() + count);
     }
     auto get_view() -> View {
         return {

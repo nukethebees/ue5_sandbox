@@ -5,6 +5,7 @@
 
 #include "ioj/sim/entity_handle.h"
 #include "native_soa/storage.h"
+#include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
 
 #include <cstring>
@@ -448,103 +449,109 @@ struct EntityCellDataColumns {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.min_point_xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(min_point_xs.data())};
+            auto const address{ml::address_cast(source.min_point_xs.data())};
+            auto const begin{ml::address_cast(min_point_xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + min_point_xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.min_point_ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(min_point_ys.data())};
+            auto const address{ml::address_cast(source.min_point_ys.data())};
+            auto const begin{ml::address_cast(min_point_ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + min_point_ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.min_point_zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(min_point_zs.data())};
+            auto const address{ml::address_cast(source.min_point_zs.data())};
+            auto const begin{ml::address_cast(min_point_zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + min_point_zs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.max_point_xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(max_point_xs.data())};
+            auto const address{ml::address_cast(source.max_point_xs.data())};
+            auto const begin{ml::address_cast(max_point_xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + max_point_xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.max_point_ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(max_point_ys.data())};
+            auto const address{ml::address_cast(source.max_point_ys.data())};
+            auto const begin{ml::address_cast(max_point_ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + max_point_ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.max_point_zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(max_point_zs.data())};
+            auto const address{ml::address_cast(source.max_point_zs.data())};
+            auto const begin{ml::address_cast(max_point_zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + max_point_zs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.min_cell_xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(min_cell_xs.data())};
+            auto const address{ml::address_cast(source.min_cell_xs.data())};
+            auto const begin{ml::address_cast(min_cell_xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + min_cell_xs.size() * sizeof(std::int32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.min_cell_ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(min_cell_ys.data())};
+            auto const address{ml::address_cast(source.min_cell_ys.data())};
+            auto const begin{ml::address_cast(min_cell_ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + min_cell_ys.size() * sizeof(std::int32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.min_cell_zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(min_cell_zs.data())};
+            auto const address{ml::address_cast(source.min_cell_zs.data())};
+            auto const begin{ml::address_cast(min_cell_zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + min_cell_zs.size() * sizeof(std::int32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.max_cell_xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(max_cell_xs.data())};
+            auto const address{ml::address_cast(source.max_cell_xs.data())};
+            auto const begin{ml::address_cast(max_cell_xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + max_cell_xs.size() * sizeof(std::int32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.max_cell_ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(max_cell_ys.data())};
+            auto const address{ml::address_cast(source.max_cell_ys.data())};
+            auto const begin{ml::address_cast(max_cell_ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + max_cell_ys.size() * sizeof(std::int32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.max_cell_zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(max_cell_zs.data())};
+            auto const address{ml::address_cast(source.max_cell_zs.data())};
+            auto const begin{ml::address_cast(max_cell_zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + max_cell_zs.size() * sizeof(std::int32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.handles.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(handles.data())};
+            auto const address{ml::address_cast(source.handles.data())};
+            auto const begin{ml::address_cast(handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + handles.size() * sizeof(RegistryEntityHandle));
         }
         min_point_xs.insert(
-            min_point_xs.end(), source.min_point_xs.begin(), source.min_point_xs.end());
+            min_point_xs.end(), source.min_point_xs.data(), source.min_point_xs.data() + count);
         min_point_ys.insert(
-            min_point_ys.end(), source.min_point_ys.begin(), source.min_point_ys.end());
+            min_point_ys.end(), source.min_point_ys.data(), source.min_point_ys.data() + count);
         min_point_zs.insert(
-            min_point_zs.end(), source.min_point_zs.begin(), source.min_point_zs.end());
+            min_point_zs.end(), source.min_point_zs.data(), source.min_point_zs.data() + count);
         max_point_xs.insert(
-            max_point_xs.end(), source.max_point_xs.begin(), source.max_point_xs.end());
+            max_point_xs.end(), source.max_point_xs.data(), source.max_point_xs.data() + count);
         max_point_ys.insert(
-            max_point_ys.end(), source.max_point_ys.begin(), source.max_point_ys.end());
+            max_point_ys.end(), source.max_point_ys.data(), source.max_point_ys.data() + count);
         max_point_zs.insert(
-            max_point_zs.end(), source.max_point_zs.begin(), source.max_point_zs.end());
-        min_cell_xs.insert(min_cell_xs.end(), source.min_cell_xs.begin(), source.min_cell_xs.end());
-        min_cell_ys.insert(min_cell_ys.end(), source.min_cell_ys.begin(), source.min_cell_ys.end());
-        min_cell_zs.insert(min_cell_zs.end(), source.min_cell_zs.begin(), source.min_cell_zs.end());
-        max_cell_xs.insert(max_cell_xs.end(), source.max_cell_xs.begin(), source.max_cell_xs.end());
-        max_cell_ys.insert(max_cell_ys.end(), source.max_cell_ys.begin(), source.max_cell_ys.end());
-        max_cell_zs.insert(max_cell_zs.end(), source.max_cell_zs.begin(), source.max_cell_zs.end());
-        handles.insert(handles.end(), source.handles.begin(), source.handles.end());
+            max_point_zs.end(), source.max_point_zs.data(), source.max_point_zs.data() + count);
+        min_cell_xs.insert(
+            min_cell_xs.end(), source.min_cell_xs.data(), source.min_cell_xs.data() + count);
+        min_cell_ys.insert(
+            min_cell_ys.end(), source.min_cell_ys.data(), source.min_cell_ys.data() + count);
+        min_cell_zs.insert(
+            min_cell_zs.end(), source.min_cell_zs.data(), source.min_cell_zs.data() + count);
+        max_cell_xs.insert(
+            max_cell_xs.end(), source.max_cell_xs.data(), source.max_cell_xs.data() + count);
+        max_cell_ys.insert(
+            max_cell_ys.end(), source.max_cell_ys.data(), source.max_cell_ys.data() + count);
+        max_cell_zs.insert(
+            max_cell_zs.end(), source.max_cell_zs.data(), source.max_cell_zs.data() + count);
+        handles.insert(handles.end(), source.handles.data(), source.handles.data() + count);
     }
     auto get_view() -> View {
         return {

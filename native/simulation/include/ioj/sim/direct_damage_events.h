@@ -5,6 +5,7 @@
 
 #include "ioj/sim/entity_handle.h"
 #include "native_soa/storage.h"
+#include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
 
 namespace ioj::sim {
@@ -216,30 +217,33 @@ struct DirectDamageEvents {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.damaged_entities.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(damaged_entities.data())};
+            auto const address{ml::address_cast(source.damaged_entities.data())};
+            auto const begin{ml::address_cast(damaged_entities.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + damaged_entities.size() *
                                                            sizeof(RegistryEntityHandle));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.damage_amounts.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(damage_amounts.data())};
+            auto const address{ml::address_cast(source.damage_amounts.data())};
+            auto const begin{ml::address_cast(damage_amounts.data())};
             ml::native_soa::require(address < begin || address >= begin + damage_amounts.size() *
                                                                               sizeof(std::int32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.instigators.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(instigators.data())};
+            auto const address{ml::address_cast(source.instigators.data())};
+            auto const begin{ml::address_cast(instigators.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + instigators.size() * sizeof(RegistryEntityHandle));
         }
-        damaged_entities.insert(
-            damaged_entities.end(), source.damaged_entities.begin(), source.damaged_entities.end());
-        damage_amounts.insert(
-            damage_amounts.end(), source.damage_amounts.begin(), source.damage_amounts.end());
-        instigators.insert(instigators.end(), source.instigators.begin(), source.instigators.end());
+        damaged_entities.insert(damaged_entities.end(),
+                                source.damaged_entities.data(),
+                                source.damaged_entities.data() + count);
+        damage_amounts.insert(damage_amounts.end(),
+                              source.damage_amounts.data(),
+                              source.damage_amounts.data() + count);
+        instigators.insert(
+            instigators.end(), source.instigators.data(), source.instigators.data() + count);
     }
     auto get_view() -> View {
         return {

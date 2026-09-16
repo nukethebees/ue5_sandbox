@@ -56,6 +56,18 @@ auto source_member_expression(SingleAllocationColumn const& column) -> Expr {
     return result;
 }
 
+auto source_data_expression(SingleAllocationModel const& model,
+                            SingleAllocationColumn const& column) -> Expr {
+    auto source{source_member_expression(column)};
+    if (model.dialect.source_data_member == "data" && column.member_path.size() == 2) {
+        auto const shape{compact_vector_for(model, {column.member_path.front()})};
+        if (shape != nullptr && shape->dimensions == 3 && shape->element_type == "float") {
+            return source;
+        }
+    }
+    return call(member_access(std::move(source), model.dialect.source_data_member));
+}
+
 auto copy_size_nodes(SingleAllocationModel const& model, std::string const& count) -> Nodes {
     Nodes result;
     result.reserve(model.unique_types.size());
@@ -368,8 +380,7 @@ auto append_node(SingleAllocationModel const& model) -> Node {
         body.add(
             ExpressionStmt{call(copy_function(model),
                                 {member_access(named("destination"), column.flattened_identifier),
-                                 call(member_access(source_member_expression(column),
-                                                    model.dialect.source_data_member)),
+                                 source_data_expression(model, column),
                                  named(column.byte_count_identifier + "_bytes")})});
     }
     return inline_function(FunctionSpec{

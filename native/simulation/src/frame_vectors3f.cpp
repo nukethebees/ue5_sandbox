@@ -33,10 +33,10 @@ void FrameVectors3f::set(size_type const index, Vector3f const value) {
 }
 
 auto FrameVectors3f::get_view() noexcept -> Vectors3fView {
-    return {xs, ys, zs};
+    return {xs.data(), ys.data(), zs.data(), num()};
 }
 auto FrameVectors3f::get_view() const noexcept -> Vectors3fConstView {
-    return {xs, ys, zs};
+    return {xs.data(), ys.data(), zs.data(), num()};
 }
 auto FrameVectors3f::get_const_view() const noexcept -> Vectors3fConstView {
     return get_view();

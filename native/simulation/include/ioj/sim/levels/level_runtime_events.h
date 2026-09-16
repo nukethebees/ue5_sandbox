@@ -9,6 +9,7 @@
 #include "ioj/sim/rotators3f.h"
 #include "ioj/sim/vectors3f.h"
 #include "native_soa/storage.h"
+#include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
 
 namespace ioj::sim {
@@ -208,26 +209,26 @@ struct LevelSpawnGroups {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.types.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(types.data())};
+            auto const address{ml::address_cast(source.types.data())};
+            auto const begin{ml::address_cast(types.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + types.size() * sizeof(EntityType));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.offsets.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(offsets.data())};
+            auto const address{ml::address_cast(source.offsets.data())};
+            auto const begin{ml::address_cast(offsets.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + offsets.size() * sizeof(std::int32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.counts.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(counts.data())};
+            auto const address{ml::address_cast(source.counts.data())};
+            auto const begin{ml::address_cast(counts.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + counts.size() * sizeof(LevelEventCount));
         }
-        types.insert(types.end(), source.types.begin(), source.types.end());
-        offsets.insert(offsets.end(), source.offsets.begin(), source.offsets.end());
-        counts.insert(counts.end(), source.counts.begin(), source.counts.end());
+        types.insert(types.end(), source.types.data(), source.types.data() + count);
+        offsets.insert(offsets.end(), source.offsets.data(), source.offsets.data() + count);
+        counts.insert(counts.end(), source.counts.data(), source.counts.data() + count);
     }
     auto get_view() -> View {
         return {
@@ -322,9 +323,9 @@ struct LevelCapitalSpawnEventsConstView {
     void each_column(Fn&& fn) const {
         fn(entity_indices);
         fn(target_entity_indices);
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
         fn(rotations.pitches);
         fn(rotations.yaws);
         fn(rotations.rolls);
@@ -403,9 +404,9 @@ struct LevelCapitalSpawnEventsView {
     void each_column(Fn&& fn) const {
         fn(entity_indices);
         fn(target_entity_indices);
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
         fn(rotations.pitches);
         fn(rotations.yaws);
         fn(rotations.rolls);
@@ -698,109 +699,106 @@ struct LevelCapitalSpawnEvents {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.entity_indices.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(entity_indices.data())};
+            auto const address{ml::address_cast(source.entity_indices.data())};
+            auto const begin{ml::address_cast(entity_indices.data())};
             ml::native_soa::require(address < begin || address >= begin + entity_indices.size() *
                                                                               sizeof(std::int32_t));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.target_entity_indices.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(target_entity_indices.data())};
+            auto const address{ml::address_cast(source.target_entity_indices.data())};
+            auto const begin{ml::address_cast(target_entity_indices.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_entity_indices.size() *
                                                            sizeof(std::int32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.xs.data())};
+            auto const address{ml::address_cast(source.locations.xs)};
+            auto const begin{ml::address_cast(locations.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.ys.data())};
+            auto const address{ml::address_cast(source.locations.ys)};
+            auto const begin{ml::address_cast(locations.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.zs.data())};
+            auto const address{ml::address_cast(source.locations.zs)};
+            auto const begin{ml::address_cast(locations.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.zs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.rotations.pitches.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(rotations.pitches.data())};
+            auto const address{ml::address_cast(source.rotations.pitches.data())};
+            auto const begin{ml::address_cast(rotations.pitches.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + rotations.pitches.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.rotations.yaws.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(rotations.yaws.data())};
+            auto const address{ml::address_cast(source.rotations.yaws.data())};
+            auto const begin{ml::address_cast(rotations.yaws.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + rotations.yaws.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.rotations.rolls.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(rotations.rolls.data())};
+            auto const address{ml::address_cast(source.rotations.rolls.data())};
+            auto const begin{ml::address_cast(rotations.rolls.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + rotations.rolls.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.teams.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(teams.data())};
+            auto const address{ml::address_cast(source.teams.data())};
+            auto const begin{ml::address_cast(teams.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + teams.size() * sizeof(Team));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.healths.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(healths.data())};
+            auto const address{ml::address_cast(source.healths.data())};
+            auto const begin{ml::address_cast(healths.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + healths.size() * sizeof(Health));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.initial_fighter_spawn_delays.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(initial_fighter_spawn_delays.data())};
+            auto const address{ml::address_cast(source.initial_fighter_spawn_delays.data())};
+            auto const begin{ml::address_cast(initial_fighter_spawn_delays.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + initial_fighter_spawn_delays.size() *
                                                            sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.fighter_spawn_cooldowns.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(fighter_spawn_cooldowns.data())};
+            auto const address{ml::address_cast(source.fighter_spawn_cooldowns.data())};
+            auto const begin{ml::address_cast(fighter_spawn_cooldowns.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + fighter_spawn_cooldowns.size() * sizeof(float));
         }
-        entity_indices.insert(
-            entity_indices.end(), source.entity_indices.begin(), source.entity_indices.end());
+        entity_indices.insert(entity_indices.end(),
+                              source.entity_indices.data(),
+                              source.entity_indices.data() + count);
         target_entity_indices.insert(target_entity_indices.end(),
-                                     source.target_entity_indices.begin(),
-                                     source.target_entity_indices.end());
-        locations.xs.insert(
-            locations.xs.end(), source.locations.xs.begin(), source.locations.xs.end());
-        locations.ys.insert(
-            locations.ys.end(), source.locations.ys.begin(), source.locations.ys.end());
-        locations.zs.insert(
-            locations.zs.end(), source.locations.zs.begin(), source.locations.zs.end());
+                                     source.target_entity_indices.data(),
+                                     source.target_entity_indices.data() + count);
+        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
+        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
+        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
         rotations.pitches.insert(rotations.pitches.end(),
-                                 source.rotations.pitches.begin(),
-                                 source.rotations.pitches.end());
-        rotations.yaws.insert(
-            rotations.yaws.end(), source.rotations.yaws.begin(), source.rotations.yaws.end());
-        rotations.rolls.insert(
-            rotations.rolls.end(), source.rotations.rolls.begin(), source.rotations.rolls.end());
-        teams.insert(teams.end(), source.teams.begin(), source.teams.end());
-        healths.insert(healths.end(), source.healths.begin(), source.healths.end());
+                                 source.rotations.pitches.data(),
+                                 source.rotations.pitches.data() + count);
+        rotations.yaws.insert(rotations.yaws.end(),
+                              source.rotations.yaws.data(),
+                              source.rotations.yaws.data() + count);
+        rotations.rolls.insert(rotations.rolls.end(),
+                               source.rotations.rolls.data(),
+                               source.rotations.rolls.data() + count);
+        teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
+        healths.insert(healths.end(), source.healths.data(), source.healths.data() + count);
         initial_fighter_spawn_delays.insert(initial_fighter_spawn_delays.end(),
-                                            source.initial_fighter_spawn_delays.begin(),
-                                            source.initial_fighter_spawn_delays.end());
+                                            source.initial_fighter_spawn_delays.data(),
+                                            source.initial_fighter_spawn_delays.data() + count);
         fighter_spawn_cooldowns.insert(fighter_spawn_cooldowns.end(),
-                                       source.fighter_spawn_cooldowns.begin(),
-                                       source.fighter_spawn_cooldowns.end());
+                                       source.fighter_spawn_cooldowns.data(),
+                                       source.fighter_spawn_cooldowns.data() + count);
     }
     auto get_view() -> View {
         return {
@@ -910,9 +908,9 @@ struct LevelTurretSpawnEventsConstView {
     template <typename Fn>
     void each_column(Fn&& fn) const {
         fn(entity_indices);
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
         fn(rotations.pitches);
         fn(rotations.yaws);
         fn(rotations.rolls);
@@ -981,9 +979,9 @@ struct LevelTurretSpawnEventsView {
     template <typename Fn>
     void each_column(Fn&& fn) const {
         fn(entity_indices);
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
         fn(rotations.pitches);
         fn(rotations.yaws);
         fn(rotations.rolls);
@@ -1236,84 +1234,84 @@ struct LevelTurretSpawnEvents {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.entity_indices.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(entity_indices.data())};
+            auto const address{ml::address_cast(source.entity_indices.data())};
+            auto const begin{ml::address_cast(entity_indices.data())};
             ml::native_soa::require(address < begin || address >= begin + entity_indices.size() *
                                                                               sizeof(std::int32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.xs.data())};
+            auto const address{ml::address_cast(source.locations.xs)};
+            auto const begin{ml::address_cast(locations.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.ys.data())};
+            auto const address{ml::address_cast(source.locations.ys)};
+            auto const begin{ml::address_cast(locations.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.zs.data())};
+            auto const address{ml::address_cast(source.locations.zs)};
+            auto const begin{ml::address_cast(locations.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.zs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.rotations.pitches.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(rotations.pitches.data())};
+            auto const address{ml::address_cast(source.rotations.pitches.data())};
+            auto const begin{ml::address_cast(rotations.pitches.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + rotations.pitches.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.rotations.yaws.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(rotations.yaws.data())};
+            auto const address{ml::address_cast(source.rotations.yaws.data())};
+            auto const begin{ml::address_cast(rotations.yaws.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + rotations.yaws.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.rotations.rolls.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(rotations.rolls.data())};
+            auto const address{ml::address_cast(source.rotations.rolls.data())};
+            auto const begin{ml::address_cast(rotations.rolls.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + rotations.rolls.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.teams.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(teams.data())};
+            auto const address{ml::address_cast(source.teams.data())};
+            auto const begin{ml::address_cast(teams.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + teams.size() * sizeof(Team));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.healths.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(healths.data())};
+            auto const address{ml::address_cast(source.healths.data())};
+            auto const begin{ml::address_cast(healths.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + healths.size() * sizeof(Health));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.laser_damages.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(laser_damages.data())};
+            auto const address{ml::address_cast(source.laser_damages.data())};
+            auto const begin{ml::address_cast(laser_damages.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + laser_damages.size() * sizeof(std::int32_t));
         }
-        entity_indices.insert(
-            entity_indices.end(), source.entity_indices.begin(), source.entity_indices.end());
-        locations.xs.insert(
-            locations.xs.end(), source.locations.xs.begin(), source.locations.xs.end());
-        locations.ys.insert(
-            locations.ys.end(), source.locations.ys.begin(), source.locations.ys.end());
-        locations.zs.insert(
-            locations.zs.end(), source.locations.zs.begin(), source.locations.zs.end());
+        entity_indices.insert(entity_indices.end(),
+                              source.entity_indices.data(),
+                              source.entity_indices.data() + count);
+        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
+        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
+        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
         rotations.pitches.insert(rotations.pitches.end(),
-                                 source.rotations.pitches.begin(),
-                                 source.rotations.pitches.end());
-        rotations.yaws.insert(
-            rotations.yaws.end(), source.rotations.yaws.begin(), source.rotations.yaws.end());
-        rotations.rolls.insert(
-            rotations.rolls.end(), source.rotations.rolls.begin(), source.rotations.rolls.end());
-        teams.insert(teams.end(), source.teams.begin(), source.teams.end());
-        healths.insert(healths.end(), source.healths.begin(), source.healths.end());
+                                 source.rotations.pitches.data(),
+                                 source.rotations.pitches.data() + count);
+        rotations.yaws.insert(rotations.yaws.end(),
+                              source.rotations.yaws.data(),
+                              source.rotations.yaws.data() + count);
+        rotations.rolls.insert(rotations.rolls.end(),
+                               source.rotations.rolls.data(),
+                               source.rotations.rolls.data() + count);
+        teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
+        healths.insert(healths.end(), source.healths.data(), source.healths.data() + count);
         laser_damages.insert(
-            laser_damages.end(), source.laser_damages.begin(), source.laser_damages.end());
+            laser_damages.end(), source.laser_damages.data(), source.laser_damages.data() + count);
     }
     auto get_view() -> View {
         return {
@@ -1413,9 +1411,9 @@ struct LevelSpinnerSpawnEventsConstView {
     template <typename Fn>
     void each_column(Fn&& fn) const {
         fn(entity_indices);
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
         fn(yaws);
         fn(initial_fire_point_indices);
     }
@@ -1474,9 +1472,9 @@ struct LevelSpinnerSpawnEventsView {
     template <typename Fn>
     void each_column(Fn&& fn) const {
         fn(entity_indices);
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
         fn(yaws);
         fn(initial_fire_point_indices);
     }
@@ -1666,55 +1664,52 @@ struct LevelSpinnerSpawnEvents {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.entity_indices.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(entity_indices.data())};
+            auto const address{ml::address_cast(source.entity_indices.data())};
+            auto const begin{ml::address_cast(entity_indices.data())};
             ml::native_soa::require(address < begin || address >= begin + entity_indices.size() *
                                                                               sizeof(std::int32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.xs.data())};
+            auto const address{ml::address_cast(source.locations.xs)};
+            auto const begin{ml::address_cast(locations.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.ys.data())};
+            auto const address{ml::address_cast(source.locations.ys)};
+            auto const begin{ml::address_cast(locations.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.zs.data())};
+            auto const address{ml::address_cast(source.locations.zs)};
+            auto const begin{ml::address_cast(locations.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.zs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.yaws.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(yaws.data())};
+            auto const address{ml::address_cast(source.yaws.data())};
+            auto const begin{ml::address_cast(yaws.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + yaws.size() * sizeof(float));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.initial_fire_point_indices.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(initial_fire_point_indices.data())};
+            auto const address{ml::address_cast(source.initial_fire_point_indices.data())};
+            auto const begin{ml::address_cast(initial_fire_point_indices.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + initial_fire_point_indices.size() *
                                                            sizeof(std::int32_t));
         }
-        entity_indices.insert(
-            entity_indices.end(), source.entity_indices.begin(), source.entity_indices.end());
-        locations.xs.insert(
-            locations.xs.end(), source.locations.xs.begin(), source.locations.xs.end());
-        locations.ys.insert(
-            locations.ys.end(), source.locations.ys.begin(), source.locations.ys.end());
-        locations.zs.insert(
-            locations.zs.end(), source.locations.zs.begin(), source.locations.zs.end());
-        yaws.insert(yaws.end(), source.yaws.begin(), source.yaws.end());
+        entity_indices.insert(entity_indices.end(),
+                              source.entity_indices.data(),
+                              source.entity_indices.data() + count);
+        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
+        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
+        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
+        yaws.insert(yaws.end(), source.yaws.data(), source.yaws.data() + count);
         initial_fire_point_indices.insert(initial_fire_point_indices.end(),
-                                          source.initial_fire_point_indices.begin(),
-                                          source.initial_fire_point_indices.end());
+                                          source.initial_fire_point_indices.data(),
+                                          source.initial_fire_point_indices.data() + count);
     }
     auto get_view() -> View {
         return {
@@ -1993,26 +1988,26 @@ struct LevelMissionEventGroups {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.types.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(types.data())};
+            auto const address{ml::address_cast(source.types.data())};
+            auto const begin{ml::address_cast(types.data())};
             ml::native_soa::require(
                 address < begin || address >= begin + types.size() * sizeof(LevelMissionEventType));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.offsets.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(offsets.data())};
+            auto const address{ml::address_cast(source.offsets.data())};
+            auto const begin{ml::address_cast(offsets.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + offsets.size() * sizeof(std::int32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.counts.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(counts.data())};
+            auto const address{ml::address_cast(source.counts.data())};
+            auto const begin{ml::address_cast(counts.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + counts.size() * sizeof(LevelEventCount));
         }
-        types.insert(types.end(), source.types.begin(), source.types.end());
-        offsets.insert(offsets.end(), source.offsets.begin(), source.offsets.end());
-        counts.insert(counts.end(), source.counts.begin(), source.counts.end());
+        types.insert(types.end(), source.types.data(), source.types.data() + count);
+        offsets.insert(offsets.end(), source.offsets.data(), source.offsets.data() + count);
+        counts.insert(counts.end(), source.counts.data(), source.counts.data() + count);
     }
     auto get_view() -> View {
         return {

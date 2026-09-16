@@ -1,6 +1,8 @@
 #include "fixed_soa_internal.h"
 #include "lowering_utils.h"
 
+#include <array>
+#include <ranges>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
@@ -28,6 +30,23 @@ void render_arguments(std::ostringstream& out, std::span<RowParameter const> con
     for (auto const& parameter : parameters) {
         out << ", new_" << parameter.name;
     }
+}
+
+auto is_vector3f_schema(SoaSchema const& schema, std::map<std::string, CppType> const& types)
+    -> bool {
+    if (schema.members.size() != 3) {
+        return false;
+    }
+
+    static constexpr std::array<std::string_view, 3> components{"xs", "ys", "zs"};
+    for (std::size_t index{}; index < components.size(); ++index) {
+        auto const& member{schema.members[index]};
+        if (member.kind != SoaMemberKind::array || member.name != components[index] ||
+            native_spelling(resolve_type(member.type, types).spelling) != "float") {
+            return false;
+        }
+    }
+    return true;
 }
 }
 
@@ -60,10 +79,15 @@ auto lower_native_soa(SoaSchema const& schema,
 
     auto const view{schema.view_name.value_or(schema.name + "View")};
     auto const const_view{schema.const_view_name.value_or(schema.name + "ConstView")};
+    auto const vector3f_schema{is_vector3f_schema(schema, types)};
     std::vector<TypeDependency> dependencies{
+        {"address_cast", "sandbox/core/address_cast.h", {}},
         {"native_storage", "native_soa/storage.h", {}},
         {"soa_permutation", "sandbox/core/soa_permutation.h", {}},
     };
+    if (vector3f_schema) {
+        dependencies.push_back({"vector_soa_view", "sandbox/core/vector_soa_view.h", {}});
+    }
     std::vector<RowParameter> row_parameters;
     for (auto const& member : layout.members) {
         if (member.schema->kind == SoaMemberKind::nested) {
@@ -95,110 +119,146 @@ auto lower_native_soa(SoaSchema const& schema,
     }
     std::ostringstream out;
 
-    out << "struct " << view << ";\n"
-        << "struct " << const_view << ";\n";
+    if (vector3f_schema) {
+        out << "using " << view << " = ml::Vector3fSoAView;\n"
+            << "using " << const_view << " = ml::Vector3fSoAConstView;\n";
+    } else {
+        out << "struct " << view << ";\n"
+            << "struct " << const_view << ";\n";
+    }
 
-    for (bool const immutable : {true, false}) {
-        auto const view_type{immutable ? const_view : view};
-        out << "struct " << view_type << " {\n"
-            << "using View = " << view << ";\n"
-            << "using ConstView = " << const_view << ";\n"
-            << "using size_type = std::int32_t;\n";
-        if (equivalent_type.has_value()) {
-            out << "using equivalent_type = " << native_spelling(equivalent_type->spelling) << ";\n"
-                << "auto operator[](size_type const index) const -> equivalent_type { return ";
-            if (equivalent_constructor.empty()) {
-                out << "{";
-            } else {
-                out << equivalent_constructor << "(";
-            }
-            for (std::size_t index{}; index < layout.members.size(); ++index) {
-                if (index > 0) {
-                    out << ", ";
-                }
-                out << layout.members[index].schema->name << "[static_cast<std::size_t>(index)]";
-            }
-            out << (equivalent_constructor.empty() ? "}; }\n" : "); }\n");
+    auto const nested_vector3f = [&](std::string const& member_name) {
+        auto const member = std::ranges::find_if(
+            layout.members, [&](auto const& value) { return value.schema->name == member_name; });
+        return member != layout.members.end() && member->schema->kind == SoaMemberKind::nested &&
+               is_vector3f_schema(*schemas.at(*member->schema->nested_schema), types);
+    };
+    auto const view_leaf = [&](auto const& leaf, std::string_view const prefix = {}) {
+        auto expression{std::string{prefix} + join(leaf.path, ".")};
+        if (vector3f_schema || nested_vector3f(leaf.path.front())) {
+            expression += "_span()";
         }
-        for (auto const& member : layout.members) {
-            auto const& resolved{member.member};
-            if (member.schema->kind == SoaMemberKind::array) {
-                out << "std::span<" << native_spelling(resolved.element_type.spelling)
-                    << (immutable ? " const" : "") << "> " << member.schema->name << ";\n";
-            } else {
-                auto const& child{*schemas.at(*member.schema->nested_schema)};
-                out << (immutable ? child.const_view_name.value_or(child.name + "ConstView")
-                                  : child.view_name.value_or(child.name + "View"))
-                    << " " << member.schema->name << ";\n";
-            }
+        return expression;
+    };
+    auto const view_leaf_data = [&](auto const& leaf, std::string_view const prefix = {}) {
+        auto expression{std::string{prefix} + join(leaf.path, ".")};
+        if (!vector3f_schema && !nested_vector3f(leaf.path.front())) {
+            expression += ".data()";
         }
+        return expression;
+    };
 
-        out << "auto num() const noexcept -> size_type { return static_cast<size_type>("
-            << join(layout.leaves.front().path, ".") << ".size()); }\n"
-            << "auto is_empty() const noexcept -> bool { return num() == 0; }\n"
-            << "template <typename Fn> void each_column(Fn&& fn) const {\n";
-        for (auto const& leaf : layout.leaves) {
-            out << "fn(" << join(leaf.path, ".") << ");\n";
-        }
-        out << "}\n"
-            << "void validate_array_sizes() const { auto const count{num()}; "
-               "each_column([count](auto "
-               "column) { ml::native_soa::require(column.size() == "
-               "static_cast<std::size_t>(count)); }); }\n"
-            << "auto slice(size_type const offset, size_type const count) const -> " << view_type
-            << " { ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() && count "
-               "<= num() - offset); return {\n";
-        for (auto const& member : layout.members) {
-            out << member.schema->name
-                << (member.schema->kind == SoaMemberKind::array
-                        ? ".subspan(static_cast<std::size_t>(offset), "
-                          "static_cast<std::size_t>(count))"
-                        : ".slice(offset, count)")
-                << ",\n";
-        }
-        out << "}; }\n"
-            << "auto get_view() const -> " << view_type << " { return *this; }\n"
-            << "auto get_view(size_type const offset, size_type const count) const -> " << view_type
-            << " { return slice(offset, count); }\n"
-            << "auto get_const_view() const -> ConstView { return {\n";
-        for (auto const& member : layout.members) {
-            out << member.schema->name;
-            if (member.schema->kind == SoaMemberKind::nested) {
-                out << ".get_const_view()";
-            }
-            out << ",\n";
-        }
-        out << "}; }\n"
-            << "auto get_const_view(size_type const offset, size_type const count) const -> "
-               "ConstView { return get_const_view().slice(offset, count); }\n"
-            << "auto left(size_type const count) const -> " << view_type
-            << " { return slice(0, count); }\n"
-            << "auto right(size_type const count) const -> " << view_type
-            << " { return slice(num() - count, count); }\n";
-
-        if (!immutable) {
-            out << "void set(size_type const index";
-            render_parameters(out, row_parameters);
-            out << ") const { ml::native_soa::require(index >= 0 && index < num());\n";
-            for (auto const& parameter : row_parameters) {
-                if (parameter.nested) {
-                    out << parameter.column << ".set(index, new_" << parameter.name << ");\n";
-                } else {
-                    out << parameter.column << "[static_cast<std::size_t>(index)] = new_"
-                        << parameter.name << ";\n";
-                }
-            }
-            out << "}\n";
+    if (!vector3f_schema) {
+        for (bool const immutable : {true, false}) {
+            auto const view_type{immutable ? const_view : view};
+            out << "struct " << view_type << " {\n"
+                << "using View = " << view << ";\n"
+                << "using ConstView = " << const_view << ";\n"
+                << "using size_type = std::int32_t;\n";
             if (equivalent_type.has_value()) {
-                out << "void set(size_type const index, equivalent_type const value) const { "
-                       "set(index";
-                for (std::size_t index{}; index < layout.members.size(); ++index) {
-                    out << ", value." << equivalent_members[index];
+                out << "using equivalent_type = " << native_spelling(equivalent_type->spelling)
+                    << ";\n"
+                    << "auto operator[](size_type const index) const -> equivalent_type { return ";
+                if (equivalent_constructor.empty()) {
+                    out << "{";
+                } else {
+                    out << equivalent_constructor << "(";
                 }
-                out << "); }\n";
+                for (std::size_t index{}; index < layout.members.size(); ++index) {
+                    if (index > 0) {
+                        out << ", ";
+                    }
+                    out << layout.members[index].schema->name
+                        << "[static_cast<std::size_t>(index)]";
+                }
+                out << (equivalent_constructor.empty() ? "}; }\n" : "); }\n");
             }
+            for (auto const& member : layout.members) {
+                auto const& resolved{member.member};
+                if (member.schema->kind == SoaMemberKind::array) {
+                    out << "std::span<" << native_spelling(resolved.element_type.spelling)
+                        << (immutable ? " const" : "") << "> " << member.schema->name << ";\n";
+                } else {
+                    auto const& child{*schemas.at(*member.schema->nested_schema)};
+                    out << (immutable ? child.const_view_name.value_or(child.name + "ConstView")
+                                      : child.view_name.value_or(child.name + "View"))
+                        << " " << member.schema->name << ";\n";
+                }
+            }
+
+            auto const& first_leaf{layout.leaves.front()};
+            auto const first_count{nested_vector3f(first_leaf.path.front())
+                                       ? first_leaf.path.front() + ".num()"
+                                       : join(first_leaf.path, ".") + ".size()"};
+            out << "auto num() const noexcept -> size_type { return static_cast<size_type>("
+                << first_count << "); }\n"
+                << "auto is_empty() const noexcept -> bool { return num() == 0; }\n"
+                << "template <typename Fn> void each_column(Fn&& fn) const {\n";
+            for (auto const& leaf : layout.leaves) {
+                out << "fn(" << view_leaf(leaf) << ");\n";
+            }
+            out << "}\n"
+                << "void validate_array_sizes() const { auto const count{num()}; "
+                   "each_column([count](auto "
+                   "column) { ml::native_soa::require(column.size() == "
+                   "static_cast<std::size_t>(count)); }); }\n"
+                << "auto slice(size_type const offset, size_type const count) const -> "
+                << view_type
+                << " { ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() && "
+                   "count "
+                   "<= num() - offset); return {\n";
+            for (auto const& member : layout.members) {
+                out << member.schema->name
+                    << (member.schema->kind == SoaMemberKind::array
+                            ? ".subspan(static_cast<std::size_t>(offset), "
+                              "static_cast<std::size_t>(count))"
+                            : ".slice(offset, count)")
+                    << ",\n";
+            }
+            out << "}; }\n"
+                << "auto get_view() const -> " << view_type << " { return *this; }\n"
+                << "auto get_view(size_type const offset, size_type const count) const -> "
+                << view_type << " { return slice(offset, count); }\n"
+                << "auto get_const_view() const -> ConstView { return {\n";
+            for (auto const& member : layout.members) {
+                out << member.schema->name;
+                if (member.schema->kind == SoaMemberKind::nested) {
+                    out << ".get_const_view()";
+                }
+                out << ",\n";
+            }
+            out << "}; }\n"
+                << "auto get_const_view(size_type const offset, size_type const count) const -> "
+                   "ConstView { return get_const_view().slice(offset, count); }\n"
+                << "auto left(size_type const count) const -> " << view_type
+                << " { return slice(0, count); }\n"
+                << "auto right(size_type const count) const -> " << view_type
+                << " { return slice(num() - count, count); }\n";
+
+            if (!immutable) {
+                out << "void set(size_type const index";
+                render_parameters(out, row_parameters);
+                out << ") const { ml::native_soa::require(index >= 0 && index < num());\n";
+                for (auto const& parameter : row_parameters) {
+                    if (parameter.nested) {
+                        out << parameter.column << ".set(index, new_" << parameter.name << ");\n";
+                    } else {
+                        out << parameter.column << "[static_cast<std::size_t>(index)] = new_"
+                            << parameter.name << ";\n";
+                    }
+                }
+                out << "}\n";
+                if (equivalent_type.has_value()) {
+                    out << "void set(size_type const index, equivalent_type const value) const { "
+                           "set(index";
+                    for (std::size_t index{}; index < layout.members.size(); ++index) {
+                        out << ", value." << equivalent_members[index];
+                    }
+                    out << "); }\n";
+                }
+            }
+            out << "};\n";
         }
-        out << "};\n";
     }
 
     out << "struct " << schema.name << " {\n"
@@ -287,27 +347,35 @@ auto lower_native_soa(SoaSchema const& schema,
         << "source.validate_array_sizes(); if (count == 0) { return; }\n";
     for (auto const& leaf : layout.leaves) {
         auto const column{join(leaf.path, ".")};
-        out << "{ auto const address{reinterpret_cast<std::uintptr_t>(source." << column
-            << ".data())}; auto const begin{reinterpret_cast<std::uintptr_t>(" << column
+        out << "{ auto const address{ml::address_cast(" << view_leaf_data(leaf, "source.")
+            << ")}; auto const begin{ml::address_cast(" << column
             << ".data())}; ml::native_soa::require(address < begin || address >= begin + " << column
             << ".size() * sizeof(" << native_spelling(leaf.type.spelling) << ")); }\n";
     }
     for (auto const& leaf : layout.leaves) {
         auto const column{join(leaf.path, ".")};
-        out << column << ".insert(" << column << ".end(), source." << column << ".begin(), source."
-            << column << ".end());\n";
+        auto const source_data{view_leaf_data(leaf, "source.")};
+        out << column << ".insert(" << column << ".end(), " << source_data << ", " << source_data
+            << " + count);\n";
     }
     out << "}\n";
 
     for (bool const immutable : {false, true}) {
         out << "auto get_view()" << (immutable ? " const" : "") << " -> "
             << (immutable ? "ConstView" : "View") << " { return {\n";
-        for (auto const& member : layout.members) {
-            out << member.schema->name;
-            if (member.schema->kind == SoaMemberKind::nested) {
-                out << ".get_view()";
+        if (vector3f_schema) {
+            for (auto const& member : layout.members) {
+                out << member.schema->name << ".data(),\n";
             }
-            out << ",\n";
+            out << "num(),\n";
+        } else {
+            for (auto const& member : layout.members) {
+                out << member.schema->name;
+                if (member.schema->kind == SoaMemberKind::nested) {
+                    out << ".get_view()";
+                }
+                out << ",\n";
+            }
         }
         out << "}; }\n";
     }

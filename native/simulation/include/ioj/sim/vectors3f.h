@@ -5,131 +5,13 @@
 
 #include "ioj/sim/vector_types.h"
 #include "native_soa/storage.h"
+#include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
+#include "sandbox/core/vector_soa_view.h"
 
 namespace ioj::sim {
-struct Vectors3fView;
-struct Vectors3fConstView;
-struct Vectors3fConstView {
-    using View = Vectors3fView;
-    using ConstView = Vectors3fConstView;
-    using size_type = std::int32_t;
-    using equivalent_type = Vector3f;
-    auto operator[](size_type const index) const -> equivalent_type {
-        return HMM_V3(xs[static_cast<std::size_t>(index)],
-                      ys[static_cast<std::size_t>(index)],
-                      zs[static_cast<std::size_t>(index)]);
-    }
-    std::span<float const> xs;
-    std::span<float const> ys;
-    std::span<float const> zs;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(xs.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(xs);
-        fn(ys);
-        fn(zs);
-    }
-    void validate_array_sizes() const {
-        auto const count{num()};
-        each_column([count](auto column) {
-            ml::native_soa::require(column.size() == static_cast<std::size_t>(count));
-        });
-    }
-    auto slice(size_type const offset, size_type const count) const -> Vectors3fConstView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
-        return {
-            xs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            ys.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            zs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> Vectors3fConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> Vectors3fConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            xs,
-            ys,
-            zs,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> Vectors3fConstView { return slice(0, count); }
-    auto right(size_type const count) const -> Vectors3fConstView {
-        return slice(num() - count, count);
-    }
-};
-struct Vectors3fView {
-    using View = Vectors3fView;
-    using ConstView = Vectors3fConstView;
-    using size_type = std::int32_t;
-    using equivalent_type = Vector3f;
-    auto operator[](size_type const index) const -> equivalent_type {
-        return HMM_V3(xs[static_cast<std::size_t>(index)],
-                      ys[static_cast<std::size_t>(index)],
-                      zs[static_cast<std::size_t>(index)]);
-    }
-    std::span<float> xs;
-    std::span<float> ys;
-    std::span<float> zs;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(xs.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(xs);
-        fn(ys);
-        fn(zs);
-    }
-    void validate_array_sizes() const {
-        auto const count{num()};
-        each_column([count](auto column) {
-            ml::native_soa::require(column.size() == static_cast<std::size_t>(count));
-        });
-    }
-    auto slice(size_type const offset, size_type const count) const -> Vectors3fView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
-        return {
-            xs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            ys.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            zs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> Vectors3fView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> Vectors3fView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            xs,
-            ys,
-            zs,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> Vectors3fView { return slice(0, count); }
-    auto right(size_type const count) const -> Vectors3fView { return slice(num() - count, count); }
-    void set(size_type const index,
-             float const new_xs,
-             float const new_ys,
-             float const new_zs) const {
-        ml::native_soa::require(index >= 0 && index < num());
-        xs[static_cast<std::size_t>(index)] = new_xs;
-        ys[static_cast<std::size_t>(index)] = new_ys;
-        zs[static_cast<std::size_t>(index)] = new_zs;
-    }
-    void set(size_type const index, equivalent_type const value) const {
-        set(index, value.X, value.Y, value.Z);
-    }
-};
+using Vectors3fView = ml::Vector3fSoAView;
+using Vectors3fConstView = ml::Vector3fSoAConstView;
 struct Vectors3f {
     using View = Vectors3fView;
     using ConstView = Vectors3fConstView;
@@ -222,39 +104,41 @@ struct Vectors3f {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(xs.data())};
+            auto const address{ml::address_cast(source.xs)};
+            auto const begin{ml::address_cast(xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(ys.data())};
+            auto const address{ml::address_cast(source.ys)};
+            auto const begin{ml::address_cast(ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(zs.data())};
+            auto const address{ml::address_cast(source.zs)};
+            auto const begin{ml::address_cast(zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + zs.size() * sizeof(float));
         }
-        xs.insert(xs.end(), source.xs.begin(), source.xs.end());
-        ys.insert(ys.end(), source.ys.begin(), source.ys.end());
-        zs.insert(zs.end(), source.zs.begin(), source.zs.end());
+        xs.insert(xs.end(), source.xs, source.xs + count);
+        ys.insert(ys.end(), source.ys, source.ys + count);
+        zs.insert(zs.end(), source.zs, source.zs + count);
     }
     auto get_view() -> View {
         return {
-            xs,
-            ys,
-            zs,
+            xs.data(),
+            ys.data(),
+            zs.data(),
+            num(),
         };
     }
     auto get_view() const -> ConstView {
         return {
-            xs,
-            ys,
-            zs,
+            xs.data(),
+            ys.data(),
+            zs.data(),
+            num(),
         };
     }
     auto get_const_view() const -> ConstView { return get_view(); }

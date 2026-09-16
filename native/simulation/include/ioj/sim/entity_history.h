@@ -7,6 +7,7 @@
 #include "ioj/sim/entity_life_state.h"
 #include "ioj/sim/entity_types.h"
 #include "native_soa/storage.h"
+#include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
 
 #include <cstring>
@@ -321,62 +322,63 @@ struct EntityHistoryColumns {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.registry_indices.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(registry_indices.data())};
+            auto const address{ml::address_cast(source.registry_indices.data())};
+            auto const begin{ml::address_cast(registry_indices.data())};
             ml::native_soa::require(
                 address < begin || address >= begin + registry_indices.size() *
                                                           sizeof(RegistryEntityHandle::index_type));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.registry_generations.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(registry_generations.data())};
+            auto const address{ml::address_cast(source.registry_generations.data())};
+            auto const begin{ml::address_cast(registry_generations.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + registry_generations.size() *
                                                     sizeof(RegistryEntityHandle::generation_type));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.entity_types.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(entity_types.data())};
+            auto const address{ml::address_cast(source.entity_types.data())};
+            auto const begin{ml::address_cast(entity_types.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + entity_types.size() * sizeof(EntityType));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.teams.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(teams.data())};
+            auto const address{ml::address_cast(source.teams.data())};
+            auto const begin{ml::address_cast(teams.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + teams.size() * sizeof(Team));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.kills.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(kills.data())};
+            auto const address{ml::address_cast(source.kills.data())};
+            auto const begin{ml::address_cast(kills.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + kills.size() * sizeof(std::uint32_t));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.killed_by.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(killed_by.data())};
+            auto const address{ml::address_cast(source.killed_by.data())};
+            auto const begin{ml::address_cast(killed_by.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + killed_by.size() * sizeof(EntityUniqueId));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.life_state.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(life_state.data())};
+            auto const address{ml::address_cast(source.life_state.data())};
+            auto const begin{ml::address_cast(life_state.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + life_state.size() * sizeof(LifeState));
         }
-        registry_indices.insert(
-            registry_indices.end(), source.registry_indices.begin(), source.registry_indices.end());
+        registry_indices.insert(registry_indices.end(),
+                                source.registry_indices.data(),
+                                source.registry_indices.data() + count);
         registry_generations.insert(registry_generations.end(),
-                                    source.registry_generations.begin(),
-                                    source.registry_generations.end());
+                                    source.registry_generations.data(),
+                                    source.registry_generations.data() + count);
         entity_types.insert(
-            entity_types.end(), source.entity_types.begin(), source.entity_types.end());
-        teams.insert(teams.end(), source.teams.begin(), source.teams.end());
-        kills.insert(kills.end(), source.kills.begin(), source.kills.end());
-        killed_by.insert(killed_by.end(), source.killed_by.begin(), source.killed_by.end());
-        life_state.insert(life_state.end(), source.life_state.begin(), source.life_state.end());
+            entity_types.end(), source.entity_types.data(), source.entity_types.data() + count);
+        teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
+        kills.insert(kills.end(), source.kills.data(), source.kills.data() + count);
+        killed_by.insert(killed_by.end(), source.killed_by.data(), source.killed_by.data() + count);
+        life_state.insert(
+            life_state.end(), source.life_state.data(), source.life_state.data() + count);
     }
     auto get_view() -> View {
         return {

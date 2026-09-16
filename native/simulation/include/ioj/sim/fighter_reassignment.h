@@ -5,6 +5,7 @@
 
 #include "ioj/sim/entity_handle.h"
 #include "native_soa/storage.h"
+#include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
 
 namespace ioj::sim::capital_ships {
@@ -196,23 +197,25 @@ struct FighterReassignment {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.capital_handles.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(capital_handles.data())};
+            auto const address{ml::address_cast(source.capital_handles.data())};
+            auto const begin{ml::address_cast(capital_handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + capital_handles.size() *
                                                            sizeof(RegistryEntityHandle));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.fighter_handles.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(fighter_handles.data())};
+            auto const address{ml::address_cast(source.fighter_handles.data())};
+            auto const begin{ml::address_cast(fighter_handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + fighter_handles.size() *
                                                            sizeof(RegistryEntityHandle));
         }
-        capital_handles.insert(
-            capital_handles.end(), source.capital_handles.begin(), source.capital_handles.end());
-        fighter_handles.insert(
-            fighter_handles.end(), source.fighter_handles.begin(), source.fighter_handles.end());
+        capital_handles.insert(capital_handles.end(),
+                               source.capital_handles.data(),
+                               source.capital_handles.data() + count);
+        fighter_handles.insert(fighter_handles.end(),
+                               source.fighter_handles.data(),
+                               source.fighter_handles.data() + count);
     }
     auto get_view() -> View {
         return {

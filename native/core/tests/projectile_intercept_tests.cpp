@@ -31,11 +31,10 @@ void expect_intercept_geometry(InterceptCase const& test_case, float const inter
 }
 
 using BatchSolver = void (*)(float*,
-                             ml::Vector3fSoAView,
-                             ml::Vector3fSoAView,
-                             ml::Vector3fSoAView,
-                             float,
-                             std::int32_t) noexcept;
+                             ml::Vector3fSoAConstView,
+                             ml::Vector3fSoAConstView,
+                             ml::Vector3fSoAConstView,
+                             float) noexcept;
 }
 
 TEST(NativeCoreProjectileIntercept, SolvesScalarCases) {
@@ -85,10 +84,13 @@ TEST(NativeCoreProjectileIntercept, BatchImplementationsMatchExpectedResults) {
     std::array<float, 5> const velocity_z{};
     std::array<float, 5> const expected{2.0f, 1.0f, 2.0f, 0.0f, 0.0f};
 
-    auto const shooters{ml::Vector3fSoAView{shooter_x.data(), shooter_y.data(), shooter_z.data()}};
-    auto const targets{ml::Vector3fSoAView{target_x.data(), target_y.data(), target_z.data()}};
+    auto const count{static_cast<std::int32_t>(expected.size())};
+    auto const shooters{
+        ml::Vector3fSoAConstView{shooter_x.data(), shooter_y.data(), shooter_z.data(), count}};
+    auto const targets{
+        ml::Vector3fSoAConstView{target_x.data(), target_y.data(), target_z.data(), count}};
     auto const velocities{
-        ml::Vector3fSoAView{velocity_x.data(), velocity_y.data(), velocity_z.data()}};
+        ml::Vector3fSoAConstView{velocity_x.data(), velocity_y.data(), velocity_z.data(), count}};
     constexpr BatchSolver solvers[]{
         ml::detail::solve_intercept_times_aos::solve_intercept_times,
         ml::detail::solve_intercept_times_struct_loop::solve_intercept_times,
@@ -97,7 +99,7 @@ TEST(NativeCoreProjectileIntercept, BatchImplementationsMatchExpectedResults) {
 
     for (auto const solve : solvers) {
         std::array<float, 5> results{};
-        solve(results.data(), shooters, targets, velocities, 5.0f, 5);
+        solve(results.data(), shooters, targets, velocities, 5.0f);
         for (std::size_t i{}; i < results.size(); ++i) {
             EXPECT_NEAR(results[i], expected[i], 1e-5f);
         }

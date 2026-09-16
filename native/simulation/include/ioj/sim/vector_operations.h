@@ -10,8 +10,13 @@
 namespace ioj::sim {
 inline void
     lerp_in_place(Vectors3fView const current, Vectors3fConstView const target, float const alpha) {
-    ml::lerp_3d_in_place(
-        current.xs, current.ys, current.zs, target.xs, target.ys, target.zs, alpha);
+    ml::lerp_3d_in_place(current.xs_span(),
+                         current.ys_span(),
+                         current.zs_span(),
+                         target.xs_span(),
+                         target.ys_span(),
+                         target.zs_span(),
+                         alpha);
 }
 
 inline void distance_and_squared(std::span<float> const distances,
@@ -28,12 +33,12 @@ inline void distance_and_squared(std::span<float> const distances,
     assert(distances.data() != squared_distances.data());
     ml::native_math::distance_and_squared_vector(distances.data(),
                                                  squared_distances.data(),
-                                                 from.xs.data(),
-                                                 from.ys.data(),
-                                                 from.zs.data(),
-                                                 to.xs.data(),
-                                                 to.ys.data(),
-                                                 to.zs.data(),
+                                                 from.xs,
+                                                 from.ys,
+                                                 from.zs,
+                                                 to.xs,
+                                                 to.ys,
+                                                 to.zs,
                                                  count);
 }
 }

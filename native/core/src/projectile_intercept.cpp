@@ -12,8 +12,19 @@ auto dot_product(ml::Vector3f const lhs, ml::Vector3f const rhs) noexcept -> flo
     return HMM_DotV3(lhs, rhs);
 }
 
-auto at(ml::Vector3fSoAView const values, std::int32_t const index) noexcept -> ml::Vector3f {
-    return ml::make_vector3f(values.xs[index], values.ys[index], values.zs[index]);
+auto at(ml::Vector3fSoAConstView const values, std::int32_t const index) noexcept -> ml::Vector3f {
+    return values[index];
+}
+
+auto validate_batch(float* const out_intercept_times,
+                    ml::Vector3fSoAConstView const shooter_positions,
+                    ml::Vector3fSoAConstView const target_positions,
+                    ml::Vector3fSoAConstView const target_velocities) noexcept -> std::int32_t {
+    auto const count{shooter_positions.num()};
+    assert(count == target_positions.num());
+    assert(count == target_velocities.num());
+    assert(count == 0 || out_intercept_times != nullptr);
+    return count;
 }
 }
 
@@ -62,11 +73,12 @@ auto solve_intercept_time(Vector3f const shooter_position,
 
 namespace ml::detail::solve_intercept_times_aos {
 void solve_intercept_times(float* const out_intercept_times,
-                           Vector3fSoAView const shooter_positions,
-                           Vector3fSoAView const target_positions,
-                           Vector3fSoAView const target_velocities,
-                           float const projectile_speed,
-                           std::int32_t const count) noexcept {
+                           Vector3fSoAConstView const shooter_positions,
+                           Vector3fSoAConstView const target_positions,
+                           Vector3fSoAConstView const target_velocities,
+                           float const projectile_speed) noexcept {
+    auto const count{validate_batch(
+        out_intercept_times, shooter_positions, target_positions, target_velocities)};
     for (std::int32_t i{}; i < count; ++i) {
         out_intercept_times[i] = ml::solve_intercept_time(at(shooter_positions, i),
                                                           at(target_positions, i),
@@ -78,15 +90,16 @@ void solve_intercept_times(float* const out_intercept_times,
 
 namespace ml::detail::solve_intercept_times_struct_loop {
 void solve_intercept_times(float* const out_intercept_times,
-                           Vector3fSoAView const shooter_positions,
-                           Vector3fSoAView const target_positions,
-                           Vector3fSoAView const target_velocities,
-                           float const projectile_speed,
-                           std::int32_t const count) noexcept {
+                           Vector3fSoAConstView const shooter_positions,
+                           Vector3fSoAConstView const target_positions,
+                           Vector3fSoAConstView const target_velocities,
+                           float const projectile_speed) noexcept {
     constexpr float no_intercept{};
     constexpr float epsilon{1e-8f};
     constexpr auto maximum{std::numeric_limits<float>::max()};
     auto const projectile_speed_squared{projectile_speed * projectile_speed};
+    auto const count{validate_batch(
+        out_intercept_times, shooter_positions, target_positions, target_velocities)};
 
     for (std::int32_t i{}; i < count; ++i) {
         auto const shooter_position{at(shooter_positions, i)};
@@ -133,15 +146,16 @@ void solve_intercept_times(float* const out_intercept_times,
 
 namespace ml::detail::solve_intercept_times_soa_loop {
 void solve_intercept_times(float* const out_intercept_times,
-                           Vector3fSoAView const shooter_positions,
-                           Vector3fSoAView const target_positions,
-                           Vector3fSoAView const target_velocities,
-                           float const projectile_speed,
-                           std::int32_t const count) noexcept {
+                           Vector3fSoAConstView const shooter_positions,
+                           Vector3fSoAConstView const target_positions,
+                           Vector3fSoAConstView const target_velocities,
+                           float const projectile_speed) noexcept {
     constexpr float no_intercept{};
     constexpr float epsilon{1e-8f};
     constexpr auto maximum{std::numeric_limits<float>::max()};
     auto const projectile_speed_squared{projectile_speed * projectile_speed};
+    auto const count{validate_batch(
+        out_intercept_times, shooter_positions, target_positions, target_velocities)};
 
     for (std::int32_t i{}; i < count; ++i) {
         auto const rx{target_positions.xs[i] - shooter_positions.xs[i]};

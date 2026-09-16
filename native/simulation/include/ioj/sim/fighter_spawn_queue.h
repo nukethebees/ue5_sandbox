@@ -8,6 +8,7 @@
 #include "ioj/sim/rotators3f.h"
 #include "ioj/sim/vectors3f.h"
 #include "native_soa/storage.h"
+#include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
 
 #include <cstring>
@@ -26,13 +27,13 @@ struct FighterSpawnQueueConstView {
     std::span<Team const> teams;
     std::span<RegistryEntityHandle const> parents;
     std::span<RegistryEntityHandle const> targets;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
+    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.num()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
     void each_column(Fn&& fn) const {
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
         fn(rotations.pitches);
         fn(rotations.yaws);
         fn(rotations.rolls);
@@ -88,13 +89,13 @@ struct FighterSpawnQueueView {
     std::span<Team> teams;
     std::span<RegistryEntityHandle> parents;
     std::span<RegistryEntityHandle> targets;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
+    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.num()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
     void each_column(Fn&& fn) const {
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
         fn(rotations.pitches);
         fn(rotations.yaws);
         fn(rotations.rolls);
@@ -327,77 +328,76 @@ struct FighterSpawnQueue {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.xs.data())};
+            auto const address{ml::address_cast(source.locations.xs)};
+            auto const begin{ml::address_cast(locations.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.ys.data())};
+            auto const address{ml::address_cast(source.locations.ys)};
+            auto const begin{ml::address_cast(locations.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.zs.data())};
+            auto const address{ml::address_cast(source.locations.zs)};
+            auto const begin{ml::address_cast(locations.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.zs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.rotations.pitches.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(rotations.pitches.data())};
+            auto const address{ml::address_cast(source.rotations.pitches.data())};
+            auto const begin{ml::address_cast(rotations.pitches.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + rotations.pitches.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.rotations.yaws.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(rotations.yaws.data())};
+            auto const address{ml::address_cast(source.rotations.yaws.data())};
+            auto const begin{ml::address_cast(rotations.yaws.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + rotations.yaws.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.rotations.rolls.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(rotations.rolls.data())};
+            auto const address{ml::address_cast(source.rotations.rolls.data())};
+            auto const begin{ml::address_cast(rotations.rolls.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + rotations.rolls.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.teams.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(teams.data())};
+            auto const address{ml::address_cast(source.teams.data())};
+            auto const begin{ml::address_cast(teams.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + teams.size() * sizeof(Team));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.parents.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(parents.data())};
+            auto const address{ml::address_cast(source.parents.data())};
+            auto const begin{ml::address_cast(parents.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + parents.size() * sizeof(RegistryEntityHandle));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.targets.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(targets.data())};
+            auto const address{ml::address_cast(source.targets.data())};
+            auto const begin{ml::address_cast(targets.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + targets.size() * sizeof(RegistryEntityHandle));
         }
-        locations.xs.insert(
-            locations.xs.end(), source.locations.xs.begin(), source.locations.xs.end());
-        locations.ys.insert(
-            locations.ys.end(), source.locations.ys.begin(), source.locations.ys.end());
-        locations.zs.insert(
-            locations.zs.end(), source.locations.zs.begin(), source.locations.zs.end());
+        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
+        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
+        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
         rotations.pitches.insert(rotations.pitches.end(),
-                                 source.rotations.pitches.begin(),
-                                 source.rotations.pitches.end());
-        rotations.yaws.insert(
-            rotations.yaws.end(), source.rotations.yaws.begin(), source.rotations.yaws.end());
-        rotations.rolls.insert(
-            rotations.rolls.end(), source.rotations.rolls.begin(), source.rotations.rolls.end());
-        teams.insert(teams.end(), source.teams.begin(), source.teams.end());
-        parents.insert(parents.end(), source.parents.begin(), source.parents.end());
-        targets.insert(targets.end(), source.targets.begin(), source.targets.end());
+                                 source.rotations.pitches.data(),
+                                 source.rotations.pitches.data() + count);
+        rotations.yaws.insert(rotations.yaws.end(),
+                              source.rotations.yaws.data(),
+                              source.rotations.yaws.data() + count);
+        rotations.rolls.insert(rotations.rolls.end(),
+                               source.rotations.rolls.data(),
+                               source.rotations.rolls.data() + count);
+        teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
+        parents.insert(parents.end(), source.parents.data(), source.parents.data() + count);
+        targets.insert(targets.end(), source.targets.data(), source.targets.data() + count);
     }
     auto get_view() -> View {
         return {
@@ -734,9 +734,9 @@ struct SingleAllocationFighterSpawnQueueStorage
         auto const locations_xs_bytes{elements_to_copy * sizeof(float)};
         auto const teams_bytes{elements_to_copy * sizeof(Team)};
         auto const parents_bytes{elements_to_copy * sizeof(RegistryEntityHandle)};
-        std::memcpy(destination.locations_xs, source.locations.xs.data(), locations_xs_bytes);
-        std::memcpy(destination.locations_ys, source.locations.ys.data(), locations_xs_bytes);
-        std::memcpy(destination.locations_zs, source.locations.zs.data(), locations_xs_bytes);
+        std::memcpy(destination.locations_xs, source.locations.xs, locations_xs_bytes);
+        std::memcpy(destination.locations_ys, source.locations.ys, locations_xs_bytes);
+        std::memcpy(destination.locations_zs, source.locations.zs, locations_xs_bytes);
         std::memcpy(
             destination.rotations_pitches, source.rotations.pitches.data(), locations_xs_bytes);
         std::memcpy(destination.rotations_yaws, source.rotations.yaws.data(), locations_xs_bytes);

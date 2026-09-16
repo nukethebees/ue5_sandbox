@@ -6,6 +6,7 @@
 #include "ioj/sim/entity_handle.h"
 #include "ioj/sim/vectors3f.h"
 #include "native_soa/storage.h"
+#include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
 
 namespace ioj::sim {
@@ -25,9 +26,9 @@ struct SpinnerEntityDataConstView {
     template <typename Fn>
     void each_column(Fn&& fn) const {
         fn(handles);
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
         fn(yaws);
         fn(laser_cooldowns);
         fn(next_fire_point_indices);
@@ -87,9 +88,9 @@ struct SpinnerEntityDataView {
     template <typename Fn>
     void each_column(Fn&& fn) const {
         fn(handles);
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
         fn(yaws);
         fn(laser_cooldowns);
         fn(next_fire_point_indices);
@@ -293,63 +294,60 @@ struct SpinnerEntityData {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.handles.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(handles.data())};
+            auto const address{ml::address_cast(source.handles.data())};
+            auto const begin{ml::address_cast(handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + handles.size() * sizeof(RegistryEntityHandle));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.xs.data())};
+            auto const address{ml::address_cast(source.locations.xs)};
+            auto const begin{ml::address_cast(locations.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.ys.data())};
+            auto const address{ml::address_cast(source.locations.ys)};
+            auto const begin{ml::address_cast(locations.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.zs.data())};
+            auto const address{ml::address_cast(source.locations.zs)};
+            auto const begin{ml::address_cast(locations.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.zs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.yaws.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(yaws.data())};
+            auto const address{ml::address_cast(source.yaws.data())};
+            auto const begin{ml::address_cast(yaws.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + yaws.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.laser_cooldowns.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(laser_cooldowns.data())};
+            auto const address{ml::address_cast(source.laser_cooldowns.data())};
+            auto const begin{ml::address_cast(laser_cooldowns.data())};
             ml::native_soa::require(address < begin || address >= begin + laser_cooldowns.size() *
                                                                               sizeof(std::int16_t));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.next_fire_point_indices.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(next_fire_point_indices.data())};
+            auto const address{ml::address_cast(source.next_fire_point_indices.data())};
+            auto const begin{ml::address_cast(next_fire_point_indices.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + next_fire_point_indices.size() *
                                                            sizeof(std::int32_t));
         }
-        handles.insert(handles.end(), source.handles.begin(), source.handles.end());
-        locations.xs.insert(
-            locations.xs.end(), source.locations.xs.begin(), source.locations.xs.end());
-        locations.ys.insert(
-            locations.ys.end(), source.locations.ys.begin(), source.locations.ys.end());
-        locations.zs.insert(
-            locations.zs.end(), source.locations.zs.begin(), source.locations.zs.end());
-        yaws.insert(yaws.end(), source.yaws.begin(), source.yaws.end());
-        laser_cooldowns.insert(
-            laser_cooldowns.end(), source.laser_cooldowns.begin(), source.laser_cooldowns.end());
+        handles.insert(handles.end(), source.handles.data(), source.handles.data() + count);
+        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
+        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
+        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
+        yaws.insert(yaws.end(), source.yaws.data(), source.yaws.data() + count);
+        laser_cooldowns.insert(laser_cooldowns.end(),
+                               source.laser_cooldowns.data(),
+                               source.laser_cooldowns.data() + count);
         next_fire_point_indices.insert(next_fire_point_indices.end(),
-                                       source.next_fire_point_indices.begin(),
-                                       source.next_fire_point_indices.end());
+                                       source.next_fire_point_indices.data(),
+                                       source.next_fire_point_indices.data() + count);
     }
     auto get_view() -> View {
         return {

@@ -5,6 +5,7 @@
 
 #include "ioj/sim/entity_handle.h"
 #include "native_soa/storage.h"
+#include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
 
 namespace ioj::sim::collision {
@@ -190,23 +191,25 @@ struct EntityEntityOverlaps {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.first_entities.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(first_entities.data())};
+            auto const address{ml::address_cast(source.first_entities.data())};
+            auto const begin{ml::address_cast(first_entities.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + first_entities.size() *
                                                            sizeof(RegistryEntityHandle));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.second_entities.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(second_entities.data())};
+            auto const address{ml::address_cast(source.second_entities.data())};
+            auto const begin{ml::address_cast(second_entities.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + second_entities.size() *
                                                            sizeof(RegistryEntityHandle));
         }
-        first_entities.insert(
-            first_entities.end(), source.first_entities.begin(), source.first_entities.end());
-        second_entities.insert(
-            second_entities.end(), source.second_entities.begin(), source.second_entities.end());
+        first_entities.insert(first_entities.end(),
+                              source.first_entities.data(),
+                              source.first_entities.data() + count);
+        second_entities.insert(second_entities.end(),
+                               source.second_entities.data(),
+                               source.second_entities.data() + count);
     }
     auto get_view() -> View {
         return {
@@ -457,24 +460,23 @@ struct EntityStaticOverlaps {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.entities.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(entities.data())};
+            auto const address{ml::address_cast(source.entities.data())};
+            auto const begin{ml::address_cast(entities.data())};
             ml::native_soa::require(address < begin ||
                                     address >=
                                         begin + entities.size() * sizeof(RegistryEntityHandle));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.static_geometry_indices.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(static_geometry_indices.data())};
+            auto const address{ml::address_cast(source.static_geometry_indices.data())};
+            auto const begin{ml::address_cast(static_geometry_indices.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + static_geometry_indices.size() *
                                                            sizeof(std::int32_t));
         }
-        entities.insert(entities.end(), source.entities.begin(), source.entities.end());
+        entities.insert(entities.end(), source.entities.data(), source.entities.data() + count);
         static_geometry_indices.insert(static_geometry_indices.end(),
-                                       source.static_geometry_indices.begin(),
-                                       source.static_geometry_indices.end());
+                                       source.static_geometry_indices.data(),
+                                       source.static_geometry_indices.data() + count);
     }
     auto get_view() -> View {
         return {

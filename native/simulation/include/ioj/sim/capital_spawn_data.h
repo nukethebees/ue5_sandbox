@@ -9,6 +9,7 @@
 #include "ioj/sim/rotators3f.h"
 #include "ioj/sim/vectors3f.h"
 #include "native_soa/storage.h"
+#include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
 
 #include <cstring>
@@ -34,9 +35,9 @@ struct CapitalSpawnDataConstView {
     template <typename Fn>
     void each_column(Fn&& fn) const {
         fn(target_handles);
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
         fn(rotations.pitches);
         fn(rotations.yaws);
         fn(rotations.rolls);
@@ -107,9 +108,9 @@ struct CapitalSpawnDataView {
     template <typename Fn>
     void each_column(Fn&& fn) const {
         fn(target_handles);
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
         fn(rotations.pitches);
         fn(rotations.yaws);
         fn(rotations.rolls);
@@ -380,95 +381,95 @@ struct CapitalSpawnData {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.target_handles.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(target_handles.data())};
+            auto const address{ml::address_cast(source.target_handles.data())};
+            auto const begin{ml::address_cast(target_handles.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_handles.size() *
                                                            sizeof(RegistryEntityHandle));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.xs.data())};
+            auto const address{ml::address_cast(source.locations.xs)};
+            auto const begin{ml::address_cast(locations.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.ys.data())};
+            auto const address{ml::address_cast(source.locations.ys)};
+            auto const begin{ml::address_cast(locations.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.zs.data())};
+            auto const address{ml::address_cast(source.locations.zs)};
+            auto const begin{ml::address_cast(locations.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.zs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.rotations.pitches.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(rotations.pitches.data())};
+            auto const address{ml::address_cast(source.rotations.pitches.data())};
+            auto const begin{ml::address_cast(rotations.pitches.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + rotations.pitches.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.rotations.yaws.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(rotations.yaws.data())};
+            auto const address{ml::address_cast(source.rotations.yaws.data())};
+            auto const begin{ml::address_cast(rotations.yaws.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + rotations.yaws.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.rotations.rolls.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(rotations.rolls.data())};
+            auto const address{ml::address_cast(source.rotations.rolls.data())};
+            auto const begin{ml::address_cast(rotations.rolls.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + rotations.rolls.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.teams.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(teams.data())};
+            auto const address{ml::address_cast(source.teams.data())};
+            auto const begin{ml::address_cast(teams.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + teams.size() * sizeof(Team));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.healths.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(healths.data())};
+            auto const address{ml::address_cast(source.healths.data())};
+            auto const begin{ml::address_cast(healths.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + healths.size() * sizeof(Health));
         }
         {
-            auto const address{
-                reinterpret_cast<std::uintptr_t>(source.initial_spawn_delays.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(initial_spawn_delays.data())};
+            auto const address{ml::address_cast(source.initial_spawn_delays.data())};
+            auto const begin{ml::address_cast(initial_spawn_delays.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + initial_spawn_delays.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.spawn_cooldowns.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(spawn_cooldowns.data())};
+            auto const address{ml::address_cast(source.spawn_cooldowns.data())};
+            auto const begin{ml::address_cast(spawn_cooldowns.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + spawn_cooldowns.size() * sizeof(float));
         }
-        target_handles.insert(
-            target_handles.end(), source.target_handles.begin(), source.target_handles.end());
-        locations.xs.insert(
-            locations.xs.end(), source.locations.xs.begin(), source.locations.xs.end());
-        locations.ys.insert(
-            locations.ys.end(), source.locations.ys.begin(), source.locations.ys.end());
-        locations.zs.insert(
-            locations.zs.end(), source.locations.zs.begin(), source.locations.zs.end());
+        target_handles.insert(target_handles.end(),
+                              source.target_handles.data(),
+                              source.target_handles.data() + count);
+        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
+        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
+        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
         rotations.pitches.insert(rotations.pitches.end(),
-                                 source.rotations.pitches.begin(),
-                                 source.rotations.pitches.end());
-        rotations.yaws.insert(
-            rotations.yaws.end(), source.rotations.yaws.begin(), source.rotations.yaws.end());
-        rotations.rolls.insert(
-            rotations.rolls.end(), source.rotations.rolls.begin(), source.rotations.rolls.end());
-        teams.insert(teams.end(), source.teams.begin(), source.teams.end());
-        healths.insert(healths.end(), source.healths.begin(), source.healths.end());
+                                 source.rotations.pitches.data(),
+                                 source.rotations.pitches.data() + count);
+        rotations.yaws.insert(rotations.yaws.end(),
+                              source.rotations.yaws.data(),
+                              source.rotations.yaws.data() + count);
+        rotations.rolls.insert(rotations.rolls.end(),
+                               source.rotations.rolls.data(),
+                               source.rotations.rolls.data() + count);
+        teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
+        healths.insert(healths.end(), source.healths.data(), source.healths.data() + count);
         initial_spawn_delays.insert(initial_spawn_delays.end(),
-                                    source.initial_spawn_delays.begin(),
-                                    source.initial_spawn_delays.end());
-        spawn_cooldowns.insert(
-            spawn_cooldowns.end(), source.spawn_cooldowns.begin(), source.spawn_cooldowns.end());
+                                    source.initial_spawn_delays.data(),
+                                    source.initial_spawn_delays.data() + count);
+        spawn_cooldowns.insert(spawn_cooldowns.end(),
+                               source.spawn_cooldowns.data(),
+                               source.spawn_cooldowns.data() + count);
     }
     auto get_view() -> View {
         return {
@@ -843,9 +844,9 @@ struct SingleAllocationCapitalSpawnDataStorage
         auto const teams_bytes{elements_to_copy * sizeof(Team)};
         auto const healths_bytes{elements_to_copy * sizeof(Health)};
         std::memcpy(destination.target_handles, source.target_handles.data(), target_handles_bytes);
-        std::memcpy(destination.locations_xs, source.locations.xs.data(), locations_xs_bytes);
-        std::memcpy(destination.locations_ys, source.locations.ys.data(), locations_xs_bytes);
-        std::memcpy(destination.locations_zs, source.locations.zs.data(), locations_xs_bytes);
+        std::memcpy(destination.locations_xs, source.locations.xs, locations_xs_bytes);
+        std::memcpy(destination.locations_ys, source.locations.ys, locations_xs_bytes);
+        std::memcpy(destination.locations_zs, source.locations.zs, locations_xs_bytes);
         std::memcpy(
             destination.rotations_pitches, source.rotations.pitches.data(), locations_xs_bytes);
         std::memcpy(destination.rotations_yaws, source.rotations.yaws.data(), locations_xs_bytes);

@@ -7,6 +7,7 @@
 #include "ioj/sim/health.h"
 #include "ioj/sim/vectors3f.h"
 #include "native_soa/storage.h"
+#include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
 
 namespace ioj::sim {
@@ -20,13 +21,13 @@ struct TurretSpawnDataConstView {
     std::span<Team const> teams;
     std::span<Health const> healths;
     std::span<std::int32_t const> laser_damages;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
+    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.num()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
     void each_column(Fn&& fn) const {
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
         fn(teams);
         fn(healths);
         fn(laser_damages);
@@ -76,13 +77,13 @@ struct TurretSpawnDataView {
     std::span<Team> teams;
     std::span<Health> healths;
     std::span<std::int32_t> laser_damages;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
+    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.num()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
     void each_column(Fn&& fn) const {
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
+        fn(locations.xs_span());
+        fn(locations.ys_span());
+        fn(locations.zs_span());
         fn(teams);
         fn(healths);
         fn(laser_damages);
@@ -268,51 +269,48 @@ struct TurretSpawnData {
             return;
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.xs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.xs.data())};
+            auto const address{ml::address_cast(source.locations.xs)};
+            auto const begin{ml::address_cast(locations.xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.xs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.ys.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.ys.data())};
+            auto const address{ml::address_cast(source.locations.ys)};
+            auto const begin{ml::address_cast(locations.ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.ys.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.locations.zs.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(locations.zs.data())};
+            auto const address{ml::address_cast(source.locations.zs)};
+            auto const begin{ml::address_cast(locations.zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + locations.zs.size() * sizeof(float));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.teams.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(teams.data())};
+            auto const address{ml::address_cast(source.teams.data())};
+            auto const begin{ml::address_cast(teams.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + teams.size() * sizeof(Team));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.healths.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(healths.data())};
+            auto const address{ml::address_cast(source.healths.data())};
+            auto const begin{ml::address_cast(healths.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + healths.size() * sizeof(Health));
         }
         {
-            auto const address{reinterpret_cast<std::uintptr_t>(source.laser_damages.data())};
-            auto const begin{reinterpret_cast<std::uintptr_t>(laser_damages.data())};
+            auto const address{ml::address_cast(source.laser_damages.data())};
+            auto const begin{ml::address_cast(laser_damages.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + laser_damages.size() * sizeof(std::int32_t));
         }
-        locations.xs.insert(
-            locations.xs.end(), source.locations.xs.begin(), source.locations.xs.end());
-        locations.ys.insert(
-            locations.ys.end(), source.locations.ys.begin(), source.locations.ys.end());
-        locations.zs.insert(
-            locations.zs.end(), source.locations.zs.begin(), source.locations.zs.end());
-        teams.insert(teams.end(), source.teams.begin(), source.teams.end());
-        healths.insert(healths.end(), source.healths.begin(), source.healths.end());
+        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
+        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
+        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
+        teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
+        healths.insert(healths.end(), source.healths.data(), source.healths.data() + count);
         laser_damages.insert(
-            laser_damages.end(), source.laser_damages.begin(), source.laser_damages.end());
+            laser_damages.end(), source.laser_damages.data(), source.laser_damages.data() + count);
     }
     auto get_view() -> View {
         return {
