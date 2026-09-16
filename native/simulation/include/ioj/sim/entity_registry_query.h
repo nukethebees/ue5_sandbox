@@ -1,10 +1,8 @@
 #pragma once
 
-#include "ioj/sim/collision_grid.h"
-#include "ioj/sim/collision_grid_entity_storage.h"
+#include "ioj/sim/entity_handle.h"
 #include "ioj/sim/entity_types.h"
 #include "ioj/sim/health.h"
-#include "ioj/sim/query_thread_buffers.h"
 #include "ioj/sim/vectors3f.h"
 
 #include <cstddef>
@@ -39,32 +37,4 @@ struct EntityRegistryQueryView {
                                     std::span<RegistryEntityHandle> out_entities) noexcept
     -> std::int32_t;
 
-[[nodiscard]] auto
-    collect_non_team_entities_in_range(collision::GridGeometry geometry,
-                                       collision::CollisionGridEntityStorage const& grid_entities,
-                                       EntityRegistryQueryView registry,
-                                       QueryThreadBuffers& buffers,
-                                       Vector3f origin,
-                                       float radius,
-                                       Team excluded_team,
-                                       std::span<RegistryEntityHandle> out_entities)
-        -> std::int32_t;
-
-[[nodiscard]] auto
-    collect_entities_of_type_in_range(collision::GridGeometry geometry,
-                                      collision::CollisionGridEntityStorage const& grid_entities,
-                                      EntityRegistryQueryView registry,
-                                      QueryThreadBuffers& buffers,
-                                      Vector3f origin,
-                                      float radius,
-                                      EntityType entity_type,
-                                      RegistryEntityHandle ignored_entity,
-                                      std::span<RegistryEntityHandle> out_entities) -> std::int32_t;
-
-[[nodiscard]] auto find_any_non_team_entity(EntityRegistryQueryView registry,
-                                            Team excluded_team) noexcept -> RegistryEntityHandle;
-[[nodiscard]] auto find_any_non_team_entity(EntityRegistryQueryView registry,
-                                            Team excluded_team,
-                                            EntityType entity_type) noexcept
-    -> RegistryEntityHandle;
 } // namespace ioj::sim

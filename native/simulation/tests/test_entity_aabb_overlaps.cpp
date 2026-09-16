@@ -185,7 +185,31 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
     collision.reset_frame_events();
     collision.update(handles, ++fixture.current_tick);
     check_single_pair(fixture.get_entity_overlaps(), moved, stationary);
+    owner.teams[0] = Team::Green;
+    auto const& queries{fixture.query_manager};
+    std::array<RegistryEntityHandle, 2> nearby{};
+    EXPECT_EQ(
+        queries.collect_non_team_entities_in_range({{300.f, 0.f, 0.f}}, Team::Blue, 10.f, nearby),
+        1);
+    EXPECT_EQ(nearby[0], stationary);
+    EXPECT_EQ(queries.get_any_non_team_entity(Team::Blue), stationary);
+    EXPECT_EQ(queries.get_any_non_team_entity(Team::Blue, EntityType::CapitalShip), stationary);
+    EXPECT_TRUE(queries.get_any_non_team_entity(Team::Blue, EntityType::Turret).is_null());
+    EXPECT_EQ(queries.collect_entities_of_type_in_range(
+                  {{300.f, 0.f, 0.f}}, EntityType::CapitalShip, 20.f, stationary, nearby),
+              1);
+    EXPECT_EQ(nearby[0], moved);
     owner.healths[0] = 0;
+    EXPECT_EQ(
+        queries.collect_non_team_entities_in_range({{300.f, 0.f, 0.f}}, Team::Blue, 20.f, nearby),
+        0);
+    EXPECT_TRUE(queries.get_any_non_team_entity(Team::Blue).is_null());
+    std::array const radius_handles{stationary, moved, RegistryEntityHandle{999, 0}};
+    std::array<float, 3> radii{};
+    queries.copy_entity_radii(radius_handles, radii);
+    EXPECT_EQ(radii[0], 0.f);
+    EXPECT_GT(radii[1], 0.f);
+    EXPECT_EQ(radii[2], 0.f);
     collision.reset_frame_events();
     collision.update(handles, ++fixture.current_tick);
     tests::expect_equal(fixture.get_entity_overlaps().num(),

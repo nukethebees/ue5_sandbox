@@ -29,12 +29,48 @@ struct PlayerAgentView {
     Team const* team{};
 };
 
+struct AgentSpatialState {
+    Vector3f location{};
+    Health health{};
+    Team team{};
+};
+
 class AgentAccessor {
   public:
     explicit AgentAccessor(AgentIndexes const& indexes) noexcept
         : indexes_{indexes} {}
 
     auto indexes() const noexcept -> AgentIndexes const& { return indexes_; }
+
+    [[nodiscard]] auto read_spatial(EntityUniqueId const id) const
+        -> std::optional<AgentSpatialState> {
+        auto const index{indexes_.find(id)};
+        if (index < 0) {
+            return std::nullopt;
+        }
+        switch (id.entity_type()) {
+            case EntityType::PlayerShip:
+                if (player_.transform == nullptr) {
+                    return std::nullopt;
+                }
+                return AgentSpatialState{
+                    to_float(player_.transform->location), *player_.health, *player_.team};
+            case EntityType::CapitalShip:
+                return AgentSpatialState{
+                    capitals_.locations[index], capitals_.healths[index], capitals_.teams[index]};
+            case EntityType::Fighter:
+                return AgentSpatialState{
+                    fighters_.locations[index], fighters_.healths[index], fighters_.teams[index]};
+            case EntityType::Turret:
+                return AgentSpatialState{
+                    turrets_.locations[index], turrets_.healths[index], turrets_.teams[index]};
+            case EntityType::TubeSpinner:
+                return AgentSpatialState{spinners_.locations[index], 1000000, Team::White};
+            case EntityType::COUNT:
+                return std::nullopt;
+        }
+        return std::nullopt;
+    }
 
     [[nodiscard]] auto is_alive(EntityUniqueId const id) const noexcept -> bool {
         auto const index{indexes_.find(id)};

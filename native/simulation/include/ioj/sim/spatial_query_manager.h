@@ -141,6 +141,7 @@ struct SpatialQueryManager {
     // State
     /* **************************************** */
     EntityRegistry const& entity_registry;
+    AgentAccessor const& agents_;
 
     mutable QueryThreadBufferPool thread_buffer_pool_;
 

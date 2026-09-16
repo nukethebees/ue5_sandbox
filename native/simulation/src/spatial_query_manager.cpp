@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <cmath>
 #include <format>
 #include <ioj/sim/entity_world_bounds.h>
 #include <ioj/sim/profiling.h>
@@ -9,8 +10,8 @@
 #include <sandbox/core/diagnostics.h>
 #include <thread>
 
+#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/entity_registry.h>
-#include <ioj/sim/entity_registry_view.h>
 
 #include <cstddef>
 #include <utility>
@@ -162,6 +163,106 @@ auto ThreadBufferLease::get() const -> ThreadBuffers& {
 }
 
 namespace ioj::sim {
+namespace {
+template <typename IncludeEntity>
+auto collect_entities_in_range(collision::GridGeometry const geometry,
+                               collision::CollisionGridEntityStorage const& grid_entities,
+                               EntityRegistry const& registry,
+                               AgentAccessor const& agents,
+                               QueryThreadBuffers& buffers,
+                               Vector3f const origin,
+                               float const radius,
+                               std::span<RegistryEntityHandle> const out_entities,
+                               IncludeEntity&& include_entity) -> std::int32_t {
+    if (out_entities.empty()) {
+        return 0;
+    }
+
+    auto const absolute_radius{std::abs(radius)};
+    auto const radius_extent{ml::make_vector3f(absolute_radius, absolute_radius, absolute_radius)};
+    auto [min_coord, max_coord]{
+        collision::to_cell_coord_bounds(geometry, origin - radius_extent, origin + radius_extent)};
+    auto const max_grid_coord{collision::CellCoord{
+        geometry.dimensions.x - 1, geometry.dimensions.y - 1, geometry.dimensions.z - 1}};
+    if (max_coord.x < 0 || max_coord.y < 0 || max_coord.z < 0 || min_coord.x > max_grid_coord.x ||
+        min_coord.y > max_grid_coord.y || min_coord.z > max_grid_coord.z) {
+        return 0;
+    }
+
+    min_coord.x = std::max(min_coord.x, 0);
+    min_coord.y = std::max(min_coord.y, 0);
+    min_coord.z = std::max(min_coord.z, 0);
+    max_coord.x = std::min(max_coord.x, max_grid_coord.x);
+    max_coord.y = std::min(max_coord.y, max_grid_coord.y);
+    max_coord.z = std::min(max_coord.z, max_grid_coord.z);
+
+    auto& entity_stamps{buffers.range_query_entity_stamps};
+    buffers.ensure_entity_stamp_count(registry.get_num_elements());
+    auto const query_stamp{buffers.advance_range_query_stamp()};
+    auto const radius_squared{radius * radius};
+    std::int32_t count{};
+
+    for (auto x{min_coord.x}; x <= max_coord.x; ++x) {
+        for (auto y{min_coord.y}; y <= max_coord.y; ++y) {
+            for (auto z{min_coord.z}; z <= max_coord.z; ++z) {
+                auto const cell_index{collision::to_index(geometry, {x, y, z})};
+                for (auto const handle : grid_entities.entities_for_cell(cell_index)) {
+                    auto const id{registry.get_current_id(handle)};
+                    if (!id.is_valid()) {
+                        continue;
+                    }
+
+                    auto const entity_index{static_cast<std::size_t>(handle.index)};
+                    if (entity_stamps[entity_index] == query_stamp) {
+                        continue;
+                    }
+                    entity_stamps[entity_index] = query_stamp;
+
+                    auto const state{agents.read_spatial(id)};
+                    if (!state || is_dead(state->health) || !include_entity(handle, id, *state)) {
+                        continue;
+                    }
+
+                    auto const dx{state->location.X - origin.X};
+                    auto const dy{state->location.Y - origin.Y};
+                    auto const dz{state->location.Z - origin.Z};
+                    auto const distance_squared{dx * dx + dy * dy + dz * dz};
+                    if (distance_squared > radius_squared) {
+                        continue;
+                    }
+
+                    out_entities[static_cast<std::size_t>(count++)] = handle;
+                    if (count >= static_cast<std::int32_t>(out_entities.size())) {
+                        return count;
+                    }
+                }
+            }
+        }
+    }
+
+    return count;
+}
+auto find_any_non_team_entity(EntityRegistry const& registry,
+                              AgentAccessor const& agents,
+                              Team const excluded_team,
+                              std::optional<EntityType> const type = {}) -> RegistryEntityHandle {
+    auto const generations{registry.get_generations()};
+    auto const count{registry.get_num_elements()};
+    for (std::int32_t index{}; index < count; ++index) {
+        auto const handle{RegistryEntityHandle{index, generations[index]}};
+        auto const id{registry.get_current_id(handle)};
+        if (!id.is_valid() || (type && id.entity_type() != *type)) {
+            continue;
+        }
+        auto const state{agents.read_spatial(id)};
+        if (state && is_alive(state->health) && state->team != excluded_team) {
+            return handle;
+        }
+    }
+    return {};
+}
+} // namespace
+
 /* **************************************** */
 // Thread buffer management
 /* **************************************** */
@@ -200,6 +301,7 @@ void SpatialQueryManager::release_thread_buffer(std::int32_t const index) const 
 SpatialQueryManager::SpatialQueryManager(EntityRegistry const& in_entity_registry,
                                          AgentAccessor const& agents)
     : entity_registry{in_entity_registry}
+    , agents_{agents}
     , collision{in_entity_registry, agents} {}
 
 void SpatialQueryManager::initialise(collision::CellCoord const grid_dimensions,
@@ -339,15 +441,18 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
     {
         SANDBOX_PROFILE_SCOPE(
             "Sandbox::SpatialQueryManager::collect_non_team_entities_in_range::loop");
-        return sim::collect_non_team_entities_in_range(
+        return collect_entities_in_range(
             grid.get_native_geometry(),
             grid.get_native_entity_storage(),
-            make_native_query_view(entity_registry),
+            entity_registry,
+            agents_,
             buffer_lease.get(),
             origin,
             radius,
-            team,
-            {out_entities.data(), static_cast<std::size_t>(out_entities.size())});
+            out_entities,
+            [team](RegistryEntityHandle, EntityUniqueId, AgentSpatialState const& state) {
+                return state.team != team;
+            });
     }
 }
 
@@ -366,26 +471,29 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
     auto const& grid{collision.get_uniform_grid()};
     validate_grid_for_range_query(grid, origin, radius);
     query_manager::ThreadBufferLease const buffer_lease{*this};
-    return sim::collect_entities_of_type_in_range(
+    return collect_entities_in_range(
         grid.get_native_geometry(),
         grid.get_native_entity_storage(),
-        make_native_query_view(entity_registry),
+        entity_registry,
+        agents_,
         buffer_lease.get(),
         origin,
         radius,
-        entity_type,
-        ignored_entity,
-        {out_entities.data(), static_cast<std::size_t>(out_entities.size())});
+        out_entities,
+        [entity_type, ignored_entity](
+            RegistryEntityHandle const handle, EntityUniqueId const id, AgentSpatialState const&) {
+            return handle != ignored_entity && id.entity_type() == entity_type;
+        });
 }
 
 auto SpatialQueryManager::get_any_non_team_entity(Team const team) const -> RegistryEntityHandle {
-    return find_any_non_team_entity(make_native_query_view(entity_registry), team);
+    return find_any_non_team_entity(entity_registry, agents_, team);
 }
 
 auto SpatialQueryManager::get_any_non_team_entity(Team const team,
                                                   EntityType const entity_type) const
     -> RegistryEntityHandle {
-    return find_any_non_team_entity(make_native_query_view(entity_registry), team, entity_type);
+    return find_any_non_team_entity(entity_registry, agents_, team, entity_type);
 }
 
 void SpatialQueryManager::are_spheres_in_bounds(Vectors3fConstView const centres,
@@ -417,8 +525,8 @@ void SpatialQueryManager::copy_entity_radii(std::span<RegistryEntityHandle const
             continue;
         }
 
-        assert(entity_registry.is_valid_alive(handle));
-        out_radii[index] = get_entity_type_radius(entity_registry.get_entity_type(handle));
+        auto const id{entity_registry.get_current_id(handle)};
+        out_radii[index] = agents_.is_alive(id) ? get_entity_type_radius(id.entity_type()) : 0.f;
     }
 }
 
