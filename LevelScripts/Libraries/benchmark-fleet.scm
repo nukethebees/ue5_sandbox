@@ -1,7 +1,7 @@
-(define (benchmark-fleet-entities capital-count-per-team formation-columns)
+(define (benchmark-fleet-entities-with-separation
+          capital-count-per-team formation-columns front-separation)
   (define column-spacing 24000)
   (define row-spacing 24000)
-  (define front-separation 240000)
 
   (define (make-indices count)
     (define (loop index result)
@@ -32,3 +32,7 @@
   (append
     (make-fleet 'blue (- (/ front-separation 2)) -1 90)
     (make-fleet 'red (/ front-separation 2) 1 -90)))
+
+(define (benchmark-fleet-entities capital-count-per-team formation-columns)
+  (benchmark-fleet-entities-with-separation
+    capital-count-per-team formation-columns 240000))

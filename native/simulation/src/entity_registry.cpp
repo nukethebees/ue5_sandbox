@@ -738,7 +738,7 @@ void EntityRegistry::validate_unique_ids() const {
             ml::fatal_error(
                 std::format("Invalid unique entity ID: id[{}] = {}", i, unique_id.raw_value()));
         }
-        auto const index{unique_id.index()};
+        [[maybe_unused]] auto const index{unique_id.index()};
         assert(unique_entities.registry_indices[index] == i);
         assert(unique_entities.registry_generations[index] == bookkeeping_.generations[i]);
         assert(unique_entities.entity_types[index] == unique_id.entity_type());

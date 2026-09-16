@@ -301,40 +301,43 @@ void Sim::think(float const dt) {
     auto const dot_threshold{config.minimum_opportunistic_intercept_deviation_dot_product};
     auto const registry{make_native_query_view(entity_registry)};
 
-    for (std::int32_t i{0}; i < n; ++i) {
-        if (!ml::TickCountdownView<std::int8_t>{data.awareness_scan_countdowns,
-                                                awareness_restart_ticks_}
-                 .try_consume(i)) {
-            continue;
-        }
-
-        auto const fighter_location{data.locations[i]};
-        auto const target_handle{data.target_handles[i]};
-        if (entity_registry.is_valid_alive(target_handle) &&
-            data.target_distance_sq[i] <= attack_engagement_threshold_sq) {
-            continue;
-        }
-
-        auto const n_nearby_entities{spatial_query_manager.collect_non_team_entities_in_range(
-            fighter_location, data.teams[i], awareness_radius, nearby_entities)};
-        auto const aim_direction{data.aim_directions[i]};
-        RegistryEntityHandle selected_target{};
-        for (std::int32_t nearby_index{}; nearby_index < n_nearby_entities; ++nearby_index) {
-            auto const candidate{nearby_entities[nearby_index]};
-            assert(candidate.index >= 0 && candidate.index < registry.num());
-            assert(registry.generations[static_cast<std::size_t>(candidate.index)] ==
-                   candidate.generation);
-
-            auto const direction{ml::native_math::safe_normal(
-                registry.locations[candidate.index] - fighter_location, 1.e-8f)};
-            if (HMM_DotV3(aim_direction, direction) > dot_threshold) {
-                selected_target = candidate;
-                break;
+    {
+        SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::awareness_scan");
+        for (std::int32_t i{0}; i < n; ++i) {
+            if (!ml::TickCountdownView<std::int8_t>{data.awareness_scan_countdowns,
+                                                    awareness_restart_ticks_}
+                     .try_consume(i)) {
+                continue;
             }
-        }
 
-        if (!selected_target.is_null()) {
-            data.target_handles[i] = selected_target;
+            auto const fighter_location{data.locations[i]};
+            auto const target_handle{data.target_handles[i]};
+            if (entity_registry.is_valid_alive(target_handle) &&
+                data.target_distance_sq[i] <= attack_engagement_threshold_sq) {
+                continue;
+            }
+
+            auto const n_nearby_entities{spatial_query_manager.collect_non_team_entities_in_range(
+                fighter_location, data.teams[i], awareness_radius, nearby_entities)};
+            auto const aim_direction{data.aim_directions[i]};
+            RegistryEntityHandle selected_target{};
+            for (std::int32_t nearby_index{}; nearby_index < n_nearby_entities; ++nearby_index) {
+                auto const candidate{nearby_entities[nearby_index]};
+                assert(candidate.index >= 0 && candidate.index < registry.num());
+                assert(registry.generations[static_cast<std::size_t>(candidate.index)] ==
+                       candidate.generation);
+
+                auto const direction{ml::native_math::safe_normal(
+                    registry.locations[candidate.index] - fighter_location, 1.e-8f)};
+                if (HMM_DotV3(aim_direction, direction) > dot_threshold) {
+                    selected_target = candidate;
+                    break;
+                }
+            }
+
+            if (!selected_target.is_null()) {
+                data.target_handles[i] = selected_target;
+            }
         }
     }
     refresh_target_data();

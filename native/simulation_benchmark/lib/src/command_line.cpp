@@ -21,6 +21,17 @@ auto parse_command_line(int const argc, char const* const* argv) -> CommandLineR
                    options.profiler_connection_timeout_seconds,
                    "Wait for a profiler connection before timing, up to this many seconds")
         ->check(CLI::PositiveNumber);
+    app.add_option("--fighter-stress-cap",
+                   options.fighter_stress_cap,
+                   "Use the production fighter cap and require exact steady-state saturation")
+        ->check(CLI::PositiveNumber);
+    auto* const warmup_option{app.add_option(
+        "--warmup-seconds", options.warmup_seconds, "Post-saturation simulated warm-up seconds")};
+    auto* const saturation_timeout_option{
+        app.add_option("--saturation-timeout-seconds",
+                       options.saturation_timeout_seconds,
+                       "Maximum simulated seconds allowed to reach the fighter cap")
+            ->check(CLI::PositiveNumber)};
     app.add_flag("--telemetry", options.telemetry_enabled, "Capture level telemetry");
 
     try {
@@ -40,6 +51,19 @@ auto parse_command_line(int const argc, char const* const* argv) -> CommandLineR
     if (options.profiler_connection_timeout_seconds.has_value() &&
         !std::isfinite(*options.profiler_connection_timeout_seconds)) {
         return {.standard_error = "--wait-for-profiler must be finite\n", .exit_code = 2};
+    }
+    if (!std::isfinite(options.warmup_seconds) || options.warmup_seconds < 0.0) {
+        return {.standard_error = "--warmup-seconds must be finite and non-negative\n",
+                .exit_code = 2};
+    }
+    if (!std::isfinite(options.saturation_timeout_seconds)) {
+        return {.standard_error = "--saturation-timeout-seconds must be finite\n", .exit_code = 2};
+    }
+    if (!options.fighter_stress_cap.has_value() &&
+        (warmup_option->count() > 0 || saturation_timeout_option->count() > 0)) {
+        return {.standard_error = "--warmup-seconds and --saturation-timeout-seconds require "
+                                  "--fighter-stress-cap\n",
+                .exit_code = 2};
     }
     return {.options = std::move(options)};
 }

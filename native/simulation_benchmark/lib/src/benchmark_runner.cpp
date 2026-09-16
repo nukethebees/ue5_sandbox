@@ -1,5 +1,6 @@
 #include <sandbox/simulation_benchmark/benchmark_runner.hpp>
 
+#include <ioj/sim/fighter_types.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/reference_level_simulation_data.h>
@@ -15,6 +16,7 @@
 #include <limits>
 #include <sstream>
 #include <thread>
+#include <vector>
 
 namespace ml::simulation_benchmark {
 namespace {
@@ -34,6 +36,30 @@ struct FrameMemorySummary {
         peak_fighters = std::max(peak_fighters, simulation.get_fighters().get_num_instances());
     }
 };
+
+struct TickTimingSummary {
+    double median_microseconds{};
+    double p95_microseconds{};
+    double p99_microseconds{};
+};
+
+auto summarize_tick_timings(std::vector<double> timings) -> TickTimingSummary {
+    if (timings.empty()) {
+        return {};
+    }
+
+    std::ranges::sort(timings);
+    auto const count{timings.size()};
+    auto const median{count % 2 == 0 ? (timings[count / 2 - 1] + timings[count / 2]) / 2.0
+                                     : timings[count / 2]};
+    auto const nearest_rank = [&timings, count](double const quantile) {
+        auto const rank{static_cast<std::size_t>(std::ceil(quantile * static_cast<double>(count)))};
+        return timings[std::clamp(rank, std::size_t{1}, count) - 1];
+    };
+    return {.median_microseconds = median,
+            .p95_microseconds = nearest_rank(0.95),
+            .p99_microseconds = nearest_rank(0.99)};
+}
 
 auto read_error(ml::level_authoring::LevelDefinitionReadResult const& result) -> std::string {
     std::ostringstream output;
@@ -126,6 +152,29 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         return std::unexpected{requested_ticks.error()};
     }
 
+    ioj::sim::SimTick warmup_ticks{};
+    ioj::sim::SimTick saturation_timeout_ticks{};
+    if (options.fighter_stress_cap.has_value()) {
+        if (*options.fighter_stress_cap <= 0) {
+            return std::unexpected{"fighter stress cap must be positive"};
+        }
+        if (!std::isfinite(options.warmup_seconds) || options.warmup_seconds < 0.0) {
+            return std::unexpected{"warm-up seconds must be finite and non-negative"};
+        }
+        if (options.warmup_seconds > 0.0) {
+            auto const ticks{calculate_tick_count(options.warmup_seconds)};
+            if (!ticks) {
+                return std::unexpected{"invalid warm-up duration: " + ticks.error()};
+            }
+            warmup_ticks = *ticks;
+        }
+        auto const timeout_ticks{calculate_tick_count(options.saturation_timeout_seconds)};
+        if (!timeout_ticks) {
+            return std::unexpected{"invalid saturation timeout: " + timeout_ticks.error()};
+        }
+        saturation_timeout_ticks = *timeout_ticks;
+    }
+
     if (options.profiler_connection_timeout_seconds.has_value()) {
         if (!ioj::sim::profiling::available) {
             return std::unexpected{"profiler support is not enabled in this benchmark build"};
@@ -160,9 +209,22 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     data.clock_settings.tick_period = 0.0;
     data.clock_settings.accumulator = 0.0;
     data.grid_dimensions.z = std::max(data.grid_dimensions.z, 25);
+    if (options.fighter_stress_cap.has_value()) {
+        data.fighters.max_live_fighters = *options.fighter_stress_cap;
+        data.fighters.laser.damage = 0;
+        data.fighters.health = std::numeric_limits<ioj::sim::Health>::max() / 2;
+        data.capital_ships.max_health = std::numeric_limits<ioj::sim::Health>::max() / 2;
+    }
 
     for (auto const& team_id : level.teams) {
         data.participating_teams.add(ioj::sim::levels::to_simulation_team(team_id));
+    }
+    if (options.fighter_stress_cap.has_value()) {
+        auto const team_count{data.participating_teams.num()};
+        if (team_count == 0 || *options.fighter_stress_cap % team_count != 0) {
+            return std::unexpected{
+                "fighter stress cap must divide evenly across participating teams"};
+        }
     }
 
     if (level.player_entity_id.empty()) {
@@ -206,7 +268,6 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     }
 
     ioj::sim::LevelSim simulation{std::move(data)};
-    FrameMemorySummary frame_summary;
 
     simulation.finish_initialisation();
     auto const initial_capital_ships{simulation.get_capital_ships().get_num_instances()};
@@ -216,17 +277,88 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
 
     auto const tick_period{simulation.get_clock().get_tick_period()};
     std::uint64_t advance_calls{};
-    auto const started_at{std::chrono::steady_clock::now()};
-    while (simulation.get_clock().get_completed_ticks() < *requested_ticks) {
+    auto const advance_one_tick = [&]() -> std::expected<void, std::string> {
         auto const previous_ticks{simulation.get_clock().get_completed_ticks()};
         simulation.advance(tick_period);
-        frame_summary.record_tick(simulation);
         ++advance_calls;
         if (simulation.get_clock().get_completed_ticks() == previous_ticks) {
             return std::unexpected{"simulation advance did not complete a deterministic tick"};
         }
+        return {};
+    };
+
+    auto const total_started_at{std::chrono::steady_clock::now()};
+    ioj::sim::SimTick saturation_ticks{};
+    if (options.fighter_stress_cap.has_value()) {
+        auto const cap{*options.fighter_stress_cap};
+        while (simulation.get_fighters().get_num_instances() < cap &&
+               saturation_ticks < saturation_timeout_ticks) {
+            auto const advanced{advance_one_tick()};
+            if (!advanced) {
+                return std::unexpected{advanced.error()};
+            }
+            ++saturation_ticks;
+        }
+        auto const saturated_count{simulation.get_fighters().get_num_instances()};
+        if (saturated_count != cap) {
+            return std::unexpected{
+                "fighter population did not reach configured cap " + std::to_string(cap) +
+                " within " + std::to_string(options.saturation_timeout_seconds) +
+                " simulated seconds; reached " + std::to_string(saturated_count)};
+        }
+
+        auto const spawned_at_saturation{simulation.get_capital_ships().get_fighters_spawned()};
+        for (ioj::sim::SimTick tick{}; tick < warmup_ticks; ++tick) {
+            auto const advanced{advance_one_tick()};
+            if (!advanced) {
+                return std::unexpected{advanced.error()};
+            }
+            if (simulation.get_fighters().get_num_instances() != cap) {
+                return std::unexpected{"fighter population changed during post-saturation warm-up"};
+            }
+        }
+        if (simulation.get_capital_ships().get_fighters_spawned() != spawned_at_saturation) {
+            return std::unexpected{"replacement fighters spawned during post-saturation warm-up"};
+        }
+    }
+
+    auto const steady_state_fighters{simulation.get_fighters().get_num_instances()};
+    auto minimum_measured_fighters{steady_state_fighters};
+    auto maximum_measured_fighters{steady_state_fighters};
+    auto const fighters_spawned_before_measurement{
+        simulation.get_capital_ships().get_fighters_spawned()};
+    auto const lasers_spawned_before_measurement{simulation.get_lasers().get_number_spawned()};
+    FrameMemorySummary frame_summary;
+    std::vector<double> tick_microseconds;
+    tick_microseconds.reserve(static_cast<std::size_t>(*requested_ticks));
+
+    auto const started_at{std::chrono::steady_clock::now()};
+    for (ioj::sim::SimTick tick{}; tick < *requested_ticks; ++tick) {
+        auto const tick_started_at{std::chrono::steady_clock::now()};
+        auto const advanced{advance_one_tick()};
+        if (!advanced) {
+            return std::unexpected{advanced.error()};
+        }
+        auto const tick_finished_at{std::chrono::steady_clock::now()};
+        tick_microseconds.push_back(
+            std::chrono::duration<double, std::micro>{tick_finished_at - tick_started_at}.count());
+        frame_summary.record_tick(simulation);
+
+        auto const fighter_count{simulation.get_fighters().get_num_instances()};
+        minimum_measured_fighters = std::min(minimum_measured_fighters, fighter_count);
+        maximum_measured_fighters = std::max(maximum_measured_fighters, fighter_count);
+        if (options.fighter_stress_cap.has_value() &&
+            fighter_count != *options.fighter_stress_cap) {
+            return std::unexpected{"fighter population changed during measured ticks"};
+        }
     }
     auto const finished_at{std::chrono::steady_clock::now()};
+    auto const fighter_spawns_during_measurement{
+        simulation.get_capital_ships().get_fighters_spawned() -
+        fighters_spawned_before_measurement};
+    if (options.fighter_stress_cap.has_value() && fighter_spawns_during_measurement != 0) {
+        return std::unexpected{"replacement fighters spawned during measured ticks"};
+    }
 
     if (options.telemetry_enabled) {
         simulation.complete_telemetry_run(ioj::sim::LevelTelemetryRunEndReason::DurationReached);
@@ -236,9 +368,15 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
 
     auto const frame_memory{simulation.get_frame_memory_stats()};
     auto const telemetry_history{simulation.get_level_telemetry_manager().get_history_stats()};
-    auto telemetry_run{simulation.take_finalized_telemetry_run()};
-    auto const completed_ticks{simulation.get_clock().get_completed_ticks()};
+    [[maybe_unused]] auto telemetry_run{simulation.take_finalized_telemetry_run()};
+    auto const total_simulation_ticks{simulation.get_clock().get_completed_ticks()};
     auto const elapsed{std::chrono::duration<double>{finished_at - started_at}.count()};
+    auto const total_elapsed{std::chrono::duration<double>{finished_at - total_started_at}.count()};
+    auto const timing_summary{summarize_tick_timings(std::move(tick_microseconds))};
+    auto const fighter_tasks{simulation.get_fighters().get_tasks()};
+    auto const count_task = [fighter_tasks](ioj::sim::FighterTask const task) {
+        return static_cast<std::int32_t>(std::ranges::count(fighter_tasks, task));
+    };
     return BenchmarkResult{
         .level_path = options.level_path.generic_string(),
         .level_id = level.metadata.id,
@@ -247,10 +385,29 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         .tick_rate_hz = simulation.get_clock().get_tick_rate(),
         .game_speed = options.game_speed,
         .requested_ticks = *requested_ticks,
-        .completed_ticks = completed_ticks,
+        .completed_ticks = *requested_ticks,
         .advance_calls = advance_calls,
-        .completed_seconds = static_cast<double>(completed_ticks) / simulation_tick_rate_hz,
+        .completed_seconds = static_cast<double>(*requested_ticks) / simulation_tick_rate_hz,
         .elapsed_seconds = elapsed,
+        .total_elapsed_seconds = total_elapsed,
+        .saturation_ticks = saturation_ticks,
+        .warmup_ticks = warmup_ticks,
+        .measured_ticks = *requested_ticks,
+        .total_simulation_ticks = total_simulation_ticks,
+        .median_tick_microseconds = timing_summary.median_microseconds,
+        .p95_tick_microseconds = timing_summary.p95_microseconds,
+        .p99_tick_microseconds = timing_summary.p99_microseconds,
+        .fighter_stress_enabled = options.fighter_stress_cap.has_value(),
+        .configured_fighter_cap = options.fighter_stress_cap.value_or(0),
+        .steady_state_fighters = steady_state_fighters,
+        .minimum_measured_fighters = minimum_measured_fighters,
+        .maximum_measured_fighters = maximum_measured_fighters,
+        .fighter_spawns_during_measurement = fighter_spawns_during_measurement,
+        .lasers_spawned_during_measurement =
+            simulation.get_lasers().get_number_spawned() - lasers_spawned_before_measurement,
+        .standby_fighters = count_task(ioj::sim::FighterTask::Standby),
+        .moving_fighters = count_task(ioj::sim::FighterTask::MoveToDestination),
+        .attacking_fighters = count_task(ioj::sim::FighterTask::Attack),
         .initial_capital_ships = initial_capital_ships,
         .initial_turrets = initial_turrets,
         .alive_entities = simulation.get_entity_registry().get_num_alive_active_entities(),
@@ -293,10 +450,12 @@ auto to_json(BenchmarkResult const& result) -> std::string {
                                           ? result.elapsed_seconds * 1'000'000.0 /
                                                 static_cast<double>(result.completed_ticks)
                                           : 0.0};
+    auto const realtime_factor{result.tick_rate_hz > 0.0 ? ticks_per_second / result.tick_rate_hz
+                                                         : 0.0};
 
     std::ostringstream output;
     output << std::setprecision(std::numeric_limits<double>::max_digits10)
-           << "{\"schema_version\":1"
+           << "{\"schema_version\":2"
            << ",\"level\":{\"path\":" << json_string(result.level_path)
            << ",\"id\":" << json_string(result.level_id)
            << ",\"title\":" << json_string(result.level_title) << "}"
@@ -305,10 +464,30 @@ auto to_json(BenchmarkResult const& result) -> std::string {
            << ",\"requested_ticks\":" << result.requested_ticks
            << ",\"completed_ticks\":" << result.completed_ticks
            << ",\"completed_seconds\":" << result.completed_seconds
-           << ",\"advance_calls\":" << result.advance_calls << "}"
+           << ",\"advance_calls\":" << result.advance_calls
+           << ",\"saturation_ticks\":" << result.saturation_ticks
+           << ",\"warmup_ticks\":" << result.warmup_ticks
+           << ",\"measured_ticks\":" << result.measured_ticks
+           << ",\"total_simulation_ticks\":" << result.total_simulation_ticks << "}"
            << ",\"timing\":{\"elapsed_seconds\":" << result.elapsed_seconds
+           << ",\"total_elapsed_seconds\":" << result.total_elapsed_seconds
            << ",\"ticks_per_second\":" << ticks_per_second
-           << ",\"mean_tick_microseconds\":" << mean_tick_microseconds << "}"
+           << ",\"realtime_factor\":" << realtime_factor
+           << ",\"mean_tick_microseconds\":" << mean_tick_microseconds
+           << ",\"median_tick_microseconds\":" << result.median_tick_microseconds
+           << ",\"p95_tick_microseconds\":" << result.p95_tick_microseconds
+           << ",\"p99_tick_microseconds\":" << result.p99_tick_microseconds << "}"
+           << ",\"fighter_stress\":{\"enabled\":"
+           << (result.fighter_stress_enabled ? "true" : "false")
+           << ",\"configured_cap\":" << result.configured_fighter_cap
+           << ",\"steady_state_fighters\":" << result.steady_state_fighters
+           << ",\"minimum_measured_fighters\":" << result.minimum_measured_fighters
+           << ",\"maximum_measured_fighters\":" << result.maximum_measured_fighters
+           << ",\"fighter_spawns_during_measurement\":" << result.fighter_spawns_during_measurement
+           << ",\"lasers_spawned_during_measurement\":" << result.lasers_spawned_during_measurement
+           << ",\"task_counts\":{\"standby\":" << result.standby_fighters
+           << ",\"move_to_destination\":" << result.moving_fighters
+           << ",\"attack\":" << result.attacking_fighters << "}}"
            << ",\"final_state\":{\"mission_state\":" << json_string(result.mission_state)
            << ",\"initial_capital_ships\":" << result.initial_capital_ships
            << ",\"initial_turrets\":" << result.initial_turrets

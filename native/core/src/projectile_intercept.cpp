@@ -16,10 +16,11 @@ auto at(ml::Vector3fSoAConstView const values, std::int32_t const index) noexcep
     return values[index];
 }
 
-auto validate_batch(float* const out_intercept_times,
+auto validate_batch([[maybe_unused]] float* const out_intercept_times,
                     ml::Vector3fSoAConstView const shooter_positions,
-                    ml::Vector3fSoAConstView const target_positions,
-                    ml::Vector3fSoAConstView const target_velocities) noexcept -> std::int32_t {
+                    [[maybe_unused]] ml::Vector3fSoAConstView const target_positions,
+                    [[maybe_unused]] ml::Vector3fSoAConstView const target_velocities) noexcept
+    -> std::int32_t {
     auto const count{shooter_positions.num()};
     assert(count == target_positions.num());
     assert(count == target_velocities.num());

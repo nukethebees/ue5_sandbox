@@ -198,6 +198,42 @@ This writes `.local/simulation_fixture.cpp`; review it against
 `native/simulation/tests/support/simulation_fixture.cpp` before updating the checked-in snapshot.
 Native tests do not load Unreal assets or regenerate this fixture automatically.
 
+### Fighter simulation benchmark
+
+The headless fighter scheduling benchmark uses the existing `native-simulation-benchmark` runner
+with `LevelScripts/FighterSchedulingBenchmark.scm`. It is intended to compare steady-state fighter
+simulation costs, including awareness scans, target selection, navigation, movement, firing/LOS and
+normal task processing, before and after scheduling changes.
+
+Run the default 2,000- and 4,000-fighter cases with:
+
+```powershell
+pwsh -NoProfile -File Scripts/run-fighter-simulation-benchmark.ps1
+```
+
+Run the full initial scaling matrix with:
+
+```powershell
+pwsh -NoProfile -File Scripts/run-fighter-simulation-benchmark.ps1 `
+    -FighterCaps 1000,2000,4000,8000,16000
+```
+
+The matrix script delegates each case to the shared `Scripts/run-native-simulation-benchmark.ps1`
+runner. That runner builds the release benchmark preset, acquires exclusive benchmark and machine
+access through the jobserver, and invokes `native-simulation-benchmark`. The scenario uses the
+production fighter population cap and enough capital ships to saturate it. Measurement begins only
+after exact saturation and a post-saturation warm-up (five seconds by default), then records ten
+seconds (600 ticks) by default. Fighter laser damage is disabled and ship health is raised to keep
+the population stable while leaving normal fighter behavior and collision work enabled.
+
+Each run verifies a constant fighter population, attacking task state, active firing, no replacement
+spawns during measurement and no frame-memory overflow. Results are written beneath
+`.local/benchmarks/fighter-simulation/<timestamp>/` as detailed JSON and a summary CSV containing
+the configured and actual fighter counts, measured ticks, elapsed time, mean/median/p95/p99 tick
+times, ticks per second and realtime factor. Use `-Seconds`, `-WarmupSeconds`,
+`-SaturationTimeoutSeconds` and `-OutputDirectory` to override the defaults; use `-SkipBuild` only
+when the benchmark binary is already current.
+
 The benchmark feature presets remain separate because they enable additional dependencies
 or report tooling. Native configurations retain the existing Unreal-compatible CRT/ABI
 settings; `UE_CONFIGURATION` still controls native artifact configuration and some compiler

@@ -9,6 +9,12 @@ param(
     [ValidateRange(1, [uint32]::MaxValue)]
     [uint32] $GameSpeed = 1,
     [switch] $Telemetry,
+    [ValidateRange(0, [uint32]::MaxValue)]
+    [uint32] $FighterStressCap = 0,
+    [ValidateRange(0.0, 86400.0)]
+    [double] $WarmupSeconds = 5.0,
+    [ValidateRange(0.1, 86400.0)]
+    [double] $SaturationTimeoutSeconds = 60.0,
     [string] $BuildPreset = 'native-simulation-benchmark',
     [switch] $SkipBuild
 )
@@ -62,6 +68,16 @@ if (-not $env:NUKETHEBEES_JOBSERVER_JOB) {
         '-SkipBuild'
     )
     if ($Telemetry) { $activityArguments += '-Telemetry' }
+    if ($FighterStressCap -gt 0) {
+        $activityArguments += @(
+            '-FighterStressCap'
+            $FighterStressCap
+            '-WarmupSeconds'
+            $WarmupSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
+            '-SaturationTimeoutSeconds'
+            $SaturationTimeoutSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
+        )
+    }
     & $jobserver @activityArguments
     exit $LASTEXITCODE
 }
@@ -70,5 +86,12 @@ $executable = Join-Path $repo "out/build/$BuildPreset/bin/native-simulation-benc
 $secondsText = $Seconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
 $arguments = @('--level', $levelPath, '--seconds', $secondsText, '--game-speed', $GameSpeed)
 if ($Telemetry) { $arguments += '--telemetry' }
+if ($FighterStressCap -gt 0) {
+    $arguments += @(
+        '--fighter-stress-cap', $FighterStressCap,
+        '--warmup-seconds', $WarmupSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture),
+        '--saturation-timeout-seconds', $SaturationTimeoutSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
+    )
+}
 & $executable @arguments
 exit $LASTEXITCODE

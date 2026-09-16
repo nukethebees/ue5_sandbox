@@ -51,6 +51,30 @@ TEST(SimulationBenchmarkCommandLine, ParsesRequiredOptions) {
     EXPECT_TRUE(result.options->telemetry_enabled);
 }
 
+TEST(SimulationBenchmarkCommandLine, ParsesFighterStressOptions) {
+    TemporaryFile level;
+    auto const path{level.path().string()};
+    char const* argv[]{"native-simulation-benchmark",
+                       "--level",
+                       path.c_str(),
+                       "--seconds",
+                       "10",
+                       "--fighter-stress-cap",
+                       "4000",
+                       "--warmup-seconds",
+                       "5",
+                       "--saturation-timeout-seconds",
+                       "30"};
+
+    auto const result{parse_command_line(11, argv)};
+
+    ASSERT_TRUE(result.options.has_value()) << result.standard_error;
+    ASSERT_TRUE(result.options->fighter_stress_cap.has_value());
+    EXPECT_EQ(*result.options->fighter_stress_cap, 4000);
+    EXPECT_DOUBLE_EQ(result.options->warmup_seconds, 5.0);
+    EXPECT_DOUBLE_EQ(result.options->saturation_timeout_seconds, 30.0);
+}
+
 TEST(SimulationBenchmarkCommandLine, RejectsMissingLevel) {
     char const* argv[]{"native-simulation-benchmark", "--seconds", "1"};
     auto const result{parse_command_line(3, argv)};
@@ -101,6 +125,22 @@ TEST(SimulationBenchmarkCommandLine, RejectsNonPositiveProfilerWait) {
     EXPECT_NE(result.exit_code, 0);
 }
 
+TEST(SimulationBenchmarkCommandLine, RejectsStressSetupWithoutFighterCap) {
+    TemporaryFile level;
+    auto const path{level.path().string()};
+    char const* argv[]{"native-simulation-benchmark",
+                       "--level",
+                       path.c_str(),
+                       "--seconds",
+                       "1",
+                       "--warmup-seconds",
+                       "5"};
+    auto const result{parse_command_line(7, argv)};
+
+    EXPECT_FALSE(result.options.has_value());
+    EXPECT_NE(result.exit_code, 0);
+}
+
 TEST(SimulationBenchmarkCommandLine, ReturnsHelpWithoutOptions) {
     char const* argv[]{"native-simulation-benchmark", "--help"};
     auto const result{parse_command_line(2, argv)};
@@ -133,12 +173,24 @@ TEST(SimulationBenchmarkJson, EmitsStableSchemaAndEscapesStrings) {
     result.game_speed = 4;
     result.advance_calls = 15;
     result.elapsed_seconds = 2.0;
+    result.total_elapsed_seconds = 3.0;
+    result.measured_ticks = 60;
+    result.total_simulation_ticks = 90;
+    result.median_tick_microseconds = 25.0;
+    result.p95_tick_microseconds = 40.0;
+    result.p99_tick_microseconds = 50.0;
+    result.fighter_stress_enabled = true;
+    result.configured_fighter_cap = 2000;
+    result.steady_state_fighters = 2000;
+    result.minimum_measured_fighters = 2000;
+    result.maximum_measured_fighters = 2000;
+    result.attacking_fighters = 2000;
     result.frame_memory_peak_payload_bytes = 123;
     result.frame_memory_total_root_claims = 456;
 
     auto const json{to_json(result)};
 
-    EXPECT_NE(json.find("\"schema_version\":1"), std::string::npos);
+    EXPECT_NE(json.find("\"schema_version\":2"), std::string::npos);
     EXPECT_NE(json.find("quote\\\"test.scm"), std::string::npos);
     EXPECT_NE(json.find("line\\nbreak"), std::string::npos);
     EXPECT_NE(json.find("\"ticks_per_second\":30"), std::string::npos);
@@ -146,6 +198,9 @@ TEST(SimulationBenchmarkJson, EmitsStableSchemaAndEscapesStrings) {
     EXPECT_NE(json.find("\"advance_calls\":15"), std::string::npos);
     EXPECT_NE(json.find("\"frame_peak_payload_bytes\":123"), std::string::npos);
     EXPECT_NE(json.find("\"frame_total_root_claims\":456"), std::string::npos);
+    EXPECT_NE(json.find("\"median_tick_microseconds\":25"), std::string::npos);
+    EXPECT_NE(json.find("\"configured_cap\":2000"), std::string::npos);
+    EXPECT_NE(json.find("\"attack\":2000"), std::string::npos);
 }
 
 TEST(SimulationBenchmarkRunner, LoadsCompilesAndAdvancesExistingLevel) {
@@ -170,6 +225,27 @@ TEST(SimulationBenchmarkRunner, AdvancesOneTickPerCallAtAnyRequestedGameSpeed) {
     EXPECT_EQ(result->requested_ticks, 3);
     EXPECT_EQ(result->completed_ticks, 3);
     EXPECT_EQ(result->advance_calls, 3u);
+}
+
+TEST(SimulationBenchmarkRunner, SaturatesAndMeasuresFighterStressScenario) {
+    auto const level_path{std::filesystem::path{SANDBOX_PROJECT_SOURCE_DIR} / "LevelScripts" /
+                          "FighterSchedulingBenchmark.scm"};
+    auto const result{run_benchmark({.level_path = level_path,
+                                     .simulated_seconds = 0.01,
+                                     .fighter_stress_cap = 12,
+                                     .warmup_seconds = 0.0,
+                                     .saturation_timeout_seconds = 1.0})};
+
+    ASSERT_TRUE(result.has_value()) << result.error();
+    EXPECT_TRUE(result->fighter_stress_enabled);
+    EXPECT_EQ(result->configured_fighter_cap, 12);
+    EXPECT_EQ(result->initial_capital_ships, 512);
+    EXPECT_EQ(result->steady_state_fighters, 12);
+    EXPECT_EQ(result->minimum_measured_fighters, 12);
+    EXPECT_EQ(result->maximum_measured_fighters, 12);
+    EXPECT_EQ(result->fighter_spawns_during_measurement, 0);
+    EXPECT_EQ(result->measured_ticks, 1);
+    EXPECT_GT(result->total_simulation_ticks, result->measured_ticks);
 }
 } // namespace
 } // namespace ml::simulation_benchmark::tests

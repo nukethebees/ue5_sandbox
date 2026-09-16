@@ -79,7 +79,7 @@ struct EntityUniqueId {
                                              ioj::sim::EntityType const entity_type_value) noexcept
         -> EntityUniqueId {
         EntityUniqueId result;
-        auto const success{try_make(index_value, entity_type_value, result)};
+        [[maybe_unused]] auto const success{try_make(index_value, entity_type_value, result)};
         assert(success && "Packed field value does not fit.");
         return result;
     }
