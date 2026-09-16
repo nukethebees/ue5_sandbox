@@ -45,7 +45,8 @@ void run_worldless_mission_manager_scenario(tests::SimulationFixture const& conf
 
     auto& mission{data.level_events.initialisation.mission.emplace()};
     mission.save_results = false;
-    auto const& entity_indices{data.level_events.initial_spawns.capital_spawns.entity_indices};
+    auto const entity_indices{
+        data.level_events.initial_spawns.capital_spawns.get_const_view().entity_indices()};
     auto add_hero{[&] { mission.hero_entity_indices.push_back(entity_indices[hero_index]); }};
     auto add_survivor{
         [&] { mission.must_survive_entity_indices.push_back(entity_indices[hero_index]); }};

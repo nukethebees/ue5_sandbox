@@ -34,8 +34,8 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
                                                   0.f,
                                                   spawn_cooldown,
                                                   100)};
-        data.level_events.initial_spawns.capital_spawns.target_entity_indices[capital_index] =
-            entity_index;
+        data.level_events.initial_spawns.capital_spawns.get_view()
+            .target_entity_indices()[capital_index] = entity_index;
     }
 
     auto const bounds_count{data.entity_bounds.num()};

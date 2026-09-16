@@ -194,12 +194,13 @@ auto compile_level(LevelDefinition const& definition,
     std::int32_t turret_offset{};
     MissionTickValues mission_values;
     auto const append_entity = [&](std::int32_t const entity_index_value,
-                                   LevelCapitalSpawnEvents& capital_events,
-                                   LevelTurretSpawnEvents& turret_events) {
+                                   SingleAllocationLevelCapitalSpawnEvents& capital_storage,
+                                   SingleAllocationLevelTurretSpawnEvents& turret_storage) {
         auto const& entity{definition.entities[static_cast<std::size_t>(entity_index_value)]};
         if (entity.archetype == "capital-ship") {
-            auto const row{capital_events.num()};
-            capital_events.add_uninitialised(1);
+            auto const row{capital_storage.num()};
+            capital_storage.add_uninitialised(1);
+            auto const capital_events{capital_storage.get_view().columns()};
             capital_events.entity_indices[row] = entity_index_value;
             capital_events.target_entity_indices[row] = -1;
             capital_events.locations.set(row,
@@ -215,8 +216,9 @@ auto compile_level(LevelDefinition const& definition,
             capital_events.initial_fighter_spawn_delays[row] = 0.0f;
             capital_events.fighter_spawn_cooldowns[row] = capital_config.spawn_delay;
         } else if (entity.archetype == "static-turret") {
-            auto const row{turret_events.num()};
-            turret_events.add_uninitialised(1);
+            auto const row{turret_storage.num()};
+            turret_storage.add_uninitialised(1);
+            auto const turret_events{turret_storage.get_view().columns()};
             turret_events.entity_indices[row] = entity_index_value;
             turret_events.locations.set(row,
                                         ml::make_vector3f(static_cast<float>(entity.position.x),

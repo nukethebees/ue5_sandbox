@@ -110,10 +110,12 @@ auto validate_world_fighter_spawn_slots(LevelSimInitData const& data)
             }
         }
     }};
-    validate(data.level_events.initial_spawns.capital_spawns.locations.get_const_view(),
-             data.level_events.initial_spawns.capital_spawns.rotations.get_const_view());
-    validate(data.level_events.schedule.capital_spawns.locations.get_const_view(),
-             data.level_events.schedule.capital_spawns.rotations.get_const_view());
+    auto const initial_capitals{
+        data.level_events.initial_spawns.capital_spawns.get_const_view().columns()};
+    validate(initial_capitals.locations, initial_capitals.rotations);
+    auto const scheduled_capitals{
+        data.level_events.schedule.capital_spawns.get_const_view().columns()};
+    validate(scheduled_capitals.locations, scheduled_capitals.rotations);
     return errors;
 }
 } // namespace ioj::sim::levels

@@ -35,12 +35,13 @@ void schedule_turret(LevelSimInitData& data, Vector3f const location, SimTick co
     schedule.execution_ticks = {tick};
     schedule.event_group_counts = {{}};
     schedule.turret_spawns.add_defaulted(1);
-    schedule.turret_spawns.entity_indices[0] = data.level_events.initialisation.entity_count++;
-    schedule.turret_spawns.locations.set(0, location);
-    schedule.turret_spawns.rotations.set(0, {});
-    schedule.turret_spawns.teams[0] = Team::Green;
-    schedule.turret_spawns.healths[0] = 100;
-    schedule.turret_spawns.laser_damages[0] = 0;
+    auto const turret_spawns{schedule.turret_spawns.get_view().columns()};
+    turret_spawns.entity_indices[0] = data.level_events.initialisation.entity_count++;
+    turret_spawns.locations.set(0, location);
+    turret_spawns.rotations.set(0, {});
+    turret_spawns.teams[0] = Team::Green;
+    turret_spawns.healths[0] = 100;
+    turret_spawns.laser_damages[0] = 0;
 
     ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, 0, 1));
 }
@@ -88,7 +89,10 @@ TEST(TickPhases, CarrierSpawnIsQueryableWithoutInitiatingLaunchOverlaps) {
     auto const first{add_capital_spawn(data, {}, Team::Green, -1, 0.f, 60.f, 100)};
     auto const second{
         add_capital_spawn(data, {{2000.f, 0.f, 0.f}}, Team::White, -1, 60.f, 60.f, 100)};
-    data.level_events.initial_spawns.capital_spawns.target_entity_indices = {second, first};
+    auto const target_indices{
+        data.level_events.initial_spawns.capital_spawns.get_view().target_entity_indices()};
+    target_indices[0] = second;
+    target_indices[1] = first;
     data.capital_ships.fighter_spawn_slots = 1;
     data.capital_ships.fighter_spawn_slots_relative_transforms = {{}};
     data.fighters.health = 100;
@@ -193,7 +197,8 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
     data.overlap_response.damage_per_overlap_detection = 100;
     auto const capital_index{add_capital_spawn(data, {}, Team::White, -1, 60.f, 60.f, 1000)};
     schedule_turret(data, {});
-    auto const turret_index{data.level_events.schedule.turret_spawns.entity_indices[0]};
+    auto const turret_index{
+        data.level_events.schedule.turret_spawns.get_const_view().entity_indices()[0]};
     ASSERT_TRUE(data.level_events.schedule.add_mission_group(LevelMissionEventType::MustSurvive,
                                                              std::array{turret_index}));
 
@@ -278,7 +283,10 @@ TEST(TickPhases, CapitalDeathPublishesExistingAndNewChildDeathsBeforeMissionEval
             add_capital_spawn(data, {{-2000.f, 0.f, 0.f}}, Team::Green, -1, 0.f, 60.f, 100)};
         auto const second{
             add_capital_spawn(data, {{2000.f, 0.f, 0.f}}, Team::White, -1, 0.f, 60.f, 100)};
-        data.level_events.initial_spawns.capital_spawns.target_entity_indices = {second, first};
+        auto const target_indices{
+            data.level_events.initial_spawns.capital_spawns.get_view().target_entity_indices()};
+        target_indices[0] = second;
+        target_indices[1] = first;
         data.capital_ships.fighter_spawn_slots = 1;
         data.capital_ships.fighter_spawn_slots_relative_transforms = {
             {.location = {0.0, 500.0, 0.0}}};

@@ -103,6 +103,18 @@ TEST(GeneratedSingleAllocationSoa, Ownership) {
 }
 
 TEST(GeneratedSingleAllocationSoa, BulkMutationAndAliasing) {
+    FParents ordinary;
+    ordinary.add_defaulted(3);
+    for (int32 i{}; i < ordinary.num(); ++i) {
+        ordinary.keys[i] = i + 10;
+        ordinary.children.values[i] = i + 20;
+    }
+    SingleParents from_ordinary;
+    from_ordinary.set_num(1);
+    EXPECT_EQ(from_ordinary.append_from(ordinary.get_const_view().slice(1, 2)), 1);
+    EXPECT_EQ(from_ordinary.get_const_view().keys()[1], 11);
+    EXPECT_EQ(from_ordinary.get_const_view().view_children().values[1], 21);
+
     SingleParents rows;
     rows.set_num(65);
     for (int32 i{}; i < rows.num(); ++i) {

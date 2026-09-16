@@ -639,6 +639,25 @@ struct SingleParentsStorage
     , ml::soa_storage::StorageOperations {
     using View = FParentsSingleView;
     using ConstView = FParentsSingleConstView;
+    using SchemaConstView = FParentsConstView;
+    using ml::soa_storage::StorageOperations::append_from;
+    auto append_from(FParentsConstView const& source) -> size_type {
+        source.validate_array_sizes();
+        auto const count{source.num()};
+        auto const first{num_};
+        ml::soa_storage::require((count <= max_capacity - first));
+        if (count == 0) {
+            return first;
+        }
+        auto const new_num{first + count};
+        if (new_num > capacity_) {
+            ml::soa_storage::require(!ordinary_source_aliases_storage(source));
+            reallocate(ml::soa_storage::growth_capacity(new_num, capacity_, capacity_block_bound));
+        }
+        append_columns(source, first, count);
+        num_ = new_num;
+        return first;
+    }
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -693,14 +712,18 @@ struct SingleParentsStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+        auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
             using Column = std::remove_cvref_t<decltype(column)>;
             using Pointer = std::conditional_t<std::is_const_v<Byte>,
                                                typename Column::const_pointer,
                                                typename Column::pointer>;
-            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
+            return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        return {pointer_at(Keys), pointer_at(ChildrenValues)};
+        auto const keys_offset{byte_size_type{}};
+        auto const children_values_offset{ml::soa_storage::layout_align(
+            keys_offset + blocks * capacity_granularity * sizeof(int32) + column_gap,
+            ChildrenValues.alignment)};
+        return {pointer_at(Keys, keys_offset), pointer_at(ChildrenValues, children_values_offset)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -738,6 +761,18 @@ struct SingleParentsStorage
             [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
+    }
+    auto ordinary_source_aliases_storage(FParentsConstView const& source) const noexcept -> bool {
+        if (data_ == nullptr) {
+            return false;
+        }
+        auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};
+        auto const allocation_end{allocation_begin + layout_bytes(capacity_blocks())};
+        auto const aliases = [allocation_begin, allocation_end](auto const* pointer) noexcept {
+            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
+            return address >= allocation_begin && address < allocation_end;
+        };
+        return aliases(source.keys.GetData()) || aliases(source.children.values.GetData());
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {
@@ -901,6 +936,25 @@ struct CountedParentsStorage
     , ml::soa_storage::StorageOperations {
     using View = FParentsSingleView;
     using ConstView = FParentsSingleConstView;
+    using SchemaConstView = FParentsConstView;
+    using ml::soa_storage::StorageOperations::append_from;
+    auto append_from(FParentsConstView const& source) -> size_type {
+        source.validate_array_sizes();
+        auto const count{source.num()};
+        auto const first{num_};
+        ml::soa_storage::require((count <= max_capacity - first));
+        if (count == 0) {
+            return first;
+        }
+        auto const new_num{first + count};
+        if (new_num > capacity_) {
+            ml::soa_storage::require(!ordinary_source_aliases_storage(source));
+            reallocate(ml::soa_storage::growth_capacity(new_num, capacity_, capacity_block_bound));
+        }
+        append_columns(source, first, count);
+        num_ = new_num;
+        return first;
+    }
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -955,14 +1009,18 @@ struct CountedParentsStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+        auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
             using Column = std::remove_cvref_t<decltype(column)>;
             using Pointer = std::conditional_t<std::is_const_v<Byte>,
                                                typename Column::const_pointer,
                                                typename Column::pointer>;
-            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
+            return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        return {pointer_at(Keys), pointer_at(ChildrenValues)};
+        auto const keys_offset{byte_size_type{}};
+        auto const children_values_offset{ml::soa_storage::layout_align(
+            keys_offset + blocks * capacity_granularity * sizeof(int32) + column_gap,
+            ChildrenValues.alignment)};
+        return {pointer_at(Keys, keys_offset), pointer_at(ChildrenValues, children_values_offset)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -1000,6 +1058,18 @@ struct CountedParentsStorage
             [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
+    }
+    auto ordinary_source_aliases_storage(FParentsConstView const& source) const noexcept -> bool {
+        if (data_ == nullptr) {
+            return false;
+        }
+        auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};
+        auto const allocation_end{allocation_begin + layout_bytes(capacity_blocks())};
+        auto const aliases = [allocation_begin, allocation_end](auto const* pointer) noexcept {
+            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
+            return address >= allocation_begin && address < allocation_end;
+        };
+        return aliases(source.keys.GetData()) || aliases(source.children.values.GetData());
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {
@@ -2348,6 +2418,25 @@ struct SingleRestrictionRowsStorage
     , ml::soa_storage::StorageOperations {
     using View = RestrictionRowsSingleView;
     using ConstView = RestrictionRowsSingleConstView;
+    using SchemaConstView = RestrictionRowsConstView;
+    using ml::soa_storage::StorageOperations::append_from;
+    auto append_from(RestrictionRowsConstView const& source) -> size_type {
+        source.validate_array_sizes();
+        auto const count{source.num()};
+        auto const first{num_};
+        ml::soa_storage::require((count <= max_capacity - first));
+        if (count == 0) {
+            return first;
+        }
+        auto const new_num{first + count};
+        if (new_num > capacity_) {
+            ml::soa_storage::require(!ordinary_source_aliases_storage(source));
+            reallocate(ml::soa_storage::growth_capacity(new_num, capacity_, capacity_block_bound));
+        }
+        append_columns(source, first, count);
+        num_ = new_num;
+        return first;
+    }
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -2401,14 +2490,16 @@ struct SingleRestrictionRowsStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+        auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
             using Column = std::remove_cvref_t<decltype(column)>;
             using Pointer = std::conditional_t<std::is_const_v<Byte>,
                                                typename Column::const_pointer,
                                                typename Column::pointer>;
-            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
+            return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        return {pointer_at(Restricted)};
+        (void)blocks;
+        auto const restricted_offset{byte_size_type{}};
+        return {pointer_at(Restricted, restricted_offset)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -2443,6 +2534,19 @@ struct SingleRestrictionRowsStorage
             [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
+    }
+    auto ordinary_source_aliases_storage(RestrictionRowsConstView const& source) const noexcept
+        -> bool {
+        if (data_ == nullptr) {
+            return false;
+        }
+        auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};
+        auto const allocation_end{allocation_begin + layout_bytes(capacity_blocks())};
+        auto const aliases = [allocation_begin, allocation_end](auto const* pointer) noexcept {
+            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
+            return address >= allocation_begin && address < allocation_end;
+        };
+        return aliases(source.restricted.GetData());
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {

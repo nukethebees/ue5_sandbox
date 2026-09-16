@@ -669,6 +669,25 @@ struct SingleAllocationCapitalSpawnDataStorage
     , ml::native_soa::StorageOperations {
     using View = CapitalSpawnDataSingleView;
     using ConstView = CapitalSpawnDataSingleConstView;
+    using SchemaConstView = CapitalSpawnDataConstView;
+    using ml::native_soa::StorageOperations::append_from;
+    auto append_from(CapitalSpawnDataConstView const& source) -> size_type {
+        source.validate_array_sizes();
+        auto const count{source.num()};
+        auto const first{num_};
+        ml::native_soa::require((count <= max_capacity - first));
+        if (count == 0) {
+            return first;
+        }
+        auto const new_num{first + count};
+        if (new_num > capacity_) {
+            ml::native_soa::require(!ordinary_source_aliases_storage(source));
+            reallocate(ml::native_soa::growth_capacity(new_num, capacity_, capacity_block_bound));
+        }
+        append_columns(source, first, count);
+        num_ = new_num;
+        return first;
+    }
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -748,24 +767,57 @@ struct SingleAllocationCapitalSpawnDataStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+        auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
             using Column = std::remove_cvref_t<decltype(column)>;
             using Pointer = std::conditional_t<std::is_const_v<Byte>,
                                                typename Column::const_pointer,
                                                typename Column::pointer>;
-            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
+            return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        return {pointer_at(TargetHandles),
-                pointer_at(LocationsXs),
-                pointer_at(LocationsYs),
-                pointer_at(LocationsZs),
-                pointer_at(RotationsPitches),
-                pointer_at(RotationsYaws),
-                pointer_at(RotationsRolls),
-                pointer_at(Teams),
-                pointer_at(Healths),
-                pointer_at(InitialSpawnDelays),
-                pointer_at(SpawnCooldowns)};
+        auto const target_handles_offset{byte_size_type{}};
+        auto const locations_xs_offset{ml::native_soa::layout_align(
+            target_handles_offset + blocks * capacity_granularity * sizeof(RegistryEntityHandle) +
+                column_gap,
+            LocationsXs.alignment)};
+        auto const locations_ys_offset{ml::native_soa::layout_align(
+            locations_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            LocationsYs.alignment)};
+        auto const locations_zs_offset{ml::native_soa::layout_align(
+            locations_ys_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            LocationsZs.alignment)};
+        auto const rotations_pitches_offset{ml::native_soa::layout_align(
+            locations_zs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            RotationsPitches.alignment)};
+        auto const rotations_yaws_offset{ml::native_soa::layout_align(
+            rotations_pitches_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            RotationsYaws.alignment)};
+        auto const rotations_rolls_offset{ml::native_soa::layout_align(
+            rotations_yaws_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            RotationsRolls.alignment)};
+        auto const teams_offset{ml::native_soa::layout_align(
+            rotations_rolls_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            Teams.alignment)};
+        auto const healths_offset{ml::native_soa::layout_align(
+            teams_offset + blocks * capacity_granularity * sizeof(Team) + column_gap,
+            Healths.alignment)};
+        auto const initial_spawn_delays_offset{ml::native_soa::layout_align(
+            healths_offset + blocks * capacity_granularity * sizeof(Health) + column_gap,
+            InitialSpawnDelays.alignment)};
+        auto const spawn_cooldowns_offset{ml::native_soa::layout_align(
+            initial_spawn_delays_offset + blocks * capacity_granularity * sizeof(float) +
+                column_gap,
+            SpawnCooldowns.alignment)};
+        return {pointer_at(TargetHandles, target_handles_offset),
+                pointer_at(LocationsXs, locations_xs_offset),
+                pointer_at(LocationsYs, locations_ys_offset),
+                pointer_at(LocationsZs, locations_zs_offset),
+                pointer_at(RotationsPitches, rotations_pitches_offset),
+                pointer_at(RotationsYaws, rotations_yaws_offset),
+                pointer_at(RotationsRolls, rotations_rolls_offset),
+                pointer_at(Teams, teams_offset),
+                pointer_at(Healths, healths_offset),
+                pointer_at(InitialSpawnDelays, initial_spawn_delays_offset),
+                pointer_at(SpawnCooldowns, spawn_cooldowns_offset)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -834,6 +886,24 @@ struct SingleAllocationCapitalSpawnDataStorage
             [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
+    }
+    auto ordinary_source_aliases_storage(CapitalSpawnDataConstView const& source) const noexcept
+        -> bool {
+        if (data_ == nullptr) {
+            return false;
+        }
+        auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};
+        auto const allocation_end{allocation_begin + layout_bytes(capacity_blocks())};
+        auto const aliases = [allocation_begin, allocation_end](auto const* pointer) noexcept {
+            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
+            return address >= allocation_begin && address < allocation_end;
+        };
+        return aliases(source.target_handles.data()) || aliases(source.locations.xs) ||
+               aliases(source.locations.ys) || aliases(source.locations.zs) ||
+               aliases(source.rotations.pitches.data()) || aliases(source.rotations.yaws.data()) ||
+               aliases(source.rotations.rolls.data()) || aliases(source.teams.data()) ||
+               aliases(source.healths.data()) || aliases(source.initial_spawn_delays.data()) ||
+               aliases(source.spawn_cooldowns.data());
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {

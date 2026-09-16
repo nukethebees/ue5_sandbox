@@ -353,8 +353,9 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
     {
         auto const count{build.capital_proxies.Num()};
         auto const default_spawn_cooldown{config.capital_ships.spawn_delay};
-        auto& events{initial_spawns.capital_spawns};
-        events.add_defaulted(count);
+        auto& storage{initial_spawns.capital_spawns};
+        storage.add_defaulted(count);
+        auto const events{storage.get_view().columns()};
         for (int32 i{}; i < count; ++i) {
             auto const* const proxy{build.capital_proxies[i]};
             auto const& transform{proxy->GetActorTransform()};
@@ -371,8 +372,9 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
     }
     {
         auto const count{build.turret_proxies.Num()};
-        auto& events{initial_spawns.turret_spawns};
-        events.add_defaulted(count);
+        auto& storage{initial_spawns.turret_spawns};
+        storage.add_defaulted(count);
+        auto const events{storage.get_view().columns()};
         build.initial_turret_transforms.Reserve(count);
         for (int32 i{}; i < count; ++i) {
             auto const* const proxy{build.turret_proxies[i]};
@@ -388,8 +390,9 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
     }
     {
         auto const count{build.spinner_proxies.Num()};
-        auto& events{initial_spawns.spinner_spawns};
-        events.add_defaulted(count);
+        auto& storage{initial_spawns.spinner_spawns};
+        storage.add_defaulted(count);
+        auto const events{storage.get_view().columns()};
         for (int32 i{}; i < count; ++i) {
             auto const* const proxy{build.spinner_proxies[i]};
             auto const& transform{proxy->GetActorTransform()};
@@ -400,7 +403,7 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
         }
     }
 
-    auto& capital_events{initial_spawns.capital_spawns};
+    auto const capital_events{initial_spawns.capital_spawns.get_view().columns()};
     auto const capital_count{capital_events.num()};
     for (int32 i{}; i < capital_count; ++i) {
         auto const* const target{build.capital_proxies[i]->get_target_ship().Get()};

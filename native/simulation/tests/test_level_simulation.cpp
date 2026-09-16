@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <ioj/sim/world_aabb_operations.h>
 #include <type_traits>
@@ -58,7 +59,7 @@ auto make_battle() -> LevelSimInitData {
 auto make_overlap_response_battle() -> LevelSimInitData {
     auto data{make_battle()};
     data.overlap_response.damage_per_overlap_detection = 50;
-    data.level_events.initial_spawns.capital_spawns.healths = {5000, 5000};
+    std::ranges::fill(data.level_events.initial_spawns.capital_spawns.get_view().healths(), 5000);
     add_player_spawn(data, {});
     data.player->transform.location = {-1000.0, 0.0, 0.0};
     data.player->config.lateral_adjustment_speed = 1.f;
@@ -70,7 +71,8 @@ auto make_overlap_response_battle() -> LevelSimInitData {
 
 void add_mission(LevelSimInitData& data) {
     auto& mission{data.level_events.initialisation.mission.emplace()};
-    auto const& entities{data.level_events.initial_spawns.capital_spawns.entity_indices};
+    auto const entities{
+        data.level_events.initial_spawns.capital_spawns.get_const_view().entity_indices()};
     mission.mode = levels::LevelMissionMode::KillEnemies;
     mission.kill_count = 1;
     mission.save_results = false;
@@ -248,8 +250,10 @@ TEST(NativeSimulation, LevelSimInitialQueriesTest) {
 TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     auto data{make_battle()};
     auto const player_index{add_player_spawn(data, {})};
-    auto& capitals_events{data.level_events.initial_spawns.capital_spawns};
-    capitals_events.target_entity_indices = {capitals_events.entity_indices[1], player_index};
+    auto const capitals_events{
+        data.level_events.initial_spawns.capital_spawns.get_view().columns()};
+    capitals_events.target_entity_indices[0] = capitals_events.entity_indices[1];
+    capitals_events.target_entity_indices[1] = player_index;
     add_turret_spawn(data, {{0.f, -1000.f, 0.f}}, {0.f, 90.f, 0.f}, Team::Green, 20, 5);
     add_turret_spawn(data, {{0.f, 1000.f, 0.f}}, {}, Team::White, 30, 7);
     LevelSim simulation{std::move(data)};

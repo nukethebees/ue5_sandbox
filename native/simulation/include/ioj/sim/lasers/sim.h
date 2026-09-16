@@ -43,7 +43,7 @@ struct Sim {
 
     auto get_read_view() const -> LaserReadView {
         return {entities.get_const_view().columns(),
-                frame_output_.hits.get_const_view(),
+                frame_output_.hits.get_const_view().columns(),
                 frame_output_.hit_ticks,
                 frame_output_.hit_ordinals};
     }

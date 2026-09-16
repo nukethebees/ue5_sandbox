@@ -59,7 +59,7 @@ auto make_long_running_battle() -> LevelSimInitData {
                                         0.f,
                                         10000.f,
                                         std::numeric_limits<std::int32_t>::max())};
-    data.level_events.initial_spawns.capital_spawns.target_entity_indices[0] = second;
+    data.level_events.initial_spawns.capital_spawns.get_view().target_entity_indices()[0] = second;
 
     auto const entity_type_count{data.entity_bounds.num()};
     for (std::int32_t type_index{}; type_index < entity_type_count; ++type_index) {

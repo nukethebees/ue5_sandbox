@@ -9,6 +9,10 @@
 #include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
 
+#include <cstring>
+#include <memory>
+#include <utility>
+
 namespace ioj::sim {
 struct SpinnerEntityDataView;
 struct SpinnerEntityDataConstView;
@@ -428,4 +432,539 @@ struct SpinnerEntityData {
     }
 };
 
+struct SpinnerEntityDataSingleView;
+struct SpinnerEntityDataSingleConstView;
+struct SpinnerEntityDataSingleLayout {
+    using size_type = std::int32_t;
+    using byte_size_type = std::size_t;
+
+    inline static constexpr byte_size_type max_allocation_size{
+        std::numeric_limits<byte_size_type>::max()};
+    inline static constexpr size_type capacity_granularity{64};
+    inline static constexpr byte_size_type column_gap{192};
+
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{
+        capacity_granularity, column_gap, 64};
+
+    inline static constexpr ColLayout<RegistryEntityHandle> Handles{LayoutStart};
+    inline static constexpr ColLayout<float> LocationsXs{Handles};
+    inline static constexpr ColLayout<float> LocationsYs{LocationsXs};
+    inline static constexpr ColLayout<float> LocationsZs{LocationsYs};
+    inline static constexpr ColLayout<float> Yaws{LocationsZs};
+    inline static constexpr ColLayout<std::int16_t> LaserCooldowns{Yaws};
+    inline static constexpr ColLayout<std::int32_t> NextFirePointIndices{LaserCooldowns};
+
+    inline static constexpr byte_size_type allocation_alignment{
+        ml::native_soa::maximum_alignment(Handles,
+                                          LocationsXs,
+                                          LocationsYs,
+                                          LocationsZs,
+                                          Yaws,
+                                          LaserCooldowns,
+                                          NextFirePointIndices)};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    inline static constexpr byte_size_type capacity_block_bound{
+        ml::native_soa::layout_align(NextFirePointIndices.block_end, allocation_alignment) +
+        6 * (column_gap + allocation_alignment - 1)};
+    inline static constexpr size_type max_capacity{
+        ml::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : NextFirePointIndices.data_end(blocks);
+    }
+  private:
+    inline static constexpr auto validate_layout = []() consteval -> bool {
+        static_assert(
+            ml::native_soa::supported_leaf<RegistryEntityHandle>,
+            "Single-allocation leaf handles requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::native_soa::supported_leaf<float>,
+            "Single-allocation leaf locations.xs requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::native_soa::supported_leaf<std::int16_t>,
+            "Single-allocation leaf laser_cooldowns requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::native_soa::supported_leaf<std::int32_t>,
+            "Single-allocation leaf next_fire_point_indices requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+
+        static_assert(
+            allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
+            "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
+        static_assert(sizeof(RegistryEntityHandle) <=
+                      (max_allocation_size - Handles.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - LocationsXs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - LocationsYs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - LocationsZs.block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - Yaws.block_offset) / capacity_granularity);
+        static_assert(sizeof(std::int16_t) <=
+                      (max_allocation_size - LaserCooldowns.block_offset) / capacity_granularity);
+        static_assert(sizeof(std::int32_t) <=
+                      (max_allocation_size - NextFirePointIndices.block_offset) /
+                          capacity_granularity);
+        static_assert(
+            6 <= (max_allocation_size - ml::native_soa::layout_align(NextFirePointIndices.block_end,
+                                                                     allocation_alignment)) /
+                     (column_gap + allocation_alignment - 1));
+        static_assert(max_capacity >= capacity_granularity);
+        return true;
+    };
+    static_assert(validate_layout());
+};
+
+struct SingleAllocationSpinnerEntityDataStorage
+    : SpinnerEntityDataSingleLayout
+    , protected ml::native_soa::StorageState
+    , ml::native_soa::StorageOperations {
+    using View = SpinnerEntityDataSingleView;
+    using ConstView = SpinnerEntityDataSingleConstView;
+    using SchemaConstView = SpinnerEntityDataConstView;
+    using ml::native_soa::StorageOperations::append_from;
+    auto append_from(SpinnerEntityDataConstView const& source) -> size_type {
+        source.validate_array_sizes();
+        auto const count{source.num()};
+        auto const first{num_};
+        ml::native_soa::require((count <= max_capacity - first));
+        if (count == 0) {
+            return first;
+        }
+        auto const new_num{first + count};
+        if (new_num > capacity_) {
+            ml::native_soa::require(!ordinary_source_aliases_storage(source));
+            reallocate(ml::native_soa::growth_capacity(new_num, capacity_, capacity_block_bound));
+        }
+        append_columns(source, first, count);
+        num_ = new_num;
+        return first;
+    }
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    SingleAllocationSpinnerEntityDataStorage() noexcept = default;
+    ~SingleAllocationSpinnerEntityDataStorage() {
+        ml::native_soa::free(data_, allocation_alignment);
+    }
+    SingleAllocationSpinnerEntityDataStorage(SingleAllocationSpinnerEntityDataStorage const&) =
+        delete;
+    auto operator=(SingleAllocationSpinnerEntityDataStorage const&)
+        -> SingleAllocationSpinnerEntityDataStorage& = delete;
+    SingleAllocationSpinnerEntityDataStorage(
+        SingleAllocationSpinnerEntityDataStorage&& other) noexcept
+        : StorageState{std::exchange(other.data_, nullptr),
+                       std::exchange(other.num_, 0),
+                       std::exchange(other.capacity_, 0)} {}
+    auto operator=(SingleAllocationSpinnerEntityDataStorage&& other) noexcept
+        -> SingleAllocationSpinnerEntityDataStorage& {
+        if (this != &other) {
+            ml::native_soa::free(data_, allocation_alignment);
+            data_ = std::exchange(other.data_, nullptr);
+            num_ = std::exchange(other.num_, 0);
+            capacity_ = std::exchange(other.capacity_, 0);
+        }
+        return *this;
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<RegistryEntityHandle>* handles{};
+        Element<float>* locations_xs{};
+        Element<float>* locations_ys{};
+        Element<float>* locations_zs{};
+        Element<float>* yaws{};
+        Element<std::int16_t>* laser_cooldowns{};
+        Element<std::int32_t>* next_fire_point_indices{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (handles == nullptr) {
+                return {};
+            }
+            return {handles + offset,
+                    locations_xs + offset,
+                    locations_ys + offset,
+                    locations_zs + offset,
+                    yaws + offset,
+                    laser_cooldowns + offset,
+                    next_fire_point_indices + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    friend struct ml::native_soa::StorageOperations;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
+            using Column = std::remove_cvref_t<decltype(column)>;
+            using Pointer = std::conditional_t<std::is_const_v<Byte>,
+                                               typename Column::const_pointer,
+                                               typename Column::pointer>;
+            return std::launder(reinterpret_cast<Pointer>(data + offset));
+        };
+        auto const handles_offset{byte_size_type{}};
+        auto const locations_xs_offset{ml::native_soa::layout_align(
+            handles_offset + blocks * capacity_granularity * sizeof(RegistryEntityHandle) +
+                column_gap,
+            LocationsXs.alignment)};
+        auto const locations_ys_offset{ml::native_soa::layout_align(
+            locations_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            LocationsYs.alignment)};
+        auto const locations_zs_offset{ml::native_soa::layout_align(
+            locations_ys_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            LocationsZs.alignment)};
+        auto const yaws_offset{ml::native_soa::layout_align(
+            locations_zs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            Yaws.alignment)};
+        auto const laser_cooldowns_offset{ml::native_soa::layout_align(
+            yaws_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            LaserCooldowns.alignment)};
+        auto const next_fire_point_indices_offset{ml::native_soa::layout_align(
+            laser_cooldowns_offset + blocks * capacity_granularity * sizeof(std::int16_t) +
+                column_gap,
+            NextFirePointIndices.alignment)};
+        return {pointer_at(Handles, handles_offset),
+                pointer_at(LocationsXs, locations_xs_offset),
+                pointer_at(LocationsYs, locations_ys_offset),
+                pointer_at(LocationsZs, locations_zs_offset),
+                pointer_at(Yaws, yaws_offset),
+                pointer_at(LaserCooldowns, laser_cooldowns_offset),
+                pointer_at(NextFirePointIndices, next_fire_point_indices_offset)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        std::uninitialized_value_construct_n<RegistryEntityHandle*>(columns.handles, count);
+        std::uninitialized_value_construct_n<float*>(columns.locations_xs, count);
+        std::uninitialized_value_construct_n<float*>(columns.locations_ys, count);
+        std::uninitialized_value_construct_n<float*>(columns.locations_zs, count);
+        std::uninitialized_value_construct_n<float*>(columns.yaws, count);
+        std::uninitialized_value_construct_n<std::int16_t*>(columns.laser_cooldowns, count);
+        std::uninitialized_value_construct_n<std::int32_t*>(columns.next_fire_point_indices, count);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        auto const elements_to_move{static_cast<byte_size_type>(move_count)};
+        auto const handles_bytes{elements_to_move * sizeof(RegistryEntityHandle)};
+        auto const locations_xs_bytes{elements_to_move * sizeof(float)};
+        auto const laser_cooldowns_bytes{elements_to_move * sizeof(std::int16_t)};
+        auto const next_fire_point_indices_bytes{elements_to_move * sizeof(std::int32_t)};
+        std::memcpy(columns.handles + index, columns.handles + source, handles_bytes);
+        std::memcpy(
+            columns.locations_xs + index, columns.locations_xs + source, locations_xs_bytes);
+        std::memcpy(
+            columns.locations_ys + index, columns.locations_ys + source, locations_xs_bytes);
+        std::memcpy(
+            columns.locations_zs + index, columns.locations_zs + source, locations_xs_bytes);
+        std::memcpy(columns.yaws + index, columns.yaws + source, locations_xs_bytes);
+        std::memcpy(columns.laser_cooldowns + index,
+                    columns.laser_cooldowns + source,
+                    laser_cooldowns_bytes);
+        std::memcpy(columns.next_fire_point_indices + index,
+                    columns.next_fire_point_indices + source,
+                    next_fire_point_indices_bytes);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ml::soa_storage_detail::for_each_removal_run(
+            num_,
+            indices,
+            ml::native_soa::require,
+            [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    auto ordinary_source_aliases_storage(SpinnerEntityDataConstView const& source) const noexcept
+        -> bool {
+        if (data_ == nullptr) {
+            return false;
+        }
+        auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};
+        auto const allocation_end{allocation_begin + layout_bytes(capacity_blocks())};
+        auto const aliases = [allocation_begin, allocation_end](auto const* pointer) noexcept {
+            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
+            return address >= allocation_begin && address < allocation_end;
+        };
+        return aliases(source.handles.data()) || aliases(source.locations.xs) ||
+               aliases(source.locations.ys) || aliases(source.locations.zs) ||
+               aliases(source.yaws.data()) || aliases(source.laser_cooldowns.data()) ||
+               aliases(source.next_fire_point_indices.data());
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source, size_type first, size_type count) {
+        auto const destination{get_data(first)};
+        auto const elements_to_copy{static_cast<byte_size_type>(count)};
+        auto const handles_bytes{elements_to_copy * sizeof(RegistryEntityHandle)};
+        auto const locations_xs_bytes{elements_to_copy * sizeof(float)};
+        auto const laser_cooldowns_bytes{elements_to_copy * sizeof(std::int16_t)};
+        auto const next_fire_point_indices_bytes{elements_to_copy * sizeof(std::int32_t)};
+        std::memcpy(destination.handles, source.handles.data(), handles_bytes);
+        std::memcpy(destination.locations_xs, source.locations.xs, locations_xs_bytes);
+        std::memcpy(destination.locations_ys, source.locations.ys, locations_xs_bytes);
+        std::memcpy(destination.locations_zs, source.locations.zs, locations_xs_bytes);
+        std::memcpy(destination.yaws, source.yaws.data(), locations_xs_bytes);
+        std::memcpy(
+            destination.laser_cooldowns, source.laser_cooldowns.data(), laser_cooldowns_bytes);
+        std::memcpy(destination.next_fire_point_indices,
+                    source.next_fire_point_indices.data(),
+                    next_fire_point_indices_bytes);
+    }
+    void reallocate(size_type const new_capacity) {
+        auto* const new_data{ml::native_soa::allocate(
+            layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)),
+            static_cast<std::uint32_t>(allocation_alignment))};
+        if (num_ > 0) {
+            auto const old_blocks{capacity_blocks()};
+            auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+            auto const source{
+                make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+            auto const destination{make_data_unchecked(new_data, new_blocks)};
+            auto const live_count{static_cast<byte_size_type>(num_)};
+            auto const handles_bytes{live_count * sizeof(RegistryEntityHandle)};
+            auto const locations_xs_bytes{live_count * sizeof(float)};
+            auto const laser_cooldowns_bytes{live_count * sizeof(std::int16_t)};
+            auto const next_fire_point_indices_bytes{live_count * sizeof(std::int32_t)};
+            std::memcpy(destination.handles, source.handles, handles_bytes);
+            std::memcpy(destination.locations_xs, source.locations_xs, locations_xs_bytes);
+            std::memcpy(destination.locations_ys, source.locations_ys, locations_xs_bytes);
+            std::memcpy(destination.locations_zs, source.locations_zs, locations_xs_bytes);
+            std::memcpy(destination.yaws, source.yaws, locations_xs_bytes);
+            std::memcpy(destination.laser_cooldowns, source.laser_cooldowns, laser_cooldowns_bytes);
+            std::memcpy(destination.next_fire_point_indices,
+                        source.next_fire_point_indices,
+                        next_fire_point_indices_bytes);
+        }
+        ml::native_soa::free(data_, allocation_alignment);
+        data_ = new_data;
+        capacity_ = new_capacity;
+    }
+};
+
+struct SpinnerEntityDataSingleConstView : ml::native_soa::CompactViewState<true> {
+    using Base = ml::native_soa::CompactViewState<true>;
+    using Base::Base;
+    using View = SpinnerEntityDataSingleView;
+    using ConstView = SpinnerEntityDataSingleConstView;
+    SpinnerEntityDataSingleConstView() = default;
+    SpinnerEntityDataSingleConstView(SpinnerEntityDataSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    auto handles() const -> std::span<RegistryEntityHandle const> {
+        return {column_data<RegistryEntityHandle>(
+                    SpinnerEntityDataSingleLayout::Handles.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto view_locations() const -> ml::native_soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{SpinnerEntityDataSingleLayout::LocationsXs.offset(blocks)};
+        auto const stride{SpinnerEntityDataSingleLayout::LocationsYs.offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto yaws() const -> std::span<float const> {
+        return {column_data<float>(SpinnerEntityDataSingleLayout::Yaws.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto laser_cooldowns() const -> std::span<std::int16_t const> {
+        return {column_data<std::int16_t>(
+                    SpinnerEntityDataSingleLayout::LaserCooldowns.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto next_fire_point_indices() const -> std::span<std::int32_t const> {
+        return {column_data<std::int32_t>(
+                    SpinnerEntityDataSingleLayout::NextFirePointIndices.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto columns() const -> SpinnerEntityDataConstView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return SpinnerEntityDataConstView{
+            {column_data_unchecked<RegistryEntityHandle>(
+                 SpinnerEntityDataSingleLayout::Handles.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            Vectors3fConstView{{column_data_unchecked<float>(
+                                    SpinnerEntityDataSingleLayout::LocationsXs.offset(blocks)),
+                                static_cast<std::size_t>(count_)},
+                               {column_data_unchecked<float>(
+                                    SpinnerEntityDataSingleLayout::LocationsYs.offset(blocks)),
+                                static_cast<std::size_t>(count_)},
+                               {column_data_unchecked<float>(
+                                    SpinnerEntityDataSingleLayout::LocationsZs.offset(blocks)),
+                                static_cast<std::size_t>(count_)}},
+            {column_data_unchecked<float>(SpinnerEntityDataSingleLayout::Yaws.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::int16_t>(
+                 SpinnerEntityDataSingleLayout::LaserCooldowns.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::int32_t>(
+                 SpinnerEntityDataSingleLayout::NextFirePointIndices.offset(blocks)),
+             static_cast<std::size_t>(count_)}};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        columns().each_column(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(SpinnerEntityDataSingleConstView) == 16);
+static_assert(std::is_trivially_copyable_v<SpinnerEntityDataSingleConstView>);
+struct SpinnerEntityDataSingleView : ml::native_soa::CompactViewState<false> {
+    using Base = ml::native_soa::CompactViewState<false>;
+    using Base::Base;
+    using View = SpinnerEntityDataSingleView;
+    using ConstView = SpinnerEntityDataSingleConstView;
+    SpinnerEntityDataSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    auto handles() const -> std::span<RegistryEntityHandle> {
+        return {column_data<RegistryEntityHandle>(
+                    SpinnerEntityDataSingleLayout::Handles.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto view_locations() const -> ml::native_soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{SpinnerEntityDataSingleLayout::LocationsXs.offset(blocks)};
+        auto const stride{SpinnerEntityDataSingleLayout::LocationsYs.offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto yaws() const -> std::span<float> {
+        return {column_data<float>(SpinnerEntityDataSingleLayout::Yaws.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto laser_cooldowns() const -> std::span<std::int16_t> {
+        return {column_data<std::int16_t>(
+                    SpinnerEntityDataSingleLayout::LaserCooldowns.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto next_fire_point_indices() const -> std::span<std::int32_t> {
+        return {column_data<std::int32_t>(
+                    SpinnerEntityDataSingleLayout::NextFirePointIndices.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto columns() const -> SpinnerEntityDataView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return SpinnerEntityDataView{
+            {column_data_unchecked<RegistryEntityHandle>(
+                 SpinnerEntityDataSingleLayout::Handles.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            Vectors3fView{{column_data_unchecked<float>(
+                               SpinnerEntityDataSingleLayout::LocationsXs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               SpinnerEntityDataSingleLayout::LocationsYs.offset(blocks)),
+                           static_cast<std::size_t>(count_)},
+                          {column_data_unchecked<float>(
+                               SpinnerEntityDataSingleLayout::LocationsZs.offset(blocks)),
+                           static_cast<std::size_t>(count_)}},
+            {column_data_unchecked<float>(SpinnerEntityDataSingleLayout::Yaws.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::int16_t>(
+                 SpinnerEntityDataSingleLayout::LaserCooldowns.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {column_data_unchecked<std::int32_t>(
+                 SpinnerEntityDataSingleLayout::NextFirePointIndices.offset(blocks)),
+             static_cast<std::size_t>(count_)}};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        columns().each_column(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(SpinnerEntityDataSingleView) == 16);
+static_assert(std::is_trivially_copyable_v<SpinnerEntityDataSingleView>);
+inline SpinnerEntityDataSingleConstView::SpinnerEntityDataSingleConstView(
+    SpinnerEntityDataSingleView const& other)
+    : Base{other} {}
+struct SingleAllocationSpinnerEntityData : SingleAllocationSpinnerEntityDataStorage {
+    SingleAllocationSpinnerEntityData() noexcept = default;
+    SingleAllocationSpinnerEntityData(SingleAllocationSpinnerEntityData const&) = delete;
+    auto operator=(SingleAllocationSpinnerEntityData const&)
+        -> SingleAllocationSpinnerEntityData& = delete;
+    SingleAllocationSpinnerEntityData(SingleAllocationSpinnerEntityData&&) noexcept = default;
+    auto operator=(SingleAllocationSpinnerEntityData&&) noexcept
+        -> SingleAllocationSpinnerEntityData& = default;
+    auto get_view() & -> View { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) & -> View { return {this, offset, count}; }
+    auto slice(size_type offset, size_type count) & -> View { return get_view(offset, count); }
+    auto left(size_type count) & -> View { return get_view().left(count); }
+    auto right(size_type count) & -> View { return get_view().right(count); }
+    auto get_view() && -> View = delete;
+    auto get_view(size_type, size_type) && -> View = delete;
+    auto slice(size_type, size_type) && -> View = delete;
+    auto left(size_type) && -> View = delete;
+    auto right(size_type) && -> View = delete;
+    auto get_view() const& -> ConstView { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) const& -> ConstView {
+        return {this, offset, count};
+    }
+    auto slice(size_type offset, size_type count) const& -> ConstView {
+        return get_view(offset, count);
+    }
+    auto left(size_type count) const& -> ConstView { return get_view().left(count); }
+    auto right(size_type count) const& -> ConstView { return get_view().right(count); }
+    auto get_view() const&& -> ConstView = delete;
+    auto get_view(size_type, size_type) const&& -> ConstView = delete;
+    auto slice(size_type, size_type) const&& -> ConstView = delete;
+    auto left(size_type) const&& -> ConstView = delete;
+    auto right(size_type) const&& -> ConstView = delete;
+    auto get_const_view() const& -> ConstView { return get_view(); }
+    auto get_const_view(size_type offset, size_type count) const& -> ConstView {
+        return get_view(offset, count);
+    }
+    auto get_const_view() const&& -> ConstView = delete;
+    auto get_const_view(size_type, size_type) const&& -> ConstView = delete;
+};
 } // namespace ioj::sim

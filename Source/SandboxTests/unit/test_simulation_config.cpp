@@ -108,7 +108,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         ml::FLevelStartErrors clear_errors;
         ml::validate_world_fighter_spawn_slots(data, clear_errors);
         TestRunner->TestFalse(TEXT("Unrotated slot clears capital"), clear_errors.has_errors());
-        capitals.rotations.set(0, {0.f, 45.f, 0.f});
+        capitals.get_view().view_rotations().set(0, {0.f, 45.f, 0.f});
         ml::FLevelStartErrors rotated_errors;
         ml::validate_world_fighter_spawn_slots(data, rotated_errors);
         TestRunner->TestTrue(

@@ -52,7 +52,7 @@ TEST(NativeSoa, LayoutGrowthAndMoves) {
         EXPECT_EQ(view.aligned64.back().value, 64);
         EXPECT_EQ(view.aligned256.back().value, 256);
         EXPECT_EQ(view.handles.back().index, -1);
-        EXPECT_EQ(view.nested.xs.back(), 0.f);
+        EXPECT_EQ(view.nested.xs_span().back(), 0.f);
         for (std::int32_t i{}; i < previous; ++i) {
             EXPECT_EQ(view.nested.ys[i], static_cast<float>(i));
         }
@@ -303,6 +303,52 @@ TEST(NativeSoa, BulkAppendPreservesEveryAlignedLeaf) {
             }
         }
     });
+}
+
+TEST(NativeSoa, OrdinarySchemaViewsAppendDirectly) {
+    EntityData source;
+    source.set_num(65);
+    for (std::int32_t row{}; row < source.num(); ++row) {
+        source.healths[static_cast<std::size_t>(row)] = row + 100;
+        source.locations.xs[static_cast<std::size_t>(row)] = static_cast<float>(row);
+    }
+
+    SingleAllocationEntityData destination;
+    destination.set_num(1);
+    destination.get_view().healths()[0] = -1;
+    auto const source_view{source.get_const_view()};
+    EXPECT_EQ(destination.append_from(source_view), 1);
+    EXPECT_EQ(destination.num(), 66);
+    EXPECT_EQ(destination.get_const_view().healths()[0], -1);
+    EXPECT_EQ(destination.get_const_view().healths()[65], 164);
+    EXPECT_EQ(destination.get_const_view().view_locations().xs()[65], 64.f);
+    EXPECT_EQ(source.healths[64], 164);
+
+    destination.reset();
+    EXPECT_EQ(destination.append_from(source_view.slice(1, 16)), 0);
+    EXPECT_EQ(destination.append_from(source_view.left(0)), 16);
+    EXPECT_EQ(destination.append_from(source_view.slice(17, 16)), 16);
+    EXPECT_EQ(destination.num(), 32);
+    EXPECT_EQ(destination.get_const_view().healths()[0], 101);
+    EXPECT_EQ(destination.get_const_view().healths()[31], 132);
+}
+
+TEST(NativeSoa, OrdinarySchemaViewAliasingIsRejectedOnlyWhenGrowthWouldInvalidateIt) {
+    SingleAllocationEntityData retained;
+    retained.reserve(256);
+    retained.set_num(65);
+    for (std::int32_t row{}; row < retained.num(); ++row) {
+        retained.get_view().healths()[row] = row;
+    }
+    auto const retained_columns{retained.get_const_view().columns()};
+    EXPECT_EQ(retained.append_from(retained_columns.slice(1, 16)), 65);
+    EXPECT_EQ(retained.get_const_view().healths()[65], 1);
+    EXPECT_EQ(retained.get_const_view().healths()[80], 16);
+
+    SingleAllocationEntityData growing;
+    growing.set_num(65);
+    auto const growing_columns{growing.get_const_view().columns()};
+    EXPECT_DEATH(growing.append_from(growing_columns), "invalid");
 }
 
 TEST(NativeSoa, DescendingRemovalExhaustiveSubsets) {

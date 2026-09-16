@@ -56,13 +56,21 @@ Mutable vector views remain writable when the view object itself is const, like 
 ```cpp
 auto first = destination.append_from(source);
 destination.append_from(source.slice(offset, count));
+destination.append_from(ordinary_schema_const_view);
 destination.append_from(destination); // self-append, including growth
 destination.append_from(destination.slice(offset, count));
 destination.add_uninitialised(count);
 destination.add_defaulted(count);
 ```
 
-`append_from` copies actual values from a compatible single-allocation owner or compact view and returns the first inserted row index. It checks final size, grows at most once, resolves source pointers after growth, bulk-copies each column and publishes size once. Whole and sliced self-append need no temporary container. Empty append is a no-op. Source values remain independent after copying.
+`append_from` copies actual values from a compatible single-allocation owner, compact view or the
+ordinary generated schema `ConstView`, and returns the first inserted row index. It checks final
+size, grows at most once, bulk-copies each flattened column and publishes size once. The ordinary
+view overload copies directly from its column pointers without materializing a compact view.
+Whole and sliced compact self-append need no temporary container. An ordinary schema view of the
+destination may be appended while retained capacity is sufficient; if growth would invalidate its
+spans, the operation is rejected before relocation. Empty append is a no-op. Source values remain
+independent after copying.
 
 `add_uninitialised` creates logical rows without writing their values; callers must initialize them before reading. `add_defaulted` initializes the new rows. AoS input ranges, arbitrary aggregates of unrelated spans, non-trivial relocation and deep-copy constructors are outside this API.
 

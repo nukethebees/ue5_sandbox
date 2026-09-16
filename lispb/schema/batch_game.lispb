@@ -192,7 +192,8 @@
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member yaws array float)
     (member laser_cooldowns array int16)
-    (member next_fire_point_indices array int32)))
+    (member next_fire_point_indices array int32)
+    (single-allocation SingleAllocationSpinnerEntityData)))
 
 (soa-module capital_spawn_data
   :header "native/simulation/include/ioj/sim/capital_spawn_data.h"
@@ -248,4 +249,5 @@
     :operations (all)
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member emission_directions nested @native_vectors_3f :nested-schema Vectors3f)
-    (member sources array @laser_source)))
+    (member sources array @laser_source)
+    (single-allocation SingleAllocationLaserHitDetails)))

@@ -26,6 +26,7 @@ class PhaseInterface;
 
 struct Sim {
     using EntityData = SpinnerEntityData;
+    using EntityStorage = SingleAllocationSpinnerEntityData;
 
     Sim(SimClock const& clock,
         EntityRegistry& entity_registry,
@@ -39,7 +40,7 @@ struct Sim {
     /* **************************************** */
     // Configuration
     /* **************************************** */
-    auto get_read_view() const -> SpinnerReadView { return {entities.get_const_view()}; }
+    auto get_read_view() const -> SpinnerReadView { return {entities.get_const_view().columns()}; }
     void set_config(SpinnerSimConfig const& new_config) noexcept;
 
     /* **************************************** */
@@ -95,6 +96,6 @@ struct Sim {
     EntityRegistry& entity_registry;
     lasers::Sim& laser_simulation;
     std::pmr::memory_resource& frame_memory_resource;
-    EntityData entities{};
+    EntityStorage entities{};
 };
 } // namespace ioj::sim::spinners

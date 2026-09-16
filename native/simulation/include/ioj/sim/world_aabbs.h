@@ -472,6 +472,25 @@ struct WorldAABBsStorage
     , ml::native_soa::StorageOperations {
     using View = WorldAABBsColumnsSingleView;
     using ConstView = WorldAABBsColumnsSingleConstView;
+    using SchemaConstView = WorldAABBsColumnsConstView;
+    using ml::native_soa::StorageOperations::append_from;
+    auto append_from(WorldAABBsColumnsConstView const& source) -> size_type {
+        source.validate_array_sizes();
+        auto const count{source.num()};
+        auto const first{num_};
+        ml::native_soa::require((count <= max_capacity - first));
+        if (count == 0) {
+            return first;
+        }
+        auto const new_num{first + count};
+        if (new_num > capacity_) {
+            ml::native_soa::require(!ordinary_source_aliases_storage(source));
+            reallocate(ml::native_soa::growth_capacity(new_num, capacity_, capacity_block_bound));
+        }
+        append_columns(source, first, count);
+        num_ = new_num;
+        return first;
+    }
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -535,19 +554,35 @@ struct WorldAABBsStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+        auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
             using Column = std::remove_cvref_t<decltype(column)>;
             using Pointer = std::conditional_t<std::is_const_v<Byte>,
                                                typename Column::const_pointer,
                                                typename Column::pointer>;
-            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
+            return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        return {pointer_at(MinXs),
-                pointer_at(MinYs),
-                pointer_at(MinZs),
-                pointer_at(MaxXs),
-                pointer_at(MaxYs),
-                pointer_at(MaxZs)};
+        auto const min_xs_offset{byte_size_type{}};
+        auto const min_ys_offset{ml::native_soa::layout_align(
+            min_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            MinYs.alignment)};
+        auto const min_zs_offset{ml::native_soa::layout_align(
+            min_ys_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            MinZs.alignment)};
+        auto const max_xs_offset{ml::native_soa::layout_align(
+            min_zs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            MaxXs.alignment)};
+        auto const max_ys_offset{ml::native_soa::layout_align(
+            max_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            MaxYs.alignment)};
+        auto const max_zs_offset{ml::native_soa::layout_align(
+            max_ys_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            MaxZs.alignment)};
+        return {pointer_at(MinXs, min_xs_offset),
+                pointer_at(MinYs, min_ys_offset),
+                pointer_at(MinZs, min_zs_offset),
+                pointer_at(MaxXs, max_xs_offset),
+                pointer_at(MaxYs, max_ys_offset),
+                pointer_at(MaxZs, max_zs_offset)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -592,6 +627,21 @@ struct WorldAABBsStorage
             [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
+    }
+    auto ordinary_source_aliases_storage(WorldAABBsColumnsConstView const& source) const noexcept
+        -> bool {
+        if (data_ == nullptr) {
+            return false;
+        }
+        auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};
+        auto const allocation_end{allocation_begin + layout_bytes(capacity_blocks())};
+        auto const aliases = [allocation_begin, allocation_end](auto const* pointer) noexcept {
+            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
+            return address >= allocation_begin && address < allocation_end;
+        };
+        return aliases(source.min_xs.data()) || aliases(source.min_ys.data()) ||
+               aliases(source.min_zs.data()) || aliases(source.max_xs.data()) ||
+               aliases(source.max_ys.data()) || aliases(source.max_zs.data());
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {

@@ -67,7 +67,7 @@ struct FighterState {
         make(std::uint32_t const entity_index_value,
              codegen_compile_fixture::PackedState const state_value) noexcept -> FighterState {
         FighterState result;
-        auto const success{try_make(entity_index_value, state_value, result)};
+        [[maybe_unused]] auto const success{try_make(entity_index_value, state_value, result)};
         assert(success && "Packed field value does not fit.");
         return result;
     }
@@ -187,7 +187,7 @@ struct PackedByte {
                                              bool const flag_value,
                                              std::uint8_t const high_value) noexcept -> PackedByte {
         PackedByte result;
-        auto const success{try_make(low_value, flag_value, high_value, result)};
+        [[maybe_unused]] auto const success{try_make(low_value, flag_value, high_value, result)};
         assert(success && "Packed field value does not fit.");
         return result;
     }
@@ -303,7 +303,7 @@ struct PackedWide {
     [[nodiscard]] static constexpr auto make(std::uint64_t const value_value) noexcept
         -> PackedWide {
         PackedWide result;
-        auto const success{try_make(value_value, result)};
+        [[maybe_unused]] auto const success{try_make(value_value, result)};
         assert(success && "Packed field value does not fit.");
         return result;
     }
@@ -397,7 +397,7 @@ struct PackedTinyState {
                                              std::uint8_t const payload_value) noexcept
         -> PackedTinyState {
         PackedTinyState result;
-        auto const success{try_make(state_value, payload_value, result)};
+        [[maybe_unused]] auto const success{try_make(state_value, payload_value, result)};
         assert(success && "Packed field value does not fit.");
         return result;
     }
@@ -524,7 +524,7 @@ struct CheckedValue {
         make(std::uint32_t const serial_value,
              codegen_compile_fixture::DomainState const state_value) noexcept -> CheckedValue {
         CheckedValue result;
-        auto const success{try_make(serial_value, state_value, result)};
+        [[maybe_unused]] auto const success{try_make(serial_value, state_value, result)};
         assert(success && "Packed field value does not fit.");
         return result;
     }

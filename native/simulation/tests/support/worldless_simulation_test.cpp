@@ -93,10 +93,11 @@ auto add_capital_spawn(LevelSimInitData& data,
                        float initial_spawn_delay,
                        float spawn_cooldown,
                        std::int32_t health) -> std::int32_t {
-    auto& events{data.level_events.initial_spawns.capital_spawns};
-    auto const row{events.num()};
+    auto& storage{data.level_events.initial_spawns.capital_spawns};
+    auto const row{storage.num()};
     auto const entity_index{data.level_events.initialisation.entity_count++};
-    events.add_defaulted(1);
+    storage.add_defaulted(1);
+    auto const events{storage.get_view().columns()};
     events.entity_indices[row] = entity_index;
     events.target_entity_indices[row] = target_entity_index;
     events.locations.set(row, location);
@@ -112,10 +113,11 @@ auto add_turret_spawn(LevelSimInitData& data,
                       Team team,
                       std::int32_t health,
                       std::int32_t laser_damage) -> std::int32_t {
-    auto& events{data.level_events.initial_spawns.turret_spawns};
-    auto const row{events.num()};
+    auto& storage{data.level_events.initial_spawns.turret_spawns};
+    auto const row{storage.num()};
     auto const entity_index{data.level_events.initialisation.entity_count++};
-    events.add_defaulted(1);
+    storage.add_defaulted(1);
+    auto const events{storage.get_view().columns()};
     events.entity_indices[row] = entity_index;
     events.locations.set(row, location);
     events.rotations.set(row, rotation);
@@ -128,10 +130,11 @@ auto add_spinner_spawn(LevelSimInitData& data,
                        Vector3f location,
                        float const yaw,
                        std::int32_t const initial_fire_point_index) -> std::int32_t {
-    auto& events{data.level_events.initial_spawns.spinner_spawns};
-    auto const row{events.num()};
+    auto& storage{data.level_events.initial_spawns.spinner_spawns};
+    auto const row{storage.num()};
     auto const entity_index{data.level_events.initialisation.entity_count++};
-    events.add_defaulted(1);
+    storage.add_defaulted(1);
+    auto const events{storage.get_view().columns()};
     events.entity_indices[row] = entity_index;
     events.locations.set(row, location);
     events.yaws[row] = yaw;

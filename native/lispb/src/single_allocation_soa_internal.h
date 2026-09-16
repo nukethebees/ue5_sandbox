@@ -70,6 +70,7 @@ struct SingleAllocationModel {
     std::string layout_name;
     std::string view_name;
     std::string const_view_name;
+    std::string schema_const_view_name;
     CppType allocate_function;
     CppType free_function;
     bool free_requires_alignment{};

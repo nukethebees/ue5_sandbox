@@ -12,8 +12,8 @@
 namespace ioj::sim {
 struct LevelEventSchedule {
     LevelSpawnGroups spawn_groups{};
-    LevelCapitalSpawnEvents capital_spawns{};
-    LevelTurretSpawnEvents turret_spawns{};
+    SingleAllocationLevelCapitalSpawnEvents capital_spawns{};
+    SingleAllocationLevelTurretSpawnEvents turret_spawns{};
     LevelMissionEvents mission_events{};
     std::vector<SimTick> execution_ticks{};
     std::vector<LevelEventGroupCounts> event_group_counts{};

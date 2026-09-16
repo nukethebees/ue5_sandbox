@@ -15,7 +15,7 @@ target_compile_features(native-soa INTERFACE cxx_std_23)
 target_include_directories(native-soa INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include" "${NATIVE_SOA_GENERATED}")
 target_include_directories(native-soa INTERFACE "${PROJECT_SOURCE_DIR}/native/core/include")
 target_sources(native-soa INTERFACE "${NATIVE_SOA_GENERATED}/native_soa_types.h")
-target_link_libraries(native-soa INTERFACE sandbox::warnings_as_errors)
+target_link_libraries(native-soa INTERFACE sandbox::handmade_math sandbox::warnings_as_errors)
 
 add_executable(native-soa-tests tests.cpp)
 target_link_libraries(native-soa-tests PRIVATE native-soa GTest::gtest_main)
@@ -23,11 +23,12 @@ add_test(NAME native-soa-tests COMMAND native-soa-tests)
 set_tests_properties(native-soa-tests PROPERTIES LABELS "native-soa")
 
 add_executable(native-soa-benchmarks benchmarks.cpp bulk_benchmarks.cpp production_benchmarks.cpp)
+target_sources(native-soa-benchmarks PRIVATE
+  "${PROJECT_SOURCE_DIR}/native/simulation/src/laser_frame_output.cpp")
 set_target_properties(native-soa-benchmarks PROPERTIES UNITY_BUILD OFF)
 target_link_libraries(native-soa-benchmarks PRIVATE native-soa benchmark::benchmark_main)
 target_include_directories(native-soa-benchmarks PRIVATE
   "${PROJECT_SOURCE_DIR}/native/simulation/include")
-target_link_libraries(native-soa-benchmarks PRIVATE sandbox::handmade_math)
 add_executable(native-soa-reserve-matrix reserve_matrix.cpp)
 target_link_libraries(native-soa-reserve-matrix PRIVATE native-soa benchmark::benchmark_main)
 target_compile_definitions(native-soa-reserve-matrix PRIVATE NATIVE_SOA_MIMALLOC=0)
@@ -77,6 +78,22 @@ add_custom_target(native-soa-production-report
     "--benchmark_filter=Production/" --benchmark_repetitions=7
     --benchmark_enable_random_interleaving=true --benchmark_min_time=0.1s
     "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-production-results.json"
+    --benchmark_out_format=json
+  DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)
+
+add_custom_target(native-soa-candidate-report
+  COMMAND ${benchmark_activity_command} native-soa-benchmarks
+    "--benchmark_filter=Production/(Spinner|LaserHit)/" --benchmark_repetitions=7
+    --benchmark_enable_random_interleaving=true --benchmark_min_time=0.1s
+    "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-candidate-results.json"
+    --benchmark_out_format=json
+  DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)
+
+add_custom_target(native-soa-laser-hit-append-report
+  COMMAND ${benchmark_activity_command} native-soa-benchmarks
+    "--benchmark_filter=Production/LaserHit/" --benchmark_repetitions=9
+    --benchmark_enable_random_interleaving=true --benchmark_min_time=0.3s
+    "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-laser-hit-append-results.json"
     --benchmark_out_format=json
   DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)
 

@@ -780,6 +780,25 @@ struct EntityCellDataStorage
     , ml::native_soa::StorageOperations {
     using View = EntityCellDataColumnsSingleView;
     using ConstView = EntityCellDataColumnsSingleConstView;
+    using SchemaConstView = EntityCellDataColumnsConstView;
+    using ml::native_soa::StorageOperations::append_from;
+    auto append_from(EntityCellDataColumnsConstView const& source) -> size_type {
+        source.validate_array_sizes();
+        auto const count{source.num()};
+        auto const first{num_};
+        ml::native_soa::require((count <= max_capacity - first));
+        if (count == 0) {
+            return first;
+        }
+        auto const new_num{first + count};
+        if (new_num > capacity_) {
+            ml::native_soa::require(!ordinary_source_aliases_storage(source));
+            reallocate(ml::native_soa::growth_capacity(new_num, capacity_, capacity_block_bound));
+        }
+        append_columns(source, first, count);
+        num_ = new_num;
+        return first;
+    }
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -857,26 +876,63 @@ struct EntityCellDataStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+        auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
             using Column = std::remove_cvref_t<decltype(column)>;
             using Pointer = std::conditional_t<std::is_const_v<Byte>,
                                                typename Column::const_pointer,
                                                typename Column::pointer>;
-            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
+            return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        return {pointer_at(MinPointXs),
-                pointer_at(MinPointYs),
-                pointer_at(MinPointZs),
-                pointer_at(MaxPointXs),
-                pointer_at(MaxPointYs),
-                pointer_at(MaxPointZs),
-                pointer_at(MinCellXs),
-                pointer_at(MinCellYs),
-                pointer_at(MinCellZs),
-                pointer_at(MaxCellXs),
-                pointer_at(MaxCellYs),
-                pointer_at(MaxCellZs),
-                pointer_at(Handles)};
+        auto const min_point_xs_offset{byte_size_type{}};
+        auto const min_point_ys_offset{ml::native_soa::layout_align(
+            min_point_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            MinPointYs.alignment)};
+        auto const min_point_zs_offset{ml::native_soa::layout_align(
+            min_point_ys_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            MinPointZs.alignment)};
+        auto const max_point_xs_offset{ml::native_soa::layout_align(
+            min_point_zs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            MaxPointXs.alignment)};
+        auto const max_point_ys_offset{ml::native_soa::layout_align(
+            max_point_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            MaxPointYs.alignment)};
+        auto const max_point_zs_offset{ml::native_soa::layout_align(
+            max_point_ys_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            MaxPointZs.alignment)};
+        auto const min_cell_xs_offset{ml::native_soa::layout_align(
+            max_point_zs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            MinCellXs.alignment)};
+        auto const min_cell_ys_offset{ml::native_soa::layout_align(
+            min_cell_xs_offset + blocks * capacity_granularity * sizeof(std::int32_t) + column_gap,
+            MinCellYs.alignment)};
+        auto const min_cell_zs_offset{ml::native_soa::layout_align(
+            min_cell_ys_offset + blocks * capacity_granularity * sizeof(std::int32_t) + column_gap,
+            MinCellZs.alignment)};
+        auto const max_cell_xs_offset{ml::native_soa::layout_align(
+            min_cell_zs_offset + blocks * capacity_granularity * sizeof(std::int32_t) + column_gap,
+            MaxCellXs.alignment)};
+        auto const max_cell_ys_offset{ml::native_soa::layout_align(
+            max_cell_xs_offset + blocks * capacity_granularity * sizeof(std::int32_t) + column_gap,
+            MaxCellYs.alignment)};
+        auto const max_cell_zs_offset{ml::native_soa::layout_align(
+            max_cell_ys_offset + blocks * capacity_granularity * sizeof(std::int32_t) + column_gap,
+            MaxCellZs.alignment)};
+        auto const handles_offset{ml::native_soa::layout_align(
+            max_cell_zs_offset + blocks * capacity_granularity * sizeof(std::int32_t) + column_gap,
+            Handles.alignment)};
+        return {pointer_at(MinPointXs, min_point_xs_offset),
+                pointer_at(MinPointYs, min_point_ys_offset),
+                pointer_at(MinPointZs, min_point_zs_offset),
+                pointer_at(MaxPointXs, max_point_xs_offset),
+                pointer_at(MaxPointYs, max_point_ys_offset),
+                pointer_at(MaxPointZs, max_point_zs_offset),
+                pointer_at(MinCellXs, min_cell_xs_offset),
+                pointer_at(MinCellYs, min_cell_ys_offset),
+                pointer_at(MinCellZs, min_cell_zs_offset),
+                pointer_at(MaxCellXs, max_cell_xs_offset),
+                pointer_at(MaxCellYs, max_cell_ys_offset),
+                pointer_at(MaxCellZs, max_cell_zs_offset),
+                pointer_at(Handles, handles_offset)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -943,6 +999,26 @@ struct EntityCellDataStorage
             [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
+    }
+    auto
+        ordinary_source_aliases_storage(EntityCellDataColumnsConstView const& source) const noexcept
+        -> bool {
+        if (data_ == nullptr) {
+            return false;
+        }
+        auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};
+        auto const allocation_end{allocation_begin + layout_bytes(capacity_blocks())};
+        auto const aliases = [allocation_begin, allocation_end](auto const* pointer) noexcept {
+            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
+            return address >= allocation_begin && address < allocation_end;
+        };
+        return aliases(source.min_point_xs.data()) || aliases(source.min_point_ys.data()) ||
+               aliases(source.min_point_zs.data()) || aliases(source.max_point_xs.data()) ||
+               aliases(source.max_point_ys.data()) || aliases(source.max_point_zs.data()) ||
+               aliases(source.min_cell_xs.data()) || aliases(source.min_cell_ys.data()) ||
+               aliases(source.min_cell_zs.data()) || aliases(source.max_cell_xs.data()) ||
+               aliases(source.max_cell_ys.data()) || aliases(source.max_cell_zs.data()) ||
+               aliases(source.handles.data());
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {

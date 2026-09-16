@@ -604,6 +604,25 @@ struct SingleSpacingDoublesStorage
     , ml::soa_storage::StorageOperations {
     using View = SpacingDoublesSingleView;
     using ConstView = SpacingDoublesSingleConstView;
+    using SchemaConstView = SpacingDoublesConstView;
+    using ml::soa_storage::StorageOperations::append_from;
+    auto append_from(SpacingDoublesConstView const& source) -> size_type {
+        source.validate_array_sizes();
+        auto const count{source.num()};
+        auto const first{num_};
+        ml::soa_storage::require((count <= max_capacity - first));
+        if (count == 0) {
+            return first;
+        }
+        auto const new_num{first + count};
+        if (new_num > capacity_) {
+            ml::soa_storage::require(!ordinary_source_aliases_storage(source));
+            reallocate(ml::soa_storage::growth_capacity(new_num, capacity_, capacity_block_bound));
+        }
+        append_columns(source, first, count);
+        num_ = new_num;
+        return first;
+    }
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -687,21 +706,107 @@ struct SingleSpacingDoublesStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+        auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
             using Column = std::remove_cvref_t<decltype(column)>;
             using Pointer = std::conditional_t<std::is_const_v<Byte>,
                                                typename Column::const_pointer,
                                                typename Column::pointer>;
-            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
+            return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        return {pointer_at(Positions0Xs),  pointer_at(Positions0Ys),  pointer_at(Positions0Zs),
-                pointer_at(Velocities0Xs), pointer_at(Velocities0Ys), pointer_at(Velocities0Zs),
-                pointer_at(Positions1Xs),  pointer_at(Positions1Ys),  pointer_at(Positions1Zs),
-                pointer_at(Velocities1Xs), pointer_at(Velocities1Ys), pointer_at(Velocities1Zs),
-                pointer_at(Positions2Xs),  pointer_at(Positions2Ys),  pointer_at(Positions2Zs),
-                pointer_at(Velocities2Xs), pointer_at(Velocities2Ys), pointer_at(Velocities2Zs),
-                pointer_at(Positions3Xs),  pointer_at(Positions3Ys),  pointer_at(Positions3Zs),
-                pointer_at(Velocities3Xs), pointer_at(Velocities3Ys), pointer_at(Velocities3Zs)};
+        auto const positions0_xs_offset{byte_size_type{}};
+        auto const positions0_ys_offset{ml::soa_storage::layout_align(
+            positions0_xs_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Positions0Ys.alignment)};
+        auto const positions0_zs_offset{ml::soa_storage::layout_align(
+            positions0_ys_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Positions0Zs.alignment)};
+        auto const velocities0_xs_offset{ml::soa_storage::layout_align(
+            positions0_zs_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Velocities0Xs.alignment)};
+        auto const velocities0_ys_offset{ml::soa_storage::layout_align(
+            velocities0_xs_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Velocities0Ys.alignment)};
+        auto const velocities0_zs_offset{ml::soa_storage::layout_align(
+            velocities0_ys_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Velocities0Zs.alignment)};
+        auto const positions1_xs_offset{ml::soa_storage::layout_align(
+            velocities0_zs_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Positions1Xs.alignment)};
+        auto const positions1_ys_offset{ml::soa_storage::layout_align(
+            positions1_xs_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Positions1Ys.alignment)};
+        auto const positions1_zs_offset{ml::soa_storage::layout_align(
+            positions1_ys_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Positions1Zs.alignment)};
+        auto const velocities1_xs_offset{ml::soa_storage::layout_align(
+            positions1_zs_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Velocities1Xs.alignment)};
+        auto const velocities1_ys_offset{ml::soa_storage::layout_align(
+            velocities1_xs_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Velocities1Ys.alignment)};
+        auto const velocities1_zs_offset{ml::soa_storage::layout_align(
+            velocities1_ys_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Velocities1Zs.alignment)};
+        auto const positions2_xs_offset{ml::soa_storage::layout_align(
+            velocities1_zs_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Positions2Xs.alignment)};
+        auto const positions2_ys_offset{ml::soa_storage::layout_align(
+            positions2_xs_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Positions2Ys.alignment)};
+        auto const positions2_zs_offset{ml::soa_storage::layout_align(
+            positions2_ys_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Positions2Zs.alignment)};
+        auto const velocities2_xs_offset{ml::soa_storage::layout_align(
+            positions2_zs_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Velocities2Xs.alignment)};
+        auto const velocities2_ys_offset{ml::soa_storage::layout_align(
+            velocities2_xs_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Velocities2Ys.alignment)};
+        auto const velocities2_zs_offset{ml::soa_storage::layout_align(
+            velocities2_ys_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Velocities2Zs.alignment)};
+        auto const positions3_xs_offset{ml::soa_storage::layout_align(
+            velocities2_zs_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Positions3Xs.alignment)};
+        auto const positions3_ys_offset{ml::soa_storage::layout_align(
+            positions3_xs_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Positions3Ys.alignment)};
+        auto const positions3_zs_offset{ml::soa_storage::layout_align(
+            positions3_ys_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Positions3Zs.alignment)};
+        auto const velocities3_xs_offset{ml::soa_storage::layout_align(
+            positions3_zs_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Velocities3Xs.alignment)};
+        auto const velocities3_ys_offset{ml::soa_storage::layout_align(
+            velocities3_xs_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Velocities3Ys.alignment)};
+        auto const velocities3_zs_offset{ml::soa_storage::layout_align(
+            velocities3_ys_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Velocities3Zs.alignment)};
+        return {pointer_at(Positions0Xs, positions0_xs_offset),
+                pointer_at(Positions0Ys, positions0_ys_offset),
+                pointer_at(Positions0Zs, positions0_zs_offset),
+                pointer_at(Velocities0Xs, velocities0_xs_offset),
+                pointer_at(Velocities0Ys, velocities0_ys_offset),
+                pointer_at(Velocities0Zs, velocities0_zs_offset),
+                pointer_at(Positions1Xs, positions1_xs_offset),
+                pointer_at(Positions1Ys, positions1_ys_offset),
+                pointer_at(Positions1Zs, positions1_zs_offset),
+                pointer_at(Velocities1Xs, velocities1_xs_offset),
+                pointer_at(Velocities1Ys, velocities1_ys_offset),
+                pointer_at(Velocities1Zs, velocities1_zs_offset),
+                pointer_at(Positions2Xs, positions2_xs_offset),
+                pointer_at(Positions2Ys, positions2_ys_offset),
+                pointer_at(Positions2Zs, positions2_zs_offset),
+                pointer_at(Velocities2Xs, velocities2_xs_offset),
+                pointer_at(Velocities2Ys, velocities2_ys_offset),
+                pointer_at(Velocities2Zs, velocities2_zs_offset),
+                pointer_at(Positions3Xs, positions3_xs_offset),
+                pointer_at(Positions3Ys, positions3_ys_offset),
+                pointer_at(Positions3Zs, positions3_zs_offset),
+                pointer_at(Velocities3Xs, velocities3_xs_offset),
+                pointer_at(Velocities3Ys, velocities3_ys_offset),
+                pointer_at(Velocities3Zs, velocities3_zs_offset)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -806,6 +911,37 @@ struct SingleSpacingDoublesStorage
             [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
+    }
+    auto ordinary_source_aliases_storage(SpacingDoublesConstView const& source) const noexcept
+        -> bool {
+        if (data_ == nullptr) {
+            return false;
+        }
+        auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};
+        auto const allocation_end{allocation_begin + layout_bytes(capacity_blocks())};
+        auto const aliases = [allocation_begin, allocation_end](auto const* pointer) noexcept {
+            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
+            return address >= allocation_begin && address < allocation_end;
+        };
+        return aliases(source.positions0.xs.GetData()) || aliases(source.positions0.ys.GetData()) ||
+               aliases(source.positions0.zs.GetData()) ||
+               aliases(source.velocities0.xs.GetData()) ||
+               aliases(source.velocities0.ys.GetData()) ||
+               aliases(source.velocities0.zs.GetData()) ||
+               aliases(source.positions1.xs.GetData()) || aliases(source.positions1.ys.GetData()) ||
+               aliases(source.positions1.zs.GetData()) ||
+               aliases(source.velocities1.xs.GetData()) ||
+               aliases(source.velocities1.ys.GetData()) ||
+               aliases(source.velocities1.zs.GetData()) ||
+               aliases(source.positions2.xs.GetData()) || aliases(source.positions2.ys.GetData()) ||
+               aliases(source.positions2.zs.GetData()) ||
+               aliases(source.velocities2.xs.GetData()) ||
+               aliases(source.velocities2.ys.GetData()) ||
+               aliases(source.velocities2.zs.GetData()) ||
+               aliases(source.positions3.xs.GetData()) || aliases(source.positions3.ys.GetData()) ||
+               aliases(source.positions3.zs.GetData()) ||
+               aliases(source.velocities3.xs.GetData()) ||
+               aliases(source.velocities3.ys.GetData()) || aliases(source.velocities3.zs.GetData());
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {
@@ -2041,6 +2177,25 @@ struct SingleSpacingMixedWidthsStorage
     , ml::soa_storage::StorageOperations {
     using View = SpacingMixedWidthsSingleView;
     using ConstView = SpacingMixedWidthsSingleConstView;
+    using SchemaConstView = SpacingMixedWidthsConstView;
+    using ml::soa_storage::StorageOperations::append_from;
+    auto append_from(SpacingMixedWidthsConstView const& source) -> size_type {
+        source.validate_array_sizes();
+        auto const count{source.num()};
+        auto const first{num_};
+        ml::soa_storage::require((count <= max_capacity - first));
+        if (count == 0) {
+            return first;
+        }
+        auto const new_num{first + count};
+        if (new_num > capacity_) {
+            ml::soa_storage::require(!ordinary_source_aliases_storage(source));
+            reallocate(ml::soa_storage::growth_capacity(new_num, capacity_, capacity_block_bound));
+        }
+        append_columns(source, first, count);
+        num_ = new_num;
+        return first;
+    }
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -2150,28 +2305,179 @@ struct SingleSpacingMixedWidthsStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+        auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
             using Column = std::remove_cvref_t<decltype(column)>;
             using Pointer = std::conditional_t<std::is_const_v<Byte>,
                                                typename Column::const_pointer,
                                                typename Column::pointer>;
-            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
+            return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        return {
-            pointer_at(Bundle0Flags),    pointer_at(Bundle0Counters), pointer_at(Bundle0Counts),
-            pointer_at(Bundle0Totals),   pointer_at(Bundle0Payloads), pointer_at(Bundle0Values),
-            pointer_at(Bundle0Rates),    pointer_at(Bundle1Flags),    pointer_at(Bundle1Counters),
-            pointer_at(Bundle1Counts),   pointer_at(Bundle1Totals),   pointer_at(Bundle1Payloads),
-            pointer_at(Bundle1Values),   pointer_at(Bundle1Rates),    pointer_at(Bundle2Flags),
-            pointer_at(Bundle2Counters), pointer_at(Bundle2Counts),   pointer_at(Bundle2Totals),
-            pointer_at(Bundle2Payloads), pointer_at(Bundle2Values),   pointer_at(Bundle2Rates),
-            pointer_at(Bundle3Flags),    pointer_at(Bundle3Counters), pointer_at(Bundle3Counts),
-            pointer_at(Bundle3Totals),   pointer_at(Bundle3Payloads), pointer_at(Bundle3Values),
-            pointer_at(Bundle3Rates),    pointer_at(Bundle4Flags),    pointer_at(Bundle4Counters),
-            pointer_at(Bundle4Counts),   pointer_at(Bundle4Totals),   pointer_at(Bundle4Payloads),
-            pointer_at(Bundle4Values),   pointer_at(Bundle4Rates),    pointer_at(Bundle5Flags),
-            pointer_at(Bundle5Counters), pointer_at(Bundle5Counts),   pointer_at(Bundle5Totals),
-            pointer_at(Bundle5Payloads), pointer_at(Bundle5Values),   pointer_at(Bundle5Rates)};
+        auto const bundle0_flags_offset{byte_size_type{}};
+        auto const bundle0_counters_offset{ml::soa_storage::layout_align(
+            bundle0_flags_offset + blocks * capacity_granularity * sizeof(uint8) + column_gap,
+            Bundle0Counters.alignment)};
+        auto const bundle0_counts_offset{ml::soa_storage::layout_align(
+            bundle0_counters_offset + blocks * capacity_granularity * sizeof(uint16) + column_gap,
+            Bundle0Counts.alignment)};
+        auto const bundle0_totals_offset{ml::soa_storage::layout_align(
+            bundle0_counts_offset + blocks * capacity_granularity * sizeof(uint32) + column_gap,
+            Bundle0Totals.alignment)};
+        auto const bundle0_payloads_offset{ml::soa_storage::layout_align(
+            bundle0_totals_offset + blocks * capacity_granularity * sizeof(uint64) + column_gap,
+            Bundle0Payloads.alignment)};
+        auto const bundle0_values_offset{ml::soa_storage::layout_align(
+            bundle0_payloads_offset + blocks * capacity_granularity * sizeof(OddBytes) + column_gap,
+            Bundle0Values.alignment)};
+        auto const bundle0_rates_offset{ml::soa_storage::layout_align(
+            bundle0_values_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            Bundle0Rates.alignment)};
+        auto const bundle1_flags_offset{ml::soa_storage::layout_align(
+            bundle0_rates_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Bundle1Flags.alignment)};
+        auto const bundle1_counters_offset{ml::soa_storage::layout_align(
+            bundle1_flags_offset + blocks * capacity_granularity * sizeof(uint8) + column_gap,
+            Bundle1Counters.alignment)};
+        auto const bundle1_counts_offset{ml::soa_storage::layout_align(
+            bundle1_counters_offset + blocks * capacity_granularity * sizeof(uint16) + column_gap,
+            Bundle1Counts.alignment)};
+        auto const bundle1_totals_offset{ml::soa_storage::layout_align(
+            bundle1_counts_offset + blocks * capacity_granularity * sizeof(uint32) + column_gap,
+            Bundle1Totals.alignment)};
+        auto const bundle1_payloads_offset{ml::soa_storage::layout_align(
+            bundle1_totals_offset + blocks * capacity_granularity * sizeof(uint64) + column_gap,
+            Bundle1Payloads.alignment)};
+        auto const bundle1_values_offset{ml::soa_storage::layout_align(
+            bundle1_payloads_offset + blocks * capacity_granularity * sizeof(OddBytes) + column_gap,
+            Bundle1Values.alignment)};
+        auto const bundle1_rates_offset{ml::soa_storage::layout_align(
+            bundle1_values_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            Bundle1Rates.alignment)};
+        auto const bundle2_flags_offset{ml::soa_storage::layout_align(
+            bundle1_rates_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Bundle2Flags.alignment)};
+        auto const bundle2_counters_offset{ml::soa_storage::layout_align(
+            bundle2_flags_offset + blocks * capacity_granularity * sizeof(uint8) + column_gap,
+            Bundle2Counters.alignment)};
+        auto const bundle2_counts_offset{ml::soa_storage::layout_align(
+            bundle2_counters_offset + blocks * capacity_granularity * sizeof(uint16) + column_gap,
+            Bundle2Counts.alignment)};
+        auto const bundle2_totals_offset{ml::soa_storage::layout_align(
+            bundle2_counts_offset + blocks * capacity_granularity * sizeof(uint32) + column_gap,
+            Bundle2Totals.alignment)};
+        auto const bundle2_payloads_offset{ml::soa_storage::layout_align(
+            bundle2_totals_offset + blocks * capacity_granularity * sizeof(uint64) + column_gap,
+            Bundle2Payloads.alignment)};
+        auto const bundle2_values_offset{ml::soa_storage::layout_align(
+            bundle2_payloads_offset + blocks * capacity_granularity * sizeof(OddBytes) + column_gap,
+            Bundle2Values.alignment)};
+        auto const bundle2_rates_offset{ml::soa_storage::layout_align(
+            bundle2_values_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            Bundle2Rates.alignment)};
+        auto const bundle3_flags_offset{ml::soa_storage::layout_align(
+            bundle2_rates_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Bundle3Flags.alignment)};
+        auto const bundle3_counters_offset{ml::soa_storage::layout_align(
+            bundle3_flags_offset + blocks * capacity_granularity * sizeof(uint8) + column_gap,
+            Bundle3Counters.alignment)};
+        auto const bundle3_counts_offset{ml::soa_storage::layout_align(
+            bundle3_counters_offset + blocks * capacity_granularity * sizeof(uint16) + column_gap,
+            Bundle3Counts.alignment)};
+        auto const bundle3_totals_offset{ml::soa_storage::layout_align(
+            bundle3_counts_offset + blocks * capacity_granularity * sizeof(uint32) + column_gap,
+            Bundle3Totals.alignment)};
+        auto const bundle3_payloads_offset{ml::soa_storage::layout_align(
+            bundle3_totals_offset + blocks * capacity_granularity * sizeof(uint64) + column_gap,
+            Bundle3Payloads.alignment)};
+        auto const bundle3_values_offset{ml::soa_storage::layout_align(
+            bundle3_payloads_offset + blocks * capacity_granularity * sizeof(OddBytes) + column_gap,
+            Bundle3Values.alignment)};
+        auto const bundle3_rates_offset{ml::soa_storage::layout_align(
+            bundle3_values_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            Bundle3Rates.alignment)};
+        auto const bundle4_flags_offset{ml::soa_storage::layout_align(
+            bundle3_rates_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Bundle4Flags.alignment)};
+        auto const bundle4_counters_offset{ml::soa_storage::layout_align(
+            bundle4_flags_offset + blocks * capacity_granularity * sizeof(uint8) + column_gap,
+            Bundle4Counters.alignment)};
+        auto const bundle4_counts_offset{ml::soa_storage::layout_align(
+            bundle4_counters_offset + blocks * capacity_granularity * sizeof(uint16) + column_gap,
+            Bundle4Counts.alignment)};
+        auto const bundle4_totals_offset{ml::soa_storage::layout_align(
+            bundle4_counts_offset + blocks * capacity_granularity * sizeof(uint32) + column_gap,
+            Bundle4Totals.alignment)};
+        auto const bundle4_payloads_offset{ml::soa_storage::layout_align(
+            bundle4_totals_offset + blocks * capacity_granularity * sizeof(uint64) + column_gap,
+            Bundle4Payloads.alignment)};
+        auto const bundle4_values_offset{ml::soa_storage::layout_align(
+            bundle4_payloads_offset + blocks * capacity_granularity * sizeof(OddBytes) + column_gap,
+            Bundle4Values.alignment)};
+        auto const bundle4_rates_offset{ml::soa_storage::layout_align(
+            bundle4_values_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            Bundle4Rates.alignment)};
+        auto const bundle5_flags_offset{ml::soa_storage::layout_align(
+            bundle4_rates_offset + blocks * capacity_granularity * sizeof(double) + column_gap,
+            Bundle5Flags.alignment)};
+        auto const bundle5_counters_offset{ml::soa_storage::layout_align(
+            bundle5_flags_offset + blocks * capacity_granularity * sizeof(uint8) + column_gap,
+            Bundle5Counters.alignment)};
+        auto const bundle5_counts_offset{ml::soa_storage::layout_align(
+            bundle5_counters_offset + blocks * capacity_granularity * sizeof(uint16) + column_gap,
+            Bundle5Counts.alignment)};
+        auto const bundle5_totals_offset{ml::soa_storage::layout_align(
+            bundle5_counts_offset + blocks * capacity_granularity * sizeof(uint32) + column_gap,
+            Bundle5Totals.alignment)};
+        auto const bundle5_payloads_offset{ml::soa_storage::layout_align(
+            bundle5_totals_offset + blocks * capacity_granularity * sizeof(uint64) + column_gap,
+            Bundle5Payloads.alignment)};
+        auto const bundle5_values_offset{ml::soa_storage::layout_align(
+            bundle5_payloads_offset + blocks * capacity_granularity * sizeof(OddBytes) + column_gap,
+            Bundle5Values.alignment)};
+        auto const bundle5_rates_offset{ml::soa_storage::layout_align(
+            bundle5_values_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            Bundle5Rates.alignment)};
+        return {pointer_at(Bundle0Flags, bundle0_flags_offset),
+                pointer_at(Bundle0Counters, bundle0_counters_offset),
+                pointer_at(Bundle0Counts, bundle0_counts_offset),
+                pointer_at(Bundle0Totals, bundle0_totals_offset),
+                pointer_at(Bundle0Payloads, bundle0_payloads_offset),
+                pointer_at(Bundle0Values, bundle0_values_offset),
+                pointer_at(Bundle0Rates, bundle0_rates_offset),
+                pointer_at(Bundle1Flags, bundle1_flags_offset),
+                pointer_at(Bundle1Counters, bundle1_counters_offset),
+                pointer_at(Bundle1Counts, bundle1_counts_offset),
+                pointer_at(Bundle1Totals, bundle1_totals_offset),
+                pointer_at(Bundle1Payloads, bundle1_payloads_offset),
+                pointer_at(Bundle1Values, bundle1_values_offset),
+                pointer_at(Bundle1Rates, bundle1_rates_offset),
+                pointer_at(Bundle2Flags, bundle2_flags_offset),
+                pointer_at(Bundle2Counters, bundle2_counters_offset),
+                pointer_at(Bundle2Counts, bundle2_counts_offset),
+                pointer_at(Bundle2Totals, bundle2_totals_offset),
+                pointer_at(Bundle2Payloads, bundle2_payloads_offset),
+                pointer_at(Bundle2Values, bundle2_values_offset),
+                pointer_at(Bundle2Rates, bundle2_rates_offset),
+                pointer_at(Bundle3Flags, bundle3_flags_offset),
+                pointer_at(Bundle3Counters, bundle3_counters_offset),
+                pointer_at(Bundle3Counts, bundle3_counts_offset),
+                pointer_at(Bundle3Totals, bundle3_totals_offset),
+                pointer_at(Bundle3Payloads, bundle3_payloads_offset),
+                pointer_at(Bundle3Values, bundle3_values_offset),
+                pointer_at(Bundle3Rates, bundle3_rates_offset),
+                pointer_at(Bundle4Flags, bundle4_flags_offset),
+                pointer_at(Bundle4Counters, bundle4_counters_offset),
+                pointer_at(Bundle4Counts, bundle4_counts_offset),
+                pointer_at(Bundle4Totals, bundle4_totals_offset),
+                pointer_at(Bundle4Payloads, bundle4_payloads_offset),
+                pointer_at(Bundle4Values, bundle4_values_offset),
+                pointer_at(Bundle4Rates, bundle4_rates_offset),
+                pointer_at(Bundle5Flags, bundle5_flags_offset),
+                pointer_at(Bundle5Counters, bundle5_counters_offset),
+                pointer_at(Bundle5Counts, bundle5_counts_offset),
+                pointer_at(Bundle5Totals, bundle5_totals_offset),
+                pointer_at(Bundle5Payloads, bundle5_payloads_offset),
+                pointer_at(Bundle5Values, bundle5_values_offset),
+                pointer_at(Bundle5Rates, bundle5_rates_offset)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -2348,6 +2654,54 @@ struct SingleSpacingMixedWidthsStorage
             [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
+    }
+    auto ordinary_source_aliases_storage(SpacingMixedWidthsConstView const& source) const noexcept
+        -> bool {
+        if (data_ == nullptr) {
+            return false;
+        }
+        auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};
+        auto const allocation_end{allocation_begin + layout_bytes(capacity_blocks())};
+        auto const aliases = [allocation_begin, allocation_end](auto const* pointer) noexcept {
+            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
+            return address >= allocation_begin && address < allocation_end;
+        };
+        return aliases(source.bundle0.flags.GetData()) ||
+               aliases(source.bundle0.counters.GetData()) ||
+               aliases(source.bundle0.counts.GetData()) ||
+               aliases(source.bundle0.totals.GetData()) ||
+               aliases(source.bundle0.payloads.GetData()) ||
+               aliases(source.bundle0.values.GetData()) ||
+               aliases(source.bundle0.rates.GetData()) || aliases(source.bundle1.flags.GetData()) ||
+               aliases(source.bundle1.counters.GetData()) ||
+               aliases(source.bundle1.counts.GetData()) ||
+               aliases(source.bundle1.totals.GetData()) ||
+               aliases(source.bundle1.payloads.GetData()) ||
+               aliases(source.bundle1.values.GetData()) ||
+               aliases(source.bundle1.rates.GetData()) || aliases(source.bundle2.flags.GetData()) ||
+               aliases(source.bundle2.counters.GetData()) ||
+               aliases(source.bundle2.counts.GetData()) ||
+               aliases(source.bundle2.totals.GetData()) ||
+               aliases(source.bundle2.payloads.GetData()) ||
+               aliases(source.bundle2.values.GetData()) ||
+               aliases(source.bundle2.rates.GetData()) || aliases(source.bundle3.flags.GetData()) ||
+               aliases(source.bundle3.counters.GetData()) ||
+               aliases(source.bundle3.counts.GetData()) ||
+               aliases(source.bundle3.totals.GetData()) ||
+               aliases(source.bundle3.payloads.GetData()) ||
+               aliases(source.bundle3.values.GetData()) ||
+               aliases(source.bundle3.rates.GetData()) || aliases(source.bundle4.flags.GetData()) ||
+               aliases(source.bundle4.counters.GetData()) ||
+               aliases(source.bundle4.counts.GetData()) ||
+               aliases(source.bundle4.totals.GetData()) ||
+               aliases(source.bundle4.payloads.GetData()) ||
+               aliases(source.bundle4.values.GetData()) ||
+               aliases(source.bundle4.rates.GetData()) || aliases(source.bundle5.flags.GetData()) ||
+               aliases(source.bundle5.counters.GetData()) ||
+               aliases(source.bundle5.counts.GetData()) ||
+               aliases(source.bundle5.totals.GetData()) ||
+               aliases(source.bundle5.payloads.GetData()) ||
+               aliases(source.bundle5.values.GetData()) || aliases(source.bundle5.rates.GetData());
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {
@@ -3792,6 +4146,25 @@ struct SingleSpacingAlignedStorage
     , ml::soa_storage::StorageOperations {
     using View = SpacingAlignedSingleView;
     using ConstView = SpacingAlignedSingleConstView;
+    using SchemaConstView = SpacingAlignedConstView;
+    using ml::soa_storage::StorageOperations::append_from;
+    auto append_from(SpacingAlignedConstView const& source) -> size_type {
+        source.validate_array_sizes();
+        auto const count{source.num()};
+        auto const first{num_};
+        ml::soa_storage::require((count <= max_capacity - first));
+        if (count == 0) {
+            return first;
+        }
+        auto const new_num{first + count};
+        if (new_num > capacity_) {
+            ml::soa_storage::require(!ordinary_source_aliases_storage(source));
+            reallocate(ml::soa_storage::growth_capacity(new_num, capacity_, capacity_block_bound));
+        }
+        append_columns(source, first, count);
+        num_ = new_num;
+        return first;
+    }
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -3873,28 +4246,79 @@ struct SingleSpacingAlignedStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+        auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
             using Column = std::remove_cvref_t<decltype(column)>;
             using Pointer = std::conditional_t<std::is_const_v<Byte>,
                                                typename Column::const_pointer,
                                                typename Column::pointer>;
-            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
+            return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        return {pointer_at(Bundle0Positions),
-                pointer_at(Bundle0Velocities),
-                pointer_at(Bundle0Aligned32),
-                pointer_at(Bundle0Aligned64),
-                pointer_at(Bundle0Aligned256),
-                pointer_at(Bundle1Positions),
-                pointer_at(Bundle1Velocities),
-                pointer_at(Bundle1Aligned32),
-                pointer_at(Bundle1Aligned64),
-                pointer_at(Bundle1Aligned256),
-                pointer_at(Bundle2Positions),
-                pointer_at(Bundle2Velocities),
-                pointer_at(Bundle2Aligned32),
-                pointer_at(Bundle2Aligned64),
-                pointer_at(Bundle2Aligned256)};
+        auto const bundle0_positions_offset{byte_size_type{}};
+        auto const bundle0_velocities_offset{ml::soa_storage::layout_align(
+            bundle0_positions_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            Bundle0Velocities.alignment)};
+        auto const bundle0_aligned32_offset{ml::soa_storage::layout_align(
+            bundle0_velocities_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            Bundle0Aligned32.alignment)};
+        auto const bundle0_aligned64_offset{ml::soa_storage::layout_align(
+            bundle0_aligned32_offset + blocks * capacity_granularity * sizeof(Aligned32) +
+                column_gap,
+            Bundle0Aligned64.alignment)};
+        auto const bundle0_aligned256_offset{ml::soa_storage::layout_align(
+            bundle0_aligned64_offset + blocks * capacity_granularity * sizeof(Aligned64) +
+                column_gap,
+            Bundle0Aligned256.alignment)};
+        auto const bundle1_positions_offset{ml::soa_storage::layout_align(
+            bundle0_aligned256_offset + blocks * capacity_granularity * sizeof(Aligned256) +
+                column_gap,
+            Bundle1Positions.alignment)};
+        auto const bundle1_velocities_offset{ml::soa_storage::layout_align(
+            bundle1_positions_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            Bundle1Velocities.alignment)};
+        auto const bundle1_aligned32_offset{ml::soa_storage::layout_align(
+            bundle1_velocities_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            Bundle1Aligned32.alignment)};
+        auto const bundle1_aligned64_offset{ml::soa_storage::layout_align(
+            bundle1_aligned32_offset + blocks * capacity_granularity * sizeof(Aligned32) +
+                column_gap,
+            Bundle1Aligned64.alignment)};
+        auto const bundle1_aligned256_offset{ml::soa_storage::layout_align(
+            bundle1_aligned64_offset + blocks * capacity_granularity * sizeof(Aligned64) +
+                column_gap,
+            Bundle1Aligned256.alignment)};
+        auto const bundle2_positions_offset{ml::soa_storage::layout_align(
+            bundle1_aligned256_offset + blocks * capacity_granularity * sizeof(Aligned256) +
+                column_gap,
+            Bundle2Positions.alignment)};
+        auto const bundle2_velocities_offset{ml::soa_storage::layout_align(
+            bundle2_positions_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            Bundle2Velocities.alignment)};
+        auto const bundle2_aligned32_offset{ml::soa_storage::layout_align(
+            bundle2_velocities_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            Bundle2Aligned32.alignment)};
+        auto const bundle2_aligned64_offset{ml::soa_storage::layout_align(
+            bundle2_aligned32_offset + blocks * capacity_granularity * sizeof(Aligned32) +
+                column_gap,
+            Bundle2Aligned64.alignment)};
+        auto const bundle2_aligned256_offset{ml::soa_storage::layout_align(
+            bundle2_aligned64_offset + blocks * capacity_granularity * sizeof(Aligned64) +
+                column_gap,
+            Bundle2Aligned256.alignment)};
+        return {pointer_at(Bundle0Positions, bundle0_positions_offset),
+                pointer_at(Bundle0Velocities, bundle0_velocities_offset),
+                pointer_at(Bundle0Aligned32, bundle0_aligned32_offset),
+                pointer_at(Bundle0Aligned64, bundle0_aligned64_offset),
+                pointer_at(Bundle0Aligned256, bundle0_aligned256_offset),
+                pointer_at(Bundle1Positions, bundle1_positions_offset),
+                pointer_at(Bundle1Velocities, bundle1_velocities_offset),
+                pointer_at(Bundle1Aligned32, bundle1_aligned32_offset),
+                pointer_at(Bundle1Aligned64, bundle1_aligned64_offset),
+                pointer_at(Bundle1Aligned256, bundle1_aligned256_offset),
+                pointer_at(Bundle2Positions, bundle2_positions_offset),
+                pointer_at(Bundle2Velocities, bundle2_velocities_offset),
+                pointer_at(Bundle2Aligned32, bundle2_aligned32_offset),
+                pointer_at(Bundle2Aligned64, bundle2_aligned64_offset),
+                pointer_at(Bundle2Aligned256, bundle2_aligned256_offset)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -3990,6 +4414,33 @@ struct SingleSpacingAlignedStorage
             [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
+    }
+    auto ordinary_source_aliases_storage(SpacingAlignedConstView const& source) const noexcept
+        -> bool {
+        if (data_ == nullptr) {
+            return false;
+        }
+        auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};
+        auto const allocation_end{allocation_begin + layout_bytes(capacity_blocks())};
+        auto const aliases = [allocation_begin, allocation_end](auto const* pointer) noexcept {
+            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
+            return address >= allocation_begin && address < allocation_end;
+        };
+        return aliases(source.bundle0.positions.GetData()) ||
+               aliases(source.bundle0.velocities.GetData()) ||
+               aliases(source.bundle0.aligned32.GetData()) ||
+               aliases(source.bundle0.aligned64.GetData()) ||
+               aliases(source.bundle0.aligned256.GetData()) ||
+               aliases(source.bundle1.positions.GetData()) ||
+               aliases(source.bundle1.velocities.GetData()) ||
+               aliases(source.bundle1.aligned32.GetData()) ||
+               aliases(source.bundle1.aligned64.GetData()) ||
+               aliases(source.bundle1.aligned256.GetData()) ||
+               aliases(source.bundle2.positions.GetData()) ||
+               aliases(source.bundle2.velocities.GetData()) ||
+               aliases(source.bundle2.aligned32.GetData()) ||
+               aliases(source.bundle2.aligned64.GetData()) ||
+               aliases(source.bundle2.aligned256.GetData());
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {

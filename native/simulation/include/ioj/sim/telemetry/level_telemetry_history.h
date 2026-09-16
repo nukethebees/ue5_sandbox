@@ -777,6 +777,25 @@ struct SingleAllocationHistoryRowsStorage
     , ml::native_soa::StorageOperations {
     using View = HistoryRowsSingleView;
     using ConstView = HistoryRowsSingleConstView;
+    using SchemaConstView = HistoryRowsConstView;
+    using ml::native_soa::StorageOperations::append_from;
+    auto append_from(HistoryRowsConstView const& source) -> size_type {
+        source.validate_array_sizes();
+        auto const count{source.num()};
+        auto const first{num_};
+        ml::native_soa::require((count <= max_capacity - first));
+        if (count == 0) {
+            return first;
+        }
+        auto const new_num{first + count};
+        if (new_num > capacity_) {
+            ml::native_soa::require(!ordinary_source_aliases_storage(source));
+            reallocate(ml::native_soa::growth_capacity(new_num, capacity_, capacity_block_bound));
+        }
+        append_columns(source, first, count);
+        num_ = new_num;
+        return first;
+    }
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -850,23 +869,58 @@ struct SingleAllocationHistoryRowsStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+        auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
             using Column = std::remove_cvref_t<decltype(column)>;
             using Pointer = std::conditional_t<std::is_const_v<Byte>,
                                                typename Column::const_pointer,
                                                typename Column::pointer>;
-            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
+            return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        return {pointer_at(CompletedTicks),
-                pointer_at(ValidityMasks),
-                pointer_at(ActiveEntities),
-                pointer_at(ActiveEntitiesByType),
-                pointer_at(ActiveEntitiesByTeamAndType),
-                pointer_at(SpawnedEntities),
-                pointer_at(DestroyedEntities),
-                pointer_at(Kills),
-                pointer_at(ActiveLasers),
-                pointer_at(LasersFired)};
+        auto const completed_ticks_offset{byte_size_type{}};
+        auto const validity_masks_offset{ml::native_soa::layout_align(
+            completed_ticks_offset + blocks * capacity_granularity * sizeof(SimTick) + column_gap,
+            ValidityMasks.alignment)};
+        auto const active_entities_offset{ml::native_soa::layout_align(
+            validity_masks_offset + blocks * capacity_granularity * sizeof(HistoryFieldMask) +
+                column_gap,
+            ActiveEntities.alignment)};
+        auto const active_entities_by_type_offset{ml::native_soa::layout_align(
+            active_entities_offset + blocks * capacity_granularity * sizeof(std::int32_t) +
+                column_gap,
+            ActiveEntitiesByType.alignment)};
+        auto const active_entities_by_team_and_type_offset{ml::native_soa::layout_align(
+            active_entities_by_type_offset +
+                blocks * capacity_granularity * sizeof(EntityTypeCounts) + column_gap,
+            ActiveEntitiesByTeamAndType.alignment)};
+        auto const spawned_entities_offset{ml::native_soa::layout_align(
+            active_entities_by_team_and_type_offset +
+                blocks * capacity_granularity * sizeof(EntityCounts) + column_gap,
+            SpawnedEntities.alignment)};
+        auto const destroyed_entities_offset{ml::native_soa::layout_align(
+            spawned_entities_offset + blocks * capacity_granularity * sizeof(std::int32_t) +
+                column_gap,
+            DestroyedEntities.alignment)};
+        auto const kills_offset{ml::native_soa::layout_align(
+            destroyed_entities_offset + blocks * capacity_granularity * sizeof(std::int32_t) +
+                column_gap,
+            Kills.alignment)};
+        auto const active_lasers_offset{ml::native_soa::layout_align(
+            kills_offset + blocks * capacity_granularity * sizeof(std::int32_t) + column_gap,
+            ActiveLasers.alignment)};
+        auto const lasers_fired_offset{ml::native_soa::layout_align(
+            active_lasers_offset + blocks * capacity_granularity * sizeof(std::int32_t) +
+                column_gap,
+            LasersFired.alignment)};
+        return {pointer_at(CompletedTicks, completed_ticks_offset),
+                pointer_at(ValidityMasks, validity_masks_offset),
+                pointer_at(ActiveEntities, active_entities_offset),
+                pointer_at(ActiveEntitiesByType, active_entities_by_type_offset),
+                pointer_at(ActiveEntitiesByTeamAndType, active_entities_by_team_and_type_offset),
+                pointer_at(SpawnedEntities, spawned_entities_offset),
+                pointer_at(DestroyedEntities, destroyed_entities_offset),
+                pointer_at(Kills, kills_offset),
+                pointer_at(ActiveLasers, active_lasers_offset),
+                pointer_at(LasersFired, lasers_fired_offset)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -940,6 +994,25 @@ struct SingleAllocationHistoryRowsStorage
             [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
+    }
+    auto ordinary_source_aliases_storage(HistoryRowsConstView const& source) const noexcept
+        -> bool {
+        if (data_ == nullptr) {
+            return false;
+        }
+        auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};
+        auto const allocation_end{allocation_begin + layout_bytes(capacity_blocks())};
+        auto const aliases = [allocation_begin, allocation_end](auto const* pointer) noexcept {
+            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
+            return address >= allocation_begin && address < allocation_end;
+        };
+        return aliases(source.completed_ticks.data()) || aliases(source.validity_masks.data()) ||
+               aliases(source.active_entities.data()) ||
+               aliases(source.active_entities_by_type.data()) ||
+               aliases(source.active_entities_by_team_and_type.data()) ||
+               aliases(source.spawned_entities.data()) ||
+               aliases(source.destroyed_entities.data()) || aliases(source.kills.data()) ||
+               aliases(source.active_lasers.data()) || aliases(source.lasers_fired.data());
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {

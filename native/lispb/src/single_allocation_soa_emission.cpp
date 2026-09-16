@@ -247,25 +247,51 @@ auto storage_access_nodes(SingleAllocationModel const& model) -> Nodes {
 }
 
 auto column_pointer_nodes(SingleAllocationModel const& model) -> Nodes {
+    NodeListBuilder make_data_body;
+    make_data_body.add(
+        raw("auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {\n"
+            "    using Column = std::remove_cvref_t<decltype(column)>;\n"
+            "    using Pointer = std::conditional_t<std::is_const_v<Byte>,\n"
+            "                                       typename Column::const_pointer,\n"
+            "                                       typename Column::pointer>;\n"
+            "    return std::launder(reinterpret_cast<Pointer>(data + offset));\n"
+            "};"));
+    if (model.columns.size() == 1) {
+        make_data_body.add(raw("(void)blocks;"));
+    }
+
     std::vector<Expr> pointers;
     pointers.reserve(model.columns.size());
-    for (auto const& column : model.columns) {
-        pointers.push_back(call(named("pointer_at"), {named(column.layout_identifier)}));
+    for (std::size_t index{}; index < model.columns.size(); ++index) {
+        auto const& column{model.columns[index]};
+        auto const offset_name{column.flattened_identifier + "_offset"};
+        Expr offset{literal("byte_size_type{}")};
+        if (index > 0) {
+            auto const& previous{model.columns[index - 1]};
+            auto const previous_end{binary(BinaryOperator::add,
+                                           binary(BinaryOperator::add,
+                                                  named(previous.flattened_identifier + "_offset"),
+                                                  binary(BinaryOperator::multiply,
+                                                         binary(BinaryOperator::multiply,
+                                                                named("blocks"),
+                                                                named("capacity_granularity")),
+                                                         sizeof_type(previous.type))),
+                                           named("column_gap"))};
+            offset =
+                call(named(model.dialect.runtime_namespace + "layout_align"),
+                     {previous_end, member_access(named(column.layout_identifier), "alignment")});
+        }
+        make_data_body.add(VariableDeclarationStmt{"auto const", offset_name, std::move(offset)});
+        pointers.push_back(
+            call(named("pointer_at"), {named(column.layout_identifier), named(offset_name)}));
     }
+    make_data_body.add(ReturnStmt{init_list(std::move(pointers))});
     auto make_data{FunctionSpec{
         .name = "make_data_unchecked",
         .return_type = "auto",
         .parameters = {FunctionParameter{"Byte* const", "data"},
                        FunctionParameter{"byte_size_type const", "blocks"}},
-        .body = {raw("auto const pointer_at = [data, blocks](auto const& column) noexcept {\n"
-                     "    using Column = std::remove_cvref_t<decltype(column)>;\n"
-                     "    using Pointer = std::conditional_t<std::is_const_v<Byte>,\n"
-                     "                                       typename Column::const_pointer,\n"
-                     "                                       typename Column::pointer>;\n"
-                     "    return std::launder(\n"
-                     "        reinterpret_cast<Pointer>(data + column.offset(blocks)));\n"
-                     "};"),
-                 ReturnStmt{init_list(std::move(pointers))}},
+        .body = make_data_body.build(),
         .qualifiers = {.trailing_return_type = CppType{"DataPointers<Byte>"}, .is_noexcept = true},
         .is_static = true,
         .template_parameters = "typename Byte",
@@ -391,6 +417,88 @@ auto append_node(SingleAllocationModel const& model) -> Node {
                        FunctionParameter{"size_type", "count"}},
         .body = body.build(),
         .template_parameters = "typename Columns",
+    });
+}
+
+auto ordinary_source_alias_node(SingleAllocationModel const& model) -> Node {
+    NodeListBuilder body;
+    body.add(IfStmt{binary(BinaryOperator::equal, named("data_"), literal("nullptr")),
+                    Block{{ReturnStmt{literal("false")}}}})
+        .add(raw("auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};"))
+        .add(VariableDeclarationStmt{
+            "auto const",
+            "allocation_end",
+            binary(BinaryOperator::add,
+                   named("allocation_begin"),
+                   call(named("layout_bytes"), {call(named("capacity_blocks"))}))})
+        .add(raw("auto const aliases = [allocation_begin, allocation_end](auto const* pointer) "
+                 "noexcept {\n"
+                 "    auto const address{reinterpret_cast<std::uintptr_t>(pointer)};\n"
+                 "    return address >= allocation_begin && address < allocation_end;\n"
+                 "};"));
+
+    auto source_pointer = [&](SingleAllocationColumn const& column) {
+        return source_data_expression(model, column);
+    };
+    Expr aliases{call(named("aliases"), {source_pointer(model.columns.front())})};
+    auto const column_count{model.columns.size()};
+    for (std::size_t index{1}; index < column_count; ++index) {
+        auto const& column{model.columns[index]};
+        auto const column_aliases{call(named("aliases"), {source_pointer(column)})};
+        aliases = binary(BinaryOperator::logical_or, std::move(aliases), std::move(column_aliases));
+    }
+    body.add(ReturnStmt{std::move(aliases)});
+
+    return inline_function(FunctionSpec{
+        .name = "ordinary_source_aliases_storage",
+        .return_type = "auto",
+        .parameters = {FunctionParameter{model.schema_const_view_name + " const&", "source"}},
+        .body = body.build(),
+        .qualifiers = {.trailing_return_type = CppType{"bool"},
+                       .is_const = true,
+                       .is_noexcept = true},
+    });
+}
+
+auto ordinary_append_node(SingleAllocationModel const& model) -> Node {
+    auto const& runtime{model.dialect.runtime_namespace};
+    NodeListBuilder growth;
+    growth
+        .add(ExpressionStmt{
+            call(named(runtime + "require"),
+                 {unary(UnaryOperator::logical_not,
+                        call(named("ordinary_source_aliases_storage"), {named("source")}))})})
+        .add(ExpressionStmt{
+            call(named("reallocate"),
+                 {call(named(runtime + "growth_capacity"),
+                       {named("new_num"), named("capacity_"), named("capacity_block_bound")})})});
+
+    return inline_function(FunctionSpec{
+        .name = "append_from",
+        .return_type = "auto",
+        .parameters = {FunctionParameter{model.schema_const_view_name + " const&", "source"}},
+        .body =
+            {
+                ExpressionStmt{call(member_access(named("source"), "validate_array_sizes"))},
+                VariableDeclarationStmt{
+                    "auto const", "count", call(member_access(named("source"), "num"))},
+                VariableDeclarationStmt{"auto const", "first", named("num_")},
+                ExpressionStmt{
+                    call(named(runtime + "require"), {RawExpr{"count <= max_capacity - first"}})},
+                IfStmt{binary(BinaryOperator::equal, named("count"), literal("0")),
+                       Block{{ReturnStmt{named("first")}}}},
+                VariableDeclarationStmt{
+                    "auto const",
+                    "new_num",
+                    binary(BinaryOperator::add, named("first"), named("count"))},
+                IfStmt{binary(BinaryOperator::greater, named("new_num"), named("capacity_")),
+                       Block{growth.build()}},
+                ExpressionStmt{call(named("append_columns"),
+                                    {named("source"), named("first"), named("count")})},
+                AssignmentStmt{named("num_"), named("new_num")},
+                ReturnStmt{named("first")},
+            },
+        .qualifiers = {.trailing_return_type = CppType{"size_type"}},
     });
 }
 
@@ -794,8 +902,12 @@ auto emit_single_allocation_storage(SingleAllocationModel const& model) -> Node 
     auto copying{column_copying_nodes(model)};
     NodeListBuilder children;
     children
-        .append(adjacent({UsingDeclaration{"View", CppType{model.view_name}},
-                          UsingDeclaration{"ConstView", CppType{model.const_view_name}}}))
+        .append(adjacent(
+            {UsingDeclaration{"View", CppType{model.view_name}},
+             UsingDeclaration{"ConstView", CppType{model.const_view_name}},
+             UsingDeclaration{"SchemaConstView", CppType{model.schema_const_view_name}},
+             raw("using " + model.dialect.runtime_namespace + "StorageOperations::append_from;"),
+             ordinary_append_node(model)}))
         .new_lines(1)
         .append(storage_lifetime_nodes(model))
         .new_lines(1)
@@ -812,6 +924,8 @@ auto emit_single_allocation_storage(SingleAllocationModel const& model) -> Node 
         .add(default_construction_node(model))
         .new_lines(1)
         .append(std::move(copying))
+        .new_lines(1)
+        .add(ordinary_source_alias_node(model))
         .new_lines(1)
         .add(append_node(model))
         .new_lines(1)

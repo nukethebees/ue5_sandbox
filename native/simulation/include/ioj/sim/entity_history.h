@@ -582,6 +582,25 @@ struct EntityHistoryStorage
     , ml::native_soa::StorageOperations {
     using View = EntityHistoryColumnsSingleView;
     using ConstView = EntityHistoryColumnsSingleConstView;
+    using SchemaConstView = EntityHistoryColumnsConstView;
+    using ml::native_soa::StorageOperations::append_from;
+    auto append_from(EntityHistoryColumnsConstView const& source) -> size_type {
+        source.validate_array_sizes();
+        auto const count{source.num()};
+        auto const first{num_};
+        ml::native_soa::require((count <= max_capacity - first));
+        if (count == 0) {
+            return first;
+        }
+        auto const new_num{first + count};
+        if (new_num > capacity_) {
+            ml::native_soa::require(!ordinary_source_aliases_storage(source));
+            reallocate(ml::native_soa::growth_capacity(new_num, capacity_, capacity_block_bound));
+        }
+        append_columns(source, first, count);
+        num_ = new_num;
+        return first;
+    }
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -647,20 +666,44 @@ struct EntityHistoryStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+        auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
             using Column = std::remove_cvref_t<decltype(column)>;
             using Pointer = std::conditional_t<std::is_const_v<Byte>,
                                                typename Column::const_pointer,
                                                typename Column::pointer>;
-            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
+            return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        return {pointer_at(RegistryIndices),
-                pointer_at(RegistryGenerations),
-                pointer_at(EntityTypes),
-                pointer_at(Teams),
-                pointer_at(Kills),
-                pointer_at(KilledBy),
-                pointer_at(LifeStateColumn)};
+        auto const registry_indices_offset{byte_size_type{}};
+        auto const registry_generations_offset{ml::native_soa::layout_align(
+            registry_indices_offset +
+                blocks * capacity_granularity * sizeof(RegistryEntityHandle::index_type) +
+                column_gap,
+            RegistryGenerations.alignment)};
+        auto const entity_types_offset{ml::native_soa::layout_align(
+            registry_generations_offset +
+                blocks * capacity_granularity * sizeof(RegistryEntityHandle::generation_type) +
+                column_gap,
+            EntityTypes.alignment)};
+        auto const teams_offset{ml::native_soa::layout_align(
+            entity_types_offset + blocks * capacity_granularity * sizeof(ioj::sim::EntityType) +
+                column_gap,
+            Teams.alignment)};
+        auto const kills_offset{ml::native_soa::layout_align(
+            teams_offset + blocks * capacity_granularity * sizeof(Team) + column_gap,
+            Kills.alignment)};
+        auto const killed_by_offset{ml::native_soa::layout_align(
+            kills_offset + blocks * capacity_granularity * sizeof(std::uint32_t) + column_gap,
+            KilledBy.alignment)};
+        auto const life_state_offset{ml::native_soa::layout_align(
+            killed_by_offset + blocks * capacity_granularity * sizeof(EntityUniqueId) + column_gap,
+            LifeStateColumn.alignment)};
+        return {pointer_at(RegistryIndices, registry_indices_offset),
+                pointer_at(RegistryGenerations, registry_generations_offset),
+                pointer_at(EntityTypes, entity_types_offset),
+                pointer_at(Teams, teams_offset),
+                pointer_at(Kills, kills_offset),
+                pointer_at(KilledBy, killed_by_offset),
+                pointer_at(LifeStateColumn, life_state_offset)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -722,6 +765,22 @@ struct EntityHistoryStorage
             [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
+    }
+    auto ordinary_source_aliases_storage(EntityHistoryColumnsConstView const& source) const noexcept
+        -> bool {
+        if (data_ == nullptr) {
+            return false;
+        }
+        auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};
+        auto const allocation_end{allocation_begin + layout_bytes(capacity_blocks())};
+        auto const aliases = [allocation_begin, allocation_end](auto const* pointer) noexcept {
+            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
+            return address >= allocation_begin && address < allocation_end;
+        };
+        return aliases(source.registry_indices.data()) ||
+               aliases(source.registry_generations.data()) || aliases(source.entity_types.data()) ||
+               aliases(source.teams.data()) || aliases(source.kills.data()) ||
+               aliases(source.killed_by.data()) || aliases(source.life_state.data());
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {

@@ -147,7 +147,7 @@ auto packed_value_text(PackedValueSchema const& schema,
     }
     output += ") noexcept -> " + schema.name + " {\n";
     output += "        " + schema.name + " result;\n";
-    output += "        auto const success{try_make(";
+    output += "        [[maybe_unused]] auto const success{try_make(";
     for (std::size_t index{}; index < schema.fields.size(); ++index) {
         if (index != 0) {
             output += ", ";

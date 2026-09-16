@@ -54,9 +54,10 @@ auto add_worldless_capital_spawn(::ioj::sim::LevelSimInitData& data,
                                  float const initial_spawn_delay,
                                  float const spawn_cooldown,
                                  int32 const health) -> int32 {
-    auto& events{data.level_events.initial_spawns.capital_spawns};
-    auto const index{events.num()};
-    events.add_defaulted(1);
+    auto& storage{data.level_events.initial_spawns.capital_spawns};
+    auto const index{storage.num()};
+    storage.add_defaulted(1);
+    auto const events{storage.get_view().columns()};
     events.entity_indices[index] = data.level_events.initialisation.entity_count++;
     events.target_entity_indices[index] = target_entity_index;
     events.locations.set(index, ml::to_native(FVector3f{location}));

@@ -190,6 +190,7 @@ auto build_single_allocation_model(SoaSchema const& schema,
         .layout_name = schema.name + "SingleLayout",
         .view_name = schema.name + "SingleView",
         .const_view_name = schema.name + "SingleConstView",
+        .schema_const_view_name = schema.const_view_name.value_or(schema.name + "ConstView"),
         .emit_shared_types = !schema.single_allocation_allocator.has_value(),
     };
     result.dependencies = result.dialect.dependencies;

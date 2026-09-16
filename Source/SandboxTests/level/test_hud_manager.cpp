@@ -71,7 +71,8 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
 
     auto& mission_data{data.level_events.initialisation.mission.emplace()};
     if (needs_defence) {
-        auto const& capital_events{data.level_events.initial_spawns.capital_spawns};
+        auto const capital_events{
+            data.level_events.initial_spawns.capital_spawns.get_const_view().columns()};
         mission_data.mode = ::ioj::sim::levels::LevelMissionMode::SurviveTime;
         mission_data.time_limit_seconds = 10.f;
         mission_data.save_results = false;

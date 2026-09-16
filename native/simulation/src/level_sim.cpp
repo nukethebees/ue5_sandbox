@@ -36,16 +36,18 @@ static void finalise_participating_teams(LevelSimInitData& data) {
         if (data.player.has_value()) {
             include(data.player->team);
         }
-        for (auto const team : data.level_events.initial_spawns.capital_spawns.teams) {
+        for (auto const team :
+             data.level_events.initial_spawns.capital_spawns.get_const_view().teams()) {
             include(team);
         }
-        for (auto const team : data.level_events.initial_spawns.turret_spawns.teams) {
+        for (auto const team :
+             data.level_events.initial_spawns.turret_spawns.get_const_view().teams()) {
             include(team);
         }
-        for (auto const team : data.level_events.schedule.capital_spawns.teams) {
+        for (auto const team : data.level_events.schedule.capital_spawns.get_const_view().teams()) {
             include(team);
         }
-        for (auto const team : data.level_events.schedule.turret_spawns.teams) {
+        for (auto const team : data.level_events.schedule.turret_spawns.get_const_view().teams()) {
             include(team);
         }
     }

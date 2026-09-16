@@ -55,15 +55,23 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
     data.cell_size = {1000.f, 1000.f, 1000.f};
     data.lasers.n_preallocated_instances = 16;
     data.capital_ships.fighter_spawn_slots = 0;
-    auto& spawns{data.level_events.initial_spawns.capital_spawns};
-    spawns.add_defaulted(2);
-    spawns.entity_indices = {0, 1};
-    spawns.target_entity_indices = {-1, -1};
-    spawns.teams = {::ioj::sim::Team::Green, ::ioj::sim::Team::White};
-    spawns.healths = {100, 100};
-    spawns.initial_fighter_spawn_delays = {60.f, 60.f};
-    spawns.fighter_spawn_cooldowns = {60.f, 60.f};
-    spawns.locations.xs = {-1000.f, 1000.f};
+    auto& spawn_storage{data.level_events.initial_spawns.capital_spawns};
+    spawn_storage.add_defaulted(2);
+    auto const spawns{spawn_storage.get_view().columns()};
+    spawns.entity_indices[0] = 0;
+    spawns.entity_indices[1] = 1;
+    spawns.target_entity_indices[0] = -1;
+    spawns.target_entity_indices[1] = -1;
+    spawns.teams[0] = ::ioj::sim::Team::Green;
+    spawns.teams[1] = ::ioj::sim::Team::White;
+    spawns.healths[0] = 100;
+    spawns.healths[1] = 100;
+    spawns.initial_fighter_spawn_delays[0] = 60.f;
+    spawns.initial_fighter_spawn_delays[1] = 60.f;
+    spawns.fighter_spawn_cooldowns[0] = 60.f;
+    spawns.fighter_spawn_cooldowns[1] = 60.f;
+    spawns.locations.xs[0] = -1000.f;
+    spawns.locations.xs[1] = 1000.f;
     data.level_events.initialisation.entity_count = 2;
     auto const count{::ioj::sim::collision::EntityAABBs::num()};
     for (int32 index{}; index < count; ++index) {
@@ -121,7 +129,8 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
 
 void add_mission(::ioj::sim::LevelSimInitData& data) {
     auto& mission{data.level_events.initialisation.mission.emplace()};
-    auto const& entities{data.level_events.initial_spawns.capital_spawns.entity_indices};
+    auto const entities{
+        data.level_events.initial_spawns.capital_spawns.get_const_view().entity_indices()};
     mission.mode = ::ioj::sim::levels::LevelMissionMode::KillEnemies;
     mission.kill_count = 1;
     mission.save_results = false;
@@ -196,8 +205,9 @@ auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
     data.turrets.target_refresh_frequency = 10.f;
     // Keep the muzzle outside the turret's collision bounds so it cannot block its own query.
     data.turrets.fire_point_offset = ml::make_vector3f(20.f, 0.f, 0.f);
-    auto& initial{data.level_events.initial_spawns.turret_spawns};
-    initial.add_uninitialised(1);
+    auto& initial_storage{data.level_events.initial_spawns.turret_spawns};
+    initial_storage.add_uninitialised(1);
+    auto const initial{initial_storage.get_view().columns()};
     initial.entity_indices[0] = data.level_events.initialisation.entity_count++;
     initial.locations.set(0, ml::make_vector3f(-1000.f, 1000.f, 0.f));
     initial.rotations.set(0, {});
@@ -389,10 +399,11 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     resources.config = config->get_visual_config();
 
     auto scheduled_battle{make_scheduled_battle()};
-    auto& scheduled_spawns{scheduled_battle.level_events.schedule.capital_spawns};
+    auto const scheduled_spawns{
+        scheduled_battle.level_events.schedule.capital_spawns.get_view().columns()};
     scheduled_spawns.locations.xs[0] = -1000.f;
     scheduled_spawns.healths[0] = 100;
-    scheduled_battle.level_events.initial_spawns.capital_spawns.healths[0] = 10000;
+    scheduled_battle.level_events.initial_spawns.capital_spawns.get_view().healths()[0] = 10000;
     scheduled_battle.overlap_response.damage_per_overlap_detection = 100;
     ::ioj::sim::LevelSim simulation{MoveTemp(scheduled_battle)};
     simulation.finish_initialisation();

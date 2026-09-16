@@ -122,7 +122,8 @@ void run_worldless_fighter_capital_obstruction(tests::SimulationFixture const& c
     tests::add_capital_spawn(data, obstacle, Team::Green, -1, 60.f, 60.f, 100000);
     tests::add_capital_spawn(data, target, Team::Red, -1, 60.f, 60.f, 100000);
     Rotator3f const obstacle_rotation{0.f, 35.f, 0.f};
-    data.level_events.initial_spawns.capital_spawns.rotations.set(1, obstacle_rotation);
+    data.level_events.initial_spawns.capital_spawns.get_view().view_rotations().set(
+        1, obstacle_rotation);
 
     auto const obstacle_bounds{
         collision::make_entity_world_bounds(data.entity_bounds,

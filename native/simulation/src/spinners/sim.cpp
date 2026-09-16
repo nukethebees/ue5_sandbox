@@ -48,7 +48,8 @@ void Sim::begin_play() {
 void Sim::prepare_tick(float const) {
     SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::prepare_tick");
 
-    ml::tick_countdowns<std::int16_t>(entities.laser_cooldowns, cooldown_cleaner_, 16384);
+    ml::tick_countdowns<std::int16_t>(
+        entities.get_view().laser_cooldowns(), cooldown_cleaner_, 16384);
 }
 void Sim::think(float const dt) {
     SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::think");
@@ -57,7 +58,7 @@ void Sim::think(float const dt) {
 }
 void Sim::apply_movement() {
     SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::apply_movement");
-    for (auto& yaw : entities.yaws) {
+    for (auto& yaw : entities.get_view().yaws()) {
         yaw += planned_yaw_delta_;
     }
 }
@@ -92,7 +93,7 @@ auto Sim::spawn_instances(Vectors3fConstView const new_locations,
     assert(new_fire_point_indices.size() == static_cast<std::size_t>(n));
 
     entities.add_uninitialised(n);
-    auto appended{entities.right(n)};
+    auto const appended{entities.right(n).columns()};
     for (std::int32_t i{}; i < n; ++i) {
         appended.handles[i] = {};
         appended.locations.set(i, new_locations[i]);
@@ -101,7 +102,7 @@ auto Sim::spawn_instances(Vectors3fConstView const new_locations,
         appended.next_fire_point_indices[i] = new_fire_point_indices[i];
     }
 
-    entities.validate_array_sizes();
+    entities.get_const_view().columns().validate_array_sizes();
 
     SingleAllocationRegistryEntityData entity_data;
     entity_data.add_uninitialised(n);
@@ -138,11 +139,12 @@ void Sim::fire_lasers() {
     }
 
     auto const count{get_num_instances()};
+    auto const entity_columns{entities.get_view().columns()};
     lasers::FrameSpawnRequests new_lasers{&frame_memory_resource};
     ml::FrameArray<std::int32_t> ready_indices{&frame_memory_resource};
     ready_indices.reserve(count);
-    auto cooldowns{
-        ml::TickCountdownView<std::int16_t>{entities.laser_cooldowns, cooldown_restart_ticks_}};
+    auto cooldowns{ml::TickCountdownView<std::int16_t>{entity_columns.laser_cooldowns,
+                                                       cooldown_restart_ticks_}};
     for (std::int32_t index{}; index < count; ++index) {
         if (cooldowns.try_consume(static_cast<std::size_t>(index))) {
             ready_indices.add(index);
@@ -155,21 +157,22 @@ void Sim::fire_lasers() {
     for (std::int32_t request_index{}; request_index < ready_count; ++request_index) {
         auto const index{ready_indices[request_index]};
         auto const element{static_cast<std::size_t>(index)};
-        auto& next_fire_point{entities.next_fire_point_indices[element]};
+        auto& next_fire_point{entity_columns.next_fire_point_indices[element]};
         assert(next_fire_point >= 0 && next_fire_point < fire_point_count);
         auto const& fire_point{
             config.fire_point_offsets[static_cast<std::size_t>(next_fire_point)]};
-        new_lasers.locations.set(request_index, entities.locations[index] + fire_point.location);
+        new_lasers.locations.set(request_index,
+                                 entity_columns.locations[index] + fire_point.location);
         new_lasers.rotations.set(
             request_index,
             {fire_point.rotation.pitch,
-             fire_point.rotation.yaw + (entities.yaws[element] + planned_yaw_delta_),
+             fire_point.rotation.yaw + (entity_columns.yaws[element] + planned_yaw_delta_),
              fire_point.rotation.roll});
         new_lasers.base_velocities.set(request_index, HMM_V3(0.f, 0.f, 0.f));
         new_lasers.damages[request_index] = config.laser.damage;
         new_lasers.speeds[request_index] = config.laser.projectile_speed;
         new_lasers.max_distances[request_index] = config.laser.max_distance;
-        new_lasers.instigator_handles[request_index] = entities.handles[element];
+        new_lasers.instigator_handles[request_index] = entity_columns.handles[element];
         new_lasers.sources[request_index] = {Team::White, EntityType::TubeSpinner};
         next_fire_point = (next_fire_point + 1) % fire_point_count;
     }
@@ -181,6 +184,6 @@ void Sim::fire_lasers() {
 // Checks
 /* **************************************** */
 void Sim::validate_array_sizes() const {
-    entities.validate_array_sizes();
+    entities.get_const_view().columns().validate_array_sizes();
 }
 } // namespace spinners

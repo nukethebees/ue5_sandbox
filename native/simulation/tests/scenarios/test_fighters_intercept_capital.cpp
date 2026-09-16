@@ -35,7 +35,7 @@ void run_worldless_fighters_intercept_capital(tests::SimulationFixture const& co
                              600.f,
                              60.f,
                              fighters_intercept_test::collision_resilient_health);
-    data.level_events.initial_spawns.capital_spawns.target_entity_indices[0] = red;
+    data.level_events.initial_spawns.capital_spawns.get_view().target_entity_indices()[0] = red;
 
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();

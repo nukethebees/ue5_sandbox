@@ -7,6 +7,7 @@
 #include <Containers/ArrayView.h>
 #include <Containers/ContainerAllocationPolicies.h>
 #include <span>
+#include <type_traits>
 
 namespace ml::soa_storage {
 // Generated storage supplies the state and typed column operations.
@@ -49,6 +50,7 @@ struct StorageOperations {
         self.num_ = new_num;
     }
     template <typename Self, typename Source>
+        requires (!std::is_same_v<std::remove_cvref_t<Source>, typename Self::SchemaConstView>)
     auto append_from(this Self& self, Source const& source) -> std::int32_t {
         typename Self::ConstView view{source.get_const_view()};
         view.validate();

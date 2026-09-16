@@ -120,6 +120,10 @@ TEST(SingleAllocationSoa, TypedColumnOperationsReuseByteCountsAndPreserveNestedP
         std::string::npos);
     EXPECT_NE(output.find("auto const ids_bytes{elements_to_copy * sizeof(int32)};"),
               std::string::npos);
+    EXPECT_NE(output.find("auto const ids_offset{byte_size_type{}};"), std::string::npos);
+    EXPECT_NE(output.find("nested_values_offset{ml::soa_storage::layout_align("),
+              std::string::npos);
+    EXPECT_NE(output.find("pointer_at(NestedValues, nested_values_offset)"), std::string::npos);
     EXPECT_NE(output.find("destination.nested_values, source.nested.values.GetData(), ids_bytes"),
               std::string::npos);
     EXPECT_EQ(output.find("auto const nested_values_bytes"), std::string::npos);
@@ -141,6 +145,26 @@ TEST(SingleAllocationSoa, TypedColumnOperationsReuseByteCountsAndPreserveNestedP
     EXPECT_LT(bytes, copy);
     EXPECT_LT(copy, release);
     EXPECT_LT(release, publish);
+}
+
+TEST(SingleAllocationSoa, EmitsDirectOrdinaryConstViewAppend) {
+    auto input{schemas()};
+    input.back().const_view_name = "ReadOnlyRows";
+    auto const output{render(input)};
+    EXPECT_NE(output.find("using ml::soa_storage::StorageOperations::append_from;"),
+              std::string::npos);
+    auto const overload{output.find("auto append_from(ReadOnlyRows const& source) -> size_type")};
+    ASSERT_NE(overload, std::string::npos);
+    auto const overload_end{output.find("\n    }", overload)};
+    ASSERT_NE(overload_end, std::string::npos);
+    auto const body{output.substr(overload, overload_end - overload)};
+    EXPECT_NE(body.find("source.validate_array_sizes();"), std::string::npos);
+    EXPECT_NE(body.find("append_columns(source, first, count);"), std::string::npos);
+    EXPECT_EQ(body.find("source.columns()"), std::string::npos);
+    EXPECT_EQ(body.find("get_view("), std::string::npos);
+    EXPECT_NE(output.find("ordinary_source_aliases_storage(ReadOnlyRows const& source)"),
+              std::string::npos);
+    EXPECT_NE(output.find("aliases(source.nested.wide.GetData())"), std::string::npos);
 }
 
 TEST(SingleAllocationSoa, AllocatorVariantsApplyToNestedColumns) {

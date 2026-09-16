@@ -11,7 +11,7 @@ struct FrameOutput {
     void reset();
     void append_hits(LaserHitDetailsConstView hits, SimTick tick);
 
-    LaserHitDetails hits;
+    SingleAllocationLaserHitDetails hits;
     std::vector<SimTick> hit_ticks;
     std::vector<std::int32_t> hit_ordinals;
 };

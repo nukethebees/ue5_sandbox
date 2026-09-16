@@ -1153,6 +1153,25 @@ struct SingleAllocationTurretEntityDataStorage
     , ml::native_soa::StorageOperations {
     using View = TurretEntityDataSingleView;
     using ConstView = TurretEntityDataSingleConstView;
+    using SchemaConstView = TurretEntityDataConstView;
+    using ml::native_soa::StorageOperations::append_from;
+    auto append_from(TurretEntityDataConstView const& source) -> size_type {
+        source.validate_array_sizes();
+        auto const count{source.num()};
+        auto const first{num_};
+        ml::native_soa::require((count <= max_capacity - first));
+        if (count == 0) {
+            return first;
+        }
+        auto const new_num{first + count};
+        if (new_num > capacity_) {
+            ml::native_soa::require(!ordinary_source_aliases_storage(source));
+            reallocate(ml::native_soa::growth_capacity(new_num, capacity_, capacity_block_bound));
+        }
+        append_columns(source, first, count);
+        num_ = new_num;
+        return first;
+    }
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -1258,37 +1277,122 @@ struct SingleAllocationTurretEntityDataStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
-        auto const pointer_at = [data, blocks](auto const& column) noexcept {
+        auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
             using Column = std::remove_cvref_t<decltype(column)>;
             using Pointer = std::conditional_t<std::is_const_v<Byte>,
                                                typename Column::const_pointer,
                                                typename Column::pointer>;
-            return std::launder(reinterpret_cast<Pointer>(data + column.offset(blocks)));
+            return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        return {pointer_at(Handles),
-                pointer_at(IntegralBiases),
-                pointer_at(LocationsXs),
-                pointer_at(LocationsYs),
-                pointer_at(LocationsZs),
-                pointer_at(FirePointLocationsXs),
-                pointer_at(FirePointLocationsYs),
-                pointer_at(FirePointLocationsZs),
-                pointer_at(RotationsPitches),
-                pointer_at(RotationsYaws),
-                pointer_at(RotationsRolls),
-                pointer_at(Teams),
-                pointer_at(LaserCooldowns),
-                pointer_at(LaserDamages),
-                pointer_at(TargetRefreshCountdownsPeriods),
-                pointer_at(TargetRefreshCountdownsRemainingTicks),
-                pointer_at(TargetHandles),
-                pointer_at(TargetLocationsXs),
-                pointer_at(TargetLocationsYs),
-                pointer_at(TargetLocationsZs),
-                pointer_at(TargetVelocitiesXs),
-                pointer_at(TargetVelocitiesYs),
-                pointer_at(TargetVelocitiesZs),
-                pointer_at(Healths)};
+        auto const handles_offset{byte_size_type{}};
+        auto const integral_biases_offset{ml::native_soa::layout_align(
+            handles_offset + blocks * capacity_granularity * sizeof(RegistryEntityHandle) +
+                column_gap,
+            IntegralBiases.alignment)};
+        auto const locations_xs_offset{ml::native_soa::layout_align(
+            integral_biases_offset + blocks * capacity_granularity * sizeof(std::uint32_t) +
+                column_gap,
+            LocationsXs.alignment)};
+        auto const locations_ys_offset{ml::native_soa::layout_align(
+            locations_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            LocationsYs.alignment)};
+        auto const locations_zs_offset{ml::native_soa::layout_align(
+            locations_ys_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            LocationsZs.alignment)};
+        auto const fire_point_locations_xs_offset{ml::native_soa::layout_align(
+            locations_zs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            FirePointLocationsXs.alignment)};
+        auto const fire_point_locations_ys_offset{ml::native_soa::layout_align(
+            fire_point_locations_xs_offset + blocks * capacity_granularity * sizeof(float) +
+                column_gap,
+            FirePointLocationsYs.alignment)};
+        auto const fire_point_locations_zs_offset{ml::native_soa::layout_align(
+            fire_point_locations_ys_offset + blocks * capacity_granularity * sizeof(float) +
+                column_gap,
+            FirePointLocationsZs.alignment)};
+        auto const rotations_pitches_offset{ml::native_soa::layout_align(
+            fire_point_locations_zs_offset + blocks * capacity_granularity * sizeof(float) +
+                column_gap,
+            RotationsPitches.alignment)};
+        auto const rotations_yaws_offset{ml::native_soa::layout_align(
+            rotations_pitches_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            RotationsYaws.alignment)};
+        auto const rotations_rolls_offset{ml::native_soa::layout_align(
+            rotations_yaws_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            RotationsRolls.alignment)};
+        auto const teams_offset{ml::native_soa::layout_align(
+            rotations_rolls_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            Teams.alignment)};
+        auto const laser_cooldowns_offset{ml::native_soa::layout_align(
+            teams_offset + blocks * capacity_granularity * sizeof(Team) + column_gap,
+            LaserCooldowns.alignment)};
+        auto const laser_damages_offset{ml::native_soa::layout_align(
+            laser_cooldowns_offset + blocks * capacity_granularity * sizeof(std::int16_t) +
+                column_gap,
+            LaserDamages.alignment)};
+        auto const target_refresh_countdowns_periods_offset{ml::native_soa::layout_align(
+            laser_damages_offset + blocks * capacity_granularity * sizeof(std::int32_t) +
+                column_gap,
+            TargetRefreshCountdownsPeriods.alignment)};
+        auto const target_refresh_countdowns_remaining_ticks_offset{ml::native_soa::layout_align(
+            target_refresh_countdowns_periods_offset +
+                blocks * capacity_granularity * sizeof(std::int16_t) + column_gap,
+            TargetRefreshCountdownsRemainingTicks.alignment)};
+        auto const target_handles_offset{ml::native_soa::layout_align(
+            target_refresh_countdowns_remaining_ticks_offset +
+                blocks * capacity_granularity * sizeof(std::int16_t) + column_gap,
+            TargetHandles.alignment)};
+        auto const target_locations_xs_offset{ml::native_soa::layout_align(
+            target_handles_offset + blocks * capacity_granularity * sizeof(RegistryEntityHandle) +
+                column_gap,
+            TargetLocationsXs.alignment)};
+        auto const target_locations_ys_offset{ml::native_soa::layout_align(
+            target_locations_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            TargetLocationsYs.alignment)};
+        auto const target_locations_zs_offset{ml::native_soa::layout_align(
+            target_locations_ys_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            TargetLocationsZs.alignment)};
+        auto const target_velocities_xs_offset{ml::native_soa::layout_align(
+            target_locations_zs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
+            TargetVelocitiesXs.alignment)};
+        auto const target_velocities_ys_offset{ml::native_soa::layout_align(
+            target_velocities_xs_offset + blocks * capacity_granularity * sizeof(float) +
+                column_gap,
+            TargetVelocitiesYs.alignment)};
+        auto const target_velocities_zs_offset{ml::native_soa::layout_align(
+            target_velocities_ys_offset + blocks * capacity_granularity * sizeof(float) +
+                column_gap,
+            TargetVelocitiesZs.alignment)};
+        auto const healths_offset{ml::native_soa::layout_align(
+            target_velocities_zs_offset + blocks * capacity_granularity * sizeof(float) +
+                column_gap,
+            Healths.alignment)};
+        return {
+            pointer_at(Handles, handles_offset),
+            pointer_at(IntegralBiases, integral_biases_offset),
+            pointer_at(LocationsXs, locations_xs_offset),
+            pointer_at(LocationsYs, locations_ys_offset),
+            pointer_at(LocationsZs, locations_zs_offset),
+            pointer_at(FirePointLocationsXs, fire_point_locations_xs_offset),
+            pointer_at(FirePointLocationsYs, fire_point_locations_ys_offset),
+            pointer_at(FirePointLocationsZs, fire_point_locations_zs_offset),
+            pointer_at(RotationsPitches, rotations_pitches_offset),
+            pointer_at(RotationsYaws, rotations_yaws_offset),
+            pointer_at(RotationsRolls, rotations_rolls_offset),
+            pointer_at(Teams, teams_offset),
+            pointer_at(LaserCooldowns, laser_cooldowns_offset),
+            pointer_at(LaserDamages, laser_damages_offset),
+            pointer_at(TargetRefreshCountdownsPeriods, target_refresh_countdowns_periods_offset),
+            pointer_at(TargetRefreshCountdownsRemainingTicks,
+                       target_refresh_countdowns_remaining_ticks_offset),
+            pointer_at(TargetHandles, target_handles_offset),
+            pointer_at(TargetLocationsXs, target_locations_xs_offset),
+            pointer_at(TargetLocationsYs, target_locations_ys_offset),
+            pointer_at(TargetLocationsZs, target_locations_zs_offset),
+            pointer_at(TargetVelocitiesXs, target_velocities_xs_offset),
+            pointer_at(TargetVelocitiesYs, target_velocities_ys_offset),
+            pointer_at(TargetVelocitiesZs, target_velocities_zs_offset),
+            pointer_at(Healths, healths_offset)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -1411,6 +1515,31 @@ struct SingleAllocationTurretEntityDataStorage
             [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
+    }
+    auto ordinary_source_aliases_storage(TurretEntityDataConstView const& source) const noexcept
+        -> bool {
+        if (data_ == nullptr) {
+            return false;
+        }
+        auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};
+        auto const allocation_end{allocation_begin + layout_bytes(capacity_blocks())};
+        auto const aliases = [allocation_begin, allocation_end](auto const* pointer) noexcept {
+            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
+            return address >= allocation_begin && address < allocation_end;
+        };
+        return aliases(source.handles.data()) || aliases(source.integral_biases.data()) ||
+               aliases(source.locations.xs) || aliases(source.locations.ys) ||
+               aliases(source.locations.zs) || aliases(source.fire_point_locations.xs) ||
+               aliases(source.fire_point_locations.ys) || aliases(source.fire_point_locations.zs) ||
+               aliases(source.rotations.pitches.data()) || aliases(source.rotations.yaws.data()) ||
+               aliases(source.rotations.rolls.data()) || aliases(source.teams.data()) ||
+               aliases(source.laser_cooldowns.data()) || aliases(source.laser_damages.data()) ||
+               aliases(source.target_refresh_countdowns_periods.data()) ||
+               aliases(source.target_refresh_countdowns_remaining_ticks.data()) ||
+               aliases(source.target_handles.data()) || aliases(source.target_locations.xs) ||
+               aliases(source.target_locations.ys) || aliases(source.target_locations.zs) ||
+               aliases(source.target_velocities.xs) || aliases(source.target_velocities.ys) ||
+               aliases(source.target_velocities.zs) || aliases(source.healths.data());
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {
