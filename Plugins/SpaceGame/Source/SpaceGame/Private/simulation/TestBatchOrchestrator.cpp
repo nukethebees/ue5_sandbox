@@ -102,89 +102,6 @@ void set_capital_proxy_config_on_all(UWorld& world, USpaceGameLevelConfig& confi
     }
 }
 
-template <typename TProxy>
-void add_proxy_handles(UWorld& world,
-                       ::ioj::sim::EntityRegistry const& entity_registry,
-                       FProxyEntityMap& proxy_entities) {
-    for (TActorIterator<TProxy> it{&world}; it; ++it) {
-        auto* const proxy{*it};
-        check(IsValid(proxy));
-
-        auto const* const entity{Cast<ITestEntity>(proxy)};
-        check(entity);
-
-        auto const handle{entity->get_entity_handle()};
-        check(entity_registry.is_valid_handle(handle));
-        auto const unique_id{entity_registry.find_unique_id(handle)};
-        check(entity_registry.is_valid_unique_id(unique_id));
-        check(!proxy_entities.Contains(proxy));
-        proxy_entities.Add(proxy,
-                           FRegistryEntityIdentifiers{
-                               .handle = handle,
-                               .unique_id = unique_id,
-                           });
-    }
-}
-
-template <typename TProxy>
-void destroy_proxy_actors(UWorld& world) {
-    for (TActorIterator<TProxy> it{&world}; it;) {
-        auto* const proxy{*it};
-        ++it;
-
-        check(IsValid(proxy));
-        check(proxy->Destroy());
-    }
-}
-
-using FProxyEntityIndexMap = TMap<AActor const*, int32>;
-
-auto resolve_entity_index(FProxyEntityIndexMap const& entities, AActor const& actor) -> int32 {
-    auto const* const index{entities.Find(&actor)};
-    check(index);
-    return *index;
-}
-
-auto compile_proxy_mission(FLevelMissionDefinition const& definition,
-                           FProxyEntityIndexMap const& entities)
-    -> ::ioj::sim::LevelMissionInitialisationData {
-    auto const mode{[&] {
-        switch (definition.mission_mode) {
-            case ETestMissionMode::None:
-                return ::ioj::sim::levels::LevelMissionMode::Unspecified;
-            case ETestMissionMode::SurviveTime:
-                return ::ioj::sim::levels::LevelMissionMode::SurviveTime;
-            case ETestMissionMode::KillEnemies:
-                return ::ioj::sim::levels::LevelMissionMode::KillEnemies;
-            case ETestMissionMode::KillEnemiesWithinTime:
-                return ::ioj::sim::levels::LevelMissionMode::KillEnemiesWithinTime;
-        }
-        checkNoEntry();
-        return ::ioj::sim::levels::LevelMissionMode::Unspecified;
-    }()};
-    ::ioj::sim::LevelMissionInitialisationData result{
-        .mode = mode,
-        .time_limit_seconds = definition.target_time,
-        .kill_count = definition.kill_target,
-        .level_id = TCHAR_TO_UTF8(*definition.level_id.ToString()),
-        .level_title = TCHAR_TO_UTF8(*definition.level_display_name),
-    };
-    auto append_indices{[&entities](std::vector<int32>& output, auto const& actors) {
-        for (auto const actor : actors) {
-            if (IsValid(actor)) {
-                output.push_back(resolve_entity_index(entities, *actor));
-            }
-        }
-    }};
-    append_indices(result.hero_entity_indices, definition.startup_data.hero_entities);
-    append_indices(result.must_survive_entity_indices,
-                   definition.startup_data.entities_must_survive);
-    append_indices(result.required_kill_entity_indices,
-                   definition.startup_data.entities_required_to_kill);
-    result.save_results = definition.save_mission_results;
-    return result;
-}
-
 }
 
 FOnProxyEntitiesBound ATestBatchOrchestrator::on_proxy_entities_bound;
@@ -493,7 +410,9 @@ void ATestBatchOrchestrator::clear_player_ship() {
 /* **************************************** */
 // Level initialization
 /* **************************************** */
-auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors) -> bool {
+auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors,
+                                                   TOptional<ml::FProxyLevelSimBuild>& proxy_build)
+    -> bool {
     auto& world{*GetWorld()};
     auto const& config{*level_config};
 
@@ -551,109 +470,24 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
         result->fighter_diagnostics_enabled =
             ml::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;
         level_simulation_.Emplace(MoveTemp(result.value()));
-        validate_entity_handles();
         return true;
     }
 
-    auto result{ml::make_level_simulation_init_data(
-        config, simulation_tick_loop, MoveTemp(player), player_collision_mesh)};
+    auto result{ml::make_proxy_level_simulation_init_data(config,
+                                                          simulation_tick_loop,
+                                                          world,
+                                                          mission_definition,
+                                                          MoveTemp(player),
+                                                          player_ship.Get(),
+                                                          player_collision_mesh)};
     if (!result) {
         errors = MoveTemp(result.error());
         return false;
     }
 
-    auto& data{result.value()};
-
-    auto const capital_proxies{ml::get_actors<ATestCapitalShipProxy>(world)};
-    auto const turret_proxies{ml::get_actors<ATestStaticTurretsProxy>(world)};
-    auto const spinner_proxies{ml::get_actors<ATestTubeSpinnerProxy>(world)};
-
-    auto& initialisation{data.level_events.initialisation};
-    auto& initial_spawns{data.level_events.initial_spawns};
-    FProxyEntityIndexMap entity_indices;
-    auto allocate_entity_index{[&](AActor const& actor) {
-        auto const index{initialisation.entity_count++};
-        check(!entity_indices.Contains(&actor));
-        entity_indices.Add(&actor, index);
-        return index;
-    }};
-    if (data.player.has_value()) {
-        check(IsValid(player_ship));
-        initialisation.player_entity_index = allocate_entity_index(*player_ship);
-    }
-    {
-        auto const n_to_add{capital_proxies.Num()};
-        auto const default_spawn_cooldown{level_config->capital_ships.spawn_delay};
-
-        auto& events{initial_spawns.capital_spawns};
-        events.add_defaulted(n_to_add);
-        for (int32 i{0}; i < n_to_add; ++i) {
-            auto const& proxy_transform{capital_proxies[i]->GetActorTransform()};
-            events.entity_indices[i] = allocate_entity_index(*capital_proxies[i]);
-            events.target_entity_indices[i] = INDEX_NONE;
-            events.locations.set(i, ml::to_native(FVector3f{proxy_transform.GetLocation()}));
-            events.rotations.set(i, ml::to_native(FRotator3f{proxy_transform.Rotator()}));
-            events.teams[i] = ml::to_native(capital_proxies[i]->get_team());
-            events.healths[i] =
-                capital_proxies[i]->get_health().Get(level_config->capital_ships.max_health);
-            events.initial_fighter_spawn_delays[i] =
-                capital_proxies[i]->get_initial_spawn_delay().Get(0.f);
-            events.fighter_spawn_cooldowns[i] =
-                capital_proxies[i]->get_spawn_cooldown().Get(default_spawn_cooldown);
-        }
-    }
-    {
-        auto const n_to_add{turret_proxies.Num()};
-
-        auto& events{initial_spawns.turret_spawns};
-        events.add_defaulted(n_to_add);
-        initial_turret_transforms_.Reset(n_to_add);
-        for (int32 i{0}; i < n_to_add; ++i) {
-            auto const transform{turret_proxies[i]->GetActorTransform()};
-            initial_turret_transforms_.Add(transform);
-            events.entity_indices[i] = allocate_entity_index(*turret_proxies[i]);
-            events.locations.set(i, ml::to_native(FVector3f{transform.GetLocation()}));
-            events.rotations.set(i, ml::to_native(FRotator3f{transform.Rotator()}));
-            events.teams[i] = ml::to_native(turret_proxies[i]->get_team());
-            events.healths[i] =
-                turret_proxies[i]->get_health().Get(level_config->turrets.max_health);
-            events.laser_damages[i] =
-                turret_proxies[i]->get_laser_damage().Get(level_config->turrets.laser.damage);
-        }
-    }
-    {
-        auto const n_to_add{spinner_proxies.Num()};
-
-        auto& events{initial_spawns.spinner_spawns};
-        events.add_defaulted(n_to_add);
-        for (int32 i{0}; i < n_to_add; ++i) {
-            auto* proxy{spinner_proxies[i]};
-            auto const& transform{proxy->GetActorTransform()};
-
-            events.entity_indices[i] = allocate_entity_index(*proxy);
-            events.locations.set(i, ml::to_native(FVector3f{transform.GetLocation()}));
-            events.yaws[i] = transform.Rotator().Yaw;
-            events.initial_fire_point_indices[i] = proxy->get_initial_active_fire_point();
-        }
-    }
-    {
-        auto& events{initial_spawns.capital_spawns};
-        auto const count{events.num()};
-        for (int32 i{}; i < count; ++i) {
-            auto const* const target{capital_proxies[i]->get_target_ship().Get()};
-            if (IsValid(target)) {
-                events.target_entity_indices[i] = resolve_entity_index(entity_indices, *target);
-            }
-        }
-    }
-
-    if (mission_definition.level_id.IsNone()) {
-        mission_definition.level_id = FName{UGameplayStatics::GetCurrentLevelName(&world)};
-    }
-    if (mission_definition.level_display_name.IsEmpty()) {
-        mission_definition.level_display_name = mission_definition.level_id.ToString();
-    }
-    initialisation.mission = compile_proxy_mission(mission_definition, entity_indices);
+    proxy_build.Emplace(MoveTemp(result.value()));
+    auto& data{proxy_build->data};
+    initial_turret_transforms_ = MoveTemp(proxy_build->initial_turret_transforms);
 
     auto const presentation{make_presentation_resources()};
     if (presentation_enabled && !presentation.is_valid()) {
@@ -666,50 +500,9 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
         IsValid(game_subsystem)) {
         data.game_memory = &game_subsystem->get_game_memory();
     }
-    ml::validate_world_fighter_spawn_slots(data, errors);
-    if (errors.has_errors()) {
-        return false;
-    }
-
     data.fighter_diagnostics_enabled = ml::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;
     level_simulation_.Emplace(MoveTemp(data));
-
-    auto const capital_count{capital_proxies.Num()};
-    for (int32 i{}; i < capital_count; ++i) {
-        capital_proxies[i]->set_entity_handle(get_capital_ships()->get_handle(i));
-    }
-
-    auto const turret_count{turret_proxies.Num()};
-    for (int32 i{}; i < turret_count; ++i) {
-        turret_proxies[i]->set_entity_handle(
-            level_simulation_->get_turrets().get_read_view().entities.handles[i]);
-    }
-
-    auto const spinner_count{spinner_proxies.Num()};
-    for (int32 i{}; i < spinner_count; ++i) {
-        spinner_proxies[i]->set_entity_handle(
-            level_simulation_->get_spinners().get_read_view().entities.handles[i]);
-    }
-
-    validate_entity_handles();
     return true;
-}
-void ATestBatchOrchestrator::bind_and_destroy_proxies() {
-    if (level_definition_.IsSet()) {
-        return;
-    }
-
-    auto& world{*GetWorld()};
-    FProxyEntityMap proxy_entities;
-    add_proxy_handles<ATestCapitalShipProxy>(world, get_entity_registry(), proxy_entities);
-    add_proxy_handles<ATestStaticTurretsProxy>(world, get_entity_registry(), proxy_entities);
-    add_proxy_handles<ATestTubeSpinnerProxy>(world, get_entity_registry(), proxy_entities);
-
-    on_proxy_entities_bound.Broadcast(proxy_entities);
-
-    destroy_proxy_actors<ATestCapitalShipProxy>(world);
-    destroy_proxy_actors<ATestStaticTurretsProxy>(world);
-    destroy_proxy_actors<ATestTubeSpinnerProxy>(world);
 }
 auto ATestBatchOrchestrator::begin_play() -> bool {
     if (level_simulation_.IsSet()) {
@@ -759,10 +552,9 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     }
 
     set_level_config(*level_config);
-    hud_tick_loop.initialise();
-
     ml::FLevelStartErrors simulation_errors;
-    if (!initialise_simulation(simulation_errors)) {
+    TOptional<ml::FProxyLevelSimBuild> proxy_build;
+    if (!initialise_simulation(simulation_errors, proxy_build)) {
         handle_level_start_failure(
             FString::Printf(TEXT("Cannot start level:\n%s"), *simulation_errors.format()));
         return false;
@@ -773,7 +565,11 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
                                      *get_player_ship_simulation());
     }
 
-    bind_and_destroy_proxies();
+    if (proxy_build.IsSet()) {
+        auto const proxy_entities{proxy_build->bind_proxy_entities(*level_simulation_)};
+        on_proxy_entities_bound.Broadcast(proxy_entities);
+        proxy_build->destroy_proxy_actors();
+    }
     auto static_bounds{world_collision_.initialise_static_geometry(
         *world,
         level_config->collision_grid,
@@ -795,7 +591,6 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
                                get_mission_manager(),
                                get_entity_registry(),
                                get_spatial_query_manager(),
-                               hud_tick_loop.tick_rate,
                                get_player_ship_simulation(),
                                level_config->get_visual_config(),
                                level_config->entity_overlay,
@@ -938,19 +733,18 @@ void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
         return;
     }
 
-    if (!presentation_enabled || !IsValid(level_config)) {
-        collision_grid_visualization->clear();
-        return;
+    TOptional<FCollisionGridVisualizationSettings> settings;
+    if (presentation_enabled && IsValid(level_config)) {
+        settings.Emplace(FCollisionGridVisualizationSettings{
+            .dimensions = level_config->collision_grid.calculate_grid_dimensions(),
+            .cell_size = level_config->collision_grid.cell_size,
+            .line_colour = level_config->collision_grid.line_colour,
+            .line_thickness = level_config->collision_grid.line_thickness,
+            .show_grid = level_config->collision_grid.show_grid,
+        });
     }
 
-    collision_grid_visualization->configure(
-        level_config->collision_grid.calculate_grid_dimensions(),
-        level_config->collision_grid.cell_size,
-        level_config->collision_grid.line_colour,
-        level_config->collision_grid.line_thickness,
-        level_config->collision_grid.show_grid);
-    collision_grid_visualization->configure_collision_bounds(show_collision_bounds,
-                                                             collision_bounds_max_draw_distance);
+    collision_grid_visualization->configure(MoveTemp(settings));
 }
 void ATestBatchOrchestrator::update_collision_bounds_visualization() {
     if (!IsValid(collision_grid_visualization)) {
@@ -960,28 +754,15 @@ void ATestBatchOrchestrator::update_collision_bounds_visualization() {
         return;
     }
 
-    auto const visible{presentation_enabled && show_collision_bounds && level_simulation_.IsSet()};
-    collision_grid_visualization->configure_collision_bounds(visible,
-                                                             collision_bounds_max_draw_distance);
-    if (!visible) {
-        collision_grid_visualization->clear_collision_bounds();
-        return;
-    }
-
-    collision_grid_visualization->update_collision_bounds(
-        get_spatial_query_manager().get_collision_system());
+    auto const* const collision_system{presentation_enabled && level_simulation_.IsSet()
+                                           ? &get_spatial_query_manager().get_collision_system()
+                                           : nullptr};
+    collision_grid_visualization->update_collision_bounds(collision_system);
 }
 
 /* **************************************** */
 // Simulation state
 /* **************************************** */
-void ATestBatchOrchestrator::validate_entity_handles() {
-    if (auto const* player{get_player_ship_simulation()}) {
-        check(get_entity_registry().is_valid_handle(player->registry_handle));
-    }
-    get_capital_ships()->validate_entity_handles();
-    level_simulation_->get_turrets().validate_entity_handles();
-}
 void ATestBatchOrchestrator::Tick(float dt) {
     Super::Tick(dt);
 
@@ -1000,11 +781,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
     update_collision_bounds_visualization();
 
     if (presentation_enabled) {
-
-        hud_tick_loop.add_time(dt);
-        while (hud_tick_loop.try_tick()) {
-            hud_manager.tick(1);
-        }
+        hud_manager.advance(dt);
     }
 
     if (level_presentation_.IsSet()) {

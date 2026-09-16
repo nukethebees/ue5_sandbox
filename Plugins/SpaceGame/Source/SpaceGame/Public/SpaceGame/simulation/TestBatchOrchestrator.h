@@ -7,6 +7,7 @@
 #include <ioj/sim/level_sim.h>
 #include <SpaceGame/missions/LevelMissionDefinition.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
+#include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGamePresentation/presentation/HUDManager.h>
@@ -146,7 +147,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto get_hud_update_frequencies() const noexcept -> FTestBatchGameUiUpdateFrequencies const& {
         return hud_update_frequencies;
     }
-    auto get_hud_tick_loop() const noexcept { return hud_tick_loop; }
 
     /* **************************************** */
     // Testing and level preparation
@@ -194,8 +194,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto begin_play() -> bool;
     void load_authored_level();
     auto should_initialise_in_begin_play() const noexcept -> bool;
-    void validate_entity_handles();
-    auto initialise_simulation(ml::FLevelStartErrors& errors) -> bool;
+    auto initialise_simulation(ml::FLevelStartErrors& errors,
+                               TOptional<ml::FProxyLevelSimBuild>& proxy_build) -> bool;
     void handle_level_start_failure(FString message);
 
     /* **************************************** */
@@ -207,10 +207,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void persist_finalized_telemetry_run();
 
     /* **************************************** */
-    // Presentation and proxies
+    // Presentation
     /* **************************************** */
     auto make_presentation_resources() const -> FLevelPresentationResources;
-    void bind_and_destroy_proxies();
     void refresh_collision_grid_visualization();
     void update_collision_bounds_visualization();
 
@@ -231,14 +230,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Collision")
     TObjectPtr<UCollisionGridVisualizationComponent> collision_grid_visualization{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Collision|Visualization")
-    bool show_collision_bounds{false};
-    UPROPERTY(EditAnywhere,
-              Category = "Sandbox|Collision|Visualization",
-              meta = (ClampMin = "0.0", Units = "cm", EditCondition = "show_collision_bounds"))
-    float collision_bounds_max_draw_distance{200000.f};
-
-    FFixedTickLoop hud_tick_loop{};
 
     FHUDManager hud_manager;
     TOptional<::ioj::sim::LevelSim> level_simulation_;

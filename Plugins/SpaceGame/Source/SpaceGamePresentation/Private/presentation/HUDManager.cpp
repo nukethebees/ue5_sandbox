@@ -42,7 +42,6 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
                              ::ioj::sim::MissionManager const& new_mission_manager,
                              ::ioj::sim::EntityRegistry const& new_entity_registry,
                              ::ioj::sim::SpatialQueryManager const& new_spatial_query_manager,
-                             double const update_tick_rate,
                              ::ioj::sim::player::Sim const* const new_player_ship,
                              FLevelVisualConfig const& level_config,
                              FEntityOverlaySettings const& entity_overlay_settings,
@@ -62,7 +61,8 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     has_sampled_speed_data = false;
 #endif
 
-    check(update_tick_rate > 0.0);
+    tick_loop_.initialise();
+    auto const update_tick_rate{tick_loop_.tick_rate};
     seconds_per_tick_ = static_cast<float>(1.0 / update_tick_rate);
 
     auto const periods{update_frequencies.to_array()};
@@ -244,6 +244,12 @@ void FHUDManager::deactivate() {
 #endif
 }
 
+void FHUDManager::advance(double const dt) {
+    tick_loop_.add_time(dt);
+    while (tick_loop_.try_tick()) {
+        tick(1);
+    }
+}
 void FHUDManager::tick(FPeriodicTickCountdown8::counter_type const num_ticks) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::tick);
     check(num_ticks >= 0);

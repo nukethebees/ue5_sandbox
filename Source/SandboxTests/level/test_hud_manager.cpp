@@ -98,7 +98,6 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
                    mission,
                    harness.get_registry(),
                    simulation.get_spatial_query_manager(),
-                   60.0,
                    simulation.get_player_ship_simulation(),
                    config.get_visual_config(),
                    {},
@@ -308,10 +307,10 @@ void FTestHUDManagerScenario::defence_begin() {
         test_driver->queue_kills(required_handles);
         test_driver->queue_kills(handles);
     });
-    begin_timed_sampling(test_duration,
-                         FOrchestratorEndTickTestHook::CreateRaw(
-                             this, &FTestHUDManagerScenario::defence_on_tick),
-                         defence_samples);
+    begin_timed_sampling(
+        test_duration,
+        FOrchestratorEndTickTestHook::CreateRaw(this, &FTestHUDManagerScenario::defence_on_tick),
+        defence_samples);
 }
 
 void FTestHUDManagerScenario::defence_on_tick(ATestBatchOrchestrator&) {
@@ -647,7 +646,6 @@ auto FTestHUDManagerScenario::initialise_headless_hud_manager() -> bool {
                                      orchestrator->get_mission_manager(),
                                      entity_registry,
                                      orchestrator->get_spatial_query_manager(),
-                                     orchestrator->get_hud_tick_loop().tick_rate,
                                      orchestrator->get_player_ship_simulation(),
                                      orchestrator->get_level_config()->get_visual_config(),
                                      {},

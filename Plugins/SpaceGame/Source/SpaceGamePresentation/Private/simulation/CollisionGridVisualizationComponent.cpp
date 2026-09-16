@@ -287,41 +287,40 @@ UCollisionGridVisualizationComponent::UCollisionGridVisualizationComponent() {
     SetCastShadow(false);
 }
 
-void UCollisionGridVisualizationComponent::configure(FIntVector3 dimensions,
-                                                     FVector3f cell_size,
-                                                     FLinearColor colour,
-                                                     float thickness,
-                                                     bool show_grid) {
-    grid_dimensions_ = dimensions;
-    cell_size_ = cell_size;
-    line_colour_ = colour;
-    line_thickness_ = thickness;
-    show_grid_ = show_grid;
-
-    MarkRenderStateDirty();
-}
-
-void UCollisionGridVisualizationComponent::configure_collision_bounds(
-    bool const visible, float const max_draw_distance) {
-    auto const clamped_max_draw_distance{FMath::Max(max_draw_distance, 0.f)};
-    if (show_collision_bounds_ == visible &&
-        collision_bounds_max_draw_distance_ == clamped_max_draw_distance) {
+void UCollisionGridVisualizationComponent::configure(
+    TOptional<FCollisionGridVisualizationSettings> settings) {
+    if (!settings.IsSet()) {
+        clear();
         return;
     }
 
-    show_collision_bounds_ = visible;
-    collision_bounds_max_draw_distance_ = clamped_max_draw_distance;
+    grid_dimensions_ = settings->dimensions;
+    cell_size_ = settings->cell_size;
+    line_colour_ = settings->line_colour;
+    line_thickness_ = settings->line_thickness;
+    show_grid_ = settings->show_grid;
+
     MarkRenderStateDirty();
 }
 
 void UCollisionGridVisualizationComponent::update_collision_bounds(
-    ::ioj::sim::collision::CollisionSystem const& collision_system) {
-    if (!show_collision_bounds_) {
+    ::ioj::sim::collision::CollisionSystem const* const collision_system) {
+    auto const max_draw_distance{FMath::Max(collision_bounds_max_draw_distance_, 0.f)};
+    auto const visible{show_collision_bounds_ && collision_system != nullptr};
+    auto const settings_changed{collision_bounds_visible_ != visible ||
+                                applied_collision_bounds_max_draw_distance_ != max_draw_distance};
+    collision_bounds_visible_ = visible;
+    applied_collision_bounds_max_draw_distance_ = max_draw_distance;
+
+    if (!visible) {
         clear_collision_bounds();
+        if (settings_changed) {
+            MarkRenderStateDirty();
+        }
         return;
     }
 
-    auto const entity_aabbs{collision_system.get_uniform_grid().get_entity_world_bounds()};
+    auto const entity_aabbs{collision_system->get_uniform_grid().get_entity_world_bounds()};
     auto const entity_count{entity_aabbs.num()};
     entity_bounds_.Reset();
     entity_bounds_.Reserve(entity_count);
@@ -330,7 +329,7 @@ void UCollisionGridVisualizationComponent::update_collision_bounds(
                                ml::to_unreal(::ioj::sim::collision::max_at(entity_aabbs, i)));
     }
 
-    auto const& static_aabbs{collision_system.get_uniform_grid().get_static_aabbs()};
+    auto const& static_aabbs{collision_system->get_uniform_grid().get_static_aabbs()};
     auto const static_count{static_aabbs.num()};
     auto const static_columns{static_aabbs.get_const_view().columns()};
     static_bounds_.SetNumUninitialized(static_count, EAllowShrinking::No);
@@ -339,7 +338,9 @@ void UCollisionGridVisualizationComponent::update_collision_bounds(
                                    ml::to_unreal(::ioj::sim::collision::max_at(static_columns, i))};
     }
 
-    if (SceneProxy != nullptr) {
+    if (settings_changed) {
+        MarkRenderStateDirty();
+    } else if (SceneProxy != nullptr) {
         MarkRenderDynamicDataDirty();
     } else if (IsRegistered() && (!entity_bounds_.IsEmpty() || !static_bounds_.IsEmpty())) {
         MarkRenderStateDirty();
@@ -367,7 +368,7 @@ void UCollisionGridVisualizationComponent::clear() {
     static_bounds_.Reset();
     grid_dimensions_ = FIntVector3::ZeroValue;
     show_grid_ = false;
-    show_collision_bounds_ = false;
+    collision_bounds_visible_ = false;
 
     MarkRenderStateDirty();
 }
@@ -375,7 +376,7 @@ void UCollisionGridVisualizationComponent::clear() {
 auto UCollisionGridVisualizationComponent::CreateSceneProxy() -> FPrimitiveSceneProxy* {
     auto const has_valid_grid{grid_dimensions_.X > 0 && grid_dimensions_.Y > 0 &&
                               grid_dimensions_.Z > 0};
-    auto const has_collision_bounds{show_collision_bounds_ &&
+    auto const has_collision_bounds{collision_bounds_visible_ &&
                                     (!entity_bounds_.IsEmpty() || !static_bounds_.IsEmpty())};
     if (!has_valid_grid || (!show_grid_ && !has_collision_bounds)) {
         return nullptr;
@@ -388,9 +389,9 @@ auto UCollisionGridVisualizationComponent::CreateSceneProxy() -> FPrimitiveScene
                                         line_thickness_,
                                         entity_bounds_,
                                         static_bounds_,
-                                        collision_bounds_max_draw_distance_,
+                                        applied_collision_bounds_max_draw_distance_,
                                         show_grid_,
-                                        show_collision_bounds_};
+                                        collision_bounds_visible_};
 }
 
 auto UCollisionGridVisualizationComponent::CalcBounds(FTransform const&) const -> FBoxSphereBounds {

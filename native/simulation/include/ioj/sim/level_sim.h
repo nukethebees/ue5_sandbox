@@ -158,6 +158,7 @@ struct LevelSim {
     void initialise_spatial_queries(LevelSimInitData& data);
     void begin_subsystems();
     void initialise_events(CompiledLevelEvents events);
+    void validate_entity_handles() const;
 
     /* **************************************** */
     // Telemetry

@@ -20,6 +20,7 @@
 #include <SpaceGameSimulation/ships/player/TestShipFireRate.h>
 #include <SpaceGameSimulation/ships/player/TestSpaceShipControlMode.h>
 #include <SpaceGameSimulation/ships/player/TestSpaceShipFlightMode.h>
+#include <SpaceGameSimulation/support/FixedTickLoop.h>
 
 #include <CoreMinimal.h>
 #include <HAL/Platform.h>
@@ -161,13 +162,13 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
                     ::ioj::sim::MissionManager const& new_mission_manager,
                     ::ioj::sim::EntityRegistry const& new_entity_registry,
                     ::ioj::sim::SpatialQueryManager const& new_spatial_query_manager,
-                    double update_tick_rate,
                     ::ioj::sim::player::Sim const* new_player_ship,
                     FLevelVisualConfig const& level_config,
                     FEntityOverlaySettings const& entity_overlay_settings,
                     FRadarSettings const& radar_settings,
                     UInstancedStaticMeshComponent* soft_target_instances = nullptr);
     void deactivate();
+    void advance(double dt);
     void tick(FPeriodicTickCountdown8::counter_type num_ticks);
     void force_sample();
 
@@ -270,6 +271,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     ::ioj::sim::MissionManager const* mission_manager{nullptr};
     ::ioj::sim::EntityRegistry const* entity_registry{nullptr};
     ::ioj::sim::SpatialQueryManager const* spatial_query_manager{nullptr};
+    FFixedTickLoop tick_loop_{};
     FPeriodicTickCountdown8 update_timers;
 
     ml::MultiBuffer<ml::hud_manager::FMissionDataCache, 2> mission_data_buffers;

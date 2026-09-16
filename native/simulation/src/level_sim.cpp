@@ -108,6 +108,7 @@ LevelSim::LevelSim(LevelSimInitData data)
 
     initialise_events(std::move(data.level_events));
     event_manager_.execute_tick(0);
+    validate_entity_handles();
 }
 void LevelSim::finish_initialisation() {
     assert(state_ == OrchestratorState::Uninitialised);
@@ -187,6 +188,13 @@ void LevelSim::initialise_events(CompiledLevelEvents events) {
                                  ? player_ship_simulation_->registry_handle
                                  : RegistryEntityHandle{}};
     event_manager_.initialise(std::move(events), player_handle);
+}
+void LevelSim::validate_entity_handles() const {
+    if (player_ship_simulation_.has_value()) {
+        assert(entity_registry_.is_valid_handle(player_ship_simulation_->registry_handle));
+    }
+    capital_ships_simulation_.validate_entity_handles();
+    turrets_simulation_.validate_entity_handles();
 }
 
 /* **************************************** */
