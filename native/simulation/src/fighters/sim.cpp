@@ -455,6 +455,21 @@ void Sim::plan_movement(float const dt) {
 void Sim::apply_movement() {
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::apply_movement");
     auto const data{entity_buffers.current().get_view().columns()};
+    collision_dirty_entities_.clear();
+    auto const count{data.num()};
+    for (std::int32_t index{}; index < count; ++index) {
+        auto const direction{data.aim_directions[index]};
+        auto const planned_direction{data.planned_aim_directions[index]};
+        if (direction.X == planned_direction.X && direction.Y == planned_direction.Y &&
+            direction.Z == planned_direction.Z) {
+            continue;
+        }
+        auto const before{direction_to_rotation(direction)};
+        auto const after{direction_to_rotation(planned_direction)};
+        if (before.pitch != after.pitch || before.yaw != after.yaw || before.roll != after.roll) {
+            collision_dirty_entities_.push_back(data.entity_handles[index]);
+        }
+    }
     data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
     copy_vectors(data.aim_directions, data.planned_aim_directions.get_const_view());
     move(movement_tick_period_, get_task_view(Task::MoveToDestination));
@@ -544,6 +559,9 @@ void Sim::move(float const dt, TaskView const& fighters) {
     assert(dt > 0.f);
     auto const count{fighters.num()};
     auto const directions{fighters.movement_directions.get_const_view()};
+    FrameVectors3f previous_locations{&frame_memory_resource};
+    previous_locations.set_num(count);
+    copy_vectors(previous_locations.get_view(), fighters.locations.get_const_view());
     for (std::int32_t index{}; index < count; ++index) {
         auto const move_distance{fighters.move_distances[index]};
         auto const velocity_scale{move_distance / dt};
@@ -560,6 +578,13 @@ void Sim::move(float const dt, TaskView const& fighters) {
                                                  fighters.move_distances.data(),
                                                  1.f,
                                                  count);
+    for (std::int32_t index{}; index < count; ++index) {
+        auto const before{previous_locations.get_const_view()[index]};
+        auto const after{fighters.locations[index]};
+        if (before.X != after.X || before.Y != after.Y || before.Z != after.Z) {
+            collision_dirty_entities_.push_back(fighters.entity_handles[index]);
+        }
+    }
 }
 void Sim::update_navigation_steering() {
     SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::update_navigation_steering");

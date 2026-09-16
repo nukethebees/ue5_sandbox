@@ -82,6 +82,9 @@ struct Sim {
     // Accessors
     /* **************************************** */
     auto get_num_instances() const noexcept -> std::int32_t;
+    auto get_collision_dirty_entities() const noexcept -> std::span<RegistryEntityHandle const> {
+        return collision_dirty_entities_;
+    }
     auto get_entity_registry() const noexcept -> EntityRegistry const& { return entity_registry; }
     auto get_laser_simulation() const noexcept -> lasers::Sim const& { return laser_simulation; }
     auto get_view(std::int32_t offset, std::int32_t width) -> EntityData::View;
@@ -284,6 +287,7 @@ struct Sim {
 
     lasers::Sim& laser_simulation;
     std::vector<std::int32_t> pending_fire_indices_;
+    std::vector<RegistryEntityHandle> collision_dirty_entities_;
 
     NavigationTelemetrySnapshot navigation_telemetry;
     std::int32_t diagnostic_stop_reports{};

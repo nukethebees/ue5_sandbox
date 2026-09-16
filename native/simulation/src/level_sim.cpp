@@ -71,7 +71,7 @@ LevelSim::LevelSim(LevelSimInitData data)
     , game_memory_{data.game_memory != nullptr ? data.game_memory : local_game_memory_.get()}
     , frame_memory_{data.frame_memory_capacity_bytes}
     , query_manager_{entity_registry_, agent_accessor_}
-    , overlap_handler_{entity_registry_, data.overlap_response}
+    , overlap_handler_{entity_registry_, agent_accessor_, data.overlap_response}
     , lasers_simulation_{clock_, entity_registry_, query_manager_, frame_memory_}
     , lasers_phase_{lasers_simulation_}
     , fighters_simulation_{clock_,
@@ -120,7 +120,7 @@ void LevelSim::finish_initialisation() {
 
     entity_registry_.commit_updates();
     rebuild_agent_indexes();
-    query_manager_.update(clock_.get_completed_ticks());
+    query_manager_.update({}, clock_.get_completed_ticks());
     entity_registry_.end_tick();
 
     initialise_telemetry();
@@ -366,15 +366,29 @@ void LevelSim::advance(time_type const dt) {
             frame_memory_.reclaim();
 
             if (player_active) {
+                auto const before{player_ship_simulation_->get_movement_state().transform};
                 player_ship_phase_->apply_movement();
+                auto const after{player_ship_simulation_->get_movement_state().transform};
+                auto const before_location{to_float(before.location)};
+                auto const after_location{to_float(after.location)};
+                auto const before_rotation{to_float(before.rotator())};
+                auto const after_rotation{to_float(after.rotator())};
+                if (before_location.X != after_location.X ||
+                    before_location.Y != after_location.Y ||
+                    before_location.Z != after_location.Z ||
+                    before_rotation.pitch != after_rotation.pitch ||
+                    before_rotation.yaw != after_rotation.yaw ||
+                    before_rotation.roll != after_rotation.roll) {
+                    collision_dirty_entities_.push_back(player_ship_simulation_->registry_handle);
+                }
             }
             fighters_phase_.apply_movement();
+            // Spinner rotation does not initiate overlap damage.
             spinners_phase_.apply_movement();
             frame_memory_.reclaim();
 
             // Collision observes moved and newly created entities, before resolved deaths.
-            publish_entity_state();
-            auto const moved{entity_registry_.get_moved_entities_this_tick()};
+            auto const moved{fighters_simulation_.get_collision_dirty_entities()};
             collision_dirty_entities_.insert(
                 collision_dirty_entities_.end(), moved.begin(), moved.end());
             std::ranges::sort(collision_dirty_entities_);

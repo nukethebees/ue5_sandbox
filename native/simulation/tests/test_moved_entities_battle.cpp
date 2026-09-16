@@ -129,6 +129,16 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
                             static_cast<std::int32_t>(expected_moved.size()),
                             "Movement list exactly matches this tick's transform changes");
         observed_empty_tick = observed_empty_tick || moved.empty();
+        auto const owner_dirty{level.get_fighters().get_collision_dirty_entities()};
+        std::set<RegistryEntityHandle> const owner_moved{owner_dirty.begin(), owner_dirty.end()};
+        std::set<RegistryEntityHandle> registry_moved_fighters;
+        for (auto const handle : moved) {
+            if (registry.get_entity_type(handle) == EntityType::Fighter) {
+                registry_moved_fighters.insert(handle);
+            }
+        }
+        tests::expect_true(owner_moved == registry_moved_fighters,
+                           "Owner collision dirtiness matches exact committed fighter transforms");
         ++observed_ticks;
         capture_current_transforms(registry);
     };

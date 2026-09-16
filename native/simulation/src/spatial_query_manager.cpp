@@ -533,10 +533,11 @@ void SpatialQueryManager::copy_entity_radii(std::span<RegistryEntityHandle const
 /* **************************************** */
 // Collision state and telemetry
 /* **************************************** */
-auto SpatialQueryManager::update(SimTick const tick) -> collision::DetectedOverlapsView {
+auto SpatialQueryManager::update(std::span<RegistryEntityHandle const> const dirty_entities,
+                                 SimTick const tick) -> collision::DetectedOverlapsView {
     SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::update");
 
-    return collision.update(entity_registry.get_moved_entities_this_tick(), tick);
+    return collision.update(dirty_entities, tick);
 }
 
 }

@@ -38,7 +38,7 @@ struct OverlapFixture {
     void finish_spawning() {
         registry.commit_updates();
         owners.load(registry);
-        query_manager.update(current_tick);
+        query_manager.update({}, current_tick);
         registry.end_tick();
         query_manager.get_collision_system().reset_frame_events();
     }
@@ -87,7 +87,7 @@ struct OverlapFixture {
             deaths);
         registry.commit_updates();
         owners.load(registry);
-        query_manager.update(++current_tick);
+        query_manager.update(registry.get_moved_entities_this_tick(), ++current_tick);
         tick_is_open = true;
     }
 
@@ -97,7 +97,7 @@ struct OverlapFixture {
         registry.begin_tick();
         registry.commit_updates();
         owners.load(registry);
-        query_manager.update(++current_tick);
+        query_manager.update({}, ++current_tick);
         tick_is_open = true;
     }
 

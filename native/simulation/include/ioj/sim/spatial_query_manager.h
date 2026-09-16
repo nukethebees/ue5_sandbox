@@ -125,7 +125,8 @@ struct SpatialQueryManager {
         return collision;
     }
 
-    auto update(SimTick tick) -> collision::DetectedOverlapsView;
+    auto update(std::span<RegistryEntityHandle const> dirty_entities, SimTick tick)
+        -> collision::DetectedOverlapsView;
   private:
     /* **************************************** */
     // Thread buffer leasing

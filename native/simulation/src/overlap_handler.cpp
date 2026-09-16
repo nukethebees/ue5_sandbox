@@ -1,12 +1,15 @@
 #include "ioj/sim/overlap_handler.h"
 #include <cassert>
 
+#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/entity_registry.h>
 
 namespace ioj::sim {
 OverlapHandler::OverlapHandler(EntityRegistry& registry,
+                               AgentAccessor const& agents,
                                OverlapResponseConfig const& config) noexcept
     : registry_{registry}
+    , agents_{agents}
     , damage_per_overlap_detection_{config.damage_per_overlap_detection} {
     assert(damage_per_overlap_detection_ > 0);
 }
@@ -36,11 +39,12 @@ void OverlapHandler::handle(collision::DetectedOverlapsView const overlaps) {
 }
 
 void OverlapHandler::append_damage(RegistryEntityHandle const entity) {
-    if (!registry_.is_valid_alive(entity)) {
+    auto const id{registry_.get_current_id(entity)};
+    if (!agents_.is_alive(id)) {
         return;
     }
 
-    switch (registry_.get_entity_type(entity)) {
+    switch (id.entity_type()) {
         case EntityType::PlayerShip:
         case EntityType::Turret:
         case EntityType::CapitalShip:

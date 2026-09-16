@@ -1,5 +1,6 @@
 #include <ioj/sim/entity_registry.h>
 #include <ioj/sim/overlap_handler.h>
+#include "support/collision_agent_storage.h"
 #include "support/simulation_test_support.h"
 
 namespace ioj::sim::tests {
@@ -40,7 +41,9 @@ TEST(OverlapHandler, QueuesEnvironmentalDamageForEachSupportedOverlapParticipant
     collision::EntityStaticOverlaps static_overlaps;
     static_overlaps.add(fighter, 7);
 
-    OverlapHandler handler{registry, {.damage_per_overlap_detection = 37}};
+    CollisionAgentStorage owners;
+    owners.load(registry);
+    OverlapHandler handler{registry, owners.agents, {.damage_per_overlap_detection = 37}};
     handler.handle({entity_overlaps.get_const_view(), static_overlaps.get_const_view()});
 
     auto const& damage{registry.get_direct_damage_queue_view()};
@@ -78,7 +81,9 @@ TEST(OverlapHandler, SkipsUnsupportedDeadInvalidAndStaleRecipients) {
     first_pairs.add(fighter, spinner);
     first_pairs.add(fighter, doomed);
     first_pairs.add(fighter, RegistryEntityHandle{999, 0});
-    OverlapHandler handler{registry, {}};
+    CollisionAgentStorage owners;
+    owners.load(registry);
+    OverlapHandler handler{registry, owners.agents, {}};
     handler.handle({first_pairs.get_const_view(), {}});
 
     auto const& first_damage{registry.get_direct_damage_queue_view()};
@@ -99,6 +104,11 @@ TEST(OverlapHandler, SkipsUnsupportedDeadInvalidAndStaleRecipients) {
     tests::expect_equal(second_damage.num(), 1, "Stale endpoint is skipped independently");
     tests::expect_true(second_damage.damaged_entities[0] != replacement,
                        "Replacement is not accidentally damaged");
+    registry.end_tick();
+    owners.fighters.get_view().healths()[0] = 0;
+    EXPECT_TRUE(registry.is_valid_alive(fighter));
+    handler.handle({stale_pair.get_const_view(), {}});
+    EXPECT_EQ(registry.get_direct_damage_queue_view().num(), 0);
 }
 
 } // namespace tests
