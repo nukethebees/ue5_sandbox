@@ -65,7 +65,11 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
         snapshot.cumulative_kill_count_data.add(4, 6);
         data.alive_per_team_and_type[std::to_underlying(ETestTeam::Red)]
                                     [std::to_underlying(ETestEntityType::Fighter)] = 12;
-        data.top_killers.add({.id = 7}, ETestEntityType::CapitalShip, ETestTeam::Blue, 5);
+        data.top_killers.add(
+            ::ioj::sim::EntityUniqueId::make(7, ::ioj::sim::EntityType::CapitalShip),
+            ETestEntityType::CapitalShip,
+            ETestTeam::Blue,
+            5);
         data.team_kill_matrix.set(ETestTeam::Green, ETestEntityType::Turret, 3);
         widget->prepare_for_open(*pause_action, MoveTemp(data));
 

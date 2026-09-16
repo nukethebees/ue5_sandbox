@@ -23,7 +23,7 @@ struct SpawnedEntityHandles {
                 registry_handles.generations[storage_index]};
     }
 
-    // Handles retain input order; the ID at input index i is first_id + i.
+    // Handles retain input order; first_id belongs to input index zero.
     RegistryEntityHandles registry_handles;
     EntityUniqueId first_id;
 };

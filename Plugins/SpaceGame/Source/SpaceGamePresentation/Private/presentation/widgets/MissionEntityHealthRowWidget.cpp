@@ -40,7 +40,7 @@ void UMissionEntityHealthRowWidget::set_entity(::ioj::sim::EntityUniqueId const 
                                                ETestEntityType const entity_type) {
     entity_name->SetText(FText::Format(INVTEXT("{0} {1}"),
                                        FText::FromString(ml::get_entity_class_name(entity_type)),
-                                       unique_id.id));
+                                       unique_id.index()));
 }
 
 void UMissionEntityHealthRowWidget::set_health(FShipHealth const health) {

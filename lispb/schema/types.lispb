@@ -210,8 +210,8 @@
   :pass-by value)
 
 (type native_entity_type
-  :spelling "EntityType"
-  :header "ioj/sim/entity_types.h"
+  :spelling "ioj::sim::EntityType"
+  :header "ioj/sim/entity_type.h"
   :pass-by value)
 
 (type native_team
@@ -226,7 +226,7 @@
 
 (type native_unique_id
   :spelling "EntityUniqueId"
-  :header "ioj/sim/entity_types.h"
+  :header "ioj/sim/entity_unique_id.h"
   :pass-by value)
 
 (type native_fighter_order

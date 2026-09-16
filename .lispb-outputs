@@ -60,6 +60,8 @@ native/simulation/include/ioj/sim/entity_death_info.h
 native/simulation/include/ioj/sim/entity_history.h
 native/simulation/include/ioj/sim/entity_life_state.h
 native/simulation/include/ioj/sim/entity_overlaps.h
+native/simulation/include/ioj/sim/entity_type.h
+native/simulation/include/ioj/sim/entity_unique_id.h
 native/simulation/include/ioj/sim/fighter_entity_data.h
 native/simulation/include/ioj/sim/fighter_order_queue.h
 native/simulation/include/ioj/sim/fighter_reassignment.h

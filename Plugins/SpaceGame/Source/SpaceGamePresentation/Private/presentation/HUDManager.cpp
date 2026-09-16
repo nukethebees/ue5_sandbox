@@ -868,14 +868,17 @@ void FHUDManager::collect_kill_data() {
         if (unique_entities.kills[entity_index] == 0) {
             continue;
         }
-        top_killer_ids_buffer.Add({.id = entity_index});
+        top_killer_ids_buffer.Add(::ioj::sim::EntityUniqueId::make(
+            static_cast<::ioj::sim::EntityUniqueId::index_type>(entity_index),
+            unique_entities.entity_types[entity_index]));
     }
     Algo::Sort(top_killer_ids_buffer,
                [&unique_entities](::ioj::sim::EntityUniqueId const lhs,
                                   ::ioj::sim::EntityUniqueId const rhs) {
-                   auto const lhs_kills{unique_entities.kills[lhs.id]};
-                   auto const rhs_kills{unique_entities.kills[rhs.id]};
-                   return lhs_kills != rhs_kills ? lhs_kills > rhs_kills : lhs.id < rhs.id;
+                   auto const lhs_kills{unique_entities.kills[lhs.index()]};
+                   auto const rhs_kills{unique_entities.kills[rhs.index()]};
+                   return lhs_kills != rhs_kills ? lhs_kills > rhs_kills
+                                                 : lhs.index() < rhs.index();
                });
 
     next_data.top_killers.reset();
@@ -885,11 +888,11 @@ void FHUDManager::collect_kill_data() {
         auto const entity_id{top_killer_ids_buffer[top_killer_index]};
         next_data.top_killers.entity_ids[top_killer_index] = entity_id;
         next_data.top_killers.entity_types[top_killer_index] =
-            ml::to_unreal(unique_entities.entity_types[entity_id.id]);
+            ml::to_unreal(unique_entities.entity_types[entity_id.index()]);
         next_data.top_killers.teams[top_killer_index] =
-            ml::to_unreal(unique_entities.teams[entity_id.id]);
+            ml::to_unreal(unique_entities.teams[entity_id.index()]);
         next_data.top_killers.kills[top_killer_index] =
-            static_cast<int32>(unique_entities.kills[entity_id.id]);
+            static_cast<int32>(unique_entities.kills[entity_id.index()]);
     }
 
     next_data.team_kill_matrix = {};
@@ -900,13 +903,13 @@ void FHUDManager::collect_kill_data() {
 
         auto const killer_id{unique_entities.killed_by[victim_index]};
         check(killer_id.is_valid());
-        auto const team_index{std::to_underlying(unique_entities.teams[killer_id.id])};
+        auto const team_index{std::to_underlying(unique_entities.teams[killer_id.index()])};
         auto const type_index{std::to_underlying(unique_entities.entity_types[victim_index])};
         if (team_index >= ml::ship_hud::FTeamKillMatrix::team_count ||
             type_index >= ml::ship_hud::FTeamKillMatrix::entity_type_count) {
             continue;
         }
-        next_data.team_kill_matrix.add(ml::to_unreal(unique_entities.teams[killer_id.id]),
+        next_data.team_kill_matrix.add(ml::to_unreal(unique_entities.teams[killer_id.index()]),
                                        ml::to_unreal(unique_entities.entity_types[victim_index]));
     }
     kill_data_buffers.cycle();

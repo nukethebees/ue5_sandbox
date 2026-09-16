@@ -1,0 +1,11 @@
+(enum-module native_entity_type
+  :header "native/simulation/include/ioj/sim/entity_type.h"
+  :namespace ioj::sim
+  (enum EntityType @native_uint8
+    :count COUNT
+    (value PlayerShip)
+    (value Turret)
+    (value CapitalShip)
+    (value Fighter)
+    (value TubeSpinner)
+    (value COUNT)))

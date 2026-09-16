@@ -198,8 +198,8 @@ struct EntityRegistry {
     EntityStorage entity_data;
     EntityRegistryBookkeeping bookkeeping_;
 
-    // Append-only rows indexed by unique ID until reset; handle/type stay fixed, while team and
-    // life state track committed state. Old rows and their death/kill accounting survive slot
+    // Append-only rows indexed by unique-ID index until reset; handle/type stay fixed, while team
+    // and life state track committed state. Old rows and their death/kill accounting survive slot
     // reuse.
     EntityHistory unique_entity_history_;
 
