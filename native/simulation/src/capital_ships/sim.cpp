@@ -411,21 +411,21 @@ void Sim::queue_fighter_orders() {
 
         for (auto index{span.start()}; index < end; ++index) {
             auto const fighter{fighter_handles[static_cast<std::size_t>(index)]};
+            auto const fighter_id{entity_registry.get_current_id(fighter)};
             if (capital_target.is_null()) {
-                fighter_order_queue.add(fighter,
+                fighter_order_queue.add(fighter_id,
                                         FighterOrder{.task = 1, .target = 1},
                                         FighterTask::Standby,
                                         capital_target);
                 continue;
             }
 
-            auto const fighter_index{
-                agents_.indexes().find(entity_registry.get_current_id(fighter))};
+            auto const fighter_index{agents_.indexes().find(fighter_id)};
             assert(fighter_index >= 0);
             auto const target{fighter_targets[fighter_index]};
             if (!agents_.read_alive(entity_registry.get_current_id(target))) {
                 fighter_order_queue.add(
-                    fighter, FighterOrder{.task = 0, .target = 1}, {}, capital_target);
+                    fighter_id, FighterOrder{.task = 0, .target = 1}, {}, capital_target);
             }
         }
     }

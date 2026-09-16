@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ioj/sim/entity_handle.h"
+#include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/vector_types.h"
 #include "ioj/sim/vectors3f.h"
 
@@ -51,6 +51,11 @@ struct SeparationObservation {
     bool dense_direction_selected;
 };
 
+struct SeparationNeighbour {
+    EntityUniqueId id;
+    Vector3f location;
+};
+
 [[nodiscard]] constexpr auto is_avoidance_direction_choice(std::int8_t choice) noexcept -> bool {
     return choice >= 0 && choice < avoidance_direction_count;
 }
@@ -66,9 +71,8 @@ void make_avoidance_choice_order(
     std::uint32_t integral_bias,
     std::int8_t previous_choice,
     std::array<std::int8_t, avoidance_direction_count>& choice_order) noexcept;
-[[nodiscard]] auto make_coincident_separation_direction(RegistryEntityHandle self,
-                                                        RegistryEntityHandle other) noexcept
-    -> Vector3f;
+[[nodiscard]] auto make_coincident_separation_direction(EntityUniqueId self,
+                                                        EntityUniqueId other) noexcept -> Vector3f;
 [[nodiscard]] auto classify_navigation_risk(float closest_distance_squared,
                                             float immediate_distance_squared,
                                             float close_distance_squared,
@@ -83,13 +87,11 @@ void make_avoidance_choice_order(
                                                       Vector3f separation_steering,
                                                       float separation_strength) noexcept
     -> std::optional<Vector3f>;
-[[nodiscard]] auto observe_separation(Vectors3fConstView registry_locations,
-                                      std::span<std::int32_t const> registry_generations,
-                                      Vector3f fighter_location,
-                                      RegistryEntityHandle fighter_handle,
+[[nodiscard]] auto observe_separation(Vector3f fighter_location,
+                                      EntityUniqueId fighter_id,
                                       Vector3f goal_direction,
                                       Vector3f previous_memory,
-                                      std::span<RegistryEntityHandle const> neighbours,
+                                      std::span<SeparationNeighbour const> neighbours,
                                       SeparationObservationParameters parameters) noexcept
     -> SeparationObservation;
 [[nodiscard]] auto choose_navigation_alternative(Vector3f fighter_location,

@@ -20,7 +20,6 @@
 #include <vector>
 
 #include <ioj/sim/batch_operations.h>
-#include <ioj/sim/entity_registry_view.h>
 #include <ioj/sim/fighter_diagnostics.h>
 #include <ioj/sim/frame_laser_spawn_requests.h>
 #include <ioj/sim/frame_trace_hits.h>
@@ -617,12 +616,12 @@ void Sim::update_separation_observations(NavigationScratch& scratch) {
     auto const data{entity_buffers.current().get_view().columns()};
     // Fixed capacity bounds scoring work and keeps neighbour storage off the heap.
     std::array<RegistryEntityHandle, max_separation_neighbours> nearby_fighters;
+    std::array<SeparationNeighbour, max_separation_neighbours> neighbours;
     auto const separation_radius{config.separation_radius};
     auto const immediate_distance{collision_radius_ * 2.f};
     auto const close_distance{std::max(separation_radius * 0.5f, immediate_distance)};
     auto const immediate_distance_sq{immediate_distance * immediate_distance};
     auto const close_distance_sq{close_distance * close_distance};
-    auto const registry_view{make_native_query_view(entity_registry)};
 
     for (auto const fighter_index : scratch.ready_fighter_indices) {
         auto const goal_direction{data.movement_directions[fighter_index]};
@@ -647,6 +646,15 @@ void Sim::update_separation_observations(NavigationScratch& scratch) {
         ++navigation_telemetry.separation_query_count;
         navigation_telemetry.separation_candidate_count += n_nearby;
 
+        std::int32_t neighbour_count{};
+        for (std::int32_t index{}; index < n_nearby; ++index) {
+            auto const local_index{find_index(nearby_fighters[index])};
+            if (local_index >= 0 && is_alive(data.healths[local_index])) {
+                neighbours[neighbour_count++] = {data.entity_ids[local_index],
+                                                 data.locations[local_index]};
+            }
+        }
+
         auto const previous_memory{data.separation_steering[fighter_index]};
         auto const current_tier{
             static_cast<NavigationRiskTier>(data.navigation_risk_tiers[fighter_index])};
@@ -658,13 +666,11 @@ void Sim::update_separation_observations(NavigationScratch& scratch) {
                       1.0 - elapsed_since_scan / config.steering_memory_duration, 0.0, 1.0))
                 : 0.f};
         auto const observation{fighters::observe_separation(
-            registry_view.locations,
-            registry_view.generations,
             fighter_location,
-            fighter_handle,
+            data.entity_ids[fighter_index],
             goal_direction,
             previous_memory,
-            {nearby_fighters.data(), static_cast<std::size_t>(n_nearby)},
+            {neighbours.data(), static_cast<std::size_t>(neighbour_count)},
             {
                 .separation_radius = separation_radius,
                 .immediate_distance_squared = immediate_distance_sq,
@@ -1041,15 +1047,16 @@ void Sim::refresh_target_data() {
     auto const data{entity_buffers.current().get_view().columns()};
     auto const count{data.target_handles.size()};
     for (std::size_t index{}; index < count; ++index) {
-        auto const target{
-            agents_.read_alive(entity_registry.get_current_id(data.target_handles[index]))};
+        auto const target_id{entity_registry.get_current_id(data.target_handles[index])};
+        auto const target{agents_.read_alive(target_id)};
         if (!target) {
             data.target_handles[index] = {};
         }
         data.target_locations.set(index, target ? target->location : Vector3f{});
         data.target_velocities.set(index, target ? target->velocity : Vector3f{});
+        data.target_radii[index] =
+            target ? spatial_query_manager.get_entity_type_radius(target_id.entity_type()) : 0.f;
     }
-    spatial_query_manager.copy_entity_radii(data.target_handles, data.target_radii);
     distance_and_squared(data.target_distances,
                          data.target_distance_sq,
                          data.locations.get_const_view(),
@@ -1070,7 +1077,8 @@ void Sim::set_task_unchecked(std::int32_t const index, Task const task) noexcept
         index, task == Task::Standby ? NavigationRiskTier::Clear : NavigationRiskTier::Nearby);
 }
 void Sim::set_task(RegistryEntityHandle const handle, Task const task) noexcept {
-    order_queue.add(handle, FighterOrder{.task = 1, .target = 0}, task, {});
+    order_queue.add(
+        entity_registry.get_current_id(handle), FighterOrder{.task = 1, .target = 0}, task, {});
 }
 /* **************************************** */
 // Entity data
@@ -1495,7 +1503,11 @@ void Sim::commit_orders() {
     auto const orders{order_queue.get_const_view()};
     for (std::int32_t index{}; index < n_orders; ++index) {
         auto const order_index{static_cast<std::size_t>(index)};
-        auto const fighter_index{find_index(orders.handles[order_index])};
+        auto const id{orders.entity_ids[order_index]};
+        if (!id.is_valid() || id.entity_type() != EntityType::Fighter) {
+            continue;
+        }
+        auto const fighter_index{agents_.indexes().find(id)};
         if (fighter_index < 0 || is_dead(data.healths[fighter_index])) {
             continue;
         }

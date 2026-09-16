@@ -351,6 +351,14 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
 }
 
 void run_worldless_fighter_dense_determinism(tests::SimulationFixture const& config) {
+    auto const first_id{EntityUniqueId::make(7, EntityType::Fighter)};
+    auto const second_id{EntityUniqueId::make(100, EntityType::Fighter)};
+    auto const forward{fighters::make_coincident_separation_direction(first_id, second_id)};
+    auto const reverse{fighters::make_coincident_separation_direction(second_id, first_id)};
+    tests::expect_true(HMM_LenSqrV3(forward + reverse) < 1.e-8f,
+                       "Coincident entities receive opposite ID-based separation directions");
+    tests::expect_true(std::abs(HMM_LenSqrV3(forward) - 1.f) < 1.e-5f,
+                       "ID-based coincident separation is a unit direction");
     auto const first_result{run_dense_navigation_fixture(config, 8)};
     auto const second_result{run_dense_navigation_fixture(config, 8)};
     auto const& first{first_result.locations};

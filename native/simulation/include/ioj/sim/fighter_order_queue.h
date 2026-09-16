@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/sim/entity_handle.h"
+#include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/fighter_types.h"
 #include "native_soa/storage.h"
 #include "sandbox/core/address_cast.h"
@@ -16,15 +17,15 @@ struct FighterOrderQueueConstView {
     using View = FighterOrderQueueView;
     using ConstView = FighterOrderQueueConstView;
     using size_type = std::int32_t;
-    std::span<RegistryEntityHandle const> handles;
+    std::span<EntityUniqueId const> entity_ids;
     std::span<FighterOrder const> orders;
     std::span<FighterTask const> tasks;
     std::span<RegistryEntityHandle const> targets;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(handles.size()); }
+    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
     void each_column(Fn&& fn) const {
-        fn(handles);
+        fn(entity_ids);
         fn(orders);
         fn(tasks);
         fn(targets);
@@ -39,7 +40,7 @@ struct FighterOrderQueueConstView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
         return {
-            handles.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
+            entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             orders.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             tasks.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             targets.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -52,7 +53,7 @@ struct FighterOrderQueueConstView {
     }
     auto get_const_view() const -> ConstView {
         return {
-            handles,
+            entity_ids,
             orders,
             tasks,
             targets,
@@ -70,15 +71,15 @@ struct FighterOrderQueueView {
     using View = FighterOrderQueueView;
     using ConstView = FighterOrderQueueConstView;
     using size_type = std::int32_t;
-    std::span<RegistryEntityHandle> handles;
+    std::span<EntityUniqueId> entity_ids;
     std::span<FighterOrder> orders;
     std::span<FighterTask> tasks;
     std::span<RegistryEntityHandle> targets;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(handles.size()); }
+    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
     void each_column(Fn&& fn) const {
-        fn(handles);
+        fn(entity_ids);
         fn(orders);
         fn(tasks);
         fn(targets);
@@ -93,7 +94,7 @@ struct FighterOrderQueueView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
         return {
-            handles.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
+            entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             orders.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             tasks.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             targets.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -105,7 +106,7 @@ struct FighterOrderQueueView {
     }
     auto get_const_view() const -> ConstView {
         return {
-            handles,
+            entity_ids,
             orders,
             tasks,
             targets,
@@ -119,12 +120,12 @@ struct FighterOrderQueueView {
         return slice(num() - count, count);
     }
     void set(size_type const index,
-             RegistryEntityHandle const new_handles,
+             EntityUniqueId const new_entity_ids,
              FighterOrder const new_orders,
              FighterTask const new_tasks,
              RegistryEntityHandle const new_targets) const {
         ml::native_soa::require(index >= 0 && index < num());
-        handles[static_cast<std::size_t>(index)] = new_handles;
+        entity_ids[static_cast<std::size_t>(index)] = new_entity_ids;
         orders[static_cast<std::size_t>(index)] = new_orders;
         tasks[static_cast<std::size_t>(index)] = new_tasks;
         targets[static_cast<std::size_t>(index)] = new_targets;
@@ -134,22 +135,22 @@ struct FighterOrderQueue {
     using View = FighterOrderQueueView;
     using ConstView = FighterOrderQueueConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<RegistryEntityHandle> handles;
+    ml::native_soa::Vector<EntityUniqueId> entity_ids;
     ml::native_soa::Vector<FighterOrder> orders;
     ml::native_soa::Vector<FighterTask> tasks;
     ml::native_soa::Vector<RegistryEntityHandle> targets;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(handles.size()); }
+    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
     void each_column(Fn&& fn) {
-        fn(handles);
+        fn(entity_ids);
         fn(orders);
         fn(tasks);
         fn(targets);
     }
     template <typename Fn>
     void each_column(Fn&& fn) const {
-        fn(handles);
+        fn(entity_ids);
         fn(orders);
         fn(tasks);
         fn(targets);
@@ -157,13 +158,13 @@ struct FighterOrderQueue {
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
     void reserve(size_type const count) {
         ml::native_soa::require(count >= 0);
-        handles.reserve(static_cast<std::size_t>(count));
+        entity_ids.reserve(static_cast<std::size_t>(count));
         orders.reserve(static_cast<std::size_t>(count));
         tasks.reserve(static_cast<std::size_t>(count));
         targets.reserve(static_cast<std::size_t>(count));
     }
     void reset() noexcept {
-        handles.clear();
+        entity_ids.clear();
         orders.clear();
         tasks.clear();
         targets.clear();
@@ -171,7 +172,7 @@ struct FighterOrderQueue {
     void set_num(size_type const count) {
         ml::native_soa::require(count >= 0);
         auto const size{static_cast<std::size_t>(count)};
-        handles.resize(size);
+        entity_ids.resize(size);
         orders.resize(size);
         tasks.resize(size);
         targets.resize(size);
@@ -190,7 +191,7 @@ struct FighterOrderQueue {
         auto const moved{std::min(count, old_num - index - count)};
         auto const source{old_num - moved};
         for (size_type i{}; i < moved; ++i) {
-            handles[index + i] = handles[source + i];
+            entity_ids[index + i] = entity_ids[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
             orders[index + i] = orders[source + i];
@@ -204,19 +205,19 @@ struct FighterOrderQueue {
         set_num(old_num - count);
     }
     void set(size_type const index,
-             RegistryEntityHandle const new_handles,
+             EntityUniqueId const new_entity_ids,
              FighterOrder const new_orders,
              FighterTask const new_tasks,
              RegistryEntityHandle const new_targets) {
-        get_view().set(index, new_handles, new_orders, new_tasks, new_targets);
+        get_view().set(index, new_entity_ids, new_orders, new_tasks, new_targets);
     }
-    auto add(RegistryEntityHandle const new_handles,
+    auto add(EntityUniqueId const new_entity_ids,
              FighterOrder const new_orders,
              FighterTask const new_tasks,
              RegistryEntityHandle const new_targets) -> size_type {
         auto const index{num()};
         add_defaulted(1);
-        set(index, new_handles, new_orders, new_tasks, new_targets);
+        set(index, new_entity_ids, new_orders, new_tasks, new_targets);
         return index;
     }
     void append_from(ConstView source) {
@@ -227,11 +228,10 @@ struct FighterOrderQueue {
             return;
         }
         {
-            auto const address{ml::address_cast(source.handles.data())};
-            auto const begin{ml::address_cast(handles.data())};
+            auto const address{ml::address_cast(source.entity_ids.data())};
+            auto const begin{ml::address_cast(entity_ids.data())};
             ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + handles.size() * sizeof(RegistryEntityHandle));
+                                    address >= begin + entity_ids.size() * sizeof(EntityUniqueId));
         }
         {
             auto const address{ml::address_cast(source.orders.data())};
@@ -252,14 +252,15 @@ struct FighterOrderQueue {
                                     address >=
                                         begin + targets.size() * sizeof(RegistryEntityHandle));
         }
-        handles.insert(handles.end(), source.handles.data(), source.handles.data() + count);
+        entity_ids.insert(
+            entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
         orders.insert(orders.end(), source.orders.data(), source.orders.data() + count);
         tasks.insert(tasks.end(), source.tasks.data(), source.tasks.data() + count);
         targets.insert(targets.end(), source.targets.data(), source.targets.data() + count);
     }
     auto get_view() -> View {
         return {
-            handles,
+            entity_ids,
             orders,
             tasks,
             targets,
@@ -267,7 +268,7 @@ struct FighterOrderQueue {
     }
     auto get_view() const -> ConstView {
         return {
-            handles,
+            entity_ids,
             orders,
             tasks,
             targets,
@@ -295,8 +296,8 @@ struct FighterOrderQueue {
     auto right(size_type const count) const -> ConstView { return slice(num() - count, count); }
     template <typename Other>
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        handles[static_cast<std::size_t>(dst_index)] =
-            other.handles[static_cast<std::size_t>(src_index)];
+        entity_ids[static_cast<std::size_t>(dst_index)] =
+            other.entity_ids[static_cast<std::size_t>(src_index)];
         orders[static_cast<std::size_t>(dst_index)] =
             other.orders[static_cast<std::size_t>(src_index)];
         tasks[static_cast<std::size_t>(dst_index)] =

@@ -161,6 +161,7 @@ TEST(FighterLiveCap, DeferredRemovalAndReconstruction) {
     DirectDamageEvents damage;
     damage.add_uninitialised(1);
     damage.damaged_entities[0] = simulation.get_fighters().get_handles()[0];
+    auto const original_id{simulation.get_read_view().fighters.entities.entity_ids[0]};
     damage.instigators[0] = simulation.get_capital_ships().get_handle(0);
     damage.damage_amounts[0] = 100000;
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
@@ -169,12 +170,37 @@ TEST(FighterLiveCap, DeferredRemovalAndReconstruction) {
                         1,
                         "Dead fighter remains resident until Preparation");
     EXPECT_TRUE(is_dead(simulation.get_read_view().fighters.entities.healths[0]));
+    FighterOrderQueue stale_orders;
+    stale_orders.add(original_id, FighterOrder{.task = 1}, FighterTask::Standby, {});
+    LevelSimTestAccess::queue_fighter_orders(simulation, stale_orders);
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 0);
     simulation.advance(simulation.get_clock().get_tick_period());
     tests::expect_equal(simulation.get_fighters().get_num_instances(),
                         1,
                         "Exactly one replacement uses the released slot");
+
+    auto const replacement_id{simulation.get_read_view().fighters.entities.entity_ids[0]};
+    EXPECT_NE(replacement_id, original_id);
+    EXPECT_EQ(simulation.get_fighters().get_handles()[0].index, damage.damaged_entities[0].index);
+    stale_orders.add(simulation.get_read_view().capitals.entities.entity_ids[0],
+                     FighterOrder{.task = 1},
+                     FighterTask::Standby,
+                     {});
+    stale_orders.add(EntityUniqueId::make(100000, EntityType::Fighter),
+                     FighterOrder{.task = 1},
+                     FighterTask::Standby,
+                     {});
+    LevelSimTestAccess::queue_fighter_orders(simulation, stale_orders);
+    simulation.advance(simulation.get_clock().get_tick_period());
+    EXPECT_EQ(simulation.get_fighters().get_tasks()[0], FighterTask::Attack);
+
+    FighterOrderQueue valid_orders;
+    valid_orders.add(replacement_id, FighterOrder{.task = 1}, FighterTask::Standby, {});
+    LevelSimTestAccess::queue_fighter_orders(simulation, valid_orders);
+    EXPECT_EQ(simulation.get_fighters().get_tasks()[0], FighterTask::Attack);
+    simulation.advance(simulation.get_clock().get_tick_period());
+    EXPECT_EQ(simulation.get_fighters().get_tasks()[0], FighterTask::Standby);
 
     std::optional<LevelSim> reconstructed;
     reconstructed.emplace(make_data());
