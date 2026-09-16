@@ -147,8 +147,6 @@ struct LevelSim {
     auto get_frame_memory_stats() const noexcept -> ml::FrameMemoryStats {
         return frame_memory_.get_stats();
     }
-
-    std::function<void()> on_mission_evaluated;
   private:
     friend struct LevelSimTestAccess;
 

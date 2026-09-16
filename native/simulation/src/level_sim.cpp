@@ -384,9 +384,6 @@ void LevelSim::advance(time_type const dt) {
 
             ++clock_.completed_ticks;
             level_telemetry_manager_.tick();
-            if (on_mission_evaluated) {
-                on_mission_evaluated();
-            }
             frame_memory_.reset();
         }
         profiling::mark_frame("Simulation");
