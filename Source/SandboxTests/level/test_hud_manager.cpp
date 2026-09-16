@@ -97,7 +97,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     FHUDManager hud;
     hud.initialise(FTestBatchGameUiUpdateFrequencies{},
                    mission,
-                   harness.get_registry(),
+                   harness.get_registry().get_ledger(),
                    simulation.get_agent_accessor(),
                    simulation.get_spatial_query_manager(),
                    simulation.get_player_ship_simulation(),
@@ -646,7 +646,7 @@ auto FTestHUDManagerScenario::initialise_headless_hud_manager() -> bool {
     headless_hud_manager.Emplace();
     headless_hud_manager->initialise(orchestrator->get_hud_update_frequencies(),
                                      orchestrator->get_mission_manager(),
-                                     entity_registry,
+                                     entity_registry.get_ledger(),
                                      orchestrator->get_level_simulation()->get_agent_accessor(),
                                      orchestrator->get_spatial_query_manager(),
                                      orchestrator->get_player_ship_simulation(),

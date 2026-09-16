@@ -3,7 +3,6 @@
 #include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
-#include <ioj/sim/entity_registry.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
@@ -203,12 +202,10 @@ void FTurretPresentation::draw_debugging_shapes() const {
         }
 
         if (draw_debug_entity_info_enabled) {
-            auto const turret_handle{entities.handles[i]};
+            auto const entity_id{entities.entity_ids[i]};
 
-            auto const msg{FString::Printf(TEXT("[%d, %d] HP=%d"),
-                                           turret_handle.index,
-                                           turret_handle.generation,
-                                           entities.healths[i])};
+            auto const msg{
+                FString::Printf(TEXT("[%u] HP=%d"), entity_id.raw_value(), entities.healths[i])};
             auto const msg_location{turret_location + text_offset};
             drawer.draw_string(msg_location, msg);
         }

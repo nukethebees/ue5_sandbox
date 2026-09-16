@@ -8,6 +8,8 @@
 #include <ioj/sim/transform3d.h>
 #include <ioj/sim/turret_entity_data.h>
 
+#include <array>
+#include <ioj/sim/agent_display_batch.h>
 #include <optional>
 
 namespace ioj::sim {
@@ -58,6 +60,31 @@ class AgentAccessor {
         counts[EntityType::Turret] = static_cast<std::uint32_t>(turrets_.num());
         counts[EntityType::TubeSpinner] = static_cast<std::uint32_t>(spinners_.num());
         return counts;
+    }
+
+    // The local player is presented separately, not as a world contact.
+    auto display_batches() const -> std::array<AgentDisplayBatch, 4> {
+        return {{
+            {EntityType::CapitalShip,
+             capitals_.entity_ids,
+             capitals_.locations,
+             {},
+             capitals_.healths,
+             capitals_.teams},
+            {EntityType::Fighter,
+             fighters_.entity_ids,
+             fighters_.locations,
+             fighters_.velocities,
+             fighters_.healths,
+             fighters_.teams},
+            {EntityType::Turret,
+             turrets_.entity_ids,
+             turrets_.locations,
+             {},
+             turrets_.healths,
+             turrets_.teams},
+            {EntityType::TubeSpinner, spinners_.entity_ids, spinners_.locations, {}, {}, {}},
+        }};
     }
 
     // Visits owning rows directly; callbacks must not mutate storage.

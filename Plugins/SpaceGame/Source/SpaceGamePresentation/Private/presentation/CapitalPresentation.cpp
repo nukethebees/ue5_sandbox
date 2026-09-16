@@ -4,7 +4,6 @@
 #include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
-#include <ioj/sim/entity_registry.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
@@ -238,11 +237,9 @@ void FCapitalPresentation::draw_debugging_shapes() const {
             debug_drawer.draw_arrow(ship_location, target_location);
         }
 
-        auto const ship_handle{entities.handles[i]};
-        auto const message{FString::Printf(TEXT("[%d, %d] HP=%d"),
-                                           ship_handle.index,
-                                           ship_handle.generation,
-                                           entities.healths[i])};
+        auto const entity_id{entities.entity_ids[i]};
+        auto const message{
+            FString::Printf(TEXT("[%u] HP=%d"), entity_id.raw_value(), entities.healths[i])};
         debug_drawer.draw_string(ship_location + text_offset, message);
     }
 }

@@ -73,7 +73,7 @@ struct Sim {
     // Configuration
     /* **************************************** */
     auto get_read_view() const -> FighterReadView {
-        return {entity_buffers.current().get_const_view().columns(), &entity_registry};
+        return {entity_buffers.current().get_const_view().columns()};
     }
     void set_config(FighterSimConfig const& new_config, FighterLevelData level_data) noexcept;
     void set_diagnostics_enabled(bool enabled) noexcept { diagnostics_enabled_ = enabled; }

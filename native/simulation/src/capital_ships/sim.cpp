@@ -240,7 +240,7 @@ auto Sim::register_ships(CapitalSpawnDataConstView const spawn_data)
                                   .location = entities.locations[index],
                                   .rotation = entities.rotations[index],
                                   .team = entities.teams[index],
-                                  .handle = entities.handles[index]});
+                                  .id = entities.entity_ids[index]});
     }
     agents_.indexes().bind(EntityType::CapitalShip, entities.entity_ids);
     return new_entities.entity_ids;
@@ -460,7 +460,7 @@ void Sim::handle_dead_entities() {
     for (auto const index : local_indices_to_remove) {
         frame_changes_.push_back({.kind = EntityFrameChangeKind::RemoveSwap,
                                   .index = index,
-                                  .handle = entities.handles[index]});
+                                  .id = entities.entity_ids[index]});
     }
 
     for (auto const index : local_indices_to_remove) {

@@ -38,7 +38,6 @@ static_assert(
     std::is_const_v<std::remove_reference_t<decltype(std::declval<TurretReadView>().changes[0])>>);
 static_assert(std::is_const_v<std::remove_reference_t<
                   decltype(std::declval<LaserReadView>().entities.lifetimes_remaining[0])>>);
-static_assert(std::is_const_v<std::remove_pointer_t<decltype(LevelReadView::registry)>>);
 
 namespace {
 auto make_battle() -> LevelSimInitData {

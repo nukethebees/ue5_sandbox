@@ -503,7 +503,6 @@ auto LevelSim::get_read_view() const -> LevelReadView {
             player_ship_simulation_.has_value()
                 ? std::optional<PlayerReadView>{player_ship_simulation_->get_read_view()}
                 : std::nullopt,
-            &entity_registry_,
             &mission_manager_};
 }
 } // namespace ioj::sim

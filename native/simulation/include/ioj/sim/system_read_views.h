@@ -13,7 +13,6 @@
 
 namespace ioj::sim {
 
-struct EntityRegistry;
 class AgentAccessor;
 
 enum class EntityFrameChangeKind : std::uint8_t { Spawn, RemoveSwap };
@@ -24,12 +23,11 @@ struct EntityFrameChange {
     Vector3f location{};
     Rotator3f rotation{};
     Team team{};
-    RegistryEntityHandle handle{};
+    EntityUniqueId id{};
 };
 
 struct CapitalReadView {
     CapitalEntityData::ConstView entities;
-    EntityRegistry const* registry{};
     std::span<EntityUniqueId const> fighter_ids;
     std::span<EntityFrameChange const> changes;
     std::span<CapitalDeathEvent const> deaths;
@@ -42,12 +40,10 @@ struct CapitalReadView {
 };
 struct FighterReadView {
     FighterEntityData::ConstView entities;
-    EntityRegistry const* registry{};
     auto get_num_instances() const -> std::int32_t { return entities.num(); }
 };
 struct TurretReadView {
     TurretEntityData::ConstView entities;
-    EntityRegistry const* registry{};
     std::span<EntityFrameChange const> changes;
     std::span<Vector3f const> death_locations;
     auto get_num_instances() const -> std::int32_t { return entities.num(); }

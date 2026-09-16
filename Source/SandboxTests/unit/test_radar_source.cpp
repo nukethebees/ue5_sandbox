@@ -3,12 +3,27 @@
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <CQTest.h>
+#include <ioj/sim/registry_entity_data.h>
 #include <vector>
 
 namespace ml::test_radar_source {
-auto make_view(::ioj::sim::RegistryEntityData const& entities)
-    -> ::ioj::sim::RegistryEntityData::ConstView {
-    return entities.get_const_view();
+auto make_view(::ioj::sim::RegistryEntityData const& entities,
+               std::span<::ioj::sim::EntityUniqueId const> ids = {})
+    -> std::vector<::ioj::sim::AgentDisplayBatch> {
+    std::vector<::ioj::sim::AgentDisplayBatch> batches;
+    auto const view{entities.get_const_view()};
+    auto const count{entities.num()};
+    batches.reserve(count);
+    for (int32 i{}; i < count; ++i) {
+        auto const row{view.get_view(i, 1)};
+        batches.push_back({row.entity_types[0],
+                           ids.empty() ? ids : ids.subspan(i, 1),
+                           row.locations,
+                           row.velocities,
+                           row.healths,
+                           row.teams});
+    }
+    return batches;
 }
 
 void add_entity(::ioj::sim::RegistryEntityData& entities,
@@ -93,8 +108,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 
         FRadarFrame frame;
         auto& instances{frame.instances};
-        auto const result{collect_radar_instances(ml::test_radar_source::make_view(entities),
-                                                  ids,
+        auto const result{collect_radar_instances(ml::test_radar_source::make_view(entities, ids),
                                                   objective_roles,
                                                   colours,
                                                   FTransform::Identity,
@@ -144,8 +158,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         zero_range_settings.tactical_range = UE_SMALL_NUMBER;
         zero_range_settings.combat_display_radius = 1.0f;
         auto const zero_range_result{
-            collect_radar_instances(ml::test_radar_source::make_view(entities),
-                                    ids,
+            collect_radar_instances(ml::test_radar_source::make_view(entities, ids),
                                     objective_roles,
                                     colours,
                                     FTransform::Identity,
@@ -185,8 +198,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         FRadarFrame frame;
         auto& instances{frame.instances};
 
-        static_cast<void>(collect_radar_instances(ml::test_radar_source::make_view(entities),
-                                                  ids,
+        static_cast<void>(collect_radar_instances(ml::test_radar_source::make_view(entities, ids),
                                                   objective_roles,
                                                   colours,
                                                   FTransform::Identity,
@@ -230,8 +242,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         auto& no_roll_instances{no_roll_frame.instances};
         auto& rolled_instances{rolled_frame.instances};
 
-        static_cast<void>(collect_radar_instances(ml::test_radar_source::make_view(entities),
-                                                  ids,
+        static_cast<void>(collect_radar_instances(ml::test_radar_source::make_view(entities, ids),
                                                   objective_roles,
                                                   colours,
                                                   FTransform{no_roll_rotation, player_location},
@@ -241,8 +252,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                                   ml::test_radar_source::linear_settings(),
                                                   no_roll_frame));
         static_cast<void>(
-            collect_radar_instances(ml::test_radar_source::make_view(entities),
-                                    ids,
+            collect_radar_instances(ml::test_radar_source::make_view(entities, ids),
                                     objective_roles,
                                     colours,
                                     FTransform{FRotator{28.0, 37.0, 120.0}, player_location},
@@ -355,8 +365,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         FRadarContactColours colours;
         FRadarFrame frame;
 
-        static_cast<void>(collect_radar_instances(ml::test_radar_source::make_view(entities),
-                                                  ids,
+        static_cast<void>(collect_radar_instances(ml::test_radar_source::make_view(entities, ids),
                                                   objective_roles,
                                                   colours,
                                                   FTransform::Identity,
@@ -372,8 +381,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         ids.push_back(::ioj::sim::EntityUniqueId::make(
             static_cast<std::uint32_t>(entities.num() - 1), entities.entity_types.back()));
         objective_roles.Add(EEntityOverlayObjectiveRole::None);
-        static_cast<void>(collect_radar_instances(ml::test_radar_source::make_view(entities),
-                                                  ids,
+        static_cast<void>(collect_radar_instances(ml::test_radar_source::make_view(entities, ids),
                                                   objective_roles,
                                                   colours,
                                                   FTransform::Identity,
@@ -414,8 +422,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         objective_roles[3] = EEntityOverlayObjectiveRole::Defend;
         FRadarFrame frame;
 
-        auto const result{collect_radar_instances(ml::test_radar_source::make_view(entities),
-                                                  ids,
+        auto const result{collect_radar_instances(ml::test_radar_source::make_view(entities, ids),
                                                   objective_roles,
                                                   FRadarContactColours{},
                                                   FTransform::Identity,

@@ -45,8 +45,6 @@ static_assert(
 static_assert(
     std::is_const_v<std::remove_reference_t<
         decltype(std::declval<::ioj::sim::LaserReadView>().entities.lifetimes_remaining[0])>>);
-static_assert(
-    std::is_const_v<std::remove_pointer_t<decltype(::ioj::sim::LevelReadView::registry)>>);
 
 namespace {
 auto make_battle() -> ::ioj::sim::LevelSimInitData {
@@ -434,7 +432,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
                   frame.capitals.changes[1].kind,
                   ::ioj::sim::EntityFrameChangeKind::RemoveSwap);
         TestTrue(TEXT("Changes identify the same entity"),
-                 frame.capitals.changes[0].handle == frame.capitals.changes[1].handle);
+                 frame.capitals.changes[0].id == frame.capitals.changes[1].id);
     }
     TestEqual(TEXT("Death effect remains available"),
               static_cast<int32>(frame.capitals.deaths.size()),

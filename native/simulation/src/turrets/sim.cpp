@@ -145,7 +145,7 @@ auto Sim::register_turrets(TurretSpawnDataConstView const spawn_data,
                                   .location = entities.locations[index],
                                   .rotation = entities.rotations[index],
                                   .team = entities.teams[index],
-                                  .handle = entities.handles[index]});
+                                  .id = entities.entity_ids[index]});
     }
     return new_entities.entity_ids;
 }
@@ -165,7 +165,7 @@ void Sim::handle_dead_entities() {
     for (auto const index : local_indices_to_remove) {
         frame_changes_.push_back({.kind = EntityFrameChangeKind::RemoveSwap,
                                   .index = index,
-                                  .handle = entities.handles[index]});
+                                  .id = entities.entity_ids[index]});
     }
     for (auto const index : local_indices_to_remove) {
         agents_.indexes().retire(entities.entity_ids[index]);

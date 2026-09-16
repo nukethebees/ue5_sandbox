@@ -49,10 +49,7 @@ struct Sim {
     // Configuration
     /* **************************************** */
     auto get_read_view() const -> TurretReadView {
-        return {entities.get_const_view().columns(),
-                &entity_registry,
-                frame_changes_,
-                death_locations_};
+        return {entities.get_const_view().columns(), frame_changes_, death_locations_};
     }
     void reset_frame_output() {
         frame_changes_.clear();

@@ -63,7 +63,6 @@ struct Sim {
     /* **************************************** */
     auto get_read_view() const -> CapitalReadView {
         return {entities.get_const_view().columns(),
-                &entity_registry,
                 get_fighter_ids(),
                 frame_changes_,
                 deaths_,

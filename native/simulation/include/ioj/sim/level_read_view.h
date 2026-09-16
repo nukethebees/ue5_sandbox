@@ -20,7 +20,6 @@ struct LevelReadView {
     SpinnerReadView spinners;
     LaserReadView lasers;
     std::optional<PlayerReadView> player;
-    EntityRegistry const* registry{};
     MissionManager const* mission{};
     auto interpolation_alpha() const -> double {
         return std::clamp(clock->tick_loop.accumulator / clock->get_tick_period(), 0.0, 1.0);
