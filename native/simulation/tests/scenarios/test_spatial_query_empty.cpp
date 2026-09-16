@@ -11,10 +11,10 @@ void run_worldless_spatial_query_empty(tests::SimulationFixture const& config) {
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     auto const& queries{harness.get_simulation().get_spatial_query_manager()};
-    std::vector<RegistryEntityHandle> handles{};
+    std::vector<EntityUniqueId> ids{};
     Vectors3f starts;
     Vectors3f ends;
-    queries.trace_line_of_sight(starts.get_const_view(), ends.get_const_view(), handles);
+    queries.trace_line_of_sight(starts.get_const_view(), ends.get_const_view(), ids);
     std::vector<std::uint8_t> line_of_sight{};
     queries.has_line_of_sight_to_targets(
         ml::make_vector3f(0.f, 0.f, 0.f), ends.get_const_view(), {}, line_of_sight);

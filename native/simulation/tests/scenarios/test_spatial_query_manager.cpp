@@ -19,9 +19,9 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     auto const& capitals{harness.get_simulation().get_capital_ships()};
-    std::vector<RegistryEntityHandle> expected{};
+    std::vector<EntityUniqueId> expected{};
     for (std::int32_t i{}; i < static_cast<std::int32_t>(locations.size()); ++i) {
-        expected.push_back(capitals.get_handle(i));
+        expected.push_back(harness.get_registry().get_current_id(capitals.get_handle(i)));
     }
 
     Vectors3f starts;
@@ -32,19 +32,18 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
         for (std::int32_t i{}; i < static_cast<std::int32_t>(locations.size()); ++i) {
             starts.add(ml::make_vector3f(0.f, 0.f, 0.f));
             ends.add(locations[i] * scale);
-            targets.push_back(harness.get_registry().get_current_id(expected[i]));
+            targets.push_back(expected[i]);
         }
     }
-    std::vector<RegistryEntityHandle> results{};
+    std::vector<EntityUniqueId> results{};
     results.resize(static_cast<std::size_t>(ends.num()));
     harness.get_simulation().get_spatial_query_manager().trace_line_of_sight(
         starts.get_const_view(), ends.get_const_view(), results);
     auto const count{static_cast<std::int32_t>(locations.size())};
     for (std::int32_t i{}; i < count; ++i) {
-        tests::expect_true(results[i].is_null(), "Half-distance trace misses", i);
-        tests::expect_equal(expected[i], results[i + count], "Ship trace resolves handle", i);
-        tests::expect_equal(
-            expected[i], results[i + 2 * count], "Past-ship trace resolves handle", i);
+        tests::expect_true(!results[i].is_valid(), "Half-distance trace misses", i);
+        tests::expect_equal(expected[i], results[i + count], "Ship trace resolves ID", i);
+        tests::expect_equal(expected[i], results[i + 2 * count], "Past-ship trace resolves ID", i);
     }
 
     std::vector<std::uint8_t> has_los{};
@@ -57,8 +56,8 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
     }
     for (std::int32_t i{}; i < count; ++i) {
         auto const other{expected[(i + 1) % count]};
-        targets[i + count] = harness.get_registry().get_current_id(other);
-        targets[i + 2 * count] = harness.get_registry().get_current_id(other);
+        targets[i + count] = other;
+        targets[i + 2 * count] = other;
     }
     harness.get_simulation().get_spatial_query_manager().has_line_of_sight_to_targets(
         ml::make_vector3f(0.f, 0.f, 0.f), ends.get_const_view(), targets, has_los);

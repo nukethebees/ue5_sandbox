@@ -417,7 +417,7 @@ void Sim::fire_at_enemies() {
 
     auto const count{get_num_instances()};
     ml::FrameArray<std::int32_t> candidate_indices{&frame_memory_resource};
-    ml::FrameArray<RegistryEntityHandle> hit_handles{&frame_memory_resource};
+    ml::FrameArray<EntityUniqueId> hit_ids{&frame_memory_resource};
     FrameVectors3f starts{&frame_memory_resource};
     FrameVectors3f ends{&frame_memory_resource};
     candidate_indices.reserve(count);
@@ -458,20 +458,19 @@ void Sim::fire_at_enemies() {
     if (candidate_count == 0) {
         return;
     }
-    hit_handles.set_num(candidate_count);
+    hit_ids.set_num(candidate_count);
 
     spatial_query_manager.trace_line_of_sight(
         starts.get_const_view(),
         ends.get_const_view(),
-        {hit_handles.data(), static_cast<std::size_t>(candidate_count)});
+        {hit_ids.data(), static_cast<std::size_t>(candidate_count)});
 
     lasers::FrameSpawnRequests new_lasers{&frame_memory_resource};
     new_lasers.reserve(candidate_count);
     for (std::int32_t candidate{}; candidate < candidate_count; ++candidate) {
         auto const index{candidate_indices[candidate]};
         auto const element{static_cast<std::size_t>(index)};
-        if (entity_registry.get_current_id(hit_handles[candidate]) !=
-            entities.target_ids[element]) {
+        if (hit_ids[candidate] != entities.target_ids[element]) {
             continue;
         }
 

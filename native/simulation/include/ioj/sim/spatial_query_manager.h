@@ -63,7 +63,7 @@ struct SpatialQueryManager {
     /* **************************************** */
     void trace_line_of_sight(Vectors3fConstView start_locations,
                              Vectors3fConstView end_locations,
-                             std::span<RegistryEntityHandle> out_entity_handles) const;
+                             std::span<EntityUniqueId> out_entity_ids) const;
     void has_line_of_sight_to_targets(Vector3f const& start_location,
                                       Vectors3fConstView end_locations,
                                       std::span<EntityUniqueId const> targets,
@@ -113,8 +113,7 @@ struct SpatialQueryManager {
                                std::span<std::uint8_t> out_results) const;
     auto get_entity_type_radius(EntityType entity_type) const noexcept -> float;
     auto get_entity_type_radii() const noexcept -> std::span<float const>;
-    void copy_entity_radii(std::span<RegistryEntityHandle const> handles,
-                           std::span<float> out_radii) const;
+    void copy_entity_radii(std::span<EntityUniqueId const> ids, std::span<float> out_radii) const;
 
     /* **************************************** */
     // Collision state and telemetry

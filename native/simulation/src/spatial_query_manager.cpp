@@ -32,7 +32,7 @@ struct TraceRequest {
     std::span<ioj::sim::EntityUniqueId const> targets{};
     ioj::sim::EntityRegistry const* registry{};
     std::span<ioj::sim::RegistryEntityHandle const> ignored_entities{};
-    std::span<ioj::sim::RegistryEntityHandle> out_entity_handles{};
+    std::span<ioj::sim::EntityUniqueId> out_entity_ids{};
     std::span<std::uint8_t> out_flags{};
 };
 
@@ -49,8 +49,8 @@ auto trace_impl(ioj::sim::SpatialQueryManager const& manager, TraceRequest const
 
     if constexpr (Mode == QueryMode::HitEntity) {
         assert(count == request.start_locations.num());
-        assert(static_cast<std::size_t>(count) == request.out_entity_handles.size());
-        std::ranges::fill(request.out_entity_handles, ioj::sim::RegistryEntityHandle{});
+        assert(static_cast<std::size_t>(count) == request.out_entity_ids.size());
+        std::ranges::fill(request.out_entity_ids, ioj::sim::EntityUniqueId{});
     } else if constexpr (Mode == QueryMode::ClearLine) {
         assert(count == request.start_locations.num());
         assert(static_cast<std::size_t>(count) == request.out_flags.size());
@@ -114,7 +114,7 @@ auto trace_impl(ioj::sim::SpatialQueryManager const& manager, TraceRequest const
     } else {
         if constexpr (Mode == QueryMode::HitEntity) {
             for (std::int32_t i{}; i < count; ++i) {
-                request.out_entity_handles[i] = hits.entities[i];
+                request.out_entity_ids[i] = request.registry->get_current_id(hits.entities[i]);
             }
         } else if constexpr (Mode == QueryMode::ClearLine) {
             for (std::int32_t i{}; i < count; ++i) {
@@ -327,16 +327,17 @@ void SpatialQueryManager::initialise(collision::CellCoord const grid_dimensions,
 /* **************************************** */
 // Batched line queries
 /* **************************************** */
-void SpatialQueryManager::trace_line_of_sight(
-    Vectors3fConstView const start_locations,
-    Vectors3fConstView const end_locations,
-    std::span<RegistryEntityHandle> const out_entity_handles) const {
+void
+    SpatialQueryManager::trace_line_of_sight(Vectors3fConstView const start_locations,
+                                             Vectors3fConstView const end_locations,
+                                             std::span<EntityUniqueId> const out_entity_ids) const {
     SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::trace_line_of_sight");
 
     trace_impl<QueryMode::HitEntity>(*this,
                                      {.start_locations = start_locations,
                                       .end_locations = end_locations,
-                                      .out_entity_handles = out_entity_handles});
+                                      .registry = &entity_registry,
+                                      .out_entity_ids = out_entity_ids});
 }
 
 void
@@ -513,19 +514,13 @@ auto SpatialQueryManager::get_entity_type_radii() const noexcept -> std::span<fl
     return entity_radii_;
 }
 
-void SpatialQueryManager::copy_entity_radii(std::span<RegistryEntityHandle const> const handles,
+void SpatialQueryManager::copy_entity_radii(std::span<EntityUniqueId const> const ids,
                                             std::span<float> const out_radii) const {
-    assert(handles.size() == out_radii.size());
+    assert(ids.size() == out_radii.size());
 
-    auto const count{handles.size()};
+    auto const count{ids.size()};
     for (std::size_t index{}; index < count; ++index) {
-        auto const handle{handles[index]};
-        if (handle.is_null()) {
-            out_radii[index] = 0.0f;
-            continue;
-        }
-
-        auto const id{entity_registry.get_current_id(handle)};
+        auto const id{ids[index]};
         out_radii[index] = agents_.is_alive(id) ? get_entity_type_radius(id.entity_type()) : 0.f;
     }
 }

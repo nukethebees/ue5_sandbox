@@ -210,9 +210,11 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
         queries.collect_non_team_entities_in_range({{300.f, 0.f, 0.f}}, Team::Blue, 20.f, nearby),
         0);
     EXPECT_TRUE(!queries.get_any_non_team_entity(Team::Blue).is_valid());
-    std::array const radius_handles{stationary, moved, RegistryEntityHandle{999, 0}};
+    std::array const radius_ids{fixture.registry.get_current_id(stationary),
+                                fixture.registry.get_current_id(moved),
+                                EntityUniqueId{}};
     std::array<float, 3> radii{};
-    queries.copy_entity_radii(radius_handles, radii);
+    queries.copy_entity_radii(radius_ids, radii);
     EXPECT_EQ(radii[0], 0.f);
     EXPECT_GT(radii[1], 0.f);
     EXPECT_EQ(radii[2], 0.f);
