@@ -114,6 +114,10 @@ target_link_libraries(jobserver-tests PRIVATE
   GTest::gtest_main
 )
 target_compile_definitions(jobserver-tests PRIVATE
+  WIN32_LEAN_AND_MEAN
+  NOMINMAX
+)
+target_compile_definitions(jobserver-tests PRIVATE
   JOBSERVER_CLI_PATH="$<TARGET_FILE:jobserver>"
   JOBSERVER_DAEMON_PATH="$<TARGET_FILE:jobserverd>"
   JOBSERVER_TEST_CLIENT_PATH="$<TARGET_FILE:jobserver-test-client>"

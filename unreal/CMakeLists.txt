@@ -523,6 +523,7 @@ add_custom_target(dev-core
     sbx-mimalloc-tests
     sandbox-s7-tests
     slate-codegen-tests
+    jobserver-tests
 )
 
 if(SANDBOX_TEST_SUITE STREQUAL "benchmark")
