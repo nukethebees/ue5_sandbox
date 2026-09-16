@@ -216,17 +216,14 @@ After setting `UE_ROOT`, load the development commands and prepare a new or rese
 csetup
 ```
 
-`csetup` first synchronizes and initializes all pinned Git submodules, then prepares DebugGame and
-Development by default. Pass one or more of `debug-game` and `development` to prepare only those
-configurations, for example `csetup debug-game`. Each variant configures its build tree, builds the
-pinned third-party and first-party native dependencies consumed by the Unreal project, and generates
-Visual Studio project files.
-The Development variant does not build an Unreal target. DebugGame also performs the shared audio
-import described below. Both are safe to rerun after switching branches or changing project
-definitions.
+`csetup` synchronizes pinned submodules, configures the build tree, builds dependencies, and
+generates project files. It prepares DebugGame and Development by default; pass one or more modes
+to limit it, for example `csetup debug-game`. Development setup skips the Unreal target, while
+DebugGame imports the shared audio assets. It is safe to rerun after branch or project-definition
+changes.
 
-To update submodules, prepare the selected configurations, and build their Editor-ready development
-targets in one command, use `cplay`. It defaults to DebugGame and Development:
+`cplay` runs `csetup` and builds the selected Editor-ready targets; it also defaults to DebugGame
+and Development:
 
 ```powershell
 cplay
