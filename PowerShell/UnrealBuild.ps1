@@ -21,6 +21,20 @@ function Invoke-JobserverWorkflow {
     & cmake --workflow --preset $Preset
 }
 
+function Update-WorktreeSubmodules {
+    Write-Host 'Synchronizing Git submodule URLs.'
+    & git submodule sync --recursive
+    if ($LASTEXITCODE -ne 0) {
+        throw "Git submodule synchronization exited with code $LASTEXITCODE."
+    }
+
+    Write-Host 'Initializing pinned Git submodules.'
+    & git submodule update --init --recursive
+    if ($LASTEXITCODE -ne 0) {
+        throw "Git submodule update exited with code $LASTEXITCODE."
+    }
+}
+
 function Get-UbtEngineRoot {
     if ([string]::IsNullOrWhiteSpace($env:UE_ROOT)) {
         throw 'UE_ROOT is not set. Set it to the Unreal Engine installation root.'
@@ -228,18 +242,25 @@ function cbuild {
 
 function csetup {
     param(
+        [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
         [ValidateSet('all', 'debug-game', 'development')]
-        [string]$configuration = 'all'
+        [string[]]$configuration = @('all')
     )
 
-    $configurations = if ($configuration -eq 'all') {
+    if ($configuration -contains 'all' -and $configuration.Count -ne 1) {
+        throw "Configuration 'all' cannot be combined with explicit configurations."
+    }
+
+    $configurations = if ($configuration -contains 'all') {
         @('debug-game', 'development')
     } else {
-        @($configuration)
+        @($configuration | Select-Object -Unique)
     }
 
     Push-Location -LiteralPath $script:dev_project_root
     try {
+        Update-WorktreeSubmodules
+
         $preset_generator = Join-Path $script:dev_project_root 'cmake\presets\generate.py'
         if (-not (Test-Path -LiteralPath $preset_generator -PathType Leaf)) {
             throw "CMake preset generator was not found: $preset_generator"
@@ -279,6 +300,19 @@ function csetup {
     } finally {
         Pop-Location
     }
+}
+
+function cplay {
+    param(
+        [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
+        [ValidateSet('debug-game', 'development')]
+        [string[]]$configuration = @('debug-game', 'development')
+    )
+
+    $configurations = @($configuration | Select-Object -Unique)
+
+    csetup -configuration $configurations
+    cbuild -configuration $configurations
 }
 
 function cprojectfiles {

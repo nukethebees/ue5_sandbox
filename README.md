@@ -57,7 +57,7 @@ the root script:
 
 The leading dot matters: it loads the project's functions into the current session.
 Use `.\dev.ps1 --help` to discover commands without loading them. The initial commands
-are `croot`, `cwt <name>`, `cwb [branch]`, `cplugin <name>`, `ctests`, `csetup`, and
+are `croot`, `cwt <name>`, `cwb [branch]`, `cplugin <name>`, `ctests`, `csetup`, `cplay`, and
 `cprojectfiles`; `dev-help` repeats the help after loading. Run `cwb` without a branch to list
 checked-out branches and their worktree directories.
 
@@ -209,21 +209,29 @@ clang-format, llvm-nm and llvm-readobj, even when building only one library.
 
 ### Preparing a worktree
 
-After initializing the submodules and setting `UE_ROOT`, load the development commands and prepare
-a new or reset worktree with:
+After setting `UE_ROOT`, load the development commands and prepare a new or reset worktree with:
 
 ```powershell
 . .\dev.ps1
 csetup
 ```
 
-By default, `csetup` prepares DebugGame and Development. Pass `debug-game` or `development` to
-prepare only one configuration, for example `csetup debug-game`. Each variant configures its build
-tree, builds the pinned third-party and first-party native dependencies consumed by the Unreal
-project, and generates Visual Studio project files.
+`csetup` first synchronizes and initializes all pinned Git submodules, then prepares DebugGame and
+Development by default. Pass one or more of `debug-game` and `development` to prepare only those
+configurations, for example `csetup debug-game`. Each variant configures its build tree, builds the
+pinned third-party and first-party native dependencies consumed by the Unreal project, and generates
+Visual Studio project files.
 The Development variant does not build an Unreal target. DebugGame also performs the shared audio
 import described below. Both are safe to rerun after switching branches or changing project
 definitions.
+
+To update submodules, prepare the selected configurations, and build their Editor-ready development
+targets in one command, use `cplay`. It defaults to DebugGame and Development:
+
+```powershell
+cplay
+cplay debug-game
+```
 
 ### Launching and debugging the Editor
 
