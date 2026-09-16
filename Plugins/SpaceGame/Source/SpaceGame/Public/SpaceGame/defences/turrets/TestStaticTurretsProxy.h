@@ -36,10 +36,8 @@ class ATestStaticTurretsProxy
     void set_laser_damage(TOptional<int32> const new_damage) noexcept { laser_damage = new_damage; }
 
     // ITestEntity
-    auto get_entity_handle() const noexcept -> ::ioj::sim::RegistryEntityHandle override {
-        return entity_handle;
-    }
-    void set_entity_handle(::ioj::sim::RegistryEntityHandle const h) noexcept { entity_handle = h; }
+    auto get_unique_id() const noexcept -> ::ioj::sim::EntityUniqueId override { return unique_id; }
+    void set_unique_id(::ioj::sim::EntityUniqueId const id) noexcept { unique_id = id; }
 #if WITH_EDITOR
     void set_test_name(FName const new_test_name) noexcept { test_name = new_test_name; }
     auto get_test_name() const noexcept -> FName override { return test_name; }
@@ -84,5 +82,5 @@ class ATestStaticTurretsProxy
     FName test_name{NAME_None};
 #endif
 
-    ::ioj::sim::RegistryEntityHandle entity_handle;
+    ::ioj::sim::EntityUniqueId unique_id;
 };

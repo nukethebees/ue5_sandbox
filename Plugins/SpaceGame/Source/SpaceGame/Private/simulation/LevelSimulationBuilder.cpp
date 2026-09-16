@@ -1,5 +1,4 @@
 #include "SpaceGame/simulation/LevelSimulationBuilder.h"
-#include <ioj/sim/entity_registry.h>
 #include <ioj/sim/levels/fighter_spawn_slot_validation.h>
 #include <ioj/sim/levels/level_initialisation_data.h>
 #include <ioj/sim/rotator_math.h>
@@ -93,16 +92,12 @@ auto collect_proxy_actors(UWorld& world) -> TArray<TProxy*> {
 }
 
 template <typename TProxy>
-void add_proxy_bindings(TArray<TProxy*> const& proxies,
-                        ::ioj::sim::EntityRegistry const& entity_registry,
-                        FProxyEntityMap& bindings) {
+void add_proxy_bindings(TArray<TProxy*> const& proxies, FProxyEntityMap& bindings) {
     for (auto* const proxy : proxies) {
         check(IsValid(proxy));
-        auto const handle{proxy->get_entity_handle()};
-        check(entity_registry.is_valid_handle(handle));
-        auto const unique_id{entity_registry.find_unique_id(handle)};
-        check(entity_registry.is_valid_unique_id(unique_id));
-        bindings.Add(proxy, {.handle = handle, .unique_id = unique_id});
+        auto const id{proxy->get_unique_id()};
+        check(id.is_valid());
+        bindings.Add(proxy, id);
     }
 }
 
@@ -166,27 +161,27 @@ namespace ml {
 auto FProxyLevelSimBuild::bind_proxy_entities(::ioj::sim::LevelSim const& simulation) const
     -> FProxyEntityMap {
     auto const capital_count{capital_proxies.Num()};
+    auto const capital_entities{simulation.get_capital_ships().get_read_view().entities};
     for (int32 i{}; i < capital_count; ++i) {
-        capital_proxies[i]->set_entity_handle(simulation.get_capital_ships().get_handle(i));
+        capital_proxies[i]->set_unique_id(capital_entities.entity_ids[i]);
     }
 
     auto const turret_entities{simulation.get_turrets().get_read_view().entities};
     auto const turret_count{turret_proxies.Num()};
     for (int32 i{}; i < turret_count; ++i) {
-        turret_proxies[i]->set_entity_handle(turret_entities.handles[i]);
+        turret_proxies[i]->set_unique_id(turret_entities.entity_ids[i]);
     }
 
     auto const spinner_entities{simulation.get_spinners().get_read_view().entities};
     auto const spinner_count{spinner_proxies.Num()};
     for (int32 i{}; i < spinner_count; ++i) {
-        spinner_proxies[i]->set_entity_handle(spinner_entities.handles[i]);
+        spinner_proxies[i]->set_unique_id(spinner_entities.entity_ids[i]);
     }
 
     FProxyEntityMap bindings;
-    auto const& entity_registry{simulation.get_entity_registry()};
-    level_simulation_builder::add_proxy_bindings(capital_proxies, entity_registry, bindings);
-    level_simulation_builder::add_proxy_bindings(turret_proxies, entity_registry, bindings);
-    level_simulation_builder::add_proxy_bindings(spinner_proxies, entity_registry, bindings);
+    level_simulation_builder::add_proxy_bindings(capital_proxies, bindings);
+    level_simulation_builder::add_proxy_bindings(turret_proxies, bindings);
+    level_simulation_builder::add_proxy_bindings(spinner_proxies, bindings);
     return bindings;
 }
 

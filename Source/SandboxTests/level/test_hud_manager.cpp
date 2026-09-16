@@ -434,8 +434,9 @@ void FTestHUDManagerScenario::player_kill_begin() {
     auto const& capitals{test_driver->get_capital_ships()};
     check(capitals.get_num_instances() == 1);
 
-    std::array<::ioj::sim::RegistryEntityHandle, 1> const targets{capitals.get_handle(0)};
-    auto const instigator{player_ship->get_entity_handle()};
+    std::array<::ioj::sim::EntityUniqueId, 1> const targets{
+        capitals.get_read_view().entities.entity_ids[0]};
+    auto const instigator{player_ship->get_unique_id()};
     test_driver->timeline.then_after(damage_queue_time, [this, targets, instigator] {
         test_driver->queue_kills(targets, instigator);
     });

@@ -50,7 +50,7 @@ void resolve_proxy_entity_bindings(FProxyEntityMap const& proxy_entities,
                                    TArray<FProxyEntityBinding> const& bindings,
                                    FSoftTestAssertions& checks) {
     for (FProxyEntityBinding const& binding : bindings) {
-        if (!checks.is_true(binding.handle != nullptr || binding.unique_id != nullptr,
+        if (!checks.is_true(binding.id != nullptr,
                             FString::Printf(TEXT("Proxy binding '%s' has an output"),
                                             *binding.test_name.ToString()))) {
             continue;
@@ -60,15 +60,15 @@ void resolve_proxy_entity_bindings(FProxyEntityMap const& proxy_entities,
         }
 
         int32 matches{0};
-        FRegistryEntityIdentifiers const* matched_identifiers{nullptr};
-        for (auto const& [actor, identifiers] : proxy_entities) {
+        ::ioj::sim::EntityUniqueId const* matched_id{nullptr};
+        for (auto const& [actor, id] : proxy_entities) {
             auto const* const entity{Cast<ITestEntity>(actor)};
             if (!entity || entity->get_test_name() != binding.test_name) {
                 continue;
             }
 
             ++matches;
-            matched_identifiers = &identifiers;
+            matched_id = &id;
         }
 
         if (!checks.are_equal(1,
@@ -78,13 +78,8 @@ void resolve_proxy_entity_bindings(FProxyEntityMap const& proxy_entities,
             continue;
         }
 
-        check(matched_identifiers);
-        if (binding.handle) {
-            *binding.handle = matched_identifiers->handle;
-        }
-        if (binding.unique_id) {
-            *binding.unique_id = matched_identifiers->unique_id;
-        }
+        check(matched_id);
+        *binding.id = *matched_id;
     }
 }
 

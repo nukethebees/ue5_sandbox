@@ -50,9 +50,8 @@ class SPACEGAME_API ATestSpaceShip
     /* **************************************** */
     // Entity identity and configuration
     /* **************************************** */
-    auto get_entity_handle() const noexcept -> ::ioj::sim::RegistryEntityHandle override;
+    auto get_unique_id() const noexcept -> ::ioj::sim::EntityUniqueId override;
     auto get_test_name() const noexcept -> FName { return TEXT("PlayerShip"); }
-    auto get_unique_id() const -> ::ioj::sim::EntityUniqueId;
     auto get_team() const noexcept -> ETestTeam;
     void set_team(ETestTeam new_team) noexcept;
 

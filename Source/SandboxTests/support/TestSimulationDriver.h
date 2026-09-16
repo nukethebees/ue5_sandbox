@@ -45,7 +45,8 @@ struct TestSimulationDriver {
                       ::ioj::sim::RegistryEntityHandle instigator = {});
     void queue_kills(std::span<::ioj::sim::RegistryEntityHandle const> targets,
                      ::ioj::sim::RegistryEntityHandle instigator = {});
-    void queue_kills(std::span<::ioj::sim::EntityUniqueId const> targets);
+    void queue_kills(std::span<::ioj::sim::EntityUniqueId const> targets,
+                     ::ioj::sim::EntityUniqueId instigator = {});
     bool should_export_results() const;
 
     void set_time_scale(time_type scale);

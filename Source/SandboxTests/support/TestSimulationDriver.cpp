@@ -81,11 +81,12 @@ void TestSimulationDriver::queue_kills(
     ::ioj::sim::RegistryEntityHandle const instigator) {
     queue_damage(targets, std::numeric_limits<int32>::max(), instigator);
 }
-void TestSimulationDriver::queue_kills(std::span<::ioj::sim::EntityUniqueId const> const targets) {
+void TestSimulationDriver::queue_kills(std::span<::ioj::sim::EntityUniqueId const> const targets,
+                                       ::ioj::sim::EntityUniqueId const instigator) {
     ::ioj::sim::DirectDamageEvents events;
     events.reserve(static_cast<int32>(targets.size()));
     for (auto const id : targets) {
-        events.add(id, std::numeric_limits<int32>::max(), {});
+        events.add(id, std::numeric_limits<int32>::max(), instigator);
     }
     FTestBatchOrchestratorTestAccess::queue_direct_damage_events(orchestrator,
                                                                  events.get_const_view());

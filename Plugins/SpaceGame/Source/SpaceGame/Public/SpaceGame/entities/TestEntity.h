@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SandboxNative/RegistryEntityHandle.h>
+#include <ioj/sim/entity_types.h>
 
 #include <CoreMinimal.h>
 #include <UObject/Interface.h>
@@ -15,7 +15,7 @@ class UTestEntity : public UInterface {
 class ITestEntity {
     GENERATED_BODY()
   public:
-    virtual auto get_entity_handle() const noexcept -> ::ioj::sim::RegistryEntityHandle = 0;
+    virtual auto get_unique_id() const noexcept -> ::ioj::sim::EntityUniqueId = 0;
 #if WITH_EDITOR
     virtual auto get_test_name() const noexcept -> FName = 0;
 #endif
