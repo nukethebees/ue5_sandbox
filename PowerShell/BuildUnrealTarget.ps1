@@ -37,6 +37,22 @@ function Get-ModuleManifestName {
     "UnrealEditor-Win64-$build_configuration.modules"
 }
 
+function Get-TargetReceiptName {
+    param(
+        [Parameter(Mandatory)]
+        [string]$editor_target,
+
+        [Parameter(Mandatory)]
+        [string]$build_configuration
+    )
+
+    if ($build_configuration -eq 'Development') {
+        return "$editor_target.target"
+    }
+
+    "$editor_target-Win64-$build_configuration.target"
+}
+
 function Get-EditorModuleManifestPaths {
     param(
         [Parameter(Mandatory)]
@@ -50,7 +66,8 @@ function Get-EditorModuleManifestPaths {
     )
 
     $manifest_name = Get-ModuleManifestName $build_configuration
-    $target_receipt = Join-Path $project_root "Binaries\\Win64\\$editor_target-Win64-$build_configuration.target"
+    $target_receipt_name = Get-TargetReceiptName $editor_target $build_configuration
+    $target_receipt = Join-Path $project_root "Binaries\\Win64\\$target_receipt_name"
     if (-not (Test-Path -LiteralPath $target_receipt -PathType Leaf)) {
         return [PSCustomObject]@{
             Paths = @()

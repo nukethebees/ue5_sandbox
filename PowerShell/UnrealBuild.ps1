@@ -35,6 +35,36 @@ function Update-WorktreeSubmodules {
     }
 }
 
+function Remove-RetiredVcpkgBuildDirectory {
+    param(
+        [Parameter(Mandatory)]
+        [string]$configuration
+    )
+
+    $manifest_path = Join-Path $script:dev_project_root 'vcpkg.json'
+    if (Test-Path -LiteralPath $manifest_path -PathType Leaf) {
+        return
+    }
+
+    $build_directory = Join-Path $script:dev_project_root "out\build\$configuration"
+    $cmake_files_directory = Join-Path $build_directory 'CMakeFiles'
+    if (-not (Test-Path -LiteralPath $cmake_files_directory -PathType Container)) {
+        return
+    }
+
+    $system_files = Get-ChildItem -LiteralPath $cmake_files_directory -Filter 'CMakeSystem.cmake' -Recurse -File
+    $uses_retired_vcpkg = $system_files | Where-Object {
+        Select-String -LiteralPath $_.FullName -SimpleMatch 'vcpkg/scripts/buildsystems/vcpkg.cmake' -Quiet
+    }
+
+    if ($null -eq $uses_retired_vcpkg) {
+        return
+    }
+
+    Write-Host "Removing obsolete vcpkg CMake build directory: $build_directory"
+    Remove-Item -LiteralPath $build_directory -Recurse -Force
+}
+
 function Get-UbtEngineRoot {
     if ([string]::IsNullOrWhiteSpace($env:UE_ROOT)) {
         throw 'UE_ROOT is not set. Set it to the Unreal Engine installation root.'
@@ -271,6 +301,10 @@ function csetup {
 
         if ($LASTEXITCODE -ne 0) {
             throw "CMake preset generation exited with code $LASTEXITCODE."
+        }
+
+        foreach ($current_configuration in $configurations) {
+            Remove-RetiredVcpkgBuildDirectory -configuration $current_configuration
         }
 
         $jobserver = Get-JobserverPath
