@@ -1,4 +1,5 @@
 #include "SpaceGamePresentation/presentation/CapitalPresentation.h"
+#include <ioj/sim/agent_accessor.h>
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
@@ -226,15 +227,14 @@ void FCapitalPresentation::draw_debugging_shapes() const {
 
     auto const& capital_simulation{view()};
     auto const& entities{capital_simulation.entities};
-    auto const& entity_registry{*capital_simulation.registry};
+    auto const& agents{*capital_simulation.agents};
     auto const n{capital_simulation.get_num_instances()};
     auto const text_offset{actor_config->debug_status_text_offset};
     for (int32 i{0}; i < n; ++i) {
         FVector const ship_location{ml::to_unreal(entities.locations[i])};
-        auto const target_handle{entities.target_handles[i]};
-        if (entity_registry.is_valid_handle(target_handle)) {
-            FVector3d const target_location{
-                ml::to_unreal(entity_registry.get_location(target_handle))};
+        auto const target_id{entities.target_ids[i]};
+        if (auto const target{agents.read_alive(target_id)}) {
+            FVector3d const target_location{ml::to_unreal(target->location)};
             debug_drawer.draw_arrow(ship_location, target_location);
         }
 

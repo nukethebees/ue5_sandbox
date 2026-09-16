@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ioj/sim/entity_handle.h"
 #include "ioj/sim/entity_types.h"
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/rotators3f.h"
@@ -27,7 +26,7 @@ struct FighterSpawnQueueConstView {
     Rotators3fConstView rotations;
     std::span<Team const> teams;
     std::span<EntityUniqueId const> parents;
-    std::span<RegistryEntityHandle const> targets;
+    std::span<EntityUniqueId const> targets;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.num()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -89,7 +88,7 @@ struct FighterSpawnQueueView {
     Rotators3fView rotations;
     std::span<Team> teams;
     std::span<EntityUniqueId> parents;
-    std::span<RegistryEntityHandle> targets;
+    std::span<EntityUniqueId> targets;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.num()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -150,7 +149,7 @@ struct FighterSpawnQueueView {
              float const new_rotations_rolls,
              Team const new_teams,
              EntityUniqueId const new_parents,
-             RegistryEntityHandle const new_targets) const {
+             EntityUniqueId const new_targets) const {
         ml::native_soa::require(index >= 0 && index < num());
         locations.xs[static_cast<std::size_t>(index)] = new_locations_xs;
         locations.ys[static_cast<std::size_t>(index)] = new_locations_ys;
@@ -171,7 +170,7 @@ struct FighterSpawnQueue {
     Rotators3f rotations;
     ml::native_soa::Vector<Team> teams;
     ml::native_soa::Vector<EntityUniqueId> parents;
-    ml::native_soa::Vector<RegistryEntityHandle> targets;
+    ml::native_soa::Vector<EntityUniqueId> targets;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -286,7 +285,7 @@ struct FighterSpawnQueue {
              float const new_rotations_rolls,
              Team const new_teams,
              EntityUniqueId const new_parents,
-             RegistryEntityHandle const new_targets) {
+             EntityUniqueId const new_targets) {
         get_view().set(index,
                        new_locations_xs,
                        new_locations_ys,
@@ -306,7 +305,7 @@ struct FighterSpawnQueue {
              float const new_rotations_rolls,
              Team const new_teams,
              EntityUniqueId const new_parents,
-             RegistryEntityHandle const new_targets) -> size_type {
+             EntityUniqueId const new_targets) -> size_type {
         auto const index{num()};
         add_defaulted(1);
         set(index,
@@ -380,8 +379,7 @@ struct FighterSpawnQueue {
             auto const address{ml::address_cast(source.targets.data())};
             auto const begin{ml::address_cast(targets.data())};
             ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + targets.size() * sizeof(RegistryEntityHandle));
+                                    address >= begin + targets.size() * sizeof(EntityUniqueId));
         }
         locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
         locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
@@ -502,7 +500,7 @@ struct FighterSpawnQueueSingleLayout {
     inline static constexpr ColLayout<float> RotationsRolls{RotationsYaws};
     inline static constexpr ColLayout<Team> Teams{RotationsRolls};
     inline static constexpr ColLayout<EntityUniqueId> Parents{Teams};
-    inline static constexpr ColLayout<RegistryEntityHandle> Targets{Parents};
+    inline static constexpr ColLayout<EntityUniqueId> Targets{Parents};
 
     inline static constexpr byte_size_type allocation_alignment{
         ml::native_soa::maximum_alignment(LocationsXs,
@@ -539,10 +537,6 @@ struct FighterSpawnQueueSingleLayout {
             ml::native_soa::supported_leaf<EntityUniqueId>,
             "Single-allocation leaf parents requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::native_soa::supported_leaf<RegistryEntityHandle>,
-            "Single-allocation leaf targets requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
 
         static_assert(
             allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
@@ -563,7 +557,7 @@ struct FighterSpawnQueueSingleLayout {
                       (max_allocation_size - Teams.block_offset) / capacity_granularity);
         static_assert(sizeof(EntityUniqueId) <=
                       (max_allocation_size - Parents.block_offset) / capacity_granularity);
-        static_assert(sizeof(RegistryEntityHandle) <=
+        static_assert(sizeof(EntityUniqueId) <=
                       (max_allocation_size - Targets.block_offset) / capacity_granularity);
         static_assert(8 <= (max_allocation_size -
                             ml::native_soa::layout_align(Targets.block_end, allocation_alignment)) /
@@ -638,7 +632,7 @@ struct SingleAllocationFighterSpawnQueueStorage
         Element<float>* rotations_rolls{};
         Element<Team>* teams{};
         Element<EntityUniqueId>* parents{};
-        Element<RegistryEntityHandle>* targets{};
+        Element<EntityUniqueId>* targets{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (locations_xs == nullptr) {
                 return {};
@@ -733,7 +727,7 @@ struct SingleAllocationFighterSpawnQueueStorage
         std::uninitialized_value_construct_n<float*>(columns.rotations_rolls, count);
         std::uninitialized_value_construct_n<Team*>(columns.teams, count);
         std::uninitialized_value_construct_n<EntityUniqueId*>(columns.parents, count);
-        std::uninitialized_value_construct_n<RegistryEntityHandle*>(columns.targets, count);
+        std::uninitialized_value_construct_n<EntityUniqueId*>(columns.targets, count);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -748,7 +742,6 @@ struct SingleAllocationFighterSpawnQueueStorage
         auto const locations_xs_bytes{elements_to_move * sizeof(float)};
         auto const teams_bytes{elements_to_move * sizeof(Team)};
         auto const parents_bytes{elements_to_move * sizeof(EntityUniqueId)};
-        auto const targets_bytes{elements_to_move * sizeof(RegistryEntityHandle)};
         std::memcpy(
             columns.locations_xs + index, columns.locations_xs + source, locations_xs_bytes);
         std::memcpy(
@@ -764,7 +757,7 @@ struct SingleAllocationFighterSpawnQueueStorage
             columns.rotations_rolls + index, columns.rotations_rolls + source, locations_xs_bytes);
         std::memcpy(columns.teams + index, columns.teams + source, teams_bytes);
         std::memcpy(columns.parents + index, columns.parents + source, parents_bytes);
-        std::memcpy(columns.targets + index, columns.targets + source, targets_bytes);
+        std::memcpy(columns.targets + index, columns.targets + source, parents_bytes);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -800,7 +793,6 @@ struct SingleAllocationFighterSpawnQueueStorage
         auto const locations_xs_bytes{elements_to_copy * sizeof(float)};
         auto const teams_bytes{elements_to_copy * sizeof(Team)};
         auto const parents_bytes{elements_to_copy * sizeof(EntityUniqueId)};
-        auto const targets_bytes{elements_to_copy * sizeof(RegistryEntityHandle)};
         std::memcpy(destination.locations_xs, source.locations.xs, locations_xs_bytes);
         std::memcpy(destination.locations_ys, source.locations.ys, locations_xs_bytes);
         std::memcpy(destination.locations_zs, source.locations.zs, locations_xs_bytes);
@@ -810,7 +802,7 @@ struct SingleAllocationFighterSpawnQueueStorage
         std::memcpy(destination.rotations_rolls, source.rotations.rolls.data(), locations_xs_bytes);
         std::memcpy(destination.teams, source.teams.data(), teams_bytes);
         std::memcpy(destination.parents, source.parents.data(), parents_bytes);
-        std::memcpy(destination.targets, source.targets.data(), targets_bytes);
+        std::memcpy(destination.targets, source.targets.data(), parents_bytes);
     }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::native_soa::allocate(
@@ -826,7 +818,6 @@ struct SingleAllocationFighterSpawnQueueStorage
             auto const locations_xs_bytes{live_count * sizeof(float)};
             auto const teams_bytes{live_count * sizeof(Team)};
             auto const parents_bytes{live_count * sizeof(EntityUniqueId)};
-            auto const targets_bytes{live_count * sizeof(RegistryEntityHandle)};
             std::memcpy(destination.locations_xs, source.locations_xs, locations_xs_bytes);
             std::memcpy(destination.locations_ys, source.locations_ys, locations_xs_bytes);
             std::memcpy(destination.locations_zs, source.locations_zs, locations_xs_bytes);
@@ -836,7 +827,7 @@ struct SingleAllocationFighterSpawnQueueStorage
             std::memcpy(destination.rotations_rolls, source.rotations_rolls, locations_xs_bytes);
             std::memcpy(destination.teams, source.teams, teams_bytes);
             std::memcpy(destination.parents, source.parents, parents_bytes);
-            std::memcpy(destination.targets, source.targets, targets_bytes);
+            std::memcpy(destination.targets, source.targets, parents_bytes);
         }
         ml::native_soa::free(data_, allocation_alignment);
         data_ = new_data;
@@ -891,8 +882,8 @@ struct FighterSpawnQueueSingleConstView : ml::native_soa::CompactViewState<true>
                     FighterSpawnQueueSingleLayout::Parents.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto targets() const -> std::span<RegistryEntityHandle const> {
-        return {column_data<RegistryEntityHandle>(
+    auto targets() const -> std::span<EntityUniqueId const> {
+        return {column_data<EntityUniqueId>(
                     FighterSpawnQueueSingleLayout::Targets.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
@@ -927,7 +918,7 @@ struct FighterSpawnQueueSingleConstView : ml::native_soa::CompactViewState<true>
             {column_data_unchecked<EntityUniqueId>(
                  FighterSpawnQueueSingleLayout::Parents.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
+            {column_data_unchecked<EntityUniqueId>(
                  FighterSpawnQueueSingleLayout::Targets.offset(blocks)),
              static_cast<std::size_t>(count_)}};
     }
@@ -983,8 +974,8 @@ struct FighterSpawnQueueSingleView : ml::native_soa::CompactViewState<false> {
                     FighterSpawnQueueSingleLayout::Parents.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto targets() const -> std::span<RegistryEntityHandle> {
-        return {column_data<RegistryEntityHandle>(
+    auto targets() const -> std::span<EntityUniqueId> {
+        return {column_data<EntityUniqueId>(
                     FighterSpawnQueueSingleLayout::Targets.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
@@ -1018,7 +1009,7 @@ struct FighterSpawnQueueSingleView : ml::native_soa::CompactViewState<false> {
             {column_data_unchecked<EntityUniqueId>(
                  FighterSpawnQueueSingleLayout::Parents.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
+            {column_data_unchecked<EntityUniqueId>(
                  FighterSpawnQueueSingleLayout::Targets.offset(blocks)),
              static_cast<std::size_t>(count_)}};
     }

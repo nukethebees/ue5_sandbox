@@ -105,9 +105,8 @@ struct Sim {
         return entity_buffers.current().get_const_view().columns().locations;
     }
     auto has_handle(RegistryEntityHandle fighter_handle) const -> bool;
-    auto get_target_handles() const noexcept -> std::span<RegistryEntityHandle const>;
-    auto get_target_handle(RegistryEntityHandle fighter_handle) const noexcept
-        -> RegistryEntityHandle;
+    auto get_target_ids() const noexcept -> std::span<EntityUniqueId const>;
+    auto get_target_id(RegistryEntityHandle fighter_handle) const noexcept -> EntityUniqueId;
     auto get_target_locations() const {
         return entity_buffers.current().get_const_view().columns().target_locations;
     }
@@ -221,10 +220,8 @@ struct Sim {
     /* **************************************** */
     // Targets
     /* **************************************** */
-    void set_target_handle_unchecked(std::int32_t fighter_index,
-                                     RegistryEntityHandle new_target) noexcept;
-    void set_target_handle(RegistryEntityHandle fighter_handle,
-                           RegistryEntityHandle new_target) noexcept;
+    void set_target_id_unchecked(std::int32_t fighter_index, EntityUniqueId new_target) noexcept;
+    void set_target_id(RegistryEntityHandle fighter_handle, EntityUniqueId new_target) noexcept;
     void refresh_target_data();
 
     /* **************************************** */

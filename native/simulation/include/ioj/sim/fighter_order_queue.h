@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ioj/sim/entity_handle.h"
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/fighter_types.h"
 #include "native_soa/storage.h"
@@ -20,7 +19,7 @@ struct FighterOrderQueueConstView {
     std::span<EntityUniqueId const> entity_ids;
     std::span<FighterOrder const> orders;
     std::span<FighterTask const> tasks;
-    std::span<RegistryEntityHandle const> targets;
+    std::span<EntityUniqueId const> targets;
     auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -74,7 +73,7 @@ struct FighterOrderQueueView {
     std::span<EntityUniqueId> entity_ids;
     std::span<FighterOrder> orders;
     std::span<FighterTask> tasks;
-    std::span<RegistryEntityHandle> targets;
+    std::span<EntityUniqueId> targets;
     auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -123,7 +122,7 @@ struct FighterOrderQueueView {
              EntityUniqueId const new_entity_ids,
              FighterOrder const new_orders,
              FighterTask const new_tasks,
-             RegistryEntityHandle const new_targets) const {
+             EntityUniqueId const new_targets) const {
         ml::native_soa::require(index >= 0 && index < num());
         entity_ids[static_cast<std::size_t>(index)] = new_entity_ids;
         orders[static_cast<std::size_t>(index)] = new_orders;
@@ -138,7 +137,7 @@ struct FighterOrderQueue {
     ml::native_soa::Vector<EntityUniqueId> entity_ids;
     ml::native_soa::Vector<FighterOrder> orders;
     ml::native_soa::Vector<FighterTask> tasks;
-    ml::native_soa::Vector<RegistryEntityHandle> targets;
+    ml::native_soa::Vector<EntityUniqueId> targets;
     auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -208,13 +207,13 @@ struct FighterOrderQueue {
              EntityUniqueId const new_entity_ids,
              FighterOrder const new_orders,
              FighterTask const new_tasks,
-             RegistryEntityHandle const new_targets) {
+             EntityUniqueId const new_targets) {
         get_view().set(index, new_entity_ids, new_orders, new_tasks, new_targets);
     }
     auto add(EntityUniqueId const new_entity_ids,
              FighterOrder const new_orders,
              FighterTask const new_tasks,
-             RegistryEntityHandle const new_targets) -> size_type {
+             EntityUniqueId const new_targets) -> size_type {
         auto const index{num()};
         add_defaulted(1);
         set(index, new_entity_ids, new_orders, new_tasks, new_targets);
@@ -249,8 +248,7 @@ struct FighterOrderQueue {
             auto const address{ml::address_cast(source.targets.data())};
             auto const begin{ml::address_cast(targets.data())};
             ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + targets.size() * sizeof(RegistryEntityHandle));
+                                    address >= begin + targets.size() * sizeof(EntityUniqueId));
         }
         entity_ids.insert(
             entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);

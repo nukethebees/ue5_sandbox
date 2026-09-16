@@ -29,7 +29,8 @@ struct TraceRequest {
     ioj::sim::Vectors3fConstView end_locations{};
     ioj::sim::Vector3f scalar_start{};
     ioj::sim::Vector3f scalar_end{};
-    std::span<ioj::sim::RegistryEntityHandle const> targets{};
+    std::span<ioj::sim::EntityUniqueId const> targets{};
+    ioj::sim::EntityRegistry const* registry{};
     std::span<ioj::sim::RegistryEntityHandle const> ignored_entities{};
     std::span<ioj::sim::RegistryEntityHandle> out_entity_handles{};
     std::span<std::uint8_t> out_flags{};
@@ -122,7 +123,8 @@ auto trace_impl(ioj::sim::SpatialQueryManager const& manager, TraceRequest const
         } else if constexpr (Mode == QueryMode::TargetLineOfSight) {
             for (std::int32_t i{}; i < count; ++i) {
                 request.out_flags[i] = static_cast<std::uint8_t>(
-                    hits.hits[i] == 0 || hits.entities[i] == request.targets[i]);
+                    hits.hits[i] == 0 ||
+                    request.registry->get_current_id(hits.entities[i]) == request.targets[i]);
             }
         }
 
@@ -164,7 +166,7 @@ auto ThreadBufferLease::get() const -> ThreadBuffers& {
 
 namespace ioj::sim {
 namespace {
-template <typename Entity, typename IncludeEntity, typename ProjectEntity>
+template <typename IncludeEntity>
 auto collect_entities_in_range(collision::GridGeometry const geometry,
                                collision::CollisionGridEntityStorage const& grid_entities,
                                EntityRegistry const& registry,
@@ -172,9 +174,8 @@ auto collect_entities_in_range(collision::GridGeometry const geometry,
                                QueryThreadBuffers& buffers,
                                Vector3f const origin,
                                float const radius,
-                               std::span<Entity> const out_entities,
-                               IncludeEntity&& include_entity,
-                               ProjectEntity&& project_entity) -> std::int32_t {
+                               std::span<EntityUniqueId> const out_entities,
+                               IncludeEntity&& include_entity) -> std::int32_t {
     if (out_entities.empty()) {
         return 0;
     }
@@ -220,7 +221,7 @@ auto collect_entities_in_range(collision::GridGeometry const geometry,
                     entity_stamps[entity_index] = query_stamp;
 
                     auto const state{agents.read_spatial(id)};
-                    if (!state || is_dead(state->health) || !include_entity(handle, id, *state)) {
+                    if (!state || is_dead(state->health) || !include_entity(id, *state)) {
                         continue;
                     }
 
@@ -232,7 +233,7 @@ auto collect_entities_in_range(collision::GridGeometry const geometry,
                         continue;
                     }
 
-                    out_entities[static_cast<std::size_t>(count++)] = project_entity(handle, id);
+                    out_entities[static_cast<std::size_t>(count++)] = id;
                     if (count >= static_cast<std::int32_t>(out_entities.size())) {
                         return count;
                     }
@@ -246,7 +247,7 @@ auto collect_entities_in_range(collision::GridGeometry const geometry,
 auto find_any_non_team_entity(EntityRegistry const& registry,
                               AgentAccessor const& agents,
                               Team const excluded_team,
-                              std::optional<EntityType> const type = {}) -> RegistryEntityHandle {
+                              std::optional<EntityType> const type = {}) -> EntityUniqueId {
     auto const generations{registry.get_generations()};
     auto const count{registry.get_num_elements()};
     for (std::int32_t index{}; index < count; ++index) {
@@ -257,7 +258,7 @@ auto find_any_non_team_entity(EntityRegistry const& registry,
         }
         auto const state{agents.read_spatial(id)};
         if (state && is_alive(state->health) && state->team != excluded_team) {
-            return handle;
+            return id;
         }
     }
     return {};
@@ -338,17 +339,18 @@ void SpatialQueryManager::trace_line_of_sight(
                                       .out_entity_handles = out_entity_handles});
 }
 
-void SpatialQueryManager::has_line_of_sight_to_targets(
-    Vector3f const& start_location,
-    Vectors3fConstView const end_locations,
-    std::span<RegistryEntityHandle const> const targets,
-    std::span<std::uint8_t> const has_los) const {
+void
+    SpatialQueryManager::has_line_of_sight_to_targets(Vector3f const& start_location,
+                                                      Vectors3fConstView const end_locations,
+                                                      std::span<EntityUniqueId const> const targets,
+                                                      std::span<std::uint8_t> const has_los) const {
     SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::has_line_of_sight_to_targets");
 
     trace_impl<QueryMode::TargetLineOfSight>(*this,
                                              {.end_locations = end_locations,
                                               .scalar_start = start_location,
                                               .targets = targets,
+                                              .registry = &entity_registry,
                                               .out_flags = has_los});
 }
 
@@ -429,7 +431,7 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
     Vector3f const& origin,
     Team const team,
     float const radius,
-    std::span<RegistryEntityHandle> const out_entities) const -> std::int32_t {
+    std::span<EntityUniqueId> const out_entities) const -> std::int32_t {
     SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::collect_non_team_entities_in_range");
 
     if (out_entities.empty()) {
@@ -451,10 +453,7 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
             origin,
             radius,
             out_entities,
-            [team](RegistryEntityHandle, EntityUniqueId, AgentSpatialState const& state) {
-                return state.team != team;
-            },
-            [](RegistryEntityHandle const handle, EntityUniqueId) { return handle; });
+            [team](EntityUniqueId, AgentSpatialState const& state) { return state.team != team; });
     }
 }
 
@@ -482,20 +481,18 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
         origin,
         radius,
         out_entities,
-        [entity_type,
-         ignored_entity](RegistryEntityHandle, EntityUniqueId const id, AgentSpatialState const&) {
+        [entity_type, ignored_entity](EntityUniqueId const id, AgentSpatialState const&) {
             return id != ignored_entity && id.entity_type() == entity_type;
-        },
-        [](RegistryEntityHandle, EntityUniqueId const id) { return id; });
+        });
 }
 
-auto SpatialQueryManager::get_any_non_team_entity(Team const team) const -> RegistryEntityHandle {
+auto SpatialQueryManager::get_any_non_team_entity(Team const team) const -> EntityUniqueId {
     return find_any_non_team_entity(entity_registry, agents_, team);
 }
 
 auto SpatialQueryManager::get_any_non_team_entity(Team const team,
                                                   EntityType const entity_type) const
-    -> RegistryEntityHandle {
+    -> EntityUniqueId {
     return find_any_non_team_entity(entity_registry, agents_, team, entity_type);
 }
 

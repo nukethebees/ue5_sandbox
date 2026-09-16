@@ -64,7 +64,7 @@ struct Sim {
     // Accessors
     /* **************************************** */
     auto get_num_instances() const noexcept -> std::int32_t;
-    auto get_target_handles() const -> std::span<RegistryEntityHandle const>;
+    auto get_target_ids() const -> std::span<EntityUniqueId const>;
     auto get_entity_registry() const -> EntityRegistry const& { return entity_registry; }
     auto get_laser_simulation() const -> lasers::Sim const& { return laser_simulation; }
 

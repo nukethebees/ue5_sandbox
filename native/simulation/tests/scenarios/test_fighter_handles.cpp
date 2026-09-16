@@ -199,12 +199,12 @@ void run_worldless_fighter_handles(tests::SimulationFixture const& config,
                             static_cast<std::int32_t>(capitals.get_fighter_handles().size()),
                             "Capital-owned and simulation fighter counts match");
         for (std::int32_t i{}; i < capitals.get_num_instances(); ++i) {
-            tests::expect_not_equal(capitals.get_handle(i),
-                                    capitals.get_target_handle(i),
+            tests::expect_not_equal(harness.get_registry().get_current_id(capitals.get_handle(i)),
+                                    capitals.get_target_id(i),
                                     "Capital does not target itself",
                                     i);
         }
-        for (auto const target : fighters.get_target_handles()) {
+        for (auto const target : fighters.get_target_ids()) {
             tests::expect_true(target.is_valid(), "Spawned fighter has a target");
         }
         initial_checked = true;
@@ -245,7 +245,11 @@ void run_worldless_fighter_handles(tests::SimulationFixture const& config,
             auto const owned{capitals.get_fighter_handles(*main_index)};
             green_fighters_before_capital_kill =
                 std::vector<RegistryEntityHandle>{owned.begin(), owned.end()};
-            harness.queue_kills(std::array{capitals.get_target_handle(*main_index)});
+            auto const id{capitals.get_target_id(*main_index)};
+            auto const row{harness.get_registry().get_history_index(id)};
+            auto const history{harness.get_registry().get_unique_entities()};
+            harness.queue_kills(std::array{RegistryEntityHandle{
+                history.registry_indices[row], history.registry_generations[row]}});
         });
         next_time += 0.5;
         harness.timeline.at(next_time, [&] {
@@ -263,7 +267,7 @@ void run_worldless_fighter_handles(tests::SimulationFixture const& config,
                     tests::expect_true(
                         std::ranges::contains(green_fighters_before_capital_kill, handle),
                         "Surviving fighter retains capital ownership");
-                    tests::expect_true(fighters.get_target_handle(handle).is_valid(),
+                    tests::expect_true(fighters.get_target_id(handle).is_valid(),
                                        "Surviving fighter retargets");
                 }
             }

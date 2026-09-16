@@ -59,7 +59,7 @@ class LevelSpawnManager {
     turrets::Sim& turrets_;
     spinners::Sim& spinners_;
     std::vector<RegistryEntityHandle> entity_handles_{};
-    std::vector<RegistryEntityHandle> target_handles_scratch_{};
+    std::vector<EntityUniqueId> target_ids_scratch_{};
     std::vector<RegistryEntityHandle> spawned_handles_this_tick_{};
 };
 }

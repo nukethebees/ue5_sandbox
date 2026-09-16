@@ -35,7 +35,7 @@ struct TurretEntityDataConstView {
     std::span<std::int32_t const> laser_damages;
     std::span<std::int16_t const> target_refresh_countdowns_periods;
     std::span<std::int16_t const> target_refresh_countdowns_remaining_ticks;
-    std::span<RegistryEntityHandle const> target_handles;
+    std::span<EntityUniqueId const> target_ids;
     Vectors3fConstView target_locations;
     Vectors3fConstView target_velocities;
     std::span<Health const> healths;
@@ -60,7 +60,7 @@ struct TurretEntityDataConstView {
         fn(laser_damages);
         fn(target_refresh_countdowns_periods);
         fn(target_refresh_countdowns_remaining_ticks);
-        fn(target_handles);
+        fn(target_ids);
         fn(target_locations.xs_span());
         fn(target_locations.ys_span());
         fn(target_locations.zs_span());
@@ -95,8 +95,7 @@ struct TurretEntityDataConstView {
                                                       static_cast<std::size_t>(count)),
             target_refresh_countdowns_remaining_ticks.subspan(static_cast<std::size_t>(offset),
                                                               static_cast<std::size_t>(count)),
-            target_handles.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
+            target_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             target_locations.slice(offset, count),
             target_velocities.slice(offset, count),
             healths.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -120,7 +119,7 @@ struct TurretEntityDataConstView {
             laser_damages,
             target_refresh_countdowns_periods,
             target_refresh_countdowns_remaining_ticks,
-            target_handles,
+            target_ids,
             target_locations.get_const_view(),
             target_velocities.get_const_view(),
             healths,
@@ -149,7 +148,7 @@ struct TurretEntityDataView {
     std::span<std::int32_t> laser_damages;
     std::span<std::int16_t> target_refresh_countdowns_periods;
     std::span<std::int16_t> target_refresh_countdowns_remaining_ticks;
-    std::span<RegistryEntityHandle> target_handles;
+    std::span<EntityUniqueId> target_ids;
     Vectors3fView target_locations;
     Vectors3fView target_velocities;
     std::span<Health> healths;
@@ -174,7 +173,7 @@ struct TurretEntityDataView {
         fn(laser_damages);
         fn(target_refresh_countdowns_periods);
         fn(target_refresh_countdowns_remaining_ticks);
-        fn(target_handles);
+        fn(target_ids);
         fn(target_locations.xs_span());
         fn(target_locations.ys_span());
         fn(target_locations.zs_span());
@@ -209,8 +208,7 @@ struct TurretEntityDataView {
                                                       static_cast<std::size_t>(count)),
             target_refresh_countdowns_remaining_ticks.subspan(static_cast<std::size_t>(offset),
                                                               static_cast<std::size_t>(count)),
-            target_handles.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
+            target_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             target_locations.slice(offset, count),
             target_velocities.slice(offset, count),
             healths.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -233,7 +231,7 @@ struct TurretEntityDataView {
             laser_damages,
             target_refresh_countdowns_periods,
             target_refresh_countdowns_remaining_ticks,
-            target_handles,
+            target_ids,
             target_locations.get_const_view(),
             target_velocities.get_const_view(),
             healths,
@@ -264,7 +262,7 @@ struct TurretEntityDataView {
              std::int32_t const new_laser_damages,
              std::int16_t const new_target_refresh_countdowns_periods,
              std::int16_t const new_target_refresh_countdowns_remaining_ticks,
-             RegistryEntityHandle const new_target_handles,
+             EntityUniqueId const new_target_ids,
              float const new_target_locations_xs,
              float const new_target_locations_ys,
              float const new_target_locations_zs,
@@ -292,7 +290,7 @@ struct TurretEntityDataView {
             new_target_refresh_countdowns_periods;
         target_refresh_countdowns_remaining_ticks[static_cast<std::size_t>(index)] =
             new_target_refresh_countdowns_remaining_ticks;
-        target_handles[static_cast<std::size_t>(index)] = new_target_handles;
+        target_ids[static_cast<std::size_t>(index)] = new_target_ids;
         target_locations.xs[static_cast<std::size_t>(index)] = new_target_locations_xs;
         target_locations.ys[static_cast<std::size_t>(index)] = new_target_locations_ys;
         target_locations.zs[static_cast<std::size_t>(index)] = new_target_locations_zs;
@@ -317,7 +315,7 @@ struct TurretEntityData {
     ml::native_soa::Vector<std::int32_t> laser_damages;
     ml::native_soa::Vector<std::int16_t> target_refresh_countdowns_periods;
     ml::native_soa::Vector<std::int16_t> target_refresh_countdowns_remaining_ticks;
-    ml::native_soa::Vector<RegistryEntityHandle> target_handles;
+    ml::native_soa::Vector<EntityUniqueId> target_ids;
     Vectors3f target_locations;
     Vectors3f target_velocities;
     ml::native_soa::Vector<Health> healths;
@@ -342,7 +340,7 @@ struct TurretEntityData {
         fn(laser_damages);
         fn(target_refresh_countdowns_periods);
         fn(target_refresh_countdowns_remaining_ticks);
-        fn(target_handles);
+        fn(target_ids);
         fn(target_locations.xs);
         fn(target_locations.ys);
         fn(target_locations.zs);
@@ -370,7 +368,7 @@ struct TurretEntityData {
         fn(laser_damages);
         fn(target_refresh_countdowns_periods);
         fn(target_refresh_countdowns_remaining_ticks);
-        fn(target_handles);
+        fn(target_ids);
         fn(target_locations.xs);
         fn(target_locations.ys);
         fn(target_locations.zs);
@@ -399,7 +397,7 @@ struct TurretEntityData {
         laser_damages.reserve(static_cast<std::size_t>(count));
         target_refresh_countdowns_periods.reserve(static_cast<std::size_t>(count));
         target_refresh_countdowns_remaining_ticks.reserve(static_cast<std::size_t>(count));
-        target_handles.reserve(static_cast<std::size_t>(count));
+        target_ids.reserve(static_cast<std::size_t>(count));
         target_locations.xs.reserve(static_cast<std::size_t>(count));
         target_locations.ys.reserve(static_cast<std::size_t>(count));
         target_locations.zs.reserve(static_cast<std::size_t>(count));
@@ -426,7 +424,7 @@ struct TurretEntityData {
         laser_damages.clear();
         target_refresh_countdowns_periods.clear();
         target_refresh_countdowns_remaining_ticks.clear();
-        target_handles.clear();
+        target_ids.clear();
         target_locations.xs.clear();
         target_locations.ys.clear();
         target_locations.zs.clear();
@@ -455,7 +453,7 @@ struct TurretEntityData {
         laser_damages.resize(size);
         target_refresh_countdowns_periods.resize(size);
         target_refresh_countdowns_remaining_ticks.resize(size);
-        target_handles.resize(size);
+        target_ids.resize(size);
         target_locations.xs.resize(size);
         target_locations.ys.resize(size);
         target_locations.zs.resize(size);
@@ -531,7 +529,7 @@ struct TurretEntityData {
                 target_refresh_countdowns_remaining_ticks[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
-            target_handles[index + i] = target_handles[source + i];
+            target_ids[index + i] = target_ids[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
             target_locations.xs[index + i] = target_locations.xs[source + i];
@@ -574,7 +572,7 @@ struct TurretEntityData {
              std::int32_t const new_laser_damages,
              std::int16_t const new_target_refresh_countdowns_periods,
              std::int16_t const new_target_refresh_countdowns_remaining_ticks,
-             RegistryEntityHandle const new_target_handles,
+             EntityUniqueId const new_target_ids,
              float const new_target_locations_xs,
              float const new_target_locations_ys,
              float const new_target_locations_zs,
@@ -600,7 +598,7 @@ struct TurretEntityData {
                        new_laser_damages,
                        new_target_refresh_countdowns_periods,
                        new_target_refresh_countdowns_remaining_ticks,
-                       new_target_handles,
+                       new_target_ids,
                        new_target_locations_xs,
                        new_target_locations_ys,
                        new_target_locations_zs,
@@ -626,7 +624,7 @@ struct TurretEntityData {
              std::int32_t const new_laser_damages,
              std::int16_t const new_target_refresh_countdowns_periods,
              std::int16_t const new_target_refresh_countdowns_remaining_ticks,
-             RegistryEntityHandle const new_target_handles,
+             EntityUniqueId const new_target_ids,
              float const new_target_locations_xs,
              float const new_target_locations_ys,
              float const new_target_locations_zs,
@@ -654,7 +652,7 @@ struct TurretEntityData {
             new_laser_damages,
             new_target_refresh_countdowns_periods,
             new_target_refresh_countdowns_remaining_ticks,
-            new_target_handles,
+            new_target_ids,
             new_target_locations_xs,
             new_target_locations_ys,
             new_target_locations_zs,
@@ -783,11 +781,10 @@ struct TurretEntityData {
                                                     sizeof(std::int16_t));
         }
         {
-            auto const address{ml::address_cast(source.target_handles.data())};
-            auto const begin{ml::address_cast(target_handles.data())};
+            auto const address{ml::address_cast(source.target_ids.data())};
+            auto const begin{ml::address_cast(target_ids.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + target_handles.size() *
-                                                           sizeof(RegistryEntityHandle));
+                                    address >= begin + target_ids.size() * sizeof(EntityUniqueId));
         }
         {
             auto const address{ml::address_cast(source.target_locations.xs)};
@@ -872,9 +869,8 @@ struct TurretEntityData {
             target_refresh_countdowns_remaining_ticks.end(),
             source.target_refresh_countdowns_remaining_ticks.data(),
             source.target_refresh_countdowns_remaining_ticks.data() + count);
-        target_handles.insert(target_handles.end(),
-                              source.target_handles.data(),
-                              source.target_handles.data() + count);
+        target_ids.insert(
+            target_ids.end(), source.target_ids.data(), source.target_ids.data() + count);
         target_locations.xs.insert(target_locations.xs.end(),
                                    source.target_locations.xs,
                                    source.target_locations.xs + count);
@@ -908,7 +904,7 @@ struct TurretEntityData {
             laser_damages,
             target_refresh_countdowns_periods,
             target_refresh_countdowns_remaining_ticks,
-            target_handles,
+            target_ids,
             target_locations.get_view(),
             target_velocities.get_view(),
             healths,
@@ -927,7 +923,7 @@ struct TurretEntityData {
             laser_damages,
             target_refresh_countdowns_periods,
             target_refresh_countdowns_remaining_ticks,
-            target_handles,
+            target_ids,
             target_locations.get_view(),
             target_velocities.get_view(),
             healths,
@@ -974,8 +970,8 @@ struct TurretEntityData {
             other.target_refresh_countdowns_periods[static_cast<std::size_t>(src_index)];
         target_refresh_countdowns_remaining_ticks[static_cast<std::size_t>(dst_index)] =
             other.target_refresh_countdowns_remaining_ticks[static_cast<std::size_t>(src_index)];
-        target_handles[static_cast<std::size_t>(dst_index)] =
-            other.target_handles[static_cast<std::size_t>(src_index)];
+        target_ids[static_cast<std::size_t>(dst_index)] =
+            other.target_ids[static_cast<std::size_t>(src_index)];
         target_locations.copy_element(dst_index, other.target_locations, src_index);
         target_velocities.copy_element(dst_index, other.target_velocities, src_index);
         healths[static_cast<std::size_t>(dst_index)] =
@@ -1045,9 +1041,9 @@ struct TurretEntityDataSingleLayout {
     inline static constexpr ColLayout<std::int16_t> TargetRefreshCountdownsPeriods{LaserDamages};
     inline static constexpr ColLayout<std::int16_t> TargetRefreshCountdownsRemainingTicks{
         TargetRefreshCountdownsPeriods};
-    inline static constexpr ColLayout<RegistryEntityHandle> TargetHandles{
+    inline static constexpr ColLayout<EntityUniqueId> TargetIds{
         TargetRefreshCountdownsRemainingTicks};
-    inline static constexpr ColLayout<float> TargetLocationsXs{TargetHandles};
+    inline static constexpr ColLayout<float> TargetLocationsXs{TargetIds};
     inline static constexpr ColLayout<float> TargetLocationsYs{TargetLocationsXs};
     inline static constexpr ColLayout<float> TargetLocationsZs{TargetLocationsYs};
     inline static constexpr ColLayout<float> TargetVelocitiesXs{TargetLocationsZs};
@@ -1073,7 +1069,7 @@ struct TurretEntityDataSingleLayout {
                                           LaserDamages,
                                           TargetRefreshCountdownsPeriods,
                                           TargetRefreshCountdownsRemainingTicks,
-                                          TargetHandles,
+                                          TargetIds,
                                           TargetLocationsXs,
                                           TargetLocationsYs,
                                           TargetLocationsZs,
@@ -1166,8 +1162,8 @@ struct TurretEntityDataSingleLayout {
         static_assert(sizeof(std::int16_t) <=
                       (max_allocation_size - TargetRefreshCountdownsRemainingTicks.block_offset) /
                           capacity_granularity);
-        static_assert(sizeof(RegistryEntityHandle) <=
-                      (max_allocation_size - TargetHandles.block_offset) / capacity_granularity);
+        static_assert(sizeof(EntityUniqueId) <=
+                      (max_allocation_size - TargetIds.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <= (max_allocation_size - TargetLocationsXs.block_offset) /
                                            capacity_granularity);
         static_assert(sizeof(float) <= (max_allocation_size - TargetLocationsYs.block_offset) /
@@ -1264,7 +1260,7 @@ struct SingleAllocationTurretEntityDataStorage
         Element<std::int32_t>* laser_damages{};
         Element<std::int16_t>* target_refresh_countdowns_periods{};
         Element<std::int16_t>* target_refresh_countdowns_remaining_ticks{};
-        Element<RegistryEntityHandle>* target_handles{};
+        Element<EntityUniqueId>* target_ids{};
         Element<float>* target_locations_xs{};
         Element<float>* target_locations_ys{};
         Element<float>* target_locations_zs{};
@@ -1293,7 +1289,7 @@ struct SingleAllocationTurretEntityDataStorage
                     laser_damages + offset,
                     target_refresh_countdowns_periods + offset,
                     target_refresh_countdowns_remaining_ticks + offset,
-                    target_handles + offset,
+                    target_ids + offset,
                     target_locations_xs + offset,
                     target_locations_ys + offset,
                     target_locations_zs + offset,
@@ -1387,13 +1383,12 @@ struct SingleAllocationTurretEntityDataStorage
             target_refresh_countdowns_periods_offset +
                 blocks * capacity_granularity * sizeof(std::int16_t) + column_gap,
             TargetRefreshCountdownsRemainingTicks.alignment)};
-        auto const target_handles_offset{ml::native_soa::layout_align(
+        auto const target_ids_offset{ml::native_soa::layout_align(
             target_refresh_countdowns_remaining_ticks_offset +
                 blocks * capacity_granularity * sizeof(std::int16_t) + column_gap,
-            TargetHandles.alignment)};
+            TargetIds.alignment)};
         auto const target_locations_xs_offset{ml::native_soa::layout_align(
-            target_handles_offset + blocks * capacity_granularity * sizeof(RegistryEntityHandle) +
-                column_gap,
+            target_ids_offset + blocks * capacity_granularity * sizeof(EntityUniqueId) + column_gap,
             TargetLocationsXs.alignment)};
         auto const target_locations_ys_offset{ml::native_soa::layout_align(
             target_locations_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
@@ -1435,7 +1430,7 @@ struct SingleAllocationTurretEntityDataStorage
             pointer_at(TargetRefreshCountdownsPeriods, target_refresh_countdowns_periods_offset),
             pointer_at(TargetRefreshCountdownsRemainingTicks,
                        target_refresh_countdowns_remaining_ticks_offset),
-            pointer_at(TargetHandles, target_handles_offset),
+            pointer_at(TargetIds, target_ids_offset),
             pointer_at(TargetLocationsXs, target_locations_xs_offset),
             pointer_at(TargetLocationsYs, target_locations_ys_offset),
             pointer_at(TargetLocationsZs, target_locations_zs_offset),
@@ -1472,7 +1467,7 @@ struct SingleAllocationTurretEntityDataStorage
             columns.target_refresh_countdowns_periods, count);
         std::uninitialized_value_construct_n<std::int16_t*>(
             columns.target_refresh_countdowns_remaining_ticks, count);
-        std::uninitialized_value_construct_n<RegistryEntityHandle*>(columns.target_handles, count);
+        std::uninitialized_value_construct_n<EntityUniqueId*>(columns.target_ids, count);
         std::uninitialized_value_construct_n<float*>(columns.target_locations_xs, count);
         std::uninitialized_value_construct_n<float*>(columns.target_locations_ys, count);
         std::uninitialized_value_construct_n<float*>(columns.target_locations_zs, count);
@@ -1538,7 +1533,7 @@ struct SingleAllocationTurretEntityDataStorage
         std::memcpy(columns.target_refresh_countdowns_remaining_ticks + index,
                     columns.target_refresh_countdowns_remaining_ticks + source,
                     laser_cooldowns_bytes);
-        std::memcpy(columns.target_handles + index, columns.target_handles + source, handles_bytes);
+        std::memcpy(columns.target_ids + index, columns.target_ids + source, entity_ids_bytes);
         std::memcpy(columns.target_locations_xs + index,
                     columns.target_locations_xs + source,
                     locations_xs_bytes);
@@ -1590,7 +1585,7 @@ struct SingleAllocationTurretEntityDataStorage
                aliases(source.laser_cooldowns.data()) || aliases(source.laser_damages.data()) ||
                aliases(source.target_refresh_countdowns_periods.data()) ||
                aliases(source.target_refresh_countdowns_remaining_ticks.data()) ||
-               aliases(source.target_handles.data()) || aliases(source.target_locations.xs) ||
+               aliases(source.target_ids.data()) || aliases(source.target_locations.xs) ||
                aliases(source.target_locations.ys) || aliases(source.target_locations.zs) ||
                aliases(source.target_velocities.xs) || aliases(source.target_velocities.ys) ||
                aliases(source.target_velocities.zs) || aliases(source.healths.data());
@@ -1637,7 +1632,7 @@ struct SingleAllocationTurretEntityDataStorage
         std::memcpy(destination.target_refresh_countdowns_remaining_ticks,
                     source.target_refresh_countdowns_remaining_ticks.data(),
                     laser_cooldowns_bytes);
-        std::memcpy(destination.target_handles, source.target_handles.data(), handles_bytes);
+        std::memcpy(destination.target_ids, source.target_ids.data(), entity_ids_bytes);
         std::memcpy(
             destination.target_locations_xs, source.target_locations.xs, locations_xs_bytes);
         std::memcpy(
@@ -1699,7 +1694,7 @@ struct SingleAllocationTurretEntityDataStorage
             std::memcpy(destination.target_refresh_countdowns_remaining_ticks,
                         source.target_refresh_countdowns_remaining_ticks,
                         laser_cooldowns_bytes);
-            std::memcpy(destination.target_handles, source.target_handles, handles_bytes);
+            std::memcpy(destination.target_ids, source.target_ids, entity_ids_bytes);
             std::memcpy(
                 destination.target_locations_xs, source.target_locations_xs, locations_xs_bytes);
             std::memcpy(
@@ -1810,9 +1805,9 @@ struct TurretEntityDataSingleConstView : ml::native_soa::CompactViewState<true> 
                         capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto target_handles() const -> std::span<RegistryEntityHandle const> {
-        return {column_data<RegistryEntityHandle>(
-                    TurretEntityDataSingleLayout::TargetHandles.offset(capacity_blocks())),
+    auto target_ids() const -> std::span<EntityUniqueId const> {
+        return {column_data<EntityUniqueId>(
+                    TurretEntityDataSingleLayout::TargetIds.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto view_target_locations() const -> ml::native_soa::Vector3ConstView<float> {
@@ -1899,8 +1894,8 @@ struct TurretEntityDataSingleConstView : ml::native_soa::CompactViewState<true> 
                  TurretEntityDataSingleLayout::TargetRefreshCountdownsRemainingTicks.offset(
                      blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
-                 TurretEntityDataSingleLayout::TargetHandles.offset(blocks)),
+            {column_data_unchecked<EntityUniqueId>(
+                 TurretEntityDataSingleLayout::TargetIds.offset(blocks)),
              static_cast<std::size_t>(count_)},
             Vectors3fConstView{{column_data_unchecked<float>(
                                     TurretEntityDataSingleLayout::TargetLocationsXs.offset(blocks)),
@@ -2019,9 +2014,9 @@ struct TurretEntityDataSingleView : ml::native_soa::CompactViewState<false> {
                         capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto target_handles() const -> std::span<RegistryEntityHandle> {
-        return {column_data<RegistryEntityHandle>(
-                    TurretEntityDataSingleLayout::TargetHandles.offset(capacity_blocks())),
+    auto target_ids() const -> std::span<EntityUniqueId> {
+        return {column_data<EntityUniqueId>(
+                    TurretEntityDataSingleLayout::TargetIds.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto view_target_locations() const -> ml::native_soa::Vector3View<float> {
@@ -2107,8 +2102,8 @@ struct TurretEntityDataSingleView : ml::native_soa::CompactViewState<false> {
                  TurretEntityDataSingleLayout::TargetRefreshCountdownsRemainingTicks.offset(
                      blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
-                 TurretEntityDataSingleLayout::TargetHandles.offset(blocks)),
+            {column_data_unchecked<EntityUniqueId>(
+                 TurretEntityDataSingleLayout::TargetIds.offset(blocks)),
              static_cast<std::size_t>(count_)},
             Vectors3fView{{column_data_unchecked<float>(
                                TurretEntityDataSingleLayout::TargetLocationsXs.offset(blocks)),

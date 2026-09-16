@@ -66,7 +66,8 @@ struct Sim {
                 &entity_registry,
                 get_fighter_handles(),
                 frame_changes_,
-                deaths_};
+                deaths_,
+                &agents_};
     }
     void reset_frame_output() {
         frame_changes_.clear();
@@ -99,11 +100,11 @@ struct Sim {
         -> std::span<RegistryEntityHandle const>;
     auto get_fighter_handles(IndexSpan span) const noexcept
         -> std::span<RegistryEntityHandle const>;
-    auto get_target_handle(std::int32_t index) const noexcept -> RegistryEntityHandle {
-        return entities.get_const_view().target_handles()[index];
+    auto get_target_id(std::int32_t index) const noexcept -> EntityUniqueId {
+        return entities.get_const_view().target_ids()[index];
     }
-    auto get_target_handles() const noexcept -> std::span<RegistryEntityHandle const> {
-        return entities.get_const_view().target_handles();
+    auto get_target_ids() const noexcept -> std::span<EntityUniqueId const> {
+        return entities.get_const_view().target_ids();
     }
     auto get_team(std::int32_t index) const noexcept -> Team {
         return entities.get_const_view().teams()[index];
@@ -118,7 +119,7 @@ struct Sim {
     /* **************************************** */
     void validate_array_sizes() const;
     void validate_entity_handles() const;
-    void set_target_handle(RegistryEntityHandle ship_handle, RegistryEntityHandle target_handle);
+    void set_target_id(RegistryEntityHandle ship_handle, EntityUniqueId target_id);
   private:
     /* **************************************** */
     // Sim phases

@@ -26,13 +26,13 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
 
     Vectors3f starts;
     Vectors3f ends;
-    std::vector<RegistryEntityHandle> targets{};
+    std::vector<EntityUniqueId> targets{};
     std::array<float, 3> const scales{0.5f, 1.f, 2.f};
     for (auto const scale : scales) {
         for (std::int32_t i{}; i < static_cast<std::int32_t>(locations.size()); ++i) {
             starts.add(ml::make_vector3f(0.f, 0.f, 0.f));
             ends.add(locations[i] * scale);
-            targets.push_back(expected[i]);
+            targets.push_back(harness.get_registry().get_current_id(expected[i]));
         }
     }
     std::vector<RegistryEntityHandle> results{};
@@ -57,8 +57,8 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
     }
     for (std::int32_t i{}; i < count; ++i) {
         auto const other{expected[(i + 1) % count]};
-        targets[i + count] = other;
-        targets[i + 2 * count] = other;
+        targets[i + count] = harness.get_registry().get_current_id(other);
+        targets[i + 2 * count] = harness.get_registry().get_current_id(other);
     }
     harness.get_simulation().get_spatial_query_manager().has_line_of_sight_to_targets(
         ml::make_vector3f(0.f, 0.f, 0.f), ends.get_const_view(), targets, has_los);

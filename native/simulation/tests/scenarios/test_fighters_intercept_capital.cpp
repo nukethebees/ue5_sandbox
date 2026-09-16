@@ -42,20 +42,20 @@ void run_worldless_fighters_intercept_capital(tests::SimulationFixture const& co
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     auto const& fighters{harness.get_simulation().get_fighters()};
     auto const hero{capitals.get_handle(0)};
-    auto const original_target{capitals.get_handle(1)};
-    auto const intercept_target{capitals.get_handle(2)};
+    auto const original_target{harness.get_registry().get_current_id(capitals.get_handle(1))};
+    auto const intercept_target{harness.get_registry().get_current_id(capitals.get_handle(2))};
 
     struct Sample {
-        RegistryEntityHandle parent_target;
-        std::vector<RegistryEntityHandle> fighter_targets{};
+        EntityUniqueId parent_target;
+        std::vector<EntityUniqueId> fighter_targets{};
     };
     ml::TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim&) {
         Sample sample;
-        sample.parent_target = capitals.get_target_handle(0);
+        sample.parent_target = capitals.get_target_id(0);
         for (auto const fighter_handle : capitals.get_fighter_handles(0)) {
             if (fighters.has_handle(fighter_handle)) {
-                sample.fighter_targets.push_back(fighters.get_target_handle(fighter_handle));
+                sample.fighter_targets.push_back(fighters.get_target_id(fighter_handle));
             }
         }
         samples.add(harness.get_time(), std::move(sample));

@@ -200,20 +200,16 @@ void Sim::prepare_tick(float const) {
 void Sim::refresh_target_data() {
     auto const entities{this->entities.get_view().columns()};
     auto const count{entities.num()};
-    ml::FrameArray<EntityUniqueId> target_ids{&frame_memory_resource};
     ml::FrameArray<std::int32_t> order{&frame_memory_resource};
     ml::FrameArray<std::uint8_t> alive{&frame_memory_resource};
-    target_ids.set_num(count);
     order.set_num(count);
     alive.set_num(count);
-    for (std::int32_t index{}; index < count; ++index) {
-        target_ids[index] = entity_registry.get_current_id(entities.target_handles[index]);
-    }
-    agents_.gather_targets(
-        target_ids, order, {entities.target_locations, entities.target_velocities, {}, alive});
+    agents_.gather_targets(entities.target_ids,
+                           order,
+                           {entities.target_locations, entities.target_velocities, {}, alive});
     for (std::int32_t index{}; index < count; ++index) {
         if (!alive[index]) {
-            entities.target_handles[index] = {};
+            entities.target_ids[index] = {};
         }
     }
 }
@@ -298,8 +294,8 @@ void Sim::prepare_entity_update_data() {
 auto Sim::get_num_instances() const noexcept -> std::int32_t {
     return entities.num();
 }
-auto Sim::get_target_handles() const -> std::span<RegistryEntityHandle const> {
-    return entities.get_const_view().target_handles();
+auto Sim::get_target_ids() const -> std::span<EntityUniqueId const> {
+    return entities.get_const_view().target_ids();
 }
 
 /* **************************************** */
@@ -352,32 +348,27 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
             continue;
         }
 
-        if (entities.target_handles[i].is_null()) {
+        if (!entities.target_ids[i].is_valid()) {
             auto const turret_location{entities.locations[i]};
             auto const this_team{entities.teams[i]};
 
-            ml::FixedArray<RegistryEntityHandle, 128> target_handles;
-            target_handles.set_num_uninitialised(
+            ml::FixedArray<EntityUniqueId, 128> target_ids;
+            target_ids.set_num_uninitialised(
                 spatial_query_manager.collect_non_team_entities_in_range(
-                    turret_location, this_team, radius, target_handles.capacity_view()));
+                    turret_location, this_team, radius, target_ids.capacity_view()));
 
-            entities.target_handles[i] = RegistryEntityHandle{};
+            entities.target_ids[i] = EntityUniqueId{};
 
-            auto const target_count{target_handles.num()};
+            auto const target_count{target_ids.num()};
             auto const count{static_cast<std::size_t>(target_count)};
             has_line_of_sight.set_num_uninitialised(target_count);
             Vectors3fView const candidate_locations_view{std::span{candidate_xs}.first(count),
                                                          std::span{candidate_ys}.first(count),
                                                          std::span{candidate_zs}.first(count)};
-            std::array<EntityUniqueId, 128> target_ids{};
             std::array<std::int32_t, 128> order{};
             std::array<Team, 128> teams{};
             std::array<std::uint8_t, 128> alive{};
-            for (std::int32_t target_index{}; target_index < target_count; ++target_index) {
-                target_ids[target_index] =
-                    entity_registry.get_current_id(target_handles[target_index]);
-            }
-            agents_.gather_targets(std::span{target_ids}.first(count),
+            agents_.gather_targets(target_ids,
                                    std::span{order}.first(count),
                                    {candidate_locations_view,
                                     {},
@@ -387,7 +378,7 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
             spatial_query_manager.has_line_of_sight_to_targets(
                 entities.fire_point_locations[i],
                 candidate_locations_view.get_const_view(),
-                target_handles,
+                target_ids,
                 has_line_of_sight);
 
             if (target_count > 0) {
@@ -403,13 +394,13 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
                             continue;
                         }
 
-                        auto const candidate{target_handles[element]};
+                        auto const candidate{target_ids[element]};
                         if (alive[element] && teams[element] != this_team) {
-                            entities.target_handles[i] = candidate;
+                            entities.target_ids[i] = candidate;
                             break;
                         }
                     }
-                    if (!entities.target_handles[i].is_null()) {
+                    if (entities.target_ids[i].is_valid()) {
                         break;
                     }
                 }
@@ -440,12 +431,12 @@ void Sim::fire_at_enemies() {
         ml::TickCountdownView<std::int16_t>{entities.laser_cooldowns, cooldown_restart_ticks_}};
     for (std::int32_t index{}; index < count; ++index) {
         auto const element{static_cast<std::size_t>(index)};
-        auto& target{entities.target_handles[element]};
-        if (target.is_null()) {
+        auto& target{entities.target_ids[element]};
+        if (!target.is_valid()) {
             continue;
         }
-        if (!agents_.read_alive(entity_registry.get_current_id(target))) {
-            target.reset();
+        if (!agents_.read_alive(target)) {
+            target = {};
             continue;
         }
         if (!cooldowns.is_ready(element)) {
@@ -453,7 +444,7 @@ void Sim::fire_at_enemies() {
         }
         if (HMM_LenSqrV3(entities.locations[index] - entities.target_locations[index]) >=
             disengage_radius_squared) {
-            target.reset();
+            target = {};
             continue;
         }
 
@@ -479,7 +470,8 @@ void Sim::fire_at_enemies() {
     for (std::int32_t candidate{}; candidate < candidate_count; ++candidate) {
         auto const index{candidate_indices[candidate]};
         auto const element{static_cast<std::size_t>(index)};
-        if (hit_handles[candidate] != entities.target_handles[element]) {
+        if (entity_registry.get_current_id(hit_handles[candidate]) !=
+            entities.target_ids[element]) {
             continue;
         }
 

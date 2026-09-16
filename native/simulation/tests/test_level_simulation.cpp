@@ -259,10 +259,11 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     auto const& capitals{simulation.get_capital_ships()};
-    tests::expect_true(capitals.get_target_handle(0) == capitals.get_handle(1),
+    tests::expect_true(capitals.get_target_id(0) ==
+                           simulation.get_entity_registry().get_current_id(capitals.get_handle(1)),
                        "Compiled capital target index maps to its registered handle");
     auto const* player{simulation.get_player_ship_simulation()};
-    tests::expect_true(capitals.get_target_handle(1) == player->registry_handle,
+    tests::expect_true(capitals.get_target_id(1) == player->unique_entity_id,
                        "Compiled player entity index maps to the player handle");
     tests::expect_equal(simulation.get_entity_registry().get_num_alive_active_entities(),
                         5,

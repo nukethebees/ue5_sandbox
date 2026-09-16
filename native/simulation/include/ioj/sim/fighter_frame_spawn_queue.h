@@ -14,13 +14,13 @@ struct FrameSpawnQueue {
              Rotator3f rotation,
              Team team,
              EntityUniqueId parent,
-             RegistryEntityHandle target);
+             EntityUniqueId target);
     auto get_const_view() const -> FighterSpawnQueueConstView;
 
     FrameVectors3f locations;
     FrameRotators3f rotations;
     ml::FrameArray<Team> teams;
     ml::FrameArray<EntityUniqueId> parents;
-    ml::FrameArray<RegistryEntityHandle> targets;
+    ml::FrameArray<EntityUniqueId> targets;
 };
 }

@@ -119,7 +119,7 @@ void FFighterPresentation::draw_debug_shapes() {
         if (enable_ship_location_debug_drawing) {
             debug_drawer.draw_sphere(ship_location);
         }
-        if (enable_target_debug_drawing && data.target_handles[i].is_valid()) {
+        if (enable_target_debug_drawing && data.target_ids[i].is_valid()) {
             debug_drawer.draw_line(ship_location, FVector{ml::to_unreal(data.target_locations[i])});
         }
     }

@@ -59,8 +59,8 @@ class CommandInterface {
         fighters.set_parent_id(fighter, parent);
     }
 
-    std::span<RegistryEntityHandle const> get_target_handles() const noexcept {
-        return fighters.get_target_handles();
+    std::span<EntityUniqueId const> get_target_ids() const noexcept {
+        return fighters.get_target_ids();
     }
 
     private:

@@ -83,14 +83,14 @@ void LevelSpawnManager::spawn(LevelSpawnGroupsConstView const groups) {
 
 void LevelSpawnManager::spawn_capitals(LevelCapitalSpawnEventsConstView const events) {
     auto const count{events.num()};
-    target_handles_scratch_.resize(static_cast<std::size_t>(count));
+    target_ids_scratch_.resize(static_cast<std::size_t>(count));
     for (std::int32_t i{}; i < count; ++i) {
-        target_handles_scratch_[i].reset();
+        target_ids_scratch_[i] = {};
     }
 
     auto const size{static_cast<std::size_t>(count)};
     CapitalSpawnDataConstView const spawn_data{
-        .target_handles = {target_handles_scratch_.data(), size},
+        .target_ids = {target_ids_scratch_.data(), size},
         .locations = events.locations,
         .rotations = events.rotations,
         .teams = events.teams,
@@ -112,7 +112,9 @@ void LevelSpawnManager::resolve_capital_targets(LevelCapitalSpawnEventsConstView
         auto const target_index{events.target_entity_indices[i]};
         if (target_index != -1) {
             auto const source_handle{get_handle(events.entity_indices[i])};
-            capital_ships_.set_target_handle(source_handle, get_handle(target_index));
+            capital_ships_.set_target_id(
+                source_handle,
+                capital_ships_.get_entity_registry().get_current_id(get_handle(target_index)));
         }
     }
 }

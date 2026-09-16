@@ -25,7 +25,7 @@
     (method set_parent_id void
       (parameter fighter @native_registry_handle)
       (parameter parent @native_unique_id))
-    (method get_target_handles "std::span<RegistryEntityHandle const>"
+    (method get_target_ids "std::span<EntityUniqueId const>"
       :const true
       :noexcept true)))
 

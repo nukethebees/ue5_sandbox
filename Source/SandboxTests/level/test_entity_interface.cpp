@@ -1,3 +1,4 @@
+#include <ioj/sim/agent_accessor.h>
 #include "test_entity_interface_scenario.h"
 
 #include <ioj/sim/capital_ships/sim.h>
@@ -114,14 +115,14 @@ void FEntityInterfaceScenario::spawn_fixture() {
 void FEntityInterfaceScenario::initial_setup() {
     initialise_test_driver();
     test_driver->orchestrator.start_simulation();
-    begin_timed_sampling(test_time,
-                         FOrchestratorEndTickTestHook::CreateRaw(
-                             this, &FEntityInterfaceScenario::on_end_tick),
-                         capital_proxy_counts,
-                         turret_proxy_counts,
-                         spinner_proxy_counts,
-                         capital_target_handles,
-                         capital_target_alive);
+    begin_timed_sampling(
+        test_time,
+        FOrchestratorEndTickTestHook::CreateRaw(this, &FEntityInterfaceScenario::on_end_tick),
+        capital_proxy_counts,
+        turret_proxy_counts,
+        spinner_proxy_counts,
+        capital_target_ids,
+        capital_target_alive);
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -134,15 +135,15 @@ void FEntityInterfaceScenario::sample_values() {
     spinner_proxy_counts.add(time, get_actors<ATestTubeSpinnerProxy>(context_.world).Num());
 
     auto const* const capitals{test_driver->orchestrator.get_capital_ships()};
-    TArray<::ioj::sim::RegistryEntityHandle> target_handles;
-    auto const handles{capitals->get_target_handles()};
-    target_handles.Append(handles.data(), static_cast<int32>(handles.size()));
-    capital_target_handles.add(time, MoveTemp(target_handles));
+    TArray<::ioj::sim::EntityUniqueId> target_ids;
+    auto const handles{capitals->get_target_ids()};
+    target_ids.Append(handles.data(), static_cast<int32>(handles.size()));
+    capital_target_ids.add(time, MoveTemp(target_ids));
 
     TArray<uint8> target_alive;
-    auto const& registry{test_driver->orchestrator.get_entity_registry()};
-    for (auto const handle : capitals->get_target_handles()) {
-        target_alive.Add(registry.is_valid_alive(handle));
+    auto const& agents{*capitals->get_read_view().agents};
+    for (auto const handle : capitals->get_target_ids()) {
+        target_alive.Add(agents.is_alive(handle));
     }
     capital_target_alive.add(time, MoveTemp(target_alive));
 }
@@ -161,7 +162,7 @@ void FEntityInterfaceScenario::check_no_proxies_alive(int32 const sample_index) 
 }
 
 void FEntityInterfaceScenario::check_capital_targets(int32 const sample_index) {
-    auto const& handles{capital_target_handles.value_at(sample_index)};
+    auto const& handles{capital_target_ids.value_at(sample_index)};
     auto const& alive{capital_target_alive.value_at(sample_index)};
     for (int32 i{0}; i < handles.Num(); ++i) {
         checks.is_true(alive[i] != 0, FString::Printf(TEXT("Target check: %d"), i));
@@ -169,7 +170,7 @@ void FEntityInterfaceScenario::check_capital_targets(int32 const sample_index) {
 }
 
 void FEntityInterfaceScenario::main_checks() {
-    auto const sample_index{capital_target_handles.nearest_index(test_time)};
+    auto const sample_index{capital_target_ids.nearest_index(test_time)};
     check_no_proxies_alive(sample_index);
     check_capital_targets(sample_index);
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);

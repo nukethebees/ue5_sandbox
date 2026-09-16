@@ -233,10 +233,10 @@ auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
               uint64{0});
     simulation.advance(dt);
     TestTrue(TEXT("Turret has no enemy before the scheduled spawn"),
-             simulation.get_turrets().get_target_handles()[0].is_null());
+             !simulation.get_turrets().get_target_ids()[0].is_valid());
     simulation.advance(dt);
     TestTrue(TEXT("Thinking cannot acquire an entity created later in Action"),
-             simulation.get_turrets().get_target_handles()[0].is_null());
+             !simulation.get_turrets().get_target_ids()[0].is_valid());
     auto const spawned_handle{simulation.get_capital_ships().get_handle(1)};
     auto const spawn_hit{simulation.get_spatial_query_manager().trace_closest(
         ml::make_vector3f(980.f, 0.f, 0.f), ml::make_vector3f(1020.f, 0.f, 0.f))};
@@ -244,8 +244,9 @@ auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
              spawn_hit.hit && spawn_hit.entity == spawned_handle);
     simulation.advance(dt);
     TestTrue(TEXT("Thinking acquires the spawned enemy on the following tick"),
-             simulation.get_turrets().get_target_handles()[0] ==
-                 simulation.get_capital_ships().get_handle(1));
+             simulation.get_turrets().get_target_ids()[0] ==
+                 simulation.get_entity_registry().get_current_id(
+                     simulation.get_capital_ships().get_handle(1)));
     return true;
 }
 

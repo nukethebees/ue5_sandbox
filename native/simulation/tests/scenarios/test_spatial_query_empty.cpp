@@ -17,12 +17,12 @@ void run_worldless_spatial_query_empty(tests::SimulationFixture const& config) {
     queries.trace_line_of_sight(starts.get_const_view(), ends.get_const_view(), handles);
     std::vector<std::uint8_t> line_of_sight{};
     queries.has_line_of_sight_to_targets(
-        ml::make_vector3f(0.f, 0.f, 0.f), ends.get_const_view(), handles, line_of_sight);
-    std::vector<RegistryEntityHandle> results{};
+        ml::make_vector3f(0.f, 0.f, 0.f), ends.get_const_view(), {}, line_of_sight);
+    std::vector<EntityUniqueId> results{};
     auto const count{queries.collect_non_team_entities_in_range(
         ml::make_vector3f(0.f, 0.f, 0.f), Team::Blue, 1000.f, results)};
     tests::expect_equal(count, 0, "Empty range query has no results");
-    tests::expect_true(queries.get_any_non_team_entity(Team::Blue).is_null(),
+    tests::expect_true(!queries.get_any_non_team_entity(Team::Blue).is_valid(),
                        "Empty world has no arbitrary enemy");
 }
 
@@ -39,13 +39,15 @@ void run_worldless_spatial_query_range(tests::SimulationFixture const& config) {
     auto const ignored_origin{harness.get_simulation().get_capital_ships().get_handle(0)};
     auto const friendly{harness.get_simulation().get_capital_ships().get_handle(1)};
     auto const boundary_enemy{harness.get_simulation().get_capital_ships().get_handle(2)};
-    std::array<RegistryEntityHandle, 4> results;
+    std::array<EntityUniqueId, 4> results;
     auto const count{
         harness.get_simulation().get_spatial_query_manager().collect_non_team_entities_in_range(
             ml::make_vector3f(0.f, 0.f, 0.f), Team::Blue, 1000.f, results)};
     tests::expect_equal(count, 1, "Only one enemy is within the inclusive radius");
     if (count == 1) {
-        tests::expect_equal(boundary_enemy, results[0], "Boundary enemy is included");
+        tests::expect_equal(harness.get_registry().get_current_id(boundary_enemy),
+                            results[0],
+                            "Boundary enemy is included");
     }
 
     std::array<EntityUniqueId, 4> ids;

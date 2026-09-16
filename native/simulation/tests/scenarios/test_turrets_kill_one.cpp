@@ -56,8 +56,8 @@ void run_worldless_turret_combat(tests::SimulationFixture const& config,
     if (scenario == TurretCombatScenario::KillEnemy) {
         tests::expect_equal(1, registry.count_kills(), "One turret is killed");
         tests::expect_equal(6, registry.count_alive(), "Hero turrets remain alive");
-        for (auto const target : harness.get_simulation().get_turrets().get_target_handles()) {
-            tests::expect_true(target.is_null(), "Targets clear after the enemy dies");
+        for (auto const target : harness.get_simulation().get_turrets().get_target_ids()) {
+            tests::expect_true(!target.is_valid(), "Targets clear after the enemy dies");
         }
         return;
     }
@@ -113,7 +113,7 @@ void run_worldless_turret_search_requires_line_of_sight(tests::SimulationFixture
     harness.timeline.finish_at(1.0);
     tests::expect_true(harness.run_until_timeline_finished(1.5),
                        "Turret search timeline completes");
-    auto const targets{harness.get_simulation().get_turrets().get_target_handles()};
+    auto const targets{harness.get_simulation().get_turrets().get_target_ids()};
     tests::expect_equal(
         3, static_cast<std::int32_t>(targets.size()), "All turret targets are available");
     if (static_cast<std::int32_t>(targets.size()) != 3) {
@@ -121,10 +121,11 @@ void run_worldless_turret_search_requires_line_of_sight(tests::SimulationFixture
     }
     tests::expect_true(targets[0].is_valid(), "Blue turret selects a visible target");
     if (targets[0].is_valid()) {
-        tests::expect_distance_near(Vector3f{{1000.f, 1000.f, 0.f}},
-                                    harness.get_registry().get_location(targets[0]),
-                                    1.f,
-                                    "Blue turret skips the blocked enemy");
+        tests::expect_distance_near(
+            Vector3f{{1000.f, 1000.f, 0.f}},
+            harness.get_simulation().get_agent_accessor().read_alive(targets[0])->location,
+            1.f,
+            "Blue turret skips the blocked enemy");
     }
 }
 

@@ -41,7 +41,7 @@
     (member avoidance_clear_scan_counts array uint8)
     (member attack_reposition_countdowns array int16)
     (member attack_cooldowns array int16)
-    (member target_handles array @native_registry_handle)
+    (member target_ids array @native_unique_id)
     (member target_locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member target_velocities nested @native_vectors_3f :nested-schema Vectors3f)
     (member target_directions nested @native_vectors_3f :nested-schema Vectors3f)
@@ -76,7 +76,7 @@
     (member teams array @native_team)
     (member healths array @native_health)
     (member fighter_handle_spans array @native_index_span)
-    (member target_handles array @native_registry_handle)
+    (member target_ids array @native_unique_id)
     (single-allocation SingleAllocationCapitalEntityData)))
 
 (soa-module lasers_soa
@@ -140,7 +140,7 @@
     (member rotations nested @native_rotators_3f :nested-schema Rotators3f)
     (member teams array @native_team)
     (member parents array @native_unique_id)
-    (member targets array @native_registry_handle)
+    (member targets array @native_unique_id)
     (single-allocation SingleAllocationFighterSpawnQueue)))
 
 (soa-module turrets_soa
@@ -170,7 +170,7 @@
     (member laser_damages array int32)
     (member target_refresh_countdowns_periods array int16)
     (member target_refresh_countdowns_remaining_ticks array int16)
-    (member target_handles array @native_registry_handle)
+    (member target_ids array @native_unique_id)
     (member target_locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member target_velocities nested @native_vectors_3f :nested-schema Vectors3f)
     (member healths array @native_health)
@@ -216,7 +216,7 @@
     (member rolls array float))
   (struct CapitalSpawnData
     :operations (all)
-    (member target_handles array @native_registry_handle)
+    (member target_ids array @native_unique_id)
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member rotations nested @native_rotators_3f :nested-schema Rotators3f)
     (member teams array @native_team)

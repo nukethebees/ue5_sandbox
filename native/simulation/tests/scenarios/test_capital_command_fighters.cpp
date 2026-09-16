@@ -16,7 +16,7 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     auto const& fighters{harness.get_simulation().get_fighters()};
     auto const first_target{capitals.get_handle(1)};
-    RegistryEntityHandle second_target;
+    EntityUniqueId second_target;
     SimTick final_kill_tick{};
     harness.on_end_tick = [&](LevelSim& simulation) {
         if (final_kill_tick != 0 &&
@@ -30,8 +30,8 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
     harness.timeline
         .then_after(2.0 / 60.0,
                     [&] {
-                        tests::expect_equal(first_target,
-                                            capitals.get_target_handle(0),
+                        tests::expect_equal(harness.get_registry().get_current_id(first_target),
+                                            capitals.get_target_id(0),
                                             "Capital initially retains its configured target");
                         tests::expect_greater(
                             static_cast<std::int32_t>(capitals.get_fighter_handles(0).size()),
@@ -42,12 +42,14 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
         .then_after(
             3.0 / 60.0,
             [&] {
-                second_target = capitals.get_target_handle(0);
-                tests::expect_true(second_target.is_valid() && second_target != first_target,
+                second_target = capitals.get_target_id(0);
+                tests::expect_true(second_target.is_valid() &&
+                                       second_target !=
+                                           harness.get_registry().get_current_id(first_target),
                                    "Capital retargets after its first target dies");
                 for (auto const fighter_handle : capitals.get_fighter_handles(0)) {
                     tests::expect_equal(second_target,
-                                        fighters.get_target_handle(fighter_handle),
+                                        fighters.get_target_id(fighter_handle),
                                         "Fighter follows the replacement capital target");
                 }
                 auto const enemies{harness.get_registry().get_handles_not_in_team(Team::Green)};

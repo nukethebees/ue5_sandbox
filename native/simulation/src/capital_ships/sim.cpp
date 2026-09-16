@@ -76,21 +76,21 @@ void Sim::think(float const) {
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::think");
 
     auto const entities{this->entities.get_view().columns()};
-    for (auto& target : entities.target_handles) {
-        if (!agents_.read_alive(entity_registry.get_current_id(target))) {
+    for (auto& target : entities.target_ids) {
+        if (!agents_.read_alive(target)) {
             target = {};
         }
     }
     ml::FrameArray<std::int32_t> indices_without_targets{&frame_memory_resource};
-    auto const n_capitals{static_cast<std::int32_t>(entities.target_handles.size())};
+    auto const n_capitals{static_cast<std::int32_t>(entities.target_ids.size())};
     indices_without_targets.reserve(n_capitals);
     for (std::int32_t index{}; index < n_capitals; ++index) {
-        if (entities.target_handles[index].is_null()) {
+        if (!entities.target_ids[index].is_valid()) {
             indices_without_targets.add(index);
         }
     }
     for (auto const index : indices_without_targets) {
-        entities.target_handles[index] = spatial_query_manager.get_any_non_team_entity(
+        entities.target_ids[index] = spatial_query_manager.get_any_non_team_entity(
             entities.teams[index], EntityType::CapitalShip);
     }
     queue_fighter_spawns();
@@ -260,7 +260,7 @@ void Sim::spawn_ships(CapitalSpawnDataConstView const spawn_data) {
         appended.fighter_spawn_cooldowns[index] = spawn_data.spawn_cooldowns[index];
         appended.teams[index] = spawn_data.teams[index];
         appended.healths[index] = spawn_data.healths[index];
-        appended.target_handles[index] = spawn_data.target_handles[index];
+        appended.target_ids[index] = spawn_data.target_ids[index];
     }
     validate_array_sizes();
 }
@@ -306,7 +306,7 @@ void Sim::queue_fighter_spawns() {
                                                0.f,
                                                ships_ready_to_spawn_fighters_indices.data()));
     for (auto index{ships_ready_to_spawn_fighters_indices.num() - 1}; index >= 0; --index) {
-        if (entities.target_handles[ships_ready_to_spawn_fighters_indices[index]].is_null()) {
+        if (!entities.target_ids[ships_ready_to_spawn_fighters_indices[index]].is_valid()) {
             ships_ready_to_spawn_fighters_indices.remove_at_swap(index);
         }
     }
@@ -343,7 +343,7 @@ void Sim::queue_fighter_spawns() {
                                    to_float(new_transform.rotator()),
                                    entities.teams[capital_index],
                                    entities.entity_ids[capital_index],
-                                   entities.target_handles[capital_index]);
+                                   entities.target_ids[capital_index]);
         }
         auto const spawn_wave{fighter_spawn_wave.get_const_view()};
         fighters_interface.queue_spawns(spawn_wave);
@@ -395,11 +395,11 @@ void Sim::queue_fighter_orders() {
     SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::queue_fighter_orders");
 
     auto const n_capitals{get_num_instances()};
-    auto const fighter_targets{fighters_interface.get_target_handles()};
+    auto const fighter_targets{fighters_interface.get_target_ids()};
     auto const entities{this->entities.get_const_view().columns()};
     fighter_order_queue.reset();
     for (std::int32_t capital_index{}; capital_index < n_capitals; ++capital_index) {
-        auto const capital_target{entities.target_handles[capital_index]};
+        auto const capital_target{entities.target_ids[capital_index]};
         auto const span{entities.fighter_handle_spans[capital_index]};
         auto const end{span.end()};
         assert(span.offset >= 0 && span.count >= 0);
@@ -408,7 +408,7 @@ void Sim::queue_fighter_orders() {
         for (auto index{span.start()}; index < end; ++index) {
             auto const fighter{fighter_handles[static_cast<std::size_t>(index)]};
             auto const fighter_id{entity_registry.get_current_id(fighter)};
-            if (capital_target.is_null()) {
+            if (!capital_target.is_valid()) {
                 fighter_order_queue.add(fighter_id,
                                         FighterOrder{.task = 1, .target = 1},
                                         FighterTask::Standby,
@@ -419,7 +419,7 @@ void Sim::queue_fighter_orders() {
             auto const fighter_index{agents_.indexes().find(fighter_id)};
             assert(fighter_index >= 0);
             auto const target{fighter_targets[fighter_index]};
-            if (!agents_.read_alive(entity_registry.get_current_id(target))) {
+            if (!agents_.read_alive(target)) {
                 fighter_order_queue.add(
                     fighter_id, FighterOrder{.task = 0, .target = 1}, {}, capital_target);
             }
@@ -434,15 +434,14 @@ void Sim::queue_fighter_orders() {
 /* **************************************** */
 // Targets
 /* **************************************** */
-void Sim::set_target_handle(RegistryEntityHandle const ship_handle,
-                            RegistryEntityHandle const target_handle) {
+void Sim::set_target_id(RegistryEntityHandle const ship_handle, EntityUniqueId const target_id) {
     assert(entity_registry.is_valid_handle(ship_handle));
-    assert(entity_registry.is_valid_handle(target_handle));
+    assert(entity_registry.is_valid_unique_id(target_id));
     auto const entities{this->entities.get_view().columns()};
     auto const found{std::ranges::find(entities.handles, ship_handle)};
     assert(found != entities.handles.end());
     auto const entity_index{std::distance(entities.handles.begin(), found)};
-    entities.target_handles[entity_index] = target_handle;
+    entities.target_ids[entity_index] = target_id;
 }
 
 /* **************************************** */

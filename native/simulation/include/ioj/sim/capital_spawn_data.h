@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "ioj/sim/entity_handle.h"
 #include "ioj/sim/entity_types.h"
+#include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/health.h"
 #include "ioj/sim/rotators3f.h"
 #include "ioj/sim/vectors3f.h"
@@ -23,18 +23,18 @@ struct CapitalSpawnDataConstView {
     using View = CapitalSpawnDataView;
     using ConstView = CapitalSpawnDataConstView;
     using size_type = std::int32_t;
-    std::span<RegistryEntityHandle const> target_handles;
+    std::span<EntityUniqueId const> target_ids;
     Vectors3fConstView locations;
     Rotators3fConstView rotations;
     std::span<Team const> teams;
     std::span<Health const> healths;
     std::span<float const> initial_spawn_delays;
     std::span<float const> spawn_cooldowns;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(target_handles.size()); }
+    auto num() const noexcept -> size_type { return static_cast<size_type>(target_ids.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
     void each_column(Fn&& fn) const {
-        fn(target_handles);
+        fn(target_ids);
         fn(locations.xs_span());
         fn(locations.ys_span());
         fn(locations.zs_span());
@@ -56,8 +56,7 @@ struct CapitalSpawnDataConstView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
         return {
-            target_handles.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
+            target_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             locations.slice(offset, count),
             rotations.slice(offset, count),
             teams.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -75,7 +74,7 @@ struct CapitalSpawnDataConstView {
     }
     auto get_const_view() const -> ConstView {
         return {
-            target_handles,
+            target_ids,
             locations.get_const_view(),
             rotations.get_const_view(),
             teams,
@@ -96,18 +95,18 @@ struct CapitalSpawnDataView {
     using View = CapitalSpawnDataView;
     using ConstView = CapitalSpawnDataConstView;
     using size_type = std::int32_t;
-    std::span<RegistryEntityHandle> target_handles;
+    std::span<EntityUniqueId> target_ids;
     Vectors3fView locations;
     Rotators3fView rotations;
     std::span<Team> teams;
     std::span<Health> healths;
     std::span<float> initial_spawn_delays;
     std::span<float> spawn_cooldowns;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(target_handles.size()); }
+    auto num() const noexcept -> size_type { return static_cast<size_type>(target_ids.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
     void each_column(Fn&& fn) const {
-        fn(target_handles);
+        fn(target_ids);
         fn(locations.xs_span());
         fn(locations.ys_span());
         fn(locations.zs_span());
@@ -129,8 +128,7 @@ struct CapitalSpawnDataView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
         return {
-            target_handles.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
+            target_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             locations.slice(offset, count),
             rotations.slice(offset, count),
             teams.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -147,7 +145,7 @@ struct CapitalSpawnDataView {
     }
     auto get_const_view() const -> ConstView {
         return {
-            target_handles,
+            target_ids,
             locations.get_const_view(),
             rotations.get_const_view(),
             teams,
@@ -164,7 +162,7 @@ struct CapitalSpawnDataView {
         return slice(num() - count, count);
     }
     void set(size_type const index,
-             RegistryEntityHandle const new_target_handles,
+             EntityUniqueId const new_target_ids,
              float const new_locations_xs,
              float const new_locations_ys,
              float const new_locations_zs,
@@ -176,7 +174,7 @@ struct CapitalSpawnDataView {
              float const new_initial_spawn_delays,
              float const new_spawn_cooldowns) const {
         ml::native_soa::require(index >= 0 && index < num());
-        target_handles[static_cast<std::size_t>(index)] = new_target_handles;
+        target_ids[static_cast<std::size_t>(index)] = new_target_ids;
         locations.xs[static_cast<std::size_t>(index)] = new_locations_xs;
         locations.ys[static_cast<std::size_t>(index)] = new_locations_ys;
         locations.zs[static_cast<std::size_t>(index)] = new_locations_zs;
@@ -193,18 +191,18 @@ struct CapitalSpawnData {
     using View = CapitalSpawnDataView;
     using ConstView = CapitalSpawnDataConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<RegistryEntityHandle> target_handles;
+    ml::native_soa::Vector<EntityUniqueId> target_ids;
     Vectors3f locations;
     Rotators3f rotations;
     ml::native_soa::Vector<Team> teams;
     ml::native_soa::Vector<Health> healths;
     ml::native_soa::Vector<float> initial_spawn_delays;
     ml::native_soa::Vector<float> spawn_cooldowns;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(target_handles.size()); }
+    auto num() const noexcept -> size_type { return static_cast<size_type>(target_ids.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
     void each_column(Fn&& fn) {
-        fn(target_handles);
+        fn(target_ids);
         fn(locations.xs);
         fn(locations.ys);
         fn(locations.zs);
@@ -218,7 +216,7 @@ struct CapitalSpawnData {
     }
     template <typename Fn>
     void each_column(Fn&& fn) const {
-        fn(target_handles);
+        fn(target_ids);
         fn(locations.xs);
         fn(locations.ys);
         fn(locations.zs);
@@ -233,7 +231,7 @@ struct CapitalSpawnData {
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
     void reserve(size_type const count) {
         ml::native_soa::require(count >= 0);
-        target_handles.reserve(static_cast<std::size_t>(count));
+        target_ids.reserve(static_cast<std::size_t>(count));
         locations.xs.reserve(static_cast<std::size_t>(count));
         locations.ys.reserve(static_cast<std::size_t>(count));
         locations.zs.reserve(static_cast<std::size_t>(count));
@@ -246,7 +244,7 @@ struct CapitalSpawnData {
         spawn_cooldowns.reserve(static_cast<std::size_t>(count));
     }
     void reset() noexcept {
-        target_handles.clear();
+        target_ids.clear();
         locations.xs.clear();
         locations.ys.clear();
         locations.zs.clear();
@@ -261,7 +259,7 @@ struct CapitalSpawnData {
     void set_num(size_type const count) {
         ml::native_soa::require(count >= 0);
         auto const size{static_cast<std::size_t>(count)};
-        target_handles.resize(size);
+        target_ids.resize(size);
         locations.xs.resize(size);
         locations.ys.resize(size);
         locations.zs.resize(size);
@@ -287,7 +285,7 @@ struct CapitalSpawnData {
         auto const moved{std::min(count, old_num - index - count)};
         auto const source{old_num - moved};
         for (size_type i{}; i < moved; ++i) {
-            target_handles[index + i] = target_handles[source + i];
+            target_ids[index + i] = target_ids[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
             locations.xs[index + i] = locations.xs[source + i];
@@ -322,7 +320,7 @@ struct CapitalSpawnData {
         set_num(old_num - count);
     }
     void set(size_type const index,
-             RegistryEntityHandle const new_target_handles,
+             EntityUniqueId const new_target_ids,
              float const new_locations_xs,
              float const new_locations_ys,
              float const new_locations_zs,
@@ -334,7 +332,7 @@ struct CapitalSpawnData {
              float const new_initial_spawn_delays,
              float const new_spawn_cooldowns) {
         get_view().set(index,
-                       new_target_handles,
+                       new_target_ids,
                        new_locations_xs,
                        new_locations_ys,
                        new_locations_zs,
@@ -346,7 +344,7 @@ struct CapitalSpawnData {
                        new_initial_spawn_delays,
                        new_spawn_cooldowns);
     }
-    auto add(RegistryEntityHandle const new_target_handles,
+    auto add(EntityUniqueId const new_target_ids,
              float const new_locations_xs,
              float const new_locations_ys,
              float const new_locations_zs,
@@ -360,7 +358,7 @@ struct CapitalSpawnData {
         auto const index{num()};
         add_defaulted(1);
         set(index,
-            new_target_handles,
+            new_target_ids,
             new_locations_xs,
             new_locations_ys,
             new_locations_zs,
@@ -381,11 +379,10 @@ struct CapitalSpawnData {
             return;
         }
         {
-            auto const address{ml::address_cast(source.target_handles.data())};
-            auto const begin{ml::address_cast(target_handles.data())};
+            auto const address{ml::address_cast(source.target_ids.data())};
+            auto const begin{ml::address_cast(target_ids.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + target_handles.size() *
-                                                           sizeof(RegistryEntityHandle));
+                                    address >= begin + target_ids.size() * sizeof(EntityUniqueId));
         }
         {
             auto const address{ml::address_cast(source.locations.xs)};
@@ -447,9 +444,8 @@ struct CapitalSpawnData {
             ml::native_soa::require(address < begin ||
                                     address >= begin + spawn_cooldowns.size() * sizeof(float));
         }
-        target_handles.insert(target_handles.end(),
-                              source.target_handles.data(),
-                              source.target_handles.data() + count);
+        target_ids.insert(
+            target_ids.end(), source.target_ids.data(), source.target_ids.data() + count);
         locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
         locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
         locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
@@ -473,7 +469,7 @@ struct CapitalSpawnData {
     }
     auto get_view() -> View {
         return {
-            target_handles,
+            target_ids,
             locations.get_view(),
             rotations.get_view(),
             teams,
@@ -484,7 +480,7 @@ struct CapitalSpawnData {
     }
     auto get_view() const -> ConstView {
         return {
-            target_handles,
+            target_ids,
             locations.get_view(),
             rotations.get_view(),
             teams,
@@ -515,8 +511,8 @@ struct CapitalSpawnData {
     auto right(size_type const count) const -> ConstView { return slice(num() - count, count); }
     template <typename Other>
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        target_handles[static_cast<std::size_t>(dst_index)] =
-            other.target_handles[static_cast<std::size_t>(src_index)];
+        target_ids[static_cast<std::size_t>(dst_index)] =
+            other.target_ids[static_cast<std::size_t>(src_index)];
         locations.copy_element(dst_index, other.locations, src_index);
         rotations.copy_element(dst_index, other.rotations, src_index);
         teams[static_cast<std::size_t>(dst_index)] =
@@ -574,8 +570,8 @@ struct CapitalSpawnDataSingleLayout {
     inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{
         capacity_granularity, column_gap, 64};
 
-    inline static constexpr ColLayout<RegistryEntityHandle> TargetHandles{LayoutStart};
-    inline static constexpr ColLayout<float> LocationsXs{TargetHandles};
+    inline static constexpr ColLayout<EntityUniqueId> TargetIds{LayoutStart};
+    inline static constexpr ColLayout<float> LocationsXs{TargetIds};
     inline static constexpr ColLayout<float> LocationsYs{LocationsXs};
     inline static constexpr ColLayout<float> LocationsZs{LocationsYs};
     inline static constexpr ColLayout<float> RotationsPitches{LocationsZs};
@@ -587,7 +583,7 @@ struct CapitalSpawnDataSingleLayout {
     inline static constexpr ColLayout<float> SpawnCooldowns{InitialSpawnDelays};
 
     inline static constexpr byte_size_type allocation_alignment{
-        ml::native_soa::maximum_alignment(TargetHandles,
+        ml::native_soa::maximum_alignment(TargetIds,
                                           LocationsXs,
                                           LocationsYs,
                                           LocationsZs,
@@ -612,8 +608,8 @@ struct CapitalSpawnDataSingleLayout {
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
         static_assert(
-            ml::native_soa::supported_leaf<RegistryEntityHandle>,
-            "Single-allocation leaf target_handles requires a non-cv, trivially "
+            ml::native_soa::supported_leaf<EntityUniqueId>,
+            "Single-allocation leaf target_ids requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
             ml::native_soa::supported_leaf<float>,
@@ -631,8 +627,8 @@ struct CapitalSpawnDataSingleLayout {
         static_assert(
             allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
             "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
-        static_assert(sizeof(RegistryEntityHandle) <=
-                      (max_allocation_size - TargetHandles.block_offset) / capacity_granularity);
+        static_assert(sizeof(EntityUniqueId) <=
+                      (max_allocation_size - TargetIds.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
                       (max_allocation_size - LocationsXs.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
@@ -719,7 +715,7 @@ struct SingleAllocationCapitalSpawnDataStorage
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<RegistryEntityHandle>* target_handles{};
+        Element<EntityUniqueId>* target_ids{};
         Element<float>* locations_xs{};
         Element<float>* locations_ys{};
         Element<float>* locations_zs{};
@@ -731,10 +727,10 @@ struct SingleAllocationCapitalSpawnDataStorage
         Element<float>* initial_spawn_delays{};
         Element<float>* spawn_cooldowns{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (target_handles == nullptr) {
+            if (target_ids == nullptr) {
                 return {};
             }
-            return {target_handles + offset,
+            return {target_ids + offset,
                     locations_xs + offset,
                     locations_ys + offset,
                     locations_zs + offset,
@@ -774,10 +770,9 @@ struct SingleAllocationCapitalSpawnDataStorage
                                                typename Column::pointer>;
             return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        auto const target_handles_offset{byte_size_type{}};
+        auto const target_ids_offset{byte_size_type{}};
         auto const locations_xs_offset{ml::native_soa::layout_align(
-            target_handles_offset + blocks * capacity_granularity * sizeof(RegistryEntityHandle) +
-                column_gap,
+            target_ids_offset + blocks * capacity_granularity * sizeof(EntityUniqueId) + column_gap,
             LocationsXs.alignment)};
         auto const locations_ys_offset{ml::native_soa::layout_align(
             locations_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
@@ -807,7 +802,7 @@ struct SingleAllocationCapitalSpawnDataStorage
             initial_spawn_delays_offset + blocks * capacity_granularity * sizeof(float) +
                 column_gap,
             SpawnCooldowns.alignment)};
-        return {pointer_at(TargetHandles, target_handles_offset),
+        return {pointer_at(TargetIds, target_ids_offset),
                 pointer_at(LocationsXs, locations_xs_offset),
                 pointer_at(LocationsYs, locations_ys_offset),
                 pointer_at(LocationsZs, locations_zs_offset),
@@ -828,7 +823,7 @@ struct SingleAllocationCapitalSpawnDataStorage
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        std::uninitialized_value_construct_n<RegistryEntityHandle*>(columns.target_handles, count);
+        std::uninitialized_value_construct_n<EntityUniqueId*>(columns.target_ids, count);
         std::uninitialized_value_construct_n<float*>(columns.locations_xs, count);
         std::uninitialized_value_construct_n<float*>(columns.locations_ys, count);
         std::uninitialized_value_construct_n<float*>(columns.locations_zs, count);
@@ -850,12 +845,11 @@ struct SingleAllocationCapitalSpawnDataStorage
                              size_type source,
                              size_type move_count) {
         auto const elements_to_move{static_cast<byte_size_type>(move_count)};
-        auto const target_handles_bytes{elements_to_move * sizeof(RegistryEntityHandle)};
+        auto const target_ids_bytes{elements_to_move * sizeof(EntityUniqueId)};
         auto const locations_xs_bytes{elements_to_move * sizeof(float)};
         auto const teams_bytes{elements_to_move * sizeof(Team)};
         auto const healths_bytes{elements_to_move * sizeof(Health)};
-        std::memcpy(
-            columns.target_handles + index, columns.target_handles + source, target_handles_bytes);
+        std::memcpy(columns.target_ids + index, columns.target_ids + source, target_ids_bytes);
         std::memcpy(
             columns.locations_xs + index, columns.locations_xs + source, locations_xs_bytes);
         std::memcpy(
@@ -898,7 +892,7 @@ struct SingleAllocationCapitalSpawnDataStorage
             auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
             return address >= allocation_begin && address < allocation_end;
         };
-        return aliases(source.target_handles.data()) || aliases(source.locations.xs) ||
+        return aliases(source.target_ids.data()) || aliases(source.locations.xs) ||
                aliases(source.locations.ys) || aliases(source.locations.zs) ||
                aliases(source.rotations.pitches.data()) || aliases(source.rotations.yaws.data()) ||
                aliases(source.rotations.rolls.data()) || aliases(source.teams.data()) ||
@@ -909,11 +903,11 @@ struct SingleAllocationCapitalSpawnDataStorage
     void append_columns(Columns const& source, size_type first, size_type count) {
         auto const destination{get_data(first)};
         auto const elements_to_copy{static_cast<byte_size_type>(count)};
-        auto const target_handles_bytes{elements_to_copy * sizeof(RegistryEntityHandle)};
+        auto const target_ids_bytes{elements_to_copy * sizeof(EntityUniqueId)};
         auto const locations_xs_bytes{elements_to_copy * sizeof(float)};
         auto const teams_bytes{elements_to_copy * sizeof(Team)};
         auto const healths_bytes{elements_to_copy * sizeof(Health)};
-        std::memcpy(destination.target_handles, source.target_handles.data(), target_handles_bytes);
+        std::memcpy(destination.target_ids, source.target_ids.data(), target_ids_bytes);
         std::memcpy(destination.locations_xs, source.locations.xs, locations_xs_bytes);
         std::memcpy(destination.locations_ys, source.locations.ys, locations_xs_bytes);
         std::memcpy(destination.locations_zs, source.locations.zs, locations_xs_bytes);
@@ -939,11 +933,11 @@ struct SingleAllocationCapitalSpawnDataStorage
                 make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
             auto const destination{make_data_unchecked(new_data, new_blocks)};
             auto const live_count{static_cast<byte_size_type>(num_)};
-            auto const target_handles_bytes{live_count * sizeof(RegistryEntityHandle)};
+            auto const target_ids_bytes{live_count * sizeof(EntityUniqueId)};
             auto const locations_xs_bytes{live_count * sizeof(float)};
             auto const teams_bytes{live_count * sizeof(Team)};
             auto const healths_bytes{live_count * sizeof(Health)};
-            std::memcpy(destination.target_handles, source.target_handles, target_handles_bytes);
+            std::memcpy(destination.target_ids, source.target_ids, target_ids_bytes);
             std::memcpy(destination.locations_xs, source.locations_xs, locations_xs_bytes);
             std::memcpy(destination.locations_ys, source.locations_ys, locations_xs_bytes);
             std::memcpy(destination.locations_zs, source.locations_zs, locations_xs_bytes);
@@ -974,9 +968,9 @@ struct CapitalSpawnDataSingleConstView : ml::native_soa::CompactViewState<true> 
     auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return slice(offset, count);
     }
-    auto target_handles() const -> std::span<RegistryEntityHandle const> {
-        return {column_data<RegistryEntityHandle>(
-                    CapitalSpawnDataSingleLayout::TargetHandles.offset(capacity_blocks())),
+    auto target_ids() const -> std::span<EntityUniqueId const> {
+        return {column_data<EntityUniqueId>(
+                    CapitalSpawnDataSingleLayout::TargetIds.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto view_locations() const -> ml::native_soa::Vector3ConstView<float> {
@@ -1032,8 +1026,8 @@ struct CapitalSpawnDataSingleConstView : ml::native_soa::CompactViewState<true> 
         }
         auto const blocks{capacity_blocks()};
         return CapitalSpawnDataConstView{
-            {column_data_unchecked<RegistryEntityHandle>(
-                 CapitalSpawnDataSingleLayout::TargetHandles.offset(blocks)),
+            {column_data_unchecked<EntityUniqueId>(
+                 CapitalSpawnDataSingleLayout::TargetIds.offset(blocks)),
              static_cast<std::size_t>(count_)},
             Vectors3fConstView{{column_data_unchecked<float>(
                                     CapitalSpawnDataSingleLayout::LocationsXs.offset(blocks)),
@@ -1081,9 +1075,9 @@ struct CapitalSpawnDataSingleView : ml::native_soa::CompactViewState<false> {
     auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return slice(offset, count);
     }
-    auto target_handles() const -> std::span<RegistryEntityHandle> {
-        return {column_data<RegistryEntityHandle>(
-                    CapitalSpawnDataSingleLayout::TargetHandles.offset(capacity_blocks())),
+    auto target_ids() const -> std::span<EntityUniqueId> {
+        return {column_data<EntityUniqueId>(
+                    CapitalSpawnDataSingleLayout::TargetIds.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto view_locations() const -> ml::native_soa::Vector3View<float> {
@@ -1138,8 +1132,8 @@ struct CapitalSpawnDataSingleView : ml::native_soa::CompactViewState<false> {
         }
         auto const blocks{capacity_blocks()};
         return CapitalSpawnDataView{
-            {column_data_unchecked<RegistryEntityHandle>(
-                 CapitalSpawnDataSingleLayout::TargetHandles.offset(blocks)),
+            {column_data_unchecked<EntityUniqueId>(
+                 CapitalSpawnDataSingleLayout::TargetIds.offset(blocks)),
              static_cast<std::size_t>(count_)},
             Vectors3fView{{column_data_unchecked<float>(
                                CapitalSpawnDataSingleLayout::LocationsXs.offset(blocks)),

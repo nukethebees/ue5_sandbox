@@ -66,7 +66,7 @@ struct SpatialQueryManager {
                              std::span<RegistryEntityHandle> out_entity_handles) const;
     void has_line_of_sight_to_targets(Vector3f const& start_location,
                                       Vectors3fConstView end_locations,
-                                      std::span<RegistryEntityHandle const> targets,
+                                      std::span<EntityUniqueId const> targets,
                                       std::span<std::uint8_t> has_los) const;
     void have_clear_lines(Vectors3fConstView start_locations,
                           Vectors3fConstView end_locations,
@@ -94,11 +94,10 @@ struct SpatialQueryManager {
                        Vector3f end_location,
                        RegistryEntityHandle ignored_entity = {}) const -> LineTraceResult;
 
-    auto
-        collect_non_team_entities_in_range(Vector3f const& origin,
-                                           Team const team,
-                                           float const radius,
-                                           std::span<RegistryEntityHandle> const out_entities) const
+    auto collect_non_team_entities_in_range(Vector3f const& origin,
+                                            Team const team,
+                                            float const radius,
+                                            std::span<EntityUniqueId> const out_entities) const
         -> std::int32_t;
     auto collect_entities_of_type_in_range(Vector3f const& origin,
                                            EntityType entity_type,
@@ -106,9 +105,9 @@ struct SpatialQueryManager {
                                            EntityUniqueId ignored_entity,
                                            std::span<EntityUniqueId> out_entities) const
         -> std::int32_t;
-    auto get_any_non_team_entity(Team const team) const -> RegistryEntityHandle;
+    auto get_any_non_team_entity(Team const team) const -> EntityUniqueId;
     auto get_any_non_team_entity(Team const team, EntityType const entity_type) const
-        -> RegistryEntityHandle;
+        -> EntityUniqueId;
     void are_spheres_in_bounds(Vectors3fConstView centres,
                                float radius,
                                std::span<std::uint8_t> out_results) const;

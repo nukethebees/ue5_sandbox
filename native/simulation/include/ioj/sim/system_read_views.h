@@ -14,6 +14,7 @@
 namespace ioj::sim {
 
 struct EntityRegistry;
+class AgentAccessor;
 
 enum class EntityFrameChangeKind : std::uint8_t { Spawn, RemoveSwap };
 
@@ -32,6 +33,7 @@ struct CapitalReadView {
     std::span<RegistryEntityHandle const> fighter_handles;
     std::span<EntityFrameChange const> changes;
     std::span<CapitalDeathEvent const> deaths;
+    AgentAccessor const* agents{};
     auto get_num_instances() const -> std::int32_t { return entities.num(); }
     auto get_fighter_handles(std::int32_t index) const -> std::span<RegistryEntityHandle const> {
         auto const span{entities.fighter_handle_spans[index]};
