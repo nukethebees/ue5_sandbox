@@ -79,7 +79,8 @@ auto find_unique_id(std::span<std::int32_t const> const generations,
         auto const element{static_cast<std::size_t>(index)};
         if (history.registry_indices[element] == handle.index &&
             history.registry_generations[element] == handle.generation) {
-            return EntityUniqueId{.id = index};
+            return EntityUniqueId::make(static_cast<EntityUniqueId::index_type>(index),
+                                        history.entity_types[element]);
         }
     }
     return std::unexpected{UniqueIdLookupError::MissingStaleHandle};
@@ -117,10 +118,10 @@ auto register_spawned_entity(EntityRegistryBookkeeping& bookkeeping,
                              Health const health) noexcept -> RegistryEntityHandle {
     assert(slot_index >= 0);
     assert(static_cast<std::size_t>(slot_index) < bookkeeping.generations.size());
-    assert(unique_id.id >= 0 && unique_id.id < history.num());
+    assert(unique_id.index() < static_cast<EntityUniqueId::index_type>(history.num()));
 
     auto const slot{static_cast<std::size_t>(slot_index)};
-    auto const unique{static_cast<std::size_t>(unique_id.id)};
+    auto const unique{unique_id.index()};
     auto const generation{bookkeeping.generations[slot]};
     bookkeeping.unique_ids[slot] = unique_id;
     history.registry_indices[unique] = slot_index;
@@ -169,7 +170,7 @@ auto apply_entity_updates(EntityRegistryBookkeeping& bookkeeping,
         statistics.apply_alive_transition(old_team, new_team, entity_type, old_alive, new_alive);
 
         entities.teams[slot_index] = new_team;
-        auto const unique{static_cast<std::size_t>(bookkeeping.unique_ids[slot].id)};
+        auto const unique{bookkeeping.unique_ids[slot].index()};
         if (new_alive) {
             history.life_state[unique] = LifeState::Alive;
         } else if (old_alive) {
@@ -203,7 +204,7 @@ auto record_deaths(EntityRegistryBookkeeping& bookkeeping,
         }
 
         bookkeeping.record_dead(victim);
-        auto const victim_element{static_cast<std::size_t>(victim_id->id)};
+        auto const victim_element{victim_id->index()};
         history.life_state[victim_element] = static_cast<LifeState>(events.reasons[element]);
         statistics.record_destroyed(history.teams[victim_element],
                                     history.entity_types[victim_element]);
@@ -218,7 +219,7 @@ auto record_deaths(EntityRegistryBookkeeping& bookkeeping,
             return std::unexpected{AccountingError{killer_id.error(), killer, index}};
         }
 
-        auto const killer_element{static_cast<std::size_t>(killer_id->id)};
+        auto const killer_element{killer_id->index()};
         history.killed_by[victim_element] = *killer_id;
         ++history.kills[killer_element];
         statistics.record_kill(history.teams[killer_element],
@@ -243,7 +244,7 @@ auto record_damage(EntityRegistryStatistics& statistics,
             return std::unexpected{AccountingError{victim_id.error(), victim, index}};
         }
 
-        auto const victim_element{static_cast<std::size_t>(victim_id->id)};
+        auto const victim_element{victim_id->index()};
         auto const damage{static_cast<double>(events.damage_amounts[element])};
         statistics.record_damage_received(
             history.teams[victim_element], history.entity_types[victim_element], damage);
@@ -256,7 +257,7 @@ auto record_damage(EntityRegistryStatistics& statistics,
         if (!attacker_id) {
             return std::unexpected{AccountingError{attacker_id.error(), instigator, index}};
         }
-        auto const attacker_element{static_cast<std::size_t>(attacker_id->id)};
+        auto const attacker_element{attacker_id->index()};
         statistics.record_hit(
             history.teams[attacker_element], history.entity_types[attacker_element], damage);
     }
@@ -279,7 +280,7 @@ auto record_shots(EntityRegistryStatistics& statistics,
         if (!attacker_id) {
             return std::unexpected{AccountingError{attacker_id.error(), instigator, index}};
         }
-        auto const attacker_element{static_cast<std::size_t>(attacker_id->id)};
+        auto const attacker_element{attacker_id->index()};
         statistics.record_shot(history.teams[attacker_element],
                                history.entity_types[attacker_element]);
     }
@@ -383,7 +384,12 @@ auto EntityRegistry::add_entities(EntityData::ConstView const view) -> SpawnedEn
         return new_entities;
     }
 
-    new_entities.first_id = {.id = unique_entity_history_.num()};
+    auto const first_index{static_cast<EntityUniqueId::index_type>(unique_entity_history_.num())};
+    if (!EntityUniqueId::index_range_fits(first_index, static_cast<std::uint32_t>(count))) {
+        ml::fatal_error("Entity unique ID index space exhausted");
+    }
+
+    new_entities.first_id = EntityUniqueId::make(first_index, view.entity_types[0]);
     unique_entity_history_.add_defaulted(count);
     new_entities.registry_handles.add_uninitialised(count);
     auto const unique_entities{unique_entity_history_.get_view().columns()};
@@ -394,15 +400,15 @@ auto EntityRegistry::add_entities(EntityData::ConstView const view) -> SpawnedEn
         entity_registry_detail::copy_entity_rows(
             entity_data.get_view().columns(), slot_index, view, source_index, 1);
 
-        auto const handle{
-            entity_registry_detail::register_spawned_entity(bookkeeping_,
-                                                            statistics_,
-                                                            unique_entities,
-                                                            slot_index,
-                                                            new_entities.first_id + source_index,
-                                                            view.teams[source_index],
-                                                            view.entity_types[source_index],
-                                                            view.healths[source_index])};
+        auto const handle{entity_registry_detail::register_spawned_entity(
+            bookkeeping_,
+            statistics_,
+            unique_entities,
+            slot_index,
+            EntityUniqueId::make(first_index + source_index, view.entity_types[source_index]),
+            view.teams[source_index],
+            view.entity_types[source_index],
+            view.healths[source_index])};
         new_entities.registry_handles.set(source_index, handle.index, handle.generation);
     }
 
@@ -414,15 +420,15 @@ auto EntityRegistry::add_entities(EntityData::ConstView const view) -> SpawnedEn
 
     for (std::int32_t offset{}; offset < append_count; ++offset) {
         auto const source_index{reuse_count + offset};
-        auto const handle{
-            entity_registry_detail::register_spawned_entity(bookkeeping_,
-                                                            statistics_,
-                                                            unique_entities,
-                                                            first_slot_index + offset,
-                                                            new_entities.first_id + source_index,
-                                                            view.teams[source_index],
-                                                            view.entity_types[source_index],
-                                                            view.healths[source_index])};
+        auto const handle{entity_registry_detail::register_spawned_entity(
+            bookkeeping_,
+            statistics_,
+            unique_entities,
+            first_slot_index + offset,
+            EntityUniqueId::make(first_index + source_index, view.entity_types[source_index]),
+            view.teams[source_index],
+            view.entity_types[source_index],
+            view.healths[source_index])};
         new_entities.registry_handles.set(source_index, handle.index, handle.generation);
     }
 
@@ -641,7 +647,13 @@ auto EntityRegistry::count_alive_not_on_team(Team const team) const noexcept -> 
 // Unique entity queries
 /* **************************************** */
 auto EntityRegistry::is_valid_unique_id(EntityUniqueId const id) const -> bool {
-    return id.id >= 0 && id.id < get_num_unique_ids_issued();
+    if (!id.is_valid() ||
+        id.index() >= static_cast<EntityUniqueId::index_type>(get_num_unique_ids_issued())) {
+        return false;
+    }
+
+    auto const unique_entities{unique_entity_history_.get_const_view().columns()};
+    return unique_entities.entity_types[id.index()] == id.entity_type();
 }
 auto EntityRegistry::find_unique_id(RegistryEntityHandle const handle) const -> EntityUniqueId {
     auto const unique_entities{unique_entity_history_.get_const_view().columns()};
@@ -664,7 +676,7 @@ auto EntityRegistry::find_unique_id(RegistryEntityHandle const handle) const -> 
 auto EntityRegistry::get_kills(EntityUniqueId const id) const -> std::uint32_t {
     assert(is_valid_unique_id(id));
     auto const unique_entities{unique_entity_history_.get_const_view().columns()};
-    return unique_entities.kills[id.id];
+    return unique_entities.kills[id.index()];
 }
 
 /* **************************************** */
@@ -723,10 +735,13 @@ void EntityRegistry::validate_unique_ids() const {
     for (std::int32_t i{0}; i < n; ++i) {
         auto const unique_id{bookkeeping_.unique_ids[i]};
         if (!is_valid_unique_id(unique_id)) {
-            ml::fatal_error(std::format("Invalid unique entity ID: id[{}] = {}", i, unique_id.id));
+            ml::fatal_error(
+                std::format("Invalid unique entity ID: id[{}] = {}", i, unique_id.raw_value()));
         }
-        assert(unique_entities.registry_indices[unique_id.id] == i);
-        assert(unique_entities.registry_generations[unique_id.id] == bookkeeping_.generations[i]);
+        auto const index{unique_id.index()};
+        assert(unique_entities.registry_indices[index] == i);
+        assert(unique_entities.registry_generations[index] == bookkeeping_.generations[i]);
+        assert(unique_entities.entity_types[index] == unique_id.entity_type());
     }
 }
 void EntityRegistry::validate_unique_entity_data() const {

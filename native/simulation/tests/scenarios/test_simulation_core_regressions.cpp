@@ -208,8 +208,9 @@ void run_worldless_collision_damage(tests::SimulationFixture const& config) {
     tests::expect_true(harness.get_registry().is_valid_dead(capital_handle),
                        "Capital death commits in the third overlap tick");
     tests::expect_equal(0, third.kill_count, "Collision death grants no combat kill");
-    tests::expect_true(harness.get_registry().get_unique_entities().life_state[capital_id.id] ==
-                           LifeState::Unknown,
-                       "Collision death is environmental");
+    tests::expect_true(
+        harness.get_registry().get_unique_entities().life_state[capital_id.index()] ==
+            LifeState::Unknown,
+        "Collision death is environmental");
 }
 }

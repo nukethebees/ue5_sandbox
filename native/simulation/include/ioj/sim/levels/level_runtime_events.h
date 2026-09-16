@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/sim/entity_type.h"
 #include "ioj/sim/entity_types.h"
 #include "ioj/sim/health.h"
 #include "ioj/sim/level_event_types.h"
@@ -19,7 +20,7 @@ struct LevelSpawnGroupsConstView {
     using View = LevelSpawnGroupsView;
     using ConstView = LevelSpawnGroupsConstView;
     using size_type = std::int32_t;
-    std::span<EntityType const> types;
+    std::span<ioj::sim::EntityType const> types;
     std::span<std::int32_t const> offsets;
     std::span<LevelEventCount const> counts;
     auto num() const noexcept -> size_type { return static_cast<size_type>(types.size()); }
@@ -69,7 +70,7 @@ struct LevelSpawnGroupsView {
     using View = LevelSpawnGroupsView;
     using ConstView = LevelSpawnGroupsConstView;
     using size_type = std::int32_t;
-    std::span<EntityType> types;
+    std::span<ioj::sim::EntityType> types;
     std::span<std::int32_t> offsets;
     std::span<LevelEventCount> counts;
     auto num() const noexcept -> size_type { return static_cast<size_type>(types.size()); }
@@ -114,7 +115,7 @@ struct LevelSpawnGroupsView {
         return slice(num() - count, count);
     }
     void set(size_type const index,
-             EntityType const new_types,
+             ioj::sim::EntityType const new_types,
              std::int32_t const new_offsets,
              LevelEventCount const new_counts) const {
         ml::native_soa::require(index >= 0 && index < num());
@@ -127,7 +128,7 @@ struct LevelSpawnGroups {
     using View = LevelSpawnGroupsView;
     using ConstView = LevelSpawnGroupsConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<EntityType> types;
+    ml::native_soa::Vector<ioj::sim::EntityType> types;
     ml::native_soa::Vector<std::int32_t> offsets;
     ml::native_soa::Vector<LevelEventCount> counts;
     auto num() const noexcept -> size_type { return static_cast<size_type>(types.size()); }
@@ -188,12 +189,12 @@ struct LevelSpawnGroups {
         set_num(old_num - count);
     }
     void set(size_type const index,
-             EntityType const new_types,
+             ioj::sim::EntityType const new_types,
              std::int32_t const new_offsets,
              LevelEventCount const new_counts) {
         get_view().set(index, new_types, new_offsets, new_counts);
     }
-    auto add(EntityType const new_types,
+    auto add(ioj::sim::EntityType const new_types,
              std::int32_t const new_offsets,
              LevelEventCount const new_counts) -> size_type {
         auto const index{num()};
@@ -212,7 +213,7 @@ struct LevelSpawnGroups {
             auto const address{ml::address_cast(source.types.data())};
             auto const begin{ml::address_cast(types.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + types.size() * sizeof(EntityType));
+                                    address >= begin + types.size() * sizeof(ioj::sim::EntityType));
         }
         {
             auto const address{ml::address_cast(source.offsets.data())};

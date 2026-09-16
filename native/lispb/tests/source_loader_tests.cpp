@@ -143,7 +143,8 @@ TEST(SourceLoader, ReadsPackedValueModule) {
   :namespace project
   (packed-value FighterState
     :storage std::uint32_t
-    (field entity_index std::uint32_t :bits 24)
+    :invalid-value 0x7fffffff
+    (field entity_index std::uint32_t :bits 24 :range-helper true)
     (field state State :bits 8 :kind enum)))
 )");
 
@@ -153,9 +154,11 @@ TEST(SourceLoader, ReadsPackedValueModule) {
     auto const& value{module.values.front()};
     EXPECT_EQ(value.name, "FighterState");
     EXPECT_EQ(value.storage_type.name, "std::uint32_t");
+    EXPECT_EQ(value.invalid_value, std::uint64_t{0x7fffffff});
     ASSERT_EQ(value.fields.size(), 2);
     EXPECT_EQ(value.fields[0].bits, 24);
     EXPECT_EQ(value.fields[0].kind, PackedFieldKind::unsigned_integer);
+    EXPECT_TRUE(value.fields[0].range_helper);
     EXPECT_EQ(value.fields[1].bits, 8);
     EXPECT_EQ(value.fields[1].kind, PackedFieldKind::enumeration);
 }
@@ -178,6 +181,20 @@ TEST(SourceLoader, RejectsNonIntegerPackedFieldWidthWithSourceLocation) {
         EXPECT_NE(message.find("modules.lispb:6:30"), std::string::npos);
         EXPECT_NE(message.find("packed field bits must be an integer"), std::string::npos);
     }
+}
+
+TEST(SourceLoader, RejectsNegativePackedInvalidValue) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(packed-value-module packed
+  :header "Packed.h"
+  (packed-value Value
+    :storage uint8
+    :invalid-value -1
+    (field value uint8 :bits 8)))
+)");
+
+    EXPECT_THROW(static_cast<void>(files.load()), ManifestError);
 }
 
 TEST(SourceLoader, ReportsSourceLocationForUnknownProperties) {

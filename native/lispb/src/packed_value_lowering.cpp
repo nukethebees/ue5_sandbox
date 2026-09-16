@@ -69,6 +69,7 @@ auto packed_value_text(PackedValueSchema const& schema,
         if (auto dependency{dependency_for_integer(field_type)}) {
             dependencies.push_back(std::move(*dependency));
         }
+        output += "    using " + field.name + "_type = " + field_type.spelling + ";\n";
         if (field.kind == PackedFieldKind::enumeration) {
             output += "    using " + field.name + "_underlying_type = std::underlying_type_t<" +
                       field_type.spelling + ">;\n";
@@ -96,10 +97,20 @@ auto packed_value_text(PackedValueSchema const& schema,
                     output += "    static_assert(static_cast<" + field.name + "_underlying_type>(" +
                               field_type.spelling + "::" + enumerator.name + ") <= static_cast<" +
                               field.name + "_underlying_type>(" + field.name + "_value_mask));\n";
+                    if (enum_schema->count.has_value() && enumerator.name != *enum_schema->count) {
+                        output += "    static_assert(" + field_type.spelling +
+                                  "::" + enumerator.name + " < " + field_type.spelling +
+                                  "::" + *enum_schema->count + ");\n";
+                    }
                 }
             }
         }
         offset += field.bits;
+    }
+
+    if (schema.invalid_value.has_value()) {
+        output += "\n    inline static constexpr storage_type invalid_value{storage_type{" +
+                  hex_value(*schema.invalid_value) + "}};\n";
     }
 
     output += "\n    constexpr " + schema.name + "() noexcept = default;\n";
@@ -107,6 +118,70 @@ auto packed_value_text(PackedValueSchema const& schema,
               "(storage_type const raw) noexcept : value_{raw} {}\n\n";
     output += "    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type {\n";
     output += "        return value_;\n    }\n\n";
+    output += "    [[nodiscard]] static constexpr auto try_make(";
+    for (std::size_t index{}; index < schema.fields.size(); ++index) {
+        auto const& field{schema.fields[index]};
+        auto const field_type{resolve_type(field.type, types)};
+        if (index != 0) {
+            output += ", ";
+        }
+        output += field_type.spelling + " const " + field.name + "_value";
+    }
+    output += ", " + schema.name + "& out_result) noexcept -> bool {\n";
+    output += "        " + schema.name + " result{storage_type{0}};\n";
+    for (auto const& field : schema.fields) {
+        output += "        if (!result.try_set_" + field.name + "(" + field.name + "_value)) {\n";
+        output += "            return false;\n        }\n";
+    }
+    output += "        if (!result.is_valid()) {\n            return false;\n        }\n";
+    output += "        out_result = result;\n        return true;\n    }\n\n";
+
+    output += "    [[nodiscard]] static constexpr auto make(";
+    for (std::size_t index{}; index < schema.fields.size(); ++index) {
+        auto const& field{schema.fields[index]};
+        auto const field_type{resolve_type(field.type, types)};
+        if (index != 0) {
+            output += ", ";
+        }
+        output += field_type.spelling + " const " + field.name + "_value";
+    }
+    output += ") noexcept -> " + schema.name + " {\n";
+    output += "        " + schema.name + " result;\n";
+    output += "        auto const success{try_make(";
+    for (std::size_t index{}; index < schema.fields.size(); ++index) {
+        if (index != 0) {
+            output += ", ";
+        }
+        output += schema.fields[index].name + "_value";
+    }
+    output += ", result)};\n";
+    output += "        assert(success && \"Packed field value does not fit.\");\n";
+    output += "        return result;\n    }\n\n";
+
+    output += "    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {\n";
+    std::vector<std::string> validity_checks;
+    if (schema.invalid_value.has_value()) {
+        validity_checks.push_back("value_ != invalid_value");
+    }
+    for (auto const& field : schema.fields) {
+        if (field.kind != PackedFieldKind::enumeration) {
+            continue;
+        }
+        auto const* enum_schema{find_packed_enum(field.type, types, modules)};
+        if (enum_schema != nullptr && enum_schema->count.has_value()) {
+            auto const field_type{resolve_type(field.type, types)};
+            validity_checks.push_back(field.name + "() < " + field_type.spelling +
+                                      "::" + *enum_schema->count);
+        }
+    }
+    output += "        return ";
+    for (std::size_t index{}; index < validity_checks.size(); ++index) {
+        if (index != 0) {
+            output += " && ";
+        }
+        output += validity_checks[index];
+    }
+    output += validity_checks.empty() ? "true;\n    }\n\n" : ";\n    }\n\n";
     output += "    [[nodiscard]] constexpr auto operator<=>(" + schema.name +
               " const&) const noexcept = default;\n";
 
@@ -138,6 +213,12 @@ auto packed_value_text(PackedValueSchema const& schema,
             output += "        if (underlying > static_cast<" + field.name + "_underlying_type>(" +
                       field.name + "_value_mask)) {\n";
             output += "            return false;\n        }\n";
+            if (auto const* enum_schema{find_packed_enum(field.type, types, modules)};
+                enum_schema != nullptr && enum_schema->count.has_value()) {
+                output += "        if (value >= " + field_type.spelling +
+                          "::" + *enum_schema->count + ") {\n";
+                output += "            return false;\n        }\n";
+            }
             output += "        auto const encoded{static_cast<storage_type>(underlying)};\n";
         } else {
             output += "        if (value > static_cast<" + field_type.spelling + ">(" + field.name +
@@ -158,9 +239,21 @@ auto packed_value_text(PackedValueSchema const& schema,
         output += "        if (!try_set_" + field.name + "(value)) {\n";
         output += "            assert(false && \"Packed field value does not fit.\");\n";
         output += "        }\n    }\n";
+
+        if (field.range_helper) {
+            output += "\n    [[nodiscard]] static constexpr auto " + field.name + "_range_fits(" +
+                      field_type.spelling + " const first, " + field_type.spelling +
+                      " const count) noexcept -> bool {\n";
+            output += "        return count == 0 ||\n";
+            output += "               (first <= " + field.name +
+                      "_value_mask && count - 1 <= " + field.name + "_value_mask - first);\n";
+            output += "    }\n";
+        }
     }
 
-    output += "  private:\n    storage_type value_{};\n};\n";
+    output += "  private:\n    storage_type value_{";
+    output += schema.invalid_value.has_value() ? "invalid_value" : "";
+    output += "};\n};\n";
     output += "static_assert(sizeof(" + schema.name + ") == sizeof(" + schema.name +
               "::storage_type));\n";
     output += "static_assert(std::is_trivially_copyable_v<" + schema.name + ">);\n";

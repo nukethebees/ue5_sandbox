@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/sim/entity_type.h"
 #include "ioj/sim/entity_types.h"
 #include "ioj/sim/health.h"
 #include "ioj/sim/rotators3f.h"
@@ -27,7 +28,7 @@ struct RegistryEntityDataConstView {
     Rotators3fConstView rotations;
     std::span<Health const> healths;
     std::span<Team const> teams;
-    std::span<EntityType const> entity_types;
+    std::span<ioj::sim::EntityType const> entity_types;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.num()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -97,7 +98,7 @@ struct RegistryEntityDataView {
     Rotators3fView rotations;
     std::span<Health> healths;
     std::span<Team> teams;
-    std::span<EntityType> entity_types;
+    std::span<ioj::sim::EntityType> entity_types;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.num()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -166,7 +167,7 @@ struct RegistryEntityDataView {
              float const new_rotations_rolls,
              Health const new_healths,
              Team const new_teams,
-             EntityType const new_entity_types) const {
+             ioj::sim::EntityType const new_entity_types) const {
         ml::native_soa::require(index >= 0 && index < num());
         locations.xs[static_cast<std::size_t>(index)] = new_locations_xs;
         locations.ys[static_cast<std::size_t>(index)] = new_locations_ys;
@@ -191,7 +192,7 @@ struct RegistryEntityData {
     Rotators3f rotations;
     ml::native_soa::Vector<Health> healths;
     ml::native_soa::Vector<Team> teams;
-    ml::native_soa::Vector<EntityType> entity_types;
+    ml::native_soa::Vector<ioj::sim::EntityType> entity_types;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -333,7 +334,7 @@ struct RegistryEntityData {
              float const new_rotations_rolls,
              Health const new_healths,
              Team const new_teams,
-             EntityType const new_entity_types) {
+             ioj::sim::EntityType const new_entity_types) {
         get_view().set(index,
                        new_locations_xs,
                        new_locations_ys,
@@ -359,7 +360,7 @@ struct RegistryEntityData {
              float const new_rotations_rolls,
              Health const new_healths,
              Team const new_teams,
-             EntityType const new_entity_types) -> size_type {
+             ioj::sim::EntityType const new_entity_types) -> size_type {
         auto const index{num()};
         add_defaulted(1);
         set(index,
@@ -454,7 +455,8 @@ struct RegistryEntityData {
             auto const address{ml::address_cast(source.entity_types.data())};
             auto const begin{ml::address_cast(entity_types.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + entity_types.size() * sizeof(EntityType));
+                                    address >=
+                                        begin + entity_types.size() * sizeof(ioj::sim::EntityType));
         }
         locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
         locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
@@ -588,7 +590,7 @@ struct RegistryEntityDataSingleLayout {
     inline static constexpr ColLayout<float> RotationsRolls{RotationsYaws};
     inline static constexpr ColLayout<Health> Healths{RotationsRolls};
     inline static constexpr ColLayout<Team> Teams{Healths};
-    inline static constexpr ColLayout<EntityType> EntityTypes{Teams};
+    inline static constexpr ColLayout<ioj::sim::EntityType> EntityTypes{Teams};
 
     inline static constexpr byte_size_type allocation_alignment{
         ml::native_soa::maximum_alignment(LocationsXs,
@@ -629,7 +631,7 @@ struct RegistryEntityDataSingleLayout {
             "Single-allocation leaf teams requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::native_soa::supported_leaf<EntityType>,
+            ml::native_soa::supported_leaf<ioj::sim::EntityType>,
             "Single-allocation leaf entity_types requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
 
@@ -658,7 +660,7 @@ struct RegistryEntityDataSingleLayout {
                       (max_allocation_size - Healths.block_offset) / capacity_granularity);
         static_assert(sizeof(Team) <=
                       (max_allocation_size - Teams.block_offset) / capacity_granularity);
-        static_assert(sizeof(EntityType) <=
+        static_assert(sizeof(ioj::sim::EntityType) <=
                       (max_allocation_size - EntityTypes.block_offset) / capacity_granularity);
         static_assert(11 <=
                       (max_allocation_size -
@@ -718,7 +720,7 @@ struct SingleAllocationRegistryEntityDataStorage
         Element<float>* rotations_rolls{};
         Element<Health>* healths{};
         Element<Team>* teams{};
-        Element<EntityType>* entity_types{};
+        Element<ioj::sim::EntityType>* entity_types{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (locations_xs == nullptr) {
                 return {};
@@ -797,7 +799,7 @@ struct SingleAllocationRegistryEntityDataStorage
         std::uninitialized_value_construct_n<float*>(columns.rotations_rolls, count);
         std::uninitialized_value_construct_n<Health*>(columns.healths, count);
         std::uninitialized_value_construct_n<Team*>(columns.teams, count);
-        std::uninitialized_value_construct_n<EntityType*>(columns.entity_types, count);
+        std::uninitialized_value_construct_n<ioj::sim::EntityType*>(columns.entity_types, count);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -812,7 +814,7 @@ struct SingleAllocationRegistryEntityDataStorage
         auto const locations_xs_bytes{elements_to_move * sizeof(float)};
         auto const healths_bytes{elements_to_move * sizeof(Health)};
         auto const teams_bytes{elements_to_move * sizeof(Team)};
-        auto const entity_types_bytes{elements_to_move * sizeof(EntityType)};
+        auto const entity_types_bytes{elements_to_move * sizeof(ioj::sim::EntityType)};
         std::memcpy(
             columns.locations_xs + index, columns.locations_xs + source, locations_xs_bytes);
         std::memcpy(
@@ -854,7 +856,7 @@ struct SingleAllocationRegistryEntityDataStorage
         auto const locations_xs_bytes{elements_to_copy * sizeof(float)};
         auto const healths_bytes{elements_to_copy * sizeof(Health)};
         auto const teams_bytes{elements_to_copy * sizeof(Team)};
-        auto const entity_types_bytes{elements_to_copy * sizeof(EntityType)};
+        auto const entity_types_bytes{elements_to_copy * sizeof(ioj::sim::EntityType)};
         std::memcpy(destination.locations_xs, source.locations.xs, locations_xs_bytes);
         std::memcpy(destination.locations_ys, source.locations.ys, locations_xs_bytes);
         std::memcpy(destination.locations_zs, source.locations.zs, locations_xs_bytes);
@@ -883,7 +885,7 @@ struct SingleAllocationRegistryEntityDataStorage
             auto const locations_xs_bytes{live_count * sizeof(float)};
             auto const healths_bytes{live_count * sizeof(Health)};
             auto const teams_bytes{live_count * sizeof(Team)};
-            auto const entity_types_bytes{live_count * sizeof(EntityType)};
+            auto const entity_types_bytes{live_count * sizeof(ioj::sim::EntityType)};
             std::memcpy(destination.locations_xs, source.locations_xs, locations_xs_bytes);
             std::memcpy(destination.locations_ys, source.locations_ys, locations_xs_bytes);
             std::memcpy(destination.locations_zs, source.locations_zs, locations_xs_bytes);
@@ -961,8 +963,8 @@ struct RegistryEntityDataSingleConstView : ml::native_soa::CompactViewState<true
         return {column_data<Team>(RegistryEntityDataSingleLayout::Teams.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto entity_types() const -> std::span<EntityType const> {
-        return {column_data<EntityType>(
+    auto entity_types() const -> std::span<ioj::sim::EntityType const> {
+        return {column_data<ioj::sim::EntityType>(
                     RegistryEntityDataSingleLayout::EntityTypes.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
@@ -1005,7 +1007,7 @@ struct RegistryEntityDataSingleConstView : ml::native_soa::CompactViewState<true
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<Team>(RegistryEntityDataSingleLayout::Teams.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<EntityType>(
+            {column_data_unchecked<ioj::sim::EntityType>(
                  RegistryEntityDataSingleLayout::EntityTypes.offset(blocks)),
              static_cast<std::size_t>(count_)}};
     }
@@ -1071,8 +1073,8 @@ struct RegistryEntityDataSingleView : ml::native_soa::CompactViewState<false> {
         return {column_data<Team>(RegistryEntityDataSingleLayout::Teams.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto entity_types() const -> std::span<EntityType> {
-        return {column_data<EntityType>(
+    auto entity_types() const -> std::span<ioj::sim::EntityType> {
+        return {column_data<ioj::sim::EntityType>(
                     RegistryEntityDataSingleLayout::EntityTypes.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
@@ -1114,7 +1116,7 @@ struct RegistryEntityDataSingleView : ml::native_soa::CompactViewState<false> {
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<Team>(RegistryEntityDataSingleLayout::Teams.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<EntityType>(
+            {column_data_unchecked<ioj::sim::EntityType>(
                  RegistryEntityDataSingleLayout::EntityTypes.offset(blocks)),
              static_cast<std::size_t>(count_)}};
     }

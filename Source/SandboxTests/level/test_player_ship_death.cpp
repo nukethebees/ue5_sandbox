@@ -82,10 +82,10 @@ void FTestPlayerShipDeathScenario::queue_player_ship_death() {
     test_driver->timeline.then_after(kill_time,
                                      [this, targets] { test_driver->queue_kills(targets); });
 
-    begin_timed_sampling(kill_time + post_kill_time,
-                         FOrchestratorEndTickTestHook::CreateRaw(
-                             this, &FTestPlayerShipDeathScenario::on_end_tick),
-                         samples);
+    begin_timed_sampling(
+        kill_time + post_kill_time,
+        FOrchestratorEndTickTestHook::CreateRaw(this, &FTestPlayerShipDeathScenario::on_end_tick),
+        samples);
 }
 
 void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
@@ -101,7 +101,7 @@ void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
     samples.add(test_driver->get_time(),
                 FSimulationSample{test_driver->get_registry().is_valid_dead(player_ship_handle),
                                   IsValid(player_ship.Get()),
-                                  unique_entities.life_state[player_ship_id.id] ==
+                                  unique_entities.life_state[player_ship_id.index()] ==
                                       ::ioj::sim::LifeState::Alive,
                                   IsValid(controller) && IsValid(controller->GetPawn()),
                                   IsValid(controller) && controller->get_active_control_context() ==

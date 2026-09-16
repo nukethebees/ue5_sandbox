@@ -56,6 +56,11 @@
   :header "PackedEnums.h"
   :pass-by value)
 
+(type domain_state
+  :spelling "codegen_compile_fixture::DomainState"
+  :header "PackedEnums.h"
+  :pass-by value)
+
 (type standard_uint8
   :spelling "std::uint8_t"
   :header "cstdint"

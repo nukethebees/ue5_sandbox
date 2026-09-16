@@ -1,0 +1,8 @@
+(packed-value-module native_entity_unique_id
+  :header "native/simulation/include/ioj/sim/entity_unique_id.h"
+  :namespace ioj::sim
+  (packed-value EntityUniqueId
+    :storage std::uint32_t
+    :invalid-value 0x7fffffff
+    (field index std::uint32_t :bits 24 :range-helper true)
+    (field entity_type @native_entity_type :bits 8 :kind enum)))

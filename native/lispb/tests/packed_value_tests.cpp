@@ -34,7 +34,10 @@ auto lower(PackedValueModuleSchema module) -> std::string {
 }
 
 TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
-    auto const header{lower(valid_module())};
+    auto module{valid_module()};
+    module.values.front().invalid_value = 0x7fffffffu;
+    module.values.front().fields.front().range_helper = true;
+    auto const header{lower(std::move(module))};
 
     EXPECT_NE(header.find("using storage_type = std::uint32_t;"), std::string::npos);
     EXPECT_NE(header.find("entity_index_offset{0}"), std::string::npos);
@@ -44,6 +47,10 @@ TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
     EXPECT_NE(header.find("operator<=>(FighterState const&) const noexcept = default"),
               std::string::npos);
     EXPECT_NE(header.find("try_set_entity_index"), std::string::npos);
+    EXPECT_NE(header.find("try_make(std::uint32_t const entity_index_value"), std::string::npos);
+    EXPECT_NE(header.find("invalid_value{storage_type{0x7fffffff}}"), std::string::npos);
+    EXPECT_NE(header.find("entity_index_range_fits"), std::string::npos);
+    EXPECT_NE(header.find("is_valid() const noexcept"), std::string::npos);
     EXPECT_NE(header.find("std::underlying_type_t<FighterStateKind>"), std::string::npos);
     EXPECT_NE(header.find("std::is_standard_layout_v<FighterState>"), std::string::npos);
 }
@@ -71,6 +78,14 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
 
     module = valid_module();
     module.settings.source = "Packed.cpp";
+    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+
+    module = valid_module();
+    module.values.front().fields.back().range_helper = true;
+    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
+
+    module = valid_module();
+    module.values.front().invalid_value = std::uint64_t{1} << 32;
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 }
 

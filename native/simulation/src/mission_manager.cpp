@@ -249,8 +249,7 @@ void MissionManager::add_entity_that_must_survive(RegistryEntityHandle handle) {
     auto const id{entity_registry.find_unique_id(handle)};
     entity_handles_that_must_survive.push_back(handle);
     entity_ids_that_must_survive.push_back(id);
-    entity_types_that_must_survive.push_back(
-        entity_registry.get_unique_entities().entity_types[id.id]);
+    entity_types_that_must_survive.push_back(id.entity_type());
     if (mission_state == MissionState::Running) {
         entity_health_that_must_survive.emplace_back(entity_registry.get_health(handle));
     }
@@ -265,8 +264,7 @@ void MissionManager::add_entity_required_to_kill(RegistryEntityHandle handle) {
     auto const id{entity_registry.find_unique_id(handle)};
     entity_handles_required_to_kill.push_back(handle);
     entity_ids_required_to_kill.push_back(id);
-    entity_types_required_to_kill.push_back(
-        entity_registry.get_unique_entities().entity_types[id.id]);
+    entity_types_required_to_kill.push_back(id.entity_type());
     if (mission_state == MissionState::Running) {
         entity_health_required_to_kill.emplace_back(entity_registry.get_health(handle));
     }

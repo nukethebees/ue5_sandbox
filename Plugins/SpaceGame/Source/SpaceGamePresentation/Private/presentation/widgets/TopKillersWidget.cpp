@@ -20,9 +20,18 @@ void UTopKillersWidget::NativePreConstruct() {
         team_colours[ETestTeam::Yellow] = FLinearColor::Yellow;
 
         top_killers.reset();
-        top_killers.add({.id = 14}, ETestEntityType::Fighter, ETestTeam::Green, 18);
-        top_killers.add({.id = 7}, ETestEntityType::Turret, ETestTeam::Red, 13);
-        top_killers.add({.id = 2}, ETestEntityType::CapitalShip, ETestTeam::Blue, 9);
+        top_killers.add(::ioj::sim::EntityUniqueId::make(14, ::ioj::sim::EntityType::Fighter),
+                        ETestEntityType::Fighter,
+                        ETestTeam::Green,
+                        18);
+        top_killers.add(::ioj::sim::EntityUniqueId::make(7, ::ioj::sim::EntityType::Turret),
+                        ETestEntityType::Turret,
+                        ETestTeam::Red,
+                        13);
+        top_killers.add(::ioj::sim::EntityUniqueId::make(2, ::ioj::sim::EntityType::CapitalShip),
+                        ETestEntityType::CapitalShip,
+                        ETestTeam::Blue,
+                        9);
     }
 
     rebuild_table();
@@ -165,7 +174,7 @@ void UTopKillersWidget::rebuild_table() {
                   FText::Format(INVTEXT("{0} {1}"),
                                 FText::FromString(ml::get_entity_class_name(
                                     top_killers.entity_types[entry_index])),
-                                top_killers.entity_ids[entry_index].id));
+                                top_killers.entity_ids[entry_index].index()));
         add_value(
             FString::Printf(TEXT("type_%d"), entry_index),
             column_type,
