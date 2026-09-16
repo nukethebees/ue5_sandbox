@@ -2,6 +2,7 @@
 
 #include "ioj/sim/entity_handle.h"
 #include "ioj/sim/entity_types.h"
+#include "ioj/sim/health.h"
 
 #include <cstdint>
 #include <span>
@@ -19,7 +20,7 @@ struct EntityRegistryBookkeeping {
     void clear_queued_updates() noexcept;
     void clear_dead_entities() noexcept;
 
-    void refresh_free_indices(std::span<std::int32_t const> healths);
+    void refresh_free_indices(std::span<Health const> healths);
     auto available_free_slot_count() const noexcept -> size_type;
     auto take_free_slot() -> size_type;
     void append_slots(size_type count);

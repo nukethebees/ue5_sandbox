@@ -5,18 +5,17 @@
 #include <cstdint>
 
 namespace ioj::sim {
-[[nodiscard]] auto clamp_health_to_max(std::int32_t health, std::int32_t max_health) noexcept
-    -> std::int32_t;
+[[nodiscard]] auto clamp_health_to_max(Health health, Health max_health) noexcept -> Health;
 
 struct ShipHealth {
-    inline static constexpr std::int32_t default_max_health{100};
-    inline static constexpr std::int32_t upgraded_max_health{150};
+    inline static constexpr Health default_max_health{100};
+    inline static constexpr Health upgraded_max_health{150};
 
     ShipHealth() = default;
-    ShipHealth(std::int32_t const health_value, std::int32_t const maximum)
+    ShipHealth(Health const health_value, Health const maximum)
         : health{health_value}
         , max_health{maximum} {}
-    explicit ShipHealth(std::int32_t const maximum)
+    explicit ShipHealth(Health const maximum)
         : health{maximum}
         , max_health{maximum} {}
 
@@ -25,7 +24,7 @@ struct ShipHealth {
     auto is_alive() const noexcept -> bool { return sim::is_alive(health); }
     void clamp_to_max() noexcept { health = clamp_health_to_max(health, max_health); }
 
-    std::int32_t health{default_max_health};
-    std::int32_t max_health{default_max_health};
+    Health health{default_max_health};
+    Health max_health{default_max_health};
 };
 } // namespace ioj::sim

@@ -28,7 +28,7 @@
     (member move_distances array float)
     (member speeds array float)
     (member teams array @native_team)
-    (member healths array int32)
+    (member healths array @native_health)
     (member parent_handles array @native_registry_handle)
     (member awareness_scan_countdowns array int8)
     (member navigation_update_countdowns_remaining_ticks array int16)
@@ -71,7 +71,7 @@
     (member fighter_spawn_timers array float)
     (member fighter_spawn_cooldowns array float)
     (member teams array @native_team)
-    (member healths array int32)
+    (member healths array @native_health)
     (member fighter_handle_spans array @native_index_span)
     (member target_handles array @native_registry_handle)))
 
@@ -164,7 +164,7 @@
     (member target_handles array @native_registry_handle)
     (member target_locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member target_velocities nested @native_vectors_3f :nested-schema Vectors3f)
-    (member healths array int32)))
+    (member healths array @native_health)))
 
 (soa-module spinners_soa
   :header "native/simulation/include/ioj/sim/spinner_entity_data.h"
@@ -208,7 +208,7 @@
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member rotations nested @native_rotators_3f :nested-schema Rotators3f)
     (member teams array @native_team)
-    (member healths array int32)
+    (member healths array @native_health)
     (member initial_spawn_delays array float)
     (member spawn_cooldowns array float)))
 
@@ -225,7 +225,7 @@
     :operations (all)
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member teams array @native_team)
-    (member healths array int32)
+    (member healths array @native_health)
     (member laser_damages array int32)))
 
 (soa-module laser_hit_details

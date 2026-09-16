@@ -640,11 +640,11 @@ void Sim::set_laser_fire_rate(ShipFireRate const value) noexcept {
 /* **************************************** */
 // Health and status
 /* **************************************** */
-void Sim::add_health(std::int32_t const added_health) {
+void Sim::add_health(Health const added_health) {
     set_health(health.health + added_health);
 }
 
-void Sim::set_health(std::int32_t const new_health, RegistryEntityHandle const killer) {
+void Sim::set_health(Health const new_health, RegistryEntityHandle const killer) {
     if (new_health == health.health) {
         return;
     }

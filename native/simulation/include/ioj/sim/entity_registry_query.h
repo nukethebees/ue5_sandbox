@@ -3,6 +3,7 @@
 #include "ioj/sim/collision_grid.h"
 #include "ioj/sim/collision_grid_entity_storage.h"
 #include "ioj/sim/entity_types.h"
+#include "ioj/sim/health.h"
 #include "ioj/sim/query_thread_buffers.h"
 #include "ioj/sim/vectors3f.h"
 
@@ -17,7 +18,7 @@ struct EntityRegistryQueryView {
     Vectors3fConstView locations;
     Vectors3fConstView velocities;
     std::span<std::int32_t const> generations;
-    std::span<std::int32_t const> healths;
+    std::span<Health const> healths;
     std::span<std::byte const> teams;
     std::span<std::byte const> entity_types;
 };

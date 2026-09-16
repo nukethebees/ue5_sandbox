@@ -39,6 +39,6 @@
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member velocities nested @native_vectors_3f :nested-schema Vectors3f)
     (member rotations nested @native_rotators_3f :nested-schema Rotators3f)
-    (member healths array int32)
+    (member healths array @native_health)
     (member teams array @native_team)
     (member entity_types array @native_entity_type)))

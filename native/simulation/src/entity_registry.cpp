@@ -79,7 +79,7 @@ auto register_spawned_entity(EntityRegistryBookkeeping& bookkeeping,
                              EntityUniqueId const unique_id,
                              Team const team,
                              EntityType const type,
-                             std::int32_t const health) noexcept -> RegistryEntityHandle {
+                             Health const health) noexcept -> RegistryEntityHandle {
     assert(slot_index >= 0);
     assert(static_cast<std::size_t>(slot_index) < bookkeeping.generations.size());
     assert(unique_id.id >= 0 && unique_id.id < history.num());
@@ -533,7 +533,7 @@ auto EntityRegistry::get_velocity(RegistryEntityHandle const handle) const -> Ve
     assert(is_valid_handle(handle));
     return entity_data.velocities[handle.index];
 }
-auto EntityRegistry::get_health(RegistryEntityHandle const handle) const -> std::int32_t {
+auto EntityRegistry::get_health(RegistryEntityHandle const handle) const -> Health {
     assert(is_valid_handle(handle));
     return entity_data.healths[handle.index];
 }

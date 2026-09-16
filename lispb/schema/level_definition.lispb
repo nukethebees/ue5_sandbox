@@ -40,7 +40,7 @@
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member rotations nested @native_rotators_3f :nested-schema Rotators3f)
     (member teams array @native_team)
-    (member healths array int32)
+    (member healths array @native_health)
     (member initial_fighter_spawn_delays array float)
     (member fighter_spawn_cooldowns array float))
   (struct LevelTurretSpawnEvents
@@ -49,7 +49,7 @@
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member rotations nested @native_rotators_3f :nested-schema Rotators3f)
     (member teams array @native_team)
-    (member healths array int32)
+    (member healths array @native_health)
     (member laser_damages array int32))
   (struct LevelSpinnerSpawnEvents
     :operations (all)

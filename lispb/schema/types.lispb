@@ -219,6 +219,11 @@
   :header "ioj/sim/entity_types.h"
   :pass-by value)
 
+(type native_health
+  :spelling "Health"
+  :header "ioj/sim/health.h"
+  :pass-by value)
+
 (type native_unique_id
   :spelling "EntityUniqueId"
   :header "ioj/sim/entity_types.h"

@@ -5,6 +5,7 @@
 
 #include "ioj/sim/entity_handle.h"
 #include "ioj/sim/entity_types.h"
+#include "ioj/sim/health.h"
 #include "ioj/sim/rotators3f.h"
 #include "ioj/sim/vectors3f.h"
 #include "native_soa/storage.h"
@@ -30,7 +31,7 @@ struct TurretEntityDataConstView {
     std::span<RegistryEntityHandle const> target_handles;
     Vectors3fConstView target_locations;
     Vectors3fConstView target_velocities;
-    std::span<std::int32_t const> healths;
+    std::span<Health const> healths;
     auto num() const noexcept -> size_type { return static_cast<size_type>(handles.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -140,7 +141,7 @@ struct TurretEntityDataView {
     std::span<RegistryEntityHandle> target_handles;
     Vectors3fView target_locations;
     Vectors3fView target_velocities;
-    std::span<std::int32_t> healths;
+    std::span<Health> healths;
     auto num() const noexcept -> size_type { return static_cast<size_type>(handles.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -255,7 +256,7 @@ struct TurretEntityDataView {
              float const new_target_velocities_xs,
              float const new_target_velocities_ys,
              float const new_target_velocities_zs,
-             std::int32_t const new_healths) const {
+             Health const new_healths) const {
         ml::native_soa::require(index >= 0 && index < num());
         handles[static_cast<std::size_t>(index)] = new_handles;
         integral_biases[static_cast<std::size_t>(index)] = new_integral_biases;
@@ -302,7 +303,7 @@ struct TurretEntityData {
     ml::native_soa::Vector<RegistryEntityHandle> target_handles;
     Vectors3f target_locations;
     Vectors3f target_velocities;
-    ml::native_soa::Vector<std::int32_t> healths;
+    ml::native_soa::Vector<Health> healths;
     auto num() const noexcept -> size_type { return static_cast<size_type>(handles.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -554,7 +555,7 @@ struct TurretEntityData {
              float const new_target_velocities_xs,
              float const new_target_velocities_ys,
              float const new_target_velocities_zs,
-             std::int32_t const new_healths) {
+             Health const new_healths) {
         get_view().set(index,
                        new_handles,
                        new_integral_biases,
@@ -604,7 +605,7 @@ struct TurretEntityData {
              float const new_target_velocities_xs,
              float const new_target_velocities_ys,
              float const new_target_velocities_zs,
-             std::int32_t const new_healths) -> size_type {
+             Health const new_healths) -> size_type {
         auto const index{num()};
         add_defaulted(1);
         set(index,
@@ -802,7 +803,7 @@ struct TurretEntityData {
             auto const address{reinterpret_cast<std::uintptr_t>(source.healths.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(healths.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + healths.size() * sizeof(std::int32_t));
+                                    address >= begin + healths.size() * sizeof(Health));
         }
         handles.insert(handles.end(), source.handles.begin(), source.handles.end());
         integral_biases.insert(

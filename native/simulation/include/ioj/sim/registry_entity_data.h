@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/sim/entity_types.h"
+#include "ioj/sim/health.h"
 #include "ioj/sim/rotators3f.h"
 #include "ioj/sim/vectors3f.h"
 #include "native_soa/storage.h"
@@ -19,7 +20,7 @@ struct RegistryEntityDataConstView {
     Vectors3fConstView locations;
     Vectors3fConstView velocities;
     Rotators3fConstView rotations;
-    std::span<std::int32_t const> healths;
+    std::span<Health const> healths;
     std::span<Team const> teams;
     std::span<EntityType const> entity_types;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
@@ -89,7 +90,7 @@ struct RegistryEntityDataView {
     Vectors3fView locations;
     Vectors3fView velocities;
     Rotators3fView rotations;
-    std::span<std::int32_t> healths;
+    std::span<Health> healths;
     std::span<Team> teams;
     std::span<EntityType> entity_types;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
@@ -158,7 +159,7 @@ struct RegistryEntityDataView {
              float const new_rotations_pitches,
              float const new_rotations_yaws,
              float const new_rotations_rolls,
-             std::int32_t const new_healths,
+             Health const new_healths,
              Team const new_teams,
              EntityType const new_entity_types) const {
         ml::native_soa::require(index >= 0 && index < num());
@@ -183,7 +184,7 @@ struct RegistryEntityData {
     Vectors3f locations;
     Vectors3f velocities;
     Rotators3f rotations;
-    ml::native_soa::Vector<std::int32_t> healths;
+    ml::native_soa::Vector<Health> healths;
     ml::native_soa::Vector<Team> teams;
     ml::native_soa::Vector<EntityType> entity_types;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
@@ -325,7 +326,7 @@ struct RegistryEntityData {
              float const new_rotations_pitches,
              float const new_rotations_yaws,
              float const new_rotations_rolls,
-             std::int32_t const new_healths,
+             Health const new_healths,
              Team const new_teams,
              EntityType const new_entity_types) {
         get_view().set(index,
@@ -351,7 +352,7 @@ struct RegistryEntityData {
              float const new_rotations_pitches,
              float const new_rotations_yaws,
              float const new_rotations_rolls,
-             std::int32_t const new_healths,
+             Health const new_healths,
              Team const new_teams,
              EntityType const new_entity_types) -> size_type {
         auto const index{num()};
@@ -436,7 +437,7 @@ struct RegistryEntityData {
             auto const address{reinterpret_cast<std::uintptr_t>(source.healths.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(healths.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + healths.size() * sizeof(std::int32_t));
+                                    address >= begin + healths.size() * sizeof(Health));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.teams.data())};

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/sim/entity_types.h"
+#include "ioj/sim/health.h"
 #include "ioj/sim/vectors3f.h"
 #include "native_soa/storage.h"
 #include "sandbox/core/soa_permutation.h"
@@ -17,7 +18,7 @@ struct TurretSpawnDataConstView {
     using size_type = std::int32_t;
     Vectors3fConstView locations;
     std::span<Team const> teams;
-    std::span<std::int32_t const> healths;
+    std::span<Health const> healths;
     std::span<std::int32_t const> laser_damages;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
@@ -73,7 +74,7 @@ struct TurretSpawnDataView {
     using size_type = std::int32_t;
     Vectors3fView locations;
     std::span<Team> teams;
-    std::span<std::int32_t> healths;
+    std::span<Health> healths;
     std::span<std::int32_t> laser_damages;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
@@ -127,7 +128,7 @@ struct TurretSpawnDataView {
              float const new_locations_ys,
              float const new_locations_zs,
              Team const new_teams,
-             std::int32_t const new_healths,
+             Health const new_healths,
              std::int32_t const new_laser_damages) const {
         ml::native_soa::require(index >= 0 && index < num());
         locations.xs[static_cast<std::size_t>(index)] = new_locations_xs;
@@ -144,7 +145,7 @@ struct TurretSpawnData {
     using size_type = std::int32_t;
     Vectors3f locations;
     ml::native_soa::Vector<Team> teams;
-    ml::native_soa::Vector<std::int32_t> healths;
+    ml::native_soa::Vector<Health> healths;
     ml::native_soa::Vector<std::int32_t> laser_damages;
     auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
@@ -232,7 +233,7 @@ struct TurretSpawnData {
              float const new_locations_ys,
              float const new_locations_zs,
              Team const new_teams,
-             std::int32_t const new_healths,
+             Health const new_healths,
              std::int32_t const new_laser_damages) {
         get_view().set(index,
                        new_locations_xs,
@@ -246,7 +247,7 @@ struct TurretSpawnData {
              float const new_locations_ys,
              float const new_locations_zs,
              Team const new_teams,
-             std::int32_t const new_healths,
+             Health const new_healths,
              std::int32_t const new_laser_damages) -> size_type {
         auto const index{num()};
         add_defaulted(1);
@@ -294,7 +295,7 @@ struct TurretSpawnData {
             auto const address{reinterpret_cast<std::uintptr_t>(source.healths.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(healths.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + healths.size() * sizeof(std::int32_t));
+                                    address >= begin + healths.size() * sizeof(Health));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.laser_damages.data())};

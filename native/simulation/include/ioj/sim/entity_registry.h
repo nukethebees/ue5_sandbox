@@ -114,7 +114,7 @@ struct EntityRegistry {
     }
     auto get_location(RegistryEntityHandle const handle) const -> Vector3f;
     auto get_velocity(RegistryEntityHandle const handle) const -> Vector3f;
-    auto get_health(RegistryEntityHandle const handle) const -> std::int32_t;
+    auto get_health(RegistryEntityHandle const handle) const -> Health;
     auto get_team(RegistryEntityHandle const handle) const -> Team;
     auto get_entity_type(RegistryEntityHandle const handle) const -> EntityType;
     auto get_alive(RegistryEntityHandle const handle) const -> bool;

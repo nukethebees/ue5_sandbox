@@ -142,7 +142,7 @@ auto Sim::get_team(RegistryEntityHandle const handle) const noexcept -> Team {
 
     ml::fatal_error("Invalid capital ship handle passed");
 }
-auto Sim::get_health(RegistryEntityHandle const handle) const noexcept -> std::int32_t {
+auto Sim::get_health(RegistryEntityHandle const handle) const noexcept -> Health {
     auto const found{std::ranges::find(entities.handles, handle)};
     assert(found != entities.handles.end());
     return entities.healths[found - entities.handles.begin()];

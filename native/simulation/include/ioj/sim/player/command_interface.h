@@ -5,6 +5,7 @@
 #pragma once
 
 #include "ioj/sim/entity_types.h"
+#include "ioj/sim/health.h"
 #include "ioj/sim/player/sim.h"
 
 namespace ioj::sim::player {
@@ -123,7 +124,7 @@ class CommandInterface {
         simulation.set_laser_fire_rate(rate);
     }
 
-    void add_health(std::int32_t added_health) {
+    void add_health(Health added_health) {
         simulation.add_health(added_health);
     }
 

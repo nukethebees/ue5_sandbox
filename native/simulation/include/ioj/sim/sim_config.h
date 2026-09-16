@@ -53,7 +53,7 @@ struct TurretSimConfig {
     float target_refresh_frequency{5.f};
     Vector3f fire_point_offset{};
     LaserWeaponSimConfig laser{};
-    std::int32_t max_health{20};
+    Health max_health{20};
 };
 
 struct SpinnerSimConfig {
@@ -66,6 +66,6 @@ struct CapitalShipSimConfig {
     float spawn_delay{5.f};
     std::int32_t fighter_spawn_slots{};
     std::vector<Transform3d> fighter_spawn_slots_relative_transforms;
-    std::int32_t max_health{5000};
+    Health max_health{5000};
 };
 } // namespace ioj::sim

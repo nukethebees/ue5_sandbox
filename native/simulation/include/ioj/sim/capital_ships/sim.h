@@ -110,7 +110,7 @@ struct Sim {
     }
     auto get_team(std::int32_t index) const noexcept -> Team { return entities.teams[index]; }
     auto get_team(RegistryEntityHandle handle) const noexcept -> Team;
-    auto get_health(RegistryEntityHandle handle) const noexcept -> std::int32_t;
+    auto get_health(RegistryEntityHandle handle) const noexcept -> Health;
     auto find_first_index_on_team(Team team) const noexcept -> std::optional<std::int32_t>;
     auto find_first_handle_on_team(Team team) const noexcept -> std::optional<RegistryEntityHandle>;
 

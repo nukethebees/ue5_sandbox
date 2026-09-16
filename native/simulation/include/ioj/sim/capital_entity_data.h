@@ -5,6 +5,7 @@
 
 #include "ioj/sim/entity_handle.h"
 #include "ioj/sim/entity_types.h"
+#include "ioj/sim/health.h"
 #include "ioj/sim/index_span.h"
 #include "ioj/sim/rotators3f.h"
 #include "ioj/sim/vectors3f.h"
@@ -24,7 +25,7 @@ struct CapitalEntityDataConstView {
     std::span<float const> fighter_spawn_timers;
     std::span<float const> fighter_spawn_cooldowns;
     std::span<Team const> teams;
-    std::span<std::int32_t const> healths;
+    std::span<Health const> healths;
     std::span<IndexSpan const> fighter_handle_spans;
     std::span<RegistryEntityHandle const> target_handles;
     auto num() const noexcept -> size_type { return static_cast<size_type>(handles.size()); }
@@ -106,7 +107,7 @@ struct CapitalEntityDataView {
     std::span<float> fighter_spawn_timers;
     std::span<float> fighter_spawn_cooldowns;
     std::span<Team> teams;
-    std::span<std::int32_t> healths;
+    std::span<Health> healths;
     std::span<IndexSpan> fighter_handle_spans;
     std::span<RegistryEntityHandle> target_handles;
     auto num() const noexcept -> size_type { return static_cast<size_type>(handles.size()); }
@@ -187,7 +188,7 @@ struct CapitalEntityDataView {
              float const new_fighter_spawn_timers,
              float const new_fighter_spawn_cooldowns,
              Team const new_teams,
-             std::int32_t const new_healths,
+             Health const new_healths,
              IndexSpan const new_fighter_handle_spans,
              RegistryEntityHandle const new_target_handles) const {
         ml::native_soa::require(index >= 0 && index < num());
@@ -216,7 +217,7 @@ struct CapitalEntityData {
     ml::native_soa::Vector<float> fighter_spawn_timers;
     ml::native_soa::Vector<float> fighter_spawn_cooldowns;
     ml::native_soa::Vector<Team> teams;
-    ml::native_soa::Vector<std::int32_t> healths;
+    ml::native_soa::Vector<Health> healths;
     ml::native_soa::Vector<IndexSpan> fighter_handle_spans;
     ml::native_soa::Vector<RegistryEntityHandle> target_handles;
     auto num() const noexcept -> size_type { return static_cast<size_type>(handles.size()); }
@@ -367,7 +368,7 @@ struct CapitalEntityData {
              float const new_fighter_spawn_timers,
              float const new_fighter_spawn_cooldowns,
              Team const new_teams,
-             std::int32_t const new_healths,
+             Health const new_healths,
              IndexSpan const new_fighter_handle_spans,
              RegistryEntityHandle const new_target_handles) {
         get_view().set(index,
@@ -395,7 +396,7 @@ struct CapitalEntityData {
              float const new_fighter_spawn_timers,
              float const new_fighter_spawn_cooldowns,
              Team const new_teams,
-             std::int32_t const new_healths,
+             Health const new_healths,
              IndexSpan const new_fighter_handle_spans,
              RegistryEntityHandle const new_target_handles) -> size_type {
         auto const index{num()};
@@ -491,7 +492,7 @@ struct CapitalEntityData {
             auto const address{reinterpret_cast<std::uintptr_t>(source.healths.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(healths.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + healths.size() * sizeof(std::int32_t));
+                                    address >= begin + healths.size() * sizeof(Health));
         }
         {
             auto const address{

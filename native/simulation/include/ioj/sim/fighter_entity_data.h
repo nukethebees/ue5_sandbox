@@ -6,6 +6,7 @@
 #include "ioj/sim/entity_handle.h"
 #include "ioj/sim/entity_types.h"
 #include "ioj/sim/fighter_types.h"
+#include "ioj/sim/health.h"
 #include "ioj/sim/vectors3f.h"
 #include "native_soa/storage.h"
 #include "sandbox/core/soa_permutation.h"
@@ -31,7 +32,7 @@ struct FighterEntityDataConstView {
     std::span<float const> move_distances;
     std::span<float const> speeds;
     std::span<Team const> teams;
-    std::span<std::int32_t const> healths;
+    std::span<Health const> healths;
     std::span<RegistryEntityHandle const> parent_handles;
     std::span<std::int8_t const> awareness_scan_countdowns;
     std::span<std::int16_t const> navigation_update_countdowns_remaining_ticks;
@@ -244,7 +245,7 @@ struct FighterEntityDataView {
     std::span<float> move_distances;
     std::span<float> speeds;
     std::span<Team> teams;
-    std::span<std::int32_t> healths;
+    std::span<Health> healths;
     std::span<RegistryEntityHandle> parent_handles;
     std::span<std::int8_t> awareness_scan_countdowns;
     std::span<std::int16_t> navigation_update_countdowns_remaining_ticks;
@@ -466,7 +467,7 @@ struct FighterEntityDataView {
              float const new_move_distances,
              float const new_speeds,
              Team const new_teams,
-             std::int32_t const new_healths,
+             Health const new_healths,
              RegistryEntityHandle const new_parent_handles,
              std::int8_t const new_awareness_scan_countdowns,
              std::int16_t const new_navigation_update_countdowns_remaining_ticks,
@@ -579,7 +580,7 @@ struct FighterEntityData {
     ml::native_soa::Vector<float> move_distances;
     ml::native_soa::Vector<float> speeds;
     ml::native_soa::Vector<Team> teams;
-    ml::native_soa::Vector<std::int32_t> healths;
+    ml::native_soa::Vector<Health> healths;
     ml::native_soa::Vector<RegistryEntityHandle> parent_handles;
     ml::native_soa::Vector<std::int8_t> awareness_scan_countdowns;
     ml::native_soa::Vector<std::int16_t> navigation_update_countdowns_remaining_ticks;
@@ -1112,7 +1113,7 @@ struct FighterEntityData {
              float const new_move_distances,
              float const new_speeds,
              Team const new_teams,
-             std::int32_t const new_healths,
+             Health const new_healths,
              RegistryEntityHandle const new_parent_handles,
              std::int8_t const new_awareness_scan_countdowns,
              std::int16_t const new_navigation_update_countdowns_remaining_ticks,
@@ -1226,7 +1227,7 @@ struct FighterEntityData {
              float const new_move_distances,
              float const new_speeds,
              Team const new_teams,
-             std::int32_t const new_healths,
+             Health const new_healths,
              RegistryEntityHandle const new_parent_handles,
              std::int8_t const new_awareness_scan_countdowns,
              std::int16_t const new_navigation_update_countdowns_remaining_ticks,
@@ -1520,7 +1521,7 @@ struct FighterEntityData {
             auto const address{reinterpret_cast<std::uintptr_t>(source.healths.data())};
             auto const begin{reinterpret_cast<std::uintptr_t>(healths.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + healths.size() * sizeof(std::int32_t));
+                                    address >= begin + healths.size() * sizeof(Health));
         }
         {
             auto const address{reinterpret_cast<std::uintptr_t>(source.parent_handles.data())};

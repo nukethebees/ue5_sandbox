@@ -142,7 +142,7 @@ struct Sim {
     /* **************************************** */
     // Health and status
     /* **************************************** */
-    void add_health(std::int32_t added_health);
+    void add_health(Health added_health);
     auto consume_death_notification() noexcept -> bool;
 
     auto get_kills() const -> std::int32_t;
@@ -233,7 +233,7 @@ struct Sim {
     /* **************************************** */
     // Health
     /* **************************************** */
-    void set_health(std::int32_t new_health, RegistryEntityHandle killer = {});
+    void set_health(Health new_health, RegistryEntityHandle killer = {});
     void die(RegistryEntityHandle killer);
 
     /* **************************************** */

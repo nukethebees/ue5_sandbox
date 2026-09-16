@@ -64,7 +64,7 @@
     (method select_previous_laser_fire_rate void :noexcept true)
     (method set_laser_fire_rate void :noexcept true
       (parameter rate "ShipFireRate"))
-    (method add_health void (parameter added_health "std::int32_t"))
+    (method add_health void (parameter added_health @native_health))
     (method consume_death_notification bool :noexcept true)))
 
 (facade-module player_phase_interface
