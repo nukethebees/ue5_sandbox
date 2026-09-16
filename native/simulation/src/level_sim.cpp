@@ -70,7 +70,7 @@ LevelSim::LevelSim(LevelSimInitData data)
     : local_game_memory_{data.game_memory == nullptr ? std::make_unique<GameMemory>() : nullptr}
     , game_memory_{data.game_memory != nullptr ? data.game_memory : local_game_memory_.get()}
     , frame_memory_{data.frame_memory_capacity_bytes}
-    , query_manager_{entity_registry_}
+    , query_manager_{entity_registry_, agent_accessor_}
     , overlap_handler_{entity_registry_, data.overlap_response}
     , lasers_simulation_{clock_, entity_registry_, query_manager_, frame_memory_}
     , lasers_phase_{lasers_simulation_}

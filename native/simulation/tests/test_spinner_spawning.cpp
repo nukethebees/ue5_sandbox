@@ -1,3 +1,4 @@
+#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/entity_registry.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/sim_clock.h>
@@ -43,7 +44,9 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     using Access = spinners::SpinnerSpawnTestAccess;
     SimClock clock;
     EntityRegistry registry;
-    SpatialQueryManager queries{registry};
+    AgentIndexes indexes{clock};
+    AgentAccessor agents{indexes};
+    SpatialQueryManager queries{registry, agents};
     ml::FrameMemoryResource frame_memory{1024 * 1024};
     lasers::Sim lasers{clock, registry, queries, frame_memory};
     spinners::Sim simulation{clock, registry, lasers, frame_memory};

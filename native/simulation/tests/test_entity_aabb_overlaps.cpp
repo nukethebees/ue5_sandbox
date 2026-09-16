@@ -1,5 +1,6 @@
 #include <ioj/sim/entity_registry.h>
 #include <ioj/sim/spatial_query_manager.h>
+#include "support/collision_agent_storage.h"
 #include "support/simulation_test_support.h"
 
 namespace ioj::sim::tests {
@@ -9,7 +10,7 @@ struct OverlapFixture {
     explicit OverlapFixture(Vector3f const capital_half_extents = {{10.f, 10.f, 10.f}},
                             Vector3f const capital_centre = Vector3f{},
                             Vector3f const turret_half_extents = {{10.f, 10.f, 10.f}})
-        : query_manager{registry} {
+        : query_manager{registry, owners.agents} {
         auto const type_count{collision::EntityAABBs::num()};
         for (std::int32_t type_index{}; type_index < type_count; ++type_index) {
             set_bounds(type_index, Vector3f{}, Vector3f{{10.f, 10.f, 10.f}});
@@ -36,6 +37,7 @@ struct OverlapFixture {
 
     void finish_spawning() {
         registry.commit_updates();
+        owners.load(registry);
         query_manager.update(current_tick);
         registry.end_tick();
         query_manager.get_collision_system().reset_frame_events();
@@ -84,6 +86,7 @@ struct OverlapFixture {
              updates.get_const_view()},
             deaths);
         registry.commit_updates();
+        owners.load(registry);
         query_manager.update(++current_tick);
         tick_is_open = true;
     }
@@ -93,6 +96,7 @@ struct OverlapFixture {
         query_manager.get_collision_system().reset_frame_events();
         registry.begin_tick();
         registry.commit_updates();
+        owners.load(registry);
         query_manager.update(++current_tick);
         tick_is_open = true;
     }
@@ -124,6 +128,7 @@ struct OverlapFixture {
     }
 
     EntityRegistry registry;
+    CollisionAgentStorage owners;
     SpatialQueryManager query_manager;
     collision::EntityAABBs entity_bounds;
     SimTick current_tick{};
@@ -172,6 +177,20 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
     check_single_pair(fixture.get_entity_overlaps(), moved, stationary);
     tests::expect_equal(
         fixture.get_static_overlaps().num(), 0, "A dynamic-only overlap produces no static record");
+
+    auto owner{fixture.owners.capitals.get_view().columns()};
+    owner.locations.set(0, {{300.f, 0.f, 0.f}});
+    owner.locations.set(1, {{315.f, 0.f, 0.f}});
+    auto& collision{fixture.query_manager.get_collision_system()};
+    collision.reset_frame_events();
+    collision.update(handles, ++fixture.current_tick);
+    check_single_pair(fixture.get_entity_overlaps(), moved, stationary);
+    owner.healths[0] = 0;
+    collision.reset_frame_events();
+    collision.update(handles, ++fixture.current_tick);
+    tests::expect_equal(fixture.get_entity_overlaps().num(),
+                        0,
+                        "Overlap generation reads owner health without registry publication");
 }
 
 TEST(EntityAABBOverlaps, TwoMovedEntitiesProduceOnePair) {
@@ -658,6 +677,7 @@ TEST(EntityAABBOverlaps, InvalidDeadAndStaleDirtyHandlesAreIgnored) {
 
     fixture.end_tick();
     auto const replacement{fixture.spawn({{10.f, 0.f, 0.f}})};
+    fixture.owners.load(fixture.registry);
     tests::expect_true(fixture.registry.is_stale(removed),
                        "Removed handle becomes stale after slot reuse");
 

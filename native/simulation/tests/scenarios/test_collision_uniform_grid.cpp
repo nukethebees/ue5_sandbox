@@ -1,5 +1,6 @@
 #include "test_collision_uniform_grid.h"
 #include <bit>
+#include "../support/collision_agent_storage.h"
 #include "../support/simulation_test_support.h"
 
 #include <ioj/sim/world_aabb_operations.h>
@@ -48,6 +49,7 @@ struct TraceFixture {
 
         grid.set_grid_dims({fixture_grid_dims.x, fixture_grid_dims.y, fixture_grid_dims.z});
         grid.set_cell_dims(fixture_cell_dims);
+        owners.load(registry);
         grid.rebuild_grid(aabbs);
     }
 
@@ -86,6 +88,7 @@ struct TraceFixture {
         registry.queue_entity_updates(updates, death_info);
         registry.commit_updates();
         registry.end_tick();
+        owners.load(registry);
         grid.rebuild_grid(aabbs);
     }
 
@@ -98,12 +101,14 @@ struct TraceFixture {
         entity_data.entity_types[0] = EntityType::CapitalShip;
 
         auto const spawned{registry.add_entities(entity_data.get_const_view())};
+        owners.load(registry);
         grid.rebuild_grid(aabbs);
         return spawned.get_handle(0);
     }
 
     EntityRegistry registry;
-    collision::CollisionUniformGrid grid{registry};
+    tests::CollisionAgentStorage owners;
+    collision::CollisionUniformGrid grid{registry, owners.agents};
     std::vector<RegistryEntityHandle> handles{};
     collision::EntityAABBs aabbs;
 };
@@ -1294,6 +1299,40 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
          {{initial_location.X - aabb_half_extents.X, 0.f, 0.f}}},
     };
     check_traces(fixture, initial_cases);
+
+    {
+        TraceFixture authoritative{initial_locations, aabb_half_extents};
+        auto owner{authoritative.owners.capitals.get_view().columns()};
+        owner.locations.set(0, moved_location);
+        check_traces(authoritative, initial_cases);
+        authoritative.grid.rebuild_grid(authoritative.aabbs);
+        std::vector<ExpectedTrace> const owner_cases{
+            {"Rebuild uses owner location without registry publication",
+             {{moved_location.X - trace_offset, 0.f, 0.f}},
+             {{moved_location.X + trace_offset, 0.f, 0.f}},
+             1,
+             {{moved_location.X - aabb_half_extents.X, 0.f, 0.f}}},
+        };
+        check_traces(authoritative, owner_cases);
+        owner.healths[0] = 0;
+        tests::expect_true(authoritative.registry.get_alive(authoritative.handles[0]),
+                           "Registry deliberately retains old alive state");
+        std::vector<ExpectedTrace> const dead_owner_cases{
+            {"Logical owner death filters cached geometry without rebuild",
+             {{moved_location.X - trace_offset, 0.f, 0.f}},
+             {{moved_location.X + trace_offset, 0.f, 0.f}},
+             0},
+        };
+        check_traces(authoritative, dead_owner_cases);
+        std::vector<RegistryEntityHandle> overlaps;
+        std::vector<std::int32_t> static_overlaps;
+        authoritative.grid.append_overlaps(
+            {moved_location - aabb_half_extents, moved_location + aabb_half_extents},
+            {},
+            overlaps,
+            static_overlaps);
+        tests::expect_true(overlaps.empty(), "Dead owner is excluded from cached overlaps");
+    }
 
     std::vector<Vector3f> const moved_locations{moved_location};
     std::vector<std::uint8_t> const alive{std::uint8_t{1}};

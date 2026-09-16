@@ -2,6 +2,7 @@
 #include <Components/InstancedStaticMeshComponent.h>
 #include <CQTest.h>
 #include <Engine/World.h>
+#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/collision/collision_system.h>
 #include <ioj/sim/entity_registry.h>
 #include <Misc/ScopeExit.h>
@@ -51,7 +52,10 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
             ASandboxTestOmittedCollisionActor::StaticClass());
 
         ::ioj::sim::EntityRegistry registry;
-        ::ioj::sim::collision::CollisionSystem collision{registry};
+        ::ioj::sim::SimClock clock;
+        ::ioj::sim::AgentIndexes indexes{clock};
+        ::ioj::sim::AgentAccessor agents{indexes};
+        ::ioj::sim::collision::CollisionSystem collision{registry, agents};
         auto& grid{collision.get_uniform_grid()};
         auto const configured_dims{config.calculate_grid_dimensions()};
         grid.set_grid_dims({configured_dims.X, configured_dims.Y, configured_dims.Z});

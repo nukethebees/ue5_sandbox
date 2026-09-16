@@ -3,6 +3,7 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestEnhancedInputSubsystem.h>
 
+#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/entity_registry.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/sim_clock.h>
@@ -41,7 +42,9 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
     FPlayerControlContexts contexts_;
     ::ioj::sim::SimClock clock_;
     ::ioj::sim::EntityRegistry registry_;
-    ::ioj::sim::SpatialQueryManager queries_{registry_};
+    ::ioj::sim::AgentIndexes indexes_{clock_};
+    ::ioj::sim::AgentAccessor agents_{indexes_};
+    ::ioj::sim::SpatialQueryManager queries_{registry_, agents_};
     ml::FFrameMemoryResource frame_memory_{1024 * 1024};
     ::ioj::sim::lasers::Sim lasers_{clock_, registry_, queries_, frame_memory_};
     ::ioj::sim::player::Sim ship_simulation_{clock_, registry_, queries_, lasers_};

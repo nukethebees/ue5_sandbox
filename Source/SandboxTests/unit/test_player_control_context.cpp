@@ -5,6 +5,7 @@
 #include <SandboxTests/support/TestEnhancedInputSubsystem.h>
 #include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
 
+#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/entity_registry.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/sim_clock.h>
@@ -756,7 +757,9 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
     {
         ::ioj::sim::SimClock clock;
         ::ioj::sim::EntityRegistry registry;
-        ::ioj::sim::SpatialQueryManager queries{registry};
+        ::ioj::sim::AgentIndexes indexes{clock};
+        ::ioj::sim::AgentAccessor agents{indexes};
+        ::ioj::sim::SpatialQueryManager queries{registry, agents};
         ml::FFrameMemoryResource frame_memory{1024 * 1024};
         ::ioj::sim::lasers::Sim lasers{clock, registry, queries, frame_memory};
         ::ioj::sim::player::Sim simulation{clock, registry, queries, lasers};
@@ -783,7 +786,9 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
     {
         ::ioj::sim::SimClock clock;
         ::ioj::sim::EntityRegistry registry;
-        ::ioj::sim::SpatialQueryManager queries{registry};
+        ::ioj::sim::AgentIndexes indexes{clock};
+        ::ioj::sim::AgentAccessor agents{indexes};
+        ::ioj::sim::SpatialQueryManager queries{registry, agents};
         ml::FFrameMemoryResource frame_memory{1024 * 1024};
         ::ioj::sim::lasers::Sim lasers{clock, registry, queries, frame_memory};
         ::ioj::sim::player::Sim simulation{clock, registry, queries, lasers};
@@ -1053,7 +1058,9 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                               context.can_bind());
         ::ioj::sim::SimClock clock;
         ::ioj::sim::EntityRegistry registry;
-        ::ioj::sim::SpatialQueryManager queries{registry};
+        ::ioj::sim::AgentIndexes indexes{clock};
+        ::ioj::sim::AgentAccessor agents{indexes};
+        ::ioj::sim::SpatialQueryManager queries{registry, agents};
         ml::FFrameMemoryResource frame_memory{1024 * 1024};
         ::ioj::sim::lasers::Sim lasers{clock, registry, queries, frame_memory};
         ::ioj::sim::player::Sim simulation{clock, registry, queries, lasers};

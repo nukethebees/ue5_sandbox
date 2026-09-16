@@ -8,6 +8,7 @@
 #include <sandbox/core/diagnostics.h>
 #include <thread>
 
+#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/entity_registry.h>
 
 namespace ioj::sim::collision {
@@ -32,9 +33,11 @@ auto CollisionSystem::update(std::span<RegistryEntityHandle const> const collisi
 void CollisionSystem::reset_frame_events() {
     overlap_event_storage_.reset();
 }
-CollisionSystem::CollisionSystem(EntityRegistry const& registry) noexcept
+CollisionSystem::CollisionSystem(EntityRegistry const& registry,
+                                 AgentAccessor const& agents) noexcept
     : entity_registry_{registry}
-    , uniform_grid_{registry} {}
+    , agents_{agents}
+    , uniform_grid_{registry, agents} {}
 void CollisionSystem::rebuild_grid() {
     SANDBOX_PROFILE_SCOPE("Sandbox::CollisionSystem::rebuild_grid");
     uniform_grid_.rebuild_grid(entity_aabbs_);
@@ -48,19 +51,17 @@ void CollisionSystem::collect_overlaps_for_moved_entities(
 
     overlap_storage_.clear();
 
-    auto const& entity_data{entity_registry_.get_entity_data()};
     for (auto const dirty_entity : collision_dirty_entities) {
-        if (!entity_registry_.is_valid_alive(dirty_entity)) {
+        auto const id{entity_registry_.get_current_id(dirty_entity)};
+        auto const state{agents_.read_alive(id)};
+        if (!state) {
             continue;
         }
 
-        auto const entity_index{dirty_entity.index};
-        auto const entity_type_index{std::to_underlying(entity_data.entity_types[entity_index])};
-        auto const bounds{collision::make_entity_world_bounds(
-            entity_aabbs_,
-            entity_type_index,
-            entity_data.locations[entity_index],
-            to_quaternion(entity_data.rotations[entity_index]))};
+        auto const bounds{collision::make_entity_world_bounds(entity_aabbs_,
+                                                              std::to_underlying(id.entity_type()),
+                                                              state->location,
+                                                              to_quaternion(state->rotation))};
 
         overlapping_entities_scratch_.clear();
         overlapping_static_geometry_indices_scratch_.clear();

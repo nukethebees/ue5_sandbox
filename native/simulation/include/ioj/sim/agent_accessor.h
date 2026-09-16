@@ -36,6 +36,28 @@ class AgentAccessor {
 
     auto indexes() const noexcept -> AgentIndexes const& { return indexes_; }
 
+    [[nodiscard]] auto is_alive(EntityUniqueId const id) const noexcept -> bool {
+        auto const index{indexes_.find(id)};
+        if (index < 0) {
+            return false;
+        }
+        switch (id.entity_type()) {
+            case EntityType::PlayerShip:
+                return player_.health != nullptr && sim::is_alive(*player_.health);
+            case EntityType::CapitalShip:
+                return sim::is_alive(capitals_.healths[index]);
+            case EntityType::Fighter:
+                return sim::is_alive(fighters_.healths[index]);
+            case EntityType::Turret:
+                return sim::is_alive(turrets_.healths[index]);
+            case EntityType::TubeSpinner:
+                return true;
+            case EntityType::COUNT:
+                return false;
+        }
+        return false;
+    }
+
     void bind(CapitalEntityData::ConstView capitals,
               FighterEntityData::ConstView fighters,
               TurretEntityData::ConstView turrets,

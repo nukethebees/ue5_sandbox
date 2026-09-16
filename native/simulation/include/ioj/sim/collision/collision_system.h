@@ -22,7 +22,7 @@ namespace ioj::sim::collision {
 
 struct CollisionSystem {
   public:
-    explicit CollisionSystem(EntityRegistry const& registry) noexcept;
+    CollisionSystem(EntityRegistry const& registry, AgentAccessor const& agents) noexcept;
     CollisionSystem(CollisionSystem const&) = delete;
     CollisionSystem(CollisionSystem&&) = delete;
     auto operator=(CollisionSystem const&) -> CollisionSystem& = delete;
@@ -53,6 +53,7 @@ struct CollisionSystem {
         std::span<RegistryEntityHandle const> collision_dirty_entities);
 
     EntityRegistry const& entity_registry_;
+    AgentAccessor const& agents_;
     CollisionUniformGrid uniform_grid_;
 
     EntityAABBs entity_aabbs_{};

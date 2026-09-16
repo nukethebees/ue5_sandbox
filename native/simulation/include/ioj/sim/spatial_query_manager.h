@@ -46,7 +46,7 @@ struct SpatialQueryManager {
     /* **************************************** */
     // Construction and setup
     /* **************************************** */
-    explicit SpatialQueryManager(EntityRegistry const& entity_registry);
+    SpatialQueryManager(EntityRegistry const& entity_registry, AgentAccessor const& agents);
     SpatialQueryManager(SpatialQueryManager const&) = delete;
     SpatialQueryManager(SpatialQueryManager&&) = delete;
     auto operator=(SpatialQueryManager const&) -> SpatialQueryManager& = delete;

@@ -1,9 +1,9 @@
 #include "ioj/sim/collision/collision_uniform_grid.h"
 
+#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/collision_grid.h>
 #include <ioj/sim/entity_cell_data_operations.h>
 #include <ioj/sim/entity_registry.h>
-#include <ioj/sim/entity_registry_view.h>
 #include <ioj/sim/health.h>
 #include <ioj/sim/trace_hits.h>
 
@@ -31,17 +31,12 @@ enum class IgnoredEntityMode : std::uint8_t {
     PerTrace,
 };
 
-auto entity_type_at(EntityRegistryQueryView const registry,
-                    RegistryEntityHandle const entity) noexcept -> EntityType {
-    return static_cast<EntityType>(std::to_integer<std::uint8_t>(
-        registry.entity_types[static_cast<std::size_t>(entity.index)]));
-}
-
 template <TraceKind Kind, IgnoredEntityMode IgnoredMode, TraceEntityFilter EntityFilter>
 void trace_grid_aabbs(GridGeometry const geometry,
                       CollisionGridEntityStorage const& entity_storage,
                       CollisionGridStaticStorage const& static_storage,
-                      EntityRegistryQueryView const registry,
+                      EntityRegistry const& registry,
+                      AgentAccessor const& agents,
                       LineTracesConstView const traces,
                       TraceHitsView const hits,
                       std::span<RegistryEntityHandle const> const ignored_entities,
@@ -103,7 +98,8 @@ void trace_grid_aabbs(GridGeometry const geometry,
                 auto const aabbs{entity_storage.aabbs_for_cell(cell_index)};
                 for (std::int32_t entity_index{}; entity_index < entity_count; ++entity_index) {
                     auto const entity{entities[static_cast<std::size_t>(entity_index)]};
-                    if (!is_valid_alive(registry, entity)) {
+                    auto const id{registry.get_current_id(entity)};
+                    if (!agents.is_alive(id)) {
                         continue;
                     }
                     if constexpr (IgnoredMode == IgnoredEntityMode::PerTrace) {
@@ -112,7 +108,7 @@ void trace_grid_aabbs(GridGeometry const geometry,
                         }
                     }
                     if constexpr (EntityFilter == TraceEntityFilter::ExcludeFighters) {
-                        if (entity_type_at(registry, entity) == EntityType::Fighter) {
+                        if (id.entity_type() == EntityType::Fighter) {
                             continue;
                         }
                     }
@@ -266,7 +262,8 @@ template <TraceKind Kind>
 void dispatch_ignored_mode(GridGeometry const geometry,
                            CollisionGridEntityStorage const& entity_storage,
                            CollisionGridStaticStorage const& static_storage,
-                           EntityRegistryQueryView const registry,
+                           EntityRegistry const& registry,
+                           AgentAccessor const& agents,
                            LineTracesConstView const traces,
                            TraceHitsView const hits,
                            std::span<RegistryEntityHandle const> const ignored_entities,
@@ -279,6 +276,7 @@ void dispatch_ignored_mode(GridGeometry const geometry,
                                                                              entity_storage,
                                                                              static_storage,
                                                                              registry,
+                                                                             agents,
                                                                              traces,
                                                                              hits,
                                                                              ignored_entities,
@@ -290,6 +288,7 @@ void dispatch_ignored_mode(GridGeometry const geometry,
                     entity_storage,
                     static_storage,
                     registry,
+                    agents,
                     traces,
                     hits,
                     ignored_entities,
@@ -309,29 +308,40 @@ void dispatch_ignored_mode(GridGeometry const geometry,
 void trace_grid_lines(GridGeometry const geometry,
                       CollisionGridEntityStorage const& entity_storage,
                       CollisionGridStaticStorage const& static_storage,
-                      EntityRegistryQueryView const registry,
+                      EntityRegistry const& registry,
+                      AgentAccessor const& agents,
                       LineTracesConstView const traces,
                       TraceHitsView const hits) {
     trace_grid_aabbs<TraceKind::Line, IgnoredEntityMode::None, TraceEntityFilter::None>(
-        geometry, entity_storage, static_storage, registry, traces, hits, {}, {});
+        geometry, entity_storage, static_storage, registry, agents, traces, hits, {}, {});
 }
 
 void trace_grid_lines_ignoring_entities(
     GridGeometry const geometry,
     CollisionGridEntityStorage const& entity_storage,
     CollisionGridStaticStorage const& static_storage,
-    EntityRegistryQueryView const registry,
+    EntityRegistry const& registry,
+    AgentAccessor const& agents,
     LineTracesConstView const traces,
     TraceHitsView const hits,
     std::span<RegistryEntityHandle const> const ignored_entities) {
     trace_grid_aabbs<TraceKind::Line, IgnoredEntityMode::PerTrace, TraceEntityFilter::None>(
-        geometry, entity_storage, static_storage, registry, traces, hits, ignored_entities, {});
+        geometry,
+        entity_storage,
+        static_storage,
+        registry,
+        agents,
+        traces,
+        hits,
+        ignored_entities,
+        {});
 }
 
 void sweep_grid_aabbs(GridGeometry const geometry,
                       CollisionGridEntityStorage const& entity_storage,
                       CollisionGridStaticStorage const& static_storage,
-                      EntityRegistryQueryView const registry,
+                      EntityRegistry const& registry,
+                      AgentAccessor const& agents,
                       LineTracesConstView const centre_paths,
                       Vector3f const moving_half_extent,
                       TraceHitsView const hits,
@@ -341,6 +351,7 @@ void sweep_grid_aabbs(GridGeometry const geometry,
                                             entity_storage,
                                             static_storage,
                                             registry,
+                                            agents,
                                             centre_paths,
                                             hits,
                                             ignored_entities,
@@ -350,7 +361,8 @@ void sweep_grid_aabbs(GridGeometry const geometry,
 void append_grid_overlaps(GridGeometry const geometry,
                           CollisionGridEntityStorage const& entity_storage,
                           CollisionGridStaticStorage const& static_storage,
-                          EntityRegistryQueryView const registry,
+                          EntityRegistry const& registry,
+                          AgentAccessor const& agents,
                           WorldAABB const query_bounds,
                           RegistryEntityHandle const ignored_entity,
                           std::vector<RegistryEntityHandle>& out_entities,
@@ -380,7 +392,8 @@ void append_grid_overlaps(GridGeometry const geometry,
 
                     for (std::int32_t entity_index{}; entity_index < entity_count; ++entity_index) {
                         auto const entity{entities[static_cast<std::size_t>(entity_index)]};
-                        if (entity == ignored_entity || !is_valid_alive(registry, entity)) {
+                        if (entity == ignored_entity ||
+                            !agents.is_alive(registry.get_current_id(entity))) {
                             continue;
                         }
 
@@ -434,8 +447,10 @@ void CollisionUniformGrid::set_cell_dims(Vector3f const cell_dims) noexcept {
     geometry_.cell_dimensions = cell_dims;
 }
 
-CollisionUniformGrid::CollisionUniformGrid(EntityRegistry const& entity_registry) noexcept
-    : entity_registry_{entity_registry} {}
+CollisionUniformGrid::CollisionUniformGrid(EntityRegistry const& entity_registry,
+                                           AgentAccessor const& agents) noexcept
+    : entity_registry_{entity_registry}
+    , agents_{agents} {}
 
 auto CollisionUniformGrid::is_configured() const noexcept -> bool {
     return collision::is_configured(geometry_);
@@ -504,7 +519,6 @@ void CollisionUniformGrid::rebuild_grid(collision::EntityAABBs const& entity_aab
         ml::fatal_error("Cannot rebuild an unconfigured collision grid");
     }
 
-    auto const& entity_data{entity_registry_.get_entity_data()};
     auto const entity_count{entity_registry_.get_num_elements()};
     auto const generations{entity_registry_.get_generations()};
     auto const geometry{geometry_};
@@ -514,15 +528,17 @@ void CollisionUniformGrid::rebuild_grid(collision::EntityAABBs const& entity_aab
         SANDBOX_PROFILE_SCOPE("Sandbox::CollisionUniformGrid::rebuild_grid::count_loop");
 
         for (std::int32_t index{}; index < entity_count; ++index) {
-            if (is_dead(entity_data.healths[index])) {
+            auto const handle{RegistryEntityHandle{index, generations[index]}};
+            auto const id{entity_registry_.get_current_id(handle)};
+            auto const state{agents_.read_alive(id)};
+            if (!state) {
                 continue;
             }
-            auto const entity_type{entity_data.entity_types[index]};
-            auto const bounds{
-                collision::make_entity_world_bounds(entity_aabbs,
-                                                    std::to_underlying(entity_type),
-                                                    entity_data.locations[index],
-                                                    to_quaternion(entity_data.rotations[index]))};
+            auto const entity_type{id.entity_type()};
+            auto const bounds{collision::make_entity_world_bounds(entity_aabbs,
+                                                                  std::to_underlying(entity_type),
+                                                                  state->location,
+                                                                  to_quaternion(state->rotation))};
             auto const [min_coord, max_coord]{
                 collision::to_cell_coord_bounds(geometry, bounds.min, bounds.max)};
             if (!is_cell_coord_in_bounds(min_coord, max_coord)) {
@@ -566,7 +582,8 @@ void CollisionUniformGrid::append_overlaps(
     collision_uniform_grid_detail::append_grid_overlaps(geometry_,
                                                         entity_storage_,
                                                         static_storage_,
-                                                        make_native_query_view(entity_registry_),
+                                                        entity_registry_,
+                                                        agents_,
                                                         query_bounds,
                                                         ignored_entity,
                                                         out_entities,
@@ -575,12 +592,8 @@ void CollisionUniformGrid::append_overlaps(
 
 void CollisionUniformGrid::trace_aabbs(LineTracesConstView const& traces,
                                        TraceHitsView const& hits) const {
-    collision_uniform_grid_detail::trace_grid_lines(geometry_,
-                                                    entity_storage_,
-                                                    static_storage_,
-                                                    make_native_query_view(entity_registry_),
-                                                    traces,
-                                                    hits);
+    collision_uniform_grid_detail::trace_grid_lines(
+        geometry_, entity_storage_, static_storage_, entity_registry_, agents_, traces, hits);
 }
 
 void CollisionUniformGrid::trace_aabbs(
@@ -591,7 +604,8 @@ void CollisionUniformGrid::trace_aabbs(
         geometry_,
         entity_storage_,
         static_storage_,
-        make_native_query_view(entity_registry_),
+        entity_registry_,
+        agents_,
         traces,
         hits,
         {ignored_entities.data(), static_cast<std::size_t>(ignored_entities.size())});
@@ -611,7 +625,8 @@ void CollisionUniformGrid::sweep_aabbs(LineTracesConstView const& centre_paths,
         geometry_,
         entity_storage_,
         static_storage_,
-        make_native_query_view(entity_registry_),
+        entity_registry_,
+        agents_,
         centre_paths,
         moving_half_extent,
         hits,

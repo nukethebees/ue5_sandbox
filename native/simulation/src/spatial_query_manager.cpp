@@ -197,9 +197,10 @@ void SpatialQueryManager::release_thread_buffer(std::int32_t const index) const 
 /* **************************************** */
 // Construction and setup
 /* **************************************** */
-SpatialQueryManager::SpatialQueryManager(EntityRegistry const& in_entity_registry)
+SpatialQueryManager::SpatialQueryManager(EntityRegistry const& in_entity_registry,
+                                         AgentAccessor const& agents)
     : entity_registry{in_entity_registry}
-    , collision{in_entity_registry} {}
+    , collision{in_entity_registry, agents} {}
 
 void SpatialQueryManager::initialise(collision::CellCoord const grid_dimensions,
                                      Vector3f const cell_size,
