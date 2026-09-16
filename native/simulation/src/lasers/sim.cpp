@@ -273,8 +273,9 @@ void Sim::handle_collisions(float const dt) {
         to_remove.add(entity_index);
         auto const damaged_entity{trace_hits.entities[element]};
         if (damaged_entity.is_valid()) {
-            collision_damage_events.add(
-                damaged_entity, entities.damages[element], entities.instigator_handles[element]);
+            collision_damage_events.add(entity_registry.get_current_id(damaged_entity),
+                                        entities.damages[element],
+                                        entities.instigator_handles[element]);
         }
 
         auto const velocity{entities.velocities[entity_index]};

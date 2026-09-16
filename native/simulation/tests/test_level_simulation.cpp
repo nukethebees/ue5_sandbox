@@ -82,7 +82,8 @@ void add_mission(LevelSimInitData& data) {
 
 void kill_enemy(LevelSim& simulation) {
     DirectDamageEvents events;
-    events.add(simulation.get_capital_ships().get_handle(1),
+    events.add(simulation.get_entity_registry().get_current_id(
+                   simulation.get_capital_ships().get_handle(1)),
                100,
                simulation.get_capital_ships().get_handle(0));
     LevelSimTestAccess::queue_direct_damage_events(simulation, events.get_const_view());

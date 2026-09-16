@@ -500,6 +500,7 @@ void Sim::resolve_damage_events() {
     batch::resolve_damage_events(entity_registry,
                                  agents_.indexes(),
                                  data.entity_handles,
+                                 data.entity_ids,
                                  data.healths,
                                  local_indices_to_remove,
                                  entity_death_info);
@@ -509,8 +510,11 @@ void Sim::resolve_damage_events() {
     auto const damage_count{damage_events.num()};
     for (std::int32_t event_index{}; event_index < damage_count; ++event_index) {
         auto const event_element{static_cast<std::size_t>(event_index)};
-        auto const damaged_handle{damage_events.damaged_entities[event_element]};
-        auto const fighter_index{find_index(damaged_handle)};
+        auto const damaged_id{damage_events.damaged_entities[event_element]};
+        if (!damaged_id.is_valid() || damaged_id.entity_type() != EntityType::Fighter) {
+            continue;
+        }
+        auto const fighter_index{agents_.indexes().find(damaged_id)};
         if (fighter_index < 0 || is_dead(data.healths[fighter_index])) {
             continue;
         }

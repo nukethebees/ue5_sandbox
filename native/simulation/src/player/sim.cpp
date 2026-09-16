@@ -151,7 +151,7 @@ void Sim::resolve_damage_events() {
     auto const damage_count{damage_events.num()};
     for (std::int32_t event_index{}; event_index < damage_count; ++event_index) {
         auto const element{static_cast<std::size_t>(event_index)};
-        if (damage_events.damaged_entities[element] != registry_handle || is_dead(health.health)) {
+        if (damage_events.damaged_entities[element] != unique_entity_id || is_dead(health.health)) {
             continue;
         }
 

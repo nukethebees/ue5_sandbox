@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/sim/entity_handle.h"
+#include "ioj/sim/entity_unique_id.h"
 #include "native_soa/storage.h"
 #include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
@@ -15,7 +16,7 @@ struct DirectDamageEventsConstView {
     using View = DirectDamageEventsView;
     using ConstView = DirectDamageEventsConstView;
     using size_type = std::int32_t;
-    std::span<RegistryEntityHandle const> damaged_entities;
+    std::span<EntityUniqueId const> damaged_entities;
     std::span<std::int32_t const> damage_amounts;
     std::span<RegistryEntityHandle const> instigators;
     auto num() const noexcept -> size_type {
@@ -71,7 +72,7 @@ struct DirectDamageEventsView {
     using View = DirectDamageEventsView;
     using ConstView = DirectDamageEventsConstView;
     using size_type = std::int32_t;
-    std::span<RegistryEntityHandle> damaged_entities;
+    std::span<EntityUniqueId> damaged_entities;
     std::span<std::int32_t> damage_amounts;
     std::span<RegistryEntityHandle> instigators;
     auto num() const noexcept -> size_type {
@@ -120,7 +121,7 @@ struct DirectDamageEventsView {
         return slice(num() - count, count);
     }
     void set(size_type const index,
-             RegistryEntityHandle const new_damaged_entities,
+             EntityUniqueId const new_damaged_entities,
              std::int32_t const new_damage_amounts,
              RegistryEntityHandle const new_instigators) const {
         ml::native_soa::require(index >= 0 && index < num());
@@ -133,7 +134,7 @@ struct DirectDamageEvents {
     using View = DirectDamageEventsView;
     using ConstView = DirectDamageEventsConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<RegistryEntityHandle> damaged_entities;
+    ml::native_soa::Vector<EntityUniqueId> damaged_entities;
     ml::native_soa::Vector<std::int32_t> damage_amounts;
     ml::native_soa::Vector<RegistryEntityHandle> instigators;
     auto num() const noexcept -> size_type {
@@ -196,12 +197,12 @@ struct DirectDamageEvents {
         set_num(old_num - count);
     }
     void set(size_type const index,
-             RegistryEntityHandle const new_damaged_entities,
+             EntityUniqueId const new_damaged_entities,
              std::int32_t const new_damage_amounts,
              RegistryEntityHandle const new_instigators) {
         get_view().set(index, new_damaged_entities, new_damage_amounts, new_instigators);
     }
-    auto add(RegistryEntityHandle const new_damaged_entities,
+    auto add(EntityUniqueId const new_damaged_entities,
              std::int32_t const new_damage_amounts,
              RegistryEntityHandle const new_instigators) -> size_type {
         auto const index{num()};
@@ -220,8 +221,8 @@ struct DirectDamageEvents {
             auto const address{ml::address_cast(source.damaged_entities.data())};
             auto const begin{ml::address_cast(damaged_entities.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + damaged_entities.size() *
-                                                           sizeof(RegistryEntityHandle));
+                                    address >=
+                                        begin + damaged_entities.size() * sizeof(EntityUniqueId));
         }
         {
             auto const address{ml::address_cast(source.damage_amounts.data())};

@@ -135,7 +135,8 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
     parent_death_simulation.start();
     DirectDamageEvents capital_damage;
     capital_damage.add_uninitialised(1);
-    capital_damage.damaged_entities[0] = parent_death_simulation.get_capital_ships().get_handle(0);
+    capital_damage.damaged_entities[0] =
+        parent_death_simulation.get_read_view().capitals.entities.entity_ids[0];
     capital_damage.instigators[0] = parent_death_simulation.get_capital_ships().get_handle(1);
     capital_damage.damage_amounts[0] = 100;
     LevelSimTestAccess::queue_direct_damage_events(parent_death_simulation,
@@ -159,7 +160,8 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
 
     DirectDamageEvents damage;
     damage.add_uninitialised(1);
-    damage.damaged_entities[0] = simulation.get_fighters().get_handles()[0];
+    auto const original_handle{simulation.get_fighters().get_handles()[0]};
+    damage.damaged_entities[0] = simulation.get_fighters().get_entity_ids()[0];
     auto const original_id{simulation.get_read_view().fighters.entities.entity_ids[0]};
     damage.instigators[0] = simulation.get_capital_ships().get_handle(0);
     damage.damage_amounts[0] = 100000;
@@ -183,7 +185,7 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
 
     auto const replacement_id{simulation.get_read_view().fighters.entities.entity_ids[0]};
     EXPECT_NE(replacement_id, original_id);
-    EXPECT_EQ(simulation.get_fighters().get_handles()[0].index, damage.damaged_entities[0].index);
+    EXPECT_EQ(simulation.get_fighters().get_handles()[0].index, original_handle.index);
     stale_orders.add(simulation.get_read_view().capitals.entities.entity_ids[0],
                      FighterOrder{.task = 1},
                      FighterTask::Standby,

@@ -55,9 +55,9 @@ TEST(OverlapHandler, QueuesEnvironmentalDamageForEachSupportedOverlapParticipant
         tests::expect_equal(damage.damage_amounts[index], 37, "Configured overlap damage is used");
         tests::expect_true(damage.instigators[index].is_null(),
                            "Overlap damage has no combat instigator");
-        capital_count += damage.damaged_entities[index] == capital ? 1 : 0;
-        fighter_count += damage.damaged_entities[index] == fighter ? 1 : 0;
-        turret_count += damage.damaged_entities[index] == turret ? 1 : 0;
+        capital_count += damage.damaged_entities[index] == registry.get_current_id(capital) ? 1 : 0;
+        fighter_count += damage.damaged_entities[index] == registry.get_current_id(fighter) ? 1 : 0;
+        turret_count += damage.damaged_entities[index] == registry.get_current_id(turret) ? 1 : 0;
     }
     tests::expect_equal(capital_count, 1, "Capital receives its pair contribution");
     tests::expect_equal(fighter_count, 3, "Fighter receives all three contributions");
@@ -90,7 +90,8 @@ TEST(OverlapHandler, SkipsUnsupportedDeadInvalidAndStaleRecipients) {
     tests::expect_equal(
         first_damage.num(), 3, "Only the live supported endpoint is damaged per pair");
     for (auto const recipient : first_damage.damaged_entities) {
-        tests::expect_true(recipient == fighter, "Skipped endpoints never enter the damage queue");
+        tests::expect_true(recipient == registry.get_current_id(fighter),
+                           "Skipped endpoints never enter the damage queue");
     }
 
     registry.end_tick();
@@ -102,7 +103,7 @@ TEST(OverlapHandler, SkipsUnsupportedDeadInvalidAndStaleRecipients) {
     handler.handle({stale_pair.get_const_view(), {}});
     auto const& second_damage{registry.get_direct_damage_queue_view()};
     tests::expect_equal(second_damage.num(), 1, "Stale endpoint is skipped independently");
-    tests::expect_true(second_damage.damaged_entities[0] != replacement,
+    tests::expect_true(second_damage.damaged_entities[0] != registry.get_current_id(replacement),
                        "Replacement is not accidentally damaged");
     registry.end_tick();
     owners.fighters.get_view().healths()[0] = 0;

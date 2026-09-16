@@ -241,13 +241,12 @@ auto record_damage(EntityRegistryStatistics& statistics,
     auto const count{events.num()};
     for (std::int32_t index{}; index < count; ++index) {
         auto const element{static_cast<std::size_t>(index)};
-        auto const victim{events.damaged_entities[element]};
-        auto const victim_id{find_unique_id(generations, current_ids, history, victim)};
-        if (!victim_id) {
-            return std::unexpected{AccountingError{victim_id.error(), victim, index}};
+        auto const victim_id{events.damaged_entities[element]};
+        auto const victim_element{ids.history_index(victim_id)};
+        if (victim_element < 0) {
+            ml::fatal_error(std::format(
+                "Damage event {} references unknown victim ID {}", index, victim_id.raw_value()));
         }
-
-        auto const victim_element{ids.history_index(*victim_id)};
         auto const damage{static_cast<double>(events.damage_amounts[element])};
         statistics.record_damage_received(
             history.teams[victim_element], history.entity_types[victim_element], damage);

@@ -49,7 +49,7 @@ void OverlapHandler::append_damage(RegistryEntityHandle const entity) {
         case EntityType::Turret:
         case EntityType::CapitalShip:
         case EntityType::Fighter: {
-            damage_events_.add(entity, damage_per_overlap_detection_, {});
+            damage_events_.add(id, damage_per_overlap_detection_, {});
             break;
         }
         case EntityType::TubeSpinner:

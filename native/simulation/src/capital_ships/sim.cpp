@@ -113,6 +113,7 @@ void Sim::resolve_damage_events() {
     batch::resolve_damage_events(entity_registry,
                                  agents_.indexes(),
                                  entities.handles,
+                                 entities.entity_ids,
                                  entities.healths,
                                  local_indices_to_remove,
                                  entity_death_info);

@@ -94,7 +94,7 @@ void FWorldlessSimulationTest::queue_damage(
     ::ioj::sim::DirectDamageEvents events;
     events.reserve(count);
     for (auto const target : targets) {
-        events.add(target, damage, instigator);
+        events.add(get_registry().get_current_id(target), damage, instigator);
     }
     ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation_,
                                                                events.get_const_view());
@@ -108,7 +108,7 @@ void FWorldlessSimulationTest::queue_kills(
     events.reserve(count);
     for (auto const target : targets) {
         auto const damage{FMath::Max(1, get_registry().get_health(target))};
-        events.add(target, damage, instigator);
+        events.add(get_registry().get_current_id(target), damage, instigator);
     }
     ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation_,
                                                                events.get_const_view());

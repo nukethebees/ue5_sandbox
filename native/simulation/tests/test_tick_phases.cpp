@@ -305,7 +305,7 @@ TEST(TickPhases, AcceptedFireSurvivesShooterDeathAndDeathCannotBeHealed) {
     auto const* player{simulation.get_player_ship_simulation()};
     simulation.get_player_ship_commands()->start_fire_laser();
     DirectDamageEvents damage;
-    damage.add(player->registry_handle, 100, {});
+    damage.add(simulation.get_entity_registry().get_current_id(player->registry_handle), 100, {});
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
     simulation.start();
     simulation.advance(simulation.get_clock().get_tick_period());
@@ -380,7 +380,7 @@ TEST(TickPhases, CapitalDeathPublishesExistingAndNewChildDeathsBeforeMissionEval
         auto const killer{capitals.get_handle(1)};
 
         DirectDamageEvents damage{};
-        damage.add(victim, 100, killer);
+        damage.add(registry.get_current_id(victim), 100, killer);
 
         LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
 
@@ -417,8 +417,8 @@ TEST(TickPhases, CapitalDeathPublishesExistingAndNewChildDeathsBeforeMissionEval
                                                      initial.handles.end()};
     auto const survivor_id{initial.entity_ids[2]};
     DirectDamageEvents damage;
-    damage.add(initial.handles[0], 100, {});
-    damage.add(initial.handles[1], 100, {});
+    damage.add(initial.entity_ids[0], 100, {});
+    damage.add(initial.entity_ids[1], 100, {});
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
     simulation.start();
     simulation.advance(simulation.get_clock().get_tick_period() * 2.0);

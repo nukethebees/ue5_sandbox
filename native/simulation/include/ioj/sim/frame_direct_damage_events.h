@@ -18,12 +18,12 @@ struct FrameDirectDamageEvents {
     ~FrameDirectDamageEvents() = default;
 
     void reserve(std::int32_t count);
-    void add(RegistryEntityHandle damaged_entity,
+    void add(EntityUniqueId damaged_entity,
              std::int32_t damage_amount,
              RegistryEntityHandle instigator);
     [[nodiscard]] auto get_const_view() const noexcept -> DirectDamageEventsConstView;
 
-    ml::FrameArray<RegistryEntityHandle> damaged_entities;
+    ml::FrameArray<EntityUniqueId> damaged_entities;
     ml::FrameArray<std::int32_t> damage_amounts;
     ml::FrameArray<RegistryEntityHandle> instigators;
 };

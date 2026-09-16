@@ -140,7 +140,8 @@ void add_mission(::ioj::sim::LevelSimInitData& data) {
 
 void kill_enemy(::ioj::sim::LevelSim& simulation) {
     ::ioj::sim::DirectDamageEvents events;
-    events.add(simulation.get_capital_ships().get_handle(1),
+    events.add(simulation.get_entity_registry().get_current_id(
+                   simulation.get_capital_ships().get_handle(1)),
                100,
                simulation.get_capital_ships().get_handle(0));
     ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation, events.get_const_view());
@@ -481,9 +482,10 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     resources.config.capital_ships.large_explosion_delay = 100.f;
     FLevelPresentation death_effects{resources, deaths.get_read_view(), {}};
     ::ioj::sim::DirectDamageEvents damage;
-    damage.add(deaths.get_capital_ships().get_handle(0),
-               MAX_int32,
-               deaths.get_capital_ships().get_handle(1));
+    damage.add(
+        deaths.get_entity_registry().get_current_id(deaths.get_capital_ships().get_handle(0)),
+        MAX_int32,
+        deaths.get_capital_ships().get_handle(1));
     ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(deaths, damage.get_const_view());
     ::ioj::sim::lasers::SpawnRequests shot;
     shot.add({900.f, 0.f, 0.f},

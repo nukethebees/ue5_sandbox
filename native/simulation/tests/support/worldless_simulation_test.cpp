@@ -24,7 +24,7 @@ void WorldlessSimulationTest::queue_damage(std::span<RegistryEntityHandle const>
     DirectDamageEvents events;
     events.reserve(count);
     for (auto const target : targets) {
-        events.add(target, damage, instigator);
+        events.add(get_registry().get_current_id(target), damage, instigator);
     }
     LevelSimTestAccess::queue_direct_damage_events(simulation_, events.get_const_view());
 }
@@ -36,7 +36,7 @@ void WorldlessSimulationTest::queue_kills(std::span<RegistryEntityHandle const> 
     events.reserve(count);
     for (auto const target : targets) {
         auto const damage{std::max(1, get_registry().get_health(target))};
-        events.add(target, damage, instigator);
+        events.add(get_registry().get_current_id(target), damage, instigator);
     }
     LevelSimTestAccess::queue_direct_damage_events(simulation_, events.get_const_view());
 }

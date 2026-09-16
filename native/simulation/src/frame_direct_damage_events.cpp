@@ -12,7 +12,7 @@ void FrameDirectDamageEvents::reserve(std::int32_t const count) {
     instigators.reserve(count);
 }
 
-void FrameDirectDamageEvents::add(RegistryEntityHandle const damaged_entity,
+void FrameDirectDamageEvents::add(EntityUniqueId const damaged_entity,
                                   std::int32_t const damage_amount,
                                   RegistryEntityHandle const instigator) {
     damaged_entities.add(damaged_entity);

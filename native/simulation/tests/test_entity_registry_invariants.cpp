@@ -457,7 +457,7 @@ TEST_F(EntityRegistryTest, TeamChangesSynchronizeHistoryAndSubsequentCombatAttri
     check_counts();
     registry_.record_shots(std::vector{handles[0], RegistryEntityHandle{}});
     DirectDamageEvents damage;
-    damage.add(handles[1], 17, handles[0]);
+    damage.add(registry_.get_current_id(handles[1]), 17, handles[0]);
     registry_.queue_direct_damage_events(damage);
     data.healths[1] = 0;
     EntityDeathInfo deaths;
@@ -598,10 +598,10 @@ TEST_F(EntityRegistryTest, DamageQueuesPreserveBatchesAndResetStartsANewIdentity
     auto const handles{
         tests::registry::make_handles(registry_.add_entities(view_of(data)).registry_handles)};
     DirectDamageEvents first;
-    first.add(handles[1], 5, handles[0]);
-    first.add(handles[0], 8, {});
+    first.add(registry_.get_current_id(handles[1]), 5, handles[0]);
+    first.add(registry_.get_current_id(handles[0]), 8, {});
     DirectDamageEvents second;
-    second.add(handles[1], 13, handles[0]);
+    second.add(registry_.get_current_id(handles[1]), 13, handles[0]);
     registry_.queue_direct_damage_events(first);
     registry_.queue_direct_damage_events(second);
     first.damage_amounts[0] = 999;
@@ -610,9 +610,11 @@ TEST_F(EntityRegistryTest, DamageQueuesPreserveBatchesAndResetStartsANewIdentity
     tests::expect_true(
         std::ranges::equal(queued.damage_amounts, std::array<std::int32_t, 3>{5, 8, 13}),
         "Damage order and values preserved");
-    tests::expect_true(
-        std::ranges::equal(queued.damaged_entities, std::array{handles[1], handles[0], handles[1]}),
-        "Damage victims preserved");
+    tests::expect_true(std::ranges::equal(queued.damaged_entities,
+                                          std::array{registry_.get_current_id(handles[1]),
+                                                     registry_.get_current_id(handles[0]),
+                                                     registry_.get_current_id(handles[1])}),
+                       "Damage victims preserved");
     tests::expect_true(
         std::ranges::equal(queued.instigators,
                            std::array{handles[0], RegistryEntityHandle{}, handles[0]}),
