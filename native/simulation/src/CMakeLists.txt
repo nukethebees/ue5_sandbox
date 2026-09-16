@@ -1,6 +1,9 @@
 target_sources(native-simulation PRIVATE
+  entity_ledger.cpp
+  ../include/ioj/sim/entity_ledger.h
   agent_accessor.cpp
   damage_queue.cpp
+  ../include/ioj/sim/combat_events.h
   ../include/ioj/sim/damage_queue.h
   ../include/ioj/sim/agent_indexes.h
   ../include/ioj/sim/agent_accessor.h
@@ -28,7 +31,7 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/entity_registry_bookkeeping.h
   ../include/ioj/sim/entity_registry_query.h
   ../include/ioj/sim/entity_registry_refresh.h
-  ../include/ioj/sim/entity_registry_statistics.h
+  ../include/ioj/sim/combat_statistics.h
   ../include/ioj/sim/entity_registry_view.h
   ../include/ioj/sim/entity_registry.h
   ../include/ioj/sim/entity_telemetry.h
@@ -116,7 +119,7 @@ target_sources(native-simulation PRIVATE
   entity_registry_bookkeeping.cpp
   entity_registry_query.cpp
   entity_registry_refresh.cpp
-  entity_registry_statistics.cpp
+  combat_statistics.cpp
   entity_registry.cpp
   entity_world_bounds.cpp
   fighter_frame_spawn_queue.cpp

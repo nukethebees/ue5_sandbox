@@ -428,11 +428,12 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     ::ioj::sim::AgentAccessor agents{indexes};
     ::ioj::sim::SpatialQueryManager spatial_queries{agents};
     ml::FFrameMemoryResource frame_memory{1024 * 1024};
-    ::ioj::sim::lasers::Sim lasers{clock, entity_registry, spatial_queries, frame_memory};
+    ::ioj::sim::lasers::Sim lasers{
+        clock, entity_registry.get_combat_events(), spatial_queries, frame_memory};
     ::ioj::sim::GameMemory game_memory{{.root_capacity_bytes = 2u * 1024u * 1024u}};
     ::ioj::sim::LevelTelemetryManager telemetry_manager{
         clock,
-        entity_registry,
+        entity_registry.get_ledger(),
         lasers,
         game_memory,
         {.block_bytes = 100u * 1024u},
@@ -632,7 +633,7 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
 
     ::ioj::sim::LevelTelemetryManager boundary_manager{
         clock,
-        entity_registry,
+        entity_registry.get_ledger(),
         lasers,
         game_memory,
         {.block_bytes = ::ioj::sim::telemetry::HistoryRowsSingleLayout::layout_bytes(1)},

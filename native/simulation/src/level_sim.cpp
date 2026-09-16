@@ -71,8 +71,11 @@ LevelSim::LevelSim(LevelSimInitData data)
     , game_memory_{data.game_memory != nullptr ? data.game_memory : local_game_memory_.get()}
     , frame_memory_{data.frame_memory_capacity_bytes}
     , query_manager_{agent_accessor_}
-    , overlap_handler_{entity_registry_, agent_accessor_, data.overlap_response}
-    , lasers_simulation_{clock_, entity_registry_, query_manager_, frame_memory_}
+    , overlap_handler_{entity_registry_.get_combat_events(), agent_accessor_, data.overlap_response}
+    , lasers_simulation_{clock_,
+                         entity_registry_.get_combat_events(),
+                         query_manager_,
+                         frame_memory_}
     , lasers_phase_{lasers_simulation_}
     , fighters_simulation_{clock_,
                            entity_registry_,
@@ -96,13 +99,16 @@ LevelSim::LevelSim(LevelSimInitData data)
     , turrets_phase_{turrets_simulation_}
     , spinners_simulation_{clock_, entity_registry_, lasers_simulation_, frame_memory_}
     , spinners_phase_{spinners_simulation_}
-    , mission_manager_{clock_, entity_registry_}
+    , mission_manager_{clock_, entity_registry_, agent_accessor_}
     , event_manager_{capital_ships_simulation_,
                      turrets_simulation_,
                      spinners_simulation_,
                      mission_manager_}
-    , level_telemetry_manager_{
-          clock_, entity_registry_, lasers_simulation_, *game_memory_, data.telemetry_history} {
+    , level_telemetry_manager_{clock_,
+                               entity_registry_.get_ledger(),
+                               lasers_simulation_,
+                               *game_memory_,
+                               data.telemetry_history} {
     clock_.initialise(data.clock_settings);
     telemetry_metadata_ = std::move(data.telemetry_metadata);
     level_simulation::finalise_participating_teams(data);
@@ -328,6 +334,7 @@ void LevelSim::advance(time_type const dt) {
             turrets_phase_.prepare_tick(tick_period);
             spinners_phase_.prepare_tick(tick_period);
             rebuild_agent_indexes();
+            mission_manager_.prepare_objectives();
             capital_ships_simulation_.refresh_fighter_ids();
             query_manager_.get_collision_system().refresh_queries();
         }

@@ -18,6 +18,7 @@
 
 namespace ioj::sim {
 struct EntityRegistry;
+class AgentAccessor;
 struct LevelMissionEventGroupsConstView;
 
 struct LevelMissionResult {
@@ -38,13 +39,16 @@ struct MissionManager {
     /* **************************************** */
     // Construction and lifecycle
     /* **************************************** */
-    MissionManager(SimClock const& clock, EntityRegistry& entity_registry);
+    MissionManager(SimClock const& clock,
+                   EntityRegistry& entity_registry,
+                   AgentAccessor const& agents);
     MissionManager(MissionManager const&) = delete;
     MissionManager(MissionManager&&) = delete;
     auto operator=(MissionManager const&) -> MissionManager& = delete;
     auto operator=(MissionManager&&) -> MissionManager& = delete;
 
     void begin_play();
+    void prepare_objectives();
     void reset_runtime_state();
     void mission_tick();
     auto complete_mission() -> bool;
@@ -156,10 +160,8 @@ struct MissionManager {
     /* **************************************** */
     // Objective health tracking
     /* **************************************** */
-    void initialise_entity_health_that_must_survive();
     void update_entity_health_that_must_survive();
     auto entities_that_must_survive_are_alive() const -> bool;
-    void initialise_entity_health_required_to_kill();
     void update_entity_health_required_to_kill();
     auto entities_required_to_kill_are_dead() const -> bool;
 
@@ -176,6 +178,7 @@ struct MissionManager {
     /* **************************************** */
     std::optional<LevelMissionResult> pending_result_;
     EntityRegistry& entity_registry;
+    AgentAccessor const& agents_;
 
     std::vector<RegistryEntityHandle> hero_entity_handles{};
     std::vector<EntityUniqueId> hero_entity_ids{};

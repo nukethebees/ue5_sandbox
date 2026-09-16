@@ -4,7 +4,7 @@
 #include <span>
 #include <vector>
 
-#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/combat_events.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/spatial_query_manager.h>
 
@@ -49,10 +49,10 @@ void append_spawn_requests(SingleAllocationLaserSpawnRequests& destination,
 // Construction and tick phases
 /* **************************************** */
 Sim::Sim(SimClock const& clock,
-         EntityRegistry& in_entity_registry,
+         CombatEvents& in_combat_events,
          SpatialQueryManager& in_query_manager,
          std::pmr::memory_resource& in_frame_memory_resource) noexcept
-    : entity_registry{in_entity_registry}
+    : combat_events{in_combat_events}
     , query_manager{in_query_manager}
     , frame_memory_resource{in_frame_memory_resource}
     , simulation_clock{clock} {}
@@ -124,7 +124,7 @@ void Sim::process_pending_spawns() {
 
     pending_spawns.get_const_view().columns().validate_array_sizes();
     auto const n_to_add{pending_spawns.num()};
-    entity_registry.record_shots(pending_spawns.get_const_view().instigator_ids());
+    combat_events.record_shots(pending_spawns.get_const_view().instigator_ids());
 
     if (n_to_add <= 0) {
         return;
@@ -286,7 +286,7 @@ void Sim::handle_collisions(float const dt) {
             trace_hits.locations[entity_index], emission_direction, entities.sources[element]);
     }
     std::ranges::sort(to_remove.view(), std::greater{});
-    entity_registry.queue_direct_damage_events(collision_damage_events.get_const_view());
+    combat_events.queue_damage(collision_damage_events.get_const_view());
 
     auto const active{this->entities.get_view().active()};
     for (auto const index : to_remove) {

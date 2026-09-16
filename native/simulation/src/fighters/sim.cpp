@@ -500,7 +500,6 @@ void Sim::resolve_damage_events() {
     auto const damage_events{entity_registry.get_damage_events(EntityType::Fighter)};
     batch::resolve_damage_events(damage_events,
                                  agents_.indexes(),
-                                 data.entity_handles,
                                  data.entity_ids,
                                  data.healths,
                                  local_indices_to_remove,
@@ -1347,7 +1346,7 @@ void Sim::self_destruct_fighter(EntityUniqueId const fighter) {
         return;
     }
     data.healths[index] = 0;
-    entity_death_info.add(DeathReason::Unknown, data.entity_handles[index], {});
+    entity_death_info.add(DeathReason::Unknown, data.entity_ids[index], {});
     if (!std::ranges::contains(local_indices_to_remove, index)) {
         local_indices_to_remove.push_back(index);
     }

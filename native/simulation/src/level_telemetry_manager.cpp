@@ -58,12 +58,12 @@ using level_telemetry_detail::snapshot_with_terminal_sample;
 // Construction and lifecycle
 /* **************************************** */
 LevelTelemetryManager::LevelTelemetryManager(SimClock const& clock,
-                                             EntityRegistry const& entity_registry,
+                                             EntityLedger const& entity_ledger,
                                              lasers::Sim const& lasers,
                                              GameMemory& game_memory,
                                              LevelTelemetryHistoryConfig history_config) noexcept
     : clock_{clock}
-    , entity_registry_{entity_registry}
+    , entity_ledger_{entity_ledger}
     , lasers_{lasers}
     , history_{game_memory, history_config} {}
 
@@ -154,12 +154,12 @@ auto LevelTelemetryManager::make_snapshot() const -> LevelTelemetrySnapshot {
 /* **************************************** */
 void LevelTelemetryManager::update_current_state() {
     current_state_.active_entities_by_team_and_type =
-        entity_registry_.count_alive_per_team_and_type();
-    current_state_.active_entities = entity_registry_.count_alive();
-    current_state_.spawned_entities = entity_registry_.get_num_unique_ids_issued();
+        entity_ledger_.count_alive_per_team_and_type();
+    current_state_.active_entities = entity_ledger_.count_alive();
+    current_state_.spawned_entities = entity_ledger_.get_num_unique_ids_issued();
     current_state_.destroyed_entities =
         current_state_.spawned_entities - current_state_.active_entities;
-    current_state_.kills = entity_registry_.count_kills();
+    current_state_.kills = entity_ledger_.count_kills();
     current_state_.active_lasers = lasers_.get_num_instances();
     current_state_.lasers_fired = lasers_.get_number_spawned();
 
@@ -170,8 +170,8 @@ void LevelTelemetryManager::sample_live_series() {
     using namespace level_telemetry_detail;
     constexpr auto team_count{LevelTelemetryTickSeries::team_count};
     constexpr auto entity_type_count{LevelTelemetryTickSeries::entity_type_count};
-    EntityRegistry::EntityTypeCounts active_entities_by_type{};
-    EntityRegistry::EntityTypeCounts last_active_entities_by_type{};
+    telemetry::EntityTypeCounts active_entities_by_type{};
+    telemetry::EntityTypeCounts last_active_entities_by_type{};
     FieldMask mask;
 
     if (!has_sampled_state_ ||
@@ -422,7 +422,7 @@ void LevelTelemetryManager::sample_battle_state(bool const force) {
     samples.push_back(LevelTelemetryBattleSample{
         .completed_tick = tick,
         .simulated_elapsed_seconds = clock_.get_simulation_time(),
-        .combat = entity_registry_.get_combat_telemetry(),
+        .combat = entity_ledger_.get_combat_telemetry(),
         .alive = current_state_.active_entities_by_team_and_type,
         .active_lasers = current_state_.active_lasers,
         .lasers_fired = current_state_.lasers_fired,

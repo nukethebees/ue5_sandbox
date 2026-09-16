@@ -19,7 +19,6 @@ void sort_and_deduplicate_removal_indices(std::vector<std::int32_t>& local_indic
 
 void resolve_damage_events(DirectDamageEventsConstView damage_events,
                            AgentIndexes const& indexes,
-                           std::span<RegistryEntityHandle const> entity_handles,
                            [[maybe_unused]] std::span<EntityUniqueId const> entity_ids,
                            std::span<Health> healths,
                            std::vector<std::int32_t>& local_indices_to_remove,
@@ -32,8 +31,7 @@ void resolve_damage_events(DirectDamageEventsConstView damage_events,
     local_indices_to_remove.resize(removal_count + static_cast<std::size_t>(n_direct_events));
     entity_death_info.add_uninitialised(n_direct_events);
 
-    assert(healths.size() == entity_handles.size());
-    assert(entity_ids.size() == entity_handles.size());
+    assert(healths.size() == entity_ids.size());
     auto current_removal_count{static_cast<std::int32_t>(removal_count)};
     auto current_death_count{death_count};
     for (std::int32_t event_index{}; event_index < n_direct_events; ++event_index) {
@@ -57,8 +55,7 @@ void resolve_damage_events(DirectDamageEventsConstView damage_events,
         local_indices_to_remove[static_cast<std::size_t>(current_removal_count++)] = local_index;
         auto const instigator{damage_events.instigators[element]};
         auto const reason{instigator.is_valid() ? DeathReason::Combat : DeathReason::Unknown};
-        entity_death_info.set(
-            current_death_count++, reason, entity_handles[local_element], instigator);
+        entity_death_info.set(current_death_count++, reason, id, instigator);
     }
     local_indices_to_remove.resize(static_cast<std::size_t>(current_removal_count));
     entity_death_info.set_num(current_death_count);

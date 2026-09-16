@@ -250,10 +250,8 @@ void run_worldless_fighter_handles(tests::SimulationFixture const& config,
             green_fighters_before_capital_kill =
                 std::vector<EntityUniqueId>{owned.begin(), owned.end()};
             auto const id{capitals.get_target_id(*main_index)};
-            auto const row{harness.get_registry().get_history_index(id)};
-            auto const history{harness.get_registry().get_unique_entities()};
-            harness.queue_kills(std::array{RegistryEntityHandle{
-                history.registry_indices[row], history.registry_generations[row]}});
+            auto const row{harness.get_simulation().get_agent_accessor().indexes().find(id)};
+            harness.queue_kills(std::array{capitals.get_read_view().entities.handles[row]});
         });
         next_time += 0.5;
         harness.timeline.at(next_time, [&] {

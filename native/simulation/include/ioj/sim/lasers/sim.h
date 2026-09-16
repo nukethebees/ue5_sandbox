@@ -16,7 +16,7 @@
 
 namespace ioj::sim {
 struct LevelSim;
-struct EntityRegistry;
+class CombatEvents;
 struct SpatialQueryManager;
 }
 
@@ -33,7 +33,7 @@ struct Sim {
     // Construction and access
     /* **************************************** */
     Sim(SimClock const& clock,
-        EntityRegistry& entity_registry,
+        CombatEvents& combat_events,
         SpatialQueryManager& query_manager,
         std::pmr::memory_resource& frame_memory_resource) noexcept;
     Sim(Sim const&) = delete;
@@ -49,7 +49,6 @@ struct Sim {
     }
     void reset_frame_output() { frame_output_.reset(); }
     auto get_num_instances() const noexcept -> std::int32_t;
-    auto get_entity_registry() const noexcept -> EntityRegistry const& { return entity_registry; }
     auto get_number_spawned() const noexcept -> std::int32_t { return number_spawned; }
 
     /* **************************************** */
@@ -93,7 +92,7 @@ struct Sim {
     /* **************************************** */
     friend class PhaseInterface;
 
-    EntityRegistry& entity_registry;
+    CombatEvents& combat_events;
     SpatialQueryManager& query_manager;
     std::pmr::memory_resource& frame_memory_resource;
     SimClock const& simulation_clock;

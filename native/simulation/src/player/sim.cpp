@@ -673,7 +673,7 @@ void Sim::set_health(Health const new_health, EntityUniqueId const killer) {
 void Sim::die(EntityUniqueId const killer) {
     EntityDeathInfo death_info;
     auto const reason{killer.is_valid() ? DeathReason::Combat : DeathReason::Unknown};
-    death_info.add(reason, registry_handle, killer);
+    death_info.add(reason, unique_entity_id, killer);
     queue_entity_update(death_info);
     death_notification_pending = true;
 }

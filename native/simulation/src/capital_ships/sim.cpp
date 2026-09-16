@@ -112,7 +112,6 @@ void Sim::resolve_damage_events() {
     auto const entities{this->entities.get_view().columns()};
     batch::resolve_damage_events(entity_registry.get_damage_events(EntityType::CapitalShip),
                                  agents_.indexes(),
-                                 entities.handles,
                                  entities.entity_ids,
                                  entities.healths,
                                  local_indices_to_remove,

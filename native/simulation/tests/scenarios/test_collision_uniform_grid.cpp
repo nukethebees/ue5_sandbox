@@ -82,7 +82,7 @@ struct TraceFixture {
         EntityDeathInfo death_info;
         for (std::int32_t i{}; i < count; ++i) {
             if (alive[i] == 0 && registry.get_alive(handles[i])) {
-                death_info.add(DeathReason::Unknown, handles[i], {});
+                death_info.add(DeathReason::Unknown, registry.find_unique_id(handles[i]), {});
             }
         }
         registry.queue_entity_updates(updates, death_info);

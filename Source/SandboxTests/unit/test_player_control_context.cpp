@@ -761,7 +761,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         ::ioj::sim::AgentAccessor agents{indexes};
         ::ioj::sim::SpatialQueryManager queries{agents};
         ml::FFrameMemoryResource frame_memory{1024 * 1024};
-        ::ioj::sim::lasers::Sim lasers{clock, registry, queries, frame_memory};
+        ::ioj::sim::lasers::Sim lasers{clock, registry.get_combat_events(), queries, frame_memory};
         ::ioj::sim::player::Sim simulation{clock, registry, queries, lasers};
         simulation.start_sampling();
         simulation.set_ship_1d_control_y(1.0f);
@@ -790,7 +790,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         ::ioj::sim::AgentAccessor agents{indexes};
         ::ioj::sim::SpatialQueryManager queries{agents};
         ml::FFrameMemoryResource frame_memory{1024 * 1024};
-        ::ioj::sim::lasers::Sim lasers{clock, registry, queries, frame_memory};
+        ::ioj::sim::lasers::Sim lasers{clock, registry.get_combat_events(), queries, frame_memory};
         ::ioj::sim::player::Sim simulation{clock, registry, queries, lasers};
         ::ioj::sim::PlayerSimConfig config;
         config.cruise_speed = 1000.f;
@@ -1062,7 +1062,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         ::ioj::sim::AgentAccessor agents{indexes};
         ::ioj::sim::SpatialQueryManager queries{agents};
         ml::FFrameMemoryResource frame_memory{1024 * 1024};
-        ::ioj::sim::lasers::Sim lasers{clock, registry, queries, frame_memory};
+        ::ioj::sim::lasers::Sim lasers{clock, registry.get_combat_events(), queries, frame_memory};
         ::ioj::sim::player::Sim simulation{clock, registry, queries, lasers};
         ::ioj::sim::player::CommandInterface commands{simulation};
         ship->bind_simulation(commands, simulation);

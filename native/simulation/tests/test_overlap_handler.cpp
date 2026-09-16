@@ -22,7 +22,7 @@ void mark_dead(EntityRegistry& registry, RegistryEntityHandle const handle) {
     update.copy_element(0, current, handle.index);
     update.healths[0] = 0;
     EntityDeathInfo death;
-    death.add(DeathReason::Unknown, handle, {});
+    death.add(DeathReason::Unknown, registry.find_unique_id(handle), {});
     registry.queue_entity_updates({std::array{handle}, update.get_const_view()}, death);
     registry.commit_updates();
 }
@@ -43,7 +43,8 @@ TEST(OverlapHandler, QueuesEnvironmentalDamageForEachSupportedOverlapParticipant
 
     CollisionAgentStorage owners;
     owners.load(registry);
-    OverlapHandler handler{registry, owners.agents, {.damage_per_overlap_detection = 37}};
+    OverlapHandler handler{
+        registry.get_combat_events(), owners.agents, {.damage_per_overlap_detection = 37}};
     handler.handle({entity_overlaps.get_const_view(), static_overlaps.get_const_view()});
 
     auto const& damage{registry.get_direct_damage_queue_view()};
@@ -84,7 +85,7 @@ TEST(OverlapHandler, SkipsUnsupportedDeadInvalidAndStaleRecipients) {
     first_pairs.add(registry.get_current_id(fighter), EntityUniqueId{});
     CollisionAgentStorage owners;
     owners.load(registry);
-    OverlapHandler handler{registry, owners.agents, {}};
+    OverlapHandler handler{registry.get_combat_events(), owners.agents, {}};
     handler.handle({first_pairs.get_const_view(), {}});
 
     auto const& first_damage{registry.get_direct_damage_queue_view()};

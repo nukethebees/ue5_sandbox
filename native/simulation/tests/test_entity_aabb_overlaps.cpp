@@ -85,7 +85,7 @@ struct OverlapFixture {
             updates.rotations.set(index, rotations[index]);
             if (entity_alive == 0) {
                 updates.healths[index] = 0;
-                deaths.add(DeathReason::Unknown, handle, {});
+                deaths.add(DeathReason::Unknown, registry.find_unique_id(handle), {});
             }
         }
 

@@ -110,9 +110,7 @@ class EntityRegistryTest : public ::testing::Test {
         auto const id{registry_.find_unique_id(handle)};
         auto const index{registry_.get_history_index(id)};
         auto const& history{registry_.get_unique_entities()};
-        tests::expect_equal(history.registry_indices[index], slot, "Historical slot");
-        tests::expect_equal(
-            history.registry_generations[index], handle.generation, "Historical generation");
+        tests::expect_true(history.entity_ids[index] == id, "Historical identity");
         tests::expect_equal(history.life_state[index] == LifeState::Alive,
                             is_alive(actual.healths[slot]),
                             "Historical alive");
@@ -131,8 +129,10 @@ TEST_F(EntityRegistryTest, MixedSlotReusePreservesDataAndHistoricalIdentity) {
     initial.healths[0] = 0;
     initial.healths[2] = 0;
     EntityDeathInfo deaths;
-    deaths.add(DeathReason::Combat, old_handles[0], registry_.find_unique_id(old_handles[1]));
-    deaths.add(DeathReason::Unknown, old_handles[2], {});
+    deaths.add(DeathReason::Combat,
+               registry_.find_unique_id(old_handles[0]),
+               registry_.find_unique_id(old_handles[1]));
+    deaths.add(DeathReason::Unknown, registry_.find_unique_id(old_handles[2]), {});
     registry_.queue_entity_updates({old_handles, view_of(initial)}, deaths);
     registry_.commit_updates();
     check_counts();
@@ -322,7 +322,7 @@ TEST_F(EntityRegistryTest, MovementIsPerTickAndGenerationSafeAcrossSlotReuse) {
 
     data.healths[0] = 0;
     EntityDeathInfo deaths;
-    deaths.add(DeathReason::Unknown, old_handle, {});
+    deaths.add(DeathReason::Unknown, registry_.find_unique_id(old_handle), {});
     registry_.queue_entity_updates({std::vector{old_handle}, view_of(data)}, deaths);
     registry_.commit_updates();
     tests::expect_equal(static_cast<std::int32_t>(registry_.get_moved_entities_this_tick().size()),
@@ -386,7 +386,7 @@ TEST_F(EntityRegistryTest, FreeSlotsBecomeReusableAtEndTickAndGenerationsAdvance
     auto const first{registry_.add_entities(view_of(data)).get_handle(0)};
     check_counts();
     EntityDeathInfo deaths;
-    deaths.add(DeathReason::Unknown, first, {});
+    deaths.add(DeathReason::Unknown, registry_.find_unique_id(first), {});
     registry_.queue_entity_updates({{}, view_of(data, 0, 0)}, deaths);
     registry_.commit_updates();
     data.healths[0] = 100;
@@ -400,7 +400,7 @@ TEST_F(EntityRegistryTest, FreeSlotsBecomeReusableAtEndTickAndGenerationsAdvance
                        "Empty spawn did not consume free slot");
     data.healths[0] = 0;
     deaths.reset();
-    deaths.add(DeathReason::Unknown, reused, {});
+    deaths.add(DeathReason::Unknown, registry_.find_unique_id(reused), {});
     registry_.queue_entity_updates({std::vector{reused}, view_of(data)}, deaths);
     registry_.commit_updates();
     registry_.end_tick();
@@ -461,7 +461,9 @@ TEST_F(EntityRegistryTest, TeamChangesSynchronizeHistoryAndSubsequentCombatAttri
     registry_.queue_direct_damage_events(damage);
     data.healths[1] = 0;
     EntityDeathInfo deaths;
-    deaths.add(DeathReason::Combat, handles[1], registry_.find_unique_id(handles[0]));
+    deaths.add(DeathReason::Combat,
+               registry_.find_unique_id(handles[1]),
+               registry_.find_unique_id(handles[0]));
     registry_.queue_entity_updates({handles, view_of(data)}, deaths);
     registry_.commit_updates();
     auto const& counters{registry_.get_combat_telemetry()};
@@ -503,8 +505,8 @@ TEST_F(EntityRegistryTest, StaleKillersRetainCreditAcrossTicksAndSlotReuse) {
     data.healths[0] = 0;
     data.healths[1] = 0;
     EntityDeathInfo deaths;
-    deaths.add(DeathReason::Combat, handles[1], killer_id);
-    deaths.add(DeathReason::Unknown, handles[0], {});
+    deaths.add(DeathReason::Combat, registry_.find_unique_id(handles[1]), killer_id);
+    deaths.add(DeathReason::Unknown, registry_.find_unique_id(handles[0]), {});
     registry_.queue_entity_updates({handles, view_of(data)}, deaths);
     registry_.commit_updates();
     auto const dead{registry_.get_dead_entities_this_frame()};
@@ -523,7 +525,7 @@ TEST_F(EntityRegistryTest, StaleKillersRetainCreditAcrossTicksAndSlotReuse) {
     auto update{tests::registry::make_entities(1)};
     update.healths[0] = 0;
     deaths.reset();
-    deaths.add(DeathReason::Combat, handles[2], killer_id);
+    deaths.add(DeathReason::Combat, registry_.find_unique_id(handles[2]), killer_id);
     registry_.queue_entity_updates({std::vector{handles[2]}, view_of(update)}, deaths);
     registry_.commit_updates();
     tests::expect_equal(registry_.get_kills(EntityUniqueId::make(
@@ -559,14 +561,14 @@ TEST_F(EntityRegistryTest, RefreshDistinguishesNullStaleDeadAndLiveHandles) {
                        "Future generation is invalid");
     data.healths[0] = 0;
     EntityDeathInfo deaths;
-    deaths.add(DeathReason::Unknown, handles[0], {});
+    deaths.add(DeathReason::Unknown, registry_.find_unique_id(handles[0]), {});
     registry_.queue_entity_updates({handles, view_of(data)}, deaths);
     registry_.commit_updates();
     registry_.end_tick();
     registry_.add_entities(view_of(data, 1, 1));
     data.healths[1] = 0;
     deaths.reset();
-    deaths.add(DeathReason::Unknown, handles[1], {});
+    deaths.add(DeathReason::Unknown, registry_.find_unique_id(handles[1]), {});
     registry_.queue_entity_updates({std::vector{handles[1]}, view_of(data, 1, 1)}, deaths);
     registry_.commit_updates();
     std::vector refreshed{RegistryEntityHandle{}, handles[0], handles[1], handles[2]};
@@ -652,7 +654,9 @@ TEST_F(EntityRegistryTest, DamageQueuesPreserveBatchesAndResetStartsANewIdentity
     auto pending{data};
     pending.healths[1] = 0;
     EntityDeathInfo deaths;
-    deaths.add(DeathReason::Combat, handles[1], registry_.find_unique_id(handles[0]));
+    deaths.add(DeathReason::Combat,
+               registry_.find_unique_id(handles[1]),
+               registry_.find_unique_id(handles[0]));
     registry_.queue_entity_updates({handles, view_of(pending)}, deaths);
     registry_.commit_updates();
     registry_.queue_direct_damage_events(second);

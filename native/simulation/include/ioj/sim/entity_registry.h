@@ -4,14 +4,13 @@
 #include <span>
 #include <vector>
 
-#include <ioj/sim/entity_id_allocator.h>
+#include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/entity_registry_bookkeeping.h>
-#include <ioj/sim/entity_registry_statistics.h>
 #include <ioj/sim/spawned_entity_handles.h>
 
 #include "ioj/sim/registry_entity_data.h"
 
-#include <ioj/sim/damage_queue.h>
+#include <ioj/sim/combat_events.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entity_death_info.h>
 #include <ioj/sim/entity_handle.h>
@@ -24,6 +23,12 @@ namespace ioj::sim {
 
 struct EntityRegistry {
   public:
+    EntityRegistry() = default;
+    EntityRegistry(EntityRegistry const&) = delete;
+    EntityRegistry(EntityRegistry&&) = delete;
+    auto operator=(EntityRegistry const&) -> EntityRegistry& = delete;
+    auto operator=(EntityRegistry&&) -> EntityRegistry& = delete;
+
     using EntityData = RegistryEntityData;
     using EntityStorage = SingleAllocationRegistryEntityData;
     using TeamCounts = telemetry::TeamCounts;
@@ -86,10 +91,10 @@ struct EntityRegistry {
     void record_shots(std::span<EntityUniqueId const> instigators);
     auto get_direct_damage_queue_view() const -> DirectDamageEvents const&;
     void prepare_damage_events(AgentIndexes const& indexes, std::pmr::memory_resource& scratch) {
-        damage_queue_.prepare(indexes, scratch);
+        combat_events_.prepare(indexes, scratch);
     }
     auto get_damage_events(EntityType type) const -> DirectDamageEventsConstView {
-        return damage_queue_.events_for(type);
+        return combat_events_.events_for(type);
     }
 
     /* **************************************** */
@@ -151,27 +156,31 @@ struct EntityRegistry {
     auto count_alive_per_team_and_type() const noexcept -> EntityCounts;
     auto count_alive_not_on_team(Team const team) const noexcept -> std::int32_t;
     auto get_combat_telemetry() const noexcept -> CombatTelemetryCounters const& {
-        return statistics_.combat_telemetry();
+        return ledger_.get_combat_telemetry();
     }
 
     /* **************************************** */
     // Unique entity queries
     /* **************************************** */
     auto get_unique_entities() const noexcept -> EntityHistoryColumnsConstView {
-        return unique_entity_history_.get_const_view().columns();
+        return ledger_.get_unique_entities();
     }
+    auto get_combat_events() noexcept -> CombatEvents& { return combat_events_; }
+    auto get_ledger() const noexcept -> EntityLedger const& { return ledger_; }
     // Slot-to-ID mapping includes current dead occupants until their slots are reused.
     auto get_active_unique_ids() const noexcept -> std::span<EntityUniqueId const> {
         return {bookkeeping_.unique_ids.data(), bookkeeping_.unique_ids.size()};
     }
     auto is_valid_unique_id(EntityUniqueId const id) const -> bool;
     auto get_history_index(EntityUniqueId const id) const noexcept -> std::int32_t {
-        return id_allocator_.history_index(id);
+        return ledger_.get_history_index(id);
     }
     auto get_issued_counts() const noexcept -> EntityTypeSizes const& {
-        return id_allocator_.issued_counts();
+        return ledger_.get_issued_counts();
     }
-    auto get_num_unique_ids_issued() const -> std::int32_t { return unique_entity_history_.num(); }
+    auto get_num_unique_ids_issued() const -> std::int32_t {
+        return ledger_.get_num_unique_ids_issued();
+    }
     auto find_unique_id(RegistryEntityHandle const handle) const -> EntityUniqueId;
     auto get_current_id(RegistryEntityHandle const handle) const -> EntityUniqueId {
         return is_valid_handle(handle) ? bookkeeping_.unique_ids[handle.index] : EntityUniqueId{};
@@ -215,20 +224,15 @@ struct EntityRegistry {
     EntityStorage entity_data;
     EntityRegistryBookkeeping bookkeeping_;
 
-    // Dense append-only rows; get_history_index resolves partitioned IDs. Handle/type stay fixed,
-    // while team and life state track committed state. Old rows and their death/kill accounting
-    // survive slot reuse.
-    EntityHistory unique_entity_history_;
-    EntityIdAllocator id_allocator_;
+    EntityLedger ledger_;
+    std::vector<RegistryEntityHandle> historical_handles_;
 
     // Queued updates
     EntityStorage queued_entity_data;
     EntityDeathInfo queued_death_infos;
 
     // Queued damage events
-    DamageQueue damage_queue_;
-
-    EntityRegistryStatistics statistics_;
+    CombatEvents combat_events_{ledger_};
 };
 
 inline auto EntityRegistry::is_valid_handle(RegistryEntityHandle const handle) const -> bool {

@@ -48,7 +48,7 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     AgentAccessor agents{indexes};
     SpatialQueryManager queries{agents};
     ml::FrameMemoryResource frame_memory{1024 * 1024};
-    lasers::Sim lasers{clock, registry, queries, frame_memory};
+    lasers::Sim lasers{clock, registry.get_combat_events(), queries, frame_memory};
     spinners::Sim simulation{clock, registry, lasers, frame_memory};
     auto& entity_storage{Access::entities(simulation)};
     Access::set_cooldown(simulation, 23);

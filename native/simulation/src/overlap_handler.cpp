@@ -2,13 +2,13 @@
 #include <cassert>
 
 #include <ioj/sim/agent_accessor.h>
-#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/combat_events.h>
 
 namespace ioj::sim {
-OverlapHandler::OverlapHandler(EntityRegistry& registry,
+OverlapHandler::OverlapHandler(CombatEvents& events,
                                AgentAccessor const& agents,
                                OverlapResponseConfig const& config) noexcept
-    : registry_{registry}
+    : events_{events}
     , agents_{agents}
     , damage_per_overlap_detection_{config.damage_per_overlap_detection} {
     assert(damage_per_overlap_detection_ > 0);
@@ -34,7 +34,7 @@ void OverlapHandler::handle(collision::DetectedOverlapsView const overlaps) {
     }
 
     if (!damage_events_.is_empty()) {
-        registry_.queue_direct_damage_events(damage_events_);
+        events_.queue_damage(damage_events_);
     }
 }
 

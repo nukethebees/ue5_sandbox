@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "ioj/sim/entity_handle.h"
 #include "ioj/sim/entity_life_state.h"
 #include "ioj/sim/entity_unique_id.h"
 #include "native_soa/storage.h"
@@ -18,7 +17,7 @@ struct EntityDeathInfoConstView {
     using ConstView = EntityDeathInfoConstView;
     using size_type = std::int32_t;
     std::span<DeathReason const> reasons;
-    std::span<RegistryEntityHandle const> victims;
+    std::span<EntityUniqueId const> victims;
     std::span<EntityUniqueId const> killers;
     auto num() const noexcept -> size_type { return static_cast<size_type>(reasons.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
@@ -67,7 +66,7 @@ struct EntityDeathInfoView {
     using ConstView = EntityDeathInfoConstView;
     using size_type = std::int32_t;
     std::span<DeathReason> reasons;
-    std::span<RegistryEntityHandle> victims;
+    std::span<EntityUniqueId> victims;
     std::span<EntityUniqueId> killers;
     auto num() const noexcept -> size_type { return static_cast<size_type>(reasons.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
@@ -112,7 +111,7 @@ struct EntityDeathInfoView {
     }
     void set(size_type const index,
              DeathReason const new_reasons,
-             RegistryEntityHandle const new_victims,
+             EntityUniqueId const new_victims,
              EntityUniqueId const new_killers) const {
         ml::native_soa::require(index >= 0 && index < num());
         reasons[static_cast<std::size_t>(index)] = new_reasons;
@@ -125,7 +124,7 @@ struct EntityDeathInfo {
     using ConstView = EntityDeathInfoConstView;
     using size_type = std::int32_t;
     ml::native_soa::Vector<DeathReason> reasons;
-    ml::native_soa::Vector<RegistryEntityHandle> victims;
+    ml::native_soa::Vector<EntityUniqueId> victims;
     ml::native_soa::Vector<EntityUniqueId> killers;
     auto num() const noexcept -> size_type { return static_cast<size_type>(reasons.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
@@ -186,12 +185,12 @@ struct EntityDeathInfo {
     }
     void set(size_type const index,
              DeathReason const new_reasons,
-             RegistryEntityHandle const new_victims,
+             EntityUniqueId const new_victims,
              EntityUniqueId const new_killers) {
         get_view().set(index, new_reasons, new_victims, new_killers);
     }
     auto add(DeathReason const new_reasons,
-             RegistryEntityHandle const new_victims,
+             EntityUniqueId const new_victims,
              EntityUniqueId const new_killers) -> size_type {
         auto const index{num()};
         add_defaulted(1);
@@ -215,8 +214,7 @@ struct EntityDeathInfo {
             auto const address{ml::address_cast(source.victims.data())};
             auto const begin{ml::address_cast(victims.data())};
             ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + victims.size() * sizeof(RegistryEntityHandle));
+                                    address >= begin + victims.size() * sizeof(EntityUniqueId));
         }
         {
             auto const address{ml::address_cast(source.killers.data())};
