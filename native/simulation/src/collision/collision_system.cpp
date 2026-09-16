@@ -19,7 +19,7 @@ void CollisionSystem::initialise(collision::EntityAABBs const& bounds) {
     overlapping_entities_scratch_.clear();
     overlapping_static_geometry_indices_scratch_.clear();
 }
-auto CollisionSystem::update(std::span<RegistryEntityHandle const> const collision_dirty_entities,
+auto CollisionSystem::update(std::span<EntityUniqueId const> const collision_dirty_entities,
                              SimTick const tick) -> DetectedOverlapsView {
     SANDBOX_PROFILE_SCOPE("Sandbox::CollisionSystem::update");
     rebuild_grid();
@@ -35,8 +35,7 @@ void CollisionSystem::reset_frame_events() {
 }
 CollisionSystem::CollisionSystem(EntityRegistry const& registry,
                                  AgentAccessor const& agents) noexcept
-    : entity_registry_{registry}
-    , agents_{agents}
+    : agents_{agents}
     , uniform_grid_{registry, agents} {}
 void CollisionSystem::rebuild_grid() {
     SANDBOX_PROFILE_SCOPE("Sandbox::CollisionSystem::rebuild_grid");
@@ -46,13 +45,13 @@ void CollisionSystem::refresh_queries() {
     rebuild_grid();
 }
 void CollisionSystem::collect_overlaps_for_moved_entities(
-    std::span<RegistryEntityHandle const> const collision_dirty_entities) {
+    std::span<EntityUniqueId const> const collision_dirty_entities) {
     SANDBOX_PROFILE_SCOPE("Sandbox::CollisionSystem::collect_overlaps_for_moved_entities");
 
     overlap_storage_.clear();
 
     for (auto const dirty_entity : collision_dirty_entities) {
-        auto const id{entity_registry_.get_current_id(dirty_entity)};
+        auto const id{dirty_entity};
         auto const state{agents_.read_alive(id)};
         if (!state) {
             continue;

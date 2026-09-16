@@ -123,7 +123,7 @@ struct SpatialQueryManager {
         return collision;
     }
 
-    auto update(std::span<RegistryEntityHandle const> dirty_entities, SimTick tick)
+    auto update(std::span<EntityUniqueId const> dirty_entities, SimTick tick)
         -> collision::DetectedOverlapsView;
   private:
     /* **************************************** */

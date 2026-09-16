@@ -82,7 +82,7 @@ struct Sim {
     // Accessors
     /* **************************************** */
     auto get_num_instances() const noexcept -> std::int32_t;
-    auto get_collision_dirty_entities() const noexcept -> std::span<RegistryEntityHandle const> {
+    auto get_collision_dirty_entities() const noexcept -> std::span<EntityUniqueId const> {
         return collision_dirty_entities_;
     }
     auto get_entity_registry() const noexcept -> EntityRegistry const& { return entity_registry; }
@@ -288,7 +288,7 @@ struct Sim {
 
     lasers::Sim& laser_simulation;
     std::vector<std::int32_t> pending_fire_indices_;
-    std::vector<RegistryEntityHandle> collision_dirty_entities_;
+    std::vector<EntityUniqueId> collision_dirty_entities_;
 
     NavigationTelemetrySnapshot navigation_telemetry;
     std::int32_t diagnostic_stop_reports{};

@@ -303,23 +303,23 @@ void LevelSim::advance(time_type const dt) {
                 fighters_simulation_.get_num_instances() - previous_fighter_count;
             lasers_phase_.commit_spawns();
             collision_dirty_entities_.clear();
-            auto collect_new = [&](auto const data, auto const handles) {
+            auto collect_new = [&](auto const data) {
                 auto const count{data.entity_ids.size()};
                 for (std::size_t index{}; index < count; ++index) {
                     auto const id{data.entity_ids[index]};
                     if (id.index() >=
                         entity_identity_offset(id.entity_type(),
                                                previous_issued_counts[id.entity_type()])) {
-                        collision_dirty_entities_.push_back(handles[index]);
+                        collision_dirty_entities_.push_back(id);
                     }
                 }
             };
             auto const capitals{capital_ships_simulation_.get_read_view().entities};
             auto const fighters{fighters_simulation_.get_read_view().entities};
             auto const turrets{turrets_simulation_.get_read_view().entities};
-            collect_new(capitals, capitals.handles);
-            collect_new(fighters, fighters.entity_handles);
-            collect_new(turrets, turrets.handles);
+            collect_new(capitals);
+            collect_new(fighters);
+            collect_new(turrets);
             if (player_active) {
                 player_ship_phase_->prepare_tick(tick_period);
             }
@@ -381,7 +381,7 @@ void LevelSim::advance(time_type const dt) {
                     before_rotation.pitch != after_rotation.pitch ||
                     before_rotation.yaw != after_rotation.yaw ||
                     before_rotation.roll != after_rotation.roll) {
-                    collision_dirty_entities_.push_back(player_ship_simulation_->registry_handle);
+                    collision_dirty_entities_.push_back(player_ship_simulation_->unique_entity_id);
                 }
             }
             fighters_phase_.apply_movement();

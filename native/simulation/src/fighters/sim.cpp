@@ -467,7 +467,7 @@ void Sim::apply_movement() {
         auto const before{direction_to_rotation(direction)};
         auto const after{direction_to_rotation(planned_direction)};
         if (before.pitch != after.pitch || before.yaw != after.yaw || before.roll != after.roll) {
-            collision_dirty_entities_.push_back(data.entity_handles[index]);
+            collision_dirty_entities_.push_back(data.entity_ids[index]);
         }
     }
     data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
@@ -585,7 +585,7 @@ void Sim::move(float const dt, TaskView const& fighters) {
         auto const before{previous_locations.get_const_view()[index]};
         auto const after{fighters.locations[index]};
         if (before.X != after.X || before.Y != after.Y || before.Z != after.Z) {
-            collision_dirty_entities_.push_back(fighters.entity_handles[index]);
+            collision_dirty_entities_.push_back(fighters.entity_ids[index]);
         }
     }
 }

@@ -35,7 +35,6 @@ template <TraceKind Kind, IgnoredEntityMode IgnoredMode, TraceEntityFilter Entit
 void trace_grid_aabbs(GridGeometry const geometry,
                       CollisionGridEntityStorage const& entity_storage,
                       CollisionGridStaticStorage const& static_storage,
-                      EntityRegistry const& registry,
                       AgentAccessor const& agents,
                       LineTracesConstView const traces,
                       TraceHitsView const hits,
@@ -98,7 +97,7 @@ void trace_grid_aabbs(GridGeometry const geometry,
                 auto const aabbs{entity_storage.aabbs_for_cell(cell_index)};
                 for (std::int32_t entity_index{}; entity_index < entity_count; ++entity_index) {
                     auto const entity{entities[static_cast<std::size_t>(entity_index)]};
-                    auto const id{registry.get_current_id(entity)};
+                    auto const id{entity};
                     if (!agents.is_alive(id)) {
                         continue;
                     }
@@ -262,7 +261,6 @@ template <TraceKind Kind>
 void dispatch_ignored_mode(GridGeometry const geometry,
                            CollisionGridEntityStorage const& entity_storage,
                            CollisionGridStaticStorage const& static_storage,
-                           EntityRegistry const& registry,
                            AgentAccessor const& agents,
                            LineTracesConstView const traces,
                            TraceHitsView const hits,
@@ -275,7 +273,6 @@ void dispatch_ignored_mode(GridGeometry const geometry,
                 trace_grid_aabbs<Kind, IgnoredMode, TraceEntityFilter::None>(geometry,
                                                                              entity_storage,
                                                                              static_storage,
-                                                                             registry,
                                                                              agents,
                                                                              traces,
                                                                              hits,
@@ -287,7 +284,6 @@ void dispatch_ignored_mode(GridGeometry const geometry,
                     geometry,
                     entity_storage,
                     static_storage,
-                    registry,
                     agents,
                     traces,
                     hits,
@@ -308,38 +304,27 @@ void dispatch_ignored_mode(GridGeometry const geometry,
 void trace_grid_lines(GridGeometry const geometry,
                       CollisionGridEntityStorage const& entity_storage,
                       CollisionGridStaticStorage const& static_storage,
-                      EntityRegistry const& registry,
                       AgentAccessor const& agents,
                       LineTracesConstView const traces,
                       TraceHitsView const hits) {
     trace_grid_aabbs<TraceKind::Line, IgnoredEntityMode::None, TraceEntityFilter::None>(
-        geometry, entity_storage, static_storage, registry, agents, traces, hits, {}, {});
+        geometry, entity_storage, static_storage, agents, traces, hits, {}, {});
 }
 
 void trace_grid_lines_ignoring_entities(GridGeometry const geometry,
                                         CollisionGridEntityStorage const& entity_storage,
                                         CollisionGridStaticStorage const& static_storage,
-                                        EntityRegistry const& registry,
                                         AgentAccessor const& agents,
                                         LineTracesConstView const traces,
                                         TraceHitsView const hits,
                                         std::span<EntityUniqueId const> const ignored_entities) {
     trace_grid_aabbs<TraceKind::Line, IgnoredEntityMode::PerTrace, TraceEntityFilter::None>(
-        geometry,
-        entity_storage,
-        static_storage,
-        registry,
-        agents,
-        traces,
-        hits,
-        ignored_entities,
-        {});
+        geometry, entity_storage, static_storage, agents, traces, hits, ignored_entities, {});
 }
 
 void sweep_grid_aabbs(GridGeometry const geometry,
                       CollisionGridEntityStorage const& entity_storage,
                       CollisionGridStaticStorage const& static_storage,
-                      EntityRegistry const& registry,
                       AgentAccessor const& agents,
                       LineTracesConstView const centre_paths,
                       Vector3f const moving_half_extent,
@@ -349,7 +334,6 @@ void sweep_grid_aabbs(GridGeometry const geometry,
     dispatch_ignored_mode<TraceKind::Sweep>(geometry,
                                             entity_storage,
                                             static_storage,
-                                            registry,
                                             agents,
                                             centre_paths,
                                             hits,
@@ -360,7 +344,6 @@ void sweep_grid_aabbs(GridGeometry const geometry,
 void append_grid_overlaps(GridGeometry const geometry,
                           CollisionGridEntityStorage const& entity_storage,
                           CollisionGridStaticStorage const& static_storage,
-                          EntityRegistry const& registry,
                           AgentAccessor const& agents,
                           WorldAABB const query_bounds,
                           EntityUniqueId const ignored_entity,
@@ -391,7 +374,7 @@ void append_grid_overlaps(GridGeometry const geometry,
 
                     for (std::int32_t entity_index{}; entity_index < entity_count; ++entity_index) {
                         auto const entity{entities[static_cast<std::size_t>(entity_index)]};
-                        auto const id{registry.get_current_id(entity)};
+                        auto const id{entity};
                         if (id == ignored_entity || !agents.is_alive(id)) {
                             continue;
                         }
@@ -459,7 +442,7 @@ auto CollisionUniformGrid::num_cells() const -> std::int32_t {
     return collision::num_cells(geometry_);
 }
 auto CollisionUniformGrid::get_cell_entities(collision::CellCoord const cell_coord) const
-    -> std::span<RegistryEntityHandle const> {
+    -> std::span<EntityUniqueId const> {
     assert(is_cell_coord_in_bounds(cell_coord));
 
     auto const cell_index{to_index(cell_coord)};
@@ -518,17 +501,14 @@ void CollisionUniformGrid::rebuild_grid(collision::EntityAABBs const& entity_aab
         ml::fatal_error("Cannot rebuild an unconfigured collision grid");
     }
 
-    auto const entity_count{entity_registry_.get_num_elements()};
-    auto const generations{entity_registry_.get_generations()};
+    auto const ids{entity_registry_.get_active_unique_ids()};
     auto const geometry{geometry_};
     entity_storage_.begin_rebuild(geometry.dimensions);
 
     {
         SANDBOX_PROFILE_SCOPE("Sandbox::CollisionUniformGrid::rebuild_grid::count_loop");
 
-        for (std::int32_t index{}; index < entity_count; ++index) {
-            auto const handle{RegistryEntityHandle{index, generations[index]}};
-            auto const id{entity_registry_.get_current_id(handle)};
+        for (auto const id : ids) {
             auto const state{agents_.read_alive(id)};
             if (!state) {
                 continue;
@@ -542,10 +522,9 @@ void CollisionUniformGrid::rebuild_grid(collision::EntityAABBs const& entity_aab
                 collision::to_cell_coord_bounds(geometry, bounds.min, bounds.max)};
             if (!is_cell_coord_in_bounds(min_coord, max_coord)) {
                 ml::fatal_error(std::format(
-                    "Collision-grid entity {}:{} type {} has world AABB ({}, {}, {}) through "
+                    "Collision-grid entity ID {} type {} has world AABB ({}, {}, {}) through "
                     "({}, {}, {}), cell AABB {} through {}, outside grid dimensions {}",
-                    index,
-                    generations[index],
+                    id.raw_value(),
                     std::to_underlying(entity_type),
                     bounds.min.X,
                     bounds.min.Y,
@@ -557,8 +536,7 @@ void CollisionUniformGrid::rebuild_grid(collision::EntityAABBs const& entity_aab
                     to_string(max_coord),
                     to_string(geometry.dimensions)));
             }
-            entity_storage_.add(
-                bounds.min, bounds.max, min_coord, max_coord, {index, generations[index]});
+            entity_storage_.add(bounds.min, bounds.max, min_coord, max_coord, id);
         }
     }
     if (!entity_storage_.finish_rebuild()) {
@@ -581,7 +559,6 @@ void CollisionUniformGrid::append_overlaps(
     collision_uniform_grid_detail::append_grid_overlaps(geometry_,
                                                         entity_storage_,
                                                         static_storage_,
-                                                        entity_registry_,
                                                         agents_,
                                                         query_bounds,
                                                         ignored_entity,
@@ -592,7 +569,7 @@ void CollisionUniformGrid::append_overlaps(
 void CollisionUniformGrid::trace_aabbs(LineTracesConstView const& traces,
                                        TraceHitsView const& hits) const {
     collision_uniform_grid_detail::trace_grid_lines(
-        geometry_, entity_storage_, static_storage_, entity_registry_, agents_, traces, hits);
+        geometry_, entity_storage_, static_storage_, agents_, traces, hits);
 }
 
 void CollisionUniformGrid::trace_aabbs(
@@ -603,7 +580,6 @@ void CollisionUniformGrid::trace_aabbs(
         geometry_,
         entity_storage_,
         static_storage_,
-        entity_registry_,
         agents_,
         traces,
         hits,
@@ -624,7 +600,6 @@ void CollisionUniformGrid::sweep_aabbs(LineTracesConstView const& centre_paths,
         geometry_,
         entity_storage_,
         static_storage_,
-        entity_registry_,
         agents_,
         centre_paths,
         moving_half_extent,

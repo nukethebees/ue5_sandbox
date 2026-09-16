@@ -35,6 +35,16 @@ struct OverlapFixture {
         return registry.add_entities(data.get_const_view()).get_handle(0);
     }
 
+    auto ids(std::span<RegistryEntityHandle const> const handles) const
+        -> std::vector<EntityUniqueId> {
+        std::vector<EntityUniqueId> result;
+        result.reserve(handles.size());
+        for (auto const handle : handles) {
+            result.push_back(registry.get_current_id(handle));
+        }
+        return result;
+    }
+
     void finish_spawning() {
         registry.commit_updates();
         owners.load(registry);
@@ -87,7 +97,7 @@ struct OverlapFixture {
             deaths);
         registry.commit_updates();
         owners.load(registry);
-        query_manager.update(registry.get_moved_entities_this_tick(), ++current_tick);
+        query_manager.update(ids(registry.get_moved_entities_this_tick()), ++current_tick);
         tick_is_open = true;
     }
 
@@ -185,7 +195,7 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
     owner.locations.set(1, {{315.f, 0.f, 0.f}});
     auto& collision{fixture.query_manager.get_collision_system()};
     collision.reset_frame_events();
-    collision.update(handles, ++fixture.current_tick);
+    collision.update(fixture.ids(handles), ++fixture.current_tick);
     check_single_pair(fixture.get_entity_overlaps(),
                       fixture.registry.get_current_id(moved),
                       fixture.registry.get_current_id(stationary));
@@ -223,7 +233,7 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
     EXPECT_GT(radii[1], 0.f);
     EXPECT_EQ(radii[2], 0.f);
     collision.reset_frame_events();
-    collision.update(handles, ++fixture.current_tick);
+    collision.update(fixture.ids(handles), ++fixture.current_tick);
     tests::expect_equal(fixture.get_entity_overlaps().num(),
                         0,
                         "Overlap generation reads owner health without registry publication");
@@ -264,9 +274,12 @@ TEST(EntityAABBOverlaps, SharedCellWithoutExactOverlapProducesNoPair) {
     auto const cell_entities{
         fixture.query_manager.get_collision_system().get_uniform_grid().get_cell_entities(
             {20, 20, 20})};
-    tests::expect_true(std::ranges::find(cell_entities, stationary) != cell_entities.end() &&
-                           std::ranges::find(cell_entities, moved) != cell_entities.end(),
-                       "Both entities remain in the same grid cell");
+    tests::expect_true(
+        std::ranges::find(cell_entities, fixture.registry.get_current_id(stationary)) !=
+                cell_entities.end() &&
+            std::ranges::find(cell_entities, fixture.registry.get_current_id(moved)) !=
+                cell_entities.end(),
+        "Both entities remain in the same grid cell");
 }
 
 TEST(EntityAABBOverlaps, MultiCellOverlapProducesOnePair) {
@@ -678,10 +691,7 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
     tests::expect_true(reset_events.entity_static_overlaps.entities.data() == static_storage,
                        "Static event storage is retained across reset");
 
-    collision_system.update(
-        std::span<RegistryEntityHandle const>{
-            handles.data(), static_cast<std::size_t>(static_cast<std::int32_t>(handles.size()))},
-        ++fixture.current_tick);
+    collision_system.update(fixture.ids(handles), ++fixture.current_tick);
     auto const recaptured_events{collision_system.get_aabb_overlap_events()};
     check_single_pair(recaptured_events.entity_entity_overlaps,
                       fixture.registry.get_current_id(moved),
@@ -695,10 +705,7 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
     tests::expect_true(recaptured_events.entity_static_overlaps.entities.data() == static_storage,
                        "Static event storage is reused after recapture");
 
-    collision_system.update(
-        std::span<RegistryEntityHandle const>{
-            handles.data(), static_cast<std::size_t>(static_cast<std::int32_t>(handles.size()))},
-        ++fixture.current_tick);
+    collision_system.update(fixture.ids(handles), ++fixture.current_tick);
     auto const appended_events{collision_system.get_aabb_overlap_events()};
     tests::expect_equal(appended_events.entity_entity_overlaps.num(),
                         2,
@@ -727,7 +734,7 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
                         "The next frame starts without event batches");
 }
 
-TEST(EntityAABBOverlaps, InvalidDeadAndStaleDirtyHandlesAreIgnored) {
+TEST(EntityAABBOverlaps, InvalidDeadAndRetiredDirtyIdsAreIgnored) {
 
     OverlapFixture fixture;
     auto const static_index{fixture.add_static({{-20.f, -20.f, -20.f}}, {{20.f, 20.f, 20.f}})};
@@ -735,6 +742,7 @@ TEST(EntityAABBOverlaps, InvalidDeadAndStaleDirtyHandlesAreIgnored) {
     auto const removed{fixture.spawn({{100.f, 0.f, 0.f}})};
     fixture.finish_spawning();
 
+    auto const removed_id{fixture.registry.get_current_id(removed)};
     std::array const removed_handle{removed};
     std::array const removed_location{Vector3f{{10.f, 0.f, 0.f}}};
     std::array const rotations{Rotator3f{}};
@@ -753,10 +761,12 @@ TEST(EntityAABBOverlaps, InvalidDeadAndStaleDirtyHandlesAreIgnored) {
     tests::expect_true(fixture.registry.is_stale(removed),
                        "Removed handle becomes stale after slot reuse");
 
-    std::array const dirty_entities{
-        RegistryEntityHandle{}, RegistryEntityHandle{999, 0}, removed, live};
+    std::array const dirty_entities{EntityUniqueId{},
+                                    EntityUniqueId::make(999, EntityType::PlayerShip),
+                                    removed_id,
+                                    fixture.registry.get_current_id(live)};
     fixture.query_manager.get_collision_system().update(
-        std::span<RegistryEntityHandle const>{
+        std::span<EntityUniqueId const>{
             dirty_entities.data(),
             static_cast<std::size_t>(static_cast<std::int32_t>(dirty_entities.size()))},
         ++fixture.current_tick);

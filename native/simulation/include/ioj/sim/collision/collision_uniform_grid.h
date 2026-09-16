@@ -50,8 +50,7 @@ struct CollisionUniformGrid {
     auto get_native_entity_storage() const noexcept -> CollisionGridEntityStorage const& {
         return entity_storage_;
     }
-    auto get_cell_entities(CellCoord const cell_coord) const
-        -> std::span<RegistryEntityHandle const>;
+    auto get_cell_entities(CellCoord const cell_coord) const -> std::span<EntityUniqueId const>;
 
     auto to_cell_coord(Vector3f pos) const -> CellCoord;
     auto to_min_cell_coord(Vector3f pos) const -> CellCoord;

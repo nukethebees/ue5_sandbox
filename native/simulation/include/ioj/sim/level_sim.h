@@ -181,7 +181,7 @@ struct LevelSim {
     AgentAccessor agent_accessor_{agent_indexes_};
     SpatialQueryManager query_manager_;
     OverlapHandler overlap_handler_;
-    std::vector<RegistryEntityHandle> collision_dirty_entities_;
+    std::vector<EntityUniqueId> collision_dirty_entities_;
 
     lasers::Sim lasers_simulation_;
     lasers::PhaseInterface lasers_phase_;

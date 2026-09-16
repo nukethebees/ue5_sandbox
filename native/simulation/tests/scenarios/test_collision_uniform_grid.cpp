@@ -251,8 +251,8 @@ void check_traces(TraceFixture const& fixture, std::span<ExpectedTrace const> co
     }
 }
 
-auto count_handle(std::span<RegistryEntityHandle const> const handles,
-                  RegistryEntityHandle const expected) -> std::int32_t {
+auto count_id(std::span<EntityUniqueId const> const handles, EntityUniqueId const expected)
+    -> std::int32_t {
     std::int32_t count{};
     for (auto const handle : handles) {
         if (handle == expected) {
@@ -341,7 +341,8 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
             for (std::int32_t y{min_coord.y}; y <= max_coord.y; ++y) {
                 for (std::int32_t z{min_coord.z}; z <= max_coord.z; ++z) {
                     ++expected_cell_count;
-                    found_cell_count += count_handle(grid.get_cell_entities({x, y, z}), handle);
+                    found_cell_count += count_id(grid.get_cell_entities({x, y, z}),
+                                                 registry.get_current_id(handle));
                 }
             }
         }
@@ -1762,8 +1763,9 @@ void CollisionUniformGridTraceRunner::test_dense_and_wide_aabbs() {
     for (std::int32_t x{min_coord.x}; x <= max_coord.x; ++x) {
         for (std::int32_t y{min_coord.y}; y <= max_coord.y; ++y) {
             for (std::int32_t z{min_coord.z}; z <= max_coord.z; ++z) {
-                membership_count += count_handle(wide_fixture.grid.get_cell_entities({x, y, z}),
-                                                 wide_fixture.handles[0]);
+                membership_count +=
+                    count_id(wide_fixture.grid.get_cell_entities({x, y, z}),
+                             wide_fixture.registry.get_current_id(wide_fixture.handles[0]));
             }
         }
     }

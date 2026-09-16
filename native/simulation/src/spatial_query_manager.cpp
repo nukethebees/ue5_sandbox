@@ -167,7 +167,6 @@ namespace {
 template <typename IncludeEntity>
 auto collect_entities_in_range(collision::GridGeometry const geometry,
                                collision::CollisionGridEntityStorage const& grid_entities,
-                               EntityRegistry const& registry,
                                AgentAccessor const& agents,
                                QueryThreadBuffers& buffers,
                                Vector3f const origin,
@@ -197,7 +196,15 @@ auto collect_entities_in_range(collision::GridGeometry const geometry,
     max_coord.z = std::min(max_coord.z, max_grid_coord.z);
 
     auto& entity_stamps{buffers.range_query_entity_stamps};
-    buffers.ensure_entity_stamp_count(registry.get_num_elements());
+    auto const counts{agents.entity_counts()};
+    EntityTypeSizes offsets;
+    std::uint32_t total_count{};
+    for (std::size_t i{}; i < EntityTypeSizes::size(); ++i) {
+        auto const type{static_cast<EntityType>(i)};
+        offsets[type] = total_count;
+        total_count += counts[type];
+    }
+    buffers.ensure_entity_stamp_count(static_cast<std::int32_t>(total_count));
     auto const query_stamp{buffers.advance_range_query_stamp()};
     auto const radius_squared{radius * radius};
     std::int32_t count{};
@@ -206,13 +213,14 @@ auto collect_entities_in_range(collision::GridGeometry const geometry,
         for (auto y{min_coord.y}; y <= max_coord.y; ++y) {
             for (auto z{min_coord.z}; z <= max_coord.z; ++z) {
                 auto const cell_index{collision::to_index(geometry, {x, y, z})};
-                for (auto const handle : grid_entities.entities_for_cell(cell_index)) {
-                    auto const id{registry.get_current_id(handle)};
-                    if (!id.is_valid()) {
+                for (auto const id : grid_entities.entities_for_cell(cell_index)) {
+                    auto const local_index{agents.indexes().find(id)};
+                    if (local_index < 0) {
                         continue;
                     }
 
-                    auto const entity_index{static_cast<std::size_t>(handle.index)};
+                    auto const entity_index{static_cast<std::size_t>(offsets[id.entity_type()]) +
+                                            static_cast<std::size_t>(local_index)};
                     if (entity_stamps[entity_index] == query_stamp) {
                         continue;
                     }
@@ -444,7 +452,6 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
         return collect_entities_in_range(
             grid.get_native_geometry(),
             grid.get_native_entity_storage(),
-            entity_registry,
             agents_,
             buffer_lease.get(),
             origin,
@@ -472,7 +479,6 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
     return collect_entities_in_range(
         grid.get_native_geometry(),
         grid.get_native_entity_storage(),
-        entity_registry,
         agents_,
         buffer_lease.get(),
         origin,
@@ -524,7 +530,7 @@ void SpatialQueryManager::copy_entity_radii(std::span<EntityUniqueId const> cons
 /* **************************************** */
 // Collision state and telemetry
 /* **************************************** */
-auto SpatialQueryManager::update(std::span<RegistryEntityHandle const> const dirty_entities,
+auto SpatialQueryManager::update(std::span<EntityUniqueId const> const dirty_entities,
                                  SimTick const tick) -> collision::DetectedOverlapsView {
     SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::update");
 

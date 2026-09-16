@@ -29,7 +29,7 @@ struct CollisionSystem {
     auto operator=(CollisionSystem&&) -> CollisionSystem& = delete;
 
     void initialise(EntityAABBs const& bounds);
-    auto update(std::span<RegistryEntityHandle const> collision_dirty_entities, SimTick tick)
+    auto update(std::span<EntityUniqueId const> collision_dirty_entities, SimTick tick)
         -> DetectedOverlapsView;
 
     void reset_frame_events();
@@ -50,9 +50,8 @@ struct CollisionSystem {
   private:
     void rebuild_grid();
     void collect_overlaps_for_moved_entities(
-        std::span<RegistryEntityHandle const> collision_dirty_entities);
+        std::span<EntityUniqueId const> collision_dirty_entities);
 
-    EntityRegistry const& entity_registry_;
     AgentAccessor const& agents_;
     CollisionUniformGrid uniform_grid_;
 

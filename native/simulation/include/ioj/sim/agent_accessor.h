@@ -49,6 +49,16 @@ class AgentAccessor {
 
     auto indexes() const noexcept -> AgentIndexes& { return indexes_; }
 
+    [[nodiscard]] auto entity_counts() const noexcept -> EntityTypeSizes {
+        EntityTypeSizes counts;
+        counts[EntityType::PlayerShip] = player_.transform != nullptr ? 1u : 0u;
+        counts[EntityType::CapitalShip] = static_cast<std::uint32_t>(capitals_.num());
+        counts[EntityType::Fighter] = static_cast<std::uint32_t>(fighters_.num());
+        counts[EntityType::Turret] = static_cast<std::uint32_t>(turrets_.num());
+        counts[EntityType::TubeSpinner] = static_cast<std::uint32_t>(spinners_.num());
+        return counts;
+    }
+
     // Sorts a scratch row permutation; IDs and destination SOA rows stay in caller order.
     // Velocities and teams may be omitted. Missing/dead targets produce zeroed fields.
     void gather_targets(std::span<EntityUniqueId const> ids,
