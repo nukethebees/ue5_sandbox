@@ -5,5 +5,5 @@
   (struct EntityDeathInfo
     :operations (all)
     (member reasons array @native_death_reason)
-    (member victims array @native_registry_handle)
-    (member killers array @native_registry_handle)))
+    (member victims array @native_unique_id)
+    (member killers array @native_unique_id)))

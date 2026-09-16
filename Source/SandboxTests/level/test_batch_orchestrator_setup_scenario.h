@@ -18,9 +18,9 @@ class FTestBatchOrchestratorSetupScenario final : public FSimulationTestScenario
         int32 telemetry_sample_count{0};
         uint64 last_telemetry_tick{0};
         int32 telemetry_entity_count{0};
-        int32 registry_entity_count{0};
+        int32 alive_entity_count{0};
         int32 telemetry_player_ship_count{0};
-        int32 registry_player_ship_count{0};
+        int32 ledger_player_ship_count{0};
         int32 kill_sample_count{0};
         uint64 last_kill_tick{0};
         int32 cumulative_kill_count{0};

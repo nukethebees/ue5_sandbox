@@ -36,8 +36,8 @@ void PhaseInterface::resolve_fighters_of_dying_capitals() {
     simulation.resolve_fighters_of_dying_capitals();
 }
 
-void PhaseInterface::update_entity_registry() {
-    simulation.update_entity_registry();
+void PhaseInterface::publish_deaths() {
+    simulation.publish_deaths();
 }
 
 void PhaseInterface::cleanup_entities() {

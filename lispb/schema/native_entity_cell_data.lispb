@@ -16,5 +16,5 @@
     (member max_cell_xs array int32)
     (member max_cell_ys array int32)
     (member max_cell_zs array int32)
-    (member handles array @native_registry_handle)
+    (member entity_ids array @native_unique_id)
     (single-allocation EntityCellData)))

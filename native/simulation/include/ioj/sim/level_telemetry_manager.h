@@ -10,7 +10,7 @@
 
 #include "ioj/sim/level_telemetry_snapshot.h"
 
-#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/telemetry/level_telemetry_block_history.h>
 #include <ioj/sim/telemetry/level_telemetry_run_record.h>
 #include <sandbox/core/time_series_data.h>
@@ -38,7 +38,7 @@ class LevelTelemetryManager {
     // Construction and lifecycle
     /* **************************************** */
     LevelTelemetryManager(SimClock const& clock,
-                          EntityRegistry const& entity_registry,
+                          EntityLedger const& entity_ledger,
                           lasers::Sim const& lasers,
                           GameMemory& game_memory,
                           LevelTelemetryHistoryConfig history_config = {}) noexcept;
@@ -102,7 +102,7 @@ class LevelTelemetryManager {
     // State
     /* **************************************** */
     SimClock const& clock_;
-    EntityRegistry const& entity_registry_;
+    EntityLedger const& entity_ledger_;
     lasers::Sim const& lasers_;
     LevelTelemetryCurrentState current_state_{};
     LevelTelemetryCurrentState last_sampled_state_{};

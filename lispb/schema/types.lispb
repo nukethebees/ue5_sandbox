@@ -169,16 +169,6 @@
   :header "Components/PrimitiveComponent.h"
   :pass-by value)
 
-(type registry_handle
-  :spelling "::ioj::sim::RegistryEntityHandle"
-  :header "ioj/sim/entity_handle.h"
-  :pass-by value)
-
-(type native_registry_handle
-  :spelling "RegistryEntityHandle"
-  :header "ioj/sim/entity_handle.h"
-  :pass-by value)
-
 (type native_level_event_count
   :spelling "LevelEventCount"
   :header "ioj/sim/level_event_types.h"
@@ -415,10 +405,6 @@
 (type fighters_sim
   :spelling "Sim"
   :header "ioj/sim/fighters/sim.h")
-
-(type spawned_entity_handles
-  :spelling "SpawnedEntityHandles"
-  :header "ioj/sim/spawned_entity_handles.h")
 
 (type player_sim
   :spelling "Sim"

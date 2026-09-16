@@ -1,5 +1,4 @@
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/entity_registry.h>
 #include <ioj/sim/fighters/sim.h>
 #include "../support/simulation_test_support.h"
 
@@ -32,7 +31,7 @@ void run_worldless_fighters_standby_transition(tests::SimulationFixture const& c
     harness.finish_initialisation();
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     auto const& fighters{harness.get_simulation().get_fighters()};
-    auto const enemy{capitals.get_handle(1)};
+    auto const enemy{capitals.get_id(1)};
 
     struct Sample {
         std::int32_t capital_count{};
@@ -44,8 +43,9 @@ void run_worldless_fighters_standby_transition(tests::SimulationFixture const& c
         Sample sample{.capital_count = capitals.get_num_instances()};
         auto const tasks{fighters.get_tasks()};
         sample.tasks.insert(sample.tasks.end(), tasks.begin(), tasks.end());
-        for (auto const handle : fighters.get_handles()) {
-            sample.velocities.push_back(harness.get_registry().get_velocity(handle));
+        for (auto const id : fighters.get_entity_ids()) {
+            sample.velocities.push_back(
+                harness.get_simulation().get_agent_accessor().read(id)->velocity);
         }
         samples.add(harness.get_time(), std::move(sample));
     };

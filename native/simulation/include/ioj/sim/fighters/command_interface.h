@@ -4,11 +4,10 @@
 
 #pragma once
 
-#include "ioj/sim/entity_handle.h"
+#include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/fighter_order_queue.h"
 #include "ioj/sim/fighter_spawn_queue.h"
 #include "ioj/sim/fighters/sim.h"
-#include "ioj/sim/spawned_entity_handles.h"
 
 namespace ioj::sim::fighters {
 class CommandInterface {
@@ -26,28 +25,32 @@ class CommandInterface {
         fighters.queue_orders(queue);
     }
 
-    void self_destruct_fighter(RegistryEntityHandle const handle) {
-        fighters.self_destruct_fighter(handle);
-    }
-
-    RegistryEntityDataConstView get_new_spawn_entity_data() const {
-        return fighters.get_new_spawn_entity_data();
-    }
-
-    SpawnedEntityHandles const& get_new_spawn_entity_handles() const {
-        return fighters.get_new_spawn_entity_handles();
+    void self_destruct_fighter(EntityUniqueId const fighter) {
+        fighters.self_destruct_fighter(fighter);
     }
 
     std::int32_t get_num_instances() const noexcept {
         return fighters.get_num_instances();
     }
 
-    std::span<RegistryEntityHandle const> get_handles() const noexcept {
-        return fighters.get_handles();
+    std::span<EntityUniqueId const> get_parent_ids() const {
+        return fighters.get_parent_ids();
     }
 
-    std::span<RegistryEntityHandle const> get_target_handles() const noexcept {
-        return fighters.get_target_handles();
+    std::span<EntityUniqueId const> get_entity_ids() const {
+        return fighters.get_entity_ids();
+    }
+
+    std::span<Health const> get_healths() const {
+        return fighters.get_healths();
+    }
+
+    void set_parent_id(EntityUniqueId fighter, EntityUniqueId parent) {
+        fighters.set_parent_id(fighter, parent);
+    }
+
+    std::span<EntityUniqueId const> get_target_ids() const noexcept {
+        return fighters.get_target_ids();
     }
 
     private:

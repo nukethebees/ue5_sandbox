@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "ioj/sim/entity_handle.h"
 #include "ioj/sim/entity_life_state.h"
+#include "ioj/sim/entity_unique_id.h"
 #include "native_soa/storage.h"
 #include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
@@ -17,8 +17,8 @@ struct EntityDeathInfoConstView {
     using ConstView = EntityDeathInfoConstView;
     using size_type = std::int32_t;
     std::span<DeathReason const> reasons;
-    std::span<RegistryEntityHandle const> victims;
-    std::span<RegistryEntityHandle const> killers;
+    std::span<EntityUniqueId const> victims;
+    std::span<EntityUniqueId const> killers;
     auto num() const noexcept -> size_type { return static_cast<size_type>(reasons.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -66,8 +66,8 @@ struct EntityDeathInfoView {
     using ConstView = EntityDeathInfoConstView;
     using size_type = std::int32_t;
     std::span<DeathReason> reasons;
-    std::span<RegistryEntityHandle> victims;
-    std::span<RegistryEntityHandle> killers;
+    std::span<EntityUniqueId> victims;
+    std::span<EntityUniqueId> killers;
     auto num() const noexcept -> size_type { return static_cast<size_type>(reasons.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -111,8 +111,8 @@ struct EntityDeathInfoView {
     }
     void set(size_type const index,
              DeathReason const new_reasons,
-             RegistryEntityHandle const new_victims,
-             RegistryEntityHandle const new_killers) const {
+             EntityUniqueId const new_victims,
+             EntityUniqueId const new_killers) const {
         ml::native_soa::require(index >= 0 && index < num());
         reasons[static_cast<std::size_t>(index)] = new_reasons;
         victims[static_cast<std::size_t>(index)] = new_victims;
@@ -124,8 +124,8 @@ struct EntityDeathInfo {
     using ConstView = EntityDeathInfoConstView;
     using size_type = std::int32_t;
     ml::native_soa::Vector<DeathReason> reasons;
-    ml::native_soa::Vector<RegistryEntityHandle> victims;
-    ml::native_soa::Vector<RegistryEntityHandle> killers;
+    ml::native_soa::Vector<EntityUniqueId> victims;
+    ml::native_soa::Vector<EntityUniqueId> killers;
     auto num() const noexcept -> size_type { return static_cast<size_type>(reasons.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -185,13 +185,13 @@ struct EntityDeathInfo {
     }
     void set(size_type const index,
              DeathReason const new_reasons,
-             RegistryEntityHandle const new_victims,
-             RegistryEntityHandle const new_killers) {
+             EntityUniqueId const new_victims,
+             EntityUniqueId const new_killers) {
         get_view().set(index, new_reasons, new_victims, new_killers);
     }
     auto add(DeathReason const new_reasons,
-             RegistryEntityHandle const new_victims,
-             RegistryEntityHandle const new_killers) -> size_type {
+             EntityUniqueId const new_victims,
+             EntityUniqueId const new_killers) -> size_type {
         auto const index{num()};
         add_defaulted(1);
         set(index, new_reasons, new_victims, new_killers);
@@ -214,15 +214,13 @@ struct EntityDeathInfo {
             auto const address{ml::address_cast(source.victims.data())};
             auto const begin{ml::address_cast(victims.data())};
             ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + victims.size() * sizeof(RegistryEntityHandle));
+                                    address >= begin + victims.size() * sizeof(EntityUniqueId));
         }
         {
             auto const address{ml::address_cast(source.killers.data())};
             auto const begin{ml::address_cast(killers.data())};
             ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + killers.size() * sizeof(RegistryEntityHandle));
+                                    address >= begin + killers.size() * sizeof(EntityUniqueId));
         }
         reasons.insert(reasons.end(), source.reasons.data(), source.reasons.data() + count);
         victims.insert(victims.end(), source.victims.data(), source.victims.data() + count);

@@ -149,20 +149,17 @@ auto sanitize_radar_settings(FRadarSettings settings) -> FRadarSettings {
     return settings;
 }
 
-auto collect_radar_instances(::ioj::sim::RegistryEntityData::ConstView const entities,
-                             TConstArrayView<int32> const generations,
+auto collect_radar_instances(std::span<::ioj::sim::AgentDisplayBatch const> const batches,
                              TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
                              FRadarContactColours const& contact_colours,
                              FTransform const& player_transform,
-                             ::ioj::sim::RegistryEntityHandle const player_handle,
-                             ::ioj::sim::RegistryEntityHandle const selected_handle,
+                             ::ioj::sim::EntityUniqueId const player_id,
+                             ::ioj::sim::EntityUniqueId const selected_id,
                              ETestTeam const player_team,
                              FRadarSettings const& settings,
                              FRadarFrame& output_frame) -> FRadarCollectionResult {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Radar::CollectRegistrySource);
-    entities.validate_array_sizes();
-    check(generations.Num() == entities.num());
-    check(objective_roles.Num() == entities.num());
+    TRACE_CPUPROFILER_EVENT_SCOPE(Radar::CollectAgentSource);
+    check(objective_roles.Num() == ::ioj::sim::display_entity_count(batches));
     output_frame.instances.Reset();
 
     auto const rotation{player_transform.Rotator()};
@@ -174,55 +171,61 @@ auto collect_radar_instances(::ioj::sim::RegistryEntityData::ConstView const ent
     output_frame.tactical_display_radius =
         ml::radar_source::map_distance(settings.tactical_range / settings.maximum_range, curve);
     auto const range_squared{settings.maximum_range * settings.maximum_range};
-    auto const count{entities.num()};
+    auto const count{::ioj::sim::display_entity_count(batches)};
     output_frame.instances.Reserve(count + 1);
 
     int32 candidate_count{0};
     for (int32 priority{0}; priority < 3; ++priority) {
-        for (int32 index{0}; index < count; ++index) {
-            if (::ioj::sim::is_dead(entities.healths[index])) {
-                continue;
-            }
-
-            ::ioj::sim::RegistryEntityHandle const handle{index, generations[index]};
-            if (handle == player_handle ||
-                entities.entity_types[index] == ::ioj::sim::EntityType::PlayerShip) {
-                continue;
-            }
-            if (priority == 0) {
-                ++candidate_count;
-            }
-
-            auto const contact_flags{
-                ml::radar_source::flags(objective_roles[index], handle == selected_handle)};
-            if (ml::radar_source::draw_priority(contact_flags) != priority) {
-                continue;
-            }
-
-            auto const world_delta{ml::to_unreal(entities.locations[index]) - player_origin};
-            if (world_delta.SizeSquared() >= range_squared) {
-                continue;
-            }
-            auto const local_delta{
-                FVector3f{no_roll_transform.InverseTransformVectorNoScale(FVector{world_delta})}};
-            auto const entity_type{ml::to_unreal(entities.entity_types[index])};
-            auto heading_radians{0.0f};
-            if (entity_type == ETestEntityType::Fighter) {
-                auto const world_velocity{ml::to_unreal(entities.velocities[index])};
-                auto const local_velocity{FVector3f{
-                    no_roll_transform.InverseTransformVectorNoScale(FVector{world_velocity})}};
-                if (FVector2f{local_velocity.X, local_velocity.Y}.SizeSquared() > UE_SMALL_NUMBER) {
-                    heading_radians = FMath::Atan2(local_velocity.Y, local_velocity.X);
+        int32 output_index{};
+        for (auto const& batch : batches) {
+            auto const batch_count{batch.num()};
+            check(batch.ids.size() == static_cast<std::size_t>(batch_count));
+            for (int32 index{}; index < batch_count; ++index, ++output_index) {
+                if (::ioj::sim::is_dead(batch.health(index))) {
+                    continue;
                 }
+
+                auto const id{batch.ids[index]};
+                if (id == player_id || batch.type == ::ioj::sim::EntityType::PlayerShip) {
+                    continue;
+                }
+                if (priority == 0) {
+                    ++candidate_count;
+                }
+
+                auto const contact_flags{
+                    ml::radar_source::flags(objective_roles[output_index], id == selected_id)};
+                if (ml::radar_source::draw_priority(contact_flags) != priority) {
+                    continue;
+                }
+
+                auto const world_delta{ml::to_unreal(batch.locations[index]) - player_origin};
+                if (world_delta.SizeSquared() >= range_squared) {
+                    continue;
+                }
+                auto const local_delta{FVector3f{
+                    no_roll_transform.InverseTransformVectorNoScale(FVector{world_delta})}};
+                auto const entity_type{ml::to_unreal(batch.type)};
+                auto heading_radians{0.0f};
+                if (entity_type == ETestEntityType::Fighter) {
+                    auto const world_velocity{ml::to_unreal(batch.velocity(index))};
+                    auto const local_velocity{FVector3f{
+                        no_roll_transform.InverseTransformVectorNoScale(FVector{world_velocity})}};
+                    if (FVector2f{local_velocity.X, local_velocity.Y}.SizeSquared() >
+                        UE_SMALL_NUMBER) {
+                        heading_radians = FMath::Atan2(local_velocity.Y, local_velocity.X);
+                    }
+                }
+                output_frame.instances.Add({
+                    .radar_position =
+                        ml::radar_source::to_radar_position(local_delta, settings, curve),
+                    .size_scale = ml::radar_source::size_scale(entity_type),
+                    .packed_color = pack_radar_color(ml::radar_source::colour(
+                        ml::to_unreal(batch.team(index)), player_team, contact_colours)),
+                    .packed_glyph_and_flags = pack_radar_display(
+                        ml::radar_source::glyph(entity_type), contact_flags, heading_radians),
+                });
             }
-            output_frame.instances.Add({
-                .radar_position = ml::radar_source::to_radar_position(local_delta, settings, curve),
-                .size_scale = ml::radar_source::size_scale(entity_type),
-                .packed_color = pack_radar_color(ml::radar_source::colour(
-                    ml::to_unreal(entities.teams[index]), player_team, contact_colours)),
-                .packed_glyph_and_flags = pack_radar_display(
-                    ml::radar_source::glyph(entity_type), contact_flags, heading_radians),
-            });
         }
     }
 

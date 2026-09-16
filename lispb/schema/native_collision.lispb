@@ -4,9 +4,9 @@
   :namespace ioj::sim::collision
   (struct EntityEntityOverlaps
     :operations (all)
-    (member first_entities array @native_registry_handle)
-    (member second_entities array @native_registry_handle))
+    (member first_entities array @native_unique_id)
+    (member second_entities array @native_unique_id))
   (struct EntityStaticOverlaps
     :operations (all)
-    (member entities array @native_registry_handle)
+    (member entities array @native_unique_id)
     (member static_geometry_indices array int32)))

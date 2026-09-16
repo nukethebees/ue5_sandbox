@@ -8,7 +8,7 @@
 #include <sandbox/core/diagnostics.h>
 #include <thread>
 
-#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/agent_accessor.h>
 
 namespace ioj::sim::collision {
 void CollisionSystem::initialise(collision::EntityAABBs const& bounds) {
@@ -18,7 +18,7 @@ void CollisionSystem::initialise(collision::EntityAABBs const& bounds) {
     overlapping_entities_scratch_.clear();
     overlapping_static_geometry_indices_scratch_.clear();
 }
-auto CollisionSystem::update(std::span<RegistryEntityHandle const> const collision_dirty_entities,
+auto CollisionSystem::update(std::span<EntityUniqueId const> const collision_dirty_entities,
                              SimTick const tick) -> DetectedOverlapsView {
     SANDBOX_PROFILE_SCOPE("Sandbox::CollisionSystem::update");
     rebuild_grid();
@@ -32,9 +32,9 @@ auto CollisionSystem::update(std::span<RegistryEntityHandle const> const collisi
 void CollisionSystem::reset_frame_events() {
     overlap_event_storage_.reset();
 }
-CollisionSystem::CollisionSystem(EntityRegistry const& registry) noexcept
-    : entity_registry_{registry}
-    , uniform_grid_{registry} {}
+CollisionSystem::CollisionSystem(AgentAccessor const& agents) noexcept
+    : agents_{agents}
+    , uniform_grid_{agents} {}
 void CollisionSystem::rebuild_grid() {
     SANDBOX_PROFILE_SCOPE("Sandbox::CollisionSystem::rebuild_grid");
     uniform_grid_.rebuild_grid(entity_aabbs_);
@@ -43,38 +43,36 @@ void CollisionSystem::refresh_queries() {
     rebuild_grid();
 }
 void CollisionSystem::collect_overlaps_for_moved_entities(
-    std::span<RegistryEntityHandle const> const collision_dirty_entities) {
+    std::span<EntityUniqueId const> const collision_dirty_entities) {
     SANDBOX_PROFILE_SCOPE("Sandbox::CollisionSystem::collect_overlaps_for_moved_entities");
 
     overlap_storage_.clear();
 
-    auto const& entity_data{entity_registry_.get_entity_data()};
     for (auto const dirty_entity : collision_dirty_entities) {
-        if (!entity_registry_.is_valid_alive(dirty_entity)) {
+        auto const id{dirty_entity};
+        auto const state{agents_.read_alive(id)};
+        if (!state) {
             continue;
         }
 
-        auto const entity_index{dirty_entity.index};
-        auto const entity_type_index{std::to_underlying(entity_data.entity_types[entity_index])};
-        auto const bounds{collision::make_entity_world_bounds(
-            entity_aabbs_,
-            entity_type_index,
-            entity_data.locations[entity_index],
-            to_quaternion(entity_data.rotations[entity_index]))};
+        auto const bounds{collision::make_entity_world_bounds(entity_aabbs_,
+                                                              std::to_underlying(id.entity_type()),
+                                                              state->location,
+                                                              to_quaternion(state->rotation))};
 
         overlapping_entities_scratch_.clear();
         overlapping_static_geometry_indices_scratch_.clear();
         uniform_grid_.append_overlaps(bounds,
-                                      dirty_entity,
+                                      id,
                                       overlapping_entities_scratch_,
                                       overlapping_static_geometry_indices_scratch_);
 
         for (auto const overlapping_entity : overlapping_entities_scratch_) {
-            overlap_storage_.add_entity_overlap(dirty_entity, overlapping_entity);
+            overlap_storage_.add_entity_overlap(id, overlapping_entity);
         }
 
         for (auto const static_geometry_index : overlapping_static_geometry_indices_scratch_) {
-            overlap_storage_.add_static_overlap(dirty_entity, static_geometry_index);
+            overlap_storage_.add_static_overlap(id, static_geometry_index);
         }
     }
 

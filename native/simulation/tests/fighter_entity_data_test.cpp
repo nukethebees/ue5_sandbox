@@ -11,9 +11,9 @@ TEST(NativeSimulation, FighterEntityBiasPackedDataTest) {
     EntityData source;
     source.add_defaulted(3);
     auto source_columns{source.get_view().columns()};
-    source_columns.entity_handles[0] = {10, 1};
-    source_columns.entity_handles[1] = {20, 2};
-    source_columns.entity_handles[2] = {30, 3};
+    source_columns.entity_ids[0] = EntityUniqueId{10};
+    source_columns.entity_ids[1] = EntityUniqueId{20};
+    source_columns.entity_ids[2] = EntityUniqueId{30};
     source_columns.integral_biases[0] = 100u;
     source_columns.integral_biases[1] = 200u;
     source_columns.integral_biases[2] = 300u;
@@ -45,16 +45,16 @@ TEST(NativeSimulation, FighterEntityBiasPackedDataTest) {
     auto& reordered{buffers.current()};
     auto reordered_columns{reordered.get_view().columns()};
     reordered_columns.validate_array_sizes();
-    tests::expect_true(reordered_columns.entity_handles[0] == RegistryEntityHandle{30, 3},
-                       "Buffered copy keeps handle paired with integral bias");
+    tests::expect_true(reordered_columns.entity_ids[0] == EntityUniqueId{30},
+                       "Buffered copy keeps ID paired with integral bias");
     tests::expect_equal(reordered_columns.integral_biases[0], 300u, "Buffered copy integral bias");
     tests::expect_equal(reordered_columns.float_biases[0], 0.3f, "Buffered copy float bias");
 
     reordered.remove_at_swap(0, 1);
     reordered_columns = reordered.get_view().columns();
     reordered_columns.validate_array_sizes();
-    tests::expect_true(reordered_columns.entity_handles[0] == RegistryEntityHandle{20, 2},
-                       "Swap removal keeps handle paired with integral bias");
+    tests::expect_true(reordered_columns.entity_ids[0] == EntityUniqueId{20},
+                       "Swap removal keeps ID paired with integral bias");
     tests::expect_equal(reordered_columns.integral_biases[0], 200u, "Swap removal integral bias");
     tests::expect_equal(reordered_columns.float_biases[0], 0.2f, "Swap removal float bias");
 

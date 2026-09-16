@@ -14,7 +14,7 @@
 #include <vector>
 
 namespace ioj::sim {
-struct EntityRegistry;
+class AgentAccessor;
 }
 
 namespace ioj::sim::collision {
@@ -26,7 +26,7 @@ enum class TraceEntityFilter : std::uint8_t {
 struct CollisionUniformGrid {
     static inline Vector3f const origin{};
 
-    explicit CollisionUniformGrid(EntityRegistry const& entity_registry) noexcept;
+    explicit CollisionUniformGrid(AgentAccessor const& agents) noexcept;
     CollisionUniformGrid(CollisionUniformGrid const&) = delete;
     CollisionUniformGrid(CollisionUniformGrid&&) = delete;
     auto operator=(CollisionUniformGrid const&) -> CollisionUniformGrid& = delete;
@@ -48,8 +48,7 @@ struct CollisionUniformGrid {
     auto get_native_entity_storage() const noexcept -> CollisionGridEntityStorage const& {
         return entity_storage_;
     }
-    auto get_cell_entities(CellCoord const cell_coord) const
-        -> std::span<RegistryEntityHandle const>;
+    auto get_cell_entities(CellCoord const cell_coord) const -> std::span<EntityUniqueId const>;
 
     auto to_cell_coord(Vector3f pos) const -> CellCoord;
     auto to_min_cell_coord(Vector3f pos) const -> CellCoord;
@@ -87,17 +86,17 @@ struct CollisionUniformGrid {
 
     // Appends exact overlaps. Multi-cell participants may be appended more than once.
     void append_overlaps(WorldAABB const& query_bounds,
-                         RegistryEntityHandle ignored_entity,
-                         std::vector<RegistryEntityHandle>& out_entities,
+                         EntityUniqueId ignored_entity,
+                         std::vector<EntityUniqueId>& out_entities,
                          std::vector<std::int32_t>& out_static_geometry_indices) const;
     void trace_aabbs(LineTracesConstView const& traces, TraceHitsView const& hits) const;
     void trace_aabbs(LineTracesConstView const& traces,
                      TraceHitsView const& hits,
-                     std::span<RegistryEntityHandle const> ignored_entities) const;
+                     std::span<EntityUniqueId const> ignored_entities) const;
     void sweep_aabbs(LineTracesConstView const& centre_paths,
                      Vector3f moving_half_extent,
                      TraceHitsView const& hits,
-                     std::span<RegistryEntityHandle const> ignored_entities = {},
+                     std::span<EntityUniqueId const> ignored_entities = {},
                      TraceEntityFilter entity_filter = TraceEntityFilter::None) const;
   private:
     auto to_cell_x(float value) const -> std::int32_t;
@@ -108,7 +107,7 @@ struct CollisionUniformGrid {
     auto to_index(Vector3f pos) const -> std::int32_t;
     void rebuild_static_grid();
 
-    EntityRegistry const& entity_registry_;
+    AgentAccessor const& agents_;
 
     GridGeometry geometry_{};
 

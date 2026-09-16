@@ -8,7 +8,6 @@
 
 #include <sandbox/core/time_series_data.h>
 
-#include <ioj/sim/entity_registry.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -68,17 +67,14 @@ void FTestPlayerShipDeathScenario::queue_player_ship_death() {
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
     player_ship = const_cast<ATestSpaceShip*>(ship);
-    player_ship_handle = ship->get_entity_handle();
     player_ship_id = ship->get_unique_id();
 
-    auto const& registry{test_driver->orchestrator.get_entity_registry()};
-    checks.is_true(registry.is_valid_handle(player_ship_handle),
-                   TEXT("Player ship handle is valid"));
-    checks.is_true(registry.is_valid_unique_id(player_ship_id), TEXT("Player ship ID is valid"));
+    auto const& ledger{test_driver->orchestrator.get_entity_ledger()};
+    checks.is_true(ledger.is_valid_unique_id(player_ship_id), TEXT("Player ship ID is valid"));
 
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
-    std::vector<::ioj::sim::RegistryEntityHandle> const targets{player_ship_handle};
+    std::vector<::ioj::sim::EntityUniqueId> const targets{player_ship_id};
     test_driver->timeline.then_after(kill_time,
                                      [this, targets] { test_driver->queue_kills(targets); });
 
@@ -89,23 +85,27 @@ void FTestPlayerShipDeathScenario::queue_player_ship_death() {
 }
 
 void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
-    auto const& unique_entities{test_driver->get_registry().get_unique_entities()};
+    auto const& unique_entities{test_driver->get_ledger().get_unique_entities()};
 
-    if (!checks.is_true(test_driver->get_registry().is_valid_unique_id(player_ship_id),
+    if (!checks.is_true(test_driver->get_ledger().is_valid_unique_id(player_ship_id),
                         TEXT("Check player id is valid"))) {
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
 
     auto const* const controller{
         Cast<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
-    samples.add(test_driver->get_time(),
-                FSimulationSample{test_driver->get_registry().is_valid_dead(player_ship_handle),
-                                  IsValid(player_ship.Get()),
-                                  unique_entities.life_state[player_ship_id.index()] ==
-                                      ::ioj::sim::LifeState::Alive,
-                                  IsValid(controller) && IsValid(controller->GetPawn()),
-                                  IsValid(controller) && controller->get_active_control_context() ==
-                                                             EPlayerControlContext::Player});
+    samples.add(
+        test_driver->get_time(),
+        FSimulationSample{
+            !test_driver->orchestrator.get_level_simulation()->get_agent_accessor().is_alive(
+                player_ship_id),
+            IsValid(player_ship.Get()),
+            unique_entities
+                    .life_state[test_driver->get_ledger().get_history_index(player_ship_id)] ==
+                ::ioj::sim::LifeState::Alive,
+            IsValid(controller) && IsValid(controller->GetPawn()),
+            IsValid(controller) &&
+                controller->get_active_control_context() == EPlayerControlContext::Player});
 }
 
 void FTestPlayerShipDeathScenario::check_player_ship_death() {
@@ -114,7 +114,7 @@ void FTestPlayerShipDeathScenario::check_player_ship_death() {
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
     auto const& sample{samples.last_value()};
-    checks.is_true(sample.player_handle_is_dead, TEXT("Player ship handle is dead"));
+    checks.is_true(sample.player_id_is_dead, TEXT("Player ship ID is dead"));
     checks.is_true(!sample.player_actor_is_valid, TEXT("Player ship actor is destroyed"));
     checks.is_true(!sample.player_unique_entity_is_alive, TEXT("Player ship entity is dead"));
     checks.is_true(!sample.controller_has_pawn, TEXT("Death unpossesses the controller"));

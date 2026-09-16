@@ -1,8 +1,8 @@
 #pragma once
 
 #include "ioj/sim/collision_events.h"
-#include "ioj/sim/entity_handle.h"
 #include "ioj/sim/entity_overlaps.h"
+#include "ioj/sim/entity_unique_id.h"
 
 #include <cstdint>
 #include <vector>
@@ -12,8 +12,8 @@ class CollisionOverlapStorage {
   public:
     void reset() noexcept;
     void clear() noexcept;
-    void add_entity_overlap(RegistryEntityHandle first, RegistryEntityHandle second);
-    void add_static_overlap(RegistryEntityHandle entity, std::int32_t static_geometry_index);
+    void add_entity_overlap(EntityUniqueId first, EntityUniqueId second);
+    void add_static_overlap(EntityUniqueId entity, std::int32_t static_geometry_index);
     void finalize();
 
     [[nodiscard]] auto get_view() const noexcept -> DetectedOverlapsView;

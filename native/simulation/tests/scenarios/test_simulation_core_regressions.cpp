@@ -2,7 +2,6 @@
 #include "../support/simulation_test_support.h"
 
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/entity_registry.h>
 #include <ioj/sim/player/sim.h>
 
 namespace ioj::sim {
@@ -70,24 +69,22 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
         return;
     }
 
-    auto const damaged_handle{simulation.get_capital_ships().get_handle(0)};
+    auto const damaged_handle{simulation.get_capital_ships().get_id(0)};
     struct DamageSample {
         std::int32_t capital_count{};
-        std::int32_t registry_alive_count{};
+        std::int32_t ledger_alive_count{};
         std::int32_t health{};
         std::int32_t telemetry_active_count{};
     };
     ml::TimeSeriesData<DamageSample> samples;
     harness.on_end_tick = [&](LevelSim& level) {
-        auto const& registry{harness.get_registry()};
         auto const& telemetry{level.get_level_telemetry_manager().get_active_entity_count_data()};
+        auto const state{level.get_agent_accessor().read(damaged_handle)};
         samples.add(harness.get_time(),
                     DamageSample{
                         .capital_count = level.get_capital_ships().get_num_instances(),
-                        .registry_alive_count = registry.count_alive(),
-                        .health = registry.is_valid_handle(damaged_handle)
-                                    ? registry.get_health(damaged_handle)
-                                    : 0,
+                        .ledger_alive_count = harness.get_ledger().count_alive(),
+                        .health = state ? state->health : 0,
                         .telemetry_active_count = telemetry.last_value(),
                     });
     };
@@ -111,14 +108,14 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     tests::expect_equal(75, nonlethal.health, "Nonlethal damage is applied once");
     tests::expect_equal(
         0, lethal.capital_count, "Lethal damage removes batch entity in the same Action phase");
-    tests::expect_equal(0, lethal.registry_alive_count, "Registry death commits in the same tick");
+    tests::expect_equal(0, lethal.ledger_alive_count, "Ledger death commits in the same tick");
     tests::expect_equal(
         0, lethal.telemetry_active_count, "Telemetry observes committed death before hook");
-    tests::expect_equal(0, lethal.health, "Registry retains terminal health for the dead handle");
-    tests::expect_true(harness.get_registry().is_valid_dead(damaged_handle),
-                       "Killed handle remains valid-dead");
+    tests::expect_equal(0, lethal.health, "Owner retains terminal health for the dead handle");
+    tests::expect_true(!harness.get_simulation().get_agent_accessor().is_alive(damaged_handle),
+                       "Killed ID is dead");
     tests::expect_equal(
-        0, harness.get_registry().count_kills(), "Unattributed death does not create a kill");
+        0, harness.get_ledger().count_kills(), "Unattributed death does not create a kill");
 }
 
 void run_worldless_collision_damage(tests::SimulationFixture const& config) {
@@ -151,22 +148,21 @@ void run_worldless_collision_damage(tests::SimulationFixture const& config) {
         return;
     }
 
-    auto const player_handle{player->registry_handle};
-    auto const capital_handle{simulation.get_capital_ships().get_handle(0)};
-    auto const capital_id{harness.get_registry().find_unique_id(capital_handle)};
+    auto const player_id{player->unique_entity_id};
+    auto const capital_id{simulation.get_capital_ships().get_id(0)};
     simulation.get_player_ship_commands()->set_lateral_move_input(1.f);
     ml::TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim& level) {
-        auto const& registry{harness.get_registry()};
         auto const events{
             level.get_spatial_query_manager().get_collision_system().get_aabb_overlap_events()};
+        auto const capital{level.get_agent_accessor().read(capital_id)};
         samples.add(harness.get_time(),
                     Sample{
-                        .player_health = registry.get_health(player_handle),
-                        .capital_health = registry.get_health(capital_handle),
+                        .player_health = player->health.health,
+                        .capital_health = capital ? capital->health : 0,
                         .dynamic_overlap_count = events.entity_entity_overlaps.num(),
-                        .kill_count = registry.count_kills(),
-                        .player_alive = registry.is_valid_alive(player_handle),
+                        .kill_count = harness.get_ledger().count_kills(),
+                        .player_alive = level.get_agent_accessor().is_alive(player_id),
                     });
     };
     harness.timeline.finish_after(collision_damage_test::duration);
@@ -205,12 +201,13 @@ void run_worldless_collision_damage(tests::SimulationFixture const& config) {
                         "Second overlap damages the capital");
     tests::expect_equal(0, third.capital_health, "Third overlap kills the capital");
     tests::expect_true(third.player_alive, "Player survives the third overlap tick");
-    tests::expect_true(harness.get_registry().is_valid_dead(capital_handle),
+    tests::expect_true(!harness.get_simulation().get_agent_accessor().is_alive(capital_id),
                        "Capital death commits in the third overlap tick");
     tests::expect_equal(0, third.kill_count, "Collision death grants no combat kill");
-    tests::expect_true(
-        harness.get_registry().get_unique_entities().life_state[capital_id.index()] ==
-            LifeState::Unknown,
-        "Collision death is environmental");
+    tests::expect_true(harness.get_ledger()
+                               .get_unique_entities()
+                               .life_state[harness.get_ledger().get_history_index(capital_id)] ==
+                           LifeState::Unknown,
+                       "Collision death is environmental");
 }
 }

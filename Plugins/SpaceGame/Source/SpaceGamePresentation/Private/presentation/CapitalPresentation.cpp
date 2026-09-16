@@ -1,9 +1,9 @@
 #include "SpaceGamePresentation/presentation/CapitalPresentation.h"
+#include <ioj/sim/agent_accessor.h>
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 #include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
-#include <ioj/sim/entity_registry.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
@@ -226,23 +226,20 @@ void FCapitalPresentation::draw_debugging_shapes() const {
 
     auto const& capital_simulation{view()};
     auto const& entities{capital_simulation.entities};
-    auto const& entity_registry{*capital_simulation.registry};
+    auto const& agents{*capital_simulation.agents};
     auto const n{capital_simulation.get_num_instances()};
     auto const text_offset{actor_config->debug_status_text_offset};
     for (int32 i{0}; i < n; ++i) {
         FVector const ship_location{ml::to_unreal(entities.locations[i])};
-        auto const target_handle{entities.target_handles[i]};
-        if (entity_registry.is_valid_handle(target_handle)) {
-            FVector3d const target_location{
-                ml::to_unreal(entity_registry.get_location(target_handle))};
+        auto const target_id{entities.target_ids[i]};
+        if (auto const target{agents.read_alive(target_id)}) {
+            FVector3d const target_location{ml::to_unreal(target->location)};
             debug_drawer.draw_arrow(ship_location, target_location);
         }
 
-        auto const ship_handle{entities.handles[i]};
-        auto const message{FString::Printf(TEXT("[%d, %d] HP=%d"),
-                                           ship_handle.index,
-                                           ship_handle.generation,
-                                           entities.healths[i])};
+        auto const entity_id{entities.entity_ids[i]};
+        auto const message{
+            FString::Printf(TEXT("[%u] HP=%d"), entity_id.raw_value(), entities.healths[i])};
         debug_drawer.draw_string(ship_location + text_offset, message);
     }
 }

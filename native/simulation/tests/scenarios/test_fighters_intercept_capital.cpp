@@ -41,21 +41,23 @@ void run_worldless_fighters_intercept_capital(tests::SimulationFixture const& co
     harness.finish_initialisation();
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     auto const& fighters{harness.get_simulation().get_fighters()};
-    auto const hero{capitals.get_handle(0)};
-    auto const original_target{capitals.get_handle(1)};
-    auto const intercept_target{capitals.get_handle(2)};
+    auto const hero{capitals.get_id(0)};
+    auto const original_target{capitals.get_id(1)};
+    auto const intercept_target{capitals.get_id(2)};
 
     struct Sample {
-        RegistryEntityHandle parent_target;
-        std::vector<RegistryEntityHandle> fighter_targets{};
+        EntityUniqueId parent_target;
+        std::vector<EntityUniqueId> fighter_targets{};
     };
     ml::TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim&) {
         Sample sample;
-        sample.parent_target = capitals.get_target_handle(0);
-        for (auto const fighter_handle : capitals.get_fighter_handles(0)) {
-            if (fighters.has_handle(fighter_handle)) {
-                sample.fighter_targets.push_back(fighters.get_target_handle(fighter_handle));
+        sample.parent_target = capitals.get_target_id(0);
+        for (auto const fighter_id : capitals.get_fighter_ids(0)) {
+            auto const index{
+                harness.get_simulation().get_agent_accessor().indexes().find(fighter_id)};
+            if (index >= 0) {
+                sample.fighter_targets.push_back(fighters.get_target_ids()[index]);
             }
         }
         samples.add(harness.get_time(), std::move(sample));
@@ -88,7 +90,7 @@ void run_worldless_fighters_intercept_capital(tests::SimulationFixture const& co
         static_cast<std::int32_t>(std::ranges::count(end.fighter_targets, intercept_target))};
     tests::expect_greater(
         intercept_count, std::int32_t{0}, "At least one fighter intercepts the blue capital");
-    tests::expect_equal(hero, capitals.get_handle(0), "Hero capital handle remains stable");
+    tests::expect_equal(hero, capitals.get_id(0), "Hero capital ID remains stable");
 }
 
 }

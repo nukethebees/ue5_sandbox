@@ -5,7 +5,7 @@
 #include <cstdint>
 
 namespace ioj::sim {
-class EntityRegistryStatistics {
+class CombatStatistics {
   public:
     void reset() noexcept;
 

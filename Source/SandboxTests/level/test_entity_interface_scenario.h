@@ -3,7 +3,6 @@
 #include <SandboxTests/support/SimulationTestScenario.h>
 
 #include <sandbox/core/time_series_data.h>
-#include <SandboxNative/RegistryEntityHandle.h>
 
 namespace ml {
 class FEntityInterfaceScenario final : public FSimulationTestScenario {
@@ -24,7 +23,7 @@ class FEntityInterfaceScenario final : public FSimulationTestScenario {
     TimeSeriesData<int32> capital_proxy_counts;
     TimeSeriesData<int32> turret_proxy_counts;
     TimeSeriesData<int32> spinner_proxy_counts;
-    TimeSeriesData<TArray<::ioj::sim::RegistryEntityHandle>> capital_target_handles;
+    TimeSeriesData<TArray<::ioj::sim::EntityUniqueId>> capital_target_ids;
     TimeSeriesData<TArray<uint8>> capital_target_alive;
     TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};
 };

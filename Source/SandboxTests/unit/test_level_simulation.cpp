@@ -45,8 +45,6 @@ static_assert(
 static_assert(
     std::is_const_v<std::remove_reference_t<
         decltype(std::declval<::ioj::sim::LaserReadView>().entities.lifetimes_remaining[0])>>);
-static_assert(
-    std::is_const_v<std::remove_pointer_t<decltype(::ioj::sim::LevelReadView::registry)>>);
 
 namespace {
 auto make_battle() -> ::ioj::sim::LevelSimInitData {
@@ -140,9 +138,8 @@ void add_mission(::ioj::sim::LevelSimInitData& data) {
 
 void kill_enemy(::ioj::sim::LevelSim& simulation) {
     ::ioj::sim::DirectDamageEvents events;
-    events.add(simulation.get_capital_ships().get_handle(1),
-               100,
-               simulation.get_capital_ships().get_handle(0));
+    events.add(
+        simulation.get_capital_ships().get_id(1), 100, simulation.get_capital_ships().get_id(0));
     ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(simulation, events.get_const_view());
 }
 }
@@ -184,7 +181,7 @@ auto FLevelSimScheduledEventsTest::RunTest(FString const&) -> bool {
               2);
     TestEqual(TEXT("The same-tick objective resolves the spawned entity handle"),
               static_cast<int32>(
-                  simulation.get_mission_manager().get_entity_handles_required_to_kill().size()),
+                  simulation.get_mission_manager().get_entity_ids_required_to_kill().size()),
               1);
     TestFalse(TEXT("All authored objective events have been dispatched"),
               simulation.get_mission_manager().has_pending_objective_events());
@@ -197,7 +194,7 @@ auto FLevelSimScheduledEventsTest::RunTest(FString const&) -> bool {
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FLevelSimSpawnQueriesTest,
-    "Sandbox.UnitTests.LevelSimulation.ScheduledSpawnQueryableInActionAndThinkingNextTick",
+    "Sandbox.UnitTests.LevelSimulation.ScheduledSpawnQueryableInThinkingSameTick",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
@@ -233,19 +230,20 @@ auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
               uint64{0});
     simulation.advance(dt);
     TestTrue(TEXT("Turret has no enemy before the scheduled spawn"),
-             simulation.get_turrets().get_target_handles()[0].is_null());
+             !simulation.get_turrets().get_target_ids()[0].is_valid());
     simulation.advance(dt);
-    TestTrue(TEXT("Thinking cannot acquire an entity created later in Action"),
-             simulation.get_turrets().get_target_handles()[0].is_null());
-    auto const spawned_handle{simulation.get_capital_ships().get_handle(1)};
+    TestEqual(TEXT("Thinking acquires the entity created in Preparation"),
+              simulation.get_turrets().get_target_ids()[0],
+              simulation.get_capital_ships().get_id(1));
+    auto const spawned_id{simulation.get_capital_ships().get_id(1)};
     auto const spawn_hit{simulation.get_spatial_query_manager().trace_closest(
         ml::make_vector3f(980.f, 0.f, 0.f), ml::make_vector3f(1020.f, 0.f, 0.f))};
-    TestTrue(TEXT("Action publishes the new entity to spatial queries"),
-             spawn_hit.hit && spawn_hit.entity == spawned_handle);
+    TestTrue(TEXT("Preparation publishes the new entity to spatial queries"),
+             spawn_hit.hit && spawn_hit.entity == spawned_id);
     simulation.advance(dt);
-    TestTrue(TEXT("Thinking acquires the spawned enemy on the following tick"),
-             simulation.get_turrets().get_target_handles()[0] ==
-                 simulation.get_capital_ships().get_handle(1));
+    TestTrue(TEXT("Thinking retains the spawned enemy on the following tick"),
+             simulation.get_turrets().get_target_ids()[0] ==
+                 simulation.get_capital_ships().get_id(1));
     return true;
 }
 
@@ -301,12 +299,29 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
     headless.finish_initialisation();
     visible.finish_initialisation();
     FLevelPresentation presentation{resources, visible.get_read_view(), {}};
-    using Samples = ml::TimeSeriesData<::ioj::sim::EntityRegistry::EntityData>;
+    struct FEntitySnapshot {
+        std::vector<::ioj::sim::Health> healths;
+        std::vector<::ioj::sim::Vector3f> locations;
+        std::vector<::ioj::sim::Team> teams;
+        std::vector<::ioj::sim::EntityType> types;
+    };
+    using Samples = ml::TimeSeriesData<FEntitySnapshot>;
     Samples headless_samples;
     Samples visible_samples;
     auto record{[](Samples& samples, ::ioj::sim::LevelSim& simulation) {
-        ::ioj::sim::EntityRegistry::EntityData snapshot;
-        snapshot.append_from(simulation.get_entity_registry().get_entity_data());
+        FEntitySnapshot snapshot;
+        auto append = [&snapshot](auto const entities, ::ioj::sim::EntityType const type) {
+            for (int32 index{}; index < entities.num(); ++index) {
+                snapshot.healths.push_back(entities.healths[index]);
+                snapshot.locations.push_back(entities.locations[index]);
+                snapshot.teams.push_back(entities.teams[index]);
+                snapshot.types.push_back(type);
+            }
+        };
+        append(simulation.get_capital_ships().get_read_view().entities,
+               ::ioj::sim::EntityType::CapitalShip);
+        append(simulation.get_fighters().get_read_view().entities, ::ioj::sim::EntityType::Fighter);
+        append(simulation.get_turrets().get_read_view().entities, ::ioj::sim::EntityType::Turret);
         samples.add(simulation.get_clock().get_simulation_time(), std::move(snapshot));
     }};
     headless_harness.on_end_tick = [&](::ioj::sim::LevelSim& simulation) {
@@ -345,11 +360,9 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
         auto const& a{headless_samples.value_at(index)};
         auto const& b{visible_samples.value_at(index)};
         TestTrue(TEXT("Presentation preserves health and entity lifetime"), a.healths == b.healths);
-        TestTrue(TEXT("Presentation preserves locations"),
-                 a.locations.xs == b.locations.xs && a.locations.ys == b.locations.ys &&
-                     a.locations.zs == b.locations.zs);
+        TestTrue(TEXT("Presentation preserves locations"), a.locations == b.locations);
         TestTrue(TEXT("Presentation preserves entity teams and types"),
-                 a.teams == b.teams && a.entity_types == b.entity_types);
+                 a.teams == b.teams && a.types == b.types);
     }
     auto const a{headless.take_mission_result()};
     auto const b{visible.take_mission_result()};
@@ -428,7 +441,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
                   frame.capitals.changes[1].kind,
                   ::ioj::sim::EntityFrameChangeKind::RemoveSwap);
         TestTrue(TEXT("Changes identify the same entity"),
-                 frame.capitals.changes[0].handle == frame.capitals.changes[1].handle);
+                 frame.capitals.changes[0].id == frame.capitals.changes[1].id);
     }
     TestEqual(TEXT("Death effect remains available"),
               static_cast<int32>(frame.capitals.deaths.size()),
@@ -480,12 +493,11 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     resources.config.capital_ships.large_explosion_delay = 100.f;
     FLevelPresentation death_effects{resources, deaths.get_read_view(), {}};
     ::ioj::sim::DirectDamageEvents damage;
-    damage.add(deaths.get_capital_ships().get_handle(0),
-               MAX_int32,
-               deaths.get_capital_ships().get_handle(1));
+    damage.add(
+        deaths.get_capital_ships().get_id(0), MAX_int32, deaths.get_capital_ships().get_id(1));
     ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(deaths, damage.get_const_view());
     ::ioj::sim::lasers::SpawnRequests shot;
-    shot.add({900.f, 0.f, 0.f},
+    shot.add({700.f, 0.f, 0.f},
              {},
              {},
              MAX_int32,
@@ -638,7 +650,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
             requests.damages[spawn] = 1;
             requests.speeds[spawn] = 1000.0f;
             requests.max_distances[spawn] = requests.speeds[spawn] * initial_lifetime;
-            requests.instigator_handles[spawn] = {};
+            requests.instigator_ids[spawn] = {};
             requests.sources[spawn] =
                 ml::make_laser_source(ETestTeam::White, ETestEntityType::TubeSpinner);
             expected_material_data.Add(

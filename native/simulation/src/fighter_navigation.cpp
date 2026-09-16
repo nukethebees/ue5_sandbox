@@ -1,12 +1,10 @@
 #include "ioj/sim/fighter_navigation.h"
 
 #include "ioj/sim/deterministic_bias.h"
-#include "ioj/sim/entity_registry_bookkeeping.h"
 #include "sandbox/core/trigonometry.h"
 #include "sandbox/core/vector_normalization.h"
 
 #include <algorithm>
-#include <bit>
 #include <cassert>
 #include <cmath>
 #include <limits>
@@ -37,11 +35,6 @@ auto clamp_to_unit_size(Vector3f const vector) noexcept -> Vector3f {
         return vector * (1.0f / std::sqrt(length_squared));
     }
     return vector;
-}
-
-constexpr auto hash_entity_handle(RegistryEntityHandle const handle) noexcept -> std::uint32_t {
-    auto const value{std::bit_cast<std::uint64_t>(handle)};
-    return static_cast<std::uint32_t>(value) + static_cast<std::uint32_t>(value >> 32) * 23u;
 }
 
 constexpr auto combine_hashes(std::uint32_t const first, std::uint32_t const second) noexcept
@@ -143,11 +136,12 @@ void make_avoidance_choice_order(
     }
 }
 
-auto make_coincident_separation_direction(RegistryEntityHandle const self,
-                                          RegistryEntityHandle const other) noexcept -> Vector3f {
+auto make_coincident_separation_direction(EntityUniqueId const self,
+                                          EntityUniqueId const other) noexcept -> Vector3f {
+    assert(self.is_valid() && other.is_valid() && self != other);
     auto const first{self < other ? self : other};
     auto const second{self < other ? other : self};
-    auto const pair_hash{combine_hashes(hash_entity_handle(first), hash_entity_handle(second))};
+    auto const pair_hash{combine_hashes(first.raw_value(), second.raw_value())};
     auto const biases{make_deterministic_biases(
         static_cast<std::int32_t>(pair_hash), static_cast<std::int32_t>(pair_hash ^ 0x9e3779b9u))};
     auto const z{biases.floating * 2.0f - 1.0f};
@@ -207,18 +201,15 @@ auto make_separation_steering_direction(Vector3f const goal_direction,
     return preferred_direction;
 }
 
-auto observe_separation(Vectors3fConstView const registry_locations,
-                        [[maybe_unused]] std::span<std::int32_t const> const registry_generations,
-                        Vector3f const fighter_location,
-                        RegistryEntityHandle const fighter_handle,
+auto observe_separation(Vector3f const fighter_location,
+                        EntityUniqueId const fighter_id,
                         Vector3f const goal_direction,
                         Vector3f const previous_memory,
-                        std::span<RegistryEntityHandle const> const neighbours,
+                        std::span<SeparationNeighbour const> const neighbours,
                         SeparationObservationParameters const parameters) noexcept
     -> SeparationObservation {
     assert(neighbours.size() <= static_cast<std::size_t>(separation_neighbour_limit));
     assert(parameters.separation_radius > 0.0f);
-    assert(static_cast<std::size_t>(registry_locations.num()) == registry_generations.size());
 
     std::array<Vector3f, separation_neighbour_limit> directions_to_neighbours;
     std::array<float, separation_neighbour_limit> neighbour_weights;
@@ -227,10 +218,8 @@ auto observe_separation(Vectors3fConstView const registry_locations,
     auto const neighbour_count{static_cast<std::int32_t>(neighbours.size())};
     for (std::int32_t neighbour_index{}; neighbour_index < neighbour_count; ++neighbour_index) {
         auto const element{static_cast<std::size_t>(neighbour_index)};
-        auto const neighbour_handle{neighbours[element]};
-        assert(analyse_handle(registry_generations, neighbour_handle) ==
-               RegistryHandleState::Active);
-        auto const neighbour_location{registry_locations[neighbour_handle.index]};
+        auto const neighbour{neighbours[element]};
+        auto const neighbour_location{neighbour.location};
         auto const offset{fighter_location - neighbour_location};
         auto const distance_squared{HMM_DotV3(offset, offset)};
         closest_distance_squared = std::min(closest_distance_squared, distance_squared);
@@ -238,7 +227,7 @@ auto observe_separation(Vectors3fConstView const registry_locations,
         float distance{};
         Vector3f away_direction;
         if (distance_squared <= safe_normal_tolerance) {
-            away_direction = make_coincident_separation_direction(fighter_handle, neighbour_handle);
+            away_direction = make_coincident_separation_direction(fighter_id, neighbour.id);
         } else {
             distance = std::sqrt(distance_squared);
             away_direction = offset / distance;

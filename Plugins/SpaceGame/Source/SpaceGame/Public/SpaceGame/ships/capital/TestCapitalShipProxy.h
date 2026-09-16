@@ -46,10 +46,8 @@ class ATestCapitalShipProxy
     }
 
     // ITestEntity
-    auto get_entity_handle() const noexcept -> ::ioj::sim::RegistryEntityHandle override {
-        return entity_handle;
-    }
-    void set_entity_handle(::ioj::sim::RegistryEntityHandle const h) noexcept { entity_handle = h; }
+    auto get_unique_id() const noexcept -> ::ioj::sim::EntityUniqueId override { return unique_id; }
+    void set_unique_id(::ioj::sim::EntityUniqueId const id) noexcept { unique_id = id; }
 
 #if WITH_EDITOR
     void Tick(float delta_seconds) override;
@@ -116,5 +114,5 @@ class ATestCapitalShipProxy
     FString spawn_preview_error;
 #endif
 
-    ::ioj::sim::RegistryEntityHandle entity_handle;
+    ::ioj::sim::EntityUniqueId unique_id;
 };

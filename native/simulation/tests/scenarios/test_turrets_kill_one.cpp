@@ -1,4 +1,3 @@
-#include <ioj/sim/entity_registry.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/turrets/sim.h>
 #include "../support/simulation_test_support.h"
@@ -43,29 +42,31 @@ void run_worldless_turret_combat(tests::SimulationFixture const& config,
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     std::vector<std::int32_t> initial_healths{};
-    auto const& registry{harness.get_registry()};
-    auto const initial_count{registry.get_num_elements()};
+    auto const initial_entities{harness.get_simulation().get_turrets().get_read_view().entities};
+    auto const initial_count{initial_entities.num()};
     initial_healths.reserve(initial_count);
     for (std::int32_t i{}; i < initial_count; ++i) {
-        initial_healths.push_back(registry.get_entity_data().healths[i]);
+        initial_healths.push_back(initial_entities.healths[i]);
     }
     harness.timeline.finish_at(3.0);
     tests::expect_true(harness.run_until_timeline_finished(3.5),
                        "Turret combat timeline completes");
 
     if (scenario == TurretCombatScenario::KillEnemy) {
-        tests::expect_equal(1, registry.count_kills(), "One turret is killed");
-        tests::expect_equal(6, registry.count_alive(), "Hero turrets remain alive");
-        for (auto const target : harness.get_simulation().get_turrets().get_target_handles()) {
-            tests::expect_true(target.is_null(), "Targets clear after the enemy dies");
+        tests::expect_equal(1, harness.get_ledger().count_kills(), "One turret is killed");
+        tests::expect_equal(6, harness.get_ledger().count_alive(), "Hero turrets remain alive");
+        for (auto const target : harness.get_simulation().get_turrets().get_target_ids()) {
+            tests::expect_true(!target.is_valid(), "Targets clear after the enemy dies");
         }
         return;
     }
 
-    tests::expect_equal(initial_count, registry.count_alive(), "Zero-damage turrets remain alive");
+    tests::expect_equal(
+        initial_count, harness.get_ledger().count_alive(), "Zero-damage turrets remain alive");
+    auto const final_entities{harness.get_simulation().get_turrets().get_read_view().entities};
     for (std::int32_t i{}; i < initial_count; ++i) {
         tests::expect_equal(initial_healths[i],
-                            registry.get_entity_data().healths[i],
+                            final_entities.healths[i],
                             "Zero-damage combat preserves health",
                             i);
     }
@@ -113,7 +114,7 @@ void run_worldless_turret_search_requires_line_of_sight(tests::SimulationFixture
     harness.timeline.finish_at(1.0);
     tests::expect_true(harness.run_until_timeline_finished(1.5),
                        "Turret search timeline completes");
-    auto const targets{harness.get_simulation().get_turrets().get_target_handles()};
+    auto const targets{harness.get_simulation().get_turrets().get_target_ids()};
     tests::expect_equal(
         3, static_cast<std::int32_t>(targets.size()), "All turret targets are available");
     if (static_cast<std::int32_t>(targets.size()) != 3) {
@@ -121,10 +122,11 @@ void run_worldless_turret_search_requires_line_of_sight(tests::SimulationFixture
     }
     tests::expect_true(targets[0].is_valid(), "Blue turret selects a visible target");
     if (targets[0].is_valid()) {
-        tests::expect_distance_near(Vector3f{{1000.f, 1000.f, 0.f}},
-                                    harness.get_registry().get_location(targets[0]),
-                                    1.f,
-                                    "Blue turret skips the blocked enemy");
+        tests::expect_distance_near(
+            Vector3f{{1000.f, 1000.f, 0.f}},
+            harness.get_simulation().get_agent_accessor().read_alive(targets[0])->location,
+            1.f,
+            "Blue turret skips the blocked enemy");
     }
 }
 

@@ -16,8 +16,8 @@ static_assert(
     std::is_same_v<decltype(std::declval<LevelSim&>().get_turrets()), turrets::Sim const&>);
 static_assert(
     std::is_same_v<decltype(std::declval<LevelSim&>().get_spinners()), spinners::Sim const&>);
-static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_entity_registry()),
-                             EntityRegistry const&>);
+static_assert(
+    std::is_same_v<decltype(std::declval<LevelSim&>().get_entity_ledger()), EntityLedger const&>);
 static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_mission_manager()),
                              MissionManager const&>);
 static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_spatial_query_manager()),
@@ -38,7 +38,6 @@ static_assert(
     std::is_const_v<std::remove_reference_t<decltype(std::declval<TurretReadView>().changes[0])>>);
 static_assert(std::is_const_v<std::remove_reference_t<
                   decltype(std::declval<LaserReadView>().entities.lifetimes_remaining[0])>>);
-static_assert(std::is_const_v<std::remove_pointer_t<decltype(LevelReadView::registry)>>);
 
 namespace {
 auto make_battle() -> LevelSimInitData {
@@ -82,9 +81,8 @@ void add_mission(LevelSimInitData& data) {
 
 void kill_enemy(LevelSim& simulation) {
     DirectDamageEvents events;
-    events.add(simulation.get_capital_ships().get_handle(1),
-               100,
-               simulation.get_capital_ships().get_handle(0));
+    events.add(
+        simulation.get_capital_ships().get_id(1), 100, simulation.get_capital_ships().get_id(0));
     LevelSimTestAccess::queue_direct_damage_events(simulation, events.get_const_view());
 }
 }
@@ -192,7 +190,7 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
                      1,
                      2000.f,
                      10000.f,
-                     level.get_capital_ships().get_handle(0),
+                     level.get_capital_ships().get_id(0),
                      {Team::Green, EntityType::Fighter});
         LevelSimTestAccess::queue_laser_spawns(level, requests.get_const_view());
     };
@@ -235,7 +233,7 @@ TEST(NativeSimulation, LevelSimInitialQueriesTest) {
     auto const& queries{simulation.get_spatial_query_manager()};
     auto const dynamic_hit{queries.trace_closest({{-1100.f, 0.f, 0.f}}, {{-900.f, 0.f, 0.f}})};
     tests::expect_true(dynamic_hit.hit &&
-                           dynamic_hit.entity == simulation.get_capital_ships().get_handle(0),
+                           dynamic_hit.entity == simulation.get_capital_ships().get_id(0),
                        "Initial capital is queryable before the first tick");
     auto const static_hit{queries.trace_closest({{-100.f, 500.f, 0.f}}, {{100.f, 500.f, 0.f}})};
     tests::expect_true(static_hit.hit && static_hit.static_geometry_index == 0,
@@ -259,29 +257,24 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     auto const& capitals{simulation.get_capital_ships()};
-    tests::expect_true(capitals.get_target_handle(0) == capitals.get_handle(1),
+    tests::expect_true(capitals.get_target_id(0) == capitals.get_id(1),
                        "Compiled capital target index maps to its registered handle");
     auto const* player{simulation.get_player_ship_simulation()};
-    tests::expect_true(capitals.get_target_handle(1) == player->registry_handle,
+    tests::expect_true(capitals.get_target_id(1) == player->unique_entity_id,
                        "Compiled player entity index maps to the player handle");
-    tests::expect_equal(simulation.get_entity_registry().get_num_alive_active_entities(),
+    tests::expect_equal(simulation.get_entity_ledger().count_alive(),
                         5,
                         "Every compiled initial entity is registered");
-    auto const& entities{simulation.get_entity_registry().get_entity_data()};
-    auto const entity_count{entities.num()};
-    std::int32_t turret_count{};
-    for (std::int32_t i{}; i < entity_count; ++i) {
-        if (entities.entity_types[i] == EntityType::Turret) {
-            auto const rotated{entities.teams[i] == Team::Green};
-            tests::expect_equal(
-                entities.healths[i], rotated ? 20 : 30, "Compiled turret health is retained");
-            tests::expect_equal(entities.rotations.yaws[i],
-                                rotated ? 90.f : 0.f,
-                                "Compiled turret rotation is retained");
-            ++turret_count;
-        }
+    auto const turrets{simulation.get_turrets().get_read_view().entities};
+    for (std::int32_t i{}; i < turrets.num(); ++i) {
+        auto const rotated{turrets.teams[i] == Team::Green};
+        tests::expect_equal(
+            turrets.healths[i], rotated ? 20 : 30, "Compiled turret health is retained");
+        tests::expect_equal(turrets.rotations.yaws[i],
+                            rotated ? 90.f : 0.f,
+                            "Compiled turret rotation is retained");
     }
-    tests::expect_equal(turret_count, 2, "Both compiled turrets are registered");
+    tests::expect_equal(turrets.num(), 2, "Both compiled turrets are registered");
     return;
 }
 
@@ -304,12 +297,11 @@ TEST(NativeSimulation, LevelSimReconstructionTest) {
     tests::expect_equal(simulation->get_clock().get_completed_ticks(),
                         std::uint64_t{0},
                         "Fresh clock starts at zero");
-    tests::expect_equal(simulation->get_entity_registry().get_num_alive_active_entities(),
+    tests::expect_equal(
+        simulation->get_entity_ledger().count_alive(), 2, "Fresh ledger contains both entities");
+    tests::expect_equal(simulation->get_entity_ledger().get_num_unique_ids_issued(),
                         2,
-                        "Fresh registry contains both entities");
-    tests::expect_equal(simulation->get_entity_registry().get_num_unique_ids_issued(),
-                        2,
-                        "Fresh registry has no prior history");
+                        "Fresh ledger has no prior history");
     tests::expect_false(simulation->take_mission_result().has_value(),
                         "No pending result survives reconstruction");
     return;
@@ -373,10 +365,9 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
     }
 
     simulation.get_player_ship_commands()->set_lateral_move_input(1.f);
-    auto const player_handle{player->registry_handle};
-    auto const capital{simulation.get_capital_ships().get_handle(0)};
-    auto const player_id{simulation.get_entity_registry().find_unique_id(player_handle)};
-    auto const& registry{simulation.get_entity_registry()};
+    auto const player_id{player->unique_entity_id};
+    auto const capital{simulation.get_capital_ships().get_id(0)};
+    auto const& ledger{simulation.get_entity_ledger()};
 
     for (std::int32_t overlap_detection{}; overlap_detection < 3; ++overlap_detection) {
         simulation.advance(dt);
@@ -388,26 +379,27 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
         tests::expect_equal(
             events.entity_static_overlaps.num(), 0, "The tick captures no static overlap");
 
-        tests::expect_equal(registry.get_health(capital),
+        tests::expect_equal(simulation.get_agent_accessor().read(capital)->health,
                             5000 - (overlap_detection + 1) * 50,
                             "The high-health capital receives damage in the detection tick");
         if (overlap_detection < 2) {
-            tests::expect_equal(registry.get_health(player_handle),
+            tests::expect_equal(simulation.get_agent_accessor().read(player_id)->health,
                                 150 - (overlap_detection + 1) * 50,
                                 "The low-health entity receives damage in the detection tick");
         }
     }
 
-    tests::expect_false(registry.is_valid_alive(player_handle),
+    tests::expect_false(simulation.get_agent_accessor().is_alive(player_id),
                         "The low-health entity dies after three detected overlaps");
-    tests::expect_equal(registry.get_health(capital),
+    tests::expect_equal(simulation.get_agent_accessor().read(capital)->health,
                         4850,
                         "The capital receives one contribution per detected tick");
-    tests::expect_true(registry.get_unique_entities().life_state[player_id.index()] ==
-                           LifeState::Unknown,
-                       "Overlap death uses the environmental death path");
+    tests::expect_true(
+        ledger.get_unique_entities().life_state[ledger.get_history_index(player_id)] ==
+            LifeState::Unknown,
+        "Overlap death uses the environmental death path");
     tests::expect_equal(
-        registry.count_kills(), 0, "Environmental overlap death gives no combat kill");
+        ledger.count_kills(), 0, "Environmental overlap death gives no combat kill");
     return;
 }
 
@@ -435,9 +427,7 @@ TEST(NativeSimulation, WorldlessLevelSimulationTest) {
     first.pause();
     first.pause();
     tests::expect_true(first.get_player_ship_simulation() == nullptr, "No player is needed");
-    tests::expect_equal(first.get_entity_registry().get_num_alive_active_entities(),
-                        2,
-                        "Both capitals are registered");
+    tests::expect_equal(first.get_entity_ledger().count_alive(), 2, "Both capitals are registered");
     first.start();
     second.start();
     auto const dt{first.get_clock().get_tick_period()};
@@ -448,6 +438,9 @@ TEST(NativeSimulation, WorldlessLevelSimulationTest) {
     kill_enemy(first);
     first.advance(dt);
     second.advance(dt);
+    tests::expect_equal(
+        first.get_entity_ledger().count_alive(), 1, "Death is effective before physical removal");
+    first.advance(dt);
     tests::expect_equal(first.get_capital_ships().get_num_instances(),
                         1,
                         "Damage removes only the first battle's enemy");

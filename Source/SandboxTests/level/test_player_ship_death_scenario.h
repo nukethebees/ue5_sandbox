@@ -5,14 +5,12 @@
 #include <ioj/sim/entity_types.h>
 
 #include <sandbox/core/time_series_data.h>
-#include <SandboxNative/RegistryEntityHandle.h>
-
 class ATestSpaceShip;
 
 namespace ml {
 class FTestPlayerShipDeathScenario final : public FSimulationTestScenario {
     struct FSimulationSample {
-        bool player_handle_is_dead{false};
+        bool player_id_is_dead{false};
         bool player_actor_is_valid{false};
         bool player_unique_entity_is_alive{false};
         bool controller_has_pawn{false};
@@ -35,7 +33,6 @@ class FTestPlayerShipDeathScenario final : public FSimulationTestScenario {
     void check_player_ship_death();
 
     TWeakObjectPtr<ATestSpaceShip> player_ship{nullptr};
-    ::ioj::sim::RegistryEntityHandle player_ship_handle{};
     ::ioj::sim::EntityUniqueId player_ship_id{};
     TimeSeriesData<FSimulationSample> samples;
 };

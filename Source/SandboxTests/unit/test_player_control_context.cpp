@@ -5,7 +5,9 @@
 #include <SandboxTests/support/TestEnhancedInputSubsystem.h>
 #include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
 
-#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/agent_accessor.h>
+#include <ioj/sim/combat_events.h>
+#include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spatial_query_manager.h>
@@ -755,11 +757,14 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
     TEST_METHOD(NewSamplingSessionStartsWithNeutralControl)
     {
         ::ioj::sim::SimClock clock;
-        ::ioj::sim::EntityRegistry registry;
-        ::ioj::sim::SpatialQueryManager queries{registry};
+        ::ioj::sim::EntityLedger ledger;
+        ::ioj::sim::CombatEvents combat_events{ledger};
+        ::ioj::sim::AgentIndexes indexes{clock};
+        ::ioj::sim::AgentAccessor agents{indexes};
+        ::ioj::sim::SpatialQueryManager queries{agents};
         ml::FFrameMemoryResource frame_memory{1024 * 1024};
-        ::ioj::sim::lasers::Sim lasers{clock, registry, queries, frame_memory};
-        ::ioj::sim::player::Sim simulation{clock, registry, queries, lasers};
+        ::ioj::sim::lasers::Sim lasers{clock, combat_events, queries, frame_memory};
+        ::ioj::sim::player::Sim simulation{clock, ledger, combat_events, queries, lasers};
         simulation.start_sampling();
         simulation.set_ship_1d_control_y(1.0f);
         simulation.stop_sampling();
@@ -782,11 +787,14 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
     TEST_METHOD(DesiredForwardVelocityTrimAdjustsThePersistentTarget)
     {
         ::ioj::sim::SimClock clock;
-        ::ioj::sim::EntityRegistry registry;
-        ::ioj::sim::SpatialQueryManager queries{registry};
+        ::ioj::sim::EntityLedger ledger;
+        ::ioj::sim::CombatEvents combat_events{ledger};
+        ::ioj::sim::AgentIndexes indexes{clock};
+        ::ioj::sim::AgentAccessor agents{indexes};
+        ::ioj::sim::SpatialQueryManager queries{agents};
         ml::FFrameMemoryResource frame_memory{1024 * 1024};
-        ::ioj::sim::lasers::Sim lasers{clock, registry, queries, frame_memory};
-        ::ioj::sim::player::Sim simulation{clock, registry, queries, lasers};
+        ::ioj::sim::lasers::Sim lasers{clock, combat_events, queries, frame_memory};
+        ::ioj::sim::player::Sim simulation{clock, ledger, combat_events, queries, lasers};
         ::ioj::sim::PlayerSimConfig config;
         config.cruise_speed = 1000.f;
         config.forward_velocity_trim_fraction = 0.1f;
@@ -1052,11 +1060,14 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Ship context cannot bind before simulation initialization"),
                               context.can_bind());
         ::ioj::sim::SimClock clock;
-        ::ioj::sim::EntityRegistry registry;
-        ::ioj::sim::SpatialQueryManager queries{registry};
+        ::ioj::sim::EntityLedger ledger;
+        ::ioj::sim::CombatEvents combat_events{ledger};
+        ::ioj::sim::AgentIndexes indexes{clock};
+        ::ioj::sim::AgentAccessor agents{indexes};
+        ::ioj::sim::SpatialQueryManager queries{agents};
         ml::FFrameMemoryResource frame_memory{1024 * 1024};
-        ::ioj::sim::lasers::Sim lasers{clock, registry, queries, frame_memory};
-        ::ioj::sim::player::Sim simulation{clock, registry, queries, lasers};
+        ::ioj::sim::lasers::Sim lasers{clock, combat_events, queries, frame_memory};
+        ::ioj::sim::player::Sim simulation{clock, ledger, combat_events, queries, lasers};
         ::ioj::sim::player::CommandInterface commands{simulation};
         ship->bind_simulation(commands, simulation);
         TestRunner->TestTrue(TEXT("Ship context binds"), context.bind());

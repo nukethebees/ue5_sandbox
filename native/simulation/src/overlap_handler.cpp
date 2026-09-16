@@ -1,12 +1,15 @@
 #include "ioj/sim/overlap_handler.h"
 #include <cassert>
 
-#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/agent_accessor.h>
+#include <ioj/sim/combat_events.h>
 
 namespace ioj::sim {
-OverlapHandler::OverlapHandler(EntityRegistry& registry,
+OverlapHandler::OverlapHandler(CombatEvents& events,
+                               AgentAccessor const& agents,
                                OverlapResponseConfig const& config) noexcept
-    : registry_{registry}
+    : events_{events}
+    , agents_{agents}
     , damage_per_overlap_detection_{config.damage_per_overlap_detection} {
     assert(damage_per_overlap_detection_ > 0);
 }
@@ -31,21 +34,21 @@ void OverlapHandler::handle(collision::DetectedOverlapsView const overlaps) {
     }
 
     if (!damage_events_.is_empty()) {
-        registry_.queue_direct_damage_events(damage_events_);
+        events_.queue_damage(damage_events_);
     }
 }
 
-void OverlapHandler::append_damage(RegistryEntityHandle const entity) {
-    if (!registry_.is_valid_alive(entity)) {
+void OverlapHandler::append_damage(EntityUniqueId const id) {
+    if (!agents_.is_alive(id)) {
         return;
     }
 
-    switch (registry_.get_entity_type(entity)) {
+    switch (id.entity_type()) {
         case EntityType::PlayerShip:
         case EntityType::Turret:
         case EntityType::CapitalShip:
         case EntityType::Fighter: {
-            damage_events_.add(entity, damage_per_overlap_detection_, {});
+            damage_events_.add(id, damage_per_overlap_detection_, {});
             break;
         }
         case EntityType::TubeSpinner:

@@ -50,7 +50,7 @@ struct EntityUniqueId {
     static_assert(static_cast<entity_type_underlying_type>(ioj::sim::EntityType::COUNT) <=
                   static_cast<entity_type_underlying_type>(entity_type_value_mask));
 
-    inline static constexpr storage_type invalid_value{storage_type{0x7fffffff}};
+    inline static constexpr storage_type invalid_value{storage_type{0xffffffff}};
 
     constexpr EntityUniqueId() noexcept = default;
     explicit constexpr EntityUniqueId(storage_type const raw) noexcept

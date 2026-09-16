@@ -14,7 +14,7 @@
 #include <algorithm>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entity_death_info.h>
-#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/ship_health.h>
 #include <ioj/sim/spatial_query_manager.h>
@@ -60,10 +60,12 @@ void Sim::set_config(PlayerSimConfig const& new_config) noexcept {
 }
 
 Sim::Sim(SimClock const& clock,
-         EntityRegistry& in_entity_registry,
+         EntityLedger& ledger,
+         CombatEvents const& combat_events,
          SpatialQueryManager const& in_spatial_query_manager,
          lasers::Sim& in_lasers)
-    : entity_registry{in_entity_registry}
+    : ledger_{ledger}
+    , combat_events_{combat_events}
     , spatial_query_manager{in_spatial_query_manager}
     , lasers{in_lasers}
     , simulation_clock{clock} {}
@@ -83,7 +85,7 @@ void Sim::begin_play() {
     configure_speed_sampling();
     set_boost_brake_state(player::BoostBrakeState::None);
 
-    register_with_entity_registry();
+    register_entity();
     health.clamp_to_max();
 }
 
@@ -131,6 +133,9 @@ void Sim::think(float const dt) {
 void Sim::apply_movement() {
     SANDBOX_PROFILE_SCOPE("Sandbox::PlayerShipSim::apply_movement");
     movement_state_ = planned_movement_;
+    if (std::exchange(fire_requested_, false)) {
+        materialize_fire_command();
+    }
 }
 
 void Sim::generate_fire_commands() {
@@ -141,19 +146,26 @@ void Sim::generate_fire_commands() {
 void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("Sandbox::PlayerShipSim::resolve_damage_events");
 
-    auto const& direct_damage{entity_registry.get_direct_damage_queue_view()};
+    auto const damage_events{combat_events_.events_for(EntityType::PlayerShip)};
     auto const original_health{health.health};
-    RegistryEntityHandle killer{};
-    auto const damage_events{direct_damage.get_const_view()};
+    EntityUniqueId killer{};
     auto const damage_count{damage_events.num()};
     for (std::int32_t event_index{}; event_index < damage_count; ++event_index) {
         auto const element{static_cast<std::size_t>(event_index)};
-        if (damage_events.damaged_entities[element] != registry_handle) {
+        assert(damage_events.damaged_entities[element] == unique_entity_id);
+        if (is_dead(health.health)) {
             continue;
         }
 
+        auto const requested_damage{damage_events.damage_amounts[element]};
+        assert(requested_damage >= 0);
+        if (requested_damage == 0) {
+            continue;
+        }
         auto const was_alive{is_alive(health.health)};
-        health.health -= damage_events.damage_amounts[element];
+        auto const applied_damage{std::min(health.health, requested_damage)};
+        health.health -= requested_damage;
+        ledger_.record_damage(unique_entity_id, damage_events.instigators[element], applied_damage);
         if (was_alive && is_dead(health.health)) {
             killer = damage_events.instigators[element];
         }
@@ -164,46 +176,17 @@ void Sim::resolve_damage_events() {
     }
 }
 
-void Sim::update_entity_registry() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::PlayerShipSim::update_entity_registry");
-    queue_entity_update(EntityDeathInfo{});
-}
-
 /* **************************************** */
-// Registry integration
+// Identity and accounting
 /* **************************************** */
-void Sim::register_with_entity_registry() {
-    auto const entity_data{get_entity_update_data()};
-    auto const new_entities{entity_registry.add_entities(entity_data.get_const_view().columns())};
-    registry_handle = new_entities.get_handle(0);
-    unique_entity_id = new_entities.first_id;
-    assert(entity_registry.is_valid_unique_id(unique_entity_id));
-
-    update_entity_registry();
+void Sim::register_entity() {
+    unique_entity_id = ledger_.record_spawn(EntityType::PlayerShip, team, health.is_alive());
 }
-
-auto Sim::get_entity_update_data() const -> SingleAllocationRegistryEntityData {
-    SingleAllocationRegistryEntityData entity_data;
-    entity_data.add_uninitialised(1);
-    auto const columns{entity_data.get_view().columns()};
-    columns.locations.set(0, to_float(movement_state_.transform.location));
-    columns.velocities.set(0, to_float(movement_state_.velocity));
-    columns.rotations.set(0, to_float(movement_state_.transform.rotator()));
-    columns.healths[0] = health.health;
-    columns.teams[0] = team;
-    columns.entity_types[0] = EntityType::PlayerShip;
-
-    return entity_data;
-}
-
-void Sim::queue_entity_update(EntityDeathInfo const& death_info) {
-    auto const entity_data{get_entity_update_data()};
-    entity_registry.queue_entity_updates(
-        EntityRegistry::ConstView{
-            {&registry_handle, 1},
-            entity_data.get_const_view().columns(),
-        },
-        death_info);
+void Sim::set_team(Team const new_team) noexcept {
+    team = new_team;
+    if (unique_entity_id.is_valid()) {
+        ledger_.record_status(unique_entity_id, team, health.is_alive());
+    }
 }
 
 /* **************************************** */
@@ -490,7 +473,7 @@ void Sim::set_flight_mode(SpaceShipFlightMode const new_flight_mode) noexcept {
 /* **************************************** */
 // Weapons
 /* **************************************** */
-void Sim::set_lock_on_target(RegistryEntityHandle const target) noexcept {
+void Sim::set_lock_on_target(EntityUniqueId const target) noexcept {
     lock_on_target = target;
 }
 
@@ -528,7 +511,7 @@ void Sim::update_laser_firing() {
             auto const start{middle.location};
             auto const end{start + middle.forward() * config.laser_lock_on_distance};
             auto const hit{spatial_query_manager.trace_closest(
-                to_float(start), to_float(end), registry_handle)};
+                to_float(start), to_float(end), unique_entity_id)};
 
             if (hit.hit && hit.entity.is_valid()) {
                 set_lock_on_target(hit.entity);
@@ -557,18 +540,24 @@ void Sim::stop_fire_laser() {
 }
 
 void Sim::fire_laser() {
+    fire_requested_ = true;
+    ++lasers_fired_this_burst;
+    laser_shot_cooldown = config.laser.fire_cooldown;
+}
+
+void Sim::materialize_fire_command() {
     switch (laser_mode) {
         case ShipLaserMode::Single: {
             std::array<Transform3d, 1> const fire_points{
-                (middle_socket * planned_movement_.body_transform * planned_movement_.transform)};
+                (middle_socket * movement_state_.body_transform * movement_state_.transform)};
             fire_lasers_from(fire_points);
             break;
         }
         case ShipLaserMode::Double:
         case ShipLaserMode::Hyper: {
             std::array<Transform3d, 2> const fire_points{
-                left_socket * planned_movement_.body_transform * planned_movement_.transform,
-                right_socket * planned_movement_.body_transform * planned_movement_.transform};
+                left_socket * movement_state_.body_transform * movement_state_.transform,
+                right_socket * movement_state_.body_transform * movement_state_.transform};
             fire_lasers_from(fire_points);
             break;
         }
@@ -576,9 +565,6 @@ void Sim::fire_laser() {
             ml::fatal_error("Unhandled player laser mode.");
         }
     }
-
-    ++lasers_fired_this_burst;
-    laser_shot_cooldown = config.laser.fire_cooldown;
 }
 
 void Sim::fire_lasers_from(std::span<Transform3d const> const fire_points) {
@@ -590,14 +576,14 @@ void Sim::fire_lasers_from(std::span<Transform3d const> const fire_points) {
     for (std::int32_t i{0}; i < laser_count; ++i) {
         laser_columns.locations.set(i, to_float(fire_points[i].location));
         laser_columns.rotations.set(i, to_float(fire_points[i].rotator()));
-        laser_columns.base_velocities.set(i, to_float(planned_movement_.velocity));
+        laser_columns.base_velocities.set(i, to_float(movement_state_.velocity));
     }
 
     std::ranges::fill(laser_columns.damages, config.laser.damage);
     std::ranges::fill(laser_columns.speeds, config.laser.projectile_speed);
     std::ranges::fill(laser_columns.max_distances, config.laser.max_distance);
     std::ranges::fill(laser_columns.sources, LaserSource{team, EntityType::PlayerShip});
-    std::ranges::fill(laser_columns.instigator_handles, registry_handle);
+    std::ranges::fill(laser_columns.instigator_ids, unique_entity_id);
     lasers.queue_laser_spawns(new_lasers.get_const_view().columns());
 }
 
@@ -645,11 +631,14 @@ void Sim::set_laser_fire_rate(ShipFireRate const value) noexcept {
 // Health and status
 /* **************************************** */
 void Sim::add_health(Health const added_health) {
+    if (!health.is_alive()) {
+        return;
+    }
     set_health(health.health + added_health);
 }
 
-void Sim::set_health(Health const new_health, RegistryEntityHandle const killer) {
-    if (new_health == health.health) {
+void Sim::set_health(Health const new_health, EntityUniqueId const killer) {
+    if (new_health == health.health || !health.is_alive()) {
         return;
     }
 
@@ -661,11 +650,9 @@ void Sim::set_health(Health const new_health, RegistryEntityHandle const killer)
     }
 }
 
-void Sim::die(RegistryEntityHandle const killer) {
-    EntityDeathInfo death_info;
-    auto const reason{killer.is_null() ? DeathReason::Unknown : DeathReason::Combat};
-    death_info.add(reason, registry_handle, killer);
-    queue_entity_update(death_info);
+void Sim::die(EntityUniqueId const killer) {
+    auto const reason{killer.is_valid() ? DeathReason::Combat : DeathReason::Unknown};
+    ledger_.record_death(unique_entity_id, killer, reason);
     death_notification_pending = true;
 }
 
@@ -674,7 +661,7 @@ auto Sim::consume_death_notification() noexcept -> bool {
 }
 
 auto Sim::get_kills() const -> std::int32_t {
-    return entity_registry.get_kills(unique_entity_id);
+    return static_cast<std::int32_t>(ledger_.get_kills(unique_entity_id));
 }
 
 auto Sim::get_speed() const noexcept -> float {

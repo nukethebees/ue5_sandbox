@@ -2,7 +2,6 @@
 #include "../support/simulation_test_support.h"
 
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/entity_registry.h>
 #include <ioj/sim/fighters/sim.h>
 
 namespace ioj::sim {
@@ -32,20 +31,22 @@ void run_worldless_player_ship_vs_capital(tests::SimulationFixture const& config
     harness.get_simulation().get_player_ship_commands()->set_flight_mode(
         SpaceShipFlightMode::ForwardSpeed);
     harness.get_simulation().get_player_ship_commands()->start_boost();
-    auto const player_handle{player->registry_handle};
+    auto const player_id{player->unique_entity_id};
     struct Sample {
         ml::Vector3d player_location;
-        ml::Vector3d registry_location;
+        ml::Vector3d accessor_location;
         std::vector<Vector3f> fighter_target_locations{};
         std::vector<Vector3f> fighter_locations{};
     };
     ml::TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim&) {
-        Sample sample{.player_location = player->get_movement_state().transform.location,
-                      .registry_location = [&] {
-                          auto const location{harness.get_registry().get_location(player_handle)};
-                          return ml::Vector3d{location.X, location.Y, location.Z};
-                      }()};
+        Sample sample{
+            .player_location = player->get_movement_state().transform.location,
+            .accessor_location = [&] {
+                auto const location{
+                    harness.get_simulation().get_agent_accessor().read(player_id)->location};
+                return ml::Vector3d{location.X, location.Y, location.Z};
+            }()};
         sample.fighter_target_locations = tests::copy_vectors(fighters.get_target_locations());
         sample.fighter_locations = tests::copy_vectors(fighters.get_locations());
         samples.add(harness.get_time(), std::move(sample));
@@ -63,13 +64,13 @@ void run_worldless_player_ship_vs_capital(tests::SimulationFixture const& config
     auto const& before_end{samples.nearest_value(5.1)};
     auto const& end{samples.nearest_value(5.6)};
     tests::expect_distance_near(settled.player_location,
-                                settled.registry_location,
+                                settled.accessor_location,
                                 1.0,
-                                "Registry and player locations match initially");
+                                "Accessor and player locations match initially");
     tests::expect_distance_near(tracked.player_location,
-                                tracked.registry_location,
+                                tracked.accessor_location,
                                 1.0,
-                                "Registry and player locations match after movement");
+                                "Accessor and player locations match after movement");
     tests::expect_distance_not_near(
         settled.player_location, tracked.player_location, 1.0, "Player ship moves");
     tests::expect_greater(static_cast<std::int32_t>(tracked.fighter_target_locations.size()),

@@ -6,7 +6,6 @@
 #include <SandboxTests/support/PlayerControllerTestAccess.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
-#include <ioj/sim/entity_registry.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/levels/ExampleLevels.h>
 #include <SpaceGame/levels/LevelDefinition.h>
@@ -159,10 +158,10 @@ void FLevelLoaderCameraScenario::load_fixture() {
                        TEXT("Exiting benchmark retains the camera transform"));
     }
 
-    begin_timed_sampling(0.05,
-                         FOrchestratorEndTickTestHook::CreateRaw(
-                             this, &FLevelLoaderCameraScenario::sample_runtime),
-                         entity_counts_);
+    begin_timed_sampling(
+        0.05,
+        FOrchestratorEndTickTestHook::CreateRaw(this, &FLevelLoaderCameraScenario::sample_runtime),
+        entity_counts_);
     context_.orchestrator.start_simulation();
 }
 
@@ -170,14 +169,14 @@ void FLevelLoaderCameraScenario::sample_runtime(ATestBatchOrchestrator& orchestr
     if (modal_samples_.num() == 0 && test_driver->get_time() > 0.0) {
         sample_modal_transitions();
     }
-    auto const counts{orchestrator.get_entity_registry().count_alive_per_team_and_type()};
+    auto const& counts{orchestrator.get_entity_ledger().get_combat_telemetry().spawned};
     auto const blue{std::to_underlying(ETestTeam::Blue)};
     auto const red{std::to_underlying(ETestTeam::Red)};
     auto const capital{std::to_underlying(ETestEntityType::CapitalShip)};
     auto const turret{std::to_underlying(ETestEntityType::Turret)};
     entity_counts_.add(test_driver->get_time(),
-                       counts[blue][capital] + counts[blue][turret] + counts[red][capital] +
-                           counts[red][turret]);
+                       static_cast<int32>(counts[blue][capital] + counts[blue][turret] +
+                                          counts[red][capital] + counts[red][turret]));
 }
 
 void FLevelLoaderCameraScenario::sample_modal_transitions() {
@@ -278,10 +277,10 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
                      count_actors<ACameraActor>(context_.world),
                      TEXT("Headless loader does not spawn a camera"));
 
-    begin_timed_sampling(0.05,
-                         FOrchestratorEndTickTestHook::CreateRaw(
-                             this, &FLevelLoaderCameraScenario::sample_runtime),
-                         entity_counts_);
+    begin_timed_sampling(
+        0.05,
+        FOrchestratorEndTickTestHook::CreateRaw(this, &FLevelLoaderCameraScenario::sample_runtime),
+        entity_counts_);
     orchestrator.start_simulation();
     checks.is_true(orchestrator.get_level_simulation() && !orchestrator.is_presentation_enabled(),
                    TEXT("Headless startup has no presentation state"));
@@ -295,7 +294,7 @@ void FLevelLoaderCameraScenario::check_runtime() {
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     checks.are_equal(4,
                      entity_counts_.last_value(),
-                     TEXT("All playerless authored entities reach the registry"));
+                     TEXT("All playerless authored entities have recorded spawns"));
     checks.is_true(!modal_samples_.is_empty(), TEXT("Modal transitions were sampled"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     auto const& modal{modal_samples_.last_value()};
@@ -418,10 +417,10 @@ void FLevelLoaderScenario::load_fixture() {
                          TEXT("Loader applies the player position"));
     }
 
-    begin_timed_sampling(0.05,
-                         FOrchestratorEndTickTestHook::CreateRaw(
-                             this, &FLevelLoaderScenario::sample_runtime),
-                         samples);
+    begin_timed_sampling(
+        0.05,
+        FOrchestratorEndTickTestHook::CreateRaw(this, &FLevelLoaderScenario::sample_runtime),
+        samples);
     context_.orchestrator.start_simulation();
 }
 
@@ -429,9 +428,9 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
     if (control_samples_.is_empty() && test_driver->get_time() > 0.0) {
         sample_controller_lifecycle();
     }
-    auto const& registry{orchestrator.get_entity_registry()};
+    auto const& ledger{orchestrator.get_entity_ledger()};
     auto const& mission{orchestrator.get_mission_manager()};
-    auto const counts{registry.count_alive_per_team_and_type()};
+    auto const counts{ledger.count_alive_per_team_and_type()};
     auto const blue{std::to_underlying(ETestTeam::Blue)};
     auto const red{std::to_underlying(ETestTeam::Red)};
     auto const player_type{std::to_underlying(ETestEntityType::PlayerShip)};
@@ -448,26 +447,30 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
         .mission_mode = ml::to_unreal(mission.get_mission_mode()),
         .mission_state = ml::to_unreal(mission.get_mission_state()),
         .mission_kill_target = mission.get_kill_target(),
-        .mission_heroes = static_cast<int32>(mission.get_hero_entity_handles().size()),
-        .mission_survivors =
-            static_cast<int32>(mission.get_entity_handles_that_must_survive().size()),
+        .mission_heroes = static_cast<int32>(mission.get_hero_entity_ids().size()),
+        .mission_survivors = static_cast<int32>(mission.get_entity_ids_that_must_survive().size()),
         .mission_required_kills =
-            static_cast<int32>(mission.get_entity_handles_required_to_kill().size()),
+            static_cast<int32>(mission.get_entity_ids_required_to_kill().size()),
         .mission_level_name = FName{UTF8_TO_TCHAR(mission.get_level_id().c_str())},
         .mission_level_display_name = UTF8_TO_TCHAR(mission.get_level_display_name().c_str()),
         .saves_mission_results = mission.should_save_mission_results(),
     };
-    auto const& entity_data{registry.get_entity_data()};
-    auto const entity_count{entity_data.num()};
-    for (int32 i{0}; i < entity_count; ++i) {
-        auto const position{ml::to_unreal(entity_data.locations[i])};
-        auto const team{ml::to_unreal(entity_data.teams[i])};
-        auto const type{ml::to_unreal(entity_data.entity_types[i])};
-        if (type == ETestEntityType::CapitalShip && team == ETestTeam::Blue) {
+    auto const* level{orchestrator.get_level_simulation()};
+    check(level);
+    auto const capitals{level->get_capital_ships().get_read_view().entities};
+    for (int32 i{}; i < capitals.num(); ++i) {
+        auto const position{ml::to_unreal(capitals.locations[i])};
+        auto const team{ml::to_unreal(capitals.teams[i])};
+        if (team == ETestTeam::Blue) {
             sample.blue_capital_position = position;
-        } else if (type == ETestEntityType::CapitalShip && team == ETestTeam::Red) {
+        } else if (team == ETestTeam::Red) {
             sample.red_capital_position = position;
-        } else if (type == ETestEntityType::Turret && team == ETestTeam::Red) {
+        }
+    }
+    auto const turrets{level->get_turrets().get_read_view().entities};
+    for (int32 i{}; i < turrets.num(); ++i) {
+        if (ml::to_unreal(turrets.teams[i]) == ETestTeam::Red) {
+            auto const position{ml::to_unreal(turrets.locations[i])};
             sample.red_turret_position = position;
         }
     }
@@ -499,11 +502,12 @@ void FLevelLoaderScenario::check_runtime() {
                    TEXT("Closing pause restores the newly possessed ship"));
     checks.is_true(control.bindings_restored,
                    TEXT("Possession and modal transitions retain exactly one set of bindings"));
-    checks.are_equal(4, sample.authored_entities, TEXT("All authored entities reach the registry"));
-    checks.are_equal(1, sample.blue_players, TEXT("Registry contains the blue player"));
-    checks.are_equal(1, sample.blue_capitals, TEXT("Registry contains the blue capital"));
-    checks.are_equal(1, sample.red_capitals, TEXT("Registry contains the red capital"));
-    checks.are_equal(1, sample.red_turrets, TEXT("Registry contains the red turret"));
+    checks.are_equal(
+        4, sample.authored_entities, TEXT("All authored entities reach the entity ledger"));
+    checks.are_equal(1, sample.blue_players, TEXT("Entity ledger contains the blue player"));
+    checks.are_equal(1, sample.blue_capitals, TEXT("Entity ledger contains the blue capital"));
+    checks.are_equal(1, sample.red_capitals, TEXT("Entity ledger contains the red capital"));
+    checks.are_equal(1, sample.red_turrets, TEXT("Entity ledger contains the red turret"));
     checks.are_equal(ETestMissionMode::KillEnemies,
                      sample.mission_mode,
                      TEXT("Loader configures the authored mission mode"));

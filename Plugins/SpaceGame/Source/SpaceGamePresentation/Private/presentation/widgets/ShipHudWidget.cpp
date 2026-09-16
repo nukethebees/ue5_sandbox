@@ -3,7 +3,7 @@
 
 #include <SpaceGamePresentation/presentation/HUDManager.h>
 
-#include "ioj/sim/entity_registry.h"
+#include "ioj/sim/entity_telemetry.h"
 #include "SandboxGameShared/ui/widgets/ValueWidget.h"
 #include "SandboxUI/Radar/SRadarWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/DebugGraphWidget.h"

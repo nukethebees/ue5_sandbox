@@ -13,8 +13,8 @@ void CollisionOverlapStorage::clear() noexcept {
     entity_static_overlaps_.reset();
 }
 
-void CollisionOverlapStorage::add_entity_overlap(RegistryEntityHandle const first,
-                                                 RegistryEntityHandle const second) {
+void CollisionOverlapStorage::add_entity_overlap(EntityUniqueId const first,
+                                                 EntityUniqueId const second) {
     if (second < first) {
         entity_entity_overlaps_.add(second, first);
     } else {
@@ -22,7 +22,7 @@ void CollisionOverlapStorage::add_entity_overlap(RegistryEntityHandle const firs
     }
 }
 
-void CollisionOverlapStorage::add_static_overlap(RegistryEntityHandle const entity,
+void CollisionOverlapStorage::add_static_overlap(EntityUniqueId const entity,
                                                  std::int32_t const static_geometry_index) {
     entity_static_overlaps_.add(entity, static_geometry_index);
 }

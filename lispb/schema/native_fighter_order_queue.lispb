@@ -4,7 +4,7 @@
   :namespace ioj::sim
   (struct FighterOrderQueue
     :operations (all)
-    (member handles array @native_registry_handle)
+    (member entity_ids array @native_unique_id)
     (member orders array @native_fighter_order)
     (member tasks array @native_fighter_task)
-    (member targets array @native_registry_handle)))
+    (member targets array @native_unique_id)))

@@ -82,24 +82,31 @@ void FFighterPresentation::update_ismc() {
 
     auto const& data{view().entities};
     auto const count{data.num()};
-    instances->set_instances(count, ESandboxISMCParallelism::Auto, [this, &data](auto& chunk) {
-        auto const first_index{chunk.first_index()};
-        auto const chunk_count{chunk.num()};
-        for (int32 local_index{0}; local_index < chunk_count; ++local_index) {
-            auto const index{first_index + local_index};
-            auto const position{ml::to_unreal(data.locations[index])};
-            FVector const direction{ml::to_unreal(data.aim_directions[index])};
-            auto const rotation{
-                FQuat4f{FQuat::FindBetweenNormals(FVector::ForwardVector, direction)}};
-            chunk.set_transform(local_index, position, rotation, FVector3f::OneVector);
-
-            auto custom_data{chunk.custom_data(local_index)};
-            auto const& colour{team_colours_[ml::to_unreal(data.teams[index])]};
-            custom_data[0] = colour.R;
-            custom_data[1] = colour.G;
-            custom_data[2] = colour.B;
+    visible_indices_.Reset();
+    for (int32 index{}; index < count; ++index) {
+        if (::ioj::sim::is_alive(data.healths[index])) {
+            visible_indices_.Add(index);
         }
-    });
+    }
+    instances->set_instances(
+        visible_indices_.Num(), ESandboxISMCParallelism::Auto, [this, &data](auto& chunk) {
+            auto const first_index{chunk.first_index()};
+            auto const chunk_count{chunk.num()};
+            for (int32 local_index{0}; local_index < chunk_count; ++local_index) {
+                auto const index{visible_indices_[first_index + local_index]};
+                auto const position{ml::to_unreal(data.locations[index])};
+                FVector const direction{ml::to_unreal(data.aim_directions[index])};
+                auto const rotation{
+                    FQuat4f{FQuat::FindBetweenNormals(FVector::ForwardVector, direction)}};
+                chunk.set_transform(local_index, position, rotation, FVector3f::OneVector);
+
+                auto custom_data{chunk.custom_data(local_index)};
+                auto const& colour{team_colours_[ml::to_unreal(data.teams[index])]};
+                custom_data[0] = colour.R;
+                custom_data[1] = colour.G;
+                custom_data[2] = colour.B;
+            }
+        });
 }
 
 void FFighterPresentation::draw_debug_shapes() {
@@ -112,7 +119,7 @@ void FFighterPresentation::draw_debug_shapes() {
         if (enable_ship_location_debug_drawing) {
             debug_drawer.draw_sphere(ship_location);
         }
-        if (enable_target_debug_drawing && data.target_handles[i].is_valid()) {
+        if (enable_target_debug_drawing && data.target_ids[i].is_valid()) {
             debug_drawer.draw_line(ship_location, FVector{ml::to_unreal(data.target_locations[i])});
         }
     }
@@ -121,7 +128,7 @@ void FFighterPresentation::draw_debug_shapes() {
 void FFighterPresentation::validate_array_sizes() const {
     view().entities.validate_array_sizes();
     ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(view().get_num_instances()),
+        SANDBOX_NAMED_NUM(visible_indices_.Num()),
         SANDBOX_NAMED_NUM(instances->get_instance_count()),
     });
 }

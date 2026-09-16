@@ -11,19 +11,19 @@
 #include <utility>
 #include <vector>
 
-#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/agent_accessor.h>
+#include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/levels/level_runtime_events.h>
 
 namespace ioj::sim {
 
 namespace {
-auto get_level_entity_handle(std::span<RegistryEntityHandle const> const level_entity_handles,
-                             std::int32_t const entity_index) -> RegistryEntityHandle {
-    assert(entity_index >= 0 &&
-           static_cast<std::size_t>(entity_index) < level_entity_handles.size());
-    auto const handle{level_entity_handles[entity_index]};
-    assert(handle.is_valid());
-    return handle;
+auto get_level_entity_id(std::span<EntityUniqueId const> const level_entity_ids,
+                         std::int32_t const entity_index) -> EntityUniqueId {
+    assert(entity_index >= 0 && static_cast<std::size_t>(entity_index) < level_entity_ids.size());
+    auto const id{level_entity_ids[entity_index]};
+    assert(id.is_valid());
+    return id;
 }
 }
 
@@ -31,8 +31,7 @@ auto get_level_entity_handle(std::span<RegistryEntityHandle const> const level_e
 // Construction and lifecycle
 /* **************************************** */
 void MissionManager::begin_play() {
-    initialise_entity_health_that_must_survive();
-    initialise_entity_health_required_to_kill();
+    prepare_objectives();
 
     switch (mission_mode) {
         case MissionMode::None: {
@@ -40,7 +39,7 @@ void MissionManager::begin_play() {
             break;
         }
         case MissionMode::SurviveTime: {
-            if (entity_handles_that_must_survive.empty()) {
+            if (entity_ids_that_must_survive.empty()) {
                 ml::log_error("MissionManager: SurviveTime requires at least one entity that "
                               "must survive");
                 set_mission_state(MissionState::Disabled);
@@ -60,8 +59,9 @@ void MissionManager::begin_play() {
             }
 
             if (resolved_kill_target <= 0) {
-                auto const hero_team{entity_registry.get_team(hero_entity_handles[0])};
-                resolved_kill_target = entity_registry.count_alive_not_on_team(hero_team);
+                auto const hero_row{entity_ledger.get_history_index(hero_entity_ids[0])};
+                auto const hero_team{entity_ledger.get_unique_entities().teams[hero_row]};
+                resolved_kill_target = entity_ledger.count_alive_not_on_team(hero_team);
             }
 
             set_mission_state(MissionState::Running);
@@ -74,8 +74,11 @@ void MissionManager::begin_play() {
     }
 }
 
-MissionManager::MissionManager(SimClock const& clock, EntityRegistry& in_entity_registry)
-    : entity_registry{in_entity_registry}
+MissionManager::MissionManager(SimClock const& clock,
+                               EntityLedger const& in_entity_ledger,
+                               AgentAccessor const& agents)
+    : entity_ledger{in_entity_ledger}
+    , agents_{agents}
     , simulation_clock{clock} {}
 
 /* **************************************** */
@@ -83,7 +86,7 @@ MissionManager::MissionManager(SimClock const& clock, EntityRegistry& in_entity_
 /* **************************************** */
 void MissionManager::initialise_level_mission(
     LevelMissionInitialisationData const& data,
-    std::span<RegistryEntityHandle const> const level_entity_handles) {
+    std::span<EntityUniqueId const> const level_entity_ids) {
     assert(!level_initialisation_applied_);
     set_level_identity(data.level_id, data.level_title);
     set_save_mission_results(data.save_results);
@@ -118,24 +121,23 @@ void MissionManager::initialise_level_mission(
     }
 
     for (auto const entity_index : data.hero_entity_indices) {
-        add_hero_entity(get_level_entity_handle(level_entity_handles, entity_index));
+        add_hero_entity(get_level_entity_id(level_entity_ids, entity_index));
     }
     for (auto const entity_index : data.must_survive_entity_indices) {
-        add_entity_that_must_survive(get_level_entity_handle(level_entity_handles, entity_index));
+        add_entity_that_must_survive(get_level_entity_id(level_entity_ids, entity_index));
     }
     for (auto const entity_index : data.required_kill_entity_indices) {
-        add_entity_required_to_kill(get_level_entity_handle(level_entity_handles, entity_index));
+        add_entity_required_to_kill(get_level_entity_id(level_entity_ids, entity_index));
     }
 
     level_initialisation_applied_ = true;
 }
 
-void MissionManager::bind_level_event_data(
-    std::span<std::int32_t const> const values,
-    std::span<RegistryEntityHandle const> const level_entity_handles) {
+void MissionManager::bind_level_event_data(std::span<std::int32_t const> const values,
+                                           std::span<EntityUniqueId const> const level_entity_ids) {
     assert(mission_state == MissionState::NotStarted);
     level_event_values_ = values;
-    level_entity_handles_ = level_entity_handles;
+    level_entity_ids_ = level_entity_ids;
 }
 
 void MissionManager::consume_level_events(LevelMissionEventGroupsConstView const groups) {
@@ -146,14 +148,14 @@ void MissionManager::consume_level_events(LevelMissionEventGroupsConstView const
             case LevelMissionEventType::MustSurvive: {
                 for (auto const entity_index : values) {
                     add_entity_that_must_survive(
-                        get_level_entity_handle(level_entity_handles_, entity_index));
+                        get_level_entity_id(level_entity_ids_, entity_index));
                 }
                 break;
             }
             case LevelMissionEventType::RequiredKill: {
                 for (auto const entity_index : values) {
                     add_entity_required_to_kill(
-                        get_level_entity_handle(level_entity_handles_, entity_index));
+                        get_level_entity_id(level_entity_ids_, entity_index));
                 }
                 break;
             }
@@ -182,13 +184,10 @@ void MissionManager::consume_level_events(LevelMissionEventGroupsConstView const
 /* **************************************** */
 void MissionManager::reset_runtime_state() {
     pending_result_.reset();
-    hero_entity_handles.clear();
     hero_entity_ids.clear();
-    entity_handles_that_must_survive.clear();
     entity_ids_that_must_survive.clear();
     entity_types_that_must_survive.clear();
     entity_health_that_must_survive.clear();
-    entity_handles_required_to_kill.clear();
     entity_ids_required_to_kill.clear();
     entity_types_required_to_kill.clear();
     entity_health_required_to_kill.clear();
@@ -200,7 +199,7 @@ void MissionManager::reset_runtime_state() {
     resolved_kill_target = kill_target;
     pending_objective_events_ = 0;
     level_event_values_ = {};
-    level_entity_handles_ = {};
+    level_entity_ids_ = {};
     kill_target_increase_before_level_initialisation_ = 0;
     level_initialisation_applied_ = false;
 }
@@ -229,45 +228,33 @@ void MissionManager::set_level_identity(std::string const new_level_id, std::str
     level_display_name = std::move(display_name);
 }
 
-void MissionManager::add_hero_entity(RegistryEntityHandle handle) {
+void MissionManager::add_hero_entity(EntityUniqueId id) {
     assert(mission_state == MissionState::NotStarted);
-    assert(entity_registry.is_valid_handle(handle));
-    if (std::ranges::contains(hero_entity_handles, handle)) {
+    assert(entity_ledger.is_valid_unique_id(id));
+    if (std::ranges::contains(hero_entity_ids, id)) {
         return;
     }
-    auto const id{entity_registry.find_unique_id(handle)};
-    hero_entity_handles.push_back(handle);
     hero_entity_ids.push_back(id);
 }
 
-void MissionManager::add_entity_that_must_survive(RegistryEntityHandle handle) {
+void MissionManager::add_entity_that_must_survive(EntityUniqueId id) {
     assert(mission_state == MissionState::NotStarted || mission_state == MissionState::Running);
-    assert(entity_registry.is_valid_handle(handle));
-    if (std::ranges::contains(entity_handles_that_must_survive, handle)) {
+    assert(entity_ledger.is_valid_unique_id(id));
+    if (std::ranges::contains(entity_ids_that_must_survive, id)) {
         return;
     }
-    auto const id{entity_registry.find_unique_id(handle)};
-    entity_handles_that_must_survive.push_back(handle);
     entity_ids_that_must_survive.push_back(id);
     entity_types_that_must_survive.push_back(id.entity_type());
-    if (mission_state == MissionState::Running) {
-        entity_health_that_must_survive.emplace_back(entity_registry.get_health(handle));
-    }
 }
 
-void MissionManager::add_entity_required_to_kill(RegistryEntityHandle handle) {
+void MissionManager::add_entity_required_to_kill(EntityUniqueId id) {
     assert(mission_state == MissionState::NotStarted || mission_state == MissionState::Running);
-    assert(entity_registry.is_valid_handle(handle));
-    if (std::ranges::contains(entity_handles_required_to_kill, handle)) {
+    assert(entity_ledger.is_valid_unique_id(id));
+    if (std::ranges::contains(entity_ids_required_to_kill, id)) {
         return;
     }
-    auto const id{entity_registry.find_unique_id(handle)};
-    entity_handles_required_to_kill.push_back(handle);
     entity_ids_required_to_kill.push_back(id);
     entity_types_required_to_kill.push_back(id.entity_type());
-    if (mission_state == MissionState::Running) {
-        entity_health_required_to_kill.emplace_back(entity_registry.get_health(handle));
-    }
 }
 
 void MissionManager::increase_kill_target(std::int32_t const increase) {
@@ -319,7 +306,7 @@ void MissionManager::mission_tick() {
     update_entity_health_that_must_survive();
     update_entity_health_required_to_kill();
 
-    if (!entity_handles_that_must_survive.empty() && !entities_that_must_survive_are_alive()) {
+    if (!entity_ids_that_must_survive.empty() && !entities_that_must_survive_are_alive()) {
         set_mission_state(MissionState::Failed, MissionFailReason::DefenceObjectiveFailed);
         return;
     }
@@ -425,83 +412,49 @@ void MissionManager::mission_tick_kill_enemies_within_time() {
 }
 
 void MissionManager::update_mission_kills() {
-    assert(hero_entity_handles.size() == hero_entity_ids.size());
-
     mission_kills = 0;
     for (auto const id : hero_entity_ids) {
-        mission_kills += entity_registry.get_kills(id);
+        mission_kills += entity_ledger.get_kills(id);
     }
 }
 
 /* **************************************** */
 // Objective health tracking
 /* **************************************** */
-void MissionManager::initialise_entity_health_that_must_survive() {
-    entity_health_that_must_survive.clear();
-    entity_health_that_must_survive.reserve(entity_handles_that_must_survive.size());
-    assert(entity_ids_that_must_survive.size() == entity_handles_that_must_survive.size());
-    assert(entity_types_that_must_survive.size() == entity_handles_that_must_survive.size());
-
-    for (auto const handle : entity_handles_that_must_survive) {
-        auto const health{entity_registry.get_health(handle)};
-        entity_health_that_must_survive.emplace_back(health);
-    }
+void MissionManager::prepare_objectives() {
+    auto initialise_pending = [&](auto const& ids, auto& healths) {
+        auto const count{ids.size()};
+        for (auto index{healths.size()}; index < count; ++index) {
+            auto const state{agents_.read_spatial(ids[index])};
+            healths.emplace_back(state ? state->health : Health{});
+        }
+    };
+    initialise_pending(entity_ids_that_must_survive, entity_health_that_must_survive);
+    initialise_pending(entity_ids_required_to_kill, entity_health_required_to_kill);
 }
-
 void MissionManager::update_entity_health_that_must_survive() {
-    assert(entity_health_that_must_survive.size() == entity_handles_that_must_survive.size());
-
-    auto const n_handles{entity_handles_that_must_survive.size()};
-    for (std::size_t i{0}; i < n_handles; ++i) {
-        auto& health{entity_health_that_must_survive[i]};
-        auto const handle{entity_handles_that_must_survive[i]};
-        health.health =
-            entity_registry.is_valid_handle(handle) ? entity_registry.get_health(handle) : 0;
+    assert(entity_health_that_must_survive.size() == entity_ids_that_must_survive.size());
+    auto const count{entity_ids_that_must_survive.size()};
+    for (std::size_t i{}; i < count; ++i) {
+        auto const state{agents_.read_spatial(entity_ids_that_must_survive[i])};
+        entity_health_that_must_survive[i].health = state ? state->health : Health{};
     }
 }
-
 auto MissionManager::entities_that_must_survive_are_alive() const -> bool {
-    for (auto const handle : entity_handles_that_must_survive) {
-        if (!entity_registry.is_valid_alive(handle)) {
-            return false;
-        }
-    }
-
-    return true;
+    return std::ranges::all_of(entity_ids_that_must_survive,
+                               [&](auto const id) { return agents_.is_alive(id); });
 }
-
-void MissionManager::initialise_entity_health_required_to_kill() {
-    entity_health_required_to_kill.clear();
-    entity_health_required_to_kill.reserve(entity_handles_required_to_kill.size());
-    assert(entity_ids_required_to_kill.size() == entity_handles_required_to_kill.size());
-    assert(entity_types_required_to_kill.size() == entity_handles_required_to_kill.size());
-
-    for (auto const handle : entity_handles_required_to_kill) {
-        auto const health{entity_registry.get_health(handle)};
-        entity_health_required_to_kill.emplace_back(health);
-    }
-}
-
 void MissionManager::update_entity_health_required_to_kill() {
-    assert(entity_health_required_to_kill.size() == entity_handles_required_to_kill.size());
-
-    auto const n_handles{entity_handles_required_to_kill.size()};
-    for (std::size_t i{0}; i < n_handles; ++i) {
-        auto& health{entity_health_required_to_kill[i]};
-        auto const handle{entity_handles_required_to_kill[i]};
-        health.health =
-            entity_registry.is_valid_handle(handle) ? entity_registry.get_health(handle) : 0;
+    assert(entity_health_required_to_kill.size() == entity_ids_required_to_kill.size());
+    auto const count{entity_ids_required_to_kill.size()};
+    for (std::size_t i{}; i < count; ++i) {
+        auto const state{agents_.read_spatial(entity_ids_required_to_kill[i])};
+        entity_health_required_to_kill[i].health = state ? state->health : Health{};
     }
 }
-
 auto MissionManager::entities_required_to_kill_are_dead() const -> bool {
-    for (auto const handle : entity_handles_required_to_kill) {
-        if (entity_registry.is_valid_alive(handle)) {
-            return false;
-        }
-    }
-
-    return true;
+    return std::ranges::none_of(entity_ids_required_to_kill,
+                                [&](auto const id) { return agents_.is_alive(id); });
 }
 
 /* **************************************** */

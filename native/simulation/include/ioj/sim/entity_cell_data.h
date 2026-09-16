@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "ioj/sim/entity_handle.h"
+#include "ioj/sim/entity_unique_id.h"
 #include "native_soa/storage.h"
 #include "sandbox/core/address_cast.h"
 #include "sandbox/core/soa_permutation.h"
@@ -31,7 +31,7 @@ struct EntityCellDataColumnsConstView {
     std::span<std::int32_t const> max_cell_xs;
     std::span<std::int32_t const> max_cell_ys;
     std::span<std::int32_t const> max_cell_zs;
-    std::span<RegistryEntityHandle const> handles;
+    std::span<EntityUniqueId const> entity_ids;
     auto num() const noexcept -> size_type { return static_cast<size_type>(min_point_xs.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -48,7 +48,7 @@ struct EntityCellDataColumnsConstView {
         fn(max_cell_xs);
         fn(max_cell_ys);
         fn(max_cell_zs);
-        fn(handles);
+        fn(entity_ids);
     }
     void validate_array_sizes() const {
         auto const count{num()};
@@ -73,7 +73,7 @@ struct EntityCellDataColumnsConstView {
             max_cell_xs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             max_cell_ys.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             max_cell_zs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            handles.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
+            entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
         };
     }
     auto get_view() const -> EntityCellDataColumnsConstView { return *this; }
@@ -95,7 +95,7 @@ struct EntityCellDataColumnsConstView {
             max_cell_xs,
             max_cell_ys,
             max_cell_zs,
-            handles,
+            entity_ids,
         };
     }
     auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
@@ -124,7 +124,7 @@ struct EntityCellDataColumnsView {
     std::span<std::int32_t> max_cell_xs;
     std::span<std::int32_t> max_cell_ys;
     std::span<std::int32_t> max_cell_zs;
-    std::span<RegistryEntityHandle> handles;
+    std::span<EntityUniqueId> entity_ids;
     auto num() const noexcept -> size_type { return static_cast<size_type>(min_point_xs.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -141,7 +141,7 @@ struct EntityCellDataColumnsView {
         fn(max_cell_xs);
         fn(max_cell_ys);
         fn(max_cell_zs);
-        fn(handles);
+        fn(entity_ids);
     }
     void validate_array_sizes() const {
         auto const count{num()};
@@ -165,7 +165,7 @@ struct EntityCellDataColumnsView {
             max_cell_xs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             max_cell_ys.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             max_cell_zs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            handles.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
+            entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
         };
     }
     auto get_view() const -> EntityCellDataColumnsView { return *this; }
@@ -187,7 +187,7 @@ struct EntityCellDataColumnsView {
             max_cell_xs,
             max_cell_ys,
             max_cell_zs,
-            handles,
+            entity_ids,
         };
     }
     auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
@@ -210,7 +210,7 @@ struct EntityCellDataColumnsView {
              std::int32_t const new_max_cell_xs,
              std::int32_t const new_max_cell_ys,
              std::int32_t const new_max_cell_zs,
-             RegistryEntityHandle const new_handles) const {
+             EntityUniqueId const new_entity_ids) const {
         ml::native_soa::require(index >= 0 && index < num());
         min_point_xs[static_cast<std::size_t>(index)] = new_min_point_xs;
         min_point_ys[static_cast<std::size_t>(index)] = new_min_point_ys;
@@ -224,7 +224,7 @@ struct EntityCellDataColumnsView {
         max_cell_xs[static_cast<std::size_t>(index)] = new_max_cell_xs;
         max_cell_ys[static_cast<std::size_t>(index)] = new_max_cell_ys;
         max_cell_zs[static_cast<std::size_t>(index)] = new_max_cell_zs;
-        handles[static_cast<std::size_t>(index)] = new_handles;
+        entity_ids[static_cast<std::size_t>(index)] = new_entity_ids;
     }
 };
 struct EntityCellDataColumns {
@@ -243,7 +243,7 @@ struct EntityCellDataColumns {
     ml::native_soa::Vector<std::int32_t> max_cell_xs;
     ml::native_soa::Vector<std::int32_t> max_cell_ys;
     ml::native_soa::Vector<std::int32_t> max_cell_zs;
-    ml::native_soa::Vector<RegistryEntityHandle> handles;
+    ml::native_soa::Vector<EntityUniqueId> entity_ids;
     auto num() const noexcept -> size_type { return static_cast<size_type>(min_point_xs.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -260,7 +260,7 @@ struct EntityCellDataColumns {
         fn(max_cell_xs);
         fn(max_cell_ys);
         fn(max_cell_zs);
-        fn(handles);
+        fn(entity_ids);
     }
     template <typename Fn>
     void each_column(Fn&& fn) const {
@@ -276,7 +276,7 @@ struct EntityCellDataColumns {
         fn(max_cell_xs);
         fn(max_cell_ys);
         fn(max_cell_zs);
-        fn(handles);
+        fn(entity_ids);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
     void reserve(size_type const count) {
@@ -293,7 +293,7 @@ struct EntityCellDataColumns {
         max_cell_xs.reserve(static_cast<std::size_t>(count));
         max_cell_ys.reserve(static_cast<std::size_t>(count));
         max_cell_zs.reserve(static_cast<std::size_t>(count));
-        handles.reserve(static_cast<std::size_t>(count));
+        entity_ids.reserve(static_cast<std::size_t>(count));
     }
     void reset() noexcept {
         min_point_xs.clear();
@@ -308,7 +308,7 @@ struct EntityCellDataColumns {
         max_cell_xs.clear();
         max_cell_ys.clear();
         max_cell_zs.clear();
-        handles.clear();
+        entity_ids.clear();
     }
     void set_num(size_type const count) {
         ml::native_soa::require(count >= 0);
@@ -325,7 +325,7 @@ struct EntityCellDataColumns {
         max_cell_xs.resize(size);
         max_cell_ys.resize(size);
         max_cell_zs.resize(size);
-        handles.resize(size);
+        entity_ids.resize(size);
     }
     void add_uninitialised(size_type const count) {
         auto const old_num{num()};
@@ -377,7 +377,7 @@ struct EntityCellDataColumns {
             max_cell_zs[index + i] = max_cell_zs[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
-            handles[index + i] = handles[source + i];
+            entity_ids[index + i] = entity_ids[source + i];
         }
         set_num(old_num - count);
     }
@@ -394,7 +394,7 @@ struct EntityCellDataColumns {
              std::int32_t const new_max_cell_xs,
              std::int32_t const new_max_cell_ys,
              std::int32_t const new_max_cell_zs,
-             RegistryEntityHandle const new_handles) {
+             EntityUniqueId const new_entity_ids) {
         get_view().set(index,
                        new_min_point_xs,
                        new_min_point_ys,
@@ -408,7 +408,7 @@ struct EntityCellDataColumns {
                        new_max_cell_xs,
                        new_max_cell_ys,
                        new_max_cell_zs,
-                       new_handles);
+                       new_entity_ids);
     }
     auto add(float const new_min_point_xs,
              float const new_min_point_ys,
@@ -422,7 +422,7 @@ struct EntityCellDataColumns {
              std::int32_t const new_max_cell_xs,
              std::int32_t const new_max_cell_ys,
              std::int32_t const new_max_cell_zs,
-             RegistryEntityHandle const new_handles) -> size_type {
+             EntityUniqueId const new_entity_ids) -> size_type {
         auto const index{num()};
         add_defaulted(1);
         set(index,
@@ -438,7 +438,7 @@ struct EntityCellDataColumns {
             new_max_cell_xs,
             new_max_cell_ys,
             new_max_cell_zs,
-            new_handles);
+            new_entity_ids);
         return index;
     }
     void append_from(ConstView source) {
@@ -521,11 +521,10 @@ struct EntityCellDataColumns {
                                     address >= begin + max_cell_zs.size() * sizeof(std::int32_t));
         }
         {
-            auto const address{ml::address_cast(source.handles.data())};
-            auto const begin{ml::address_cast(handles.data())};
+            auto const address{ml::address_cast(source.entity_ids.data())};
+            auto const begin{ml::address_cast(entity_ids.data())};
             ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + handles.size() * sizeof(RegistryEntityHandle));
+                                    address >= begin + entity_ids.size() * sizeof(EntityUniqueId));
         }
         min_point_xs.insert(
             min_point_xs.end(), source.min_point_xs.data(), source.min_point_xs.data() + count);
@@ -551,7 +550,8 @@ struct EntityCellDataColumns {
             max_cell_ys.end(), source.max_cell_ys.data(), source.max_cell_ys.data() + count);
         max_cell_zs.insert(
             max_cell_zs.end(), source.max_cell_zs.data(), source.max_cell_zs.data() + count);
-        handles.insert(handles.end(), source.handles.data(), source.handles.data() + count);
+        entity_ids.insert(
+            entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
     }
     auto get_view() -> View {
         return {
@@ -567,7 +567,7 @@ struct EntityCellDataColumns {
             max_cell_xs,
             max_cell_ys,
             max_cell_zs,
-            handles,
+            entity_ids,
         };
     }
     auto get_view() const -> ConstView {
@@ -584,7 +584,7 @@ struct EntityCellDataColumns {
             max_cell_xs,
             max_cell_ys,
             max_cell_zs,
-            handles,
+            entity_ids,
         };
     }
     auto get_const_view() const -> ConstView { return get_view(); }
@@ -633,8 +633,8 @@ struct EntityCellDataColumns {
             other.max_cell_ys[static_cast<std::size_t>(src_index)];
         max_cell_zs[static_cast<std::size_t>(dst_index)] =
             other.max_cell_zs[static_cast<std::size_t>(src_index)];
-        handles[static_cast<std::size_t>(dst_index)] =
-            other.handles[static_cast<std::size_t>(src_index)];
+        entity_ids[static_cast<std::size_t>(dst_index)] =
+            other.entity_ids[static_cast<std::size_t>(src_index)];
     }
     template <typename Other>
     void copy_elements(size_type const dst_index,
@@ -694,7 +694,7 @@ struct EntityCellDataColumnsSingleLayout {
     inline static constexpr ColLayout<std::int32_t> MaxCellXs{MinCellZs};
     inline static constexpr ColLayout<std::int32_t> MaxCellYs{MaxCellXs};
     inline static constexpr ColLayout<std::int32_t> MaxCellZs{MaxCellYs};
-    inline static constexpr ColLayout<RegistryEntityHandle> Handles{MaxCellZs};
+    inline static constexpr ColLayout<EntityUniqueId> EntityIds{MaxCellZs};
 
     inline static constexpr byte_size_type allocation_alignment{
         ml::native_soa::maximum_alignment(MinPointXs,
@@ -709,17 +709,17 @@ struct EntityCellDataColumnsSingleLayout {
                                           MaxCellXs,
                                           MaxCellYs,
                                           MaxCellZs,
-                                          Handles)};
+                                          EntityIds)};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::layout_align(Handles.block_end, allocation_alignment) +
+        ml::native_soa::layout_align(EntityIds.block_end, allocation_alignment) +
         12 * (column_gap + allocation_alignment - 1)};
     inline static constexpr size_type max_capacity{
         ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : Handles.data_end(blocks);
+        return blocks == 0 ? 0 : EntityIds.data_end(blocks);
     }
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
@@ -732,8 +732,8 @@ struct EntityCellDataColumnsSingleLayout {
             "Single-allocation leaf min_cell_xs requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::native_soa::supported_leaf<RegistryEntityHandle>,
-            "Single-allocation leaf handles requires a non-cv, trivially "
+            ml::native_soa::supported_leaf<EntityUniqueId>,
+            "Single-allocation leaf entity_ids requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
 
         static_assert(
@@ -763,10 +763,10 @@ struct EntityCellDataColumnsSingleLayout {
                       (max_allocation_size - MaxCellYs.block_offset) / capacity_granularity);
         static_assert(sizeof(std::int32_t) <=
                       (max_allocation_size - MaxCellZs.block_offset) / capacity_granularity);
-        static_assert(sizeof(RegistryEntityHandle) <=
-                      (max_allocation_size - Handles.block_offset) / capacity_granularity);
+        static_assert(sizeof(EntityUniqueId) <=
+                      (max_allocation_size - EntityIds.block_offset) / capacity_granularity);
         static_assert(12 <= (max_allocation_size - ml::native_soa::layout_align(
-                                                       Handles.block_end, allocation_alignment)) /
+                                                       EntityIds.block_end, allocation_alignment)) /
                                 (column_gap + allocation_alignment - 1));
         static_assert(max_capacity >= capacity_granularity);
         return true;
@@ -836,7 +836,7 @@ struct EntityCellDataStorage
         Element<std::int32_t>* max_cell_xs{};
         Element<std::int32_t>* max_cell_ys{};
         Element<std::int32_t>* max_cell_zs{};
-        Element<RegistryEntityHandle>* handles{};
+        Element<EntityUniqueId>* entity_ids{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (min_point_xs == nullptr) {
                 return {};
@@ -853,7 +853,7 @@ struct EntityCellDataStorage
                     max_cell_xs + offset,
                     max_cell_ys + offset,
                     max_cell_zs + offset,
-                    handles + offset};
+                    entity_ids + offset};
         }
     };
     template <typename Self>
@@ -917,9 +917,9 @@ struct EntityCellDataStorage
         auto const max_cell_zs_offset{ml::native_soa::layout_align(
             max_cell_ys_offset + blocks * capacity_granularity * sizeof(std::int32_t) + column_gap,
             MaxCellZs.alignment)};
-        auto const handles_offset{ml::native_soa::layout_align(
+        auto const entity_ids_offset{ml::native_soa::layout_align(
             max_cell_zs_offset + blocks * capacity_granularity * sizeof(std::int32_t) + column_gap,
-            Handles.alignment)};
+            EntityIds.alignment)};
         return {pointer_at(MinPointXs, min_point_xs_offset),
                 pointer_at(MinPointYs, min_point_ys_offset),
                 pointer_at(MinPointZs, min_point_zs_offset),
@@ -932,7 +932,7 @@ struct EntityCellDataStorage
                 pointer_at(MaxCellXs, max_cell_xs_offset),
                 pointer_at(MaxCellYs, max_cell_ys_offset),
                 pointer_at(MaxCellZs, max_cell_zs_offset),
-                pointer_at(Handles, handles_offset)};
+                pointer_at(EntityIds, entity_ids_offset)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -955,7 +955,7 @@ struct EntityCellDataStorage
         std::uninitialized_value_construct_n<std::int32_t*>(columns.max_cell_xs, count);
         std::uninitialized_value_construct_n<std::int32_t*>(columns.max_cell_ys, count);
         std::uninitialized_value_construct_n<std::int32_t*>(columns.max_cell_zs, count);
-        std::uninitialized_value_construct_n<RegistryEntityHandle*>(columns.handles, count);
+        std::uninitialized_value_construct_n<EntityUniqueId*>(columns.entity_ids, count);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -969,7 +969,7 @@ struct EntityCellDataStorage
         auto const elements_to_move{static_cast<byte_size_type>(move_count)};
         auto const min_point_xs_bytes{elements_to_move * sizeof(float)};
         auto const min_cell_xs_bytes{elements_to_move * sizeof(std::int32_t)};
-        auto const handles_bytes{elements_to_move * sizeof(RegistryEntityHandle)};
+        auto const entity_ids_bytes{elements_to_move * sizeof(EntityUniqueId)};
         std::memcpy(
             columns.min_point_xs + index, columns.min_point_xs + source, min_point_xs_bytes);
         std::memcpy(
@@ -988,7 +988,7 @@ struct EntityCellDataStorage
         std::memcpy(columns.max_cell_xs + index, columns.max_cell_xs + source, min_cell_xs_bytes);
         std::memcpy(columns.max_cell_ys + index, columns.max_cell_ys + source, min_cell_xs_bytes);
         std::memcpy(columns.max_cell_zs + index, columns.max_cell_zs + source, min_cell_xs_bytes);
-        std::memcpy(columns.handles + index, columns.handles + source, handles_bytes);
+        std::memcpy(columns.entity_ids + index, columns.entity_ids + source, entity_ids_bytes);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -1018,7 +1018,7 @@ struct EntityCellDataStorage
                aliases(source.min_cell_xs.data()) || aliases(source.min_cell_ys.data()) ||
                aliases(source.min_cell_zs.data()) || aliases(source.max_cell_xs.data()) ||
                aliases(source.max_cell_ys.data()) || aliases(source.max_cell_zs.data()) ||
-               aliases(source.handles.data());
+               aliases(source.entity_ids.data());
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {
@@ -1026,7 +1026,7 @@ struct EntityCellDataStorage
         auto const elements_to_copy{static_cast<byte_size_type>(count)};
         auto const min_point_xs_bytes{elements_to_copy * sizeof(float)};
         auto const min_cell_xs_bytes{elements_to_copy * sizeof(std::int32_t)};
-        auto const handles_bytes{elements_to_copy * sizeof(RegistryEntityHandle)};
+        auto const entity_ids_bytes{elements_to_copy * sizeof(EntityUniqueId)};
         std::memcpy(destination.min_point_xs, source.min_point_xs.data(), min_point_xs_bytes);
         std::memcpy(destination.min_point_ys, source.min_point_ys.data(), min_point_xs_bytes);
         std::memcpy(destination.min_point_zs, source.min_point_zs.data(), min_point_xs_bytes);
@@ -1039,7 +1039,7 @@ struct EntityCellDataStorage
         std::memcpy(destination.max_cell_xs, source.max_cell_xs.data(), min_cell_xs_bytes);
         std::memcpy(destination.max_cell_ys, source.max_cell_ys.data(), min_cell_xs_bytes);
         std::memcpy(destination.max_cell_zs, source.max_cell_zs.data(), min_cell_xs_bytes);
-        std::memcpy(destination.handles, source.handles.data(), handles_bytes);
+        std::memcpy(destination.entity_ids, source.entity_ids.data(), entity_ids_bytes);
     }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::native_soa::allocate(
@@ -1054,7 +1054,7 @@ struct EntityCellDataStorage
             auto const live_count{static_cast<byte_size_type>(num_)};
             auto const min_point_xs_bytes{live_count * sizeof(float)};
             auto const min_cell_xs_bytes{live_count * sizeof(std::int32_t)};
-            auto const handles_bytes{live_count * sizeof(RegistryEntityHandle)};
+            auto const entity_ids_bytes{live_count * sizeof(EntityUniqueId)};
             std::memcpy(destination.min_point_xs, source.min_point_xs, min_point_xs_bytes);
             std::memcpy(destination.min_point_ys, source.min_point_ys, min_point_xs_bytes);
             std::memcpy(destination.min_point_zs, source.min_point_zs, min_point_xs_bytes);
@@ -1067,7 +1067,7 @@ struct EntityCellDataStorage
             std::memcpy(destination.max_cell_xs, source.max_cell_xs, min_cell_xs_bytes);
             std::memcpy(destination.max_cell_ys, source.max_cell_ys, min_cell_xs_bytes);
             std::memcpy(destination.max_cell_zs, source.max_cell_zs, min_cell_xs_bytes);
-            std::memcpy(destination.handles, source.handles, handles_bytes);
+            std::memcpy(destination.entity_ids, source.entity_ids, entity_ids_bytes);
         }
         ml::native_soa::free(data_, allocation_alignment);
         data_ = new_data;
@@ -1146,9 +1146,9 @@ struct EntityCellDataColumnsSingleConstView : ml::native_soa::CompactViewState<t
                     EntityCellDataColumnsSingleLayout::MaxCellZs.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto handles() const -> std::span<RegistryEntityHandle const> {
-        return {column_data<RegistryEntityHandle>(
-                    EntityCellDataColumnsSingleLayout::Handles.offset(capacity_blocks())),
+    auto entity_ids() const -> std::span<EntityUniqueId const> {
+        return {column_data<EntityUniqueId>(
+                    EntityCellDataColumnsSingleLayout::EntityIds.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto columns() const -> EntityCellDataColumnsConstView {
@@ -1194,8 +1194,8 @@ struct EntityCellDataColumnsSingleConstView : ml::native_soa::CompactViewState<t
             {column_data_unchecked<std::int32_t>(
                  EntityCellDataColumnsSingleLayout::MaxCellZs.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
-                 EntityCellDataColumnsSingleLayout::Handles.offset(blocks)),
+            {column_data_unchecked<EntityUniqueId>(
+                 EntityCellDataColumnsSingleLayout::EntityIds.offset(blocks)),
              static_cast<std::size_t>(count_)}};
     }
     template <typename Func>
@@ -1275,9 +1275,9 @@ struct EntityCellDataColumnsSingleView : ml::native_soa::CompactViewState<false>
                     EntityCellDataColumnsSingleLayout::MaxCellZs.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto handles() const -> std::span<RegistryEntityHandle> {
-        return {column_data<RegistryEntityHandle>(
-                    EntityCellDataColumnsSingleLayout::Handles.offset(capacity_blocks())),
+    auto entity_ids() const -> std::span<EntityUniqueId> {
+        return {column_data<EntityUniqueId>(
+                    EntityCellDataColumnsSingleLayout::EntityIds.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto columns() const -> EntityCellDataColumnsView {
@@ -1323,8 +1323,8 @@ struct EntityCellDataColumnsSingleView : ml::native_soa::CompactViewState<false>
             {column_data_unchecked<std::int32_t>(
                  EntityCellDataColumnsSingleLayout::MaxCellZs.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
-                 EntityCellDataColumnsSingleLayout::Handles.offset(blocks)),
+            {column_data_unchecked<EntityUniqueId>(
+                 EntityCellDataColumnsSingleLayout::EntityIds.offset(blocks)),
              static_cast<std::size_t>(count_)}};
     }
     template <typename Func>

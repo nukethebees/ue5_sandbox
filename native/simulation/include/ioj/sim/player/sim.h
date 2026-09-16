@@ -13,7 +13,6 @@
 
 #include <ioj/sim/sim_config.h>
 
-#include <ioj/sim/entity_handle.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/player/control_mode.h>
 #include <ioj/sim/player/fire_rate.h>
@@ -21,7 +20,6 @@
 #include <ioj/sim/player/laser_firing_state.h>
 #include <ioj/sim/player/ship_laser_mode.h>
 #include <ioj/sim/player/space_ship_common.h>
-#include <ioj/sim/registry_entity_data.h>
 #include <ioj/sim/ship_flight_model.h>
 #include <ioj/sim/sim_clock.h>
 
@@ -29,7 +27,8 @@ namespace ioj::sim {
 struct LevelSim;
 struct EntityDeathInfo;
 struct PlayerSimConfig;
-struct EntityRegistry;
+class EntityLedger;
+class CombatEvents;
 struct SpatialQueryManager;
 struct PlayerSimTestAccess;
 }
@@ -78,13 +77,12 @@ struct MovementState {
 };
 
 struct Sim {
-    using RegistryEntityData = sim::RegistryEntityData;
-
     /* **************************************** */
     // Construction and configuration
     /* **************************************** */
     Sim(SimClock const& clock,
-        EntityRegistry& entity_registry,
+        EntityLedger& ledger,
+        CombatEvents const& combat_events,
         SpatialQueryManager const& spatial_query_manager,
         lasers::Sim& lasers);
     Sim(Sim const&) = delete;
@@ -104,7 +102,7 @@ struct Sim {
     auto get_movement_state() const noexcept -> MovementState const& { return movement_state_; }
     void configure(PlayerSpawnData const& spawn) noexcept;
     void set_config(PlayerSimConfig const& new_config) noexcept;
-    void set_team(Team new_team) noexcept { team = new_team; }
+    void set_team(Team new_team) noexcept;
     void set_speed_sampling_enabled(bool enabled) noexcept { speed_sampling_enabled = enabled; }
 
     /* **************************************** */
@@ -156,7 +154,6 @@ struct Sim {
     // Sim state
     /* **************************************** */
     EntityUniqueId unique_entity_id;
-    RegistryEntityHandle registry_handle{};
     Team team{Team::White};
 
     Transform3d left_socket{Transform3d{}};
@@ -175,7 +172,7 @@ struct Sim {
     float laser_shot_cooldown{0.f};
     std::int32_t lasers_fired_this_burst{0};
     std::int32_t lasers_per_burst{3};
-    RegistryEntityHandle lock_on_target{};
+    EntityUniqueId lock_on_target{};
     LaserFiringState laser_firing_mode{LaserFiringState::idle};
     ShipFireRate laser_fire_rate{ShipFireRate::Burst3};
 
@@ -200,14 +197,11 @@ struct Sim {
     void apply_movement();
     void generate_fire_commands();
     void resolve_damage_events();
-    void update_entity_registry();
 
     /* **************************************** */
-    // Registry integration
+    // Identity and accounting
     /* **************************************** */
-    void register_with_entity_registry();
-    auto get_entity_update_data() const -> SingleAllocationRegistryEntityData;
-    void queue_entity_update(EntityDeathInfo const& death_info);
+    void register_entity();
 
     /* **************************************** */
     // Movement
@@ -224,17 +218,19 @@ struct Sim {
     /* **************************************** */
     // Weapons
     /* **************************************** */
-    void set_lock_on_target(RegistryEntityHandle target) noexcept;
+    void set_lock_on_target(EntityUniqueId target) noexcept;
     void set_laser_mode(LaserFiringState mode) noexcept;
     void update_laser_firing();
     void fire_laser();
+    void materialize_fire_command();
+    bool fire_requested_{};
     void fire_lasers_from(std::span<Transform3d const> fire_points);
 
     /* **************************************** */
     // Health
     /* **************************************** */
-    void set_health(Health new_health, RegistryEntityHandle killer = {});
-    void die(RegistryEntityHandle killer);
+    void set_health(Health new_health, EntityUniqueId killer = {});
+    void die(EntityUniqueId killer);
 
     /* **************************************** */
     // Diagnostics
@@ -249,7 +245,8 @@ struct Sim {
     friend struct sim::PlayerSimTestAccess;
 
     PlayerSimConfig config{};
-    EntityRegistry& entity_registry;
+    EntityLedger& ledger_;
+    CombatEvents const& combat_events_;
     SpatialQueryManager const& spatial_query_manager;
     lasers::Sim& lasers;
     SimClock const& simulation_clock;

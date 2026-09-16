@@ -17,7 +17,7 @@ void run_worldless_fighter_los_failure(tests::SimulationFixture const& config) {
     harness.finish_initialisation();
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     auto const& fighters{harness.get_simulation().get_fighters()};
-    auto const enemy{capitals.get_handle(1)};
+    auto const enemy{capitals.get_id(1)};
     auto const initial_enemy_health{capitals.get_health(enemy)};
     std::vector<std::vector<Team>> fighter_team_samples{};
     harness.on_end_tick = [&](LevelSim&) {

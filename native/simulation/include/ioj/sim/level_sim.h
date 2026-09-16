@@ -7,10 +7,12 @@
 #include <string>
 #include <vector>
 
+#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/capital_ships/phase_interface.h>
 #include <ioj/sim/capital_ships/sim.h>
+#include <ioj/sim/combat_events.h>
 #include <ioj/sim/entities/team_list.h>
-#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/fighters/phase_interface.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/lasers/phase_interface.h>
@@ -138,7 +140,9 @@ struct LevelSim {
     auto get_fighters() const -> fighters::Sim const& { return fighters_simulation_; }
     auto get_turrets() const -> turrets::Sim const& { return turrets_simulation_; }
     auto get_spinners() const -> spinners::Sim const& { return spinners_simulation_; }
-    auto get_entity_registry() const -> EntityRegistry const& { return entity_registry_; }
+    auto get_entity_ledger() const -> EntityLedger const& { return entity_ledger_; }
+    auto get_agent_indexes() const -> AgentIndexes const& { return agent_indexes_; }
+    auto get_agent_accessor() const -> AgentAccessor const& { return agent_accessor_; }
     auto get_mission_manager() const -> MissionManager const& { return mission_manager_; }
     auto get_spatial_query_manager() const -> SpatialQueryManager const& { return query_manager_; }
     auto get_level_telemetry_manager() const -> LevelTelemetryManager const& {
@@ -158,7 +162,7 @@ struct LevelSim {
     void initialise_spatial_queries(LevelSimInitData& data);
     void begin_subsystems();
     void initialise_events(CompiledLevelEvents events);
-    void validate_entity_handles() const;
+    void rebuild_agent_indexes();
 
     /* **************************************** */
     // Telemetry
@@ -172,10 +176,13 @@ struct LevelSim {
     GameMemory* game_memory_{};
 
     ml::FrameMemoryResource frame_memory_;
-    EntityRegistry entity_registry_;
+    EntityLedger entity_ledger_;
+    CombatEvents combat_events_{entity_ledger_};
+    AgentIndexes agent_indexes_{clock_};
+    AgentAccessor agent_accessor_{agent_indexes_};
     SpatialQueryManager query_manager_;
     OverlapHandler overlap_handler_;
-    std::vector<RegistryEntityHandle> collision_dirty_entities_;
+    std::vector<EntityUniqueId> collision_dirty_entities_;
 
     lasers::Sim lasers_simulation_;
     lasers::PhaseInterface lasers_phase_;

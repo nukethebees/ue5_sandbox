@@ -31,11 +31,4 @@ struct EntityOwnerId {
     value_type id{NULL_ID};
 };
 
-enum class RegistryHandleState : std::uint8_t {
-    Active,
-    Stale,
-    Invalid,
-    Null,
-};
-
 }

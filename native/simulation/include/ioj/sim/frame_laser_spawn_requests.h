@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ioj/sim/entity_handle.h"
+#include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/frame_rotators3f.h"
 #include "ioj/sim/frame_vectors3f.h"
 #include "ioj/sim/laser_soa.h"
@@ -28,7 +28,7 @@ struct FrameSpawnRequests {
              std::int32_t damage,
              float speed,
              float max_distance,
-             RegistryEntityHandle instigator_handle,
+             EntityUniqueId instigator_id,
              LaserSource source);
     void set_damages(std::int32_t value);
     void set_speeds(float value);
@@ -42,7 +42,7 @@ struct FrameSpawnRequests {
     ml::FrameArray<std::int32_t> damages;
     ml::FrameArray<float> speeds;
     ml::FrameArray<float> max_distances;
-    ml::FrameArray<RegistryEntityHandle> instigator_handles;
+    ml::FrameArray<EntityUniqueId> instigator_ids;
     ml::FrameArray<LaserSource> sources;
 };
 } // namespace ioj::sim::lasers

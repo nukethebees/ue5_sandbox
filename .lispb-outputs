@@ -35,7 +35,6 @@ Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/settings/GameSettings.genera
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/StaticCollisionSources.h
 Plugins/SpaceGame/Source/SpaceGamePresentation/Private/ui/style/GameUiStyleTypes.cpp
 Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/ui/style/GameUiStyleTypes.h
-Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/CollisionDamageEventsSoA.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/TestEntityTypeEnum.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/TestTeam.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/levels/LevelDefinitionSoA.cpp
@@ -43,7 +42,6 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Private/missions/TestMissionFailRea
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/missions/TestMissionMode.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/missions/TestMissionState.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/telemetry/LevelTelemetryRunEndReason.cpp
-Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/CollisionDamageEventsSoA.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/TestEntityType.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/TestTeam.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/levels/LevelDefinitionSoA.h
@@ -64,7 +62,6 @@ native/simulation/include/ioj/sim/entity_type.h
 native/simulation/include/ioj/sim/entity_unique_id.h
 native/simulation/include/ioj/sim/fighter_entity_data.h
 native/simulation/include/ioj/sim/fighter_order_queue.h
-native/simulation/include/ioj/sim/fighter_reassignment.h
 native/simulation/include/ioj/sim/fighter_spawn_queue.h
 native/simulation/include/ioj/sim/fighters/command_interface.h
 native/simulation/include/ioj/sim/fighters/phase_interface.h
@@ -74,8 +71,6 @@ native/simulation/include/ioj/sim/lasers/phase_interface.h
 native/simulation/include/ioj/sim/levels/level_runtime_events.h
 native/simulation/include/ioj/sim/player/command_interface.h
 native/simulation/include/ioj/sim/player/phase_interface.h
-native/simulation/include/ioj/sim/registry_entity_data.h
-native/simulation/include/ioj/sim/registry_entity_handles.h
 native/simulation/include/ioj/sim/rotators3f.h
 native/simulation/include/ioj/sim/spinner_entity_data.h
 native/simulation/include/ioj/sim/spinners/phase_interface.h

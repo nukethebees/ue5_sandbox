@@ -18,7 +18,7 @@ namespace ioj::sim {
 struct LevelSim;
 class LevelSpawnManager;
 struct SpinnerSimConfig;
-struct EntityRegistry;
+class EntityLedger;
 }
 
 namespace ioj::sim::spinners {
@@ -29,7 +29,7 @@ struct Sim {
     using EntityStorage = SingleAllocationSpinnerEntityData;
 
     Sim(SimClock const& clock,
-        EntityRegistry& entity_registry,
+        EntityLedger& ledger,
         lasers::Sim& laser_simulation,
         std::pmr::memory_resource& frame_memory_resource) noexcept;
     Sim(Sim const&) = delete;
@@ -47,7 +47,6 @@ struct Sim {
     // Accessors
     /* **************************************** */
     auto get_num_instances() const noexcept -> std::int32_t;
-    auto get_entity_registry() const -> EntityRegistry const& { return entity_registry; }
     auto get_laser_simulation() const -> lasers::Sim const& { return laser_simulation; }
 
     /* **************************************** */
@@ -63,6 +62,8 @@ struct Sim {
     void think(float dt);
     void apply_movement();
     void generate_fire_commands();
+    void materialize_fire_commands();
+    std::vector<std::int32_t> pending_fire_indices_;
     void finish_action();
 
     /* **************************************** */
@@ -71,7 +72,7 @@ struct Sim {
     auto spawn_instances(Vectors3fConstView new_locations,
                          std::span<float const> new_yaws,
                          std::span<std::int32_t const> new_fire_point_indices)
-        -> std::span<RegistryEntityHandle const>;
+        -> std::span<EntityUniqueId const>;
 
     /* **************************************** */
     // Movement
@@ -93,7 +94,7 @@ struct Sim {
     std::int16_t cooldown_restart_ticks_{};
     std::int16_t cooldown_cleaner_{};
     SimClock const& simulation_clock;
-    EntityRegistry& entity_registry;
+    EntityLedger& ledger_;
     lasers::Sim& laser_simulation;
     std::pmr::memory_resource& frame_memory_resource;
     EntityStorage entities{};

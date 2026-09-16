@@ -2,7 +2,6 @@
 #include "../support/simulation_test_support.h"
 
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/entity_registry.h>
 
 namespace ioj::sim {
 void run_worldless_capital_command_fighters(tests::SimulationFixture const& config) {
@@ -15,35 +14,54 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
     harness.finish_initialisation();
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     auto const& fighters{harness.get_simulation().get_fighters()};
-    auto const first_target{capitals.get_handle(1)};
-    RegistryEntityHandle second_target;
+    auto const first_target{capitals.get_id(1)};
+    EntityUniqueId second_target;
+    SimTick final_kill_tick{};
+    harness.on_end_tick = [&](LevelSim& simulation) {
+        if (final_kill_tick != 0 &&
+            simulation.get_clock().get_completed_ticks() == final_kill_tick + 2) {
+            for (auto const task : fighters.get_tasks()) {
+                tests::expect_equal(
+                    Task::Attack, task, "Capital orders do not change effective tasks in Thinking");
+            }
+        }
+    };
     harness.timeline
         .then_after(2.0 / 60.0,
                     [&] {
                         tests::expect_equal(first_target,
-                                            capitals.get_target_handle(0),
+                                            capitals.get_target_id(0),
                                             "Capital initially retains its configured target");
                         tests::expect_greater(
-                            static_cast<std::int32_t>(capitals.get_fighter_handles(0).size()),
+                            static_cast<std::int32_t>(capitals.get_fighter_ids(0).size()),
                             std::int32_t{0},
                             "Main capital spawned fighters");
                         harness.queue_kills(std::array{first_target});
                     })
         .then_after(
-            2.0 / 60.0,
+            3.0 / 60.0,
             [&] {
-                second_target = capitals.get_target_handle(0);
+                second_target = capitals.get_target_id(0);
                 tests::expect_true(second_target.is_valid() && second_target != first_target,
                                    "Capital retargets after its first target dies");
-                for (auto const fighter_handle : capitals.get_fighter_handles(0)) {
+                for (auto const fighter_id : capitals.get_fighter_ids(0)) {
+                    auto const index{
+                        harness.get_simulation().get_agent_accessor().indexes().find(fighter_id)};
                     tests::expect_equal(second_target,
-                                        fighters.get_target_handle(fighter_handle),
+                                        fighters.get_target_ids()[index],
                                         "Fighter follows the replacement capital target");
                 }
-                auto const enemies{harness.get_registry().get_handles_not_in_team(Team::Green)};
+                std::vector<EntityUniqueId> enemies;
+                auto const entities{capitals.get_read_view().entities};
+                for (std::int32_t index{}; index < entities.num(); ++index) {
+                    if (entities.teams[index] != Team::Green) {
+                        enemies.push_back(entities.entity_ids[index]);
+                    }
+                }
                 harness.queue_kills(enemies);
+                final_kill_tick = harness.get_simulation().get_clock().get_completed_ticks();
             })
-        .then_after(2.0 / 60.0,
+        .then_after(3.0 / 60.0,
                     [&] {
                         for (auto const task : fighters.get_tasks()) {
                             tests::expect_equal(

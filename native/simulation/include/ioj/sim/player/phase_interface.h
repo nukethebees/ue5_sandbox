@@ -24,8 +24,6 @@ class PhaseInterface {
 
     void resolve_damage_events();
 
-    void update_entity_registry();
-
     friend struct sim::LevelSim;
     Sim& simulation;
 };

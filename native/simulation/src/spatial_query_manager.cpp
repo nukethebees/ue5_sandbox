@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <cmath>
 #include <format>
 #include <ioj/sim/entity_world_bounds.h>
 #include <ioj/sim/profiling.h>
@@ -9,8 +10,7 @@
 #include <sandbox/core/diagnostics.h>
 #include <thread>
 
-#include <ioj/sim/entity_registry.h>
-#include <ioj/sim/entity_registry_view.h>
+#include <ioj/sim/agent_accessor.h>
 
 #include <cstddef>
 #include <utility>
@@ -28,9 +28,9 @@ struct TraceRequest {
     ioj::sim::Vectors3fConstView end_locations{};
     ioj::sim::Vector3f scalar_start{};
     ioj::sim::Vector3f scalar_end{};
-    std::span<ioj::sim::RegistryEntityHandle const> targets{};
-    std::span<ioj::sim::RegistryEntityHandle const> ignored_entities{};
-    std::span<ioj::sim::RegistryEntityHandle> out_entity_handles{};
+    std::span<ioj::sim::EntityUniqueId const> targets{};
+    std::span<ioj::sim::EntityUniqueId const> ignored_entities{};
+    std::span<ioj::sim::EntityUniqueId> out_entity_ids{};
     std::span<std::uint8_t> out_flags{};
 };
 
@@ -47,8 +47,8 @@ auto trace_impl(ioj::sim::SpatialQueryManager const& manager, TraceRequest const
 
     if constexpr (Mode == QueryMode::HitEntity) {
         assert(count == request.start_locations.num());
-        assert(static_cast<std::size_t>(count) == request.out_entity_handles.size());
-        std::ranges::fill(request.out_entity_handles, ioj::sim::RegistryEntityHandle{});
+        assert(static_cast<std::size_t>(count) == request.out_entity_ids.size());
+        std::ranges::fill(request.out_entity_ids, ioj::sim::EntityUniqueId{});
     } else if constexpr (Mode == QueryMode::ClearLine) {
         assert(count == request.start_locations.num());
         assert(static_cast<std::size_t>(count) == request.out_flags.size());
@@ -112,7 +112,7 @@ auto trace_impl(ioj::sim::SpatialQueryManager const& manager, TraceRequest const
     } else {
         if constexpr (Mode == QueryMode::HitEntity) {
             for (std::int32_t i{}; i < count; ++i) {
-                request.out_entity_handles[i] = hits.entities[i];
+                request.out_entity_ids[i] = hits.entities[i];
             }
         } else if constexpr (Mode == QueryMode::ClearLine) {
             for (std::int32_t i{}; i < count; ++i) {
@@ -162,6 +162,107 @@ auto ThreadBufferLease::get() const -> ThreadBuffers& {
 }
 
 namespace ioj::sim {
+namespace {
+template <typename IncludeEntity>
+auto collect_entities_in_range(collision::GridGeometry const geometry,
+                               collision::CollisionGridEntityStorage const& grid_entities,
+                               AgentAccessor const& agents,
+                               QueryThreadBuffers& buffers,
+                               Vector3f const origin,
+                               float const radius,
+                               std::span<EntityUniqueId> const out_entities,
+                               IncludeEntity&& include_entity) -> std::int32_t {
+    if (out_entities.empty()) {
+        return 0;
+    }
+
+    auto const absolute_radius{std::abs(radius)};
+    auto const radius_extent{ml::make_vector3f(absolute_radius, absolute_radius, absolute_radius)};
+    auto [min_coord, max_coord]{
+        collision::to_cell_coord_bounds(geometry, origin - radius_extent, origin + radius_extent)};
+    auto const max_grid_coord{collision::CellCoord{
+        geometry.dimensions.x - 1, geometry.dimensions.y - 1, geometry.dimensions.z - 1}};
+    if (max_coord.x < 0 || max_coord.y < 0 || max_coord.z < 0 || min_coord.x > max_grid_coord.x ||
+        min_coord.y > max_grid_coord.y || min_coord.z > max_grid_coord.z) {
+        return 0;
+    }
+
+    min_coord.x = std::max(min_coord.x, 0);
+    min_coord.y = std::max(min_coord.y, 0);
+    min_coord.z = std::max(min_coord.z, 0);
+    max_coord.x = std::min(max_coord.x, max_grid_coord.x);
+    max_coord.y = std::min(max_coord.y, max_grid_coord.y);
+    max_coord.z = std::min(max_coord.z, max_grid_coord.z);
+
+    auto& entity_stamps{buffers.range_query_entity_stamps};
+    auto const counts{agents.entity_counts()};
+    EntityTypeSizes offsets;
+    std::uint32_t total_count{};
+    for (std::size_t i{}; i < EntityTypeSizes::size(); ++i) {
+        auto const type{static_cast<EntityType>(i)};
+        offsets[type] = total_count;
+        total_count += counts[type];
+    }
+    buffers.ensure_entity_stamp_count(static_cast<std::int32_t>(total_count));
+    auto const query_stamp{buffers.advance_range_query_stamp()};
+    auto const radius_squared{radius * radius};
+    std::int32_t count{};
+
+    for (auto x{min_coord.x}; x <= max_coord.x; ++x) {
+        for (auto y{min_coord.y}; y <= max_coord.y; ++y) {
+            for (auto z{min_coord.z}; z <= max_coord.z; ++z) {
+                auto const cell_index{collision::to_index(geometry, {x, y, z})};
+                for (auto const id : grid_entities.entities_for_cell(cell_index)) {
+                    auto const local_index{agents.indexes().find(id)};
+                    if (local_index < 0) {
+                        continue;
+                    }
+
+                    auto const entity_index{static_cast<std::size_t>(offsets[id.entity_type()]) +
+                                            static_cast<std::size_t>(local_index)};
+                    if (entity_stamps[entity_index] == query_stamp) {
+                        continue;
+                    }
+                    entity_stamps[entity_index] = query_stamp;
+
+                    auto const state{agents.read_spatial(id)};
+                    if (!state || is_dead(state->health) || !include_entity(id, *state)) {
+                        continue;
+                    }
+
+                    auto const dx{state->location.X - origin.X};
+                    auto const dy{state->location.Y - origin.Y};
+                    auto const dz{state->location.Z - origin.Z};
+                    auto const distance_squared{dx * dx + dy * dy + dz * dz};
+                    if (distance_squared > radius_squared) {
+                        continue;
+                    }
+
+                    out_entities[static_cast<std::size_t>(count++)] = id;
+                    if (count >= static_cast<std::int32_t>(out_entities.size())) {
+                        return count;
+                    }
+                }
+            }
+        }
+    }
+
+    return count;
+}
+auto find_any_non_team_entity(AgentAccessor const& agents,
+                              Team const excluded_team,
+                              std::optional<EntityType> const type = {}) -> EntityUniqueId {
+    EntityUniqueId result;
+    agents.for_each_alive_spatial(
+        [&](EntityUniqueId const id, Vector3f, Rotator3f, Team const team) {
+            if (team != excluded_team && (!type || id.entity_type() == *type) && id < result) {
+                result = id;
+            }
+        });
+    return result;
+}
+} // namespace
+
 /* **************************************** */
 // Thread buffer management
 /* **************************************** */
@@ -197,9 +298,9 @@ void SpatialQueryManager::release_thread_buffer(std::int32_t const index) const 
 /* **************************************** */
 // Construction and setup
 /* **************************************** */
-SpatialQueryManager::SpatialQueryManager(EntityRegistry const& in_entity_registry)
-    : entity_registry{in_entity_registry}
-    , collision{in_entity_registry} {}
+SpatialQueryManager::SpatialQueryManager(AgentAccessor const& agents)
+    : agents_{agents}
+    , collision{agents} {}
 
 void SpatialQueryManager::initialise(collision::CellCoord const grid_dimensions,
                                      Vector3f const cell_size,
@@ -222,23 +323,23 @@ void SpatialQueryManager::initialise(collision::CellCoord const grid_dimensions,
 /* **************************************** */
 // Batched line queries
 /* **************************************** */
-void SpatialQueryManager::trace_line_of_sight(
-    Vectors3fConstView const start_locations,
-    Vectors3fConstView const end_locations,
-    std::span<RegistryEntityHandle> const out_entity_handles) const {
+void
+    SpatialQueryManager::trace_line_of_sight(Vectors3fConstView const start_locations,
+                                             Vectors3fConstView const end_locations,
+                                             std::span<EntityUniqueId> const out_entity_ids) const {
     SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::trace_line_of_sight");
 
     trace_impl<QueryMode::HitEntity>(*this,
                                      {.start_locations = start_locations,
                                       .end_locations = end_locations,
-                                      .out_entity_handles = out_entity_handles});
+                                      .out_entity_ids = out_entity_ids});
 }
 
-void SpatialQueryManager::has_line_of_sight_to_targets(
-    Vector3f const& start_location,
-    Vectors3fConstView const end_locations,
-    std::span<RegistryEntityHandle const> const targets,
-    std::span<std::uint8_t> const has_los) const {
+void
+    SpatialQueryManager::has_line_of_sight_to_targets(Vector3f const& start_location,
+                                                      Vectors3fConstView const end_locations,
+                                                      std::span<EntityUniqueId const> const targets,
+                                                      std::span<std::uint8_t> const has_los) const {
     SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::has_line_of_sight_to_targets");
 
     trace_impl<QueryMode::TargetLineOfSight>(*this,
@@ -252,7 +353,7 @@ void SpatialQueryManager::have_clear_lines(
     Vectors3fConstView const start_locations,
     Vectors3fConstView const end_locations,
     std::span<std::uint8_t> const clear_lines,
-    std::span<RegistryEntityHandle const> const ignored_entities) const {
+    std::span<EntityUniqueId const> const ignored_entities) const {
     trace_impl<QueryMode::ClearLine>(*this,
                                      {.start_locations = start_locations,
                                       .end_locations = end_locations,
@@ -264,7 +365,7 @@ void SpatialQueryManager::trace_closest_lines(
     Vectors3fConstView const start_locations,
     Vectors3fConstView const end_locations,
     TraceHitsView const out_hits,
-    std::span<RegistryEntityHandle const> const ignored_entities) const {
+    std::span<EntityUniqueId const> const ignored_entities) const {
     SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::trace_closest_lines");
 
     [[maybe_unused]] auto const count{start_locations.num()};
@@ -285,7 +386,7 @@ void SpatialQueryManager::sweep_closest_aabbs(
     Vectors3fConstView const end_locations,
     Vector3f const moving_half_extent,
     TraceHitsView const out_hits,
-    std::span<RegistryEntityHandle const> const ignored_entities,
+    std::span<EntityUniqueId const> const ignored_entities,
     collision::TraceEntityFilter const entity_filter) const {
     SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::sweep_closest_aabbs");
 
@@ -306,15 +407,15 @@ void SpatialQueryManager::sweep_closest_aabbs(
 /* **************************************** */
 auto SpatialQueryManager::has_clear_line(Vector3f const start_location,
                                          Vector3f const end_location,
-                                         RegistryEntityHandle const ignored_entity) const -> bool {
+                                         EntityUniqueId const ignored_entity) const -> bool {
     return !trace_closest(start_location, end_location, ignored_entity).hit;
 }
 
 auto SpatialQueryManager::trace_closest(Vector3f const start_location,
                                         Vector3f const end_location,
-                                        RegistryEntityHandle const ignored_entity) const
+                                        EntityUniqueId const ignored_entity) const
     -> LineTraceResult {
-    std::array<RegistryEntityHandle, 1> ignored_entities{ignored_entity};
+    std::array<EntityUniqueId, 1> ignored_entities{ignored_entity};
     return trace_impl<QueryMode::ClosestHit>(*this,
                                              {.scalar_start = start_location,
                                               .scalar_end = end_location,
@@ -325,7 +426,7 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
     Vector3f const& origin,
     Team const team,
     float const radius,
-    std::span<RegistryEntityHandle> const out_entities) const -> std::int32_t {
+    std::span<EntityUniqueId> const out_entities) const -> std::int32_t {
     SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::collect_non_team_entities_in_range");
 
     if (out_entities.empty()) {
@@ -338,15 +439,15 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
     {
         SANDBOX_PROFILE_SCOPE(
             "Sandbox::SpatialQueryManager::collect_non_team_entities_in_range::loop");
-        return sim::collect_non_team_entities_in_range(
+        return collect_entities_in_range(
             grid.get_native_geometry(),
             grid.get_native_entity_storage(),
-            make_native_query_view(entity_registry),
+            agents_,
             buffer_lease.get(),
             origin,
             radius,
-            team,
-            {out_entities.data(), static_cast<std::size_t>(out_entities.size())});
+            out_entities,
+            [team](EntityUniqueId, AgentSpatialState const& state) { return state.team != team; });
     }
 }
 
@@ -354,8 +455,8 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
     Vector3f const& origin,
     EntityType const entity_type,
     float const radius,
-    RegistryEntityHandle const ignored_entity,
-    std::span<RegistryEntityHandle> const out_entities) const -> std::int32_t {
+    EntityUniqueId const ignored_entity,
+    std::span<EntityUniqueId> const out_entities) const -> std::int32_t {
     SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::collect_entities_of_type_in_range");
 
     if (out_entities.empty()) {
@@ -365,26 +466,27 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
     auto const& grid{collision.get_uniform_grid()};
     validate_grid_for_range_query(grid, origin, radius);
     query_manager::ThreadBufferLease const buffer_lease{*this};
-    return sim::collect_entities_of_type_in_range(
+    return collect_entities_in_range(
         grid.get_native_geometry(),
         grid.get_native_entity_storage(),
-        make_native_query_view(entity_registry),
+        agents_,
         buffer_lease.get(),
         origin,
         radius,
-        entity_type,
-        ignored_entity,
-        {out_entities.data(), static_cast<std::size_t>(out_entities.size())});
+        out_entities,
+        [entity_type, ignored_entity](EntityUniqueId const id, AgentSpatialState const&) {
+            return id != ignored_entity && id.entity_type() == entity_type;
+        });
 }
 
-auto SpatialQueryManager::get_any_non_team_entity(Team const team) const -> RegistryEntityHandle {
-    return find_any_non_team_entity(make_native_query_view(entity_registry), team);
+auto SpatialQueryManager::get_any_non_team_entity(Team const team) const -> EntityUniqueId {
+    return find_any_non_team_entity(agents_, team);
 }
 
 auto SpatialQueryManager::get_any_non_team_entity(Team const team,
                                                   EntityType const entity_type) const
-    -> RegistryEntityHandle {
-    return find_any_non_team_entity(make_native_query_view(entity_registry), team, entity_type);
+    -> EntityUniqueId {
+    return find_any_non_team_entity(agents_, team, entity_type);
 }
 
 void SpatialQueryManager::are_spheres_in_bounds(Vectors3fConstView const centres,
@@ -404,30 +506,25 @@ auto SpatialQueryManager::get_entity_type_radii() const noexcept -> std::span<fl
     return entity_radii_;
 }
 
-void SpatialQueryManager::copy_entity_radii(std::span<RegistryEntityHandle const> const handles,
+void SpatialQueryManager::copy_entity_radii(std::span<EntityUniqueId const> const ids,
                                             std::span<float> const out_radii) const {
-    assert(handles.size() == out_radii.size());
+    assert(ids.size() == out_radii.size());
 
-    auto const count{handles.size()};
+    auto const count{ids.size()};
     for (std::size_t index{}; index < count; ++index) {
-        auto const handle{handles[index]};
-        if (handle.is_null()) {
-            out_radii[index] = 0.0f;
-            continue;
-        }
-
-        assert(entity_registry.is_valid_alive(handle));
-        out_radii[index] = get_entity_type_radius(entity_registry.get_entity_type(handle));
+        auto const id{ids[index]};
+        out_radii[index] = agents_.is_alive(id) ? get_entity_type_radius(id.entity_type()) : 0.f;
     }
 }
 
 /* **************************************** */
 // Collision state and telemetry
 /* **************************************** */
-auto SpatialQueryManager::update(SimTick const tick) -> collision::DetectedOverlapsView {
+auto SpatialQueryManager::update(std::span<EntityUniqueId const> const dirty_entities,
+                                 SimTick const tick) -> collision::DetectedOverlapsView {
     SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::update");
 
-    return collision.update(entity_registry.get_moved_entities_this_tick(), tick);
+    return collision.update(dirty_entities, tick);
 }
 
 }

@@ -5,8 +5,8 @@
 #include <span>
 #include <vector>
 
-#include <ioj/sim/entity_handle.h>
 #include <ioj/sim/entity_types.h>
+#include <ioj/sim/entity_unique_id.h>
 #include <ioj/sim/levels/level_mission_initialisation_data.h>
 #include <ioj/sim/missions/mission_fail_reason.h>
 #include <ioj/sim/missions/mission_mode.h>
@@ -17,7 +17,8 @@
 #include <string>
 
 namespace ioj::sim {
-struct EntityRegistry;
+class EntityLedger;
+class AgentAccessor;
 struct LevelMissionEventGroupsConstView;
 
 struct LevelMissionResult {
@@ -38,13 +39,16 @@ struct MissionManager {
     /* **************************************** */
     // Construction and lifecycle
     /* **************************************** */
-    MissionManager(SimClock const& clock, EntityRegistry& entity_registry);
+    MissionManager(SimClock const& clock,
+                   EntityLedger const& entity_ledger,
+                   AgentAccessor const& agents);
     MissionManager(MissionManager const&) = delete;
     MissionManager(MissionManager&&) = delete;
     auto operator=(MissionManager const&) -> MissionManager& = delete;
     auto operator=(MissionManager&&) -> MissionManager& = delete;
 
     void begin_play();
+    void prepare_objectives();
     void reset_runtime_state();
     void mission_tick();
     auto complete_mission() -> bool;
@@ -53,9 +57,9 @@ struct MissionManager {
     // Level mission setup
     /* **************************************** */
     void initialise_level_mission(LevelMissionInitialisationData const& data,
-                                  std::span<RegistryEntityHandle const> level_entity_handles);
+                                  std::span<EntityUniqueId const> level_entity_ids);
     void bind_level_event_data(std::span<std::int32_t const> values,
-                               std::span<RegistryEntityHandle const> level_entity_handles);
+                               std::span<EntityUniqueId const> level_entity_ids);
     void consume_level_events(LevelMissionEventGroupsConstView groups);
 
     /* **************************************** */
@@ -66,9 +70,9 @@ struct MissionManager {
     void set_kill_target(std::int32_t new_kill_target);
     void set_save_mission_results(bool should_save) noexcept;
     void set_level_identity(std::string level_id, std::string display_name);
-    void add_hero_entity(RegistryEntityHandle handle);
-    void add_entity_that_must_survive(RegistryEntityHandle handle);
-    void add_entity_required_to_kill(RegistryEntityHandle handle);
+    void add_hero_entity(EntityUniqueId id);
+    void add_entity_that_must_survive(EntityUniqueId id);
+    void add_entity_required_to_kill(EntityUniqueId id);
     void increase_kill_target(std::int32_t increase);
     void set_pending_objective_events(std::int32_t count);
     void objective_event_dispatched();
@@ -102,12 +106,8 @@ struct MissionManager {
         return level_display_name;
     }
     auto should_save_mission_results() const noexcept -> bool { return save_mission_results; }
-    auto get_hero_entity_handles() const noexcept -> std::span<RegistryEntityHandle const> {
-        return hero_entity_handles;
-    }
-    auto get_entity_handles_that_must_survive() const noexcept
-        -> std::span<RegistryEntityHandle const> {
-        return entity_handles_that_must_survive;
+    auto get_hero_entity_ids() const noexcept -> std::span<EntityUniqueId const> {
+        return hero_entity_ids;
     }
     auto get_entity_health_that_must_survive() const noexcept -> std::span<ShipHealth const> {
         return entity_health_that_must_survive;
@@ -117,10 +117,6 @@ struct MissionManager {
     }
     auto get_entity_types_that_must_survive() const noexcept -> std::span<EntityType const> {
         return entity_types_that_must_survive;
-    }
-    auto get_entity_handles_required_to_kill() const noexcept
-        -> std::span<RegistryEntityHandle const> {
-        return entity_handles_required_to_kill;
     }
     auto get_entity_health_required_to_kill() const noexcept -> std::span<ShipHealth const> {
         return entity_health_required_to_kill;
@@ -138,9 +134,6 @@ struct MissionManager {
     auto has_pending_objective_events() const noexcept -> bool {
         return pending_objective_events_ > 0;
     }
-
-    auto get_entity_registry() const -> EntityRegistry const& { return entity_registry; }
-    auto get_entity_registry() -> EntityRegistry& { return entity_registry; }
   private:
     /* **************************************** */
     // State transitions and mission modes
@@ -156,10 +149,8 @@ struct MissionManager {
     /* **************************************** */
     // Objective health tracking
     /* **************************************** */
-    void initialise_entity_health_that_must_survive();
     void update_entity_health_that_must_survive();
     auto entities_that_must_survive_are_alive() const -> bool;
-    void initialise_entity_health_required_to_kill();
     void update_entity_health_required_to_kill();
     auto entities_required_to_kill_are_dead() const -> bool;
 
@@ -175,15 +166,13 @@ struct MissionManager {
     // State
     /* **************************************** */
     std::optional<LevelMissionResult> pending_result_;
-    EntityRegistry& entity_registry;
+    EntityLedger const& entity_ledger;
+    AgentAccessor const& agents_;
 
-    std::vector<RegistryEntityHandle> hero_entity_handles{};
     std::vector<EntityUniqueId> hero_entity_ids{};
-    std::vector<RegistryEntityHandle> entity_handles_that_must_survive{};
     std::vector<EntityUniqueId> entity_ids_that_must_survive{};
     std::vector<EntityType> entity_types_that_must_survive{};
     std::vector<ShipHealth> entity_health_that_must_survive{};
-    std::vector<RegistryEntityHandle> entity_handles_required_to_kill{};
     std::vector<EntityUniqueId> entity_ids_required_to_kill{};
     std::vector<EntityType> entity_types_required_to_kill{};
     std::vector<ShipHealth> entity_health_required_to_kill{};
@@ -209,7 +198,7 @@ struct MissionManager {
 
     std::int32_t pending_objective_events_{};
     std::span<std::int32_t const> level_event_values_{};
-    std::span<RegistryEntityHandle const> level_entity_handles_{};
+    std::span<EntityUniqueId const> level_entity_ids_{};
     std::int32_t kill_target_increase_before_level_initialisation_{};
     bool level_initialisation_applied_{};
 

@@ -1,7 +1,6 @@
 #pragma once
+#include <ioj/sim/entity_unique_id.h>
 #include <span>
-
-#include <SandboxNative/RegistryEntityHandle.h>
 
 #include <sandbox/core/test_timeline.h>
 
@@ -15,7 +14,7 @@ class ATestBatchOrchestrator;
 class ATestSpaceShip;
 
 namespace ioj::sim {
-struct EntityRegistry;
+class EntityLedger;
 }
 
 namespace ioj::sim::capital_ships {
@@ -39,11 +38,11 @@ struct TestSimulationDriver {
     auto get_capital_ships() const -> ::ioj::sim::capital_ships::Sim const&;
     auto get_fighters() const -> ::ioj::sim::fighters::Sim const&;
 
-    void queue_damage(std::span<::ioj::sim::RegistryEntityHandle const> targets,
+    void queue_damage(std::span<::ioj::sim::EntityUniqueId const> targets,
                       int32 damage,
-                      ::ioj::sim::RegistryEntityHandle instigator = {});
-    void queue_kills(std::span<::ioj::sim::RegistryEntityHandle const> targets,
-                     ::ioj::sim::RegistryEntityHandle instigator = {});
+                      ::ioj::sim::EntityUniqueId instigator = {});
+    void queue_kills(std::span<::ioj::sim::EntityUniqueId const> targets,
+                     ::ioj::sim::EntityUniqueId instigator = {});
     bool should_export_results() const;
 
     void set_time_scale(time_type scale);
@@ -58,7 +57,7 @@ struct TestSimulationDriver {
     bool time_wait_completed() const;
 
     UWorld& world;
-    auto get_registry() const -> ::ioj::sim::EntityRegistry const&;
+    auto get_ledger() const -> ::ioj::sim::EntityLedger const&;
     ATestBatchOrchestrator& orchestrator;
 
     uint64 tick_wait_end{0};

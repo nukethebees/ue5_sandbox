@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "ioj/sim/entity_handle.h"
 #include "ioj/sim/entity_types.h"
+#include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/fighter_types.h"
 #include "ioj/sim/health.h"
 #include "ioj/sim/vectors3f.h"
@@ -23,7 +23,7 @@ struct FighterEntityDataConstView {
     using View = FighterEntityDataView;
     using ConstView = FighterEntityDataConstView;
     using size_type = std::int32_t;
-    std::span<RegistryEntityHandle const> entity_handles;
+    std::span<EntityUniqueId const> entity_ids;
     std::span<std::uint32_t const> integral_biases;
     std::span<float const> float_biases;
     std::span<FighterTask const> tasks;
@@ -38,7 +38,7 @@ struct FighterEntityDataConstView {
     std::span<float const> speeds;
     std::span<Team const> teams;
     std::span<Health const> healths;
-    std::span<RegistryEntityHandle const> parent_handles;
+    std::span<EntityUniqueId const> parent_ids;
     std::span<std::int8_t const> awareness_scan_countdowns;
     std::span<std::int16_t const> navigation_update_countdowns_remaining_ticks;
     std::span<std::int16_t const> navigation_update_countdowns_periods;
@@ -49,7 +49,7 @@ struct FighterEntityDataConstView {
     std::span<std::uint8_t const> avoidance_clear_scan_counts;
     std::span<std::int16_t const> attack_reposition_countdowns;
     std::span<std::int16_t const> attack_cooldowns;
-    std::span<RegistryEntityHandle const> target_handles;
+    std::span<EntityUniqueId const> target_ids;
     Vectors3fConstView target_locations;
     Vectors3fConstView target_velocities;
     Vectors3fConstView target_directions;
@@ -57,11 +57,11 @@ struct FighterEntityDataConstView {
     std::span<float const> target_distance_sq;
     std::span<float const> target_distances;
     std::span<float const> target_radii;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_handles.size()); }
+    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
     void each_column(Fn&& fn) const {
-        fn(entity_handles);
+        fn(entity_ids);
         fn(integral_biases);
         fn(float_biases);
         fn(tasks);
@@ -90,7 +90,7 @@ struct FighterEntityDataConstView {
         fn(speeds);
         fn(teams);
         fn(healths);
-        fn(parent_handles);
+        fn(parent_ids);
         fn(awareness_scan_countdowns);
         fn(navigation_update_countdowns_remaining_ticks);
         fn(navigation_update_countdowns_periods);
@@ -103,7 +103,7 @@ struct FighterEntityDataConstView {
         fn(avoidance_clear_scan_counts);
         fn(attack_reposition_countdowns);
         fn(attack_cooldowns);
-        fn(target_handles);
+        fn(target_ids);
         fn(target_locations.xs_span());
         fn(target_locations.ys_span());
         fn(target_locations.zs_span());
@@ -128,8 +128,7 @@ struct FighterEntityDataConstView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
         return {
-            entity_handles.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
+            entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             integral_biases.subspan(static_cast<std::size_t>(offset),
                                     static_cast<std::size_t>(count)),
             float_biases.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -146,8 +145,7 @@ struct FighterEntityDataConstView {
             speeds.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             teams.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             healths.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            parent_handles.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
+            parent_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             awareness_scan_countdowns.subspan(static_cast<std::size_t>(offset),
                                               static_cast<std::size_t>(count)),
             navigation_update_countdowns_remaining_ticks.subspan(static_cast<std::size_t>(offset),
@@ -167,8 +165,7 @@ struct FighterEntityDataConstView {
                                                  static_cast<std::size_t>(count)),
             attack_cooldowns.subspan(static_cast<std::size_t>(offset),
                                      static_cast<std::size_t>(count)),
-            target_handles.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
+            target_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             target_locations.slice(offset, count),
             target_velocities.slice(offset, count),
             target_directions.slice(offset, count),
@@ -188,7 +185,7 @@ struct FighterEntityDataConstView {
     }
     auto get_const_view() const -> ConstView {
         return {
-            entity_handles,
+            entity_ids,
             integral_biases,
             float_biases,
             tasks,
@@ -203,7 +200,7 @@ struct FighterEntityDataConstView {
             speeds,
             teams,
             healths,
-            parent_handles,
+            parent_ids,
             awareness_scan_countdowns,
             navigation_update_countdowns_remaining_ticks,
             navigation_update_countdowns_periods,
@@ -214,7 +211,7 @@ struct FighterEntityDataConstView {
             avoidance_clear_scan_counts,
             attack_reposition_countdowns,
             attack_cooldowns,
-            target_handles,
+            target_ids,
             target_locations.get_const_view(),
             target_velocities.get_const_view(),
             target_directions.get_const_view(),
@@ -236,7 +233,7 @@ struct FighterEntityDataView {
     using View = FighterEntityDataView;
     using ConstView = FighterEntityDataConstView;
     using size_type = std::int32_t;
-    std::span<RegistryEntityHandle> entity_handles;
+    std::span<EntityUniqueId> entity_ids;
     std::span<std::uint32_t> integral_biases;
     std::span<float> float_biases;
     std::span<FighterTask> tasks;
@@ -251,7 +248,7 @@ struct FighterEntityDataView {
     std::span<float> speeds;
     std::span<Team> teams;
     std::span<Health> healths;
-    std::span<RegistryEntityHandle> parent_handles;
+    std::span<EntityUniqueId> parent_ids;
     std::span<std::int8_t> awareness_scan_countdowns;
     std::span<std::int16_t> navigation_update_countdowns_remaining_ticks;
     std::span<std::int16_t> navigation_update_countdowns_periods;
@@ -262,7 +259,7 @@ struct FighterEntityDataView {
     std::span<std::uint8_t> avoidance_clear_scan_counts;
     std::span<std::int16_t> attack_reposition_countdowns;
     std::span<std::int16_t> attack_cooldowns;
-    std::span<RegistryEntityHandle> target_handles;
+    std::span<EntityUniqueId> target_ids;
     Vectors3fView target_locations;
     Vectors3fView target_velocities;
     Vectors3fView target_directions;
@@ -270,11 +267,11 @@ struct FighterEntityDataView {
     std::span<float> target_distance_sq;
     std::span<float> target_distances;
     std::span<float> target_radii;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_handles.size()); }
+    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
     void each_column(Fn&& fn) const {
-        fn(entity_handles);
+        fn(entity_ids);
         fn(integral_biases);
         fn(float_biases);
         fn(tasks);
@@ -303,7 +300,7 @@ struct FighterEntityDataView {
         fn(speeds);
         fn(teams);
         fn(healths);
-        fn(parent_handles);
+        fn(parent_ids);
         fn(awareness_scan_countdowns);
         fn(navigation_update_countdowns_remaining_ticks);
         fn(navigation_update_countdowns_periods);
@@ -316,7 +313,7 @@ struct FighterEntityDataView {
         fn(avoidance_clear_scan_counts);
         fn(attack_reposition_countdowns);
         fn(attack_cooldowns);
-        fn(target_handles);
+        fn(target_ids);
         fn(target_locations.xs_span());
         fn(target_locations.ys_span());
         fn(target_locations.zs_span());
@@ -341,8 +338,7 @@ struct FighterEntityDataView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
         return {
-            entity_handles.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
+            entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             integral_biases.subspan(static_cast<std::size_t>(offset),
                                     static_cast<std::size_t>(count)),
             float_biases.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -359,8 +355,7 @@ struct FighterEntityDataView {
             speeds.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             teams.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             healths.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            parent_handles.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
+            parent_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             awareness_scan_countdowns.subspan(static_cast<std::size_t>(offset),
                                               static_cast<std::size_t>(count)),
             navigation_update_countdowns_remaining_ticks.subspan(static_cast<std::size_t>(offset),
@@ -380,8 +375,7 @@ struct FighterEntityDataView {
                                                  static_cast<std::size_t>(count)),
             attack_cooldowns.subspan(static_cast<std::size_t>(offset),
                                      static_cast<std::size_t>(count)),
-            target_handles.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
+            target_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             target_locations.slice(offset, count),
             target_velocities.slice(offset, count),
             target_directions.slice(offset, count),
@@ -400,7 +394,7 @@ struct FighterEntityDataView {
     }
     auto get_const_view() const -> ConstView {
         return {
-            entity_handles,
+            entity_ids,
             integral_biases,
             float_biases,
             tasks,
@@ -415,7 +409,7 @@ struct FighterEntityDataView {
             speeds,
             teams,
             healths,
-            parent_handles,
+            parent_ids,
             awareness_scan_countdowns,
             navigation_update_countdowns_remaining_ticks,
             navigation_update_countdowns_periods,
@@ -426,7 +420,7 @@ struct FighterEntityDataView {
             avoidance_clear_scan_counts,
             attack_reposition_countdowns,
             attack_cooldowns,
-            target_handles,
+            target_ids,
             target_locations.get_const_view(),
             target_velocities.get_const_view(),
             target_directions.get_const_view(),
@@ -444,7 +438,7 @@ struct FighterEntityDataView {
         return slice(num() - count, count);
     }
     void set(size_type const index,
-             RegistryEntityHandle const new_entity_handles,
+             EntityUniqueId const new_entity_ids,
              std::uint32_t const new_integral_biases,
              float const new_float_biases,
              FighterTask const new_tasks,
@@ -473,7 +467,7 @@ struct FighterEntityDataView {
              float const new_speeds,
              Team const new_teams,
              Health const new_healths,
-             RegistryEntityHandle const new_parent_handles,
+             EntityUniqueId const new_parent_ids,
              std::int8_t const new_awareness_scan_countdowns,
              std::int16_t const new_navigation_update_countdowns_remaining_ticks,
              std::int16_t const new_navigation_update_countdowns_periods,
@@ -486,7 +480,7 @@ struct FighterEntityDataView {
              std::uint8_t const new_avoidance_clear_scan_counts,
              std::int16_t const new_attack_reposition_countdowns,
              std::int16_t const new_attack_cooldowns,
-             RegistryEntityHandle const new_target_handles,
+             EntityUniqueId const new_target_ids,
              float const new_target_locations_xs,
              float const new_target_locations_ys,
              float const new_target_locations_zs,
@@ -501,7 +495,7 @@ struct FighterEntityDataView {
              float const new_target_distances,
              float const new_target_radii) const {
         ml::native_soa::require(index >= 0 && index < num());
-        entity_handles[static_cast<std::size_t>(index)] = new_entity_handles;
+        entity_ids[static_cast<std::size_t>(index)] = new_entity_ids;
         integral_biases[static_cast<std::size_t>(index)] = new_integral_biases;
         float_biases[static_cast<std::size_t>(index)] = new_float_biases;
         tasks[static_cast<std::size_t>(index)] = new_tasks;
@@ -533,7 +527,7 @@ struct FighterEntityDataView {
         speeds[static_cast<std::size_t>(index)] = new_speeds;
         teams[static_cast<std::size_t>(index)] = new_teams;
         healths[static_cast<std::size_t>(index)] = new_healths;
-        parent_handles[static_cast<std::size_t>(index)] = new_parent_handles;
+        parent_ids[static_cast<std::size_t>(index)] = new_parent_ids;
         awareness_scan_countdowns[static_cast<std::size_t>(index)] = new_awareness_scan_countdowns;
         navigation_update_countdowns_remaining_ticks[static_cast<std::size_t>(index)] =
             new_navigation_update_countdowns_remaining_ticks;
@@ -551,7 +545,7 @@ struct FighterEntityDataView {
         attack_reposition_countdowns[static_cast<std::size_t>(index)] =
             new_attack_reposition_countdowns;
         attack_cooldowns[static_cast<std::size_t>(index)] = new_attack_cooldowns;
-        target_handles[static_cast<std::size_t>(index)] = new_target_handles;
+        target_ids[static_cast<std::size_t>(index)] = new_target_ids;
         target_locations.xs[static_cast<std::size_t>(index)] = new_target_locations_xs;
         target_locations.ys[static_cast<std::size_t>(index)] = new_target_locations_ys;
         target_locations.zs[static_cast<std::size_t>(index)] = new_target_locations_zs;
@@ -571,7 +565,7 @@ struct FighterEntityData {
     using View = FighterEntityDataView;
     using ConstView = FighterEntityDataConstView;
     using size_type = std::int32_t;
-    ml::native_soa::Vector<RegistryEntityHandle> entity_handles;
+    ml::native_soa::Vector<EntityUniqueId> entity_ids;
     ml::native_soa::Vector<std::uint32_t> integral_biases;
     ml::native_soa::Vector<float> float_biases;
     ml::native_soa::Vector<FighterTask> tasks;
@@ -586,7 +580,7 @@ struct FighterEntityData {
     ml::native_soa::Vector<float> speeds;
     ml::native_soa::Vector<Team> teams;
     ml::native_soa::Vector<Health> healths;
-    ml::native_soa::Vector<RegistryEntityHandle> parent_handles;
+    ml::native_soa::Vector<EntityUniqueId> parent_ids;
     ml::native_soa::Vector<std::int8_t> awareness_scan_countdowns;
     ml::native_soa::Vector<std::int16_t> navigation_update_countdowns_remaining_ticks;
     ml::native_soa::Vector<std::int16_t> navigation_update_countdowns_periods;
@@ -597,7 +591,7 @@ struct FighterEntityData {
     ml::native_soa::Vector<std::uint8_t> avoidance_clear_scan_counts;
     ml::native_soa::Vector<std::int16_t> attack_reposition_countdowns;
     ml::native_soa::Vector<std::int16_t> attack_cooldowns;
-    ml::native_soa::Vector<RegistryEntityHandle> target_handles;
+    ml::native_soa::Vector<EntityUniqueId> target_ids;
     Vectors3f target_locations;
     Vectors3f target_velocities;
     Vectors3f target_directions;
@@ -605,11 +599,11 @@ struct FighterEntityData {
     ml::native_soa::Vector<float> target_distance_sq;
     ml::native_soa::Vector<float> target_distances;
     ml::native_soa::Vector<float> target_radii;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_handles.size()); }
+    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
     void each_column(Fn&& fn) {
-        fn(entity_handles);
+        fn(entity_ids);
         fn(integral_biases);
         fn(float_biases);
         fn(tasks);
@@ -638,7 +632,7 @@ struct FighterEntityData {
         fn(speeds);
         fn(teams);
         fn(healths);
-        fn(parent_handles);
+        fn(parent_ids);
         fn(awareness_scan_countdowns);
         fn(navigation_update_countdowns_remaining_ticks);
         fn(navigation_update_countdowns_periods);
@@ -651,7 +645,7 @@ struct FighterEntityData {
         fn(avoidance_clear_scan_counts);
         fn(attack_reposition_countdowns);
         fn(attack_cooldowns);
-        fn(target_handles);
+        fn(target_ids);
         fn(target_locations.xs);
         fn(target_locations.ys);
         fn(target_locations.zs);
@@ -668,7 +662,7 @@ struct FighterEntityData {
     }
     template <typename Fn>
     void each_column(Fn&& fn) const {
-        fn(entity_handles);
+        fn(entity_ids);
         fn(integral_biases);
         fn(float_biases);
         fn(tasks);
@@ -697,7 +691,7 @@ struct FighterEntityData {
         fn(speeds);
         fn(teams);
         fn(healths);
-        fn(parent_handles);
+        fn(parent_ids);
         fn(awareness_scan_countdowns);
         fn(navigation_update_countdowns_remaining_ticks);
         fn(navigation_update_countdowns_periods);
@@ -710,7 +704,7 @@ struct FighterEntityData {
         fn(avoidance_clear_scan_counts);
         fn(attack_reposition_countdowns);
         fn(attack_cooldowns);
-        fn(target_handles);
+        fn(target_ids);
         fn(target_locations.xs);
         fn(target_locations.ys);
         fn(target_locations.zs);
@@ -728,7 +722,7 @@ struct FighterEntityData {
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
     void reserve(size_type const count) {
         ml::native_soa::require(count >= 0);
-        entity_handles.reserve(static_cast<std::size_t>(count));
+        entity_ids.reserve(static_cast<std::size_t>(count));
         integral_biases.reserve(static_cast<std::size_t>(count));
         float_biases.reserve(static_cast<std::size_t>(count));
         tasks.reserve(static_cast<std::size_t>(count));
@@ -757,7 +751,7 @@ struct FighterEntityData {
         speeds.reserve(static_cast<std::size_t>(count));
         teams.reserve(static_cast<std::size_t>(count));
         healths.reserve(static_cast<std::size_t>(count));
-        parent_handles.reserve(static_cast<std::size_t>(count));
+        parent_ids.reserve(static_cast<std::size_t>(count));
         awareness_scan_countdowns.reserve(static_cast<std::size_t>(count));
         navigation_update_countdowns_remaining_ticks.reserve(static_cast<std::size_t>(count));
         navigation_update_countdowns_periods.reserve(static_cast<std::size_t>(count));
@@ -770,7 +764,7 @@ struct FighterEntityData {
         avoidance_clear_scan_counts.reserve(static_cast<std::size_t>(count));
         attack_reposition_countdowns.reserve(static_cast<std::size_t>(count));
         attack_cooldowns.reserve(static_cast<std::size_t>(count));
-        target_handles.reserve(static_cast<std::size_t>(count));
+        target_ids.reserve(static_cast<std::size_t>(count));
         target_locations.xs.reserve(static_cast<std::size_t>(count));
         target_locations.ys.reserve(static_cast<std::size_t>(count));
         target_locations.zs.reserve(static_cast<std::size_t>(count));
@@ -786,7 +780,7 @@ struct FighterEntityData {
         target_radii.reserve(static_cast<std::size_t>(count));
     }
     void reset() noexcept {
-        entity_handles.clear();
+        entity_ids.clear();
         integral_biases.clear();
         float_biases.clear();
         tasks.clear();
@@ -815,7 +809,7 @@ struct FighterEntityData {
         speeds.clear();
         teams.clear();
         healths.clear();
-        parent_handles.clear();
+        parent_ids.clear();
         awareness_scan_countdowns.clear();
         navigation_update_countdowns_remaining_ticks.clear();
         navigation_update_countdowns_periods.clear();
@@ -828,7 +822,7 @@ struct FighterEntityData {
         avoidance_clear_scan_counts.clear();
         attack_reposition_countdowns.clear();
         attack_cooldowns.clear();
-        target_handles.clear();
+        target_ids.clear();
         target_locations.xs.clear();
         target_locations.ys.clear();
         target_locations.zs.clear();
@@ -846,7 +840,7 @@ struct FighterEntityData {
     void set_num(size_type const count) {
         ml::native_soa::require(count >= 0);
         auto const size{static_cast<std::size_t>(count)};
-        entity_handles.resize(size);
+        entity_ids.resize(size);
         integral_biases.resize(size);
         float_biases.resize(size);
         tasks.resize(size);
@@ -875,7 +869,7 @@ struct FighterEntityData {
         speeds.resize(size);
         teams.resize(size);
         healths.resize(size);
-        parent_handles.resize(size);
+        parent_ids.resize(size);
         awareness_scan_countdowns.resize(size);
         navigation_update_countdowns_remaining_ticks.resize(size);
         navigation_update_countdowns_periods.resize(size);
@@ -888,7 +882,7 @@ struct FighterEntityData {
         avoidance_clear_scan_counts.resize(size);
         attack_reposition_countdowns.resize(size);
         attack_cooldowns.resize(size);
-        target_handles.resize(size);
+        target_ids.resize(size);
         target_locations.xs.resize(size);
         target_locations.ys.resize(size);
         target_locations.zs.resize(size);
@@ -917,7 +911,7 @@ struct FighterEntityData {
         auto const moved{std::min(count, old_num - index - count)};
         auto const source{old_num - moved};
         for (size_type i{}; i < moved; ++i) {
-            entity_handles[index + i] = entity_handles[source + i];
+            entity_ids[index + i] = entity_ids[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
             integral_biases[index + i] = integral_biases[source + i];
@@ -1004,7 +998,7 @@ struct FighterEntityData {
             healths[index + i] = healths[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
-            parent_handles[index + i] = parent_handles[source + i];
+            parent_ids[index + i] = parent_ids[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
             awareness_scan_countdowns[index + i] = awareness_scan_countdowns[source + i];
@@ -1046,7 +1040,7 @@ struct FighterEntityData {
             attack_cooldowns[index + i] = attack_cooldowns[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
-            target_handles[index + i] = target_handles[source + i];
+            target_ids[index + i] = target_ids[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
             target_locations.xs[index + i] = target_locations.xs[source + i];
@@ -1090,7 +1084,7 @@ struct FighterEntityData {
         set_num(old_num - count);
     }
     void set(size_type const index,
-             RegistryEntityHandle const new_entity_handles,
+             EntityUniqueId const new_entity_ids,
              std::uint32_t const new_integral_biases,
              float const new_float_biases,
              FighterTask const new_tasks,
@@ -1119,7 +1113,7 @@ struct FighterEntityData {
              float const new_speeds,
              Team const new_teams,
              Health const new_healths,
-             RegistryEntityHandle const new_parent_handles,
+             EntityUniqueId const new_parent_ids,
              std::int8_t const new_awareness_scan_countdowns,
              std::int16_t const new_navigation_update_countdowns_remaining_ticks,
              std::int16_t const new_navigation_update_countdowns_periods,
@@ -1132,7 +1126,7 @@ struct FighterEntityData {
              std::uint8_t const new_avoidance_clear_scan_counts,
              std::int16_t const new_attack_reposition_countdowns,
              std::int16_t const new_attack_cooldowns,
-             RegistryEntityHandle const new_target_handles,
+             EntityUniqueId const new_target_ids,
              float const new_target_locations_xs,
              float const new_target_locations_ys,
              float const new_target_locations_zs,
@@ -1147,7 +1141,7 @@ struct FighterEntityData {
              float const new_target_distances,
              float const new_target_radii) {
         get_view().set(index,
-                       new_entity_handles,
+                       new_entity_ids,
                        new_integral_biases,
                        new_float_biases,
                        new_tasks,
@@ -1176,7 +1170,7 @@ struct FighterEntityData {
                        new_speeds,
                        new_teams,
                        new_healths,
-                       new_parent_handles,
+                       new_parent_ids,
                        new_awareness_scan_countdowns,
                        new_navigation_update_countdowns_remaining_ticks,
                        new_navigation_update_countdowns_periods,
@@ -1189,7 +1183,7 @@ struct FighterEntityData {
                        new_avoidance_clear_scan_counts,
                        new_attack_reposition_countdowns,
                        new_attack_cooldowns,
-                       new_target_handles,
+                       new_target_ids,
                        new_target_locations_xs,
                        new_target_locations_ys,
                        new_target_locations_zs,
@@ -1204,7 +1198,7 @@ struct FighterEntityData {
                        new_target_distances,
                        new_target_radii);
     }
-    auto add(RegistryEntityHandle const new_entity_handles,
+    auto add(EntityUniqueId const new_entity_ids,
              std::uint32_t const new_integral_biases,
              float const new_float_biases,
              FighterTask const new_tasks,
@@ -1233,7 +1227,7 @@ struct FighterEntityData {
              float const new_speeds,
              Team const new_teams,
              Health const new_healths,
-             RegistryEntityHandle const new_parent_handles,
+             EntityUniqueId const new_parent_ids,
              std::int8_t const new_awareness_scan_countdowns,
              std::int16_t const new_navigation_update_countdowns_remaining_ticks,
              std::int16_t const new_navigation_update_countdowns_periods,
@@ -1246,7 +1240,7 @@ struct FighterEntityData {
              std::uint8_t const new_avoidance_clear_scan_counts,
              std::int16_t const new_attack_reposition_countdowns,
              std::int16_t const new_attack_cooldowns,
-             RegistryEntityHandle const new_target_handles,
+             EntityUniqueId const new_target_ids,
              float const new_target_locations_xs,
              float const new_target_locations_ys,
              float const new_target_locations_zs,
@@ -1263,7 +1257,7 @@ struct FighterEntityData {
         auto const index{num()};
         add_defaulted(1);
         set(index,
-            new_entity_handles,
+            new_entity_ids,
             new_integral_biases,
             new_float_biases,
             new_tasks,
@@ -1292,7 +1286,7 @@ struct FighterEntityData {
             new_speeds,
             new_teams,
             new_healths,
-            new_parent_handles,
+            new_parent_ids,
             new_awareness_scan_countdowns,
             new_navigation_update_countdowns_remaining_ticks,
             new_navigation_update_countdowns_periods,
@@ -1305,7 +1299,7 @@ struct FighterEntityData {
             new_avoidance_clear_scan_counts,
             new_attack_reposition_countdowns,
             new_attack_cooldowns,
-            new_target_handles,
+            new_target_ids,
             new_target_locations_xs,
             new_target_locations_ys,
             new_target_locations_zs,
@@ -1329,11 +1323,10 @@ struct FighterEntityData {
             return;
         }
         {
-            auto const address{ml::address_cast(source.entity_handles.data())};
-            auto const begin{ml::address_cast(entity_handles.data())};
+            auto const address{ml::address_cast(source.entity_ids.data())};
+            auto const begin{ml::address_cast(entity_ids.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + entity_handles.size() *
-                                                           sizeof(RegistryEntityHandle));
+                                    address >= begin + entity_ids.size() * sizeof(EntityUniqueId));
         }
         {
             auto const address{ml::address_cast(source.integral_biases.data())};
@@ -1517,11 +1510,10 @@ struct FighterEntityData {
                                     address >= begin + healths.size() * sizeof(Health));
         }
         {
-            auto const address{ml::address_cast(source.parent_handles.data())};
-            auto const begin{ml::address_cast(parent_handles.data())};
+            auto const address{ml::address_cast(source.parent_ids.data())};
+            auto const begin{ml::address_cast(parent_ids.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + parent_handles.size() *
-                                                           sizeof(RegistryEntityHandle));
+                                    address >= begin + parent_ids.size() * sizeof(EntityUniqueId));
         }
         {
             auto const address{ml::address_cast(source.awareness_scan_countdowns.data())};
@@ -1610,11 +1602,10 @@ struct FighterEntityData {
                                                                               sizeof(std::int16_t));
         }
         {
-            auto const address{ml::address_cast(source.target_handles.data())};
-            auto const begin{ml::address_cast(target_handles.data())};
+            auto const address{ml::address_cast(source.target_ids.data())};
+            auto const begin{ml::address_cast(target_ids.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + target_handles.size() *
-                                                           sizeof(RegistryEntityHandle));
+                                    address >= begin + target_ids.size() * sizeof(EntityUniqueId));
         }
         {
             auto const address{ml::address_cast(source.target_locations.xs)};
@@ -1694,9 +1685,8 @@ struct FighterEntityData {
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_radii.size() * sizeof(float));
         }
-        entity_handles.insert(entity_handles.end(),
-                              source.entity_handles.data(),
-                              source.entity_handles.data() + count);
+        entity_ids.insert(
+            entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
         integral_biases.insert(integral_biases.end(),
                                source.integral_biases.data(),
                                source.integral_biases.data() + count);
@@ -1760,9 +1750,8 @@ struct FighterEntityData {
         speeds.insert(speeds.end(), source.speeds.data(), source.speeds.data() + count);
         teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
         healths.insert(healths.end(), source.healths.data(), source.healths.data() + count);
-        parent_handles.insert(parent_handles.end(),
-                              source.parent_handles.data(),
-                              source.parent_handles.data() + count);
+        parent_ids.insert(
+            parent_ids.end(), source.parent_ids.data(), source.parent_ids.data() + count);
         awareness_scan_countdowns.insert(awareness_scan_countdowns.end(),
                                          source.awareness_scan_countdowns.data(),
                                          source.awareness_scan_countdowns.data() + count);
@@ -1802,9 +1791,8 @@ struct FighterEntityData {
         attack_cooldowns.insert(attack_cooldowns.end(),
                                 source.attack_cooldowns.data(),
                                 source.attack_cooldowns.data() + count);
-        target_handles.insert(target_handles.end(),
-                              source.target_handles.data(),
-                              source.target_handles.data() + count);
+        target_ids.insert(
+            target_ids.end(), source.target_ids.data(), source.target_ids.data() + count);
         target_locations.xs.insert(target_locations.xs.end(),
                                    source.target_locations.xs,
                                    source.target_locations.xs + count);
@@ -1846,7 +1834,7 @@ struct FighterEntityData {
     }
     auto get_view() -> View {
         return {
-            entity_handles,
+            entity_ids,
             integral_biases,
             float_biases,
             tasks,
@@ -1861,7 +1849,7 @@ struct FighterEntityData {
             speeds,
             teams,
             healths,
-            parent_handles,
+            parent_ids,
             awareness_scan_countdowns,
             navigation_update_countdowns_remaining_ticks,
             navigation_update_countdowns_periods,
@@ -1872,7 +1860,7 @@ struct FighterEntityData {
             avoidance_clear_scan_counts,
             attack_reposition_countdowns,
             attack_cooldowns,
-            target_handles,
+            target_ids,
             target_locations.get_view(),
             target_velocities.get_view(),
             target_directions.get_view(),
@@ -1884,7 +1872,7 @@ struct FighterEntityData {
     }
     auto get_view() const -> ConstView {
         return {
-            entity_handles,
+            entity_ids,
             integral_biases,
             float_biases,
             tasks,
@@ -1899,7 +1887,7 @@ struct FighterEntityData {
             speeds,
             teams,
             healths,
-            parent_handles,
+            parent_ids,
             awareness_scan_countdowns,
             navigation_update_countdowns_remaining_ticks,
             navigation_update_countdowns_periods,
@@ -1910,7 +1898,7 @@ struct FighterEntityData {
             avoidance_clear_scan_counts,
             attack_reposition_countdowns,
             attack_cooldowns,
-            target_handles,
+            target_ids,
             target_locations.get_view(),
             target_velocities.get_view(),
             target_directions.get_view(),
@@ -1942,8 +1930,8 @@ struct FighterEntityData {
     auto right(size_type const count) const -> ConstView { return slice(num() - count, count); }
     template <typename Other>
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        entity_handles[static_cast<std::size_t>(dst_index)] =
-            other.entity_handles[static_cast<std::size_t>(src_index)];
+        entity_ids[static_cast<std::size_t>(dst_index)] =
+            other.entity_ids[static_cast<std::size_t>(src_index)];
         integral_biases[static_cast<std::size_t>(dst_index)] =
             other.integral_biases[static_cast<std::size_t>(src_index)];
         float_biases[static_cast<std::size_t>(dst_index)] =
@@ -1966,8 +1954,8 @@ struct FighterEntityData {
             other.teams[static_cast<std::size_t>(src_index)];
         healths[static_cast<std::size_t>(dst_index)] =
             other.healths[static_cast<std::size_t>(src_index)];
-        parent_handles[static_cast<std::size_t>(dst_index)] =
-            other.parent_handles[static_cast<std::size_t>(src_index)];
+        parent_ids[static_cast<std::size_t>(dst_index)] =
+            other.parent_ids[static_cast<std::size_t>(src_index)];
         awareness_scan_countdowns[static_cast<std::size_t>(dst_index)] =
             other.awareness_scan_countdowns[static_cast<std::size_t>(src_index)];
         navigation_update_countdowns_remaining_ticks[static_cast<std::size_t>(dst_index)] =
@@ -1987,8 +1975,8 @@ struct FighterEntityData {
             other.attack_reposition_countdowns[static_cast<std::size_t>(src_index)];
         attack_cooldowns[static_cast<std::size_t>(dst_index)] =
             other.attack_cooldowns[static_cast<std::size_t>(src_index)];
-        target_handles[static_cast<std::size_t>(dst_index)] =
-            other.target_handles[static_cast<std::size_t>(src_index)];
+        target_ids[static_cast<std::size_t>(dst_index)] =
+            other.target_ids[static_cast<std::size_t>(src_index)];
         target_locations.copy_element(dst_index, other.target_locations, src_index);
         target_velocities.copy_element(dst_index, other.target_velocities, src_index);
         target_directions.copy_element(dst_index, other.target_directions, src_index);
@@ -2047,8 +2035,8 @@ struct FighterEntityDataSingleLayout {
     inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{
         capacity_granularity, column_gap, 64};
 
-    inline static constexpr ColLayout<RegistryEntityHandle> EntityHandles{LayoutStart};
-    inline static constexpr ColLayout<std::uint32_t> IntegralBiases{EntityHandles};
+    inline static constexpr ColLayout<EntityUniqueId> EntityIds{LayoutStart};
+    inline static constexpr ColLayout<std::uint32_t> IntegralBiases{EntityIds};
     inline static constexpr ColLayout<float> FloatBiases{IntegralBiases};
     inline static constexpr ColLayout<FighterTask> Tasks{FloatBiases};
     inline static constexpr ColLayout<float> LocationsXs{Tasks};
@@ -2076,8 +2064,8 @@ struct FighterEntityDataSingleLayout {
     inline static constexpr ColLayout<float> Speeds{MoveDistances};
     inline static constexpr ColLayout<Team> Teams{Speeds};
     inline static constexpr ColLayout<Health> Healths{Teams};
-    inline static constexpr ColLayout<RegistryEntityHandle> ParentHandles{Healths};
-    inline static constexpr ColLayout<std::int8_t> AwarenessScanCountdowns{ParentHandles};
+    inline static constexpr ColLayout<EntityUniqueId> ParentIds{Healths};
+    inline static constexpr ColLayout<std::int8_t> AwarenessScanCountdowns{ParentIds};
     inline static constexpr ColLayout<std::int16_t> NavigationUpdateCountdownsRemainingTicks{
         AwarenessScanCountdowns};
     inline static constexpr ColLayout<std::int16_t> NavigationUpdateCountdownsPeriods{
@@ -2096,8 +2084,8 @@ struct FighterEntityDataSingleLayout {
     inline static constexpr ColLayout<std::int16_t> AttackRepositionCountdowns{
         AvoidanceClearScanCounts};
     inline static constexpr ColLayout<std::int16_t> AttackCooldowns{AttackRepositionCountdowns};
-    inline static constexpr ColLayout<RegistryEntityHandle> TargetHandles{AttackCooldowns};
-    inline static constexpr ColLayout<float> TargetLocationsXs{TargetHandles};
+    inline static constexpr ColLayout<EntityUniqueId> TargetIds{AttackCooldowns};
+    inline static constexpr ColLayout<float> TargetLocationsXs{TargetIds};
     inline static constexpr ColLayout<float> TargetLocationsYs{TargetLocationsXs};
     inline static constexpr ColLayout<float> TargetLocationsZs{TargetLocationsYs};
     inline static constexpr ColLayout<float> TargetVelocitiesXs{TargetLocationsZs};
@@ -2112,7 +2100,7 @@ struct FighterEntityDataSingleLayout {
     inline static constexpr ColLayout<float> TargetRadii{TargetDistances};
 
     inline static constexpr byte_size_type allocation_alignment{
-        ml::native_soa::maximum_alignment(EntityHandles,
+        ml::native_soa::maximum_alignment(EntityIds,
                                           IntegralBiases,
                                           FloatBiases,
                                           Tasks,
@@ -2141,7 +2129,7 @@ struct FighterEntityDataSingleLayout {
                                           Speeds,
                                           Teams,
                                           Healths,
-                                          ParentHandles,
+                                          ParentIds,
                                           AwarenessScanCountdowns,
                                           NavigationUpdateCountdownsRemainingTicks,
                                           NavigationUpdateCountdownsPeriods,
@@ -2154,7 +2142,7 @@ struct FighterEntityDataSingleLayout {
                                           AvoidanceClearScanCounts,
                                           AttackRepositionCountdowns,
                                           AttackCooldowns,
-                                          TargetHandles,
+                                          TargetIds,
                                           TargetLocationsXs,
                                           TargetLocationsYs,
                                           TargetLocationsZs,
@@ -2182,8 +2170,8 @@ struct FighterEntityDataSingleLayout {
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
         static_assert(
-            ml::native_soa::supported_leaf<RegistryEntityHandle>,
-            "Single-allocation leaf entity_handles requires a non-cv, trivially "
+            ml::native_soa::supported_leaf<EntityUniqueId>,
+            "Single-allocation leaf entity_ids requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
             ml::native_soa::supported_leaf<std::uint32_t>,
@@ -2221,8 +2209,8 @@ struct FighterEntityDataSingleLayout {
         static_assert(
             allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
             "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
-        static_assert(sizeof(RegistryEntityHandle) <=
-                      (max_allocation_size - EntityHandles.block_offset) / capacity_granularity);
+        static_assert(sizeof(EntityUniqueId) <=
+                      (max_allocation_size - EntityIds.block_offset) / capacity_granularity);
         static_assert(sizeof(std::uint32_t) <=
                       (max_allocation_size - IntegralBiases.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
@@ -2282,8 +2270,8 @@ struct FighterEntityDataSingleLayout {
                       (max_allocation_size - Teams.block_offset) / capacity_granularity);
         static_assert(sizeof(Health) <=
                       (max_allocation_size - Healths.block_offset) / capacity_granularity);
-        static_assert(sizeof(RegistryEntityHandle) <=
-                      (max_allocation_size - ParentHandles.block_offset) / capacity_granularity);
+        static_assert(sizeof(EntityUniqueId) <=
+                      (max_allocation_size - ParentIds.block_offset) / capacity_granularity);
         static_assert(sizeof(std::int8_t) <=
                       (max_allocation_size - AwarenessScanCountdowns.block_offset) /
                           capacity_granularity);
@@ -2317,8 +2305,8 @@ struct FighterEntityDataSingleLayout {
                           capacity_granularity);
         static_assert(sizeof(std::int16_t) <=
                       (max_allocation_size - AttackCooldowns.block_offset) / capacity_granularity);
-        static_assert(sizeof(RegistryEntityHandle) <=
-                      (max_allocation_size - TargetHandles.block_offset) / capacity_granularity);
+        static_assert(sizeof(EntityUniqueId) <=
+                      (max_allocation_size - TargetIds.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <= (max_allocation_size - TargetLocationsXs.block_offset) /
                                            capacity_granularity);
         static_assert(sizeof(float) <= (max_allocation_size - TargetLocationsYs.block_offset) /
@@ -2411,7 +2399,7 @@ struct SingleAllocationFighterEntityDataStorage
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<RegistryEntityHandle>* entity_handles{};
+        Element<EntityUniqueId>* entity_ids{};
         Element<std::uint32_t>* integral_biases{};
         Element<float>* float_biases{};
         Element<FighterTask>* tasks{};
@@ -2440,7 +2428,7 @@ struct SingleAllocationFighterEntityDataStorage
         Element<float>* speeds{};
         Element<Team>* teams{};
         Element<Health>* healths{};
-        Element<RegistryEntityHandle>* parent_handles{};
+        Element<EntityUniqueId>* parent_ids{};
         Element<std::int8_t>* awareness_scan_countdowns{};
         Element<std::int16_t>* navigation_update_countdowns_remaining_ticks{};
         Element<std::int16_t>* navigation_update_countdowns_periods{};
@@ -2453,7 +2441,7 @@ struct SingleAllocationFighterEntityDataStorage
         Element<std::uint8_t>* avoidance_clear_scan_counts{};
         Element<std::int16_t>* attack_reposition_countdowns{};
         Element<std::int16_t>* attack_cooldowns{};
-        Element<RegistryEntityHandle>* target_handles{};
+        Element<EntityUniqueId>* target_ids{};
         Element<float>* target_locations_xs{};
         Element<float>* target_locations_ys{};
         Element<float>* target_locations_zs{};
@@ -2468,10 +2456,10 @@ struct SingleAllocationFighterEntityDataStorage
         Element<float>* target_distances{};
         Element<float>* target_radii{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (entity_handles == nullptr) {
+            if (entity_ids == nullptr) {
                 return {};
             }
-            return {entity_handles + offset,
+            return {entity_ids + offset,
                     integral_biases + offset,
                     float_biases + offset,
                     tasks + offset,
@@ -2500,7 +2488,7 @@ struct SingleAllocationFighterEntityDataStorage
                     speeds + offset,
                     teams + offset,
                     healths + offset,
-                    parent_handles + offset,
+                    parent_ids + offset,
                     awareness_scan_countdowns + offset,
                     navigation_update_countdowns_remaining_ticks + offset,
                     navigation_update_countdowns_periods + offset,
@@ -2513,7 +2501,7 @@ struct SingleAllocationFighterEntityDataStorage
                     avoidance_clear_scan_counts + offset,
                     attack_reposition_countdowns + offset,
                     attack_cooldowns + offset,
-                    target_handles + offset,
+                    target_ids + offset,
                     target_locations_xs + offset,
                     target_locations_ys + offset,
                     target_locations_zs + offset,
@@ -2556,10 +2544,9 @@ struct SingleAllocationFighterEntityDataStorage
                                                typename Column::pointer>;
             return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        auto const entity_handles_offset{byte_size_type{}};
+        auto const entity_ids_offset{byte_size_type{}};
         auto const integral_biases_offset{ml::native_soa::layout_align(
-            entity_handles_offset + blocks * capacity_granularity * sizeof(RegistryEntityHandle) +
-                column_gap,
+            entity_ids_offset + blocks * capacity_granularity * sizeof(EntityUniqueId) + column_gap,
             IntegralBiases.alignment)};
         auto const float_biases_offset{ml::native_soa::layout_align(
             integral_biases_offset + blocks * capacity_granularity * sizeof(std::uint32_t) +
@@ -2655,12 +2642,11 @@ struct SingleAllocationFighterEntityDataStorage
         auto const healths_offset{ml::native_soa::layout_align(
             teams_offset + blocks * capacity_granularity * sizeof(Team) + column_gap,
             Healths.alignment)};
-        auto const parent_handles_offset{ml::native_soa::layout_align(
+        auto const parent_ids_offset{ml::native_soa::layout_align(
             healths_offset + blocks * capacity_granularity * sizeof(Health) + column_gap,
-            ParentHandles.alignment)};
+            ParentIds.alignment)};
         auto const awareness_scan_countdowns_offset{ml::native_soa::layout_align(
-            parent_handles_offset + blocks * capacity_granularity * sizeof(RegistryEntityHandle) +
-                column_gap,
+            parent_ids_offset + blocks * capacity_granularity * sizeof(EntityUniqueId) + column_gap,
             AwarenessScanCountdowns.alignment)};
         auto const navigation_update_countdowns_remaining_ticks_offset{ml::native_soa::layout_align(
             awareness_scan_countdowns_offset + blocks * capacity_granularity * sizeof(std::int8_t) +
@@ -2706,13 +2692,12 @@ struct SingleAllocationFighterEntityDataStorage
             attack_reposition_countdowns_offset +
                 blocks * capacity_granularity * sizeof(std::int16_t) + column_gap,
             AttackCooldowns.alignment)};
-        auto const target_handles_offset{ml::native_soa::layout_align(
+        auto const target_ids_offset{ml::native_soa::layout_align(
             attack_cooldowns_offset + blocks * capacity_granularity * sizeof(std::int16_t) +
                 column_gap,
-            TargetHandles.alignment)};
+            TargetIds.alignment)};
         auto const target_locations_xs_offset{ml::native_soa::layout_align(
-            target_handles_offset + blocks * capacity_granularity * sizeof(RegistryEntityHandle) +
-                column_gap,
+            target_ids_offset + blocks * capacity_granularity * sizeof(EntityUniqueId) + column_gap,
             TargetLocationsXs.alignment)};
         auto const target_locations_ys_offset{ml::native_soa::layout_align(
             target_locations_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
@@ -2756,7 +2741,7 @@ struct SingleAllocationFighterEntityDataStorage
         auto const target_radii_offset{ml::native_soa::layout_align(
             target_distances_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
             TargetRadii.alignment)};
-        return {pointer_at(EntityHandles, entity_handles_offset),
+        return {pointer_at(EntityIds, entity_ids_offset),
                 pointer_at(IntegralBiases, integral_biases_offset),
                 pointer_at(FloatBiases, float_biases_offset),
                 pointer_at(Tasks, tasks_offset),
@@ -2785,7 +2770,7 @@ struct SingleAllocationFighterEntityDataStorage
                 pointer_at(Speeds, speeds_offset),
                 pointer_at(Teams, teams_offset),
                 pointer_at(Healths, healths_offset),
-                pointer_at(ParentHandles, parent_handles_offset),
+                pointer_at(ParentIds, parent_ids_offset),
                 pointer_at(AwarenessScanCountdowns, awareness_scan_countdowns_offset),
                 pointer_at(NavigationUpdateCountdownsRemainingTicks,
                            navigation_update_countdowns_remaining_ticks_offset),
@@ -2800,7 +2785,7 @@ struct SingleAllocationFighterEntityDataStorage
                 pointer_at(AvoidanceClearScanCounts, avoidance_clear_scan_counts_offset),
                 pointer_at(AttackRepositionCountdowns, attack_reposition_countdowns_offset),
                 pointer_at(AttackCooldowns, attack_cooldowns_offset),
-                pointer_at(TargetHandles, target_handles_offset),
+                pointer_at(TargetIds, target_ids_offset),
                 pointer_at(TargetLocationsXs, target_locations_xs_offset),
                 pointer_at(TargetLocationsYs, target_locations_ys_offset),
                 pointer_at(TargetLocationsZs, target_locations_zs_offset),
@@ -2824,7 +2809,7 @@ struct SingleAllocationFighterEntityDataStorage
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        std::uninitialized_value_construct_n<RegistryEntityHandle*>(columns.entity_handles, count);
+        std::uninitialized_value_construct_n<EntityUniqueId*>(columns.entity_ids, count);
         std::uninitialized_value_construct_n<std::uint32_t*>(columns.integral_biases, count);
         std::uninitialized_value_construct_n<float*>(columns.float_biases, count);
         std::uninitialized_value_construct_n<FighterTask*>(columns.tasks, count);
@@ -2853,7 +2838,7 @@ struct SingleAllocationFighterEntityDataStorage
         std::uninitialized_value_construct_n<float*>(columns.speeds, count);
         std::uninitialized_value_construct_n<Team*>(columns.teams, count);
         std::uninitialized_value_construct_n<Health*>(columns.healths, count);
-        std::uninitialized_value_construct_n<RegistryEntityHandle*>(columns.parent_handles, count);
+        std::uninitialized_value_construct_n<EntityUniqueId*>(columns.parent_ids, count);
         std::uninitialized_value_construct_n<std::int8_t*>(columns.awareness_scan_countdowns,
                                                            count);
         std::uninitialized_value_construct_n<std::int16_t*>(
@@ -2872,7 +2857,7 @@ struct SingleAllocationFighterEntityDataStorage
         std::uninitialized_value_construct_n<std::int16_t*>(columns.attack_reposition_countdowns,
                                                             count);
         std::uninitialized_value_construct_n<std::int16_t*>(columns.attack_cooldowns, count);
-        std::uninitialized_value_construct_n<RegistryEntityHandle*>(columns.target_handles, count);
+        std::uninitialized_value_construct_n<EntityUniqueId*>(columns.target_ids, count);
         std::uninitialized_value_construct_n<float*>(columns.target_locations_xs, count);
         std::uninitialized_value_construct_n<float*>(columns.target_locations_ys, count);
         std::uninitialized_value_construct_n<float*>(columns.target_locations_zs, count);
@@ -2897,7 +2882,7 @@ struct SingleAllocationFighterEntityDataStorage
                              size_type source,
                              size_type move_count) {
         auto const elements_to_move{static_cast<byte_size_type>(move_count)};
-        auto const entity_handles_bytes{elements_to_move * sizeof(RegistryEntityHandle)};
+        auto const entity_ids_bytes{elements_to_move * sizeof(EntityUniqueId)};
         auto const integral_biases_bytes{elements_to_move * sizeof(std::uint32_t)};
         auto const float_biases_bytes{elements_to_move * sizeof(float)};
         auto const tasks_bytes{elements_to_move * sizeof(FighterTask)};
@@ -2907,8 +2892,7 @@ struct SingleAllocationFighterEntityDataStorage
         auto const navigation_update_countdowns_remaining_ticks_bytes{elements_to_move *
                                                                       sizeof(std::int16_t)};
         auto const navigation_risk_tiers_bytes{elements_to_move * sizeof(std::uint8_t)};
-        std::memcpy(
-            columns.entity_handles + index, columns.entity_handles + source, entity_handles_bytes);
+        std::memcpy(columns.entity_ids + index, columns.entity_ids + source, entity_ids_bytes);
         std::memcpy(columns.integral_biases + index,
                     columns.integral_biases + source,
                     integral_biases_bytes);
@@ -2977,8 +2961,7 @@ struct SingleAllocationFighterEntityDataStorage
         std::memcpy(columns.speeds + index, columns.speeds + source, float_biases_bytes);
         std::memcpy(columns.teams + index, columns.teams + source, teams_bytes);
         std::memcpy(columns.healths + index, columns.healths + source, healths_bytes);
-        std::memcpy(
-            columns.parent_handles + index, columns.parent_handles + source, entity_handles_bytes);
+        std::memcpy(columns.parent_ids + index, columns.parent_ids + source, entity_ids_bytes);
         std::memcpy(columns.awareness_scan_countdowns + index,
                     columns.awareness_scan_countdowns + source,
                     awareness_scan_countdowns_bytes);
@@ -3015,8 +2998,7 @@ struct SingleAllocationFighterEntityDataStorage
         std::memcpy(columns.attack_cooldowns + index,
                     columns.attack_cooldowns + source,
                     navigation_update_countdowns_remaining_ticks_bytes);
-        std::memcpy(
-            columns.target_handles + index, columns.target_handles + source, entity_handles_bytes);
+        std::memcpy(columns.target_ids + index, columns.target_ids + source, entity_ids_bytes);
         std::memcpy(columns.target_locations_xs + index,
                     columns.target_locations_xs + source,
                     float_biases_bytes);
@@ -3076,7 +3058,7 @@ struct SingleAllocationFighterEntityDataStorage
             auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
             return address >= allocation_begin && address < allocation_end;
         };
-        return aliases(source.entity_handles.data()) || aliases(source.integral_biases.data()) ||
+        return aliases(source.entity_ids.data()) || aliases(source.integral_biases.data()) ||
                aliases(source.float_biases.data()) || aliases(source.tasks.data()) ||
                aliases(source.locations.xs) || aliases(source.locations.ys) ||
                aliases(source.locations.zs) || aliases(source.desired_move_locations.xs) ||
@@ -3094,7 +3076,7 @@ struct SingleAllocationFighterEntityDataStorage
                aliases(source.velocities.ys) || aliases(source.velocities.zs) ||
                aliases(source.move_distances.data()) || aliases(source.speeds.data()) ||
                aliases(source.teams.data()) || aliases(source.healths.data()) ||
-               aliases(source.parent_handles.data()) ||
+               aliases(source.parent_ids.data()) ||
                aliases(source.awareness_scan_countdowns.data()) ||
                aliases(source.navigation_update_countdowns_remaining_ticks.data()) ||
                aliases(source.navigation_update_countdowns_periods.data()) ||
@@ -3105,7 +3087,7 @@ struct SingleAllocationFighterEntityDataStorage
                aliases(source.avoidance_choice_indices.data()) ||
                aliases(source.avoidance_clear_scan_counts.data()) ||
                aliases(source.attack_reposition_countdowns.data()) ||
-               aliases(source.attack_cooldowns.data()) || aliases(source.target_handles.data()) ||
+               aliases(source.attack_cooldowns.data()) || aliases(source.target_ids.data()) ||
                aliases(source.target_locations.xs) || aliases(source.target_locations.ys) ||
                aliases(source.target_locations.zs) || aliases(source.target_velocities.xs) ||
                aliases(source.target_velocities.ys) || aliases(source.target_velocities.zs) ||
@@ -3118,7 +3100,7 @@ struct SingleAllocationFighterEntityDataStorage
     void append_columns(Columns const& source, size_type first, size_type count) {
         auto const destination{get_data(first)};
         auto const elements_to_copy{static_cast<byte_size_type>(count)};
-        auto const entity_handles_bytes{elements_to_copy * sizeof(RegistryEntityHandle)};
+        auto const entity_ids_bytes{elements_to_copy * sizeof(EntityUniqueId)};
         auto const integral_biases_bytes{elements_to_copy * sizeof(std::uint32_t)};
         auto const float_biases_bytes{elements_to_copy * sizeof(float)};
         auto const tasks_bytes{elements_to_copy * sizeof(FighterTask)};
@@ -3128,7 +3110,7 @@ struct SingleAllocationFighterEntityDataStorage
         auto const navigation_update_countdowns_remaining_ticks_bytes{elements_to_copy *
                                                                       sizeof(std::int16_t)};
         auto const navigation_risk_tiers_bytes{elements_to_copy * sizeof(std::uint8_t)};
-        std::memcpy(destination.entity_handles, source.entity_handles.data(), entity_handles_bytes);
+        std::memcpy(destination.entity_ids, source.entity_ids.data(), entity_ids_bytes);
         std::memcpy(
             destination.integral_biases, source.integral_biases.data(), integral_biases_bytes);
         std::memcpy(destination.float_biases, source.float_biases.data(), float_biases_bytes);
@@ -3179,7 +3161,7 @@ struct SingleAllocationFighterEntityDataStorage
         std::memcpy(destination.speeds, source.speeds.data(), float_biases_bytes);
         std::memcpy(destination.teams, source.teams.data(), teams_bytes);
         std::memcpy(destination.healths, source.healths.data(), healths_bytes);
-        std::memcpy(destination.parent_handles, source.parent_handles.data(), entity_handles_bytes);
+        std::memcpy(destination.parent_ids, source.parent_ids.data(), entity_ids_bytes);
         std::memcpy(destination.awareness_scan_countdowns,
                     source.awareness_scan_countdowns.data(),
                     awareness_scan_countdowns_bytes);
@@ -3213,7 +3195,7 @@ struct SingleAllocationFighterEntityDataStorage
         std::memcpy(destination.attack_cooldowns,
                     source.attack_cooldowns.data(),
                     navigation_update_countdowns_remaining_ticks_bytes);
-        std::memcpy(destination.target_handles, source.target_handles.data(), entity_handles_bytes);
+        std::memcpy(destination.target_ids, source.target_ids.data(), entity_ids_bytes);
         std::memcpy(
             destination.target_locations_xs, source.target_locations.xs, float_biases_bytes);
         std::memcpy(
@@ -3250,7 +3232,7 @@ struct SingleAllocationFighterEntityDataStorage
                 make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
             auto const destination{make_data_unchecked(new_data, new_blocks)};
             auto const live_count{static_cast<byte_size_type>(num_)};
-            auto const entity_handles_bytes{live_count * sizeof(RegistryEntityHandle)};
+            auto const entity_ids_bytes{live_count * sizeof(EntityUniqueId)};
             auto const integral_biases_bytes{live_count * sizeof(std::uint32_t)};
             auto const float_biases_bytes{live_count * sizeof(float)};
             auto const tasks_bytes{live_count * sizeof(FighterTask)};
@@ -3260,7 +3242,7 @@ struct SingleAllocationFighterEntityDataStorage
             auto const navigation_update_countdowns_remaining_ticks_bytes{live_count *
                                                                           sizeof(std::int16_t)};
             auto const navigation_risk_tiers_bytes{live_count * sizeof(std::uint8_t)};
-            std::memcpy(destination.entity_handles, source.entity_handles, entity_handles_bytes);
+            std::memcpy(destination.entity_ids, source.entity_ids, entity_ids_bytes);
             std::memcpy(destination.integral_biases, source.integral_biases, integral_biases_bytes);
             std::memcpy(destination.float_biases, source.float_biases, float_biases_bytes);
             std::memcpy(destination.tasks, source.tasks, tasks_bytes);
@@ -3316,7 +3298,7 @@ struct SingleAllocationFighterEntityDataStorage
             std::memcpy(destination.speeds, source.speeds, float_biases_bytes);
             std::memcpy(destination.teams, source.teams, teams_bytes);
             std::memcpy(destination.healths, source.healths, healths_bytes);
-            std::memcpy(destination.parent_handles, source.parent_handles, entity_handles_bytes);
+            std::memcpy(destination.parent_ids, source.parent_ids, entity_ids_bytes);
             std::memcpy(destination.awareness_scan_countdowns,
                         source.awareness_scan_countdowns,
                         awareness_scan_countdowns_bytes);
@@ -3353,7 +3335,7 @@ struct SingleAllocationFighterEntityDataStorage
             std::memcpy(destination.attack_cooldowns,
                         source.attack_cooldowns,
                         navigation_update_countdowns_remaining_ticks_bytes);
-            std::memcpy(destination.target_handles, source.target_handles, entity_handles_bytes);
+            std::memcpy(destination.target_ids, source.target_ids, entity_ids_bytes);
             std::memcpy(
                 destination.target_locations_xs, source.target_locations_xs, float_biases_bytes);
             std::memcpy(
@@ -3395,9 +3377,9 @@ struct FighterEntityDataSingleConstView : ml::native_soa::CompactViewState<true>
     auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return slice(offset, count);
     }
-    auto entity_handles() const -> std::span<RegistryEntityHandle const> {
-        return {column_data<RegistryEntityHandle>(
-                    FighterEntityDataSingleLayout::EntityHandles.offset(capacity_blocks())),
+    auto entity_ids() const -> std::span<EntityUniqueId const> {
+        return {column_data<EntityUniqueId>(
+                    FighterEntityDataSingleLayout::EntityIds.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto integral_biases() const -> std::span<std::uint32_t const> {
@@ -3507,9 +3489,9 @@ struct FighterEntityDataSingleConstView : ml::native_soa::CompactViewState<true>
             column_data<Health>(FighterEntityDataSingleLayout::Healths.offset(capacity_blocks())),
             static_cast<std::size_t>(count_)};
     }
-    auto parent_handles() const -> std::span<RegistryEntityHandle const> {
-        return {column_data<RegistryEntityHandle>(
-                    FighterEntityDataSingleLayout::ParentHandles.offset(capacity_blocks())),
+    auto parent_ids() const -> std::span<EntityUniqueId const> {
+        return {column_data<EntityUniqueId>(
+                    FighterEntityDataSingleLayout::ParentIds.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto awareness_scan_countdowns() const -> std::span<std::int8_t const> {
@@ -3575,9 +3557,9 @@ struct FighterEntityDataSingleConstView : ml::native_soa::CompactViewState<true>
                     FighterEntityDataSingleLayout::AttackCooldowns.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto target_handles() const -> std::span<RegistryEntityHandle const> {
-        return {column_data<RegistryEntityHandle>(
-                    FighterEntityDataSingleLayout::TargetHandles.offset(capacity_blocks())),
+    auto target_ids() const -> std::span<EntityUniqueId const> {
+        return {column_data<EntityUniqueId>(
+                    FighterEntityDataSingleLayout::TargetIds.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto view_target_locations() const -> ml::native_soa::Vector3ConstView<float> {
@@ -3637,8 +3619,8 @@ struct FighterEntityDataSingleConstView : ml::native_soa::CompactViewState<true>
         }
         auto const blocks{capacity_blocks()};
         return FighterEntityDataConstView{
-            {column_data_unchecked<RegistryEntityHandle>(
-                 FighterEntityDataSingleLayout::EntityHandles.offset(blocks)),
+            {column_data_unchecked<EntityUniqueId>(
+                 FighterEntityDataSingleLayout::EntityIds.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<std::uint32_t>(
                  FighterEntityDataSingleLayout::IntegralBiases.offset(blocks)),
@@ -3725,8 +3707,8 @@ struct FighterEntityDataSingleConstView : ml::native_soa::CompactViewState<true>
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<Health>(FighterEntityDataSingleLayout::Healths.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
-                 FighterEntityDataSingleLayout::ParentHandles.offset(blocks)),
+            {column_data_unchecked<EntityUniqueId>(
+                 FighterEntityDataSingleLayout::ParentIds.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<std::int8_t>(
                  FighterEntityDataSingleLayout::AwarenessScanCountdowns.offset(blocks)),
@@ -3766,8 +3748,8 @@ struct FighterEntityDataSingleConstView : ml::native_soa::CompactViewState<true>
             {column_data_unchecked<std::int16_t>(
                  FighterEntityDataSingleLayout::AttackCooldowns.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
-                 FighterEntityDataSingleLayout::TargetHandles.offset(blocks)),
+            {column_data_unchecked<EntityUniqueId>(
+                 FighterEntityDataSingleLayout::TargetIds.offset(blocks)),
              static_cast<std::size_t>(count_)},
             Vectors3fConstView{
                 {column_data_unchecked<float>(
@@ -3829,9 +3811,9 @@ struct FighterEntityDataSingleView : ml::native_soa::CompactViewState<false> {
     auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return slice(offset, count);
     }
-    auto entity_handles() const -> std::span<RegistryEntityHandle> {
-        return {column_data<RegistryEntityHandle>(
-                    FighterEntityDataSingleLayout::EntityHandles.offset(capacity_blocks())),
+    auto entity_ids() const -> std::span<EntityUniqueId> {
+        return {column_data<EntityUniqueId>(
+                    FighterEntityDataSingleLayout::EntityIds.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto integral_biases() const -> std::span<std::uint32_t> {
@@ -3941,9 +3923,9 @@ struct FighterEntityDataSingleView : ml::native_soa::CompactViewState<false> {
             column_data<Health>(FighterEntityDataSingleLayout::Healths.offset(capacity_blocks())),
             static_cast<std::size_t>(count_)};
     }
-    auto parent_handles() const -> std::span<RegistryEntityHandle> {
-        return {column_data<RegistryEntityHandle>(
-                    FighterEntityDataSingleLayout::ParentHandles.offset(capacity_blocks())),
+    auto parent_ids() const -> std::span<EntityUniqueId> {
+        return {column_data<EntityUniqueId>(
+                    FighterEntityDataSingleLayout::ParentIds.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto awareness_scan_countdowns() const -> std::span<std::int8_t> {
@@ -4009,9 +3991,9 @@ struct FighterEntityDataSingleView : ml::native_soa::CompactViewState<false> {
                     FighterEntityDataSingleLayout::AttackCooldowns.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto target_handles() const -> std::span<RegistryEntityHandle> {
-        return {column_data<RegistryEntityHandle>(
-                    FighterEntityDataSingleLayout::TargetHandles.offset(capacity_blocks())),
+    auto target_ids() const -> std::span<EntityUniqueId> {
+        return {column_data<EntityUniqueId>(
+                    FighterEntityDataSingleLayout::TargetIds.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
     auto view_target_locations() const -> ml::native_soa::Vector3View<float> {
@@ -4071,8 +4053,8 @@ struct FighterEntityDataSingleView : ml::native_soa::CompactViewState<false> {
         }
         auto const blocks{capacity_blocks()};
         return FighterEntityDataView{
-            {column_data_unchecked<RegistryEntityHandle>(
-                 FighterEntityDataSingleLayout::EntityHandles.offset(blocks)),
+            {column_data_unchecked<EntityUniqueId>(
+                 FighterEntityDataSingleLayout::EntityIds.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<std::uint32_t>(
                  FighterEntityDataSingleLayout::IntegralBiases.offset(blocks)),
@@ -4158,8 +4140,8 @@ struct FighterEntityDataSingleView : ml::native_soa::CompactViewState<false> {
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<Health>(FighterEntityDataSingleLayout::Healths.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
-                 FighterEntityDataSingleLayout::ParentHandles.offset(blocks)),
+            {column_data_unchecked<EntityUniqueId>(
+                 FighterEntityDataSingleLayout::ParentIds.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<std::int8_t>(
                  FighterEntityDataSingleLayout::AwarenessScanCountdowns.offset(blocks)),
@@ -4198,8 +4180,8 @@ struct FighterEntityDataSingleView : ml::native_soa::CompactViewState<false> {
             {column_data_unchecked<std::int16_t>(
                  FighterEntityDataSingleLayout::AttackCooldowns.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<RegistryEntityHandle>(
-                 FighterEntityDataSingleLayout::TargetHandles.offset(blocks)),
+            {column_data_unchecked<EntityUniqueId>(
+                 FighterEntityDataSingleLayout::TargetIds.offset(blocks)),
              static_cast<std::size_t>(count_)},
             Vectors3fView{{column_data_unchecked<float>(
                                FighterEntityDataSingleLayout::TargetLocationsXs.offset(blocks)),

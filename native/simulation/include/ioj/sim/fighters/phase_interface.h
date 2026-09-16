@@ -13,6 +13,8 @@ class PhaseInterface {
 
     void begin_play();
 
+    void commit_orders();
+
     void prepare_tick(float const dt);
 
     void think(float const dt);
@@ -25,7 +27,7 @@ class PhaseInterface {
 
     void resolve_damage_events();
 
-    void update_entity_registry();
+    void publish_deaths();
 
     void cleanup_entities();
 

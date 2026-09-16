@@ -3,7 +3,9 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestEnhancedInputSubsystem.h>
 
-#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/agent_accessor.h>
+#include <ioj/sim/combat_events.h>
+#include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spatial_query_manager.h>
@@ -40,11 +42,14 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
     FGlobalControlInputs global_input_;
     FPlayerControlContexts contexts_;
     ::ioj::sim::SimClock clock_;
-    ::ioj::sim::EntityRegistry registry_;
-    ::ioj::sim::SpatialQueryManager queries_{registry_};
+    ::ioj::sim::EntityLedger ledger_;
+    ::ioj::sim::CombatEvents combat_events_{ledger_};
+    ::ioj::sim::AgentIndexes indexes_{clock_};
+    ::ioj::sim::AgentAccessor agents_{indexes_};
+    ::ioj::sim::SpatialQueryManager queries_{agents_};
     ml::FFrameMemoryResource frame_memory_{1024 * 1024};
-    ::ioj::sim::lasers::Sim lasers_{clock_, registry_, queries_, frame_memory_};
-    ::ioj::sim::player::Sim ship_simulation_{clock_, registry_, queries_, lasers_};
+    ::ioj::sim::lasers::Sim lasers_{clock_, combat_events_, queries_, frame_memory_};
+    ::ioj::sim::player::Sim ship_simulation_{clock_, ledger_, combat_events_, queries_, lasers_};
     ::ioj::sim::player::CommandInterface ship_commands_{ship_simulation_};
 
     BEFORE_EACH()

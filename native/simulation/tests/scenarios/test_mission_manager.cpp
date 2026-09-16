@@ -103,13 +103,11 @@ void run_worldless_mission_manager_scenario(tests::SimulationFixture const& conf
     auto& simulation{harness.get_simulation()};
     auto& manager{simulation.get_mission_manager()};
     auto const& capitals{simulation.get_capital_ships()};
-    auto const hero{capitals.get_handle(hero_index)};
-    auto const ordinary_enemy{ordinary_enemy_index == -1
-                                  ? RegistryEntityHandle{}
-                                  : capitals.get_handle(ordinary_enemy_index)};
-    auto const required_enemy{required_enemy_index == -1
-                                  ? RegistryEntityHandle{}
-                                  : capitals.get_handle(required_enemy_index)};
+    auto const hero{capitals.get_id(hero_index)};
+    auto const ordinary_enemy{ordinary_enemy_index == -1 ? EntityUniqueId{}
+                                                         : capitals.get_id(ordinary_enemy_index)};
+    auto const required_enemy{required_enemy_index == -1 ? EntityUniqueId{}
+                                                         : capitals.get_id(required_enemy_index)};
 
     harness.finish_initialisation();
 
@@ -129,9 +127,10 @@ void run_worldless_mission_manager_scenario(tests::SimulationFixture const& conf
         sample.fail_reason = manager.get_mission_fail_reason();
         sample.kills = manager.get_mission_kills();
         sample.kill_target = manager.get_kill_target();
-        auto const survivors{manager.get_entity_handles_that_must_survive()};
+        auto const survivors{manager.get_entity_ids_that_must_survive()};
         sample.survivor_alive =
-            !survivors.empty() && harness.get_registry().is_valid_alive(survivors[0]);
+            !survivors.empty() &&
+            harness.get_simulation().get_agent_accessor().is_alive(survivors[0]);
         auto const survivor_health{manager.get_entity_health_that_must_survive()};
         sample.survivor_health = survivor_health.empty() ? 0 : survivor_health[0].health;
         auto const required_health{manager.get_entity_health_required_to_kill()};
@@ -154,7 +153,7 @@ void run_worldless_mission_manager_scenario(tests::SimulationFixture const& conf
         harness.timeline
             .then_after(0.01, [&] { harness.queue_kills(std::array{ordinary_enemy}, hero); })
             .then_after(0.19, [&] {
-                auto const second_enemy{simulation.get_capital_ships().get_handle(1)};
+                auto const second_enemy{simulation.get_capital_ships().get_id(1)};
                 harness.queue_kills(std::array{second_enemy}, hero);
             });
     } else if (scenario == Scenario::SuccessIsTerminal) {

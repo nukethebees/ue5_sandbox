@@ -37,7 +37,7 @@ auto UTeamEntityTableWidget::RebuildWidget() -> TSharedRef<SWidget> {
 }
 
 void UTeamEntityTableWidget::set_entity_counts(
-    ::ioj::sim::EntityRegistry::EntityCounts const& new_counts) {
+    ::ioj::sim::telemetry::EntityCounts const& new_counts) {
     values = new_counts;
     rebuild_table();
 }

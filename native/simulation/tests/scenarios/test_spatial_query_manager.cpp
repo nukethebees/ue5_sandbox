@@ -19,14 +19,14 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     auto const& capitals{harness.get_simulation().get_capital_ships()};
-    std::vector<RegistryEntityHandle> expected{};
+    std::vector<EntityUniqueId> expected{};
     for (std::int32_t i{}; i < static_cast<std::int32_t>(locations.size()); ++i) {
-        expected.push_back(capitals.get_handle(i));
+        expected.push_back(capitals.get_id(i));
     }
 
     Vectors3f starts;
     Vectors3f ends;
-    std::vector<RegistryEntityHandle> targets{};
+    std::vector<EntityUniqueId> targets{};
     std::array<float, 3> const scales{0.5f, 1.f, 2.f};
     for (auto const scale : scales) {
         for (std::int32_t i{}; i < static_cast<std::int32_t>(locations.size()); ++i) {
@@ -35,16 +35,15 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
             targets.push_back(expected[i]);
         }
     }
-    std::vector<RegistryEntityHandle> results{};
+    std::vector<EntityUniqueId> results{};
     results.resize(static_cast<std::size_t>(ends.num()));
     harness.get_simulation().get_spatial_query_manager().trace_line_of_sight(
         starts.get_const_view(), ends.get_const_view(), results);
     auto const count{static_cast<std::int32_t>(locations.size())};
     for (std::int32_t i{}; i < count; ++i) {
-        tests::expect_true(results[i].is_null(), "Half-distance trace misses", i);
-        tests::expect_equal(expected[i], results[i + count], "Ship trace resolves handle", i);
-        tests::expect_equal(
-            expected[i], results[i + 2 * count], "Past-ship trace resolves handle", i);
+        tests::expect_true(!results[i].is_valid(), "Half-distance trace misses", i);
+        tests::expect_equal(expected[i], results[i + count], "Ship trace resolves ID", i);
+        tests::expect_equal(expected[i], results[i + 2 * count], "Past-ship trace resolves ID", i);
     }
 
     std::vector<std::uint8_t> has_los{};

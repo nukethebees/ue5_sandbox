@@ -126,9 +126,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     // Simulation services
     /* **************************************** */
-    auto get_entity_registry() const noexcept -> ::ioj::sim::EntityRegistry const& {
+    auto get_entity_ledger() const noexcept -> ::ioj::sim::EntityLedger const& {
         check(level_simulation_.IsSet());
-        return level_simulation_->get_entity_registry();
+        return level_simulation_->get_entity_ledger();
     }
     auto get_level_telemetry_manager() const noexcept -> ::ioj::sim::LevelTelemetryManager const& {
         check(level_simulation_.IsSet());

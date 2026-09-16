@@ -1,4 +1,13 @@
 target_sources(native-simulation PRIVATE
+  entity_ledger.cpp
+  ../include/ioj/sim/entity_ledger.h
+  agent_accessor.cpp
+  damage_queue.cpp
+  ../include/ioj/sim/combat_events.h
+  ../include/ioj/sim/damage_queue.h
+  ../include/ioj/sim/agent_indexes.h
+  ../include/ioj/sim/agent_display_batch.h
+  ../include/ioj/sim/agent_accessor.h
   ../include/ioj/sim/attack_distance_band.h
   ../include/ioj/sim/base_sim_config.h
   ../include/ioj/sim/batch_operations.h
@@ -16,16 +25,10 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/entity_cell_data_operations.h
   ../include/ioj/sim/entity_cell_data.h
   ../include/ioj/sim/entity_death_info.h
-  ../include/ioj/sim/entity_handle.h
   ../include/ioj/sim/entity_history.h
   ../include/ioj/sim/entity_life_state.h
   ../include/ioj/sim/entity_overlaps.h
-  ../include/ioj/sim/entity_registry_bookkeeping.h
-  ../include/ioj/sim/entity_registry_query.h
-  ../include/ioj/sim/entity_registry_refresh.h
-  ../include/ioj/sim/entity_registry_statistics.h
-  ../include/ioj/sim/entity_registry_view.h
-  ../include/ioj/sim/entity_registry.h
+  ../include/ioj/sim/combat_statistics.h
   ../include/ioj/sim/entity_telemetry.h
   ../include/ioj/sim/entity_types.h
   ../include/ioj/sim/entity_world_bounds.h
@@ -35,7 +38,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/fighter_navigation_scratch.h
   ../include/ioj/sim/fighter_navigation.h
   ../include/ioj/sim/fighter_order_queue.h
-  ../include/ioj/sim/fighter_reassignment.h
   ../include/ioj/sim/fighter_spawn_queue.h
   ../include/ioj/sim/fighter_types.h
   ../include/ioj/sim/fixed_tick_loop.h
@@ -71,8 +73,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/query_thread_buffer_pool.h
   ../include/ioj/sim/query_thread_buffers.h
   ../include/ioj/sim/reference_level_simulation_data.h
-  ../include/ioj/sim/registry_entity_data.h
-  ../include/ioj/sim/registry_entity_handles.h
   ../include/ioj/sim/rotator_math.h
   ../include/ioj/sim/rotator_types.h
   ../include/ioj/sim/rotator3d.h
@@ -86,7 +86,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/sim_time.h
   ../include/ioj/sim/spatial_query_manager.h
   ../include/ioj/sim/spatial.h
-  ../include/ioj/sim/spawned_entity_handles.h
   ../include/ioj/sim/spinner_entity_data.h
   ../include/ioj/sim/step_response.h
   ../include/ioj/sim/system_read_views.h
@@ -108,11 +107,7 @@ target_sources(native-simulation PRIVATE
   collision_grid.cpp
   collision_overlap_storage.cpp
   deterministic_bias.cpp
-  entity_registry_bookkeeping.cpp
-  entity_registry_query.cpp
-  entity_registry_refresh.cpp
-  entity_registry_statistics.cpp
-  entity_registry.cpp
+  combat_statistics.cpp
   entity_world_bounds.cpp
   fighter_frame_spawn_queue.cpp
   fighter_navigation.cpp

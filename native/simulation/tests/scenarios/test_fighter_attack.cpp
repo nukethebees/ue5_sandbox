@@ -5,9 +5,7 @@
 #include <ioj/sim/world_aabb_operations.h>
 
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/entity_registry.h>
 #include <ioj/sim/fighters/sim.h>
-#include <ioj/sim/registry_entity_data.h>
 
 namespace ioj::sim {
 namespace fighter_navigation_test {
@@ -195,6 +193,9 @@ void run_worldless_fighter_clear_navigation(tests::SimulationFixture const& conf
         if (!recorded_first) {
             first_location = last_location;
             recorded_first = true;
+            recorded_first_movement = true;
+            scanned_before_first_movement =
+                fighters.get_navigation_telemetry().hard_trace_count > 0;
         }
         auto const& telemetry{fighters.get_navigation_telemetry()};
         if (!recorded_first_movement && !(std::abs(last_location.X - first_location.X) <= 1.e-4f &&
@@ -325,6 +326,10 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
                                                 std::move(spawn_slots),
                                                 Vector3f{{-20000.f, -7000.f, 0.f}},
                                                 Vector3f{{20000.f, 0.f, 0.f}})};
+    std::ranges::fill(data.level_events.initial_spawns.capital_spawns.get_view()
+                          .columns()
+                          .fighter_spawn_cooldowns,
+                      3600.f);
     DenseNavigationResult result;
     result.collision_distance =
         collision::get_entity_radius(data.entity_bounds, collision::EntityAABBs::fighter_index) *
@@ -337,8 +342,11 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
         result.query_count += telemetry.separation_query_count;
         result.saw_immediate_risk = result.saw_immediate_risk || telemetry.immediate_risk_count > 0;
     };
-    harness.timeline.finish_at(2.0);
-    result.timeline_completed = harness.run_until_timeline_finished(2.5);
+    harness.timeline.finish_at(10.0);
+    result.timeline_completed = harness.run_until_timeline_finished(10.5);
+    tests::expect_equal(harness.get_ledger().get_issued_counts()[EntityType::Fighter],
+                        static_cast<std::uint32_t>(fighter_count),
+                        "Dense fixture spawns exactly one fighter wave");
     auto const locations{fighters.get_locations()};
     result.locations.reserve(locations.num());
     for (std::int32_t i{}; i < locations.num(); ++i) {
@@ -348,6 +356,16 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
 }
 
 void run_worldless_fighter_dense_determinism(tests::SimulationFixture const& config) {
+    auto const first_id{
+        EntityUniqueId::make(entity_identity_offset(EntityType::Fighter, 7), EntityType::Fighter)};
+    auto const second_id{EntityUniqueId::make(entity_identity_offset(EntityType::Fighter, 100),
+                                              EntityType::Fighter)};
+    auto const forward{fighters::make_coincident_separation_direction(first_id, second_id)};
+    auto const reverse{fighters::make_coincident_separation_direction(second_id, first_id)};
+    tests::expect_true(HMM_LenSqrV3(forward + reverse) < 1.e-8f,
+                       "Coincident entities receive opposite ID-based separation directions");
+    tests::expect_true(std::abs(HMM_LenSqrV3(forward) - 1.f) < 1.e-5f,
+                       "ID-based coincident separation is a unit direction");
     auto const first_result{run_dense_navigation_fixture(config, 8)};
     auto const second_result{run_dense_navigation_fixture(config, 8)};
     auto const& first{first_result.locations};
@@ -514,7 +532,7 @@ void run_worldless_fighter_attack(tests::SimulationFixture const& config) {
     harness.finish_initialisation();
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     auto const& fighters{harness.get_simulation().get_fighters()};
-    auto const enemy{capitals.get_handle(1)};
+    auto const enemy{capitals.get_id(1)};
     struct Sample {
         std::int32_t enemy_health{};
         std::vector<Team> fighter_teams{};

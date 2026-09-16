@@ -15,6 +15,8 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
     data.grid_dimensions = {16, 16, 4};
     data.cell_size = {{1000.f, 1000.f, 1000.f}};
     data.lasers.n_preallocated_instances = 32;
+    data.overlap_response.damage_per_overlap_detection = 1;
+    data.fighters.health = 1000;
     data.fighters.max_live_fighters = max_live_fighters;
     for (auto const team : participating_teams) {
         data.participating_teams.add(team);
@@ -48,6 +50,7 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
 void start_and_tick(LevelSim& simulation) {
     simulation.finish_initialisation();
     simulation.start();
+    simulation.advance(simulation.get_clock().get_tick_period());
     simulation.advance(simulation.get_clock().get_tick_period());
 }
 
@@ -119,10 +122,10 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
 
     simulation.advance(simulation.get_clock().get_tick_period());
     auto const& capital_simulation{simulation.get_capital_ships()};
-    tests::expect_equal(static_cast<std::int32_t>(capital_simulation.get_fighter_handles(0).size()),
+    tests::expect_equal(static_cast<std::int32_t>(capital_simulation.get_fighter_ids(0).size()),
                         4,
                         "First capital owns its full accepted wave");
-    tests::expect_equal(static_cast<std::int32_t>(capital_simulation.get_fighter_handles(1).size()),
+    tests::expect_equal(static_cast<std::int32_t>(capital_simulation.get_fighter_ids(1).size()),
                         2,
                         "Second capital owns only its accepted prefix");
 
@@ -132,21 +135,22 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
     parent_death_simulation.start();
     DirectDamageEvents capital_damage;
     capital_damage.add_uninitialised(1);
-    capital_damage.damaged_entities[0] = parent_death_simulation.get_capital_ships().get_handle(0);
-    capital_damage.instigators[0] = parent_death_simulation.get_capital_ships().get_handle(1);
+    capital_damage.damaged_entities[0] =
+        parent_death_simulation.get_read_view().capitals.entities.entity_ids[0];
+    capital_damage.instigators[0] =
+        parent_death_simulation.get_read_view().capitals.entities.entity_ids[1];
     capital_damage.damage_amounts[0] = 100;
     LevelSimTestAccess::queue_direct_damage_events(parent_death_simulation,
                                                    capital_damage.get_const_view());
     parent_death_simulation.advance(parent_death_simulation.get_clock().get_tick_period());
     parent_death_simulation.advance(parent_death_simulation.get_clock().get_tick_period());
-    tests::expect_equal(
-        static_cast<std::int32_t>(
-            parent_death_simulation.get_capital_ships().get_fighter_handles(0).size()),
-        2,
-        "A surviving same-team capital adopts a new fighter from a dead parent");
+    tests::expect_equal(static_cast<std::int32_t>(
+                            parent_death_simulation.get_capital_ships().get_fighter_ids(0).size()),
+                        1,
+                        "A pending launch from a dead parent is cancelled, not adopted");
 }
 
-TEST(FighterLiveCap, DeferredRemovalAndReconstruction) {
+TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
 
     std::vector<Team> const capitals{Team::White};
     auto make_data{[&] { return make_cap_battle(capitals, capitals, 1, 1, 0.f); }};
@@ -157,18 +161,48 @@ TEST(FighterLiveCap, DeferredRemovalAndReconstruction) {
 
     DirectDamageEvents damage;
     damage.add_uninitialised(1);
-    damage.damaged_entities[0] = simulation.get_fighters().get_handles()[0];
-    damage.instigators[0] = simulation.get_capital_ships().get_handle(0);
+    damage.damaged_entities[0] = simulation.get_fighters().get_entity_ids()[0];
+    auto const original_id{simulation.get_read_view().fighters.entities.entity_ids[0]};
+    damage.instigators[0] = simulation.get_read_view().capitals.entities.entity_ids[0];
     damage.damage_amounts[0] = 100000;
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
     simulation.advance(simulation.get_clock().get_tick_period());
     tests::expect_equal(simulation.get_fighters().get_num_instances(),
                         0,
-                        "Deferred removal finishes before capacity is reusable");
+                        "Dead fighter is removed at the end of Resolution");
+    EXPECT_EQ(simulation.get_agent_indexes().find(original_id), -1);
+    EXPECT_FALSE(simulation.get_agent_accessor().read(original_id));
+    EXPECT_TRUE(simulation.get_capital_ships().get_fighter_ids(0).empty());
+    FighterOrderQueue stale_orders;
+    stale_orders.add(original_id, FighterOrder{.task = 1}, FighterTask::Standby, {});
+    LevelSimTestAccess::queue_fighter_orders(simulation, stale_orders);
+    simulation.advance(simulation.get_clock().get_tick_period());
+    EXPECT_EQ(simulation.get_fighters().get_num_instances(), 0);
     simulation.advance(simulation.get_clock().get_tick_period());
     tests::expect_equal(simulation.get_fighters().get_num_instances(),
                         1,
                         "Exactly one replacement uses the released slot");
+
+    auto const replacement_id{simulation.get_read_view().fighters.entities.entity_ids[0]};
+    EXPECT_NE(replacement_id, original_id);
+    stale_orders.add(simulation.get_read_view().capitals.entities.entity_ids[0],
+                     FighterOrder{.task = 1},
+                     FighterTask::Standby,
+                     {});
+    stale_orders.add(EntityUniqueId::make(100000, EntityType::Fighter),
+                     FighterOrder{.task = 1},
+                     FighterTask::Standby,
+                     {});
+    LevelSimTestAccess::queue_fighter_orders(simulation, stale_orders);
+    simulation.advance(simulation.get_clock().get_tick_period());
+    EXPECT_EQ(simulation.get_fighters().get_tasks()[0], FighterTask::Attack);
+
+    FighterOrderQueue valid_orders;
+    valid_orders.add(replacement_id, FighterOrder{.task = 1}, FighterTask::Standby, {});
+    LevelSimTestAccess::queue_fighter_orders(simulation, valid_orders);
+    EXPECT_EQ(simulation.get_fighters().get_tasks()[0], FighterTask::Attack);
+    simulation.advance(simulation.get_clock().get_tick_period());
+    EXPECT_EQ(simulation.get_fighters().get_tasks()[0], FighterTask::Standby);
 
     std::optional<LevelSim> reconstructed;
     reconstructed.emplace(make_data());

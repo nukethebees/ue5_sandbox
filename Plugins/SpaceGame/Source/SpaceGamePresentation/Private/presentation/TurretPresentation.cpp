@@ -3,7 +3,6 @@
 #include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
-#include <ioj/sim/entity_registry.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
@@ -59,11 +58,9 @@ void FTurretPresentation::begin_play_presentation(TArray<FTransform> initial_tra
     configure_ismc();
     ismc_transforms = MoveTemp(initial_transforms);
     auto const& entities{view().entities};
-    auto const& registry{view().registry->get_entity_data()};
     auto const count{entities.num()};
     for (auto i{ismc_transforms.Num()}; i < count; ++i) {
-        auto const index{entities.handles[i].index};
-        ismc_transforms.Emplace(FRotator{ml::to_unreal(registry.rotations[index])},
+        ismc_transforms.Emplace(FRotator{ml::to_unreal(entities.rotations[i])},
                                 FVector{ml::to_unreal(entities.locations[i])});
     }
     add_initial_visual_instances();
@@ -188,7 +185,6 @@ void FTurretPresentation::draw_debugging_shapes() const {
 
     auto const& turret_simulation{view()};
     auto const& entities{turret_simulation.entities};
-    auto const& entity_registry{*turret_simulation.registry};
     auto const n{turret_simulation.get_num_instances()};
     auto const text_offset{actor_config->debug_status_text_offset};
 
@@ -197,21 +193,19 @@ void FTurretPresentation::draw_debugging_shapes() const {
         auto const turret_location{FVector{ml::to_unreal(entities.locations[i])}};
 
         if (draw_target_arrows_enabled) {
-            auto const target_handle{entities.target_handles[i]};
+            auto const target_id{entities.target_ids[i]};
 
-            if (entity_registry.is_valid_handle(target_handle)) {
+            if (target_id.is_valid()) {
                 auto const target_location{FVector{ml::to_unreal(entities.target_locations[i])}};
                 drawer.draw_line(turret_location, target_location);
             }
         }
 
         if (draw_debug_entity_info_enabled) {
-            auto const turret_handle{entities.handles[i]};
+            auto const entity_id{entities.entity_ids[i]};
 
-            auto const msg{FString::Printf(TEXT("[%d, %d] HP=%d"),
-                                           turret_handle.index,
-                                           turret_handle.generation,
-                                           entities.healths[i])};
+            auto const msg{
+                FString::Printf(TEXT("[%u] HP=%d"), entity_id.raw_value(), entities.healths[i])};
             auto const msg_location{turret_location + text_offset};
             drawer.draw_string(msg_location, msg);
         }

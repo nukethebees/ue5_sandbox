@@ -10,7 +10,7 @@ inline void add(EntityCellData& data,
                 Vector3f const max_point,
                 CellCoord const min_cell,
                 CellCoord const max_cell,
-                RegistryEntityHandle const handle) {
+                EntityUniqueId const id) {
     auto const index{data.num()};
     data.add_uninitialised(1);
     data.get_view().columns().set(index,
@@ -26,7 +26,7 @@ inline void add(EntityCellData& data,
                                   max_cell.x,
                                   max_cell.y,
                                   max_cell.z,
-                                  handle);
+                                  id);
 }
 
 [[nodiscard]] inline auto min_point_at(EntityCellDataColumnsConstView const& data,

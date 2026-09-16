@@ -5,16 +5,19 @@
 #include <ioj/sim/sim_config.h>
 
 namespace ioj::sim {
-struct EntityRegistry;
+class CombatEvents;
 
 struct OverlapHandler {
-    OverlapHandler(EntityRegistry& registry, OverlapResponseConfig const& config) noexcept;
+    OverlapHandler(CombatEvents& events,
+                   AgentAccessor const& agents,
+                   OverlapResponseConfig const& config) noexcept;
 
     void handle(collision::DetectedOverlapsView overlaps);
   private:
-    void append_damage(RegistryEntityHandle entity);
+    void append_damage(EntityUniqueId id);
 
-    EntityRegistry& registry_;
+    CombatEvents& events_;
+    AgentAccessor const& agents_;
     std::int32_t damage_per_overlap_detection_{};
     DirectDamageEvents damage_events_;
 };

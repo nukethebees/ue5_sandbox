@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/entity_ledger.h>
 #include <sandbox/core/multi_buffer.h>
 #include <SandboxCore/periodic_tick_countdown.h>
 #include <SandboxUI/EntityOverlay/EntityOverlayFrameStore.h>
@@ -34,6 +34,7 @@ class UInstancedStaticMeshComponent;
 namespace ioj::sim {
 struct MissionManager;
 struct SpatialQueryManager;
+class AgentAccessor;
 }
 namespace ioj::sim::player {
 struct Sim;
@@ -96,7 +97,7 @@ struct FMissionDataCache {
 struct FEntityCountDataCache {
     bool operator==(FEntityCountDataCache const& other) const noexcept = default;
 
-    ::ioj::sim::EntityRegistry::EntityCounts alive_per_team_and_type{};
+    ::ioj::sim::telemetry::EntityCounts alive_per_team_and_type{};
 };
 
 struct FKillDataCache {
@@ -160,7 +161,8 @@ struct FDataChanges {
 struct SPACEGAMEPRESENTATION_API FHUDManager {
     void initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
                     ::ioj::sim::MissionManager const& new_mission_manager,
-                    ::ioj::sim::EntityRegistry const& new_entity_registry,
+                    ::ioj::sim::EntityLedger const& new_entity_ledger,
+                    ::ioj::sim::AgentAccessor const& new_agents,
                     ::ioj::sim::SpatialQueryManager const& new_spatial_query_manager,
                     ::ioj::sim::player::Sim const* new_player_ship,
                     FLevelVisualConfig const& level_config,
@@ -209,12 +211,12 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
         FEntityOverlayFrameStorePtr entity_overlay_frame_store;
         FEntityOverlayCollector entity_overlay_collector;
         FRadarFrameStorePtr radar_frame_store;
-        ::ioj::sim::RegistryEntityHandle soft_target{};
+        ::ioj::sim::EntityUniqueId soft_target{};
         float soft_target_range_alpha{0.0f};
         float soft_target_radius_pixels{0.0f};
         float soft_target_world_units_per_pixel{0.0f};
         float soft_target_pulse_remaining{0.0f};
-        ::ioj::sim::RegistryEntityHandle fading_soft_target{};
+        ::ioj::sim::EntityUniqueId fading_soft_target{};
         float fading_soft_target_range_alpha{0.0f};
         float fading_soft_target_radius_pixels{0.0f};
         float fading_soft_target_world_units_per_pixel{0.0f};
@@ -236,7 +238,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
                                bool render_world_target);
     void configure_world_soft_target_renderer();
     void clear_world_soft_targets();
-    void add_world_soft_target(::ioj::sim::RegistryEntityHandle handle,
+    void add_world_soft_target(::ioj::sim::EntityUniqueId id,
                                float range_alpha,
                                float indicator_radius_pixels,
                                float world_units_per_pixel,
@@ -269,7 +271,8 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     TArray<FRegisteredHud> registered_huds;
     ::ioj::sim::player::Sim const* player_ship{nullptr};
     ::ioj::sim::MissionManager const* mission_manager{nullptr};
-    ::ioj::sim::EntityRegistry const* entity_registry{nullptr};
+    ::ioj::sim::EntityLedger const* entity_ledger{nullptr};
+    ::ioj::sim::AgentAccessor const* agents_{nullptr};
     ::ioj::sim::SpatialQueryManager const* spatial_query_manager{nullptr};
     FFixedTickLoop tick_loop_{};
     FPeriodicTickCountdown8 update_timers;

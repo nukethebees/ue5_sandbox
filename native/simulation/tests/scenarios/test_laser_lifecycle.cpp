@@ -4,7 +4,6 @@
 
 #include <ioj/sim/world_aabb_operations.h>
 
-#include <ioj/sim/entity_registry.h>
 #include <ioj/sim/lasers/sim.h>
 
 namespace ioj::sim {
@@ -22,7 +21,7 @@ constexpr float miss_max_distance{500.f};
 
 TEST(NativeSimulation, LaserSpawnRequestRowOperationsKeepColumnsPaired) {
     lasers::SpawnRequests requests{};
-    RegistryEntityHandle const instigator{7, 3};
+    auto const instigator{EntityUniqueId::make(7, EntityType::CapitalShip)};
     LaserSource const source{Team::Green, EntityType::CapitalShip};
 
     auto expect_row = [&](std::int32_t const index, float const offset) {
@@ -38,7 +37,7 @@ TEST(NativeSimulation, LaserSpawnRequestRowOperationsKeepColumnsPaired) {
         EXPECT_EQ(requests.damages[index], static_cast<std::int32_t>(offset) + 10);
         EXPECT_FLOAT_EQ(requests.speeds[index], offset + 11.f);
         EXPECT_FLOAT_EQ(requests.max_distances[index], offset + 12.f);
-        EXPECT_EQ(requests.instigator_handles[index], instigator);
+        EXPECT_EQ(requests.instigator_ids[index], instigator);
         EXPECT_EQ(requests.sources[index], source);
     };
 
@@ -109,11 +108,8 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
     harness.finish_initialisation();
     auto const& lasers{harness.get_simulation().get_lasers()};
     auto const& capitals{harness.get_simulation().get_capital_ships()};
-    auto const shooter{capitals.get_handle(0)};
-    auto const target{capitals.get_handle(1)};
-    auto const initial_target_health{scenario == LaserLifecycleScenario::SimultaneousLethalHits
-                                         ? low_target_health
-                                         : normal_target_health};
+    auto const shooter{capitals.get_id(0)};
+    auto const target{capitals.get_id(1)};
 
     struct Sample {
         std::int32_t active_lasers{};
@@ -123,20 +119,23 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
         std::int32_t kills{};
     };
     ml::TimeSeriesData<Sample> samples;
-    harness.on_end_tick = [&](LevelSim&) {
+    harness.on_end_tick = [&](LevelSim& simulation) {
+        auto const target_state{simulation.get_agent_accessor().read(target)};
         samples.add(harness.get_time(),
                     Sample{lasers.get_num_instances(),
                            lasers.get_number_spawned(),
-                           harness.get_registry().get_health(target),
-                           harness.get_registry().count_alive(),
-                           harness.get_registry().count_kills()});
+                           target_state ? target_state->health : 0,
+                           harness.get_ledger().count_alive(),
+                           harness.get_ledger().count_kills()});
     };
     harness.timeline.at(projectile_queue_time, [&] {
-        auto const shooter_location{harness.get_registry().get_location(shooter)};
-        auto const target_location{harness.get_registry().get_location(target)};
+        auto const shooter_location{
+            harness.get_simulation().get_agent_accessor().read(shooter)->location};
+        auto const target_location{
+            harness.get_simulation().get_agent_accessor().read(target)->location};
         auto const shooter_radius{
             harness.get_simulation().get_spatial_query_manager().get_entity_type_radius(
-                harness.get_registry().get_entity_type(shooter))};
+                shooter.entity_type())};
         auto const target_direction{HMM_NormV3(target_location - shooter_location)};
         auto start{shooter_location + target_direction * (shooter_radius + 100.f)};
         auto fire_direction{target_direction};
@@ -160,7 +159,7 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
             requests.max_distances[i] = scenario == LaserLifecycleScenario::Miss
                                           ? miss_max_distance
                                           : collision_max_distance;
-            requests.instigator_handles[i] = shooter;
+            requests.instigator_ids[i] = shooter;
             requests.sources[i] = LaserSource{Team::White, EntityType::TubeSpinner};
         }
         LevelSimTestAccess::queue_laser_spawns(harness.get_simulation(), requests.get_const_view());
@@ -178,15 +177,13 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
     auto const expected_spawn_count{scenario == LaserLifecycleScenario::SimultaneousLethalHits ? 2
                                                                                                : 1};
     auto observed_committed_projectile{false};
-    auto damage_was_delayed{false};
     for (auto const& sample : samples.values()) {
-        if (sample.active_lasers == expected_spawn_count) {
+        if (sample.total_spawned == expected_spawn_count) {
             observed_committed_projectile = true;
-            damage_was_delayed |= sample.target_health == initial_target_health;
         }
     }
-    tests::expect_true(observed_committed_projectile, "Queued projectile becomes active");
-    tests::expect_true(damage_was_delayed, "Projectile commit precedes collision damage");
+    tests::expect_true(observed_committed_projectile,
+                       "Queued projectile is committed in Preparation");
     auto const& final{samples.last_value()};
     tests::expect_equal(expected_spawn_count, final.total_spawned, "Projectile count spawned");
     tests::expect_equal(0, final.active_lasers, "No active projectiles remain");

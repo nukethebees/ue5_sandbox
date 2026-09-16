@@ -6,7 +6,8 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/combat_events.h>
+#include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/level_telemetry_manager.h>
@@ -229,8 +230,8 @@ void FTestBatchOrchestratorSetupScenario::begin_level_telemetry() {
     telemetry_observations.reserve(16);
 
     test_driver->orchestrator.start_simulation();
-    initial_active_entity_count = test_driver->get_registry().get_num_alive_active_entities();
-    initial_issued_unique_id_count = test_driver->get_registry().get_num_unique_ids_issued();
+    initial_active_entity_count = test_driver->get_ledger().count_alive();
+    initial_issued_unique_id_count = test_driver->get_ledger().get_num_unique_ids_issued();
     set_timeline_end_tick_hook(FOrchestratorEndTickTestHook::CreateRaw(
         this, &FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick));
     test_driver->timeline.then_after(0.05, [this] { kill_telemetry_test_entity(); });
@@ -242,8 +243,8 @@ void FTestBatchOrchestratorSetupScenario::kill_telemetry_test_entity() {
     telemetry_samples_before_change = telemetry_manager.get_active_entity_count_data().num();
     kill_samples_before_change = telemetry_manager.get_cumulative_kill_count_data().num();
 
-    TStaticArray<::ioj::sim::RegistryEntityHandle, 1> const targets{
-        test_driver->get_player_ship().get_entity_handle()};
+    TStaticArray<::ioj::sim::EntityUniqueId, 1> const targets{
+        test_driver->get_player_ship().get_unique_id()};
     test_driver->queue_kills(targets, targets[0]);
 }
 
@@ -257,7 +258,7 @@ void FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick(
     check(!kill_count_data.is_empty());
 
     auto const player_type{std::to_underlying(ETestEntityType::PlayerShip)};
-    auto const registry_entity_counts{test_driver->get_registry().count_alive_per_team_and_type()};
+    auto const alive_entity_counts{test_driver->get_ledger().count_alive_per_team_and_type()};
 
     telemetry_observations.add(
         test_driver->get_time(),
@@ -266,12 +267,12 @@ void FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick(
             .telemetry_sample_count = entity_count_data.num(),
             .last_telemetry_tick = entity_count_data.last_time(),
             .telemetry_entity_count = entity_count_data.last_value(),
-            .registry_entity_count = test_driver->get_registry().get_num_alive_active_entities(),
+            .alive_entity_count = test_driver->get_ledger().count_alive(),
             .telemetry_player_ship_count =
                 current_state
                     .active_entities_by_team_and_type[telemetry_player_team_index][player_type],
-            .registry_player_ship_count =
-                registry_entity_counts[telemetry_player_team_index][player_type],
+            .ledger_player_ship_count =
+                alive_entity_counts[telemetry_player_team_index][player_type],
             .kill_sample_count = kill_count_data.num(),
             .last_kill_tick = kill_count_data.last_time(),
             .cumulative_kill_count = kill_count_data.last_value(),
@@ -297,7 +298,7 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
     checks.are_equal(initial_active_entity_count,
                      initial_observation.telemetry_entity_count,
                      TEXT("Baseline records initial active entities"));
-    checks.are_equal(initial_observation.registry_player_ship_count,
+    checks.are_equal(initial_observation.ledger_player_ship_count,
                      initial_observation.telemetry_player_ship_count,
                      TEXT("Current state records the player ship"));
     checks.are_equal(
@@ -308,7 +309,7 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
         int32{0}, initial_observation.cumulative_kill_count, TEXT("Kill baseline starts at zero"));
     checks.are_equal(initial_issued_unique_id_count,
                      initial_observation.issued_unique_id_count,
-                     TEXT("Current state issued IDs match the registry"));
+                     TEXT("Current state issued IDs match the ledger"));
 
     int32 changed_observation_index{INDEX_NONE};
     auto const observation_count{telemetry_observations.num()};
@@ -332,13 +333,13 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
     checks.are_equal(damage_tick,
                      changed_observation.last_telemetry_tick,
                      TEXT("Telemetry records the first tick after damage is queued"));
-    checks.are_equal(changed_observation.registry_entity_count,
+    checks.are_equal(changed_observation.alive_entity_count,
                      changed_observation.telemetry_entity_count,
-                     TEXT("Telemetry records the active registry count"));
+                     TEXT("Telemetry records the active ledger count"));
     checks.are_equal(initial_active_entity_count - 1,
                      changed_observation.telemetry_entity_count,
                      TEXT("Killed entity changes the telemetry count"));
-    checks.are_equal(changed_observation.registry_player_ship_count,
+    checks.are_equal(changed_observation.ledger_player_ship_count,
                      changed_observation.telemetry_player_ship_count,
                      TEXT("Current state records the destroyed player ship"));
     checks.are_equal(int32{0},
@@ -423,14 +424,17 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
 
     ::ioj::sim::SimClock clock;
     clock.initialise({});
-    ::ioj::sim::EntityRegistry entity_registry;
-    ::ioj::sim::SpatialQueryManager spatial_queries{entity_registry};
+    ::ioj::sim::EntityLedger entity_ledger;
+    ::ioj::sim::CombatEvents combat_events{entity_ledger};
+    ::ioj::sim::AgentIndexes indexes{clock};
+    ::ioj::sim::AgentAccessor agents{indexes};
+    ::ioj::sim::SpatialQueryManager spatial_queries{agents};
     ml::FFrameMemoryResource frame_memory{1024 * 1024};
-    ::ioj::sim::lasers::Sim lasers{clock, entity_registry, spatial_queries, frame_memory};
+    ::ioj::sim::lasers::Sim lasers{clock, combat_events, spatial_queries, frame_memory};
     ::ioj::sim::GameMemory game_memory{{.root_capacity_bytes = 2u * 1024u * 1024u}};
     ::ioj::sim::LevelTelemetryManager telemetry_manager{
         clock,
-        entity_registry,
+        entity_ledger,
         lasers,
         game_memory,
         {.block_bytes = 100u * 1024u},
@@ -538,18 +542,9 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               active_count_data.last_time(),
               uint64{0});
 
-    ::ioj::sim::RegistryEntityData fixture_entity_data;
-    constexpr int32 fixture_count{3};
-    fixture_entity_data.add_defaulted(fixture_count);
-    for (int32 i{}; i < fixture_count; ++i) {
-        fixture_entity_data.healths[i] = 100;
-        fixture_entity_data.teams[i] = ::ioj::sim::Team::Red;
-    }
-    fixture_entity_data.teams[0] = ::ioj::sim::Team::Green;
-    fixture_entity_data.entity_types[0] = ::ioj::sim::EntityType::PlayerShip;
-    fixture_entity_data.entity_types[1] = ::ioj::sim::EntityType::CapitalShip;
-    fixture_entity_data.entity_types[2] = ::ioj::sim::EntityType::Fighter;
-    entity_registry.add_entities(fixture_entity_data.get_const_view());
+    entity_ledger.record_spawn(::ioj::sim::EntityType::PlayerShip, ::ioj::sim::Team::Green, true);
+    entity_ledger.record_spawn(::ioj::sim::EntityType::CapitalShip, ::ioj::sim::Team::Red, true);
+    entity_ledger.record_spawn(::ioj::sim::EntityType::Fighter, ::ioj::sim::Team::Red, true);
 
     clock.completed_ticks = 2;
     telemetry_manager.tick();
@@ -630,7 +625,7 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
 
     ::ioj::sim::LevelTelemetryManager boundary_manager{
         clock,
-        entity_registry,
+        entity_ledger,
         lasers,
         game_memory,
         {.block_bytes = ::ioj::sim::telemetry::HistoryRowsSingleLayout::layout_bytes(1)},
@@ -642,7 +637,8 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               int32{64});
     for (uint64 tick{1}; tick <= 64; ++tick) {
         clock.completed_ticks = tick;
-        entity_registry.add_entities(fixture_entity_data.get_const_view().left(1));
+        entity_ledger.record_spawn(
+            ::ioj::sim::EntityType::CapitalShip, ::ioj::sim::Team::Red, true);
         boundary_manager.tick();
     }
     TestEqual(TEXT("Appending beyond initial capacity preserves all emitted rows"),

@@ -6,7 +6,7 @@
 
 #include <ioj/sim/levels/level_runtime_events.h>
 
-#include <ioj/sim/entity_handle.h>
+#include <ioj/sim/entity_unique_id.h>
 
 namespace ioj::sim::capital_ships {
 struct Sim;
@@ -34,19 +34,17 @@ class LevelSpawnManager {
     void initialise(std::int32_t entity_count,
                     LevelCapitalSpawnEventsConstView capital_payloads,
                     LevelTurretSpawnEventsConstView turret_payloads);
-    void set_entity_handle(std::int32_t entity_index, RegistryEntityHandle handle);
+    void set_entity_id(std::int32_t entity_index, EntityUniqueId id);
     void spawn_initial(LevelCapitalSpawnEventsConstView capital_events,
                        LevelTurretSpawnEventsConstView turret_events,
                        LevelSpinnerSpawnEventsConstView spinner_events);
     void spawn(LevelSpawnGroupsConstView groups);
-    void reset_tick_output() { spawned_handles_this_tick_.clear(); }
-    auto get_spawned_handles() const -> std::span<RegistryEntityHandle const> {
-        return spawned_handles_this_tick_;
+    void reset_tick_output() { spawned_ids_this_tick_.clear(); }
+    auto get_spawned_ids() const -> std::span<EntityUniqueId const> {
+        return spawned_ids_this_tick_;
     }
-    auto get_handle(std::int32_t entity_index) const -> RegistryEntityHandle;
-    auto get_entity_handles() const noexcept -> std::span<RegistryEntityHandle const> {
-        return entity_handles_;
-    }
+    auto get_id(std::int32_t entity_index) const -> EntityUniqueId;
+    auto get_entity_ids() const noexcept -> std::span<EntityUniqueId const> { return entity_ids_; }
   private:
     void spawn_capitals(LevelCapitalSpawnEventsConstView events);
     void resolve_capital_targets(LevelCapitalSpawnEventsConstView events);
@@ -58,8 +56,8 @@ class LevelSpawnManager {
     capital_ships::Sim& capital_ships_;
     turrets::Sim& turrets_;
     spinners::Sim& spinners_;
-    std::vector<RegistryEntityHandle> entity_handles_{};
-    std::vector<RegistryEntityHandle> target_handles_scratch_{};
-    std::vector<RegistryEntityHandle> spawned_handles_this_tick_{};
+    std::vector<EntityUniqueId> entity_ids_{};
+    std::vector<EntityUniqueId> target_ids_scratch_{};
+    std::vector<EntityUniqueId> spawned_ids_this_tick_{};
 };
 }

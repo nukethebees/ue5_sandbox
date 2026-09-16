@@ -1,9 +1,10 @@
 add_executable(native-simulation-tests)
 target_sources(native-simulation-tests PRIVATE
+  agent_indexes_tests.cpp
+  entity_ledger_tests.cpp
   entity_unique_id_tests.cpp
   test_tick_phases.cpp
   test_level_simulation.cpp
-  test_entity_registry_invariants.cpp
   test_overlap_handler.cpp
   test_attack_distance_band.cpp
   test_entity_aabb_overlaps.cpp
@@ -15,9 +16,9 @@ target_sources(native-simulation-tests PRIVATE
   fighter_entity_data_test.cpp
   single_allocation_production_soa_test.cpp
   scenarios/test_capital_command_fighters.cpp
-  scenarios/test_fighter_handles.cpp
+  scenarios/test_fighter_ownership.cpp
   scenarios/test_collision_uniform_grid.cpp
-  scenarios/test_entity_registry.cpp
+  scenarios/test_entity_ledger.cpp
   scenarios/test_fighter_attack.cpp
   scenarios/test_fighter_los_failure.cpp
   scenarios/test_fighters_intercept_capital.cpp
@@ -33,7 +34,6 @@ target_sources(native-simulation-tests PRIVATE
   worldless_simulation_tests.cpp
   support/worldless_simulation_test.cpp
   deterministic_bias_tests.cpp
-  entity_handle_tests.cpp
   fixed_tick_tests.cpp
   index_span_tests.cpp
   ship_health_tests.cpp

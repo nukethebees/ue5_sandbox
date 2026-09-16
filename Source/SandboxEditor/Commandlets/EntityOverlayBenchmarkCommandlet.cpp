@@ -1,7 +1,7 @@
 #include "SandboxEditor/Commandlets/EntityOverlayBenchmarkCommandlet.h"
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
-#include "ioj/sim/entity_registry.h"
+#include "ioj/sim/turret_entity_data.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayBenchmark.h"
 #include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
 
@@ -14,13 +14,15 @@
 DEFINE_LOG_CATEGORY_STATIC(LogEntityOverlayBenchmark, Log, All);
 
 namespace {
-auto make_view(::ioj::sim::EntityRegistry::EntityData const& entities)
-    -> ::ioj::sim::EntityRegistry::EntityData::ConstView {
-    return entities.get_const_view();
-}
-auto make_view(::ioj::sim::EntityRegistry::EntityData::ConstView const entities)
-    -> ::ioj::sim::EntityRegistry::EntityData::ConstView {
-    return entities;
+auto make_view(::ioj::sim::TurretEntityData const& entities)
+    -> std::array<::ioj::sim::AgentDisplayBatch, 1> {
+    auto const data{entities.get_const_view()};
+    return {{{::ioj::sim::EntityType::Turret,
+              data.entity_ids,
+              data.locations,
+              {},
+              data.healths,
+              data.teams}}};
 }
 
 auto make_team_colours() -> FEntityOverlayTeamColours {
@@ -35,8 +37,7 @@ auto make_team_colours() -> FEntityOverlayTeamColours {
 }
 
 auto write_debug_frames(FString const& output_directory) -> bool {
-    ::ioj::sim::EntityRegistry registry;
-    ::ioj::sim::EntityRegistry::EntityData entities;
+    ::ioj::sim::TurretEntityData entities;
     FVector3f const positions[]{
         {1000.0f, -600.0f, 0.0f},
         {1000.0f, -300.0f, 0.0f},
@@ -59,9 +60,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
         entities.healths[index] = health[index];
         entities.teams[index] =
             static_cast<::ioj::sim::Team>(index % static_cast<int32>(::ioj::sim::Team::COUNT));
-        entities.entity_types[index] = ::ioj::sim::EntityType::Turret;
     }
-    static_cast<void>(registry.add_entities(make_view(entities)));
 
     FMatrix44f projection{FMatrix44f::Identity};
     FMemory::Memzero(projection.M, sizeof(projection.M));
@@ -85,7 +84,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
     objective_roles[7] = EEntityOverlayObjectiveRole::Defend;
     objective_roles[8] = EEntityOverlayObjectiveRole::Destroy;
     auto& frame{frame_store->next()};
-    static_cast<void>(collect_entity_overlay_instances(make_view(registry.get_entity_data()),
+    static_cast<void>(collect_entity_overlay_instances(make_view(entities),
                                                        entity_type_radii,
                                                        objective_roles,
                                                        make_team_colours(),
@@ -101,10 +100,8 @@ auto write_debug_frames(FString const& output_directory) -> bool {
     }
 
     entities.locations.set(count - 1, {100.0f, 50.0f, 50.0f});
-    ::ioj::sim::EntityRegistry moved_registry;
-    static_cast<void>(moved_registry.add_entities(make_view(entities)));
     auto& moved_frame{frame_store->next()};
-    static_cast<void>(collect_entity_overlay_instances(make_view(moved_registry.get_entity_data()),
+    static_cast<void>(collect_entity_overlay_instances(make_view(entities),
                                                        entity_type_radii,
                                                        objective_roles,
                                                        make_team_colours(),

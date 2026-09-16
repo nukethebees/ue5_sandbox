@@ -46,58 +46,49 @@ void FTestCapitalShipProxyScenario::spawn_proxies(UWorld& world,
     overridden_health_proxy->set_health(overridden_health);
 
     ATestBatchOrchestrator::on_proxy_entities_bound.AddRaw(
-        this, &FTestCapitalShipProxyScenario::resolve_proxy_handles);
+        this, &FTestCapitalShipProxyScenario::resolve_proxy_ids);
 }
 
-void FTestCapitalShipProxyScenario::resolve_proxy_handles(FProxyEntityMap const& proxy_entities) {
+void FTestCapitalShipProxyScenario::resolve_proxy_ids(FProxyEntityMap const& proxy_entities) {
     checks.are_equal(proxy_entities.Num(), 2, TEXT("Correct number of proxies"));
 
     TArray<ml::FProxyEntityBinding> const bindings{
-        {.test_name = default_health_capital_name,
-         .handle = &default_health_handle,
-         .unique_id = &default_health_unique_id},
-        {.test_name = overridden_health_capital_name,
-         .handle = &overridden_health_handle,
-         .unique_id = &overridden_health_unique_id},
+        {.test_name = default_health_capital_name, .id = &default_health_id},
+        {.test_name = overridden_health_capital_name, .id = &overridden_health_id},
     };
     ml::resolve_proxy_entity_bindings(proxy_entities, bindings, checks);
 
-    checks.is_true(default_health_handle.is_valid(), TEXT("Nullopt-health capital proxy is bound"));
-    checks.is_true(overridden_health_handle.is_valid(),
+    checks.is_true(default_health_id.is_valid(), TEXT("Nullopt-health capital proxy is bound"));
+    checks.is_true(overridden_health_id.is_valid(),
                    TEXT("Overridden-health capital proxy is bound"));
-    checks.is_true(default_health_unique_id.is_valid(),
-                   TEXT("Nullopt-health capital proxy has a unique ID"));
-    checks.is_true(overridden_health_unique_id.is_valid(),
-                   TEXT("Overridden-health capital proxy has a unique ID"));
 
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
-    proxy_handles_bound = true;
+    proxy_ids_bound = true;
 }
 
 void FTestCapitalShipProxyScenario::check_proxy_healths() {
     auto& driver{initialise_test_driver()};
     driver.orchestrator.start_simulation();
 
-    checks.is_true(proxy_handles_bound,
-                   TEXT("Capital proxy handles are resolved when proxies are bound"));
+    checks.is_true(proxy_ids_bound, TEXT("Capital proxy IDs are resolved when proxies are bound"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
     auto const& capitals{driver.get_capital_ships()};
+    auto const& agents{driver.orchestrator.get_level_simulation()->get_agent_accessor()};
 
     checks.are_equal(
         2, capitals.get_num_instances(), TEXT("Two capital ships are spawned from the proxies"));
-    checks.is_true(capitals.is_valid(default_health_handle),
-                   TEXT("Default-health proxy has a capital-ship handle"));
-    checks.is_true(capitals.is_valid(overridden_health_handle),
-                   TEXT("Overridden-health proxy has a capital-ship handle"));
+    checks.is_true(agents.is_alive(default_health_id), TEXT("Default-health proxy ID is alive"));
+    checks.is_true(agents.is_alive(overridden_health_id),
+                   TEXT("Overridden-health proxy ID is alive"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
     checks.are_equal(default_health,
-                     capitals.get_health(default_health_handle),
+                     agents.read(default_health_id)->health,
                      TEXT("Nullopt proxy health uses the capital-ship config"));
     checks.are_equal(overridden_health,
-                     capitals.get_health(overridden_health_handle),
+                     agents.read(overridden_health_id)->health,
                      TEXT("Proxy health overrides the capital-ship config"));
 
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);

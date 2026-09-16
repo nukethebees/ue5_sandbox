@@ -11,7 +11,6 @@
 #include <SandboxCoreEngine/actor_utils.h>
 
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/entity_registry.h>
 #include <ioj/sim/mission_manager.h>
 #include <SandboxCoreEngine/enums.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
@@ -87,17 +86,18 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     auto& mission{simulation.get_mission_manager()};
     auto const& capitals{simulation.get_capital_ships()};
     auto const first_capital{first_capital_index == INDEX_NONE
-                                 ? ::ioj::sim::RegistryEntityHandle{}
-                                 : capitals.get_handle(first_capital_index)};
+                                 ? ::ioj::sim::EntityUniqueId{}
+                                 : capitals.get_id(first_capital_index)};
     auto const second_capital{second_capital_index == INDEX_NONE
-                                  ? ::ioj::sim::RegistryEntityHandle{}
-                                  : capitals.get_handle(second_capital_index)};
+                                  ? ::ioj::sim::EntityUniqueId{}
+                                  : capitals.get_id(second_capital_index)};
     harness.finish_initialisation();
 
     FHUDManager hud;
     hud.initialise(FTestBatchGameUiUpdateFrequencies{},
                    mission,
-                   harness.get_registry(),
+                   harness.get_ledger(),
+                   simulation.get_agent_accessor(),
                    simulation.get_spatial_query_manager(),
                    simulation.get_player_ship_simulation(),
                    config.get_visual_config(),
@@ -105,9 +105,9 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
                    {});
     checks.are_equal(0, hud.get_registered_hud_count(), TEXT("No HUD widgets are registered"));
     checks.are_equal(EHUDManagerState::Active, hud.get_state(), TEXT("HUD manager is active"));
-    checks.are_equal(harness.get_registry().get_num_alive_active_entities(),
+    checks.are_equal(harness.get_ledger().count_alive(),
                      count_worldless_hud_entities(hud),
-                     TEXT("Initial entity cache matches registry"));
+                     TEXT("Initial entity cache matches ledger"));
     checks.are_equal(ml::to_unreal(mission.get_mission_state()),
                      hud.get_mission_data().status_data.mission_state,
                      TEXT("Mission state is cached"));
@@ -124,9 +124,9 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
             harness.queue_kills(std::array{first_capital});
         });
     } else if (needs_player) {
-        auto const player_handle{simulation.get_player_ship_simulation()->registry_handle};
+        auto const player_id{simulation.get_player_ship_simulation()->unique_entity_id};
         harness.timeline.then_after(
-            0.1, [&] { harness.queue_kills(std::array{first_capital}, player_handle); });
+            0.1, [&] { harness.queue_kills(std::array{first_capital}, player_id); });
     }
     harness.on_end_tick = [&](::ioj::sim::LevelSim&) { hud.force_sample(); };
     harness.timeline.finish_at(0.35);
@@ -149,7 +149,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
         checks.is_true(player_status.has_player_ship, TEXT("Player HUD state is available"));
         checks.are_equal(1, player_status.points, TEXT("Player kill count is cached"));
         checks.are_equal(1,
-                         harness.get_registry().count_kills(),
+                         harness.get_ledger().count_kills(),
                          TEXT("Kill data source records the player kill"));
     } else {
         auto const cached_time{hud.get_mission_data().status_data.mission_stopwatch};
@@ -194,7 +194,7 @@ void FTestHUDManagerScenario::initial_caches_process_samples() {
     }
 
     auto const& hud_manager{get_headless_hud_manager()};
-    auto const& registry{orchestrator->get_entity_registry()};
+    auto const& ledger{orchestrator->get_entity_ledger()};
     auto const& mission_manager{orchestrator->get_mission_manager()};
     auto const* const player_ship{orchestrator->get_player_ship()};
 
@@ -202,9 +202,9 @@ void FTestHUDManagerScenario::initial_caches_process_samples() {
         0, hud_manager.get_registered_hud_count(), TEXT("No HUD widgets are registered"));
     checks.are_equal(
         EHUDManagerState::Active, hud_manager.get_state(), TEXT("HUD manager is active"));
-    checks.are_equal(registry.get_num_alive_active_entities(),
+    checks.are_equal(ledger.count_alive(),
                      count_cached_entities(hud_manager),
-                     TEXT("Initial entity count cache matches the registry"));
+                     TEXT("Initial entity count cache matches the ledger"));
 
     auto const& mission_data{hud_manager.get_mission_data()};
     checks.are_equal(ml::to_unreal(mission_manager.get_mission_state()),
@@ -299,10 +299,10 @@ void FTestHUDManagerScenario::defence_begin() {
                    TEXT("Required-kill entity starts healthy"));
 
     auto const handles{
-        test_driver->orchestrator.get_mission_manager().get_entity_handles_that_must_survive()};
+        test_driver->orchestrator.get_mission_manager().get_entity_ids_that_must_survive()};
     check(handles.size() == 1);
     auto const required_handles{
-        test_driver->orchestrator.get_mission_manager().get_entity_handles_required_to_kill()};
+        test_driver->orchestrator.get_mission_manager().get_entity_ids_required_to_kill()};
     check(required_handles.size() == 1);
     test_driver->timeline.then_after(damage_queue_time, [this, handles, required_handles] {
         test_driver->queue_kills(required_handles);
@@ -433,8 +433,9 @@ void FTestHUDManagerScenario::player_kill_begin() {
     auto const& capitals{test_driver->get_capital_ships()};
     check(capitals.get_num_instances() == 1);
 
-    std::array<::ioj::sim::RegistryEntityHandle, 1> const targets{capitals.get_handle(0)};
-    auto const instigator{player_ship->get_entity_handle()};
+    std::array<::ioj::sim::EntityUniqueId, 1> const targets{
+        capitals.get_read_view().entities.entity_ids[0]};
+    auto const instigator{player_ship->get_unique_id()};
     test_driver->timeline.then_after(damage_queue_time, [this, targets, instigator] {
         test_driver->queue_kills(targets, instigator);
     });
@@ -514,7 +515,7 @@ void FTestHUDManagerScenario::registration_process_samples() {
     // This manager has never had a widget or an overlay tick. The orchestrator's manager
     // may already have been sampled, which masked the late-registration startup bug.
     auto& hud_manager{get_headless_hud_manager()};
-    checks.are_equal(orchestrator->get_entity_registry().get_num_alive_active_entities(),
+    checks.are_equal(orchestrator->get_entity_ledger().count_alive(),
                      count_cached_entities(hud_manager),
                      TEXT("Cache exists before HUD registration"));
 
@@ -585,7 +586,7 @@ void FTestHUDManagerScenario::entity_count_begin() {
 
     auto const& capitals{test_driver->get_capital_ships()};
     check(capitals.get_num_instances() == 1);
-    std::array<::ioj::sim::RegistryEntityHandle, 1> const targets{capitals.get_handle(0)};
+    std::array<::ioj::sim::EntityUniqueId, 1> const targets{capitals.get_id(0)};
     test_driver->timeline.then_after(damage_queue_time,
                                      [this, targets] { test_driver->queue_kills(targets); });
     begin_timed_sampling(test_duration,
@@ -640,12 +641,13 @@ auto FTestHUDManagerScenario::initialise_headless_hud_manager() -> bool {
         orchestrator->start_simulation();
     }
 
-    auto const& entity_registry{orchestrator->get_entity_registry()};
+    auto const& entity_ledger{orchestrator->get_entity_ledger()};
 
     headless_hud_manager.Emplace();
     headless_hud_manager->initialise(orchestrator->get_hud_update_frequencies(),
                                      orchestrator->get_mission_manager(),
-                                     entity_registry,
+                                     entity_ledger,
+                                     orchestrator->get_level_simulation()->get_agent_accessor(),
                                      orchestrator->get_spatial_query_manager(),
                                      orchestrator->get_player_ship_simulation(),
                                      orchestrator->get_level_config()->get_visual_config(),

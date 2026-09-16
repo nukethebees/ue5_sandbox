@@ -18,7 +18,7 @@ static_assert(EntityUniqueId::entity_type_value_mask == 0x000000ffu);
 static_assert(EntityUniqueId::entity_type_mask == 0xff000000u);
 static_assert((EntityUniqueId::index_mask & EntityUniqueId::entity_type_mask) == 0);
 static_assert((EntityUniqueId::index_mask | EntityUniqueId::entity_type_mask) == 0xffffffffu);
-static_assert(EntityUniqueId::invalid_value == 0x7fffffffu);
+static_assert(EntityUniqueId::invalid_value == 0xffffffffu);
 static_assert(sizeof(EntityUniqueId) == sizeof(std::uint32_t));
 static_assert(std::is_trivially_copyable_v<EntityUniqueId>);
 static_assert(std::is_standard_layout_v<EntityUniqueId>);
@@ -90,7 +90,7 @@ TEST(EntityUniqueId, RejectsTypeValuesOutsideTheEnumDomain) {
 TEST(EntityUniqueId, InvalidRepresentationAndDomainArePreserved) {
     EntityUniqueId const null_id{};
     EXPECT_FALSE(null_id.is_valid());
-    EXPECT_EQ(null_id.raw_value(), std::uint32_t{0x7fffffff});
+    EXPECT_EQ(null_id.raw_value(), std::uint32_t{0xffffffff});
 
     EntityUniqueId result;
     EXPECT_FALSE(EntityUniqueId::try_make(0, EntityType::COUNT, result));

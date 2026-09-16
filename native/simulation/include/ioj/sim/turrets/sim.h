@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/system_read_views.h>
 #include <ioj/sim/turret_spawn_data.h>
 #include <optional>
@@ -10,7 +11,6 @@
 
 #include <ioj/sim/entity_death_info.h>
 #include <ioj/sim/lasers/sim.h>
-#include <ioj/sim/registry_entity_data.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/turret_entity_data.h>
 
@@ -19,7 +19,8 @@
 namespace ioj::sim {
 struct LevelSim;
 struct TurretSimConfig;
-struct EntityRegistry;
+class EntityLedger;
+class CombatEvents;
 class LevelSpawnManager;
 struct SpatialQueryManager;
 }
@@ -28,13 +29,14 @@ namespace ioj::sim::turrets {
 class PhaseInterface;
 
 struct Sim {
-    using RegistryEntityData = sim::RegistryEntityData;
     using EntityData = TurretEntityData;
     using EntityStorage = SingleAllocationTurretEntityData;
     using SpawnData = TurretSpawnData;
 
     Sim(SimClock const& clock,
-        EntityRegistry& entity_registry,
+        EntityLedger& ledger,
+        CombatEvents const& combat_events,
+        AgentAccessor const& agents,
         SpatialQueryManager const& spatial_query_manager,
         lasers::Sim& laser_simulation,
         std::pmr::memory_resource& frame_memory_resource) noexcept;
@@ -47,10 +49,7 @@ struct Sim {
     // Configuration
     /* **************************************** */
     auto get_read_view() const -> TurretReadView {
-        return {entities.get_const_view().columns(),
-                &entity_registry,
-                frame_changes_,
-                death_locations_};
+        return {entities.get_const_view().columns(), frame_changes_, death_locations_};
     }
     void reset_frame_output() {
         frame_changes_.clear();
@@ -62,15 +61,13 @@ struct Sim {
     // Accessors
     /* **************************************** */
     auto get_num_instances() const noexcept -> std::int32_t;
-    auto get_target_handles() const -> std::span<RegistryEntityHandle const>;
-    auto get_entity_registry() const -> EntityRegistry const& { return entity_registry; }
+    auto get_target_ids() const -> std::span<EntityUniqueId const>;
     auto get_laser_simulation() const -> lasers::Sim const& { return laser_simulation; }
 
     /* **************************************** */
     // Checks
     /* **************************************** */
     void validate_array_sizes() const;
-    void validate_entity_handles() const;
   private:
     /* **************************************** */
     // Sim phases
@@ -80,7 +77,7 @@ struct Sim {
     void think(float dt);
     void generate_fire_commands();
     void resolve_damage_events();
-    void update_entity_registry();
+    void publish_deaths();
     void cleanup_entities();
     void finish_action();
 
@@ -88,17 +85,17 @@ struct Sim {
     // Spawning
     /* **************************************** */
     auto register_turrets(TurretSpawnDataConstView spawn_data, Rotators3fConstView rotations)
-        -> std::vector<RegistryEntityHandle>;
+        -> std::vector<EntityUniqueId>;
 
     /* **************************************** */
     // Entity data
     /* **************************************** */
-    void prepare_entity_update_data();
 
     /* **************************************** */
     // Searching
     /* **************************************** */
     void perform_search();
+    void refresh_target_data();
     void perform_search_on_slice(std::int32_t job_index,
                                  std::int32_t n_turrets,
                                  std::int32_t turrets_per_job,
@@ -127,7 +124,9 @@ struct Sim {
 
     TurretSimConfig config{};
     SimClock const& simulation_clock;
-    EntityRegistry& entity_registry;
+    EntityLedger& ledger_;
+    CombatEvents const& combat_events_;
+    AgentAccessor const& agents_;
     SpatialQueryManager const& spatial_query_manager;
     lasers::Sim& laser_simulation;
     std::pmr::memory_resource& frame_memory_resource;
@@ -135,7 +134,6 @@ struct Sim {
     EntityDeathInfo entity_death_info;
     std::vector<EntityFrameChange> frame_changes_;
     std::vector<Vector3f> death_locations_;
-    SingleAllocationRegistryEntityData entity_update_data;
     std::int32_t target_refresh_next_offset{0};
     std::int16_t cooldown_restart_ticks_{};
     std::int16_t cooldown_cleaner_{};

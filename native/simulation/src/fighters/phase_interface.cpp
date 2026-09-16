@@ -16,6 +16,10 @@ void PhaseInterface::begin_play() {
     simulation.begin_play();
 }
 
+void PhaseInterface::commit_orders() {
+    simulation.commit_orders();
+}
+
 void PhaseInterface::prepare_tick(float const dt) {
     simulation.prepare_tick(dt);
 }
@@ -40,8 +44,8 @@ void PhaseInterface::resolve_damage_events() {
     simulation.resolve_damage_events();
 }
 
-void PhaseInterface::update_entity_registry() {
-    simulation.update_entity_registry();
+void PhaseInterface::publish_deaths() {
+    simulation.publish_deaths();
 }
 
 void PhaseInterface::cleanup_entities() {

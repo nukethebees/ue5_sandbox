@@ -6,9 +6,12 @@
 namespace ioj::sim {
 
 struct LevelSimTestAccess {
+    static void queue_fighter_orders(LevelSim& simulation, FighterOrderQueue const& orders) {
+        fighters::CommandInterface{simulation.fighters_simulation_}.queue_orders(orders);
+    }
     static void queue_direct_damage_events(LevelSim& simulation,
                                            DirectDamageEventsConstView events) {
-        simulation.entity_registry_.queue_direct_damage_events(events);
+        simulation.combat_events_.queue_damage(events);
     }
     static void queue_laser_spawns(LevelSim& simulation, lasers::SpawnRequestsConstView requests) {
         simulation.lasers_simulation_.queue_laser_spawns(requests);

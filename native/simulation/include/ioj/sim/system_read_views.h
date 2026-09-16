@@ -13,7 +13,7 @@
 
 namespace ioj::sim {
 
-struct EntityRegistry;
+class AgentAccessor;
 
 enum class EntityFrameChangeKind : std::uint8_t { Spawn, RemoveSwap };
 
@@ -23,29 +23,27 @@ struct EntityFrameChange {
     Vector3f location{};
     Rotator3f rotation{};
     Team team{};
-    RegistryEntityHandle handle{};
+    EntityUniqueId id{};
 };
 
 struct CapitalReadView {
     CapitalEntityData::ConstView entities;
-    EntityRegistry const* registry{};
-    std::span<RegistryEntityHandle const> fighter_handles;
+    std::span<EntityUniqueId const> fighter_ids;
     std::span<EntityFrameChange const> changes;
     std::span<CapitalDeathEvent const> deaths;
+    AgentAccessor const* agents{};
     auto get_num_instances() const -> std::int32_t { return entities.num(); }
-    auto get_fighter_handles(std::int32_t index) const -> std::span<RegistryEntityHandle const> {
-        auto const span{entities.fighter_handle_spans[index]};
-        return fighter_handles.subspan(span.offset, span.count);
+    auto get_fighter_ids(std::int32_t index) const -> std::span<EntityUniqueId const> {
+        auto const span{entities.fighter_id_spans[index]};
+        return fighter_ids.subspan(span.offset, span.count);
     }
 };
 struct FighterReadView {
     FighterEntityData::ConstView entities;
-    EntityRegistry const* registry{};
     auto get_num_instances() const -> std::int32_t { return entities.num(); }
 };
 struct TurretReadView {
     TurretEntityData::ConstView entities;
-    EntityRegistry const* registry{};
     std::span<EntityFrameChange const> changes;
     std::span<Vector3f const> death_locations;
     auto get_num_instances() const -> std::int32_t { return entities.num(); }

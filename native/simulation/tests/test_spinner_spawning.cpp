@@ -1,4 +1,6 @@
-#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/agent_accessor.h>
+#include <ioj/sim/combat_events.h>
+#include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spatial_query_manager.h>
@@ -42,11 +44,14 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
 
     using Access = spinners::SpinnerSpawnTestAccess;
     SimClock clock;
-    EntityRegistry registry;
-    SpatialQueryManager queries{registry};
+    EntityLedger ledger;
+    CombatEvents combat_events{ledger};
+    AgentIndexes indexes{clock};
+    AgentAccessor agents{indexes};
+    SpatialQueryManager queries{agents};
     ml::FrameMemoryResource frame_memory{1024 * 1024};
-    lasers::Sim lasers{clock, registry, queries, frame_memory};
-    spinners::Sim simulation{clock, registry, lasers, frame_memory};
+    lasers::Sim lasers{clock, combat_events, queries, frame_memory};
+    spinners::Sim simulation{clock, ledger, lasers, frame_memory};
     auto& entity_storage{Access::entities(simulation)};
     Access::set_cooldown(simulation, 23);
 
@@ -61,7 +66,7 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
                   locations.left(1).get_const_view(),
                   std::span{yaws}.first(1),
                   std::span{fire_points}.first(1));
-    auto const first_handle{entity_storage.get_const_view().handles()[0]};
+    auto const first_id{entity_storage.get_const_view().entity_ids()[0]};
     Access::cooldowns(simulation).restart_counter(0);
     Access::tick_cooldowns(simulation);
     auto const first_cooldown{entity_storage.get_const_view().laser_cooldowns()[0]};
@@ -70,7 +75,7 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
                   locations.right(2).get_const_view(),
                   std::span{yaws}.last(2),
                   std::span{fire_points}.last(2));
-    auto const second_handle{entity_storage.get_const_view().handles()[1]};
+    auto const second_id{entity_storage.get_const_view().entity_ids()[1]};
     Access::cooldowns(simulation).restart_counter(1);
     Access::spawn(simulation, locations.get_const_view(), yaws, fire_points);
     Access::spawn(simulation,
@@ -81,8 +86,8 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     auto const entities{entity_storage.get_const_view().columns()};
     entities.validate_array_sizes();
     ASSERT_EQ((6), (simulation.get_num_instances()));
-    ASSERT_TRUE((first_handle == entities.handles[0]));
-    ASSERT_TRUE((second_handle == entities.handles[1]));
+    ASSERT_TRUE((first_id == entities.entity_ids[0]));
+    ASSERT_TRUE((second_id == entities.entity_ids[1]));
     ASSERT_EQ((first_cooldown), (entities.laser_cooldowns[0]));
     ASSERT_EQ((std::int16_t{23}), (entities.laser_cooldowns[1]));
     auto const count{entities.num()};
@@ -93,10 +98,9 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
         ASSERT_TRUE((locations.xs[source_index] == entities.locations.xs[i]));
         ASSERT_TRUE((locations.ys[source_index] == entities.locations.ys[i]));
         ASSERT_TRUE((locations.zs[source_index] == entities.locations.zs[i]));
-        ASSERT_TRUE((registry.is_valid_alive(entities.handles[i])));
-        ASSERT_TRUE((Team::White == registry.get_team(entities.handles[i])));
+        ASSERT_TRUE((ledger.is_valid_unique_id(entities.entity_ids[i])));
         for (std::int32_t j{}; j < i; ++j) {
-            ASSERT_TRUE((entities.handles[i] != entities.handles[j]));
+            ASSERT_TRUE((entities.entity_ids[i] != entities.entity_ids[j]));
         }
         if (i >= 2) {
             ASSERT_EQ((std::int16_t{0}), (entities.laser_cooldowns[i]));

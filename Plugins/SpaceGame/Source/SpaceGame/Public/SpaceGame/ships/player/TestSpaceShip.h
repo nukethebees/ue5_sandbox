@@ -50,9 +50,8 @@ class SPACEGAME_API ATestSpaceShip
     /* **************************************** */
     // Entity identity and configuration
     /* **************************************** */
-    auto get_entity_handle() const noexcept -> ::ioj::sim::RegistryEntityHandle override;
+    auto get_unique_id() const noexcept -> ::ioj::sim::EntityUniqueId override;
     auto get_test_name() const noexcept -> FName { return TEXT("PlayerShip"); }
-    auto get_unique_id() const -> ::ioj::sim::EntityUniqueId;
     auto get_team() const noexcept -> ETestTeam;
     void set_team(ETestTeam new_team) noexcept;
 
@@ -97,7 +96,7 @@ class SPACEGAME_API ATestSpaceShip
     auto energy_is_full() const -> bool;
     auto get_energy() const -> float;
 
-    auto get_lock_on_target() const -> ::ioj::sim::RegistryEntityHandle;
+    auto get_lock_on_target() const -> ::ioj::sim::EntityUniqueId;
     void start_fire_laser();
     void stop_fire_laser();
     void upgrade_laser();

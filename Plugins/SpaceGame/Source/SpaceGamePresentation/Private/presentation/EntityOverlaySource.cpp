@@ -15,7 +15,7 @@ struct FProjectedPosition {
 };
 
 struct FSoftTargetCandidate {
-    ::ioj::sim::RegistryEntityHandle handle{};
+    ::ioj::sim::EntityUniqueId id{};
     float centre_distance_pixels{std::numeric_limits<float>::max()};
     float centre_score_pixels{std::numeric_limits<float>::max()};
     float surface_distance{std::numeric_limits<float>::max()};
@@ -32,7 +32,7 @@ auto is_better_candidate(FSoftTargetCandidate const& candidate,
     if (candidate.surface_distance != incumbent.surface_distance) {
         return candidate.surface_distance < incumbent.surface_distance;
     }
-    return candidate.handle.index < incumbent.handle.index;
+    return candidate.id < incumbent.id;
 }
 
 auto project_to_overlay(FEntityOverlayView const& view,
@@ -110,18 +110,15 @@ auto team_colour(ETestEntityType const type,
 }
 }
 
-auto select_soft_target(::ioj::sim::RegistryEntityData::ConstView const entities,
+auto select_soft_target(std::span<::ioj::sim::AgentDisplayBatch const> const batches,
                         std::span<float const> const entity_type_radii,
-                        TConstArrayView<int> const generations,
                         TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
                         FSoftTargetSelectionContext const& context,
                         FSoftTargetSelectionSettings const& settings,
-                        ::ioj::sim::RegistryEntityHandle const current_target)
+                        ::ioj::sim::EntityUniqueId const current_target)
     -> FSoftTargetSelectionResult {
-    entities.validate_array_sizes();
     check(entity_type_radii.size() == static_cast<std::size_t>(::ioj::sim::EntityType::COUNT));
-    check(generations.Num() == entities.num());
-    check(objective_roles.Num() == entities.num());
+    check(objective_roles.Num() == ::ioj::sim::display_entity_count(batches));
     if (!context.view.is_valid()) {
         return {};
     }
@@ -150,106 +147,112 @@ auto select_soft_target(::ioj::sim::RegistryEntityData::ConstView const entities
     bool has_best_candidate{false};
     bool has_current_candidate{false};
 
-    auto const count{entities.num()};
-    for (int32 index{0}; index < count; ++index) {
-        if (::ioj::sim::is_dead(entities.healths[index]) ||
-            entities.teams[index] == ml::to_native(context.player_team) ||
-            !is_supported_entity_type(ml::to_unreal(entities.entity_types[index]))) {
-            continue;
-        }
-
-        auto const position{ml::to_unreal(entities.locations[index])};
-        auto const objective{objective_roles[index] != EEntityOverlayObjectiveRole::None};
-        if (!objective && FVector3f::DistSquared(context.view.camera_origin, position) >
-                              maximum_overlay_range_squared) {
-            continue;
-        }
-
-        auto const distance_along_aim{
-            FVector3f::DotProduct(position - context.aim_origin, aim_direction)};
-        if (distance_along_aim <= 0.0f) {
-            continue;
-        }
-
-        FProjectedPosition projected_entity;
-        if (!project_to_overlay(context.view, position, projected_entity) ||
-            !projected_entity.on_screen) {
-            continue;
-        }
-
-        FProjectedPosition projected_aim;
-        auto const aim_position{context.aim_origin + aim_direction * distance_along_aim};
-        if (!project_to_overlay(context.view, aim_position, projected_aim)) {
-            continue;
-        }
-
-        auto const type_index{static_cast<std::size_t>(entities.entity_types[index])};
-        auto const world_radius{FMath::Max(entity_type_radii[type_index], 0.0f)};
-        float projected_radius{};
-        FProjectedPosition projected_edge;
-        if (project_to_overlay(
-                context.view, position + context.camera_right * world_radius, projected_edge)) {
-            projected_radius = FVector2f::Distance(projected_entity.pixels, projected_edge.pixels);
-        }
-        if (project_to_overlay(
-                context.view, position + context.camera_up * world_radius, projected_edge)) {
-            projected_radius =
-                FMath::Max(projected_radius,
-                           FVector2f::Distance(projected_entity.pixels, projected_edge.pixels));
-        }
-        if (!FMath::IsFinite(projected_radius)) {
-            projected_radius = 0.0f;
-        }
-
-        float world_units_per_pixel{};
-        if (world_radius > UE_SMALL_NUMBER && projected_radius > UE_SMALL_NUMBER) {
-            world_units_per_pixel = world_radius / projected_radius;
-        } else if (project_to_overlay(
-                       context.view, position + context.camera_right, projected_edge)) {
-            auto const projected_unit_radius{
-                FVector2f::Distance(projected_entity.pixels, projected_edge.pixels)};
-            if (projected_unit_radius > UE_SMALL_NUMBER) {
-                world_units_per_pixel = 1.0f / projected_unit_radius;
+    int32 output_index{};
+    for (auto const& batch : batches) {
+        auto const batch_count{batch.num()};
+        check(batch.ids.size() == static_cast<std::size_t>(batch_count));
+        for (int32 index{}; index < batch_count; ++index, ++output_index) {
+            if (::ioj::sim::is_dead(batch.health(index)) ||
+                batch.team(index) == ml::to_native(context.player_team) ||
+                !is_supported_entity_type(ml::to_unreal(batch.type))) {
+                continue;
             }
-        }
 
-        auto const centre_distance{
-            FVector2f::Distance(projected_entity.pixels, projected_aim.pixels)};
-        auto const centre_score{FMath::Max(centre_distance - centre_tie_radius, 0.0f)};
-        auto const surface_distance{
-            FMath::Max(FVector3f::Distance(context.aim_origin, position) - world_radius, 0.0f)};
-        float range_alpha{};
-        if (effective_range > 0.0f) {
-            if (surface_distance <= effective_range) {
-                range_alpha = 1.0f;
-            } else if (transition_start_multiplier > 1.0f) {
-                auto const transition_start{effective_range * transition_start_multiplier};
-                range_alpha = FMath::Clamp((transition_start - surface_distance) /
-                                               (transition_start - effective_range),
-                                           0.0f,
-                                           1.0f);
+            auto const position{ml::to_unreal(batch.locations[index])};
+            auto const objective{objective_roles[output_index] !=
+                                 EEntityOverlayObjectiveRole::None};
+            if (!objective && FVector3f::DistSquared(context.view.camera_origin, position) >
+                                  maximum_overlay_range_squared) {
+                continue;
             }
-        }
 
-        FSoftTargetCandidate const candidate{.handle = {index, generations[index]},
-                                             .centre_distance_pixels = centre_distance,
-                                             .centre_score_pixels = centre_score,
-                                             .surface_distance = surface_distance,
-                                             .range_alpha = FMath::Clamp(range_alpha, 0.0f, 1.0f),
-                                             .indicator_radius_pixels =
-                                                 FMath::Clamp(projected_radius + bounds_padding,
-                                                              minimum_indicator_radius,
-                                                              maximum_indicator_radius),
-                                             .world_units_per_pixel = world_units_per_pixel};
+            auto const distance_along_aim{
+                FVector3f::DotProduct(position - context.aim_origin, aim_direction)};
+            if (distance_along_aim <= 0.0f) {
+                continue;
+            }
 
-        if (candidate.handle == current_target) {
-            current_candidate = candidate;
-            has_current_candidate = true;
-        }
-        if (centre_distance <= acquisition_radius &&
-            (!has_best_candidate || is_better_candidate(candidate, best_candidate))) {
-            best_candidate = candidate;
-            has_best_candidate = true;
+            FProjectedPosition projected_entity;
+            if (!project_to_overlay(context.view, position, projected_entity) ||
+                !projected_entity.on_screen) {
+                continue;
+            }
+
+            FProjectedPosition projected_aim;
+            auto const aim_position{context.aim_origin + aim_direction * distance_along_aim};
+            if (!project_to_overlay(context.view, aim_position, projected_aim)) {
+                continue;
+            }
+
+            auto const type_index{static_cast<std::size_t>(batch.type)};
+            auto const world_radius{FMath::Max(entity_type_radii[type_index], 0.0f)};
+            float projected_radius{};
+            FProjectedPosition projected_edge;
+            if (project_to_overlay(
+                    context.view, position + context.camera_right * world_radius, projected_edge)) {
+                projected_radius =
+                    FVector2f::Distance(projected_entity.pixels, projected_edge.pixels);
+            }
+            if (project_to_overlay(
+                    context.view, position + context.camera_up * world_radius, projected_edge)) {
+                projected_radius =
+                    FMath::Max(projected_radius,
+                               FVector2f::Distance(projected_entity.pixels, projected_edge.pixels));
+            }
+            if (!FMath::IsFinite(projected_radius)) {
+                projected_radius = 0.0f;
+            }
+
+            float world_units_per_pixel{};
+            if (world_radius > UE_SMALL_NUMBER && projected_radius > UE_SMALL_NUMBER) {
+                world_units_per_pixel = world_radius / projected_radius;
+            } else if (project_to_overlay(
+                           context.view, position + context.camera_right, projected_edge)) {
+                auto const projected_unit_radius{
+                    FVector2f::Distance(projected_entity.pixels, projected_edge.pixels)};
+                if (projected_unit_radius > UE_SMALL_NUMBER) {
+                    world_units_per_pixel = 1.0f / projected_unit_radius;
+                }
+            }
+
+            auto const centre_distance{
+                FVector2f::Distance(projected_entity.pixels, projected_aim.pixels)};
+            auto const centre_score{FMath::Max(centre_distance - centre_tie_radius, 0.0f)};
+            auto const surface_distance{
+                FMath::Max(FVector3f::Distance(context.aim_origin, position) - world_radius, 0.0f)};
+            float range_alpha{};
+            if (effective_range > 0.0f) {
+                if (surface_distance <= effective_range) {
+                    range_alpha = 1.0f;
+                } else if (transition_start_multiplier > 1.0f) {
+                    auto const transition_start{effective_range * transition_start_multiplier};
+                    range_alpha = FMath::Clamp((transition_start - surface_distance) /
+                                                   (transition_start - effective_range),
+                                               0.0f,
+                                               1.0f);
+                }
+            }
+
+            FSoftTargetCandidate const candidate{
+                .id = batch.ids[index],
+                .centre_distance_pixels = centre_distance,
+                .centre_score_pixels = centre_score,
+                .surface_distance = surface_distance,
+                .range_alpha = FMath::Clamp(range_alpha, 0.0f, 1.0f),
+                .indicator_radius_pixels = FMath::Clamp(projected_radius + bounds_padding,
+                                                        minimum_indicator_radius,
+                                                        maximum_indicator_radius),
+                .world_units_per_pixel = world_units_per_pixel};
+
+            if (candidate.id == current_target) {
+                current_candidate = candidate;
+                has_current_candidate = true;
+            }
+            if (centre_distance <= acquisition_radius &&
+                (!has_best_candidate || is_better_candidate(candidate, best_candidate))) {
+                best_candidate = candidate;
+                has_best_candidate = true;
+            }
         }
     }
 
@@ -258,7 +261,7 @@ auto select_soft_target(::ioj::sim::RegistryEntityData::ConstView const entities
     if (has_current_candidate && current_candidate.centre_distance_pixels <= retention_radius) {
         selected_candidate = current_candidate;
         has_selected_candidate = true;
-        if (has_best_candidate && best_candidate.handle != current_candidate.handle) {
+        if (has_best_candidate && best_candidate.id != current_candidate.id) {
             auto const screen_improvement{best_candidate.centre_score_pixels <
                                           current_candidate.centre_score_pixels * switch_ratio};
             auto const tied_centres{best_candidate.centre_score_pixels ==
@@ -283,14 +286,14 @@ auto select_soft_target(::ioj::sim::RegistryEntityData::ConstView const entities
         }
         return {};
     }
-    return {.handle = selected_candidate.handle,
+    return {.id = selected_candidate.id,
             .range_alpha = selected_candidate.range_alpha,
             .indicator_radius_pixels = selected_candidate.indicator_radius_pixels,
             .world_units_per_pixel = selected_candidate.world_units_per_pixel};
 }
 
 auto collect_entity_overlay_instances(
-    ::ioj::sim::RegistryEntityData::ConstView const entities,
+    std::span<::ioj::sim::AgentDisplayBatch const> const batches,
     std::span<float const> const entity_type_radii,
     TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
     FEntityOverlayTeamColours const& team_colours,
@@ -299,35 +302,38 @@ auto collect_entity_overlay_instances(
     float const maximum_range,
     TArray<FEntityOverlayInstance>& output_instances,
     FEntityOverlayCollector& collector) -> FEntityOverlayCollectionResult {
-    TRACE_CPUPROFILER_EVENT_SCOPE(EntityOverlay::CollectRegistrySource);
-    entities.validate_array_sizes();
+    TRACE_CPUPROFILER_EVENT_SCOPE(EntityOverlay::CollectAgentSource);
     check(entity_type_radii.size() == static_cast<std::size_t>(::ioj::sim::EntityType::COUNT));
-    check(objective_roles.Num() == entities.num());
+    check(objective_roles.Num() == ::ioj::sim::display_entity_count(batches));
     collector.begin(origin, FMath::Max(maximum_range, 0.0f), output_instances);
 
-    auto const count{entities.num()};
+    auto const count{::ioj::sim::display_entity_count(batches)};
     output_instances.Reserve(count);
-    for (int32 index{0}; index < count; ++index) {
-        if (::ioj::sim::is_dead(entities.healths[index])) {
-            continue;
-        }
+    int32 output_index{};
+    for (auto const& batch : batches) {
+        auto const batch_count{batch.num()};
+        for (int32 index{}; index < batch_count; ++index, ++output_index) {
+            if (::ioj::sim::is_dead(batch.health(index))) {
+                continue;
+            }
 
-        auto const entity_type{entities.entity_types[index]};
-        auto const inverse_health{
-            inverse_maximum_health(ml::to_unreal(entity_type), maximum_health)};
-        if (inverse_health <= 0.0f) {
-            continue;
-        }
+            auto const entity_type{batch.type};
+            auto const inverse_health{
+                inverse_maximum_health(ml::to_unreal(entity_type), maximum_health)};
+            if (inverse_health <= 0.0f) {
+                continue;
+            }
 
-        auto const objective_role{objective_roles[index]};
-        static_cast<void>(collector.try_add_colored(
-            ml::to_unreal(entities.locations[index]),
-            static_cast<float>(entities.healths[index]) * inverse_health,
-            entity_type_radii[static_cast<std::size_t>(entity_type)],
-            team_colour(
-                ml::to_unreal(entity_type), ml::to_unreal(entities.teams[index]), team_colours),
-            objective_role,
-            objective_role != EEntityOverlayObjectiveRole::None));
+            auto const objective_role{objective_roles[output_index]};
+            static_cast<void>(collector.try_add_colored(
+                ml::to_unreal(batch.locations[index]),
+                static_cast<float>(batch.health(index)) * inverse_health,
+                entity_type_radii[static_cast<std::size_t>(entity_type)],
+                team_colour(
+                    ml::to_unreal(entity_type), ml::to_unreal(batch.team(index)), team_colours),
+                objective_role,
+                objective_role != EEntityOverlayObjectiveRole::None));
+        }
     }
 
     return {.candidate_count = output_instances.Num(),

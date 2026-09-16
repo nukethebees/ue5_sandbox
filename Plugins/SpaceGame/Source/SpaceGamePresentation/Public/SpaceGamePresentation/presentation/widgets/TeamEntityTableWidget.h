@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/entity_registry.h>
+#include <ioj/sim/entity_telemetry.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudKillData.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyle.h>
@@ -18,7 +18,7 @@ UCLASS()
 class SPACEGAMEPRESENTATION_API UTeamEntityTableWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    void set_entity_counts(::ioj::sim::EntityRegistry::EntityCounts const& new_counts);
+    void set_entity_counts(::ioj::sim::telemetry::EntityCounts const& new_counts);
     void set_team_kill_matrix(ml::ship_hud::FTeamKillMatrix const& new_matrix);
     void set_team_colours(UTestTeamVisualData::FColourArray const& new_colours);
     void apply_hud_style(ml::ioj::FGameHudStyle const& style);
@@ -48,7 +48,7 @@ class SPACEGAMEPRESENTATION_API UTeamEntityTableWidget : public UUserWidget {
     void rebuild_table();
     void set_text_style(UTextBlock& text, ETextJustify::Type alignment) const;
 
-    ::ioj::sim::EntityRegistry::EntityCounts values{};
+    ::ioj::sim::telemetry::EntityCounts values{};
     UTestTeamVisualData::FColourArray team_colours{};
     TOptional<ml::ioj::FGameHudStyle> hud_style_{};
 };

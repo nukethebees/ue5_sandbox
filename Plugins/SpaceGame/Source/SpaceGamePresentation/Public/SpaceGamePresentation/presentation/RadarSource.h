@@ -1,12 +1,12 @@
 #pragma once
 #include <SpaceGameSimulation/entities/TestTeam.h>
 
-#include "ioj/sim/registry_entity_data.h"
+#include "ioj/sim/agent_display_batch.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 #include "SandboxUI/Radar/RadarTypes.h"
 #include "SpaceGamePresentation/presentation/LevelPresentationSettings.h"
 
-#include "SandboxNative/RegistryEntityHandle.h"
+#include "ioj/sim/entity_unique_id.h"
 
 struct SPACEGAMEPRESENTATION_API FRadarContactColours {
     FLinearColor friendly{0.12f, 0.72f, 1.0f, 1.0f};
@@ -32,13 +32,12 @@ namespace ml::radar_source {
 }
 
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto
-    collect_radar_instances(::ioj::sim::RegistryEntityData::ConstView entities,
-                            TConstArrayView<int32> generations,
+    collect_radar_instances(std::span<::ioj::sim::AgentDisplayBatch const> batches,
                             TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
                             FRadarContactColours const& contact_colours,
                             FTransform const& player_transform,
-                            ::ioj::sim::RegistryEntityHandle player_handle,
-                            ::ioj::sim::RegistryEntityHandle selected_handle,
+                            ::ioj::sim::EntityUniqueId player_id,
+                            ::ioj::sim::EntityUniqueId selected_id,
                             ETestTeam player_team,
                             FRadarSettings const& settings,
                             FRadarFrame& output_frame) -> FRadarCollectionResult;

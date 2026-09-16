@@ -17,26 +17,24 @@ void WorldlessSimulationTest::advance(time_type const dt) {
     }
 }
 
-void WorldlessSimulationTest::queue_damage(std::span<RegistryEntityHandle const> const targets,
+void WorldlessSimulationTest::queue_damage(std::span<EntityUniqueId const> const targets,
                                            std::int32_t const damage,
-                                           RegistryEntityHandle const instigator) {
-    auto const count{static_cast<std::int32_t>(targets.size())};
+                                           EntityUniqueId const instigator) {
     DirectDamageEvents events;
-    events.reserve(count);
+    events.reserve(static_cast<std::int32_t>(targets.size()));
     for (auto const target : targets) {
         events.add(target, damage, instigator);
     }
     LevelSimTestAccess::queue_direct_damage_events(simulation_, events.get_const_view());
 }
-
-void WorldlessSimulationTest::queue_kills(std::span<RegistryEntityHandle const> const targets,
-                                          RegistryEntityHandle const instigator) {
+void WorldlessSimulationTest::queue_kills(std::span<EntityUniqueId const> const targets,
+                                          EntityUniqueId const instigator) {
     DirectDamageEvents events;
-    auto const count{static_cast<std::int32_t>(targets.size())};
-    events.reserve(count);
+    events.reserve(static_cast<std::int32_t>(targets.size()));
     for (auto const target : targets) {
-        auto const damage{std::max(1, get_registry().get_health(target))};
-        events.add(target, damage, instigator);
+        auto const state{simulation_.get_agent_accessor().read(target)};
+        assert(state);
+        events.add(target, std::max(1, state->health), instigator);
     }
     LevelSimTestAccess::queue_direct_damage_events(simulation_, events.get_const_view());
 }
