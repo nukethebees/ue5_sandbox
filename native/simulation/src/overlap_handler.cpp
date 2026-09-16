@@ -38,8 +38,7 @@ void OverlapHandler::handle(collision::DetectedOverlapsView const overlaps) {
     }
 }
 
-void OverlapHandler::append_damage(RegistryEntityHandle const entity) {
-    auto const id{registry_.get_current_id(entity)};
+void OverlapHandler::append_damage(EntityUniqueId const id) {
     if (!agents_.is_alive(id)) {
         return;
     }

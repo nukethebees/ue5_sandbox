@@ -36,10 +36,10 @@ TEST(OverlapHandler, QueuesEnvironmentalDamageForEachSupportedOverlapParticipant
     auto const turret{spawn_entity(registry, EntityType::Turret)};
 
     collision::EntityEntityOverlaps entity_overlaps;
-    entity_overlaps.add(capital, fighter);
-    entity_overlaps.add(fighter, turret);
+    entity_overlaps.add(registry.get_current_id(capital), registry.get_current_id(fighter));
+    entity_overlaps.add(registry.get_current_id(fighter), registry.get_current_id(turret));
     collision::EntityStaticOverlaps static_overlaps;
-    static_overlaps.add(fighter, 7);
+    static_overlaps.add(registry.get_current_id(fighter), 7);
 
     CollisionAgentStorage owners;
     owners.load(registry);
@@ -75,12 +75,13 @@ TEST(OverlapHandler, SkipsUnsupportedDeadInvalidAndStaleRecipients) {
     auto const fighter{spawn_entity(registry, EntityType::Fighter)};
     auto const spinner{spawn_entity(registry, EntityType::TubeSpinner)};
     auto const doomed{spawn_entity(registry, EntityType::Turret)};
+    auto const doomed_id{registry.get_current_id(doomed)};
     mark_dead(registry, doomed);
 
     collision::EntityEntityOverlaps first_pairs;
-    first_pairs.add(fighter, spinner);
-    first_pairs.add(fighter, doomed);
-    first_pairs.add(fighter, RegistryEntityHandle{999, 0});
+    first_pairs.add(registry.get_current_id(fighter), registry.get_current_id(spinner));
+    first_pairs.add(registry.get_current_id(fighter), doomed_id);
+    first_pairs.add(registry.get_current_id(fighter), EntityUniqueId{});
     CollisionAgentStorage owners;
     owners.load(registry);
     OverlapHandler handler{registry, owners.agents, {}};
@@ -98,8 +99,9 @@ TEST(OverlapHandler, SkipsUnsupportedDeadInvalidAndStaleRecipients) {
     auto const replacement{spawn_entity(registry, EntityType::Turret)};
     tests::expect_true(registry.is_stale(doomed), "Dead slot reuse makes the old handle stale");
 
+    owners.load(registry);
     collision::EntityEntityOverlaps stale_pair;
-    stale_pair.add(fighter, doomed);
+    stale_pair.add(registry.get_current_id(fighter), doomed_id);
     handler.handle({stale_pair.get_const_view(), {}});
     auto const& second_damage{registry.get_direct_damage_queue_view()};
     tests::expect_equal(second_damage.num(), 1, "Stale endpoint is skipped independently");

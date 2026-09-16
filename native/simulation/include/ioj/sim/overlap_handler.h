@@ -14,7 +14,7 @@ struct OverlapHandler {
 
     void handle(collision::DetectedOverlapsView overlaps);
   private:
-    void append_damage(RegistryEntityHandle entity);
+    void append_damage(EntityUniqueId id);
 
     EntityRegistry& registry_;
     AgentAccessor const& agents_;

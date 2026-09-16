@@ -363,8 +363,8 @@ void append_grid_overlaps(GridGeometry const geometry,
                           EntityRegistry const& registry,
                           AgentAccessor const& agents,
                           WorldAABB const query_bounds,
-                          RegistryEntityHandle const ignored_entity,
-                          std::vector<RegistryEntityHandle>& out_entities,
+                          EntityUniqueId const ignored_entity,
+                          std::vector<EntityUniqueId>& out_entities,
                           std::vector<std::int32_t>& out_static_geometry_indices) {
     auto const [min_coord,
                 max_coord]{to_cell_coord_bounds(geometry, query_bounds.min, query_bounds.max)};
@@ -391,14 +391,14 @@ void append_grid_overlaps(GridGeometry const geometry,
 
                     for (std::int32_t entity_index{}; entity_index < entity_count; ++entity_index) {
                         auto const entity{entities[static_cast<std::size_t>(entity_index)]};
-                        if (entity == ignored_entity ||
-                            !agents.is_alive(registry.get_current_id(entity))) {
+                        auto const id{registry.get_current_id(entity)};
+                        if (id == ignored_entity || !agents.is_alive(id)) {
                             continue;
                         }
 
                         if (overlaps_query(min_at(aabbs, entity_index),
                                            max_at(aabbs, entity_index))) {
-                            out_entities.push_back(entity);
+                            out_entities.push_back(id);
                         }
                     }
                 }
@@ -568,8 +568,8 @@ void CollisionUniformGrid::rebuild_grid(collision::EntityAABBs const& entity_aab
 
 void CollisionUniformGrid::append_overlaps(
     collision::WorldAABB const& query_bounds,
-    RegistryEntityHandle const ignored_entity,
-    std::vector<RegistryEntityHandle>& out_entities,
+    EntityUniqueId const ignored_entity,
+    std::vector<EntityUniqueId>& out_entities,
     std::vector<std::int32_t>& out_static_geometry_indices) const {
     SANDBOX_PROFILE_SCOPE("Sandbox::CollisionUniformGrid::append_overlaps");
 

@@ -89,8 +89,8 @@ struct CollisionUniformGrid {
 
     // Appends exact overlaps. Multi-cell participants may be appended more than once.
     void append_overlaps(WorldAABB const& query_bounds,
-                         RegistryEntityHandle ignored_entity,
-                         std::vector<RegistryEntityHandle>& out_entities,
+                         EntityUniqueId ignored_entity,
+                         std::vector<EntityUniqueId>& out_entities,
                          std::vector<std::int32_t>& out_static_geometry_indices) const;
     void trace_aabbs(LineTracesConstView const& traces, TraceHitsView const& hits) const;
     void trace_aabbs(LineTracesConstView const& traces,

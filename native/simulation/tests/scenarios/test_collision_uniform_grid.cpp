@@ -1332,7 +1332,7 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
              0},
         };
         check_traces(authoritative, dead_owner_cases);
-        std::vector<RegistryEntityHandle> overlaps;
+        std::vector<EntityUniqueId> overlaps;
         std::vector<std::int32_t> static_overlaps;
         authoritative.grid.append_overlaps(
             {moved_location - aabb_half_extents, moved_location + aabb_half_extents},

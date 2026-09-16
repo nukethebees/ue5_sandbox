@@ -66,16 +66,16 @@ void CollisionSystem::collect_overlaps_for_moved_entities(
         overlapping_entities_scratch_.clear();
         overlapping_static_geometry_indices_scratch_.clear();
         uniform_grid_.append_overlaps(bounds,
-                                      dirty_entity,
+                                      id,
                                       overlapping_entities_scratch_,
                                       overlapping_static_geometry_indices_scratch_);
 
         for (auto const overlapping_entity : overlapping_entities_scratch_) {
-            overlap_storage_.add_entity_overlap(dirty_entity, overlapping_entity);
+            overlap_storage_.add_entity_overlap(id, overlapping_entity);
         }
 
         for (auto const static_geometry_index : overlapping_static_geometry_indices_scratch_) {
-            overlap_storage_.add_static_overlap(dirty_entity, static_geometry_index);
+            overlap_storage_.add_static_overlap(id, static_geometry_index);
         }
     }
 

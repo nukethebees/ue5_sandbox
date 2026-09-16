@@ -61,7 +61,7 @@ struct CollisionSystem {
 
     AABBOverlapEventStorage overlap_event_storage_;
 
-    std::vector<RegistryEntityHandle> overlapping_entities_scratch_;
+    std::vector<EntityUniqueId> overlapping_entities_scratch_;
     std::vector<std::int32_t> overlapping_static_geometry_indices_scratch_;
 };
 }
