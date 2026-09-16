@@ -1,0 +1,21 @@
+# PowerShell developer commands
+
+`dev.ps1` is the returning-developer entry point. Dot-source it so its navigation and build
+functions remain available in the current session:
+
+```powershell
+. .\dev.ps1
+dev-help
+```
+
+`Navigation.ps1` provides `croot`, `cwt`, `cwb`, `cplugin`, and `ctests`. `UnrealBuild.ps1` provides
+`cbuild`, `csetup`, `cplay`, `cprojectfiles`, and jobserver/UBT state helpers. `csetup` is the normal
+way to synchronize a worktree; `cplay` prepares and builds playable Editor configurations.
+
+The remaining scripts implement build safety, packaging, project-file generation, Live Coding
+configuration, and package verification. Treat them as implementation details unless a documented
+workflow calls for one directly. In particular, use CMake workflows rather than calling UBT or its
+batch wrappers yourself.
+
+See [Build and test](../docs/build-and-test.md) for everyday commands and [the CMake guide](../cmake/README.md)
+for how those commands are coordinated.
