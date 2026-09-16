@@ -3,8 +3,10 @@
 #include <codegen/manifest_error.h>
 #include <codegen/sexpr/fields.h>
 
+#include <cstdint>
 #include <fstream>
 #include <span>
+#include <stdexcept>
 #include <string_view>
 #include <utility>
 
@@ -55,6 +57,25 @@ auto number(Form const& form, std::string_view const purpose) -> double {
 
 auto integer(Form const& form, std::string_view const purpose) -> int {
     return sexpr::integer(form, purpose, fail);
+}
+
+auto unsigned_integer(Form const& form, std::string_view const purpose) -> std::uint64_t {
+    auto const value{text(form, purpose)};
+    if (value.empty() || value.front() == '-') {
+        fail(form.token.span, std::string{purpose} + " must be an unsigned integer");
+    }
+    try {
+        std::size_t parsed{};
+        auto const result{std::stoull(value, &parsed, 0)};
+        if (parsed != value.size()) {
+            fail(form.token.span, std::string{purpose} + " must be an unsigned integer");
+        }
+        return result;
+    } catch (std::invalid_argument const&) {
+        fail(form.token.span, std::string{purpose} + " must be an unsigned integer");
+    } catch (std::out_of_range const&) {
+        fail(form.token.span, std::string{purpose} + " is out of range");
+    }
 }
 
 auto text_list(Form const& form, std::string_view const purpose) -> std::vector<std::string> {
@@ -395,7 +416,7 @@ auto parse_enum_conversion(Form const& form) -> EnumConversion {
 
 auto parse_packed_field(Form const& form) -> PackedFieldSchema {
     Fields const fields{form, "field", 2};
-    fields.validate({"bits", "kind"});
+    fields.validate({"bits", "kind", "range-helper"});
 
     auto kind{PackedFieldKind::unsigned_integer};
     if (auto const* value{fields.optional("kind")}) {
@@ -414,12 +435,14 @@ auto parse_packed_field(Form const& form) -> PackedFieldSchema {
         .type = parse_type_ref(fields.positional(1)),
         .bits = integer(fields.required("bits"), "packed field bits"),
         .kind = kind,
+        .range_helper = boolean_or(fields, "range-helper"),
     };
 }
 
 auto parse_packed_value(Form const& form) -> PackedValueSchema {
     Fields const fields{form, "packed-value", 1};
-    fields.validate({"storage", "export-specifier"}, {"field"});
+    fields.validate({"storage", "invalid-value", "export-specifier"}, {"field"});
+    auto const* invalid_value{fields.optional("invalid-value")};
 
     std::vector<PackedFieldSchema> packed_fields;
     packed_fields.reserve(fields.declarations().size());
@@ -431,6 +454,9 @@ auto parse_packed_value(Form const& form) -> PackedValueSchema {
         .name = text(fields.positional(0), "packed value name"),
         .storage_type = parse_type_ref(fields.required("storage")),
         .fields = std::move(packed_fields),
+        .invalid_value = invalid_value == nullptr ? std::nullopt
+                                                  : std::optional<std::uint64_t>{unsigned_integer(
+                                                        *invalid_value, "packed invalid value")},
         .export_specifier = optional_text(fields, "export-specifier"),
     };
 }

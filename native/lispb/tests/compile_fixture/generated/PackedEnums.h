@@ -19,6 +19,12 @@ enum class TinyState : std::uint8_t {
     Max = 3,
 };
 
+enum class DomainState : std::uint8_t {
+    Zero,
+    One,
+    COUNT,
+};
+
 
 } // namespace codegen_compile_fixture
 // clang-format on

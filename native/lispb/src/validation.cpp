@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <iterator>
 #include <set>
 #include <stdexcept>
@@ -393,9 +394,25 @@ void validate_enum(EnumModuleSchema const& module, std::map<std::string, CppType
         require_unique_names(value_names, "Enum '" + schema.name + "' values");
         require_unique_names(serialized_names, "Enum '" + schema.name + "' serialized names");
 
-        if (schema.count.has_value() && !schema.enum_array) {
-            throw std::invalid_argument{"Enum '" + schema.name +
-                                        "' specifies a count without enabling enum_array"};
+        auto count_value{schema.values.end()};
+        if (schema.count.has_value()) {
+            require_identifier(*schema.count, "Enum '" + schema.name + "' count");
+            count_value =
+                std::find_if(schema.values.begin(), schema.values.end(), [&](auto const& value) {
+                    return value.name == *schema.count;
+                });
+            if (count_value == schema.values.end()) {
+                throw std::invalid_argument{"Enum '" + schema.name + "' count '" + *schema.count +
+                                            "' does not name an enum value"};
+            }
+            if (std::next(count_value) != schema.values.end()) {
+                throw std::invalid_argument{"Enum '" + schema.name +
+                                            "' count must be the final enum value"};
+            }
+            if (count_value == schema.values.begin()) {
+                throw std::invalid_argument{"Enum '" + schema.name +
+                                            "' count must follow at least one value"};
+            }
         }
         if (schema.enum_array) {
             for (auto const& value : schema.values) {
@@ -406,25 +423,7 @@ void validate_enum(EnumModuleSchema const& module, std::map<std::string, CppType
                 }
             }
 
-            auto count_value{schema.values.end()};
             if (schema.count.has_value()) {
-                require_identifier(*schema.count, "Enum '" + schema.name + "' count");
-                count_value =
-                    std::find_if(schema.values.begin(),
-                                 schema.values.end(),
-                                 [&](auto const& value) { return value.name == *schema.count; });
-                if (count_value == schema.values.end()) {
-                    throw std::invalid_argument{"Enum-array enum '" + schema.name + "' count '" +
-                                                *schema.count + "' does not name an enum value"};
-                }
-                if (std::next(count_value) != schema.values.end()) {
-                    throw std::invalid_argument{"Enum-array enum '" + schema.name +
-                                                "' count must be the final enum value"};
-                }
-                if (count_value == schema.values.begin()) {
-                    throw std::invalid_argument{"Enum-array enum '" + schema.name +
-                                                "' count must follow at least one array value"};
-                }
                 if (schema.reflection != EnumReflection::none && !count_value->hidden) {
                     throw std::invalid_argument{"Reflected enum-array enum '" + schema.name +
                                                 "' count must be hidden"};
@@ -483,8 +482,17 @@ void validate_packed_values(PackedValueModuleSchema const& module,
         if (value.fields.empty()) {
             throw std::invalid_argument{context + " must have fields"};
         }
+        if (value.invalid_value.has_value() && *storage_width < 64 &&
+            *value.invalid_value >= (std::uint64_t{1} << *storage_width)) {
+            throw std::invalid_argument{context + " invalid value does not fit in " +
+                                        std::to_string(*storage_width) + "-bit storage"};
+        }
 
-        std::set<std::string> generated_names{value.name, "raw_value", "storage_type"};
+        std::set<std::string> generated_names{
+            value.name, "raw_value", "storage_type", "try_make", "make", "is_valid"};
+        if (value.invalid_value.has_value()) {
+            generated_names.insert("invalid_value");
+        }
         int used_bits{};
         for (auto const& field : value.fields) {
             auto const field_context{context + " field '" + field.name + "'"};
@@ -532,8 +540,14 @@ void validate_packed_values(PackedValueModuleSchema const& module,
                                                 " width exceeds its enum underlying type"};
                 }
             }
+            if (field.range_helper && (field.kind != PackedFieldKind::unsigned_integer ||
+                                       field_type.spelling == "bool")) {
+                throw std::invalid_argument{field_context +
+                                            " range helper requires an unsigned integer field"};
+            }
 
             std::vector<std::string> names{
+                field.name + "_type",
                 field.name,
                 "set_" + field.name,
                 "try_set_" + field.name,
@@ -544,6 +558,9 @@ void validate_packed_values(PackedValueModuleSchema const& module,
             };
             if (field.kind == PackedFieldKind::enumeration) {
                 names.push_back(field.name + "_underlying_type");
+            }
+            if (field.range_helper) {
+                names.push_back(field.name + "_range_fits");
             }
             for (auto const& name : names) {
                 if (!generated_names.insert(name).second) {

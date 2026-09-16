@@ -38,7 +38,12 @@
   (enum TinyState @standard_uint8
     (value Zero :value "0")
     (value One :value "1")
-    (value Max :value "3")))
+    (value Max :value "3"))
+  (enum DomainState @standard_uint8
+    :count COUNT
+    (value Zero)
+    (value One)
+    (value COUNT)))
 
 (packed-value-module packed_value_fixture
   :header "PackedValues.h"
@@ -58,7 +63,12 @@
   (packed-value PackedTinyState
     :storage std::uint8_t
     (field state @tiny_state :bits 2 :kind enum)
-    (field payload std::uint8_t :bits 6)))
+    (field payload std::uint8_t :bits 6))
+  (packed-value CheckedValue
+    :storage std::uint32_t
+    :invalid-value 0x7fffffff
+    (field serial std::uint32_t :bits 24 :range-helper true)
+    (field state @domain_state :bits 8 :kind enum)))
 
 (settings-module settings_fixture
   :header "Settings.h"

@@ -12,6 +12,7 @@ struct PackedFieldSchema {
     TypeRef type;
     int bits;
     PackedFieldKind kind{PackedFieldKind::unsigned_integer};
+    bool range_helper{false};
 };
 
 } // namespace codegen

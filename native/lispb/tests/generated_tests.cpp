@@ -385,6 +385,28 @@ TEST(GeneratedPackedValue, HandlesFullWidthStorageAndNarrowEnums) {
     EXPECT_EQ(tiny.payload(), std::uint8_t{42});
 }
 
+TEST(GeneratedPackedValue, GeneratesConstructionValidationAndRangeHelpers) {
+    static_assert(CheckedValue::invalid_value == 0x7fffffffu);
+    static_assert(CheckedValue::serial_range_fits(0, CheckedValue::serial_value_mask + 1));
+    static_assert(!CheckedValue::serial_range_fits(CheckedValue::serial_value_mask, 2));
+
+    CheckedValue const null_value;
+    EXPECT_FALSE(null_value.is_valid());
+    EXPECT_EQ(null_value.raw_value(), CheckedValue::invalid_value);
+
+    auto const value{CheckedValue::make(42, DomainState::One)};
+    EXPECT_TRUE(value.is_valid());
+    EXPECT_EQ(value.serial(), 42u);
+    EXPECT_EQ(value.state(), DomainState::One);
+
+    CheckedValue result;
+    EXPECT_TRUE(CheckedValue::try_make(7, DomainState::Zero, result));
+    EXPECT_EQ(result, CheckedValue::make(7, DomainState::Zero));
+    EXPECT_FALSE(CheckedValue::try_make(0x01000000u, DomainState::Zero, result));
+    EXPECT_FALSE(CheckedValue::try_make(7, DomainState::COUNT, result));
+    EXPECT_FALSE(CheckedValue{0xffffffffu}.is_valid());
+}
+
 TEST(GeneratedFixedSoa, Lifetimes) {
     check(FTracked::alive == 0);
     {
