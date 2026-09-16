@@ -71,11 +71,8 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
     {
         ml::ioj::FEntityAABBs bounds{};
         auto const index{ml::ioj::FEntityAABBs::capital_ship_index};
-        bounds.centre_xs[index] = 30.f;
-        bounds.centre_ys[index] = -10.f;
-        bounds.half_extent_xs[index] = 100.f;
-        bounds.half_extent_ys[index] = 20.f;
-        bounds.half_extent_zs[index] = 5.f;
+        bounds.set_centre(index, {30.f, -10.f, 0.f});
+        bounds.set_half_extents(index, {100.f, 20.f, 5.f});
         FVector3f const position{400.f, -200.f, 100.f};
         for (auto const rotation :
              {FRotator3f::ZeroRotator, FRotator3f{0.f, 90.f, 0.f}, FRotator3f{23.f, 47.f, -16.f}}) {
@@ -100,11 +97,9 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
     {
         ::ioj::sim::LevelSimInitData data;
         auto const index{ml::ioj::FEntityAABBs::capital_ship_index};
-        data.entity_bounds.half_extent_xs[index] = 100.f;
-        data.entity_bounds.half_extent_ys[index] = 20.f;
-        data.entity_bounds.half_extent_zs[index] = 10.f;
+        data.entity_bounds.set_half_extents(index, {{100.f, 20.f, 10.f}});
         auto const fighter_index{ml::ioj::FEntityAABBs::fighter_index};
-        data.entity_bounds.half_extent_xs[fighter_index] = 5.f;
+        data.entity_bounds.set_half_extents(fighter_index, {{5.f, 0.f, 0.f}});
         data.fighters.avoidance_clearance_buffer = 1.f;
         data.capital_ships.fighter_spawn_slots_relative_transforms = {
             {.location = {0.0, 40.0, 0.0}}};

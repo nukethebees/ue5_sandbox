@@ -25,6 +25,14 @@ void write(std::ostream& out, char const* path, T value) {
     }
     out << ";\n";
 }
+
+template <typename Vector>
+void write_vector3(std::ostream& out, char const* function, int const index, Vector const value) {
+    out << "    " << function << "(" << index << ", {{" << std::scientific
+        << std::setprecision(std::numeric_limits<float>::max_digits10) << value.X << "f, "
+        << value.Y << "f, " << value.Z << "f}});\n";
+}
+
 void transform(std::ostream& out, std::string const& path, ::ioj::sim::Transform3d const& value) {
     write(out, (path + ".location.x").c_str(), value.location.x);
     write(out, (path + ".location.y").c_str(), value.location.y);
@@ -313,30 +321,12 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
             ml::fixture_export::write(out, (path + ".rotation.roll").c_str(), point.rotation.roll);
         }
         for (int i{}; i < data.entity_bounds.num(); ++i) {
-            ml::fixture_export::write(
-                out,
-                ("data.entity_bounds.centre_xs[" + std::to_string(i) + "]").c_str(),
-                data.entity_bounds.centre_xs[i]);
-            ml::fixture_export::write(
-                out,
-                ("data.entity_bounds.centre_ys[" + std::to_string(i) + "]").c_str(),
-                data.entity_bounds.centre_ys[i]);
-            ml::fixture_export::write(
-                out,
-                ("data.entity_bounds.centre_zs[" + std::to_string(i) + "]").c_str(),
-                data.entity_bounds.centre_zs[i]);
-            ml::fixture_export::write(
-                out,
-                ("data.entity_bounds.half_extent_xs[" + std::to_string(i) + "]").c_str(),
-                data.entity_bounds.half_extent_xs[i]);
-            ml::fixture_export::write(
-                out,
-                ("data.entity_bounds.half_extent_ys[" + std::to_string(i) + "]").c_str(),
-                data.entity_bounds.half_extent_ys[i]);
-            ml::fixture_export::write(
-                out,
-                ("data.entity_bounds.half_extent_zs[" + std::to_string(i) + "]").c_str(),
-                data.entity_bounds.half_extent_zs[i]);
+            ml::fixture_export::write_vector3(
+                out, "data.entity_bounds.set_centre", i, data.entity_bounds.get_centre(i));
+            ml::fixture_export::write_vector3(out,
+                                              "data.entity_bounds.set_half_extents",
+                                              i,
+                                              data.entity_bounds.get_half_extents(i));
         }
         out << "    return fixture;\n}\n}\n";
         out.flush();

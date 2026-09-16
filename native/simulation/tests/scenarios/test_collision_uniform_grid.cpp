@@ -56,12 +56,8 @@ struct TraceFixture {
                          Vector3f const centre,
                          Vector3f const half_extents) {
         auto const aabb_index{std::to_underlying(entity_type)};
-        aabbs.centre_xs[aabb_index] = centre.X;
-        aabbs.centre_ys[aabb_index] = centre.Y;
-        aabbs.centre_zs[aabb_index] = centre.Z;
-        aabbs.half_extent_xs[aabb_index] = half_extents.X;
-        aabbs.half_extent_ys[aabb_index] = half_extents.Y;
-        aabbs.half_extent_zs[aabb_index] = half_extents.Z;
+        aabbs.set_centre(aabb_index, centre);
+        aabbs.set_half_extents(aabb_index, half_extents);
     }
 
     void update_entities(std::span<Vector3f const> const locations,

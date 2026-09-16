@@ -323,36 +323,21 @@ auto make_reference_level_simulation_data() -> ReferenceLevelSimulationData {
     data.spinners.fire_point_offsets[8].rotation.pitch = 0.000000000e+00f;
     data.spinners.fire_point_offsets[8].rotation.yaw = 1.998310661e+01f;
     data.spinners.fire_point_offsets[8].rotation.roll = -0.000000000e+00f;
-    data.entity_bounds.centre_xs[0] = 0.000000000e+00f;
-    data.entity_bounds.centre_ys[0] = 0.000000000e+00f;
-    data.entity_bounds.centre_zs[0] = 0.000000000e+00f;
-    data.entity_bounds.half_extent_xs[0] = 0.000000000e+00f;
-    data.entity_bounds.half_extent_ys[0] = 0.000000000e+00f;
-    data.entity_bounds.half_extent_zs[0] = 0.000000000e+00f;
-    data.entity_bounds.centre_xs[1] = 0.000000000e+00f;
-    data.entity_bounds.centre_ys[1] = 0.000000000e+00f;
-    data.entity_bounds.centre_zs[1] = 5.675825806e+02f;
-    data.entity_bounds.half_extent_xs[1] = 3.356489258e+02f;
-    data.entity_bounds.half_extent_ys[1] = 3.356489258e+02f;
-    data.entity_bounds.half_extent_zs[1] = 6.843348389e+02f;
-    data.entity_bounds.centre_xs[2] = 4.786312500e+03f;
-    data.entity_bounds.centre_ys[2] = 2.441406250e-04f;
-    data.entity_bounds.centre_zs[2] = -1.687307007e+03f;
-    data.entity_bounds.half_extent_xs[2] = 8.918416016e+03f;
-    data.entity_bounds.half_extent_ys[2] = 5.000000488e+03f;
-    data.entity_bounds.half_extent_zs[2] = 5.077661133e+03f;
-    data.entity_bounds.centre_xs[3] = 0.000000000e+00f;
-    data.entity_bounds.centre_ys[3] = 0.000000000e+00f;
-    data.entity_bounds.centre_zs[3] = 0.000000000e+00f;
-    data.entity_bounds.half_extent_xs[3] = 1.720659668e+03f;
-    data.entity_bounds.half_extent_ys[3] = 1.021299377e+03f;
-    data.entity_bounds.half_extent_zs[3] = 4.383157349e+02f;
-    data.entity_bounds.centre_xs[4] = 0.000000000e+00f;
-    data.entity_bounds.centre_ys[4] = 0.000000000e+00f;
-    data.entity_bounds.centre_zs[4] = 2.500000000e+02f;
-    data.entity_bounds.half_extent_xs[4] = 5.000000000e+01f;
-    data.entity_bounds.half_extent_ys[4] = 5.000000000e+01f;
-    data.entity_bounds.half_extent_zs[4] = 2.500000000e+02f;
+    data.entity_bounds.set_centre(0, {{0.000000000e+00f, 0.000000000e+00f, 0.000000000e+00f}});
+    data.entity_bounds.set_half_extents(0,
+                                        {{0.000000000e+00f, 0.000000000e+00f, 0.000000000e+00f}});
+    data.entity_bounds.set_centre(1, {{0.000000000e+00f, 0.000000000e+00f, 5.675825806e+02f}});
+    data.entity_bounds.set_half_extents(1,
+                                        {{3.356489258e+02f, 3.356489258e+02f, 6.843348389e+02f}});
+    data.entity_bounds.set_centre(2, {{4.786312500e+03f, 2.441406250e-04f, -1.687307007e+03f}});
+    data.entity_bounds.set_half_extents(2,
+                                        {{8.918416016e+03f, 5.000000488e+03f, 5.077661133e+03f}});
+    data.entity_bounds.set_centre(3, {{0.000000000e+00f, 0.000000000e+00f, 0.000000000e+00f}});
+    data.entity_bounds.set_half_extents(3,
+                                        {{1.720659668e+03f, 1.021299377e+03f, 4.383157349e+02f}});
+    data.entity_bounds.set_centre(4, {{0.000000000e+00f, 0.000000000e+00f, 2.500000000e+02f}});
+    data.entity_bounds.set_half_extents(4,
+                                        {{5.000000000e+01f, 5.000000000e+01f, 2.500000000e+02f}});
     return fixture;
 }
 }

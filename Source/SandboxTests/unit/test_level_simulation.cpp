@@ -67,9 +67,7 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
     data.level_events.initialisation.entity_count = 2;
     auto const count{::ioj::sim::collision::EntityAABBs::num()};
     for (int32 index{}; index < count; ++index) {
-        data.entity_bounds.half_extent_xs[index] = 10.f;
-        data.entity_bounds.half_extent_ys[index] = 10.f;
-        data.entity_bounds.half_extent_zs[index] = 10.f;
+        data.entity_bounds.set_half_extents(index, {{10.f, 10.f, 10.f}});
     }
     return data;
 }

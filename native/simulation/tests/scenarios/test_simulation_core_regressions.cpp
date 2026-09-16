@@ -139,9 +139,7 @@ void run_worldless_collision_damage(tests::SimulationFixture const& config) {
     data.player->health = {collision_damage_test::player_health,
                            collision_damage_test::player_health};
     auto const player_bounds_index{collision::EntityAABBs::space_ship_index};
-    data.entity_bounds.half_extent_xs[player_bounds_index] = 1.f;
-    data.entity_bounds.half_extent_ys[player_bounds_index] = 1.f;
-    data.entity_bounds.half_extent_zs[player_bounds_index] = 1.f;
+    data.entity_bounds.set_half_extents(player_bounds_index, {{1.f, 1.f, 1.f}});
     tests::add_capital_spawn(
         data, Vector3f{}, Team::White, -1, 60.f, 60.f, collision_damage_test::capital_health);
 

@@ -29,12 +29,8 @@ static_assert(FEntityAABBs::tube_spinner_index == std::to_underlying(ETestEntity
 static_assert(FEntityAABBs::num_rows == std::to_underlying(ETestEntityType::COUNT));
 
 void clear_aabb(FEntityAABBs& aabbs, int32 const index) {
-    aabbs.centre_xs[index] = 0.0f;
-    aabbs.centre_ys[index] = 0.0f;
-    aabbs.centre_zs[index] = 0.0f;
-    aabbs.half_extent_xs[index] = 0.0f;
-    aabbs.half_extent_ys[index] = 0.0f;
-    aabbs.half_extent_zs[index] = 0.0f;
+    aabbs.set_centre(index, FVector3f::ZeroVector);
+    aabbs.set_half_extents(index, FVector3f::ZeroVector);
 }
 
 void set_mesh_aabb(FEntityAABBs& aabbs,
@@ -61,12 +57,8 @@ void set_mesh_aabb(FEntityAABBs& aabbs,
     FVector3f const centre{aabb.GetCenter()};
     FVector3f const half_extents{aabb.GetExtent()};
 
-    aabbs.centre_xs[index] = centre.X;
-    aabbs.centre_ys[index] = centre.Y;
-    aabbs.centre_zs[index] = centre.Z;
-    aabbs.half_extent_xs[index] = half_extents.X;
-    aabbs.half_extent_ys[index] = half_extents.Y;
-    aabbs.half_extent_zs[index] = half_extents.Z;
+    aabbs.set_centre(index, centre);
+    aabbs.set_half_extents(index, half_extents);
 }
 
 auto has_unsupported_geometry(FKAggregateGeom const& geometry) -> bool {

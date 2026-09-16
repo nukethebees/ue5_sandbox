@@ -120,12 +120,8 @@ struct OverlapFixture {
     void set_bounds(std::int32_t const type_index,
                     Vector3f const centre,
                     Vector3f const half_extents) {
-        entity_bounds.centre_xs[type_index] = centre.X;
-        entity_bounds.centre_ys[type_index] = centre.Y;
-        entity_bounds.centre_zs[type_index] = centre.Z;
-        entity_bounds.half_extent_xs[type_index] = half_extents.X;
-        entity_bounds.half_extent_ys[type_index] = half_extents.Y;
-        entity_bounds.half_extent_zs[type_index] = half_extents.Z;
+        entity_bounds.set_centre(type_index, centre);
+        entity_bounds.set_half_extents(type_index, half_extents);
     }
 
     EntityRegistry registry;

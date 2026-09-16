@@ -19,22 +19,36 @@ struct EntityAABBs {
 
     static constexpr auto num() noexcept -> size_type { return num_rows; }
 
+    constexpr void set_centre(size_type const index, Vector3f const centre) noexcept {
+        auto const element{static_cast<std::size_t>(index)};
+        centre_xs_[element] = centre.X;
+        centre_ys_[element] = centre.Y;
+        centre_zs_[element] = centre.Z;
+    }
+
+    constexpr void set_half_extents(size_type const index, Vector3f const half_extents) noexcept {
+        auto const element{static_cast<std::size_t>(index)};
+        half_extent_xs_[element] = half_extents.X;
+        half_extent_ys_[element] = half_extents.Y;
+        half_extent_zs_[element] = half_extents.Z;
+    }
+
     [[nodiscard]] constexpr auto get_centre(size_type const index) const noexcept -> Vector3f {
         auto const element{static_cast<std::size_t>(index)};
-        return ml::make_vector3f(centre_xs[element], centre_ys[element], centre_zs[element]);
+        return ml::make_vector3f(centre_xs_[element], centre_ys_[element], centre_zs_[element]);
     }
     [[nodiscard]] constexpr auto get_half_extents(size_type const index) const noexcept
         -> Vector3f {
         auto const element{static_cast<std::size_t>(index)};
         return ml::make_vector3f(
-            half_extent_xs[element], half_extent_ys[element], half_extent_zs[element]);
+            half_extent_xs_[element], half_extent_ys_[element], half_extent_zs_[element]);
     }
-
-    std::array<float, num_rows> centre_xs{};
-    std::array<float, num_rows> centre_ys{};
-    std::array<float, num_rows> centre_zs{};
-    std::array<float, num_rows> half_extent_xs{};
-    std::array<float, num_rows> half_extent_ys{};
-    std::array<float, num_rows> half_extent_zs{};
+  private:
+    std::array<float, num_rows> centre_xs_{};
+    std::array<float, num_rows> centre_ys_{};
+    std::array<float, num_rows> centre_zs_{};
+    std::array<float, num_rows> half_extent_xs_{};
+    std::array<float, num_rows> half_extent_ys_{};
+    std::array<float, num_rows> half_extent_zs_{};
 };
 } // namespace ioj::sim::collision

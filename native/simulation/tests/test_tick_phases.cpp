@@ -13,9 +13,7 @@ auto make_world() -> LevelSimInitData {
 
     auto const count{data.entity_bounds.num()};
     for (std::int32_t index{}; index < count; ++index) {
-        data.entity_bounds.half_extent_xs[index] = 10.f;
-        data.entity_bounds.half_extent_ys[index] = 10.f;
-        data.entity_bounds.half_extent_zs[index] = 10.f;
+        data.entity_bounds.set_half_extents(index, {{10.f, 10.f, 10.f}});
     }
 
     return data;

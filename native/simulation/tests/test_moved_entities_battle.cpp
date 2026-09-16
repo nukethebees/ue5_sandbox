@@ -63,9 +63,7 @@ auto make_long_running_battle() -> LevelSimInitData {
 
     auto const entity_type_count{data.entity_bounds.num()};
     for (std::int32_t type_index{}; type_index < entity_type_count; ++type_index) {
-        data.entity_bounds.half_extent_xs[type_index] = 10.f;
-        data.entity_bounds.half_extent_ys[type_index] = 10.f;
-        data.entity_bounds.half_extent_zs[type_index] = 10.f;
+        data.entity_bounds.set_half_extents(type_index, {{10.f, 10.f, 10.f}});
     }
     return data;
 }
