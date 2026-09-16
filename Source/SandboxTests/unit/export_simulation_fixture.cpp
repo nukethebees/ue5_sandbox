@@ -1,7 +1,8 @@
 #include <CQTest.h>
+#include <format>
 #include <fstream>
 #include <HAL/FileManager.h>
-#include <iomanip>
+#include <iterator>
 #include <limits>
 #include <Misc/Paths.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
@@ -10,30 +11,65 @@
 #include <type_traits>
 
 namespace ml::fixture_export {
-template <typename T>
-void write(std::ostream& out, char const* path, T value) {
-    out << "    " << path << " = ";
-    if constexpr (std::is_enum_v<T>) {
-        out << "static_cast<decltype(" << path << ")>(" << static_cast<int>(value) << ")";
-    } else if constexpr (std::is_floating_point_v<T>) {
-        out << std::scientific << std::setprecision(std::numeric_limits<T>::max_digits10) << value;
+template <typename Output, typename T>
+void write_value(Output& output, T const value) {
+    if constexpr (std::is_floating_point_v<T>) {
+        output = std::format_to(output, "{:.{}e}", value, std::numeric_limits<T>::max_digits10);
         if constexpr (std::is_same_v<T, float>) {
-            out << "f";
+            output = std::format_to(output, "f");
         }
     } else {
-        out << value;
+        output = std::format_to(output, "{}", value);
     }
-    out << ";\n";
+}
+
+template <typename T>
+void write(std::ostream& out, char const* path, T const value) {
+    auto output{std::ostreambuf_iterator<char>{out}};
+    output = std::format_to(output, "    {} = ", path);
+    if constexpr (std::is_enum_v<T>) {
+        output =
+            std::format_to(output, "static_cast<decltype({})>({})", path, static_cast<int>(value));
+    } else {
+        write_value(output, value);
+    }
+    std::format_to(output, ";\n");
 }
 
 template <typename Vector>
 void write_vector3(std::ostream& out, char const* function, int const index, Vector const value) {
-    out << "    " << function << "(" << index << ", {{" << std::scientific
-        << std::setprecision(std::numeric_limits<float>::max_digits10) << value.X << "f, "
-        << value.Y << "f, " << value.Z << "f}});\n";
+    auto output{std::ostreambuf_iterator<char>{out}};
+    std::format_to(output,
+                   "    {}({}, {{{{{:.9e}f, {:.9e}f, {:.9e}f}}}});\n",
+                   function,
+                   index,
+                   value.X,
+                   value.Y,
+                   value.Z);
 }
 
 void transform(std::ostream& out, std::string const& path, ::ioj::sim::Transform3d const& value) {
+    auto output{std::ostreambuf_iterator<char>{out}};
+    std::format_to(output,
+                   "    {} = {{{{{:.17e}, {:.17e}, {:.17e}, {:.17e}}}, "
+                   "{{{:.17e}, {:.17e}, {:.17e}}}, "
+                   "{{{:.17e}, {:.17e}, {:.17e}}}}};\n",
+                   path,
+                   value.rotation.x,
+                   value.rotation.y,
+                   value.rotation.z,
+                   value.rotation.w,
+                   value.location.x,
+                   value.location.y,
+                   value.location.z,
+                   value.scale.x,
+                   value.scale.y,
+                   value.scale.z);
+}
+
+void transform_components(std::ostream& out,
+                          std::string const& path,
+                          ::ioj::sim::Transform3d const& value) {
     write(out, (path + ".location.x").c_str(), value.location.x);
     write(out, (path + ".location.y").c_str(), value.location.y);
     write(out, (path + ".location.z").c_str(), value.location.z);
@@ -45,6 +81,13 @@ void transform(std::ostream& out, std::string const& path, ::ioj::sim::Transform
     write(out, (path + ".scale.y").c_str(), value.scale.y);
     write(out, (path + ".scale.z").c_str(), value.scale.z);
 }
+
+void vector3f(std::ostream& out, char const* path, ::ioj::sim::Vector3f const value) {
+    auto output{std::ostreambuf_iterator<char>{out}};
+    std::format_to(
+        output, "    {} = {{{{{:.9e}f, {:.9e}f, {:.9e}f}}}};\n", path, value.X, value.Y, value.Z);
+}
+
 }
 TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
 {
@@ -273,18 +316,11 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
             out, "data.clock_settings.tick_period", data.clock_settings.tick_period);
         ml::fixture_export::write(
             out, "data.clock_settings.accumulator", data.clock_settings.accumulator);
-        ml::fixture_export::write(out, "data.grid_dimensions.x", data.grid_dimensions.x);
-        ml::fixture_export::write(out, "data.grid_dimensions.y", data.grid_dimensions.y);
-        ml::fixture_export::write(out, "data.grid_dimensions.z", data.grid_dimensions.z);
-        ml::fixture_export::write(out, "data.cell_size.X", data.cell_size.X);
-        ml::fixture_export::write(
-            out, "data.turrets.fire_point_offset.X", data.turrets.fire_point_offset.X);
-        ml::fixture_export::write(out, "data.cell_size.Y", data.cell_size.Y);
-        ml::fixture_export::write(
-            out, "data.turrets.fire_point_offset.Y", data.turrets.fire_point_offset.Y);
-        ml::fixture_export::write(out, "data.cell_size.Z", data.cell_size.Z);
-        ml::fixture_export::write(
-            out, "data.turrets.fire_point_offset.Z", data.turrets.fire_point_offset.Z);
+        out << "    data.grid_dimensions = {" << data.grid_dimensions.x << ", "
+            << data.grid_dimensions.y << ", " << data.grid_dimensions.z << "};\n";
+        ml::fixture_export::vector3f(out, "data.cell_size", data.cell_size);
+        ml::fixture_export::vector3f(
+            out, "data.turrets.fire_point_offset", data.turrets.fire_point_offset);
         ml::fixture_export::write(out, "player.team", player.team);
         ml::fixture_export::write(out, "player.flight_mode", player.flight_mode);
         ml::fixture_export::write(out, "player.control_mode", player.control_mode);
@@ -301,7 +337,7 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
         out << "    data.capital_ships.fighter_spawn_slots_relative_transforms.resize("
             << slot_count << ");\n";
         for (std::size_t i{}; i < slot_count; ++i) {
-            ml::fixture_export::transform(
+            ml::fixture_export::transform_components(
                 out,
                 "data.capital_ships.fighter_spawn_slots_relative_transforms[" + std::to_string(i) +
                     "]",

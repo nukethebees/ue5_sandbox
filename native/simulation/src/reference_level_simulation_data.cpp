@@ -99,15 +99,9 @@ auto make_reference_level_simulation_data() -> ReferenceLevelSimulationData {
     data.clock_settings.time_scale = 1.00000000000000000e+00;
     data.clock_settings.tick_period = 0.00000000000000000e+00;
     data.clock_settings.accumulator = 0.00000000000000000e+00;
-    data.grid_dimensions.x = 400;
-    data.grid_dimensions.y = 400;
-    data.grid_dimensions.z = 5;
-    data.cell_size.X = 5.000000000e+03f;
-    data.turrets.fire_point_offset.X = 0.000000000e+00f;
-    data.cell_size.Y = 5.000000000e+03f;
-    data.turrets.fire_point_offset.Y = 0.000000000e+00f;
-    data.cell_size.Z = 2.000000000e+04f;
-    data.turrets.fire_point_offset.Z = 1.560000000e+03f;
+    data.grid_dimensions = {400, 400, 5};
+    data.cell_size = {{5.000000000e+03f, 5.000000000e+03f, 2.000000000e+04f}};
+    data.turrets.fire_point_offset = {{0.000000000e+00f, 0.000000000e+00f, 1.560000000e+03f}};
     player.team = static_cast<decltype(player.team)>(0);
     player.flight_mode = static_cast<decltype(player.flight_mode)>(1);
     player.control_mode = static_cast<decltype(player.control_mode)>(0);
@@ -115,56 +109,41 @@ auto make_reference_level_simulation_data() -> ReferenceLevelSimulationData {
     player.laser_fire_rate = static_cast<decltype(player.laser_fire_rate)>(2);
     player.health.health = 1000;
     player.health.max_health = 1000;
-    player.transform.location.x = 0.00000000000000000e+00;
-    player.transform.location.y = 0.00000000000000000e+00;
-    player.transform.location.z = 0.00000000000000000e+00;
-    player.transform.rotation.x = 0.00000000000000000e+00;
-    player.transform.rotation.y = 0.00000000000000000e+00;
-    player.transform.rotation.z = 0.00000000000000000e+00;
-    player.transform.rotation.w = 1.00000000000000000e+00;
-    player.transform.scale.x = 1.00000000000000000e+00;
-    player.transform.scale.y = 1.00000000000000000e+00;
-    player.transform.scale.z = 1.00000000000000000e+00;
-    player.body_transform.location.x = 0.00000000000000000e+00;
-    player.body_transform.location.y = 0.00000000000000000e+00;
-    player.body_transform.location.z = 0.00000000000000000e+00;
-    player.body_transform.rotation.x = 0.00000000000000000e+00;
-    player.body_transform.rotation.y = 0.00000000000000000e+00;
-    player.body_transform.rotation.z = 0.00000000000000000e+00;
-    player.body_transform.rotation.w = 1.00000000000000000e+00;
-    player.body_transform.scale.x = 1.00000000000000000e+00;
-    player.body_transform.scale.y = 1.00000000000000000e+00;
-    player.body_transform.scale.z = 1.00000000000000000e+00;
-    player.left_socket.location.x = 2.00000000000000000e+02;
-    player.left_socket.location.y = -1.29999999999998295e+02;
-    player.left_socket.location.z = 0.00000000000000000e+00;
-    player.left_socket.rotation.x = 3.07504227942209978e-15;
-    player.left_socket.rotation.y = -3.77489497438432342e-08;
-    player.left_socket.rotation.z = 8.14603398069378503e-08;
-    player.left_socket.rotation.w = 9.99999999999995781e-01;
-    player.left_socket.scale.x = 9.99999977648258320e-01;
-    player.left_socket.scale.y = 9.99999977648258653e-01;
-    player.left_socket.scale.z = 9.99999977648258542e-01;
-    player.right_socket.location.x = 2.00000000000000000e+02;
-    player.right_socket.location.y = 1.39999999999998153e+02;
-    player.right_socket.location.z = 0.00000000000000000e+00;
-    player.right_socket.rotation.x = 3.07504227942209978e-15;
-    player.right_socket.rotation.y = -3.77489497438432342e-08;
-    player.right_socket.rotation.z = 8.14603398069378503e-08;
-    player.right_socket.rotation.w = 9.99999999999995781e-01;
-    player.right_socket.scale.x = 9.99999977648258320e-01;
-    player.right_socket.scale.y = 9.99999977648258653e-01;
-    player.right_socket.scale.z = 9.99999977648258542e-01;
-    player.middle_socket.location.x = 2.00000000000000000e+02;
-    player.middle_socket.location.y = 0.00000000000000000e+00;
-    player.middle_socket.location.z = 0.00000000000000000e+00;
-    player.middle_socket.rotation.x = 3.07504227942209978e-15;
-    player.middle_socket.rotation.y = -3.77489497438432342e-08;
-    player.middle_socket.rotation.z = 8.14603398069378503e-08;
-    player.middle_socket.rotation.w = 9.99999999999995781e-01;
-    player.middle_socket.scale.x = 9.99999977648258320e-01;
-    player.middle_socket.scale.y = 9.99999977648258653e-01;
-    player.middle_socket.scale.z = 9.99999977648258542e-01;
+    player.transform = {
+        {0.00000000000000000e+00,
+         0.00000000000000000e+00,
+         0.00000000000000000e+00,
+         1.00000000000000000e+00},
+        {0.00000000000000000e+00, 0.00000000000000000e+00, 0.00000000000000000e+00},
+        {1.00000000000000000e+00, 1.00000000000000000e+00, 1.00000000000000000e+00}};
+    player.body_transform = {
+        {0.00000000000000000e+00,
+         0.00000000000000000e+00,
+         0.00000000000000000e+00,
+         1.00000000000000000e+00},
+        {0.00000000000000000e+00, 0.00000000000000000e+00, 0.00000000000000000e+00},
+        {1.00000000000000000e+00, 1.00000000000000000e+00, 1.00000000000000000e+00}};
+    player.left_socket = {
+        {3.07504227942209978e-15,
+         -3.77489497438432342e-08,
+         8.14603398069378503e-08,
+         9.99999999999995781e-01},
+        {2.00000000000000000e+02, -1.29999999999998295e+02, 0.00000000000000000e+00},
+        {9.99999977648258320e-01, 9.99999977648258653e-01, 9.99999977648258542e-01}};
+    player.right_socket = {
+        {3.07504227942209978e-15,
+         -3.77489497438432342e-08,
+         8.14603398069378503e-08,
+         9.99999999999995781e-01},
+        {2.00000000000000000e+02, 1.39999999999998153e+02, 0.00000000000000000e+00},
+        {9.99999977648258320e-01, 9.99999977648258653e-01, 9.99999977648258542e-01}};
+    player.middle_socket = {
+        {3.07504227942209978e-15,
+         -3.77489497438432342e-08,
+         8.14603398069378503e-08,
+         9.99999999999995781e-01},
+        {2.00000000000000000e+02, 0.00000000000000000e+00, 0.00000000000000000e+00},
+        {9.99999977648258320e-01, 9.99999977648258653e-01, 9.99999977648258542e-01}};
     data.capital_ships.fighter_spawn_slots_relative_transforms.resize(6);
     data.capital_ships.fighter_spawn_slots_relative_transforms[0].location.x =
         -3.00000000000000000e+02;
