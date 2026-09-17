@@ -1,5 +1,7 @@
 include_guard(GLOBAL)
 
+include("${CMAKE_CURRENT_LIST_DIR}/unreal_paths.cmake")
+
 function(add_low_level_test_suite target_name unreal_target test_name_prefix)
   cmake_parse_arguments(test_suite "" "ACTIVITY" "LABELS" ${ARGN})
   if(test_suite_UNPARSED_ARGUMENTS)
@@ -10,15 +12,8 @@ function(add_low_level_test_suite target_name unreal_target test_name_prefix)
 
   add_unreal_target(${target_name} ${unreal_target})
 
-  if(UE_CONFIGURATION STREQUAL "Development")
-    set(test_executable
-      "${PROJECT_SOURCE_DIR}/Binaries/${UE_PLATFORM}/${unreal_target}/${unreal_target}.exe"
-    )
-  else()
-    set(test_executable
-      "${PROJECT_SOURCE_DIR}/Binaries/${UE_PLATFORM}/${unreal_target}/${unreal_target}-${UE_PLATFORM}-${UE_CONFIGURATION}.exe"
-    )
-  endif()
+  sandbox_get_unreal_target_executable_path(test_executable
+    "${PROJECT_SOURCE_DIR}" "${UE_PLATFORM}" "${unreal_target}" "${UE_CONFIGURATION}")
 
   if(test_suite_ACTIVITY)
     sandbox_jobserver_command(test_command "${test_suite_ACTIVITY}"

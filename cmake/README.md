@@ -25,8 +25,9 @@ owns project-file generation and Live Coding validation. Reusable Unreal target 
 remain in `cmake/unreal.cmake`.
 
 `cmake/tests/` runs pure CMake self-tests during every configure. They cover Windows path handling,
-resource identities, command-list boundaries, editor naming, and package-artifact paths; the Python
-jobserver fixture remains responsible for integration coverage of generated Ninja and CTest files.
+MSVC library-flag escaping, resource identities, command-list boundaries, Unreal editor and test
+executable naming, engine-tool paths, and package-artifact paths; the Python jobserver fixture
+remains responsible for integration coverage of generated Ninja and CTest files.
 
 Native preset names encode platform, architecture, compiler, configuration, and optional features.
 The normal Unreal presets build `dev-core` (`editor`, `core-tests`, and `native-tests`); select a

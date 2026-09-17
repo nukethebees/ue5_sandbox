@@ -28,6 +28,43 @@ function(sandbox_get_unreal_editor_names editor_output editor_cmd_output configu
   set(${editor_cmd_output} "${editor_cmd_name}" PARENT_SCOPE)
 endfunction()
 
+function(sandbox_configure_unreal_engine_paths prefix engine_root editor_name editor_cmd_name)
+  cmake_path(APPEND engine_root Engine Build BatchFiles RunUBT.bat
+    OUTPUT_VARIABLE build_script)
+  cmake_path(APPEND engine_root Engine Build BatchFiles RunUAT.bat
+    OUTPUT_VARIABLE run_uat_script)
+  cmake_path(APPEND engine_root Engine Build BatchFiles GenerateProjectFiles.bat
+    OUTPUT_VARIABLE generate_project_files_script)
+  cmake_path(APPEND engine_root Engine Binaries Win64 "${editor_name}"
+    OUTPUT_VARIABLE editor_executable)
+  cmake_path(APPEND engine_root Engine Binaries Win64 "${editor_cmd_name}"
+    OUTPUT_VARIABLE editor_cmd_executable)
+  cmake_path(APPEND engine_root Engine Binaries Win64 UnrealEditor-Cmd.exe
+    OUTPUT_VARIABLE development_editor_cmd_executable)
+  cmake_path(APPEND engine_root Engine Binaries Win64 UnrealPak.exe
+    OUTPUT_VARIABLE unreal_pak_executable)
+
+  set(${prefix}_BUILD_SCRIPT "${build_script}" PARENT_SCOPE)
+  set(${prefix}_RUN_UAT_SCRIPT "${run_uat_script}" PARENT_SCOPE)
+  set(${prefix}_GENERATE_PROJECT_FILES_SCRIPT "${generate_project_files_script}" PARENT_SCOPE)
+  set(${prefix}_EDITOR_EXE "${editor_executable}" PARENT_SCOPE)
+  set(${prefix}_EDITOR_CMD_EXE "${editor_cmd_executable}" PARENT_SCOPE)
+  set(${prefix}_DEVELOPMENT_EDITOR_CMD_EXE "${development_editor_cmd_executable}" PARENT_SCOPE)
+  set(${prefix}_UNREAL_PAK_EXE "${unreal_pak_executable}" PARENT_SCOPE)
+endfunction()
+
+function(sandbox_get_unreal_target_executable_path output_variable project_root platform target configuration)
+  if(configuration STREQUAL "Development")
+    set(executable_name "${target}.exe")
+  else()
+    set(executable_name "${target}-${platform}-${configuration}.exe")
+  endif()
+
+  cmake_path(APPEND project_root Binaries "${platform}" "${target}" "${executable_name}"
+    OUTPUT_VARIABLE executable_path)
+  set(${output_variable} "${executable_path}" PARENT_SCOPE)
+endfunction()
+
 function(sandbox_configure_game_artifact_paths prefix artifact_root base_directory platform configuration)
   cmake_path(ABSOLUTE_PATH artifact_root BASE_DIRECTORY "${base_directory}" NORMALIZE
     OUTPUT_VARIABLE artifact_root_absolute)

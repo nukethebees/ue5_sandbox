@@ -132,59 +132,40 @@ sandbox_configure_unreal_jobserver("${UE_ROOT_CANONICAL}")
 sandbox_unreal_jobserver_command(unreal_standard_activity_command STANDARD "Unreal command")
 sandbox_unreal_jobserver_command(unreal_benchmark_activity_command BENCHMARK "Unreal benchmark")
 
-cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Build BatchFiles RunUBT.bat
-  OUTPUT_VARIABLE UE_BUILD_SCRIPT
-)
+sandbox_get_unreal_editor_names(UE_EDITOR_NAME UE_EDITOR_CMD_NAME "${UE_CONFIGURATION}")
+sandbox_configure_unreal_engine_paths(UE "${UE_ROOT_ABSOLUTE}"
+  "${UE_EDITOR_NAME}" "${UE_EDITOR_CMD_NAME}")
+
 if(NOT EXISTS "${UE_BUILD_SCRIPT}")
   message(FATAL_ERROR
     "UE_ROOT='${UE_ROOT_ABSOLUTE}' is not a usable Unreal Engine installation. "
     "Expected to find '${UE_BUILD_SCRIPT}'.")
 endif()
 
-cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Build BatchFiles RunUAT.bat
-  OUTPUT_VARIABLE UE_RUN_UAT_SCRIPT
-)
 if(NOT EXISTS "${UE_RUN_UAT_SCRIPT}")
   message(FATAL_ERROR
     "UE_ROOT='${UE_ROOT_ABSOLUTE}' is not a usable Unreal Engine installation. "
     "Expected to find '${UE_RUN_UAT_SCRIPT}'.")
 endif()
 
-cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Build BatchFiles GenerateProjectFiles.bat
-  OUTPUT_VARIABLE UE_GENERATE_PROJECT_FILES_SCRIPT
-)
 if(NOT EXISTS "${UE_GENERATE_PROJECT_FILES_SCRIPT}")
   message(FATAL_ERROR
     "UE_ROOT='${UE_ROOT_ABSOLUTE}' is not a usable Unreal Engine installation. "
     "Expected to find '${UE_GENERATE_PROJECT_FILES_SCRIPT}'.")
 endif()
 
-sandbox_get_unreal_editor_names(UE_EDITOR_NAME UE_EDITOR_CMD_NAME "${UE_CONFIGURATION}")
-
-cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Binaries Win64 "${UE_EDITOR_NAME}"
-  OUTPUT_VARIABLE UE_EDITOR_EXE
-)
 if(NOT EXISTS "${UE_EDITOR_EXE}")
   message(FATAL_ERROR
     "UE_ROOT='${UE_ROOT_ABSOLUTE}' is not a usable Unreal Engine installation. "
     "Expected to find '${UE_EDITOR_EXE}'.")
 endif()
 
-cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Binaries Win64 "${UE_EDITOR_CMD_NAME}"
-  OUTPUT_VARIABLE UE_EDITOR_CMD_EXE
-)
 if(NOT EXISTS "${UE_EDITOR_CMD_EXE}")
   message(FATAL_ERROR
     "UE_ROOT='${UE_ROOT_ABSOLUTE}' is not a usable Unreal Engine installation. "
     "Expected to find '${UE_EDITOR_CMD_EXE}'.")
 endif()
 
-cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Binaries Win64 UnrealEditor-Cmd.exe
-  OUTPUT_VARIABLE UE_DEVELOPMENT_EDITOR_CMD_EXE
-)
-cmake_path(APPEND UE_ROOT_ABSOLUTE Engine Binaries Win64 UnrealPak.exe
-  OUTPUT_VARIABLE UE_UNREAL_PAK_EXE
-)
 if(NOT EXISTS "${UE_UNREAL_PAK_EXE}")
   message(FATAL_ERROR
     "UE_ROOT='${UE_ROOT_ABSOLUTE}' is not a usable Unreal Engine installation. "

@@ -71,12 +71,8 @@ set(CMAKE_C_STANDARD_INCLUDE_DIRECTORIES "${msvc_include_directories}"
 set(CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES "${msvc_include_directories}"
   CACHE STRING "MSVC system include directories" FORCE)
 
-set(msvc_linker_flags)
 set(msvc_library_directories "$ENV{LIB}")
-foreach(msvc_library_directory IN LISTS msvc_library_directories)
-  string(REPLACE "\\" "/" msvc_library_directory "${msvc_library_directory}")
-  string(APPEND msvc_linker_flags " /LIBPATH:\"${msvc_library_directory}\"")
-endforeach()
+sandbox_make_msvc_library_linker_flags(msvc_linker_flags ${msvc_library_directories})
 set(CMAKE_EXE_LINKER_FLAGS_INIT "${msvc_linker_flags}")
 set(CMAKE_SHARED_LINKER_FLAGS_INIT "${msvc_linker_flags}")
 set(CMAKE_MODULE_LINKER_FLAGS_INIT "${msvc_linker_flags}")

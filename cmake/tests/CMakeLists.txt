@@ -111,6 +111,11 @@ sandbox_assert_equal("MSVC PATH retains semicolon-separated Windows paths"
 sandbox_get_msvc_environment_value(msvc_include "${msvc_environment_text}" INCLUDE)
 sandbox_assert_equal("MSVC environment values trim leading whitespace"
   "${msvc_include}" [=[C:\SDK Include\ucrt]=])
+sandbox_make_msvc_library_linker_flags(msvc_linker_flags
+  [=[C:\VS Tools\lib]=] [=[C:\Windows SDK\lib\x64]=])
+sandbox_assert_equal("MSVC linker flags quote normalized library paths"
+  "${msvc_linker_flags}"
+  [=[ /LIBPATH:"C:/VS Tools/lib" /LIBPATH:"C:/Windows SDK/lib/x64"]=])
 
 sandbox_get_clang_cl_asan_paths(asan_runtime asan_import asan_thunk
   [=[C:\LLVM Root\lib\clang\20]=])
@@ -120,3 +125,22 @@ sandbox_assert_equal("ASan import library path" "${asan_import}"
   [=[C:/LLVM Root/lib/clang/20/lib/windows/clang_rt.asan_dynamic-x86_64.lib]=])
 sandbox_assert_equal("ASan thunk path" "${asan_thunk}"
   [=[C:/LLVM Root/lib/clang/20/lib/windows/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib]=])
+
+sandbox_configure_unreal_engine_paths(engine
+  [=[C:\Engine Root\UE 5.8]=] UnrealEditor-Win64-DebugGame.exe
+  UnrealEditor-Win64-DebugGame-Cmd.exe)
+sandbox_assert_equal("Unreal build script path" "${engine_BUILD_SCRIPT}"
+  [=[C:/Engine Root/UE 5.8/Engine/Build/BatchFiles/RunUBT.bat]=])
+sandbox_assert_equal("Unreal editor command path" "${engine_EDITOR_CMD_EXE}"
+  [=[C:/Engine Root/UE 5.8/Engine/Binaries/Win64/UnrealEditor-Win64-DebugGame-Cmd.exe]=])
+sandbox_assert_equal("UnrealPak path" "${engine_UNREAL_PAK_EXE}"
+  [=[C:/Engine Root/UE 5.8/Engine/Binaries/Win64/UnrealPak.exe]=])
+
+sandbox_get_unreal_target_executable_path(development_test_executable
+  [=[C:\Sandbox Root]=] Win64 SandboxCoreTests Development)
+sandbox_assert_equal("Development test executable path" "${development_test_executable}"
+  [=[C:/Sandbox Root/Binaries/Win64/SandboxCoreTests/SandboxCoreTests.exe]=])
+sandbox_get_unreal_target_executable_path(debug_game_test_executable
+  [=[C:\Sandbox Root]=] Win64 SandboxCoreTests DebugGame)
+sandbox_assert_equal("DebugGame test executable path" "${debug_game_test_executable}"
+  [=[C:/Sandbox Root/Binaries/Win64/SandboxCoreTests/SandboxCoreTests-Win64-DebugGame.exe]=])
