@@ -24,6 +24,10 @@ editor, game, launch, packaging, and worktree-preparation targets, while `unreal
 owns project-file generation and Live Coding validation. Reusable Unreal target and test helpers
 remain in `cmake/unreal.cmake`.
 
+`cmake/tests/` runs pure CMake self-tests during every configure. They cover Windows path handling,
+resource identities, command-list boundaries, editor naming, and package-artifact paths; the Python
+jobserver fixture remains responsible for integration coverage of generated Ninja and CTest files.
+
 Native preset names encode platform, architecture, compiler, configuration, and optional features.
 The normal Unreal presets build `dev-core` (`editor`, `core-tests`, and `native-tests`); select a
 specific target with `cmake --build --preset <preset> --target <target>` when an aggregate workflow

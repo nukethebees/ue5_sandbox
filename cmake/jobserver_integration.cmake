@@ -1,4 +1,5 @@
 include_guard(GLOBAL)
+include("${CMAKE_CURRENT_LIST_DIR}/jobserver_commands.cmake")
 
 if(NOT DEFINED ENV{LOCALAPPDATA} OR "$ENV{LOCALAPPDATA}" STREQUAL "")
   message(FATAL_ERROR "LOCALAPPDATA is required to locate the per-user jobserver.")
@@ -10,23 +11,8 @@ cmake_path(APPEND SANDBOX_JOBSERVER_INSTALL_ROOT bin jobserver.exe
   OUTPUT_VARIABLE SANDBOX_JOBSERVER_CLI)
 
 function(sandbox_jobserver_command output_variable mode operation)
-  string(TOLOWER "${mode}" mode_lower)
-  if(mode STREQUAL "BENCHMARK")
-    set(machine_claim --exclusive machine --exclusive benchmark)
-  elseif(mode STREQUAL "STANDARD")
-    set(machine_claim --shared machine)
-  else()
-    message(FATAL_ERROR "Unknown jobserver activity mode '${mode}'.")
-  endif()
-
-  set(command
-    "${SANDBOX_JOBSERVER_CLI}" run
-    --name "${operation}"
-    --kind "${mode_lower}"
-    --worktree "${CMAKE_SOURCE_DIR}"
-    ${machine_claim}
-    --
-  )
+  sandbox_make_jobserver_command(command "${SANDBOX_JOBSERVER_CLI}"
+    "${CMAKE_SOURCE_DIR}" "${mode}" "${operation}")
   set(${output_variable} "${command}" PARENT_SCOPE)
 endfunction()
 

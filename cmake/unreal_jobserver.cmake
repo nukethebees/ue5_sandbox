@@ -1,12 +1,11 @@
 include_guard(GLOBAL)
 include("${CMAKE_CURRENT_LIST_DIR}/jobserver_integration.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/unreal_paths.cmake")
 
 function(sandbox_configure_unreal_jobserver engine_root)
   file(REAL_PATH "${engine_root}" canonical_root BASE_DIRECTORY "${PROJECT_SOURCE_DIR}")
   cmake_path(NORMAL_PATH canonical_root)
-  string(TOLOWER "${canonical_root}" identity)
-  string(SHA256 resource_hash "${identity}")
-  set(resource "unreal-build/${resource_hash}")
+  sandbox_make_unreal_jobserver_resource(resource "${canonical_root}")
   set(UE_ENGINE_JOBSERVER_RESOURCE "${resource}" PARENT_SCOPE)
 
   set(build_command
