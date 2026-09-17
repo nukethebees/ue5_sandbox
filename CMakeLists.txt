@@ -5,6 +5,7 @@ sandbox_configure_jobserver()
 
 project(SandboxUnrealBuild LANGUAGES CXX)
 sandbox_add_jobserver_status_target()
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 if(CMAKE_UNITY_BUILD)
   set(CMAKE_CXX_SCAN_FOR_MODULES OFF)

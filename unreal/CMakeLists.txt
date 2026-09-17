@@ -235,94 +235,12 @@ set(SANDBOX_LIVE_CODING_DISABLED_ARGUMENT
 )
 file(MAKE_DIRECTORY "${SANDBOX_LOCAL_DDC_DIR}")
 
-add_custom_target(generate-project-files
-  COMMAND "${POWERSHELL_EXECUTABLE}" -NoProfile -File
-    "${PROJECT_SOURCE_DIR}/PowerShell/Set-LiveCodingDisabled.ps1"
-    -settings_path
-    "${PROJECT_SOURCE_DIR}/Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"
-  COMMAND ${UE_JOBSERVER_COMMAND_PREFIX}
-    "${CMAKE_COMMAND}" -E env
-    "SANDBOX_NATIVE_TOOLCHAIN=${SANDBOX_NATIVE_TOOLCHAIN}"
-    "${UE_GENERATE_PROJECT_FILES_SCRIPT}"
-    "-Project=${SANDBOX_UPROJECT}"
-    -Game
-    -WaitMutex
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-  COMMENT "Generating Visual Studio project files for ${SANDBOX_UPROJECT}"
-  USES_TERMINAL
-  VERBATIM
-)
 include("${PROJECT_SOURCE_DIR}/cmake/unreal.cmake")
 include("${PROJECT_SOURCE_DIR}/cmake/unreal_packaging.cmake")
 include("${PROJECT_SOURCE_DIR}/cmake/catch2.cmake")
 
-add_test(NAME Sandbox.LiveCodingConfig
-  COMMAND "${POWERSHELL_EXECUTABLE}" -NoProfile -File
-    "${PROJECT_SOURCE_DIR}/PowerShell/Set-LiveCodingDisabled.Tests.ps1")
-set_tests_properties(Sandbox.LiveCodingConfig PROPERTIES
-  LABELS "unit;all"
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-)
-
-add_unreal_target(editor SandboxEditor)
-add_unreal_target(game Sandbox)
-add_custom_target(run-editor
-  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_EXE}" "${SANDBOX_UPROJECT}"
-    "${SANDBOX_LIVE_CODING_DISABLED_ARGUMENT}"
-  DEPENDS editor
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-  COMMENT "Launching ${SANDBOX_UPROJECT} with Live Coding disabled"
-  USES_TERMINAL
-  VERBATIM
-)
-add_custom_target(run-editor-debug
-  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_EXE}" "${SANDBOX_UPROJECT}"
-    "${SANDBOX_LIVE_CODING_DISABLED_ARGUMENT}"
-    -WaitForDebugger
-  DEPENDS editor
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-  COMMENT "Launching ${SANDBOX_UPROJECT} with Live Coding disabled and waiting for a debugger"
-  USES_TERMINAL
-  VERBATIM
-)
-add_dependencies(editor
-  sandbox-image
-  sandbox-mesh-gen
-  check-space-game-layers
-  check-generated-code
-  check-generated-slate-code
-  compile-ui-glow-material
-  compile-world-soft-target-material
-  compile-migrated-materials
-  sandbox-material-gen
-)
-add_dependencies(game check-space-game-layers)
-add_dependencies(game check-generated-code)
-add_unreal_packaging_targets()
-
-add_custom_target(worktree-dependencies
-  COMMAND "${POWERSHELL_EXECUTABLE}" -NoProfile -File
-    "${PROJECT_SOURCE_DIR}/PowerShell/Set-LiveCodingDisabled.ps1"
-    -settings_path
-    "${PROJECT_SOURCE_DIR}/Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"
-  DEPENDS
-    native-core
-    native-memory
-    sbx-mimalloc
-    native-simulation-unreal
-    native-level-authoring
-    cpu_features
-    sandbox-s7
-    sandbox-image
-    sandbox-material-gen
-    sandbox-mesh-gen
-    check-generated-code
-    check-generated-slate-code
-    compile-ui-glow-material
-  WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
-  COMMENT "Preparing worktree dependencies and disabling Live Coding"
-  VERBATIM
-)
+add_subdirectory(maintenance)
+add_subdirectory(build)
 
 add_unreal_commandlet_target(generate-lab-images
   COMMANDLET GenerateSandboxImages
@@ -524,6 +442,7 @@ add_custom_target(dev-core
     sandbox-s7-tests
     slate-codegen-tests
     jobserver-tests
+    check-cmake-presets
 )
 
 if(SANDBOX_TEST_SUITE STREQUAL "benchmark")
@@ -599,40 +518,36 @@ else()
   )
 endif()
 
-add_custom_target(resave-assets
-  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+add_unreal_editor_target(resave-assets
+  ARGUMENTS
     -run=ResavePackages
     -projectonly
     -fixupredirects
     -unattended
   DEPENDS editor
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Resaving project assets and fixing redirectors"
-  USES_TERMINAL
-  VERBATIM
+  FOLDER "Sandbox/Unreal/Maintenance"
 )
 
-add_custom_target(generate-ui-glow-material
-  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+add_unreal_editor_target(generate-ui-glow-material
+  ARGUMENTS
     -run=MaterialSynth
     "-Artifact=${UI_GLOW_MATERIAL_ARTIFACT}"
     -Generate -RenderOffscreen -AllowCommandletRendering
     -unattended -nop4 -nosplash -nosound -stdout
   DEPENDS editor
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-  USES_TERMINAL
-  VERBATIM
+  COMMENT "Generating the UI glow material"
+  FOLDER "Sandbox/Unreal/Maintenance"
 )
 
-add_custom_target(validate-ui-glow-material-unreal
-  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+add_unreal_editor_target(validate-ui-glow-material-unreal
+  ARGUMENTS
     -run=MaterialSynth
     "-Artifact=${UI_GLOW_MATERIAL_ARTIFACT}"
     -Validate -unattended -nop4 -nosplash -nullrhi -nosound -stdout
   DEPENDS editor compile-ui-glow-material
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-  USES_TERMINAL
-  VERBATIM
+  COMMENT "Validating the UI glow material in Unreal"
+  FOLDER "Sandbox/Unreal/Maintenance"
 )
 
 add_custom_target(generate-world-soft-target-assets
@@ -650,104 +565,71 @@ add_custom_target(generate-world-soft-target-assets
   VERBATIM
 )
 
-add_custom_target(generate-migrated-materials
-  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+add_unreal_editor_target(generate-migrated-materials
+  ARGUMENTS
     -run=MaterialSynth
     "-ArtifactDirectory=${PROJECT_SOURCE_DIR}/Intermediate/MaterialGen"
     "-ArtifactList=UiGlowComposite,RadarDisplay,EnergyShield,SpaceEnergyField,GlowingCross,VertexRipple,ConstructionSpawn,PlanetAtmosphere,PlanetSurface,TacticalScan,CelestialAnalytic"
     -GenerateAll -RenderOffscreen -AllowCommandletRendering
     -unattended -nop4 -nosplash -nosound -stdout
   DEPENDS editor compile-migrated-materials
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-  USES_TERMINAL
-  VERBATIM
+  COMMENT "Generating migrated materials"
+  FOLDER "Sandbox/Unreal/Maintenance"
 )
 
-add_custom_target(generate-celestial-analytic-material
-  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+add_unreal_editor_target(generate-celestial-analytic-material
+  ARGUMENTS
     -run=MaterialSynth
     "-Artifact=${PROJECT_SOURCE_DIR}/Intermediate/MaterialGen/CelestialAnalytic.smat"
     -Generate -RenderOffscreen -AllowCommandletRendering
     -unattended -nop4 -nosplash -nosound -stdout
   DEPENDS editor
     "${PROJECT_SOURCE_DIR}/Intermediate/MaterialGen/CelestialAnalytic.smat"
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-  USES_TERMINAL
-  VERBATIM
+  COMMENT "Generating the celestial analytic material"
+  FOLDER "Sandbox/Unreal/Maintenance"
 )
 
-add_test(
-  NAME SandboxShaders.ShaderSmoke
-  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+add_unreal_editor_test(SandboxShaders.ShaderSmoke
+  NO_LOCAL_DDC
+  ARGUMENTS
     "-ExecCmds=Automation RunTests StartsWith:SandboxShaders.ShaderSmoke; Quit"
     -AllowCommandletRendering
-    -unattended
     -DDC-ForceMemoryCache
-    -nop4
-    -nosplash
-    -nosound
-    -stdout
+  LABELS all
+  TIMEOUT 900
 )
 
-add_test(
-  NAME USFLoader.ShaderSmoke
-  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+add_unreal_editor_test(USFLoader.ShaderSmoke
+  NO_LOCAL_DDC
+  ARGUMENTS
     "-ExecCmds=Automation RunTests StartsWith:USFLoader.ShaderSmoke; Quit"
     -AllowCommandletRendering
-    -unattended
     -DDC-ForceMemoryCache
-    -nop4
-    -nosplash
-    -nosound
-    -stdout
+  LABELS all
+  TIMEOUT 900
 )
 
-add_test(
-  NAME SandboxEditor.MaterialSynth
-  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+add_unreal_editor_test(SandboxEditor.MaterialSynth
+  NO_LOCAL_DDC
+  ARGUMENTS
     "-ExecCmds=Automation RunTests SandboxEditor.MaterialSynth; Quit"
     -RenderOffscreen
     -AllowCommandletRendering
     -DDC-ForceMemoryCache
-    -unattended
-    -nop4
-    -nosplash
-    -nosound
-    -stdout
-)
-set_tests_properties(SandboxEditor.MaterialSynth PROPERTIES
   LABELS "material-synth;all"
   TIMEOUT 900
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-)
-set_tests_properties(SandboxShaders.ShaderSmoke PROPERTIES
-  LABELS all
-  TIMEOUT 900
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-)
-set_tests_properties(USFLoader.ShaderSmoke PROPERTIES
-  LABELS all
-  TIMEOUT 900
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 )
 
-add_test(
-  NAME SandboxUI.EntityOverlayBenchmark
-  COMMAND ${unreal_benchmark_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+add_unreal_editor_test(SandboxUI.EntityOverlayBenchmark
+  NO_LOCAL_DDC
+  ACTIVITY BENCHMARK
+  ARGUMENTS
     -run=EntityOverlayBenchmark
     -RenderOffscreen
     -AllowCommandletRendering
     -DDC-ForceMemoryCache
-    -unattended
-    -nop4
-    -nosplash
-    -nosound
-    -stdout
-)
-set_tests_properties(SandboxUI.EntityOverlayBenchmark PROPERTIES
   LABELS entity-overlay-benchmark
   TIMEOUT 1200
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 )
 
 add_test(

@@ -1,3 +1,5 @@
+include_guard(GLOBAL)
+
 function(add_low_level_test_suite target_name unreal_target test_name_prefix)
   cmake_parse_arguments(test_suite "" "ACTIVITY" "LABELS" ${ARGN})
   if(test_suite_UNPARSED_ARGUMENTS)

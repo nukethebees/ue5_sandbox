@@ -1,3 +1,5 @@
+include_guard(GLOBAL)
+
 function(add_unreal_build_cook_run_target target_name)
   cmake_parse_arguments(PARSE_ARGV 1 uat "" "COMMENT" "ARGUMENTS")
 

@@ -1,3 +1,5 @@
+include_guard(GLOBAL)
+
 function(add_unreal_target target_name unreal_target)
   set(unreal_target_arguments)
   if(unreal_target STREQUAL "SandboxEditor")
@@ -21,27 +23,44 @@ function(add_unreal_target target_name unreal_target)
     VERBATIM
   )
 
-  if(TARGET native-memory)
-    add_dependencies(${target_name} native-memory)
+endfunction()
+
+function(add_unreal_editor_target target_name)
+  cmake_parse_arguments(PARSE_ARGV 1 editor_target "" "ACTIVITY;COMMENT;EXECUTABLE;FOLDER" "ARGUMENTS;DEPENDS")
+
+  if(editor_target_UNPARSED_ARGUMENTS)
+    message(FATAL_ERROR
+      "add_unreal_editor_target(${target_name}) received unexpected arguments: "
+      "${editor_target_UNPARSED_ARGUMENTS}")
   endif()
-  if(TARGET sbx-mimalloc)
-    add_dependencies(${target_name} sbx-mimalloc)
+  if(NOT editor_target_COMMENT)
+    message(FATAL_ERROR "add_unreal_editor_target(${target_name}) requires COMMENT.")
+  endif()
+  if(NOT editor_target_ACTIVITY)
+    set(editor_target_ACTIVITY STANDARD)
+  endif()
+  if(NOT editor_target_ACTIVITY MATCHES "^(STANDARD|BENCHMARK)$")
+    message(FATAL_ERROR
+      "add_unreal_editor_target(${target_name}) ACTIVITY must be STANDARD or BENCHMARK.")
+  endif()
+  if(NOT editor_target_EXECUTABLE)
+    set(editor_target_EXECUTABLE "${UE_EDITOR_CMD_EXE}")
   endif()
 
-  if(TARGET native-simulation-unreal)
-    add_dependencies(${target_name} native-simulation-unreal)
-  endif()
-  if(TARGET native-level-authoring)
-    add_dependencies(${target_name} native-level-authoring)
-  endif()
-  if(TARGET sandbox-s7)
-    add_dependencies(${target_name} sandbox-s7)
-  endif()
-  if(TARGET native-core)
-    add_dependencies(${target_name} native-core)
-  endif()
-  if(TARGET cpu_features)
-    add_dependencies(${target_name} cpu_features)
+  sandbox_unreal_jobserver_command(activity_command "${editor_target_ACTIVITY}"
+    "Unreal target: ${target_name}")
+  add_custom_target(${target_name}
+    COMMAND ${activity_command} "${editor_target_EXECUTABLE}" "${SANDBOX_UPROJECT}"
+      ${editor_target_ARGUMENTS}
+    DEPENDS ${editor_target_DEPENDS}
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    COMMENT "${editor_target_COMMENT}"
+    USES_TERMINAL
+    VERBATIM
+  )
+
+  if(editor_target_FOLDER)
+    set_property(TARGET ${target_name} PROPERTY FOLDER "${editor_target_FOLDER}")
   endif()
 endfunction()
 
@@ -108,7 +127,7 @@ function(add_unreal_benchmark_commandlet_target target_name commandlet)
 endfunction()
 
 function(add_unreal_editor_test test_name)
-  cmake_parse_arguments(PARSE_ARGV 1 editor_test "" "ACTIVITY;TIMEOUT" "ARGUMENTS;LABELS")
+  cmake_parse_arguments(PARSE_ARGV 1 editor_test "NO_LOCAL_DDC" "ACTIVITY;TIMEOUT" "ARGUMENTS;LABELS")
 
   if(editor_test_UNPARSED_ARGUMENTS)
     message(FATAL_ERROR
@@ -138,17 +157,25 @@ function(add_unreal_editor_test test_name)
   sandbox_unreal_jobserver_command(activity_command "${editor_test_ACTIVITY}"
     "Unreal test: ${test_name}")
 
+  set(editor_test_common_arguments
+    -unattended
+    -nop4
+    -nosplash
+    -nosound
+    -stdout
+  )
+  if(NOT editor_test_NO_LOCAL_DDC)
+    list(APPEND editor_test_common_arguments
+      -ddc=NoZenLocalFallback
+      "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
+    )
+  endif()
+
   add_test(
     NAME "${test_name}"
     COMMAND ${activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
       ${editor_test_ARGUMENTS}
-      -unattended
-      -nop4
-      -nosplash
-      -nosound
-      -stdout
-      -ddc=NoZenLocalFallback
-      "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
+      ${editor_test_common_arguments}
   )
 
   set_tests_properties("${test_name}" PROPERTIES
