@@ -11,9 +11,12 @@
 `Directory.Build.props` applies the shared target framework, nullable, implicit-using, warning,
 analysis, and warnings-as-errors policy to every .NET project below `tools/`.
 
-New standalone C# tools should use their own project and test project under this directory. Each
-executable project writes its complete runtime output to `tools/bin/` using its unique executable
-name. Add shared infrastructure only when more than one tool needs it.
+New standalone C# tools should use their own project and test project under this directory.
+Executable command projects opt into staging with `IsStandaloneTool=true`; their normal Debug and
+Release output remains project-local, while the post-build target copies the complete runtime output
+tree for the most recently built configuration into `tools/bin/` using the tool's unique executable
+name. Test projects and class libraries are not staged. Add shared infrastructure only when more
+than one tool needs it.
 
 Normal development uses the jobserver indirectly through CMake workflows and `dev.ps1`. Query its
 current state with `get-jobserver-state` after loading `dev.ps1`; see [Build and test](../docs/build-and-test.md)

@@ -1,0 +1,17 @@
+<Project>
+  <PropertyGroup>
+    <StandaloneToolsBinDirectory>$(MSBuildThisFileDirectory)bin\</StandaloneToolsBinDirectory>
+  </PropertyGroup>
+
+  <Target Name="StageStandaloneTool" AfterTargets="Build" Condition="'$(IsStandaloneTool)' == 'true'">
+    <ItemGroup>
+      <_StandaloneToolRuntimeFiles Include="$(TargetDir)**\*" />
+    </ItemGroup>
+
+    <MakeDir Directories="@(_StandaloneToolRuntimeFiles->'$(StandaloneToolsBinDirectory)%(RecursiveDir)')" />
+    <Copy
+      SourceFiles="@(_StandaloneToolRuntimeFiles)"
+      DestinationFiles="@(_StandaloneToolRuntimeFiles->'$(StandaloneToolsBinDirectory)%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true" />
+  </Target>
+</Project>
