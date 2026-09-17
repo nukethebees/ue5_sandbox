@@ -1,10 +1,10 @@
 $script:dev_project_root = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 
 function Get-DevGitToolsPath {
-    $git_tools_path = Join-Path $script:dev_project_root 'tools\GitTools\bin\Debug\net10.0\GitTools.exe'
+    $git_tools_path = Join-Path $script:dev_project_root 'tools\bin\GitTools.exe'
 
     if (-not (Test-Path -LiteralPath $git_tools_path -PathType Leaf)) {
-        throw "GitTools was not found: $git_tools_path. Run 'ctools' to build the C# developer tools."
+        throw "GitTools is not available. Run 'ctools' to build the C# developer tools."
     }
 
     $git_tools_path
