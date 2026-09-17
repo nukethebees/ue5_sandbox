@@ -23,6 +23,7 @@ $log_directory = Split-Path -Parent $LogFile
 New-Item -ItemType Directory -Force -Path $log_directory | Out-Null
 
 $clang_tidy_arguments = @(
+  "-quiet",
   "-p",
   $CompilationDatabase,
   "-checks=-*,$Checks",
