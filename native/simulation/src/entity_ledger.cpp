@@ -50,7 +50,8 @@ void EntityLedger::record_death(EntityUniqueId const victim,
     auto const row{require_history_index(victim)};
     auto const history{history_.get_view().columns()};
     auto const team{history.teams[row]};
-    record_status(victim, team, false);
+    auto const alive{history.life_state[row] == LifeState::Alive};
+    statistics_.apply_alive_transition(team, team, victim.entity_type(), alive, false);
     history.life_state[row] = static_cast<LifeState>(reason);
     statistics_.record_destroyed(team, victim.entity_type());
     if (!killer.is_valid()) {

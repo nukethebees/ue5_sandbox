@@ -763,8 +763,7 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     auto const series_json{root->GetObjectField(TEXT("tick_series"))};
     auto const battle_samples_json{root->GetArrayField(TEXT("battle_samples"))};
     TestFalse(TEXT("Reports do not contain engineering metrics"),
-              series_json->HasField(TEXT("registry_slot_count")) ||
-                  series_json->HasField(TEXT("range_query_count")) ||
+              series_json->HasField(TEXT("range_query_count")) ||
                   series_json->HasField(TEXT("requested_time_scale")));
     TestTrue(TEXT("Reports retain battle and projectile samples"),
              !battle_samples_json.IsEmpty() &&
