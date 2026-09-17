@@ -229,8 +229,8 @@ void US7LevelAuthoringMode::refresh_document() {
         return;
     }
     document_ = *found;
-    if (!document_.IsValid() && status_.IsEmpty()) {
-        set_status(LOCTEXT("NoDocument", "Create or load an S7 document to begin."));
+    if (!document_.IsValid()) {
+        create_document();
     }
 }
 
@@ -243,12 +243,26 @@ void US7LevelAuthoringMode::create_document() {
     if (!IsValid(level)) {
         return;
     }
+    auto const had_document{document_.IsValid()};
     auto const created{ml::editor::create_level_authoring_document(*level)};
     if (!created) {
         set_status(FText::FromString(created.error()));
     } else {
         document_ = *created;
-        set_status(LOCTEXT("DocumentCreated", "S7 authoring document is ready."));
+        auto const adopted{ml::editor::adopt_unbound_level_entities(*level, *document_)};
+        if (!adopted) {
+            set_status(FText::FromString(adopted.error()));
+        } else if (had_document) {
+            set_status(FText::Format(
+                LOCTEXT("ExistingDocumentAdopted", "Adopted {0} existing level entities."),
+                *adopted));
+        } else {
+            set_status(FText::Format(
+                LOCTEXT(
+                    "DocumentCreatedAndAdopted",
+                    "Created the S7 authoring document and adopted {0} existing level entities."),
+                *adopted));
+        }
     }
     changed_.Broadcast();
 }
