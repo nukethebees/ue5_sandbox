@@ -9,6 +9,10 @@ struct Handle {
     int32 generation{-1};
 };
 
+struct EntityId {
+    uint32 value{0xffffffffu};
+};
+
 enum class Task : uint8 { None };
 enum class Team : uint8 { None };
 

@@ -731,7 +731,7 @@ struct SBXCOREEXPERIMENTS_API EntityDataConstView {
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.entity_handles,
+        return std::forward<TFunc>(func)(self.entity_ids,
                                          self.integral_biases,
                                          self.float_biases,
                                          self.tasks,
@@ -746,7 +746,7 @@ struct SBXCOREEXPERIMENTS_API EntityDataConstView {
                                          self.speeds,
                                          self.teams,
                                          self.healths,
-                                         self.parent_handles,
+                                         self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
                                          self.separation_steering,
@@ -756,7 +756,7 @@ struct SBXCOREEXPERIMENTS_API EntityDataConstView {
                                          self.avoidance_clear_scan_counts,
                                          self.attack_reposition_countdowns,
                                          self.attack_cooldowns,
-                                         self.target_handles,
+                                         self.target_ids,
                                          self.target_locations,
                                          self.target_velocities,
                                          self.target_directions,
@@ -777,7 +777,7 @@ struct SBXCOREEXPERIMENTS_API EntityDataConstView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TConstArrayView<Handle> entity_handles;
+    TConstArrayView<EntityId> entity_ids;
     TConstArrayView<uint32> integral_biases;
     TConstArrayView<float> float_biases;
     TConstArrayView<Task> tasks;
@@ -792,7 +792,7 @@ struct SBXCOREEXPERIMENTS_API EntityDataConstView {
     TConstArrayView<float> speeds;
     TConstArrayView<Team> teams;
     TConstArrayView<int32> healths;
-    TConstArrayView<Handle> parent_handles;
+    TConstArrayView<EntityId> parent_ids;
     Countdown8::ConstView awareness_scan_countdowns;
     PeriodicCountdown16::ConstView navigation_update_countdowns;
     Vectors::ConstView separation_steering;
@@ -802,7 +802,7 @@ struct SBXCOREEXPERIMENTS_API EntityDataConstView {
     TConstArrayView<uint8> avoidance_clear_scan_counts;
     Countdown16::ConstView attack_reposition_countdowns;
     Countdown16::ConstView attack_cooldowns;
-    TConstArrayView<Handle> target_handles;
+    TConstArrayView<EntityId> target_ids;
     Vectors::ConstView target_locations;
     Vectors::ConstView target_velocities;
     Vectors::ConstView target_directions;
@@ -818,7 +818,7 @@ struct SBXCOREEXPERIMENTS_API EntityDataView {
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.entity_handles,
+        return std::forward<TFunc>(func)(self.entity_ids,
                                          self.integral_biases,
                                          self.float_biases,
                                          self.tasks,
@@ -833,7 +833,7 @@ struct SBXCOREEXPERIMENTS_API EntityDataView {
                                          self.speeds,
                                          self.teams,
                                          self.healths,
-                                         self.parent_handles,
+                                         self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
                                          self.separation_steering,
@@ -843,7 +843,7 @@ struct SBXCOREEXPERIMENTS_API EntityDataView {
                                          self.avoidance_clear_scan_counts,
                                          self.attack_reposition_countdowns,
                                          self.attack_cooldowns,
-                                         self.target_handles,
+                                         self.target_ids,
                                          self.target_locations,
                                          self.target_velocities,
                                          self.target_directions,
@@ -869,7 +869,7 @@ struct SBXCOREEXPERIMENTS_API EntityDataView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArrayView<Handle> entity_handles;
+    TArrayView<EntityId> entity_ids;
     TArrayView<uint32> integral_biases;
     TArrayView<float> float_biases;
     TArrayView<Task> tasks;
@@ -884,7 +884,7 @@ struct SBXCOREEXPERIMENTS_API EntityDataView {
     TArrayView<float> speeds;
     TArrayView<Team> teams;
     TArrayView<int32> healths;
-    TArrayView<Handle> parent_handles;
+    TArrayView<EntityId> parent_ids;
     Countdown8::View awareness_scan_countdowns;
     PeriodicCountdown16::View navigation_update_countdowns;
     Vectors::View separation_steering;
@@ -894,7 +894,7 @@ struct SBXCOREEXPERIMENTS_API EntityDataView {
     TArrayView<uint8> avoidance_clear_scan_counts;
     Countdown16::View attack_reposition_countdowns;
     Countdown16::View attack_cooldowns;
-    TArrayView<Handle> target_handles;
+    TArrayView<EntityId> target_ids;
     Vectors::View target_locations;
     Vectors::View target_velocities;
     Vectors::View target_directions;
@@ -919,7 +919,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        entity_handles.RemoveAtSwap(index, count, allow_shrinking);
+        entity_ids.RemoveAtSwap(index, count, allow_shrinking);
         integral_biases.RemoveAtSwap(index, count, allow_shrinking);
         float_biases.RemoveAtSwap(index, count, allow_shrinking);
         tasks.RemoveAtSwap(index, count, allow_shrinking);
@@ -934,7 +934,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
         speeds.RemoveAtSwap(index, count, allow_shrinking);
         teams.RemoveAtSwap(index, count, allow_shrinking);
         healths.RemoveAtSwap(index, count, allow_shrinking);
-        parent_handles.RemoveAtSwap(index, count, allow_shrinking);
+        parent_ids.RemoveAtSwap(index, count, allow_shrinking);
         ml::remove_at_swap(awareness_scan_countdowns, index, count, allow_shrinking);
         ml::remove_at_swap(navigation_update_countdowns, index, count, allow_shrinking);
         ml::remove_at_swap(separation_steering, index, count, allow_shrinking);
@@ -944,7 +944,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
         avoidance_clear_scan_counts.RemoveAtSwap(index, count, allow_shrinking);
         ml::remove_at_swap(attack_reposition_countdowns, index, count, allow_shrinking);
         ml::remove_at_swap(attack_cooldowns, index, count, allow_shrinking);
-        target_handles.RemoveAtSwap(index, count, allow_shrinking);
+        target_ids.RemoveAtSwap(index, count, allow_shrinking);
         ml::remove_at_swap(target_locations, index, count, allow_shrinking);
         ml::remove_at_swap(target_velocities, index, count, allow_shrinking);
         ml::remove_at_swap(target_directions, index, count, allow_shrinking);
@@ -958,7 +958,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
 
     template <typename Other>
     void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
-        ml::copy_element(entity_handles, dst_i, other.entity_handles, src_i);
+        ml::copy_element(entity_ids, dst_i, other.entity_ids, src_i);
         ml::copy_element(integral_biases, dst_i, other.integral_biases, src_i);
         ml::copy_element(float_biases, dst_i, other.float_biases, src_i);
         ml::copy_element(tasks, dst_i, other.tasks, src_i);
@@ -973,7 +973,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
         ml::copy_element(speeds, dst_i, other.speeds, src_i);
         ml::copy_element(teams, dst_i, other.teams, src_i);
         ml::copy_element(healths, dst_i, other.healths, src_i);
-        ml::copy_element(parent_handles, dst_i, other.parent_handles, src_i);
+        ml::copy_element(parent_ids, dst_i, other.parent_ids, src_i);
         ml::copy_element(awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i);
         ml::copy_element(
             navigation_update_countdowns, dst_i, other.navigation_update_countdowns, src_i);
@@ -989,7 +989,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
         ml::copy_element(
             attack_reposition_countdowns, dst_i, other.attack_reposition_countdowns, src_i);
         ml::copy_element(attack_cooldowns, dst_i, other.attack_cooldowns, src_i);
-        ml::copy_element(target_handles, dst_i, other.target_handles, src_i);
+        ml::copy_element(target_ids, dst_i, other.target_ids, src_i);
         ml::copy_element(target_locations, dst_i, other.target_locations, src_i);
         ml::copy_element(target_velocities, dst_i, other.target_velocities, src_i);
         ml::copy_element(target_directions, dst_i, other.target_directions, src_i);
@@ -1002,7 +1002,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
     template <typename Other>
     void
         copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
-        ml::copy_elements(entity_handles, dst_i, other.entity_handles, src_i, count);
+        ml::copy_elements(entity_ids, dst_i, other.entity_ids, src_i, count);
         ml::copy_elements(integral_biases, dst_i, other.integral_biases, src_i, count);
         ml::copy_elements(float_biases, dst_i, other.float_biases, src_i, count);
         ml::copy_elements(tasks, dst_i, other.tasks, src_i, count);
@@ -1020,7 +1020,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
         ml::copy_elements(speeds, dst_i, other.speeds, src_i, count);
         ml::copy_elements(teams, dst_i, other.teams, src_i, count);
         ml::copy_elements(healths, dst_i, other.healths, src_i, count);
-        ml::copy_elements(parent_handles, dst_i, other.parent_handles, src_i, count);
+        ml::copy_elements(parent_ids, dst_i, other.parent_ids, src_i, count);
         ml::copy_elements(
             awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i, count);
         ml::copy_elements(
@@ -1039,7 +1039,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
         ml::copy_elements(
             attack_reposition_countdowns, dst_i, other.attack_reposition_countdowns, src_i, count);
         ml::copy_elements(attack_cooldowns, dst_i, other.attack_cooldowns, src_i, count);
-        ml::copy_elements(target_handles, dst_i, other.target_handles, src_i, count);
+        ml::copy_elements(target_ids, dst_i, other.target_ids, src_i, count);
         ml::copy_elements(target_locations, dst_i, other.target_locations, src_i, count);
         ml::copy_elements(target_velocities, dst_i, other.target_velocities, src_i, count);
         ml::copy_elements(target_directions, dst_i, other.target_directions, src_i, count);
@@ -1060,7 +1060,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
     void append_from(Other const& other)
         requires ml::SupportsApplyArrayPairsWith<EntityData, Other>
     {
-        ml::append_from(entity_handles, other.entity_handles);
+        ml::append_from(entity_ids, other.entity_ids);
         ml::append_from(integral_biases, other.integral_biases);
         ml::append_from(float_biases, other.float_biases);
         ml::append_from(tasks, other.tasks);
@@ -1075,7 +1075,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
         ml::append_from(speeds, other.speeds);
         ml::append_from(teams, other.teams);
         ml::append_from(healths, other.healths);
-        ml::append_from(parent_handles, other.parent_handles);
+        ml::append_from(parent_ids, other.parent_ids);
         awareness_scan_countdowns.append_from(other.awareness_scan_countdowns);
         navigation_update_countdowns.append_from(other.navigation_update_countdowns);
         separation_steering.append_from(other.separation_steering);
@@ -1085,7 +1085,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
         ml::append_from(avoidance_clear_scan_counts, other.avoidance_clear_scan_counts);
         attack_reposition_countdowns.append_from(other.attack_reposition_countdowns);
         attack_cooldowns.append_from(other.attack_cooldowns);
-        ml::append_from(target_handles, other.target_handles);
+        ml::append_from(target_ids, other.target_ids);
         target_locations.append_from(other.target_locations);
         target_velocities.append_from(other.target_velocities);
         target_directions.append_from(other.target_directions);
@@ -1124,7 +1124,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.entity_handles,
+        return std::forward<TFunc>(func)(self.entity_ids,
                                          self.integral_biases,
                                          self.float_biases,
                                          self.tasks,
@@ -1139,7 +1139,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
                                          self.speeds,
                                          self.teams,
                                          self.healths,
-                                         self.parent_handles,
+                                         self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
                                          self.separation_steering,
@@ -1149,7 +1149,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
                                          self.avoidance_clear_scan_counts,
                                          self.attack_reposition_countdowns,
                                          self.attack_cooldowns,
-                                         self.target_handles,
+                                         self.target_ids,
                                          self.target_locations,
                                          self.target_velocities,
                                          self.target_directions,
@@ -1161,8 +1161,8 @@ struct SBXCOREEXPERIMENTS_API EntityData {
 
     template <typename Self, typename Other, typename TFunc>
     auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.entity_handles,
-                                         other.entity_handles,
+        return std::forward<TFunc>(func)(self.entity_ids,
+                                         other.entity_ids,
                                          self.integral_biases,
                                          other.integral_biases,
                                          self.float_biases,
@@ -1191,8 +1191,8 @@ struct SBXCOREEXPERIMENTS_API EntityData {
                                          other.teams,
                                          self.healths,
                                          other.healths,
-                                         self.parent_handles,
-                                         other.parent_handles,
+                                         self.parent_ids,
+                                         other.parent_ids,
                                          self.awareness_scan_countdowns,
                                          other.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
@@ -1211,8 +1211,8 @@ struct SBXCOREEXPERIMENTS_API EntityData {
                                          other.attack_reposition_countdowns,
                                          self.attack_cooldowns,
                                          other.attack_cooldowns,
-                                         self.target_handles,
-                                         other.target_handles,
+                                         self.target_ids,
+                                         other.target_ids,
                                          self.target_locations,
                                          other.target_locations,
                                          self.target_velocities,
@@ -1245,7 +1245,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArray<Handle> entity_handles;
+    TArray<EntityId> entity_ids;
     TArray<uint32> integral_biases;
     TArray<float> float_biases;
     TArray<Task> tasks;
@@ -1260,7 +1260,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
     TArray<float> speeds;
     TArray<Team> teams;
     TArray<int32> healths;
-    TArray<Handle> parent_handles;
+    TArray<EntityId> parent_ids;
     Countdown8 awareness_scan_countdowns;
     PeriodicCountdown16 navigation_update_countdowns;
     Vectors separation_steering;
@@ -1270,7 +1270,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
     TArray<uint8> avoidance_clear_scan_counts;
     Countdown16 attack_reposition_countdowns;
     Countdown16 attack_cooldowns;
-    TArray<Handle> target_handles;
+    TArray<EntityId> target_ids;
     Vectors target_locations;
     Vectors target_velocities;
     Vectors target_directions;
@@ -1296,8 +1296,8 @@ struct EntityDataSingleLayout {
     inline static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{
         capacity_granularity, column_gap, 64};
 
-    inline static constexpr ColLayout<Handle> EntityHandles{LayoutStart};
-    inline static constexpr ColLayout<uint32> IntegralBiases{EntityHandles};
+    inline static constexpr ColLayout<EntityId> EntityIds{LayoutStart};
+    inline static constexpr ColLayout<uint32> IntegralBiases{EntityIds};
     inline static constexpr ColLayout<float> FloatBiases{IntegralBiases};
     inline static constexpr ColLayout<Task> Tasks{FloatBiases};
     inline static constexpr ColLayout<float> LocationsXs{Tasks};
@@ -1325,8 +1325,8 @@ struct EntityDataSingleLayout {
     inline static constexpr ColLayout<float> Speeds{MoveDistances};
     inline static constexpr ColLayout<Team> Teams{Speeds};
     inline static constexpr ColLayout<int32> Healths{Teams};
-    inline static constexpr ColLayout<Handle> ParentHandles{Healths};
-    inline static constexpr ColLayout<int8> AwarenessScanCountdownsCounters{ParentHandles};
+    inline static constexpr ColLayout<EntityId> ParentIds{Healths};
+    inline static constexpr ColLayout<int8> AwarenessScanCountdownsCounters{ParentIds};
     inline static constexpr ColLayout<int16> NavigationUpdateCountdownsRemainingTicks{
         AwarenessScanCountdownsCounters};
     inline static constexpr ColLayout<int16> NavigationUpdateCountdownsPeriods{
@@ -1343,8 +1343,8 @@ struct EntityDataSingleLayout {
         AvoidanceClearScanCounts};
     inline static constexpr ColLayout<int16> AttackCooldownsCounters{
         AttackRepositionCountdownsCounters};
-    inline static constexpr ColLayout<Handle> TargetHandles{AttackCooldownsCounters};
-    inline static constexpr ColLayout<float> TargetLocationsXs{TargetHandles};
+    inline static constexpr ColLayout<EntityId> TargetIds{AttackCooldownsCounters};
+    inline static constexpr ColLayout<float> TargetLocationsXs{TargetIds};
     inline static constexpr ColLayout<float> TargetLocationsYs{TargetLocationsXs};
     inline static constexpr ColLayout<float> TargetLocationsZs{TargetLocationsYs};
     inline static constexpr ColLayout<float> TargetVelocitiesXs{TargetLocationsZs};
@@ -1359,7 +1359,7 @@ struct EntityDataSingleLayout {
     inline static constexpr ColLayout<float> TargetRadii{TargetDistances};
 
     inline static constexpr byte_size_type allocation_alignment{
-        ml::soa_storage::maximum_alignment(EntityHandles,
+        ml::soa_storage::maximum_alignment(EntityIds,
                                            IntegralBiases,
                                            FloatBiases,
                                            Tasks,
@@ -1388,7 +1388,7 @@ struct EntityDataSingleLayout {
                                            Speeds,
                                            Teams,
                                            Healths,
-                                           ParentHandles,
+                                           ParentIds,
                                            AwarenessScanCountdownsCounters,
                                            NavigationUpdateCountdownsRemainingTicks,
                                            NavigationUpdateCountdownsPeriods,
@@ -1401,7 +1401,7 @@ struct EntityDataSingleLayout {
                                            AvoidanceClearScanCounts,
                                            AttackRepositionCountdownsCounters,
                                            AttackCooldownsCounters,
-                                           TargetHandles,
+                                           TargetIds,
                                            TargetLocationsXs,
                                            TargetLocationsYs,
                                            TargetLocationsZs,
@@ -1429,8 +1429,8 @@ struct EntityDataSingleLayout {
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
         static_assert(
-            ml::soa_storage::supported_leaf<Handle>,
-            "Single-allocation leaf entity_handles requires a non-cv, trivially "
+            ml::soa_storage::supported_leaf<EntityId>,
+            "Single-allocation leaf entity_ids requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
             ml::soa_storage::supported_leaf<uint32>,
@@ -1468,8 +1468,8 @@ struct EntityDataSingleLayout {
         static_assert(
             allocation_alignment <= std::numeric_limits<uint32>::max(),
             "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
-        static_assert(sizeof(Handle) <=
-                      (max_allocation_size - EntityHandles.block_offset) / capacity_granularity);
+        static_assert(sizeof(EntityId) <=
+                      (max_allocation_size - EntityIds.block_offset) / capacity_granularity);
         static_assert(sizeof(uint32) <=
                       (max_allocation_size - IntegralBiases.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
@@ -1529,8 +1529,8 @@ struct EntityDataSingleLayout {
                       (max_allocation_size - Teams.block_offset) / capacity_granularity);
         static_assert(sizeof(int32) <=
                       (max_allocation_size - Healths.block_offset) / capacity_granularity);
-        static_assert(sizeof(Handle) <=
-                      (max_allocation_size - ParentHandles.block_offset) / capacity_granularity);
+        static_assert(sizeof(EntityId) <=
+                      (max_allocation_size - ParentIds.block_offset) / capacity_granularity);
         static_assert(sizeof(int8) <=
                       (max_allocation_size - AwarenessScanCountdownsCounters.block_offset) /
                           capacity_granularity);
@@ -1562,8 +1562,8 @@ struct EntityDataSingleLayout {
         static_assert(sizeof(int16) <=
                       (max_allocation_size - AttackCooldownsCounters.block_offset) /
                           capacity_granularity);
-        static_assert(sizeof(Handle) <=
-                      (max_allocation_size - TargetHandles.block_offset) / capacity_granularity);
+        static_assert(sizeof(EntityId) <=
+                      (max_allocation_size - TargetIds.block_offset) / capacity_granularity);
         static_assert(sizeof(float) <= (max_allocation_size - TargetLocationsXs.block_offset) /
                                            capacity_granularity);
         static_assert(sizeof(float) <= (max_allocation_size - TargetLocationsYs.block_offset) /
@@ -1652,7 +1652,7 @@ struct SingleAllocationEntityDataStorage
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<Handle>* entity_handles{};
+        Element<EntityId>* entity_ids{};
         Element<uint32>* integral_biases{};
         Element<float>* float_biases{};
         Element<Task>* tasks{};
@@ -1681,7 +1681,7 @@ struct SingleAllocationEntityDataStorage
         Element<float>* speeds{};
         Element<Team>* teams{};
         Element<int32>* healths{};
-        Element<Handle>* parent_handles{};
+        Element<EntityId>* parent_ids{};
         Element<int8>* awareness_scan_countdowns_counters{};
         Element<int16>* navigation_update_countdowns_remaining_ticks{};
         Element<int16>* navigation_update_countdowns_periods{};
@@ -1694,7 +1694,7 @@ struct SingleAllocationEntityDataStorage
         Element<uint8>* avoidance_clear_scan_counts{};
         Element<int16>* attack_reposition_countdowns_counters{};
         Element<int16>* attack_cooldowns_counters{};
-        Element<Handle>* target_handles{};
+        Element<EntityId>* target_ids{};
         Element<float>* target_locations_xs{};
         Element<float>* target_locations_ys{};
         Element<float>* target_locations_zs{};
@@ -1709,10 +1709,10 @@ struct SingleAllocationEntityDataStorage
         Element<float>* target_distances{};
         Element<float>* target_radii{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (entity_handles == nullptr) {
+            if (entity_ids == nullptr) {
                 return {};
             }
-            return {entity_handles + offset,
+            return {entity_ids + offset,
                     integral_biases + offset,
                     float_biases + offset,
                     tasks + offset,
@@ -1741,7 +1741,7 @@ struct SingleAllocationEntityDataStorage
                     speeds + offset,
                     teams + offset,
                     healths + offset,
-                    parent_handles + offset,
+                    parent_ids + offset,
                     awareness_scan_countdowns_counters + offset,
                     navigation_update_countdowns_remaining_ticks + offset,
                     navigation_update_countdowns_periods + offset,
@@ -1754,7 +1754,7 @@ struct SingleAllocationEntityDataStorage
                     avoidance_clear_scan_counts + offset,
                     attack_reposition_countdowns_counters + offset,
                     attack_cooldowns_counters + offset,
-                    target_handles + offset,
+                    target_ids + offset,
                     target_locations_xs + offset,
                     target_locations_ys + offset,
                     target_locations_zs + offset,
@@ -1797,9 +1797,9 @@ struct SingleAllocationEntityDataStorage
                                                typename Column::pointer>;
             return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        auto const entity_handles_offset{byte_size_type{}};
+        auto const entity_ids_offset{byte_size_type{}};
         auto const integral_biases_offset{ml::soa_storage::layout_align(
-            entity_handles_offset + blocks * capacity_granularity * sizeof(Handle) + column_gap,
+            entity_ids_offset + blocks * capacity_granularity * sizeof(EntityId) + column_gap,
             IntegralBiases.alignment)};
         auto const float_biases_offset{ml::soa_storage::layout_align(
             integral_biases_offset + blocks * capacity_granularity * sizeof(uint32) + column_gap,
@@ -1894,11 +1894,11 @@ struct SingleAllocationEntityDataStorage
         auto const healths_offset{ml::soa_storage::layout_align(
             teams_offset + blocks * capacity_granularity * sizeof(Team) + column_gap,
             Healths.alignment)};
-        auto const parent_handles_offset{ml::soa_storage::layout_align(
+        auto const parent_ids_offset{ml::soa_storage::layout_align(
             healths_offset + blocks * capacity_granularity * sizeof(int32) + column_gap,
-            ParentHandles.alignment)};
+            ParentIds.alignment)};
         auto const awareness_scan_countdowns_counters_offset{ml::soa_storage::layout_align(
-            parent_handles_offset + blocks * capacity_granularity * sizeof(Handle) + column_gap,
+            parent_ids_offset + blocks * capacity_granularity * sizeof(EntityId) + column_gap,
             AwarenessScanCountdownsCounters.alignment)};
         auto const navigation_update_countdowns_remaining_ticks_offset{
             ml::soa_storage::layout_align(awareness_scan_countdowns_counters_offset +
@@ -1945,12 +1945,12 @@ struct SingleAllocationEntityDataStorage
             attack_reposition_countdowns_counters_offset +
                 blocks * capacity_granularity * sizeof(int16) + column_gap,
             AttackCooldownsCounters.alignment)};
-        auto const target_handles_offset{ml::soa_storage::layout_align(
+        auto const target_ids_offset{ml::soa_storage::layout_align(
             attack_cooldowns_counters_offset + blocks * capacity_granularity * sizeof(int16) +
                 column_gap,
-            TargetHandles.alignment)};
+            TargetIds.alignment)};
         auto const target_locations_xs_offset{ml::soa_storage::layout_align(
-            target_handles_offset + blocks * capacity_granularity * sizeof(Handle) + column_gap,
+            target_ids_offset + blocks * capacity_granularity * sizeof(EntityId) + column_gap,
             TargetLocationsXs.alignment)};
         auto const target_locations_ys_offset{ml::soa_storage::layout_align(
             target_locations_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
@@ -1995,7 +1995,7 @@ struct SingleAllocationEntityDataStorage
             target_distances_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
             TargetRadii.alignment)};
         return {
-            pointer_at(EntityHandles, entity_handles_offset),
+            pointer_at(EntityIds, entity_ids_offset),
             pointer_at(IntegralBiases, integral_biases_offset),
             pointer_at(FloatBiases, float_biases_offset),
             pointer_at(Tasks, tasks_offset),
@@ -2024,7 +2024,7 @@ struct SingleAllocationEntityDataStorage
             pointer_at(Speeds, speeds_offset),
             pointer_at(Teams, teams_offset),
             pointer_at(Healths, healths_offset),
-            pointer_at(ParentHandles, parent_handles_offset),
+            pointer_at(ParentIds, parent_ids_offset),
             pointer_at(AwarenessScanCountdownsCounters, awareness_scan_countdowns_counters_offset),
             pointer_at(NavigationUpdateCountdownsRemainingTicks,
                        navigation_update_countdowns_remaining_ticks_offset),
@@ -2040,7 +2040,7 @@ struct SingleAllocationEntityDataStorage
             pointer_at(AttackRepositionCountdownsCounters,
                        attack_reposition_countdowns_counters_offset),
             pointer_at(AttackCooldownsCounters, attack_cooldowns_counters_offset),
-            pointer_at(TargetHandles, target_handles_offset),
+            pointer_at(TargetIds, target_ids_offset),
             pointer_at(TargetLocationsXs, target_locations_xs_offset),
             pointer_at(TargetLocationsYs, target_locations_ys_offset),
             pointer_at(TargetLocationsZs, target_locations_zs_offset),
@@ -2064,7 +2064,7 @@ struct SingleAllocationEntityDataStorage
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        DefaultConstructItems<Handle>(columns.entity_handles, count);
+        DefaultConstructItems<EntityId>(columns.entity_ids, count);
         DefaultConstructItems<uint32>(columns.integral_biases, count);
         DefaultConstructItems<float>(columns.float_biases, count);
         DefaultConstructItems<Task>(columns.tasks, count);
@@ -2093,7 +2093,7 @@ struct SingleAllocationEntityDataStorage
         DefaultConstructItems<float>(columns.speeds, count);
         DefaultConstructItems<Team>(columns.teams, count);
         DefaultConstructItems<int32>(columns.healths, count);
-        DefaultConstructItems<Handle>(columns.parent_handles, count);
+        DefaultConstructItems<EntityId>(columns.parent_ids, count);
         DefaultConstructItems<int8>(columns.awareness_scan_countdowns_counters, count);
         DefaultConstructItems<int16>(columns.navigation_update_countdowns_remaining_ticks, count);
         DefaultConstructItems<int16>(columns.navigation_update_countdowns_periods, count);
@@ -2106,7 +2106,7 @@ struct SingleAllocationEntityDataStorage
         DefaultConstructItems<uint8>(columns.avoidance_clear_scan_counts, count);
         DefaultConstructItems<int16>(columns.attack_reposition_countdowns_counters, count);
         DefaultConstructItems<int16>(columns.attack_cooldowns_counters, count);
-        DefaultConstructItems<Handle>(columns.target_handles, count);
+        DefaultConstructItems<EntityId>(columns.target_ids, count);
         DefaultConstructItems<float>(columns.target_locations_xs, count);
         DefaultConstructItems<float>(columns.target_locations_ys, count);
         DefaultConstructItems<float>(columns.target_locations_zs, count);
@@ -2131,7 +2131,7 @@ struct SingleAllocationEntityDataStorage
                              size_type source,
                              size_type move_count) {
         auto const elements_to_move{static_cast<byte_size_type>(move_count)};
-        auto const entity_handles_bytes{elements_to_move * sizeof(Handle)};
+        auto const entity_ids_bytes{elements_to_move * sizeof(EntityId)};
         auto const integral_biases_bytes{elements_to_move * sizeof(uint32)};
         auto const float_biases_bytes{elements_to_move * sizeof(float)};
         auto const tasks_bytes{elements_to_move * sizeof(Task)};
@@ -2141,8 +2141,7 @@ struct SingleAllocationEntityDataStorage
         auto const navigation_update_countdowns_remaining_ticks_bytes{elements_to_move *
                                                                       sizeof(int16)};
         auto const navigation_risk_tiers_bytes{elements_to_move * sizeof(uint8)};
-        FMemory::Memcpy(
-            columns.entity_handles + index, columns.entity_handles + source, entity_handles_bytes);
+        FMemory::Memcpy(columns.entity_ids + index, columns.entity_ids + source, entity_ids_bytes);
         FMemory::Memcpy(columns.integral_biases + index,
                         columns.integral_biases + source,
                         integral_biases_bytes);
@@ -2211,8 +2210,7 @@ struct SingleAllocationEntityDataStorage
         FMemory::Memcpy(columns.speeds + index, columns.speeds + source, float_biases_bytes);
         FMemory::Memcpy(columns.teams + index, columns.teams + source, teams_bytes);
         FMemory::Memcpy(columns.healths + index, columns.healths + source, healths_bytes);
-        FMemory::Memcpy(
-            columns.parent_handles + index, columns.parent_handles + source, entity_handles_bytes);
+        FMemory::Memcpy(columns.parent_ids + index, columns.parent_ids + source, entity_ids_bytes);
         FMemory::Memcpy(columns.awareness_scan_countdowns_counters + index,
                         columns.awareness_scan_countdowns_counters + source,
                         awareness_scan_countdowns_counters_bytes);
@@ -2249,8 +2247,7 @@ struct SingleAllocationEntityDataStorage
         FMemory::Memcpy(columns.attack_cooldowns_counters + index,
                         columns.attack_cooldowns_counters + source,
                         navigation_update_countdowns_remaining_ticks_bytes);
-        FMemory::Memcpy(
-            columns.target_handles + index, columns.target_handles + source, entity_handles_bytes);
+        FMemory::Memcpy(columns.target_ids + index, columns.target_ids + source, entity_ids_bytes);
         FMemory::Memcpy(columns.target_locations_xs + index,
                         columns.target_locations_xs + source,
                         float_biases_bytes);
@@ -2309,8 +2306,7 @@ struct SingleAllocationEntityDataStorage
             auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
             return address >= allocation_begin && address < allocation_end;
         };
-        return aliases(source.entity_handles.GetData()) ||
-               aliases(source.integral_biases.GetData()) ||
+        return aliases(source.entity_ids.GetData()) || aliases(source.integral_biases.GetData()) ||
                aliases(source.float_biases.GetData()) || aliases(source.tasks.GetData()) ||
                aliases(source.locations.xs.GetData()) || aliases(source.locations.ys.GetData()) ||
                aliases(source.locations.zs.GetData()) ||
@@ -2333,7 +2329,7 @@ struct SingleAllocationEntityDataStorage
                aliases(source.velocities.zs.GetData()) ||
                aliases(source.move_distances.GetData()) || aliases(source.speeds.GetData()) ||
                aliases(source.teams.GetData()) || aliases(source.healths.GetData()) ||
-               aliases(source.parent_handles.GetData()) ||
+               aliases(source.parent_ids.GetData()) ||
                aliases(source.awareness_scan_countdowns.counters.GetData()) ||
                aliases(source.navigation_update_countdowns.remaining_ticks.GetData()) ||
                aliases(source.navigation_update_countdowns.periods.GetData()) ||
@@ -2346,7 +2342,7 @@ struct SingleAllocationEntityDataStorage
                aliases(source.avoidance_clear_scan_counts.GetData()) ||
                aliases(source.attack_reposition_countdowns.counters.GetData()) ||
                aliases(source.attack_cooldowns.counters.GetData()) ||
-               aliases(source.target_handles.GetData()) ||
+               aliases(source.target_ids.GetData()) ||
                aliases(source.target_locations.xs.GetData()) ||
                aliases(source.target_locations.ys.GetData()) ||
                aliases(source.target_locations.zs.GetData()) ||
@@ -2364,7 +2360,7 @@ struct SingleAllocationEntityDataStorage
     void append_columns(Columns const& source, size_type first, size_type count) {
         auto const destination{get_data(first)};
         auto const elements_to_copy{static_cast<byte_size_type>(count)};
-        auto const entity_handles_bytes{elements_to_copy * sizeof(Handle)};
+        auto const entity_ids_bytes{elements_to_copy * sizeof(EntityId)};
         auto const integral_biases_bytes{elements_to_copy * sizeof(uint32)};
         auto const float_biases_bytes{elements_to_copy * sizeof(float)};
         auto const tasks_bytes{elements_to_copy * sizeof(Task)};
@@ -2374,8 +2370,7 @@ struct SingleAllocationEntityDataStorage
         auto const navigation_update_countdowns_remaining_ticks_bytes{elements_to_copy *
                                                                       sizeof(int16)};
         auto const navigation_risk_tiers_bytes{elements_to_copy * sizeof(uint8)};
-        FMemory::Memcpy(
-            destination.entity_handles, source.entity_handles.GetData(), entity_handles_bytes);
+        FMemory::Memcpy(destination.entity_ids, source.entity_ids.GetData(), entity_ids_bytes);
         FMemory::Memcpy(
             destination.integral_biases, source.integral_biases.GetData(), integral_biases_bytes);
         FMemory::Memcpy(
@@ -2440,8 +2435,7 @@ struct SingleAllocationEntityDataStorage
         FMemory::Memcpy(destination.speeds, source.speeds.GetData(), float_biases_bytes);
         FMemory::Memcpy(destination.teams, source.teams.GetData(), teams_bytes);
         FMemory::Memcpy(destination.healths, source.healths.GetData(), healths_bytes);
-        FMemory::Memcpy(
-            destination.parent_handles, source.parent_handles.GetData(), entity_handles_bytes);
+        FMemory::Memcpy(destination.parent_ids, source.parent_ids.GetData(), entity_ids_bytes);
         FMemory::Memcpy(destination.awareness_scan_countdowns_counters,
                         source.awareness_scan_countdowns.counters.GetData(),
                         awareness_scan_countdowns_counters_bytes);
@@ -2478,8 +2472,7 @@ struct SingleAllocationEntityDataStorage
         FMemory::Memcpy(destination.attack_cooldowns_counters,
                         source.attack_cooldowns.counters.GetData(),
                         navigation_update_countdowns_remaining_ticks_bytes);
-        FMemory::Memcpy(
-            destination.target_handles, source.target_handles.GetData(), entity_handles_bytes);
+        FMemory::Memcpy(destination.target_ids, source.target_ids.GetData(), entity_ids_bytes);
         FMemory::Memcpy(destination.target_locations_xs,
                         source.target_locations.xs.GetData(),
                         float_biases_bytes);
@@ -2528,7 +2521,7 @@ struct SingleAllocationEntityDataStorage
                 make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
             auto const destination{make_data_unchecked(new_data, new_blocks)};
             auto const live_count{static_cast<byte_size_type>(num_)};
-            auto const entity_handles_bytes{live_count * sizeof(Handle)};
+            auto const entity_ids_bytes{live_count * sizeof(EntityId)};
             auto const integral_biases_bytes{live_count * sizeof(uint32)};
             auto const float_biases_bytes{live_count * sizeof(float)};
             auto const tasks_bytes{live_count * sizeof(Task)};
@@ -2538,8 +2531,7 @@ struct SingleAllocationEntityDataStorage
             auto const navigation_update_countdowns_remaining_ticks_bytes{live_count *
                                                                           sizeof(int16)};
             auto const navigation_risk_tiers_bytes{live_count * sizeof(uint8)};
-            FMemory::Memcpy(
-                destination.entity_handles, source.entity_handles, entity_handles_bytes);
+            FMemory::Memcpy(destination.entity_ids, source.entity_ids, entity_ids_bytes);
             FMemory::Memcpy(
                 destination.integral_biases, source.integral_biases, integral_biases_bytes);
             FMemory::Memcpy(destination.float_biases, source.float_biases, float_biases_bytes);
@@ -2596,8 +2588,7 @@ struct SingleAllocationEntityDataStorage
             FMemory::Memcpy(destination.speeds, source.speeds, float_biases_bytes);
             FMemory::Memcpy(destination.teams, source.teams, teams_bytes);
             FMemory::Memcpy(destination.healths, source.healths, healths_bytes);
-            FMemory::Memcpy(
-                destination.parent_handles, source.parent_handles, entity_handles_bytes);
+            FMemory::Memcpy(destination.parent_ids, source.parent_ids, entity_ids_bytes);
             FMemory::Memcpy(destination.awareness_scan_countdowns_counters,
                             source.awareness_scan_countdowns_counters,
                             awareness_scan_countdowns_counters_bytes);
@@ -2634,8 +2625,7 @@ struct SingleAllocationEntityDataStorage
             FMemory::Memcpy(destination.attack_cooldowns_counters,
                             source.attack_cooldowns_counters,
                             navigation_update_countdowns_remaining_ticks_bytes);
-            FMemory::Memcpy(
-                destination.target_handles, source.target_handles, entity_handles_bytes);
+            FMemory::Memcpy(destination.target_ids, source.target_ids, entity_ids_bytes);
             FMemory::Memcpy(
                 destination.target_locations_xs, source.target_locations_xs, float_biases_bytes);
             FMemory::Memcpy(
@@ -2679,10 +2669,9 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
     auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return slice(offset, count);
     }
-    auto entity_handles() const -> TArrayView<Handle const> {
-        return {
-            column_data<Handle>(EntityDataSingleLayout::EntityHandles.offset(capacity_blocks())),
-            count_};
+    auto entity_ids() const -> TArrayView<EntityId const> {
+        return {column_data<EntityId>(EntityDataSingleLayout::EntityIds.offset(capacity_blocks())),
+                count_};
     }
     auto integral_biases() const -> TArrayView<uint32 const> {
         return {
@@ -2781,10 +2770,9 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
         return {column_data<int32>(EntityDataSingleLayout::Healths.offset(capacity_blocks())),
                 count_};
     }
-    auto parent_handles() const -> TArrayView<Handle const> {
-        return {
-            column_data<Handle>(EntityDataSingleLayout::ParentHandles.offset(capacity_blocks())),
-            count_};
+    auto parent_ids() const -> TArrayView<EntityId const> {
+        return {column_data<EntityId>(EntityDataSingleLayout::ParentIds.offset(capacity_blocks())),
+                count_};
     }
     auto view_awareness_scan_countdowns() const -> Countdown8ConstView {
         validate();
@@ -2863,10 +2851,9 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
                  EntityDataSingleLayout::AttackCooldownsCounters.offset(blocks)),
              count_}};
     }
-    auto target_handles() const -> TArrayView<Handle const> {
-        return {
-            column_data<Handle>(EntityDataSingleLayout::TargetHandles.offset(capacity_blocks())),
-            count_};
+    auto target_ids() const -> TArrayView<EntityId const> {
+        return {column_data<EntityId>(EntityDataSingleLayout::TargetIds.offset(capacity_blocks())),
+                count_};
     }
     auto view_target_locations() const -> ml::soa::Vector3ConstView<float> {
         validate();
@@ -2924,7 +2911,7 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
         }
         auto const blocks{capacity_blocks()};
         return EntityDataConstView{
-            {column_data_unchecked<Handle>(EntityDataSingleLayout::EntityHandles.offset(blocks)),
+            {column_data_unchecked<EntityId>(EntityDataSingleLayout::EntityIds.offset(blocks)),
              count_},
             {column_data_unchecked<uint32>(EntityDataSingleLayout::IntegralBiases.offset(blocks)),
              count_},
@@ -2995,7 +2982,7 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
             {column_data_unchecked<float>(EntityDataSingleLayout::Speeds.offset(blocks)), count_},
             {column_data_unchecked<Team>(EntityDataSingleLayout::Teams.offset(blocks)), count_},
             {column_data_unchecked<int32>(EntityDataSingleLayout::Healths.offset(blocks)), count_},
-            {column_data_unchecked<Handle>(EntityDataSingleLayout::ParentHandles.offset(blocks)),
+            {column_data_unchecked<EntityId>(EntityDataSingleLayout::ParentIds.offset(blocks)),
              count_},
             Countdown8ConstView{
                 {column_data_unchecked<int8>(
@@ -3038,7 +3025,7 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
                 {column_data_unchecked<int16>(
                      EntityDataSingleLayout::AttackCooldownsCounters.offset(blocks)),
                  count_}},
-            {column_data_unchecked<Handle>(EntityDataSingleLayout::TargetHandles.offset(blocks)),
+            {column_data_unchecked<EntityId>(EntityDataSingleLayout::TargetIds.offset(blocks)),
              count_},
             VectorsConstView{{column_data_unchecked<float>(
                                   EntityDataSingleLayout::TargetLocationsXs.offset(blocks)),
@@ -3094,10 +3081,9 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
     auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return slice(offset, count);
     }
-    auto entity_handles() const -> TArrayView<Handle> {
-        return {
-            column_data<Handle>(EntityDataSingleLayout::EntityHandles.offset(capacity_blocks())),
-            count_};
+    auto entity_ids() const -> TArrayView<EntityId> {
+        return {column_data<EntityId>(EntityDataSingleLayout::EntityIds.offset(capacity_blocks())),
+                count_};
     }
     auto integral_biases() const -> TArrayView<uint32> {
         return {
@@ -3196,10 +3182,9 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
         return {column_data<int32>(EntityDataSingleLayout::Healths.offset(capacity_blocks())),
                 count_};
     }
-    auto parent_handles() const -> TArrayView<Handle> {
-        return {
-            column_data<Handle>(EntityDataSingleLayout::ParentHandles.offset(capacity_blocks())),
-            count_};
+    auto parent_ids() const -> TArrayView<EntityId> {
+        return {column_data<EntityId>(EntityDataSingleLayout::ParentIds.offset(capacity_blocks())),
+                count_};
     }
     auto view_awareness_scan_countdowns() const -> Countdown8View {
         validate();
@@ -3277,10 +3262,9 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
                                     EntityDataSingleLayout::AttackCooldownsCounters.offset(blocks)),
                                 count_}};
     }
-    auto target_handles() const -> TArrayView<Handle> {
-        return {
-            column_data<Handle>(EntityDataSingleLayout::TargetHandles.offset(capacity_blocks())),
-            count_};
+    auto target_ids() const -> TArrayView<EntityId> {
+        return {column_data<EntityId>(EntityDataSingleLayout::TargetIds.offset(capacity_blocks())),
+                count_};
     }
     auto view_target_locations() const -> ml::soa::Vector3View<float> {
         validate();
@@ -3338,7 +3322,7 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
         }
         auto const blocks{capacity_blocks()};
         return EntityDataView{
-            {column_data_unchecked<Handle>(EntityDataSingleLayout::EntityHandles.offset(blocks)),
+            {column_data_unchecked<EntityId>(EntityDataSingleLayout::EntityIds.offset(blocks)),
              count_},
             {column_data_unchecked<uint32>(EntityDataSingleLayout::IntegralBiases.offset(blocks)),
              count_},
@@ -3409,7 +3393,7 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
             {column_data_unchecked<float>(EntityDataSingleLayout::Speeds.offset(blocks)), count_},
             {column_data_unchecked<Team>(EntityDataSingleLayout::Teams.offset(blocks)), count_},
             {column_data_unchecked<int32>(EntityDataSingleLayout::Healths.offset(blocks)), count_},
-            {column_data_unchecked<Handle>(EntityDataSingleLayout::ParentHandles.offset(blocks)),
+            {column_data_unchecked<EntityId>(EntityDataSingleLayout::ParentIds.offset(blocks)),
              count_},
             Countdown8View{
                 {column_data_unchecked<int8>(
@@ -3451,7 +3435,7 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
             Countdown16View{{column_data_unchecked<int16>(
                                  EntityDataSingleLayout::AttackCooldownsCounters.offset(blocks)),
                              count_}},
-            {column_data_unchecked<Handle>(EntityDataSingleLayout::TargetHandles.offset(blocks)),
+            {column_data_unchecked<EntityId>(EntityDataSingleLayout::TargetIds.offset(blocks)),
              count_},
             VectorsView{{column_data_unchecked<float>(
                              EntityDataSingleLayout::TargetLocationsXs.offset(blocks)),
@@ -3589,7 +3573,7 @@ struct FMemorySingleEntityDataStorage
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<Handle>* entity_handles{};
+        Element<EntityId>* entity_ids{};
         Element<uint32>* integral_biases{};
         Element<float>* float_biases{};
         Element<Task>* tasks{};
@@ -3618,7 +3602,7 @@ struct FMemorySingleEntityDataStorage
         Element<float>* speeds{};
         Element<Team>* teams{};
         Element<int32>* healths{};
-        Element<Handle>* parent_handles{};
+        Element<EntityId>* parent_ids{};
         Element<int8>* awareness_scan_countdowns_counters{};
         Element<int16>* navigation_update_countdowns_remaining_ticks{};
         Element<int16>* navigation_update_countdowns_periods{};
@@ -3631,7 +3615,7 @@ struct FMemorySingleEntityDataStorage
         Element<uint8>* avoidance_clear_scan_counts{};
         Element<int16>* attack_reposition_countdowns_counters{};
         Element<int16>* attack_cooldowns_counters{};
-        Element<Handle>* target_handles{};
+        Element<EntityId>* target_ids{};
         Element<float>* target_locations_xs{};
         Element<float>* target_locations_ys{};
         Element<float>* target_locations_zs{};
@@ -3646,10 +3630,10 @@ struct FMemorySingleEntityDataStorage
         Element<float>* target_distances{};
         Element<float>* target_radii{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
-            if (entity_handles == nullptr) {
+            if (entity_ids == nullptr) {
                 return {};
             }
-            return {entity_handles + offset,
+            return {entity_ids + offset,
                     integral_biases + offset,
                     float_biases + offset,
                     tasks + offset,
@@ -3678,7 +3662,7 @@ struct FMemorySingleEntityDataStorage
                     speeds + offset,
                     teams + offset,
                     healths + offset,
-                    parent_handles + offset,
+                    parent_ids + offset,
                     awareness_scan_countdowns_counters + offset,
                     navigation_update_countdowns_remaining_ticks + offset,
                     navigation_update_countdowns_periods + offset,
@@ -3691,7 +3675,7 @@ struct FMemorySingleEntityDataStorage
                     avoidance_clear_scan_counts + offset,
                     attack_reposition_countdowns_counters + offset,
                     attack_cooldowns_counters + offset,
-                    target_handles + offset,
+                    target_ids + offset,
                     target_locations_xs + offset,
                     target_locations_ys + offset,
                     target_locations_zs + offset,
@@ -3734,9 +3718,9 @@ struct FMemorySingleEntityDataStorage
                                                typename Column::pointer>;
             return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        auto const entity_handles_offset{byte_size_type{}};
+        auto const entity_ids_offset{byte_size_type{}};
         auto const integral_biases_offset{ml::soa_storage::layout_align(
-            entity_handles_offset + blocks * capacity_granularity * sizeof(Handle) + column_gap,
+            entity_ids_offset + blocks * capacity_granularity * sizeof(EntityId) + column_gap,
             IntegralBiases.alignment)};
         auto const float_biases_offset{ml::soa_storage::layout_align(
             integral_biases_offset + blocks * capacity_granularity * sizeof(uint32) + column_gap,
@@ -3831,11 +3815,11 @@ struct FMemorySingleEntityDataStorage
         auto const healths_offset{ml::soa_storage::layout_align(
             teams_offset + blocks * capacity_granularity * sizeof(Team) + column_gap,
             Healths.alignment)};
-        auto const parent_handles_offset{ml::soa_storage::layout_align(
+        auto const parent_ids_offset{ml::soa_storage::layout_align(
             healths_offset + blocks * capacity_granularity * sizeof(int32) + column_gap,
-            ParentHandles.alignment)};
+            ParentIds.alignment)};
         auto const awareness_scan_countdowns_counters_offset{ml::soa_storage::layout_align(
-            parent_handles_offset + blocks * capacity_granularity * sizeof(Handle) + column_gap,
+            parent_ids_offset + blocks * capacity_granularity * sizeof(EntityId) + column_gap,
             AwarenessScanCountdownsCounters.alignment)};
         auto const navigation_update_countdowns_remaining_ticks_offset{
             ml::soa_storage::layout_align(awareness_scan_countdowns_counters_offset +
@@ -3882,12 +3866,12 @@ struct FMemorySingleEntityDataStorage
             attack_reposition_countdowns_counters_offset +
                 blocks * capacity_granularity * sizeof(int16) + column_gap,
             AttackCooldownsCounters.alignment)};
-        auto const target_handles_offset{ml::soa_storage::layout_align(
+        auto const target_ids_offset{ml::soa_storage::layout_align(
             attack_cooldowns_counters_offset + blocks * capacity_granularity * sizeof(int16) +
                 column_gap,
-            TargetHandles.alignment)};
+            TargetIds.alignment)};
         auto const target_locations_xs_offset{ml::soa_storage::layout_align(
-            target_handles_offset + blocks * capacity_granularity * sizeof(Handle) + column_gap,
+            target_ids_offset + blocks * capacity_granularity * sizeof(EntityId) + column_gap,
             TargetLocationsXs.alignment)};
         auto const target_locations_ys_offset{ml::soa_storage::layout_align(
             target_locations_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
@@ -3932,7 +3916,7 @@ struct FMemorySingleEntityDataStorage
             target_distances_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
             TargetRadii.alignment)};
         return {
-            pointer_at(EntityHandles, entity_handles_offset),
+            pointer_at(EntityIds, entity_ids_offset),
             pointer_at(IntegralBiases, integral_biases_offset),
             pointer_at(FloatBiases, float_biases_offset),
             pointer_at(Tasks, tasks_offset),
@@ -3961,7 +3945,7 @@ struct FMemorySingleEntityDataStorage
             pointer_at(Speeds, speeds_offset),
             pointer_at(Teams, teams_offset),
             pointer_at(Healths, healths_offset),
-            pointer_at(ParentHandles, parent_handles_offset),
+            pointer_at(ParentIds, parent_ids_offset),
             pointer_at(AwarenessScanCountdownsCounters, awareness_scan_countdowns_counters_offset),
             pointer_at(NavigationUpdateCountdownsRemainingTicks,
                        navigation_update_countdowns_remaining_ticks_offset),
@@ -3977,7 +3961,7 @@ struct FMemorySingleEntityDataStorage
             pointer_at(AttackRepositionCountdownsCounters,
                        attack_reposition_countdowns_counters_offset),
             pointer_at(AttackCooldownsCounters, attack_cooldowns_counters_offset),
-            pointer_at(TargetHandles, target_handles_offset),
+            pointer_at(TargetIds, target_ids_offset),
             pointer_at(TargetLocationsXs, target_locations_xs_offset),
             pointer_at(TargetLocationsYs, target_locations_ys_offset),
             pointer_at(TargetLocationsZs, target_locations_zs_offset),
@@ -4001,7 +3985,7 @@ struct FMemorySingleEntityDataStorage
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        DefaultConstructItems<Handle>(columns.entity_handles, count);
+        DefaultConstructItems<EntityId>(columns.entity_ids, count);
         DefaultConstructItems<uint32>(columns.integral_biases, count);
         DefaultConstructItems<float>(columns.float_biases, count);
         DefaultConstructItems<Task>(columns.tasks, count);
@@ -4030,7 +4014,7 @@ struct FMemorySingleEntityDataStorage
         DefaultConstructItems<float>(columns.speeds, count);
         DefaultConstructItems<Team>(columns.teams, count);
         DefaultConstructItems<int32>(columns.healths, count);
-        DefaultConstructItems<Handle>(columns.parent_handles, count);
+        DefaultConstructItems<EntityId>(columns.parent_ids, count);
         DefaultConstructItems<int8>(columns.awareness_scan_countdowns_counters, count);
         DefaultConstructItems<int16>(columns.navigation_update_countdowns_remaining_ticks, count);
         DefaultConstructItems<int16>(columns.navigation_update_countdowns_periods, count);
@@ -4043,7 +4027,7 @@ struct FMemorySingleEntityDataStorage
         DefaultConstructItems<uint8>(columns.avoidance_clear_scan_counts, count);
         DefaultConstructItems<int16>(columns.attack_reposition_countdowns_counters, count);
         DefaultConstructItems<int16>(columns.attack_cooldowns_counters, count);
-        DefaultConstructItems<Handle>(columns.target_handles, count);
+        DefaultConstructItems<EntityId>(columns.target_ids, count);
         DefaultConstructItems<float>(columns.target_locations_xs, count);
         DefaultConstructItems<float>(columns.target_locations_ys, count);
         DefaultConstructItems<float>(columns.target_locations_zs, count);
@@ -4068,7 +4052,7 @@ struct FMemorySingleEntityDataStorage
                              size_type source,
                              size_type move_count) {
         auto const elements_to_move{static_cast<byte_size_type>(move_count)};
-        auto const entity_handles_bytes{elements_to_move * sizeof(Handle)};
+        auto const entity_ids_bytes{elements_to_move * sizeof(EntityId)};
         auto const integral_biases_bytes{elements_to_move * sizeof(uint32)};
         auto const float_biases_bytes{elements_to_move * sizeof(float)};
         auto const tasks_bytes{elements_to_move * sizeof(Task)};
@@ -4078,8 +4062,7 @@ struct FMemorySingleEntityDataStorage
         auto const navigation_update_countdowns_remaining_ticks_bytes{elements_to_move *
                                                                       sizeof(int16)};
         auto const navigation_risk_tiers_bytes{elements_to_move * sizeof(uint8)};
-        FMemory::Memcpy(
-            columns.entity_handles + index, columns.entity_handles + source, entity_handles_bytes);
+        FMemory::Memcpy(columns.entity_ids + index, columns.entity_ids + source, entity_ids_bytes);
         FMemory::Memcpy(columns.integral_biases + index,
                         columns.integral_biases + source,
                         integral_biases_bytes);
@@ -4148,8 +4131,7 @@ struct FMemorySingleEntityDataStorage
         FMemory::Memcpy(columns.speeds + index, columns.speeds + source, float_biases_bytes);
         FMemory::Memcpy(columns.teams + index, columns.teams + source, teams_bytes);
         FMemory::Memcpy(columns.healths + index, columns.healths + source, healths_bytes);
-        FMemory::Memcpy(
-            columns.parent_handles + index, columns.parent_handles + source, entity_handles_bytes);
+        FMemory::Memcpy(columns.parent_ids + index, columns.parent_ids + source, entity_ids_bytes);
         FMemory::Memcpy(columns.awareness_scan_countdowns_counters + index,
                         columns.awareness_scan_countdowns_counters + source,
                         awareness_scan_countdowns_counters_bytes);
@@ -4186,8 +4168,7 @@ struct FMemorySingleEntityDataStorage
         FMemory::Memcpy(columns.attack_cooldowns_counters + index,
                         columns.attack_cooldowns_counters + source,
                         navigation_update_countdowns_remaining_ticks_bytes);
-        FMemory::Memcpy(
-            columns.target_handles + index, columns.target_handles + source, entity_handles_bytes);
+        FMemory::Memcpy(columns.target_ids + index, columns.target_ids + source, entity_ids_bytes);
         FMemory::Memcpy(columns.target_locations_xs + index,
                         columns.target_locations_xs + source,
                         float_biases_bytes);
@@ -4246,8 +4227,7 @@ struct FMemorySingleEntityDataStorage
             auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
             return address >= allocation_begin && address < allocation_end;
         };
-        return aliases(source.entity_handles.GetData()) ||
-               aliases(source.integral_biases.GetData()) ||
+        return aliases(source.entity_ids.GetData()) || aliases(source.integral_biases.GetData()) ||
                aliases(source.float_biases.GetData()) || aliases(source.tasks.GetData()) ||
                aliases(source.locations.xs.GetData()) || aliases(source.locations.ys.GetData()) ||
                aliases(source.locations.zs.GetData()) ||
@@ -4270,7 +4250,7 @@ struct FMemorySingleEntityDataStorage
                aliases(source.velocities.zs.GetData()) ||
                aliases(source.move_distances.GetData()) || aliases(source.speeds.GetData()) ||
                aliases(source.teams.GetData()) || aliases(source.healths.GetData()) ||
-               aliases(source.parent_handles.GetData()) ||
+               aliases(source.parent_ids.GetData()) ||
                aliases(source.awareness_scan_countdowns.counters.GetData()) ||
                aliases(source.navigation_update_countdowns.remaining_ticks.GetData()) ||
                aliases(source.navigation_update_countdowns.periods.GetData()) ||
@@ -4283,7 +4263,7 @@ struct FMemorySingleEntityDataStorage
                aliases(source.avoidance_clear_scan_counts.GetData()) ||
                aliases(source.attack_reposition_countdowns.counters.GetData()) ||
                aliases(source.attack_cooldowns.counters.GetData()) ||
-               aliases(source.target_handles.GetData()) ||
+               aliases(source.target_ids.GetData()) ||
                aliases(source.target_locations.xs.GetData()) ||
                aliases(source.target_locations.ys.GetData()) ||
                aliases(source.target_locations.zs.GetData()) ||
@@ -4301,7 +4281,7 @@ struct FMemorySingleEntityDataStorage
     void append_columns(Columns const& source, size_type first, size_type count) {
         auto const destination{get_data(first)};
         auto const elements_to_copy{static_cast<byte_size_type>(count)};
-        auto const entity_handles_bytes{elements_to_copy * sizeof(Handle)};
+        auto const entity_ids_bytes{elements_to_copy * sizeof(EntityId)};
         auto const integral_biases_bytes{elements_to_copy * sizeof(uint32)};
         auto const float_biases_bytes{elements_to_copy * sizeof(float)};
         auto const tasks_bytes{elements_to_copy * sizeof(Task)};
@@ -4311,8 +4291,7 @@ struct FMemorySingleEntityDataStorage
         auto const navigation_update_countdowns_remaining_ticks_bytes{elements_to_copy *
                                                                       sizeof(int16)};
         auto const navigation_risk_tiers_bytes{elements_to_copy * sizeof(uint8)};
-        FMemory::Memcpy(
-            destination.entity_handles, source.entity_handles.GetData(), entity_handles_bytes);
+        FMemory::Memcpy(destination.entity_ids, source.entity_ids.GetData(), entity_ids_bytes);
         FMemory::Memcpy(
             destination.integral_biases, source.integral_biases.GetData(), integral_biases_bytes);
         FMemory::Memcpy(
@@ -4377,8 +4356,7 @@ struct FMemorySingleEntityDataStorage
         FMemory::Memcpy(destination.speeds, source.speeds.GetData(), float_biases_bytes);
         FMemory::Memcpy(destination.teams, source.teams.GetData(), teams_bytes);
         FMemory::Memcpy(destination.healths, source.healths.GetData(), healths_bytes);
-        FMemory::Memcpy(
-            destination.parent_handles, source.parent_handles.GetData(), entity_handles_bytes);
+        FMemory::Memcpy(destination.parent_ids, source.parent_ids.GetData(), entity_ids_bytes);
         FMemory::Memcpy(destination.awareness_scan_countdowns_counters,
                         source.awareness_scan_countdowns.counters.GetData(),
                         awareness_scan_countdowns_counters_bytes);
@@ -4415,8 +4393,7 @@ struct FMemorySingleEntityDataStorage
         FMemory::Memcpy(destination.attack_cooldowns_counters,
                         source.attack_cooldowns.counters.GetData(),
                         navigation_update_countdowns_remaining_ticks_bytes);
-        FMemory::Memcpy(
-            destination.target_handles, source.target_handles.GetData(), entity_handles_bytes);
+        FMemory::Memcpy(destination.target_ids, source.target_ids.GetData(), entity_ids_bytes);
         FMemory::Memcpy(destination.target_locations_xs,
                         source.target_locations.xs.GetData(),
                         float_biases_bytes);
@@ -4465,7 +4442,7 @@ struct FMemorySingleEntityDataStorage
                 make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
             auto const destination{make_data_unchecked(new_data, new_blocks)};
             auto const live_count{static_cast<byte_size_type>(num_)};
-            auto const entity_handles_bytes{live_count * sizeof(Handle)};
+            auto const entity_ids_bytes{live_count * sizeof(EntityId)};
             auto const integral_biases_bytes{live_count * sizeof(uint32)};
             auto const float_biases_bytes{live_count * sizeof(float)};
             auto const tasks_bytes{live_count * sizeof(Task)};
@@ -4475,8 +4452,7 @@ struct FMemorySingleEntityDataStorage
             auto const navigation_update_countdowns_remaining_ticks_bytes{live_count *
                                                                           sizeof(int16)};
             auto const navigation_risk_tiers_bytes{live_count * sizeof(uint8)};
-            FMemory::Memcpy(
-                destination.entity_handles, source.entity_handles, entity_handles_bytes);
+            FMemory::Memcpy(destination.entity_ids, source.entity_ids, entity_ids_bytes);
             FMemory::Memcpy(
                 destination.integral_biases, source.integral_biases, integral_biases_bytes);
             FMemory::Memcpy(destination.float_biases, source.float_biases, float_biases_bytes);
@@ -4533,8 +4509,7 @@ struct FMemorySingleEntityDataStorage
             FMemory::Memcpy(destination.speeds, source.speeds, float_biases_bytes);
             FMemory::Memcpy(destination.teams, source.teams, teams_bytes);
             FMemory::Memcpy(destination.healths, source.healths, healths_bytes);
-            FMemory::Memcpy(
-                destination.parent_handles, source.parent_handles, entity_handles_bytes);
+            FMemory::Memcpy(destination.parent_ids, source.parent_ids, entity_ids_bytes);
             FMemory::Memcpy(destination.awareness_scan_countdowns_counters,
                             source.awareness_scan_countdowns_counters,
                             awareness_scan_countdowns_counters_bytes);
@@ -4571,8 +4546,7 @@ struct FMemorySingleEntityDataStorage
             FMemory::Memcpy(destination.attack_cooldowns_counters,
                             source.attack_cooldowns_counters,
                             navigation_update_countdowns_remaining_ticks_bytes);
-            FMemory::Memcpy(
-                destination.target_handles, source.target_handles, entity_handles_bytes);
+            FMemory::Memcpy(destination.target_ids, source.target_ids, entity_ids_bytes);
             FMemory::Memcpy(
                 destination.target_locations_xs, source.target_locations_xs, float_biases_bytes);
             FMemory::Memcpy(
@@ -6526,7 +6500,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityDataConstView {
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.entity_handles,
+        return std::forward<TFunc>(func)(self.entity_ids,
                                          self.integral_biases,
                                          self.float_biases,
                                          self.tasks,
@@ -6541,7 +6515,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityDataConstView {
                                          self.speeds,
                                          self.teams,
                                          self.healths,
-                                         self.parent_handles,
+                                         self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
                                          self.separation_steering,
@@ -6551,7 +6525,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityDataConstView {
                                          self.avoidance_clear_scan_counts,
                                          self.attack_reposition_countdowns,
                                          self.attack_cooldowns,
-                                         self.target_handles,
+                                         self.target_ids,
                                          self.target_locations,
                                          self.target_velocities,
                                          self.target_directions,
@@ -6572,7 +6546,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityDataConstView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TConstArrayView<Handle> entity_handles;
+    TConstArrayView<EntityId> entity_ids;
     TConstArrayView<uint32> integral_biases;
     TConstArrayView<float> float_biases;
     TConstArrayView<Task> tasks;
@@ -6587,7 +6561,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityDataConstView {
     TConstArrayView<float> speeds;
     TConstArrayView<Team> teams;
     TConstArrayView<int32> healths;
-    TConstArrayView<Handle> parent_handles;
+    TConstArrayView<EntityId> parent_ids;
     MimallocCountdown8::ConstView awareness_scan_countdowns;
     MimallocPeriodicCountdown16::ConstView navigation_update_countdowns;
     MimallocVectors::ConstView separation_steering;
@@ -6597,7 +6571,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityDataConstView {
     TConstArrayView<uint8> avoidance_clear_scan_counts;
     MimallocCountdown16::ConstView attack_reposition_countdowns;
     MimallocCountdown16::ConstView attack_cooldowns;
-    TConstArrayView<Handle> target_handles;
+    TConstArrayView<EntityId> target_ids;
     MimallocVectors::ConstView target_locations;
     MimallocVectors::ConstView target_velocities;
     MimallocVectors::ConstView target_directions;
@@ -6613,7 +6587,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityDataView {
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.entity_handles,
+        return std::forward<TFunc>(func)(self.entity_ids,
                                          self.integral_biases,
                                          self.float_biases,
                                          self.tasks,
@@ -6628,7 +6602,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityDataView {
                                          self.speeds,
                                          self.teams,
                                          self.healths,
-                                         self.parent_handles,
+                                         self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
                                          self.separation_steering,
@@ -6638,7 +6612,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityDataView {
                                          self.avoidance_clear_scan_counts,
                                          self.attack_reposition_countdowns,
                                          self.attack_cooldowns,
-                                         self.target_handles,
+                                         self.target_ids,
                                          self.target_locations,
                                          self.target_velocities,
                                          self.target_directions,
@@ -6664,7 +6638,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityDataView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArrayView<Handle> entity_handles;
+    TArrayView<EntityId> entity_ids;
     TArrayView<uint32> integral_biases;
     TArrayView<float> float_biases;
     TArrayView<Task> tasks;
@@ -6679,7 +6653,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityDataView {
     TArrayView<float> speeds;
     TArrayView<Team> teams;
     TArrayView<int32> healths;
-    TArrayView<Handle> parent_handles;
+    TArrayView<EntityId> parent_ids;
     MimallocCountdown8::View awareness_scan_countdowns;
     MimallocPeriodicCountdown16::View navigation_update_countdowns;
     MimallocVectors::View separation_steering;
@@ -6689,7 +6663,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityDataView {
     TArrayView<uint8> avoidance_clear_scan_counts;
     MimallocCountdown16::View attack_reposition_countdowns;
     MimallocCountdown16::View attack_cooldowns;
-    TArrayView<Handle> target_handles;
+    TArrayView<EntityId> target_ids;
     MimallocVectors::View target_locations;
     MimallocVectors::View target_velocities;
     MimallocVectors::View target_directions;
@@ -6714,7 +6688,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        entity_handles.RemoveAtSwap(index, count, allow_shrinking);
+        entity_ids.RemoveAtSwap(index, count, allow_shrinking);
         integral_biases.RemoveAtSwap(index, count, allow_shrinking);
         float_biases.RemoveAtSwap(index, count, allow_shrinking);
         tasks.RemoveAtSwap(index, count, allow_shrinking);
@@ -6729,7 +6703,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
         speeds.RemoveAtSwap(index, count, allow_shrinking);
         teams.RemoveAtSwap(index, count, allow_shrinking);
         healths.RemoveAtSwap(index, count, allow_shrinking);
-        parent_handles.RemoveAtSwap(index, count, allow_shrinking);
+        parent_ids.RemoveAtSwap(index, count, allow_shrinking);
         ml::remove_at_swap(awareness_scan_countdowns, index, count, allow_shrinking);
         ml::remove_at_swap(navigation_update_countdowns, index, count, allow_shrinking);
         ml::remove_at_swap(separation_steering, index, count, allow_shrinking);
@@ -6739,7 +6713,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
         avoidance_clear_scan_counts.RemoveAtSwap(index, count, allow_shrinking);
         ml::remove_at_swap(attack_reposition_countdowns, index, count, allow_shrinking);
         ml::remove_at_swap(attack_cooldowns, index, count, allow_shrinking);
-        target_handles.RemoveAtSwap(index, count, allow_shrinking);
+        target_ids.RemoveAtSwap(index, count, allow_shrinking);
         ml::remove_at_swap(target_locations, index, count, allow_shrinking);
         ml::remove_at_swap(target_velocities, index, count, allow_shrinking);
         ml::remove_at_swap(target_directions, index, count, allow_shrinking);
@@ -6753,7 +6727,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
 
     template <typename Other>
     void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
-        ml::copy_element(entity_handles, dst_i, other.entity_handles, src_i);
+        ml::copy_element(entity_ids, dst_i, other.entity_ids, src_i);
         ml::copy_element(integral_biases, dst_i, other.integral_biases, src_i);
         ml::copy_element(float_biases, dst_i, other.float_biases, src_i);
         ml::copy_element(tasks, dst_i, other.tasks, src_i);
@@ -6768,7 +6742,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
         ml::copy_element(speeds, dst_i, other.speeds, src_i);
         ml::copy_element(teams, dst_i, other.teams, src_i);
         ml::copy_element(healths, dst_i, other.healths, src_i);
-        ml::copy_element(parent_handles, dst_i, other.parent_handles, src_i);
+        ml::copy_element(parent_ids, dst_i, other.parent_ids, src_i);
         ml::copy_element(awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i);
         ml::copy_element(
             navigation_update_countdowns, dst_i, other.navigation_update_countdowns, src_i);
@@ -6784,7 +6758,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
         ml::copy_element(
             attack_reposition_countdowns, dst_i, other.attack_reposition_countdowns, src_i);
         ml::copy_element(attack_cooldowns, dst_i, other.attack_cooldowns, src_i);
-        ml::copy_element(target_handles, dst_i, other.target_handles, src_i);
+        ml::copy_element(target_ids, dst_i, other.target_ids, src_i);
         ml::copy_element(target_locations, dst_i, other.target_locations, src_i);
         ml::copy_element(target_velocities, dst_i, other.target_velocities, src_i);
         ml::copy_element(target_directions, dst_i, other.target_directions, src_i);
@@ -6797,7 +6771,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
     template <typename Other>
     void
         copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
-        ml::copy_elements(entity_handles, dst_i, other.entity_handles, src_i, count);
+        ml::copy_elements(entity_ids, dst_i, other.entity_ids, src_i, count);
         ml::copy_elements(integral_biases, dst_i, other.integral_biases, src_i, count);
         ml::copy_elements(float_biases, dst_i, other.float_biases, src_i, count);
         ml::copy_elements(tasks, dst_i, other.tasks, src_i, count);
@@ -6815,7 +6789,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
         ml::copy_elements(speeds, dst_i, other.speeds, src_i, count);
         ml::copy_elements(teams, dst_i, other.teams, src_i, count);
         ml::copy_elements(healths, dst_i, other.healths, src_i, count);
-        ml::copy_elements(parent_handles, dst_i, other.parent_handles, src_i, count);
+        ml::copy_elements(parent_ids, dst_i, other.parent_ids, src_i, count);
         ml::copy_elements(
             awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i, count);
         ml::copy_elements(
@@ -6834,7 +6808,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
         ml::copy_elements(
             attack_reposition_countdowns, dst_i, other.attack_reposition_countdowns, src_i, count);
         ml::copy_elements(attack_cooldowns, dst_i, other.attack_cooldowns, src_i, count);
-        ml::copy_elements(target_handles, dst_i, other.target_handles, src_i, count);
+        ml::copy_elements(target_ids, dst_i, other.target_ids, src_i, count);
         ml::copy_elements(target_locations, dst_i, other.target_locations, src_i, count);
         ml::copy_elements(target_velocities, dst_i, other.target_velocities, src_i, count);
         ml::copy_elements(target_directions, dst_i, other.target_directions, src_i, count);
@@ -6855,7 +6829,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
     void append_from(Other const& other)
         requires ml::SupportsApplyArrayPairsWith<MimallocEntityData, Other>
     {
-        ml::append_from(entity_handles, other.entity_handles);
+        ml::append_from(entity_ids, other.entity_ids);
         ml::append_from(integral_biases, other.integral_biases);
         ml::append_from(float_biases, other.float_biases);
         ml::append_from(tasks, other.tasks);
@@ -6870,7 +6844,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
         ml::append_from(speeds, other.speeds);
         ml::append_from(teams, other.teams);
         ml::append_from(healths, other.healths);
-        ml::append_from(parent_handles, other.parent_handles);
+        ml::append_from(parent_ids, other.parent_ids);
         awareness_scan_countdowns.append_from(other.awareness_scan_countdowns);
         navigation_update_countdowns.append_from(other.navigation_update_countdowns);
         separation_steering.append_from(other.separation_steering);
@@ -6880,7 +6854,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
         ml::append_from(avoidance_clear_scan_counts, other.avoidance_clear_scan_counts);
         attack_reposition_countdowns.append_from(other.attack_reposition_countdowns);
         attack_cooldowns.append_from(other.attack_cooldowns);
-        ml::append_from(target_handles, other.target_handles);
+        ml::append_from(target_ids, other.target_ids);
         target_locations.append_from(other.target_locations);
         target_velocities.append_from(other.target_velocities);
         target_directions.append_from(other.target_directions);
@@ -6919,7 +6893,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.entity_handles,
+        return std::forward<TFunc>(func)(self.entity_ids,
                                          self.integral_biases,
                                          self.float_biases,
                                          self.tasks,
@@ -6934,7 +6908,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
                                          self.speeds,
                                          self.teams,
                                          self.healths,
-                                         self.parent_handles,
+                                         self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
                                          self.separation_steering,
@@ -6944,7 +6918,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
                                          self.avoidance_clear_scan_counts,
                                          self.attack_reposition_countdowns,
                                          self.attack_cooldowns,
-                                         self.target_handles,
+                                         self.target_ids,
                                          self.target_locations,
                                          self.target_velocities,
                                          self.target_directions,
@@ -6956,8 +6930,8 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
 
     template <typename Self, typename Other, typename TFunc>
     auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.entity_handles,
-                                         other.entity_handles,
+        return std::forward<TFunc>(func)(self.entity_ids,
+                                         other.entity_ids,
                                          self.integral_biases,
                                          other.integral_biases,
                                          self.float_biases,
@@ -6986,8 +6960,8 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
                                          other.teams,
                                          self.healths,
                                          other.healths,
-                                         self.parent_handles,
-                                         other.parent_handles,
+                                         self.parent_ids,
+                                         other.parent_ids,
                                          self.awareness_scan_countdowns,
                                          other.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
@@ -7006,8 +6980,8 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
                                          other.attack_reposition_countdowns,
                                          self.attack_cooldowns,
                                          other.attack_cooldowns,
-                                         self.target_handles,
-                                         other.target_handles,
+                                         self.target_ids,
+                                         other.target_ids,
                                          self.target_locations,
                                          other.target_locations,
                                          self.target_velocities,
@@ -7040,7 +7014,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArray<Handle, MimallocArrayAllocator> entity_handles;
+    TArray<EntityId, MimallocArrayAllocator> entity_ids;
     TArray<uint32, MimallocArrayAllocator> integral_biases;
     TArray<float, MimallocArrayAllocator> float_biases;
     TArray<Task, MimallocArrayAllocator> tasks;
@@ -7055,7 +7029,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
     TArray<float, MimallocArrayAllocator> speeds;
     TArray<Team, MimallocArrayAllocator> teams;
     TArray<int32, MimallocArrayAllocator> healths;
-    TArray<Handle, MimallocArrayAllocator> parent_handles;
+    TArray<EntityId, MimallocArrayAllocator> parent_ids;
     MimallocCountdown8 awareness_scan_countdowns;
     MimallocPeriodicCountdown16 navigation_update_countdowns;
     MimallocVectors separation_steering;
@@ -7065,7 +7039,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
     TArray<uint8, MimallocArrayAllocator> avoidance_clear_scan_counts;
     MimallocCountdown16 attack_reposition_countdowns;
     MimallocCountdown16 attack_cooldowns;
-    TArray<Handle, MimallocArrayAllocator> target_handles;
+    TArray<EntityId, MimallocArrayAllocator> target_ids;
     MimallocVectors target_locations;
     MimallocVectors target_velocities;
     MimallocVectors target_directions;
@@ -8023,7 +7997,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityDataConstView {
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.entity_handles,
+        return std::forward<TFunc>(func)(self.entity_ids,
                                          self.integral_biases,
                                          self.float_biases,
                                          self.tasks,
@@ -8038,7 +8012,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityDataConstView {
                                          self.speeds,
                                          self.teams,
                                          self.healths,
-                                         self.parent_handles,
+                                         self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
                                          self.separation_steering,
@@ -8048,7 +8022,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityDataConstView {
                                          self.avoidance_clear_scan_counts,
                                          self.attack_reposition_countdowns,
                                          self.attack_cooldowns,
-                                         self.target_handles,
+                                         self.target_ids,
                                          self.target_locations,
                                          self.target_velocities,
                                          self.target_directions,
@@ -8069,7 +8043,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityDataConstView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TConstArrayView<Handle> entity_handles;
+    TConstArrayView<EntityId> entity_ids;
     TConstArrayView<uint32> integral_biases;
     TConstArrayView<float> float_biases;
     TConstArrayView<Task> tasks;
@@ -8084,7 +8058,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityDataConstView {
     TConstArrayView<float> speeds;
     TConstArrayView<Team> teams;
     TConstArrayView<int32> healths;
-    TConstArrayView<Handle> parent_handles;
+    TConstArrayView<EntityId> parent_ids;
     MallocCountdown8::ConstView awareness_scan_countdowns;
     MallocPeriodicCountdown16::ConstView navigation_update_countdowns;
     MallocVectors::ConstView separation_steering;
@@ -8094,7 +8068,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityDataConstView {
     TConstArrayView<uint8> avoidance_clear_scan_counts;
     MallocCountdown16::ConstView attack_reposition_countdowns;
     MallocCountdown16::ConstView attack_cooldowns;
-    TConstArrayView<Handle> target_handles;
+    TConstArrayView<EntityId> target_ids;
     MallocVectors::ConstView target_locations;
     MallocVectors::ConstView target_velocities;
     MallocVectors::ConstView target_directions;
@@ -8110,7 +8084,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityDataView {
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.entity_handles,
+        return std::forward<TFunc>(func)(self.entity_ids,
                                          self.integral_biases,
                                          self.float_biases,
                                          self.tasks,
@@ -8125,7 +8099,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityDataView {
                                          self.speeds,
                                          self.teams,
                                          self.healths,
-                                         self.parent_handles,
+                                         self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
                                          self.separation_steering,
@@ -8135,7 +8109,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityDataView {
                                          self.avoidance_clear_scan_counts,
                                          self.attack_reposition_countdowns,
                                          self.attack_cooldowns,
-                                         self.target_handles,
+                                         self.target_ids,
                                          self.target_locations,
                                          self.target_velocities,
                                          self.target_directions,
@@ -8161,7 +8135,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityDataView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArrayView<Handle> entity_handles;
+    TArrayView<EntityId> entity_ids;
     TArrayView<uint32> integral_biases;
     TArrayView<float> float_biases;
     TArrayView<Task> tasks;
@@ -8176,7 +8150,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityDataView {
     TArrayView<float> speeds;
     TArrayView<Team> teams;
     TArrayView<int32> healths;
-    TArrayView<Handle> parent_handles;
+    TArrayView<EntityId> parent_ids;
     MallocCountdown8::View awareness_scan_countdowns;
     MallocPeriodicCountdown16::View navigation_update_countdowns;
     MallocVectors::View separation_steering;
@@ -8186,7 +8160,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityDataView {
     TArrayView<uint8> avoidance_clear_scan_counts;
     MallocCountdown16::View attack_reposition_countdowns;
     MallocCountdown16::View attack_cooldowns;
-    TArrayView<Handle> target_handles;
+    TArrayView<EntityId> target_ids;
     MallocVectors::View target_locations;
     MallocVectors::View target_velocities;
     MallocVectors::View target_directions;
@@ -8211,7 +8185,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        entity_handles.RemoveAtSwap(index, count, allow_shrinking);
+        entity_ids.RemoveAtSwap(index, count, allow_shrinking);
         integral_biases.RemoveAtSwap(index, count, allow_shrinking);
         float_biases.RemoveAtSwap(index, count, allow_shrinking);
         tasks.RemoveAtSwap(index, count, allow_shrinking);
@@ -8226,7 +8200,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
         speeds.RemoveAtSwap(index, count, allow_shrinking);
         teams.RemoveAtSwap(index, count, allow_shrinking);
         healths.RemoveAtSwap(index, count, allow_shrinking);
-        parent_handles.RemoveAtSwap(index, count, allow_shrinking);
+        parent_ids.RemoveAtSwap(index, count, allow_shrinking);
         ml::remove_at_swap(awareness_scan_countdowns, index, count, allow_shrinking);
         ml::remove_at_swap(navigation_update_countdowns, index, count, allow_shrinking);
         ml::remove_at_swap(separation_steering, index, count, allow_shrinking);
@@ -8236,7 +8210,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
         avoidance_clear_scan_counts.RemoveAtSwap(index, count, allow_shrinking);
         ml::remove_at_swap(attack_reposition_countdowns, index, count, allow_shrinking);
         ml::remove_at_swap(attack_cooldowns, index, count, allow_shrinking);
-        target_handles.RemoveAtSwap(index, count, allow_shrinking);
+        target_ids.RemoveAtSwap(index, count, allow_shrinking);
         ml::remove_at_swap(target_locations, index, count, allow_shrinking);
         ml::remove_at_swap(target_velocities, index, count, allow_shrinking);
         ml::remove_at_swap(target_directions, index, count, allow_shrinking);
@@ -8250,7 +8224,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
 
     template <typename Other>
     void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
-        ml::copy_element(entity_handles, dst_i, other.entity_handles, src_i);
+        ml::copy_element(entity_ids, dst_i, other.entity_ids, src_i);
         ml::copy_element(integral_biases, dst_i, other.integral_biases, src_i);
         ml::copy_element(float_biases, dst_i, other.float_biases, src_i);
         ml::copy_element(tasks, dst_i, other.tasks, src_i);
@@ -8265,7 +8239,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
         ml::copy_element(speeds, dst_i, other.speeds, src_i);
         ml::copy_element(teams, dst_i, other.teams, src_i);
         ml::copy_element(healths, dst_i, other.healths, src_i);
-        ml::copy_element(parent_handles, dst_i, other.parent_handles, src_i);
+        ml::copy_element(parent_ids, dst_i, other.parent_ids, src_i);
         ml::copy_element(awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i);
         ml::copy_element(
             navigation_update_countdowns, dst_i, other.navigation_update_countdowns, src_i);
@@ -8281,7 +8255,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
         ml::copy_element(
             attack_reposition_countdowns, dst_i, other.attack_reposition_countdowns, src_i);
         ml::copy_element(attack_cooldowns, dst_i, other.attack_cooldowns, src_i);
-        ml::copy_element(target_handles, dst_i, other.target_handles, src_i);
+        ml::copy_element(target_ids, dst_i, other.target_ids, src_i);
         ml::copy_element(target_locations, dst_i, other.target_locations, src_i);
         ml::copy_element(target_velocities, dst_i, other.target_velocities, src_i);
         ml::copy_element(target_directions, dst_i, other.target_directions, src_i);
@@ -8294,7 +8268,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
     template <typename Other>
     void
         copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
-        ml::copy_elements(entity_handles, dst_i, other.entity_handles, src_i, count);
+        ml::copy_elements(entity_ids, dst_i, other.entity_ids, src_i, count);
         ml::copy_elements(integral_biases, dst_i, other.integral_biases, src_i, count);
         ml::copy_elements(float_biases, dst_i, other.float_biases, src_i, count);
         ml::copy_elements(tasks, dst_i, other.tasks, src_i, count);
@@ -8312,7 +8286,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
         ml::copy_elements(speeds, dst_i, other.speeds, src_i, count);
         ml::copy_elements(teams, dst_i, other.teams, src_i, count);
         ml::copy_elements(healths, dst_i, other.healths, src_i, count);
-        ml::copy_elements(parent_handles, dst_i, other.parent_handles, src_i, count);
+        ml::copy_elements(parent_ids, dst_i, other.parent_ids, src_i, count);
         ml::copy_elements(
             awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i, count);
         ml::copy_elements(
@@ -8331,7 +8305,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
         ml::copy_elements(
             attack_reposition_countdowns, dst_i, other.attack_reposition_countdowns, src_i, count);
         ml::copy_elements(attack_cooldowns, dst_i, other.attack_cooldowns, src_i, count);
-        ml::copy_elements(target_handles, dst_i, other.target_handles, src_i, count);
+        ml::copy_elements(target_ids, dst_i, other.target_ids, src_i, count);
         ml::copy_elements(target_locations, dst_i, other.target_locations, src_i, count);
         ml::copy_elements(target_velocities, dst_i, other.target_velocities, src_i, count);
         ml::copy_elements(target_directions, dst_i, other.target_directions, src_i, count);
@@ -8352,7 +8326,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
     void append_from(Other const& other)
         requires ml::SupportsApplyArrayPairsWith<MallocEntityData, Other>
     {
-        ml::append_from(entity_handles, other.entity_handles);
+        ml::append_from(entity_ids, other.entity_ids);
         ml::append_from(integral_biases, other.integral_biases);
         ml::append_from(float_biases, other.float_biases);
         ml::append_from(tasks, other.tasks);
@@ -8367,7 +8341,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
         ml::append_from(speeds, other.speeds);
         ml::append_from(teams, other.teams);
         ml::append_from(healths, other.healths);
-        ml::append_from(parent_handles, other.parent_handles);
+        ml::append_from(parent_ids, other.parent_ids);
         awareness_scan_countdowns.append_from(other.awareness_scan_countdowns);
         navigation_update_countdowns.append_from(other.navigation_update_countdowns);
         separation_steering.append_from(other.separation_steering);
@@ -8377,7 +8351,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
         ml::append_from(avoidance_clear_scan_counts, other.avoidance_clear_scan_counts);
         attack_reposition_countdowns.append_from(other.attack_reposition_countdowns);
         attack_cooldowns.append_from(other.attack_cooldowns);
-        ml::append_from(target_handles, other.target_handles);
+        ml::append_from(target_ids, other.target_ids);
         target_locations.append_from(other.target_locations);
         target_velocities.append_from(other.target_velocities);
         target_directions.append_from(other.target_directions);
@@ -8416,7 +8390,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.entity_handles,
+        return std::forward<TFunc>(func)(self.entity_ids,
                                          self.integral_biases,
                                          self.float_biases,
                                          self.tasks,
@@ -8431,7 +8405,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
                                          self.speeds,
                                          self.teams,
                                          self.healths,
-                                         self.parent_handles,
+                                         self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
                                          self.separation_steering,
@@ -8441,7 +8415,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
                                          self.avoidance_clear_scan_counts,
                                          self.attack_reposition_countdowns,
                                          self.attack_cooldowns,
-                                         self.target_handles,
+                                         self.target_ids,
                                          self.target_locations,
                                          self.target_velocities,
                                          self.target_directions,
@@ -8453,8 +8427,8 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
 
     template <typename Self, typename Other, typename TFunc>
     auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.entity_handles,
-                                         other.entity_handles,
+        return std::forward<TFunc>(func)(self.entity_ids,
+                                         other.entity_ids,
                                          self.integral_biases,
                                          other.integral_biases,
                                          self.float_biases,
@@ -8483,8 +8457,8 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
                                          other.teams,
                                          self.healths,
                                          other.healths,
-                                         self.parent_handles,
-                                         other.parent_handles,
+                                         self.parent_ids,
+                                         other.parent_ids,
                                          self.awareness_scan_countdowns,
                                          other.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
@@ -8503,8 +8477,8 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
                                          other.attack_reposition_countdowns,
                                          self.attack_cooldowns,
                                          other.attack_cooldowns,
-                                         self.target_handles,
-                                         other.target_handles,
+                                         self.target_ids,
+                                         other.target_ids,
                                          self.target_locations,
                                          other.target_locations,
                                          self.target_velocities,
@@ -8537,7 +8511,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArray<Handle, MallocAllocator> entity_handles;
+    TArray<EntityId, MallocAllocator> entity_ids;
     TArray<uint32, MallocAllocator> integral_biases;
     TArray<float, MallocAllocator> float_biases;
     TArray<Task, MallocAllocator> tasks;
@@ -8552,7 +8526,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
     TArray<float, MallocAllocator> speeds;
     TArray<Team, MallocAllocator> teams;
     TArray<int32, MallocAllocator> healths;
-    TArray<Handle, MallocAllocator> parent_handles;
+    TArray<EntityId, MallocAllocator> parent_ids;
     MallocCountdown8 awareness_scan_countdowns;
     MallocPeriodicCountdown16 navigation_update_countdowns;
     MallocVectors separation_steering;
@@ -8562,7 +8536,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
     TArray<uint8, MallocAllocator> avoidance_clear_scan_counts;
     MallocCountdown16 attack_reposition_countdowns;
     MallocCountdown16 attack_cooldowns;
-    TArray<Handle, MallocAllocator> target_handles;
+    TArray<EntityId, MallocAllocator> target_ids;
     MallocVectors target_locations;
     MallocVectors target_velocities;
     MallocVectors target_directions;
@@ -9520,7 +9494,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityDataConstView {
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.entity_handles,
+        return std::forward<TFunc>(func)(self.entity_ids,
                                          self.integral_biases,
                                          self.float_biases,
                                          self.tasks,
@@ -9535,7 +9509,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityDataConstView {
                                          self.speeds,
                                          self.teams,
                                          self.healths,
-                                         self.parent_handles,
+                                         self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
                                          self.separation_steering,
@@ -9545,7 +9519,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityDataConstView {
                                          self.avoidance_clear_scan_counts,
                                          self.attack_reposition_countdowns,
                                          self.attack_cooldowns,
-                                         self.target_handles,
+                                         self.target_ids,
                                          self.target_locations,
                                          self.target_velocities,
                                          self.target_directions,
@@ -9566,7 +9540,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityDataConstView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TConstArrayView<Handle> entity_handles;
+    TConstArrayView<EntityId> entity_ids;
     TConstArrayView<uint32> integral_biases;
     TConstArrayView<float> float_biases;
     TConstArrayView<Task> tasks;
@@ -9581,7 +9555,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityDataConstView {
     TConstArrayView<float> speeds;
     TConstArrayView<Team> teams;
     TConstArrayView<int32> healths;
-    TConstArrayView<Handle> parent_handles;
+    TConstArrayView<EntityId> parent_ids;
     ReallocCountdown8::ConstView awareness_scan_countdowns;
     ReallocPeriodicCountdown16::ConstView navigation_update_countdowns;
     ReallocVectors::ConstView separation_steering;
@@ -9591,7 +9565,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityDataConstView {
     TConstArrayView<uint8> avoidance_clear_scan_counts;
     ReallocCountdown16::ConstView attack_reposition_countdowns;
     ReallocCountdown16::ConstView attack_cooldowns;
-    TConstArrayView<Handle> target_handles;
+    TConstArrayView<EntityId> target_ids;
     ReallocVectors::ConstView target_locations;
     ReallocVectors::ConstView target_velocities;
     ReallocVectors::ConstView target_directions;
@@ -9607,7 +9581,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityDataView {
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.entity_handles,
+        return std::forward<TFunc>(func)(self.entity_ids,
                                          self.integral_biases,
                                          self.float_biases,
                                          self.tasks,
@@ -9622,7 +9596,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityDataView {
                                          self.speeds,
                                          self.teams,
                                          self.healths,
-                                         self.parent_handles,
+                                         self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
                                          self.separation_steering,
@@ -9632,7 +9606,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityDataView {
                                          self.avoidance_clear_scan_counts,
                                          self.attack_reposition_countdowns,
                                          self.attack_cooldowns,
-                                         self.target_handles,
+                                         self.target_ids,
                                          self.target_locations,
                                          self.target_velocities,
                                          self.target_directions,
@@ -9658,7 +9632,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityDataView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArrayView<Handle> entity_handles;
+    TArrayView<EntityId> entity_ids;
     TArrayView<uint32> integral_biases;
     TArrayView<float> float_biases;
     TArrayView<Task> tasks;
@@ -9673,7 +9647,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityDataView {
     TArrayView<float> speeds;
     TArrayView<Team> teams;
     TArrayView<int32> healths;
-    TArrayView<Handle> parent_handles;
+    TArrayView<EntityId> parent_ids;
     ReallocCountdown8::View awareness_scan_countdowns;
     ReallocPeriodicCountdown16::View navigation_update_countdowns;
     ReallocVectors::View separation_steering;
@@ -9683,7 +9657,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityDataView {
     TArrayView<uint8> avoidance_clear_scan_counts;
     ReallocCountdown16::View attack_reposition_countdowns;
     ReallocCountdown16::View attack_cooldowns;
-    TArrayView<Handle> target_handles;
+    TArrayView<EntityId> target_ids;
     ReallocVectors::View target_locations;
     ReallocVectors::View target_velocities;
     ReallocVectors::View target_directions;
@@ -9708,7 +9682,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        entity_handles.RemoveAtSwap(index, count, allow_shrinking);
+        entity_ids.RemoveAtSwap(index, count, allow_shrinking);
         integral_biases.RemoveAtSwap(index, count, allow_shrinking);
         float_biases.RemoveAtSwap(index, count, allow_shrinking);
         tasks.RemoveAtSwap(index, count, allow_shrinking);
@@ -9723,7 +9697,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
         speeds.RemoveAtSwap(index, count, allow_shrinking);
         teams.RemoveAtSwap(index, count, allow_shrinking);
         healths.RemoveAtSwap(index, count, allow_shrinking);
-        parent_handles.RemoveAtSwap(index, count, allow_shrinking);
+        parent_ids.RemoveAtSwap(index, count, allow_shrinking);
         ml::remove_at_swap(awareness_scan_countdowns, index, count, allow_shrinking);
         ml::remove_at_swap(navigation_update_countdowns, index, count, allow_shrinking);
         ml::remove_at_swap(separation_steering, index, count, allow_shrinking);
@@ -9733,7 +9707,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
         avoidance_clear_scan_counts.RemoveAtSwap(index, count, allow_shrinking);
         ml::remove_at_swap(attack_reposition_countdowns, index, count, allow_shrinking);
         ml::remove_at_swap(attack_cooldowns, index, count, allow_shrinking);
-        target_handles.RemoveAtSwap(index, count, allow_shrinking);
+        target_ids.RemoveAtSwap(index, count, allow_shrinking);
         ml::remove_at_swap(target_locations, index, count, allow_shrinking);
         ml::remove_at_swap(target_velocities, index, count, allow_shrinking);
         ml::remove_at_swap(target_directions, index, count, allow_shrinking);
@@ -9747,7 +9721,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
 
     template <typename Other>
     void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
-        ml::copy_element(entity_handles, dst_i, other.entity_handles, src_i);
+        ml::copy_element(entity_ids, dst_i, other.entity_ids, src_i);
         ml::copy_element(integral_biases, dst_i, other.integral_biases, src_i);
         ml::copy_element(float_biases, dst_i, other.float_biases, src_i);
         ml::copy_element(tasks, dst_i, other.tasks, src_i);
@@ -9762,7 +9736,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
         ml::copy_element(speeds, dst_i, other.speeds, src_i);
         ml::copy_element(teams, dst_i, other.teams, src_i);
         ml::copy_element(healths, dst_i, other.healths, src_i);
-        ml::copy_element(parent_handles, dst_i, other.parent_handles, src_i);
+        ml::copy_element(parent_ids, dst_i, other.parent_ids, src_i);
         ml::copy_element(awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i);
         ml::copy_element(
             navigation_update_countdowns, dst_i, other.navigation_update_countdowns, src_i);
@@ -9778,7 +9752,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
         ml::copy_element(
             attack_reposition_countdowns, dst_i, other.attack_reposition_countdowns, src_i);
         ml::copy_element(attack_cooldowns, dst_i, other.attack_cooldowns, src_i);
-        ml::copy_element(target_handles, dst_i, other.target_handles, src_i);
+        ml::copy_element(target_ids, dst_i, other.target_ids, src_i);
         ml::copy_element(target_locations, dst_i, other.target_locations, src_i);
         ml::copy_element(target_velocities, dst_i, other.target_velocities, src_i);
         ml::copy_element(target_directions, dst_i, other.target_directions, src_i);
@@ -9791,7 +9765,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
     template <typename Other>
     void
         copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
-        ml::copy_elements(entity_handles, dst_i, other.entity_handles, src_i, count);
+        ml::copy_elements(entity_ids, dst_i, other.entity_ids, src_i, count);
         ml::copy_elements(integral_biases, dst_i, other.integral_biases, src_i, count);
         ml::copy_elements(float_biases, dst_i, other.float_biases, src_i, count);
         ml::copy_elements(tasks, dst_i, other.tasks, src_i, count);
@@ -9809,7 +9783,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
         ml::copy_elements(speeds, dst_i, other.speeds, src_i, count);
         ml::copy_elements(teams, dst_i, other.teams, src_i, count);
         ml::copy_elements(healths, dst_i, other.healths, src_i, count);
-        ml::copy_elements(parent_handles, dst_i, other.parent_handles, src_i, count);
+        ml::copy_elements(parent_ids, dst_i, other.parent_ids, src_i, count);
         ml::copy_elements(
             awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i, count);
         ml::copy_elements(
@@ -9828,7 +9802,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
         ml::copy_elements(
             attack_reposition_countdowns, dst_i, other.attack_reposition_countdowns, src_i, count);
         ml::copy_elements(attack_cooldowns, dst_i, other.attack_cooldowns, src_i, count);
-        ml::copy_elements(target_handles, dst_i, other.target_handles, src_i, count);
+        ml::copy_elements(target_ids, dst_i, other.target_ids, src_i, count);
         ml::copy_elements(target_locations, dst_i, other.target_locations, src_i, count);
         ml::copy_elements(target_velocities, dst_i, other.target_velocities, src_i, count);
         ml::copy_elements(target_directions, dst_i, other.target_directions, src_i, count);
@@ -9849,7 +9823,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
     void append_from(Other const& other)
         requires ml::SupportsApplyArrayPairsWith<ReallocEntityData, Other>
     {
-        ml::append_from(entity_handles, other.entity_handles);
+        ml::append_from(entity_ids, other.entity_ids);
         ml::append_from(integral_biases, other.integral_biases);
         ml::append_from(float_biases, other.float_biases);
         ml::append_from(tasks, other.tasks);
@@ -9864,7 +9838,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
         ml::append_from(speeds, other.speeds);
         ml::append_from(teams, other.teams);
         ml::append_from(healths, other.healths);
-        ml::append_from(parent_handles, other.parent_handles);
+        ml::append_from(parent_ids, other.parent_ids);
         awareness_scan_countdowns.append_from(other.awareness_scan_countdowns);
         navigation_update_countdowns.append_from(other.navigation_update_countdowns);
         separation_steering.append_from(other.separation_steering);
@@ -9874,7 +9848,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
         ml::append_from(avoidance_clear_scan_counts, other.avoidance_clear_scan_counts);
         attack_reposition_countdowns.append_from(other.attack_reposition_countdowns);
         attack_cooldowns.append_from(other.attack_cooldowns);
-        ml::append_from(target_handles, other.target_handles);
+        ml::append_from(target_ids, other.target_ids);
         target_locations.append_from(other.target_locations);
         target_velocities.append_from(other.target_velocities);
         target_directions.append_from(other.target_directions);
@@ -9913,7 +9887,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.entity_handles,
+        return std::forward<TFunc>(func)(self.entity_ids,
                                          self.integral_biases,
                                          self.float_biases,
                                          self.tasks,
@@ -9928,7 +9902,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
                                          self.speeds,
                                          self.teams,
                                          self.healths,
-                                         self.parent_handles,
+                                         self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
                                          self.separation_steering,
@@ -9938,7 +9912,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
                                          self.avoidance_clear_scan_counts,
                                          self.attack_reposition_countdowns,
                                          self.attack_cooldowns,
-                                         self.target_handles,
+                                         self.target_ids,
                                          self.target_locations,
                                          self.target_velocities,
                                          self.target_directions,
@@ -9950,8 +9924,8 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
 
     template <typename Self, typename Other, typename TFunc>
     auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.entity_handles,
-                                         other.entity_handles,
+        return std::forward<TFunc>(func)(self.entity_ids,
+                                         other.entity_ids,
                                          self.integral_biases,
                                          other.integral_biases,
                                          self.float_biases,
@@ -9980,8 +9954,8 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
                                          other.teams,
                                          self.healths,
                                          other.healths,
-                                         self.parent_handles,
-                                         other.parent_handles,
+                                         self.parent_ids,
+                                         other.parent_ids,
                                          self.awareness_scan_countdowns,
                                          other.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
@@ -10000,8 +9974,8 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
                                          other.attack_reposition_countdowns,
                                          self.attack_cooldowns,
                                          other.attack_cooldowns,
-                                         self.target_handles,
-                                         other.target_handles,
+                                         self.target_ids,
+                                         other.target_ids,
                                          self.target_locations,
                                          other.target_locations,
                                          self.target_velocities,
@@ -10034,7 +10008,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArray<Handle, ReallocAllocator> entity_handles;
+    TArray<EntityId, ReallocAllocator> entity_ids;
     TArray<uint32, ReallocAllocator> integral_biases;
     TArray<float, ReallocAllocator> float_biases;
     TArray<Task, ReallocAllocator> tasks;
@@ -10049,7 +10023,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
     TArray<float, ReallocAllocator> speeds;
     TArray<Team, ReallocAllocator> teams;
     TArray<int32, ReallocAllocator> healths;
-    TArray<Handle, ReallocAllocator> parent_handles;
+    TArray<EntityId, ReallocAllocator> parent_ids;
     ReallocCountdown8 awareness_scan_countdowns;
     ReallocPeriodicCountdown16 navigation_update_countdowns;
     ReallocVectors separation_steering;
@@ -10059,7 +10033,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
     TArray<uint8, ReallocAllocator> avoidance_clear_scan_counts;
     ReallocCountdown16 attack_reposition_countdowns;
     ReallocCountdown16 attack_cooldowns;
-    TArray<Handle, ReallocAllocator> target_handles;
+    TArray<EntityId, ReallocAllocator> target_ids;
     ReallocVectors target_locations;
     ReallocVectors target_velocities;
     ReallocVectors target_directions;

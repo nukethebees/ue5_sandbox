@@ -136,7 +136,7 @@ TEST(NativeSoa, MatchingSchemaAndMutations) {
     single.set_num(65);
     EXPECT_TRUE(std::ranges::equal(array_columns(baseline.get_view()).healths,
                                    array_columns(single.get_view()).healths));
-    EXPECT_EQ(array_columns(single.get_view()).entity_handles[0].index, -1);
+    EXPECT_EQ(array_columns(single.get_view()).entity_ids[0].value, 0xffffffffu);
 }
 
 TEST(NativeSoa, CheckedCapacityArithmetic) {

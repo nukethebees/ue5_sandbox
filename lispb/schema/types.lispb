@@ -26,6 +26,10 @@
   :spelling "Handle"
   :header "SbxCoreExperiments/soa_leaf_types.h")
 
+(type soa_experiment_EntityId
+  :spelling "EntityId"
+  :header "SbxCoreExperiments/soa_leaf_types.h")
+
 (type soa_experiment_Task
   :spelling "Task"
   :header "SbxCoreExperiments/soa_leaf_types.h")

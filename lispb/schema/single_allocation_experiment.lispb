@@ -28,7 +28,7 @@
   (struct EntityData
     :operations (all)
     :export-specifier SBXCOREEXPERIMENTS_API
-    (member entity_handles array @soa_experiment_Handle)
+    (member entity_ids array @soa_experiment_EntityId)
     (member integral_biases array uint32)
     (member float_biases array float)
     (member tasks array @soa_experiment_Task)
@@ -50,7 +50,7 @@
     (member speeds array float)
     (member teams array @soa_experiment_Team)
     (member healths array int32)
-    (member parent_handles array @soa_experiment_Handle)
+    (member parent_ids array @soa_experiment_EntityId)
     (member awareness_scan_countdowns nested Countdown8
       :nested-schema Countdown8)
     (member navigation_update_countdowns nested PeriodicCountdown16
@@ -65,7 +65,7 @@
       :nested-schema Countdown16)
     (member attack_cooldowns nested Countdown16
       :nested-schema Countdown16)
-    (member target_handles array @soa_experiment_Handle)
+    (member target_ids array @soa_experiment_EntityId)
     (member target_locations nested Vectors
       :nested-schema Vectors)
     (member target_velocities nested Vectors

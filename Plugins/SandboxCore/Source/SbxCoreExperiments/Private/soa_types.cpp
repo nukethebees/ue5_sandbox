@@ -904,7 +904,7 @@ auto EntityDataConstView::get_view() const -> ConstView {
 
 auto EntityDataConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -919,7 +919,7 @@ auto EntityDataConstView::get_view(int32 const offset, int32 const count) const 
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -929,7 +929,7 @@ auto EntityDataConstView::get_view(int32 const offset, int32 const count) const 
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -946,7 +946,7 @@ auto EntityDataConstView::get_const_view() const -> ConstView {
 
 auto EntityDataConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -961,7 +961,7 @@ auto EntityDataConstView::get_const_view(int32 const offset, int32 const count) 
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -971,7 +971,7 @@ auto EntityDataConstView::get_const_view(int32 const offset, int32 const count) 
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -983,7 +983,7 @@ auto EntityDataConstView::get_const_view(int32 const offset, int32 const count) 
 }
 
 auto EntityDataConstView::num() const noexcept -> int32 {
-    return ml::num(entity_handles);
+    return ml::num(entity_ids);
 }
 
 auto EntityDataConstView::is_empty() const noexcept -> bool {
@@ -992,7 +992,7 @@ auto EntityDataConstView::is_empty() const noexcept -> bool {
 
 void EntityDataConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(entity_handles),
+        ml::num(entity_ids),
         ml::num(integral_biases),
         ml::num(float_biases),
         ml::num(tasks),
@@ -1007,7 +1007,7 @@ void EntityDataConstView::validate_array_sizes() const {
         ml::num(speeds),
         ml::num(teams),
         ml::num(healths),
-        ml::num(parent_handles),
+        ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
         ml::num(separation_steering),
@@ -1017,7 +1017,7 @@ void EntityDataConstView::validate_array_sizes() const {
         ml::num(avoidance_clear_scan_counts),
         ml::num(attack_reposition_countdowns),
         ml::num(attack_cooldowns),
-        ml::num(target_handles),
+        ml::num(target_ids),
         ml::num(target_locations),
         ml::num(target_velocities),
         ml::num(target_directions),
@@ -1046,7 +1046,7 @@ auto EntityDataView::get_view() -> View {
 
 auto EntityDataView::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        TArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TArrayView<uint32>{integral_biases}.Slice(offset, count),
         TArrayView<float>{float_biases}.Slice(offset, count),
         TArrayView<Task>{tasks}.Slice(offset, count),
@@ -1061,7 +1061,7 @@ auto EntityDataView::get_view(int32 const offset, int32 const count) -> View {
         TArrayView<float>{speeds}.Slice(offset, count),
         TArrayView<Team>{teams}.Slice(offset, count),
         TArrayView<int32>{healths}.Slice(offset, count),
-        TArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_view(offset, count),
         navigation_update_countdowns.get_view(offset, count),
         separation_steering.get_view(offset, count),
@@ -1071,7 +1071,7 @@ auto EntityDataView::get_view(int32 const offset, int32 const count) -> View {
         TArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_view(offset, count),
         attack_cooldowns.get_view(offset, count),
-        TArrayView<Handle>{target_handles}.Slice(offset, count),
+        TArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_view(offset, count),
         target_velocities.get_view(offset, count),
         target_directions.get_view(offset, count),
@@ -1088,7 +1088,7 @@ auto EntityDataView::get_view() const -> ConstView {
 
 auto EntityDataView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -1103,7 +1103,7 @@ auto EntityDataView::get_view(int32 const offset, int32 const count) const -> Co
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -1113,7 +1113,7 @@ auto EntityDataView::get_view(int32 const offset, int32 const count) const -> Co
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -1130,7 +1130,7 @@ auto EntityDataView::get_const_view() const -> ConstView {
 
 auto EntityDataView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -1145,7 +1145,7 @@ auto EntityDataView::get_const_view(int32 const offset, int32 const count) const
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -1155,7 +1155,7 @@ auto EntityDataView::get_const_view(int32 const offset, int32 const count) const
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -1167,7 +1167,7 @@ auto EntityDataView::get_const_view(int32 const offset, int32 const count) const
 }
 
 auto EntityDataView::num() const noexcept -> int32 {
-    return ml::num(entity_handles);
+    return ml::num(entity_ids);
 }
 
 auto EntityDataView::is_empty() const noexcept -> bool {
@@ -1176,7 +1176,7 @@ auto EntityDataView::is_empty() const noexcept -> bool {
 
 void EntityDataView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(entity_handles),
+        ml::num(entity_ids),
         ml::num(integral_biases),
         ml::num(float_biases),
         ml::num(tasks),
@@ -1191,7 +1191,7 @@ void EntityDataView::validate_array_sizes() const {
         ml::num(speeds),
         ml::num(teams),
         ml::num(healths),
-        ml::num(parent_handles),
+        ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
         ml::num(separation_steering),
@@ -1201,7 +1201,7 @@ void EntityDataView::validate_array_sizes() const {
         ml::num(avoidance_clear_scan_counts),
         ml::num(attack_reposition_countdowns),
         ml::num(attack_cooldowns),
-        ml::num(target_handles),
+        ml::num(target_ids),
         ml::num(target_locations),
         ml::num(target_velocities),
         ml::num(target_directions),
@@ -1237,7 +1237,7 @@ auto EntityDataView::right(int32 const count) const -> ConstView {
 }
 
 void EntityData::reset() {
-    ml::reset(entity_handles);
+    ml::reset(entity_ids);
     ml::reset(integral_biases);
     ml::reset(float_biases);
     ml::reset(tasks);
@@ -1252,7 +1252,7 @@ void EntityData::reset() {
     ml::reset(speeds);
     ml::reset(teams);
     ml::reset(healths);
-    ml::reset(parent_handles);
+    ml::reset(parent_ids);
     ml::reset(awareness_scan_countdowns);
     ml::reset(navigation_update_countdowns);
     ml::reset(separation_steering);
@@ -1262,7 +1262,7 @@ void EntityData::reset() {
     ml::reset(avoidance_clear_scan_counts);
     ml::reset(attack_reposition_countdowns);
     ml::reset(attack_cooldowns);
-    ml::reset(target_handles);
+    ml::reset(target_ids);
     ml::reset(target_locations);
     ml::reset(target_velocities);
     ml::reset(target_directions);
@@ -1273,7 +1273,7 @@ void EntityData::reset() {
 }
 
 void EntityData::reserve(int32 const count) {
-    ml::reserve(entity_handles, count);
+    ml::reserve(entity_ids, count);
     ml::reserve(integral_biases, count);
     ml::reserve(float_biases, count);
     ml::reserve(tasks, count);
@@ -1288,7 +1288,7 @@ void EntityData::reserve(int32 const count) {
     ml::reserve(speeds, count);
     ml::reserve(teams, count);
     ml::reserve(healths, count);
-    ml::reserve(parent_handles, count);
+    ml::reserve(parent_ids, count);
     ml::reserve(awareness_scan_countdowns, count);
     ml::reserve(navigation_update_countdowns, count);
     ml::reserve(separation_steering, count);
@@ -1298,7 +1298,7 @@ void EntityData::reserve(int32 const count) {
     ml::reserve(avoidance_clear_scan_counts, count);
     ml::reserve(attack_reposition_countdowns, count);
     ml::reserve(attack_cooldowns, count);
-    ml::reserve(target_handles, count);
+    ml::reserve(target_ids, count);
     ml::reserve(target_locations, count);
     ml::reserve(target_velocities, count);
     ml::reserve(target_directions, count);
@@ -1309,7 +1309,7 @@ void EntityData::reserve(int32 const count) {
 }
 
 void EntityData::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(entity_handles, count);
+    ml::add_uninitialised(entity_ids, count);
     ml::add_uninitialised(integral_biases, count);
     ml::add_uninitialised(float_biases, count);
     ml::add_uninitialised(tasks, count);
@@ -1324,7 +1324,7 @@ void EntityData::add_uninitialised(int32 const count) {
     ml::add_uninitialised(speeds, count);
     ml::add_uninitialised(teams, count);
     ml::add_uninitialised(healths, count);
-    ml::add_uninitialised(parent_handles, count);
+    ml::add_uninitialised(parent_ids, count);
     ml::add_uninitialised(awareness_scan_countdowns, count);
     ml::add_uninitialised(navigation_update_countdowns, count);
     ml::add_uninitialised(separation_steering, count);
@@ -1334,7 +1334,7 @@ void EntityData::add_uninitialised(int32 const count) {
     ml::add_uninitialised(avoidance_clear_scan_counts, count);
     ml::add_uninitialised(attack_reposition_countdowns, count);
     ml::add_uninitialised(attack_cooldowns, count);
-    ml::add_uninitialised(target_handles, count);
+    ml::add_uninitialised(target_ids, count);
     ml::add_uninitialised(target_locations, count);
     ml::add_uninitialised(target_velocities, count);
     ml::add_uninitialised(target_directions, count);
@@ -1345,7 +1345,7 @@ void EntityData::add_uninitialised(int32 const count) {
 }
 
 void EntityData::add_defaulted(int32 const count) {
-    ml::add_defaulted(entity_handles, count);
+    ml::add_defaulted(entity_ids, count);
     ml::add_defaulted(integral_biases, count);
     ml::add_defaulted(float_biases, count);
     ml::add_defaulted(tasks, count);
@@ -1360,7 +1360,7 @@ void EntityData::add_defaulted(int32 const count) {
     ml::add_defaulted(speeds, count);
     ml::add_defaulted(teams, count);
     ml::add_defaulted(healths, count);
-    ml::add_defaulted(parent_handles, count);
+    ml::add_defaulted(parent_ids, count);
     ml::add_defaulted(awareness_scan_countdowns, count);
     ml::add_defaulted(navigation_update_countdowns, count);
     ml::add_defaulted(separation_steering, count);
@@ -1370,7 +1370,7 @@ void EntityData::add_defaulted(int32 const count) {
     ml::add_defaulted(avoidance_clear_scan_counts, count);
     ml::add_defaulted(attack_reposition_countdowns, count);
     ml::add_defaulted(attack_cooldowns, count);
-    ml::add_defaulted(target_handles, count);
+    ml::add_defaulted(target_ids, count);
     ml::add_defaulted(target_locations, count);
     ml::add_defaulted(target_velocities, count);
     ml::add_defaulted(target_directions, count);
@@ -1381,7 +1381,7 @@ void EntityData::add_defaulted(int32 const count) {
 }
 
 void EntityData::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(entity_handles, count, allow_shrinking);
+    ml::set_num(entity_ids, count, allow_shrinking);
     ml::set_num(integral_biases, count, allow_shrinking);
     ml::set_num(float_biases, count, allow_shrinking);
     ml::set_num(tasks, count, allow_shrinking);
@@ -1396,7 +1396,7 @@ void EntityData::set_num(int32 const count, EAllowShrinking const allow_shrinkin
     ml::set_num(speeds, count, allow_shrinking);
     ml::set_num(teams, count, allow_shrinking);
     ml::set_num(healths, count, allow_shrinking);
-    ml::set_num(parent_handles, count, allow_shrinking);
+    ml::set_num(parent_ids, count, allow_shrinking);
     ml::set_num(awareness_scan_countdowns, count, allow_shrinking);
     ml::set_num(navigation_update_countdowns, count, allow_shrinking);
     ml::set_num(separation_steering, count, allow_shrinking);
@@ -1406,7 +1406,7 @@ void EntityData::set_num(int32 const count, EAllowShrinking const allow_shrinkin
     ml::set_num(avoidance_clear_scan_counts, count, allow_shrinking);
     ml::set_num(attack_reposition_countdowns, count, allow_shrinking);
     ml::set_num(attack_cooldowns, count, allow_shrinking);
-    ml::set_num(target_handles, count, allow_shrinking);
+    ml::set_num(target_ids, count, allow_shrinking);
     ml::set_num(target_locations, count, allow_shrinking);
     ml::set_num(target_velocities, count, allow_shrinking);
     ml::set_num(target_directions, count, allow_shrinking);
@@ -1419,7 +1419,7 @@ void EntityData::set_num(int32 const count, EAllowShrinking const allow_shrinkin
 void EntityData::apply_permutation(TArrayView<int32> indices) {
     validate_array_sizes();
     check(indices.Num() == num());
-    ml::apply_permutation(entity_handles, indices);
+    ml::apply_permutation(entity_ids, indices);
     ml::apply_permutation(integral_biases, indices);
     ml::apply_permutation(float_biases, indices);
     ml::apply_permutation(tasks, indices);
@@ -1434,7 +1434,7 @@ void EntityData::apply_permutation(TArrayView<int32> indices) {
     ml::apply_permutation(speeds, indices);
     ml::apply_permutation(teams, indices);
     ml::apply_permutation(healths, indices);
-    ml::apply_permutation(parent_handles, indices);
+    ml::apply_permutation(parent_ids, indices);
     ml::apply_permutation(awareness_scan_countdowns, indices);
     ml::apply_permutation(navigation_update_countdowns, indices);
     ml::apply_permutation(separation_steering, indices);
@@ -1444,7 +1444,7 @@ void EntityData::apply_permutation(TArrayView<int32> indices) {
     ml::apply_permutation(avoidance_clear_scan_counts, indices);
     ml::apply_permutation(attack_reposition_countdowns, indices);
     ml::apply_permutation(attack_cooldowns, indices);
-    ml::apply_permutation(target_handles, indices);
+    ml::apply_permutation(target_ids, indices);
     ml::apply_permutation(target_locations, indices);
     ml::apply_permutation(target_velocities, indices);
     ml::apply_permutation(target_directions, indices);
@@ -1460,7 +1460,7 @@ auto EntityData::get_view() -> View {
 
 auto EntityData::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        TArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TArrayView<uint32>{integral_biases}.Slice(offset, count),
         TArrayView<float>{float_biases}.Slice(offset, count),
         TArrayView<Task>{tasks}.Slice(offset, count),
@@ -1475,7 +1475,7 @@ auto EntityData::get_view(int32 const offset, int32 const count) -> View {
         TArrayView<float>{speeds}.Slice(offset, count),
         TArrayView<Team>{teams}.Slice(offset, count),
         TArrayView<int32>{healths}.Slice(offset, count),
-        TArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_view(offset, count),
         navigation_update_countdowns.get_view(offset, count),
         separation_steering.get_view(offset, count),
@@ -1485,7 +1485,7 @@ auto EntityData::get_view(int32 const offset, int32 const count) -> View {
         TArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_view(offset, count),
         attack_cooldowns.get_view(offset, count),
-        TArrayView<Handle>{target_handles}.Slice(offset, count),
+        TArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_view(offset, count),
         target_velocities.get_view(offset, count),
         target_directions.get_view(offset, count),
@@ -1502,7 +1502,7 @@ auto EntityData::get_view() const -> ConstView {
 
 auto EntityData::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -1517,7 +1517,7 @@ auto EntityData::get_view(int32 const offset, int32 const count) const -> ConstV
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -1527,7 +1527,7 @@ auto EntityData::get_view(int32 const offset, int32 const count) const -> ConstV
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -1544,7 +1544,7 @@ auto EntityData::get_const_view() const -> ConstView {
 
 auto EntityData::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -1559,7 +1559,7 @@ auto EntityData::get_const_view(int32 const offset, int32 const count) const -> 
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -1569,7 +1569,7 @@ auto EntityData::get_const_view(int32 const offset, int32 const count) const -> 
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -1581,7 +1581,7 @@ auto EntityData::get_const_view(int32 const offset, int32 const count) const -> 
 }
 
 auto EntityData::num() const noexcept -> int32 {
-    return ml::num(entity_handles);
+    return ml::num(entity_ids);
 }
 
 auto EntityData::is_empty() const noexcept -> bool {
@@ -1590,7 +1590,7 @@ auto EntityData::is_empty() const noexcept -> bool {
 
 void EntityData::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(entity_handles),
+        ml::num(entity_ids),
         ml::num(integral_biases),
         ml::num(float_biases),
         ml::num(tasks),
@@ -1605,7 +1605,7 @@ void EntityData::validate_array_sizes() const {
         ml::num(speeds),
         ml::num(teams),
         ml::num(healths),
-        ml::num(parent_handles),
+        ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
         ml::num(separation_steering),
@@ -1615,7 +1615,7 @@ void EntityData::validate_array_sizes() const {
         ml::num(avoidance_clear_scan_counts),
         ml::num(attack_reposition_countdowns),
         ml::num(attack_cooldowns),
-        ml::num(target_handles),
+        ml::num(target_ids),
         ml::num(target_locations),
         ml::num(target_velocities),
         ml::num(target_directions),
@@ -2884,7 +2884,7 @@ auto MimallocEntityDataConstView::get_view() const -> ConstView {
 auto MimallocEntityDataConstView::get_view(int32 const offset, int32 const count) const
     -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -2899,7 +2899,7 @@ auto MimallocEntityDataConstView::get_view(int32 const offset, int32 const count
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -2909,7 +2909,7 @@ auto MimallocEntityDataConstView::get_view(int32 const offset, int32 const count
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -2927,7 +2927,7 @@ auto MimallocEntityDataConstView::get_const_view() const -> ConstView {
 auto MimallocEntityDataConstView::get_const_view(int32 const offset, int32 const count) const
     -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -2942,7 +2942,7 @@ auto MimallocEntityDataConstView::get_const_view(int32 const offset, int32 const
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -2952,7 +2952,7 @@ auto MimallocEntityDataConstView::get_const_view(int32 const offset, int32 const
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -2964,7 +2964,7 @@ auto MimallocEntityDataConstView::get_const_view(int32 const offset, int32 const
 }
 
 auto MimallocEntityDataConstView::num() const noexcept -> int32 {
-    return ml::num(entity_handles);
+    return ml::num(entity_ids);
 }
 
 auto MimallocEntityDataConstView::is_empty() const noexcept -> bool {
@@ -2973,7 +2973,7 @@ auto MimallocEntityDataConstView::is_empty() const noexcept -> bool {
 
 void MimallocEntityDataConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(entity_handles),
+        ml::num(entity_ids),
         ml::num(integral_biases),
         ml::num(float_biases),
         ml::num(tasks),
@@ -2988,7 +2988,7 @@ void MimallocEntityDataConstView::validate_array_sizes() const {
         ml::num(speeds),
         ml::num(teams),
         ml::num(healths),
-        ml::num(parent_handles),
+        ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
         ml::num(separation_steering),
@@ -2998,7 +2998,7 @@ void MimallocEntityDataConstView::validate_array_sizes() const {
         ml::num(avoidance_clear_scan_counts),
         ml::num(attack_reposition_countdowns),
         ml::num(attack_cooldowns),
-        ml::num(target_handles),
+        ml::num(target_ids),
         ml::num(target_locations),
         ml::num(target_velocities),
         ml::num(target_directions),
@@ -3027,7 +3027,7 @@ auto MimallocEntityDataView::get_view() -> View {
 
 auto MimallocEntityDataView::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        TArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TArrayView<uint32>{integral_biases}.Slice(offset, count),
         TArrayView<float>{float_biases}.Slice(offset, count),
         TArrayView<Task>{tasks}.Slice(offset, count),
@@ -3042,7 +3042,7 @@ auto MimallocEntityDataView::get_view(int32 const offset, int32 const count) -> 
         TArrayView<float>{speeds}.Slice(offset, count),
         TArrayView<Team>{teams}.Slice(offset, count),
         TArrayView<int32>{healths}.Slice(offset, count),
-        TArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_view(offset, count),
         navigation_update_countdowns.get_view(offset, count),
         separation_steering.get_view(offset, count),
@@ -3052,7 +3052,7 @@ auto MimallocEntityDataView::get_view(int32 const offset, int32 const count) -> 
         TArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_view(offset, count),
         attack_cooldowns.get_view(offset, count),
-        TArrayView<Handle>{target_handles}.Slice(offset, count),
+        TArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_view(offset, count),
         target_velocities.get_view(offset, count),
         target_directions.get_view(offset, count),
@@ -3069,7 +3069,7 @@ auto MimallocEntityDataView::get_view() const -> ConstView {
 
 auto MimallocEntityDataView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -3084,7 +3084,7 @@ auto MimallocEntityDataView::get_view(int32 const offset, int32 const count) con
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -3094,7 +3094,7 @@ auto MimallocEntityDataView::get_view(int32 const offset, int32 const count) con
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -3112,7 +3112,7 @@ auto MimallocEntityDataView::get_const_view() const -> ConstView {
 auto MimallocEntityDataView::get_const_view(int32 const offset, int32 const count) const
     -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -3127,7 +3127,7 @@ auto MimallocEntityDataView::get_const_view(int32 const offset, int32 const coun
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -3137,7 +3137,7 @@ auto MimallocEntityDataView::get_const_view(int32 const offset, int32 const coun
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -3149,7 +3149,7 @@ auto MimallocEntityDataView::get_const_view(int32 const offset, int32 const coun
 }
 
 auto MimallocEntityDataView::num() const noexcept -> int32 {
-    return ml::num(entity_handles);
+    return ml::num(entity_ids);
 }
 
 auto MimallocEntityDataView::is_empty() const noexcept -> bool {
@@ -3158,7 +3158,7 @@ auto MimallocEntityDataView::is_empty() const noexcept -> bool {
 
 void MimallocEntityDataView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(entity_handles),
+        ml::num(entity_ids),
         ml::num(integral_biases),
         ml::num(float_biases),
         ml::num(tasks),
@@ -3173,7 +3173,7 @@ void MimallocEntityDataView::validate_array_sizes() const {
         ml::num(speeds),
         ml::num(teams),
         ml::num(healths),
-        ml::num(parent_handles),
+        ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
         ml::num(separation_steering),
@@ -3183,7 +3183,7 @@ void MimallocEntityDataView::validate_array_sizes() const {
         ml::num(avoidance_clear_scan_counts),
         ml::num(attack_reposition_countdowns),
         ml::num(attack_cooldowns),
-        ml::num(target_handles),
+        ml::num(target_ids),
         ml::num(target_locations),
         ml::num(target_velocities),
         ml::num(target_directions),
@@ -3219,7 +3219,7 @@ auto MimallocEntityDataView::right(int32 const count) const -> ConstView {
 }
 
 void MimallocEntityData::reset() {
-    ml::reset(entity_handles);
+    ml::reset(entity_ids);
     ml::reset(integral_biases);
     ml::reset(float_biases);
     ml::reset(tasks);
@@ -3234,7 +3234,7 @@ void MimallocEntityData::reset() {
     ml::reset(speeds);
     ml::reset(teams);
     ml::reset(healths);
-    ml::reset(parent_handles);
+    ml::reset(parent_ids);
     ml::reset(awareness_scan_countdowns);
     ml::reset(navigation_update_countdowns);
     ml::reset(separation_steering);
@@ -3244,7 +3244,7 @@ void MimallocEntityData::reset() {
     ml::reset(avoidance_clear_scan_counts);
     ml::reset(attack_reposition_countdowns);
     ml::reset(attack_cooldowns);
-    ml::reset(target_handles);
+    ml::reset(target_ids);
     ml::reset(target_locations);
     ml::reset(target_velocities);
     ml::reset(target_directions);
@@ -3255,7 +3255,7 @@ void MimallocEntityData::reset() {
 }
 
 void MimallocEntityData::reserve(int32 const count) {
-    ml::reserve(entity_handles, count);
+    ml::reserve(entity_ids, count);
     ml::reserve(integral_biases, count);
     ml::reserve(float_biases, count);
     ml::reserve(tasks, count);
@@ -3270,7 +3270,7 @@ void MimallocEntityData::reserve(int32 const count) {
     ml::reserve(speeds, count);
     ml::reserve(teams, count);
     ml::reserve(healths, count);
-    ml::reserve(parent_handles, count);
+    ml::reserve(parent_ids, count);
     ml::reserve(awareness_scan_countdowns, count);
     ml::reserve(navigation_update_countdowns, count);
     ml::reserve(separation_steering, count);
@@ -3280,7 +3280,7 @@ void MimallocEntityData::reserve(int32 const count) {
     ml::reserve(avoidance_clear_scan_counts, count);
     ml::reserve(attack_reposition_countdowns, count);
     ml::reserve(attack_cooldowns, count);
-    ml::reserve(target_handles, count);
+    ml::reserve(target_ids, count);
     ml::reserve(target_locations, count);
     ml::reserve(target_velocities, count);
     ml::reserve(target_directions, count);
@@ -3291,7 +3291,7 @@ void MimallocEntityData::reserve(int32 const count) {
 }
 
 void MimallocEntityData::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(entity_handles, count);
+    ml::add_uninitialised(entity_ids, count);
     ml::add_uninitialised(integral_biases, count);
     ml::add_uninitialised(float_biases, count);
     ml::add_uninitialised(tasks, count);
@@ -3306,7 +3306,7 @@ void MimallocEntityData::add_uninitialised(int32 const count) {
     ml::add_uninitialised(speeds, count);
     ml::add_uninitialised(teams, count);
     ml::add_uninitialised(healths, count);
-    ml::add_uninitialised(parent_handles, count);
+    ml::add_uninitialised(parent_ids, count);
     ml::add_uninitialised(awareness_scan_countdowns, count);
     ml::add_uninitialised(navigation_update_countdowns, count);
     ml::add_uninitialised(separation_steering, count);
@@ -3316,7 +3316,7 @@ void MimallocEntityData::add_uninitialised(int32 const count) {
     ml::add_uninitialised(avoidance_clear_scan_counts, count);
     ml::add_uninitialised(attack_reposition_countdowns, count);
     ml::add_uninitialised(attack_cooldowns, count);
-    ml::add_uninitialised(target_handles, count);
+    ml::add_uninitialised(target_ids, count);
     ml::add_uninitialised(target_locations, count);
     ml::add_uninitialised(target_velocities, count);
     ml::add_uninitialised(target_directions, count);
@@ -3327,7 +3327,7 @@ void MimallocEntityData::add_uninitialised(int32 const count) {
 }
 
 void MimallocEntityData::add_defaulted(int32 const count) {
-    ml::add_defaulted(entity_handles, count);
+    ml::add_defaulted(entity_ids, count);
     ml::add_defaulted(integral_biases, count);
     ml::add_defaulted(float_biases, count);
     ml::add_defaulted(tasks, count);
@@ -3342,7 +3342,7 @@ void MimallocEntityData::add_defaulted(int32 const count) {
     ml::add_defaulted(speeds, count);
     ml::add_defaulted(teams, count);
     ml::add_defaulted(healths, count);
-    ml::add_defaulted(parent_handles, count);
+    ml::add_defaulted(parent_ids, count);
     ml::add_defaulted(awareness_scan_countdowns, count);
     ml::add_defaulted(navigation_update_countdowns, count);
     ml::add_defaulted(separation_steering, count);
@@ -3352,7 +3352,7 @@ void MimallocEntityData::add_defaulted(int32 const count) {
     ml::add_defaulted(avoidance_clear_scan_counts, count);
     ml::add_defaulted(attack_reposition_countdowns, count);
     ml::add_defaulted(attack_cooldowns, count);
-    ml::add_defaulted(target_handles, count);
+    ml::add_defaulted(target_ids, count);
     ml::add_defaulted(target_locations, count);
     ml::add_defaulted(target_velocities, count);
     ml::add_defaulted(target_directions, count);
@@ -3363,7 +3363,7 @@ void MimallocEntityData::add_defaulted(int32 const count) {
 }
 
 void MimallocEntityData::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(entity_handles, count, allow_shrinking);
+    ml::set_num(entity_ids, count, allow_shrinking);
     ml::set_num(integral_biases, count, allow_shrinking);
     ml::set_num(float_biases, count, allow_shrinking);
     ml::set_num(tasks, count, allow_shrinking);
@@ -3378,7 +3378,7 @@ void MimallocEntityData::set_num(int32 const count, EAllowShrinking const allow_
     ml::set_num(speeds, count, allow_shrinking);
     ml::set_num(teams, count, allow_shrinking);
     ml::set_num(healths, count, allow_shrinking);
-    ml::set_num(parent_handles, count, allow_shrinking);
+    ml::set_num(parent_ids, count, allow_shrinking);
     ml::set_num(awareness_scan_countdowns, count, allow_shrinking);
     ml::set_num(navigation_update_countdowns, count, allow_shrinking);
     ml::set_num(separation_steering, count, allow_shrinking);
@@ -3388,7 +3388,7 @@ void MimallocEntityData::set_num(int32 const count, EAllowShrinking const allow_
     ml::set_num(avoidance_clear_scan_counts, count, allow_shrinking);
     ml::set_num(attack_reposition_countdowns, count, allow_shrinking);
     ml::set_num(attack_cooldowns, count, allow_shrinking);
-    ml::set_num(target_handles, count, allow_shrinking);
+    ml::set_num(target_ids, count, allow_shrinking);
     ml::set_num(target_locations, count, allow_shrinking);
     ml::set_num(target_velocities, count, allow_shrinking);
     ml::set_num(target_directions, count, allow_shrinking);
@@ -3401,7 +3401,7 @@ void MimallocEntityData::set_num(int32 const count, EAllowShrinking const allow_
 void MimallocEntityData::apply_permutation(TArrayView<int32> indices) {
     validate_array_sizes();
     check(indices.Num() == num());
-    ml::apply_permutation(entity_handles, indices);
+    ml::apply_permutation(entity_ids, indices);
     ml::apply_permutation(integral_biases, indices);
     ml::apply_permutation(float_biases, indices);
     ml::apply_permutation(tasks, indices);
@@ -3416,7 +3416,7 @@ void MimallocEntityData::apply_permutation(TArrayView<int32> indices) {
     ml::apply_permutation(speeds, indices);
     ml::apply_permutation(teams, indices);
     ml::apply_permutation(healths, indices);
-    ml::apply_permutation(parent_handles, indices);
+    ml::apply_permutation(parent_ids, indices);
     ml::apply_permutation(awareness_scan_countdowns, indices);
     ml::apply_permutation(navigation_update_countdowns, indices);
     ml::apply_permutation(separation_steering, indices);
@@ -3426,7 +3426,7 @@ void MimallocEntityData::apply_permutation(TArrayView<int32> indices) {
     ml::apply_permutation(avoidance_clear_scan_counts, indices);
     ml::apply_permutation(attack_reposition_countdowns, indices);
     ml::apply_permutation(attack_cooldowns, indices);
-    ml::apply_permutation(target_handles, indices);
+    ml::apply_permutation(target_ids, indices);
     ml::apply_permutation(target_locations, indices);
     ml::apply_permutation(target_velocities, indices);
     ml::apply_permutation(target_directions, indices);
@@ -3442,7 +3442,7 @@ auto MimallocEntityData::get_view() -> View {
 
 auto MimallocEntityData::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        TArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TArrayView<uint32>{integral_biases}.Slice(offset, count),
         TArrayView<float>{float_biases}.Slice(offset, count),
         TArrayView<Task>{tasks}.Slice(offset, count),
@@ -3457,7 +3457,7 @@ auto MimallocEntityData::get_view(int32 const offset, int32 const count) -> View
         TArrayView<float>{speeds}.Slice(offset, count),
         TArrayView<Team>{teams}.Slice(offset, count),
         TArrayView<int32>{healths}.Slice(offset, count),
-        TArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_view(offset, count),
         navigation_update_countdowns.get_view(offset, count),
         separation_steering.get_view(offset, count),
@@ -3467,7 +3467,7 @@ auto MimallocEntityData::get_view(int32 const offset, int32 const count) -> View
         TArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_view(offset, count),
         attack_cooldowns.get_view(offset, count),
-        TArrayView<Handle>{target_handles}.Slice(offset, count),
+        TArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_view(offset, count),
         target_velocities.get_view(offset, count),
         target_directions.get_view(offset, count),
@@ -3484,7 +3484,7 @@ auto MimallocEntityData::get_view() const -> ConstView {
 
 auto MimallocEntityData::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -3499,7 +3499,7 @@ auto MimallocEntityData::get_view(int32 const offset, int32 const count) const -
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -3509,7 +3509,7 @@ auto MimallocEntityData::get_view(int32 const offset, int32 const count) const -
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -3526,7 +3526,7 @@ auto MimallocEntityData::get_const_view() const -> ConstView {
 
 auto MimallocEntityData::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -3541,7 +3541,7 @@ auto MimallocEntityData::get_const_view(int32 const offset, int32 const count) c
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -3551,7 +3551,7 @@ auto MimallocEntityData::get_const_view(int32 const offset, int32 const count) c
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -3563,7 +3563,7 @@ auto MimallocEntityData::get_const_view(int32 const offset, int32 const count) c
 }
 
 auto MimallocEntityData::num() const noexcept -> int32 {
-    return ml::num(entity_handles);
+    return ml::num(entity_ids);
 }
 
 auto MimallocEntityData::is_empty() const noexcept -> bool {
@@ -3572,7 +3572,7 @@ auto MimallocEntityData::is_empty() const noexcept -> bool {
 
 void MimallocEntityData::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(entity_handles),
+        ml::num(entity_ids),
         ml::num(integral_biases),
         ml::num(float_biases),
         ml::num(tasks),
@@ -3587,7 +3587,7 @@ void MimallocEntityData::validate_array_sizes() const {
         ml::num(speeds),
         ml::num(teams),
         ml::num(healths),
-        ml::num(parent_handles),
+        ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
         ml::num(separation_steering),
@@ -3597,7 +3597,7 @@ void MimallocEntityData::validate_array_sizes() const {
         ml::num(avoidance_clear_scan_counts),
         ml::num(attack_reposition_countdowns),
         ml::num(attack_cooldowns),
-        ml::num(target_handles),
+        ml::num(target_ids),
         ml::num(target_locations),
         ml::num(target_velocities),
         ml::num(target_directions),
@@ -4866,7 +4866,7 @@ auto MallocEntityDataConstView::get_view() const -> ConstView {
 
 auto MallocEntityDataConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -4881,7 +4881,7 @@ auto MallocEntityDataConstView::get_view(int32 const offset, int32 const count) 
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -4891,7 +4891,7 @@ auto MallocEntityDataConstView::get_view(int32 const offset, int32 const count) 
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -4909,7 +4909,7 @@ auto MallocEntityDataConstView::get_const_view() const -> ConstView {
 auto MallocEntityDataConstView::get_const_view(int32 const offset, int32 const count) const
     -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -4924,7 +4924,7 @@ auto MallocEntityDataConstView::get_const_view(int32 const offset, int32 const c
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -4934,7 +4934,7 @@ auto MallocEntityDataConstView::get_const_view(int32 const offset, int32 const c
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -4946,7 +4946,7 @@ auto MallocEntityDataConstView::get_const_view(int32 const offset, int32 const c
 }
 
 auto MallocEntityDataConstView::num() const noexcept -> int32 {
-    return ml::num(entity_handles);
+    return ml::num(entity_ids);
 }
 
 auto MallocEntityDataConstView::is_empty() const noexcept -> bool {
@@ -4955,7 +4955,7 @@ auto MallocEntityDataConstView::is_empty() const noexcept -> bool {
 
 void MallocEntityDataConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(entity_handles),
+        ml::num(entity_ids),
         ml::num(integral_biases),
         ml::num(float_biases),
         ml::num(tasks),
@@ -4970,7 +4970,7 @@ void MallocEntityDataConstView::validate_array_sizes() const {
         ml::num(speeds),
         ml::num(teams),
         ml::num(healths),
-        ml::num(parent_handles),
+        ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
         ml::num(separation_steering),
@@ -4980,7 +4980,7 @@ void MallocEntityDataConstView::validate_array_sizes() const {
         ml::num(avoidance_clear_scan_counts),
         ml::num(attack_reposition_countdowns),
         ml::num(attack_cooldowns),
-        ml::num(target_handles),
+        ml::num(target_ids),
         ml::num(target_locations),
         ml::num(target_velocities),
         ml::num(target_directions),
@@ -5009,7 +5009,7 @@ auto MallocEntityDataView::get_view() -> View {
 
 auto MallocEntityDataView::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        TArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TArrayView<uint32>{integral_biases}.Slice(offset, count),
         TArrayView<float>{float_biases}.Slice(offset, count),
         TArrayView<Task>{tasks}.Slice(offset, count),
@@ -5024,7 +5024,7 @@ auto MallocEntityDataView::get_view(int32 const offset, int32 const count) -> Vi
         TArrayView<float>{speeds}.Slice(offset, count),
         TArrayView<Team>{teams}.Slice(offset, count),
         TArrayView<int32>{healths}.Slice(offset, count),
-        TArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_view(offset, count),
         navigation_update_countdowns.get_view(offset, count),
         separation_steering.get_view(offset, count),
@@ -5034,7 +5034,7 @@ auto MallocEntityDataView::get_view(int32 const offset, int32 const count) -> Vi
         TArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_view(offset, count),
         attack_cooldowns.get_view(offset, count),
-        TArrayView<Handle>{target_handles}.Slice(offset, count),
+        TArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_view(offset, count),
         target_velocities.get_view(offset, count),
         target_directions.get_view(offset, count),
@@ -5051,7 +5051,7 @@ auto MallocEntityDataView::get_view() const -> ConstView {
 
 auto MallocEntityDataView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -5066,7 +5066,7 @@ auto MallocEntityDataView::get_view(int32 const offset, int32 const count) const
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -5076,7 +5076,7 @@ auto MallocEntityDataView::get_view(int32 const offset, int32 const count) const
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -5094,7 +5094,7 @@ auto MallocEntityDataView::get_const_view() const -> ConstView {
 auto MallocEntityDataView::get_const_view(int32 const offset, int32 const count) const
     -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -5109,7 +5109,7 @@ auto MallocEntityDataView::get_const_view(int32 const offset, int32 const count)
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -5119,7 +5119,7 @@ auto MallocEntityDataView::get_const_view(int32 const offset, int32 const count)
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -5131,7 +5131,7 @@ auto MallocEntityDataView::get_const_view(int32 const offset, int32 const count)
 }
 
 auto MallocEntityDataView::num() const noexcept -> int32 {
-    return ml::num(entity_handles);
+    return ml::num(entity_ids);
 }
 
 auto MallocEntityDataView::is_empty() const noexcept -> bool {
@@ -5140,7 +5140,7 @@ auto MallocEntityDataView::is_empty() const noexcept -> bool {
 
 void MallocEntityDataView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(entity_handles),
+        ml::num(entity_ids),
         ml::num(integral_biases),
         ml::num(float_biases),
         ml::num(tasks),
@@ -5155,7 +5155,7 @@ void MallocEntityDataView::validate_array_sizes() const {
         ml::num(speeds),
         ml::num(teams),
         ml::num(healths),
-        ml::num(parent_handles),
+        ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
         ml::num(separation_steering),
@@ -5165,7 +5165,7 @@ void MallocEntityDataView::validate_array_sizes() const {
         ml::num(avoidance_clear_scan_counts),
         ml::num(attack_reposition_countdowns),
         ml::num(attack_cooldowns),
-        ml::num(target_handles),
+        ml::num(target_ids),
         ml::num(target_locations),
         ml::num(target_velocities),
         ml::num(target_directions),
@@ -5201,7 +5201,7 @@ auto MallocEntityDataView::right(int32 const count) const -> ConstView {
 }
 
 void MallocEntityData::reset() {
-    ml::reset(entity_handles);
+    ml::reset(entity_ids);
     ml::reset(integral_biases);
     ml::reset(float_biases);
     ml::reset(tasks);
@@ -5216,7 +5216,7 @@ void MallocEntityData::reset() {
     ml::reset(speeds);
     ml::reset(teams);
     ml::reset(healths);
-    ml::reset(parent_handles);
+    ml::reset(parent_ids);
     ml::reset(awareness_scan_countdowns);
     ml::reset(navigation_update_countdowns);
     ml::reset(separation_steering);
@@ -5226,7 +5226,7 @@ void MallocEntityData::reset() {
     ml::reset(avoidance_clear_scan_counts);
     ml::reset(attack_reposition_countdowns);
     ml::reset(attack_cooldowns);
-    ml::reset(target_handles);
+    ml::reset(target_ids);
     ml::reset(target_locations);
     ml::reset(target_velocities);
     ml::reset(target_directions);
@@ -5237,7 +5237,7 @@ void MallocEntityData::reset() {
 }
 
 void MallocEntityData::reserve(int32 const count) {
-    ml::reserve(entity_handles, count);
+    ml::reserve(entity_ids, count);
     ml::reserve(integral_biases, count);
     ml::reserve(float_biases, count);
     ml::reserve(tasks, count);
@@ -5252,7 +5252,7 @@ void MallocEntityData::reserve(int32 const count) {
     ml::reserve(speeds, count);
     ml::reserve(teams, count);
     ml::reserve(healths, count);
-    ml::reserve(parent_handles, count);
+    ml::reserve(parent_ids, count);
     ml::reserve(awareness_scan_countdowns, count);
     ml::reserve(navigation_update_countdowns, count);
     ml::reserve(separation_steering, count);
@@ -5262,7 +5262,7 @@ void MallocEntityData::reserve(int32 const count) {
     ml::reserve(avoidance_clear_scan_counts, count);
     ml::reserve(attack_reposition_countdowns, count);
     ml::reserve(attack_cooldowns, count);
-    ml::reserve(target_handles, count);
+    ml::reserve(target_ids, count);
     ml::reserve(target_locations, count);
     ml::reserve(target_velocities, count);
     ml::reserve(target_directions, count);
@@ -5273,7 +5273,7 @@ void MallocEntityData::reserve(int32 const count) {
 }
 
 void MallocEntityData::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(entity_handles, count);
+    ml::add_uninitialised(entity_ids, count);
     ml::add_uninitialised(integral_biases, count);
     ml::add_uninitialised(float_biases, count);
     ml::add_uninitialised(tasks, count);
@@ -5288,7 +5288,7 @@ void MallocEntityData::add_uninitialised(int32 const count) {
     ml::add_uninitialised(speeds, count);
     ml::add_uninitialised(teams, count);
     ml::add_uninitialised(healths, count);
-    ml::add_uninitialised(parent_handles, count);
+    ml::add_uninitialised(parent_ids, count);
     ml::add_uninitialised(awareness_scan_countdowns, count);
     ml::add_uninitialised(navigation_update_countdowns, count);
     ml::add_uninitialised(separation_steering, count);
@@ -5298,7 +5298,7 @@ void MallocEntityData::add_uninitialised(int32 const count) {
     ml::add_uninitialised(avoidance_clear_scan_counts, count);
     ml::add_uninitialised(attack_reposition_countdowns, count);
     ml::add_uninitialised(attack_cooldowns, count);
-    ml::add_uninitialised(target_handles, count);
+    ml::add_uninitialised(target_ids, count);
     ml::add_uninitialised(target_locations, count);
     ml::add_uninitialised(target_velocities, count);
     ml::add_uninitialised(target_directions, count);
@@ -5309,7 +5309,7 @@ void MallocEntityData::add_uninitialised(int32 const count) {
 }
 
 void MallocEntityData::add_defaulted(int32 const count) {
-    ml::add_defaulted(entity_handles, count);
+    ml::add_defaulted(entity_ids, count);
     ml::add_defaulted(integral_biases, count);
     ml::add_defaulted(float_biases, count);
     ml::add_defaulted(tasks, count);
@@ -5324,7 +5324,7 @@ void MallocEntityData::add_defaulted(int32 const count) {
     ml::add_defaulted(speeds, count);
     ml::add_defaulted(teams, count);
     ml::add_defaulted(healths, count);
-    ml::add_defaulted(parent_handles, count);
+    ml::add_defaulted(parent_ids, count);
     ml::add_defaulted(awareness_scan_countdowns, count);
     ml::add_defaulted(navigation_update_countdowns, count);
     ml::add_defaulted(separation_steering, count);
@@ -5334,7 +5334,7 @@ void MallocEntityData::add_defaulted(int32 const count) {
     ml::add_defaulted(avoidance_clear_scan_counts, count);
     ml::add_defaulted(attack_reposition_countdowns, count);
     ml::add_defaulted(attack_cooldowns, count);
-    ml::add_defaulted(target_handles, count);
+    ml::add_defaulted(target_ids, count);
     ml::add_defaulted(target_locations, count);
     ml::add_defaulted(target_velocities, count);
     ml::add_defaulted(target_directions, count);
@@ -5345,7 +5345,7 @@ void MallocEntityData::add_defaulted(int32 const count) {
 }
 
 void MallocEntityData::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(entity_handles, count, allow_shrinking);
+    ml::set_num(entity_ids, count, allow_shrinking);
     ml::set_num(integral_biases, count, allow_shrinking);
     ml::set_num(float_biases, count, allow_shrinking);
     ml::set_num(tasks, count, allow_shrinking);
@@ -5360,7 +5360,7 @@ void MallocEntityData::set_num(int32 const count, EAllowShrinking const allow_sh
     ml::set_num(speeds, count, allow_shrinking);
     ml::set_num(teams, count, allow_shrinking);
     ml::set_num(healths, count, allow_shrinking);
-    ml::set_num(parent_handles, count, allow_shrinking);
+    ml::set_num(parent_ids, count, allow_shrinking);
     ml::set_num(awareness_scan_countdowns, count, allow_shrinking);
     ml::set_num(navigation_update_countdowns, count, allow_shrinking);
     ml::set_num(separation_steering, count, allow_shrinking);
@@ -5370,7 +5370,7 @@ void MallocEntityData::set_num(int32 const count, EAllowShrinking const allow_sh
     ml::set_num(avoidance_clear_scan_counts, count, allow_shrinking);
     ml::set_num(attack_reposition_countdowns, count, allow_shrinking);
     ml::set_num(attack_cooldowns, count, allow_shrinking);
-    ml::set_num(target_handles, count, allow_shrinking);
+    ml::set_num(target_ids, count, allow_shrinking);
     ml::set_num(target_locations, count, allow_shrinking);
     ml::set_num(target_velocities, count, allow_shrinking);
     ml::set_num(target_directions, count, allow_shrinking);
@@ -5383,7 +5383,7 @@ void MallocEntityData::set_num(int32 const count, EAllowShrinking const allow_sh
 void MallocEntityData::apply_permutation(TArrayView<int32> indices) {
     validate_array_sizes();
     check(indices.Num() == num());
-    ml::apply_permutation(entity_handles, indices);
+    ml::apply_permutation(entity_ids, indices);
     ml::apply_permutation(integral_biases, indices);
     ml::apply_permutation(float_biases, indices);
     ml::apply_permutation(tasks, indices);
@@ -5398,7 +5398,7 @@ void MallocEntityData::apply_permutation(TArrayView<int32> indices) {
     ml::apply_permutation(speeds, indices);
     ml::apply_permutation(teams, indices);
     ml::apply_permutation(healths, indices);
-    ml::apply_permutation(parent_handles, indices);
+    ml::apply_permutation(parent_ids, indices);
     ml::apply_permutation(awareness_scan_countdowns, indices);
     ml::apply_permutation(navigation_update_countdowns, indices);
     ml::apply_permutation(separation_steering, indices);
@@ -5408,7 +5408,7 @@ void MallocEntityData::apply_permutation(TArrayView<int32> indices) {
     ml::apply_permutation(avoidance_clear_scan_counts, indices);
     ml::apply_permutation(attack_reposition_countdowns, indices);
     ml::apply_permutation(attack_cooldowns, indices);
-    ml::apply_permutation(target_handles, indices);
+    ml::apply_permutation(target_ids, indices);
     ml::apply_permutation(target_locations, indices);
     ml::apply_permutation(target_velocities, indices);
     ml::apply_permutation(target_directions, indices);
@@ -5424,7 +5424,7 @@ auto MallocEntityData::get_view() -> View {
 
 auto MallocEntityData::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        TArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TArrayView<uint32>{integral_biases}.Slice(offset, count),
         TArrayView<float>{float_biases}.Slice(offset, count),
         TArrayView<Task>{tasks}.Slice(offset, count),
@@ -5439,7 +5439,7 @@ auto MallocEntityData::get_view(int32 const offset, int32 const count) -> View {
         TArrayView<float>{speeds}.Slice(offset, count),
         TArrayView<Team>{teams}.Slice(offset, count),
         TArrayView<int32>{healths}.Slice(offset, count),
-        TArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_view(offset, count),
         navigation_update_countdowns.get_view(offset, count),
         separation_steering.get_view(offset, count),
@@ -5449,7 +5449,7 @@ auto MallocEntityData::get_view(int32 const offset, int32 const count) -> View {
         TArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_view(offset, count),
         attack_cooldowns.get_view(offset, count),
-        TArrayView<Handle>{target_handles}.Slice(offset, count),
+        TArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_view(offset, count),
         target_velocities.get_view(offset, count),
         target_directions.get_view(offset, count),
@@ -5466,7 +5466,7 @@ auto MallocEntityData::get_view() const -> ConstView {
 
 auto MallocEntityData::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -5481,7 +5481,7 @@ auto MallocEntityData::get_view(int32 const offset, int32 const count) const -> 
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -5491,7 +5491,7 @@ auto MallocEntityData::get_view(int32 const offset, int32 const count) const -> 
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -5508,7 +5508,7 @@ auto MallocEntityData::get_const_view() const -> ConstView {
 
 auto MallocEntityData::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -5523,7 +5523,7 @@ auto MallocEntityData::get_const_view(int32 const offset, int32 const count) con
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -5533,7 +5533,7 @@ auto MallocEntityData::get_const_view(int32 const offset, int32 const count) con
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -5545,7 +5545,7 @@ auto MallocEntityData::get_const_view(int32 const offset, int32 const count) con
 }
 
 auto MallocEntityData::num() const noexcept -> int32 {
-    return ml::num(entity_handles);
+    return ml::num(entity_ids);
 }
 
 auto MallocEntityData::is_empty() const noexcept -> bool {
@@ -5554,7 +5554,7 @@ auto MallocEntityData::is_empty() const noexcept -> bool {
 
 void MallocEntityData::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(entity_handles),
+        ml::num(entity_ids),
         ml::num(integral_biases),
         ml::num(float_biases),
         ml::num(tasks),
@@ -5569,7 +5569,7 @@ void MallocEntityData::validate_array_sizes() const {
         ml::num(speeds),
         ml::num(teams),
         ml::num(healths),
-        ml::num(parent_handles),
+        ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
         ml::num(separation_steering),
@@ -5579,7 +5579,7 @@ void MallocEntityData::validate_array_sizes() const {
         ml::num(avoidance_clear_scan_counts),
         ml::num(attack_reposition_countdowns),
         ml::num(attack_cooldowns),
-        ml::num(target_handles),
+        ml::num(target_ids),
         ml::num(target_locations),
         ml::num(target_velocities),
         ml::num(target_directions),
@@ -6849,7 +6849,7 @@ auto ReallocEntityDataConstView::get_view() const -> ConstView {
 auto ReallocEntityDataConstView::get_view(int32 const offset, int32 const count) const
     -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -6864,7 +6864,7 @@ auto ReallocEntityDataConstView::get_view(int32 const offset, int32 const count)
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -6874,7 +6874,7 @@ auto ReallocEntityDataConstView::get_view(int32 const offset, int32 const count)
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -6892,7 +6892,7 @@ auto ReallocEntityDataConstView::get_const_view() const -> ConstView {
 auto ReallocEntityDataConstView::get_const_view(int32 const offset, int32 const count) const
     -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -6907,7 +6907,7 @@ auto ReallocEntityDataConstView::get_const_view(int32 const offset, int32 const 
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -6917,7 +6917,7 @@ auto ReallocEntityDataConstView::get_const_view(int32 const offset, int32 const 
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -6929,7 +6929,7 @@ auto ReallocEntityDataConstView::get_const_view(int32 const offset, int32 const 
 }
 
 auto ReallocEntityDataConstView::num() const noexcept -> int32 {
-    return ml::num(entity_handles);
+    return ml::num(entity_ids);
 }
 
 auto ReallocEntityDataConstView::is_empty() const noexcept -> bool {
@@ -6938,7 +6938,7 @@ auto ReallocEntityDataConstView::is_empty() const noexcept -> bool {
 
 void ReallocEntityDataConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(entity_handles),
+        ml::num(entity_ids),
         ml::num(integral_biases),
         ml::num(float_biases),
         ml::num(tasks),
@@ -6953,7 +6953,7 @@ void ReallocEntityDataConstView::validate_array_sizes() const {
         ml::num(speeds),
         ml::num(teams),
         ml::num(healths),
-        ml::num(parent_handles),
+        ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
         ml::num(separation_steering),
@@ -6963,7 +6963,7 @@ void ReallocEntityDataConstView::validate_array_sizes() const {
         ml::num(avoidance_clear_scan_counts),
         ml::num(attack_reposition_countdowns),
         ml::num(attack_cooldowns),
-        ml::num(target_handles),
+        ml::num(target_ids),
         ml::num(target_locations),
         ml::num(target_velocities),
         ml::num(target_directions),
@@ -6992,7 +6992,7 @@ auto ReallocEntityDataView::get_view() -> View {
 
 auto ReallocEntityDataView::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        TArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TArrayView<uint32>{integral_biases}.Slice(offset, count),
         TArrayView<float>{float_biases}.Slice(offset, count),
         TArrayView<Task>{tasks}.Slice(offset, count),
@@ -7007,7 +7007,7 @@ auto ReallocEntityDataView::get_view(int32 const offset, int32 const count) -> V
         TArrayView<float>{speeds}.Slice(offset, count),
         TArrayView<Team>{teams}.Slice(offset, count),
         TArrayView<int32>{healths}.Slice(offset, count),
-        TArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_view(offset, count),
         navigation_update_countdowns.get_view(offset, count),
         separation_steering.get_view(offset, count),
@@ -7017,7 +7017,7 @@ auto ReallocEntityDataView::get_view(int32 const offset, int32 const count) -> V
         TArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_view(offset, count),
         attack_cooldowns.get_view(offset, count),
-        TArrayView<Handle>{target_handles}.Slice(offset, count),
+        TArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_view(offset, count),
         target_velocities.get_view(offset, count),
         target_directions.get_view(offset, count),
@@ -7034,7 +7034,7 @@ auto ReallocEntityDataView::get_view() const -> ConstView {
 
 auto ReallocEntityDataView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -7049,7 +7049,7 @@ auto ReallocEntityDataView::get_view(int32 const offset, int32 const count) cons
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -7059,7 +7059,7 @@ auto ReallocEntityDataView::get_view(int32 const offset, int32 const count) cons
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -7077,7 +7077,7 @@ auto ReallocEntityDataView::get_const_view() const -> ConstView {
 auto ReallocEntityDataView::get_const_view(int32 const offset, int32 const count) const
     -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -7092,7 +7092,7 @@ auto ReallocEntityDataView::get_const_view(int32 const offset, int32 const count
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -7102,7 +7102,7 @@ auto ReallocEntityDataView::get_const_view(int32 const offset, int32 const count
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -7114,7 +7114,7 @@ auto ReallocEntityDataView::get_const_view(int32 const offset, int32 const count
 }
 
 auto ReallocEntityDataView::num() const noexcept -> int32 {
-    return ml::num(entity_handles);
+    return ml::num(entity_ids);
 }
 
 auto ReallocEntityDataView::is_empty() const noexcept -> bool {
@@ -7123,7 +7123,7 @@ auto ReallocEntityDataView::is_empty() const noexcept -> bool {
 
 void ReallocEntityDataView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(entity_handles),
+        ml::num(entity_ids),
         ml::num(integral_biases),
         ml::num(float_biases),
         ml::num(tasks),
@@ -7138,7 +7138,7 @@ void ReallocEntityDataView::validate_array_sizes() const {
         ml::num(speeds),
         ml::num(teams),
         ml::num(healths),
-        ml::num(parent_handles),
+        ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
         ml::num(separation_steering),
@@ -7148,7 +7148,7 @@ void ReallocEntityDataView::validate_array_sizes() const {
         ml::num(avoidance_clear_scan_counts),
         ml::num(attack_reposition_countdowns),
         ml::num(attack_cooldowns),
-        ml::num(target_handles),
+        ml::num(target_ids),
         ml::num(target_locations),
         ml::num(target_velocities),
         ml::num(target_directions),
@@ -7184,7 +7184,7 @@ auto ReallocEntityDataView::right(int32 const count) const -> ConstView {
 }
 
 void ReallocEntityData::reset() {
-    ml::reset(entity_handles);
+    ml::reset(entity_ids);
     ml::reset(integral_biases);
     ml::reset(float_biases);
     ml::reset(tasks);
@@ -7199,7 +7199,7 @@ void ReallocEntityData::reset() {
     ml::reset(speeds);
     ml::reset(teams);
     ml::reset(healths);
-    ml::reset(parent_handles);
+    ml::reset(parent_ids);
     ml::reset(awareness_scan_countdowns);
     ml::reset(navigation_update_countdowns);
     ml::reset(separation_steering);
@@ -7209,7 +7209,7 @@ void ReallocEntityData::reset() {
     ml::reset(avoidance_clear_scan_counts);
     ml::reset(attack_reposition_countdowns);
     ml::reset(attack_cooldowns);
-    ml::reset(target_handles);
+    ml::reset(target_ids);
     ml::reset(target_locations);
     ml::reset(target_velocities);
     ml::reset(target_directions);
@@ -7220,7 +7220,7 @@ void ReallocEntityData::reset() {
 }
 
 void ReallocEntityData::reserve(int32 const count) {
-    ml::reserve(entity_handles, count);
+    ml::reserve(entity_ids, count);
     ml::reserve(integral_biases, count);
     ml::reserve(float_biases, count);
     ml::reserve(tasks, count);
@@ -7235,7 +7235,7 @@ void ReallocEntityData::reserve(int32 const count) {
     ml::reserve(speeds, count);
     ml::reserve(teams, count);
     ml::reserve(healths, count);
-    ml::reserve(parent_handles, count);
+    ml::reserve(parent_ids, count);
     ml::reserve(awareness_scan_countdowns, count);
     ml::reserve(navigation_update_countdowns, count);
     ml::reserve(separation_steering, count);
@@ -7245,7 +7245,7 @@ void ReallocEntityData::reserve(int32 const count) {
     ml::reserve(avoidance_clear_scan_counts, count);
     ml::reserve(attack_reposition_countdowns, count);
     ml::reserve(attack_cooldowns, count);
-    ml::reserve(target_handles, count);
+    ml::reserve(target_ids, count);
     ml::reserve(target_locations, count);
     ml::reserve(target_velocities, count);
     ml::reserve(target_directions, count);
@@ -7256,7 +7256,7 @@ void ReallocEntityData::reserve(int32 const count) {
 }
 
 void ReallocEntityData::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(entity_handles, count);
+    ml::add_uninitialised(entity_ids, count);
     ml::add_uninitialised(integral_biases, count);
     ml::add_uninitialised(float_biases, count);
     ml::add_uninitialised(tasks, count);
@@ -7271,7 +7271,7 @@ void ReallocEntityData::add_uninitialised(int32 const count) {
     ml::add_uninitialised(speeds, count);
     ml::add_uninitialised(teams, count);
     ml::add_uninitialised(healths, count);
-    ml::add_uninitialised(parent_handles, count);
+    ml::add_uninitialised(parent_ids, count);
     ml::add_uninitialised(awareness_scan_countdowns, count);
     ml::add_uninitialised(navigation_update_countdowns, count);
     ml::add_uninitialised(separation_steering, count);
@@ -7281,7 +7281,7 @@ void ReallocEntityData::add_uninitialised(int32 const count) {
     ml::add_uninitialised(avoidance_clear_scan_counts, count);
     ml::add_uninitialised(attack_reposition_countdowns, count);
     ml::add_uninitialised(attack_cooldowns, count);
-    ml::add_uninitialised(target_handles, count);
+    ml::add_uninitialised(target_ids, count);
     ml::add_uninitialised(target_locations, count);
     ml::add_uninitialised(target_velocities, count);
     ml::add_uninitialised(target_directions, count);
@@ -7292,7 +7292,7 @@ void ReallocEntityData::add_uninitialised(int32 const count) {
 }
 
 void ReallocEntityData::add_defaulted(int32 const count) {
-    ml::add_defaulted(entity_handles, count);
+    ml::add_defaulted(entity_ids, count);
     ml::add_defaulted(integral_biases, count);
     ml::add_defaulted(float_biases, count);
     ml::add_defaulted(tasks, count);
@@ -7307,7 +7307,7 @@ void ReallocEntityData::add_defaulted(int32 const count) {
     ml::add_defaulted(speeds, count);
     ml::add_defaulted(teams, count);
     ml::add_defaulted(healths, count);
-    ml::add_defaulted(parent_handles, count);
+    ml::add_defaulted(parent_ids, count);
     ml::add_defaulted(awareness_scan_countdowns, count);
     ml::add_defaulted(navigation_update_countdowns, count);
     ml::add_defaulted(separation_steering, count);
@@ -7317,7 +7317,7 @@ void ReallocEntityData::add_defaulted(int32 const count) {
     ml::add_defaulted(avoidance_clear_scan_counts, count);
     ml::add_defaulted(attack_reposition_countdowns, count);
     ml::add_defaulted(attack_cooldowns, count);
-    ml::add_defaulted(target_handles, count);
+    ml::add_defaulted(target_ids, count);
     ml::add_defaulted(target_locations, count);
     ml::add_defaulted(target_velocities, count);
     ml::add_defaulted(target_directions, count);
@@ -7328,7 +7328,7 @@ void ReallocEntityData::add_defaulted(int32 const count) {
 }
 
 void ReallocEntityData::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(entity_handles, count, allow_shrinking);
+    ml::set_num(entity_ids, count, allow_shrinking);
     ml::set_num(integral_biases, count, allow_shrinking);
     ml::set_num(float_biases, count, allow_shrinking);
     ml::set_num(tasks, count, allow_shrinking);
@@ -7343,7 +7343,7 @@ void ReallocEntityData::set_num(int32 const count, EAllowShrinking const allow_s
     ml::set_num(speeds, count, allow_shrinking);
     ml::set_num(teams, count, allow_shrinking);
     ml::set_num(healths, count, allow_shrinking);
-    ml::set_num(parent_handles, count, allow_shrinking);
+    ml::set_num(parent_ids, count, allow_shrinking);
     ml::set_num(awareness_scan_countdowns, count, allow_shrinking);
     ml::set_num(navigation_update_countdowns, count, allow_shrinking);
     ml::set_num(separation_steering, count, allow_shrinking);
@@ -7353,7 +7353,7 @@ void ReallocEntityData::set_num(int32 const count, EAllowShrinking const allow_s
     ml::set_num(avoidance_clear_scan_counts, count, allow_shrinking);
     ml::set_num(attack_reposition_countdowns, count, allow_shrinking);
     ml::set_num(attack_cooldowns, count, allow_shrinking);
-    ml::set_num(target_handles, count, allow_shrinking);
+    ml::set_num(target_ids, count, allow_shrinking);
     ml::set_num(target_locations, count, allow_shrinking);
     ml::set_num(target_velocities, count, allow_shrinking);
     ml::set_num(target_directions, count, allow_shrinking);
@@ -7366,7 +7366,7 @@ void ReallocEntityData::set_num(int32 const count, EAllowShrinking const allow_s
 void ReallocEntityData::apply_permutation(TArrayView<int32> indices) {
     validate_array_sizes();
     check(indices.Num() == num());
-    ml::apply_permutation(entity_handles, indices);
+    ml::apply_permutation(entity_ids, indices);
     ml::apply_permutation(integral_biases, indices);
     ml::apply_permutation(float_biases, indices);
     ml::apply_permutation(tasks, indices);
@@ -7381,7 +7381,7 @@ void ReallocEntityData::apply_permutation(TArrayView<int32> indices) {
     ml::apply_permutation(speeds, indices);
     ml::apply_permutation(teams, indices);
     ml::apply_permutation(healths, indices);
-    ml::apply_permutation(parent_handles, indices);
+    ml::apply_permutation(parent_ids, indices);
     ml::apply_permutation(awareness_scan_countdowns, indices);
     ml::apply_permutation(navigation_update_countdowns, indices);
     ml::apply_permutation(separation_steering, indices);
@@ -7391,7 +7391,7 @@ void ReallocEntityData::apply_permutation(TArrayView<int32> indices) {
     ml::apply_permutation(avoidance_clear_scan_counts, indices);
     ml::apply_permutation(attack_reposition_countdowns, indices);
     ml::apply_permutation(attack_cooldowns, indices);
-    ml::apply_permutation(target_handles, indices);
+    ml::apply_permutation(target_ids, indices);
     ml::apply_permutation(target_locations, indices);
     ml::apply_permutation(target_velocities, indices);
     ml::apply_permutation(target_directions, indices);
@@ -7407,7 +7407,7 @@ auto ReallocEntityData::get_view() -> View {
 
 auto ReallocEntityData::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        TArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TArrayView<uint32>{integral_biases}.Slice(offset, count),
         TArrayView<float>{float_biases}.Slice(offset, count),
         TArrayView<Task>{tasks}.Slice(offset, count),
@@ -7422,7 +7422,7 @@ auto ReallocEntityData::get_view(int32 const offset, int32 const count) -> View 
         TArrayView<float>{speeds}.Slice(offset, count),
         TArrayView<Team>{teams}.Slice(offset, count),
         TArrayView<int32>{healths}.Slice(offset, count),
-        TArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_view(offset, count),
         navigation_update_countdowns.get_view(offset, count),
         separation_steering.get_view(offset, count),
@@ -7432,7 +7432,7 @@ auto ReallocEntityData::get_view(int32 const offset, int32 const count) -> View 
         TArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_view(offset, count),
         attack_cooldowns.get_view(offset, count),
-        TArrayView<Handle>{target_handles}.Slice(offset, count),
+        TArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_view(offset, count),
         target_velocities.get_view(offset, count),
         target_directions.get_view(offset, count),
@@ -7449,7 +7449,7 @@ auto ReallocEntityData::get_view() const -> ConstView {
 
 auto ReallocEntityData::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -7464,7 +7464,7 @@ auto ReallocEntityData::get_view(int32 const offset, int32 const count) const ->
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -7474,7 +7474,7 @@ auto ReallocEntityData::get_view(int32 const offset, int32 const count) const ->
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -7491,7 +7491,7 @@ auto ReallocEntityData::get_const_view() const -> ConstView {
 
 auto ReallocEntityData::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{entity_ids}.Slice(offset, count),
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         TConstArrayView<float>{float_biases}.Slice(offset, count),
         TConstArrayView<Task>{tasks}.Slice(offset, count),
@@ -7506,7 +7506,7 @@ auto ReallocEntityData::get_const_view(int32 const offset, int32 const count) co
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
-        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
         separation_steering.get_const_view(offset, count),
@@ -7516,7 +7516,7 @@ auto ReallocEntityData::get_const_view(int32 const offset, int32 const count) co
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
         attack_cooldowns.get_const_view(offset, count),
-        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        TConstArrayView<EntityId>{target_ids}.Slice(offset, count),
         target_locations.get_const_view(offset, count),
         target_velocities.get_const_view(offset, count),
         target_directions.get_const_view(offset, count),
@@ -7528,7 +7528,7 @@ auto ReallocEntityData::get_const_view(int32 const offset, int32 const count) co
 }
 
 auto ReallocEntityData::num() const noexcept -> int32 {
-    return ml::num(entity_handles);
+    return ml::num(entity_ids);
 }
 
 auto ReallocEntityData::is_empty() const noexcept -> bool {
@@ -7537,7 +7537,7 @@ auto ReallocEntityData::is_empty() const noexcept -> bool {
 
 void ReallocEntityData::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(entity_handles),
+        ml::num(entity_ids),
         ml::num(integral_biases),
         ml::num(float_biases),
         ml::num(tasks),
@@ -7552,7 +7552,7 @@ void ReallocEntityData::validate_array_sizes() const {
         ml::num(speeds),
         ml::num(teams),
         ml::num(healths),
-        ml::num(parent_handles),
+        ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
         ml::num(separation_steering),
@@ -7562,7 +7562,7 @@ void ReallocEntityData::validate_array_sizes() const {
         ml::num(avoidance_clear_scan_counts),
         ml::num(attack_reposition_countdowns),
         ml::num(attack_cooldowns),
-        ml::num(target_handles),
+        ml::num(target_ids),
         ml::num(target_locations),
         ml::num(target_velocities),
         ml::num(target_directions),
