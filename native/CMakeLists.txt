@@ -61,6 +61,10 @@ if(UE_CONFIGURATION MATCHES "^(Debug|DebugGame|Development)$")
   endif()
 endif()
 
+if(SANDBOX_WITH_CLANG_TIDY)
+  sandbox_configure_native_clang_tidy()
+endif()
+
 add_subdirectory(profiling)
 add_subdirectory(sbx_mimalloc)
 add_subdirectory(lispb)
@@ -114,3 +118,7 @@ sandbox_target_precompile_test_headers(
   sandbox-image-tests
   slate-codegen-tests
 )
+
+if(SANDBOX_WITH_CLANG_TIDY)
+  sandbox_add_native_clang_tidy_target()
+endif()

@@ -10,6 +10,8 @@
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spatial_query_manager.h>
 
+#include <gtest/gtest.h>
+
 namespace ioj::sim {
 
 struct LevelTelemetryManagerTestAccess {

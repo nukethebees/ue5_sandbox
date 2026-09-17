@@ -23,6 +23,7 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
 option(SANDBOX_WITH_UNREAL "Configure Unreal Engine integration and targets" ON)
 option(SANDBOX_WITH_ASAN "Instrument native targets with AddressSanitizer" OFF)
+option(SANDBOX_WITH_CLANG_TIDY "Run clang-tidy for first-party native targets" OFF)
 
 set(CACHE{UE_PLATFORM}
   TYPE STRING
@@ -47,6 +48,8 @@ if(SANDBOX_WITH_ASAN)
   include(cmake/address_sanitizer.cmake)
   sandbox_enable_address_sanitizer()
 endif()
+
+add_subdirectory(cmake/clang_tidy)
 
 add_subdirectory(native)
 add_subdirectory(tools/jobserver)

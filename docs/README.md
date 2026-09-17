@@ -8,6 +8,7 @@ single subsystem lives beside that subsystem instead.
 | Set up a worktree, build, test, debug, or package | [Build and test](build-and-test.md) |
 | Run or interpret a performance measurement | [Benchmarks](benchmarks.md) |
 | Capture a native level benchmark with Tracy | [Profiling](profiling.md) |
+| Run native clang-tidy | [Native clang-tidy](clang-tidy.md) |
 | Work on standalone C++ libraries or simulation | [Native guide](../native/README.md) |
 | Regenerate C++, Slate, kernel, or material outputs | [Code generation guide](../Codegen/README.md) |
 | Find an Unreal module or its responsibility | [Source map](../Source/README.md) |

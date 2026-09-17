@@ -10,6 +10,7 @@
 #include <span>
 
 #include <algorithm>
+#include <ioj/sim/combat_events.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entity_death_info.h>
 #include <ioj/sim/entity_ledger.h>
