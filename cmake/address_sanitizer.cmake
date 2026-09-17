@@ -1,4 +1,5 @@
 include_guard(GLOBAL)
+include("${CMAKE_CURRENT_LIST_DIR}/clang_cl_asan_paths.cmake")
 
 function(sandbox_enable_address_sanitizer)
   if(SANDBOX_WITH_UNREAL)
@@ -36,15 +37,8 @@ function(sandbox_enable_address_sanitizer)
       "Unable to discover the clang-cl resource directory for AddressSanitizer.")
   endif()
 
-  cmake_path(APPEND clang_resource_directory lib windows
-    OUTPUT_VARIABLE asan_library_directory)
-  cmake_path(APPEND asan_library_directory clang_rt.asan_dynamic-x86_64.dll
-    OUTPUT_VARIABLE asan_runtime)
-  cmake_path(APPEND asan_library_directory clang_rt.asan_dynamic-x86_64.lib
-    OUTPUT_VARIABLE asan_import_library)
-  cmake_path(APPEND asan_library_directory
-    clang_rt.asan_dynamic_runtime_thunk-x86_64.lib
-    OUTPUT_VARIABLE asan_runtime_thunk)
+  sandbox_get_clang_cl_asan_paths(asan_runtime asan_import_library asan_runtime_thunk
+    "${clang_resource_directory}")
   foreach(asan_file IN ITEMS
       "${asan_runtime}"
       "${asan_import_library}"

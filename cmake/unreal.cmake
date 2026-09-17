@@ -1,4 +1,5 @@
 include_guard(GLOBAL)
+include("${CMAKE_CURRENT_LIST_DIR}/unreal_arguments.cmake")
 
 function(add_unreal_target target_name unreal_target)
   set(unreal_target_arguments)
@@ -202,23 +203,10 @@ function(add_unreal_automation_test test_name)
     message(FATAL_ERROR "add_unreal_automation_test(${test_name}) requires LABELS.")
   endif()
 
-  set(automation_filters ${automation_test_FILTERS})
-  list(TRANSFORM automation_filters PREPEND "StartsWith:")
-  list(JOIN automation_filters "+" automation_filter_expression)
-
-  set(space_game_test_arguments)
-  if(SANDBOX_SPACE_GAME_TEST_TIME_SCALE)
-    if(NOT SANDBOX_SPACE_GAME_TEST_TIME_SCALE MATCHES "^[0-9]+([.][0-9]+)?$")
-      message(FATAL_ERROR
-        "SANDBOX_SPACE_GAME_TEST_TIME_SCALE must be empty or a positive number.")
-    endif()
-    if(SANDBOX_SPACE_GAME_TEST_TIME_SCALE LESS_EQUAL 0)
-      message(FATAL_ERROR
-        "SANDBOX_SPACE_GAME_TEST_TIME_SCALE must be empty or a positive number.")
-    endif()
-    list(APPEND space_game_test_arguments
-      "-SpaceGameTestTimeScale=${SANDBOX_SPACE_GAME_TEST_TIME_SCALE}")
-  endif()
+  sandbox_make_automation_filter_expression(automation_filter_expression
+    ${automation_test_FILTERS})
+  sandbox_make_space_game_test_arguments(space_game_test_arguments
+    "${SANDBOX_SPACE_GAME_TEST_TIME_SCALE}")
 
   add_unreal_editor_test("${test_name}"
     ARGUMENTS

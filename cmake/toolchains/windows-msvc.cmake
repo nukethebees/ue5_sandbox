@@ -2,6 +2,8 @@ if(NOT CMAKE_HOST_WIN32)
   message(FATAL_ERROR "The MSVC toolchain supports only Windows hosts.")
 endif()
 
+include("${CMAKE_CURRENT_LIST_DIR}/../msvc_environment.cmake")
+
 find_program(SANDBOX_NINJA_EXECUTABLE NAMES ninja REQUIRED)
 set(CMAKE_MAKE_PROGRAM "${SANDBOX_NINJA_EXECUTABLE}" CACHE FILEPATH "" FORCE)
 
@@ -47,13 +49,8 @@ if(NOT DEFINED ENV{VCToolsInstallDir})
   foreach(environment_name IN ITEMS
       PATH INCLUDE LIB LIBPATH VCTOOLSINSTALLDIR VCINSTALLDIR VSINSTALLDIR
       WINDOWSSDKDIR WINDOWSSDKVERSION UNIVERSALCRTSDKDIR UCRTVERSION)
-    string(REGEX MATCH
-      "(^|\n)SANDBOX_MSVC_${environment_name}=([^\r\n]*)"
-      environment_match "${msvc_environment}")
-    if(NOT environment_match)
-      message(FATAL_ERROR "Visual Studio setup did not provide ${environment_name}.")
-    endif()
-    string(STRIP "${CMAKE_MATCH_2}" environment_value)
+    sandbox_get_msvc_environment_value(environment_value
+      "${msvc_environment}" "${environment_name}")
     set(msvc_${environment_name} "${environment_value}")
     set(ENV{${environment_name}} "${environment_value}")
   endforeach()

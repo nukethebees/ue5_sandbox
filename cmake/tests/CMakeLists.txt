@@ -1,6 +1,9 @@
 include("${CMAKE_CURRENT_LIST_DIR}/assertions.cmake")
 include("${PROJECT_SOURCE_DIR}/cmake/jobserver_commands.cmake")
 include("${PROJECT_SOURCE_DIR}/cmake/unreal_paths.cmake")
+include("${PROJECT_SOURCE_DIR}/cmake/unreal_arguments.cmake")
+include("${PROJECT_SOURCE_DIR}/cmake/msvc_environment.cmake")
+include("${PROJECT_SOURCE_DIR}/cmake/clang_cl_asan_paths.cmake")
 
 set(cmake_test_cli [=[C:\Users\Test User\jobserver.exe]=])
 set(cmake_test_worktree [=[C:\src\Sandbox Worktree]=])
@@ -74,3 +77,46 @@ sandbox_assert_equal("artifact stage executable path"
 sandbox_assert_equal("artifact verification path"
   "${game_artifact_VERIFICATION_ROOT}"
   [=[C:/Artifacts Root/Sandbox/Win64/DebugGame/verification]=])
+
+sandbox_make_automation_filter_expression(automation_expression
+  Sandbox.UnitTests Sandbox.LevelTests.PlayerInputSmoke)
+sandbox_assert_equal("automation filters preserve order"
+  "${automation_expression}"
+  "StartsWith:Sandbox.UnitTests+StartsWith:Sandbox.LevelTests.PlayerInputSmoke")
+sandbox_make_space_game_test_arguments(empty_time_scale_arguments "")
+sandbox_assert_list_equal("empty time scale adds no arguments"
+  "${empty_time_scale_arguments}" "")
+sandbox_make_space_game_test_arguments(time_scale_arguments 1.25)
+sandbox_assert_list_equal("positive time scale is a single argument"
+  "${time_scale_arguments}" "-SpaceGameTestTimeScale=1.25")
+
+sandbox_make_unreal_cook_arguments(cook_arguments
+  [=[C:\Engine Root\UnrealEditor-Cmd.exe]=]
+  [=[C:\Artifacts Root\cook\Windows]=])
+sandbox_assert_list_equal("cook arguments preserve Windows paths" "${cook_arguments}"
+  [=[-cook;-skipstage;-unrealexe=C:\Engine Root\UnrealEditor-Cmd.exe;-ddc=NoZenLocalFallback;-cookoutputdir=C:\Artifacts Root\cook\Windows]=])
+sandbox_make_unreal_container_arguments(container_arguments
+  [=[C:\Artifacts Root\cook]=] [=[C:\Artifacts Root\stage]=])
+sandbox_assert_list_equal("container arguments preserve Windows paths" "${container_arguments}"
+  [=[-pak;-iostore;-compressed;-prereqs;-cookoutputdir=C:\Artifacts Root\cook;-stagingdirectory=C:\Artifacts Root\stage]=])
+
+set(msvc_environment_text [=[noise
+SANDBOX_MSVC_PATH=C:\VS Tools\bin;C:\Windows\System32
+SANDBOX_MSVC_INCLUDE= C:\SDK Include\ucrt
+]=])
+string(REPLACE "\n" "\r\n" msvc_environment_text "${msvc_environment_text}")
+sandbox_get_msvc_environment_value(msvc_path "${msvc_environment_text}" PATH)
+sandbox_assert_equal("MSVC PATH retains semicolon-separated Windows paths"
+  "${msvc_path}" [=[C:\VS Tools\bin;C:\Windows\System32]=])
+sandbox_get_msvc_environment_value(msvc_include "${msvc_environment_text}" INCLUDE)
+sandbox_assert_equal("MSVC environment values trim leading whitespace"
+  "${msvc_include}" [=[C:\SDK Include\ucrt]=])
+
+sandbox_get_clang_cl_asan_paths(asan_runtime asan_import asan_thunk
+  [=[C:\LLVM Root\lib\clang\20]=])
+sandbox_assert_equal("ASan runtime path" "${asan_runtime}"
+  [=[C:/LLVM Root/lib/clang/20/lib/windows/clang_rt.asan_dynamic-x86_64.dll]=])
+sandbox_assert_equal("ASan import library path" "${asan_import}"
+  [=[C:/LLVM Root/lib/clang/20/lib/windows/clang_rt.asan_dynamic-x86_64.lib]=])
+sandbox_assert_equal("ASan thunk path" "${asan_thunk}"
+  [=[C:/LLVM Root/lib/clang/20/lib/windows/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib]=])

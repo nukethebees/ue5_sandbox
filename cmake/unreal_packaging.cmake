@@ -1,4 +1,5 @@
 include_guard(GLOBAL)
+include("${CMAKE_CURRENT_LIST_DIR}/unreal_arguments.cmake")
 
 function(add_unreal_build_cook_run_target target_name)
   cmake_parse_arguments(PARSE_ARGV 1 uat "" "COMMENT" "ARGUMENTS")
@@ -42,13 +43,8 @@ function(add_unreal_packaging_targets)
       "Got '${UE_PLATFORM}'.")
   endif()
 
-  set(cook_arguments
-    -cook
-    -skipstage
-    "-unrealexe=${UE_DEVELOPMENT_EDITOR_CMD_EXE}"
-    -ddc=NoZenLocalFallback
-    "-cookoutputdir=${SANDBOX_GAME_COOK_DIRECTORY}"
-  )
+  sandbox_make_unreal_cook_arguments(cook_arguments
+    "${UE_DEVELOPMENT_EDITOR_CMD_EXE}" "${SANDBOX_GAME_COOK_DIRECTORY}")
 
   if(UE_CONFIGURATION STREQUAL "Development")
     add_unreal_build_cook_run_target(cook
@@ -64,14 +60,8 @@ function(add_unreal_packaging_targets)
     add_dependencies(cook-incremental editor)
   endif()
 
-  set(container_arguments
-    -pak
-    -iostore
-    -compressed
-    -prereqs
-    "-cookoutputdir=${SANDBOX_GAME_COOK_ROOT}"
-    "-stagingdirectory=${SANDBOX_GAME_STAGE_ROOT}"
-  )
+  sandbox_make_unreal_container_arguments(container_arguments
+    "${SANDBOX_GAME_COOK_ROOT}" "${SANDBOX_GAME_STAGE_ROOT}")
 
   add_unreal_build_cook_run_target(stage
     COMMENT "Staging Sandbox ${UE_PLATFORM} ${UE_CONFIGURATION}"
