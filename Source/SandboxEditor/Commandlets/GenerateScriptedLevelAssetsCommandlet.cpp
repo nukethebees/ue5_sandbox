@@ -119,7 +119,7 @@ constexpr TCHAR ship_move_aim_mapping_object_path[]{
 constexpr TCHAR ship_z_roll_aim_mapping_object_path[]{
     TEXT("/SpaceGame/Input/SpaceShip/IMC_space_ship_twinstick_z-roll_aim."
          "IMC_space_ship_twinstick_z-roll_aim")};
-FName const generation_context{TEXT("GenerateScriptedLevelAssets")};
+FName const scripted_level_generation_context{TEXT("GenerateScriptedLevelAssets")};
 constexpr TCHAR runtime_config_package_name[]{TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig")};
 constexpr TCHAR runtime_config_asset_name[]{TEXT("DA_GameRuntimeLevelConfig")};
 constexpr TCHAR player_controller_object_path[]{
@@ -130,7 +130,7 @@ constexpr TCHAR player_controller_asset_name[]{TEXT("BP_SpaceGamePlayerControlle
 constexpr TCHAR source_player_controller_object_path[]{
     TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/BP_TestSpaceShipController."
          "BP_TestSpaceShipController")};
-constexpr TCHAR source_config_object_path[]{
+constexpr TCHAR scripted_level_source_config_object_path[]{
     TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/DA_FT_soa_entities_LevelConfig."
          "DA_FT_soa_entities_LevelConfig")};
 constexpr TCHAR runtime_map_package_name[]{TEXT("/SpaceGame/Levels/GameRuntime")};
@@ -192,7 +192,7 @@ auto load_or_create_widget_blueprint(TCHAR const* const object_path,
                                                                   BPTYPE_Normal,
                                                                   UUserWidget::StaticClass(),
                                                                   nullptr,
-                                                                  generation_context,
+                                                                  scripted_level_generation_context,
                                                                   false);
         if (!IsValid(blueprint)) {
             UE_LOG(LogTemp, Error, TEXT("Could not create %s"), object_path);
@@ -1230,7 +1230,8 @@ auto configure_runtime_game_mode(UClass& player_controller_class) -> bool {
 auto load_or_create_runtime_config(UClass& player_controller_class) -> USpaceGameLevelConfig* {
     auto const object_path{
         FString::Printf(TEXT("%s.%s"), runtime_config_package_name, runtime_config_asset_name)};
-    auto* const source{LoadObject<USpaceGameLevelConfig>(nullptr, source_config_object_path)};
+    auto* const source{
+        LoadObject<USpaceGameLevelConfig>(nullptr, scripted_level_source_config_object_path)};
     if (!IsValid(source)) {
         UE_LOG(LogTemp, Error, TEXT("Could not load source level config"));
         return nullptr;

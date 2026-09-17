@@ -427,7 +427,7 @@ void execute_s7_initial_state_export() {
         log_export_error(plan.error());
         return;
     }
-    auto const source{s7::emit_initial_level_source(plan->definition)};
+    auto const source{s7::emit_editor_level_source(plan->definition)};
     if (!source) {
         log_export_error(source.error());
         return;

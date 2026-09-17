@@ -82,7 +82,7 @@ TEST_CLASS(S7InitialStateExporter, "Sandbox.UnitTests")
             TestRunner->AddError(collected.error());
             return;
         }
-        auto const source{ml::s7::emit_initial_level_source(collected->definition)};
+        auto const source{ml::s7::emit_editor_level_source(collected->definition)};
         if (!TestRunner->TestTrue(TEXT("Collected state emits"), source.has_value())) {
             TestRunner->AddError(source.error());
             return;

@@ -6,6 +6,6 @@
 #include <string>
 
 namespace ml::level_authoring {
-[[nodiscard]] auto emit_initial_level_source(::ioj::sim::levels::LevelDefinition const& definition)
+[[nodiscard]] auto emit_editor_level_source(::ioj::sim::levels::LevelDefinition const& definition)
     -> std::expected<std::string, std::string>;
 } // namespace ml::level_authoring

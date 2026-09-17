@@ -19,7 +19,7 @@
 #define LOG_WARN(FORMAT_STR, ...) UE_LOG(LogSandboxEditor, Warning, TEXT(FORMAT_STR), ##__VA_ARGS__)
 
 namespace {
-FName const generation_context{TEXT("SandboxWidgetBlueprintGenerator")};
+FName const widget_blueprint_generation_context{TEXT("SandboxWidgetBlueprintGenerator")};
 
 bool is_project_widget_class(UClass const& widget_class) {
     auto const native_widget_classes{UTestBatchGameUiData::get_native_widget_classes()};
@@ -337,7 +337,7 @@ UWidgetBlueprint* create_widget_blueprint(FWidgetBlueprintGenerationEntry const&
                                                               BPTYPE_Normal,
                                                               UUserWidget::StaticClass(),
                                                               nullptr,
-                                                              generation_context,
+                                                              widget_blueprint_generation_context,
                                                               false)};
     auto* const widget_tree{widget_blueprint ? widget_blueprint->WidgetTree.Get() : nullptr};
     if (widget_tree == nullptr) {
