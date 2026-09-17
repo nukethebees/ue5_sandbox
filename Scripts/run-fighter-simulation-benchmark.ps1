@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidateNotNullOrEmpty()]
-    [int[]] $FighterCaps = @(2000, 4000),
+    [string[]] $FighterCaps = @('2000', '4000'),
 
     [ValidateRange(0.1, 86400.0)]
     [double] $Seconds = 10.0,
@@ -24,9 +24,23 @@ $repo = [IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
 $runner = Join-Path $PSScriptRoot 'run-native-simulation-benchmark.ps1'
 $level = Join-Path $repo 'LevelScripts/FighterSchedulingBenchmark.scm'
 
-if ($FighterCaps.Count -eq 0 -or @($FighterCaps | Where-Object { $_ -le 0 }).Count -ne 0) {
-    throw 'FighterCaps must contain positive values.'
+if ($FighterCaps.Count -eq 0) {
+    throw 'FighterCaps must contain one or more values.'
 }
+
+$fighterCapValues = [Collections.Generic.List[int]]::new()
+foreach ($fighterCapText in $FighterCaps) {
+    $fighterCap = 0
+    if (-not [int]::TryParse($fighterCapText.Trim(), [Globalization.NumberStyles]::None,
+            [Globalization.CultureInfo]::InvariantCulture, [ref] $fighterCap) -or $fighterCap -le 0) {
+        throw 'FighterCaps must contain unique positive 32-bit integers.'
+    }
+    if ($fighterCapValues.Contains($fighterCap)) {
+        throw 'FighterCaps must contain unique positive 32-bit integers.'
+    }
+    $fighterCapValues.Add($fighterCap)
+}
+$FighterCaps = $fighterCapValues.ToArray()
 
 if (-not $OutputDirectory) {
     $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'

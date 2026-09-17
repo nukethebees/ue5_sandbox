@@ -9,8 +9,7 @@ param(
     [ValidateRange(1, [uint32]::MaxValue)]
     [uint32] $GameSpeed = 1,
     [switch] $Telemetry,
-    [ValidateRange(0, [uint32]::MaxValue)]
-    [uint32] $FighterStressCap = 0,
+    [string] $FighterStressCap = '',
     [string] $FighterStressCaps = '',
     [ValidateRange(0.0, 86400.0)]
     [double] $WarmupSeconds = 5.0,
@@ -23,16 +22,44 @@ param(
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 $levelPath = (Resolve-Path -LiteralPath $Level).Path
-$fighterStressCapValues = @()
-if ($FighterStressCaps) {
-    $fighterStressCapValues = @($FighterStressCaps -split ',' | ForEach-Object { [uint32]$_ })
-    if ($fighterStressCapValues.Count -eq 0 -or
-        @($fighterStressCapValues | Where-Object { $_ -eq 0 }).Count -ne 0) {
-        throw 'FighterStressCaps must contain positive comma-separated values.'
+
+function ConvertTo-FighterStressCaps {
+    param(
+        [string] $Value,
+        [string] $ParameterName
+    )
+
+    $caps = [Collections.Generic.List[int]]::new()
+    foreach ($capText in $Value.Split(',', [StringSplitOptions]::None)) {
+        $cap = 0
+        if (-not [int]::TryParse($capText.Trim(), [Globalization.NumberStyles]::None,
+                [Globalization.CultureInfo]::InvariantCulture, [ref] $cap) -or $cap -le 0) {
+            throw "$ParameterName must contain unique positive comma-separated 32-bit integers."
+        }
+        if ($caps.Contains($cap)) {
+            throw "$ParameterName must contain unique positive comma-separated 32-bit integers."
+        }
+        $caps.Add($cap)
     }
+
+    return $caps.ToArray()
 }
 
-if ($FighterStressCap -gt 0 -and $fighterStressCapValues.Count -gt 0) {
+$fighterStressCapValue = $null
+if ($FighterStressCap -ne '') {
+    $fighterStressCapValues = @(ConvertTo-FighterStressCaps $FighterStressCap 'FighterStressCap')
+    if ($fighterStressCapValues.Count -ne 1) {
+        throw 'FighterStressCap must contain one positive 32-bit integer.'
+    }
+    $fighterStressCapValue = $fighterStressCapValues[0]
+}
+
+$fighterStressCapValues = @()
+if ($FighterStressCaps -ne '') {
+    $fighterStressCapValues = @(ConvertTo-FighterStressCaps $FighterStressCaps 'FighterStressCaps')
+}
+
+if ($null -ne $fighterStressCapValue -and $fighterStressCapValues.Count -gt 0) {
     throw 'FighterStressCap and FighterStressCaps are mutually exclusive.'
 }
 
@@ -81,10 +108,10 @@ if (-not $env:NUKETHEBEES_JOBSERVER_JOB) {
         '-SkipBuild'
     )
     if ($Telemetry) { $activityArguments += '-Telemetry' }
-    if ($FighterStressCap -gt 0) {
+    if ($null -ne $fighterStressCapValue) {
         $activityArguments += @(
             '-FighterStressCap'
-            $FighterStressCap
+            $fighterStressCapValue
             '-WarmupSeconds'
             $WarmupSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
             '-SaturationTimeoutSeconds'
@@ -109,9 +136,9 @@ $executable = Join-Path $repo "out/build/$BuildPreset/bin/native-simulation-benc
 $secondsText = $Seconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
 $arguments = @('--level', $levelPath, '--seconds', $secondsText, '--game-speed', $GameSpeed)
 if ($Telemetry) { $arguments += '--telemetry' }
-if ($FighterStressCap -gt 0) {
+if ($null -ne $fighterStressCapValue) {
     $arguments += @(
-        '--fighter-stress-cap', $FighterStressCap,
+        '--fighter-stress-cap', $fighterStressCapValue,
         '--warmup-seconds', $WarmupSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture),
         '--saturation-timeout-seconds', $SaturationTimeoutSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
     )

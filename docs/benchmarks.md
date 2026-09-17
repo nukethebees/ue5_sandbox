@@ -44,6 +44,11 @@ Pass `-FighterCaps`, `-Seconds`, `-WarmupSeconds`, `-SaturationTimeoutSeconds`, 
 `-OutputDirectory` to change the workload or destination. Use `-SkipBuild` only after confirming
 the release benchmark binary is current.
 
+Fighter caps must be unique positive 32-bit integers. Results are emitted in the requested cap
+order; `results.json` and `summary.csv` retain that order. The generic runner accepts
+comma-separated `-FighterStressCaps` values, while the native `--fighter-stress-caps` option also
+accepts separate values.
+
 The fighter runner verifies population stability, attacking state, active firing, absent replacement
 spawns, and frame-memory capacity before publishing results. Its outputs include raw details plus
 mean, median, p95, p99, tick rate, and realtime factor.

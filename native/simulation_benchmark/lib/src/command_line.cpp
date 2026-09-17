@@ -2,6 +2,7 @@
 
 #include <CLI/CLI.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <sstream>
 
@@ -29,6 +30,7 @@ auto parse_command_line(int const argc, char const* const* argv) -> CommandLineR
                    options.fighter_stress_caps,
                    "Run one fighter stress benchmark for each cap in this process")
         ->expected(1, -1)
+        ->delimiter(',')
         ->check(CLI::PositiveNumber);
     auto* const warmup_option{app.add_option(
         "--warmup-seconds", options.warmup_seconds, "Post-saturation simulated warm-up seconds")};
@@ -69,10 +71,16 @@ auto parse_command_line(int const argc, char const* const* argv) -> CommandLineR
                                   "exclusive\n",
                 .exit_code = 2};
     }
+    for (auto const cap : options.fighter_stress_caps) {
+        if (std::ranges::count(options.fighter_stress_caps, cap) > 1) {
+            return {.standard_error = "--fighter-stress-caps must contain unique values\n",
+                    .exit_code = 2};
+        }
+    }
     if (!options.fighter_stress_cap.has_value() && options.fighter_stress_caps.empty() &&
         (warmup_option->count() > 0 || saturation_timeout_option->count() > 0)) {
         return {.standard_error = "--warmup-seconds and --saturation-timeout-seconds require "
-                                  "--fighter-stress-cap\n",
+                                  "--fighter-stress-cap or --fighter-stress-caps\n",
                 .exit_code = 2};
     }
     return {.options = std::move(options)};

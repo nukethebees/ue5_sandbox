@@ -6,8 +6,10 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <initializer_list>
 #include <limits>
 #include <string>
+#include <vector>
 
 namespace ml::simulation_benchmark::tests {
 namespace {
@@ -75,6 +77,50 @@ TEST(SimulationBenchmarkCommandLine, ParsesFighterStressOptions) {
     EXPECT_DOUBLE_EQ(result.options->saturation_timeout_seconds, 30.0);
 }
 
+TEST(SimulationBenchmarkCommandLine, ParsesOrderedCommaSeparatedFighterStressCaps) {
+    TemporaryFile level;
+    auto const path{level.path().string()};
+    char const* argv[]{"native-simulation-benchmark",
+                       "--level",
+                       path.c_str(),
+                       "--seconds",
+                       "10",
+                       "--fighter-stress-caps",
+                       "4000,2000",
+                       "--warmup-seconds",
+                       "5",
+                       "--saturation-timeout-seconds",
+                       "30"};
+
+    auto const result{parse_command_line(11, argv)};
+
+    ASSERT_TRUE(result.options.has_value()) << result.standard_error;
+    EXPECT_FALSE(result.options->fighter_stress_cap.has_value());
+    ASSERT_EQ(result.options->fighter_stress_caps.size(), 2u);
+    EXPECT_EQ(result.options->fighter_stress_caps[0], 4000);
+    EXPECT_EQ(result.options->fighter_stress_caps[1], 2000);
+}
+
+TEST(SimulationBenchmarkCommandLine, RejectsInvalidFighterStressCaps) {
+    TemporaryFile level;
+    auto const path{level.path().string()};
+    auto const parse_caps = [&path](std::initializer_list<char const*> const caps) {
+        std::vector<char const*> argv{"native-simulation-benchmark",
+                                      "--level",
+                                      path.c_str(),
+                                      "--seconds",
+                                      "1",
+                                      "--fighter-stress-caps"};
+        argv.insert(argv.end(), caps.begin(), caps.end());
+        return parse_command_line(static_cast<int>(argv.size()), argv.data());
+    };
+
+    EXPECT_FALSE(parse_caps({"12", "12"}).options.has_value());
+    EXPECT_FALSE(parse_caps({"0"}).options.has_value());
+    EXPECT_FALSE(parse_caps({"2147483648"}).options.has_value());
+    EXPECT_FALSE(parse_caps({"1.5"}).options.has_value());
+}
+
 TEST(SimulationBenchmarkCommandLine, RejectsMissingLevel) {
     char const* argv[]{"native-simulation-benchmark", "--seconds", "1"};
     auto const result{parse_command_line(3, argv)};
@@ -139,6 +185,8 @@ TEST(SimulationBenchmarkCommandLine, RejectsStressSetupWithoutFighterCap) {
 
     EXPECT_FALSE(result.options.has_value());
     EXPECT_NE(result.exit_code, 0);
+    EXPECT_NE(result.standard_error.find("--fighter-stress-cap or --fighter-stress-caps"),
+              std::string::npos);
 }
 
 TEST(SimulationBenchmarkCommandLine, ReturnsHelpWithoutOptions) {
