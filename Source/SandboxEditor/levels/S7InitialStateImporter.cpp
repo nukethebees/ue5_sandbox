@@ -23,7 +23,7 @@
 #include <UObject/SoftObjectPath.h>
 
 namespace ml::editor {
-namespace {
+namespace s7_initial_state_importer_detail {
 struct FDelayedSpawnGroup {
     double time_seconds{};
     EResolvedLevelArchetype archetype{};
@@ -178,6 +178,8 @@ void show_error(FString const& message) {
     UE_LOG(LogSandbox, Error, TEXT("S7 initial-state import failed: %s"), *message);
 }
 }
+
+using namespace s7_initial_state_importer_detail;
 
 auto FS7UnsupportedFeatureSummary::is_empty() const noexcept -> bool {
     return scheduled_spawn_group_count == 0 && scheduled_entity_count == 0 &&

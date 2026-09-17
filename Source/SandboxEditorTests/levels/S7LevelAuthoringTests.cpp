@@ -118,6 +118,41 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Removed actor is invalid"), !IsValid(old_actor));
     }
 
+    TEST_METHOD(EnteringModeCreatesDocumentAndAdoptsExistingProxies)
+    {
+        auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
+        auto* const player{spawn<ATestSpaceShip>(*world, TEXT("Player"))};
+        auto* const capital{spawn<ATestCapitalShipProxy>(*world, TEXT("Capital"))};
+        if (!TestRunner->TestNotNull(TEXT("World"), world) ||
+            !TestRunner->TestNotNull(TEXT("Player"), player) ||
+            !TestRunner->TestNotNull(TEXT("Capital"), capital)) {
+            return;
+        }
+        player->set_team(ETestTeam::Blue);
+        capital->set_team(ETestTeam::Red);
+
+        auto& modes{GLevelEditorModeTools()};
+        modes.ActivateMode(US7LevelAuthoringMode::mode_id);
+
+        auto const document{ml::editor::find_level_authoring_document(*world->GetCurrentLevel())};
+        TestRunner->TestTrue(TEXT("Document is created on mode entry"), document.has_value());
+        if (!document || !*document) {
+            modes.DeactivateMode(US7LevelAuthoringMode::mode_id);
+            return;
+        }
+        TestRunner->TestEqual(TEXT("Existing proxies are adopted"), (*document)->entities.Num(), 2);
+        TestRunner->TestTrue(TEXT("Capital proxy is adopted"),
+                             (*document)->entities.ContainsByPredicate(
+                                 [capital](FS7LevelEntityBinding const& binding) {
+                                     return binding.actor == capital;
+                                 }));
+        auto const definition{
+            ml::editor::collect_s7_editor_level(*world->GetCurrentLevel(), **document)};
+        TestRunner->TestTrue(TEXT("Adopted proxies can be exported"), definition.has_value());
+
+        modes.DeactivateMode(US7LevelAuthoringMode::mode_id);
+    }
+
     TEST_METHOD(RejectsOutOfScopeRuntimeFeatures)
     {
         auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};

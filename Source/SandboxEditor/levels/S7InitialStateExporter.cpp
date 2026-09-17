@@ -22,7 +22,7 @@
 #include <Misc/Paths.h>
 
 namespace ml::editor {
-namespace {
+namespace s7_initial_state_exporter_detail {
 struct FExportCandidate {
     EResolvedLevelArchetype archetype{};
     FLevelTeamId team{};
@@ -204,6 +204,8 @@ void log_export_error(FString const& message) {
     UE_LOG(LogSandbox, Error, TEXT("S7 initial-state export failed: %s"), *message);
 }
 }
+
+using namespace s7_initial_state_exporter_detail;
 
 auto FS7InitialStateExportWarnings::is_empty() const noexcept -> bool {
     return unsupported_actor_classes.IsEmpty() && invalid_team_actor_count == 0 &&
