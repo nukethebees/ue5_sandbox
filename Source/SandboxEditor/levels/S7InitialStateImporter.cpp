@@ -179,8 +179,6 @@ void show_error(FString const& message) {
 }
 }
 
-using namespace s7_initial_state_importer_detail;
-
 auto FS7UnsupportedFeatureSummary::is_empty() const noexcept -> bool {
     return scheduled_spawn_group_count == 0 && scheduled_entity_count == 0 &&
            mission_definition_count == 0 && mission_event_count == 0 && initial_camera_count == 0 &&
@@ -188,6 +186,8 @@ auto FS7UnsupportedFeatureSummary::is_empty() const noexcept -> bool {
 }
 
 auto FS7UnsupportedFeatureSummary::format() const -> FString {
+    using namespace s7_initial_state_importer_detail;
+
     TArray<FString> lines;
     if (scheduled_entity_count > 0) {
         lines.Add(FString::Printf(
@@ -226,6 +226,8 @@ auto FS7UnsupportedFeatureSummary::format() const -> FString {
 
 auto make_s7_initial_state_import_plan(FLevelDefinition const& definition)
     -> std::expected<FS7InitialStateImportPlan, FString> {
+    using namespace s7_initial_state_importer_detail;
+
     auto const validation{validate_level(definition)};
     if (!validation) {
         TArray<FString> errors;
@@ -286,6 +288,8 @@ auto materialise_s7_initial_state(ULevel& level,
                                   USpaceGameLevelConfig& config,
                                   FS7InitialStateImportPlan const& plan)
     -> FS7InitialStateMaterialisationResult {
+    using namespace s7_initial_state_importer_detail;
+
     if (!GEditor) {
         return {.error = TEXT("GEditor is unavailable.")};
     }
@@ -329,6 +333,8 @@ auto materialise_s7_initial_state(ULevel& level,
 }
 
 void execute_s7_initial_state_import() {
+    using namespace s7_initial_state_importer_detail;
+
     auto const selected_path{select_level_script()};
     if (!selected_path.IsSet()) {
         return;

@@ -205,8 +205,6 @@ void log_export_error(FString const& message) {
 }
 }
 
-using namespace s7_initial_state_exporter_detail;
-
 auto FS7InitialStateExportWarnings::is_empty() const noexcept -> bool {
     return unsupported_actor_classes.IsEmpty() && invalid_team_actor_count == 0 &&
            invalid_transform_actor_count == 0 && ignored_scale_actor_count == 0 &&
@@ -214,6 +212,8 @@ auto FS7InitialStateExportWarnings::is_empty() const noexcept -> bool {
 }
 
 auto FS7InitialStateExportWarnings::format() const -> FString {
+    using namespace s7_initial_state_exporter_detail;
+
     TArray<FString> lines;
     TArray<FName> class_names;
     unsupported_actor_classes.GenerateKeyArray(class_names);
@@ -261,6 +261,8 @@ auto FS7InitialStateExportWarnings::format() const -> FString {
 
 auto collect_s7_initial_state(ULevel const& level, FLevelMetadata const& metadata)
     -> std::expected<FS7InitialStateExportPlan, FString> {
+    using namespace s7_initial_state_exporter_detail;
+
     FS7InitialStateExportPlan plan;
     TArray<FExportCandidate> candidates;
     int32 player_actor_count{};
@@ -406,6 +408,8 @@ auto collect_s7_initial_state(ULevel const& level, FLevelMetadata const& metadat
 }
 
 void execute_s7_initial_state_export() {
+    using namespace s7_initial_state_exporter_detail;
+
     if (!GEditor || IsValid(GEditor->PlayWorld)) {
         log_export_error(
             TEXT("Export is available only while editing a level outside Play In Editor."));

@@ -16,6 +16,7 @@
 #include <Framework/Application/SlateApplication.h>
 #include <IDesktopPlatform.h>
 #include <Misc/FileHelper.h>
+#include <Misc/PackageName.h>
 #include <SceneManagement.h>
 #include <SceneView.h>
 #include <ScopedTransaction.h>
@@ -31,7 +32,7 @@ auto source_fingerprint(FString const& source) -> FString {
     return FString::Printf(TEXT("%08x-%d"), GetTypeHash(source), source.Len());
 }
 
-auto select_source_path(bool const save) -> TOptional<FString> {
+auto select_source_path(bool const save, FString const& suggested_filename) -> TOptional<FString> {
     auto* const desktop{FDesktopPlatformModule::Get()};
     if (!desktop) {
         return NullOpt;
@@ -42,7 +43,7 @@ auto select_source_path(bool const save) -> TOptional<FString> {
     auto const selected{save ? desktop->SaveFileDialog(parent,
                                                        TEXT("Save Explicit S7 Level"),
                                                        directory,
-                                                       TEXT("AuthoredLevel.scm"),
+                                                       suggested_filename,
                                                        TEXT("S7 level (*.scm)|*.scm"),
                                                        EFileDialogFlags::None,
                                                        paths)
@@ -342,7 +343,7 @@ void US7LevelAuthoringMode::assign_selected_objective(int32 const role) {
 }
 
 void US7LevelAuthoringMode::load_s7() {
-    auto const path{select_source_path(false)};
+    auto const path{select_source_path(false, TEXT(""))};
     if (!path.IsSet()) {
         return;
     }
@@ -458,7 +459,8 @@ void US7LevelAuthoringMode::save_to_path(bool force_dialog) {
     auto const generated{has_existing && existing.StartsWith(generated_marker)};
     auto path{document_->source_path};
     if (force_dialog || path.IsEmpty() || !generated) {
-        auto const selected{select_source_path(true)};
+        auto const map_name{FPackageName::GetShortName(level->GetOutermost()->GetName())};
+        auto const selected{select_source_path(true, map_name + TEXT(".scm"))};
         if (!selected.IsSet()) {
             return;
         }
