@@ -1,14 +1,14 @@
 #include "SandboxEditor/SandboxEditor.h"
 
 #include "SandboxEditor/codegen/TypedefCodeGenerator.h"
-#include "SandboxEditor/levels/S7InitialStateExporter.h"
-#include "SandboxEditor/levels/S7InitialStateImporter.h"
+#include "SandboxEditor/levels/S7LevelAuthoringMode.h"
 #include "SandboxEditor/slate/BoxSizeCustomisation.h"
 #include "SandboxEditor/slate/StrongTypedefPreview.h"
 #include "SandboxEditor/slate/TestVolumeDetailsCustomisation.h"
 
 #include "Editor.h"
 #include "Editor/EditorEngine.h"
+#include "EditorModeManager.h"
 #include "Framework/Docking/TabManager.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "LevelEditor.h"
@@ -117,18 +117,12 @@ void FSandboxEditorModule::register_menu_extensions() {
     FToolMenuSection& section{menu->AddSection("SandboxTools", FText::FromString("Sandbox Tools"))};
 
     section.AddEntry(FToolMenuEntry::InitToolBarButton(
-        "ImportS7InitialState",
-        FUIAction(FExecuteAction::CreateStatic(&ml::editor::execute_s7_initial_state_import)),
-        FText::FromString("Import S7 Initial State"),
-        FText::FromString("Materialise an S7 level's initial entities in the current map"),
-        FSlateIcon(FAppStyle::GetAppStyleSetName(), "Icons.Import")));
-
-    section.AddEntry(FToolMenuEntry::InitToolBarButton(
-        "ExportS7InitialState",
-        FUIAction(FExecuteAction::CreateStatic(&ml::editor::execute_s7_initial_state_export)),
-        FText::FromString("Export S7 Initial State"),
-        FText::FromString("Export supported entities from the current map as an S7 seed"),
-        FSlateIcon(FAppStyle::GetAppStyleSetName(), "Icons.Export")));
+        "SpaceGameLevelAuthoring",
+        FUIAction(FExecuteAction::CreateLambda(
+            []() { GLevelEditorModeTools().ActivateMode(US7LevelAuthoringMode::mode_id); })),
+        FText::FromString("Space Game Level"),
+        FText::FromString("Open the bidirectional S7 level-authoring mode"),
+        FSlateIcon(FAppStyle::GetAppStyleSetName(), "Icons.Edit")));
 
     section.AddEntry(FToolMenuEntry::InitToolBarButton(
         "GenerateTypedefs",

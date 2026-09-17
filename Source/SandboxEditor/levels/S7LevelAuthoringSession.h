@@ -1,0 +1,50 @@
+#pragma once
+
+#include <SpaceGame/levels/LevelDefinition.h>
+
+#include <CoreMinimal.h>
+
+#include <expected>
+
+class AS7LevelAuthoringDocument;
+class ULevel;
+
+namespace ml::editor {
+enum class ES7LevelSyncAction : uint8 {
+    Add,
+    Update,
+    Replace,
+    Remove,
+};
+
+struct FS7LevelSyncChange {
+    FLevelEntityId id{};
+    ES7LevelSyncAction action{};
+};
+
+struct SANDBOXEDITOR_API FS7LevelSyncPlan {
+    FLevelDefinition definition{};
+    TArray<FS7LevelSyncChange> changes{};
+
+    [[nodiscard]] auto count(ES7LevelSyncAction action) const -> int32;
+};
+
+SANDBOXEDITOR_API auto find_level_authoring_document(ULevel const& level)
+    -> std::expected<AS7LevelAuthoringDocument*, FString>;
+SANDBOXEDITOR_API auto create_level_authoring_document(ULevel& level)
+    -> std::expected<AS7LevelAuthoringDocument*, FString>;
+SANDBOXEDITOR_API auto adopt_unbound_level_entities(ULevel& level,
+                                                    AS7LevelAuthoringDocument& document)
+    -> std::expected<int32, FString>;
+SANDBOXEDITOR_API auto collect_s7_editor_level(ULevel const& level,
+                                               AS7LevelAuthoringDocument const& document)
+    -> std::expected<FLevelDefinition, FString>;
+SANDBOXEDITOR_API auto make_s7_level_sync_plan(ULevel const& level,
+                                               AS7LevelAuthoringDocument const& document,
+                                               FLevelDefinition const& definition)
+    -> std::expected<FS7LevelSyncPlan, FString>;
+SANDBOXEDITOR_API auto apply_s7_level_sync_plan(ULevel& level,
+                                                AS7LevelAuthoringDocument& document,
+                                                FS7LevelSyncPlan const& plan)
+    -> std::expected<void, FString>;
+}

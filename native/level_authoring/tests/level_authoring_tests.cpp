@@ -120,8 +120,8 @@ TEST(NativeLevelAuthoringWriter, EmitsDeterministicReadableSource) {
     std::ranges::reverse(second.teams);
     std::ranges::reverse(second.entities);
 
-    auto const first_source{emit_initial_level_source(first)};
-    auto const second_source{emit_initial_level_source(second)};
+    auto const first_source{emit_editor_level_source(first)};
+    auto const second_source{emit_editor_level_source(second)};
     ASSERT_TRUE(first_source);
     ASSERT_TRUE(second_source);
     EXPECT_EQ(*first_source, *second_source);
@@ -137,10 +137,42 @@ TEST(NativeLevelAuthoringWriter, EmitsDeterministicReadableSource) {
 TEST(NativeLevelAuthoringWriter, RejectsRuntimeOnlyFields) {
     auto definition{make_level("scheduled")};
     definition.entities.front().spawn_time_seconds = 1.0;
-    auto const result{emit_initial_level_source(definition)};
+    auto const result{emit_editor_level_source(definition)};
 
     ASSERT_FALSE(result);
     EXPECT_TRUE(result.error().contains("initial t=0"));
+}
+
+TEST(NativeLevelAuthoringWriter, RoundTripsInitialMissionObjectives) {
+    auto definition{make_level("mission-writer")};
+    definition.teams.push_back("red");
+    definition.entities.push_back({
+        .id = "enemy",
+        .archetype = "capital-ship",
+        .team = "red",
+    });
+    definition.mission = ::ioj::sim::levels::LevelMissionDefinition{
+        .mode = ::ioj::sim::levels::LevelMissionMode::KillEnemies,
+        .kill_count = 2,
+        .hero_entity_ids = {"player"},
+        .must_survive_entity_ids = {"player"},
+        .required_kill_entity_ids = {"enemy"},
+    };
+
+    auto const source{emit_editor_level_source(definition)};
+    ASSERT_TRUE(source);
+    EXPECT_TRUE(source->contains("(mission"));
+    EXPECT_TRUE(source->contains("(mode 'kill-enemies)"));
+    EXPECT_TRUE(source->contains("(required-kills 'enemy)"));
+
+    LevelDefinitionReader reader;
+    auto const decoded{reader.read_source(*source)};
+    ASSERT_TRUE(decoded) << decoded.script_error;
+    ASSERT_TRUE(decoded.definition->mission);
+    EXPECT_EQ(decoded.definition->mission->mode, ::ioj::sim::levels::LevelMissionMode::KillEnemies);
+    EXPECT_EQ(decoded.definition->mission->kill_count, 2);
+    EXPECT_EQ(decoded.definition->mission->required_kill_entity_ids,
+              (std::vector<std::string>{"enemy"}));
 }
 
 TEST(NativeLevelAuthoringCatalog, RejectsDuplicatesCyclesAndUnavailableDependencies) {
