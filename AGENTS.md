@@ -21,6 +21,9 @@ Unreal Engine 5.8 project.
 * CMake coordinates Unreal work through a canonical engine read/write gate: builds and UAT packaging acquire it exclusively; managed editor launches, tests, and commandlets acquire it shared for their full process-tree lifetime. Regenerate CMake commands in every worktree and reload PowerShell helpers after coordination changes. Manually launched editors, Visual Studio builds, Live Coding, and UBT launched outside CMake do not participate; do not overlap them with managed Unreal builds.
 * A canonical per-user jobserver coordinates expensive work across worktrees. Ordinary work shares the machine resource; benchmarks wait for older work to drain and then run exclusively. Use `get-jobserver-state` or the `jobserver-status` target to inspect running and queued jobs.
 * Preferred build: `cmake --workflow --preset debug-game`.
+* Completion validation: code, schema, generated-source, build-configuration, module, and test changes require the full DebugGame test workflow before the task is considered complete: `cmake --workflow --preset debug-game-tests`. This builds the normal `dev-core` target, including Unreal test targets, and runs the complete configured test suite; native-only or generated-code checks are not sufficient.
+* If the full validation workflow fails, report the task as having incomplete validation even when the failure appears unrelated. Do not claim the change is fully green until the required workflow succeeds.
+* Changes that affect benchmark sources or benchmark schemas also require the dedicated benchmark build: configure with `cmake --preset benchmark`, then build with `cmake --build --preset benchmark --target benchmarks`. Run benchmark measurements only when the task requires them.
 * Targets: `editor`, `game`, `core-tests`, `native-tests`, `dev-core`, `resave-assets`, `generate-project-files`, `cook`, `cook-incremental`, `stage`, `archive`, `run-staged`, and `verify-package`. Cook targets are available from the Development configure preset; stage/archive/run/verify use the current game configuration.
 * Iterative staged game: `cmake --workflow --preset development-staged-game`.
 * Full Development package: `cmake --workflow --preset development-package`.
@@ -41,6 +44,7 @@ Unreal Engine 5.8 project.
   * all suites: `cmake --workflow --preset debug-game-tests`
   * unit suites: `cmake --workflow --preset debug-game-unit-tests`
   * level tests after building: `ctest --preset debug-game-level-tests`
+  * focused tests supplement the required full validation workflow; they do not replace it.
   * If Unreal tests report missing project plugin modules, run `cmake --build --preset debug-game --target editor` to repair stale editor-module BuildIds before rerunning them.
 * Before starting a timed benchmark, complete all build and setup work, then run it without asking the user for confirmation. Use the repository benchmark targets and scripts so the benchmark acquires exclusive machine access from the jobserver, waits for older work, and runs without build interference. If a benchmark entry point does not request benchmark resources, fix or wrap it before collecting timings. Dry runs and correctness tests do not require benchmark access.
 * Run only the benchmark subset needed to answer the current question. Do not run a comprehensive benchmark matrix by default; reserve it for explicitly requested broad validation or when every dimension is materially affected.
