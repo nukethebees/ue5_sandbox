@@ -18,11 +18,6 @@
 			]
 		},
 		{
-			"Name": "SandboxNative",
-			"Type": "Runtime",
-			"LoadingPhase": "PreDefault"
-		},
-		{
 			"Name": "SandboxEditor",
 			"Type": "Editor",
 			"LoadingPhase": "Default"

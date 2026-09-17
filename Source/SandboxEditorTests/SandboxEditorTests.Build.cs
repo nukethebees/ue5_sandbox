@@ -12,7 +12,7 @@ public class SandboxEditorTests : ModuleRules
         {
             "SandboxEditor",
             "NativeMemory",
-            "SandboxNative",
+            "NativeSimulation",
             "SpaceGame",
             "SpaceGameS7",
             "SpaceGameSimulation",

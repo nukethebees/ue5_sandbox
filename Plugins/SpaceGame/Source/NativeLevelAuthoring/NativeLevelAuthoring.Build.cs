@@ -11,7 +11,7 @@ public class NativeLevelAuthoring : ModuleRules
         PublicDependencyModuleNames.AddRange(new string[]
         {
             "NativeS7",
-            "SandboxNative",
+            "NativeSimulation",
         });
 
         if (Target.Platform != UnrealTargetPlatform.Win64 ||

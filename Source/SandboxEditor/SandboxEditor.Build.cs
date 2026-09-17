@@ -81,7 +81,7 @@ public class SandboxEditor : ModuleRules
             "RHI",
             "Sandbox", // Reference to runtime module
             "SandboxGameShared",
-            "SandboxNative",
+            "NativeSimulation",
             "SandboxUI",
             "SandboxShaders",
             "SbxMeshGenLab",

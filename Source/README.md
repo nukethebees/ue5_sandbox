@@ -5,7 +5,6 @@
 | Module | Responsibility |
 | --- | --- |
 | `Sandbox` | Runtime game module and core gameplay integration. |
-| `SandboxNative` | Runtime adapters for standalone native libraries. |
 | `SandboxEditor` | Editor-only game and authoring support. |
 | `SandboxTests` | Editor test support for the game module. |
 | `SandboxEditorTests` | Editor-specific test coverage. |

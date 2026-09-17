@@ -5,13 +5,13 @@
 #include "SandboxGameShared/utilities/actor_utils.h"
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SandboxGameShared/utilities/vision_maths.h"
-#include "SandboxNative/spatial.h"
 #include "SGLegacy/combat/weapons/ShipLaser.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <Components/ArrowComponent.h>
 #include <Components/BoxComponent.h>
 #include <Engine/World.h>
+#include <ioj/sim/spatial.h>
 #include <Kismet/KismetMathLibrary.h>
 
 ATestFlySeekDestroyEvade::ATestFlySeekDestroyEvade()
@@ -376,7 +376,13 @@ auto ATestFlySeekDestroyEvade::get_random_position_in_volume(FVector const& refe
 auto ATestFlySeekDestroyEvade::get_random_position(FVector const& reference,
                                                    float min_dist,
                                                    float max_dist) const -> FVector {
-    return ml::get_random_point(reference, min_dist, max_dist);
+    auto const direction{FMath::VRand()};
+    auto const point{ioj::sim::sample_spherical_shell_point({reference.X, reference.Y, reference.Z},
+                                                            {direction.X, direction.Y, direction.Z},
+                                                            min_dist,
+                                                            max_dist,
+                                                            FMath::FRand())};
+    return {point.x, point.y, point.z};
 }
 
 void ATestFlySeekDestroyEvade::move_to_location(float dt, FVector const& location) {

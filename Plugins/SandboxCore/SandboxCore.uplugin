@@ -23,7 +23,7 @@
 		{
 			"Name": "SandboxCore",
 			"Type": "Runtime",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "PreDefault"
 		},
 		{
 			"Name": "SandboxCoreEngine",

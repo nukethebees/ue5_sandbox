@@ -2,18 +2,22 @@
 
 #include "SandboxCore/SandboxCore.h"
 
-#define LOCTEXT_NAMESPACE "FSandboxCoreModule"
+#if defined(SANDBOX_WITH_TRACY)
+#include <tracy/Tracy.hpp>
+#endif
 
 void FSandboxCoreModule::StartupModule() {
-    // This code will execute after your module is loaded into memory; the exact timing is specified
-    // in the .uplugin file per-module
+#if defined(SANDBOX_WITH_TRACY)
+    tracy::StartupProfiler();
+#endif
 }
 
 void FSandboxCoreModule::ShutdownModule() {
-    // This function may be called during shutdown to clean up your module.  For modules that
-    // support dynamic reloading, we call this function before unloading the module.
+#if defined(SANDBOX_WITH_TRACY)
+    if (TracyIsStarted) {
+        tracy::ShutdownProfiler();
+    }
+#endif
 }
-
-#undef LOCTEXT_NAMESPACE
 
 IMPLEMENT_MODULE(FSandboxCoreModule, SandboxCore)

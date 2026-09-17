@@ -1,27 +1,17 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
 using System;
 using System.IO;
 using UnrealBuildTool;
 
-public class SandboxNative : ModuleRules
+public class NativeSimulation : ModuleRules
 {
-    public SandboxNative(ReadOnlyTargetRules Target) : base(Target)
+    public NativeSimulation(ReadOnlyTargetRules Target) : base(Target)
     {
-        PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
-        CppStandard = CppStandardVersion.Latest;
+        Type = ModuleType.External;
 
-        bAllowUETypesInNamespaces = true;
-
-        MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
-
-
-        PublicDependencyModuleNames.AddRange(new string[] {
-            "Core",
+        PublicDependencyModuleNames.AddRange(new string[]
+        {
+            "NativeMemory",
             "SandboxCore",
-        });
-
-        PrivateDependencyModuleNames.AddRange(new string[] {
         });
 
         if (Target.Platform != UnrealTargetPlatform.Win64 ||
@@ -31,39 +21,24 @@ public class SandboxNative : ModuleRules
              Target.bDebugBuildsActuallyUseDebugCRT))
         {
             throw new BuildException(
-                "SandboxNative's native simulation library requires Win64 x64 with the dynamic release CRT.");
+                "NativeSimulation requires Win64 x64 with the dynamic release CRT.");
         }
 
-        string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", ".."));
-        string nativeToolchain = Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN") ?? "clang-cl";
-        PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "simulation", "include"));
+        string repositoryRoot = Path.GetFullPath(
+            Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
+        string nativeToolchain =
+            Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN") ?? "clang-cl";
+        PublicSystemIncludePaths.Add(
+            Path.Combine(repositoryRoot, "native", "simulation", "include"));
         PublicSystemIncludePaths.Add(
             Path.Combine(repositoryRoot, "native", "lispb", "native_soa", "include"));
         PublicSystemIncludePaths.Add(
             Path.Combine(repositoryRoot, "native", "profiling", "include"));
 
-        bool withTracy = Target.Configuration == UnrealTargetConfiguration.Debug ||
-                         Target.Configuration == UnrealTargetConfiguration.DebugGame ||
-                         Target.Configuration == UnrealTargetConfiguration.Development;
-        if (withTracy)
-        {
-            PrivateIncludePaths.Add(
-                Path.Combine(repositoryRoot, "native", "third_party", "tracy", "public"));
-            PrivateDefinitions.AddRange(new string[] {
-                "SANDBOX_WITH_TRACY",
-                "TRACY_ENABLE",
-                "TRACY_IMPORTS",
-                "TRACY_MANUAL_LIFETIME",
-                "TRACY_NO_BROADCAST",
-                "TRACY_NO_CRASH_HANDLER",
-                "TRACY_ON_DEMAND",
-                "TRACY_ONLY_LOCALHOST",
-            });
-        }
-
         if (!Target.bGenerateProjectFiles)
         {
-            string[] nativeLibraries = new string[] {
+            string[] nativeLibraries = new string[]
+            {
                 Path.Combine(
                     repositoryRoot,
                     "Binaries",
@@ -97,7 +72,7 @@ public class SandboxNative : ModuleRules
                 if (!File.Exists(nativeLibrary))
                 {
                     throw new BuildException(
-                        "SandboxNative expected a CMake-built native library at '{0}'. " +
+                        "NativeSimulation expected a CMake-built native library at '{0}'. " +
                         "Build Unreal targets through a repository CMake workflow.",
                         nativeLibrary);
                 }
@@ -105,6 +80,10 @@ public class SandboxNative : ModuleRules
                 PublicAdditionalLibraries.Add(nativeLibrary);
                 ExternalDependencies.Add(nativeLibrary);
             }
+
+            bool withTracy = Target.Configuration == UnrealTargetConfiguration.Debug ||
+                             Target.Configuration == UnrealTargetConfiguration.DebugGame ||
+                             Target.Configuration == UnrealTargetConfiguration.Development;
             if (withTracy)
             {
                 string tracyDirectory = Path.Combine(
@@ -120,16 +99,14 @@ public class SandboxNative : ModuleRules
                 if (!File.Exists(tracyLibrary) || !File.Exists(tracyRuntime))
                 {
                     throw new BuildException(
-                        "SandboxNative expected the CMake-built Tracy library and runtime under '{0}'. " +
+                        "NativeSimulation expected the CMake-built Tracy library and runtime under '{0}'. " +
                         "Build Unreal targets through a repository CMake workflow.",
                         tracyDirectory);
                 }
 
                 PublicAdditionalLibraries.Add(tracyLibrary);
                 PublicDelayLoadDLLs.Add("SandboxTracyClient.dll");
-                RuntimeDependencies.Add(
-                    "$(TargetOutputDir)/SandboxTracyClient.dll",
-                    tracyRuntime);
+                RuntimeDependencies.Add("$(TargetOutputDir)/SandboxTracyClient.dll", tracyRuntime);
                 ExternalDependencies.Add(tracyLibrary);
                 ExternalDependencies.Add(tracyRuntime);
             }

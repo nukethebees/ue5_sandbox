@@ -28,7 +28,7 @@ public class SandboxTests : ModuleRules
             "SandboxCoreEngine",
             "SandboxGameShared",
             "SandboxISMC",
-            "SandboxNative",
+            "NativeSimulation",
             "NativeMemory",
             "SandboxUI",
             "Sandbox",

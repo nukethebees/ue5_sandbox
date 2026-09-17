@@ -17,6 +17,7 @@ public class SGLegacy : ModuleRules
             "SandboxCoreEngine",
             "SandboxGameShared",
             "SpaceGame",
+            "NativeSimulation",
         });
 
         PrivateDependencyModuleNames.AddRange(new string[]
@@ -26,7 +27,6 @@ public class SGLegacy : ModuleRules
             "Niagara",
             "RenderCore",
             "SandboxCore",
-            "SandboxNative",
             "Slate",
             "SlateCore",
             "UMG",

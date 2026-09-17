@@ -15,7 +15,6 @@ public class ShooterGame: ModuleRules
 
         PublicDependencyModuleNames.AddRange(new string[] {
             "SandboxGameShared",
-            "SandboxNative",
             "SandboxCore",
             "SandboxCoreEngine",
             "Core",

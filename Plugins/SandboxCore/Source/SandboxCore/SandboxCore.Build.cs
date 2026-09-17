@@ -110,6 +110,22 @@ public class SandboxCore : ModuleRules
         bool withTracy = Target.Configuration == UnrealTargetConfiguration.Debug ||
                          Target.Configuration == UnrealTargetConfiguration.DebugGame ||
                          Target.Configuration == UnrealTargetConfiguration.Development;
+        if (withTracy)
+        {
+            PrivateIncludePaths.Add(
+                Path.Combine(repositoryRoot, "native", "third_party", "tracy", "public"));
+            PrivateDefinitions.AddRange(new string[]
+            {
+                "SANDBOX_WITH_TRACY",
+                "TRACY_ENABLE",
+                "TRACY_IMPORTS",
+                "TRACY_MANUAL_LIFETIME",
+                "TRACY_NO_BROADCAST",
+                "TRACY_NO_CRASH_HANDLER",
+                "TRACY_ON_DEMAND",
+                "TRACY_ONLY_LOCALHOST",
+            });
+        }
         if (withTracy && !Target.bGenerateProjectFiles)
         {
             string tracyDirectory = Path.Combine(
