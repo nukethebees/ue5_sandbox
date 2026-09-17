@@ -94,7 +94,7 @@ auto snapshot(FMemorySingleEntityData& owner, bool const query_allocator) -> All
     if (owner.capacity() > 0) {
         result.blocks = 1;
         if (query_allocator) {
-            result.usable = FMemory::GetAllocSize(array_columns(owner.get_view()).entity_handles.GetData());
+            result.usable = FMemory::GetAllocSize(array_columns(owner.get_view()).entity_ids.GetData());
         }
     }
     return result;

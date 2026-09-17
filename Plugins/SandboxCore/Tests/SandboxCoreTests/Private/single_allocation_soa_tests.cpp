@@ -191,11 +191,11 @@ TEST_CASE("SandboxCore.SingleAllocation.Every leaf survives repeated coordinated
     int32 growths{};
     for (int32 row{}; row < 20000; ++row) {
         auto const old_capacity{values.capacity()};
-        auto* const old_pointer{array_columns(values.get_view()).entity_handles.GetData()};
+        auto* const old_pointer{array_columns(values.get_view()).entity_ids.GetData()};
         values.add_uninitialised(1);
         CHECK(values.capacity() % 64 == 0);
         if (old_capacity == values.capacity()) {
-            REQUIRE(array_columns(values.get_view()).entity_handles.GetData() == old_pointer);
+            REQUIRE(array_columns(values.get_view()).entity_ids.GetData() == old_pointer);
         } else {
             ++growths;
         }
@@ -224,7 +224,7 @@ TEST_CASE("SandboxCore.SingleAllocation.Default resize reset and shared views") 
     auto view{array_columns(values.get_view())};
     for (int32 index{}; index < values.num(); ++index) {
         CHECK(view.healths[index] == 0);
-        CHECK(view.entity_handles[index].index == -1);
+        CHECK(view.entity_ids[index].value == 0xffffffffu);
         CHECK(view.locations.xs[index] == 0.f);
     }
     view.locations.xs[2] = 12.f;
@@ -248,14 +248,14 @@ TEST_CASE("SandboxCore.SingleAllocation.Default resize reset and shared views") 
     CHECK(array_columns(values.get_view()).healths[3] == 0);
     values.set_num(129);
     CHECK(array_columns(values.get_view()).healths[2] == 42);
-    CHECK(array_columns(values.get_view()).entity_handles[128].index == -1);
+    CHECK(array_columns(values.get_view()).entity_ids[128].value == 0xffffffffu);
     auto const capacity{values.capacity()};
     values.reset();
     CHECK(values.is_empty());
     CHECK(values.capacity() == capacity);
     values.add_defaulted(1);
     CHECK(array_columns(values.get_view()).healths[0] == 0);
-    CHECK(array_columns(values.get_view()).entity_handles[0].index == -1);
+    CHECK(array_columns(values.get_view()).entity_ids[0].value == 0xffffffffu);
     ml::fill(array_columns(values.get_view()).healths, 123);
     CHECK(array_columns(values.get_const_view()).healths[0] == 123);
 }

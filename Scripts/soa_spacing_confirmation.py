@@ -14,14 +14,14 @@ CAPACITIES = (65536, 65600, 75008, 100032, 131072)
 GAPS = (0, 64, 192)
 
 ENTITY_DATA_FIELDS = (
-    "entity_handles", "integral_biases", "float_biases", "tasks",
+    "entity_ids", "integral_biases", "float_biases", "tasks",
     ("locations", "xs", "ys", "zs"),
     ("desired_move_locations", "xs", "ys", "zs"),
     ("aim_directions", "xs", "ys", "zs"),
     ("desired_aiming_directions", "xs", "ys", "zs"),
     ("movement_directions", "xs", "ys", "zs"),
     ("velocities", "xs", "ys", "zs"),
-    "move_distances", "speeds", "teams", "healths", "parent_handles",
+    "move_distances", "speeds", "teams", "healths", "parent_ids",
     ("awareness_scan_countdowns", "counters"),
     ("navigation_update_countdowns", "remaining_ticks", "periods"),
     ("separation_steering", "xs", "ys", "zs"),
@@ -29,7 +29,7 @@ ENTITY_DATA_FIELDS = (
     "avoidance_choice_indices", "avoidance_clear_scan_counts",
     ("attack_reposition_countdowns", "counters"),
     ("attack_cooldowns", "counters"),
-    "target_handles",
+    "target_ids",
     ("target_locations", "xs", "ys", "zs"),
     ("target_velocities", "xs", "ys", "zs"),
     ("target_directions", "xs", "ys", "zs"),

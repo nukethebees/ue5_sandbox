@@ -23,7 +23,7 @@ TEST_CASE("SandboxCore.SingleAllocation.Spacing.Measure", "[benchmark][.]") {
         storage.add_defaulted(live);
         auto view{storage.get_view().columns()};
         single_allocation_benchmarks::initialise(view);
-        describe(view, reinterpret_cast<std::byte*>(view.entity_handles.GetData()), storage.capacity(), storage.allocated_bytes());
+        describe(view, reinterpret_cast<std::byte*>(view.entity_ids.GetData()), storage.capacity(), storage.allocated_bytes());
         measure(view, wide);
     } else {
         EntityData storage;
@@ -50,7 +50,7 @@ TEST_CASE("SandboxCore.SingleAllocation.Spacing.Correctness") {
         single_allocation_benchmarks::initialise(expected);
         SpacedOwner zero{capacity, 17, 192};
         REQUIRE(zero.bytes == reference.allocated_bytes());
-        auto const base{reinterpret_cast<UPTRINT>(expected.entity_handles.GetData())};
+        auto const base{reinterpret_cast<UPTRINT>(expected.entity_ids.GetData())};
         SIZE_T index{};
         each_leaf(expected,
                   [&](auto column) { REQUIRE(reinterpret_cast<UPTRINT>(column.GetData()) - base == zero.columns[index++].offset); });
