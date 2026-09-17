@@ -29,6 +29,7 @@ CONFIGURATIONS = (
 
 CODEGEN_CONFIGURATION = "win-x64-clangcl-debug-unity"
 BENCHMARK_CONFIGURATION = "win-x64-clangcl-release-unity"
+CLANG_TIDY_CONFIGURATION = "win-x64-clangcl-debug-tidy"
 
 
 def generated_header() -> dict[str, Any]:
@@ -127,6 +128,21 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             preset["environment"] = environment
         configure_presets.append(preset)
 
+    configure_presets.append(
+        {
+            "name": CLANG_TIDY_CONFIGURATION,
+            "displayName": "Native Windows x64 clang-cl Debug + clang-tidy",
+            "inherits": "win-x64-clangcl-debug",
+            "binaryDir": "${sourceDir}/out/build/win-x64-clangcl-debug/clang-tidy",
+            "cacheVariables": {
+                "SANDBOX_WITH_CLANG_TIDY": True,
+                "CMAKE_DISABLE_PRECOMPILE_HEADERS": True,
+                "CMAKE_CXX_SCAN_FOR_MODULES": False,
+                "CMAKE_EXPORT_COMPILE_COMMANDS": True,
+            },
+        }
+    )
+
     document["configurePresets"] = configure_presets
     document["buildPresets"] = [
         *(
@@ -147,6 +163,11 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             "name": "generate-code",
             "configurePreset": CODEGEN_CONFIGURATION,
             "targets": ["generate-code"],
+        },
+        {
+            "name": CLANG_TIDY_CONFIGURATION,
+            "configurePreset": CLANG_TIDY_CONFIGURATION,
+            "targets": ["native-clang-tidy"],
         },
     ]
     document["testPresets"] = [
@@ -191,6 +212,13 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             "steps": [
                 {"type": "configure", "name": CODEGEN_CONFIGURATION},
                 {"type": "build", "name": "generate-code"},
+            ],
+        },
+        {
+            "name": CLANG_TIDY_CONFIGURATION,
+            "steps": [
+                {"type": "configure", "name": CLANG_TIDY_CONFIGURATION},
+                {"type": "build", "name": CLANG_TIDY_CONFIGURATION},
             ],
         },
     ]

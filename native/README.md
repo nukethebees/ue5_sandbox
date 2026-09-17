@@ -26,6 +26,8 @@ Use the corresponding `-unity` preset for faster full builds, or an `-msvc` pres
 Native tests and tools use static Tracy; Unreal-enabled builds additionally publish the shared-Tracy
 simulation artifacts below `Binaries/Native/`.
 
+See [Native clang-tidy](../docs/clang-tidy.md) for the opt-in clang-cl tidy workflow.
+
 Native dependencies are pinned submodules under `native/third_party` and are initialized by
 `csetup`. For a manual clone setup, initialize the required submodules with Git before configuring.
 

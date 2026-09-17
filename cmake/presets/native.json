@@ -181,6 +181,18 @@
         "CMAKE_UNITY_BUILD": true,
         "CMAKE_UNITY_BUILD_BATCH_SIZE": "32"
       }
+    },
+    {
+      "name": "win-x64-clangcl-debug-tidy",
+      "displayName": "Native Windows x64 clang-cl Debug + clang-tidy",
+      "inherits": "win-x64-clangcl-debug",
+      "binaryDir": "${sourceDir}/out/build/win-x64-clangcl-debug/clang-tidy",
+      "cacheVariables": {
+        "SANDBOX_WITH_CLANG_TIDY": true,
+        "CMAKE_DISABLE_PRECOMPILE_HEADERS": true,
+        "CMAKE_CXX_SCAN_FOR_MODULES": false,
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true
+      }
     }
   ],
   "buildPresets": [
@@ -247,6 +259,13 @@
       "configurePreset": "win-x64-clangcl-debug-unity",
       "targets": [
         "generate-code"
+      ]
+    },
+    {
+      "name": "win-x64-clangcl-debug-tidy",
+      "configurePreset": "win-x64-clangcl-debug-tidy",
+      "targets": [
+        "native-clang-tidy"
       ]
     }
   ],
@@ -626,6 +645,19 @@
         {
           "type": "build",
           "name": "generate-code"
+        }
+      ]
+    },
+    {
+      "name": "win-x64-clangcl-debug-tidy",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "win-x64-clangcl-debug-tidy"
+        },
+        {
+          "type": "build",
+          "name": "win-x64-clangcl-debug-tidy"
         }
       ]
     }
