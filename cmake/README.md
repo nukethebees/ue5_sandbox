@@ -19,6 +19,11 @@ build/packaging integration, and jobserver claims. See [Build and test](../docs/
 for the supported workflows, [Benchmarks](../docs/benchmarks.md) for exclusive measurements, and
 [Profiling](../docs/profiling.md) for native level benchmark capture.
 
+Unreal target registration is owned beside the Unreal integration: `unreal/build/` defines the
+editor, game, launch, packaging, and worktree-preparation targets, while `unreal/maintenance/`
+owns project-file generation and Live Coding validation. Reusable Unreal target and test helpers
+remain in `cmake/unreal.cmake`.
+
 Native preset names encode platform, architecture, compiler, configuration, and optional features.
 The normal Unreal presets build `dev-core` (`editor`, `core-tests`, and `native-tests`); select a
 specific target with `cmake --build --preset <preset> --target <target>` when an aggregate workflow
