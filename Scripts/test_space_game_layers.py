@@ -22,11 +22,11 @@ class LayerChecks(unittest.TestCase):
     def test_dependency_lists_and_single_additions(self) -> None:
         self.assertEqual(
             dependencies('''
-                PublicDependencyModuleNames.AddRange(new string[] { "Core", "SGCollision" });
+                PublicDependencyModuleNames.AddRange(new string[] { "Core", "NativeSimulation" });
                 PrivateDependencyModuleNames.Add("SpaceGamePresentation");
                 // PrivateDependencyModuleNames.Add("Ignored");
             '''),
-            {"Core", "SGCollision", "SpaceGamePresentation"},
+            {"Core", "NativeSimulation", "SpaceGamePresentation"},
         )
 
 

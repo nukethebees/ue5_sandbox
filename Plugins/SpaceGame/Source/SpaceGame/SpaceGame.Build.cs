@@ -35,7 +35,6 @@ public class SpaceGame : ModuleRules
             "SlateCore",
             "SpaceGameRendering",
             "UMG",
-            "SGCollision",
         });
 
         PrivateDependencyModuleNames.AddRange(new string[]

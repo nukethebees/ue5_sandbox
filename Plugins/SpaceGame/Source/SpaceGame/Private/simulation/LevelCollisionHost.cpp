@@ -1,9 +1,8 @@
 #include "SpaceGame/simulation/LevelCollisionHost.h"
-#include <SGCollision/world_aabbs.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <ioj/sim/world_aabb_operations.h>
-#include <SGCollision/mesh_data_extraction.h>
+#include <ioj/sim/world_aabbs.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGameSimulation/entities/TestEntityType.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
@@ -13,9 +12,12 @@
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/PrimitiveComponent.h>
+#include <Engine/EngineTypes.h>
 #include <Engine/StaticMesh.h>
 #include <EngineUtils.h>
 #include <GameFramework/Actor.h>
+#include <Math/Transform.h>
+#include <PhysicsEngine/AggregateGeom.h>
 #include <PhysicsEngine/BodySetup.h>
 
 namespace ml::ioj {
@@ -26,6 +28,69 @@ static_assert(FEntityAABBs::capital_ship_index == std::to_underlying(ETestEntity
 static_assert(FEntityAABBs::fighter_index == std::to_underlying(ETestEntityType::Fighter));
 static_assert(FEntityAABBs::tube_spinner_index == std::to_underlying(ETestEntityType::TubeSpinner));
 static_assert(FEntityAABBs::num_rows == std::to_underlying(ETestEntityType::COUNT));
+
+auto get_aabb(FKAggregateGeom const& geometry, FTransform const& local_to_world) -> FBox {
+    auto const scale{local_to_world.GetScale3D()};
+    auto world_transform{local_to_world};
+    world_transform.RemoveScaling();
+
+    FBox aabb{ForceInit};
+
+    for (auto const& collision_sphere : geometry.SphereElems) {
+        if (!CollisionEnabledHasQuery(collision_sphere.GetCollisionEnabled())) {
+            continue;
+        }
+
+        auto const scaled_sphere{collision_sphere.GetFinalScaled(scale, FTransform::Identity)};
+        auto const centre{world_transform.TransformPosition(scaled_sphere.Center)};
+        auto const extent{FVector{scaled_sphere.Radius}};
+        aabb += FBox{centre - extent, centre + extent};
+    }
+
+    for (auto const& collision_box : geometry.BoxElems) {
+        if (!CollisionEnabledHasQuery(collision_box.GetCollisionEnabled())) {
+            continue;
+        }
+
+        auto scaled_box{collision_box.GetFinalScaled(scale, FTransform::Identity)};
+        auto box_transform{scaled_box.GetTransform()};
+        box_transform.SetScale3D(FVector::OneVector);
+        scaled_box.SetTransform(box_transform);
+        aabb += scaled_box.CalcAABB(world_transform, 1.f);
+    }
+
+    for (auto const& collision_capsule : geometry.SphylElems) {
+        if (!CollisionEnabledHasQuery(collision_capsule.GetCollisionEnabled())) {
+            continue;
+        }
+
+        auto const scaled_capsule{collision_capsule.GetFinalScaled(scale, FTransform::Identity)};
+        aabb += scaled_capsule.CalcAABB(world_transform, 1.f);
+    }
+
+    for (auto const& collision_convex : geometry.ConvexElems) {
+        if (!CollisionEnabledHasQuery(collision_convex.GetCollisionEnabled())) {
+            continue;
+        }
+
+        aabb += collision_convex.CalcAABB(world_transform, scale);
+    }
+
+    return aabb;
+}
+
+auto get_aabb(UStaticMesh const& mesh) -> FBox {
+    auto const* body_setup{mesh.GetBodySetup()};
+    if (body_setup == nullptr) {
+        UE_LOG(LogTemp,
+               Error,
+               TEXT("Cannot extract collision AABB from static mesh %s: mesh has no body setup"),
+               *mesh.GetName());
+        return FBox{ForceInit};
+    }
+
+    return get_aabb(body_setup->AggGeom, FTransform::Identity);
+}
 
 void clear_aabb(FEntityAABBs& aabbs, int32 const index) {
     aabbs.set_centre(index, FVector3f::ZeroVector);
@@ -43,7 +108,7 @@ void set_mesh_aabb(FEntityAABBs& aabbs,
         return;
     }
 
-    auto const aabb{ml::get_aabb(*mesh)};
+    auto const aabb{get_aabb(*mesh)};
     if (!aabb.IsValid) {
         errors.add(FString::Printf(
             TEXT("Cannot initialise collision bounds for %s: mesh %s has no query-enabled "
@@ -116,7 +181,7 @@ auto extract_static_collision_component(
         return {};
     }
 
-    auto const aabb{ml::get_aabb(body_setup->AggGeom, component.GetComponentTransform())};
+    auto const aabb{get_aabb(body_setup->AggGeom, component.GetComponentTransform())};
     if (!aabb.IsValid) {
         rejection_reason = TEXT("component has no query-enabled simple collision geometry");
         return {};
@@ -174,7 +239,7 @@ auto FLevelCollisionHost::initialise_static_geometry(
     }
     static_collision_sources_.reset();
 
-    WorldAABBs static_aabbs;
+    ::ioj::sim::collision::WorldAABBs static_aabbs;
     int32 unexpected_actor_count{};
     int32 unsupported_component_count{};
 

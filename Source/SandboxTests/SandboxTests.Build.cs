@@ -32,7 +32,6 @@ public class SandboxTests : ModuleRules
             "NativeMemory",
             "SandboxUI",
             "Sandbox",
-            "SGCollision",
             "SpaceGame",
             "SpaceGameSimulation",
             "SpaceGamePresentation",

@@ -1,5 +1,5 @@
 #pragma once
-#include <SGCollision/world_aabbs.h>
+#include <ioj/sim/world_aabbs.h>
 #include <SpaceGameSimulation/support/FixedTickLoop.h>
 
 #include <ioj/sim/level_sim.h>
@@ -49,7 +49,7 @@ SPACEGAME_API auto
                                     FFixedTickLoop const& clock_settings,
                                     FLevelDefinition const& definition,
                                     TOptional<::ioj::sim::player::PlayerSpawnData> player = NullOpt,
-                                    WorldAABBs static_bounds = {},
+                                    ::ioj::sim::collision::WorldAABBs static_bounds = {},
                                     UStaticMesh const* player_collision_mesh = nullptr)
         -> FLevelSimBuildResult;
 

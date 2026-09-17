@@ -8,7 +8,7 @@ import sys
 SIMULATION = "SpaceGameSimulation"
 ALLOWED_DEPENDENCIES = {
     "Core", "CoreUObject", "Engine", "TraceLog", "NativeMemory",
-    "NativeSimulation", "SandboxCore", "SandboxCoreEngine", "SGCollision",
+    "NativeSimulation", "SandboxCore", "SandboxCoreEngine",
 }
 FORBIDDEN = re.compile(
     r"presentation|SpaceGameRendering|Niagara|SandboxISMC|SandboxUI|"

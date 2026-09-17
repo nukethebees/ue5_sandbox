@@ -8,7 +8,7 @@ public class SpaceGamePresentation : ModuleRules
         CppStandard = CppStandardVersion.Latest;
         bAllowUETypesInNamespaces = true;
         MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
-        PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "NativeSimulation", "SpaceGameSimulation", "SGCollision", "SandboxCore", "SandboxCoreEngine", "SandboxGameShared", "SandboxISMC", "SandboxUI", "SpaceGameRendering", "CommonUI", "CommonInput", "SlateCore", "UMG", "DeveloperSettings" });
+        PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "NativeSimulation", "SpaceGameSimulation", "SandboxCore", "SandboxCoreEngine", "SandboxGameShared", "SandboxISMC", "SandboxUI", "SpaceGameRendering", "CommonUI", "CommonInput", "SlateCore", "UMG", "DeveloperSettings" });
         PrivateDependencyModuleNames.AddRange(new string[] { "GameplayTags", "Niagara", "Slate", "RenderCore", "Projects", "InputCore" });
     }
 }

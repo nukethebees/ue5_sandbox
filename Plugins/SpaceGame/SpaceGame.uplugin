@@ -61,11 +61,6 @@
 			"LoadingPhase": "Default"
 		},
 		{
-			"Name": "SGCollision",
-			"Type": "Runtime",
-			"LoadingPhase": "Default"
-		},
-		{
 			"Name": "SpaceGameS7",
 			"Type": "Runtime",
 			"LoadingPhase": "PreDefault"

@@ -265,7 +265,7 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
                                      FFixedTickLoop const& clock_settings,
                                      FLevelDefinition const& definition,
                                      TOptional<::ioj::sim::player::PlayerSpawnData> player,
-                                     WorldAABBs static_bounds,
+                                     ::ioj::sim::collision::WorldAABBs static_bounds,
                                      UStaticMesh const* const player_collision_mesh)
     -> FLevelSimBuildResult {
     auto const validation{validate_level(definition)};
