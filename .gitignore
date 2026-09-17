@@ -36,6 +36,9 @@
 *.xcworkspace
 *.sln
 *.slnx
+!tools/Tools.slnx
+tools/**/bin/
+tools/**/obj/
 *.suo
 *.opensdf
 *.sdf

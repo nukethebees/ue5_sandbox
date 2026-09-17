@@ -1,46 +1,24 @@
 $script:dev_project_root = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 
+function Get-DevGitToolsPath {
+    $git_tools_path = Join-Path $script:dev_project_root 'tools\GitTools\bin\Debug\net10.0\GitTools.exe'
+
+    if (-not (Test-Path -LiteralPath $git_tools_path -PathType Leaf)) {
+        throw "GitTools was not found: $git_tools_path. Run 'ctools' to build the C# developer tools."
+    }
+
+    $git_tools_path
+}
+
 function Get-DevWorktree {
-    $worktree_lines = & git -C $script:dev_project_root worktree list --porcelain
+    $git_tools_path = Get-DevGitToolsPath
+    $worktree_json = & $git_tools_path worktree list --root $script:dev_project_root
 
     if ($LASTEXITCODE -ne 0) {
-        throw "Unable to discover Git worktrees from '$script:dev_project_root'."
+        throw "Unable to discover Git worktrees from '$script:dev_project_root': GitTools exited with code $LASTEXITCODE."
     }
 
-    $current_worktree = $null
-
-    foreach ($line in $worktree_lines) {
-        if ($line.StartsWith('worktree ')) {
-            if ($null -ne $current_worktree) {
-                [PSCustomObject]$current_worktree
-            }
-
-            $worktree_path = $line.Substring('worktree '.Length)
-            $current_worktree = [ordered]@{
-                Name = Split-Path -Leaf $worktree_path
-                Path = $worktree_path
-                Branch = $null
-            }
-
-            continue
-        }
-
-        if ($null -eq $current_worktree -or -not $line.StartsWith('branch ')) {
-            continue
-        }
-
-        $branch = $line.Substring('branch '.Length)
-
-        if ($branch.StartsWith('refs/heads/')) {
-            $branch = $branch.Substring('refs/heads/'.Length)
-        }
-
-        $current_worktree.Branch = $branch
-    }
-
-    if ($null -ne $current_worktree) {
-        [PSCustomObject]$current_worktree
-    }
+    $worktree_json | ConvertFrom-Json
 }
 
 function Get-DevPlugin {
@@ -72,6 +50,9 @@ Commands:
   cplugin <name>    Change to a project plugin directory.
   ctests            Change to Source\SandboxTests.
 d=  reset-devs        Hard reset locally checkoutable devN branches to dev.
+
+Build commands:
+  ctools             Build the standalone C# developer tools.
 
 Unreal build commands:
   cbuild [config ...]      Build the project with one or more CMake workflows in order.

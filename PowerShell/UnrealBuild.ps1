@@ -270,6 +270,25 @@ function cbuild {
     }
 }
 
+function ctools {
+    $tools_solution = Join-Path $script:dev_project_root 'tools\Tools.slnx'
+    if (-not (Test-Path -LiteralPath $tools_solution -PathType Leaf)) {
+        throw "C# tools solution was not found: $tools_solution"
+    }
+
+    Push-Location -LiteralPath $script:dev_project_root
+    try {
+        Write-Host 'Building standalone C# developer tools.'
+        & dotnet build $tools_solution
+
+        if ($LASTEXITCODE -ne 0) {
+            throw "C# tools build exited with code $LASTEXITCODE."
+        }
+    } finally {
+        Pop-Location
+    }
+}
+
 function csetup {
     param(
         [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
@@ -290,6 +309,7 @@ function csetup {
     Push-Location -LiteralPath $script:dev_project_root
     try {
         Update-WorktreeSubmodules
+        ctools
 
         $preset_generator = Join-Path $script:dev_project_root 'cmake\presets\generate.py'
         if (-not (Test-Path -LiteralPath $preset_generator -PathType Leaf)) {

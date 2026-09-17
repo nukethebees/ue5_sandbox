@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="GitTools/GitTools.csproj" />
+  <Project Path="GitTools.Tests/GitTools.Tests.csproj" />
+</Solution>
