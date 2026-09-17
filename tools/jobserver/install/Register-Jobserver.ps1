@@ -4,6 +4,9 @@ param(
     [string]$DaemonPath
 )
 
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+
 $resolvedDaemon = (Resolve-Path -LiteralPath $DaemonPath -ErrorAction Stop).Path
 $taskName = 'NukeTheBeesJobserver'
 $action = New-ScheduledTaskAction -Execute $resolvedDaemon

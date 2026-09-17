@@ -20,9 +20,10 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$repo = Split-Path $PSScriptRoot -Parent
-$levelPath = (Resolve-Path -LiteralPath $Level).Path
+Set-StrictMode -Version Latest
 
+$repo = [IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
+$levelPath = (Resolve-Path -LiteralPath $Level).Path
 function ConvertTo-FighterStressCaps {
     param(
         [string] $Value,
@@ -76,10 +77,15 @@ if (-not $SkipBuild) {
     }
 }
 
+$secondsText = $Seconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
+$warmupSecondsText = $WarmupSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
+$saturationTimeoutSecondsText = $SaturationTimeoutSeconds.ToString(
+    'R',
+    [System.Globalization.CultureInfo]::InvariantCulture)
+
 if (-not $env:NUKETHEBEES_JOBSERVER_JOB) {
     $jobserver = Join-Path $env:LOCALAPPDATA 'NukeTheBees/jobserver/bin/jobserver.exe'
     $powershell = (Get-Process -Id $PID).Path
-    $secondsText = $Seconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
     $activityArguments = @(
         'run'
         '--name'
@@ -113,9 +119,9 @@ if (-not $env:NUKETHEBEES_JOBSERVER_JOB) {
             '-FighterStressCap'
             $fighterStressCapValue
             '-WarmupSeconds'
-            $WarmupSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
+            $warmupSecondsText
             '-SaturationTimeoutSeconds'
-            $SaturationTimeoutSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
+            $saturationTimeoutSecondsText
         )
     }
     if ($fighterStressCapValues.Count -gt 0) {
@@ -123,9 +129,9 @@ if (-not $env:NUKETHEBEES_JOBSERVER_JOB) {
         $activityArguments += ($fighterStressCapValues -join ',')
         $activityArguments += @(
             '-WarmupSeconds'
-            $WarmupSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
+            $warmupSecondsText
             '-SaturationTimeoutSeconds'
-            $SaturationTimeoutSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
+            $saturationTimeoutSecondsText
         )
     }
     & $jobserver @activityArguments
@@ -133,22 +139,21 @@ if (-not $env:NUKETHEBEES_JOBSERVER_JOB) {
 }
 
 $executable = Join-Path $repo "out/build/$BuildPreset/bin/native-simulation-benchmark.exe"
-$secondsText = $Seconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
 $arguments = @('--level', $levelPath, '--seconds', $secondsText, '--game-speed', $GameSpeed)
 if ($Telemetry) { $arguments += '--telemetry' }
 if ($null -ne $fighterStressCapValue) {
     $arguments += @(
         '--fighter-stress-cap', $fighterStressCapValue,
-        '--warmup-seconds', $WarmupSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture),
-        '--saturation-timeout-seconds', $SaturationTimeoutSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
+        '--warmup-seconds', $warmupSecondsText,
+        '--saturation-timeout-seconds', $saturationTimeoutSecondsText
     )
 }
 if ($fighterStressCapValues.Count -gt 0) {
     $arguments += '--fighter-stress-caps'
     $arguments += $fighterStressCapValues
     $arguments += @(
-        '--warmup-seconds', $WarmupSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture),
-        '--saturation-timeout-seconds', $SaturationTimeoutSeconds.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
+        '--warmup-seconds', $warmupSecondsText,
+        '--saturation-timeout-seconds', $saturationTimeoutSecondsText
     )
 }
 & $executable @arguments

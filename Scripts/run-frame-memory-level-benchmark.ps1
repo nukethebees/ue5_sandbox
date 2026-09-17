@@ -17,7 +17,7 @@ $arguments = @{
     Seconds = $Seconds
     GameSpeed = 100
     BuildPreset = 'frame-memory-level-benchmark'
-    SkipBuild = $SkipBuild
+    SkipBuild = $SkipBuild.IsPresent
 }
 
 $output = @(& $runner @arguments)
@@ -40,8 +40,8 @@ if ($result.workload.completed_ticks -ne $result.workload.requested_ticks) {
 if ($result.workload.game_speed -ne 100) {
     throw "Unexpected frame-memory benchmark game speed: $($result.workload.game_speed)"
 }
-$expectedAdvanceCalls = $result.workload.requested_ticks
-if ($result.workload.advance_calls -ne $expectedAdvanceCalls) {
+$expected_advance_calls = $result.workload.requested_ticks
+if ($result.workload.advance_calls -ne $expected_advance_calls) {
     throw "Unexpected deterministic advance count: $($result.workload.advance_calls)"
 }
 if ($result.memory.frame_overflow_count -ne 0) {
