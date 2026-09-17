@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/line_traces.h>
@@ -15,6 +16,7 @@
 #include <utility>
 
 namespace ioj::sim {
+class AgentAccessor;
 struct SpatialQueryManager;
 }
 

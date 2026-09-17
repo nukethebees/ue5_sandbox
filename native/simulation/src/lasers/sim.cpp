@@ -1,6 +1,5 @@
 #include "ioj/sim/lasers/sim.h"
 #include <cstdint>
-#include <optional>
 #include <span>
 #include <vector>
 

@@ -2,12 +2,10 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
-#include <format>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/sim_config.h>
 #include <optional>
 #include <sandbox/core/countdown.h>
-#include <sandbox/core/diagnostics.h>
 #include <span>
 #include <vector>
 

@@ -7,7 +7,6 @@
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/deterministic_bias.h>
 #include <numeric>
-#include <optional>
 #include <sandbox/core/countdown.h>
 #include <sandbox/core/fixed_array.h>
 #include <sandbox/core/periodic_tick_countdown.h>

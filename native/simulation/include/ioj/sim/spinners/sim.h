@@ -1,7 +1,6 @@
 #pragma once
 #include <cstdint>
 #include <ioj/sim/system_read_views.h>
-#include <optional>
 #include <span>
 #include <vector>
 
@@ -12,12 +11,10 @@
 #include <ioj/sim/spinner_entity_data.h>
 
 #include <memory_resource>
-#include <vector>
 
 namespace ioj::sim {
 struct LevelSim;
 class LevelSpawnManager;
-struct SpinnerSimConfig;
 class EntityLedger;
 }
 

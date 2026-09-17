@@ -1,12 +1,8 @@
 #pragma once
-#include <cassert>
-#include <cmath>
 #include <cstdint>
 #include <ioj/sim/player/player_read_view.h>
 #include <ioj/sim/ship_health.h>
 #include <ioj/sim/transform3d.h>
-#include <optional>
-#include <sandbox/core/diagnostics.h>
 #include <sandbox/core/vector2d.h>
 #include <span>
 #include <vector>
@@ -25,8 +21,6 @@
 
 namespace ioj::sim {
 struct LevelSim;
-struct EntityDeathInfo;
-struct PlayerSimConfig;
 class EntityLedger;
 class CombatEvents;
 struct SpatialQueryManager;

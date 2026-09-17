@@ -9,6 +9,7 @@
 #include <ioj/sim/spinner_entity_data.h>
 #include <ioj/sim/turret_entity_data.h>
 
+#include <cstdint>
 #include <span>
 
 namespace ioj::sim {

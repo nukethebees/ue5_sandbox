@@ -1,14 +1,9 @@
 #pragma once
-#include <algorithm>
-#include <cassert>
 #include <cstdint>
-#include <format>
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/capital_spawn_data.h>
 #include <ioj/sim/sim_config.h>
 #include <optional>
-#include <sandbox/core/countdown.h>
-#include <sandbox/core/diagnostics.h>
 #include <span>
 #include <vector>
 
@@ -22,12 +17,9 @@
 #include <ioj/sim/index_span.h>
 
 #include <memory_resource>
-#include <optional>
-#include <vector>
 
 namespace ioj::sim {
 struct LevelSim;
-struct CapitalShipSimConfig;
 class EntityLedger;
 class CombatEvents;
 class LevelSpawnManager;

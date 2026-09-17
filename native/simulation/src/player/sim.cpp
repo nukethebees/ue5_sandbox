@@ -5,18 +5,15 @@
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/ship_health.h>
 #include <ioj/sim/transform3d.h>
-#include <optional>
 #include <sandbox/core/diagnostics.h>
 #include <sandbox/core/vector2d.h>
 #include <span>
-#include <vector>
 
 #include <algorithm>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entity_death_info.h>
 #include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/lasers/sim.h>
-#include <ioj/sim/ship_health.h>
 #include <ioj/sim/spatial_query_manager.h>
 
 #include <array>

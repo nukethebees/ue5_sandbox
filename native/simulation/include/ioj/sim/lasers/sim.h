@@ -1,7 +1,6 @@
 #pragma once
 #include <cstdint>
 #include <ioj/sim/system_read_views.h>
-#include <optional>
 #include <span>
 #include <vector>
 
@@ -15,7 +14,6 @@
 #include <memory_resource>
 
 namespace ioj::sim {
-struct LevelSim;
 class CombatEvents;
 struct SpatialQueryManager;
 }

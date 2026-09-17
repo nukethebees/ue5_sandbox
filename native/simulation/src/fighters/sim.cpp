@@ -9,7 +9,6 @@
 #include <ioj/sim/rotator_math.h>
 #include <ioj/sim/vector_operations.h>
 #include <limits>
-#include <optional>
 #include <sandbox/core/countdown.h>
 #include <sandbox/core/diagnostics.h>
 #include <sandbox/core/periodic_tick_countdown.h>
@@ -34,7 +33,6 @@
 #include <sandbox/core/frame_array.h>
 #include <sandbox/core/generated/array_math_kernels.h>
 #include <sandbox/core/projectile_intercept.h>
-#include <sandbox/core/vector_normalization.h>
 
 namespace ioj::sim::fighters {
 namespace {

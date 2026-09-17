@@ -1,10 +1,11 @@
 #pragma once
+#include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/fighter_navigation.h>
 #include <ioj/sim/fighter_navigation_scratch.h>
 #include <ioj/sim/navigation_telemetry.h>
-#include <optional>
 #include <span>
 #include <vector>
 
@@ -28,7 +29,6 @@
 #include <memory_resource>
 
 namespace ioj::sim {
-struct LevelSim;
 class EntityLedger;
 class CombatEvents;
 struct SpatialQueryManager;

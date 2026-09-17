@@ -4,7 +4,10 @@
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/sim_config.h>
 
+#include <cstdint>
+
 namespace ioj::sim {
+class AgentAccessor;
 class CombatEvents;
 
 struct OverlapHandler {

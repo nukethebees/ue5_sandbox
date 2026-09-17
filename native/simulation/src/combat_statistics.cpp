@@ -2,7 +2,6 @@
 
 #include <cassert>
 #include <numeric>
-#include <utility>
 
 namespace ioj::sim {
 namespace {

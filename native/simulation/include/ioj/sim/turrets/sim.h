@@ -3,7 +3,6 @@
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/system_read_views.h>
 #include <ioj/sim/turret_spawn_data.h>
-#include <optional>
 #include <span>
 #include <vector>
 
@@ -18,7 +17,6 @@
 
 namespace ioj::sim {
 struct LevelSim;
-struct TurretSimConfig;
 class EntityLedger;
 class CombatEvents;
 class LevelSpawnManager;

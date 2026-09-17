@@ -14,6 +14,10 @@
 
 #include <vector>
 
+namespace ioj::sim {
+class AgentAccessor;
+}
+
 namespace ioj::sim::collision {
 
 struct CollisionSystem {
