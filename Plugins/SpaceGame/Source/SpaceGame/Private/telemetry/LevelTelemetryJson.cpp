@@ -3,6 +3,8 @@
 #include <SpaceGameSimulation/missions/NativeMissionTypes.h>
 #include <SpaceGameSimulation/telemetry/LevelTelemetryRunEndReason.h>
 
+#include <ioj/sim/telemetry/level_telemetry_json_validation.h>
+
 #include <SandboxCore/container_ops.h>
 
 #include <Dom/JsonObject.h>
@@ -11,6 +13,8 @@
 #include <Misc/Paths.h>
 #include <Serialization/JsonSerializer.h>
 #include <Serialization/JsonWriter.h>
+
+#include <type_traits>
 
 namespace {
 
@@ -172,6 +176,35 @@ auto required_number(FJsonObject const& source, TCHAR const* const field, FStrin
     return result;
 }
 
+auto required_number(TSharedPtr<FJsonValue> const& source, FString const& path)
+    -> std::expected<double, FString> {
+    double result{};
+    if (!source.IsValid() || !source->TryGetNumber(result) || !FMath::IsFinite(result)) {
+        return std::unexpected{
+            error_at(path, TEXT("required finite number is missing or invalid"))};
+    }
+    return result;
+}
+
+template <typename Integer>
+auto number_to_integer(double const value, FString const& path) -> std::expected<Integer, FString> {
+    auto const native_path{std::string{TCHAR_TO_UTF8(*path)}};
+    if constexpr (std::is_same_v<Integer, int32>) {
+        auto const parsed{::ioj::sim::telemetry::parse_json_int32(value, native_path)};
+        if (parsed) {
+            return *parsed;
+        }
+        return std::unexpected{UTF8_TO_TCHAR(parsed.error().c_str())};
+    } else {
+        static_assert(std::is_same_v<Integer, uint64>);
+        auto const parsed{::ioj::sim::telemetry::parse_json_uint64(value, native_path)};
+        if (parsed) {
+            return *parsed;
+        }
+        return std::unexpected{UTF8_TO_TCHAR(parsed.error().c_str())};
+    }
+}
+
 template <typename Integer>
 auto required_integer(FJsonObject const& source, TCHAR const* const field, FString const& path)
     -> std::expected<Integer, FString> {
@@ -179,16 +212,29 @@ auto required_integer(FJsonObject const& source, TCHAR const* const field, FStri
     if (!number) {
         return std::unexpected{number.error()};
     }
-    auto const value{*number};
-    auto const minimum{static_cast<double>(std::numeric_limits<Integer>::lowest())};
-    auto const maximum{static_cast<double>(std::numeric_limits<Integer>::max())};
-    auto const above_maximum{std::is_same_v<Integer, uint64> ? value >= 18446744073709551616.0
-                                                             : value > maximum};
-    if (FMath::TruncToDouble(value) != value || value < minimum || above_maximum) {
-        return std::unexpected{
-            error_at(path, TEXT("number is outside the required integer range"))};
+    auto const parsed{number_to_integer<Integer>(*number, path)};
+    if (!parsed) {
+        return std::unexpected{parsed.error()};
     }
-    return static_cast<Integer>(value);
+    return *parsed;
+}
+
+template <typename Integer>
+auto optional_integer(FJsonObject const& source, TCHAR const* const field, FString const& path)
+    -> std::expected<std::optional<Integer>, FString> {
+    auto const* value{source.Values.Find(field)};
+    if (!value) {
+        return std::optional<Integer>{};
+    }
+    auto const number{required_number(*value, path)};
+    if (!number) {
+        return std::unexpected{number.error()};
+    }
+    auto const parsed{number_to_integer<Integer>(*number, path)};
+    if (!parsed) {
+        return std::unexpected{parsed.error()};
+    }
+    return std::optional<Integer>{*parsed};
 }
 
 template <typename Counts>
@@ -210,13 +256,24 @@ auto parse_flat_counts(FJsonObject const& source,
     int32 index{};
     for (auto& row : output) {
         for (auto& cell : row) {
-            auto const value{(*values)[index++]->AsNumber()};
-            if (!FMath::IsFinite(value) || value < 0.0) {
-                return std::unexpected{
-                    error_at(path, TEXT("values must be finite and nonnegative"))};
+            auto const value_path{FString::Printf(TEXT("%s[%d]"), *path, index++)};
+            auto const value{required_number((*values)[index - 1], value_path)};
+            if (!value) {
+                return std::unexpected{value.error()};
+            }
+            if (*value < 0.0) {
+                return std::unexpected{error_at(value_path, TEXT("value must be nonnegative"))};
             }
             using Value = std::remove_cvref_t<decltype(cell)>;
-            cell = static_cast<Value>(value);
+            if constexpr (std::is_integral_v<Value>) {
+                auto const parsed{number_to_integer<Value>(*value, value_path)};
+                if (!parsed) {
+                    return std::unexpected{parsed.error()};
+                }
+                cell = *parsed;
+            } else {
+                cell = static_cast<Value>(*value);
+            }
         }
     }
     return {};
@@ -268,36 +325,34 @@ auto parse_tick_series(FJsonObject const& parent,
     output.reserve(ticks->Num());
     uint64 previous_tick{};
     for (int32 index{}; index < ticks->Num(); ++index) {
-        double tick_number{};
-        double value_number{};
-        if (!(*ticks)[index].IsValid() || !(*ticks)[index]->TryGetNumber(tick_number) ||
-            !FMath::IsFinite(tick_number) || FMath::TruncToDouble(tick_number) != tick_number ||
-            tick_number < 0.0 || tick_number >= 18446744073709551616.0) {
-            return std::unexpected{error_at(path, TEXT("tick coordinate is not a valid uint64"))};
+        auto const tick_path{FString::Printf(TEXT("%s.ticks[%d]"), *path, index)};
+        auto const tick_number{required_number((*ticks)[index], tick_path)};
+        if (!tick_number) {
+            return std::unexpected{tick_number.error()};
         }
-        auto const tick{static_cast<uint64>(tick_number)};
-        if (index > 0 && tick <= previous_tick) {
+        auto const tick{number_to_integer<uint64>(*tick_number, tick_path)};
+        if (!tick) {
+            return std::unexpected{tick.error()};
+        }
+        if (index > 0 && *tick <= previous_tick) {
             return std::unexpected{
-                error_at(path, TEXT("tick coordinates must be strictly increasing"))};
+                error_at(tick_path, TEXT("tick coordinates must be strictly increasing"))};
         }
-        if (!(*values)[index].IsValid() || !(*values)[index]->TryGetNumber(value_number) ||
-            !FMath::IsFinite(value_number)) {
-            return std::unexpected{error_at(path, TEXT("series value is not finite"))};
+        auto const value_path{FString::Printf(TEXT("%s.values[%d]"), *path, index)};
+        auto const value_number{required_number((*values)[index], value_path)};
+        if (!value_number) {
+            return std::unexpected{value_number.error()};
         }
         if constexpr (std::is_integral_v<Value>) {
-            auto const above_maximum{
-                std::is_same_v<Value, uint64>
-                    ? value_number >= 18446744073709551616.0
-                    : value_number > static_cast<double>(std::numeric_limits<Value>::max())};
-            if (FMath::TruncToDouble(value_number) != value_number ||
-                value_number < static_cast<double>(std::numeric_limits<Value>::lowest()) ||
-                above_maximum) {
-                return std::unexpected{
-                    error_at(path, TEXT("series value is outside its integer range"))};
+            auto const value{number_to_integer<Value>(*value_number, value_path)};
+            if (!value) {
+                return std::unexpected{value.error()};
             }
+            output.add(*tick, *value);
+        } else {
+            output.add(*tick, static_cast<Value>(*value_number));
         }
-        output.add(tick, static_cast<Value>(value_number));
-        previous_tick = tick;
+        previous_tick = *tick;
     }
     return {};
 }
@@ -323,6 +378,261 @@ auto parse_serialized_enum(FString const& value, FString const& path)
     }
     return std::unexpected{
         error_at(path, FString::Printf(TEXT("unknown enum value '%s'"), *value))};
+}
+
+template <typename Integer>
+auto validate_serialized_integer(Integer const value, FString const& path, bool const nonnegative)
+    -> std::expected<void, FString> {
+    static_assert(std::is_integral_v<Integer>);
+
+    if constexpr (std::is_signed_v<Integer>) {
+        if (nonnegative && value < 0) {
+            return std::unexpected{error_at(path, TEXT("value must be nonnegative"))};
+        }
+    }
+    if constexpr (std::numeric_limits<Integer>::digits > 53) {
+        constexpr auto exact_integer_limit{static_cast<Integer>(9007199254740992ULL)};
+        if (value > exact_integer_limit) {
+            return std::unexpected{
+                error_at(path, TEXT("integer cannot be represented exactly in JSON"))};
+        }
+    }
+    return {};
+}
+
+auto validate_serialized_number(double const value, FString const& path, bool const nonnegative)
+    -> std::expected<void, FString> {
+    if (!FMath::IsFinite(value)) {
+        return std::unexpected{error_at(path, TEXT("value must be finite"))};
+    }
+    if (nonnegative && value < 0.0) {
+        return std::unexpected{error_at(path, TEXT("value must be nonnegative"))};
+    }
+    return {};
+}
+
+template <typename Counts>
+auto validate_serialized_counts(Counts const& source, FString const& path)
+    -> std::expected<void, FString> {
+    int32 index{};
+    for (auto const& row : source) {
+        for (auto const value : row) {
+            auto const value_path{FString::Printf(TEXT("%s[%d]"), *path, index++)};
+            if constexpr (std::is_integral_v<decltype(value)>) {
+                auto const valid{validate_serialized_integer(value, value_path, true)};
+                if (!valid) {
+                    return valid;
+                }
+            } else {
+                auto const valid{validate_serialized_number(value, value_path, true)};
+                if (!valid) {
+                    return valid;
+                }
+            }
+        }
+    }
+    return {};
+}
+
+template <typename Series>
+auto validate_serialized_series(Series const& source, FString const& path)
+    -> std::expected<void, FString> {
+    auto const count{source.num()};
+    uint64 previous_tick{};
+    for (int32 index{}; index < count; ++index) {
+        auto const tick_path{FString::Printf(TEXT("%s.ticks[%d]"), *path, index)};
+        auto const tick{source.time_at(index)};
+        auto const valid_tick{validate_serialized_integer(tick, tick_path, true)};
+        if (!valid_tick) {
+            return valid_tick;
+        }
+        if (index > 0 && tick <= previous_tick) {
+            return std::unexpected{
+                error_at(tick_path, TEXT("tick coordinates must be strictly increasing"))};
+        }
+        auto const valid_value{validate_serialized_integer(
+            source.value_at(index), FString::Printf(TEXT("%s.values[%d]"), *path, index), true)};
+        if (!valid_value) {
+            return valid_value;
+        }
+        previous_tick = tick;
+    }
+    return {};
+}
+
+auto validate_serialized_report(FLevelTelemetryReport const& record)
+    -> std::expected<void, FString> {
+    ::ioj::sim::LevelTelemetryRunRecord native_record;
+    native_record.metadata = record.metadata;
+    native_record.completion = record.completion;
+    native_record.tick_series = record.tick_series;
+    native_record.battle_samples.assign(record.battle_samples.begin(), record.battle_samples.end());
+    auto const native{::ioj::sim::telemetry::validate_level_telemetry_json_record(native_record)};
+    if (!native) {
+        return std::unexpected{UTF8_TO_TCHAR(native.error().c_str())};
+    }
+
+    auto const& environment{record.metadata.environment};
+    auto const physical_cores{validate_serialized_integer(
+        environment.physical_core_count, TEXT("environment.physical_core_count"), true)};
+    auto const logical_cores{validate_serialized_integer(
+        environment.logical_core_count, TEXT("environment.logical_core_count"), true)};
+    auto const memory{validate_serialized_integer(environment.total_physical_memory_bytes,
+                                                  TEXT("environment.total_physical_memory_bytes"),
+                                                  true)};
+    if (!physical_cores || !logical_cores || !memory) {
+        return std::unexpected{!physical_cores  ? physical_cores.error()
+                               : !logical_cores ? logical_cores.error()
+                                                : memory.error()};
+    }
+
+    auto const tick_rate{validate_serialized_number(
+        record.metadata.tick_rate_hz, TEXT("simulation.tick_rate_hz"), false)};
+    auto const tick_period{validate_serialized_number(
+        record.metadata.tick_period_seconds, TEXT("simulation.tick_period_seconds"), false)};
+    auto const time_scale{
+        validate_serialized_number(record.metadata.initial_requested_time_scale,
+                                   TEXT("simulation.initial_requested_time_scale"),
+                                   true)};
+    auto const sample_interval{
+        validate_serialized_number(record.metadata.battle_sample_interval_seconds,
+                                   TEXT("simulation.battle_sample_interval_seconds"),
+                                   false)};
+    if (!tick_rate || !tick_period || !time_scale || !sample_interval) {
+        return std::unexpected{!tick_rate     ? tick_rate.error()
+                               : !tick_period ? tick_period.error()
+                               : !time_scale  ? time_scale.error()
+                                              : sample_interval.error()};
+    }
+    if (record.metadata.tick_rate_hz <= 0.0 || record.metadata.tick_period_seconds <= 0.0) {
+        return std::unexpected{
+            FString{TEXT("simulation rates and period are outside their valid ranges")}};
+    }
+    if (record.metadata.requested_duration_seconds.has_value()) {
+        auto const duration{
+            validate_serialized_number(*record.metadata.requested_duration_seconds,
+                                       TEXT("simulation.requested_duration_seconds"),
+                                       true)};
+        if (!duration) {
+            return duration;
+        }
+    }
+
+    auto const mission_values{record.completion.mission_mode.has_value()};
+    if (mission_values != record.completion.mission_state.has_value() ||
+        mission_values != record.completion.mission_fail_reason.has_value()) {
+        return std::unexpected{FString{
+            TEXT("completion mission mode, state, and fail reason must be provided together")}};
+    }
+    auto const completed_ticks{validate_serialized_integer(
+        record.completion.completed_ticks, TEXT("completion.completed_ticks"), true)};
+    auto const completion_elapsed{
+        validate_serialized_number(record.completion.simulated_elapsed_seconds,
+                                   TEXT("completion.simulated_elapsed_seconds"),
+                                   true)};
+    if (!completed_ticks || !completion_elapsed) {
+        return std::unexpected{!completed_ticks ? completed_ticks.error()
+                                                : completion_elapsed.error()};
+    }
+    if (record.completion.mission_elapsed_seconds.has_value()) {
+        auto const mission_elapsed{
+            validate_serialized_number(*record.completion.mission_elapsed_seconds,
+                                       TEXT("completion.mission_elapsed_seconds"),
+                                       true)};
+        if (!mission_elapsed) {
+            return mission_elapsed;
+        }
+    }
+
+#define VALIDATE_SERIES(field)                                                                  \
+    do {                                                                                        \
+        auto const valid{                                                                       \
+            validate_serialized_series(record.tick_series.field, TEXT("tick_series." #field))}; \
+        if (!valid) {                                                                           \
+            return valid;                                                                       \
+        }                                                                                       \
+    } while (false)
+    VALIDATE_SERIES(active_entities);
+    VALIDATE_SERIES(spawned_entities);
+    VALIDATE_SERIES(destroyed_entities);
+    VALIDATE_SERIES(kills);
+    VALIDATE_SERIES(active_lasers);
+    VALIDATE_SERIES(lasers_fired);
+#undef VALIDATE_SERIES
+    for (int32 type{}; type < ::ioj::sim::LevelTelemetryTickSeries::entity_type_count; ++type) {
+        auto const* type_name{LexToSerializedString(static_cast<ETestEntityType>(type))};
+        auto const valid{validate_serialized_series(
+            record.tick_series.active_entities_by_type[type],
+            FString::Printf(TEXT("tick_series.active_entities_by_type.%s"), type_name))};
+        if (!valid) {
+            return valid;
+        }
+    }
+    for (int32 team{}; team < ::ioj::sim::LevelTelemetryTickSeries::team_count; ++team) {
+        auto const* team_name{LexToSerializedString(static_cast<ETestTeam>(team))};
+        for (int32 type{}; type < ::ioj::sim::LevelTelemetryTickSeries::entity_type_count; ++type) {
+            auto const* type_name{LexToSerializedString(static_cast<ETestEntityType>(type))};
+            auto const valid{validate_serialized_series(
+                record.tick_series.active_entities_by_team_and_type[team][type],
+                FString::Printf(TEXT("tick_series.active_entities_by_team_and_type.%s.%s"),
+                                team_name,
+                                type_name))};
+            if (!valid) {
+                return valid;
+            }
+        }
+    }
+    for (int32 index{}; index < record.battle_samples.Num(); ++index) {
+        auto const& sample{record.battle_samples[index]};
+        auto const path{FString::Printf(TEXT("battle_samples[%d]"), index)};
+        auto const tick{validate_serialized_integer(
+            sample.completed_tick, path + TEXT(".completed_tick"), true)};
+        auto const elapsed{validate_serialized_number(
+            sample.simulated_elapsed_seconds, path + TEXT(".simulated_elapsed_seconds"), true)};
+        auto const alive{validate_serialized_counts(sample.alive, path + TEXT(".alive"))};
+        auto const combat{
+            validate_serialized_counts(sample.combat.spawned, path + TEXT(".combat.spawned"))};
+        auto const active_lasers{
+            validate_serialized_integer(sample.active_lasers, path + TEXT(".active_lasers"), true)};
+        auto const lasers_fired{
+            validate_serialized_integer(sample.lasers_fired, path + TEXT(".lasers_fired"), true)};
+        if (!tick || !elapsed || !alive || !combat || !active_lasers || !lasers_fired) {
+            return std::unexpected{!tick            ? tick.error()
+                                   : !elapsed       ? elapsed.error()
+                                   : !alive         ? alive.error()
+                                   : !combat        ? combat.error()
+                                   : !active_lasers ? active_lasers.error()
+                                                    : lasers_fired.error()};
+        }
+        auto const destroyed{
+            validate_serialized_counts(sample.combat.destroyed, path + TEXT(".combat.destroyed"))};
+        auto const shots{
+            validate_serialized_counts(sample.combat.shots, path + TEXT(".combat.shots"))};
+        auto const hits{
+            validate_serialized_counts(sample.combat.hits, path + TEXT(".combat.hits"))};
+        auto const damage_dealt{validate_serialized_counts(sample.combat.damage_dealt,
+                                                           path + TEXT(".combat.damage_dealt"))};
+        auto const damage_received{validate_serialized_counts(
+            sample.combat.damage_received, path + TEXT(".combat.damage_received"))};
+        auto const kills{
+            validate_serialized_counts(sample.combat.kills, path + TEXT(".combat.kills"))};
+        auto const losses{
+            validate_serialized_counts(sample.combat.losses, path + TEXT(".combat.losses"))};
+        auto const kill_matrix{validate_serialized_counts(sample.combat.kill_matrix,
+                                                          path + TEXT(".combat.kill_matrix"))};
+        if (!destroyed || !shots || !hits || !damage_dealt || !damage_received || !kills ||
+            !losses || !kill_matrix) {
+            return std::unexpected{!destroyed         ? destroyed.error()
+                                   : !shots           ? shots.error()
+                                   : !hits            ? hits.error()
+                                   : !damage_dealt    ? damage_dealt.error()
+                                   : !damage_received ? damage_received.error()
+                                   : !kills           ? kills.error()
+                                   : !losses          ? losses.error()
+                                                      : kill_matrix.error()};
+        }
+    }
+    return {};
 }
 }
 
@@ -485,6 +795,10 @@ auto deserialize_level_telemetry_run(FString const& json)
                           required_number(**simulation,
                                           TEXT("requested_duration_seconds"),
                                           TEXT("simulation.requested_duration_seconds")));
+            if (value < 0.0) {
+                return std::unexpected{
+                    FString{TEXT("simulation.requested_duration_seconds must be nonnegative")}};
+            }
             result.metadata.requested_duration_seconds = value;
         }
     }
@@ -681,8 +995,9 @@ auto deserialize_level_telemetry_run(FString const& json)
         }
         result.battle_samples.Reserve(battle_samples->Num());
         for (int32 index{}; index < battle_samples->Num(); ++index) {
-            auto const object{(*battle_samples)[index]->AsObject()};
             auto const path{FString::Printf(TEXT("battle_samples[%d]"), index)};
+            auto const& value{(*battle_samples)[index]};
+            auto const object{value.IsValid() ? value->AsObject() : nullptr};
             if (!object.IsValid()) {
                 return std::unexpected{error_at(path, TEXT("sample must be an object"))};
             }
@@ -694,6 +1009,10 @@ auto deserialize_level_telemetry_run(FString const& json)
                           required_number(*object,
                                           TEXT("simulated_elapsed_seconds"),
                                           path + TEXT(".simulated_elapsed_seconds")));
+            if (sample.simulated_elapsed_seconds < 0.0) {
+                return std::unexpected{error_at(path + TEXT(".simulated_elapsed_seconds"),
+                                                TEXT("value must be nonnegative"))};
+            }
             auto alive{
                 parse_flat_counts(*object, TEXT("alive"), path + TEXT(".alive"), sample.alive)};
             auto combat{required_object(*object, TEXT("combat"), path + TEXT(".combat"))};
@@ -704,18 +1023,30 @@ auto deserialize_level_telemetry_run(FString const& json)
             if (!parsed_combat) {
                 return std::unexpected{parsed_combat.error()};
             }
-            double optional_number{};
-#define PARSE_OPTIONAL_BATTLE_NUMBER(field)                                            \
-    if (object->TryGetNumberField(TEXT(#field), optional_number)) {                    \
-        if (!FMath::IsFinite(optional_number) || optional_number < 0.0) {              \
-            return std::unexpected{                                                    \
-                error_at(path + TEXT("." #field), TEXT("value must be nonnegative"))}; \
-        }                                                                              \
-        sample.field = static_cast<decltype(sample.field)>(optional_number);           \
-    }
-            PARSE_OPTIONAL_BATTLE_NUMBER(active_lasers);
-            PARSE_OPTIONAL_BATTLE_NUMBER(lasers_fired);
-#undef PARSE_OPTIONAL_BATTLE_NUMBER
+            auto const active_lasers{optional_integer<int32>(
+                *object, TEXT("active_lasers"), path + TEXT(".active_lasers"))};
+            if (!active_lasers) {
+                return std::unexpected{active_lasers.error()};
+            }
+            if (active_lasers->has_value()) {
+                if (**active_lasers < 0) {
+                    return std::unexpected{
+                        error_at(path + TEXT(".active_lasers"), TEXT("value must be nonnegative"))};
+                }
+                sample.active_lasers = **active_lasers;
+            }
+            auto const lasers_fired{optional_integer<int32>(
+                *object, TEXT("lasers_fired"), path + TEXT(".lasers_fired"))};
+            if (!lasers_fired) {
+                return std::unexpected{lasers_fired.error()};
+            }
+            if (lasers_fired->has_value()) {
+                if (**lasers_fired < 0) {
+                    return std::unexpected{
+                        error_at(path + TEXT(".lasers_fired"), TEXT("value must be nonnegative"))};
+                }
+                sample.lasers_fired = **lasers_fired;
+            }
             result.battle_samples.Add(MoveTemp(sample));
         }
     }
@@ -724,6 +1055,9 @@ auto deserialize_level_telemetry_run(FString const& json)
 }
 
 auto serialize_level_telemetry_run(FLevelTelemetryReport const& record) -> FString {
+    if (!validate_serialized_report(record)) {
+        return {};
+    }
     auto root{MakeShared<FJsonObject>()};
     root->SetNumberField(TEXT("schema_version"), FLevelTelemetryReport::schema_version);
     root->SetStringField(TEXT("run_id"), UTF8_TO_TCHAR(record.metadata.run_id.c_str()));
@@ -834,6 +1168,10 @@ auto serialize_level_telemetry_run(FLevelTelemetryReport const& record) -> FStri
 
 auto write_level_telemetry_run(FLevelTelemetryReport const& record, FString const& output_directory)
     -> std::expected<FString, FString> {
+    auto const valid{validate_serialized_report(record)};
+    if (!valid) {
+        return std::unexpected{valid.error()};
+    }
     auto const json{serialize_level_telemetry_run(record)};
     if (json.IsEmpty()) {
         return std::unexpected{FString{TEXT("JSON serialization failed")}};

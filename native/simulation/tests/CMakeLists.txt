@@ -11,6 +11,7 @@ target_sources(native-simulation-tests PRIVATE
   test_fighter_live_cap.cpp
   test_level_telemetry_block_history.cpp
   test_level_telemetry_manager.cpp
+  test_level_telemetry_json_validation.cpp
   test_game_memory.cpp
   test_moved_entities_battle.cpp
   test_spinner_spawning.cpp

@@ -878,6 +878,35 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     spawned_json->SetArrayField(TEXT("ticks"), original_spawned_ticks);
     spawned_json->SetArrayField(TEXT("values"), original_spawned_values);
 
+    auto const sample_json{battle_samples_json.Last()->AsObject()};
+    auto const original_alive{sample_json->GetArrayField(TEXT("alive"))};
+    auto invalid_alive{original_alive};
+    invalid_alive[0] = MakeShared<FJsonValueNull>();
+    sample_json->SetArrayField(TEXT("alive"), MoveTemp(invalid_alive));
+    TestFalse(TEXT("Null flattened counter values return an error"),
+              parse_current_root().has_value());
+    sample_json->SetArrayField(TEXT("alive"), original_alive);
+
+    auto const original_active_lasers{sample_json->Values.FindRef(TEXT("active_lasers"))};
+    sample_json->SetField(TEXT("active_lasers"), MakeShared<FJsonValueNull>());
+    TestFalse(TEXT("Null optional battle counters return an error"),
+              parse_current_root().has_value());
+    sample_json->SetNumberField(TEXT("active_lasers"), 0.5);
+    TestFalse(TEXT("Fractional optional battle counters return an error"),
+              parse_current_root().has_value());
+    sample_json->SetField(TEXT("active_lasers"), original_active_lasers);
+
+    auto const original_completed_ticks{completion_json->Values.FindRef(TEXT("completed_ticks"))};
+    completion_json->SetNumberField(TEXT("completed_ticks"), 9007199254740994.0);
+    TestFalse(TEXT("Precision-unsafe uint64 values return an error"),
+              parse_current_root().has_value());
+    completion_json->SetField(TEXT("completed_ticks"), original_completed_ticks);
+
+    auto precision_unsafe_report{report};
+    precision_unsafe_report.completion.completed_ticks = 9007199254740994ULL;
+    TestTrue(TEXT("Serialization rejects precision-unsafe uint64 values"),
+             serialize_level_telemetry_run(precision_unsafe_report).IsEmpty());
+
     auto const original_mission_mode{completion_json->Values.FindRef(TEXT("mission_mode"))};
     auto const original_mission_state{completion_json->Values.FindRef(TEXT("mission_state"))};
     auto const original_mission_fail{completion_json->Values.FindRef(TEXT("mission_fail_reason"))};
