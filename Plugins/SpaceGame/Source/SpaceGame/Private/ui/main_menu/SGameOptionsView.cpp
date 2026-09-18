@@ -1490,10 +1490,38 @@ auto SGameOptionsView::build_conflict_prompt() -> TSharedRef<SWidget> {
                                 chord_capture_.activator_key().GetDisplayName(),
                                 chord_capture_.action_key().GetDisplayName())
                 : captured_key_.GetDisplayName()};
+
+        TArray<FText> conflicting_controls;
+        if (auto* const settings{settings_.Get()};
+            captured_binding_.IsSet() && settings != nullptr) {
+            auto const conflicts{
+                captured_chord_.IsSet() && chord_capture_.is_complete()
+                    ? settings->chord_binding_conflicts(captured_binding_.GetValue(),
+                                                        chord_capture_.activator_key(),
+                                                        chord_capture_.action_key())
+                    : settings->binding_conflicts(captured_binding_.GetValue(), captured_key_)};
+            conflicting_controls.Reserve(conflicts.Num());
+            for (auto const& conflict : conflicts) {
+                conflicting_controls.Add(conflict.display_name);
+            }
+        }
+
+        auto const conflicting_control_text{
+            conflicting_controls.IsEmpty()
+                ? NSLOCTEXT("OptionsMenu", "UnknownBindingConflict", "another control")
+                : FText::Join(NSLOCTEXT("OptionsMenu", "BindingConflictListSeparator", ", "),
+                              conflicting_controls)};
+        auto const replace_text{
+            conflicting_controls.Num() == 1
+                ? NSLOCTEXT("OptionsMenu", "BindingConflictReplaceSingle", "Replace that binding?")
+                : NSLOCTEXT(
+                      "OptionsMenu", "BindingConflictReplaceMultiple", "Replace those bindings?")};
         return FText::Format(NSLOCTEXT("OptionsMenu",
                                        "BindingConflictPrompt",
-                                       "{0} is already assigned. Replace that binding?"),
-                             captured_input);
+                                       "{0} is already assigned to:\n{1}\n\n{2}"),
+                             captured_input,
+                             conflicting_control_text,
+                             replace_text);
     })};
     return build_modal(MoveTemp(title), {replace, cancel});
 }
