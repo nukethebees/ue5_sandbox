@@ -225,7 +225,6 @@ void FGameSettingsBackend::preview_immediate(FGameSettingsState const& state,
     switch (setting) {
         case EGameSetting::MasterVolume: {
             settings->set_master_volume(state.master_volume);
-            settings->preview_master_volume();
             break;
         }
         case EGameSetting::MusicVolume: {

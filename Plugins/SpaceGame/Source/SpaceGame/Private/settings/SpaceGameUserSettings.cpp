@@ -1,7 +1,5 @@
 #include "SpaceGame/settings/SpaceGameUserSettings.h"
 
-#include "AudioDevice.h"
-#include "Engine/Engine.h"
 #include "HAL/IConsoleManager.h"
 #include "SceneUtils.h"
 
@@ -77,8 +75,6 @@ void USpaceGameUserSettings::ApplyNonResolutionSettings() {
     apply_rendering_effect(
         TEXT("r.DefaultFeature.MotionBlur"), TEXT("r.MotionBlurQuality"), motion_blur_enabled_);
     IConsoleManager::Get().CallAllConsoleVariableSinks();
-
-    preview_master_volume();
 }
 
 void USpaceGameUserSettings::ValidateSettings() {
@@ -173,20 +169,6 @@ auto USpaceGameUserSettings::bees() const -> int32 {
 
 void USpaceGameUserSettings::set_bees(int32 const value) {
     bees_ = FMath::Clamp(value, 0, 5);
-}
-
-void USpaceGameUserSettings::preview_master_volume() const {
-    if (GEngine == nullptr) {
-        UE_LOG(LogTemp, Warning, TEXT("Could not preview master volume: engine is unavailable"));
-        return;
-    }
-    auto audio_device{GEngine->GetMainAudioDevice()};
-    if (!audio_device.IsValid()) {
-        UE_LOG(
-            LogTemp, Warning, TEXT("Could not preview master volume: audio device is unavailable"));
-        return;
-    }
-    audio_device->SetTransientPrimaryVolume(master_volume_);
 }
 
 } // namespace ml::ioj

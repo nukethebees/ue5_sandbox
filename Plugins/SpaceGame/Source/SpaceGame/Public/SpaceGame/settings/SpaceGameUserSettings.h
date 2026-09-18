@@ -34,8 +34,6 @@ class SPACEGAME_API USpaceGameUserSettings : public UGameUserSettings {
 
     auto bees() const -> int32;
     void set_bees(int32 value);
-
-    void preview_master_volume() const;
   private:
     UPROPERTY(Config)
     int32 anti_aliasing_method_{};
