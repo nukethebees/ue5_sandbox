@@ -3,7 +3,7 @@ include_guard(GLOBAL)
 include("${CMAKE_CURRENT_LIST_DIR}/unreal_paths.cmake")
 
 function(add_low_level_test_suite target_name unreal_target test_name_prefix)
-  cmake_parse_arguments(test_suite "" "ACTIVITY" "LABELS" ${ARGN})
+  cmake_parse_arguments(test_suite "AGGREGATE" "ACTIVITY" "LABELS" ${ARGN})
   if(test_suite_UNPARSED_ARGUMENTS)
     message(FATAL_ERROR
       "add_low_level_test_suite(${target_name}) received unexpected arguments: "
@@ -20,15 +20,24 @@ function(add_low_level_test_suite target_name unreal_target test_name_prefix)
       "Low-level test: ${unreal_target}")
   endif()
 
-  discover_tests(
-    COMMAND ${test_command} "${test_executable}"
-    DISCOVERY_ARGS --list-tests --reporter JSON
-    DISCOVERY_MATCH "^[ \\t]*\\\"name\\\": \\\"(${test_name_prefix}\\.[^\\\"]+)\\\",$"
-    TEST_NAME "\\1"
-    TEST_ARGS "\\1"
-    TEST_PROPERTIES
-    LABELS "unit;all;${test_suite_LABELS}"
-    SKIP_REGULAR_EXPRESSION "SKIPPED:"
-    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-  )
+  if(test_suite_AGGREGATE)
+    add_test(NAME "${test_name_prefix}.all"
+      COMMAND ${test_command} "${test_executable}")
+    set_tests_properties("${test_name_prefix}.all" PROPERTIES
+      LABELS "unit;all;${test_suite_LABELS}"
+      SKIP_REGULAR_EXPRESSION "SKIPPED:"
+      WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+  else()
+    discover_tests(
+      COMMAND ${test_command} "${test_executable}"
+      DISCOVERY_ARGS --list-tests --reporter JSON
+      DISCOVERY_MATCH "^[ \\t]*\\\"name\\\": \\\"(${test_name_prefix}\\.[^\\\"]+)\\\",$"
+      TEST_NAME "\\1"
+      TEST_ARGS "\\1"
+      TEST_PROPERTIES
+      LABELS "unit;all;${test_suite_LABELS}"
+      SKIP_REGULAR_EXPRESSION "SKIPPED:"
+      WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    )
+  endif()
 endfunction()

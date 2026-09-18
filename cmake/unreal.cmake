@@ -210,7 +210,7 @@ function(add_unreal_automation_test test_name)
 
   add_unreal_editor_test("${test_name}"
     ARGUMENTS
-      "-ExecCmds=Automation RunTests ${automation_filter_expression}; Quit"
+      "-ExecCmds=Automation Now; Automation RunTests ${automation_filter_expression}; Quit"
       -nullrhi
       ${space_game_test_arguments}
     LABELS ${automation_test_LABELS}

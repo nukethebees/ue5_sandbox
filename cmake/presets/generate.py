@@ -327,7 +327,6 @@ def make_unreal_document() -> dict[str, Any]:
     test_presets: list[dict[str, Any]] = []
     for suffix in ("", "-msvc"):
         for name, label in (
-            ("tests", "^all$"),
             ("level-tests", "^level$"),
             ("unit-tests", "unit"),
         ):
@@ -339,6 +338,14 @@ def make_unreal_document() -> dict[str, Any]:
                     "filter": {"include": {"label": label}},
                 }
             )
+    test_presets.append(
+        {
+            "name": "debug-game-jobserver-tests",
+            "inherits": "test-base",
+            "configurePreset": "debug-game",
+            "filter": {"include": {"label": "^jobserver$"}},
+        }
+    )
     test_presets.insert(
         1,
         {
@@ -347,7 +354,58 @@ def make_unreal_document() -> dict[str, Any]:
             "configurePreset": "debug-game",
             "filter": {"include": {"label": "input-smoke"}},
         },
+            )
+    test_presets.extend(
+        [
+            {
+                "name": "debug-game-tests",
+                "inherits": "test-base",
+                "configurePreset": "debug-game",
+                "filter": {
+                    "include": {"label": "^all$"},
+                    "exclude": {
+                        "name": "^(SandboxISMC\\.RenderTests|Sandbox\\.SparkRenderTests|SandboxShaders\\.MaterialCompilation|SandboxEditor\\.MaterialSynth)$"
+                    },
+                },
+            },
+            {
+                "name": "debug-game-full-tests",
+                "inherits": "test-base",
+                "configurePreset": "debug-game",
+                "filter": {"include": {"label": "^all$"}},
+            },
+        ]
     )
+    test_presets.append(
+        {
+            "name": "debug-game-usfloader-tests",
+            "inherits": "test-base",
+            "configurePreset": "debug-game",
+            "filter": {"include": {"label": "^usfloader$"}},
+        }
+    )
+    for suffix in ("-msvc",):
+        test_presets.extend(
+            [
+                {
+                    "name": f"debug-game{suffix}-tests",
+                    "inherits": "test-base",
+                    "configurePreset": f"debug-game{suffix}",
+                    "filter": {
+                        "include": {"label": "^all$"},
+                        "exclude": {
+                            "name": "^(SandboxISMC\\.RenderTests|Sandbox\\.SparkRenderTests|SandboxShaders\\.MaterialCompilation|SandboxEditor\\.MaterialSynth)$"
+                        },
+                    },
+                },
+                {
+                    "name": f"debug-game{suffix}-full-tests",
+                    "inherits": "test-base",
+                    "configurePreset": f"debug-game{suffix}",
+                    "filter": {"include": {"label": "^all$"}},
+                },
+            ]
+        )
 
     workflow_presets: list[dict[str, Any]] = [
         {
@@ -399,7 +457,7 @@ def make_unreal_document() -> dict[str, Any]:
         )
 
     for suffix in ("", "-msvc"):
-        for test_suffix in ("tests", "unit-tests"):
+        for test_suffix in ("unit-tests",):
             test_name = f"debug-game{suffix}-{test_suffix}"
             workflow_presets.append(
                 {
@@ -411,6 +469,44 @@ def make_unreal_document() -> dict[str, Any]:
                     ],
                 }
             )
+    workflow_presets.append(
+        {
+            "name": "debug-game-jobserver-tests",
+            "steps": [
+                {"type": "configure", "name": "debug-game"},
+                {"type": "build", "name": "debug-game"},
+                {"type": "test", "name": "debug-game-jobserver-tests"},
+            ],
+        }
+    )
+    workflow_presets.extend(
+        [
+            {
+                "name": "debug-game-tests",
+                "steps": [
+                    {"type": "configure", "name": "debug-game"},
+                    {"type": "build", "name": "debug-game"},
+                    {"type": "test", "name": "debug-game-tests"},
+                ],
+            },
+            {
+                "name": "debug-game-full-tests",
+                "steps": [
+                    {"type": "configure", "name": "debug-game"},
+                    {"type": "build", "name": "debug-game"},
+                    {"type": "test", "name": "debug-game-full-tests"},
+                ],
+            },
+            {
+                "name": "debug-game-usfloader-tests",
+                "steps": [
+                    {"type": "configure", "name": "debug-game"},
+                    {"type": "build", "name": "debug-game"},
+                    {"type": "test", "name": "debug-game-usfloader-tests"},
+                ],
+            },
+        ]
+    )
 
     workflow_presets.extend(
         [

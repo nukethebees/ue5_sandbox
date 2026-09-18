@@ -9,11 +9,12 @@
 #include "Serialization/ArchiveUObject.h"
 #include "UObject/Package.h"
 
-TEST_CLASS(USFLoaderShaderSmoke, "USFLoader.ShaderSmoke")
+TEST_CLASS(IncludedFunctionCompilation, "USFLoader.IncludedFunctionCompilation")
 {
     TEST_METHOD(CompilesTransientMaterialUsingIncludedFunction)
     {
-        if (!TestRunner->TestFalse(TEXT("Shader smoke test uses a real RHI"), GUsingNullRHI)) {
+        if (!TestRunner->TestFalse(TEXT("Material compilation test uses a real RHI"),
+                                   GUsingNullRHI)) {
             return;
         }
 

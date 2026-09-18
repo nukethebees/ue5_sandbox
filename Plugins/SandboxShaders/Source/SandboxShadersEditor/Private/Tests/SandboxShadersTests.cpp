@@ -232,11 +232,12 @@ TEST_CLASS(ShaderInfrastructure, "SandboxShaders.UnitTests")
     }
 };
 
-TEST_CLASS(ShaderSmoke, "SandboxShaders.ShaderSmoke")
+TEST_CLASS(MaterialCompilation, "SandboxShaders.MaterialCompilation")
 {
     TEST_METHOD(CompilesMaterialsAndDispatchesSpaceField)
     {
-        if (!TestRunner->TestFalse(TEXT("Smoke test uses a real RHI"), GUsingNullRHI)) {
+        if (!TestRunner->TestFalse(TEXT("Material compilation test uses a real RHI"),
+                                   GUsingNullRHI)) {
             return;
         }
 

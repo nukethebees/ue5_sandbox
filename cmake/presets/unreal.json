@@ -344,12 +344,12 @@
   ],
   "testPresets": [
     {
-      "name": "debug-game-tests",
+      "name": "debug-game-level-tests",
       "inherits": "test-base",
       "configurePreset": "debug-game",
       "filter": {
         "include": {
-          "label": "^all$"
+          "label": "^level$"
         }
       }
     },
@@ -364,32 +364,12 @@
       }
     },
     {
-      "name": "debug-game-level-tests",
-      "inherits": "test-base",
-      "configurePreset": "debug-game",
-      "filter": {
-        "include": {
-          "label": "^level$"
-        }
-      }
-    },
-    {
       "name": "debug-game-unit-tests",
       "inherits": "test-base",
       "configurePreset": "debug-game",
       "filter": {
         "include": {
           "label": "unit"
-        }
-      }
-    },
-    {
-      "name": "debug-game-msvc-tests",
-      "inherits": "test-base",
-      "configurePreset": "debug-game-msvc",
-      "filter": {
-        "include": {
-          "label": "^all$"
         }
       }
     },
@@ -410,6 +390,72 @@
       "filter": {
         "include": {
           "label": "unit"
+        }
+      }
+    },
+    {
+      "name": "debug-game-jobserver-tests",
+      "inherits": "test-base",
+      "configurePreset": "debug-game",
+      "filter": {
+        "include": {
+          "label": "^jobserver$"
+        }
+      }
+    },
+    {
+      "name": "debug-game-tests",
+      "inherits": "test-base",
+      "configurePreset": "debug-game",
+      "filter": {
+        "include": {
+          "label": "^all$"
+        },
+        "exclude": {
+          "name": "^(SandboxISMC\\.RenderTests|Sandbox\\.SparkRenderTests|SandboxShaders\\.MaterialCompilation|SandboxEditor\\.MaterialSynth)$"
+        }
+      }
+    },
+    {
+      "name": "debug-game-full-tests",
+      "inherits": "test-base",
+      "configurePreset": "debug-game",
+      "filter": {
+        "include": {
+          "label": "^all$"
+        }
+      }
+    },
+    {
+      "name": "debug-game-usfloader-tests",
+      "inherits": "test-base",
+      "configurePreset": "debug-game",
+      "filter": {
+        "include": {
+          "label": "^usfloader$"
+        }
+      }
+    },
+    {
+      "name": "debug-game-msvc-tests",
+      "inherits": "test-base",
+      "configurePreset": "debug-game-msvc",
+      "filter": {
+        "include": {
+          "label": "^all$"
+        },
+        "exclude": {
+          "name": "^(SandboxISMC\\.RenderTests|Sandbox\\.SparkRenderTests|SandboxShaders\\.MaterialCompilation|SandboxEditor\\.MaterialSynth)$"
+        }
+      }
+    },
+    {
+      "name": "debug-game-msvc-full-tests",
+      "inherits": "test-base",
+      "configurePreset": "debug-game-msvc",
+      "filter": {
+        "include": {
+          "label": "^all$"
         }
       }
     }
@@ -666,23 +712,6 @@
       ]
     },
     {
-      "name": "debug-game-tests",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "debug-game"
-        },
-        {
-          "type": "build",
-          "name": "debug-game"
-        },
-        {
-          "type": "test",
-          "name": "debug-game-tests"
-        }
-      ]
-    },
-    {
       "name": "debug-game-unit-tests",
       "steps": [
         {
@@ -700,23 +729,6 @@
       ]
     },
     {
-      "name": "debug-game-msvc-tests",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "debug-game-msvc"
-        },
-        {
-          "type": "build",
-          "name": "debug-game-msvc"
-        },
-        {
-          "type": "test",
-          "name": "debug-game-msvc-tests"
-        }
-      ]
-    },
-    {
       "name": "debug-game-msvc-unit-tests",
       "steps": [
         {
@@ -730,6 +742,74 @@
         {
           "type": "test",
           "name": "debug-game-msvc-unit-tests"
+        }
+      ]
+    },
+    {
+      "name": "debug-game-jobserver-tests",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "debug-game"
+        },
+        {
+          "type": "build",
+          "name": "debug-game"
+        },
+        {
+          "type": "test",
+          "name": "debug-game-jobserver-tests"
+        }
+      ]
+    },
+    {
+      "name": "debug-game-tests",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "debug-game"
+        },
+        {
+          "type": "build",
+          "name": "debug-game"
+        },
+        {
+          "type": "test",
+          "name": "debug-game-tests"
+        }
+      ]
+    },
+    {
+      "name": "debug-game-full-tests",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "debug-game"
+        },
+        {
+          "type": "build",
+          "name": "debug-game"
+        },
+        {
+          "type": "test",
+          "name": "debug-game-full-tests"
+        }
+      ]
+    },
+    {
+      "name": "debug-game-usfloader-tests",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "debug-game"
+        },
+        {
+          "type": "build",
+          "name": "debug-game"
+        },
+        {
+          "type": "test",
+          "name": "debug-game-usfloader-tests"
         }
       ]
     },
