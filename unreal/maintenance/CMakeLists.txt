@@ -15,3 +15,13 @@ add_custom_target(generate-project-files
   VERBATIM
 )
 set_property(TARGET generate-project-files PROPERTY FOLDER "Sandbox/Unreal/Maintenance")
+
+find_program(DOTNET_EXECUTABLE NAMES dotnet REQUIRED)
+add_test(
+  NAME Sandbox.CSharpTools
+  COMMAND "${DOTNET_EXECUTABLE}" test "${PROJECT_SOURCE_DIR}/tools/Tools.slnx"
+)
+set_tests_properties(Sandbox.CSharpTools PROPERTIES
+  LABELS "unit;all"
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+)
