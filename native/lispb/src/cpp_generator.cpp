@@ -81,7 +81,10 @@ auto render_modules(std::vector<Module> const& modules) -> std::vector<Generated
                 throw std::invalid_argument{"Duplicate generated output path: " +
                                             normalized.string()};
             }
-            result.push_back(GeneratedFile{normalized, render(*file), file->format_generated});
+            auto generated_file{*file};
+            generated_file.clang_format_off = false;
+            generated_file.format_generated = true;
+            result.push_back(GeneratedFile{normalized, render(generated_file), true});
         }
     }
     return result;

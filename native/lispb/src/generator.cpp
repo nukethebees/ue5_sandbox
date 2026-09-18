@@ -102,18 +102,6 @@ auto read_file(std::filesystem::path const& path) -> std::optional<std::string> 
     return std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
 }
 
-auto normalize_line_endings(std::string_view const content) -> std::string {
-    std::string result;
-    result.reserve(content.size());
-    for (std::size_t index{}; index < content.size(); ++index) {
-        if (content[index] == '\r' && index + 1 < content.size() && content[index + 1] == '\n') {
-            continue;
-        }
-        result.push_back(content[index]);
-    }
-    return result;
-}
-
 void replace_file(std::filesystem::path const& source, std::filesystem::path const& destination) {
 #if defined(_WIN32)
     if (!MoveFileExW(source.c_str(),
@@ -271,8 +259,7 @@ static auto publish_text_artifacts(std::vector<TextArtifact> const& input_files,
         auto const destination{output_root / relative};
         validate_destination(destination, output_root);
         auto const current{read_file(destination)};
-        if (current.has_value() &&
-            normalize_line_endings(*current) == normalize_line_endings(file.content)) {
+        if (current.has_value() && *current == file.content) {
             std::cout << "Unchanged " << relative.generic_string() << '\n';
             continue;
         }
@@ -351,7 +338,7 @@ auto publish(Compilation const& compilation, PublicationOptions const& options) 
                     return false;
                 }
                 if constexpr (std::is_same_v<Value, TextArtifact>) {
-                    return normalize_line_endings(*current) == normalize_line_endings(content);
+                    return *current == content;
                 } else {
                     return *current == content;
                 }

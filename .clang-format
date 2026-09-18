@@ -72,6 +72,7 @@ IndentGotoLabels: true
 IndentRequiresClause: true
 IndentWrappedFunctionNames: true
 InsertNewlineAtEOF: true
+LineEnding: LF
 
 LambdaBodyIndentation: Signature
 

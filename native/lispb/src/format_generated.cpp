@@ -57,6 +57,22 @@ auto style_path(std::filesystem::path const& destination) -> std::filesystem::pa
     throw std::runtime_error{"No .clang-format found for generated file: " + destination.string()};
 }
 
+auto normalize_line_endings(std::string const& content) -> std::string {
+    std::string result;
+    result.reserve(content.size());
+    for (std::size_t index{}; index < content.size(); ++index) {
+        if (content[index] == '\r') {
+            if (index + 1 < content.size() && content[index + 1] == '\n') {
+                ++index;
+            }
+            result.push_back('\n');
+        } else {
+            result.push_back(content[index]);
+        }
+    }
+    return result;
+}
+
 #if defined(_WIN32)
 auto quote_argument(std::wstring const& argument) -> std::wstring {
     std::wstring result{L"\""};
@@ -152,7 +168,9 @@ auto format_generated(std::string const& content, std::filesystem::path const& d
     if (!input) {
         throw std::runtime_error{"Cannot read formatted generated output"};
     }
-    return std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
+    auto const formatted{
+        std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}}};
+    return normalize_line_endings(formatted);
 }
 
 }

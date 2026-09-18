@@ -143,6 +143,10 @@ def format_file(file_path: Path) -> tuple[bool, Optional[str]]:
     try:
         result = subprocess.run(["clang-format", "-i", str(file_path)], capture_output=True, text=True, timeout=30)
         if result.returncode == 0:
+            content = file_path.read_bytes()
+            normalized = content.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+            if content != normalized:
+                file_path.write_bytes(normalized)
             return True, None
         return False, result.stderr.strip() or "Unknown error"
     except subprocess.TimeoutExpired:
