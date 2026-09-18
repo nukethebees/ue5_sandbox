@@ -1,5 +1,6 @@
 #include "ioj/sim/collision_grid_entity_storage.h"
 
+#include <ioj/sim/profiling.h>
 #include "ioj/sim/entity_cell_data_operations.h"
 #include "ioj/sim/world_aabb_operations.h"
 
@@ -19,6 +20,7 @@ void CollisionGridEntityStorage::reset() noexcept {
 }
 
 void CollisionGridEntityStorage::begin_rebuild(CellCoord const grid_dimensions) {
+    SANDBOX_PROFILE_SCOPE("CollisionGridEntityStorage::begin_rebuild");
     assert(grid_dimensions.x > 0 && grid_dimensions.y > 0 && grid_dimensions.z > 0);
 
     grid_dimensions_ = grid_dimensions;
@@ -73,6 +75,8 @@ void CollisionGridEntityStorage::add(Vector3f const min_point,
 }
 
 auto CollisionGridEntityStorage::finish_rebuild() -> bool {
+    SANDBOX_PROFILE_SCOPE("CollisionGridEntityStorage::finish_rebuild");
+
     std::int32_t entry_count{};
     for (auto const cell_index : non_empty_cell_indices_) {
         auto const element{static_cast<std::size_t>(cell_index)};
@@ -89,6 +93,7 @@ auto CollisionGridEntityStorage::finish_rebuild() -> bool {
     auto const entity_count{entity_cells.num()};
     auto const row_stride{grid_dimensions_.x};
     auto const plane_stride{row_stride * grid_dimensions_.y};
+
     for (std::int32_t entity_index{}; entity_index < entity_count; ++entity_index) {
         auto const min_cell{min_cell_at(entity_cells, entity_index)};
         auto const max_cell{max_cell_at(entity_cells, entity_index)};

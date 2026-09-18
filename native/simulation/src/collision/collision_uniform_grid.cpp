@@ -506,7 +506,7 @@ void CollisionUniformGrid::rebuild_grid(collision::EntityAABBs const& entity_aab
     entity_storage_.begin_rebuild(geometry.dimensions);
 
     {
-        SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::rebuild_grid::count_loop");
+        SANDBOX_PROFILE_SCOPE("count_loop");
 
         agents_.for_each_alive_spatial([&](EntityUniqueId const id,
                                            Vector3f const location,
@@ -546,7 +546,6 @@ void CollisionUniformGrid::append_overlaps(
     EntityUniqueId const ignored_entity,
     std::vector<EntityUniqueId>& out_entities,
     std::vector<std::int32_t>& out_static_geometry_indices) const {
-    SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::append_overlaps");
 
     auto const geometry{geometry_};
     [[maybe_unused]] auto const [min_coord, max_coord]{
