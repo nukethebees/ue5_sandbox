@@ -279,7 +279,7 @@ void MissionManager::objective_event_dispatched() {
 // Tick and state transitions
 /* **************************************** */
 void MissionManager::mission_tick() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::MissionManager::mission_tick");
+    SANDBOX_PROFILE_SCOPE("MissionManager::mission_tick");
 
     switch (mission_state) {
         case MissionState::NotStarted: {

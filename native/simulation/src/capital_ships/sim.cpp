@@ -46,21 +46,21 @@ Sim::Sim(EntityLedger& ledger,
 // Sim phases
 /* **************************************** */
 void Sim::begin_play() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::begin_play");
+    SANDBOX_PROFILE_SCOPE("capital_ships::Sim::begin_play");
     profiling::plot("Sandbox/CapitalShipCount", 0);
     assert(static_cast<std::size_t>(config.fighter_spawn_slots) ==
            config.fighter_spawn_slots_relative_transforms.size());
     validate_array_sizes();
 }
 void Sim::prepare_tick(float const dt) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::prepare_tick");
+    SANDBOX_PROFILE_SCOPE("capital_ships::Sim::prepare_tick");
     clear_tick_buffers();
     fighter_self_destruct_requests_.clear();
     auto const entities{this->entities.get_view().columns()};
     ml::tick_countdowns(entities.fighter_spawn_timers, dt);
 }
 void Sim::think(float const) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::think");
+    SANDBOX_PROFILE_SCOPE("capital_ships::Sim::think");
 
     auto const entities{this->entities.get_view().columns()};
     for (auto& target : entities.target_ids) {
@@ -95,7 +95,7 @@ void Sim::resolve_fighters_of_dying_capitals() {
     execute_fighter_self_destruct_requests();
 }
 void Sim::resolve_damage_events() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::resolve_damage_events");
+    SANDBOX_PROFILE_SCOPE("capital_ships::Sim::resolve_damage_events");
     auto const entities{this->entities.get_view().columns()};
     batch::resolve_damage_events(combat_events_.events_for(EntityType::CapitalShip),
                                  agents_.indexes(),
@@ -117,13 +117,13 @@ void Sim::publish_deaths() {
 }
 void Sim::cleanup_entities() {
     agents_.indexes().assert_removal_allowed();
-    SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::cleanup_entities");
+    SANDBOX_PROFILE_SCOPE("capital_ships::Sim::cleanup_entities");
     handle_dead_entities();
     local_indices_to_remove.clear();
     entity_death_info.reset();
 }
 void Sim::finish_action() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::finish_action");
+    SANDBOX_PROFILE_SCOPE("capital_ships::Sim::finish_action");
     profiling::plot("Sandbox/CapitalShipCount", get_num_instances());
     validate_array_sizes();
 }
@@ -176,7 +176,7 @@ auto Sim::find_first_id_on_team(Team const team) const noexcept -> std::optional
 /* **************************************** */
 auto Sim::register_ships(CapitalSpawnDataConstView const spawn_data)
     -> std::vector<EntityUniqueId> {
-    SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::register_ships");
+    SANDBOX_PROFILE_SCOPE("capital_ships::Sim::register_ships");
     auto const n_to_add{spawn_data.num()};
     if (n_to_add == 0) {
         return {};
@@ -209,7 +209,7 @@ auto Sim::register_ships(CapitalSpawnDataConstView const spawn_data)
 }
 void Sim::spawn_ships(CapitalSpawnDataConstView const spawn_data) {
     agents_.indexes().assert_preparation_mutation_allowed();
-    SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::spawn_ships");
+    SANDBOX_PROFILE_SCOPE("capital_ships::Sim::spawn_ships");
     spawn_data.validate_array_sizes();
     auto const n_to_add{spawn_data.num()};
 
@@ -234,7 +234,7 @@ auto Sim::get_fighter_spawn_slots() const noexcept -> std::int32_t {
     return config.fighter_spawn_slots;
 }
 void Sim::queue_fighter_spawns() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::queue_fighter_spawns");
+    SANDBOX_PROFILE_SCOPE("capital_ships::Sim::queue_fighter_spawns");
     if (!diagnostics_enabled_) {}
 
     auto const entities{this->entities.get_view().columns()};
@@ -327,7 +327,7 @@ void Sim::refresh_fighter_ids() {
 // Orders
 /* **************************************** */
 void Sim::queue_fighter_orders() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::queue_fighter_orders");
+    SANDBOX_PROFILE_SCOPE("capital_ships::Sim::queue_fighter_orders");
 
     auto const n_capitals{get_num_instances()};
     auto const fighter_targets{fighters_interface.get_target_ids()};
@@ -381,7 +381,7 @@ void Sim::set_target_id(EntityUniqueId const ship_id, EntityUniqueId const targe
 // Death handling
 /* **************************************** */
 void Sim::handle_dead_entities() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::capital_ships::Sim::handle_dead_entities");
+    SANDBOX_PROFILE_SCOPE("capital_ships::Sim::handle_dead_entities");
     if (local_indices_to_remove.empty()) {
         return;
     }

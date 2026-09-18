@@ -199,7 +199,7 @@ Sim::Sim(SimClock const& clock,
 // Sim phases
 /* **************************************** */
 void Sim::begin_play() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::begin_play");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::begin_play");
     profiling::plot("Sandbox/FighterCount", 0);
     profiling::plot("Sandbox/FightersAvoiding", 0);
     profiling::plot("Sandbox/FighterNavigationTraces", 0);
@@ -265,7 +265,7 @@ void Sim::prepare_tick(float const dt) {
     if (!tasks_are_contiguous()) {
         refresh_layout();
     }
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::prepare_tick");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::prepare_tick");
 
     auto const data{entity_buffers.current().get_view().columns()};
     ml::tick_countdowns<std::int8_t>(data.awareness_scan_countdowns, awareness_cleaner_, 64);
@@ -292,7 +292,7 @@ void Sim::prepare_tick(float const dt) {
 }
 void Sim::think(float const dt) {
     refresh_target_data();
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::think");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::think");
 
     auto const data{entity_buffers.current().get_view().columns()};
     auto const awareness_radius{config.awareness_radius};
@@ -304,7 +304,7 @@ void Sim::think(float const dt) {
     auto const dot_threshold{config.minimum_opportunistic_intercept_deviation_dot_product};
 
     {
-        SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::awareness_scan");
+        SANDBOX_PROFILE_SCOPE("fighters::Sim::awareness_scan");
         for (std::int32_t i{0}; i < n; ++i) {
             if (!ml::TickCountdownView<std::int8_t>{data.awareness_scan_countdowns,
                                                     awareness_restart_ticks_}
@@ -346,7 +346,7 @@ void Sim::think(float const dt) {
     plan_movement(dt);
 }
 void Sim::plan_movement(float const dt) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::plan_movement");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::plan_movement");
 
     auto const d_turn{std::min(1.f, config.turn_speed_unitless * dt)};
     auto const data{entity_buffers.current().get_view().columns()};
@@ -455,7 +455,7 @@ void Sim::plan_movement(float const dt) {
     }
 }
 void Sim::apply_movement() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::apply_movement");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::apply_movement");
     auto const data{entity_buffers.current().get_view().columns()};
     collision_dirty_entities_.clear();
     auto const count{data.num()};
@@ -496,11 +496,11 @@ void Sim::apply_movement() {
     pending_fire_indices_.clear();
 }
 void Sim::generate_fire_commands() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::generate_fire_commands");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::generate_fire_commands");
     handle_firing(get_task_view(Task::Attack));
 }
 void Sim::resolve_damage_events() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::resolve_damage_events");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::resolve_damage_events");
 
     auto const data{entity_buffers.current().get_view().columns()};
     auto const damage_events{combat_events_.events_for(EntityType::Fighter)};
@@ -544,7 +544,7 @@ void Sim::publish_deaths() {
 }
 void Sim::cleanup_entities() {
     agents_.indexes().assert_removal_allowed();
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::cleanup_entities");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::cleanup_entities");
 
     remove_dead_entities();
     if (!local_indices_to_remove.empty()) {
@@ -555,7 +555,7 @@ void Sim::cleanup_entities() {
     validate_array_sizes();
 }
 void Sim::finish_action() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::finish_action");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::finish_action");
     profiling::plot("Sandbox/FighterCount", get_num_instances());
     validate_array_sizes();
 }
@@ -595,7 +595,7 @@ void Sim::move(float const dt, TaskView const& fighters) {
     }
 }
 void Sim::update_navigation_steering() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::update_navigation_steering");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::update_navigation_steering");
 
     auto const clearance{collision_radius_ + config.avoidance_clearance_buffer};
     auto const minimum_lookahead_distance{collision_radius_ * 2.f};
@@ -1115,7 +1115,7 @@ void Sim::set_task(EntityUniqueId const fighter, Task const task) noexcept {
     order_queue.add(fighter, FighterOrder{.task = 1, .target = 0}, task, {});
 }
 bool Sim::tasks_are_contiguous() const noexcept {
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::tasks_are_contiguous");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::tasks_are_contiguous");
 
     auto const data{entity_buffers.current().get_const_view().columns()};
     auto current_task{Task::Standby};
@@ -1138,7 +1138,7 @@ bool Sim::tasks_are_contiguous() const noexcept {
 }
 void Sim::refresh_layout() {
     agents_.indexes().assert_structural_mutation_allowed();
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::refresh_layout");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::refresh_layout");
 
     auto const task_counts{get_task_counts()};
     auto const n_fighters{get_num_instances()};
@@ -1173,7 +1173,7 @@ void Sim::refresh_layout() {
 // Spawning
 /* **************************************** */
 auto Sim::queue_spawns(FighterSpawnQueueConstView const new_spawns) -> std::int32_t {
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::queue_spawns");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::queue_spawns");
     new_spawns.validate_array_sizes();
     if (new_spawns.teams.empty()) {
         return 0;
@@ -1205,7 +1205,7 @@ auto Sim::queue_spawns(FighterSpawnQueueConstView const new_spawns) -> std::int3
 }
 void Sim::commit_spawns() {
     agents_.indexes().assert_preparation_mutation_allowed();
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::commit_spawns");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::commit_spawns");
 
     if (!diagnostics_enabled_) {
         diagnostic_spawn_reports = 0;
@@ -1305,7 +1305,7 @@ void Sim::self_destruct_fighter(EntityUniqueId const fighter) {
     }
 }
 void Sim::remove_dead_entities() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::remove_dead_entities");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_dead_entities");
     auto& data{entity_buffers.current()};
     batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
     for (auto const index : local_indices_to_remove) {
@@ -1319,7 +1319,7 @@ void Sim::remove_dead_entities() {
 // Combat
 /* **************************************** */
 void Sim::handle_firing(TaskView const& data) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::handle_firing");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::handle_firing");
 
     auto predicted_location = [&data](std::int32_t const index) {
         return data.locations[index] + data.movement_directions[index] * data.move_distances[index];
@@ -1478,12 +1478,12 @@ void Sim::handle_firing(TaskView const& data) {
 // Orders
 /* **************************************** */
 void Sim::queue_orders(FighterOrderQueue const& queue) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::queue_orders");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::queue_orders");
     order_queue.append_from(queue.get_const_view());
 }
 void Sim::commit_orders() {
     assert(simulation_clock.phase == SimulationPhase::Preparation);
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::commit_orders");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::commit_orders");
 
     auto const data{entity_buffers.current().get_view().columns()};
     auto const n_orders{order_queue.num()};
@@ -1541,7 +1541,7 @@ void Sim::validate_array_sizes() const {
     entity_buffers.current().get_const_view().columns().validate_array_sizes();
 }
 void Sim::check_fighter_tasks() const {
-    SANDBOX_PROFILE_SCOPE("Sandbox::fighters::Sim::check_fighter_tasks");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::check_fighter_tasks");
 
     auto current_task_group{Task::Standby};
     TaskSpans checked_task_spans{};

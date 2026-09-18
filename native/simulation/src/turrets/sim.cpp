@@ -57,7 +57,7 @@ Sim::Sim(SimClock const& clock,
 /* **************************************** */
 auto Sim::register_turrets(TurretSpawnDataConstView const spawn_data,
                            Rotators3fConstView const rotations) -> std::vector<EntityUniqueId> {
-    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::register_turrets");
+    SANDBOX_PROFILE_SCOPE("turrets::Sim::register_turrets");
     agents_.indexes().assert_preparation_mutation_allowed();
     spawn_data.validate_array_sizes();
     auto const n_to_add{spawn_data.num()};
@@ -127,7 +127,7 @@ auto Sim::register_turrets(TurretSpawnDataConstView const spawn_data,
 // Death handling
 /* **************************************** */
 void Sim::handle_dead_entities() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::handle_dead_entities");
+    SANDBOX_PROFILE_SCOPE("turrets::Sim::handle_dead_entities");
     if (local_indices_to_remove.empty()) {
         return;
     }
@@ -150,7 +150,7 @@ void Sim::handle_dead_entities() {
 // Sim phases
 /* **************************************** */
 void Sim::begin_play() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::begin_play");
+    SANDBOX_PROFILE_SCOPE("turrets::Sim::begin_play");
     profiling::plot("Sandbox/TurretCount", 0);
     assert(config.search_slice_size > 0);
 
@@ -162,7 +162,7 @@ void Sim::begin_play() {
     validate_array_sizes();
 }
 void Sim::prepare_tick(float const) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::prepare_tick");
+    SANDBOX_PROFILE_SCOPE("turrets::Sim::prepare_tick");
     clear_tick_buffers();
 
     auto const entities{this->entities.get_view().columns()};
@@ -186,18 +186,18 @@ void Sim::refresh_target_data() {
     }
 }
 void Sim::think(float const) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::think");
+    SANDBOX_PROFILE_SCOPE("turrets::Sim::think");
     refresh_target_data();
     perform_search();
     refresh_target_data();
 }
 void Sim::generate_fire_commands() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::generate_fire_commands");
+    SANDBOX_PROFILE_SCOPE("turrets::Sim::generate_fire_commands");
 
     fire_at_enemies();
 }
 void Sim::resolve_damage_events() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::resolve_damage_events");
+    SANDBOX_PROFILE_SCOPE("turrets::Sim::resolve_damage_events");
 
     auto const entities{this->entities.get_view().columns()};
     batch::resolve_damage_events(combat_events_.events_for(EntityType::Turret),
@@ -220,14 +220,14 @@ void Sim::publish_deaths() {
 }
 void Sim::cleanup_entities() {
     agents_.indexes().assert_removal_allowed();
-    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::cleanup_entities");
+    SANDBOX_PROFILE_SCOPE("turrets::Sim::cleanup_entities");
 
     handle_dead_entities();
     local_indices_to_remove.clear();
     entity_death_info.reset();
 }
 void Sim::finish_action() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::finish_action");
+    SANDBOX_PROFILE_SCOPE("turrets::Sim::finish_action");
     profiling::plot("Sandbox/TurretCount", get_num_instances());
 
     validate_array_sizes();
@@ -247,7 +247,7 @@ auto Sim::get_target_ids() const -> std::span<EntityUniqueId const> {
 // Searching
 /* **************************************** */
 void Sim::perform_search() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::perform_search");
+    SANDBOX_PROFILE_SCOPE("turrets::Sim::perform_search");
 
     auto const n_turrets{get_num_instances()};
     if (n_turrets == 0) {
@@ -358,7 +358,7 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
 // Attacking
 /* **************************************** */
 void Sim::fire_at_enemies() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::turrets::Sim::fire_at_enemies");
+    SANDBOX_PROFILE_SCOPE("turrets::Sim::fire_at_enemies");
 
     auto const count{get_num_instances()};
     ml::FrameArray<std::int32_t> candidate_indices{&frame_memory_resource};

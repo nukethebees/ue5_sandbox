@@ -327,7 +327,7 @@ void
     SpatialQueryManager::trace_line_of_sight(Vectors3fConstView const start_locations,
                                              Vectors3fConstView const end_locations,
                                              std::span<EntityUniqueId> const out_entity_ids) const {
-    SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::trace_line_of_sight");
+    SANDBOX_PROFILE_SCOPE("SpatialQueryManager::trace_line_of_sight");
 
     trace_impl<QueryMode::HitEntity>(*this,
                                      {.start_locations = start_locations,
@@ -340,7 +340,7 @@ void
                                                       Vectors3fConstView const end_locations,
                                                       std::span<EntityUniqueId const> const targets,
                                                       std::span<std::uint8_t> const has_los) const {
-    SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::has_line_of_sight_to_targets");
+    SANDBOX_PROFILE_SCOPE("SpatialQueryManager::has_line_of_sight_to_targets");
 
     trace_impl<QueryMode::TargetLineOfSight>(*this,
                                              {.end_locations = end_locations,
@@ -366,7 +366,7 @@ void SpatialQueryManager::trace_closest_lines(
     Vectors3fConstView const end_locations,
     TraceHitsView const out_hits,
     std::span<EntityUniqueId const> const ignored_entities) const {
-    SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::trace_closest_lines");
+    SANDBOX_PROFILE_SCOPE("SpatialQueryManager::trace_closest_lines");
 
     [[maybe_unused]] auto const count{start_locations.num()};
     assert(end_locations.num() == count);
@@ -388,7 +388,7 @@ void SpatialQueryManager::sweep_closest_aabbs(
     TraceHitsView const out_hits,
     std::span<EntityUniqueId const> const ignored_entities,
     collision::TraceEntityFilter const entity_filter) const {
-    SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::sweep_closest_aabbs");
+    SANDBOX_PROFILE_SCOPE("SpatialQueryManager::sweep_closest_aabbs");
 
     [[maybe_unused]] auto const count{start_locations.num()};
     assert(end_locations.num() == count);
@@ -427,7 +427,7 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
     Team const team,
     float const radius,
     std::span<EntityUniqueId> const out_entities) const -> std::int32_t {
-    SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::collect_non_team_entities_in_range");
+    SANDBOX_PROFILE_SCOPE("SpatialQueryManager::collect_non_team_entities_in_range");
 
     if (out_entities.empty()) {
         return 0;
@@ -457,7 +457,7 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
     float const radius,
     EntityUniqueId const ignored_entity,
     std::span<EntityUniqueId> const out_entities) const -> std::int32_t {
-    SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::collect_entities_of_type_in_range");
+    SANDBOX_PROFILE_SCOPE("SpatialQueryManager::collect_entities_of_type_in_range");
 
     if (out_entities.empty()) {
         return 0;
@@ -522,7 +522,7 @@ void SpatialQueryManager::copy_entity_radii(std::span<EntityUniqueId const> cons
 /* **************************************** */
 auto SpatialQueryManager::update(std::span<EntityUniqueId const> const dirty_entities,
                                  SimTick const tick) -> collision::DetectedOverlapsView {
-    SANDBOX_PROFILE_SCOPE("Sandbox::SpatialQueryManager::update");
+    SANDBOX_PROFILE_SCOPE("SpatialQueryManager::update");
 
     return collision.update(dirty_entities, tick);
 }

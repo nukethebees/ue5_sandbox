@@ -455,7 +455,7 @@ void CollisionUniformGrid::reset() {
 }
 
 void CollisionUniformGrid::set_static_aabbs(collision::WorldAABBs static_aabbs) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::CollisionUniformGrid::set_static_aabbs");
+    SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::set_static_aabbs");
 
     if (!is_configured()) {
         ml::fatal_error("Cannot build static geometry for an unconfigured grid");
@@ -468,7 +468,7 @@ void CollisionUniformGrid::set_static_aabbs(collision::WorldAABBs static_aabbs) 
 
 auto CollisionUniformGrid::add_static_aabb(Vector3f const min_point, Vector3f const max_point)
     -> std::int32_t {
-    SANDBOX_PROFILE_SCOPE("Sandbox::CollisionUniformGrid::add_static_aabb");
+    SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::add_static_aabb");
 
     assert(is_configured());
     [[maybe_unused]] auto const [min_coord, max_coord]{to_cell_coord_bounds(min_point, max_point)};
@@ -497,7 +497,7 @@ void CollisionUniformGrid::rebuild_static_grid() {
 }
 
 void CollisionUniformGrid::rebuild_grid(collision::EntityAABBs const& entity_aabbs) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::CollisionUniformGrid::rebuild_grid");
+    SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::rebuild_grid");
     if (!is_configured()) {
         ml::fatal_error("Cannot rebuild an unconfigured collision grid");
     }
@@ -506,7 +506,7 @@ void CollisionUniformGrid::rebuild_grid(collision::EntityAABBs const& entity_aab
     entity_storage_.begin_rebuild(geometry.dimensions);
 
     {
-        SANDBOX_PROFILE_SCOPE("Sandbox::CollisionUniformGrid::rebuild_grid::count_loop");
+        SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::rebuild_grid::count_loop");
 
         agents_.for_each_alive_spatial([&](EntityUniqueId const id,
                                            Vector3f const location,
@@ -546,7 +546,7 @@ void CollisionUniformGrid::append_overlaps(
     EntityUniqueId const ignored_entity,
     std::vector<EntityUniqueId>& out_entities,
     std::vector<std::int32_t>& out_static_geometry_indices) const {
-    SANDBOX_PROFILE_SCOPE("Sandbox::CollisionUniformGrid::append_overlaps");
+    SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::append_overlaps");
 
     auto const geometry{geometry_};
     [[maybe_unused]] auto const [min_coord, max_coord]{

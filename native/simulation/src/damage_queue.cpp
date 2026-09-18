@@ -4,7 +4,7 @@
 
 namespace ioj::sim {
 void DamageQueue::prepare(AgentIndexes const& indexes, std::pmr::memory_resource& scratch) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::DamageQueue::prepare");
+    SANDBOX_PROFILE_SCOPE("DamageQueue::prepare");
     spans_ = {};
     auto const count{events_.num()};
     if (count == 0) {

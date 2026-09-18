@@ -36,7 +36,7 @@ Sim::Sim(SimClock const& clock,
 // Sim phases
 /* **************************************** */
 void Sim::begin_play() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::begin_play");
+    SANDBOX_PROFILE_SCOPE("spinners::Sim::begin_play");
 
     auto const cooldown_tick_period{
         simulation_clock.duration_to_tick_period(config.laser.fire_cooldown)};
@@ -46,30 +46,30 @@ void Sim::begin_play() {
     validate_array_sizes();
 }
 void Sim::prepare_tick(float const) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::prepare_tick");
+    SANDBOX_PROFILE_SCOPE("spinners::Sim::prepare_tick");
 
     ml::tick_countdowns<std::int16_t>(
         entities.get_view().laser_cooldowns(), cooldown_cleaner_, 16384);
 }
 void Sim::think(float const dt) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::think");
+    SANDBOX_PROFILE_SCOPE("spinners::Sim::think");
 
     planned_yaw_delta_ = dt * config.yaw_rotation_speed_degrees;
 }
 void Sim::apply_movement() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::apply_movement");
+    SANDBOX_PROFILE_SCOPE("spinners::Sim::apply_movement");
     for (auto& yaw : entities.get_view().yaws()) {
         yaw += planned_yaw_delta_;
     }
     materialize_fire_commands();
 }
 void Sim::generate_fire_commands() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::generate_fire_commands");
+    SANDBOX_PROFILE_SCOPE("spinners::Sim::generate_fire_commands");
 
     fire_lasers();
 }
 void Sim::finish_action() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::finish_action");
+    SANDBOX_PROFILE_SCOPE("spinners::Sim::finish_action");
 }
 
 /* **************************************** */
@@ -86,7 +86,7 @@ auto Sim::spawn_instances(Vectors3fConstView const new_locations,
                           std::span<float const> const new_yaws,
                           std::span<std::int32_t const> const new_fire_point_indices)
     -> std::span<EntityUniqueId const> {
-    SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::spawn_instances");
+    SANDBOX_PROFILE_SCOPE("spinners::Sim::spawn_instances");
     assert(simulation_clock.permits_preparation_mutation());
 
     auto const n{new_locations.num()};
@@ -117,7 +117,7 @@ auto Sim::spawn_instances(Vectors3fConstView const new_locations,
 // Firing
 /* **************************************** */
 void Sim::fire_lasers() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::spinners::Sim::fire_lasers");
+    SANDBOX_PROFILE_SCOPE("spinners::Sim::fire_lasers");
 
     if (config.fire_point_offsets.empty()) {
         return;

@@ -249,7 +249,7 @@ auto LevelSim::take_finalized_telemetry_run() -> std::optional<LevelTelemetryRun
 // Simulation
 /* **************************************** */
 void LevelSim::advance(time_type const dt) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::LevelSim::advance");
+    SANDBOX_PROFILE_SCOPE("LevelSim::advance");
 
     if (state_ != OrchestratorState::Running) {
         return;
@@ -267,7 +267,7 @@ void LevelSim::advance(time_type const dt) {
         auto const player_active{player_ship_simulation_.has_value() &&
                                  player_ship_simulation_->health.is_alive()};
         auto publish_entity_deaths = [&] {
-            SANDBOX_PROFILE_SCOPE("Sandbox::LevelSim::advance::publish_entity_deaths");
+            SANDBOX_PROFILE_SCOPE("LevelSim::advance::publish_entity_deaths");
             capital_ships_phase_.publish_deaths();
             fighters_phase_.publish_deaths();
             turrets_phase_.publish_deaths();
@@ -277,7 +277,7 @@ void LevelSim::advance(time_type const dt) {
         // Preparation
         /* -------------------------------------------------------------------------------- */
         {
-            SANDBOX_PROFILE_SCOPE("Sandbox::LevelSim::Preparation");
+            SANDBOX_PROFILE_SCOPE("LevelSim::Preparation");
             clock_.phase = SimulationPhase::Preparation;
             // Resolve last tick's orders while every previous-tick index is still valid.
             fighters_phase_.commit_orders();
@@ -325,7 +325,7 @@ void LevelSim::advance(time_type const dt) {
         // Thinking
         /* -------------------------------------------------------------------------------- */
         {
-            SANDBOX_PROFILE_SCOPE("Sandbox::LevelSim::Thinking");
+            SANDBOX_PROFILE_SCOPE("LevelSim::Thinking");
             clock_.phase = SimulationPhase::Thinking;
             turrets_phase_.think(tick_period);
             capital_ships_phase_.think(tick_period);
@@ -348,7 +348,7 @@ void LevelSim::advance(time_type const dt) {
         // Action
         /* -------------------------------------------------------------------------------- */
         {
-            SANDBOX_PROFILE_SCOPE("Sandbox::LevelSim::Action");
+            SANDBOX_PROFILE_SCOPE("LevelSim::Action");
             clock_.phase = SimulationPhase::Action;
 
             // Existing projectiles retain pre-movement collision geometry.
@@ -393,7 +393,7 @@ void LevelSim::advance(time_type const dt) {
         // Resolution
         /* -------------------------------------------------------------------------------- */
         {
-            SANDBOX_PROFILE_SCOPE("Sandbox::LevelSim::Resolution");
+            SANDBOX_PROFILE_SCOPE("LevelSim::Resolution");
             clock_.phase = SimulationPhase::Resolution;
 
             combat_events_.prepare(agent_indexes_, frame_memory_);

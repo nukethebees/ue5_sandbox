@@ -71,7 +71,7 @@ Sim::Sim(SimClock const& clock,
 // Tick phases
 /* **************************************** */
 void Sim::begin_play() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::PlayerShipSim::begin_play");
+    SANDBOX_PROFILE_SCOPE("PlayerShipSim::begin_play");
 
     movement_state_.velocity = ml::Vector3d{};
     movement_state_.thrust_energy = config.thrust_energy_max;
@@ -87,7 +87,7 @@ void Sim::begin_play() {
 }
 
 void Sim::prepare_tick(float const dt) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::PlayerShipSim::prepare_tick");
+    SANDBOX_PROFILE_SCOPE("PlayerShipSim::prepare_tick");
 
     laser_shot_cooldown -= dt;
     movement_state_.time_since_rotation_input += dt;
@@ -104,7 +104,7 @@ void Sim::prepare_tick(float const dt) {
 void Sim::think(float const dt) {
     planned_movement_ = movement_state_;
     auto& movement{planned_movement_};
-    SANDBOX_PROFILE_SCOPE("Sandbox::PlayerShipSim::think");
+    SANDBOX_PROFILE_SCOPE("PlayerShipSim::think");
 
     update_boost_brake(dt, movement);
     update_rotation(dt, movement);
@@ -128,7 +128,7 @@ void Sim::think(float const dt) {
 }
 
 void Sim::apply_movement() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::PlayerShipSim::apply_movement");
+    SANDBOX_PROFILE_SCOPE("PlayerShipSim::apply_movement");
     movement_state_ = planned_movement_;
     if (std::exchange(fire_requested_, false)) {
         materialize_fire_command();
@@ -136,12 +136,12 @@ void Sim::apply_movement() {
 }
 
 void Sim::generate_fire_commands() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::PlayerShipSim::generate_fire_commands");
+    SANDBOX_PROFILE_SCOPE("PlayerShipSim::generate_fire_commands");
     update_laser_firing();
 }
 
 void Sim::resolve_damage_events() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::PlayerShipSim::resolve_damage_events");
+    SANDBOX_PROFILE_SCOPE("PlayerShipSim::resolve_damage_events");
 
     auto const damage_events{combat_events_.events_for(EntityType::PlayerShip)};
     auto const original_health{health.health};

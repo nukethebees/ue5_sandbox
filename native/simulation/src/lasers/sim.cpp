@@ -61,7 +61,7 @@ void Sim::set_config(LaserSimConfig const& new_config) noexcept {
 }
 
 void Sim::begin_play() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::begin_play");
+    SANDBOX_PROFILE_SCOPE("lasers::Sim::begin_play");
     profiling::plot("Sandbox/LaserCount", 0);
 
     number_spawned = 0;
@@ -71,7 +71,7 @@ void Sim::begin_play() {
 
 void Sim::commit_spawns() {
     assert(simulation_clock.permits_preparation_mutation());
-    SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::commit_spawns");
+    SANDBOX_PROFILE_SCOPE("lasers::Sim::commit_spawns");
     process_pending_spawns();
     clear_spawn_buffers();
 }
@@ -86,7 +86,7 @@ void Sim::cleanup_entities() {
 }
 
 void Sim::simulate(float const dt) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::simulate");
+    SANDBOX_PROFILE_SCOPE("lasers::Sim::simulate");
 
     handle_collisions(dt);
     update_locations(dt);
@@ -94,7 +94,7 @@ void Sim::simulate(float const dt) {
 }
 
 void Sim::finish_action() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::finish_action");
+    SANDBOX_PROFILE_SCOPE("lasers::Sim::finish_action");
     profiling::plot("Sandbox/LaserCount", get_num_instances());
     validate_array_sizes();
 }
@@ -108,7 +108,7 @@ auto Sim::get_num_instances() const noexcept -> std::int32_t {
 // Spawning
 /* **************************************** */
 void Sim::queue_laser_spawns(lasers::SpawnRequestsConstView const spawn_data) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::queue_laser_spawns");
+    SANDBOX_PROFILE_SCOPE("lasers::Sim::queue_laser_spawns");
 
     spawn_data.validate_array_sizes();
     append_spawn_requests(pending_spawns, spawn_data);
@@ -119,7 +119,7 @@ void Sim::preallocate_instances() {
 }
 
 void Sim::process_pending_spawns() {
-    SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::process_pending_spawns");
+    SANDBOX_PROFILE_SCOPE("lasers::Sim::process_pending_spawns");
 
     pending_spawns.get_const_view().columns().validate_array_sizes();
     auto const n_to_add{pending_spawns.num()};
@@ -194,7 +194,7 @@ void Sim::update_locations(float const dt) {
     }
 }
 void Sim::handle_collisions(float const dt) {
-    SANDBOX_PROFILE_SCOPE("Sandbox::lasers::Sim::handle_collisions");
+    SANDBOX_PROFILE_SCOPE("lasers::Sim::handle_collisions");
 
     auto const n{entities.num()};
     if (n < 1) {
