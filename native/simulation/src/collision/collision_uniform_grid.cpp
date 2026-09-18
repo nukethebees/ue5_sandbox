@@ -1,20 +1,21 @@
 #include "ioj/sim/collision/collision_uniform_grid.h"
 
+#include <sandbox/core/diagnostics.h>
+
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/collision_grid.h>
 #include <ioj/sim/entity_cell_data_operations.h>
 #include <ioj/sim/health.h>
+#include <ioj/sim/profiling.h>
+#include <ioj/sim/rotator_math.h>
 #include <ioj/sim/trace_hits.h>
+#include <ioj/sim/world_aabb_operations.h>
 
 #include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <format>
-#include <ioj/sim/profiling.h>
-#include <ioj/sim/rotator_math.h>
-#include <ioj/sim/world_aabb_operations.h>
 #include <limits>
-#include <sandbox/core/diagnostics.h>
 #include <utility>
 
 namespace ioj::sim::collision {
