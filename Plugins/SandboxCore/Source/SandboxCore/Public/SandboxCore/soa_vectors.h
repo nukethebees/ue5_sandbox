@@ -5,11 +5,6 @@
 #pragma once
 
 #include "SandboxCore/soa_vectors_2f.h"
-#include "SandboxCore/soa_vectors_2d.h"
-#include "SandboxCore/soa_vectors_2i32.h"
-#include "SandboxCore/soa_vectors_2u32.h"
 #include "SandboxCore/soa_vectors_3f.h"
 #include "SandboxCore/soa_vectors_3d.h"
-#include "SandboxCore/soa_vectors_3i32.h"
-#include "SandboxCore/soa_vectors_3u32.h"
 // clang-format on

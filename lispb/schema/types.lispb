@@ -377,14 +377,6 @@
   (operation set-element set
     :pass-by const-ref))
 
-(type vectors_3i32
-  :spelling "FVectors3i32"
-  :header "SandboxCore/soa_vectors_3i32.h"
-  (operation add-element add
-    :pass-by value)
-  (operation remove-at-swap remove_at_swap)
-  (operation set-element set
-    :pass-by value))
 
 (type fighters_sim
   :spelling "Sim"

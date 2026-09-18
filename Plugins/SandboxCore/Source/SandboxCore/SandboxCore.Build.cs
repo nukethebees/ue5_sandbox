@@ -32,6 +32,11 @@ public class SandboxCore : ModuleRules
         string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
         string nativeToolchain = Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN") ?? "clang-cl";
         PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "core", "include"));
+        PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "simulation", "include"));
+        PublicSystemIncludePaths.Add(
+            Path.Combine(repositoryRoot, "native", "lispb", "native_soa", "include"));
+        PublicSystemIncludePaths.Add(
+            Path.Combine(repositoryRoot, "native", "profiling", "include"));
         PublicSystemIncludePaths.Add(
             Path.Combine(repositoryRoot, "native", "third_party", "handmade_math"));
 

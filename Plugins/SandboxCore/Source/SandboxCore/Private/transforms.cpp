@@ -33,6 +33,20 @@ auto make_transforms(FVectors3f::ConstView const locations,
 
     return out;
 }
+auto make_transforms(::ioj::sim::Vectors3fConstView const locations,
+                     ::ioj::sim::Rotators3fConstView const rotations) -> TArray<FTransform> {
+    auto const n{locations.num()};
+    check(n == rotations.num());
+
+    TArray<FTransform> out;
+    out.Reserve(n);
+    for (int32 i{}; i < n; ++i) {
+        out.Emplace(FRotator3d{rotations.pitches[i], rotations.yaws[i], rotations.rolls[i]},
+                    FVector3d{locations.xs[i], locations.ys[i], locations.zs[i]});
+    }
+
+    return out;
+}
 
 void set_transform_locations(TArrayView<FTransform> const transforms, FVectors3f const& locations) {
     auto const n{ml::num(transforms)};

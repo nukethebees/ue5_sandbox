@@ -140,9 +140,9 @@ void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 c
         custom_data[base + 2] = colour.B;
     }
 
-    auto const transforms{ml::make_transforms(
-        ml::to_unreal(entities.locations.get_const_view(first_index, n_to_add)),
-        ml::to_unreal(entities.rotations.get_const_view(first_index, n_to_add)))};
+    auto const transforms{
+        ml::make_transforms(entities.locations.get_const_view(first_index, n_to_add),
+                            entities.rotations.get_const_view(first_index, n_to_add))};
     constexpr bool return_indices{false};
     constexpr bool update_navigation{false};
     instances->AddInstances(transforms, return_indices, is_world_space, update_navigation);
