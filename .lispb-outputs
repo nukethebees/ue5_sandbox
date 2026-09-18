@@ -1,5 +1,4 @@
 lispb-outputs-v1
-Plugins/SandboxCore/Source/SandboxCore/Private/countdown_timers.cpp
 Plugins/SandboxCore/Source/SandboxCore/Private/soa_rotators.cpp
 Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_2d.cpp
 Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_2f.cpp
@@ -9,7 +8,6 @@ Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_3d.cpp
 Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_3f.cpp
 Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_3i32.cpp
 Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_3u32.cpp
-Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/countdown_timers.h
 Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_rotators.h
 Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors.h
 Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_2d.h

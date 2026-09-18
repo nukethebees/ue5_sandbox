@@ -74,7 +74,7 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
             UE_LOG(LogSandboxUI, Fatal, TEXT("FHUDManager::initialise: Invalid update period."));
         }
 
-        auto const tick_period{static_cast<FPeriodicTickCountdown8::counter_type>(
+        auto const tick_period{static_cast<ml::PeriodicTickCountdown8::counter_type>(
             FMath::CeilToInt64(periods[i] * update_tick_rate))};
         if (!ml::valid_periods(tick_period)) {
             UE_LOG(LogSandboxUI, Fatal, TEXT("FHUDManager::initialise: Invalid tick period."));
@@ -254,7 +254,7 @@ void FHUDManager::advance(double const dt) {
         tick(1);
     }
 }
-void FHUDManager::tick(FPeriodicTickCountdown8::counter_type const num_ticks) {
+void FHUDManager::tick(ml::PeriodicTickCountdown8::counter_type const num_ticks) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::tick);
     check(num_ticks >= 0);
     if (state != EHUDManagerState::Active) {
@@ -355,7 +355,7 @@ void FHUDManager::set_selected_mapping_context(FString const& context_name) {
     selected_mapping_context = context_name;
 }
 
-auto FHUDManager::collect_data(FPeriodicTickCountdown8::counter_type const num_ticks)
+auto FHUDManager::collect_data(ml::PeriodicTickCountdown8::counter_type const num_ticks)
     -> ml::hud_manager::FDataChanges {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_data);
     ml::hud_manager::FDataChanges changes;

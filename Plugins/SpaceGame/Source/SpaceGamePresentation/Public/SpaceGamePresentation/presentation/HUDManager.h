@@ -2,7 +2,7 @@
 
 #include <ioj/sim/entity_ledger.h>
 #include <sandbox/core/multi_buffer.h>
-#include <SandboxCore/periodic_tick_countdown.h>
+#include <sandbox/core/periodic_tick_countdown.h>
 #include <SandboxUI/EntityOverlay/EntityOverlayFrameStore.h>
 #include <SandboxUI/EntityOverlay/EntityOverlayTypes.h>
 #include <SandboxUI/Radar/RadarFrameStore.h>
@@ -171,7 +171,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
                     UInstancedStaticMeshComponent* soft_target_instances = nullptr);
     void deactivate();
     void advance(double dt);
-    void tick(FPeriodicTickCountdown8::counter_type num_ticks);
+    void tick(ml::PeriodicTickCountdown8::counter_type num_ticks);
     void force_sample();
 
     void register_hud(USimulationHudWidget& hud);
@@ -223,7 +223,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
         float fading_soft_target_visibility_remaining{0.0f};
     };
 
-    auto collect_data(FPeriodicTickCountdown8::counter_type num_ticks)
+    auto collect_data(ml::PeriodicTickCountdown8::counter_type num_ticks)
         -> ml::hud_manager::FDataChanges;
     bool collect_mission_data();
     void read_mission_data(ml::hud_manager::FMissionDataCache& out) const;
@@ -275,7 +275,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     ::ioj::sim::AgentAccessor const* agents_{nullptr};
     ::ioj::sim::SpatialQueryManager const* spatial_query_manager{nullptr};
     FFixedTickLoop tick_loop_{};
-    FPeriodicTickCountdown8 update_timers;
+    ml::PeriodicTickCountdown8 update_timers;
 
     ml::MultiBuffer<ml::hud_manager::FMissionDataCache, 2> mission_data_buffers;
     ml::MultiBuffer<ml::hud_manager::FEntityCountDataCache, 2> entity_count_data_buffers;

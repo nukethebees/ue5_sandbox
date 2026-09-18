@@ -5,7 +5,6 @@
   (cpp-schema sandbox-code
     :types "lispb/schema/types.lispb"
     :sources (
-      "lispb/schema/dynamic_core.lispb"
       "lispb/schema/core_layouts.lispb"
       "lispb/schema/test_fixtures.lispb"
       "lispb/schema/single_allocation_experiment.lispb"

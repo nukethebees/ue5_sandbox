@@ -76,11 +76,6 @@
   :spelling "check"
   :header "CoreMinimal.h")
 
-(type countdown_timers
-  :spelling "FCountdownTimers"
-  :header "SandboxCore/countdown_timers.h"
-  (operation remove-at-swap remove_at_swap))
-
 (type death_reason
   :spelling "ETestDeathReason"
   :header "ioj/sim/entities/TestDeathReason.h"
@@ -152,11 +147,6 @@
   :spelling "FLinearColor"
   :header "Math/Color.h"
   :pass-by value)
-
-(type periodic_tick_countdown_16
-  :spelling "FPeriodicTickCountdown16"
-  :header "SandboxCore/periodic_tick_countdown.h"
-  (operation remove-at-swap remove_at_swap))
 
 (type primitive_component_const_ptr
   :spelling "UPrimitiveComponent const*"
@@ -295,16 +285,6 @@
   :spelling "ETestTeam"
   :header "SpaceGameSimulation/entities/TestTeam.h"
   :pass-by value)
-
-(type tick_countdown_8
-  :spelling "FTickCountdown8"
-  :header "SandboxCore/tick_countdown.h"
-  (operation remove-at-swap remove_at_swap))
-
-(type tick_countdown_16
-  :spelling "FTickCountdown16"
-  :header "SandboxCore/tick_countdown.h"
-  (operation remove-at-swap remove_at_swap))
 
 (type unique_id
   :spelling "TestEntityUniqueId"

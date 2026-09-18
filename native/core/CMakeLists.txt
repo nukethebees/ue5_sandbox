@@ -9,6 +9,7 @@ target_sources(native-core PRIVATE
   include/sandbox/core/monotonic_clock.h
   include/sandbox/core/speed_response.h
   include/sandbox/core/diagnostics.h
+  include/sandbox/core/countdown_timers.h
   include/sandbox/core/math_types.h
   include/sandbox/core/periodic_tick_countdown.h
   include/sandbox/core/tick_countdown.h

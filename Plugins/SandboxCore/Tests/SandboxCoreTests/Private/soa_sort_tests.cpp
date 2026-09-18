@@ -1,6 +1,5 @@
 #include <SandboxCore/soa_permutation.h>
 #include <SandboxCore/soa_vectors.h>
-#include <SandboxCore/tick_countdown.h>
 
 #include "TestHarness.h"
 
@@ -100,19 +99,4 @@ TEST_CASE("SandboxCore.SoaSort.Vectors3f.EmptySingleAndSortedInputs") {
     check_row_associations(reverse_sorted);
     CHECK((already_sorted.xs == TArray<float>{10.f, 20.f, 30.f}));
     CHECK((reverse_sorted.xs == TArray<float>{10.f, 20.f, 30.f}));
-}
-
-TEST_CASE("SandboxCore.SoaSort.TickCountdown.PermutesCounters") {
-    FTickCountdown8 countdown{3, 0};
-    countdown.set_counter(0, 1);
-    countdown.set_counter(1, 2);
-    countdown.set_counter(2, 3);
-    TArray<int32> indices{2, 0, 1};
-
-    ml::apply_permutation(countdown, indices);
-
-    CHECK(countdown.counters()[0] == 3);
-    CHECK(countdown.counters()[1] == 1);
-    CHECK(countdown.counters()[2] == 2);
-    CHECK((indices == TArray<int32>{2, 0, 1}));
 }
