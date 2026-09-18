@@ -16,16 +16,17 @@ float3 sbx_tactical_scan(float3 scene_colour,
                          float scan_intensity,
                          float scan_falloff,
                          float grid_scale,
-                         float3 scan_colour)
-{
+                         float3 scan_colour) {
     float const phase = frac(animation_time * scan_speed);
     float const sweep_position = lerp(-scan_range, scan_range, phase);
     float3 const relative_position = world_position - scan_origin;
     float const axial_position = dot(relative_position, normalize(scan_direction));
     float const distance_to_sweep = axial_position - sweep_position;
 
-    float const leading_band = 1.0 - smoothstep(scan_width, scan_width * 2.0, abs(distance_to_sweep));
-    float const trail = exp(-max(distance_to_sweep, 0.0) / scan_falloff) * step(0.0, distance_to_sweep);
+    float const leading_band =
+        1.0 - smoothstep(scan_width, scan_width * 2.0, abs(distance_to_sweep));
+    float const trail =
+        exp(-max(distance_to_sweep, 0.0) / scan_falloff) * step(0.0, distance_to_sweep);
 
     float2 const grid_coordinates = float2(dot(relative_position, normalize(grid_axis_u)),
                                            dot(relative_position, normalize(grid_axis_v))) /

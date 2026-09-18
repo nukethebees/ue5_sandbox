@@ -5,7 +5,7 @@ int3 GridSize;
 int2 OutputSize;
 float4 ViewParameters; // yaw radians, pitch radians, density scale, slice count
 
-float2 quad_corner(const uint vertex_id) {
+float2 quad_corner(uint const vertex_id) {
     float2 corner = 0.0;
     corner.x = vertex_id == 1 || vertex_id == 2 || vertex_id == 4 ? 1.0 : 0.0;
     corner.y = vertex_id == 2 || vertex_id == 4 || vertex_id == 5 ? 1.0 : 0.0;
@@ -31,7 +31,7 @@ struct ProjectedPosition {
     float depth;
 };
 
-ProjectedPosition project_position(const float3 world_position) {
+ProjectedPosition project_position(float3 const world_position) {
     float3 camera_position;
     float3 camera_forward;
     float3 camera_right;
@@ -49,29 +49,30 @@ ProjectedPosition project_position(const float3 world_position) {
     return result;
 }
 
-float4 pixel_to_clip(const float2 pixel_position, const float depth) {
+float4 pixel_to_clip(float2 const pixel_position, float const depth) {
     float2 const clip_position =
         pixel_position / float2(OutputSize) * float2(2.0, -2.0) + float2(-1.0, 1.0);
     return float4(clip_position, depth, 1.0);
 }
 
-void volume_background_vs(const uint vertex_id : SV_VertexID, out float4 position : SV_Position) {
+void volume_background_vs(uint const vertex_id : SV_VertexID, out float4 position : SV_Position) {
     position = pixel_to_clip(quad_corner(vertex_id) * float2(OutputSize), 1.0);
 }
 
-float4 volume_background_ps(const float4 position : SV_Position) : SV_Target0 {
+float4 volume_background_ps(float4 const position : SV_Position)
+    : SV_Target0 {
     float2 const normalized_pixel = position.xy / float2(OutputSize);
     float const vignette = saturate(1.0 - length(normalized_pixel - 0.5) * 0.7);
     return float4(float3(0.006, 0.010, 0.019) * vignette, 1.0);
 }
 
 struct SliceVertexOutput {
-    float4 position : SV_Position;
+    float4 position       : SV_Position;
     float3 world_position : VOLUME_WORLD_POSITION;
 };
 
-SliceVertexOutput volume_slice_vs(const uint vertex_id : SV_VertexID,
-                                  const uint instance_id : SV_InstanceID) {
+SliceVertexOutput volume_slice_vs(uint const vertex_id : SV_VertexID,
+                                  uint const instance_id : SV_InstanceID) {
     float3 camera_position;
     float3 camera_forward;
     float3 camera_right;
@@ -80,7 +81,8 @@ SliceVertexOutput volume_slice_vs(const uint vertex_id : SV_VertexID,
     float const slice_count = max(ViewParameters.w, 1.0);
     float const slice_fraction = (float(instance_id) + 0.5) / slice_count;
     float const cube_projection_extent = 1.7320508;
-    float const plane_offset = lerp(cube_projection_extent, -cube_projection_extent, slice_fraction);
+    float const plane_offset =
+        lerp(cube_projection_extent, -cube_projection_extent, slice_fraction);
     float2 const corner = quad_corner(vertex_id) * 2.0 - 1.0;
     float3 const world_position = camera_forward * plane_offset +
                                   camera_right * corner.x * cube_projection_extent +
@@ -93,28 +95,32 @@ SliceVertexOutput volume_slice_vs(const uint vertex_id : SV_VertexID,
     return output;
 }
 
-uint volume_index(const uint3 coordinate) {
+uint volume_index(uint3 const coordinate) {
     return coordinate.x + uint(GridSize.x) * (coordinate.y + uint(GridSize.y) * coordinate.z);
 }
 
-float sample_volume(const float3 uvw) {
+float sample_volume(float3 const uvw) {
     float3 const grid_position = uvw * float3(GridSize - 1);
     uint3 const lower = uint3(floor(grid_position));
     uint3 const upper = min(lower + 1, uint3(GridSize - 1));
     float3 const fraction = frac(grid_position);
 
     float const c00 = lerp(VolumeValues[volume_index(uint3(lower.x, lower.y, lower.z))],
-                           VolumeValues[volume_index(uint3(upper.x, lower.y, lower.z))], fraction.x);
+                           VolumeValues[volume_index(uint3(upper.x, lower.y, lower.z))],
+                           fraction.x);
     float const c10 = lerp(VolumeValues[volume_index(uint3(lower.x, upper.y, lower.z))],
-                           VolumeValues[volume_index(uint3(upper.x, upper.y, lower.z))], fraction.x);
+                           VolumeValues[volume_index(uint3(upper.x, upper.y, lower.z))],
+                           fraction.x);
     float const c01 = lerp(VolumeValues[volume_index(uint3(lower.x, lower.y, upper.z))],
-                           VolumeValues[volume_index(uint3(upper.x, lower.y, upper.z))], fraction.x);
+                           VolumeValues[volume_index(uint3(upper.x, lower.y, upper.z))],
+                           fraction.x);
     float const c11 = lerp(VolumeValues[volume_index(uint3(lower.x, upper.y, upper.z))],
-                           VolumeValues[volume_index(uint3(upper.x, upper.y, upper.z))], fraction.x);
+                           VolumeValues[volume_index(uint3(upper.x, upper.y, upper.z))],
+                           fraction.x);
     return lerp(lerp(c00, c10, fraction.y), lerp(c01, c11, fraction.y), fraction.z);
 }
 
-float3 heat_color(const float value) {
+float3 heat_color(float const value) {
     float3 const cold = float3(0.05, 0.18, 0.85);
     float3 const cyan = float3(0.05, 0.92, 1.0);
     float3 const warm = float3(1.0, 0.72, 0.08);
@@ -124,7 +130,8 @@ float3 heat_color(const float value) {
     return lerp(color, hot, saturate((value - 0.68) * 3.125));
 }
 
-float4 volume_slice_ps(SliceVertexOutput input) : SV_Target0 {
+float4 volume_slice_ps(SliceVertexOutput input)
+    : SV_Target0 {
     float3 const absolute_position = abs(input.world_position);
     clip(1.0 - max(absolute_position.x, max(absolute_position.y, absolute_position.z)));
     float const density = saturate(sample_volume(input.world_position * 0.5 + 0.5));
@@ -134,14 +141,16 @@ float4 volume_slice_ps(SliceVertexOutput input) : SV_Target0 {
     return float4(heat_color(density), alpha);
 }
 
-void frame_segment(const uint instance_id,
+void frame_segment(uint const instance_id,
                    out float3 world_start,
                    out float3 world_end,
                    out float4 color,
                    out float thickness) {
     float2 const corners[4] = {
-        float2(-1.0, -1.0), float2(1.0, -1.0),
-        float2(1.0, 1.0), float2(-1.0, 1.0),
+        float2(-1.0, -1.0),
+        float2(1.0, -1.0),
+        float2(1.0, 1.0),
+        float2(-1.0, 1.0),
     };
     color = float4(0.25, 0.34, 0.44, 0.78);
     thickness = 0.8;
@@ -173,15 +182,15 @@ void frame_segment(const uint instance_id,
 }
 
 struct LineVertexOutput {
-    float4 position : SV_Position;
+    float4 position                   : SV_Position;
     nointerpolation float2 line_start : VOLUME_LINE_START;
-    nointerpolation float2 line_end : VOLUME_LINE_END;
-    nointerpolation float4 color : VOLUME_LINE_COLOR;
-    nointerpolation float thickness : VOLUME_LINE_THICKNESS;
+    nointerpolation float2 line_end   : VOLUME_LINE_END;
+    nointerpolation float4 color      : VOLUME_LINE_COLOR;
+    nointerpolation float thickness   : VOLUME_LINE_THICKNESS;
 };
 
-LineVertexOutput volume_frame_vs(const uint vertex_id : SV_VertexID,
-                                 const uint instance_id : SV_InstanceID) {
+LineVertexOutput volume_frame_vs(uint const vertex_id : SV_VertexID,
+                                 uint const instance_id : SV_InstanceID) {
     float3 world_start;
     float3 world_end;
     float4 color;
@@ -198,8 +207,8 @@ LineVertexOutput volume_frame_vs(const uint vertex_id : SV_VertexID,
                                   direction * ((corner.x * 2.0 - 1.0) * extent) +
                                   normal * ((corner.y * 2.0 - 1.0) * extent);
     LineVertexOutput output;
-    output.position = pixel_to_clip(pixel_position,
-                                    lerp(projected_start.depth, projected_end.depth, corner.x));
+    output.position =
+        pixel_to_clip(pixel_position, lerp(projected_start.depth, projected_end.depth, corner.x));
     output.line_start = projected_start.pixel;
     output.line_end = projected_end.pixel;
     output.color = color;
@@ -207,14 +216,15 @@ LineVertexOutput volume_frame_vs(const uint vertex_id : SV_VertexID,
     return output;
 }
 
-float distance_to_segment(const float2 sample_position, const float2 start, const float2 end) {
+float distance_to_segment(float2 const sample_position, float2 const start, float2 const end) {
     float2 const segment = end - start;
     float const length_squared = max(dot(segment, segment), 0.0001);
     float const t = saturate(dot(sample_position - start, segment) / length_squared);
     return length(sample_position - (start + t * segment));
 }
 
-float4 volume_frame_ps(LineVertexOutput input) : SV_Target0 {
+float4 volume_frame_ps(LineVertexOutput input)
+    : SV_Target0 {
     float const distance = distance_to_segment(input.position.xy, input.line_start, input.line_end);
     float const coverage = 1.0 - smoothstep(input.thickness, input.thickness + 1.0, distance);
     float const alpha = coverage * input.color.a;

@@ -17,13 +17,12 @@ TEST_CLASS(PendingLevelDefinition, "Sandbox.UnitTests")
         }
 
         subsystem->set_level_launch_error(TEXT("old error"));
-        subsystem->set_pending_level(
-            ml::example_levels::make_native_example(),
-            TEXT("LevelScripts/Example.scm"),
-            TEXT("0123456789abcdef"),
-            {.launch_mode = ml::ioj::ELevelLaunchMode::Paused,
-             .requested_time_scale = 4.0,
-             .control_context = EPlayerControlContext::Benchmark});
+        subsystem->set_pending_level(ml::example_levels::make_native_example(),
+                                     TEXT("LevelScripts/Example.scm"),
+                                     TEXT("0123456789abcdef"),
+                                     {.launch_mode = ml::ioj::ELevelLaunchMode::Paused,
+                                      .requested_time_scale = 4.0,
+                                      .control_context = EPlayerControlContext::Benchmark});
 
         TestRunner->TestFalse(TEXT("Selecting a new level clears an old launch error"),
                               subsystem->has_level_launch_error());
@@ -40,9 +39,8 @@ TEST_CLASS(PendingLevelDefinition, "Sandbox.UnitTests")
                               FString{TEXT("Native Example")});
         TestRunner->TestTrue(TEXT("Launch mode is retained"),
                              pending->options.launch_mode == ml::ioj::ELevelLaunchMode::Paused);
-        TestRunner->TestEqual(TEXT("Requested time scale is retained"),
-                              pending->options.requested_time_scale,
-                              4.0);
+        TestRunner->TestEqual(
+            TEXT("Requested time scale is retained"), pending->options.requested_time_scale, 4.0);
         TestRunner->TestTrue(TEXT("Control context is retained"),
                              pending->options.control_context == EPlayerControlContext::Benchmark);
         TestRunner->TestFalse(TEXT("Pending level is consumed exactly once"),

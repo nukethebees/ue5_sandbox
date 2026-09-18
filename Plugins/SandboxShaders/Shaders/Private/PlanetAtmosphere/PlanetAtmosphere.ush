@@ -5,8 +5,7 @@ float3 sbx_planet_surface(float3 normal_ws,
                           float3 sun_direction,
                           float3 day_colour,
                           float3 night_colour,
-                          float night_floor)
-{
+                          float night_floor) {
     float const sun_facing = dot(normalize(normal_ws), normalize(sun_direction));
     float const terminator = smoothstep(-0.12, 0.22, sun_facing);
     float const illumination = lerp(saturate(night_floor), 1.0, terminator);
@@ -20,8 +19,7 @@ float4 sbx_planet_atmosphere(float3 normal_ws,
                              float density,
                              float limb_power,
                              float scale_height,
-                             float emissive_intensity)
-{
+                             float emissive_intensity) {
     float3 const normal = normalize(normal_ws);
     float3 const view_direction = normalize(camera_vector_ws);
     float const view_cosine = saturate(dot(normal, view_direction));
@@ -33,8 +31,7 @@ float4 sbx_planet_atmosphere(float3 normal_ws,
                                           max(view_cosine, max(scale_height, 0.01)));
     float const sun_facing = dot(normal, normalize(sun_direction));
     float const daylight = smoothstep(-0.35, 0.12, sun_facing);
-    float const forward_scatter =
-        pow(saturate(dot(view_direction, normalize(sun_direction))), 6.0);
+    float const forward_scatter = pow(saturate(dot(view_direction, normalize(sun_direction))), 6.0);
     float const energy = saturate(optical_depth * (0.3 + limb * 1.4) * (0.12 + daylight * 0.88) +
                                   forward_scatter * daylight * 0.25);
     return float4(atmosphere_colour * energy * emissive_intensity, saturate(energy * 0.78));

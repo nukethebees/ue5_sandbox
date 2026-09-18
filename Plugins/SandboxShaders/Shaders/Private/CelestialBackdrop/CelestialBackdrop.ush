@@ -182,8 +182,8 @@ float3 sbx_celestial_surface(float3 normal_local,
         normal_local, detail_noise, pattern, emission_pattern, emission_scale);
     float const emission_mask = smoothstep(
         saturate(emission_threshold), saturate(emission_threshold + 0.12), emission_source);
-    float3 const emission = emission_colour * emission_mask * max(emission_intensity, 0.0) *
-                            (1.0 - daylight * 0.88);
+    float3 const emission =
+        emission_colour * emission_mask * max(emission_intensity, 0.0) * (1.0 - daylight * 0.88);
     colour += sbx_celestial_soft_limit(emission, 0.12);
     return colour;
 }
@@ -210,8 +210,8 @@ float4 sbx_celestial_rings(float2 const uv,
 
     float const broad_noise = sbx_value_noise(centred * 3.7 + pattern_seed * 0.013);
     float const fine_noise = sbx_value_noise(centred * 17.3 + pattern_seed * 0.031 + 8.4);
-    float const band_phase = radial_position * max(band_count, 1.0) * 6.2831853 +
-                             (broad_noise - 0.5) * 4.0;
+    float const band_phase =
+        radial_position * max(band_count, 1.0) * 6.2831853 + (broad_noise - 0.5) * 4.0;
     float const band_footprint = fwidth(band_phase);
     float const band_amplitude = saturate(1.0 - band_footprint / 3.14159265);
     float const bands = 0.5 + 0.5 * sin(band_phase) * band_amplitude;

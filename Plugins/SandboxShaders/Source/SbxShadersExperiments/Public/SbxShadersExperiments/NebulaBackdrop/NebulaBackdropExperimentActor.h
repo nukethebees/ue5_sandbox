@@ -25,10 +25,16 @@ struct SBXSHADERSEXPERIMENTS_API FNebulaBackdropSettings {
               meta = (ClampMin = "0.0", ClampMax = "4.0"))
     float density{1.15f};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nebula Backdrop", meta = (ClampMin = "0.0"))
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Nebula Backdrop",
+              meta = (ClampMin = "0.0"))
     float brightness{2.2f};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nebula Backdrop", meta = (ClampMin = "0.05"))
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Nebula Backdrop",
+              meta = (ClampMin = "0.05"))
     float texture_scale{1.4f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nebula Backdrop")
@@ -46,7 +52,10 @@ struct SBXSHADERSEXPERIMENTS_API FNebulaBackdropSettings {
               meta = (ClampMin = "0.001", ClampMax = "0.5"))
     float edge_softness{0.16f};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nebula Backdrop", meta = (ClampMin = "0.0"))
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Nebula Backdrop",
+              meta = (ClampMin = "0.0"))
     float drift_speed{0.018f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nebula Backdrop")

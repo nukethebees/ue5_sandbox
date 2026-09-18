@@ -1,7 +1,7 @@
 #include "SandboxEditor/ui/WidgetBlueprintGenerator.h"
 
-#include "SpaceGame/presentation/TestBatchGameUiData.h"
 #include "SandboxEditor/logging/SandboxEditorLogCategories.h"
+#include "SpaceGame/presentation/TestBatchGameUiData.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Blueprint/WidgetTree.h"

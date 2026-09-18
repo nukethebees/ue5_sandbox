@@ -52,9 +52,8 @@ auto generate_cluster_direction(FRandomStream& random_stream,
 
     auto const normal_sample_radius{
         FMath::Sqrt(-2.0f * FMath::Loge(FMath::Max(random_stream.FRand(), UE_SMALL_NUMBER)))};
-    auto const angular_distance{FMath::Min(normal_sample_radius *
-                                               FMath::DegreesToRadians(width_degrees),
-                                           UE_HALF_PI)};
+    auto const angular_distance{
+        FMath::Min(normal_sample_radius * FMath::DegreesToRadians(width_degrees), UE_HALF_PI)};
     auto const azimuth{random_stream.FRandRange(-UE_PI, UE_PI)};
     auto const radial_direction{cluster_tangent * FMath::Cos(azimuth) +
                                 cluster_bitangent * FMath::Sin(azimuth)};
@@ -143,12 +142,14 @@ auto make_render_parameters(FGpuStarfieldSettings const& settings)
                                  galactic_haze.colour.B},
         .galactic_core_strength = galactic_core.strength,
         .galactic_core_width_degrees = galactic_core.width_degrees,
-        .galactic_core_colour = {
-            galactic_core.colour.R, galactic_core.colour.G, galactic_core.colour.B},
+        .galactic_core_colour = {galactic_core.colour.R,
+                                 galactic_core.colour.G,
+                                 galactic_core.colour.B},
         .nebular_knot_strength = nebular_knot.strength,
         .nebular_knot_size_degrees = nebular_knot.size_degrees,
-        .nebular_knot_colour = {
-            nebular_knot.colour.R, nebular_knot.colour.G, nebular_knot.colour.B},
+        .nebular_knot_colour = {nebular_knot.colour.R,
+                                nebular_knot.colour.G,
+                                nebular_knot.colour.B},
     };
 }
 
@@ -220,8 +221,7 @@ class FGpuStarfieldVertexFactoryShaderParameters final : public FVertexFactorySh
                                           TEXT("GpuStarfieldGalacticCoreWidthDegrees"));
         galactic_core_colour_.Bind(parameter_map, TEXT("GpuStarfieldGalacticCoreColour"));
         nebular_knot_strength_.Bind(parameter_map, TEXT("GpuStarfieldNebularKnotStrength"));
-        nebular_knot_size_degrees_.Bind(parameter_map,
-                                        TEXT("GpuStarfieldNebularKnotSizeDegrees"));
+        nebular_knot_size_degrees_.Bind(parameter_map, TEXT("GpuStarfieldNebularKnotSizeDegrees"));
         nebular_knot_colour_.Bind(parameter_map, TEXT("GpuStarfieldNebularKnotColour"));
         render_haze_.Bind(parameter_map, TEXT("GpuStarfieldRenderHaze"));
     }
@@ -620,9 +620,7 @@ void UGpuStarfieldComponent::apply_settings(FGpuStarfieldSettings const& setting
 FPrimitiveSceneProxy* UGpuStarfieldComponent::CreateSceneProxy() {
     if (!IsValid(material_) || star_data_.IsEmpty()) {
         if (!IsValid(material_)) {
-            UE_LOG(LogGpuStarfield,
-                   Warning,
-                   TEXT("GPU starfield material is unavailable."));
+            UE_LOG(LogGpuStarfield, Warning, TEXT("GPU starfield material is unavailable."));
         }
         return nullptr;
     }
@@ -687,16 +685,13 @@ void UGpuStarfieldComponent::generate_stars() {
     auto const star_count{star_data_.Num()};
     for (int32 star_index{0}; star_index < star_count; ++star_index) {
         auto direction{random_stream.VRand()};
-        if (galactic_band.strength > 0.0f &&
-            random_stream.FRand() < galactic_band.strength) {
+        if (galactic_band.strength > 0.0f && random_stream.FRand() < galactic_band.strength) {
             direction = generate_band_direction(random_stream, galactic_band.width_degrees);
         }
-        if (stellar_cluster.strength > 0.0f &&
-            random_stream.FRand() < stellar_cluster.strength) {
+        if (stellar_cluster.strength > 0.0f && random_stream.FRand() < stellar_cluster.strength) {
             auto const cluster_index{random_stream.RandRange(0, cluster_count - 1)};
-            direction = generate_cluster_direction(random_stream,
-                                                   cluster_directions[cluster_index],
-                                                   stellar_cluster.width_degrees);
+            direction = generate_cluster_direction(
+                random_stream, cluster_directions[cluster_index], stellar_cluster.width_degrees);
         }
 
         auto const population_roll{random_stream.FRand()};
@@ -721,15 +716,12 @@ void UGpuStarfieldComponent::generate_stars() {
         star.size = FMath::Lerp(0.65f, 1.8f, magnitude);
         star.brightness = FMath::Lerp(0.08f, 1.0f, magnitude);
         if (dust_lane.strength > 0.0f) {
-            star.brightness *= calculate_dust_lane_attenuation(direction,
-                                                               dust_lane.strength,
-                                                               dust_lane.width_degrees,
-                                                               dust_lane.irregularity);
+            star.brightness *= calculate_dust_lane_attenuation(
+                direction, dust_lane.strength, dust_lane.width_degrees, dust_lane.irregularity);
         }
         star.depth_factor = depth_factor;
         star.colour_temperature = (random_stream.FRand() + random_stream.FRand()) * 0.5f;
-        star.bright_star_factor =
-            population_roll < settings_.bright_star.fraction ? 1.0f : 0.0f;
+        star.bright_star_factor = population_roll < settings_.bright_star.fraction ? 1.0f : 0.0f;
     }
 
     has_generated_stars_ = true;

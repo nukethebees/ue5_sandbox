@@ -14,7 +14,7 @@ struct ProjectedPosition {
     float depth;
 };
 
-ProjectedPosition project_position(const float3 world_position) {
+ProjectedPosition project_position(float3 const world_position) {
     float3 const camera_position = float3(3.4, -4.2, 3.1);
     float3 const camera_forward = normalize(-camera_position);
     float3 const camera_right = normalize(cross(camera_forward, float3(0.0, 0.0, 1.0)));
@@ -31,31 +31,31 @@ ProjectedPosition project_position(const float3 world_position) {
     return result;
 }
 
-float2 quad_corner(const uint vertex_id) {
+float2 quad_corner(uint const vertex_id) {
     float2 corner = 0.0;
     corner.x = vertex_id == 1 || vertex_id == 2 || vertex_id == 4 ? 1.0 : 0.0;
     corner.y = vertex_id == 2 || vertex_id == 4 || vertex_id == 5 ? 1.0 : 0.0;
     return corner;
 }
 
-float4 pixel_to_clip(const float2 pixel_position, const float depth) {
+float4 pixel_to_clip(float2 const pixel_position, float const depth) {
     float2 const clip_position =
         pixel_position / float2(OutputSize) * float2(2.0, -2.0) + float2(-1.0, 1.0);
     return float4(clip_position, depth, 1.0);
 }
 
-void scatter_background_vs(const uint vertex_id : SV_VertexID,
-                           out float4 position : SV_Position) {
+void scatter_background_vs(uint const vertex_id : SV_VertexID, out float4 position : SV_Position) {
     position = pixel_to_clip(quad_corner(vertex_id) * float2(OutputSize), 1.0);
 }
 
-float4 scatter_background_ps(const float4 position : SV_Position) : SV_Target0 {
+float4 scatter_background_ps(float4 const position : SV_Position)
+    : SV_Target0 {
     float2 const normalized_pixel = position.xy / float2(OutputSize);
     float const vignette = saturate(1.0 - length(normalized_pixel - 0.5) * 0.7);
     return float4(float3(0.006, 0.010, 0.019) * vignette, 1.0);
 }
 
-void frame_segment(const uint instance_id,
+void frame_segment(uint const instance_id,
                    out float3 world_start,
                    out float3 world_end,
                    out float4 color,
@@ -70,15 +70,19 @@ void frame_segment(const uint instance_id,
         float const layer = instance_id < 4 ? -1.0 : 1.0;
         if (instance_id < 8) {
             float2 const corners[4] = {
-                float2(-1.0, -1.0), float2(1.0, -1.0),
-                float2(1.0, 1.0), float2(-1.0, 1.0),
+                float2(-1.0, -1.0),
+                float2(1.0, -1.0),
+                float2(1.0, 1.0),
+                float2(-1.0, 1.0),
             };
             world_start = float3(corners[edge], layer);
             world_end = float3(corners[(edge + 1) % 4], layer);
         } else {
             float2 const corners[4] = {
-                float2(-1.0, -1.0), float2(1.0, -1.0),
-                float2(1.0, 1.0), float2(-1.0, 1.0),
+                float2(-1.0, -1.0),
+                float2(1.0, -1.0),
+                float2(1.0, 1.0),
+                float2(-1.0, 1.0),
             };
             world_start = float3(corners[edge], -1.0);
             world_end = float3(corners[edge], 1.0);
@@ -116,15 +120,15 @@ void frame_segment(const uint instance_id,
 }
 
 struct LineVertexOutput {
-    float4 position : SV_Position;
+    float4 position                   : SV_Position;
     nointerpolation float2 line_start : SCATTER_LINE_START;
-    nointerpolation float2 line_end : SCATTER_LINE_END;
-    nointerpolation float4 color : SCATTER_LINE_COLOR;
-    nointerpolation float thickness : SCATTER_LINE_THICKNESS;
+    nointerpolation float2 line_end   : SCATTER_LINE_END;
+    nointerpolation float4 color      : SCATTER_LINE_COLOR;
+    nointerpolation float thickness   : SCATTER_LINE_THICKNESS;
 };
 
-LineVertexOutput scatter_frame_vs(const uint vertex_id : SV_VertexID,
-                                  const uint instance_id : SV_InstanceID) {
+LineVertexOutput scatter_frame_vs(uint const vertex_id : SV_VertexID,
+                                  uint const instance_id : SV_InstanceID) {
     float3 world_start;
     float3 world_end;
     float4 color;
@@ -143,8 +147,8 @@ LineVertexOutput scatter_frame_vs(const uint vertex_id : SV_VertexID,
                                   normal * ((corner.y * 2.0 - 1.0) * extent);
 
     LineVertexOutput output;
-    output.position = pixel_to_clip(pixel_position,
-                                    lerp(projected_start.depth, projected_end.depth, corner.x));
+    output.position =
+        pixel_to_clip(pixel_position, lerp(projected_start.depth, projected_end.depth, corner.x));
     output.line_start = projected_start.pixel;
     output.line_end = projected_end.pixel;
     output.color = color;
@@ -152,14 +156,15 @@ LineVertexOutput scatter_frame_vs(const uint vertex_id : SV_VertexID,
     return output;
 }
 
-float distance_to_segment(const float2 sample_position, const float2 start, const float2 end) {
+float distance_to_segment(float2 const sample_position, float2 const start, float2 const end) {
     float2 const segment = end - start;
     float const segment_length_squared = max(dot(segment, segment), 0.0001);
     float const t = saturate(dot(sample_position - start, segment) / segment_length_squared);
     return length(sample_position - (start + t * segment));
 }
 
-float4 scatter_frame_ps(LineVertexOutput input) : SV_Target0 {
+float4 scatter_frame_ps(LineVertexOutput input)
+    : SV_Target0 {
     float const distance = distance_to_segment(input.position.xy, input.line_start, input.line_end);
     float const coverage = 1.0 - smoothstep(input.thickness, input.thickness + 1.0, distance);
     float const alpha = coverage * input.color.a;
@@ -168,14 +173,14 @@ float4 scatter_frame_ps(LineVertexOutput input) : SV_Target0 {
 }
 
 struct SampleVertexOutput {
-    float4 position : SV_Position;
-    float2 local_position : SCATTER_SAMPLE_LOCAL_POSITION;
-    nointerpolation float size : SCATTER_SAMPLE_SIZE;
+    float4 position              : SV_Position;
+    float2 local_position        : SCATTER_SAMPLE_LOCAL_POSITION;
+    nointerpolation float size   : SCATTER_SAMPLE_SIZE;
     nointerpolation float4 color : SCATTER_SAMPLE_COLOR;
 };
 
-SampleVertexOutput scatter_sample_vs(const uint vertex_id : SV_VertexID,
-                                     const uint instance_id : SV_InstanceID) {
+SampleVertexOutput scatter_sample_vs(uint const vertex_id : SV_VertexID,
+                                     uint const instance_id : SV_InstanceID) {
     ScatterSample const scatter_sample = Samples[instance_id];
     ProjectedPosition const projected = project_position(scatter_sample.position);
     float2 const corner = quad_corner(vertex_id);
@@ -189,7 +194,8 @@ SampleVertexOutput scatter_sample_vs(const uint vertex_id : SV_VertexID,
     return output;
 }
 
-float4 scatter_sample_ps(SampleVertexOutput input) : SV_Target0 {
+float4 scatter_sample_ps(SampleVertexOutput input)
+    : SV_Target0 {
     float const sample_distance = length(input.local_position);
     float const coverage = 1.0 - smoothstep(input.size, input.size + 1.0, sample_distance);
     float const core = 1.0 - smoothstep(max(input.size - 0.8, 0.0), input.size, sample_distance);

@@ -100,8 +100,8 @@ void ANebulaBackdropExperimentActor::apply_settings() {
                                                 FMath::Max(settings.texture_scale, 0.05f));
     material_instance_->SetScalarParameterValue(
         TEXT("ParallaxStrength"), FMath::Clamp(settings.parallax_strength, 0.0f, 1.0f));
-    material_instance_->SetScalarParameterValue(
-        TEXT("EdgeSoftness"), FMath::Clamp(settings.edge_softness, 0.001f, 0.5f));
+    material_instance_->SetScalarParameterValue(TEXT("EdgeSoftness"),
+                                                FMath::Clamp(settings.edge_softness, 0.001f, 0.5f));
     material_instance_->SetScalarParameterValue(TEXT("DriftSpeed"),
                                                 FMath::Max(settings.drift_speed, 0.0f));
 }

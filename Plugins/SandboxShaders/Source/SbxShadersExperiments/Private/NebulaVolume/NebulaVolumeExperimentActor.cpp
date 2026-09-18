@@ -129,7 +129,9 @@ void ANebulaVolumeExperimentActor::ensure_density_volume() {
 
     density_volume_ = NewObject<UTextureRenderTargetVolume>(this, TEXT("NebulaDensityVolume"));
     if (!IsValid(density_volume_)) {
-        UE_LOG(LogNebulaVolumeExperiment, Error, TEXT("Could not allocate the nebula density volume."));
+        UE_LOG(LogNebulaVolumeExperiment,
+               Error,
+               TEXT("Could not allocate the nebula density volume."));
         return;
     }
 
@@ -170,15 +172,13 @@ void ANebulaVolumeExperimentActor::generate_density_if_needed() {
     auto const maximum_feature_period{static_cast<float>(resolution / 8)};
     auto const maximum_detail_period{static_cast<float>(resolution / 4)};
     auto const make_period = [](FVector const& requested_period, float const maximum_period) {
-        return FVector3f{FMath::Clamp(FMath::RoundToFloat(static_cast<float>(requested_period.X)),
-                                     1.0f,
-                                     maximum_period),
-                         FMath::Clamp(FMath::RoundToFloat(static_cast<float>(requested_period.Y)),
-                                     1.0f,
-                                     maximum_period),
-                         FMath::Clamp(FMath::RoundToFloat(static_cast<float>(requested_period.Z)),
-                                     1.0f,
-                                     maximum_period)};
+        return FVector3f{
+            FMath::Clamp(
+                FMath::RoundToFloat(static_cast<float>(requested_period.X)), 1.0f, maximum_period),
+            FMath::Clamp(
+                FMath::RoundToFloat(static_cast<float>(requested_period.Y)), 1.0f, maximum_period),
+            FMath::Clamp(
+                FMath::RoundToFloat(static_cast<float>(requested_period.Z)), 1.0f, maximum_period)};
     };
     FNebulaDensityRenderParameters const parameters{
         .output_size = FIntVector{resolution, resolution, resolution},
@@ -214,12 +214,11 @@ void ANebulaVolumeExperimentActor::apply_settings() {
     }
     material_instance_->SetVectorParameterValue(TEXT("ShadowColour"), settings.shadow_colour);
     material_instance_->SetVectorParameterValue(TEXT("EmissionColour"), settings.emission_colour);
-    material_instance_->SetVectorParameterValue(
-        TEXT("VolumeExtent"),
-        FLinearColor{static_cast<float>(extent.X),
-                     static_cast<float>(extent.Y),
-                     static_cast<float>(extent.Z),
-                     0.0f});
+    material_instance_->SetVectorParameterValue(TEXT("VolumeExtent"),
+                                                FLinearColor{static_cast<float>(extent.X),
+                                                             static_cast<float>(extent.Y),
+                                                             static_cast<float>(extent.Z),
+                                                             0.0f});
     material_instance_->SetScalarParameterValue(TEXT("AnimationTime"), animation_time_);
     material_instance_->SetScalarParameterValue(TEXT("Density"),
                                                 FMath::Clamp(settings.density, 0.0f, 4.0f));
@@ -229,8 +228,8 @@ void ANebulaVolumeExperimentActor::apply_settings() {
                                                 FMath::Max(settings.emissive_strength, 0.0f));
     material_instance_->SetScalarParameterValue(TEXT("FeatureSize"),
                                                 FMath::Max(settings.feature_size, 100.0f));
-    material_instance_->SetScalarParameterValue(
-        TEXT("FlowStrength"), FMath::Clamp(settings.flow_strength, 0.0f, 2.0f));
+    material_instance_->SetScalarParameterValue(TEXT("FlowStrength"),
+                                                FMath::Clamp(settings.flow_strength, 0.0f, 2.0f));
     material_instance_->SetScalarParameterValue(TEXT("DriftSpeed"),
                                                 FMath::Max(settings.drift_speed, 0.0f));
     material_instance_->SetScalarParameterValue(

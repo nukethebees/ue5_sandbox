@@ -50,9 +50,7 @@ void render_nebula_density(FRHICommandListImmediate& rhi_command_list,
 
     auto const output_texture_rhi{output_resource->GetRenderTargetTexture()};
     if (!output_texture_rhi.IsValid()) {
-        UE_LOG(LogNebulaDensityRenderer,
-               Error,
-               TEXT("Nebula density output has no RHI texture."));
+        UE_LOG(LogNebulaDensityRenderer, Error, TEXT("Nebula density output has no RHI texture."));
         return;
     }
 
@@ -67,8 +65,8 @@ void render_nebula_density(FRHICommandListImmediate& rhi_command_list,
     shader_parameters->OutputTexture = graph_builder.CreateUAV(output_texture);
 
     auto const shader{TShaderMapRef<FNebulaDensityCS>{GetGlobalShaderMap(GMaxRHIFeatureLevel)}};
-    auto const group_count{
-        FComputeShaderUtils::GetGroupCount(parameters.output_size, nebula_density_thread_group_size)};
+    auto const group_count{FComputeShaderUtils::GetGroupCount(parameters.output_size,
+                                                              nebula_density_thread_group_size)};
     FComputeShaderUtils::AddPass(graph_builder,
                                  RDG_EVENT_NAME("NebulaDensity.Generate %dx%dx%d",
                                                 parameters.output_size.X,

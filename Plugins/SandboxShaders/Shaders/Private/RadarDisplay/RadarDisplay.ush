@@ -1,7 +1,6 @@
 #include "/Plugin/SandboxShaders/Common/ProceduralNoise.ush"
 
-float sbx_radar_contact(float2 position, float4 contact, float time_seconds)
-{
+float sbx_radar_contact(float2 position, float4 contact, float time_seconds) {
     float const distance_to_contact = length(position - contact.xy);
     float const core = 1.0 - smoothstep(contact.z * 0.35, contact.z, distance_to_contact);
     float const halo = 1.0 - smoothstep(contact.z, contact.z * 2.8, distance_to_contact);
@@ -24,14 +23,12 @@ float3 sbx_radar_display(float2 uv,
                          float4 contact_a,
                          float4 contact_b,
                          float4 contact_c,
-                         float4 contact_d)
-{
+                         float4 contact_d) {
     float2 const position = (uv - 0.5) * 2.0;
     float const radius = length(position);
     float const inside = 1.0 - smoothstep(0.985, 1.01, radius);
     float const ring_coordinate = frac(radius * ring_count);
-    float const rings = 1.0 - smoothstep(0.025, 0.055, min(ring_coordinate,
-                                                            1.0 - ring_coordinate));
+    float const rings = 1.0 - smoothstep(0.025, 0.055, min(ring_coordinate, 1.0 - ring_coordinate));
     float const axes = max(1.0 - smoothstep(0.006, 0.018, abs(position.x)),
                            1.0 - smoothstep(0.006, 0.018, abs(position.y)));
     float const rim = 1.0 - smoothstep(0.015, 0.045, abs(radius - 1.0));
@@ -50,8 +47,8 @@ float3 sbx_radar_display(float2 uv,
     contacts *= inside;
 
     float const scanline = sin(uv.y * 900.0 + time_seconds * 17.0) * 0.5 + 0.5;
-    float const static_noise = sbx_hash21(floor(uv * float2(320.0, 180.0)) +
-                                          floor(time_seconds * 18.0));
+    float const static_noise =
+        sbx_hash21(floor(uv * float2(320.0, 180.0)) + floor(time_seconds * 18.0));
     float const interference_value = (scanline * 0.55 + static_noise * 0.45) * interference;
 
     float3 colour = background_colour;

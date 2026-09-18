@@ -135,16 +135,10 @@ struct SANDBOXSHADERS_API FGpuStarfieldBrightStarSettings {
                       ToolTip = "Zero disables the boosted population."))
     float fraction{0.01f};
 
-    UPROPERTY(EditAnywhere,
-              BlueprintReadWrite,
-              Category = "Bright Star",
-              meta = (ClampMin = "1.0"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bright Star", meta = (ClampMin = "1.0"))
     float size_multiplier{1.75f};
 
-    UPROPERTY(EditAnywhere,
-              BlueprintReadWrite,
-              Category = "Bright Star",
-              meta = (ClampMin = "1.0"))
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bright Star", meta = (ClampMin = "1.0"))
     float brightness_multiplier{2.0f};
 
     UPROPERTY(

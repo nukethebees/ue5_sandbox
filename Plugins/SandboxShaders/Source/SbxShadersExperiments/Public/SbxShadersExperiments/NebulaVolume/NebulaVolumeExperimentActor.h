@@ -33,7 +33,10 @@ struct SBXSHADERSEXPERIMENTS_API FNebulaVolumeSettings {
               meta = (ClampMin = "0.0", ClampMax = "8.0"))
     float extinction{1.1f};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nebula Volume", meta = (ClampMin = "0.0"))
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Nebula Volume",
+              meta = (ClampMin = "0.0"))
     float emissive_strength{1.8f};
 
     UPROPERTY(EditAnywhere,
@@ -69,7 +72,10 @@ struct SBXSHADERSEXPERIMENTS_API FNebulaVolumeSettings {
               meta = (ClampMin = "0.0", ClampMax = "2.0"))
     float flow_strength{0.32f};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nebula Volume", meta = (ClampMin = "0.0"))
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Nebula Volume",
+              meta = (ClampMin = "0.0"))
     float drift_speed{0.025f};
 
     UPROPERTY(EditAnywhere,

@@ -14,8 +14,7 @@ float4 sbx_energy_beam(float3 world_position,
                        float turbulence,
                        float3 core_colour,
                        float3 sheath_colour,
-                       float emissive_intensity)
-{
+                       float emissive_intensity) {
     float3 const beam_delta = destination_position - source_position;
     float const beam_length = max(length(beam_delta), 0.001);
     float3 const beam_axis = beam_delta / beam_length;
@@ -27,10 +26,9 @@ float4 sbx_energy_beam(float3 world_position,
     float3 const noise_coordinates = world_position / max(beam_width, 1.0) * 0.7 +
                                      beam_axis * (beam_t * 8.0 - animation_time * flow_speed);
     float const noise = sbx_fbm(noise_coordinates);
-    float const packets = pow(saturate(0.5 + 0.5 * sin(beam_t * 72.0 -
-                                                       animation_time * flow_speed * 8.0 +
-                                                       noise * 5.0)),
-                              8.0);
+    float const packets = pow(
+        saturate(0.5 + 0.5 * sin(beam_t * 72.0 - animation_time * flow_speed * 8.0 + noise * 5.0)),
+        8.0);
     float const endpoint = exp(-beam_t * 24.0) + exp(-(1.0 - beam_t) * 24.0);
     float const breakup = lerp(1.0, saturate(noise * 1.45), saturate(turbulence));
     float const energy = core * (1.2 + packets * 0.8) + sheath * breakup * 0.75 + endpoint * 0.7;

@@ -1,10 +1,10 @@
 #include "Benchmarks/Heatmap/HeatmapBenchmark.h"
 
 #include "Engine/TextureRenderTarget2D.h"
-#include "SbxUIExperiments/HeatmapRDG/HeatmapRDGWidget.h"
 #include "HAL/PlatformTime.h"
 #include "HeatmapRDG/HeatmapRDGRenderer.h"
 #include "RenderingThread.h"
+#include "SbxUIExperiments/HeatmapRDG/HeatmapRDGWidget.h"
 #include "UObject/StrongObjectPtr.h"
 
 namespace {

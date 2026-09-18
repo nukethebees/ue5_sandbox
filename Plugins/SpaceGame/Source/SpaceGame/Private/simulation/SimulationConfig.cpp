@@ -1,11 +1,11 @@
 #include "SpaceGame/simulation/SimulationConfig.h"
 
-#include <SpaceGame/ships/fighters/TestCapitalShipFightersConfig.h>
-#include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
 #include <SpaceGame/combat/lasers/TestLasersConfig.h>
-#include <SpaceGame/ships/player/TestSpaceShipData.h>
-#include <SpaceGame/defences/turrets/TestStaticTurretsConfig.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnersConfig.h>
+#include <SpaceGame/defences/turrets/TestStaticTurretsConfig.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersConfig.h>
+#include <SpaceGame/ships/player/TestSpaceShipData.h>
 
 #include <UObject/Package.h>
 #include <UObject/UObjectGlobals.h>
