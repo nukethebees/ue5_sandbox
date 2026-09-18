@@ -182,6 +182,7 @@ void UGameSubsystem::update_audio_settings() {
         return;
     }
     auto const& settings{settings_subsystem->settings_state()};
+    audio_.set_master_volume(settings.master_volume);
     audio_.set_music_volume(settings.music_volume);
     audio_.set_sfx_volume(settings.sfx_volume);
 }

@@ -54,6 +54,7 @@ struct SPACEGAMEPRESENTATION_API FGameAudio {
     void start_player_ship_ambience();
     void stop_player_ship_ambience();
     void stop_button_audio();
+    void set_master_volume(float volume);
     void set_music_volume(float volume);
     void set_sfx_volume(float volume);
 
@@ -73,6 +74,7 @@ struct SPACEGAMEPRESENTATION_API FGameAudio {
     TWeakObjectPtr<UAudioComponent> menu_button_pressed_component_;
     TStrongObjectPtr<USoundWave> player_ship_ambience_sound_;
     TWeakObjectPtr<UAudioComponent> player_ship_ambience_component_;
+    float master_volume_{1.0f};
     float music_volume_{1.0f};
     float sfx_volume_{1.0f};
     bool ambience_playback_warning_logged_{};

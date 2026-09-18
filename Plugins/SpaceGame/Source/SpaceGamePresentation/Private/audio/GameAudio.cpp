@@ -141,7 +141,7 @@ void FGameAudio::start_menu_ambience() {
     constexpr bool auto_destroy{false};
     auto* const component{UGameplayStatics::SpawnSound2D(game_instance,
                                                          menu_ambience,
-                                                         music_volume_,
+                                                         master_volume_ * music_volume_,
                                                          1.0f,
                                                          0.0f,
                                                          nullptr,
@@ -174,7 +174,7 @@ void FGameAudio::play_button_pressed() {
     constexpr bool auto_destroy{false};
     auto* const component{UGameplayStatics::CreateSound2D(game_instance,
                                                           sound,
-                                                          sfx_volume_,
+                                                          master_volume_ * sfx_volume_,
                                                           1.0f,
                                                           0.0f,
                                                           nullptr,
@@ -213,7 +213,7 @@ void FGameAudio::start_player_ship_ambience() {
     constexpr bool auto_destroy{false};
     auto* const component{UGameplayStatics::SpawnSound2D(game_instance,
                                                          ambience,
-                                                         sfx_volume_,
+                                                         master_volume_ * sfx_volume_,
                                                          1.0f,
                                                          0.0f,
                                                          nullptr,
@@ -259,11 +259,28 @@ void FGameAudio::stop_button_audio() {
     menu_button_pressed_component_.Reset();
 }
 
+void FGameAudio::set_master_volume(float const volume) {
+    master_volume_ = FMath::Clamp(volume, 0.0f, 1.0f);
+
+    auto* const menu_ambience_component{menu_ambience_component_.Get()};
+    if (IsValid(menu_ambience_component)) {
+        menu_ambience_component->SetVolumeMultiplier(master_volume_ * music_volume_);
+    }
+    auto* const menu_button_pressed_component{menu_button_pressed_component_.Get()};
+    if (IsValid(menu_button_pressed_component)) {
+        menu_button_pressed_component->SetVolumeMultiplier(master_volume_ * sfx_volume_);
+    }
+    auto* const player_ship_ambience_component{player_ship_ambience_component_.Get()};
+    if (IsValid(player_ship_ambience_component)) {
+        player_ship_ambience_component->SetVolumeMultiplier(master_volume_ * sfx_volume_);
+    }
+}
+
 void FGameAudio::set_music_volume(float const volume) {
     music_volume_ = FMath::Clamp(volume, 0.0f, 1.0f);
     auto* const component{menu_ambience_component_.Get()};
     if (IsValid(component)) {
-        component->SetVolumeMultiplier(music_volume_);
+        component->SetVolumeMultiplier(master_volume_ * music_volume_);
     }
 }
 
@@ -271,11 +288,11 @@ void FGameAudio::set_sfx_volume(float const volume) {
     sfx_volume_ = FMath::Clamp(volume, 0.0f, 1.0f);
     auto* const component{menu_button_pressed_component_.Get()};
     if (IsValid(component)) {
-        component->SetVolumeMultiplier(sfx_volume_);
+        component->SetVolumeMultiplier(master_volume_ * sfx_volume_);
     }
     auto* const player_ship_ambience_component{player_ship_ambience_component_.Get()};
     if (IsValid(player_ship_ambience_component)) {
-        player_ship_ambience_component->SetVolumeMultiplier(sfx_volume_);
+        player_ship_ambience_component->SetVolumeMultiplier(master_volume_ * sfx_volume_);
     }
 }
 
