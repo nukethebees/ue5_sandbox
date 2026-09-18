@@ -457,6 +457,7 @@ if(SANDBOX_TEST_SUITE STREQUAL "benchmark")
   )
 elseif(SANDBOX_TEST_SUITE STREQUAL "default")
   add_low_level_test_suite(core-tests SandboxCoreTests SandboxCore
+    AGGREGATE
     LABELS low-level-core)
   add_custom_target(native-tests
     DEPENDS
