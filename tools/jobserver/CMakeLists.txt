@@ -130,13 +130,13 @@ add_dependencies(jobserver-tests
   jobserverd
 )
 add_test(NAME jobserver-tests COMMAND jobserver-tests)
-set_tests_properties(jobserver-tests PROPERTIES LABELS "all;jobserver")
+set_tests_properties(jobserver-tests PROPERTIES LABELS "jobserver")
 add_test(NAME jobserver-unreal-integration-tests
   COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_unreal_integration.py"
     "${PROJECT_SOURCE_DIR}" "$<TARGET_FILE:jobserver>" "$<TARGET_FILE:jobserverd>"
     "$<TARGET_FILE:jobserver-test-helper>" "${CMAKE_COMMAND}" "${CMAKE_CTEST_COMMAND}")
 set_tests_properties(jobserver-unreal-integration-tests PROPERTIES
-  LABELS "all;unit;jobserver"
+  LABELS "jobserver"
   TIMEOUT 180)
 
 option(SANDBOX_JOBSERVER_SYSTEM_TESTS
