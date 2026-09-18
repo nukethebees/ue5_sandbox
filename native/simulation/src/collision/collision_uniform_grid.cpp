@@ -482,6 +482,8 @@ auto CollisionUniformGrid::add_static_aabb(Vector3f const min_point, Vector3f co
 }
 
 void CollisionUniformGrid::rebuild_static_grid() {
+    SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::rebuild_static_grid");
+
     auto const result{static_storage_.rebuild(geometry_)};
     if (!result) {
         auto const error{result.error()};

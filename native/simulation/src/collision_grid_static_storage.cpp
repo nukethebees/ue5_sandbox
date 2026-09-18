@@ -1,5 +1,6 @@
 #include "ioj/sim/collision_grid_static_storage.h"
 
+#include <ioj/sim/profiling.h>
 #include "ioj/sim/world_aabb_operations.h"
 
 #include <cassert>
@@ -27,6 +28,8 @@ auto CollisionGridStaticStorage::add_aabb(Vector3f const min_point, Vector3f con
 
 auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
     -> std::expected<void, StaticGridBuildError> {
+    SANDBOX_PROFILE_SCOPE("CollisionGridStaticStorage::rebuild");
+
     assert(is_configured(geometry));
 
     range_offsets_.clear();
