@@ -1,4 +1,6 @@
 <Solution>
   <Project Path="GitTools/GitTools.csproj" />
   <Project Path="GitTools.Tests/GitTools.Tests.csproj" />
+  <Project Path="SetLiveCodingDisabled/SetLiveCodingDisabled.csproj" />
+  <Project Path="SetLiveCodingDisabled.Tests/SetLiveCodingDisabled.Tests.csproj" />
 </Solution>

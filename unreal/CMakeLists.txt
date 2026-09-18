@@ -192,6 +192,9 @@ set(SANDBOX_GAME_CONFIGURATION_ROOT
 set(SANDBOX_LIVE_CODING_DISABLED_ARGUMENT
   "-ini:EditorPerProjectUserSettings:[/Script/LiveCoding.LiveCodingSettings]:bEnabled=False"
 )
+set(SANDBOX_SET_LIVE_CODING_DISABLED_TOOL
+  "${PROJECT_SOURCE_DIR}/tools/bin/SetLiveCodingDisabled.exe"
+)
 file(MAKE_DIRECTORY "${SANDBOX_LOCAL_DDC_DIR}")
 
 include("${PROJECT_SOURCE_DIR}/cmake/unreal.cmake")

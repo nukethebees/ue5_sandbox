@@ -70,9 +70,8 @@ foreach(sandbox_unreal_packaging_target IN ITEMS
 endforeach()
 
 add_custom_target(worktree-dependencies
-  COMMAND "${POWERSHELL_EXECUTABLE}" -NoProfile -File
-    "${PROJECT_SOURCE_DIR}/PowerShell/Set-LiveCodingDisabled.ps1"
-    -settings_path
+  COMMAND "${SANDBOX_SET_LIVE_CODING_DISABLED_TOOL}"
+    --settings-path
     "${PROJECT_SOURCE_DIR}/Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"
   DEPENDS
     unreal-native-dependencies

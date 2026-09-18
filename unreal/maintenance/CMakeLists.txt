@@ -1,7 +1,6 @@
 add_custom_target(generate-project-files
-  COMMAND "${POWERSHELL_EXECUTABLE}" -NoProfile -File
-    "${PROJECT_SOURCE_DIR}/PowerShell/Set-LiveCodingDisabled.ps1"
-    -settings_path
+  COMMAND "${SANDBOX_SET_LIVE_CODING_DISABLED_TOOL}"
+    --settings-path
     "${PROJECT_SOURCE_DIR}/Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"
   COMMAND ${UE_JOBSERVER_COMMAND_PREFIX}
     "${CMAKE_COMMAND}" -E env
@@ -16,11 +15,3 @@ add_custom_target(generate-project-files
   VERBATIM
 )
 set_property(TARGET generate-project-files PROPERTY FOLDER "Sandbox/Unreal/Maintenance")
-
-add_test(NAME Sandbox.LiveCodingConfig
-  COMMAND "${POWERSHELL_EXECUTABLE}" -NoProfile -File
-    "${PROJECT_SOURCE_DIR}/PowerShell/Set-LiveCodingDisabled.Tests.ps1")
-set_tests_properties(Sandbox.LiveCodingConfig PROPERTIES
-  LABELS "unit;all"
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-)

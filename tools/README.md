@@ -7,6 +7,8 @@
 - `perf/` contains performance tooling integrated into the root CMake project.
 - `GitTools/` is a small C# executable for Git worktree discovery. Build the complete C# tooling
   workspace with `dotnet build tools/Tools.slnx` or `ctools` after loading `dev.ps1`.
+- `SetLiveCodingDisabled/` is a small C# executable for disabling Live Coding in saved editor
+  settings while preserving the file's encoding and line endings.
 
 `Directory.Build.props` applies the shared target framework, nullable, implicit-using, warning,
 analysis, and warnings-as-errors policy to every .NET project below `tools/`.
