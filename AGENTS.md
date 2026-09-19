@@ -97,11 +97,10 @@ Explicit user authorization to bypass a broken repository helper overrides the n
 
 * A Windows-only CMake 4.3+/Ninja layer at the repository root invokes UnrealBuildTool through `RunUBT.bat`. `.Target.cs`, `.Build.cs`, and UBT remain authoritative.
 * Use the CMake layer for builds; do not invoke UBT, `RunUBT.bat`, or `Build.bat` directly.
-* `ctools` builds and stages standalone C# developer-tool executables under `tools/bin`. Before a
-  workflow that invokes one, run `ctools` if its executable is absent. Unreal workflows require
-  `UnrealBuildTools.exe`; formatting workflows require `CodeFormatTools.exe`. Native-only
-  workflows do not require this preflight: their mimalloc validation builds its configuration-local
-  `NativeBinaryTools` host dependency on demand.
+* `ctools` refreshes standalone C# executables under `tools/bin` for direct developer use. CMake
+  workflows build their configuration-local C# host-tool dependencies on demand; do not run
+  `ctools` as a workflow preflight. Native mimalloc validation likewise builds its configuration-
+  local `NativeBinaryTools` host dependency on demand.
 * CMake coordinates Unreal work through a canonical engine read/write gate: builds, UAT packaging,
   and interactive managed editor launches acquire it exclusively; unattended managed editor tests
   and commandlets acquire it shared for their full process-tree lifetime. Shared editor readers must

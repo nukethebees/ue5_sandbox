@@ -43,6 +43,9 @@ function(sandbox_add_dotnet_host_tool target_name output_variable project_file)
     VERBATIM
   )
   add_custom_target(${target_name} DEPENDS "${output_file}")
+  if(TARGET csharp-host-tools)
+    add_dependencies(csharp-host-tools ${target_name})
+  endif()
 
   set(${output_variable} "${output_file}" PARENT_SCOPE)
 endfunction()

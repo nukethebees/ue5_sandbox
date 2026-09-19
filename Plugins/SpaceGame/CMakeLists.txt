@@ -1,21 +1,19 @@
-set(sandbox_architecture_checks
-  "${PROJECT_SOURCE_DIR}/tools/bin/ArchitectureChecks.exe")
-sandbox_add_staged_csharp_tool_preflight(architecture-checks-preflight
-  "ArchitectureChecks.exe" "${sandbox_architecture_checks}")
+sandbox_add_dotnet_host_tool(
+  architecture-checks-host
+  SANDBOX_ARCHITECTURE_CHECKS
+  "${PROJECT_SOURCE_DIR}/tools/ArchitectureChecks/ArchitectureChecks.csproj"
+)
 
 add_custom_target(check-space-game-layers
-  COMMAND "${sandbox_architecture_checks}" --root "${PROJECT_SOURCE_DIR}"
-  DEPENDS architecture-checks-preflight
+  COMMAND "${SANDBOX_ARCHITECTURE_CHECKS}" --root "${PROJECT_SOURCE_DIR}"
+  DEPENDS architecture-checks-host
   WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
   COMMENT "Checking SpaceGame module boundaries"
   VERBATIM
 )
 add_test(NAME SpaceGame.Architecture
-  COMMAND "${CMAKE_COMMAND}"
-    "-DSANDBOX_SOURCE_DIR:PATH=${PROJECT_SOURCE_DIR}"
-    "-DSANDBOX_STAGED_TOOL_NAME:STRING=ArchitectureChecks.exe"
-    "-DSANDBOX_STAGED_TOOL_PATH:FILEPATH=${sandbox_architecture_checks}"
-    -P "${PROJECT_SOURCE_DIR}/cmake/run_space_game_architecture_check.cmake")
+  COMMAND "${CMAKE_COMMAND}" --build "${PROJECT_BINARY_DIR}"
+    --target check-space-game-layers)
 set_tests_properties(
   SpaceGame.Architecture
   PROPERTIES

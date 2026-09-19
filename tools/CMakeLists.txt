@@ -1,11 +1,12 @@
-set(sandbox_code_format_tools
-  "${PROJECT_SOURCE_DIR}/tools/bin/CodeFormatTools.exe")
-sandbox_add_staged_csharp_tool_preflight(code-format-tools-preflight
-  "CodeFormatTools.exe" "${sandbox_code_format_tools}")
+sandbox_add_dotnet_host_tool(
+  code-format-tools-host
+  SANDBOX_CODE_FORMAT_TOOLS
+  "${PROJECT_SOURCE_DIR}/tools/CodeFormatTools/CodeFormatTools.csproj"
+)
 
 add_custom_target(format-code
-  COMMAND "${sandbox_code_format_tools}" --changed
-  DEPENDS code-format-tools-preflight
+  COMMAND "${SANDBOX_CODE_FORMAT_TOOLS}" --changed
+  DEPENDS code-format-tools-host
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Formatting Git-changed project source files"
   USES_TERMINAL
@@ -13,8 +14,8 @@ add_custom_target(format-code
 )
 
 add_custom_target(format-all-code
-  COMMAND "${sandbox_code_format_tools}"
-  DEPENDS code-format-tools-preflight
+  COMMAND "${SANDBOX_CODE_FORMAT_TOOLS}"
+  DEPENDS code-format-tools-host
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Formatting all project source files"
   USES_TERMINAL
