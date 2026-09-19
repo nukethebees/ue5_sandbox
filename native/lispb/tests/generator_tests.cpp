@@ -677,7 +677,7 @@ TEST(Generator, FormatsOptedInOutputBeforeWritingAndChecking) {
     std::filesystem::create_directories(directory);
     {
         std::ofstream style{directory / ".clang-format"};
-        style << "BasedOnStyle: LLVM\nIndentWidth: 4\n";
+        style << "BasedOnStyle: LLVM\nIndentWidth: 4\nLineEnding: CRLF\n";
     }
     auto const files{
         std::vector<GeneratedFile>{{"Generated/Value.h", "struct Value{int number;};\n", true}}};
@@ -688,6 +688,7 @@ TEST(Generator, FormatsOptedInOutputBeforeWritingAndChecking) {
         return std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
     };
     EXPECT_NE(read().find("    int number;"), std::string::npos);
+    EXPECT_EQ(read().find('\r'), std::string::npos);
     auto const timestamp{std::filesystem::last_write_time(destination)};
     EXPECT_EQ(generate_files(files, directory, directory, true), 0);
     EXPECT_EQ(std::filesystem::last_write_time(destination), timestamp);
