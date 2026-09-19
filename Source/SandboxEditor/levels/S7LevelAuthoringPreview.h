@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SandboxEditor/levels/S7LevelAuthoringSession.h"
+#include "SandboxEditor/levels/S7LevelReconciliation.h"
 
 #include <CoreMinimal.h>
 #include <UObject/WeakObjectPtr.h>

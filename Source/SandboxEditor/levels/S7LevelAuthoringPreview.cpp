@@ -1,6 +1,7 @@
 #include "SandboxEditor/levels/S7LevelAuthoringPreview.h"
 
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
+#include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include "SandboxEditor/levels/S7LevelSourceSession.h"
 
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
