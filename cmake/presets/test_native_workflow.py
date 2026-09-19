@@ -84,8 +84,24 @@ class NativeWorkflowTests(unittest.TestCase):
             self.assertNotIn("tools/bin/NativeBinaryTools.exe", dry_run)
 
             build_ninja = (build_directory / "build.ninja").read_text(encoding="utf-8")
-            self.assertIn(str(self.source_dir / "tools" / "NativeBinaryTools" / "Program.cs"), build_ninja)
-            self.assertIn(str(self.source_dir / "tools" / "Directory.Build.targets"), build_ninja)
+            normalized_build_ninja = build_ninja.replace("\\", "/")
+            native_binary_tools_directory = self.source_dir / "tools" / "NativeBinaryTools"
+            self.assertIn(
+                (native_binary_tools_directory / "Program.cs").as_posix(),
+                normalized_build_ninja,
+            )
+            self.assertIn(
+                (self.source_dir / "tools" / "Directory.Build.targets").as_posix(),
+                normalized_build_ninja,
+            )
+            self.assertNotIn(
+                (native_binary_tools_directory / "obj").as_posix(),
+                normalized_build_ninja,
+            )
+            self.assertNotIn(
+                (native_binary_tools_directory / "bin").as_posix(),
+                normalized_build_ninja,
+            )
 
     def run_cmake(self, *arguments: str) -> str:
         result = subprocess.run(
