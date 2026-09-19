@@ -39,6 +39,7 @@ struct SPACEGAME_API FShipControlContext {
     void bind_actions();
     void remove_action_bindings();
     void neutralise_ship_input();
+    void reset_power_gesture_state();
     void add_mapping_context();
     void remove_mapping_context();
 

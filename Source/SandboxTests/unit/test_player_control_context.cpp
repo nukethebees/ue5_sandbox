@@ -57,6 +57,22 @@ struct FShipControlContextTestAccess {
         context.stop_brake_at(time_seconds);
     }
 
+    static void cycle_next_control_mode(FShipControlContext& context) {
+        context.cycle_next_control_mode();
+    }
+
+    static void cycle_previous_control_mode(FShipControlContext& context) {
+        context.cycle_previous_control_mode();
+    }
+
+    static auto throttle_power_press_active(FShipControlContext const& context) -> bool {
+        return context.throttle_power_press_active_;
+    }
+
+    static auto brake_power_press_active(FShipControlContext const& context) -> bool {
+        return context.brake_power_press_active_;
+    }
+
     static void seed_throttle_tap(FShipControlContext& context) {
         context.throttle_gesture_.begin_press(1.0);
         context.throttle_gesture_.end_press(1.1);
@@ -1242,6 +1258,42 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Power-to-Velocity release stops boost"),
                              simulation.get_movement_state().boost_brake_state ==
                                  ::ioj::sim::player::BoostBrakeState::None);
+
+        commands.select_next_control_mode();
+        FShipControlContextTestAccess::start_throttle(context, 1.f, 6.0);
+        FShipControlContextTestAccess::stop_throttle(context, 6.1);
+        FShipControlContextTestAccess::cycle_previous_control_mode(context);
+        commands.select_next_control_mode();
+        FShipControlContextTestAccess::start_throttle(context, 1.f, 6.2);
+        TestRunner->TestTrue(TEXT("Power throttle tap cannot survive previous-mode cycle"),
+                             simulation.get_movement_state().boost_brake_state ==
+                                 ::ioj::sim::player::BoostBrakeState::None);
+        FShipControlContextTestAccess::stop_throttle(context, 6.3);
+
+        FShipControlContextTestAccess::start_brake(context, 7.0);
+        FShipControlContextTestAccess::stop_brake(context, 7.1);
+        FShipControlContextTestAccess::cycle_next_control_mode(context);
+        commands.select_previous_control_mode();
+        FShipControlContextTestAccess::start_brake(context, 7.2);
+        TestRunner->TestTrue(TEXT("Power brake tap cannot survive next-mode cycle"),
+                             simulation.get_movement_state().boost_brake_state ==
+                                 ::ioj::sim::player::BoostBrakeState::Brake);
+        FShipControlContextTestAccess::stop_brake(context, 7.3);
+
+        FShipControlContextTestAccess::start_throttle(context, 1.f, 8.0);
+        TestRunner->TestTrue(TEXT("Power throttle press is tracked"),
+                             FShipControlContextTestAccess::throttle_power_press_active(context));
+        FShipControlContextTestAccess::cycle_previous_control_mode(context);
+        TestRunner->TestFalse(TEXT("Mode cycle clears active Power throttle press"),
+                              FShipControlContextTestAccess::throttle_power_press_active(context));
+
+        commands.select_next_control_mode();
+        FShipControlContextTestAccess::start_brake(context, 8.1);
+        TestRunner->TestTrue(TEXT("Power brake press is tracked"),
+                             FShipControlContextTestAccess::brake_power_press_active(context));
+        FShipControlContextTestAccess::cycle_next_control_mode(context);
+        TestRunner->TestFalse(TEXT("Mode cycle clears active Power brake press"),
+                              FShipControlContextTestAccess::brake_power_press_active(context));
 
         ship->set_move_input(FVector2D{0.5f, -0.25f});
         ship->turn(FVector2D{0.25f, 0.75f});
