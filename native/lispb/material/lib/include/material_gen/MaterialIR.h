@@ -123,6 +123,7 @@ struct MaterialSettings {
     bool two_sided{};
     bool disable_depth_test{};
     bool used_with_instanced_static_meshes{};
+    bool used_with_particle_sprites{};
     bool adopt_existing{};
     double opacity_mask_clip_value{0.3333};
 };

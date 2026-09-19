@@ -319,6 +319,7 @@ auto serialize(CompiledMaterial const& compiled)
     writer.write_u8(compiled.material.settings.two_sided ? 1 : 0);
     writer.write_u8(compiled.material.settings.disable_depth_test ? 1 : 0);
     writer.write_u8(compiled.material.settings.used_with_instanced_static_meshes ? 1 : 0);
+    writer.write_u8(compiled.material.settings.used_with_particle_sprites ? 1 : 0);
     writer.write_u8(compiled.material.settings.adopt_existing ? 1 : 0);
     writer.write_double(compiled.material.settings.opacity_mask_clip_value);
 
@@ -378,15 +379,17 @@ auto deserialize(std::span<std::uint8_t const> const bytes)
     auto const two_sided{reader.read_u8()};
     auto const disable_depth_test{reader.read_u8()};
     auto const used_with_instances{reader.read_u8()};
+    auto const used_with_particle_sprites{reader.read_u8()};
     auto const adopt_existing{reader.read_u8()};
     auto const opacity_mask_clip_value{reader.read_double()};
     if (!source_path || !source_hash || !name || !package_path || !domain || !blend_mode ||
         !shading_model || !two_sided || !disable_depth_test || !used_with_instances ||
-        !adopt_existing || !opacity_mask_clip_value ||
+        !used_with_particle_sprites || !adopt_existing || !opacity_mask_clip_value ||
         *domain > static_cast<std::uint8_t>(MaterialDomain::post_process) ||
         *blend_mode > static_cast<std::uint8_t>(BlendMode::alpha_composite) ||
         *shading_model > static_cast<std::uint8_t>(ShadingModel::unlit) || *two_sided > 1 ||
-        *disable_depth_test > 1 || *used_with_instances > 1 || *adopt_existing > 1) {
+        *disable_depth_test > 1 || *used_with_instances > 1 || *used_with_particle_sprites > 1 ||
+        *adopt_existing > 1) {
         return std::unexpected{"malformed compiled material settings"};
     }
     compiled.source_path = std::move(*source_path);
@@ -399,6 +402,7 @@ auto deserialize(std::span<std::uint8_t const> const bytes)
                                   .two_sided = *two_sided != 0,
                                   .disable_depth_test = *disable_depth_test != 0,
                                   .used_with_instanced_static_meshes = *used_with_instances != 0,
+                                  .used_with_particle_sprites = *used_with_particle_sprites != 0,
                                   .adopt_existing = *adopt_existing != 0,
                                   .opacity_mask_clip_value = *opacity_mask_clip_value};
     if (compiled.source_path.empty() || !valid_source_hash(compiled.source_hash)) {

@@ -310,6 +310,8 @@ class Analyzer {
         }
         if (*value == "instanced-static-meshes") {
             material_.settings.used_with_instanced_static_meshes = true;
+        } else if (*value == "particle-sprites") {
+            material_.settings.used_with_particle_sprites = true;
         } else {
             fail(form.children[1].token.span,
                  "unknown material usage '" + std::string{*value} + "'");
