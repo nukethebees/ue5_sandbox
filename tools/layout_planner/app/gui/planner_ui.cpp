@@ -30,6 +30,9 @@ PlannerUi::PlannerUi(CatalogLoadResult loaded)
 }
 
 auto PlannerUi::draw() -> bool {
+    ImGui::GetStyle().FontScaleMain = text_scale_;
+    auto const view_changed{draw_view_menu()};
+    ImGui::GetStyle().FontScaleMain = text_scale_;
     auto const dockspace_id{ImGui::DockSpaceOverViewport()};
     setup_default_dock_layout(dockspace_id);
     refresh_analysis();
@@ -41,7 +44,28 @@ auto PlannerUi::draw() -> bool {
     draw_properties_panel();
     draw_variants_panel();
     draw_comparison_panel();
-    return revision_before != workspace_.revision();
+    return view_changed || revision_before != workspace_.revision();
+}
+
+auto PlannerUi::draw_view_menu() -> bool {
+    bool changed{};
+    if (!ImGui::BeginMainMenuBar()) {
+        return false;
+    }
+    if (ImGui::BeginMenu("View")) {
+        auto percentage{text_scale_ * 100.0F};
+        if (ImGui::SliderFloat("Text size", &percentage, 75.0F, 175.0F, "%.0f%%")) {
+            text_scale_ = percentage / 100.0F;
+            changed = true;
+        }
+        if (ImGui::MenuItem("Reset text size")) {
+            text_scale_ = 1.0F;
+            changed = true;
+        }
+        ImGui::EndMenu();
+    }
+    ImGui::EndMainMenuBar();
+    return changed;
 }
 
 void PlannerUi::setup_default_dock_layout(unsigned int const dockspace_id) {

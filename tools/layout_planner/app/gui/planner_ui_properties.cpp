@@ -89,26 +89,41 @@ void PlannerUi::draw_properties_panel() {
         if (selected_field_.empty() && !packed->fields.empty()) {
             selected_field_ = packed->fields.front().name;
         }
-        if (auto const* field{detail::packed_field(*packed, selected_field_)}; field != nullptr) {
-            auto const found{
-                std::ranges::find(analysis.fields, field->name, &PackedFieldAnalysis::name)};
-            if (found != analysis.fields.end()) {
-                ImGui::SeparatorText(field->name.c_str());
-                ImGui::Text("Logical type: %s", found->logical_type.c_str());
-                ImGui::Text("Schema width: %u bits", found->schema_bit_width);
-                auto width{found->bit_width};
-                if (ImGui::InputScalar("Planning width", ImGuiDataType_U32, &width)) {
-                    width = std::clamp(width, std::uint32_t{1}, std::uint32_t{64});
-                    workspace_.set_packed_field_width(packed->id, field->name, width);
+        ImGui::SeparatorText("Fields");
+        if (ImGui::BeginTable("packed-fields",
+                              3,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn("Field");
+            ImGui::TableSetupColumn("Schema");
+            ImGui::TableSetupColumn("Planning");
+            ImGui::TableHeadersRow();
+            for (auto const& field : analysis.fields) {
+                ImGui::PushID(field.name.c_str());
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                if (ImGui::Selectable(field.name.c_str(), selected_field_ == field.name)) {
+                    selected_field_ = field.name;
                 }
-                draw_override_note(found->overridden);
-                if (found->overridden) {
-                    ImGui::SameLine();
-                    if (ImGui::SmallButton("Reset field")) {
-                        workspace_.set_packed_field_width(packed->id, field->name, std::nullopt);
+                ImGui::TextDisabled("%s", field.logical_type.c_str());
+                ImGui::TableNextColumn();
+                ImGui::Text("%u bits", field.schema_bit_width);
+                ImGui::TableNextColumn();
+                auto width{field.bit_width};
+                ImGui::SetNextItemWidth(-1.0F);
+                if (ImGui::InputScalar("##planning-width", ImGuiDataType_U32, &width)) {
+                    width = std::clamp(width, std::uint32_t{1}, std::uint32_t{64});
+                    workspace_.set_packed_field_width(packed->id, field.name, width);
+                }
+                if (field.overridden) {
+                    ImGui::TextColored({0.4F, 0.75F, 0.95F, 1.0F}, "Override");
+                    if (ImGui::SmallButton("Reset")) {
+                        workspace_.set_packed_field_width(packed->id, field.name, std::nullopt);
                     }
                 }
+                ImGui::PopID();
             }
+            ImGui::EndTable();
         }
     } else if (auto const* soa{std::get_if<SoaLayout>(definition)}) {
         auto const& analysis{*active_soa_};
@@ -140,32 +155,47 @@ void PlannerUi::draw_properties_panel() {
         if (selected_field_.empty() && !soa->columns.empty()) {
             selected_field_ = soa->columns.front().name;
         }
-        if (auto const* column{detail::soa_column(*soa, selected_field_)}; column != nullptr) {
-            auto const found{
-                std::ranges::find(analysis.columns, column->name, &SoaColumnAnalysis::name)};
-            if (found != analysis.columns.end()) {
-                ImGui::SeparatorText(column->name.c_str());
-                ImGui::Text("Schema type: %s", found->schema_type.c_str());
-                if (ImGui::BeginCombo("Planning type", found->physical_type.c_str())) {
-                    if (ImGui::Selectable("Schema type", !found->overridden)) {
-                        workspace_.set_soa_column_type(soa->id, column->name, std::nullopt);
+        ImGui::SeparatorText("Columns");
+        if (ImGui::BeginTable("soa-columns-properties",
+                              3,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn("Column");
+            ImGui::TableSetupColumn("Schema");
+            ImGui::TableSetupColumn("Planning");
+            ImGui::TableHeadersRow();
+            for (auto const& column : analysis.columns) {
+                ImGui::PushID(column.name.c_str());
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                if (ImGui::Selectable(column.name.c_str(), selected_field_ == column.name)) {
+                    selected_field_ = column.name;
+                }
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(column.schema_type.c_str());
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(-1.0F);
+                if (ImGui::BeginCombo("##planning-type", column.physical_type.c_str())) {
+                    if (ImGui::Selectable("Schema type", !column.overridden)) {
+                        workspace_.set_soa_column_type(soa->id, column.name, std::nullopt);
                     }
                     for (auto const& [type, facts] : abi_.types()) {
                         static_cast<void>(facts);
-                        if (ImGui::Selectable(type.c_str(), found->physical_type == type)) {
-                            workspace_.set_soa_column_type(soa->id, column->name, type);
+                        if (ImGui::Selectable(type.c_str(), column.physical_type == type)) {
+                            workspace_.set_soa_column_type(soa->id, column.name, type);
                         }
                     }
                     ImGui::EndCombo();
                 }
-                draw_override_note(found->overridden);
-                if (found->overridden) {
-                    ImGui::SameLine();
-                    if (ImGui::SmallButton("Reset column")) {
-                        workspace_.set_soa_column_type(soa->id, column->name, std::nullopt);
+                if (column.overridden) {
+                    ImGui::TextColored({0.4F, 0.75F, 0.95F, 1.0F}, "Override");
+                    if (ImGui::SmallButton("Reset")) {
+                        workspace_.set_soa_column_type(soa->id, column.name, std::nullopt);
                     }
                 }
+                ImGui::PopID();
             }
+            ImGui::EndTable();
         }
     }
     ImGui::EndDisabled();
@@ -184,6 +214,7 @@ void PlannerUi::draw_variants_panel() {
         if (ImGui::Selectable(label.c_str(), selected)) {
             workspace_.select_variant(variant.id);
             sync_variant_name();
+            packed_dragged_divider_.reset();
         }
     }
     ImGui::Separator();
