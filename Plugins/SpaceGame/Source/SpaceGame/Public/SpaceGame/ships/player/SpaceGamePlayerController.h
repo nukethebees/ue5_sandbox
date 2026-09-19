@@ -78,6 +78,8 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     void initialise_gameplay();
     void initialise_main_menu();
     void apply_main_menu_input_mode();
+    void apply_player_ship_flight_control_preset();
+    void apply_player_ship_flight_control_preset(Pawn& ship) const;
     void attach_ship(Pawn& ship);
     void detach_ship();
     void activate_ship_control();

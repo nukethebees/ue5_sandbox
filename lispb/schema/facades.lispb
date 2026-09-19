@@ -46,6 +46,8 @@
     (method set_ship_1d_control_y void (parameter input float))
     (method select_next_control_mode void)
     (method select_previous_control_mode void)
+    (method set_control_mode void
+      (parameter mode "SpaceShipControlMode"))
     (method start_sampling void :noexcept true)
     (method stop_sampling void)
     (method adjust_desired_forward_velocity void (parameter direction float))

@@ -34,6 +34,9 @@ class SPACEGAME_API USpaceGameUserSettings : public UGameUserSettings {
 
     auto bees() const -> int32;
     void set_bees(int32 value);
+
+    auto player_ship_flight_control_preset() const -> EPlayerShipFlightControlPreset;
+    void set_player_ship_flight_control_preset(EPlayerShipFlightControlPreset value);
   private:
     UPROPERTY(Config)
     int32 anti_aliasing_method_{};
@@ -58,6 +61,10 @@ class SPACEGAME_API USpaceGameUserSettings : public UGameUserSettings {
 
     UPROPERTY(Config)
     int32 bees_{};
+
+    UPROPERTY(Config)
+    int32 player_ship_flight_control_preset_{
+        static_cast<int32>(EPlayerShipFlightControlPreset::PlanarVelocity)};
 };
 
 } // namespace ml::ioj

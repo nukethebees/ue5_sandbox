@@ -4,6 +4,7 @@
 #include <SandboxCoreEngine/actor_utils.h>
 #include <SpaceGame/input/ControlProfiles.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
+#include <SpaceGame/settings/GameSettingsSubsystem.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGame/system/GameSubsystem.h>
@@ -69,6 +70,15 @@ void ASpaceGamePlayerController::BeginPlay() {
     Super::BeginPlay();
 
     initialise_input_user_settings();
+    if (auto* const game_instance{GetGameInstance()}; IsValid(game_instance)) {
+        if (auto* const settings{game_instance->GetSubsystem<ml::ioj::UGameSettingsSubsystem>()};
+            IsValid(settings)) {
+            settings->settings_changed.AddUObject(
+                this,
+                static_cast<void (ThisClass::*)()>(
+                    &ThisClass::apply_player_ship_flight_control_preset));
+        }
+    }
     begin_play_finished_ = true;
     if (!is_gameplay_mode()) {
         initialise_main_menu();
@@ -132,6 +142,12 @@ void ASpaceGamePlayerController::EndPlay(EEndPlayReason::Type const reason) {
     hud_.shutdown();
     hud_.shutdown_benchmark(*this);
     modal_ui_.shutdown(*this);
+    if (auto* const game_instance{GetGameInstance()}; IsValid(game_instance)) {
+        if (auto* const settings{game_instance->GetSubsystem<ml::ioj::UGameSettingsSubsystem>()};
+            IsValid(settings)) {
+            settings->settings_changed.RemoveAll(this);
+        }
+    }
     Super::EndPlay(reason);
 }
 void ASpaceGamePlayerController::OnPossess(APawn* const in_pawn) {
@@ -153,6 +169,7 @@ void ASpaceGamePlayerController::OnPossess(APawn* const in_pawn) {
     UE_LOG(LogSandbox, Display, TEXT("Possessed player ship"));
 }
 void ASpaceGamePlayerController::attach_ship(Pawn& ship) {
+    apply_player_ship_flight_control_preset(ship);
     ship.on_player_ship_died.BindUObject(this, &ThisClass::on_player_ship_died);
     control_contexts_.set_ship(&ship);
     modal_ui_.on_ship_changed(true);
@@ -167,6 +184,38 @@ void ASpaceGamePlayerController::attach_ship(Pawn& ship) {
                Warning,
                TEXT("ASpaceGamePlayerController::attach_ship: Game subsystem is unavailable; "
                     "player ship ambience will not play."));
+    }
+}
+void ASpaceGamePlayerController::apply_player_ship_flight_control_preset() {
+    if (auto* const ship{Cast<Pawn>(GetPawn())}; IsValid(ship)) {
+        apply_player_ship_flight_control_preset(*ship);
+    }
+}
+void ASpaceGamePlayerController::apply_player_ship_flight_control_preset(Pawn& ship) const {
+    auto* const game_instance{GetGameInstance()};
+    auto* const settings{IsValid(game_instance)
+                             ? game_instance->GetSubsystem<ml::ioj::UGameSettingsSubsystem>()
+                             : nullptr};
+    if (!IsValid(settings)) {
+        return;
+    }
+
+    switch (settings->player_ship_flight_control_preset()) {
+        case ml::ioj::EPlayerShipFlightControlPreset::ForwardSpeed: {
+            ship.set_control_mode(ETestSpaceShipControlMode::Velocity);
+            ship.set_flight_mode(ETestSpaceShipFlightMode::ForwardSpeed);
+            break;
+        }
+        case ml::ioj::EPlayerShipFlightControlPreset::PlanarVelocity: {
+            ship.set_control_mode(ETestSpaceShipControlMode::Velocity);
+            ship.set_flight_mode(ETestSpaceShipFlightMode::PlanarVelocity);
+            break;
+        }
+        case ml::ioj::EPlayerShipFlightControlPreset::PlanarPower: {
+            ship.set_flight_mode(ETestSpaceShipFlightMode::PlanarVelocity);
+            ship.set_control_mode(ETestSpaceShipControlMode::Power);
+            break;
+        }
     }
 }
 void ASpaceGamePlayerController::activate_ship_control() {

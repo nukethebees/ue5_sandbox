@@ -256,6 +256,11 @@
   :header "SpaceGame/settings/GameSettingsTypes.h"
   :pass-by value)
 
+(type player_ship_flight_control_preset
+  :spelling "EPlayerShipFlightControlPreset"
+  :header "SpaceGame/settings/GameSettingsTypes.h"
+  :pass-by value)
+
 
 (type vector_3f_value
   :spelling "FVector3f"

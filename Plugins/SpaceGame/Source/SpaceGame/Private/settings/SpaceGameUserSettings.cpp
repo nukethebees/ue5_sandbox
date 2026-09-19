@@ -89,6 +89,10 @@ void USpaceGameUserSettings::ValidateSettings() {
     sfx_volume_ = FMath::IsFinite(sfx_volume_) ? FMath::Clamp(sfx_volume_, 0.0f, 1.0f) : 1.0f;
     ui_volume_ = FMath::IsFinite(ui_volume_) ? FMath::Clamp(ui_volume_, 0.0f, 1.0f) : 1.0f;
     bees_ = FMath::Clamp(bees_, 0, 5);
+    player_ship_flight_control_preset_ =
+        FMath::Clamp(player_ship_flight_control_preset_,
+                     static_cast<int32>(EPlayerShipFlightControlPreset::ForwardSpeed),
+                     static_cast<int32>(EPlayerShipFlightControlPreset::PlanarPower));
 }
 
 void USpaceGameUserSettings::SetToDefaults() {
@@ -102,6 +106,8 @@ void USpaceGameUserSettings::SetToDefaults() {
     sfx_volume_ = 1.0f;
     ui_volume_ = 1.0f;
     bees_ = 0;
+    player_ship_flight_control_preset_ =
+        static_cast<int32>(EPlayerShipFlightControlPreset::PlanarVelocity);
 }
 
 auto USpaceGameUserSettings::anti_aliasing_method() const -> EGameAntiAliasingMethod {
@@ -169,6 +175,19 @@ auto USpaceGameUserSettings::bees() const -> int32 {
 
 void USpaceGameUserSettings::set_bees(int32 const value) {
     bees_ = FMath::Clamp(value, 0, 5);
+}
+
+auto USpaceGameUserSettings::player_ship_flight_control_preset() const
+    -> EPlayerShipFlightControlPreset {
+    return static_cast<EPlayerShipFlightControlPreset>(
+        FMath::Clamp(player_ship_flight_control_preset_,
+                     static_cast<int32>(EPlayerShipFlightControlPreset::ForwardSpeed),
+                     static_cast<int32>(EPlayerShipFlightControlPreset::PlanarPower)));
+}
+
+void USpaceGameUserSettings::set_player_ship_flight_control_preset(
+    EPlayerShipFlightControlPreset const value) {
+    player_ship_flight_control_preset_ = static_cast<int32>(value);
 }
 
 } // namespace ml::ioj
