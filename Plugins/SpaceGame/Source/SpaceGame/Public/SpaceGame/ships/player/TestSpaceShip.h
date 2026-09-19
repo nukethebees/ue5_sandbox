@@ -180,7 +180,7 @@ class SPACEGAME_API ATestSpaceShip
     UNiagaraComponent* boost_engine_effect{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Speed", meta = (AllowPrivateAccess))
-    ETestSpaceShipFlightMode flight_mode{ETestSpaceShipFlightMode::ForwardSpeed};
+    ETestSpaceShipFlightMode flight_mode{ETestSpaceShipFlightMode::PlanarVelocity};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Movement", meta = (AllowPrivateAccess))
     ETestSpaceShipControlMode control_mode{ETestSpaceShipControlMode::Velocity};
 

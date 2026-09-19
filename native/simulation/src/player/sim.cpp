@@ -48,8 +48,9 @@ void Sim::configure(PlayerSpawnData const& spawn) noexcept {
     left_socket = spawn.left_socket;
     right_socket = spawn.right_socket;
     middle_socket = spawn.middle_socket;
-    flight_mode = spawn.flight_mode;
     control_mode = spawn.control_mode;
+    flight_mode = control_mode == SpaceShipControlMode::Power ? SpaceShipFlightMode::PlanarVelocity
+                                                              : spawn.flight_mode;
     laser_mode = spawn.laser_mode;
     laser_fire_rate = spawn.laser_fire_rate;
     max_health_ = spawn.health.max_health;
@@ -301,9 +302,20 @@ void Sim::set_boost_brake_state(BoostBrakeState const state, MovementState& move
     }
 
     if (uses_power_controller()) {
-        movement.thrust_change_rate = state == BoostBrakeState::Boost
-                                        ? -(1.f / config.boost_depletion_time)
-                                        : 1.f / config.thrust_recharge_time;
+        switch (state) {
+            case BoostBrakeState::None:
+                movement.thrust_change_rate = 1.f / config.thrust_recharge_time;
+                break;
+            case BoostBrakeState::Boost:
+                movement.thrust_change_rate = -(1.f / config.boost_depletion_time);
+                break;
+            case BoostBrakeState::Brake:
+                movement.thrust_change_rate = 0.f;
+                break;
+            case BoostBrakeState::EmergencyBrake:
+                movement.thrust_change_rate = -(1.f / config.brake_depletion_time);
+                break;
+        }
         movement.target_speed =
             state == BoostBrakeState::Boost ? config.power_boost_max_speed : config.power_max_speed;
         movement.boost_brake_state = state;
@@ -374,8 +386,9 @@ void Sim::set_boost_brake_state(BoostBrakeState const state, MovementState& move
 
 void Sim::update_boost_brake(float const dt, MovementState& movement) {
     auto const starting_energy{movement.thrust_energy};
-    if (starting_energy <= 0.f && (!uses_power_controller() ||
-                                   movement.boost_brake_state == player::BoostBrakeState::Boost)) {
+    if (starting_energy <= 0.f &&
+        (!uses_power_controller() || movement.boost_brake_state == player::BoostBrakeState::Boost ||
+         movement.boost_brake_state == player::BoostBrakeState::EmergencyBrake)) {
         set_boost_brake_state(player::BoostBrakeState::None, movement);
     }
 
@@ -442,25 +455,26 @@ void Sim::set_control_mode(SpaceShipControlMode const new_control_mode) {
         return;
     }
 
+    if (new_control_mode == SpaceShipControlMode::Power) {
+        flight_mode = SpaceShipFlightMode::PlanarVelocity;
+    }
+
     sampling = false;
     target_local_planar_velocity_scale = {};
+    target_local_planar_velocity = {};
     throttle = 0.f;
     if (flight_mode == SpaceShipFlightMode::PlanarVelocity) {
         movement_state_.planar_velocity = movement_state_.velocity;
         movement_state_.planar_boost_speed = 0.f;
-        planned_movement_ = movement_state_;
     }
 
     control_mode = new_control_mode;
-    if (uses_power_controller()) {
-        set_boost_brake_state(movement_state_.boost_brake_state);
-        return;
-    }
-
-    if (flight_mode == SpaceShipFlightMode::PlanarVelocity) {
+    if (flight_mode == SpaceShipFlightMode::PlanarVelocity &&
+        control_mode == SpaceShipControlMode::Velocity) {
         set_desired_planar_velocity(movement_state_.velocity);
     }
-    set_boost_brake_state(movement_state_.boost_brake_state);
+    set_boost_brake_state(BoostBrakeState::None);
+    planned_movement_ = movement_state_;
 }
 
 auto Sim::uses_power_controller() const noexcept -> bool {
@@ -558,7 +572,8 @@ void Sim::roll(float const direction) noexcept {
 }
 
 void Sim::set_flight_mode(SpaceShipFlightMode const new_flight_mode) noexcept {
-    flight_mode = new_flight_mode;
+    flight_mode = control_mode == SpaceShipControlMode::Power ? SpaceShipFlightMode::PlanarVelocity
+                                                              : new_flight_mode;
 }
 
 /* **************************************** */
