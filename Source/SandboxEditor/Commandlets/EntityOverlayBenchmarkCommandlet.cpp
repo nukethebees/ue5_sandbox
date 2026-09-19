@@ -1,6 +1,7 @@
 #include "SandboxEditor/Commandlets/EntityOverlayBenchmarkCommandlet.h"
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
+#include "ioj/sim/entity_identity_layout.h"
 #include "ioj/sim/turret_entity_data.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayBenchmark.h"
 #include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
@@ -14,14 +15,15 @@
 DEFINE_LOG_CATEGORY_STATIC(LogEntityOverlayBenchmark, Log, All);
 
 namespace {
-auto make_view(::ioj::sim::TurretEntityData const& entities)
+auto make_view(::ioj::sim::TurretEntityData const& entities,
+               ::ioj::sim::HealthTable const& health_table)
     -> std::array<::ioj::sim::AgentDisplayBatch, 1> {
     auto const data{entities.get_const_view()};
     return {{{::ioj::sim::EntityType::Turret,
               data.entity_ids,
               data.locations,
               {},
-              data.healths,
+              health_table.get_const_view(data.health_indices),
               data.teams}}};
 }
 
@@ -38,6 +40,7 @@ auto make_team_colours() -> FEntityOverlayTeamColours {
 
 auto write_debug_frames(FString const& output_directory) -> bool {
     ::ioj::sim::TurretEntityData entities;
+    ::ioj::sim::HealthTable health_table;
     FVector3f const positions[]{
         {1000.0f, -600.0f, 0.0f},
         {1000.0f, -300.0f, 0.0f},
@@ -50,17 +53,20 @@ auto write_debug_frames(FString const& output_directory) -> bool {
         {12000.0f, 0.0f, 0.0f},
         {-10.0f, -5.0f, -5.0f},
     };
-    int32 const health[]{0, 25, 50, 75, 100, 75, 100, 100, 100, 50};
+    ::ioj::sim::Health const health[]{0, 25, 50, 75, 100, 75, 100, 100, 100, 50};
     std::array<float, static_cast<std::size_t>(::ioj::sim::EntityType::COUNT)> const
         entity_type_radii{200.0f, 200.0f, 200.0f, 200.0f, 200.0f};
     auto const count{UE_ARRAY_COUNT(positions)};
     entities.add_defaulted(count);
     for (int32 index{0}; index < count; ++index) {
+        entities.entity_ids[index] = ::ioj::sim::EntityUniqueId::make(
+            ::ioj::sim::entity_identity_offset(::ioj::sim::EntityType::Turret, index),
+            ::ioj::sim::EntityType::Turret);
         entities.locations.set(index, ml::to_native(positions[index]));
-        entities.healths[index] = health[index];
         entities.teams[index] =
             static_cast<::ioj::sim::Team>(index % static_cast<int32>(::ioj::sim::Team::COUNT));
     }
+    health_table.add(entities.entity_ids, health, entities.health_indices);
 
     FMatrix44f projection{FMatrix44f::Identity};
     FMemory::Memzero(projection.M, sizeof(projection.M));
@@ -84,7 +90,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
     objective_roles[7] = EEntityOverlayObjectiveRole::Defend;
     objective_roles[8] = EEntityOverlayObjectiveRole::Destroy;
     auto& frame{frame_store->next()};
-    static_cast<void>(collect_entity_overlay_instances(make_view(entities),
+    static_cast<void>(collect_entity_overlay_instances(make_view(entities, health_table),
                                                        entity_type_radii,
                                                        objective_roles,
                                                        make_team_colours(),
@@ -101,7 +107,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
 
     entities.locations.set(count - 1, {100.0f, 50.0f, 50.0f});
     auto& moved_frame{frame_store->next()};
-    static_cast<void>(collect_entity_overlay_instances(make_view(entities),
+    static_cast<void>(collect_entity_overlay_instances(make_view(entities, health_table),
                                                        entity_type_radii,
                                                        objective_roles,
                                                        make_team_colours(),

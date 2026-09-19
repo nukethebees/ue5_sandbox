@@ -326,7 +326,7 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
         ml::fixture_export::write(out, "player.control_mode", player.control_mode);
         ml::fixture_export::write(out, "player.laser_mode", player.laser_mode);
         ml::fixture_export::write(out, "player.laser_fire_rate", player.laser_fire_rate);
-        auto const player_health{player.get_health()};
+        auto const player_health{player.health};
         ml::fixture_export::write(out, "player.health.health", player_health.health);
         ml::fixture_export::write(out, "player.health.max_health", player_health.max_health);
         ml::fixture_export::transform(out, "player.transform", player.transform);
