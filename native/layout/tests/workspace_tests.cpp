@@ -33,5 +33,24 @@ TEST(LayoutWorkspace, OnlyChangesRevisionWhenStateChanges) {
     EXPECT_EQ(workspace.revision(), initial_revision);
 }
 
+TEST(LayoutWorkspace, ResetsIndividualPlanningOverrides) {
+    LayoutWorkspace workspace;
+    auto const packed{SchemaId{
+        .kind = SchemaKind::packed_value, .module_name = "module", .schema_name = "Packed"}};
+    auto const soa{SchemaId{
+        .kind = SchemaKind::standard_library_soa, .module_name = "module", .schema_name = "Soa"}};
+    workspace.create_variant("Variant");
+
+    EXPECT_TRUE(workspace.set_packed_storage_type(packed, "std::uint64_t"));
+    EXPECT_TRUE(workspace.set_packed_field_width(packed, "value", 12));
+    EXPECT_TRUE(workspace.set_soa_column_type(soa, "values", "std::uint16_t"));
+    EXPECT_TRUE(workspace.set_capacity(soa, 4'096));
+    EXPECT_TRUE(workspace.set_packed_storage_type(packed, std::nullopt));
+    EXPECT_TRUE(workspace.set_packed_field_width(packed, "value", std::nullopt));
+    EXPECT_TRUE(workspace.set_soa_column_type(soa, "values", std::nullopt));
+    EXPECT_TRUE(workspace.set_capacity(soa, std::nullopt));
+    EXPECT_EQ(workspace.active_variant().overrides, VariantOverrides{});
+}
+
 } // namespace
 } // namespace ioj::layout

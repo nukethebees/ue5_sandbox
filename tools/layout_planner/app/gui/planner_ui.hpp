@@ -26,12 +26,16 @@ class PlannerUi {
     void draw_layout_panel();
     void draw_properties_panel();
     void draw_variants_panel();
-    void draw_analysis_panel();
+    void draw_comparison_panel();
     void draw_packed_layout(layout::PackedLayout const& layout,
-                            layout::PackedAnalysis const& analysis);
-    void draw_soa_layout(layout::SoaLayout const& layout, layout::SoaAnalysis const& analysis);
+                            layout::PackedAnalysis const& baseline,
+                            layout::PackedAnalysis const& active);
+    void draw_soa_layout(layout::SoaLayout const& layout,
+                         layout::SoaAnalysis const& baseline,
+                         layout::SoaAnalysis const& active);
     void draw_diagnostics(std::vector<layout::Diagnostic> const& diagnostics) const;
     void sync_variant_name();
+    void create_variant_for_selected_schema();
 
     layout::LayoutWorkspace workspace_;
     layout::AbiProfile abi_{layout::AbiProfile::host_common()};
@@ -47,6 +51,7 @@ class PlannerUi {
     std::optional<layout::SoaAnalysis> active_soa_;
 
     std::array<char, 128> variant_name_{};
+    std::array<char, 128> schema_filter_{};
     std::uint64_t variant_name_id_{std::numeric_limits<std::uint64_t>::max()};
     std::uint64_t next_variant_number_{1};
     bool dock_layout_initialized_{};

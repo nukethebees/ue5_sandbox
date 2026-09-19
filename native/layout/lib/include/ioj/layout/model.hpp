@@ -44,6 +44,7 @@ struct SoaColumn {
 struct SoaLayout {
     SchemaId id;
     std::vector<SoaColumn> columns;
+    std::optional<std::string> related_storage_name;
 };
 
 using LayoutDefinition = std::variant<PackedLayout, SoaLayout>;

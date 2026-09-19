@@ -5,7 +5,9 @@
 #include <codegen/validation.h>
 #include <lispb/project.h>
 
+#include <algorithm>
 #include <exception>
+#include <string>
 #include <type_traits>
 #include <utility>
 
@@ -22,8 +24,29 @@ auto field_kind(codegen::PackedFieldKind const kind) -> PackedFieldKind {
     return PackedFieldKind::unsigned_integer;
 }
 
-void add_packed_module(SchemaCatalog& catalog,
-                       std::vector<Diagnostic>& diagnostics,
+auto qualified_name(codegen::ModuleSettings const& settings, std::string const& name)
+    -> std::string {
+    return settings.namespace_name.has_value() ? *settings.namespace_name + "::" + name : name;
+}
+
+void add_type_representation(std::vector<TypeRepresentation>& representations,
+                             std::vector<Diagnostic>& diagnostics,
+                             std::string spelling,
+                             std::string represented_by) {
+    auto const found{std::ranges::find(representations, spelling, &TypeRepresentation::spelling)};
+    if (found == representations.end()) {
+        representations.push_back(
+            {.spelling = std::move(spelling), .represented_by = std::move(represented_by)});
+        return;
+    }
+    if (found->represented_by != represented_by) {
+        diagnostics.push_back(
+            {DiagnosticSeverity::warning,
+             "Conflicting schema-derived representations for type '" + spelling + "'."});
+    }
+}
+
+void add_packed_module(CatalogLoadResult& result,
                        codegen::PackedValueModuleSchema const& module,
                        codegen::Manifest const& manifest) {
     for (auto const& value : module.values) {
@@ -44,16 +67,21 @@ void add_packed_module(SchemaCatalog& catalog,
                  .bit_width = static_cast<std::uint32_t>(field.bits),
                  .kind = field_kind(field.kind)});
         }
-        if (!catalog.add(std::move(layout))) {
-            diagnostics.push_back({DiagnosticSeverity::error,
-                                   "Duplicate packed layout identity in LispB module '" +
-                                       module.settings.name + "'."});
+        add_type_representation(result.type_representations,
+                                result.diagnostics,
+                                qualified_name(module.settings, value.name),
+                                layout.storage_type);
+        add_type_representation(
+            result.type_representations, result.diagnostics, value.name, layout.storage_type);
+        if (!result.catalog.add(std::move(layout))) {
+            result.diagnostics.push_back({DiagnosticSeverity::error,
+                                          "Duplicate packed layout identity in LispB module '" +
+                                              module.settings.name + "'."});
         }
     }
 }
 
-void add_soa_module(SchemaCatalog& catalog,
-                    std::vector<Diagnostic>& diagnostics,
+void add_soa_module(CatalogLoadResult& result,
                     codegen::SoaModuleSchema const& module,
                     codegen::Manifest const& manifest) {
     if (module.backend != codegen::SoaBackend::standard_library) {
@@ -65,10 +93,10 @@ void add_soa_module(SchemaCatalog& catalog,
             has_nested = has_nested || member.kind == codegen::SoaMemberKind::nested;
         }
         if (has_nested) {
-            diagnostics.push_back(
+            result.diagnostics.push_back(
                 {DiagnosticSeverity::warning,
                  "Standard-library SoA '" + schema.name +
-                     "' uses nested members, which are unsupported in layout planner V1."});
+                     "' uses nested members, which are unsupported in the flat layout planner."});
             continue;
         }
 
@@ -77,6 +105,7 @@ void add_soa_module(SchemaCatalog& catalog,
                    .module_name = module.settings.name,
                    .schema_name = schema.name},
             .columns = {},
+            .related_storage_name = schema.single_allocation,
         };
         layout.columns.reserve(schema.members.size());
         for (auto const& member : schema.members) {
@@ -84,11 +113,53 @@ void add_soa_module(SchemaCatalog& catalog,
             layout.columns.push_back(
                 {.name = member.name, .logical_type = codegen::native_spelling(resolved.spelling)});
         }
-        if (!catalog.add(std::move(layout))) {
-            diagnostics.push_back(
+        if (!result.catalog.add(std::move(layout))) {
+            result.diagnostics.push_back(
                 {DiagnosticSeverity::error,
                  "Duplicate SoA layout identity in LispB module '" + module.settings.name + "'."});
         }
+    }
+}
+
+void add_enum_module(CatalogLoadResult& result,
+                     codegen::EnumModuleSchema const& module,
+                     codegen::Manifest const& manifest) {
+    for (auto const& schema : module.enums) {
+        auto const underlying{codegen::native_spelling(
+            codegen::resolve_type(schema.underlying_type, manifest.types).spelling)};
+        add_type_representation(result.type_representations,
+                                result.diagnostics,
+                                qualified_name(module.settings, schema.name),
+                                underlying);
+        add_type_representation(
+            result.type_representations, result.diagnostics, schema.name, underlying);
+    }
+}
+
+void add_vector_module(CatalogLoadResult& result,
+                       codegen::VectorModuleSchema const& module,
+                       codegen::Manifest const& manifest) {
+    if (module.backend != codegen::SoaBackend::standard_library) {
+        return;
+    }
+
+    auto const type{codegen::native_spelling(
+        codegen::resolve_type(module.value_type, manifest.types).spelling)};
+    SoaLayout layout{
+        .id = {.kind = SchemaKind::standard_library_soa,
+               .module_name = module.settings.name,
+               .schema_name = module.storage_name},
+        .columns = {},
+        .related_storage_name = std::nullopt,
+    };
+    layout.columns.reserve(module.components.size());
+    for (auto const& component : module.components) {
+        layout.columns.push_back({.name = component, .logical_type = type});
+    }
+    if (!result.catalog.add(std::move(layout))) {
+        result.diagnostics.push_back({DiagnosticSeverity::error,
+                                      "Duplicate vector SoA layout identity in LispB module '" +
+                                          module.settings.name + "'."});
     }
 }
 
@@ -127,10 +198,13 @@ auto load_lispb_catalog(std::filesystem::path const& project_path, std::string c
                 [&](auto const& typed_module) {
                     using Module = std::decay_t<decltype(typed_module)>;
                     if constexpr (std::is_same_v<Module, codegen::PackedValueModuleSchema>) {
-                        add_packed_module(
-                            result.catalog, result.diagnostics, typed_module, manifest);
+                        add_packed_module(result, typed_module, manifest);
                     } else if constexpr (std::is_same_v<Module, codegen::SoaModuleSchema>) {
-                        add_soa_module(result.catalog, result.diagnostics, typed_module, manifest);
+                        add_soa_module(result, typed_module, manifest);
+                    } else if constexpr (std::is_same_v<Module, codegen::EnumModuleSchema>) {
+                        add_enum_module(result, typed_module, manifest);
+                    } else if constexpr (std::is_same_v<Module, codegen::VectorModuleSchema>) {
+                        add_vector_module(result, typed_module, manifest);
                     }
                 },
                 module);

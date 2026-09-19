@@ -2,6 +2,11 @@ add_executable(layout-planner)
 target_sources(layout-planner PRIVATE
   application.cpp
   gui/planner_ui.cpp
+  gui/planner_ui_browser.cpp
+  gui/planner_ui_comparison.cpp
+  gui/planner_ui_properties.cpp
+  gui/planner_ui_support.cpp
+  gui/planner_ui_visualizations.cpp
   main.cpp
 )
 target_compile_features(layout-planner PRIVATE cxx_std_23)

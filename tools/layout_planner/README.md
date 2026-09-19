@@ -49,14 +49,19 @@ application and on standard error.
    packed values and standard-library SoAs.
 2. Select `EntityUniqueId` to inspect its proportional packed-bit layout, or `WorldAABBsColumns`
    to inspect its six SoA columns.
-3. The baseline is read-only. In Variants, select **New** to create an editable in-memory variant.
+3. The baseline is read-only. Use **Create editable variant** directly in Properties to begin an
+   in-memory experiment; Variants remains available for naming, duplication, reset, and deletion.
 4. In Properties, change a packed field width or storage type, or change an SoA capacity or column
-   type. Layout and Analysis update immediately.
-5. Use Analysis to compare the active variant with the baseline. Use **Reset** to remove its
-   overrides or **Delete** to discard the variant.
+   type. Schema values, planning values, and active overrides are shown separately.
+5. Layout shows linked packed-bit, aggregate column-payload, and cache-line views. Comparison
+   shows baseline, variant, and factual deltas without ranking either representation.
 
-V1 supports packed values and flat standard-library SoAs. Unknown types and unsupported schemas
-are reported as diagnostics rather than guessed.
+The planner supports packed values, flat standard-library SoAs, and standard-library vector SoAs.
+Generated LispB enums and packed values inherit facts from their declared underlying or storage
+types. Unknown types and unsupported schemas are reported as diagnostics rather than guessed.
+
+Column diagrams show aggregate payload only. They do not imply that standard-library vectors share
+an allocation or model allocator overhead, capacity slack, or generated single-allocation gaps.
 
 Variants exist only in memory. The application never writes the project manifest or production
 LispB files; closing it discards every variant. See [architecture](ARCHITECTURE.md) for supported
