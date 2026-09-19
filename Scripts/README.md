@@ -10,8 +10,8 @@
   the fighter and frame-memory scripts are focused wrappers around it. See
   [Benchmarks](../docs/benchmarks.md) and [Profiling](../docs/profiling.md).
 - `plot-*.py`: convert benchmark JSON, CSV, or logs into plots and summaries.
-- `audit_module_migration.sh` and `check_space_game_layers.py`: read-only architecture and migration
-  checks. See [AGENTS.md](AGENTS.md) for the migration-audit contract.
+- `audit_module_migration.sh`: read-only migration checks. See [AGENTS.md](AGENTS.md) for the
+  migration-audit contract.
 - `test_*.py` files: focused Python script validation support. Repository C++ and shader
   formatting is provided by the C# `CodeFormatTools` developer tool under `tools/`.
 - `sbx_mimalloc_symbols.py` and `soa_spacing_confirmation.py`: targeted native-analysis helpers.

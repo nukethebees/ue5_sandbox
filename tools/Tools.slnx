@@ -1,4 +1,6 @@
 <Solution>
+  <Project Path="ArchitectureChecks/ArchitectureChecks.csproj" />
+  <Project Path="ArchitectureChecks.Tests/ArchitectureChecks.Tests.csproj" />
   <Project Path="CodeFormatTools/CodeFormatTools.csproj" />
   <Project Path="CodeFormatTools.Tests/CodeFormatTools.Tests.csproj" />
   <Project Path="GamePackageTools/GamePackageTools.csproj" />

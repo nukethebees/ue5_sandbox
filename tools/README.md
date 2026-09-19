@@ -13,6 +13,8 @@ Any workflow that uses one requires its staged executable to be present.
 - `CodeFormatTools/` is the C# formatter for repository C++ and shader files. Run its staged
   executable through the `format-code` and `format-all-code` CMake workflows, or directly as
   `tools/bin/CodeFormatTools.exe [--all|--changed|--staged] [--verbose]` after building tools.
+- `ArchitectureChecks/` validates repository architecture invariants. Its staged executable is
+  invoked by `check-space-game-layers` as `tools/bin/ArchitectureChecks.exe --root <path>`.
 - `GamePackageTools/` verifies archived game packages through the `verify-package` CMake target.
   Its staged executable accepts `--project-root`, `--package-root`, `--unreal-pak`,
   `--verification-directory`, and `--configuration`.

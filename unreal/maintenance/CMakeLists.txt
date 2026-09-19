@@ -20,7 +20,7 @@ set_property(TARGET generate-project-files PROPERTY FOLDER "Sandbox/Unreal/Maint
 find_program(DOTNET_EXECUTABLE NAMES dotnet REQUIRED)
 add_test(
   NAME Sandbox.CSharpTools
-  COMMAND "${DOTNET_EXECUTABLE}" test "${PROJECT_SOURCE_DIR}/tools/Tools.slnx"
+  COMMAND "${DOTNET_EXECUTABLE}" test "${PROJECT_SOURCE_DIR}/tools/Tools.slnx" -m:1
 )
 set_tests_properties(Sandbox.CSharpTools PROPERTIES
   LABELS "unit;all"

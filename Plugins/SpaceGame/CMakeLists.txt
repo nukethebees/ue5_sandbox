@@ -1,16 +1,19 @@
+set(sandbox_architecture_checks
+  "${PROJECT_SOURCE_DIR}/tools/bin/ArchitectureChecks.exe")
+sandbox_add_staged_csharp_tool_preflight(architecture-checks-preflight
+  "ArchitectureChecks.exe" "${sandbox_architecture_checks}")
+
 add_custom_target(check-space-game-layers
-  COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/Scripts/check_space_game_layers.py"
+  COMMAND "${sandbox_architecture_checks}" --root "${PROJECT_SOURCE_DIR}"
+  DEPENDS architecture-checks-preflight
   WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
   COMMENT "Checking SpaceGame module boundaries"
   VERBATIM
 )
 add_test(NAME SpaceGame.Architecture
-  COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/Scripts/check_space_game_layers.py")
-add_test(NAME SpaceGame.ArchitectureChecker
-  COMMAND "${Python3_EXECUTABLE}" -m unittest Scripts.test_space_game_layers)
+  COMMAND "${sandbox_architecture_checks}" --root "${PROJECT_SOURCE_DIR}")
 set_tests_properties(
   SpaceGame.Architecture
-  SpaceGame.ArchitectureChecker
   PROPERTIES
   LABELS "unit;all"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"

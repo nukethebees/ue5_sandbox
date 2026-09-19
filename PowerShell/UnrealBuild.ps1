@@ -345,7 +345,7 @@ function ctools {
         }
 
         Write-Host 'Building standalone C# developer tools.'
-        & dotnet build $tools_solution
+        & dotnet build $tools_solution -m:1
 
         if ($LASTEXITCODE -ne 0) {
             throw "C# tools build exited with code $LASTEXITCODE."
