@@ -18,6 +18,9 @@ struct FS7LevelEntityBinding {
 
     UPROPERTY(VisibleAnywhere, Category = "Level Authoring")
     TObjectPtr<AActor> actor{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Level Authoring", meta = (ClampMin = "0.0", Units = "s"))
+    double spawn_time_seconds{};
 };
 
 USTRUCT()
@@ -109,7 +112,7 @@ class SANDBOXEDITOR_API AS7LevelAuthoringDocument final : public AInfo {
     UPROPERTY(EditAnywhere, Category = "Level")
     TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};
 
-    UPROPERTY(VisibleAnywhere, Category = "Entities")
+    UPROPERTY(EditAnywhere, EditFixedSize, Category = "Entities", meta = (TitleProperty = "id"))
     TArray<FS7LevelEntityBinding> entities{};
 
     UPROPERTY(EditAnywhere, Category = "Viewpoint")

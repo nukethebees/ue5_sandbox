@@ -188,10 +188,17 @@ void US7LevelAuthoringMode::DrawHUD(FEditorViewportClient* const viewport_client
         } else if (document_->mission.heroes.Contains(binding.actor)) {
             color = FLinearColor{0.2f, 0.6f, 1.0f};
         }
+        auto label_text{FText::FromName(binding.id)};
+        if (binding.spawn_time_seconds > 0.0) {
+            label_text = FText::Format(LOCTEXT("DelayedEntityLabel", "{0} [T+{1}s]"),
+                                       label_text,
+                                       FText::AsNumber(binding.spawn_time_seconds));
+            color.A = 0.65f;
+        }
         FCanvasTextItem label{
             FVector2D{viewport_size.X * 0.5 + viewport_size.X * 0.5 * projected.X,
                       viewport_size.Y * 0.5 - viewport_size.Y * 0.5 * projected.Y},
-            FText::FromName(binding.id),
+            label_text,
             GEngine->GetSmallFont(),
             color};
         label.EnableShadow(FLinearColor::Black);
