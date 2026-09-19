@@ -210,7 +210,7 @@ void UShipHudWidget::set_common_widget_properties() {
                              selected_imc_widget,
                              flight_vector_debug_widget,
                              ship_velocity_widget,
-                             desired_velocity_scale_widget,
+                             target_velocity_widget,
                              control_mode_widget,
                              flight_mode_widget,
                              mission_status_panel);
