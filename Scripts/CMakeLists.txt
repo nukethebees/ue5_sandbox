@@ -33,3 +33,13 @@ set_tests_properties(CMake.StagedCSharpTools PROPERTIES
   LABELS "unit;all;cmake"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 )
+
+add_test(NAME Scripts.BenchmarkToolsBootstrap
+  COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/Scripts/test_benchmark_tools_bootstrap.py"
+    --source-dir "${PROJECT_SOURCE_DIR}"
+    --powershell powershell
+)
+set_tests_properties(Scripts.BenchmarkToolsBootstrap PROPERTIES
+  LABELS "unit;all;scripts"
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+)

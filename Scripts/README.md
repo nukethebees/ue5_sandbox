@@ -6,9 +6,10 @@
 ## Script groups
 
 - `run-*-benchmark*` and `run-*-experiment*`: benchmark runners. They acquire the jobserver before
-  collecting timings. `run-native-simulation-benchmark.ps1` is the shared runner for an S7 level;
-  the fighter and frame-memory scripts are focused wrappers around it. See
-  [Benchmarks](../docs/benchmarks.md) and [Profiling](../docs/profiling.md).
+  collecting timings. `BenchmarkTools.exe native-simulation` is the shared runner for an S7 level;
+  the fighter and frame-memory scripts are focused PowerShell report wrappers around it. See
+  [Benchmarks](../docs/benchmarks.md) and [Profiling](../docs/profiling.md). Those two wrappers
+  build and stage BenchmarkTools on demand when it is not already available.
 - `plot-*.py`: convert benchmark JSON, CSV, or logs into plots and summaries.
 - `audit_module_migration.sh`: read-only migration checks. See [AGENTS.md](AGENTS.md) for the
   migration-audit contract.
@@ -17,6 +18,7 @@
 - `soa_spacing_confirmation.py`: targeted native-analysis helper. Mimalloc object-symbol analysis
   is provided by the `NativeBinaryTools` C# tool under `tools/`.
 
-Run scripts from the repository root unless their own help says otherwise. Python scripts use the
-repository's supported Python environment; run Pyright when changing one. Benchmark outputs belong
-under `.local/benchmarks/`.
+Run scripts from the repository root unless their own help says otherwise. C# owns benchmark
+orchestration, PowerShell owns shell-facing report workflows, and Python remains for plotting and
+scientific analysis. Python scripts use the repository's supported Python environment; run Pyright
+when changing one. Benchmark outputs belong under `.local/benchmarks/`.

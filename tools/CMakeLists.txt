@@ -3,6 +3,11 @@ set(sandbox_code_format_tools
 sandbox_add_staged_csharp_tool_preflight(code-format-tools-preflight
   "CodeFormatTools.exe" "${sandbox_code_format_tools}")
 
+set(sandbox_benchmark_tools
+  "${PROJECT_SOURCE_DIR}/tools/bin/BenchmarkTools.exe")
+sandbox_add_staged_csharp_tool_preflight(benchmark-tools-preflight
+  "BenchmarkTools.exe" "${sandbox_benchmark_tools}")
+
 add_custom_target(format-code
   COMMAND "${sandbox_code_format_tools}" --changed
   DEPENDS code-format-tools-preflight
