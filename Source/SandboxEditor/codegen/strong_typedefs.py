@@ -295,23 +295,6 @@ def main():
 
     if success:
         print("\nGeneration completed successfully!")
-
-        # Run clang-format on generated files
-        format_script = project_root / "format-cpp.py"
-        if format_script.exists():
-            print("\nRunning clang-format...")
-            import subprocess
-            result = subprocess.run(
-                [sys.executable, str(format_script)],
-                cwd=str(project_root),
-                capture_output=True,
-                text=True
-            )
-            if result.returncode == 0:
-                print("Code formatting complete!")
-            else:
-                print(f"Warning: clang-format failed: {result.stderr}")
-
         return 0
     else:
         print("\nGeneration failed!")
