@@ -1,7 +1,7 @@
 #include "application.hpp"
 
 #include <ioj/layout/diagnostic.hpp>
-#include <ioj/layout/lispb_adapter.hpp>
+#include <ioj/layout/schema_loader.hpp>
 
 #include <CLI/CLI.hpp>
 
@@ -17,7 +17,7 @@ auto main(int const argument_count, char** arguments) -> int {
     app.add_option("--target", target_name, "C++ schema target name");
     CLI11_PARSE(app, argument_count, arguments);
 
-    auto loaded{ioj::layout::load_lispb_catalog(project_path, target_name)};
+    auto loaded{ioj::layout::load_lispb_schema(project_path, target_name)};
     for (auto const& diagnostic : loaded.diagnostics) {
         auto const* severity{diagnostic.severity == ioj::layout::DiagnosticSeverity::error ? "error"
                              : diagnostic.severity == ioj::layout::DiagnosticSeverity::warning

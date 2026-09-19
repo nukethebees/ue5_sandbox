@@ -21,7 +21,7 @@ using namespace layout;
 
 class Application {
   public:
-    explicit Application(CatalogLoadResult loaded)
+    explicit Application(SchemaLoadResult loaded)
         : ui_{std::move(loaded)} {}
     ~Application();
 
@@ -275,7 +275,7 @@ auto Application::is_interaction_event(Uint32 const type) -> bool {
 
 } // namespace
 
-auto run_application(CatalogLoadResult loaded) -> int {
+auto run_application(SchemaLoadResult loaded) -> int {
     Application application{std::move(loaded)};
     if (!application.initialize()) {
         return 1;

@@ -4,14 +4,8 @@
 #include <array>
 #include <cstdio>
 #include <ranges>
-#include <variant>
 
 namespace ioj::layout_planner::detail {
-
-auto definition_id(layout::LayoutDefinition const& definition) -> layout::SchemaId const& {
-    return std::visit([](auto const& value) -> layout::SchemaId const& { return value.id; },
-                      definition);
-}
 
 auto format_bytes(std::optional<std::uint64_t> const bytes) -> std::string {
     if (!bytes.has_value()) {
@@ -79,16 +73,16 @@ auto diagnostic_color(layout::DiagnosticSeverity const severity) -> ImVec4 {
     return {1.0F, 1.0F, 1.0F, 1.0F};
 }
 
-auto packed_field(layout::PackedLayout const& layout, std::string const& name)
-    -> layout::PackedField const* {
-    auto const found{std::ranges::find(layout.fields, name, &layout::PackedField::name)};
-    return found == layout.fields.end() ? nullptr : &*found;
+auto packed_field(lispb::schema::PackedType const& packed, std::string const& name)
+    -> lispb::schema::PackedField const* {
+    auto const found{std::ranges::find(packed.fields, name, &lispb::schema::PackedField::name)};
+    return found == packed.fields.end() ? nullptr : &*found;
 }
 
-auto soa_column(layout::SoaLayout const& layout, std::string const& name)
-    -> layout::SoaColumn const* {
-    auto const found{std::ranges::find(layout.columns, name, &layout::SoaColumn::name)};
-    return found == layout.columns.end() ? nullptr : &*found;
+auto soa_column(lispb::schema::SoaType const& soa, std::string const& name)
+    -> lispb::schema::SoaColumn const* {
+    auto const found{std::ranges::find(soa.columns, name, &lispb::schema::SoaColumn::name)};
+    return found == soa.columns.end() ? nullptr : &*found;
 }
 
 auto has_error(std::vector<layout::Diagnostic> const& diagnostics) -> bool {

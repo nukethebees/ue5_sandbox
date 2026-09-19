@@ -8,7 +8,8 @@ The headless planner library lives in `native/layout/lib/`; its GoogleTest suite
 `app/platform/`.
 
 ```text
-native/layout/lib       headless model, analysis, LispB import, and variants
+native/lispb            parser, validated schema, and shared semantic type graph
+native/layout/lib       headless layout analysis, schema loading, and variants
 native/layout/tests     GoogleTest coverage of the library
 tools/layout_planner/app SDL3/ImGui bootstrap, event loop, and presentation
 ```
@@ -24,13 +25,17 @@ disabled, which prevents UI dependencies from leaking into the library.
 
 ## State and data flow
 
-LispB files are loaded through the existing LispB parser and semantic schema infrastructure into a
-planner catalog. `LayoutWorkspace` keeps the immutable baseline plus session-only variants.
-`Analyzer` combines the selected layout, variant overrides, and an ABI profile to produce factual
-packed-value or SoA analysis results. LispB import also contributes representation relationships
-for generated enums and packed values; the ABI profile resolves those only through their declared
-underlying or storage type. The GUI owns selections, dock layout, cached presentation results, and
-drawing; it does not own the planner model or calculate layouts.
+LispB S-expressions remain the canonical source. The existing parser loads and validates a
+`codegen::Manifest`, then `lispb-schema` resolves it into the shared semantic `TypeGraph`. C++
+codegen and the planner are peer consumers of that graph; the planner does not maintain a second
+schema catalog. See the LispB [semantic graph boundary](../../native/lispb/SEMANTIC_TYPE_GRAPH.md).
+
+`LayoutWorkspace` owns the immutable resolved graph plus session-only variants. `Analyzer` combines
+a selected semantic type, variant overrides, and an ABI profile to produce factual packed-value or
+SoA analysis results. It follows enum-underlying and packed-storage references only while deriving
+physical facts, preserving the logical nodes and their dependency edges. The GUI owns selections,
+dock layout, cached presentation results, and drawing; it does not own schema semantics or calculate
+layouts.
 
 The application is read-only with respect to LispB. There is currently no serializer, source
 write-back, or persistent variant format.

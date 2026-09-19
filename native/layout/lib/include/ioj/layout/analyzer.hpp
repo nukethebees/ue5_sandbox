@@ -2,8 +2,9 @@
 
 #include <ioj/layout/abi_profile.hpp>
 #include <ioj/layout/diagnostic.hpp>
-#include <ioj/layout/model.hpp>
 #include <ioj/layout/workspace.hpp>
+
+#include <lispb/schema/type_graph.h>
 
 #include <cstdint>
 #include <optional>
@@ -25,8 +26,9 @@ auto numeric_delta(std::optional<std::uint64_t> baseline, std::optional<std::uin
 
 struct PackedFieldAnalysis {
     std::string name;
+    lispb::schema::TypeId semantic_type;
     std::string logical_type;
-    PackedFieldKind kind{PackedFieldKind::unsigned_integer};
+    codegen::PackedFieldKind kind{codegen::PackedFieldKind::unsigned_integer};
     std::uint32_t schema_bit_width{};
     std::uint32_t bit_width{};
     bool overridden{};
@@ -36,7 +38,7 @@ struct PackedFieldAnalysis {
 };
 
 struct PackedAnalysis {
-    SchemaId id;
+    lispb::schema::TypeId type;
     std::string schema_storage_type;
     std::string storage_type;
     bool storage_overridden{};
@@ -61,6 +63,7 @@ struct CacheLineTiling {
 
 struct SoaColumnAnalysis {
     std::string name;
+    lispb::schema::TypeId semantic_type;
     std::string schema_type;
     std::string physical_type;
     bool overridden{};
@@ -72,7 +75,7 @@ struct SoaColumnAnalysis {
 };
 
 struct SoaAnalysis {
-    SchemaId id;
+    lispb::schema::TypeId type;
     std::uint64_t capacity{};
     bool capacity_overridden{};
     std::vector<SoaColumnAnalysis> columns;
@@ -83,12 +86,18 @@ struct SoaAnalysis {
 
 class Analyzer {
   public:
-    static auto analyze(PackedLayout const& layout, Variant const& variant, AbiProfile const& abi)
-        -> PackedAnalysis;
-    static auto analyze(SoaLayout const& layout,
-                        Variant const& variant,
-                        AbiProfile const& abi,
-                        std::uint64_t default_capacity) -> SoaAnalysis;
+    static auto analyze_packed(lispb::schema::TypeGraph const& types,
+                               lispb::schema::TypeId type,
+                               Variant const& variant,
+                               AbiProfile const& abi) -> PackedAnalysis;
+    static auto analyze_soa(lispb::schema::TypeGraph const& types,
+                            lispb::schema::TypeId type,
+                            Variant const& variant,
+                            AbiProfile const& abi,
+                            std::uint64_t default_capacity) -> SoaAnalysis;
 };
+
+auto physical_type_spelling(lispb::schema::TypeGraph const& types, lispb::schema::TypeId type)
+    -> std::optional<std::string>;
 
 } // namespace ioj::layout

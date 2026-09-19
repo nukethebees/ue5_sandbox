@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/layout/model.hpp>
+#include <lispb/schema/type_graph.h>
 
 #include <compare>
 #include <cstdint>
@@ -12,17 +12,17 @@
 namespace ioj::layout {
 
 struct FieldOverrideId {
-    SchemaId schema;
+    lispb::schema::TypeId type;
     std::string field_name;
 
     auto operator<=>(FieldOverrideId const&) const = default;
 };
 
 struct VariantOverrides {
-    std::map<SchemaId, std::string> packed_storage_types;
+    std::map<lispb::schema::TypeId, std::string> packed_storage_types;
     std::map<FieldOverrideId, std::uint32_t> packed_field_widths;
     std::map<FieldOverrideId, std::string> soa_column_types;
-    std::map<SchemaId, std::uint64_t> capacities;
+    std::map<lispb::schema::TypeId, std::uint64_t> capacities;
 
     auto operator==(VariantOverrides const&) const -> bool = default;
 };
@@ -38,9 +38,10 @@ class LayoutWorkspace {
   public:
     static constexpr std::uint64_t baseline_variant_id{0};
 
-    explicit LayoutWorkspace(SchemaCatalog catalog = {}, std::uint64_t default_capacity = 65'536);
+    explicit LayoutWorkspace(lispb::schema::TypeGraph types = {},
+                             std::uint64_t default_capacity = 65'536);
 
-    auto catalog() const -> SchemaCatalog const&;
+    auto types() const -> lispb::schema::TypeGraph const&;
     auto default_capacity() const -> std::uint64_t;
     auto variants() const -> std::vector<Variant> const&;
     auto variant(std::uint64_t id) const -> Variant const*;
@@ -56,20 +57,20 @@ class LayoutWorkspace {
     auto reset_variant(std::uint64_t id) -> bool;
     auto delete_variant(std::uint64_t id) -> bool;
 
-    auto set_packed_storage_type(SchemaId const& schema, std::optional<std::string> spelling)
+    auto set_packed_storage_type(lispb::schema::TypeId type, std::optional<std::string> spelling)
         -> bool;
-    auto set_packed_field_width(SchemaId const& schema,
+    auto set_packed_field_width(lispb::schema::TypeId type,
                                 std::string field_name,
                                 std::optional<std::uint32_t> width) -> bool;
-    auto set_soa_column_type(SchemaId const& schema,
+    auto set_soa_column_type(lispb::schema::TypeId type,
                              std::string column_name,
                              std::optional<std::string> spelling) -> bool;
-    auto set_capacity(SchemaId const& schema, std::optional<std::uint64_t> capacity) -> bool;
+    auto set_capacity(lispb::schema::TypeId type, std::optional<std::uint64_t> capacity) -> bool;
   private:
     auto editable_active_variant() -> Variant*;
     void note_change(Variant& variant);
 
-    SchemaCatalog catalog_;
+    lispb::schema::TypeGraph types_;
     std::uint64_t default_capacity_{};
     std::vector<Variant> variants_;
     std::uint64_t active_variant_id_{baseline_variant_id};

@@ -7,12 +7,12 @@
 #include <algorithm>
 #include <cstdint>
 #include <string>
-#include <variant>
 
 namespace ioj::layout_planner {
 namespace {
 
 using namespace layout;
+using namespace lispb::schema;
 
 void draw_override_note(bool const overridden) {
     if (overridden) {
@@ -21,184 +21,248 @@ void draw_override_note(bool const overridden) {
     }
 }
 
+void draw_optional_text(std::optional<std::string> const& value) {
+    ImGui::TextUnformatted(value.has_value() ? value->c_str() : "-");
+}
+
 } // namespace
 
 void PlannerUi::draw_properties_panel() {
     ImGui::Begin("Properties");
-    if (!selected_schema_.has_value()) {
+    if (!selected_type_.has_value()) {
         ImGui::TextDisabled("No selection.");
         ImGui::End();
         return;
     }
-    auto const* definition{workspace_.catalog().find(*selected_schema_)};
-    if (definition == nullptr) {
-        ImGui::TextDisabled("The selected schema is unavailable.");
-        ImGui::End();
-        return;
-    }
 
-    auto editable{workspace_.active_variant_id() != LayoutWorkspace::baseline_variant_id};
-    if (!editable) {
-        ImGui::TextUnformatted("Baseline");
-        ImGui::TextDisabled("Loaded from LispB — read only.");
-        ImGui::TextWrapped(
-            "Experiments are session-only variants. The production schema is never modified.");
-        if (auto const* soa{std::get_if<SoaLayout>(definition)}; soa != nullptr) {
-            static_cast<void>(soa);
-            ImGui::TextDisabled("Capacity uses the planner default of %llu.",
-                                static_cast<unsigned long long>(workspace_.default_capacity()));
+    auto const selected{*selected_type_};
+    auto const& node{workspace_.types().type(selected)};
+    ImGui::Text("%s", node.identity.name.c_str());
+    ImGui::TextDisabled("%s", node.identity.module_name.c_str());
+    ImGui::TextDisabled("%s", node.cpp_spelling.c_str());
+
+    if (auto const* enumeration{std::get_if<EnumType>(&node.definition)}) {
+        ImGui::SeparatorText("Enum");
+        auto const& underlying{workspace_.types().type(enumeration->underlying_type.type)};
+        ImGui::TextUnformatted("Underlying type");
+        ImGui::SameLine();
+        if (ImGui::SmallButton(underlying.cpp_spelling.c_str())) {
+            selected_type_ = enumeration->underlying_type.type;
+            selected_field_.clear();
         }
-        if (ImGui::Button("Create editable variant", {-1.0F, 0.0F})) {
-            create_variant_for_selected_schema();
-            editable = true;
+        if (enumeration->count.has_value()) {
+            ImGui::Text("Count sentinel: %s", enumeration->count->c_str());
         }
-        ImGui::Separator();
+
+        if (ImGui::BeginTable("enumerators",
+                              5,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn("Name");
+            ImGui::TableSetupColumn("Value");
+            ImGui::TableSetupColumn("Display name");
+            ImGui::TableSetupColumn("Serialized name");
+            ImGui::TableSetupColumn("Flags");
+            ImGui::TableHeadersRow();
+            for (auto const& value : enumeration->enumerators) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(value.name.c_str());
+                ImGui::TableNextColumn();
+                draw_optional_text(value.explicit_value);
+                ImGui::TableNextColumn();
+                draw_optional_text(value.display_name);
+                ImGui::TableNextColumn();
+                draw_optional_text(value.serialized_name);
+                ImGui::TableNextColumn();
+                auto flags{std::string{}};
+                if (value.hidden) {
+                    flags = "hidden";
+                }
+                if (value.count_sentinel) {
+                    flags += flags.empty() ? "count" : ", count";
+                }
+                ImGui::TextDisabled("%s", flags.empty() ? "-" : flags.c_str());
+            }
+            ImGui::EndTable();
+        }
+    } else if (auto const* external{std::get_if<ExternalType>(&node.definition)}) {
+        ImGui::SeparatorText("External type");
+        ImGui::Text("C++ spelling: %s", external->cpp_type.spelling.c_str());
+        if (!external->registered_names.empty()) {
+            ImGui::TextUnformatted("Registered as");
+            for (auto const& name : external->registered_names) {
+                ImGui::BulletText("@%s", name.c_str());
+            }
+        }
+        ImGui::TextDisabled("Internal structure is not declared in LispB.");
     } else {
-        ImGui::Text("Editing %s", workspace_.active_variant().name.c_str());
-        ImGui::TextDisabled("Session-only experiment");
-        ImGui::Separator();
-    }
-
-    ImGui::BeginDisabled(!editable);
-    if (auto const* packed{std::get_if<PackedLayout>(definition)}) {
-        ImGui::TextUnformatted("Packed storage");
-        ImGui::Text("Schema storage: %s", packed->storage_type.c_str());
-        auto const& analysis{*active_packed_};
-        if (ImGui::BeginCombo("Planning storage", analysis.storage_type.c_str())) {
-            if (ImGui::Selectable("Schema storage", !analysis.storage_overridden)) {
-                workspace_.set_packed_storage_type(packed->id, std::nullopt);
+        auto editable{workspace_.active_variant_id() != LayoutWorkspace::baseline_variant_id};
+        if (!editable) {
+            ImGui::SeparatorText("Baseline");
+            ImGui::TextDisabled("Loaded from LispB — read only.");
+            ImGui::TextWrapped(
+                "Experiments are session-only variants. The production schema is never modified.");
+            if (std::holds_alternative<SoaType>(node.definition)) {
+                ImGui::TextDisabled("Capacity uses the planner default of %llu.",
+                                    static_cast<unsigned long long>(workspace_.default_capacity()));
             }
-            for (auto const& [type, facts] : abi_.types()) {
-                if (!facts.unsigned_value_bits.has_value()) {
-                    continue;
-                }
-                if (ImGui::Selectable(type.c_str(), analysis.storage_type == type)) {
-                    workspace_.set_packed_storage_type(packed->id, type);
-                }
+            if (ImGui::Button("Create editable variant", {-1.0F, 0.0F})) {
+                create_variant_for_selected_schema();
+                editable = true;
             }
-            ImGui::EndCombo();
-        }
-        draw_override_note(analysis.storage_overridden);
-        if (analysis.storage_overridden) {
-            ImGui::SameLine();
-            if (ImGui::SmallButton("Reset storage")) {
-                workspace_.set_packed_storage_type(packed->id, std::nullopt);
-            }
+        } else {
+            ImGui::SeparatorText("Experiment");
+            ImGui::Text("Editing %s", workspace_.active_variant().name.c_str());
         }
 
-        if (selected_field_.empty() && !packed->fields.empty()) {
-            selected_field_ = packed->fields.front().name;
-        }
-        ImGui::SeparatorText("Fields");
-        if (ImGui::BeginTable("packed-fields",
-                              3,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                  ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
-            ImGui::TableSetupColumn("Field");
-            ImGui::TableSetupColumn("Schema");
-            ImGui::TableSetupColumn("Planning");
-            ImGui::TableHeadersRow();
-            for (auto const& field : analysis.fields) {
-                ImGui::PushID(field.name.c_str());
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                if (ImGui::Selectable(field.name.c_str(), selected_field_ == field.name)) {
-                    selected_field_ = field.name;
+        ImGui::BeginDisabled(!editable);
+        if (auto const* packed{std::get_if<PackedType>(&node.definition)}) {
+            ImGui::SeparatorText("Packed storage");
+            ImGui::Text("Schema storage: %s", active_packed_->schema_storage_type.c_str());
+            auto const& analysis{*active_packed_};
+            if (ImGui::BeginCombo("Planning storage", analysis.storage_type.c_str())) {
+                if (ImGui::Selectable("Schema storage", !analysis.storage_overridden)) {
+                    workspace_.set_packed_storage_type(selected, std::nullopt);
                 }
-                ImGui::TextDisabled("%s", field.logical_type.c_str());
-                ImGui::TableNextColumn();
-                ImGui::Text("%u bits", field.schema_bit_width);
-                ImGui::TableNextColumn();
-                auto width{field.bit_width};
-                ImGui::SetNextItemWidth(-1.0F);
-                if (ImGui::InputScalar("##planning-width", ImGuiDataType_U32, &width)) {
-                    width = std::clamp(width, std::uint32_t{1}, std::uint32_t{64});
-                    workspace_.set_packed_field_width(packed->id, field.name, width);
-                }
-                if (field.overridden) {
-                    ImGui::TextColored({0.4F, 0.75F, 0.95F, 1.0F}, "Override");
-                    if (ImGui::SmallButton("Reset")) {
-                        workspace_.set_packed_field_width(packed->id, field.name, std::nullopt);
+                for (auto const& [type, facts] : abi_.types()) {
+                    if (facts.unsigned_value_bits.has_value() &&
+                        ImGui::Selectable(type.c_str(), analysis.storage_type == type)) {
+                        workspace_.set_packed_storage_type(selected, type);
                     }
                 }
-                ImGui::PopID();
+                ImGui::EndCombo();
             }
-            ImGui::EndTable();
-        }
-    } else if (auto const* soa{std::get_if<SoaLayout>(definition)}) {
-        auto const& analysis{*active_soa_};
-        ImGui::TextUnformatted("Planner capacity");
-        ImGui::TextDisabled("Baseline default: %llu",
-                            static_cast<unsigned long long>(workspace_.default_capacity()));
-        auto capacity{analysis.capacity};
-        if (ImGui::InputScalar("Capacity", ImGuiDataType_U64, &capacity)) {
-            workspace_.set_capacity(soa->id, capacity);
-        }
-        draw_override_note(analysis.capacity_overridden);
-        if (analysis.capacity_overridden) {
-            ImGui::SameLine();
-            if (ImGui::SmallButton("Reset capacity")) {
-                workspace_.set_capacity(soa->id, std::nullopt);
-            }
-        }
-        for (auto const quick : {std::uint64_t{1},
-                                 std::uint64_t{4'096},
-                                 std::uint64_t{16'384},
-                                 std::uint64_t{65'536}}) {
-            ImGui::SameLine();
-            auto const label{std::to_string(quick)};
-            if (ImGui::SmallButton(label.c_str())) {
-                workspace_.set_capacity(soa->id, quick);
-            }
-        }
-
-        if (selected_field_.empty() && !soa->columns.empty()) {
-            selected_field_ = soa->columns.front().name;
-        }
-        ImGui::SeparatorText("Columns");
-        if (ImGui::BeginTable("soa-columns-properties",
-                              3,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                  ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
-            ImGui::TableSetupColumn("Column");
-            ImGui::TableSetupColumn("Schema");
-            ImGui::TableSetupColumn("Planning");
-            ImGui::TableHeadersRow();
-            for (auto const& column : analysis.columns) {
-                ImGui::PushID(column.name.c_str());
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                if (ImGui::Selectable(column.name.c_str(), selected_field_ == column.name)) {
-                    selected_field_ = column.name;
+            draw_override_note(analysis.storage_overridden);
+            if (analysis.storage_overridden) {
+                ImGui::SameLine();
+                if (ImGui::SmallButton("Reset storage")) {
+                    workspace_.set_packed_storage_type(selected, std::nullopt);
                 }
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(column.schema_type.c_str());
-                ImGui::TableNextColumn();
-                ImGui::SetNextItemWidth(-1.0F);
-                if (ImGui::BeginCombo("##planning-type", column.physical_type.c_str())) {
-                    if (ImGui::Selectable("Schema type", !column.overridden)) {
-                        workspace_.set_soa_column_type(soa->id, column.name, std::nullopt);
+            }
+
+            if (selected_field_.empty() && !packed->fields.empty()) {
+                selected_field_ = packed->fields.front().name;
+            }
+            ImGui::SeparatorText("Fields");
+            if (ImGui::BeginTable("packed-fields",
+                                  4,
+                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                      ImGuiTableFlags_Resizable |
+                                      ImGuiTableFlags_SizingStretchProp)) {
+                ImGui::TableSetupColumn("Field");
+                ImGui::TableSetupColumn("Semantic type");
+                ImGui::TableSetupColumn("Schema");
+                ImGui::TableSetupColumn("Planning");
+                ImGui::TableHeadersRow();
+                for (auto const& field : analysis.fields) {
+                    ImGui::PushID(field.name.c_str());
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    if (ImGui::Selectable(field.name.c_str(), selected_field_ == field.name)) {
+                        selected_field_ = field.name;
                     }
-                    for (auto const& [type, facts] : abi_.types()) {
-                        static_cast<void>(facts);
-                        if (ImGui::Selectable(type.c_str(), column.physical_type == type)) {
-                            workspace_.set_soa_column_type(soa->id, column.name, type);
+                    ImGui::TableNextColumn();
+                    auto const& semantic_type{workspace_.types().type(field.semantic_type)};
+                    if (ImGui::SmallButton(semantic_type.cpp_spelling.c_str())) {
+                        selected_type_ = field.semantic_type;
+                        selected_field_.clear();
+                    }
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%u bits", field.schema_bit_width);
+                    ImGui::TableNextColumn();
+                    auto width{field.bit_width};
+                    ImGui::SetNextItemWidth(-1.0F);
+                    if (ImGui::InputScalar("##planning-width", ImGuiDataType_U32, &width)) {
+                        width = std::clamp(width, std::uint32_t{1}, std::uint32_t{64});
+                        workspace_.set_packed_field_width(selected, field.name, width);
+                    }
+                    if (field.overridden && ImGui::SmallButton("Reset")) {
+                        workspace_.set_packed_field_width(selected, field.name, std::nullopt);
+                    }
+                    ImGui::PopID();
+                }
+                ImGui::EndTable();
+            }
+        } else if (auto const* soa{std::get_if<SoaType>(&node.definition)}) {
+            auto const& analysis{*active_soa_};
+            ImGui::SeparatorText("Planner capacity");
+            auto capacity{analysis.capacity};
+            if (ImGui::InputScalar("Capacity", ImGuiDataType_U64, &capacity)) {
+                workspace_.set_capacity(selected, capacity);
+            }
+            draw_override_note(analysis.capacity_overridden);
+            if (analysis.capacity_overridden) {
+                ImGui::SameLine();
+                if (ImGui::SmallButton("Reset capacity")) {
+                    workspace_.set_capacity(selected, std::nullopt);
+                }
+            }
+
+            if (selected_field_.empty() && !soa->columns.empty()) {
+                selected_field_ = soa->columns.front().name;
+            }
+            ImGui::SeparatorText("Columns");
+            if (ImGui::BeginTable("soa-columns-properties",
+                                  3,
+                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                      ImGuiTableFlags_Resizable |
+                                      ImGuiTableFlags_SizingStretchProp)) {
+                ImGui::TableSetupColumn("Column");
+                ImGui::TableSetupColumn("Semantic type");
+                ImGui::TableSetupColumn("Planning");
+                ImGui::TableHeadersRow();
+                for (auto const& column : analysis.columns) {
+                    ImGui::PushID(column.name.c_str());
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    if (ImGui::Selectable(column.name.c_str(), selected_field_ == column.name)) {
+                        selected_field_ = column.name;
+                    }
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(column.schema_type.c_str());
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-1.0F);
+                    if (ImGui::BeginCombo("##planning-type", column.physical_type.c_str())) {
+                        if (ImGui::Selectable("Schema type", !column.overridden)) {
+                            workspace_.set_soa_column_type(selected, column.name, std::nullopt);
                         }
+                        for (auto const& [type, facts] : abi_.types()) {
+                            static_cast<void>(facts);
+                            if (ImGui::Selectable(type.c_str(), column.physical_type == type)) {
+                                workspace_.set_soa_column_type(selected, column.name, type);
+                            }
+                        }
+                        ImGui::EndCombo();
                     }
-                    ImGui::EndCombo();
-                }
-                if (column.overridden) {
-                    ImGui::TextColored({0.4F, 0.75F, 0.95F, 1.0F}, "Override");
-                    if (ImGui::SmallButton("Reset")) {
-                        workspace_.set_soa_column_type(soa->id, column.name, std::nullopt);
+                    if (column.overridden && ImGui::SmallButton("Reset")) {
+                        workspace_.set_soa_column_type(selected, column.name, std::nullopt);
                     }
+                    ImGui::PopID();
                 }
-                ImGui::PopID();
+                ImGui::EndTable();
             }
-            ImGui::EndTable();
         }
+        ImGui::EndDisabled();
     }
-    ImGui::EndDisabled();
+
+    auto draw_links = [&](char const* heading, std::span<TypeId const> const links) {
+        ImGui::SeparatorText(heading);
+        if (links.empty()) {
+            ImGui::TextDisabled("None");
+        }
+        for (auto const linked : links) {
+            auto const& linked_node{workspace_.types().type(linked)};
+            ImGui::PushID(static_cast<int>(linked.value));
+            if (ImGui::SmallButton(linked_node.cpp_spelling.c_str())) {
+                selected_type_ = linked;
+                selected_field_.clear();
+            }
+            ImGui::PopID();
+        }
+    };
+    draw_links("Depends on", workspace_.types().dependencies_of(selected));
+    draw_links("Used by", workspace_.types().users_of(selected));
     ImGui::End();
 }
 

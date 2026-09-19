@@ -45,8 +45,8 @@ application and on standard error.
 
 ## Getting started
 
-1. Start the planner from the repository root. The Project / Schema panel lists the supported LispB
-   packed values and standard-library SoAs.
+1. Start the planner from the repository root. The Project / Schema panel lists LispB enums, packed
+   values, and supported standard-library SoAs from the shared semantic graph.
 2. Select `EntityUniqueId` to inspect its proportional packed-bit layout, or `WorldAABBsColumns`
    to inspect its six SoA columns.
 3. The baseline is read-only. Use **Create editable variant** directly in Properties to begin an
@@ -56,9 +56,10 @@ application and on standard error.
 5. Layout shows linked packed-bit, aggregate column-payload, and cache-line views. Comparison
    shows baseline, variant, and factual deltas without ranking either representation.
 
-The planner supports packed values, flat standard-library SoAs, and standard-library vector SoAs.
-Generated LispB enums and packed values inherit facts from their declared underlying or storage
-types. Unknown types and unsupported schemas are reported as diagnostics rather than guessed.
+The planner supports enum inspection, packed values, flat standard-library SoAs, and
+standard-library vector SoAs. Enum-backed packed fields retain links to their enum definitions;
+physical facts are derived separately from declared underlying or storage types. Unknown types and
+unsupported schemas are reported as diagnostics rather than guessed.
 
 Column diagrams show aggregate payload only. They do not imply that standard-library vectors share
 an allocation or model allocator overhead, capacity slack, or generated single-allocation gaps.

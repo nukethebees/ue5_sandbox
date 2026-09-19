@@ -13,18 +13,24 @@ namespace ioj::layout_planner {
 namespace {
 
 using namespace layout;
+using namespace lispb::schema;
 
 } // namespace
 
-PlannerUi::PlannerUi(CatalogLoadResult loaded)
-    : workspace_{std::move(loaded.catalog)}
+PlannerUi::PlannerUi(SchemaLoadResult loaded)
+    : workspace_{std::move(loaded.types)}
     , load_diagnostics_{std::move(loaded.diagnostics)} {
-    for (auto const& representation : loaded.type_representations) {
-        abi_.set_representation(representation.spelling, representation.represented_by);
-    }
-    auto const& items{workspace_.catalog().items()};
-    if (!items.empty()) {
-        selected_schema_ = detail::definition_id(items.front());
+    auto const types{workspace_.types().types()};
+    auto const found{std::ranges::find_if(types, [](auto const& type) {
+        if (std::holds_alternative<EnumType>(type.definition) ||
+            std::holds_alternative<PackedType>(type.definition)) {
+            return true;
+        }
+        auto const* soa{std::get_if<SoaType>(&type.definition)};
+        return soa != nullptr && soa->backend == codegen::SoaBackend::standard_library;
+    })};
+    if (found != types.end()) {
+        selected_type_ = TypeId{static_cast<std::uint32_t>(found - types.begin())};
     }
     sync_variant_name();
 }
@@ -98,7 +104,7 @@ void PlannerUi::setup_default_dock_layout(unsigned int const dockspace_id) {
 }
 
 void PlannerUi::refresh_analysis() {
-    if (cached_revision_ == workspace_.revision() && cached_schema_ == selected_schema_) {
+    if (cached_revision_ == workspace_.revision() && cached_type_ == selected_type_) {
         return;
     }
     baseline_packed_.reset();
@@ -106,36 +112,41 @@ void PlannerUi::refresh_analysis() {
     baseline_soa_.reset();
     active_soa_.reset();
     cached_revision_ = workspace_.revision();
-    cached_schema_ = selected_schema_;
-    if (!selected_schema_.has_value()) {
+    cached_type_ = selected_type_;
+    if (!selected_type_.has_value()) {
         return;
     }
-    auto const* definition{workspace_.catalog().find(*selected_schema_)};
-    if (definition == nullptr) {
-        return;
-    }
+    auto const& definition{workspace_.types().type(*selected_type_).definition};
     auto const& baseline{*workspace_.variant(LayoutWorkspace::baseline_variant_id)};
     auto const& active{workspace_.active_variant()};
-    if (auto const* packed{std::get_if<PackedLayout>(definition)}) {
-        baseline_packed_ = Analyzer::analyze(*packed, baseline, abi_);
-        active_packed_ = Analyzer::analyze(*packed, active, abi_);
-    } else if (auto const* soa{std::get_if<SoaLayout>(definition)}) {
-        baseline_soa_ = Analyzer::analyze(*soa, baseline, abi_, workspace_.default_capacity());
-        active_soa_ = Analyzer::analyze(*soa, active, abi_, workspace_.default_capacity());
+    if (std::holds_alternative<PackedType>(definition)) {
+        baseline_packed_ =
+            Analyzer::analyze_packed(workspace_.types(), *selected_type_, baseline, abi_);
+        active_packed_ =
+            Analyzer::analyze_packed(workspace_.types(), *selected_type_, active, abi_);
+    } else if (auto const* soa{std::get_if<SoaType>(&definition)};
+               soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
+        baseline_soa_ = Analyzer::analyze_soa(
+            workspace_.types(), *selected_type_, baseline, abi_, workspace_.default_capacity());
+        active_soa_ = Analyzer::analyze_soa(
+            workspace_.types(), *selected_type_, active, abi_, workspace_.default_capacity());
     }
 }
 
 void PlannerUi::draw_layout_panel() {
     ImGui::Begin("Layout");
-    if (!selected_schema_.has_value()) {
+    if (!selected_type_.has_value()) {
         ImGui::TextDisabled("Select a supported schema.");
-    } else if (auto const* definition{workspace_.catalog().find(*selected_schema_)};
-               definition == nullptr) {
-        ImGui::TextDisabled("The selected schema is unavailable.");
-    } else if (auto const* packed{std::get_if<PackedLayout>(definition)}) {
+    } else if (auto const& definition{workspace_.types().type(*selected_type_).definition};
+               auto const* packed = std::get_if<PackedType>(&definition)) {
         draw_packed_layout(*packed, *baseline_packed_, *active_packed_);
-    } else if (auto const* soa{std::get_if<SoaLayout>(definition)}) {
+    } else if (auto const* soa{std::get_if<SoaType>(&definition)};
+               soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
         draw_soa_layout(*soa, *baseline_soa_, *active_soa_);
+    } else if (std::holds_alternative<EnumType>(definition)) {
+        ImGui::TextDisabled("Enums have semantic metadata but no standalone aggregate layout.");
+    } else {
+        ImGui::TextDisabled("This type is not supported by the layout analyzer.");
     }
     ImGui::End();
 }
@@ -155,8 +166,8 @@ void PlannerUi::sync_variant_name() {
 }
 
 void PlannerUi::create_variant_for_selected_schema() {
-    auto const name{selected_schema_.has_value()
-                        ? selected_schema_->schema_name + " experiment " +
+    auto const name{selected_type_.has_value()
+                        ? workspace_.types().type(*selected_type_).identity.name + " experiment " +
                               std::to_string(next_variant_number_++)
                         : "Experiment " + std::to_string(next_variant_number_++)};
     workspace_.create_variant(name);

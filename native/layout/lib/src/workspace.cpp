@@ -5,15 +5,16 @@
 
 namespace ioj::layout {
 
-LayoutWorkspace::LayoutWorkspace(SchemaCatalog catalog, std::uint64_t const default_capacity)
-    : catalog_{std::move(catalog)}
+LayoutWorkspace::LayoutWorkspace(lispb::schema::TypeGraph types,
+                                 std::uint64_t const default_capacity)
+    : types_{std::move(types)}
     , default_capacity_{default_capacity} {
     variants_.push_back(
         Variant{.id = baseline_variant_id, .name = "Baseline", .overrides = {}, .revision = 0});
 }
 
-auto LayoutWorkspace::catalog() const -> SchemaCatalog const& {
-    return catalog_;
+auto LayoutWorkspace::types() const -> lispb::schema::TypeGraph const& {
+    return types_;
 }
 
 auto LayoutWorkspace::default_capacity() const -> std::uint64_t {
@@ -114,7 +115,7 @@ auto LayoutWorkspace::delete_variant(std::uint64_t const id) -> bool {
     return true;
 }
 
-auto LayoutWorkspace::set_packed_storage_type(SchemaId const& schema,
+auto LayoutWorkspace::set_packed_storage_type(lispb::schema::TypeId const type,
                                               std::optional<std::string> spelling) -> bool {
     auto* selected{editable_active_variant()};
     if (selected == nullptr) {
@@ -122,19 +123,19 @@ auto LayoutWorkspace::set_packed_storage_type(SchemaId const& schema,
     }
     auto& values{selected->overrides.packed_storage_types};
     if (spelling.has_value()) {
-        auto const found{values.find(schema)};
+        auto const found{values.find(type)};
         if (found != values.end() && found->second == *spelling) {
             return false;
         }
-        values.insert_or_assign(schema, std::move(*spelling));
-    } else if (values.erase(schema) == 0) {
+        values.insert_or_assign(type, std::move(*spelling));
+    } else if (values.erase(type) == 0) {
         return false;
     }
     note_change(*selected);
     return true;
 }
 
-auto LayoutWorkspace::set_packed_field_width(SchemaId const& schema,
+auto LayoutWorkspace::set_packed_field_width(lispb::schema::TypeId const type,
                                              std::string field_name,
                                              std::optional<std::uint32_t> width) -> bool {
     auto* selected{editable_active_variant()};
@@ -142,7 +143,7 @@ auto LayoutWorkspace::set_packed_field_width(SchemaId const& schema,
         return false;
     }
     auto& values{selected->overrides.packed_field_widths};
-    FieldOverrideId const key{.schema = schema, .field_name = std::move(field_name)};
+    FieldOverrideId const key{.type = type, .field_name = std::move(field_name)};
     if (width.has_value()) {
         auto const found{values.find(key)};
         if (found != values.end() && found->second == *width) {
@@ -156,7 +157,7 @@ auto LayoutWorkspace::set_packed_field_width(SchemaId const& schema,
     return true;
 }
 
-auto LayoutWorkspace::set_soa_column_type(SchemaId const& schema,
+auto LayoutWorkspace::set_soa_column_type(lispb::schema::TypeId const type,
                                           std::string column_name,
                                           std::optional<std::string> spelling) -> bool {
     auto* selected{editable_active_variant()};
@@ -164,7 +165,7 @@ auto LayoutWorkspace::set_soa_column_type(SchemaId const& schema,
         return false;
     }
     auto& values{selected->overrides.soa_column_types};
-    FieldOverrideId const key{.schema = schema, .field_name = std::move(column_name)};
+    FieldOverrideId const key{.type = type, .field_name = std::move(column_name)};
     if (spelling.has_value()) {
         auto const found{values.find(key)};
         if (found != values.end() && found->second == *spelling) {
@@ -178,7 +179,7 @@ auto LayoutWorkspace::set_soa_column_type(SchemaId const& schema,
     return true;
 }
 
-auto LayoutWorkspace::set_capacity(SchemaId const& schema,
+auto LayoutWorkspace::set_capacity(lispb::schema::TypeId const type,
                                    std::optional<std::uint64_t> const capacity) -> bool {
     auto* selected{editable_active_variant()};
     if (selected == nullptr) {
@@ -186,12 +187,12 @@ auto LayoutWorkspace::set_capacity(SchemaId const& schema,
     }
     auto& values{selected->overrides.capacities};
     if (capacity.has_value()) {
-        auto const found{values.find(schema)};
+        auto const found{values.find(type)};
         if (found != values.end() && found->second == *capacity) {
             return false;
         }
-        values.insert_or_assign(schema, *capacity);
-    } else if (values.erase(schema) == 0) {
+        values.insert_or_assign(type, *capacity);
+    } else if (values.erase(type) == 0) {
         return false;
     }
     note_change(*selected);

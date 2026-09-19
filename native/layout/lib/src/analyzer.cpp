@@ -1,5 +1,7 @@
 #include <ioj/layout/analyzer.hpp>
 
+#include <codegen/schema.h>
+
 #include <limits>
 #include <utility>
 
@@ -34,25 +36,37 @@ auto maximum_unsigned_value(std::uint32_t const bits) -> std::optional<std::uint
     return (std::uint64_t{1} << bits) - 1;
 }
 
-auto effective_field_width(PackedLayout const& layout,
-                           PackedField const& field,
+auto effective_field_width(lispb::schema::TypeId const type,
+                           lispb::schema::PackedField const& field,
                            Variant const& variant) -> std::uint32_t {
     auto const found{variant.overrides.packed_field_widths.find(
-        FieldOverrideId{.schema = layout.id, .field_name = field.name})};
+        FieldOverrideId{.type = type, .field_name = field.name})};
     return found == variant.overrides.packed_field_widths.end() ? field.bit_width : found->second;
 }
 
-auto effective_storage_type(PackedLayout const& layout, Variant const& variant) -> std::string {
-    auto const found{variant.overrides.packed_storage_types.find(layout.id)};
-    return found == variant.overrides.packed_storage_types.end() ? layout.storage_type
-                                                                 : found->second;
+auto effective_storage_type(lispb::schema::TypeGraph const& types,
+                            lispb::schema::TypeId const type,
+                            lispb::schema::PackedType const& packed,
+                            Variant const& variant) -> std::string {
+    auto const found{variant.overrides.packed_storage_types.find(type)};
+    if (found != variant.overrides.packed_storage_types.end()) {
+        return found->second;
+    }
+    return physical_type_spelling(types, packed.storage_type.type)
+        .value_or(packed.storage_type.cpp_type.spelling);
 }
 
-auto effective_column_type(SoaLayout const& layout, SoaColumn const& column, Variant const& variant)
-    -> std::string {
+auto effective_column_type(lispb::schema::TypeGraph const& types,
+                           lispb::schema::TypeId const type,
+                           lispb::schema::SoaColumn const& column,
+                           Variant const& variant) -> std::string {
     auto const found{variant.overrides.soa_column_types.find(
-        FieldOverrideId{.schema = layout.id, .field_name = column.name})};
-    return found == variant.overrides.soa_column_types.end() ? column.logical_type : found->second;
+        FieldOverrideId{.type = type, .field_name = column.name})};
+    if (found != variant.overrides.soa_column_types.end()) {
+        return found->second;
+    }
+    return physical_type_spelling(types, column.semantic_type.type)
+        .value_or(column.semantic_type.cpp_type.spelling);
 }
 
 auto minimum_cache_lines(std::uint64_t const bytes) -> std::uint64_t {
@@ -76,6 +90,29 @@ auto cache_line_tiling(std::uint64_t const element_bytes) -> CacheLineTiling {
 
 } // namespace
 
+auto physical_type_spelling(lispb::schema::TypeGraph const& types, lispb::schema::TypeId const type)
+    -> std::optional<std::string> {
+    std::vector<lispb::schema::TypeId> visited;
+    auto current{type};
+    while (current.valid() && std::ranges::find(visited, current) == visited.end()) {
+        visited.push_back(current);
+        auto const& node{types.type(current)};
+        if (auto const* external{std::get_if<lispb::schema::ExternalType>(&node.definition)}) {
+            return codegen::native_spelling(external->cpp_type.spelling);
+        }
+        if (auto const* enumeration{std::get_if<lispb::schema::EnumType>(&node.definition)}) {
+            current = enumeration->underlying_type.type;
+            continue;
+        }
+        if (auto const* packed{std::get_if<lispb::schema::PackedType>(&node.definition)}) {
+            current = packed->storage_type.type;
+            continue;
+        }
+        return std::nullopt;
+    }
+    return std::nullopt;
+}
+
 auto numeric_delta(std::optional<std::uint64_t> const baseline,
                    std::optional<std::uint64_t> const variant) -> std::optional<NumericDelta> {
     if (!baseline.has_value() || !variant.has_value()) {
@@ -98,19 +135,24 @@ auto numeric_delta(std::optional<std::uint64_t> const baseline,
                                                            static_cast<double>(*baseline)}};
 }
 
-auto Analyzer::analyze(PackedLayout const& layout, Variant const& variant, AbiProfile const& abi)
-    -> PackedAnalysis {
-    PackedAnalysis result{.id = layout.id,
-                          .schema_storage_type = layout.storage_type,
-                          .storage_type = effective_storage_type(layout, variant),
+auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
+                              lispb::schema::TypeId const type,
+                              Variant const& variant,
+                              AbiProfile const& abi) -> PackedAnalysis {
+    auto const& packed{std::get<lispb::schema::PackedType>(types.type(type).definition)};
+    auto const schema_storage{physical_type_spelling(types, packed.storage_type.type)
+                                  .value_or(packed.storage_type.cpp_type.spelling)};
+    PackedAnalysis result{.type = type,
+                          .schema_storage_type = schema_storage,
+                          .storage_type = effective_storage_type(types, type, packed, variant),
                           .storage_overridden =
-                              variant.overrides.packed_storage_types.contains(layout.id),
+                              variant.overrides.packed_storage_types.contains(type),
                           .storage_facts = std::nullopt,
                           .storage_bits = std::nullopt,
                           .bits_used = std::nullopt,
                           .unused_bits = std::nullopt,
                           .overflow_bits = std::nullopt,
-                          .invalid_raw_value = layout.invalid_raw_value,
+                          .invalid_raw_value = packed.invalid_raw_value,
                           .fields = {},
                           .diagnostics = {}};
     result.storage_facts = abi.find(result.storage_type);
@@ -134,18 +176,19 @@ auto Analyzer::analyze(PackedLayout const& layout, Variant const& variant, AbiPr
 
     std::uint64_t offset{};
     bool width_overflow{};
-    result.fields.reserve(layout.fields.size());
-    for (auto const& field : layout.fields) {
-        auto const width{effective_field_width(layout, field, variant)};
+    result.fields.reserve(packed.fields.size());
+    for (auto const& field : packed.fields) {
+        auto const width{effective_field_width(type, field, variant)};
         auto const next_offset{checked_add(offset, width)};
         PackedFieldAnalysis field_result{
             .name = field.name,
-            .logical_type = field.logical_type,
+            .semantic_type = field.semantic_type.type,
+            .logical_type = types.type(field.semantic_type.type).cpp_spelling,
             .kind = field.kind,
             .schema_bit_width = field.bit_width,
             .bit_width = width,
             .overridden = variant.overrides.packed_field_widths.contains(
-                FieldOverrideId{.schema = layout.id, .field_name = field.name}),
+                FieldOverrideId{.type = type, .field_name = field.name}),
             .least_significant_bit = offset,
             .most_significant_bit = std::nullopt,
             .maximum_unsigned_value = maximum_unsigned_value(width)};
@@ -186,11 +229,11 @@ auto Analyzer::analyze(PackedLayout const& layout, Variant const& variant, AbiPr
         }
     }
 
-    if (layout.invalid_raw_value.has_value() && result.storage_bits.has_value() &&
+    if (packed.invalid_raw_value.has_value() && result.storage_bits.has_value() &&
         *result.storage_bits < 64) {
         auto const storage_max{
             maximum_unsigned_value(static_cast<std::uint32_t>(*result.storage_bits))};
-        if (storage_max.has_value() && *layout.invalid_raw_value > *storage_max) {
+        if (storage_max.has_value() && *packed.invalid_raw_value > *storage_max) {
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error,
                  "The invalid raw value does not fit the selected packed storage type."});
@@ -199,18 +242,20 @@ auto Analyzer::analyze(PackedLayout const& layout, Variant const& variant, AbiPr
     return result;
 }
 
-auto Analyzer::analyze(SoaLayout const& layout,
-                       Variant const& variant,
-                       AbiProfile const& abi,
-                       std::uint64_t const default_capacity) -> SoaAnalysis {
+auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
+                           lispb::schema::TypeId const type,
+                           Variant const& variant,
+                           AbiProfile const& abi,
+                           std::uint64_t const default_capacity) -> SoaAnalysis {
+    auto const& soa{std::get<lispb::schema::SoaType>(types.type(type).definition)};
     auto capacity{default_capacity};
     bool capacity_overridden{};
-    if (auto const found{variant.overrides.capacities.find(layout.id)};
+    if (auto const found{variant.overrides.capacities.find(type)};
         found != variant.overrides.capacities.end()) {
         capacity = found->second;
         capacity_overridden = true;
     }
-    SoaAnalysis result{.id = layout.id,
+    SoaAnalysis result{.type = type,
                        .capacity = capacity,
                        .capacity_overridden = capacity_overridden,
                        .columns = {},
@@ -220,15 +265,16 @@ auto Analyzer::analyze(SoaLayout const& layout,
     std::uint64_t row_bytes{};
     std::uint64_t total_bytes{};
     bool complete{true};
-    result.columns.reserve(layout.columns.size());
+    result.columns.reserve(soa.columns.size());
 
-    for (auto const& column : layout.columns) {
+    for (auto const& column : soa.columns) {
         SoaColumnAnalysis column_result{
             .name = column.name,
-            .schema_type = column.logical_type,
-            .physical_type = effective_column_type(layout, column, variant),
+            .semantic_type = column.semantic_type.type,
+            .schema_type = types.type(column.semantic_type.type).cpp_spelling,
+            .physical_type = effective_column_type(types, type, column, variant),
             .overridden = variant.overrides.soa_column_types.contains(
-                FieldOverrideId{.schema = layout.id, .field_name = column.name}),
+                FieldOverrideId{.type = type, .field_name = column.name}),
             .type_facts = std::nullopt,
             .total_bytes = std::nullopt,
             .minimum_cache_lines = std::nullopt,

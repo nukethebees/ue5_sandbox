@@ -2,7 +2,7 @@
 
 #include <ioj/layout/abi_profile.hpp>
 #include <ioj/layout/analyzer.hpp>
-#include <ioj/layout/lispb_adapter.hpp>
+#include <ioj/layout/schema_loader.hpp>
 #include <ioj/layout/workspace.hpp>
 
 #include <array>
@@ -17,7 +17,7 @@ namespace ioj::layout_planner {
 
 class PlannerUi {
   public:
-    explicit PlannerUi(layout::CatalogLoadResult loaded);
+    explicit PlannerUi(layout::SchemaLoadResult loaded);
 
     auto draw() -> bool;
   private:
@@ -29,10 +29,10 @@ class PlannerUi {
     void draw_properties_panel();
     void draw_variants_panel();
     void draw_comparison_panel();
-    void draw_packed_layout(layout::PackedLayout const& layout,
+    void draw_packed_layout(lispb::schema::PackedType const& packed,
                             layout::PackedAnalysis const& baseline,
                             layout::PackedAnalysis const& active);
-    void draw_soa_layout(layout::SoaLayout const& layout,
+    void draw_soa_layout(lispb::schema::SoaType const& soa,
                          layout::SoaAnalysis const& baseline,
                          layout::SoaAnalysis const& active);
     void draw_diagnostics(std::vector<layout::Diagnostic> const& diagnostics) const;
@@ -42,11 +42,11 @@ class PlannerUi {
     layout::LayoutWorkspace workspace_;
     layout::AbiProfile abi_{layout::AbiProfile::host_common()};
     std::vector<layout::Diagnostic> load_diagnostics_;
-    std::optional<layout::SchemaId> selected_schema_;
+    std::optional<lispb::schema::TypeId> selected_type_;
     std::string selected_field_;
 
     std::uint64_t cached_revision_{};
-    std::optional<layout::SchemaId> cached_schema_;
+    std::optional<lispb::schema::TypeId> cached_type_;
     std::optional<layout::PackedAnalysis> baseline_packed_;
     std::optional<layout::PackedAnalysis> active_packed_;
     std::optional<layout::SoaAnalysis> baseline_soa_;

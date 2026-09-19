@@ -8,12 +8,14 @@
 #include <cctype>
 #include <string>
 #include <string_view>
-#include <variant>
 
 namespace ioj::layout_planner {
 namespace {
 
 using namespace layout;
+using namespace lispb::schema;
+
+enum class BrowserGroup { enumeration, packed, soa };
 
 auto lowercase(std::string_view const text) -> std::string {
     std::string result{text};
@@ -23,28 +25,46 @@ auto lowercase(std::string_view const text) -> std::string {
     return result;
 }
 
-auto matches_filter(LayoutDefinition const& definition, std::string_view const filter) -> bool {
+auto browser_group(TypeNode const& node) -> std::optional<BrowserGroup> {
+    if (std::holds_alternative<EnumType>(node.definition)) {
+        return BrowserGroup::enumeration;
+    }
+    if (std::holds_alternative<PackedType>(node.definition)) {
+        return BrowserGroup::packed;
+    }
+    if (auto const* soa{std::get_if<SoaType>(&node.definition)};
+        soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
+        return BrowserGroup::soa;
+    }
+    return std::nullopt;
+}
+
+auto matches_filter(TypeNode const& node, std::string_view const filter) -> bool {
     if (filter.empty()) {
         return true;
     }
-    auto const& id{detail::definition_id(definition)};
-    auto haystack{id.module_name + " " + id.schema_name};
-    if (auto const* soa{std::get_if<SoaLayout>(&definition)};
+    auto haystack{node.identity.module_name + " " + node.identity.namespace_name + " " +
+                  node.identity.name + " " + node.cpp_spelling};
+    if (auto const* soa{std::get_if<SoaType>(&node.definition)};
         soa != nullptr && soa->related_storage_name.has_value()) {
         haystack += " " + *soa->related_storage_name;
     }
     return lowercase(haystack).find(lowercase(filter)) != std::string::npos;
 }
 
-auto complete(LayoutDefinition const& definition,
+auto complete(TypeGraph const& types,
+              TypeId const type,
               Variant const& baseline,
               AbiProfile const& abi,
               std::uint64_t const default_capacity) -> bool {
-    if (auto const* packed{std::get_if<PackedLayout>(&definition)}) {
-        return !detail::has_error(Analyzer::analyze(*packed, baseline, abi).diagnostics);
+    auto const& definition{types.type(type).definition};
+    if (std::holds_alternative<EnumType>(definition)) {
+        return true;
     }
-    auto const& soa{std::get<SoaLayout>(definition)};
-    auto const analysis{Analyzer::analyze(soa, baseline, abi, default_capacity)};
+    if (std::holds_alternative<PackedType>(definition)) {
+        return !detail::has_error(Analyzer::analyze_packed(types, type, baseline, abi).diagnostics);
+    }
+    auto const analysis{Analyzer::analyze_soa(types, type, baseline, abi, default_capacity)};
     return analysis.total_payload_bytes.has_value() && !detail::has_error(analysis.diagnostics);
 }
 
@@ -53,44 +73,47 @@ auto complete(LayoutDefinition const& definition,
 void PlannerUi::draw_project_panel() {
     ImGui::Begin("Project / Schema");
     ImGui::SetNextItemWidth(-1.0F);
-    ImGui::InputTextWithHint("##schema-filter",
-                             "Filter schemas and storage names",
-                             schema_filter_.data(),
-                             schema_filter_.size());
+    ImGui::InputTextWithHint(
+        "##schema-filter", "Filter semantic types", schema_filter_.data(), schema_filter_.size());
 
-    if (workspace_.catalog().items().empty()) {
-        ImGui::TextDisabled("No supported schemas loaded.");
+    auto const types{workspace_.types().types()};
+    if (types.empty()) {
+        ImGui::TextDisabled("No semantic types loaded.");
     }
 
     auto const filter{std::string_view{schema_filter_.data()}};
     auto const& baseline{*workspace_.variant(LayoutWorkspace::baseline_variant_id)};
-    for (auto const kind : {SchemaKind::packed_value, SchemaKind::standard_library_soa}) {
-        auto const group{kind == SchemaKind::packed_value ? "Packed values" : "SoAs"};
-        if (!ImGui::CollapsingHeader(group, ImGuiTreeNodeFlags_DefaultOpen)) {
+    for (auto const group : {BrowserGroup::enumeration, BrowserGroup::packed, BrowserGroup::soa}) {
+        auto const* label{group == BrowserGroup::enumeration ? "Enums"
+                          : group == BrowserGroup::packed    ? "Packed values"
+                                                             : "SoAs"};
+        if (!ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen)) {
             continue;
         }
 
         std::string_view current_module;
-        for (auto const& definition : workspace_.catalog().items()) {
-            auto const& id{detail::definition_id(definition)};
-            if (id.kind != kind || !matches_filter(definition, filter)) {
+        for (std::size_t index{}; index < types.size(); ++index) {
+            auto const& node{types[index]};
+            if (browser_group(node) != group || !matches_filter(node, filter)) {
                 continue;
             }
-            if (current_module != id.module_name) {
-                current_module = id.module_name;
-                ImGui::SeparatorText(id.module_name.c_str());
+            if (current_module != node.identity.module_name) {
+                current_module = node.identity.module_name;
+                ImGui::SeparatorText(current_module.data());
             }
-            auto const selected{selected_schema_.has_value() && *selected_schema_ == id};
-            ImGui::PushID(id.module_name.c_str());
-            if (ImGui::Selectable(id.schema_name.c_str(), selected)) {
-                selected_schema_ = id;
+            auto const type{TypeId{static_cast<std::uint32_t>(index)}};
+            auto const selected{selected_type_.has_value() && *selected_type_ == type};
+            ImGui::PushID(static_cast<int>(index));
+            if (ImGui::Selectable(node.identity.name.c_str(), selected)) {
+                selected_type_ = type;
                 selected_field_.clear();
                 packed_dragged_divider_.reset();
             }
             ImGui::SameLine();
-            auto const status{complete(definition, baseline, abi_, workspace_.default_capacity())
-                                  ? "facts available"
-                                  : "contains unknowns"};
+            auto const* status{
+                complete(workspace_.types(), type, baseline, abi_, workspace_.default_capacity())
+                    ? "facts available"
+                    : "contains unknowns"};
             ImGui::TextDisabled("%s", status);
             ImGui::PopID();
         }

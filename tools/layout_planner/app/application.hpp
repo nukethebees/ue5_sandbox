@@ -1,9 +1,9 @@
 #pragma once
 
-#include <ioj/layout/lispb_adapter.hpp>
+#include <ioj/layout/schema_loader.hpp>
 
 namespace ioj::layout_planner {
 
-auto run_application(layout::CatalogLoadResult loaded) -> int;
+auto run_application(layout::SchemaLoadResult loaded) -> int;
 
 } // namespace ioj::layout_planner

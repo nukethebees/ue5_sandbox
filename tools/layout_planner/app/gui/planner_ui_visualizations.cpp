@@ -16,6 +16,7 @@ namespace ioj::layout_planner {
 namespace {
 
 using namespace layout;
+using namespace lispb::schema;
 
 inline constexpr ImVec4 changed_color{0.28F, 0.68F, 0.9F, 1.0F};
 inline constexpr ImVec4 selected_color{0.35F, 0.52F, 0.88F, 1.0F};
@@ -431,11 +432,12 @@ void draw_cache_line(CacheLineTiling const& tiling) {
 
 } // namespace
 
-void PlannerUi::draw_packed_layout(PackedLayout const& layout,
+void PlannerUi::draw_packed_layout(PackedType const& packed,
                                    PackedAnalysis const& baseline,
                                    PackedAnalysis const& active) {
-    ImGui::Text("%s", active.id.schema_name.c_str());
-    ImGui::TextDisabled("%s", active.id.module_name.c_str());
+    auto const& identity{workspace_.types().type(active.type).identity};
+    ImGui::Text("%s", identity.name.c_str());
+    ImGui::TextDisabled("%s", identity.module_name.c_str());
     auto const common_bits{std::max({baseline.storage_bits.value_or(0),
                                      baseline.bits_used.value_or(0),
                                      active.storage_bits.value_or(0),
@@ -462,17 +464,17 @@ void PlannerUi::draw_packed_layout(PackedLayout const& layout,
                         adjustment);
         ImGui::TextDisabled("Drag a divider to transfer whole bits between adjacent fields.");
     }
-    if (adjustment.has_value() && adjustment->left_field_index + 1 < layout.fields.size()) {
-        auto const& left_field{layout.fields[adjustment->left_field_index]};
-        auto const& right_field{layout.fields[adjustment->left_field_index + 1]};
+    if (adjustment.has_value() && adjustment->left_field_index + 1 < packed.fields.size()) {
+        auto const& left_field{packed.fields[adjustment->left_field_index]};
+        auto const& right_field{packed.fields[adjustment->left_field_index + 1]};
         workspace_.set_packed_field_width(
-            layout.id,
+            active.type,
             left_field.name,
             adjustment->left_width == left_field.bit_width
                 ? std::optional<std::uint32_t>{}
                 : std::optional<std::uint32_t>{adjustment->left_width});
         workspace_.set_packed_field_width(
-            layout.id,
+            active.type,
             right_field.name,
             adjustment->right_width == right_field.bit_width
                 ? std::optional<std::uint32_t>{}
@@ -491,14 +493,15 @@ void PlannerUi::draw_packed_layout(PackedLayout const& layout,
     }
 }
 
-void PlannerUi::draw_soa_layout(SoaLayout const& layout,
+void PlannerUi::draw_soa_layout(SoaType const& soa,
                                 SoaAnalysis const& baseline,
                                 SoaAnalysis const& active) {
-    ImGui::Text("%s", active.id.schema_name.c_str());
-    ImGui::TextDisabled("%s", active.id.module_name.c_str());
-    if (layout.related_storage_name.has_value()) {
+    auto const& identity{workspace_.types().type(active.type).identity};
+    ImGui::Text("%s", identity.name.c_str());
+    ImGui::TextDisabled("%s", identity.module_name.c_str());
+    if (soa.related_storage_name.has_value()) {
         ImGui::TextDisabled("Related generated storage: %s (padding and gaps not modeled).",
-                            layout.related_storage_name->c_str());
+                            soa.related_storage_name->c_str());
     }
     if (ImGui::BeginTable("soa-columns",
                           7,

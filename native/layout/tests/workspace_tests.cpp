@@ -7,8 +7,7 @@ namespace {
 
 TEST(LayoutWorkspace, CreatesDuplicatesResetsAndDeletesVariants) {
     LayoutWorkspace workspace;
-    auto const schema{SchemaId{
-        .kind = SchemaKind::packed_value, .module_name = "module", .schema_name = "Packed"}};
+    auto const schema{lispb::schema::TypeId{1}};
 
     EXPECT_FALSE(workspace.set_capacity(schema, 100));
     auto const first{workspace.create_variant("First")};
@@ -35,10 +34,8 @@ TEST(LayoutWorkspace, OnlyChangesRevisionWhenStateChanges) {
 
 TEST(LayoutWorkspace, ResetsIndividualPlanningOverrides) {
     LayoutWorkspace workspace;
-    auto const packed{SchemaId{
-        .kind = SchemaKind::packed_value, .module_name = "module", .schema_name = "Packed"}};
-    auto const soa{SchemaId{
-        .kind = SchemaKind::standard_library_soa, .module_name = "module", .schema_name = "Soa"}};
+    auto const packed{lispb::schema::TypeId{1}};
+    auto const soa{lispb::schema::TypeId{2}};
     workspace.create_variant("Variant");
 
     EXPECT_TRUE(workspace.set_packed_storage_type(packed, "std::uint64_t"));
