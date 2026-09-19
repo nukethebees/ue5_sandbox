@@ -96,6 +96,7 @@ public class SandboxEditor : ModuleRules
             "ImageCore",
             "ToolWidgets",
             "ToolMenus", // For editor toolbar buttons
+            "WorkspaceMenuStructure",
         });
     }
 }

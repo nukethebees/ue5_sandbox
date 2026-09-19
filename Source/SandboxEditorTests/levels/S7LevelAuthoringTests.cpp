@@ -4,6 +4,7 @@
 #include <SandboxEditor/levels/S7LevelAuthoringSession.h>
 #include <SandboxEditor/levels/S7LevelReconciliation.h>
 #include <SandboxEditor/levels/S7LevelSourceSession.h>
+#include <SandboxEditor/SandboxEditor.h>
 
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
@@ -16,11 +17,14 @@
 #include <Editor.h>
 #include <EditorModeManager.h>
 #include <Engine/World.h>
+#include <Framework/Docking/TabManager.h>
 #include <HAL/FileManager.h>
 #include <Misc/FileHelper.h>
 #include <Misc/Guid.h>
 #include <Misc/Paths.h>
 #include <Tests/AutomationEditorCommon.h>
+#include <Toolkits/BaseToolkit.h>
+#include <Widgets/Docking/SDockTab.h>
 
 #include <expected>
 
@@ -1422,6 +1426,34 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         modes.ActivateMode(US7LevelAuthoringMode::mode_id);
         TestRunner->TestTrue(TEXT("Mode activates"),
                              modes.IsModeActive(US7LevelAuthoringMode::mode_id));
+
+        auto* const mode{Cast<US7LevelAuthoringMode>(
+            modes.GetActiveScriptableMode(US7LevelAuthoringMode::mode_id))};
+        if (!TestRunner->TestNotNull(TEXT("Scriptable authoring mode is active"), mode)) {
+            modes.DeactivateMode(US7LevelAuthoringMode::mode_id);
+            return;
+        }
+        auto const toolkit{mode->GetToolkit().Pin()};
+        if (!TestRunner->TestTrue(TEXT("Authoring toolkit is initialized"), toolkit.IsValid())) {
+            modes.DeactivateMode(US7LevelAuthoringMode::mode_id);
+            return;
+        }
+        TestRunner->TestTrue(TEXT("Authoring toolkit has inline controls"),
+                             toolkit->GetInlineContent().IsValid());
+
+        mode->set_source_buffer(TEXT("(level)"));
+        TestRunner->TestEqual(TEXT("Mode owns script-editor buffer edits"),
+                              mode->source_session().buffer(),
+                              FString{TEXT("(level)")});
+        TestRunner->TestTrue(TEXT("Unsaved buffer state is surfaced"),
+                             mode->script_editor_state().source_dirty);
+
+        auto const tab{FSandboxEditorModule::open_s7_level_script_editor()};
+        TestRunner->TestTrue(TEXT("Script editor tab opens"), tab.IsValid());
+        if (tab.IsValid()) {
+            tab->RequestCloseTab();
+        }
+
         modes.DeactivateMode(US7LevelAuthoringMode::mode_id);
         TestRunner->TestFalse(TEXT("Mode deactivates"),
                               modes.IsModeActive(US7LevelAuthoringMode::mode_id));

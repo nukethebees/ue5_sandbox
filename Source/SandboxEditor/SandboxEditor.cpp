@@ -2,6 +2,7 @@
 
 #include "SandboxEditor/codegen/TypedefCodeGenerator.h"
 #include "SandboxEditor/levels/S7LevelAuthoringMode.h"
+#include "SandboxEditor/levels/S7LevelScriptEditor.h"
 #include "SandboxEditor/slate/BoxSizeCustomisation.h"
 #include "SandboxEditor/slate/StrongTypedefPreview.h"
 #include "SandboxEditor/slate/TestVolumeDetailsCustomisation.h"
@@ -10,6 +11,7 @@
 #include "Editor/EditorEngine.h"
 #include "EditorModeManager.h"
 #include "Framework/Docking/TabManager.h"
+#include "Framework/Docking/WorkspaceItem.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "LevelEditor.h"
 #include "Misc/CoreDelegates.h"
@@ -17,18 +19,34 @@
 #include "PropertyEditorModule.h"
 #include "ToolMenus.h"
 #include "Widgets/Docking/SDockTab.h"
+#include "WorkspaceMenuStructure.h"
+#include "WorkspaceMenuStructureModule.h"
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
+
+#define LOCTEXT_NAMESPACE "FSandboxEditorModule"
 
 namespace ml::detail {
 auto null_action{
     FUIAction(FExecuteAction::CreateLambda([]() { UE_LOG(LogTemp, Warning, TEXT("Foo")); }))};
 }
 
+FName const FSandboxEditorModule::s7_level_script_editor_tab_id{
+    TEXT("Sandbox.S7LevelScriptEditor")};
+
 void FSandboxEditorModule::StartupModule() {
     constexpr auto logger{NestedLogger<"StartupModule">()};
     logger.log_verbose(TEXT("Module starting up!"));
     // No factory registration needed - MaterialExpressions control their own UI
+
+    FGlobalTabmanager::Get()
+        ->RegisterNomadTabSpawner(
+            s7_level_script_editor_tab_id,
+            FOnSpawnTab::CreateRaw(this, &FSandboxEditorModule::spawn_s7_level_script_editor))
+        .SetDisplayName(LOCTEXT("S7LevelScriptEditor", "S7 Script Editor"))
+        .SetTooltipText(
+            LOCTEXT("S7LevelScriptEditorTooltip", "Edit the active Space Game Level S7 source."))
+        .SetGroup(WorkspaceMenu::GetMenuStructure().GetLevelEditorCategory());
 
     // Register menu extensions after ToolMenus module is loaded
     if (UToolMenus::IsToolMenuUIEnabled()) {
@@ -50,12 +68,29 @@ void FSandboxEditorModule::ShutdownModule() {
     }
     unregister_custom_properties();
 
+    if (auto script_editor{s7_level_script_editor_.Pin()}) {
+        script_editor->release_mode();
+    }
+    s7_level_script_editor_.Reset();
+    FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(s7_level_script_editor_tab_id);
+
     if (FModuleManager::Get().IsModuleLoaded("LevelEditor")) {
         auto& level_editor_module{
             FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor")};
         level_editor_module.GetAllLevelViewportContextMenuExtenders().RemoveAll(
             [&](auto const& delegate) { return delegate.GetHandle() == context_menu_delegate; });
     }
+}
+
+auto FSandboxEditorModule::open_s7_level_script_editor() -> TSharedPtr<SDockTab> {
+    return FGlobalTabmanager::Get()->TryInvokeTab(s7_level_script_editor_tab_id);
+}
+
+auto FSandboxEditorModule::spawn_s7_level_script_editor(FSpawnTabArgs const&)
+    -> TSharedRef<SDockTab> {
+    auto script_editor{SNew(SS7LevelScriptEditor)};
+    s7_level_script_editor_ = script_editor;
+    return SNew(SDockTab).TabRole(ETabRole::NomadTab)[script_editor];
 }
 
 void FSandboxEditorModule::create_sandbox_editor_menus() {
@@ -118,8 +153,10 @@ void FSandboxEditorModule::register_menu_extensions() {
 
     section.AddEntry(FToolMenuEntry::InitToolBarButton(
         "SpaceGameLevelAuthoring",
-        FUIAction(FExecuteAction::CreateLambda(
-            []() { GLevelEditorModeTools().ActivateMode(US7LevelAuthoringMode::mode_id); })),
+        FUIAction(FExecuteAction::CreateLambda([]() {
+            GLevelEditorModeTools().ActivateMode(US7LevelAuthoringMode::mode_id);
+            FSandboxEditorModule::open_s7_level_script_editor();
+        })),
         FText::FromString("Space Game Level"),
         FText::FromString("Open the bidirectional S7 level-authoring mode"),
         FSlateIcon(FAppStyle::GetAppStyleSetName(), "Icons.Edit")));
@@ -195,5 +232,7 @@ void FSandboxEditorModule::unregister_custom_properties() {
         }
     }
 }
+
+#undef LOCTEXT_NAMESPACE
 
 IMPLEMENT_MODULE(FSandboxEditorModule, SandboxEditor)
