@@ -37,6 +37,7 @@ target_sources(native-simulation-tests PRIVATE
   support/worldless_simulation_test.cpp
   deterministic_bias_tests.cpp
   fixed_tick_tests.cpp
+  health_table_tests.cpp
   index_span_tests.cpp
   ship_health_tests.cpp
   spatial_tests.cpp

@@ -183,6 +183,7 @@ void Sim::set_config(FighterSimConfig const& new_config,
 Sim::Sim(SimClock const& clock,
          EntityLedger& ledger,
          CombatEvents const& combat_events,
+         HealthTable& health_table,
          AgentAccessor const& agents,
          SpatialQueryManager const& in_spatial_query_manager,
          lasers::Sim& in_laser_simulation,
@@ -190,6 +191,7 @@ Sim::Sim(SimClock const& clock,
     : simulation_clock{clock}
     , ledger_{ledger}
     , combat_events_{combat_events}
+    , health_table_{health_table}
     , agents_{agents}
     , spatial_query_manager{in_spatial_query_manager}
     , frame_memory_resource{in_frame_memory_resource}
@@ -503,11 +505,12 @@ void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::resolve_damage_events");
 
     auto const data{entity_buffers.current().get_view().columns()};
+    auto const healths{health_table_.get_view(data.health_indices)};
     auto const damage_events{combat_events_.events_for(EntityType::Fighter)};
     batch::resolve_damage_events(damage_events,
                                  agents_.indexes(),
                                  data.entity_ids,
-                                 data.healths,
+                                 healths,
                                  local_indices_to_remove,
                                  entity_death_info,
                                  ledger_);
@@ -520,7 +523,7 @@ void Sim::resolve_damage_events() {
         auto const fighter_index{agents_.indexes().find(damaged_id)};
         assert(fighter_index >= 0 && fighter_index < data.num());
         assert(data.entity_ids[fighter_index] == damaged_id);
-        if (is_dead(data.healths[fighter_index])) {
+        if (is_dead(healths.health(fighter_index))) {
             continue;
         }
 
@@ -650,6 +653,7 @@ void Sim::collect_navigation_updates(NavigationScratch& scratch) {
 }
 void Sim::update_separation_observations(NavigationScratch& scratch) {
     auto const data{entity_buffers.current().get_view().columns()};
+    auto const healths{health_table_.get_const_view(data.health_indices)};
     // Fixed capacity bounds scoring work and keeps neighbour storage off the heap.
     std::array<EntityUniqueId, max_separation_neighbours> nearby_fighters;
     std::array<SeparationNeighbour, max_separation_neighbours> neighbours;
@@ -681,7 +685,7 @@ void Sim::update_separation_observations(NavigationScratch& scratch) {
         std::int32_t neighbour_count{};
         for (std::int32_t index{}; index < n_nearby; ++index) {
             auto const local_index{agents_.indexes().find(nearby_fighters[index])};
-            if (local_index >= 0 && is_alive(data.healths[local_index])) {
+            if (local_index >= 0 && is_alive(healths.health(local_index))) {
                 neighbours[neighbour_count++] = {data.entity_ids[local_index],
                                                  data.locations[local_index]};
             }
@@ -1243,7 +1247,6 @@ void Sim::commit_spawns() {
         new_data.aim_directions.set(index, forward_direction(spawns.rotations[index]));
         new_data.speeds[index] = config.speed;
         new_data.teams[index] = spawns.teams[index];
-        new_data.healths[index] = config.health;
         new_data.parent_ids[index] = spawns.parents[index];
         new_data.target_ids[index] = spawns.targets[index];
         new_data.navigation_risk_tiers[index] =
@@ -1254,9 +1257,12 @@ void Sim::commit_spawns() {
 
     for (std::int32_t i{0}; i < n_new; ++i) {
         auto const index{n_cur + i};
-        data.entity_ids[index] = ledger_.record_spawn(
-            EntityType::Fighter, data.teams[index], is_alive(data.healths[index]));
+        data.entity_ids[index] =
+            ledger_.record_spawn(EntityType::Fighter, data.teams[index], is_alive(config.health));
     }
+    health_table_.add(std::span<EntityUniqueId const>{data.entity_ids}.subspan(n_cur, n_new),
+                      config.health,
+                      std::span<HealthIndex>{data.health_indices}.subspan(n_cur, n_new));
     if (diagnostics_enabled_) {
         for (std::int32_t i{}; i < n_new; ++i) {
             if (!diagnostics::take_report(diagnostics_enabled_, diagnostic_spawn_reports, 64)) {
@@ -1286,8 +1292,10 @@ void Sim::remove_dead_entities() {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_dead_entities");
     auto& data{entity_buffers.current()};
     batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
+    auto const columns{data.get_const_view().columns()};
+    health_table_.remove_rows(local_indices_to_remove, columns.health_indices, columns.entity_ids);
     for (auto const index : local_indices_to_remove) {
-        agents_.indexes().retire(data.get_const_view().entity_ids()[index]);
+        agents_.indexes().retire(columns.entity_ids[index]);
         data.remove_at_swap(index, 1);
     }
     validate_array_sizes();
@@ -1464,6 +1472,7 @@ void Sim::commit_orders() {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::commit_orders");
 
     auto const data{entity_buffers.current().get_view().columns()};
+    auto const healths{health_table_.get_const_view(data.health_indices)};
     auto const n_orders{order_queue.num()};
     if (n_orders < 1) {
         return;
@@ -1477,7 +1486,7 @@ void Sim::commit_orders() {
             continue;
         }
         auto const fighter_index{agents_.indexes().find(id)};
-        if (fighter_index < 0 || is_dead(data.healths[fighter_index])) {
+        if (fighter_index < 0 || is_dead(healths.health(fighter_index))) {
             continue;
         }
 

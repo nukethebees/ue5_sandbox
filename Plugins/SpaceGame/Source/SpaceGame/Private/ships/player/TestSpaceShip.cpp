@@ -323,7 +323,7 @@ void ATestSpaceShip::add_health(int32 const added_health) {
 }
 
 auto ATestSpaceShip::get_health_info() const -> FShipHealth {
-    return bound_simulation ? ml::to_unreal(bound_simulation->health) : health;
+    return bound_simulation ? ml::to_unreal(bound_simulation->get_health()) : health;
 }
 
 auto ATestSpaceShip::is_alive() const noexcept -> bool {

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ioj/sim/entity_types.h>
-#include <ioj/sim/health.h>
+#include <ioj/sim/health_table.h>
 #include <ioj/sim/vectors3f.h>
 
 #include <span>
@@ -14,12 +14,12 @@ struct AgentDisplayBatch {
     std::span<EntityUniqueId const> ids;
     Vectors3fConstView locations;
     Vectors3fConstView velocities;
-    std::span<Health const> healths;
+    HealthConstView healths;
     std::span<Team const> teams;
 
     auto num() const noexcept -> std::int32_t { return locations.num(); }
     auto health(std::int32_t index) const -> Health {
-        return healths.empty() ? 1000000 : healths[index];
+        return healths.is_empty() ? 1000000 : healths.health(index);
     }
     auto team(std::int32_t index) const -> Team {
         return teams.empty() ? Team::White : teams[index];

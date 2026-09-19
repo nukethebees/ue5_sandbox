@@ -28,7 +28,7 @@
     (member move_distances array float)
     (member speeds array float)
     (member teams array @native_team)
-    (member healths array @native_health)
+    (member health_indices array @native_health_index)
     (member parent_ids array @native_unique_id)
     (member awareness_scan_countdowns array int8)
     (member navigation_update_countdowns_remaining_ticks array int16)
@@ -72,7 +72,7 @@
     (member fighter_spawn_timers array float)
     (member fighter_spawn_cooldowns array float)
     (member teams array @native_team)
-    (member healths array @native_health)
+    (member health_indices array @native_health_index)
     (member fighter_id_spans array @native_index_span)
     (member target_ids array @native_unique_id)
     (single-allocation SingleAllocationCapitalEntityData)))
@@ -170,7 +170,7 @@
     (member target_ids array @native_unique_id)
     (member target_locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member target_velocities nested @native_vectors_3f :nested-schema Vectors3f)
-    (member healths array @native_health)
+    (member health_indices array @native_health_index)
     (single-allocation SingleAllocationTurretEntityData)))
 
 (soa-module spinners_soa

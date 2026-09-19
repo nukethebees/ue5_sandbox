@@ -7,6 +7,7 @@
 #include "ioj/sim/fighter_order_queue.h"
 #include "ioj/sim/fighter_spawn_queue.h"
 #include "ioj/sim/fighters/sim.h"
+#include "ioj/sim/health_table.h"
 
 namespace ioj::sim::fighters {
 class CommandInterface {
@@ -26,7 +27,7 @@ class CommandInterface {
 
     std::span<EntityUniqueId const> get_entity_ids() const { return fighters.get_entity_ids(); }
 
-    std::span<Health const> get_healths() const { return fighters.get_healths(); }
+    HealthConstView get_healths() const { return fighters.get_healths(); }
 
     void set_parent_id(EntityUniqueId fighter, EntityUniqueId parent) {
         fighters.set_parent_id(fighter, parent);

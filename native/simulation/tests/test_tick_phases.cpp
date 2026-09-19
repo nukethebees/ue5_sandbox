@@ -276,12 +276,12 @@ TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndQueriesAdvanceAfterw
     simulation.advance(period);
 
     auto const* player{simulation.get_player_ship_simulation()};
-    EXPECT_EQ(player->health.health, 100);
+    EXPECT_EQ(player->get_health().health, 100);
     EXPECT_EQ(laser_sim.get_num_instances(), 1);
 
     simulation.advance(period);
 
-    EXPECT_EQ(player->health.health, 75);
+    EXPECT_EQ(player->get_health().health, 75);
     EXPECT_EQ(laser_sim.get_num_instances(), 0);
     EXPECT_NEAR(player->get_movement_state().transform.location.y, 200.0, 0.001);
 
@@ -305,10 +305,10 @@ TEST(TickPhases, AcceptedFireSurvivesShooterDeathAndDeathCannotBeHealed) {
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
     simulation.start();
     simulation.advance(simulation.get_clock().get_tick_period());
-    EXPECT_TRUE(is_dead(player->health.health));
+    EXPECT_TRUE(is_dead(player->get_health().health));
     EXPECT_EQ(simulation.get_lasers().get_number_spawned(), 0);
     simulation.get_player_ship_commands()->add_health(100);
-    EXPECT_TRUE(is_dead(player->health.health));
+    EXPECT_TRUE(is_dead(player->get_health().health));
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_EQ(simulation.get_lasers().get_number_spawned(), 1);
     EXPECT_EQ(simulation.get_lasers().get_num_instances(), 1);
@@ -324,7 +324,7 @@ TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
     LevelSimTestAccess::queue_laser_spawns(simulation, shot.get_const_view());
     simulation.start();
     simulation.advance(simulation.get_clock().get_tick_period());
-    EXPECT_EQ(simulation.get_read_view().capitals.entities.healths[0], 75);
+    EXPECT_EQ(simulation.get_read_view().capitals.healths.health(0), 75);
     EXPECT_EQ(simulation.get_lasers().get_num_instances(), 0);
     EXPECT_EQ(simulation.get_read_view().lasers.entities.num(), 0);
     simulation.advance(simulation.get_clock().get_tick_period());

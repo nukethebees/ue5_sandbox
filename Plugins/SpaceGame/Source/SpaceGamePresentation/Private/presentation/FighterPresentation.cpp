@@ -83,7 +83,7 @@ void FFighterPresentation::update_ismc() {
     auto const count{data.num()};
     visible_indices_.Reset();
     for (int32 index{}; index < count; ++index) {
-        if (::ioj::sim::is_alive(data.healths[index])) {
+        if (::ioj::sim::is_alive(view().healths.health(index))) {
             visible_indices_.Add(index);
         }
     }

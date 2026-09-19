@@ -80,7 +80,8 @@ TEST(OverlapHandler, SkipsUnsupportedDeadInvalidAndRetiredRecipients) {
                        "Replacement is not accidentally damaged");
 
     owners.combat_events.reset();
-    owners.fighters.get_view().healths()[0] = 0;
+    auto const fighter_data{owners.fighters.get_const_view().columns()};
+    owners.health_table.get_view(fighter_data.health_indices).health(0) = 0;
     handler.handle({retired_pair.get_const_view(), {}});
     EXPECT_EQ(owners.combat_events.all_events().num(), 0);
 }

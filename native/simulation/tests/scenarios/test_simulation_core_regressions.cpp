@@ -158,7 +158,7 @@ void run_worldless_collision_damage(tests::SimulationFixture const& config) {
         auto const capital{level.get_agent_accessor().read(capital_id)};
         samples.add(harness.get_time(),
                     Sample{
-                        .player_health = player->health.health,
+                        .player_health = player->get_health().health,
                         .capital_health = capital ? capital->health : 0,
                         .dynamic_overlap_count = events.entity_entity_overlaps.num(),
                         .kill_count = harness.get_ledger().count_kills(),

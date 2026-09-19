@@ -97,13 +97,21 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     ASSERT_EQ(events.all_events().num(), 3);
 
     std::array ids{victim};
-    std::array<Health, 1> healths{10};
+    std::array<Health, 1> initial_healths{10};
+    std::array<HealthIndex, 1> health_indices{};
+    HealthTable health_table;
+    health_table.add(ids, initial_healths, health_indices);
     std::vector<std::int32_t> removals;
     EntityDeathInfo deaths;
-    batch::resolve_damage_events(
-        events.events_for(EntityType::Fighter), indexes, ids, healths, removals, deaths, ledger);
+    batch::resolve_damage_events(events.events_for(EntityType::Fighter),
+                                 indexes,
+                                 ids,
+                                 health_table.get_view(health_indices),
+                                 removals,
+                                 deaths,
+                                 ledger);
 
-    EXPECT_EQ(healths[0], -6);
+    EXPECT_EQ(health_table.get_health(health_indices[0]), -6);
     EXPECT_EQ(removals, std::vector<std::int32_t>{0});
     ASSERT_EQ(deaths.num(), 1);
     EXPECT_EQ(deaths.victims[0], victim);

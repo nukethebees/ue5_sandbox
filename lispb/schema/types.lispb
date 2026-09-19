@@ -208,6 +208,16 @@
   :header "ioj/sim/health.h"
   :pass-by value)
 
+(type native_health_index
+  :spelling "HealthIndex"
+  :header "ioj/sim/health_table.h"
+  :pass-by value)
+
+(type native_health_const_view
+  :spelling "HealthConstView"
+  :header "ioj/sim/health_table.h"
+  :pass-by value)
+
 (type native_unique_id
   :spelling "EntityUniqueId"
   :header "ioj/sim/entity_unique_id.h"

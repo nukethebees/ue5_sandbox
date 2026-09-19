@@ -760,11 +760,13 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         ::ioj::sim::EntityLedger ledger;
         ::ioj::sim::CombatEvents combat_events{ledger};
         ::ioj::sim::AgentIndexes indexes{clock};
-        ::ioj::sim::AgentAccessor agents{indexes};
+        ::ioj::sim::HealthTable health_table;
+        ::ioj::sim::AgentAccessor agents{indexes, health_table};
         ::ioj::sim::SpatialQueryManager queries{agents};
         ml::FFrameMemoryResource frame_memory{1024 * 1024};
         ::ioj::sim::lasers::Sim lasers{clock, combat_events, queries, frame_memory};
-        ::ioj::sim::player::Sim simulation{clock, ledger, combat_events, queries, lasers};
+        ::ioj::sim::player::Sim simulation{
+            clock, ledger, combat_events, health_table, queries, lasers};
         simulation.start_sampling();
         simulation.set_ship_1d_control_y(1.0f);
         simulation.stop_sampling();
@@ -790,11 +792,13 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         ::ioj::sim::EntityLedger ledger;
         ::ioj::sim::CombatEvents combat_events{ledger};
         ::ioj::sim::AgentIndexes indexes{clock};
-        ::ioj::sim::AgentAccessor agents{indexes};
+        ::ioj::sim::HealthTable health_table;
+        ::ioj::sim::AgentAccessor agents{indexes, health_table};
         ::ioj::sim::SpatialQueryManager queries{agents};
         ml::FFrameMemoryResource frame_memory{1024 * 1024};
         ::ioj::sim::lasers::Sim lasers{clock, combat_events, queries, frame_memory};
-        ::ioj::sim::player::Sim simulation{clock, ledger, combat_events, queries, lasers};
+        ::ioj::sim::player::Sim simulation{
+            clock, ledger, combat_events, health_table, queries, lasers};
         ::ioj::sim::PlayerSimConfig config;
         config.cruise_speed = 1000.f;
         config.forward_velocity_trim_fraction = 0.1f;
@@ -1063,11 +1067,13 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         ::ioj::sim::EntityLedger ledger;
         ::ioj::sim::CombatEvents combat_events{ledger};
         ::ioj::sim::AgentIndexes indexes{clock};
-        ::ioj::sim::AgentAccessor agents{indexes};
+        ::ioj::sim::HealthTable health_table;
+        ::ioj::sim::AgentAccessor agents{indexes, health_table};
         ::ioj::sim::SpatialQueryManager queries{agents};
         ml::FFrameMemoryResource frame_memory{1024 * 1024};
         ::ioj::sim::lasers::Sim lasers{clock, combat_events, queries, frame_memory};
-        ::ioj::sim::player::Sim simulation{clock, ledger, combat_events, queries, lasers};
+        ::ioj::sim::player::Sim simulation{
+            clock, ledger, combat_events, health_table, queries, lasers};
         ::ioj::sim::player::CommandInterface commands{simulation};
         ship->bind_simulation(commands, simulation);
         TestRunner->TestTrue(TEXT("Ship context binds"), context.bind());

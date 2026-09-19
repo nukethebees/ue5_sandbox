@@ -9,6 +9,7 @@
 #include <ioj/sim/sim_config.h>
 
 #include <ioj/sim/entity_death_info.h>
+#include <ioj/sim/health_table.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/turret_entity_data.h>
@@ -34,6 +35,7 @@ struct Sim {
     Sim(SimClock const& clock,
         EntityLedger& ledger,
         CombatEvents const& combat_events,
+        HealthTable& health_table,
         AgentAccessor const& agents,
         SpatialQueryManager const& spatial_query_manager,
         lasers::Sim& laser_simulation,
@@ -47,7 +49,11 @@ struct Sim {
     // Configuration
     /* **************************************** */
     auto get_read_view() const -> TurretReadView {
-        return {entities.get_const_view().columns(), frame_changes_, death_locations_};
+        auto const entity_data{entities.get_const_view().columns()};
+        return {entity_data,
+                health_table_.get_const_view(entity_data.health_indices),
+                frame_changes_,
+                death_locations_};
     }
     void reset_frame_output() {
         frame_changes_.clear();
@@ -124,6 +130,7 @@ struct Sim {
     SimClock const& simulation_clock;
     EntityLedger& ledger_;
     CombatEvents const& combat_events_;
+    HealthTable& health_table_;
     AgentAccessor const& agents_;
     SpatialQueryManager const& spatial_query_manager;
     lasers::Sim& laser_simulation;

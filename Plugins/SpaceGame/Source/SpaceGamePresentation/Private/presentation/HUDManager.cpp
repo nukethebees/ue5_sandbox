@@ -925,7 +925,7 @@ bool FHUDManager::collect_player_status_data() {
 
     if (validate_player_ship_for_collection()) {
         next_data.has_player_ship = true;
-        next_data.health = ml::to_unreal(player_ship->health);
+        next_data.health = ml::to_unreal(player_ship->get_health());
         next_data.speed = player_ship->get_speed();
         next_data.target_speed = player_ship->get_movement_state().target_speed;
         next_data.energy = player_ship->get_energy();

@@ -21,7 +21,7 @@ void sort_and_deduplicate_removal_indices(std::vector<std::int32_t>& local_indic
 void resolve_damage_events(DirectDamageEventsConstView damage_events,
                            AgentIndexes const& indexes,
                            [[maybe_unused]] std::span<EntityUniqueId const> entity_ids,
-                           std::span<Health> healths,
+                           HealthView const healths,
                            std::vector<std::int32_t>& local_indices_to_remove,
                            EntityDeathInfo& entity_death_info,
                            EntityLedger& ledger) {
@@ -33,7 +33,7 @@ void resolve_damage_events(DirectDamageEventsConstView damage_events,
     local_indices_to_remove.resize(removal_count + static_cast<std::size_t>(n_direct_events));
     entity_death_info.add_uninitialised(n_direct_events);
 
-    assert(healths.size() == entity_ids.size());
+    assert(healths.num() == static_cast<std::int32_t>(entity_ids.size()));
     auto current_removal_count{static_cast<std::int32_t>(removal_count)};
     auto current_death_count{death_count};
     for (std::int32_t event_index{}; event_index < n_direct_events; ++event_index) {
@@ -42,8 +42,7 @@ void resolve_damage_events(DirectDamageEventsConstView damage_events,
         auto const local_index{indexes.find(id)};
         assert(local_index >= 0 && static_cast<std::size_t>(local_index) < entity_ids.size());
         assert(entity_ids[local_index] == id);
-        auto const local_element{static_cast<std::size_t>(local_index)};
-        if (is_dead(healths[local_element])) {
+        if (is_dead(healths.health(local_index))) {
             continue;
         }
         auto const requested_damage{damage_events.damage_amounts[element]};
@@ -51,13 +50,13 @@ void resolve_damage_events(DirectDamageEventsConstView damage_events,
         if (requested_damage == 0) {
             continue;
         }
-        auto const applied_damage{std::min(healths[local_element], requested_damage)};
-        healths[local_element] -= requested_damage;
+        auto& health{healths.health(local_index)};
+        auto const applied_damage{std::min(health, requested_damage)};
+        health -= requested_damage;
         ledger.record_damage(id, damage_events.instigators[element], applied_damage);
         auto const removals{std::span{local_indices_to_remove}.first(
             static_cast<std::size_t>(current_removal_count))};
-        if (is_alive(healths[local_element]) ||
-            std::ranges::find(removals, local_index) != removals.end()) {
+        if (is_alive(health) || std::ranges::find(removals, local_index) != removals.end()) {
             continue;
         }
 

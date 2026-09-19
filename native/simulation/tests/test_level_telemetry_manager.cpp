@@ -39,7 +39,8 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     EntityLedger entity_ledger;
     CombatEvents combat_events{entity_ledger};
     AgentIndexes indexes{clock};
-    AgentAccessor agents{indexes};
+    HealthTable health_table;
+    AgentAccessor agents{indexes, health_table};
     SpatialQueryManager spatial_queries{agents};
     ml::FrameMemoryResource frame_memory{1024 * 1024};
     lasers::Sim lasers{clock, combat_events, spatial_queries, frame_memory};

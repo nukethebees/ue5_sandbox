@@ -6,7 +6,7 @@
 #include "ioj/sim/entity_types.h"
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/fighter_types.h"
-#include "ioj/sim/health.h"
+#include "ioj/sim/health_table.h"
 #include "ioj/sim/vectors3f.h"
 #include "native_soa/storage.h"
 #include "sandbox/core/address_cast.h"
@@ -37,7 +37,7 @@ struct FighterEntityDataConstView {
     std::span<float const> move_distances;
     std::span<float const> speeds;
     std::span<Team const> teams;
-    std::span<Health const> healths;
+    std::span<HealthIndex const> health_indices;
     std::span<EntityUniqueId const> parent_ids;
     std::span<std::int8_t const> awareness_scan_countdowns;
     std::span<std::int16_t const> navigation_update_countdowns_remaining_ticks;
@@ -89,7 +89,7 @@ struct FighterEntityDataConstView {
         fn(move_distances);
         fn(speeds);
         fn(teams);
-        fn(healths);
+        fn(health_indices);
         fn(parent_ids);
         fn(awareness_scan_countdowns);
         fn(navigation_update_countdowns_remaining_ticks);
@@ -144,7 +144,8 @@ struct FighterEntityDataConstView {
                                    static_cast<std::size_t>(count)),
             speeds.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             teams.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            healths.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
+            health_indices.subspan(static_cast<std::size_t>(offset),
+                                   static_cast<std::size_t>(count)),
             parent_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             awareness_scan_countdowns.subspan(static_cast<std::size_t>(offset),
                                               static_cast<std::size_t>(count)),
@@ -199,7 +200,7 @@ struct FighterEntityDataConstView {
             move_distances,
             speeds,
             teams,
-            healths,
+            health_indices,
             parent_ids,
             awareness_scan_countdowns,
             navigation_update_countdowns_remaining_ticks,
@@ -247,7 +248,7 @@ struct FighterEntityDataView {
     std::span<float> move_distances;
     std::span<float> speeds;
     std::span<Team> teams;
-    std::span<Health> healths;
+    std::span<HealthIndex> health_indices;
     std::span<EntityUniqueId> parent_ids;
     std::span<std::int8_t> awareness_scan_countdowns;
     std::span<std::int16_t> navigation_update_countdowns_remaining_ticks;
@@ -299,7 +300,7 @@ struct FighterEntityDataView {
         fn(move_distances);
         fn(speeds);
         fn(teams);
-        fn(healths);
+        fn(health_indices);
         fn(parent_ids);
         fn(awareness_scan_countdowns);
         fn(navigation_update_countdowns_remaining_ticks);
@@ -354,7 +355,8 @@ struct FighterEntityDataView {
                                    static_cast<std::size_t>(count)),
             speeds.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             teams.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            healths.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
+            health_indices.subspan(static_cast<std::size_t>(offset),
+                                   static_cast<std::size_t>(count)),
             parent_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             awareness_scan_countdowns.subspan(static_cast<std::size_t>(offset),
                                               static_cast<std::size_t>(count)),
@@ -408,7 +410,7 @@ struct FighterEntityDataView {
             move_distances,
             speeds,
             teams,
-            healths,
+            health_indices,
             parent_ids,
             awareness_scan_countdowns,
             navigation_update_countdowns_remaining_ticks,
@@ -466,7 +468,7 @@ struct FighterEntityDataView {
              float const new_move_distances,
              float const new_speeds,
              Team const new_teams,
-             Health const new_healths,
+             HealthIndex const new_health_indices,
              EntityUniqueId const new_parent_ids,
              std::int8_t const new_awareness_scan_countdowns,
              std::int16_t const new_navigation_update_countdowns_remaining_ticks,
@@ -526,7 +528,7 @@ struct FighterEntityDataView {
         move_distances[static_cast<std::size_t>(index)] = new_move_distances;
         speeds[static_cast<std::size_t>(index)] = new_speeds;
         teams[static_cast<std::size_t>(index)] = new_teams;
-        healths[static_cast<std::size_t>(index)] = new_healths;
+        health_indices[static_cast<std::size_t>(index)] = new_health_indices;
         parent_ids[static_cast<std::size_t>(index)] = new_parent_ids;
         awareness_scan_countdowns[static_cast<std::size_t>(index)] = new_awareness_scan_countdowns;
         navigation_update_countdowns_remaining_ticks[static_cast<std::size_t>(index)] =
@@ -579,7 +581,7 @@ struct FighterEntityData {
     ml::native_soa::Vector<float> move_distances;
     ml::native_soa::Vector<float> speeds;
     ml::native_soa::Vector<Team> teams;
-    ml::native_soa::Vector<Health> healths;
+    ml::native_soa::Vector<HealthIndex> health_indices;
     ml::native_soa::Vector<EntityUniqueId> parent_ids;
     ml::native_soa::Vector<std::int8_t> awareness_scan_countdowns;
     ml::native_soa::Vector<std::int16_t> navigation_update_countdowns_remaining_ticks;
@@ -631,7 +633,7 @@ struct FighterEntityData {
         fn(move_distances);
         fn(speeds);
         fn(teams);
-        fn(healths);
+        fn(health_indices);
         fn(parent_ids);
         fn(awareness_scan_countdowns);
         fn(navigation_update_countdowns_remaining_ticks);
@@ -690,7 +692,7 @@ struct FighterEntityData {
         fn(move_distances);
         fn(speeds);
         fn(teams);
-        fn(healths);
+        fn(health_indices);
         fn(parent_ids);
         fn(awareness_scan_countdowns);
         fn(navigation_update_countdowns_remaining_ticks);
@@ -750,7 +752,7 @@ struct FighterEntityData {
         move_distances.reserve(static_cast<std::size_t>(count));
         speeds.reserve(static_cast<std::size_t>(count));
         teams.reserve(static_cast<std::size_t>(count));
-        healths.reserve(static_cast<std::size_t>(count));
+        health_indices.reserve(static_cast<std::size_t>(count));
         parent_ids.reserve(static_cast<std::size_t>(count));
         awareness_scan_countdowns.reserve(static_cast<std::size_t>(count));
         navigation_update_countdowns_remaining_ticks.reserve(static_cast<std::size_t>(count));
@@ -808,7 +810,7 @@ struct FighterEntityData {
         move_distances.clear();
         speeds.clear();
         teams.clear();
-        healths.clear();
+        health_indices.clear();
         parent_ids.clear();
         awareness_scan_countdowns.clear();
         navigation_update_countdowns_remaining_ticks.clear();
@@ -868,7 +870,7 @@ struct FighterEntityData {
         move_distances.resize(size);
         speeds.resize(size);
         teams.resize(size);
-        healths.resize(size);
+        health_indices.resize(size);
         parent_ids.resize(size);
         awareness_scan_countdowns.resize(size);
         navigation_update_countdowns_remaining_ticks.resize(size);
@@ -995,7 +997,7 @@ struct FighterEntityData {
             teams[index + i] = teams[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
-            healths[index + i] = healths[source + i];
+            health_indices[index + i] = health_indices[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
             parent_ids[index + i] = parent_ids[source + i];
@@ -1112,7 +1114,7 @@ struct FighterEntityData {
              float const new_move_distances,
              float const new_speeds,
              Team const new_teams,
-             Health const new_healths,
+             HealthIndex const new_health_indices,
              EntityUniqueId const new_parent_ids,
              std::int8_t const new_awareness_scan_countdowns,
              std::int16_t const new_navigation_update_countdowns_remaining_ticks,
@@ -1169,7 +1171,7 @@ struct FighterEntityData {
                        new_move_distances,
                        new_speeds,
                        new_teams,
-                       new_healths,
+                       new_health_indices,
                        new_parent_ids,
                        new_awareness_scan_countdowns,
                        new_navigation_update_countdowns_remaining_ticks,
@@ -1226,7 +1228,7 @@ struct FighterEntityData {
              float const new_move_distances,
              float const new_speeds,
              Team const new_teams,
-             Health const new_healths,
+             HealthIndex const new_health_indices,
              EntityUniqueId const new_parent_ids,
              std::int8_t const new_awareness_scan_countdowns,
              std::int16_t const new_navigation_update_countdowns_remaining_ticks,
@@ -1285,7 +1287,7 @@ struct FighterEntityData {
             new_move_distances,
             new_speeds,
             new_teams,
-            new_healths,
+            new_health_indices,
             new_parent_ids,
             new_awareness_scan_countdowns,
             new_navigation_update_countdowns_remaining_ticks,
@@ -1504,10 +1506,10 @@ struct FighterEntityData {
                                     address >= begin + teams.size() * sizeof(Team));
         }
         {
-            auto const address{ml::address_cast(source.healths.data())};
-            auto const begin{ml::address_cast(healths.data())};
+            auto const address{ml::address_cast(source.health_indices.data())};
+            auto const begin{ml::address_cast(health_indices.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + healths.size() * sizeof(Health));
+                                    address >= begin + health_indices.size() * sizeof(HealthIndex));
         }
         {
             auto const address{ml::address_cast(source.parent_ids.data())};
@@ -1749,7 +1751,9 @@ struct FighterEntityData {
                               source.move_distances.data() + count);
         speeds.insert(speeds.end(), source.speeds.data(), source.speeds.data() + count);
         teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
-        healths.insert(healths.end(), source.healths.data(), source.healths.data() + count);
+        health_indices.insert(health_indices.end(),
+                              source.health_indices.data(),
+                              source.health_indices.data() + count);
         parent_ids.insert(
             parent_ids.end(), source.parent_ids.data(), source.parent_ids.data() + count);
         awareness_scan_countdowns.insert(awareness_scan_countdowns.end(),
@@ -1848,7 +1852,7 @@ struct FighterEntityData {
             move_distances,
             speeds,
             teams,
-            healths,
+            health_indices,
             parent_ids,
             awareness_scan_countdowns,
             navigation_update_countdowns_remaining_ticks,
@@ -1886,7 +1890,7 @@ struct FighterEntityData {
             move_distances,
             speeds,
             teams,
-            healths,
+            health_indices,
             parent_ids,
             awareness_scan_countdowns,
             navigation_update_countdowns_remaining_ticks,
@@ -1952,8 +1956,8 @@ struct FighterEntityData {
             other.speeds[static_cast<std::size_t>(src_index)];
         teams[static_cast<std::size_t>(dst_index)] =
             other.teams[static_cast<std::size_t>(src_index)];
-        healths[static_cast<std::size_t>(dst_index)] =
-            other.healths[static_cast<std::size_t>(src_index)];
+        health_indices[static_cast<std::size_t>(dst_index)] =
+            other.health_indices[static_cast<std::size_t>(src_index)];
         parent_ids[static_cast<std::size_t>(dst_index)] =
             other.parent_ids[static_cast<std::size_t>(src_index)];
         awareness_scan_countdowns[static_cast<std::size_t>(dst_index)] =
@@ -2063,8 +2067,8 @@ struct FighterEntityDataSingleLayout {
     inline static constexpr ColLayout<float> MoveDistances{VelocitiesZs};
     inline static constexpr ColLayout<float> Speeds{MoveDistances};
     inline static constexpr ColLayout<Team> Teams{Speeds};
-    inline static constexpr ColLayout<Health> Healths{Teams};
-    inline static constexpr ColLayout<EntityUniqueId> ParentIds{Healths};
+    inline static constexpr ColLayout<HealthIndex> HealthIndices{Teams};
+    inline static constexpr ColLayout<EntityUniqueId> ParentIds{HealthIndices};
     inline static constexpr ColLayout<std::int8_t> AwarenessScanCountdowns{ParentIds};
     inline static constexpr ColLayout<std::int16_t> NavigationUpdateCountdownsRemainingTicks{
         AwarenessScanCountdowns};
@@ -2128,7 +2132,7 @@ struct FighterEntityDataSingleLayout {
                                           MoveDistances,
                                           Speeds,
                                           Teams,
-                                          Healths,
+                                          HealthIndices,
                                           ParentIds,
                                           AwarenessScanCountdowns,
                                           NavigationUpdateCountdownsRemainingTicks,
@@ -2190,8 +2194,8 @@ struct FighterEntityDataSingleLayout {
             "Single-allocation leaf teams requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::native_soa::supported_leaf<Health>,
-            "Single-allocation leaf healths requires a non-cv, trivially "
+            ml::native_soa::supported_leaf<HealthIndex>,
+            "Single-allocation leaf health_indices requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
             ml::native_soa::supported_leaf<std::int8_t>,
@@ -2268,8 +2272,8 @@ struct FighterEntityDataSingleLayout {
                       (max_allocation_size - Speeds.block_offset) / capacity_granularity);
         static_assert(sizeof(Team) <=
                       (max_allocation_size - Teams.block_offset) / capacity_granularity);
-        static_assert(sizeof(Health) <=
-                      (max_allocation_size - Healths.block_offset) / capacity_granularity);
+        static_assert(sizeof(HealthIndex) <=
+                      (max_allocation_size - HealthIndices.block_offset) / capacity_granularity);
         static_assert(sizeof(EntityUniqueId) <=
                       (max_allocation_size - ParentIds.block_offset) / capacity_granularity);
         static_assert(sizeof(std::int8_t) <=
@@ -2427,7 +2431,7 @@ struct SingleAllocationFighterEntityDataStorage
         Element<float>* move_distances{};
         Element<float>* speeds{};
         Element<Team>* teams{};
-        Element<Health>* healths{};
+        Element<HealthIndex>* health_indices{};
         Element<EntityUniqueId>* parent_ids{};
         Element<std::int8_t>* awareness_scan_countdowns{};
         Element<std::int16_t>* navigation_update_countdowns_remaining_ticks{};
@@ -2487,7 +2491,7 @@ struct SingleAllocationFighterEntityDataStorage
                     move_distances + offset,
                     speeds + offset,
                     teams + offset,
-                    healths + offset,
+                    health_indices + offset,
                     parent_ids + offset,
                     awareness_scan_countdowns + offset,
                     navigation_update_countdowns_remaining_ticks + offset,
@@ -2639,11 +2643,12 @@ struct SingleAllocationFighterEntityDataStorage
         auto const teams_offset{ml::native_soa::layout_align(
             speeds_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
             Teams.alignment)};
-        auto const healths_offset{ml::native_soa::layout_align(
+        auto const health_indices_offset{ml::native_soa::layout_align(
             teams_offset + blocks * capacity_granularity * sizeof(Team) + column_gap,
-            Healths.alignment)};
+            HealthIndices.alignment)};
         auto const parent_ids_offset{ml::native_soa::layout_align(
-            healths_offset + blocks * capacity_granularity * sizeof(Health) + column_gap,
+            health_indices_offset + blocks * capacity_granularity * sizeof(HealthIndex) +
+                column_gap,
             ParentIds.alignment)};
         auto const awareness_scan_countdowns_offset{ml::native_soa::layout_align(
             parent_ids_offset + blocks * capacity_granularity * sizeof(EntityUniqueId) + column_gap,
@@ -2769,7 +2774,7 @@ struct SingleAllocationFighterEntityDataStorage
                 pointer_at(MoveDistances, move_distances_offset),
                 pointer_at(Speeds, speeds_offset),
                 pointer_at(Teams, teams_offset),
-                pointer_at(Healths, healths_offset),
+                pointer_at(HealthIndices, health_indices_offset),
                 pointer_at(ParentIds, parent_ids_offset),
                 pointer_at(AwarenessScanCountdowns, awareness_scan_countdowns_offset),
                 pointer_at(NavigationUpdateCountdownsRemainingTicks,
@@ -2837,7 +2842,7 @@ struct SingleAllocationFighterEntityDataStorage
         std::uninitialized_value_construct_n<float*>(columns.move_distances, count);
         std::uninitialized_value_construct_n<float*>(columns.speeds, count);
         std::uninitialized_value_construct_n<Team*>(columns.teams, count);
-        std::uninitialized_value_construct_n<Health*>(columns.healths, count);
+        std::uninitialized_value_construct_n<HealthIndex*>(columns.health_indices, count);
         std::uninitialized_value_construct_n<EntityUniqueId*>(columns.parent_ids, count);
         std::uninitialized_value_construct_n<std::int8_t*>(columns.awareness_scan_countdowns,
                                                            count);
@@ -2887,7 +2892,7 @@ struct SingleAllocationFighterEntityDataStorage
         auto const float_biases_bytes{elements_to_move * sizeof(float)};
         auto const tasks_bytes{elements_to_move * sizeof(FighterTask)};
         auto const teams_bytes{elements_to_move * sizeof(Team)};
-        auto const healths_bytes{elements_to_move * sizeof(Health)};
+        auto const health_indices_bytes{elements_to_move * sizeof(HealthIndex)};
         auto const awareness_scan_countdowns_bytes{elements_to_move * sizeof(std::int8_t)};
         auto const navigation_update_countdowns_remaining_ticks_bytes{elements_to_move *
                                                                       sizeof(std::int16_t)};
@@ -2960,7 +2965,8 @@ struct SingleAllocationFighterEntityDataStorage
             columns.move_distances + index, columns.move_distances + source, float_biases_bytes);
         std::memcpy(columns.speeds + index, columns.speeds + source, float_biases_bytes);
         std::memcpy(columns.teams + index, columns.teams + source, teams_bytes);
-        std::memcpy(columns.healths + index, columns.healths + source, healths_bytes);
+        std::memcpy(
+            columns.health_indices + index, columns.health_indices + source, health_indices_bytes);
         std::memcpy(columns.parent_ids + index, columns.parent_ids + source, entity_ids_bytes);
         std::memcpy(columns.awareness_scan_countdowns + index,
                     columns.awareness_scan_countdowns + source,
@@ -3075,7 +3081,7 @@ struct SingleAllocationFighterEntityDataStorage
                aliases(source.movement_directions.zs) || aliases(source.velocities.xs) ||
                aliases(source.velocities.ys) || aliases(source.velocities.zs) ||
                aliases(source.move_distances.data()) || aliases(source.speeds.data()) ||
-               aliases(source.teams.data()) || aliases(source.healths.data()) ||
+               aliases(source.teams.data()) || aliases(source.health_indices.data()) ||
                aliases(source.parent_ids.data()) ||
                aliases(source.awareness_scan_countdowns.data()) ||
                aliases(source.navigation_update_countdowns_remaining_ticks.data()) ||
@@ -3105,7 +3111,7 @@ struct SingleAllocationFighterEntityDataStorage
         auto const float_biases_bytes{elements_to_copy * sizeof(float)};
         auto const tasks_bytes{elements_to_copy * sizeof(FighterTask)};
         auto const teams_bytes{elements_to_copy * sizeof(Team)};
-        auto const healths_bytes{elements_to_copy * sizeof(Health)};
+        auto const health_indices_bytes{elements_to_copy * sizeof(HealthIndex)};
         auto const awareness_scan_countdowns_bytes{elements_to_copy * sizeof(std::int8_t)};
         auto const navigation_update_countdowns_remaining_ticks_bytes{elements_to_copy *
                                                                       sizeof(std::int16_t)};
@@ -3160,7 +3166,7 @@ struct SingleAllocationFighterEntityDataStorage
         std::memcpy(destination.move_distances, source.move_distances.data(), float_biases_bytes);
         std::memcpy(destination.speeds, source.speeds.data(), float_biases_bytes);
         std::memcpy(destination.teams, source.teams.data(), teams_bytes);
-        std::memcpy(destination.healths, source.healths.data(), healths_bytes);
+        std::memcpy(destination.health_indices, source.health_indices.data(), health_indices_bytes);
         std::memcpy(destination.parent_ids, source.parent_ids.data(), entity_ids_bytes);
         std::memcpy(destination.awareness_scan_countdowns,
                     source.awareness_scan_countdowns.data(),
@@ -3237,7 +3243,7 @@ struct SingleAllocationFighterEntityDataStorage
             auto const float_biases_bytes{live_count * sizeof(float)};
             auto const tasks_bytes{live_count * sizeof(FighterTask)};
             auto const teams_bytes{live_count * sizeof(Team)};
-            auto const healths_bytes{live_count * sizeof(Health)};
+            auto const health_indices_bytes{live_count * sizeof(HealthIndex)};
             auto const awareness_scan_countdowns_bytes{live_count * sizeof(std::int8_t)};
             auto const navigation_update_countdowns_remaining_ticks_bytes{live_count *
                                                                           sizeof(std::int16_t)};
@@ -3297,7 +3303,7 @@ struct SingleAllocationFighterEntityDataStorage
             std::memcpy(destination.move_distances, source.move_distances, float_biases_bytes);
             std::memcpy(destination.speeds, source.speeds, float_biases_bytes);
             std::memcpy(destination.teams, source.teams, teams_bytes);
-            std::memcpy(destination.healths, source.healths, healths_bytes);
+            std::memcpy(destination.health_indices, source.health_indices, health_indices_bytes);
             std::memcpy(destination.parent_ids, source.parent_ids, entity_ids_bytes);
             std::memcpy(destination.awareness_scan_countdowns,
                         source.awareness_scan_countdowns,
@@ -3484,10 +3490,10 @@ struct FighterEntityDataSingleConstView : ml::native_soa::CompactViewState<true>
         return {column_data<Team>(FighterEntityDataSingleLayout::Teams.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto healths() const -> std::span<Health const> {
-        return {
-            column_data<Health>(FighterEntityDataSingleLayout::Healths.offset(capacity_blocks())),
-            static_cast<std::size_t>(count_)};
+    auto health_indices() const -> std::span<HealthIndex const> {
+        return {column_data<HealthIndex>(
+                    FighterEntityDataSingleLayout::HealthIndices.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
     }
     auto parent_ids() const -> std::span<EntityUniqueId const> {
         return {column_data<EntityUniqueId>(
@@ -3705,7 +3711,8 @@ struct FighterEntityDataSingleConstView : ml::native_soa::CompactViewState<true>
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<Team>(FighterEntityDataSingleLayout::Teams.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<Health>(FighterEntityDataSingleLayout::Healths.offset(blocks)),
+            {column_data_unchecked<HealthIndex>(
+                 FighterEntityDataSingleLayout::HealthIndices.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<EntityUniqueId>(
                  FighterEntityDataSingleLayout::ParentIds.offset(blocks)),
@@ -3918,10 +3925,10 @@ struct FighterEntityDataSingleView : ml::native_soa::CompactViewState<false> {
         return {column_data<Team>(FighterEntityDataSingleLayout::Teams.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto healths() const -> std::span<Health> {
-        return {
-            column_data<Health>(FighterEntityDataSingleLayout::Healths.offset(capacity_blocks())),
-            static_cast<std::size_t>(count_)};
+    auto health_indices() const -> std::span<HealthIndex> {
+        return {column_data<HealthIndex>(
+                    FighterEntityDataSingleLayout::HealthIndices.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
     }
     auto parent_ids() const -> std::span<EntityUniqueId> {
         return {column_data<EntityUniqueId>(
@@ -4138,7 +4145,8 @@ struct FighterEntityDataSingleView : ml::native_soa::CompactViewState<false> {
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<Team>(FighterEntityDataSingleLayout::Teams.offset(blocks)),
              static_cast<std::size_t>(count_)},
-            {column_data_unchecked<Health>(FighterEntityDataSingleLayout::Healths.offset(blocks)),
+            {column_data_unchecked<HealthIndex>(
+                 FighterEntityDataSingleLayout::HealthIndices.offset(blocks)),
              static_cast<std::size_t>(count_)},
             {column_data_unchecked<EntityUniqueId>(
                  FighterEntityDataSingleLayout::ParentIds.offset(blocks)),

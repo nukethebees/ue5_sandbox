@@ -4,6 +4,7 @@
 
 #include <ioj/sim/capital_entity_data.h>
 #include <ioj/sim/fighter_entity_data.h>
+#include <ioj/sim/health_table.h>
 #include <ioj/sim/laser_soa.h>
 #include <ioj/sim/sim_tick.h>
 #include <ioj/sim/spinner_entity_data.h>
@@ -29,6 +30,7 @@ struct EntityFrameChange {
 
 struct CapitalReadView {
     CapitalEntityData::ConstView entities;
+    HealthConstView healths;
     std::span<EntityUniqueId const> fighter_ids;
     std::span<EntityFrameChange const> changes;
     std::span<CapitalDeathEvent const> deaths;
@@ -41,10 +43,12 @@ struct CapitalReadView {
 };
 struct FighterReadView {
     FighterEntityData::ConstView entities;
+    HealthConstView healths;
     auto get_num_instances() const -> std::int32_t { return entities.num(); }
 };
 struct TurretReadView {
     TurretEntityData::ConstView entities;
+    HealthConstView healths;
     std::span<EntityFrameChange const> changes;
     std::span<Vector3f const> death_locations;
     auto get_num_instances() const -> std::int32_t { return entities.num(); }

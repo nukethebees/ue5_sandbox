@@ -308,18 +308,18 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
     Samples visible_samples;
     auto record{[](Samples& samples, ::ioj::sim::LevelSim& simulation) {
         FEntitySnapshot snapshot;
-        auto append = [&snapshot](auto const entities, ::ioj::sim::EntityType const type) {
+        auto append = [&snapshot](auto const& view, ::ioj::sim::EntityType const type) {
+            auto const entities{view.entities};
             for (int32 index{}; index < entities.num(); ++index) {
-                snapshot.healths.push_back(entities.healths[index]);
+                snapshot.healths.push_back(view.healths.health(index));
                 snapshot.locations.push_back(entities.locations[index]);
                 snapshot.teams.push_back(entities.teams[index]);
                 snapshot.types.push_back(type);
             }
         };
-        append(simulation.get_capital_ships().get_read_view().entities,
-               ::ioj::sim::EntityType::CapitalShip);
-        append(simulation.get_fighters().get_read_view().entities, ::ioj::sim::EntityType::Fighter);
-        append(simulation.get_turrets().get_read_view().entities, ::ioj::sim::EntityType::Turret);
+        append(simulation.get_capital_ships().get_read_view(), ::ioj::sim::EntityType::CapitalShip);
+        append(simulation.get_fighters().get_read_view(), ::ioj::sim::EntityType::Fighter);
+        append(simulation.get_turrets().get_read_view(), ::ioj::sim::EntityType::Turret);
         samples.add(simulation.get_clock().get_simulation_time(), std::move(snapshot));
     }};
     headless_harness.on_end_tick = [&](::ioj::sim::LevelSim& simulation) {

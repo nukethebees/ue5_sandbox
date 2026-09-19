@@ -16,11 +16,14 @@ TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
     data.locations.set(0, {{10.f, 20.f, 30.f}});
     data.velocities.set(0, {{1.f, 2.f, 3.f}});
     data.aim_directions.set(0, {{1.f, 0.f, 0.f}});
-    data.healths[0] = 100;
     data.teams[0] = Team::Green;
+    HealthTable health_table;
+    health_table.add(std::span<EntityUniqueId const>{data.entity_ids},
+                     100,
+                     std::span<HealthIndex>{data.health_indices});
     SimClock clock;
     AgentIndexes indexes{clock};
-    AgentAccessor agents{indexes};
+    AgentAccessor agents{indexes, health_table};
     indexes.bind(EntityType::Fighter, data.entity_ids);
     agents.bind({}, fighters.get_const_view().columns(), {}, {});
     clock.phase = SimulationPhase::Thinking;
@@ -58,7 +61,7 @@ TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
         agents.gather_targets({}, {}, {});
     };
     check_bulk();
-    data.healths[0] = 0;
+    health_table.get_view(data.health_indices).health(0) = 0;
     EXPECT_EQ(indexes.find(id), 0);
     EXPECT_TRUE(agents.read(id));
     EXPECT_FALSE(agents.read_alive(id));
@@ -66,6 +69,8 @@ TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
 
     clock.phase = SimulationPhase::Preparation;
     indexes.retire(id);
+    std::array const rows{0};
+    health_table.remove_rows(rows, data.health_indices, data.entity_ids);
     fighters.remove_at_swap(0, 1);
     indexes.bind(EntityType::Fighter, fighters.get_const_view().entity_ids());
     agents.bind({}, fighters.get_const_view().columns(), {}, {});

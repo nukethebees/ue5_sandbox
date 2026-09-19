@@ -1,7 +1,7 @@
 #pragma once
 #include <ioj/sim/agent_indexes.h>
 #include <ioj/sim/direct_damage_events.h>
-#include <ioj/sim/health.h>
+#include <ioj/sim/health_table.h>
 
 #include <cstdint>
 #include <span>
@@ -17,7 +17,7 @@ void sort_and_deduplicate_removal_indices(std::vector<std::int32_t>& local_indic
 void resolve_damage_events(DirectDamageEventsConstView damage_events,
                            AgentIndexes const& indexes,
                            [[maybe_unused]] std::span<EntityUniqueId const> entity_ids,
-                           std::span<Health> healths,
+                           HealthView healths,
                            std::vector<std::int32_t>& local_indices_to_remove,
                            EntityDeathInfo& entity_death_info,
                            EntityLedger& ledger);

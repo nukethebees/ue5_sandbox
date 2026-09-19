@@ -236,8 +236,8 @@ void FCapitalPresentation::draw_debugging_shapes() const {
         }
 
         auto const entity_id{entities.entity_ids[i]};
-        auto const message{
-            FString::Printf(TEXT("[%u] HP=%d"), entity_id.raw_value(), entities.healths[i])};
+        auto const message{FString::Printf(
+            TEXT("[%u] HP=%d"), entity_id.raw_value(), capital_simulation.healths.health(i))};
         debug_drawer.draw_string(ship_location + text_offset, message);
     }
 }

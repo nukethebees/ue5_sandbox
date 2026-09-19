@@ -14,6 +14,7 @@
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/fighter_order_queue.h>
 #include <ioj/sim/fighters/command_interface.h>
+#include <ioj/sim/health_table.h>
 #include <ioj/sim/index_span.h>
 
 #include <memory_resource>
@@ -40,6 +41,7 @@ struct Sim {
 
     Sim(EntityLedger& ledger,
         CombatEvents const& combat_events,
+        HealthTable& health_table,
         AgentAccessor const& agents,
         SpatialQueryManager const& spatial_query_manager,
         fighters::Sim& fighters,
@@ -53,7 +55,9 @@ struct Sim {
     // Configuration
     /* **************************************** */
     auto get_read_view() const -> CapitalReadView {
-        return {entities.get_const_view().columns(),
+        auto const entity_data{entities.get_const_view().columns()};
+        return {entity_data,
+                health_table_.get_const_view(entity_data.health_indices),
                 get_fighter_ids(),
                 frame_changes_,
                 deaths_,
@@ -164,6 +168,7 @@ struct Sim {
     bool diagnostics_enabled_{};
     EntityLedger& ledger_;
     CombatEvents const& combat_events_;
+    HealthTable& health_table_;
     AgentAccessor const& agents_;
     SpatialQueryManager const& spatial_query_manager;
     std::pmr::memory_resource& frame_memory_resource;

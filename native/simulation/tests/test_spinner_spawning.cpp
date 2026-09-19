@@ -47,7 +47,8 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     EntityLedger ledger;
     CombatEvents combat_events{ledger};
     AgentIndexes indexes{clock};
-    AgentAccessor agents{indexes};
+    HealthTable health_table;
+    AgentAccessor agents{indexes, health_table};
     SpatialQueryManager queries{agents};
     ml::FrameMemoryResource frame_memory{1024 * 1024};
     lasers::Sim lasers{clock, combat_events, queries, frame_memory};

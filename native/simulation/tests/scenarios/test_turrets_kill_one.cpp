@@ -42,11 +42,12 @@ void run_worldless_turret_combat(tests::SimulationFixture const& config,
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     std::vector<std::int32_t> initial_healths{};
-    auto const initial_entities{harness.get_simulation().get_turrets().get_read_view().entities};
+    auto const initial_view{harness.get_simulation().get_turrets().get_read_view()};
+    auto const initial_entities{initial_view.entities};
     auto const initial_count{initial_entities.num()};
     initial_healths.reserve(initial_count);
     for (std::int32_t i{}; i < initial_count; ++i) {
-        initial_healths.push_back(initial_entities.healths[i]);
+        initial_healths.push_back(initial_view.healths.health(i));
     }
     harness.timeline.finish_at(3.0);
     tests::expect_true(harness.run_until_timeline_finished(3.5),
@@ -63,10 +64,10 @@ void run_worldless_turret_combat(tests::SimulationFixture const& config,
 
     tests::expect_equal(
         initial_count, harness.get_ledger().count_alive(), "Zero-damage turrets remain alive");
-    auto const final_entities{harness.get_simulation().get_turrets().get_read_view().entities};
+    auto const final_view{harness.get_simulation().get_turrets().get_read_view()};
     for (std::int32_t i{}; i < initial_count; ++i) {
         tests::expect_equal(initial_healths[i],
-                            final_entities.healths[i],
+                            final_view.healths.health(i),
                             "Zero-damage combat preserves health",
                             i);
     }

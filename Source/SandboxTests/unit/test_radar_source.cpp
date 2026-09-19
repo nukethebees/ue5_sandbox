@@ -14,12 +14,13 @@ auto make_view(ml::tests::FDisplayEntityTestData const& entities,
     auto const count{entities.num()};
     batches.reserve(count);
     for (int32 i{}; i < count; ++i) {
-        batches.push_back({entities.entity_types[static_cast<std::size_t>(i)],
-                           ids.empty() ? ids : ids.subspan(i, 1),
-                           entities.locations.get_const_view(i, 1),
-                           entities.velocities.get_const_view(i, 1),
-                           std::span{entities.healths}.subspan(i, 1),
-                           std::span{entities.teams}.subspan(i, 1)});
+        batches.push_back(
+            {entities.entity_types[static_cast<std::size_t>(i)],
+             ids.empty() ? ids : ids.subspan(i, 1),
+             entities.locations.get_const_view(i, 1),
+             entities.velocities.get_const_view(i, 1),
+             entities.health_table.get_const_view(std::span{entities.health_indices}.subspan(i, 1)),
+             std::span{entities.teams}.subspan(i, 1)});
     }
     return batches;
 }
@@ -32,9 +33,12 @@ void add_entity(ml::tests::FDisplayEntityTestData& entities,
     auto const index{entities.num()};
     entities.add_defaulted(1);
     entities.locations.set(index, ml::to_native(location));
-    entities.healths[index] = alive ? 100 : 0;
     entities.teams[index] = ml::to_native(team);
     entities.entity_types[index] = ml::to_native(type);
+    auto const owner{::ioj::sim::EntityUniqueId::make(
+        ::ioj::sim::entity_identity_offset(entities.entity_types[index], index),
+        entities.entity_types[index])};
+    entities.add_health(index, owner, alive ? 100 : 0);
 }
 
 auto glyph(FRadarInstance const& instance) -> ERadarGlyph {

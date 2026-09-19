@@ -82,39 +82,40 @@ void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
                     if (player_.transform == nullptr) {
                         return agent_accessor_detail::TargetState{};
                     }
-                    return agent_accessor_detail::TargetState{to_float(player_.transform->location),
-                                                              to_float(*player_.velocity),
-                                                              *player_.team,
-                                                              sim::is_alive(*player_.health)};
-                });
-                break;
-            case EntityType::CapitalShip:
-                gather_group(group, type, [&](std::int32_t const index) {
                     return agent_accessor_detail::TargetState{
-                        capitals_.locations[index],
-                        {},
-                        capitals_.teams[index],
-                        sim::is_alive(capitals_.healths[index])};
+                        to_float(player_.transform->location),
+                        to_float(*player_.velocity),
+                        *player_.team,
+                        sim::is_alive(health_table_.get_health(player_.health_index))};
                 });
                 break;
-            case EntityType::Fighter:
+            case EntityType::CapitalShip: {
+                auto const healths{health_table_.get_const_view(capitals_.health_indices)};
                 gather_group(group, type, [&](std::int32_t const index) {
-                    return agent_accessor_detail::TargetState{
-                        fighters_.locations[index],
-                        fighters_.velocities[index],
-                        fighters_.teams[index],
-                        sim::is_alive(fighters_.healths[index])};
+                    return agent_accessor_detail::TargetState{capitals_.locations[index],
+                                                              {},
+                                                              capitals_.teams[index],
+                                                              sim::is_alive(healths.health(index))};
                 });
-                break;
-            case EntityType::Turret:
+            } break;
+            case EntityType::Fighter: {
+                auto const healths{health_table_.get_const_view(fighters_.health_indices)};
                 gather_group(group, type, [&](std::int32_t const index) {
-                    return agent_accessor_detail::TargetState{
-                        turrets_.locations[index],
-                        {},
-                        turrets_.teams[index],
-                        sim::is_alive(turrets_.healths[index])};
+                    return agent_accessor_detail::TargetState{fighters_.locations[index],
+                                                              fighters_.velocities[index],
+                                                              fighters_.teams[index],
+                                                              sim::is_alive(healths.health(index))};
                 });
-                break;
+            } break;
+            case EntityType::Turret: {
+                auto const healths{health_table_.get_const_view(turrets_.health_indices)};
+                gather_group(group, type, [&](std::int32_t const index) {
+                    return agent_accessor_detail::TargetState{turrets_.locations[index],
+                                                              {},
+                                                              turrets_.teams[index],
+                                                              sim::is_alive(healths.health(index))};
+                });
+            } break;
             case EntityType::TubeSpinner:
                 gather_group(group, type, [&](std::int32_t const index) {
                     return agent_accessor_detail::TargetState{

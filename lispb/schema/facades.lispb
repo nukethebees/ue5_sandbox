@@ -13,7 +13,7 @@
       :noexcept true)
     (method get_parent_ids "std::span<EntityUniqueId const>" :const true)
     (method get_entity_ids "std::span<EntityUniqueId const>" :const true)
-    (method get_healths "std::span<Health const>" :const true)
+      (method get_healths @native_health_const_view :const true)
     (method set_parent_id void
       (parameter fighter @native_unique_id)
       (parameter parent @native_unique_id))

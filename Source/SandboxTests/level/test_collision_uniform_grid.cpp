@@ -52,7 +52,8 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
 
         ::ioj::sim::SimClock clock;
         ::ioj::sim::AgentIndexes indexes{clock};
-        ::ioj::sim::AgentAccessor agents{indexes};
+        ::ioj::sim::HealthTable health_table;
+        ::ioj::sim::AgentAccessor agents{indexes, health_table};
         ::ioj::sim::collision::CollisionSystem collision{agents};
         auto& grid{collision.get_uniform_grid()};
         auto const configured_dims{config.calculate_grid_dimensions()};

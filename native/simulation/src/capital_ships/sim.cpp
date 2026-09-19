@@ -31,12 +31,14 @@ void Sim::set_config(CapitalShipSimConfig const& new_config) noexcept {
 }
 Sim::Sim(EntityLedger& ledger,
          CombatEvents const& combat_events,
+         HealthTable& health_table,
          AgentAccessor const& agents,
          SpatialQueryManager const& in_spatial_query_manager,
          fighters::Sim& fighters,
          std::pmr::memory_resource& in_frame_memory_resource)
     : ledger_{ledger}
     , combat_events_{combat_events}
+    , health_table_{health_table}
     , agents_{agents}
     , spatial_query_manager{in_spatial_query_manager}
     , frame_memory_resource{in_frame_memory_resource}
@@ -89,10 +91,11 @@ void Sim::resolve_fighters_of_dying_capitals() {
 void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::resolve_damage_events");
     auto const entities{this->entities.get_view().columns()};
+    auto const healths{health_table_.get_view(entities.health_indices)};
     batch::resolve_damage_events(combat_events_.events_for(EntityType::CapitalShip),
                                  agents_.indexes(),
                                  entities.entity_ids,
-                                 entities.healths,
+                                 healths,
                                  local_indices_to_remove,
                                  entity_death_info,
                                  ledger_);
@@ -147,7 +150,8 @@ auto Sim::get_team(EntityUniqueId const id) const noexcept -> Team {
 auto Sim::get_health(EntityUniqueId const id) const noexcept -> Health {
     auto const index{agents_.indexes().find(id)};
     assert(index >= 0);
-    return entities.get_const_view().healths()[index];
+    auto const entity_data{entities.get_const_view().columns()};
+    return health_table_.get_const_view(entity_data.health_indices).health(index);
 }
 auto Sim::find_first_index_on_team(Team const team) const noexcept -> std::optional<std::int32_t> {
     auto const entities{this->entities.get_const_view().columns()};
@@ -185,6 +189,13 @@ auto Sim::register_ships(CapitalSpawnDataConstView const spawn_data)
         new_ids.push_back(id);
         this->entities.get_view().entity_ids()[first_new_index + i] = id;
     }
+    auto const entity_data{entities.get_view().columns()};
+    health_table_.add(
+        std::span<EntityUniqueId const>{entity_data.entity_ids}.subspan(
+            static_cast<std::size_t>(first_new_index), static_cast<std::size_t>(n_to_add)),
+        spawn_data.healths,
+        std::span<HealthIndex>{entity_data.health_indices}.subspan(
+            static_cast<std::size_t>(first_new_index), static_cast<std::size_t>(n_to_add)));
     validate_array_sizes();
     auto const entities{this->entities.get_const_view().columns()};
     for (std::int32_t i{}; i < n_to_add; ++i) {
@@ -213,7 +224,6 @@ void Sim::spawn_ships(CapitalSpawnDataConstView const spawn_data) {
         appended.fighter_spawn_timers[index] = spawn_data.initial_spawn_delays[index];
         appended.fighter_spawn_cooldowns[index] = spawn_data.spawn_cooldowns[index];
         appended.teams[index] = spawn_data.teams[index];
-        appended.healths[index] = spawn_data.healths[index];
         appended.target_ids[index] = spawn_data.target_ids[index];
     }
     validate_array_sizes();
@@ -288,7 +298,7 @@ void Sim::refresh_fighter_ids() {
     owners.set_num(static_cast<std::int32_t>(fighter_count));
     std::ranges::fill(owners, -1);
     for (std::size_t index{}; index < fighter_count; ++index) {
-        if (is_dead(healths[index])) {
+        if (is_dead(healths.health(static_cast<std::int32_t>(index)))) {
             continue;
         }
         auto const parent{parents[index]};
@@ -380,6 +390,8 @@ void Sim::handle_dead_entities() {
 
     batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
     auto const entities{this->entities.get_const_view().columns()};
+    health_table_.remove_rows(
+        local_indices_to_remove, entities.health_indices, entities.entity_ids);
 
     for (auto const index : local_indices_to_remove) {
         frame_changes_.push_back({.kind = EntityFrameChangeKind::RemoveSwap,
@@ -394,11 +406,12 @@ void Sim::handle_dead_entities() {
 }
 void Sim::reassign_fighters_of_dying_capital() {
     auto const entities{this->entities.get_const_view().columns()};
+    auto const capital_healths{health_table_.get_const_view(entities.health_indices)};
     ml::EnumArray<Team, EntityUniqueId, static_cast<std::size_t>(Team::COUNT)> replacements{};
     auto const count{entities.num()};
     for (std::int32_t index{}; index < count; ++index) {
         auto& replacement{replacements[entities.teams[index]]};
-        if (is_alive(entities.healths[index]) &&
+        if (is_alive(capital_healths.health(index)) &&
             (!replacement.is_valid() || entities.entity_ids[index] < replacement)) {
             replacement = entities.entity_ids[index];
         }
@@ -411,7 +424,8 @@ void Sim::reassign_fighters_of_dying_capital() {
         auto const parent{entities.entity_ids[dying_index]};
         auto const replacement{replacements[entities.teams[dying_index]]};
         for (std::size_t index{}; index < fighter_count; ++index) {
-            if (parents[index] != parent || is_dead(healths[index])) {
+            if (parents[index] != parent ||
+                is_dead(healths.health(static_cast<std::int32_t>(index)))) {
                 continue;
             }
             fighters_interface.set_parent_id(ids[index], replacement);

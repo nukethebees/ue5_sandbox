@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <ioj/sim/health_table.h>
 #include <ioj/sim/player/player_read_view.h>
 #include <ioj/sim/ship_health.h>
 #include <ioj/sim/transform3d.h>
@@ -77,6 +78,7 @@ struct Sim {
     Sim(SimClock const& clock,
         EntityLedger& ledger,
         CombatEvents const& combat_events,
+        HealthTable& health_table,
         SpatialQueryManager const& spatial_query_manager,
         lasers::Sim& lasers);
     Sim(Sim const&) = delete;
@@ -135,6 +137,9 @@ struct Sim {
     // Health and status
     /* **************************************** */
     void add_health(Health added_health);
+    [[nodiscard]] auto get_health() const -> ShipHealth;
+    [[nodiscard]] auto get_health_index() const noexcept -> HealthIndex { return health_index_; }
+    [[nodiscard]] auto is_alive() const -> bool;
     auto consume_death_notification() noexcept -> bool;
 
     auto get_kills() const -> std::int32_t;
@@ -170,7 +175,6 @@ struct Sim {
     LaserFiringState laser_firing_mode{LaserFiringState::idle};
     ShipFireRate laser_fire_rate{ShipFireRate::Burst3};
 
-    ShipHealth health{1000};
     bool sampling{false};
     bool speed_sampling_enabled{};
 
@@ -195,7 +199,6 @@ struct Sim {
     /* **************************************** */
     // Identity and accounting
     /* **************************************** */
-    void register_entity();
 
     /* **************************************** */
     // Movement
@@ -224,6 +227,7 @@ struct Sim {
     // Health
     /* **************************************** */
     void set_health(Health new_health, EntityUniqueId killer = {});
+    auto health_ref() -> Health&;
     void die(EntityUniqueId killer);
 
     /* **************************************** */
@@ -241,9 +245,12 @@ struct Sim {
     PlayerSimConfig config{};
     EntityLedger& ledger_;
     CombatEvents const& combat_events_;
+    HealthTable& health_table_;
     SpatialQueryManager const& spatial_query_manager;
     lasers::Sim& lasers;
     SimClock const& simulation_clock;
+    HealthIndex health_index_{};
+    Health max_health_{1000};
     bool death_notification_pending{false};
 };
 } // namespace ioj::sim::player

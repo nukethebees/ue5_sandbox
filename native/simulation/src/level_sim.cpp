@@ -66,6 +66,16 @@ static void finalise_participating_teams(LevelSimInitData& data) {
     }
 }
 
+[[nodiscard]] static auto health_capacity(LevelSimInitData const& data) -> std::size_t {
+    auto capacity{data.player.has_value() ? std::size_t{1} : std::size_t{0}};
+    capacity += static_cast<std::size_t>(std::max(0, data.fighters.max_live_fighters));
+    capacity += data.level_events.initial_spawns.capital_spawns.num();
+    capacity += data.level_events.initial_spawns.turret_spawns.num();
+    capacity += data.level_events.schedule.capital_spawns.num();
+    capacity += data.level_events.schedule.turret_spawns.num();
+    return capacity;
+}
+
 }
 
 /* **************************************** */
@@ -82,6 +92,7 @@ LevelSim::LevelSim(LevelSimInitData data)
     , fighters_simulation_{clock_,
                            entity_ledger_,
                            combat_events_,
+                           entity_tables_.health,
                            agent_accessor_,
                            query_manager_,
                            lasers_simulation_,
@@ -89,6 +100,7 @@ LevelSim::LevelSim(LevelSimInitData data)
     , fighters_phase_{fighters_simulation_}
     , capital_ships_simulation_{entity_ledger_,
                                 combat_events_,
+                                entity_tables_.health,
                                 agent_accessor_,
                                 query_manager_,
                                 fighters_simulation_,
@@ -97,6 +109,7 @@ LevelSim::LevelSim(LevelSimInitData data)
     , turrets_simulation_{clock_,
                           entity_ledger_,
                           combat_events_,
+                          entity_tables_.health,
                           agent_accessor_,
                           query_manager_,
                           lasers_simulation_,
@@ -113,6 +126,7 @@ LevelSim::LevelSim(LevelSimInitData data)
           clock_, entity_ledger_, lasers_simulation_, *game_memory_, data.telemetry_history} {
     // Initialise timing and metadata
     clock_.initialise(data.clock_settings);
+    entity_tables_.health.reserve(level_simulation::health_capacity(data));
     telemetry_metadata_ = std::move(data.telemetry_metadata);
     level_simulation::finalise_participating_teams(data);
 
@@ -175,8 +189,12 @@ void LevelSim::configure_subsystems(LevelSimInitData const& data) {
     spinners_simulation_.set_config(data.spinners);
 }
 void LevelSim::configure_player(player::PlayerSpawnData const& spawn) {
-    auto& player{player_ship_simulation_.emplace(
-        clock_, entity_ledger_, combat_events_, query_manager_, lasers_simulation_)};
+    auto& player{player_ship_simulation_.emplace(clock_,
+                                                 entity_ledger_,
+                                                 combat_events_,
+                                                 entity_tables_.health,
+                                                 query_manager_,
+                                                 lasers_simulation_)};
     player_ship_phase_.emplace(player);
     player_ship_commands_.emplace(player);
 
@@ -288,7 +306,7 @@ void LevelSim::advance(time_type const dt) {
     while (clock_.tick_loop.try_tick()) {
         auto const tick_period{static_cast<float>(clock_.tick_loop.tick_period)};
         auto const player_active{player_ship_simulation_.has_value() &&
-                                 player_ship_simulation_->health.is_alive()};
+                                 player_ship_simulation_->is_alive()};
 
         /* -------------------------------------------------------------------------------- */
         // Preparation
@@ -501,12 +519,12 @@ void LevelSim::rebuild_agent_indexes() {
 
     // Bind player index
     PlayerAgentView player_view{};
-    if (player_ship_simulation_ && player_ship_simulation_->health.is_alive()) {
+    if (player_ship_simulation_ && player_ship_simulation_->is_alive()) {
         auto const& player{*player_ship_simulation_};
         agent_indexes_.bind(EntityType::PlayerShip, {&player.unique_entity_id, 1});
         player_view = {&player.get_movement_state().transform,
                        &player.get_movement_state().velocity,
-                       &player.health.health,
+                       player.get_health_index(),
                        &player.team,
                        player.unique_entity_id};
     } else {

@@ -265,11 +265,18 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     tests::expect_equal(simulation.get_entity_ledger().count_alive(),
                         5,
                         "Every compiled initial entity is registered");
-    auto const turrets{simulation.get_turrets().get_read_view().entities};
+    auto const& health_table{simulation.get_entity_tables().health};
+    tests::expect_true(health_table.contains(player->get_health_index(), player->unique_entity_id),
+                       "Player health is allocated in the world health table");
+    auto const turret_view{simulation.get_turrets().get_read_view()};
+    auto const turrets{turret_view.entities};
     for (std::int32_t i{}; i < turrets.num(); ++i) {
         auto const rotated{turrets.teams[i] == Team::Green};
+        tests::expect_true(
+            health_table.contains(turret_view.healths.indices()[i], turrets.entity_ids[i]),
+            "Turret health is allocated in the world health table");
         tests::expect_equal(
-            turrets.healths[i], rotated ? 20 : 30, "Compiled turret health is retained");
+            turret_view.healths.health(i), rotated ? 20 : 30, "Compiled turret health is retained");
         tests::expect_equal(turrets.rotations.yaws[i],
                             rotated ? 90.f : 0.f,
                             "Compiled turret rotation is retained");

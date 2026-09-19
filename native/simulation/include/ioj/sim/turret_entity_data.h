@@ -5,7 +5,7 @@
 
 #include "ioj/sim/entity_types.h"
 #include "ioj/sim/entity_unique_id.h"
-#include "ioj/sim/health.h"
+#include "ioj/sim/health_table.h"
 #include "ioj/sim/rotators3f.h"
 #include "ioj/sim/vectors3f.h"
 #include "native_soa/storage.h"
@@ -36,7 +36,7 @@ struct TurretEntityDataConstView {
     std::span<EntityUniqueId const> target_ids;
     Vectors3fConstView target_locations;
     Vectors3fConstView target_velocities;
-    std::span<Health const> healths;
+    std::span<HealthIndex const> health_indices;
     auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -64,7 +64,7 @@ struct TurretEntityDataConstView {
         fn(target_velocities.xs_span());
         fn(target_velocities.ys_span());
         fn(target_velocities.zs_span());
-        fn(healths);
+        fn(health_indices);
     }
     void validate_array_sizes() const {
         auto const count{num()};
@@ -94,7 +94,8 @@ struct TurretEntityDataConstView {
             target_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             target_locations.slice(offset, count),
             target_velocities.slice(offset, count),
-            healths.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
+            health_indices.subspan(static_cast<std::size_t>(offset),
+                                   static_cast<std::size_t>(count)),
         };
     }
     auto get_view() const -> TurretEntityDataConstView { return *this; }
@@ -117,7 +118,7 @@ struct TurretEntityDataConstView {
             target_ids,
             target_locations.get_const_view(),
             target_velocities.get_const_view(),
-            healths,
+            health_indices,
         };
     }
     auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
@@ -145,7 +146,7 @@ struct TurretEntityDataView {
     std::span<EntityUniqueId> target_ids;
     Vectors3fView target_locations;
     Vectors3fView target_velocities;
-    std::span<Health> healths;
+    std::span<HealthIndex> health_indices;
     auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -173,7 +174,7 @@ struct TurretEntityDataView {
         fn(target_velocities.xs_span());
         fn(target_velocities.ys_span());
         fn(target_velocities.zs_span());
-        fn(healths);
+        fn(health_indices);
     }
     void validate_array_sizes() const {
         auto const count{num()};
@@ -203,7 +204,8 @@ struct TurretEntityDataView {
             target_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             target_locations.slice(offset, count),
             target_velocities.slice(offset, count),
-            healths.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
+            health_indices.subspan(static_cast<std::size_t>(offset),
+                                   static_cast<std::size_t>(count)),
         };
     }
     auto get_view() const -> TurretEntityDataView { return *this; }
@@ -225,7 +227,7 @@ struct TurretEntityDataView {
             target_ids,
             target_locations.get_const_view(),
             target_velocities.get_const_view(),
-            healths,
+            health_indices,
         };
     }
     auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
@@ -259,7 +261,7 @@ struct TurretEntityDataView {
              float const new_target_velocities_xs,
              float const new_target_velocities_ys,
              float const new_target_velocities_zs,
-             Health const new_healths) const {
+             HealthIndex const new_health_indices) const {
         ml::native_soa::require(index >= 0 && index < num());
         entity_ids[static_cast<std::size_t>(index)] = new_entity_ids;
         integral_biases[static_cast<std::size_t>(index)] = new_integral_biases;
@@ -286,7 +288,7 @@ struct TurretEntityDataView {
         target_velocities.xs[static_cast<std::size_t>(index)] = new_target_velocities_xs;
         target_velocities.ys[static_cast<std::size_t>(index)] = new_target_velocities_ys;
         target_velocities.zs[static_cast<std::size_t>(index)] = new_target_velocities_zs;
-        healths[static_cast<std::size_t>(index)] = new_healths;
+        health_indices[static_cast<std::size_t>(index)] = new_health_indices;
     }
 };
 struct TurretEntityData {
@@ -306,7 +308,7 @@ struct TurretEntityData {
     ml::native_soa::Vector<EntityUniqueId> target_ids;
     Vectors3f target_locations;
     Vectors3f target_velocities;
-    ml::native_soa::Vector<Health> healths;
+    ml::native_soa::Vector<HealthIndex> health_indices;
     auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -334,7 +336,7 @@ struct TurretEntityData {
         fn(target_velocities.xs);
         fn(target_velocities.ys);
         fn(target_velocities.zs);
-        fn(healths);
+        fn(health_indices);
     }
     template <typename Fn>
     void each_column(Fn&& fn) const {
@@ -361,7 +363,7 @@ struct TurretEntityData {
         fn(target_velocities.xs);
         fn(target_velocities.ys);
         fn(target_velocities.zs);
-        fn(healths);
+        fn(health_indices);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
     void reserve(size_type const count) {
@@ -389,7 +391,7 @@ struct TurretEntityData {
         target_velocities.xs.reserve(static_cast<std::size_t>(count));
         target_velocities.ys.reserve(static_cast<std::size_t>(count));
         target_velocities.zs.reserve(static_cast<std::size_t>(count));
-        healths.reserve(static_cast<std::size_t>(count));
+        health_indices.reserve(static_cast<std::size_t>(count));
     }
     void reset() noexcept {
         entity_ids.clear();
@@ -415,7 +417,7 @@ struct TurretEntityData {
         target_velocities.xs.clear();
         target_velocities.ys.clear();
         target_velocities.zs.clear();
-        healths.clear();
+        health_indices.clear();
     }
     void set_num(size_type const count) {
         ml::native_soa::require(count >= 0);
@@ -443,7 +445,7 @@ struct TurretEntityData {
         target_velocities.xs.resize(size);
         target_velocities.ys.resize(size);
         target_velocities.zs.resize(size);
-        healths.resize(size);
+        health_indices.resize(size);
     }
     void add_uninitialised(size_type const count) {
         auto const old_num{num()};
@@ -530,7 +532,7 @@ struct TurretEntityData {
             target_velocities.zs[index + i] = target_velocities.zs[source + i];
         }
         for (size_type i{}; i < moved; ++i) {
-            healths[index + i] = healths[source + i];
+            health_indices[index + i] = health_indices[source + i];
         }
         set_num(old_num - count);
     }
@@ -558,7 +560,7 @@ struct TurretEntityData {
              float const new_target_velocities_xs,
              float const new_target_velocities_ys,
              float const new_target_velocities_zs,
-             Health const new_healths) {
+             HealthIndex const new_health_indices) {
         get_view().set(index,
                        new_entity_ids,
                        new_integral_biases,
@@ -583,7 +585,7 @@ struct TurretEntityData {
                        new_target_velocities_xs,
                        new_target_velocities_ys,
                        new_target_velocities_zs,
-                       new_healths);
+                       new_health_indices);
     }
     auto add(EntityUniqueId const new_entity_ids,
              std::uint32_t const new_integral_biases,
@@ -608,7 +610,7 @@ struct TurretEntityData {
              float const new_target_velocities_xs,
              float const new_target_velocities_ys,
              float const new_target_velocities_zs,
-             Health const new_healths) -> size_type {
+             HealthIndex const new_health_indices) -> size_type {
         auto const index{num()};
         add_defaulted(1);
         set(index,
@@ -635,7 +637,7 @@ struct TurretEntityData {
             new_target_velocities_xs,
             new_target_velocities_ys,
             new_target_velocities_zs,
-            new_healths);
+            new_health_indices);
         return index;
     }
     void append_from(ConstView source) {
@@ -792,10 +794,10 @@ struct TurretEntityData {
                                     address >= begin + target_velocities.zs.size() * sizeof(float));
         }
         {
-            auto const address{ml::address_cast(source.healths.data())};
-            auto const begin{ml::address_cast(healths.data())};
+            auto const address{ml::address_cast(source.health_indices.data())};
+            auto const begin{ml::address_cast(health_indices.data())};
             ml::native_soa::require(address < begin ||
-                                    address >= begin + healths.size() * sizeof(Health));
+                                    address >= begin + health_indices.size() * sizeof(HealthIndex));
         }
         entity_ids.insert(
             entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
@@ -857,7 +859,9 @@ struct TurretEntityData {
         target_velocities.zs.insert(target_velocities.zs.end(),
                                     source.target_velocities.zs,
                                     source.target_velocities.zs + count);
-        healths.insert(healths.end(), source.healths.data(), source.healths.data() + count);
+        health_indices.insert(health_indices.end(),
+                              source.health_indices.data(),
+                              source.health_indices.data() + count);
     }
     auto get_view() -> View {
         return {
@@ -874,7 +878,7 @@ struct TurretEntityData {
             target_ids,
             target_locations.get_view(),
             target_velocities.get_view(),
-            healths,
+            health_indices,
         };
     }
     auto get_view() const -> ConstView {
@@ -892,7 +896,7 @@ struct TurretEntityData {
             target_ids,
             target_locations.get_view(),
             target_velocities.get_view(),
-            healths,
+            health_indices,
         };
     }
     auto get_const_view() const -> ConstView { return get_view(); }
@@ -938,8 +942,8 @@ struct TurretEntityData {
             other.target_ids[static_cast<std::size_t>(src_index)];
         target_locations.copy_element(dst_index, other.target_locations, src_index);
         target_velocities.copy_element(dst_index, other.target_velocities, src_index);
-        healths[static_cast<std::size_t>(dst_index)] =
-            other.healths[static_cast<std::size_t>(src_index)];
+        health_indices[static_cast<std::size_t>(dst_index)] =
+            other.health_indices[static_cast<std::size_t>(src_index)];
     }
     template <typename Other>
     void copy_elements(size_type const dst_index,
@@ -1012,7 +1016,7 @@ struct TurretEntityDataSingleLayout {
     inline static constexpr ColLayout<float> TargetVelocitiesXs{TargetLocationsZs};
     inline static constexpr ColLayout<float> TargetVelocitiesYs{TargetVelocitiesXs};
     inline static constexpr ColLayout<float> TargetVelocitiesZs{TargetVelocitiesYs};
-    inline static constexpr ColLayout<Health> Healths{TargetVelocitiesZs};
+    inline static constexpr ColLayout<HealthIndex> HealthIndices{TargetVelocitiesZs};
 
     inline static constexpr byte_size_type allocation_alignment{
         ml::native_soa::maximum_alignment(EntityIds,
@@ -1038,17 +1042,17 @@ struct TurretEntityDataSingleLayout {
                                           TargetVelocitiesXs,
                                           TargetVelocitiesYs,
                                           TargetVelocitiesZs,
-                                          Healths)};
+                                          HealthIndices)};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::layout_align(Healths.block_end, allocation_alignment) +
+        ml::native_soa::layout_align(HealthIndices.block_end, allocation_alignment) +
         23 * (column_gap + allocation_alignment - 1)};
     inline static constexpr size_type max_capacity{
         ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : Healths.data_end(blocks);
+        return blocks == 0 ? 0 : HealthIndices.data_end(blocks);
     }
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
@@ -1077,8 +1081,8 @@ struct TurretEntityDataSingleLayout {
             "Single-allocation leaf laser_damages requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::native_soa::supported_leaf<Health>,
-            "Single-allocation leaf healths requires a non-cv, trivially "
+            ml::native_soa::supported_leaf<HealthIndex>,
+            "Single-allocation leaf health_indices requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
 
         static_assert(
@@ -1132,11 +1136,12 @@ struct TurretEntityDataSingleLayout {
                                            capacity_granularity);
         static_assert(sizeof(float) <= (max_allocation_size - TargetVelocitiesZs.block_offset) /
                                            capacity_granularity);
-        static_assert(sizeof(Health) <=
-                      (max_allocation_size - Healths.block_offset) / capacity_granularity);
-        static_assert(23 <= (max_allocation_size - ml::native_soa::layout_align(
-                                                       Healths.block_end, allocation_alignment)) /
-                                (column_gap + allocation_alignment - 1));
+        static_assert(sizeof(HealthIndex) <=
+                      (max_allocation_size - HealthIndices.block_offset) / capacity_granularity);
+        static_assert(23 <=
+                      (max_allocation_size - ml::native_soa::layout_align(HealthIndices.block_end,
+                                                                          allocation_alignment)) /
+                          (column_gap + allocation_alignment - 1));
         static_assert(max_capacity >= capacity_granularity);
         return true;
     };
@@ -1222,7 +1227,7 @@ struct SingleAllocationTurretEntityDataStorage
         Element<float>* target_velocities_xs{};
         Element<float>* target_velocities_ys{};
         Element<float>* target_velocities_zs{};
-        Element<Health>* healths{};
+        Element<HealthIndex>* health_indices{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (entity_ids == nullptr) {
                 return {};
@@ -1250,7 +1255,7 @@ struct SingleAllocationTurretEntityDataStorage
                     target_velocities_xs + offset,
                     target_velocities_ys + offset,
                     target_velocities_zs + offset,
-                    healths + offset};
+                    health_indices + offset};
         }
     };
     template <typename Self>
@@ -1357,10 +1362,10 @@ struct SingleAllocationTurretEntityDataStorage
             target_velocities_ys_offset + blocks * capacity_granularity * sizeof(float) +
                 column_gap,
             TargetVelocitiesZs.alignment)};
-        auto const healths_offset{ml::native_soa::layout_align(
+        auto const health_indices_offset{ml::native_soa::layout_align(
             target_velocities_zs_offset + blocks * capacity_granularity * sizeof(float) +
                 column_gap,
-            Healths.alignment)};
+            HealthIndices.alignment)};
         return {
             pointer_at(EntityIds, entity_ids_offset),
             pointer_at(IntegralBiases, integral_biases_offset),
@@ -1386,7 +1391,7 @@ struct SingleAllocationTurretEntityDataStorage
             pointer_at(TargetVelocitiesXs, target_velocities_xs_offset),
             pointer_at(TargetVelocitiesYs, target_velocities_ys_offset),
             pointer_at(TargetVelocitiesZs, target_velocities_zs_offset),
-            pointer_at(Healths, healths_offset)};
+            pointer_at(HealthIndices, health_indices_offset)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -1422,7 +1427,7 @@ struct SingleAllocationTurretEntityDataStorage
         std::uninitialized_value_construct_n<float*>(columns.target_velocities_xs, count);
         std::uninitialized_value_construct_n<float*>(columns.target_velocities_ys, count);
         std::uninitialized_value_construct_n<float*>(columns.target_velocities_zs, count);
-        std::uninitialized_value_construct_n<Health*>(columns.healths, count);
+        std::uninitialized_value_construct_n<HealthIndex*>(columns.health_indices, count);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -1440,7 +1445,7 @@ struct SingleAllocationTurretEntityDataStorage
         auto const teams_bytes{elements_to_move * sizeof(Team)};
         auto const laser_cooldowns_bytes{elements_to_move * sizeof(std::int16_t)};
         auto const laser_damages_bytes{elements_to_move * sizeof(std::int32_t)};
-        auto const healths_bytes{elements_to_move * sizeof(Health)};
+        auto const health_indices_bytes{elements_to_move * sizeof(HealthIndex)};
         std::memcpy(columns.entity_ids + index, columns.entity_ids + source, entity_ids_bytes);
         std::memcpy(columns.integral_biases + index,
                     columns.integral_biases + source,
@@ -1498,7 +1503,8 @@ struct SingleAllocationTurretEntityDataStorage
         std::memcpy(columns.target_velocities_zs + index,
                     columns.target_velocities_zs + source,
                     locations_xs_bytes);
-        std::memcpy(columns.healths + index, columns.healths + source, healths_bytes);
+        std::memcpy(
+            columns.health_indices + index, columns.health_indices + source, health_indices_bytes);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -1533,7 +1539,7 @@ struct SingleAllocationTurretEntityDataStorage
                aliases(source.target_ids.data()) || aliases(source.target_locations.xs) ||
                aliases(source.target_locations.ys) || aliases(source.target_locations.zs) ||
                aliases(source.target_velocities.xs) || aliases(source.target_velocities.ys) ||
-               aliases(source.target_velocities.zs) || aliases(source.healths.data());
+               aliases(source.target_velocities.zs) || aliases(source.health_indices.data());
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {
@@ -1545,7 +1551,7 @@ struct SingleAllocationTurretEntityDataStorage
         auto const teams_bytes{elements_to_copy * sizeof(Team)};
         auto const laser_cooldowns_bytes{elements_to_copy * sizeof(std::int16_t)};
         auto const laser_damages_bytes{elements_to_copy * sizeof(std::int32_t)};
-        auto const healths_bytes{elements_to_copy * sizeof(Health)};
+        auto const health_indices_bytes{elements_to_copy * sizeof(HealthIndex)};
         std::memcpy(destination.entity_ids, source.entity_ids.data(), entity_ids_bytes);
         std::memcpy(
             destination.integral_biases, source.integral_biases.data(), integral_biases_bytes);
@@ -1588,7 +1594,7 @@ struct SingleAllocationTurretEntityDataStorage
             destination.target_velocities_ys, source.target_velocities.ys, locations_xs_bytes);
         std::memcpy(
             destination.target_velocities_zs, source.target_velocities.zs, locations_xs_bytes);
-        std::memcpy(destination.healths, source.healths.data(), healths_bytes);
+        std::memcpy(destination.health_indices, source.health_indices.data(), health_indices_bytes);
     }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::native_soa::allocate(
@@ -1607,7 +1613,7 @@ struct SingleAllocationTurretEntityDataStorage
             auto const teams_bytes{live_count * sizeof(Team)};
             auto const laser_cooldowns_bytes{live_count * sizeof(std::int16_t)};
             auto const laser_damages_bytes{live_count * sizeof(std::int32_t)};
-            auto const healths_bytes{live_count * sizeof(Health)};
+            auto const health_indices_bytes{live_count * sizeof(HealthIndex)};
             std::memcpy(destination.entity_ids, source.entity_ids, entity_ids_bytes);
             std::memcpy(destination.integral_biases, source.integral_biases, integral_biases_bytes);
             std::memcpy(destination.locations_xs, source.locations_xs, locations_xs_bytes);
@@ -1648,7 +1654,7 @@ struct SingleAllocationTurretEntityDataStorage
                 destination.target_velocities_ys, source.target_velocities_ys, locations_xs_bytes);
             std::memcpy(
                 destination.target_velocities_zs, source.target_velocities_zs, locations_xs_bytes);
-            std::memcpy(destination.healths, source.healths, healths_bytes);
+            std::memcpy(destination.health_indices, source.health_indices, health_indices_bytes);
         }
         ml::native_soa::free(data_, allocation_alignment);
         data_ = new_data;
@@ -1766,10 +1772,10 @@ struct TurretEntityDataSingleConstView : ml::native_soa::CompactViewState<true> 
         auto const stride{TurretEntityDataSingleLayout::TargetVelocitiesYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
-    auto healths() const -> std::span<Health const> {
-        return {
-            column_data<Health>(TurretEntityDataSingleLayout::Healths.offset(capacity_blocks())),
-            static_cast<std::size_t>(count_)};
+    auto health_indices() const -> std::span<HealthIndex const> {
+        return {column_data<HealthIndex>(
+                    TurretEntityDataSingleLayout::HealthIndices.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
     }
     auto columns() const -> TurretEntityDataConstView {
         validate();
@@ -1849,7 +1855,8 @@ struct TurretEntityDataSingleConstView : ml::native_soa::CompactViewState<true> 
                 {column_data_unchecked<float>(
                      TurretEntityDataSingleLayout::TargetVelocitiesZs.offset(blocks)),
                  static_cast<std::size_t>(count_)}},
-            {column_data_unchecked<Health>(TurretEntityDataSingleLayout::Healths.offset(blocks)),
+            {column_data_unchecked<HealthIndex>(
+                 TurretEntityDataSingleLayout::HealthIndices.offset(blocks)),
              static_cast<std::size_t>(count_)}};
     }
     template <typename Func>
@@ -1967,10 +1974,10 @@ struct TurretEntityDataSingleView : ml::native_soa::CompactViewState<false> {
         auto const stride{TurretEntityDataSingleLayout::TargetVelocitiesYs.offset(blocks) - first};
         return {column_data_unchecked<float>(first), stride, count_};
     }
-    auto healths() const -> std::span<Health> {
-        return {
-            column_data<Health>(TurretEntityDataSingleLayout::Healths.offset(capacity_blocks())),
-            static_cast<std::size_t>(count_)};
+    auto health_indices() const -> std::span<HealthIndex> {
+        return {column_data<HealthIndex>(
+                    TurretEntityDataSingleLayout::HealthIndices.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
     }
     auto columns() const -> TurretEntityDataView {
         validate();
@@ -2048,7 +2055,8 @@ struct TurretEntityDataSingleView : ml::native_soa::CompactViewState<false> {
                           {column_data_unchecked<float>(
                                TurretEntityDataSingleLayout::TargetVelocitiesZs.offset(blocks)),
                            static_cast<std::size_t>(count_)}},
-            {column_data_unchecked<Health>(TurretEntityDataSingleLayout::Healths.offset(blocks)),
+            {column_data_unchecked<HealthIndex>(
+                 TurretEntityDataSingleLayout::HealthIndices.offset(blocks)),
              static_cast<std::size_t>(count_)}};
     }
     template <typename Func>

@@ -18,6 +18,7 @@
 #include <ioj/sim/fighter_order_queue.h>
 #include <ioj/sim/fighter_spawn_queue.h>
 #include <ioj/sim/fighter_types.h>
+#include <ioj/sim/health_table.h>
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/sim_clock.h>
@@ -58,6 +59,7 @@ struct Sim {
     Sim(SimClock const& clock,
         EntityLedger& ledger,
         CombatEvents const& combat_events,
+        HealthTable& health_table,
         AgentAccessor const& agents,
         SpatialQueryManager const& spatial_query_manager,
         lasers::Sim& laser_simulation,
@@ -71,7 +73,8 @@ struct Sim {
     // Configuration
     /* **************************************** */
     auto get_read_view() const -> FighterReadView {
-        return {entity_buffers.current().get_const_view().columns()};
+        auto const entities{entity_buffers.current().get_const_view().columns()};
+        return {entities, health_table_.get_const_view(entities.health_indices)};
     }
     void set_config(FighterSimConfig const& new_config, FighterLevelData level_data) noexcept;
     void set_diagnostics_enabled(bool enabled) noexcept { diagnostics_enabled_ = enabled; }
@@ -92,8 +95,9 @@ struct Sim {
     auto get_parent_ids() const -> std::span<EntityUniqueId const> {
         return entity_buffers.current().get_const_view().parent_ids();
     }
-    auto get_healths() const -> std::span<Health const> {
-        return entity_buffers.current().get_const_view().healths();
+    auto get_healths() const -> HealthConstView {
+        auto const entities{entity_buffers.current().get_const_view().columns()};
+        return health_table_.get_const_view(entities.health_indices);
     }
     void set_parent_id(EntityUniqueId fighter, EntityUniqueId parent) {
         assert(fighter.is_valid() && fighter.entity_type() == EntityType::Fighter);
@@ -263,6 +267,7 @@ struct Sim {
     EntityBuffers entity_buffers{};
     EntityLedger& ledger_;
     CombatEvents const& combat_events_;
+    HealthTable& health_table_;
     AgentAccessor const& agents_;
     SpatialQueryManager const& spatial_query_manager;
     std::pmr::memory_resource& frame_memory_resource;

@@ -49,6 +49,8 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/frame_rotators3f.h
   ../include/ioj/sim/frame_trace_hits.h
   ../include/ioj/sim/frame_vectors3f.h
+  ../include/ioj/sim/entity_tables.h
+  ../include/ioj/sim/health_table.h
   ../include/ioj/sim/index_span.h
   ../include/ioj/sim/laser_frame_output.h
   ../include/ioj/sim/laser_hit_details.h
@@ -119,6 +121,7 @@ target_sources(native-simulation PRIVATE
   frame_rotators3f.cpp
   frame_trace_hits.cpp
   frame_vectors3f.cpp
+  health_table.cpp
   laser_frame_output.cpp
   level_event_types.cpp
   level_sim.cpp
