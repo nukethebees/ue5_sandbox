@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <expected>
+#include <limits>
 #include <span>
 #include <vector>
 
@@ -25,6 +26,13 @@ struct StaticGridBuildError {
 
 class CollisionGridStaticStorage {
   public:
+    using CellRangeIndex = std::int32_t;
+    using AabbIndex = std::uint16_t;
+    using RangeOffset = std::uint32_t;
+    using RangeCount = std::uint16_t;
+
+    inline static constexpr AabbIndex invalid_aabb_index{std::numeric_limits<AabbIndex>::max()};
+
     void reset() noexcept;
     void set_aabbs(WorldAABBs aabbs) noexcept;
     auto add_aabb(Vector3f min_point, Vector3f max_point) -> std::int32_t;
@@ -32,12 +40,12 @@ class CollisionGridStaticStorage {
 
     [[nodiscard]] auto aabbs() const noexcept -> WorldAABBs const&;
     [[nodiscard]] auto aabb_indices_for_cell(std::int32_t cell_index) const noexcept
-        -> std::span<std::int32_t const>;
+        -> std::span<AabbIndex const>;
   private:
     WorldAABBs aabbs_;
-    std::vector<std::int32_t> cell_range_indices_;
-    std::vector<std::uint32_t> range_offsets_;
-    std::vector<std::uint16_t> range_counts_;
-    std::vector<std::int32_t> aabb_indices_;
+    std::vector<CellRangeIndex> cell_range_indices_;
+    std::vector<RangeOffset> range_offsets_;
+    std::vector<RangeCount> range_counts_;
+    std::vector<AabbIndex> aabb_indices_;
 };
 } // namespace ioj::sim::collision

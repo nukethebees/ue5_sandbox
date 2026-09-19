@@ -129,16 +129,17 @@ void trace_grid_aabbs(GridGeometry const geometry,
 
             auto const static_indices{static_storage.aabb_indices_for_cell(cell_index)};
             for (auto const static_index : static_indices) {
+                auto const static_aabb_index{static_cast<std::int32_t>(static_index)};
                 auto const hit_t{trace_aabb(start,
                                             inverse_delta,
                                             delta,
-                                            min_at(static_aabbs, static_index),
-                                            max_at(static_aabbs, static_index),
+                                            min_at(static_aabbs, static_aabb_index),
+                                            max_at(static_aabbs, static_aabb_index),
                                             moving_half_extent)};
                 if (hit_t < nearest_t) {
                     nearest_t = hit_t;
                     nearest_entity = EntityUniqueId{};
-                    nearest_static_index = static_index;
+                    nearest_static_index = static_aabb_index;
                 }
             }
         }};
@@ -389,9 +390,10 @@ void append_grid_overlaps(GridGeometry const geometry,
 
                 auto const static_indices{static_storage.aabb_indices_for_cell(cell_index)};
                 for (auto const static_index : static_indices) {
-                    if (overlaps_query(min_at(static_aabbs, static_index),
-                                       max_at(static_aabbs, static_index))) {
-                        out_static_geometry_indices.push_back(static_index);
+                    auto const static_aabb_index{static_cast<std::int32_t>(static_index)};
+                    if (overlaps_query(min_at(static_aabbs, static_aabb_index),
+                                       max_at(static_aabbs, static_aabb_index))) {
+                        out_static_geometry_indices.push_back(static_aabb_index);
                     }
                 }
             }

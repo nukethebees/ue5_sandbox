@@ -44,6 +44,7 @@ auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
 
     auto const aabbs{aabbs_.get_const_view().columns()};
     auto const aabb_count{aabbs.num()};
+    assert(aabb_count <= invalid_aabb_index);
 
     // Count AABB/cell membership and validate covered bounds.
     for (std::int32_t aabb_index{}; aabb_index < aabb_count; ++aabb_index) {
@@ -93,9 +94,9 @@ auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
         }
 
         cell_range_indices_[static_cast<std::size_t>(cell_index)] =
-            static_cast<std::int32_t>(range_offsets_.size());
-        range_offsets_.push_back(static_cast<std::uint32_t>(membership_count));
-        range_counts_.push_back(static_cast<std::uint16_t>(count));
+            static_cast<CellRangeIndex>(range_offsets_.size());
+        range_offsets_.push_back(static_cast<RangeOffset>(membership_count));
+        range_counts_.push_back(static_cast<RangeCount>(count));
         membership_count += count;
     }
 
@@ -115,7 +116,8 @@ auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
                     auto const range_index{
                         cell_range_indices_[static_cast<std::size_t>(cell_index)]};
                     auto& write_index{write_indices[static_cast<std::size_t>(range_index)]};
-                    aabb_indices_[static_cast<std::size_t>(write_index++)] = aabb_index;
+                    aabb_indices_[static_cast<std::size_t>(write_index++)] =
+                        static_cast<AabbIndex>(aabb_index);
                 }
                 row_index += row_stride;
             }
@@ -142,7 +144,7 @@ auto CollisionGridStaticStorage::aabbs() const noexcept -> WorldAABBs const& {
 }
 
 auto CollisionGridStaticStorage::aabb_indices_for_cell(std::int32_t const cell_index) const noexcept
-    -> std::span<std::int32_t const> {
+    -> std::span<AabbIndex const> {
     if (cell_index < 0 || static_cast<std::size_t>(cell_index) >= cell_range_indices_.size()) {
         return {};
     }
