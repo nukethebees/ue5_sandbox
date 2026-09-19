@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SandboxEditor/levels/S7LevelAuthoringPreview.h"
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include "SandboxEditor/levels/S7LevelSourceSession.h"
 
@@ -57,7 +58,7 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
 
     TWeakObjectPtr<AS7LevelAuthoringDocument> document_{};
     ml::editor::FS7LevelSourceSession source_session_{};
-    TOptional<ml::editor::FS7LevelSyncPlan> preview_{};
+    TOptional<ml::editor::FS7LevelAuthoringPreview> preview_{};
     FText status_{};
     FOnS7LevelAuthoringChanged changed_{};
     float refresh_elapsed_seconds_{};

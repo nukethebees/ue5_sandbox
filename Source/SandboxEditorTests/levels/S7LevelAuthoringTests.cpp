@@ -1,6 +1,8 @@
 #include <SandboxEditor/levels/S7LevelAuthoringDocument.h>
 #include <SandboxEditor/levels/S7LevelAuthoringMode.h>
+#include <SandboxEditor/levels/S7LevelAuthoringPreview.h>
 #include <SandboxEditor/levels/S7LevelAuthoringSession.h>
+#include <SandboxEditor/levels/S7LevelSourceSession.h>
 
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
@@ -13,7 +15,13 @@
 #include <Editor.h>
 #include <EditorModeManager.h>
 #include <Engine/World.h>
+#include <HAL/FileManager.h>
+#include <Misc/FileHelper.h>
+#include <Misc/Guid.h>
+#include <Misc/Paths.h>
 #include <Tests/AutomationEditorCommon.h>
+
+#include <expected>
 
 namespace {
 template <typename T>
@@ -97,10 +105,376 @@ auto count_actors(ULevel const& level) -> int32 {
     }
     return count;
 }
+
+struct FTemporarySourceDirectory {
+    FString path{FPaths::Combine(FPaths::ProjectSavedDir(),
+                                 TEXT("Automation"),
+                                 TEXT("S7LevelAuthoring"),
+                                 FGuid::NewGuid().ToString())};
+
+    FTemporarySourceDirectory() { IFileManager::Get().MakeDirectory(*path, true); }
+
+    ~FTemporarySourceDirectory() { IFileManager::Get().DeleteDirectory(*path, false, true); }
+};
+
+auto write_source(FStringView const source, FString const& path) -> bool {
+    return FFileHelper::SaveStringToFile(
+        FString{source}, *path, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM);
+}
+
+auto make_stale_preview(FPreviewFixture& fixture, ml::editor::FS7LevelSourceSession& source_session)
+    -> std::expected<ml::editor::FS7LevelAuthoringPreview, FString> {
+    auto const attached{source_session.attach(*fixture.document)};
+    if (!attached) {
+        return std::unexpected{attached.error()};
+    }
+    source_session.set_buffer(TEXT("preview source"));
+
+    auto definition{
+        ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(), *fixture.document)};
+    if (!definition) {
+        return std::unexpected{definition.error()};
+    }
+    definition->metadata.title = TEXT("From Preview");
+    auto const plan{ml::editor::make_s7_level_sync_plan(
+        *fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
+    if (!plan) {
+        return std::unexpected{plan.error()};
+    }
+    return ml::editor::make_s7_level_authoring_preview(
+        *fixture.world->GetCurrentLevel(), *fixture.document, source_session, *plan);
+}
+
+template <typename TTestRunner>
+void assert_stale_preview_does_not_apply(TTestRunner& test_runner,
+                                         FPreviewFixture const& fixture,
+                                         ml::editor::FS7LevelSourceSession const& source_session,
+                                         ml::editor::FS7LevelAuthoringPreview const& preview,
+                                         FStringView const expected_reason) {
+    auto const player_count{count_actors<ATestSpaceShip>(*fixture.world->GetCurrentLevel())};
+    auto const capital_count{
+        count_actors<ATestCapitalShipProxy>(*fixture.world->GetCurrentLevel())};
+    auto const applied{ml::editor::apply_s7_level_authoring_preview(
+        *fixture.world->GetCurrentLevel(), *fixture.document, source_session, preview)};
+    test_runner.TestFalse(TEXT("Stale preview is rejected"), applied.has_value());
+    if (!applied) {
+        test_runner.TestTrue(TEXT("Stale reason is useful"),
+                             applied.error().Contains(expected_reason));
+    }
+    test_runner.TestEqual(TEXT("Stale apply preserves title"),
+                          fixture.document->title,
+                          FString{TEXT("Preview Level")});
+    test_runner.TestEqual(TEXT("Stale apply preserves player count"),
+                          count_actors<ATestSpaceShip>(*fixture.world->GetCurrentLevel()),
+                          player_count);
+    test_runner.TestEqual(TEXT("Stale apply preserves capital count"),
+                          count_actors<ATestCapitalShipProxy>(*fixture.world->GetCurrentLevel()),
+                          capital_count);
+}
 }
 
 TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
 {
+    TEST_METHOD(StalePreviewRejectsChangedSourceAndPath)
+    {
+        auto fixture{make_preview_fixture()};
+        if (!TestRunner->TestTrue(TEXT("Fixture"), fixture.is_valid())) {
+            return;
+        }
+        ml::editor::FS7LevelSourceSession source_session;
+        auto const preview{make_stale_preview(fixture, source_session)};
+        if (!TestRunner->TestTrue(TEXT("Preview builds"), preview.has_value())) {
+            TestRunner->AddError(preview.error());
+            return;
+        }
+        source_session.set_buffer(TEXT("changed source"));
+        source_session.set_buffer(TEXT("preview source"));
+        assert_stale_preview_does_not_apply(
+            *TestRunner, fixture, source_session, *preview, TEXT("source or source path"));
+
+        fixture = make_preview_fixture();
+        if (!TestRunner->TestTrue(TEXT("Path fixture"), fixture.is_valid())) {
+            return;
+        }
+        ml::editor::FS7LevelSourceSession path_session;
+        auto const path_preview{make_stale_preview(fixture, path_session)};
+        if (!TestRunner->TestTrue(TEXT("Path preview builds"), path_preview.has_value())) {
+            TestRunner->AddError(path_preview.error());
+            return;
+        }
+        FTemporarySourceDirectory directory;
+        auto const path{FPaths::Combine(directory.path, TEXT("other.scm"))};
+        if (!TestRunner->TestTrue(
+                TEXT("Source path changes"),
+                path_session.save_as(path, ml::editor::ES7SourceOverwritePolicy::ReplaceExisting)
+                    .has_value())) {
+            return;
+        }
+        assert_stale_preview_does_not_apply(
+            *TestRunner, fixture, path_session, *path_preview, TEXT("source or source path"));
+    }
+
+    TEST_METHOD(StalePreviewRejectsSceneAndDocumentChanges)
+    {
+        auto fixture{make_preview_fixture()};
+        if (!TestRunner->TestTrue(TEXT("Fixture"), fixture.is_valid())) {
+            return;
+        }
+        ml::editor::FS7LevelSourceSession source_session;
+        auto const transform_preview{make_stale_preview(fixture, source_session)};
+        if (!TestRunner->TestTrue(TEXT("Transform preview builds"),
+                                  transform_preview.has_value())) {
+            TestRunner->AddError(transform_preview.error());
+            return;
+        }
+        fixture.player->SetActorLocation(FVector{100.0, 0.0, 0.0});
+        assert_stale_preview_does_not_apply(
+            *TestRunner, fixture, source_session, *transform_preview, TEXT("scene"));
+        TestRunner->TestEqual(TEXT("Stale apply preserves transform"),
+                              fixture.player->GetActorLocation(),
+                              FVector{100.0, 0.0, 0.0});
+
+        fixture = make_preview_fixture();
+        ml::editor::FS7LevelSourceSession team_session;
+        auto const team_preview{make_stale_preview(fixture, team_session)};
+        if (!TestRunner->TestTrue(TEXT("Team preview builds"), team_preview.has_value())) {
+            TestRunner->AddError(team_preview.error());
+            return;
+        }
+        fixture.enemy->set_team(ETestTeam::Blue);
+        assert_stale_preview_does_not_apply(
+            *TestRunner, fixture, team_session, *team_preview, TEXT("scene"));
+        TestRunner->TestEqual(
+            TEXT("Stale apply preserves team"), fixture.enemy->get_team(), ETestTeam::Blue);
+
+        fixture = make_preview_fixture();
+        ml::editor::FS7LevelSourceSession metadata_session;
+        auto const metadata_preview{make_stale_preview(fixture, metadata_session)};
+        if (!TestRunner->TestTrue(TEXT("Metadata preview builds"), metadata_preview.has_value())) {
+            TestRunner->AddError(metadata_preview.error());
+            return;
+        }
+        fixture.document->description = TEXT("Edited after preview");
+        assert_stale_preview_does_not_apply(
+            *TestRunner, fixture, metadata_session, *metadata_preview, TEXT("document"));
+        TestRunner->TestEqual(TEXT("Stale apply preserves metadata"),
+                              fixture.document->description,
+                              FString{TEXT("Edited after preview")});
+
+        fixture = make_preview_fixture();
+        ml::editor::FS7LevelSourceSession mission_session;
+        auto const mission_preview{make_stale_preview(fixture, mission_session)};
+        if (!TestRunner->TestTrue(TEXT("Mission preview builds"), mission_preview.has_value())) {
+            TestRunner->AddError(mission_preview.error());
+            return;
+        }
+        fixture.document->mission.mode = ETestMissionMode::SurviveTime;
+        assert_stale_preview_does_not_apply(
+            *TestRunner, fixture, mission_session, *mission_preview, TEXT("scene"));
+        TestRunner->TestEqual(TEXT("Stale apply preserves mission"),
+                              fixture.document->mission.mode,
+                              ETestMissionMode::SurviveTime);
+
+        fixture = make_preview_fixture();
+        ml::editor::FS7LevelSourceSession camera_session;
+        auto const camera_preview{make_stale_preview(fixture, camera_session)};
+        if (!TestRunner->TestTrue(TEXT("Camera preview builds"), camera_preview.has_value())) {
+            TestRunner->AddError(camera_preview.error());
+            return;
+        }
+        fixture.document->use_observer_camera = true;
+        fixture.document->camera.targets = {fixture.player};
+        assert_stale_preview_does_not_apply(
+            *TestRunner, fixture, camera_session, *camera_preview, TEXT("scene"));
+        TestRunner->TestTrue(TEXT("Stale apply preserves camera"),
+                             fixture.document->use_observer_camera);
+    }
+
+    TEST_METHOD(StalePreviewRejectsBindingsAndActorReplacement)
+    {
+        auto fixture{make_preview_fixture()};
+        if (!TestRunner->TestTrue(TEXT("Fixture"), fixture.is_valid())) {
+            return;
+        }
+        ml::editor::FS7LevelSourceSession source_session;
+        auto const id_preview{make_stale_preview(fixture, source_session)};
+        if (!TestRunner->TestTrue(TEXT("Binding preview builds"), id_preview.has_value())) {
+            TestRunner->AddError(id_preview.error());
+            return;
+        }
+        fixture.document->entities[1].id = TEXT("renamed-enemy");
+        assert_stale_preview_does_not_apply(
+            *TestRunner, fixture, source_session, *id_preview, TEXT("bindings"));
+
+        fixture = make_preview_fixture();
+        ml::editor::FS7LevelSourceSession replacement_session;
+        auto const replacement_preview{make_stale_preview(fixture, replacement_session)};
+        if (!TestRunner->TestTrue(TEXT("Replacement preview builds"),
+                                  replacement_preview.has_value())) {
+            TestRunner->AddError(replacement_preview.error());
+            return;
+        }
+        auto* const replacement{spawn<ATestCapitalShipProxy>(
+            *fixture.world,
+            TEXT("replacement"),
+            fixture.level_config->classes.capital_ship_proxy_class.Get())};
+        if (!TestRunner->TestNotNull(TEXT("Replacement actor"), replacement)) {
+            return;
+        }
+        replacement->set_team(ETestTeam::Red);
+        fixture.document->entities[1].actor = replacement;
+        assert_stale_preview_does_not_apply(
+            *TestRunner, fixture, replacement_session, *replacement_preview, TEXT("bindings"));
+        TestRunner->TestEqual(TEXT("Stale apply preserves replacement binding"),
+                              fixture.document->entities[1].actor.Get(),
+                              static_cast<AActor*>(replacement));
+
+        fixture = make_preview_fixture();
+        ml::editor::FS7LevelSourceSession deletion_session;
+        auto const deletion_preview{make_stale_preview(fixture, deletion_session)};
+        if (!TestRunner->TestTrue(TEXT("Deletion preview builds"), deletion_preview.has_value())) {
+            TestRunner->AddError(deletion_preview.error());
+            return;
+        }
+        fixture.enemy->Destroy();
+        assert_stale_preview_does_not_apply(
+            *TestRunner, fixture, deletion_session, *deletion_preview, TEXT("bindings"));
+    }
+
+    TEST_METHOD(StalePreviewRejectsConfigurationChanges)
+    {
+        auto fixture{make_preview_fixture()};
+        if (!TestRunner->TestTrue(TEXT("Fixture"), fixture.is_valid())) {
+            return;
+        }
+        ml::editor::FS7LevelSourceSession source_session;
+        auto const pointer_preview{make_stale_preview(fixture, source_session)};
+        if (!TestRunner->TestTrue(TEXT("Pointer preview builds"), pointer_preview.has_value())) {
+            TestRunner->AddError(pointer_preview.error());
+            return;
+        }
+        fixture.document->level_config = config(*fixture.world);
+        assert_stale_preview_does_not_apply(
+            *TestRunner, fixture, source_session, *pointer_preview, TEXT("level configuration"));
+
+        fixture = make_preview_fixture();
+        ml::editor::FS7LevelSourceSession value_session;
+        auto const value_preview{make_stale_preview(fixture, value_session)};
+        if (!TestRunner->TestTrue(TEXT("Value preview builds"), value_preview.has_value())) {
+            TestRunner->AddError(value_preview.error());
+            return;
+        }
+        fixture.level_config->laser_debug_shapes = !fixture.level_config->laser_debug_shapes;
+        assert_stale_preview_does_not_apply(
+            *TestRunner, fixture, value_session, *value_preview, TEXT("level configuration"));
+
+        fixture = make_preview_fixture();
+        ml::editor::FS7LevelSourceSession class_session;
+        auto const class_preview{make_stale_preview(fixture, class_session)};
+        if (!TestRunner->TestTrue(TEXT("Class preview builds"), class_preview.has_value())) {
+            TestRunner->AddError(class_preview.error());
+            return;
+        }
+        fixture.level_config->classes.player_ship_class = nullptr;
+        assert_stale_preview_does_not_apply(
+            *TestRunner, fixture, class_session, *class_preview, TEXT("level configuration"));
+    }
+
+    TEST_METHOD(StalePreviewRejectsLevelAndDocumentChanges)
+    {
+        auto fixture{make_preview_fixture()};
+        if (!TestRunner->TestTrue(TEXT("Fixture"), fixture.is_valid())) {
+            return;
+        }
+        ml::editor::FS7LevelSourceSession source_session;
+        auto const level_preview{make_stale_preview(fixture, source_session)};
+        if (!TestRunner->TestTrue(TEXT("Level preview builds"), level_preview.has_value())) {
+            TestRunner->AddError(level_preview.error());
+            return;
+        }
+        auto* const other_world{FAutomationEditorCommonUtils::CreateNewMap()};
+        if (!TestRunner->TestNotNull(TEXT("Other world"), other_world)) {
+            return;
+        }
+        auto const applied{ml::editor::apply_s7_level_authoring_preview(
+            *other_world->GetCurrentLevel(), *fixture.document, source_session, *level_preview)};
+        TestRunner->TestFalse(TEXT("Different level is rejected"), applied.has_value());
+        TestRunner->TestEqual(TEXT("Different level preserves original document title"),
+                              fixture.document->title,
+                              FString{TEXT("Preview Level")});
+
+        fixture = make_preview_fixture();
+        ml::editor::FS7LevelSourceSession document_session;
+        auto const document_preview{make_stale_preview(fixture, document_session)};
+        if (!TestRunner->TestTrue(TEXT("Document preview builds"), document_preview.has_value())) {
+            TestRunner->AddError(document_preview.error());
+            return;
+        }
+        auto* const other_document{
+            spawn<AS7LevelAuthoringDocument>(*fixture.world, TEXT("Other Document"))};
+        if (!TestRunner->TestNotNull(TEXT("Other document"), other_document)) {
+            return;
+        }
+        auto const document_applied{
+            ml::editor::apply_s7_level_authoring_preview(*fixture.world->GetCurrentLevel(),
+                                                         *other_document,
+                                                         document_session,
+                                                         *document_preview)};
+        TestRunner->TestFalse(TEXT("Different document is rejected"), document_applied.has_value());
+        TestRunner->TestEqual(TEXT("Different document preserves original title"),
+                              fixture.document->title,
+                              FString{TEXT("Preview Level")});
+    }
+
+    TEST_METHOD(UnchangedPreviewAppliesAndExternalDiskEditsDoNotInvalidateIt)
+    {
+        auto fixture{make_preview_fixture()};
+        if (!TestRunner->TestTrue(TEXT("Fixture"), fixture.is_valid())) {
+            return;
+        }
+        ml::editor::FS7LevelSourceSession source_session;
+        auto const preview{make_stale_preview(fixture, source_session)};
+        if (!TestRunner->TestTrue(TEXT("Preview builds"), preview.has_value())) {
+            TestRunner->AddError(preview.error());
+            return;
+        }
+        auto const applied{ml::editor::apply_s7_level_authoring_preview(
+            *fixture.world->GetCurrentLevel(), *fixture.document, source_session, *preview)};
+        TestRunner->TestTrue(TEXT("Unchanged preview applies"), applied.has_value());
+        TestRunner->TestEqual(TEXT("Unchanged preview applies planned title"),
+                              fixture.document->title,
+                              FString{TEXT("From Preview")});
+
+        fixture = make_preview_fixture();
+        FTemporarySourceDirectory directory;
+        auto const source_path{FPaths::Combine(directory.path, TEXT("level.scm"))};
+        if (!TestRunner->TestTrue(TEXT("Initial disk source writes"),
+                                  write_source(TEXT("initial source"), source_path))) {
+            return;
+        }
+        fixture.document->source_path = source_path;
+        ml::editor::FS7LevelSourceSession disk_session;
+        auto const disk_preview{make_stale_preview(fixture, disk_session)};
+        if (!TestRunner->TestTrue(TEXT("Disk preview builds"), disk_preview.has_value())) {
+            TestRunner->AddError(disk_preview.error());
+            return;
+        }
+        if (!TestRunner->TestTrue(TEXT("External source changes"),
+                                  write_source(TEXT("external source"), source_path)) ||
+            !TestRunner->TestTrue(TEXT("Conflict refreshes"),
+                                  disk_session.refresh_external_conflict().has_value())) {
+            return;
+        }
+        TestRunner->TestTrue(TEXT("External source marks a conflict"),
+                             disk_session.has_external_conflict());
+        auto const disk_applied{ml::editor::apply_s7_level_authoring_preview(
+            *fixture.world->GetCurrentLevel(), *fixture.document, disk_session, *disk_preview)};
+        TestRunner->TestTrue(TEXT("External disk edit leaves preview valid"),
+                             disk_applied.has_value());
+        TestRunner->TestFalse(TEXT("External disk edit blocks save"),
+                              disk_session.save().has_value());
+    }
+
     TEST_METHOD(ObjectivesRoundTripThroughDocumentAndWriter)
     {
         auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};

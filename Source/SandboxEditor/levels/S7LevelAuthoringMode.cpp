@@ -98,18 +98,36 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* const viewport_client,
         changed_.Broadcast();
         return;
     }
-    if (!document_.IsValid() || preview_.IsSet()) {
+    if (!document_.IsValid()) {
         return;
     }
 
     auto const disk_refreshed{source_session_.refresh_external_conflict()};
     if (!disk_refreshed || source_session_.has_external_conflict()) {
-        auto const stale{LOCTEXT("ExternalChange",
-                                 "The S7 source changed externally. Reload it before saving.")};
+        auto const stale{
+            LOCTEXT("ExternalChange",
+                    "The S7 source changed externally. Saving is blocked; an unchanged "
+                    "preview can still apply.")};
         if (!status_.EqualTo(stale)) {
             set_status(stale);
             changed_.Broadcast();
         }
+    }
+    if (preview_.IsSet()) {
+        auto* const level{current_level()};
+        auto const current{IsValid(level)
+                               ? ml::editor::validate_s7_level_authoring_preview(
+                                     *level, *document_, source_session_, preview_.GetValue())
+                               : std::expected<void, FString>{
+                                     std::unexpected{TEXT("The current level is unavailable.")}}};
+        if (!current) {
+            preview_.Reset();
+            set_status(FText::FromString(current.error()));
+            changed_.Broadcast();
+        }
+        return;
+    }
+    if (!disk_refreshed || source_session_.has_external_conflict()) {
         return;
     }
     if (source_session_.is_dirty()) {
@@ -399,35 +417,42 @@ void US7LevelAuthoringMode::preview_apply() {
         changed_.Broadcast();
         return;
     }
-    auto const plan{
-        ml::editor::make_s7_level_sync_plan(*level, *document_, read.definition.GetValue())};
+    auto plan{ml::editor::make_s7_level_sync_plan(*level, *document_, read.definition.GetValue())};
     if (!plan) {
         set_status(FText::FromString(plan.error()));
         preview_.Reset();
         changed_.Broadcast();
         return;
     }
-    preview_ = *plan;
-    if (!preview_->has_changes()) {
+    auto preview{ml::editor::make_s7_level_authoring_preview(
+        *level, *document_, source_session_, MoveTemp(*plan))};
+    if (!preview) {
+        set_status(FText::FromString(preview.error()));
+        preview_.Reset();
+        changed_.Broadcast();
+        return;
+    }
+    preview_ = MoveTemp(*preview);
+    if (!preview_->plan.has_changes()) {
         set_status(LOCTEXT("PreviewMatches", "Preview: the source and scene already match."));
     } else {
         TArray<FString> document_changes;
-        if (preview_->metadata_changed) {
+        if (preview_->plan.metadata_changed) {
             document_changes.Add(TEXT("metadata"));
         }
-        if (preview_->viewpoint_changed) {
+        if (preview_->plan.viewpoint_changed) {
             document_changes.Add(TEXT("viewpoint"));
         }
-        if (preview_->mission_changed) {
+        if (preview_->plan.mission_changed) {
             document_changes.Add(TEXT("mission"));
         }
 
         auto const entity_summary{FText::Format(
             LOCTEXT("PreviewEntityChanges", "+{0}, update {1}, replace {2}, remove {3}"),
-            preview_->count(ml::editor::ES7LevelSyncAction::Add),
-            preview_->count(ml::editor::ES7LevelSyncAction::Update),
-            preview_->count(ml::editor::ES7LevelSyncAction::Replace),
-            preview_->count(ml::editor::ES7LevelSyncAction::Remove))};
+            preview_->plan.count(ml::editor::ES7LevelSyncAction::Add),
+            preview_->plan.count(ml::editor::ES7LevelSyncAction::Update),
+            preview_->plan.count(ml::editor::ES7LevelSyncAction::Replace),
+            preview_->plan.count(ml::editor::ES7LevelSyncAction::Remove))};
         set_status(
             document_changes.IsEmpty()
                 ? FText::Format(LOCTEXT("PreviewEntitiesOnly", "Preview: {0}. Apply is undoable."),
@@ -447,10 +472,13 @@ void US7LevelAuthoringMode::apply_preview() {
         changed_.Broadcast();
         return;
     }
-    auto const applied{
-        ml::editor::apply_s7_level_sync_plan(*level, *document_, preview_.GetValue())};
+    auto const applied{ml::editor::apply_s7_level_authoring_preview(
+        *level, *document_, source_session_, preview_.GetValue())};
     if (!applied) {
         set_status(FText::FromString(applied.error()));
+        if (applied.error().StartsWith(TEXT("Preview is stale"))) {
+            preview_.Reset();
+        }
     } else {
         document_->synchronized_source_hash =
             ml::editor::FS7LevelSourceSession::source_digest(source_session_.buffer());
