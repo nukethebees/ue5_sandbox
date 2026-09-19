@@ -45,6 +45,16 @@ git submodule update --init native/third_party/googletest native/third_party/cpu
   native/third_party/benchmark native/third_party/cli11 native/third_party/nlohmann_json
 ```
 
+The optional memory layout planner additionally uses the pinned SDL3 and Dear ImGui submodules:
+
+```powershell
+git submodule update --init native/third_party/sdl native/third_party/imgui
+cmake --workflow --preset layout-planner
+```
+
+Run `out/build/layout-planner/tools/layout_planner/layout-planner.exe` from the repository root to
+load `lispb/project.lispb`, or pass `--project` and `--target` explicitly.
+
 Simulation tests live in `simulation/tests/`. Asset/configuration conversion and presentation remain
 covered by Unreal tests. See [Build and test](../docs/build-and-test.md) for the full test workflows
 and [Code generation](../Codegen/README.md) for generated outputs.

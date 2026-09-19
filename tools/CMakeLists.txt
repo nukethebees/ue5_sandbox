@@ -22,3 +22,6 @@ add_custom_target(format-all-code
 )
 
 add_subdirectory(perf)
+if(SANDBOX_LAYOUT_PLANNER)
+  add_subdirectory(layout_planner)
+endif()
