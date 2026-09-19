@@ -5,6 +5,8 @@ param(
   [Parameter(Mandatory)]
   [string]$RunClangTidyExecutable,
   [Parameter(Mandatory)]
+  [string]$ClangTidyExecutable,
+  [Parameter(Mandatory)]
   [string]$LogFile,
   [Parameter(Mandatory)]
   [string]$CompilationDatabase,
@@ -24,6 +26,8 @@ New-Item -ItemType Directory -Force -Path $log_directory | Out-Null
 
 $clang_tidy_arguments = @(
   "-quiet",
+  "-clang-tidy-binary",
+  $ClangTidyExecutable,
   "-p",
   $CompilationDatabase,
   "-checks=-*,$Checks",
