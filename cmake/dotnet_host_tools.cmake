@@ -34,9 +34,9 @@ function(sandbox_add_dotnet_host_tool target_name output_variable project_file)
       --output "${output_directory}"
       --nologo
       "-p:IsStandaloneTool=false"
+      "-p:SandboxCMakeHostToolBuild=true"
       "-p:BaseIntermediateOutputPath=${intermediate_directory}"
       "-p:MSBuildProjectExtensionsPath=${intermediate_directory}"
-      "-p:DefaultItemExcludesInProjectFolder=${project_directory}/obj/**"
     DEPENDS
       "${project_file}"
       ${project_sources}
