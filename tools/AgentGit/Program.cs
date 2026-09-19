@@ -46,7 +46,7 @@ public static class Program
                 discovery,
                 new JobserverIntegrationLeaseVerifier(),
                 new ConsoleIntegrationReviewer(Console.In, Console.Out),
-                new CMakeIntegrationValidator(),
+                new IntegrationGateValidator(),
                 Console.Out,
                 Console.Error));
         return await application.RunAsync(request!, Environment.CurrentDirectory);

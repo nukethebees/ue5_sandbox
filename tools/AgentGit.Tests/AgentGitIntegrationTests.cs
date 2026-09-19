@@ -21,6 +21,26 @@ public sealed class AgentGitIntegrationTests
     }
 
     [TestMethod]
+    public async Task Integration_info_reports_stable_candidate_metadata_as_json()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        var worktree = fixture.CreateWorktree("dev1");
+        fixture.RunGitAt(worktree, "switch", "-qc", "feature/info");
+        fixture.WriteFile("tools/AgentGit/info.txt", "candidate\n", worktree);
+        fixture.RunGitAt(worktree, "add", "tools/AgentGit/info.txt");
+        fixture.RunGitAt(worktree, "commit", "-qm", "candidate");
+
+        var result = await fixture.RunAgentGitAsync(worktree, "integration-info", "--json");
+        using var json = System.Text.Json.JsonDocument.Parse(result.Output);
+
+        Assert.AreEqual(ExitCodes.Success, result.ExitCode, result.Error);
+        Assert.AreEqual("feature/info", json.RootElement.GetProperty("branch").GetString());
+        Assert.AreEqual("dev", json.RootElement.GetProperty("baseBranch").GetString());
+        Assert.AreEqual(64, json.RootElement.GetProperty("patchFingerprint").GetString()!.Length);
+        Assert.AreEqual(40, json.RootElement.GetProperty("tree").GetString()!.Length);
+    }
+
+    [TestMethod]
     public async Task Discovery_allows_enabled_but_absent_worktree_configuration()
     {
         using var fixture = new TemporaryAgentGitRepository();

@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "components": [
+    {
+      "name": "integration-policy",
+      "paths": [".integration-gates.json", ".agent-git.json"],
+      "gates": ["agent-git-tests", "jobserver-tests", "csharp-tools-tests", "powershell-checks", "python-checks", "cmake-checks", "native-tests", "codegen-tests", "unreal-tests", "development-build"],
+      "affects": []
+    },
+    {
+      "name": "docs",
+      "paths": ["AGENTS.md", "README.md", "docs/", "PowerShell/README.md", "cmake/README.md"],
+      "gates": [],
+      "affects": []
+    },
+    {
+      "name": "agent-git",
+      "paths": ["tools/AgentGit/", "tools/AgentGit.Tests/"],
+      "gates": ["agent-git-tests"],
+      "affects": []
+    },
+    {
+      "name": "git-support",
+      "paths": ["tools/GitSupport/"],
+      "gates": [],
+      "affects": ["agent-git", "csharp-tools"]
+    },
+    {
+      "name": "jobserver",
+      "paths": ["tools/jobserver/"],
+      "gates": ["jobserver-tests"],
+      "affects": []
+    },
+    {
+      "name": "csharp-tools",
+      "paths": ["tools/"],
+      "gates": ["csharp-tools-tests"],
+      "affects": []
+    },
+    {
+      "name": "powershell",
+      "paths": ["dev.ps1", "PowerShell/"],
+      "gates": ["powershell-checks"],
+      "affects": ["agent-git"]
+    },
+    {
+      "name": "python",
+      "paths": ["Scripts/"],
+      "gates": ["python-checks"],
+      "affects": []
+    },
+    {
+      "name": "native-presets",
+      "paths": ["cmake/presets/native.json"],
+      "gates": ["cmake-checks", "native-tests"],
+      "affects": []
+    },
+    {
+      "name": "unreal-presets",
+      "paths": ["cmake/presets/unreal.json"],
+      "gates": ["cmake-checks", "unreal-tests", "development-build"],
+      "affects": []
+    },
+    {
+      "name": "preset-generator",
+      "paths": ["cmake/presets/"],
+      "gates": ["python-checks", "cmake-checks", "native-tests", "unreal-tests", "development-build"],
+      "affects": []
+    },
+    {
+      "name": "global-cmake",
+      "paths": ["CMakeLists.txt", "CMakePresets.json", "cmake/"],
+      "gates": ["cmake-checks", "csharp-tools-tests", "native-tests", "codegen-tests", "unreal-tests", "development-build"],
+      "affects": []
+    },
+    {
+      "name": "native-unreal-interface",
+      "paths": ["native/core/include/", "native/memory/include/", "native/simulation/include/", "native/level_authoring/include/"],
+      "gates": ["native-tests", "unreal-tests", "development-build"],
+      "affects": []
+    },
+    {
+      "name": "native",
+      "paths": ["native/"],
+      "gates": ["native-tests"],
+      "affects": []
+    },
+    {
+      "name": "codegen",
+      "paths": ["Codegen/", "lispb/"],
+      "gates": ["codegen-tests", "native-tests"],
+      "affects": []
+    },
+    {
+      "name": "unreal",
+      "paths": ["Source/", "Plugins/", "unreal/", "Config/", "Sandbox.uproject"],
+      "gates": ["unreal-tests", "development-build"],
+      "affects": []
+    },
+    {
+      "name": "benchmark",
+      "paths": ["tools/perf/", "native/simulation_benchmark/"],
+      "gates": ["benchmark-build"],
+      "affects": []
+    }
+  ]
+}

@@ -54,7 +54,8 @@ d=  reset-devs        Hard reset locally checkoutable devN branches to dev.
 Validation and build commands:
   ctools             Build the standalone C# developer tools.
   install-agent-git  Build and install the trusted per-user agent-git executable.
-  integrate-feature  After user authorization, queue and run the final dev integration transaction.
+  integrate-feature  Queue the relevance-based final dev integration transaction.
+                     Explicit maintainer override: -MaintainerOverride -OverrideReason <reason>.
 
   cbuild [workflow ...]    Run one or more validation/build workflows in order.
                            Workflows include native-tests, native-core-tests, native-simulation-tests,

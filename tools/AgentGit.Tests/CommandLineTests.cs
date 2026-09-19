@@ -57,10 +57,27 @@ public sealed class CommandLineTests
             out var error), error);
         Assert.IsTrue(((IntegrateRequest)request!).Authorized);
         Assert.IsTrue(((IntegrateRequest)request).KeepBranch);
+        Assert.IsFalse(((IntegrateRequest)request).MaintainerOverride);
         Assert.IsFalse(CommandLine.TryParse(
             ["--dry-run", "integrate", "--authorized"],
             out _,
             out _));
+    }
+
+    [TestMethod]
+    public void TryParse_integration_override_is_explicit_and_requires_a_reason()
+    {
+        Assert.IsFalse(CommandLine.TryParse(
+            ["integrate", "--authorized", "--maintainer-override"], out _, out var missing_reason));
+        StringAssert.Contains(missing_reason, "override-reason");
+
+        Assert.IsTrue(CommandLine.TryParse(
+            ["integrate", "--authorized", "--maintainer-override", "--override-reason", "working fix"],
+            out var request,
+            out var error), error);
+        var integration = (IntegrateRequest)request!;
+        Assert.IsTrue(integration.MaintainerOverride);
+        Assert.AreEqual("working fix", integration.OverrideReason);
     }
 
     [TestMethod]
