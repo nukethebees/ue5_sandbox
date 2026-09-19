@@ -1,6 +1,7 @@
 #pragma once
 
 #include "log_store.hpp"
+#include "owned_processes.hpp"
 #include "scheduler.hpp"
 #include "supervisor.hpp"
 
@@ -31,6 +32,9 @@ class Server {
     void handle_validate_nested(void* pipe, std::string const& message);
     void handle_status(void* pipe, bool include_history);
     void handle_cancel(void* pipe, std::string const& message, bool kill);
+    void handle_processes(void* pipe, std::string const& message);
+    void handle_process_owner(void* pipe, std::string const& message);
+    void handle_kill_owned(void* pipe, std::string const& message);
     void handle_shutdown(void* pipe);
     void load_history();
     void record_history(std::string const& id) noexcept;
@@ -48,6 +52,7 @@ class Server {
     std::filesystem::path history_path_;
     std::vector<std::string> history_;
     std::unique_ptr<LogStore> log_store_;
+    std::unique_ptr<OwnedProcessStore> owned_processes_;
     std::atomic<bool> stopping_{};
     std::stop_source connection_stop_;
     std::mutex admission_mutex_;

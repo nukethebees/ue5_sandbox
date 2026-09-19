@@ -13,6 +13,8 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -54,6 +56,9 @@ void print_help() {
                  "  jobserver status [--json]\n"
                  "  jobserver show <job-id>\n"
                  "  jobserver history [--json]\n"
+                 "  jobserver processes [--owned] [--worktree <path>] [--json]\n"
+                 "  jobserver process-owner <pid> [--json]\n"
+                 "  jobserver kill-owned [--kind <kind>] [--json]\n"
                  "  jobserver cancel <job-id>\n"
                  "  jobserver kill <job-id>\n"
                  "  jobserver logs <job-id>\n"
@@ -236,6 +241,61 @@ void print_status(std::string const& text) {
         for (auto const& diagnostic : diagnostics) {
             std::cout << "  " << diagnostic << '\n';
         }
+    }
+}
+
+void print_processes(std::string const& text) {
+    auto const response = Json::parse(text, nullptr, false);
+    if (!response.is_object()) {
+        std::cout << text << '\n';
+        return;
+    }
+    for (auto const& group : response.value("groups", Json::array())) {
+        std::cout << "JOB " << group.value("job_id", "?") << "  root "
+                  << group.value("root_pid", 0U) << "  " << group.value("kind", "") << "  "
+                  << group.value("name", "") << '\n';
+        std::cout << "  worktree: " << group.value("worktree", "<unspecified>") << '\n';
+        std::cout << "  safe kill: " << (group.value("safe_kill", false) ? "yes" : "no") << '\n';
+    }
+}
+
+void print_process_owner(std::string const& text) {
+    auto const response = Json::parse(text, nullptr, false);
+    if (!response.is_object()) {
+        std::cout << text << '\n';
+        return;
+    }
+    std::cout << "PID       " << response.value("pid", 0U) << '\n';
+    if (response.contains("job_id")) {
+        std::cout << "Job       " << response.value("job_id", "") << '\n';
+        std::cout << "Root PID  " << response.value("root_pid", 0U) << '\n';
+        std::cout << "Owner     " << response.value("task", "") << '\n';
+        std::cout << "Worktree  " << response.value("worktree", "") << '\n';
+        std::cout << "Kind      " << response.value("kind", "") << '\n';
+        auto const command = response.value("command", Json::object());
+        std::cout << "Command   " << command.value("executable", "") << '\n';
+        std::cout << "Created   " << response.value("root_creation_time", 0ULL) << '\n';
+    }
+    std::cout << "SafeKill  " << (response.value("safe_kill", false) ? "yes" : "no") << '\n';
+    std::cout << "Reason    " << response.value("reason", "") << '\n';
+}
+
+void print_kill_owned(std::string const& text) {
+    auto const response = Json::parse(text, nullptr, false);
+    if (!response.is_object()) {
+        std::cout << text << '\n';
+        return;
+    }
+    for (auto const& group : response.value("killed", Json::array())) {
+        std::cout << "killed " << group.value("job_id", "?") << " root "
+                  << group.value("root_pid", 0U) << '\n';
+    }
+    for (auto const& group : response.value("exited", Json::array())) {
+        std::cout << "already exited " << group.value("job_id", "?") << '\n';
+    }
+    for (auto const& group : response.value("refused", Json::array())) {
+        std::cout << "refused " << group.value("job_id", "?") << ": "
+                  << group.value("reason", "ownership could not be established") << '\n';
     }
 }
 
@@ -425,6 +485,111 @@ auto lease_command(std::vector<std::string> const& arguments) -> int {
     }
     return result->termination_exit_code != 0 ? result->termination_exit_code : result->exit_code;
 }
+
+auto processes_command(std::vector<std::string> const& arguments) -> int {
+    auto owned{false};
+    auto json{false};
+    std::optional<std::filesystem::path> worktree;
+    for (std::size_t index{1}; index < arguments.size(); ++index) {
+        auto const& argument{arguments[index]};
+        if (argument == "--owned") {
+            owned = true;
+        } else if (argument == "--json") {
+            json = true;
+        } else if (argument == "--worktree") {
+            auto const* value{require_value(arguments, index)};
+            if (value == nullptr) {
+                std::cerr << "jobserver: --worktree requires a value\n";
+                return 2;
+            }
+            worktree = jobserver::path_from_utf8(*value);
+        } else {
+            std::cerr << "jobserver: unknown processes option " << argument << '\n';
+            return 2;
+        }
+    }
+    auto const result{jobserver::Client::processes(owned, worktree)};
+    if (!result) {
+        return print_error(result.error());
+    }
+    if (json) {
+        std::cout << *result << '\n';
+    } else {
+        print_processes(*result);
+    }
+    return 0;
+}
+
+auto process_owner_command(std::vector<std::string> const& arguments) -> int {
+    auto json{false};
+    if (arguments.size() == 2 && arguments[1] == "--json") {
+        std::cerr << "jobserver: process-owner requires a PID before --json\n";
+        return 2;
+    }
+    if (arguments.size() != 2 && arguments.size() != 3) {
+        std::cerr << "jobserver: process-owner requires one PID\n";
+        return 2;
+    }
+    if (arguments.size() == 3) {
+        if (arguments[2] != "--json") {
+            std::cerr << "jobserver: unknown process-owner option " << arguments[2] << '\n';
+            return 2;
+        }
+        json = true;
+    }
+    std::uint32_t process_id{};
+    try {
+        auto const parsed{std::stoull(arguments[1])};
+        if (parsed == 0 || parsed > std::numeric_limits<std::uint32_t>::max()) {
+            throw std::out_of_range{"pid"};
+        }
+        process_id = static_cast<std::uint32_t>(parsed);
+    } catch (...) {
+        std::cerr << "jobserver: process-owner requires a positive PID\n";
+        return 2;
+    }
+    auto const result{jobserver::Client::process_owner(process_id)};
+    if (!result) {
+        return print_error(result.error());
+    }
+    if (json) {
+        std::cout << *result << '\n';
+    } else {
+        print_process_owner(*result);
+    }
+    return 0;
+}
+
+auto kill_owned_command(std::vector<std::string> const& arguments) -> int {
+    auto json{false};
+    std::optional<std::string> kind;
+    for (std::size_t index{1}; index < arguments.size(); ++index) {
+        auto const& argument{arguments[index]};
+        if (argument == "--json") {
+            json = true;
+        } else if (argument == "--kind") {
+            auto const* value{require_value(arguments, index)};
+            if (value == nullptr || value->empty()) {
+                std::cerr << "jobserver: --kind requires a value\n";
+                return 2;
+            }
+            kind = *value;
+        } else {
+            std::cerr << "jobserver: unknown kill-owned option " << argument << '\n';
+            return 2;
+        }
+    }
+    auto const result{jobserver::Client::kill_owned(kind)};
+    if (!result) {
+        return print_error(result.error());
+    }
+    if (json) {
+        std::cout << *result << '\n';
+    } else {
+        print_kill_owned(*result);
+    }
+    return 0;
+}
 }
 
 auto wmain(int argc, wchar_t** argv) -> int {
@@ -443,6 +608,16 @@ auto wmain(int argc, wchar_t** argv) -> int {
     }
     if (command == "lease") {
         return lease_command(std::vector<std::string>{arguments.begin() + 1, arguments.end()});
+    }
+    if (command == "processes") {
+        return processes_command(std::vector<std::string>{arguments.begin() + 1, arguments.end()});
+    }
+    if (command == "process-owner") {
+        return process_owner_command(
+            std::vector<std::string>{arguments.begin() + 1, arguments.end()});
+    }
+    if (command == "kill-owned") {
+        return kill_owned_command(std::vector<std::string>{arguments.begin() + 1, arguments.end()});
     }
     if (command == "status" || command == "history") {
         auto const json{arguments.size() >= 3 && arguments[2] == "--json"};

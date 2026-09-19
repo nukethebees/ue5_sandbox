@@ -28,6 +28,18 @@ auto narrow(std::wstring const& text) -> std::string {
                         nullptr);
     return result;
 }
+
+auto duration_or_default(wchar_t const* const argument) -> std::chrono::milliseconds {
+    if (argument == nullptr) {
+        return std::chrono::seconds{60};
+    }
+    wchar_t* end{};
+    auto const value{std::wcstol(argument, &end, 10)};
+    if (end == argument || *end != L'\0' || value <= 0) {
+        return std::chrono::seconds{60};
+    }
+    return std::chrono::milliseconds{value};
+}
 }
 
 auto wmain(int argc, wchar_t** argv) -> int {
@@ -78,15 +90,20 @@ auto wmain(int argc, wchar_t** argv) -> int {
             std::ofstream ready{std::filesystem::path{argv[2]}};
             ready << GetCurrentProcessId();
         }
-        std::this_thread::sleep_for(std::chrono::seconds{60});
+        std::this_thread::sleep_for(duration_or_default(argc >= 4 ? argv[3] : nullptr));
         return 0;
     }
     if (mode == L"ready-tree" && argc >= 4) {
         STARTUPINFOW startup{};
         startup.cb = sizeof(STARTUPINFOW);
         PROCESS_INFORMATION child{};
+        auto const has_exit_root{argc >= 5 && std::wstring_view{argv[4]} == L"exit-root"};
+        auto const duration_argument{has_exit_root && argc >= 6
+                                         ? argv[5]
+                                         : (has_exit_root ? nullptr : (argc >= 5 ? argv[4] : nullptr))};
         auto command{L"jobserver-test-helper.exe ready-sleep \"" +
-                     std::filesystem::path{argv[3]}.wstring() + L"\""};
+                     std::filesystem::path{argv[3]}.wstring() + L"\" " +
+                     std::to_wstring(duration_or_default(duration_argument).count())};
         if (!CreateProcessW(nullptr,
                             command.data(),
                             nullptr,
@@ -105,10 +122,10 @@ auto wmain(int argc, wchar_t** argv) -> int {
             std::ofstream ready{std::filesystem::path{argv[2]}};
             ready << GetCurrentProcessId();
         }
-        if (argc >= 5 && std::wstring_view{argv[4]} == L"exit-root") {
+        if (has_exit_root) {
             return 0;
         }
-        std::this_thread::sleep_for(std::chrono::seconds{60});
+        std::this_thread::sleep_for(duration_or_default(duration_argument));
         return 0;
     }
     if (mode == L"output") {

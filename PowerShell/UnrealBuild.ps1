@@ -238,68 +238,16 @@ function get-ubt-build-state {
     }
 }
 
-function Stop-UbtProcessTree {
-    param(
-        [Parameter(Mandatory)]
-        [uint32]$process_id,
-        [Parameter(Mandatory)]
-        [object[]]$processes
-    )
-
-    $children = @($processes | Where-Object { $_.ParentProcessId -eq $process_id })
-    foreach ($child in $children) {
-        Stop-UbtProcessTree ([uint32]$child.ProcessId) $processes
-    }
-
-    Stop-Process -Id $process_id -Force -ErrorAction SilentlyContinue
-}
-
 function reset-ubt-build-state {
-    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
-    param(
-        [switch]$Force
-    )
-
-    $engine_root = Get-UbtEngineRoot
-    $processes = Get-UbtProcessSnapshot
-    $active_roots = @($processes | Where-Object {
-            (Test-SandboxCMakeProcess $_) -or (Test-UbtProcess $_ $engine_root)
-        })
-
-    if ($active_roots.Count -gt 0 -and -not $Force) {
-        $active_ids = $active_roots.ProcessId -join ', '
-        throw "Active Sandbox CMake or UBT processes were found ($active_ids). Wait for them to finish or rerun with -Force."
+    $jobserver = Get-JobserverPath
+    if (-not (Test-Path -LiteralPath $jobserver -PathType Leaf)) {
+        throw "The per-user jobserver is not installed. Run 'csetup' first."
     }
 
-    if (-not $PSCmdlet.ShouldProcess($engine_root, 'Reset UE build processes')) {
-        return
-    }
-
-    if ($Force) {
-        foreach ($process in $active_roots) {
-            Stop-UbtProcessTree ([uint32]$process.ProcessId) $processes
-        }
-    }
-
-    $dotnet_path = Join-Path $engine_root 'Engine\Binaries\ThirdParty\DotNet\10.0\win-x64\dotnet.exe'
-    & $dotnet_path build-server shutdown --msbuild
+    & $jobserver kill-owned --kind unreal-build
     if ($LASTEXITCODE -ne 0) {
-        Write-Warning "The UE-bundled build-server shutdown exited with code $LASTEXITCODE."
+        throw "Jobserver owned Unreal-build cleanup exited with code $LASTEXITCODE."
     }
-
-    $remaining_processes = Get-UbtProcessSnapshot
-    $remaining_ids = [System.Collections.Generic.HashSet[uint32]]::new()
-    $remaining_processes.ProcessId | ForEach-Object { $null = $remaining_ids.Add([uint32]$_) }
-    $orphaned_workers = @($remaining_processes | Where-Object {
-            (Test-UbtMsBuildWorker $_ $engine_root) -and
-            -not $remaining_ids.Contains([uint32]$_.ParentProcessId)
-        })
-
-    foreach ($worker in $orphaned_workers) {
-        Stop-Process -Id $worker.ProcessId -Force -ErrorAction SilentlyContinue
-    }
-
-    Write-Host "Stopped $($orphaned_workers.Count) orphaned UE MSBuild worker(s)."
 }
 
 function cbuild {

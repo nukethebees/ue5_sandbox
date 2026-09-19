@@ -19,6 +19,7 @@
 #include <iostream>
 #include <iterator>
 #include <limits>
+#include <optional>
 #include <thread>
 
 namespace jobserver {
@@ -158,6 +159,29 @@ auto validate_request(Json const& json) -> std::expected<void, Error> {
     if (type == "status" && json.contains("history") && !json["history"].is_boolean()) {
         return invalid("history");
     }
+    if (type == "processes") {
+        if ((json.contains("owned") && !json["owned"].is_boolean()) ||
+            (json.contains("worktree") && !valid_text(json["worktree"])) ||
+            (json.contains("owner_worktree") && !valid_text(json["owner_worktree"]))) {
+            return invalid("processes filter");
+        }
+        return {};
+    }
+    if (type == "process_owner") {
+        if (!json.contains("pid") ||
+            !valid_integer(json["pid"], 1, std::numeric_limits<DWORD>::max()) ||
+            !json.contains("owner_worktree") || !valid_text(json["owner_worktree"], false)) {
+            return invalid("process owner");
+        }
+        return {};
+    }
+    if (type == "kill_owned") {
+        if (!json.contains("owner_worktree") || !valid_text(json["owner_worktree"], false) ||
+            (json.contains("kind") && !valid_text(json["kind"]))) {
+            return invalid("owned cleanup");
+        }
+        return {};
+    }
     if (type == "cancel" || type == "kill" || type == "validate_nested") {
         auto const field{type == "validate_nested" ? "parent_id" : "id"};
         if (!json.contains(field) || !valid_text(json[field], false)) {
@@ -238,14 +262,69 @@ auto validate_request(Json const& json) -> std::expected<void, Error> {
     return {};
 }
 
+auto canonical_path(std::filesystem::path path) -> std::filesystem::path;
+
 auto parse_metadata(Json const& json) -> JobMetadata {
-    return JobMetadata{
+    auto metadata = JobMetadata{
         .name = json.value("name", "unnamed"),
         .kind = json.value("kind", "command"),
         .task = json.value("task", ""),
         .worktree = path_from_utf8(json.value("worktree", "")),
         .submit_directory = path_from_utf8(json.value("submit_directory", "")),
     };
+    metadata.worktree = canonical_path(metadata.worktree);
+    metadata.submit_directory = canonical_path(metadata.submit_directory);
+    return metadata;
+}
+
+auto canonical_path(std::filesystem::path path) -> std::filesystem::path {
+    if (path.empty()) {
+        return {};
+    }
+    std::error_code error;
+    auto canonical{std::filesystem::weakly_canonical(path, error)};
+    if (!error) {
+        return canonical;
+    }
+    error.clear();
+    auto absolute{std::filesystem::absolute(path, error)};
+    return error ? path.lexically_normal() : absolute.lexically_normal();
+}
+
+auto paths_equal(std::filesystem::path const& left, std::filesystem::path const& right) -> bool {
+    if (left.empty() || right.empty()) {
+        return false;
+    }
+    auto const left_text{canonical_path(left).wstring()};
+    auto const right_text{canonical_path(right).wstring()};
+    return CompareStringOrdinal(left_text.c_str(),
+                                static_cast<int>(left_text.size()),
+                                right_text.c_str(),
+                                static_cast<int>(right_text.size()),
+                                TRUE) == CSTR_EQUAL;
+}
+
+auto command_json(Command const& command) -> Json {
+    return {{"executable", path_to_utf8(command.executable)},
+            {"arguments", command.arguments},
+            {"working_directory", path_to_utf8(command.working_directory)}};
+}
+
+auto process_group_json(OwnedProcessGroup const& group, bool const safe_kill) -> Json {
+    auto const started_ms{
+        std::chrono::duration_cast<std::chrono::milliseconds>(group.started_at.time_since_epoch())
+            .count()};
+    return {{"job_id", group.job_id},
+            {"name", group.metadata.name},
+            {"kind", group.metadata.kind},
+            {"task", group.metadata.task},
+            {"worktree", path_to_utf8(group.metadata.worktree)},
+            {"submit_directory", path_to_utf8(group.metadata.submit_directory)},
+            {"command", command_json(group.command)},
+            {"root_pid", group.root.process_id},
+            {"root_creation_time", group.root.creation_time},
+            {"started_ms", started_ms},
+            {"safe_kill", safe_kill}};
 }
 
 auto pipe_connected(HANDLE const pipe) -> bool {
@@ -326,6 +405,14 @@ auto Server::run() -> int {
         std::chrono::duration_cast<std::chrono::milliseconds>(started_at_.time_since_epoch())
             .count());
     load_history();
+    if (!history_path_.empty()) {
+        owned_processes_ = std::make_unique<OwnedProcessStore>(history_path_.parent_path() /
+                                                               "active-processes.json");
+        if (owned_processes_->recovered_record_count() != 0) {
+            std::cerr << "Discarded " << owned_processes_->recovered_record_count()
+                      << " persisted process ownership record(s) after daemon restart\n";
+        }
+    }
     auto pipe_security{make_pipe_security()};
     if (!pipe_security) {
         std::cerr << pipe_security.error().message << '\n';
@@ -541,6 +628,12 @@ void Server::serve_client(void* const native_pipe, bool const control) {
             handle_validate_nested(pipe, *request);
         } else if (type == "status") {
             handle_status(pipe, json.value("history", false));
+        } else if (type == "processes") {
+            handle_processes(pipe, *request);
+        } else if (type == "process_owner") {
+            handle_process_owner(pipe, *request);
+        } else if (type == "kill_owned") {
+            handle_kill_owned(pipe, *request);
         } else if (type == "ping") {
             static_cast<void>(write_client(pipe, Json{{"type", "pong"}}.dump()));
         } else if (type == "cancel") {
@@ -789,6 +882,18 @@ void Server::handle_submit(void* const pipe, std::string const& message) {
         std::cerr << "Job logs are unavailable; continuing without persistent output\n";
     }
     auto supervisor{std::make_shared<Supervisor>()};
+    supervisor->set_started_callback(
+        [this, id, metadata, command](ProcessIdentity const root) -> std::expected<void, Error> {
+            if (!owned_processes_) {
+                return std::unexpected(
+                    Error{"ownership_unavailable", "Process ownership storage is unavailable"});
+            }
+            return owned_processes_->add({.job_id = id,
+                                          .metadata = metadata,
+                                          .command = command,
+                                          .root = root,
+                                          .started_at = std::chrono::system_clock::now()});
+        });
     {
         std::scoped_lock const lock{supervisors_mutex_};
         if (scheduler_.state(id) != JobState::starting) {
@@ -830,6 +935,9 @@ void Server::handle_submit(void* const pipe, std::string const& message) {
                    (client_writable.load() && pipe_connected(static_cast<HANDLE>(pipe)));
         })};
     if (!result) {
+        if (owned_processes_) {
+            owned_processes_->remove(id);
+        }
         test_barrier("before_resource_release");
         scheduler_.release(id, JobState::failed);
         {
@@ -850,6 +958,9 @@ void Server::handle_submit(void* const pipe, std::string const& message) {
         final_state = JobState::succeeded;
     }
     test_barrier("before_resource_release");
+    if (owned_processes_) {
+        owned_processes_->remove(id);
+    }
     scheduler_.release(id, final_state);
     {
         std::scoped_lock const lock{supervisors_mutex_};
@@ -1174,8 +1285,120 @@ void Server::handle_cancel(void* const pipe, std::string const& message, bool co
     static_cast<void>(write_client(pipe, Json{{"type", "accepted"}, {"id", id}}.dump()));
 }
 
+void Server::handle_processes(void* const pipe, std::string const& message) {
+    auto const request = Json::parse(message);
+    auto const owned{request.value("owned", false)};
+    auto const worktree{canonical_path(path_from_utf8(request.value("worktree", "")))};
+    auto const owner_worktree{canonical_path(path_from_utf8(request.value("owner_worktree", "")))};
+    auto groups = Json::array();
+
+    if (owned_processes_) {
+        for (auto const& group : owned_processes_->snapshot()) {
+            if (!worktree.empty() && !paths_equal(group.metadata.worktree, worktree)) {
+                continue;
+            }
+            auto const safe_kill{!owner_worktree.empty() &&
+                                 paths_equal(group.metadata.worktree, owner_worktree)};
+            if (owned && !safe_kill) {
+                continue;
+            }
+            groups.push_back(process_group_json(group, safe_kill));
+        }
+    }
+    static_cast<void>(write_client(pipe, Json{{"type", "processes"}, {"groups", groups}}.dump()));
+}
+
+void Server::handle_process_owner(void* const pipe, std::string const& message) {
+    auto const request = Json::parse(message);
+    auto const process_id{request.value("pid", 0U)};
+    auto const owner_worktree{canonical_path(path_from_utf8(request.value("owner_worktree", "")))};
+    if (owned_processes_) {
+        for (auto const& group : owned_processes_->snapshot()) {
+            std::shared_ptr<Supervisor> supervisor;
+            {
+                std::scoped_lock const lock{supervisors_mutex_};
+                auto const found{supervisors_.find(group.job_id)};
+                if (found != supervisors_.end()) {
+                    supervisor = found->second;
+                }
+            }
+            if (!supervisor || !supervisor->contains_process(process_id)) {
+                continue;
+            }
+            auto const safe_kill{!owner_worktree.empty() &&
+                                 paths_equal(group.metadata.worktree, owner_worktree)};
+            auto response = process_group_json(group, safe_kill);
+            response["type"] = "process_owner";
+            response["pid"] = process_id;
+            response["reason"] =
+                safe_kill ? "owned by the current worktree" : "owned by another worktree";
+            static_cast<void>(write_client(pipe, response.dump()));
+            return;
+        }
+    }
+    static_cast<void>(write_client(pipe,
+                                   Json{{"type", "process_owner"},
+                                        {"pid", process_id},
+                                        {"safe_kill", false},
+                                        {"reason", "not explicitly owned by an active job group"}}
+                                       .dump()));
+}
+
+void Server::handle_kill_owned(void* const pipe, std::string const& message) {
+    auto const request = Json::parse(message);
+    auto const owner_worktree{canonical_path(path_from_utf8(request.value("owner_worktree", "")))};
+    auto const kind{request.value("kind", "")};
+    auto killed = Json::array();
+    auto exited = Json::array();
+    auto refused = Json::array();
+
+    if (owned_processes_) {
+        for (auto const& group : owned_processes_->snapshot()) {
+            if (!kind.empty() && group.metadata.kind != kind) {
+                continue;
+            }
+            if (owner_worktree.empty() || !paths_equal(group.metadata.worktree, owner_worktree)) {
+                auto diagnostic = process_group_json(group, false);
+                diagnostic["reason"] = "owned by another worktree";
+                refused.push_back(std::move(diagnostic));
+                continue;
+            }
+            std::shared_ptr<Supervisor> supervisor;
+            {
+                std::scoped_lock const lock{supervisors_mutex_};
+                auto const found{supervisors_.find(group.job_id)};
+                if (found != supervisors_.end()) {
+                    supervisor = found->second;
+                }
+            }
+            if (!supervisor) {
+                auto diagnostic = process_group_json(group, false);
+                diagnostic["reason"] = "no live Job Object is available";
+                refused.push_back(std::move(diagnostic));
+                continue;
+            }
+            if (!supervisor->has_active_processes()) {
+                exited.push_back(process_group_json(group, true));
+                owned_processes_->remove(group.job_id);
+                continue;
+            }
+            supervisor->kill();
+            killed.push_back(process_group_json(group, true));
+        }
+    }
+    static_cast<void>(write_client(pipe,
+                                   Json{{"type", "kill_owned"},
+                                        {"killed", std::move(killed)},
+                                        {"exited", std::move(exited)},
+                                        {"refused", std::move(refused)}}
+                                       .dump()));
+}
+
 void Server::finish_job(std::string const& id) noexcept {
     try {
+        if (owned_processes_) {
+            owned_processes_->remove(id);
+        }
         static_cast<void>(scheduler_.cancel_queued(id));
         scheduler_.release(id, JobState::interrupted);
         {

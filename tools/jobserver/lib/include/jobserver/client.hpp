@@ -6,6 +6,7 @@
 #include <expected>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 
 namespace jobserver {
@@ -36,6 +37,13 @@ class Client {
     [[nodiscard]] static auto run(SubmitRequest const& request, OutputCallback output)
         -> std::expected<int, Error>;
     [[nodiscard]] static auto status(bool include_history = false)
+        -> std::expected<std::string, Error>;
+    [[nodiscard]] static auto
+        processes(bool owned, std::optional<std::filesystem::path> worktree = std::nullopt)
+            -> std::expected<std::string, Error>;
+    [[nodiscard]] static auto process_owner(std::uint32_t process_id)
+        -> std::expected<std::string, Error>;
+    [[nodiscard]] static auto kill_owned(std::optional<std::string> kind = std::nullopt)
         -> std::expected<std::string, Error>;
     [[nodiscard]] static auto ping() -> std::expected<void, Error>;
     [[nodiscard]] static auto cancel(std::string const& id, bool kill)

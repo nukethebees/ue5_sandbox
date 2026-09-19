@@ -72,6 +72,20 @@ void close_if_valid(HANDLE const handle) {
     }
 }
 
+auto process_creation_time(HANDLE const process) -> std::uint64_t {
+    FILETIME created{};
+    FILETIME exited{};
+    FILETIME kernel{};
+    FILETIME user{};
+    if (!GetProcessTimes(process, &created, &exited, &kernel, &user)) {
+        return 0;
+    }
+    ULARGE_INTEGER value{};
+    value.LowPart = created.dwLowDateTime;
+    value.HighPart = created.dwHighDateTime;
+    return value.QuadPart;
+}
+
 void read_output(HANDLE const pipe,
                  std::string stream,
                  Supervisor::Output const& output,
@@ -95,6 +109,11 @@ void read_output(HANDLE const pipe,
 Supervisor::~Supervisor() {
     std::scoped_lock const lock{mutex_};
     close_if_valid(static_cast<HANDLE>(job_handle_));
+}
+
+void Supervisor::set_started_callback(Started callback) {
+    std::scoped_lock const lock{mutex_};
+    started_ = std::move(callback);
 }
 
 auto Supervisor::run(Command const& command,
@@ -209,6 +228,30 @@ auto Supervisor::run(Command const& command,
         job_handle_ = job;
         if (cancellation_requested_) {
             TerminateJobObject(job, static_cast<UINT>(termination_exit_code_));
+        }
+    }
+    Started started;
+    {
+        std::scoped_lock const lock{mutex_};
+        started = started_;
+    }
+    if (started) {
+        auto const creation_time{process_creation_time(process.hProcess)};
+        auto registered{creation_time == 0
+                            ? std::expected<void, Error>{std::unexpected(
+                                  Error{"process_identity_failed",
+                                        "Could not read the supervised process creation time"})}
+                            : started(ProcessIdentity{.process_id = process.dwProcessId,
+                                                      .creation_time = creation_time})};
+        if (!registered) {
+            TerminateJobObject(job, 137U);
+            close_if_valid(process.hThread);
+            close_if_valid(process.hProcess);
+            close_if_valid(stdout_write);
+            close_if_valid(stderr_write);
+            close_if_valid(stdout_read);
+            close_if_valid(stderr_read);
+            return std::unexpected(registered.error());
         }
     }
     test_barrier("before_process_resume");
@@ -340,6 +383,20 @@ auto Supervisor::contains_process(std::uint32_t const process_id) -> bool {
     }
     CloseHandle(process);
     return contained != FALSE;
+}
+
+auto Supervisor::has_active_processes() -> bool {
+    std::scoped_lock const lock{mutex_};
+    if (job_handle_ == nullptr) {
+        return false;
+    }
+    JOBOBJECT_BASIC_ACCOUNTING_INFORMATION accounting{};
+    return QueryInformationJobObject(static_cast<HANDLE>(job_handle_),
+                                     JobObjectBasicAccountingInformation,
+                                     &accounting,
+                                     sizeof(accounting),
+                                     nullptr) != FALSE &&
+           accounting.ActiveProcesses != 0;
 }
 
 void Supervisor::kill() {
