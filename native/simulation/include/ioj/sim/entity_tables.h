@@ -93,9 +93,11 @@ struct EntityTables {
     }
 
     void validate_health_mappings() const {
+#ifndef NDEBUG
         health_indices_.validate([this](HealthIndex const index, EntityUniqueId const owner) {
             assert(health.contains(index, owner));
         });
+#endif
     }
 
     HealthTable health;

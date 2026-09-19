@@ -8,7 +8,7 @@ namespace {
 [[nodiscard]] auto checked_slot(std::span<EntityUniqueId const> const owners [[maybe_unused]],
                                 std::span<HealthIndex const> const indices,
                                 std::span<EntityUniqueId const> const expected_owners
-                                    [[maybe_unused]],
+                                [[maybe_unused]],
                                 std::int32_t const row) -> std::size_t {
     assert(row >= 0 && static_cast<std::size_t>(row) < indices.size());
     auto const index{indices[static_cast<std::size_t>(row)]};
@@ -123,7 +123,11 @@ auto HealthTable::contains(HealthIndex const index, EntityUniqueId const owner) 
     return valid_slot(index) && owners_[static_cast<std::size_t>(index.raw_value())] == owner;
 }
 auto HealthTable::get_health(HealthIndex const index, EntityUniqueId const owner) const -> Health {
+#ifndef NDEBUG
     assert(contains(index, owner));
+#else
+    static_cast<void>(owner);
+#endif
     return values_[slot(index)];
 }
 auto HealthTable::get_owner(HealthIndex const index) const -> EntityUniqueId {
