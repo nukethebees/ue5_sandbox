@@ -11,6 +11,7 @@
 #include <Editor.h>
 #include <Engine/Level.h>
 #include <Engine/World.h>
+#include <LevelUtils.h>
 #include <Misc/PackageName.h>
 #include <ScopedTransaction.h>
 
@@ -19,6 +20,22 @@ namespace s7_level_authoring_detail {
 struct FResolvedActor {
     EResolvedLevelArchetype archetype{};
     FLevelTeamId team{};
+};
+
+struct FPreparedSyncEntity {
+    FLevelEntityId id{};
+    EResolvedLevelArchetype archetype{};
+    ETestTeam team{};
+    UClass* actor_class{};
+    FTransform transform{};
+    AActor* existing_actor{};
+    bool requires_spawn{};
+};
+
+struct FPreparedSyncPlan {
+    TArray<FPreparedSyncEntity> entities{};
+    TArray<AActor*> actors_to_destroy{};
+    TArray<FS7LevelSyncChange> changes{};
 };
 
 auto resolve_actor(AActor const& actor) -> TOptional<FResolvedActor> {
@@ -119,15 +136,38 @@ auto strict_subset_error(FLevelDefinition const& definition) -> FString {
         unsupported.Add(TEXT("mission events"));
     }
     auto const entities{definition.entities.get_const_view()};
+    TSet<FLevelTeamId> initial_teams;
     for (auto const spawn_time : entities.spawn_times_seconds) {
         if (spawn_time != 0.0) {
             unsupported.AddUnique(TEXT("delayed spawns"));
         }
     }
-    return unsupported.IsEmpty()
-             ? FString{}
-             : FString::Printf(TEXT("The focused authoring mode does not support: %s."),
-                               *FString::Join(unsupported, TEXT(", ")));
+    auto const entity_count{entities.num()};
+    for (int32 index{}; index < entity_count; ++index) {
+        if (entities.spawn_times_seconds[index] == 0.0) {
+            initial_teams.Add(entities.teams[index]);
+        }
+    }
+
+    TArray<FString> unused_teams;
+    for (auto const team : definition.teams) {
+        if (!initial_teams.Contains(team)) {
+            unused_teams.Add(team.value.ToString());
+        }
+    }
+
+    TArray<FString> errors;
+    if (!unsupported.IsEmpty()) {
+        errors.Add(FString::Printf(TEXT("The focused authoring mode does not support: %s."),
+                                   *FString::Join(unsupported, TEXT(", "))));
+    }
+    if (!unused_teams.IsEmpty()) {
+        errors.Add(FString::Printf(
+            TEXT("The focused authoring mode cannot preserve declared teams unused by initial "
+                 "entities: %s."),
+            *FString::Join(unused_teams, TEXT(", "))));
+    }
+    return FString::Join(errors, TEXT("\n"));
 }
 
 auto mission_mode(ETestMissionMode const mode) -> ::ioj::sim::levels::LevelMissionMode {
@@ -167,6 +207,132 @@ auto validation_error(FLevelDefinition const& definition) -> FString {
         messages.Add(error.message);
     }
     return FString::Join(messages, TEXT("\n"));
+}
+
+auto prepare_sync_plan(ULevel const& level,
+                       AS7LevelAuthoringDocument const& document,
+                       FLevelDefinition const& definition)
+    -> std::expected<FPreparedSyncPlan, FString> {
+    if (!GEditor) {
+        return std::unexpected{TEXT("GEditor is unavailable.")};
+    }
+
+    auto* const editor_world{GEditor->GetEditorWorldContext().World()};
+    if (!IsValid(editor_world) || editor_world->IsGameWorld()) {
+        return std::unexpected{TEXT("The editor world is unavailable.")};
+    }
+    if (level.OwningWorld != editor_world || editor_world->GetCurrentLevel() != &level) {
+        return std::unexpected{TEXT("The target is not the current editor level.")};
+    }
+    if (FLevelUtils::IsLevelLocked(const_cast<ULevel*>(&level))) {
+        return std::unexpected{TEXT("The current editor level is locked.")};
+    }
+    if (!IsValid(&document) || document.GetLevel() != &level) {
+        return std::unexpected{
+            TEXT("The authoring document does not belong to the current level.")};
+    }
+    if (!IsValid(document.level_config)) {
+        return std::unexpected{TEXT("The authoring document has no level configuration.")};
+    }
+    if (auto const error{validation_error(definition)}; !error.IsEmpty()) {
+        return std::unexpected{error};
+    }
+    if (auto const error{strict_subset_error(definition)}; !error.IsEmpty()) {
+        return std::unexpected{error};
+    }
+
+    TMap<FName, AActor*> actors_by_id;
+    TSet<AActor*> bound_actors;
+    for (auto const& binding : document.entities) {
+        if (binding.id.IsNone() || !IsValid(binding.actor)) {
+            return std::unexpected{TEXT("Every entity binding must have a valid actor and id.")};
+        }
+        if (binding.actor->GetLevel() != &level) {
+            return std::unexpected{FString::Printf(TEXT("Entity '%s' belongs to another level."),
+                                                   *binding.id.ToString())};
+        }
+        if (actors_by_id.Contains(binding.id)) {
+            return std::unexpected{
+                FString::Printf(TEXT("The authoring document contains duplicate entity id '%s'."),
+                                *binding.id.ToString())};
+        }
+        if (bound_actors.Contains(binding.actor.Get())) {
+            return std::unexpected{
+                FString::Printf(TEXT("Actor '%s' is bound to more than one entity id."),
+                                *binding.actor->GetActorLabel())};
+        }
+
+        actors_by_id.Add(binding.id, binding.actor.Get());
+        bound_actors.Add(binding.actor.Get());
+    }
+
+    FPreparedSyncPlan prepared;
+    auto const entities{definition.entities.get_const_view()};
+    auto const entity_count{entities.num()};
+    prepared.entities.Reserve(entity_count);
+
+    TSet<FName> incoming_ids;
+    for (int32 index{}; index < entity_count; ++index) {
+        auto const id{entities.ids[index]};
+        auto const archetype{resolve_level_archetype(entities.archetypes[index])};
+        auto const team{resolve_level_team(entities.teams[index])};
+        auto* const type{archetype.IsSet() ? actor_class(*archetype, *document.level_config)
+                                           : nullptr};
+        if (!archetype.IsSet() || !team.IsSet() || !IsValid(type) ||
+            type->HasAnyClassFlags(CLASS_Abstract | CLASS_NotPlaceable | CLASS_Transient)) {
+            return std::unexpected{
+                FString::Printf(TEXT("Entity '%s' cannot be materialised."), *id.value.ToString())};
+        }
+        if (incoming_ids.Contains(id.value)) {
+            return std::unexpected{
+                FString::Printf(TEXT("The level definition contains duplicate entity id '%s'."),
+                                *id.value.ToString())};
+        }
+        incoming_ids.Add(id.value);
+
+        auto* const existing_actor{actors_by_id.FindRef(id.value)};
+        auto const transform{FTransform{FRotator{entities.rotations.pitches[index],
+                                                 entities.rotations.yaws[index],
+                                                 entities.rotations.rolls[index]},
+                                        FVector{entities.positions.xs[index],
+                                                entities.positions.ys[index],
+                                                entities.positions.zs[index]}}};
+        auto action{TOptional<ES7LevelSyncAction>{}};
+        auto requires_spawn{false};
+        if (!IsValid(existing_actor)) {
+            action = ES7LevelSyncAction::Add;
+            requires_spawn = true;
+        } else if (existing_actor->GetClass() != type) {
+            action = ES7LevelSyncAction::Replace;
+            requires_spawn = true;
+            prepared.actors_to_destroy.Add(existing_actor);
+        } else {
+            auto const resolved{resolve_actor(*existing_actor)};
+            if (!resolved.IsSet() || resolved->team != entities.teams[index] ||
+                !existing_actor->GetActorTransform().Equals(transform, 0.001) ||
+                existing_actor->GetActorLabel() != id.value.ToString()) {
+                action = ES7LevelSyncAction::Update;
+            }
+        }
+        if (action.IsSet()) {
+            prepared.changes.Add({id, action.GetValue()});
+        }
+        prepared.entities.Add({.id = id,
+                               .archetype = archetype.GetValue(),
+                               .team = team.GetValue(),
+                               .actor_class = type,
+                               .transform = transform,
+                               .existing_actor = existing_actor,
+                               .requires_spawn = requires_spawn});
+    }
+
+    for (auto const& binding : document.entities) {
+        if (!incoming_ids.Contains(binding.id)) {
+            prepared.changes.Add({FLevelEntityId{binding.id}, ES7LevelSyncAction::Remove});
+            prepared.actors_to_destroy.Add(binding.actor.Get());
+        }
+    }
+    return prepared;
 }
 }
 
@@ -413,139 +579,65 @@ auto make_s7_level_sync_plan(ULevel const& level,
                              AS7LevelAuthoringDocument const& document,
                              FLevelDefinition const& definition)
     -> std::expected<FS7LevelSyncPlan, FString> {
-    if (auto const error{validation_error(definition)}; !error.IsEmpty()) {
-        return std::unexpected{error};
+    auto prepared{prepare_sync_plan(level, document, definition)};
+    if (!prepared) {
+        return std::unexpected{prepared.error()};
     }
-    if (auto const error{strict_subset_error(definition)}; !error.IsEmpty()) {
-        return std::unexpected{error};
-    }
-    if (!IsValid(document.level_config)) {
-        return std::unexpected{TEXT("The authoring document has no level configuration.")};
-    }
-
-    TMap<FName, AActor*> actors_by_id;
-    for (auto const& binding : document.entities) {
-        if (!binding.id.IsNone() && IsValid(binding.actor) && binding.actor->GetLevel() == &level) {
-            if (actors_by_id.Contains(binding.id)) {
-                return std::unexpected{
-                    TEXT("The authoring document contains duplicate entity ids.")};
-            }
-            actors_by_id.Add(binding.id, binding.actor);
-        }
-    }
-
-    FS7LevelSyncPlan plan{.definition = definition};
-    TSet<FName> incoming_ids;
-    auto const entities{definition.entities.get_const_view()};
-    auto const count{entities.num()};
-    for (int32 index{}; index < count; ++index) {
-        auto const id{entities.ids[index].value};
-        incoming_ids.Add(id);
-        auto* const* existing{actors_by_id.Find(id)};
-        if (!existing) {
-            plan.changes.Add({entities.ids[index], ES7LevelSyncAction::Add});
-            continue;
-        }
-        auto const archetype{resolve_level_archetype(entities.archetypes[index])};
-        auto const expected_class{archetype.IsSet()
-                                      ? actor_class(archetype.GetValue(), *document.level_config)
-                                      : nullptr};
-        if (!IsValid(expected_class)) {
-            return std::unexpected{FString::Printf(TEXT("No actor class is configured for '%s'."),
-                                                   *entities.archetypes[index].value.ToString())};
-        }
-        if (!(*existing)->IsA(expected_class)) {
-            plan.changes.Add({entities.ids[index], ES7LevelSyncAction::Replace});
-            continue;
-        }
-        auto const team{resolve_level_team(entities.teams[index])};
-        auto const resolved{resolve_actor(**existing)};
-        auto const expected_transform{FTransform{FRotator{entities.rotations.pitches[index],
-                                                          entities.rotations.yaws[index],
-                                                          entities.rotations.rolls[index]},
-                                                 FVector{entities.positions.xs[index],
-                                                         entities.positions.ys[index],
-                                                         entities.positions.zs[index]}}};
-        if (!team.IsSet() || !resolved.IsSet() || resolved->team != entities.teams[index] ||
-            !(*existing)->GetActorTransform().Equals(expected_transform, 0.001) ||
-            (*existing)->GetActorLabel() != id.ToString()) {
-            plan.changes.Add({entities.ids[index], ES7LevelSyncAction::Update});
-        }
-    }
-    for (auto const& binding : document.entities) {
-        if (!binding.id.IsNone() && IsValid(binding.actor) && !incoming_ids.Contains(binding.id)) {
-            plan.changes.Add({FLevelEntityId{binding.id}, ES7LevelSyncAction::Remove});
-        }
-    }
-    return plan;
+    return FS7LevelSyncPlan{.definition = definition, .changes = MoveTemp(prepared->changes)};
 }
 
 auto apply_s7_level_sync_plan(ULevel& level,
                               AS7LevelAuthoringDocument& document,
                               FS7LevelSyncPlan const& plan) -> std::expected<void, FString> {
-    if (!GEditor || !IsValid(document.level_config)) {
-        return std::unexpected{TEXT("The editor or level configuration is unavailable.")};
-    }
-    TMap<FName, AActor*> existing;
-    for (auto const& binding : document.entities) {
-        if (!binding.id.IsNone() && IsValid(binding.actor)) {
-            existing.Add(binding.id, binding.actor);
-        }
-    }
-
-    auto const entities{plan.definition.entities.get_const_view()};
-    auto const entity_count{entities.num()};
-    for (int32 index{}; index < entity_count; ++index) {
-        auto const archetype{resolve_level_archetype(entities.archetypes[index])};
-        auto const team{resolve_level_team(entities.teams[index])};
-        auto const* const type{archetype.IsSet() ? actor_class(*archetype, *document.level_config)
-                                                 : nullptr};
-        if (!archetype.IsSet() || !team.IsSet() || !IsValid(type) ||
-            type->HasAnyClassFlags(CLASS_Abstract | CLASS_NotPlaceable | CLASS_Transient)) {
-            return std::unexpected{FString::Printf(TEXT("Entity '%s' cannot be materialised."),
-                                                   *entities.ids[index].value.ToString())};
-        }
+    auto prepared{prepare_sync_plan(level, document, plan.definition)};
+    if (!prepared) {
+        return std::unexpected{prepared.error()};
     }
 
     FScopedTransaction transaction{
         NSLOCTEXT("S7LevelAuthoring", "Apply", "Apply S7 Level to Scene")};
-    document.Modify();
+    TArray<AActor*> staged_actors;
+    staged_actors.Reserve(prepared->entities.Num());
     TMap<FName, AActor*> resolved;
-    for (int32 index{}; index < entity_count; ++index) {
-        auto const id{entities.ids[index].value};
-        auto const archetype{resolve_level_archetype(entities.archetypes[index]).GetValue()};
-        auto const team{resolve_level_team(entities.teams[index]).GetValue()};
-        auto* actor{existing.FindRef(id)};
-        auto* const type{actor_class(archetype, *document.level_config)};
-        if (IsValid(actor) && !actor->IsA(type)) {
+    for (auto const& entity : prepared->entities) {
+        auto* actor{entity.existing_actor};
+        if (entity.requires_spawn) {
+            actor = GEditor->AddActor(
+                &level, entity.actor_class, entity.transform, true, RF_Transactional, false);
+            if (!IsValid(actor)) {
+                for (auto* const staged_actor : staged_actors) {
+                    if (IsValid(staged_actor)) {
+                        staged_actor->Destroy();
+                    }
+                }
+                transaction.Cancel();
+                return std::unexpected{FString::Printf(TEXT("Could not spawn entity '%s'."),
+                                                       *entity.id.value.ToString())};
+            }
+            staged_actors.Add(actor);
+        }
+        resolved.Add(entity.id.value, actor);
+    }
+
+    for (auto const& entity : prepared->entities) {
+        auto& actor{*resolved.FindChecked(entity.id.value)};
+        configure_actor(actor,
+                        entity.archetype,
+                        entity.team,
+                        *document.level_config,
+                        entity.transform,
+                        entity.id.value);
+    }
+    for (auto* const actor : prepared->actors_to_destroy) {
+        if (IsValid(actor)) {
             actor->Modify();
             actor->Destroy();
-            actor = nullptr;
-        }
-        auto const transform{FTransform{FRotator{entities.rotations.pitches[index],
-                                                 entities.rotations.yaws[index],
-                                                 entities.rotations.rolls[index]},
-                                        FVector{entities.positions.xs[index],
-                                                entities.positions.ys[index],
-                                                entities.positions.zs[index]}}};
-        if (!IsValid(actor)) {
-            actor = GEditor->AddActor(&level, type, transform, true, RF_Transactional, false);
-            if (!IsValid(actor)) {
-                transaction.Cancel();
-                return std::unexpected{
-                    FString::Printf(TEXT("Could not spawn entity '%s'."), *id.ToString())};
-            }
-        }
-        configure_actor(*actor, archetype, team, *document.level_config, transform, id);
-        resolved.Add(id, actor);
-    }
-    for (auto const& binding : document.entities) {
-        if (IsValid(binding.actor) && !resolved.Contains(binding.id)) {
-            binding.actor->Modify();
-            binding.actor->Destroy();
         }
     }
 
+    document.Modify();
+    auto const entities{plan.definition.entities.get_const_view()};
+    auto const entity_count{entities.num()};
     document.level_id = plan.definition.metadata.id.value;
     document.title = plan.definition.metadata.title;
     document.description = plan.definition.metadata.description;
