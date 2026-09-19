@@ -82,6 +82,24 @@ struct SPACEGAMEPRESENTATION_API FPlayerShipConfig {
     UPROPERTY(EditAnywhere, Category = "Movement")
     float brake_speed{1000.f};
 
+    UPROPERTY(EditAnywhere, Category = "Movement|Power", meta = (ClampMin = "0.0"))
+    float power_max_speed{8000.f};
+
+    UPROPERTY(EditAnywhere, Category = "Movement|Power", meta = (ClampMin = "0.0"))
+    float power_acceleration{10000.f};
+
+    UPROPERTY(EditAnywhere, Category = "Movement|Power", meta = (ClampMin = "0.0"))
+    float power_boost_max_speed{16000.f};
+
+    UPROPERTY(EditAnywhere, Category = "Movement|Power", meta = (ClampMin = "0.0"))
+    float power_boost_acceleration{20000.f};
+
+    UPROPERTY(EditAnywhere, Category = "Movement|Power", meta = (ClampMin = "0.0"))
+    float power_brake_deceleration{14000.f};
+
+    UPROPERTY(EditAnywhere, Category = "Movement|Power", meta = (ClampMin = "0.0"))
+    float power_emergency_brake_deceleration{32000.f};
+
     UPROPERTY(EditAnywhere, Category = "Movement|Steering")
     float rotation_speed{60.f};
 

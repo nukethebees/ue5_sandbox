@@ -80,6 +80,13 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Authored forward velocity trim uses the current default"),
                               source->player_ship.forward_velocity_trim_fraction,
                               0.05f);
+
+        TestRunner->TestEqual(TEXT("Power max speed is converted"),
+                              converted_defaults.power_max_speed,
+                              presentation_defaults.power_max_speed);
+        TestRunner->TestEqual(TEXT("Power acceleration is converted"),
+                              converted_defaults.power_acceleration,
+                              presentation_defaults.power_acceleration);
     }
 
     TEST_METHOD(RotatedWorldBoundsEncloseTransformedCorners)

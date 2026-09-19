@@ -116,9 +116,11 @@ struct Sim {
     void stop_sampling();
     void adjust_desired_forward_velocity(float direction);
     void turn(ml::Vector2d direction) noexcept;
+    void set_throttle(float input) noexcept;
     void start_boost();
     void stop_boost();
     void start_brake();
+    void start_emergency_brake();
     void stop_brake();
     void roll(float direction) noexcept;
     void set_flight_mode(SpaceShipFlightMode new_flight_mode) noexcept;
@@ -167,6 +169,7 @@ struct Sim {
     ml::Vector2d planar_movement_direction{ml::Vector2d{}};
     ml::Vector2d rotation_input{ml::Vector2d{}};
     float roll_input{0.f};
+    float throttle{};
 
     ShipLaserMode laser_mode{ShipLaserMode::Single};
     float laser_shot_cooldown{0.f};
@@ -207,7 +210,10 @@ struct Sim {
     void integrate_velocity(float dt, MovementState& movement);
     void update_rotation(float dt, MovementState& movement);
     void update_body_orientation(float dt, MovementState& movement);
+    void integrate_power_velocity(float dt, MovementState& movement);
     void set_desired_planar_velocity(ml::Vector3d desired_velocity);
+    void set_control_mode(SpaceShipControlMode new_control_mode);
+    [[nodiscard]] auto uses_power_controller() const noexcept -> bool;
     std::uint64_t boost_start_sequence_{};
     void set_boost_brake_state(BoostBrakeState state);
     void set_boost_brake_state(BoostBrakeState state, MovementState& movement);
