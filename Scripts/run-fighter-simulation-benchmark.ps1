@@ -21,7 +21,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $repo = [IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
-$runner = Join-Path $PSScriptRoot 'run-native-simulation-benchmark.ps1'
+$runner = Join-Path $repo 'tools/bin/BenchmarkTools.exe'
 $level = Join-Path $repo 'LevelScripts/FighterSchedulingBenchmark.scm'
 
 if ($FighterCaps.Count -eq 0) {
@@ -53,14 +53,23 @@ New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 $results = [Collections.Generic.List[object]]::new()
 $summary = [Collections.Generic.List[object]]::new()
 $expectedTicks = [int][Math]::Ceiling($Seconds * 60.0)
-$arguments = @{
-    Level = $level
-    Seconds = $Seconds
-    FighterStressCaps = $FighterCaps -join ','
-    WarmupSeconds = $WarmupSeconds
-    SaturationTimeoutSeconds = $SaturationTimeoutSeconds
-    SkipBuild = $SkipBuild.IsPresent
-}
+$secondsText = $Seconds.ToString('R', [Globalization.CultureInfo]::InvariantCulture)
+$warmupSecondsText = $WarmupSeconds.ToString('R', [Globalization.CultureInfo]::InvariantCulture)
+$saturationTimeoutSecondsText = $SaturationTimeoutSeconds.ToString('R', [Globalization.CultureInfo]::InvariantCulture)
+$arguments = @(
+    'native-simulation'
+    '--level'
+    $level
+    '--seconds'
+    $secondsText
+    '--fighter-stress-caps'
+    ($FighterCaps -join ',')
+    '--warmup-seconds'
+    $warmupSecondsText
+    '--saturation-timeout-seconds'
+    $saturationTimeoutSecondsText
+)
+if ($SkipBuild) { $arguments += '--skip-build' }
 Write-Host "Running fighter caps $($FighterCaps -join ', ') in one native benchmark process..."
 $output = @(& $runner @arguments)
 if ($LASTEXITCODE -ne 0) {

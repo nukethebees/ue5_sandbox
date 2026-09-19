@@ -10,15 +10,21 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $repo = [IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
-$runner = Join-Path $PSScriptRoot 'run-native-simulation-benchmark.ps1'
+$runner = Join-Path $repo 'tools/bin/BenchmarkTools.exe'
 $level = Join-Path $repo 'LevelScripts/Benchmarks/Batch_benchmark.scm'
-$arguments = @{
-    Level = $level
-    Seconds = $Seconds
-    GameSpeed = 100
-    BuildPreset = 'frame-memory-level-benchmark'
-    SkipBuild = $SkipBuild.IsPresent
-}
+$secondsText = $Seconds.ToString('R', [Globalization.CultureInfo]::InvariantCulture)
+$arguments = @(
+    'native-simulation'
+    '--level'
+    $level
+    '--seconds'
+    $secondsText
+    '--game-speed'
+    '100'
+    '--build-preset'
+    'frame-memory-level-benchmark'
+)
+if ($SkipBuild) { $arguments += '--skip-build' }
 
 $output = @(& $runner @arguments)
 if ($LASTEXITCODE -ne 0) {

@@ -10,6 +10,9 @@ Workflows that directly use a staged executable require it to be present.
 - `perf/` contains performance tooling integrated into the root CMake project.
 - `GitTools/` is a small C# executable for Git worktree discovery. Build the complete C# tooling
   workspace with `dotnet build tools/Tools.slnx` or `ctools` after loading `dev.ps1`.
+- `BenchmarkTools/` owns reusable benchmark orchestration. Its staged executable runs a native S7
+  workload as `tools/bin/BenchmarkTools.exe native-simulation --level <path> --seconds <value>`;
+  it performs the configured CMake build, then acquires the exclusive benchmark and machine lease.
 - `NativeBinaryTools/` inspects native object files for build integration checks. Its staged
   executable can be run as `tools/bin/NativeBinaryTools.exe mimalloc-symbols <generate|verify> ...`.
   Native CMake builds use a configuration-local copy built on demand, so they do not require a
@@ -38,7 +41,10 @@ Workflows that directly use a staged executable require it to be present.
 `Directory.Build.props` applies the shared target framework, nullable, implicit-using, warning,
 analysis, and warnings-as-errors policy to every .NET project below `tools/`.
 
-New standalone C# tools should use their own project and test project under this directory.
+New standalone C# tools should use their own project and test project under this directory. C# owns
+developer-tool validation, subprocess execution, filesystem work, jobserver integration, and
+benchmark/report orchestration; PowerShell remains the interactive shell façade and Python remains
+appropriate for plotting or scientific analysis.
 Executable command projects opt into staging with `IsStandaloneTool=true`; their normal Debug and
 Release output remains project-local, while the post-build target copies the complete runtime output
 tree for the most recently built configuration into `tools/bin/` using the tool's unique executable

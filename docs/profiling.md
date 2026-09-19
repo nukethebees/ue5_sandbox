@@ -44,9 +44,9 @@ the benchmark exits, save the capture from the Tracy Profiler to a `.tracy` file
 not save one automatically. Store local captures beneath `.local/benchmarks/` and do not commit
 them.
 
-The convenience PowerShell level runners do not currently expose `--wait-for-profiler`. They are
-appropriate for unprofiled measurements; use the jobserver-wrapped executable above when a
-reliable Tracy capture is required.
+`BenchmarkTools native-simulation` and its PowerShell report wrappers do not currently expose
+`--wait-for-profiler`. They are appropriate for unprofiled measurements; use the jobserver-wrapped
+executable above when a reliable Tracy capture is required.
 
 ## Related documentation
 

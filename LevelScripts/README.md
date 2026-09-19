@@ -12,9 +12,9 @@ The top-level `.scm` scenarios include the fighter scheduling benchmark and deve
 level rather than launching a timing workload manually:
 
 ```powershell
-pwsh -NoProfile -File Scripts/run-native-simulation-benchmark.ps1 `
-  -Level .\LevelScripts\BenchmarkFleet_10.scm `
-  -Seconds 20
+.\tools\bin\BenchmarkTools.exe native-simulation `
+  --level .\LevelScripts\BenchmarkFleet_10.scm `
+  --seconds 20
 ```
 
 See [Benchmarks](../docs/benchmarks.md) for the focused fighter and frame-memory runners, and
