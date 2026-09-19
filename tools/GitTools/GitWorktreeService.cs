@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using GitSupport;
 
 namespace GitTools;
 
@@ -26,6 +27,7 @@ public sealed class GitWorktreeService
         start_info.ArgumentList.Add("worktree");
         start_info.ArgumentList.Add("list");
         start_info.ArgumentList.Add("--porcelain");
+        start_info.ArgumentList.Add("-z");
 
         using var process = new Process { StartInfo = start_info };
         try
@@ -52,6 +54,6 @@ public sealed class GitWorktreeService
             throw new InvalidOperationException($"Git worktree discovery failed with exit code {process.ExitCode}: {diagnostic}");
         }
 
-        return WorktreePorcelainParser.Parse(standard_output);
+        return WorktreePorcelainParser.ParseNullDelimited(standard_output);
     }
 }

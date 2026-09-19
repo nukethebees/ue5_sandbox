@@ -1,10 +1,13 @@
 <Solution>
   <Project Path="ArchitectureChecks/ArchitectureChecks.csproj" />
   <Project Path="ArchitectureChecks.Tests/ArchitectureChecks.Tests.csproj" />
+  <Project Path="AgentGit/AgentGit.csproj" />
+  <Project Path="AgentGit.Tests/AgentGit.Tests.csproj" />
   <Project Path="CodeFormatTools/CodeFormatTools.csproj" />
   <Project Path="CodeFormatTools.Tests/CodeFormatTools.Tests.csproj" />
   <Project Path="GamePackageTools/GamePackageTools.csproj" />
   <Project Path="GamePackageTools.Tests/GamePackageTools.Tests.csproj" />
+  <Project Path="GitSupport/GitSupport.csproj" />
   <Project Path="GitTools/GitTools.csproj" />
   <Project Path="GitTools.Tests/GitTools.Tests.csproj" />
   <Project Path="NativeBinaryTools/NativeBinaryTools.csproj" />

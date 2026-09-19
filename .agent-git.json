@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "repositoryId": "nukethebees/ue5_sandbox",
+  "baseBranch": "dev",
+  "branchGroups": {
+    "protected": [
+      { "exact": "dev" },
+      { "exact": "main" },
+      { "exact": "master" }
+    ],
+    "workspace": [
+      { "regex": "^dev[0-9]+$" }
+    ]
+  },
+  "gitExtensions": [
+    "lfs"
+  ],
+  "policies": {
+    "add": {
+      "allowedCurrentGroups": ["feature"]
+    },
+    "addAll": {
+      "allowedCurrentGroups": ["feature"]
+    },
+    "commit": {
+      "allowedCurrentGroups": ["feature"]
+    },
+    "switch": {
+      "allowedCurrentGroups": ["protected", "workspace", "feature"],
+      "allowedTargetGroups": ["workspace", "feature"],
+      "requireClean": true
+    },
+    "switchCreate": {
+      "allowedCurrentGroups": ["protected", "workspace", "feature"],
+      "allowedTargetGroups": ["feature"]
+    },
+    "rebaseBase": {
+      "allowedCurrentGroups": ["feature"],
+      "requireClean": true
+    },
+    "branchDelete": {
+      "allowedCurrentGroups": ["protected", "workspace", "feature"],
+      "allowedTargetGroups": ["feature"],
+      "requireClean": true,
+      "requireMergedInto": "base"
+    }
+  }
+}

@@ -1,4 +1,4 @@
-using GitTools;
+using GitSupport;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace GitTools.Tests;
@@ -16,10 +16,10 @@ public sealed class WorktreePorcelainParserTests
 
             """;
 
-        var worktrees = WorktreePorcelainParser.Parse(output);
+        var worktrees = WorktreePorcelainParser.ParseLines(output);
 
         Assert.AreEqual(1, worktrees.Count);
-        Assert.AreEqual(new Worktree("sandbox", "C:/src/sandbox", "feature/worktrees"), worktrees[0]);
+        Assert.AreEqual(new Worktree("sandbox", "C:/src/sandbox", "0123456789abcdef", "feature/worktrees", false, null, null), worktrees[0]);
     }
 
     [TestMethod]
@@ -38,13 +38,13 @@ public sealed class WorktreePorcelainParserTests
 
             """;
 
-        var worktrees = WorktreePorcelainParser.Parse(output);
+        var worktrees = WorktreePorcelainParser.ParseLines(output);
 
         CollectionAssert.AreEqual(
             new[]
             {
-                new Worktree("main", "C:/src/main", "main"),
-                new Worktree("topic", "C:/src/topic", "topic"),
+                new Worktree("main", "C:/src/main", "0123456789abcdef", "main", false, "maintenance", null),
+                new Worktree("topic", "C:/src/topic", "fedcba9876543210", "topic", false, null, "gitdir file points to non-existent location"),
             },
             worktrees.ToArray());
     }
@@ -59,10 +59,10 @@ public sealed class WorktreePorcelainParserTests
 
             """;
 
-        var worktrees = WorktreePorcelainParser.Parse(output);
+        var worktrees = WorktreePorcelainParser.ParseLines(output);
 
         Assert.AreEqual(1, worktrees.Count);
-        Assert.AreEqual(new Worktree("detached", "C:/src/detached", null), worktrees[0]);
+        Assert.AreEqual(new Worktree("detached", "C:/src/detached", "0123456789abcdef", null, false, null, null), worktrees[0]);
     }
 
     [TestMethod]
@@ -75,17 +75,29 @@ public sealed class WorktreePorcelainParserTests
             branch refs/heads/final
             """;
 
-        var worktrees = WorktreePorcelainParser.Parse(output);
+        var worktrees = WorktreePorcelainParser.ParseLines(output);
 
         Assert.AreEqual(1, worktrees.Count);
-        Assert.AreEqual(new Worktree("final-name", "C:/src/worktrees/final-name/", "final"), worktrees[0]);
+        Assert.AreEqual(new Worktree("final-name", "C:/src/worktrees/final-name/", "0123456789abcdef", "final", false, null, null), worktrees[0]);
     }
 
     [TestMethod]
     public void Parse_rejects_a_branch_before_a_worktree()
     {
-        var exception = Assert.ThrowsException<FormatException>(() => WorktreePorcelainParser.Parse("branch refs/heads/main\n"));
+        var exception = Assert.ThrowsException<FormatException>(() => WorktreePorcelainParser.ParseLines("branch refs/heads/main\n"));
 
         StringAssert.Contains(exception.Message, "before its worktree");
+    }
+
+    [TestMethod]
+    public void ParseNullDelimited_preserves_paths_with_newlines()
+    {
+        const string output = "worktree C:/src/topic\nname\0HEAD abcdef\0branch refs/heads/topic\0\0";
+
+        var worktrees = WorktreePorcelainParser.ParseNullDelimited(output);
+
+        Assert.AreEqual(1, worktrees.Count);
+        Assert.AreEqual("C:/src/topic\nname", worktrees[0].Path);
+        Assert.AreEqual("topic", worktrees[0].Branch);
     }
 }

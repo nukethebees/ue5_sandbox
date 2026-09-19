@@ -1,4 +1,5 @@
 using GitTools;
+using GitSupport;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace GitTools.Tests;
