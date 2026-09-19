@@ -1,8 +1,6 @@
 #pragma once
-#include <ioj/sim/world_aabbs.h>
-#include <SpaceGameSimulation/support/FixedTickLoop.h>
-
 #include <ioj/sim/level_sim.h>
+#include <ioj/sim/world_aabbs.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/levels/LevelDefinition.h>
 #include <SpaceGame/missions/LevelMissionDefinition.h>
@@ -39,14 +37,14 @@ SPACEGAME_API void validate_world_fighter_spawn_slots(::ioj::sim::LevelSimInitDa
 
 SPACEGAME_API auto
     make_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                    FFixedTickLoop const& clock_settings = {},
+                                    ::ioj::sim::FixedTickLoop const& clock_settings = {},
                                     TOptional<::ioj::sim::player::PlayerSpawnData> player = NullOpt,
                                     UStaticMesh const* player_collision_mesh = nullptr)
         -> FLevelSimBuildResult;
 
 SPACEGAME_API auto
     make_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                    FFixedTickLoop const& clock_settings,
+                                    ::ioj::sim::FixedTickLoop const& clock_settings,
                                     FLevelDefinition const& definition,
                                     TOptional<::ioj::sim::player::PlayerSpawnData> player = NullOpt,
                                     ::ioj::sim::collision::WorldAABBs static_bounds = {},
@@ -55,7 +53,7 @@ SPACEGAME_API auto
 
 SPACEGAME_API auto make_proxy_level_simulation_init_data(
     USpaceGameLevelConfig const& config,
-    FFixedTickLoop const& clock_settings,
+    ::ioj::sim::FixedTickLoop const& clock_settings,
     UWorld& world,
     ::FLevelMissionDefinition& mission_definition,
     TOptional<::ioj::sim::player::PlayerSpawnData> player = NullOpt,

@@ -313,7 +313,7 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
         ml::fixture_export::write(
             out, "data.clock_settings.time_scale", data.clock_settings.time_scale);
         ml::fixture_export::write(
-            out, "data.clock_settings.tick_period", data.clock_settings.tick_period);
+            out, "data.clock_settings.tick_period", data.clock_settings.get_tick_period());
         ml::fixture_export::write(
             out, "data.clock_settings.accumulator", data.clock_settings.accumulator);
         out << "    data.grid_dimensions = {" << data.grid_dimensions.x << ", "

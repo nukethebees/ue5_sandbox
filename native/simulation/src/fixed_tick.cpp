@@ -3,15 +3,17 @@
 namespace ioj::sim {
 auto initialise_tick_loop(double const tick_rate,
                           double const time_scale,
-                          double& tick_period,
                           double& accumulator) noexcept -> bool {
     if (tick_rate <= 0.0 || time_scale <= 0.0) {
         return false;
     }
 
-    tick_period = 1.0 / tick_rate;
     accumulator = 0.0;
     return true;
+}
+
+auto tick_loop_period(double const tick_rate) noexcept -> double {
+    return 1.0 / tick_rate;
 }
 
 void add_tick_loop_time(double const dt, double const time_scale, double& accumulator) noexcept {

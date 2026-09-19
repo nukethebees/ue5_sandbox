@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ioj/sim/entity_ledger.h>
+#include <ioj/sim/fixed_tick_loop.h>
 #include <sandbox/core/multi_buffer.h>
 #include <sandbox/core/periodic_tick_countdown.h>
 #include <SandboxUI/EntityOverlay/EntityOverlayFrameStore.h>
@@ -21,7 +22,6 @@
 #include <SpaceGameSimulation/ships/player/TestShipFireRate.h>
 #include <SpaceGameSimulation/ships/player/TestSpaceShipControlMode.h>
 #include <SpaceGameSimulation/ships/player/TestSpaceShipFlightMode.h>
-#include <SpaceGameSimulation/support/FixedTickLoop.h>
 
 #include <CoreMinimal.h>
 #include <HAL/Platform.h>
@@ -273,7 +273,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     ::ioj::sim::EntityLedger const* entity_ledger{nullptr};
     ::ioj::sim::AgentAccessor const* agents_{nullptr};
     ::ioj::sim::SpatialQueryManager const* spatial_query_manager{nullptr};
-    FFixedTickLoop tick_loop_{};
+    ::ioj::sim::FixedTickLoop tick_loop_{};
     ml::PeriodicTickCountdown8 update_timers;
 
     ml::MultiBuffer<ml::hud_manager::FMissionDataCache, 2> mission_data_buffers;

@@ -1,10 +1,9 @@
 #pragma once
 
 namespace ioj::sim {
-[[nodiscard]] auto initialise_tick_loop(double tick_rate,
-                                        double time_scale,
-                                        double& tick_period,
-                                        double& accumulator) noexcept -> bool;
+[[nodiscard]] auto
+    initialise_tick_loop(double tick_rate, double time_scale, double& accumulator) noexcept -> bool;
+[[nodiscard]] auto tick_loop_period(double tick_rate) noexcept -> double;
 void add_tick_loop_time(double dt, double time_scale, double& accumulator) noexcept;
 [[nodiscard]] auto try_consume_tick(double tick_period, double& accumulator) noexcept -> bool;
 }

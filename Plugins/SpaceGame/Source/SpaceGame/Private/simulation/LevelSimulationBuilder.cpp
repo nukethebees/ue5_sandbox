@@ -195,7 +195,7 @@ void validate_world_fighter_spawn_slots(::ioj::sim::LevelSimInitData const& data
 }
 
 auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                     FFixedTickLoop const& clock_settings,
+                                     ::ioj::sim::FixedTickLoop const& clock_settings,
                                      TOptional<::ioj::sim::player::PlayerSpawnData> player,
                                      UStaticMesh const* const player_collision_mesh)
     -> FLevelSimBuildResult {
@@ -219,7 +219,7 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
 
     FLevelSimBuildResult result{std::in_place};
     auto& data{result.value()};
-    data.clock_settings = ml::to_native(clock_settings);
+    data.clock_settings = clock_settings;
     data.lasers = make_simulation_config(config.laser_projectiles);
     data.capital_ships = make_simulation_config(config.capital_ships);
     data.capital_ships.fighter_spawn_slots_relative_transforms.resize(
@@ -259,7 +259,7 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
 }
 
 auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                     FFixedTickLoop const& clock_settings,
+                                     ::ioj::sim::FixedTickLoop const& clock_settings,
                                      FLevelDefinition const& definition,
                                      TOptional<::ioj::sim::player::PlayerSpawnData> player,
                                      ::ioj::sim::collision::WorldAABBs static_bounds,
@@ -289,7 +289,7 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     }
 
     ::ioj::sim::SimClock clock;
-    clock.initialise(ml::to_native(clock_settings));
+    clock.initialise(clock_settings);
     auto compiled{compile_level_events(definition, clock, data.capital_ships, data.turrets)};
     if (!compiled) {
         return FLevelSimBuildResult{std::unexpect, MoveTemp(compiled.error())};
@@ -305,7 +305,7 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
 }
 
 auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
-                                           FFixedTickLoop const& clock_settings,
+                                           ::ioj::sim::FixedTickLoop const& clock_settings,
                                            UWorld& world,
                                            ::FLevelMissionDefinition& mission_definition,
                                            TOptional<::ioj::sim::player::PlayerSpawnData> player,

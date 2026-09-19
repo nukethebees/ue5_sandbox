@@ -13,6 +13,7 @@
 #include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/levels/level_initialisation_data.h>
 #include <ioj/sim/mission_manager.h>
+#include <ioj/sim/sim_time.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
@@ -196,6 +197,7 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     if (level_simulation_.IsSet()) {
         level_simulation_->finalize_telemetry_run(
             ::ioj::sim::LevelTelemetryRunEndReason::OrchestratorReset, "reset");
+        simulation_tick_loop.time_scale = level_simulation_->get_clock().get_time_scale();
     }
 
     auto* const world{GetWorld()};
@@ -421,10 +423,11 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
 
     auto const* const player_collision_mesh{IsValid(player_ship) ? player_ship->get_collision_mesh()
                                                                  : nullptr};
+    auto const clock_settings{ml::make_fixed_tick_loop(simulation_tick_loop)};
 
     if (level_definition_.IsSet()) {
         auto result{ml::make_level_simulation_init_data(config,
-                                                        simulation_tick_loop,
+                                                        clock_settings,
                                                         level_definition_.GetValue(),
                                                         MoveTemp(player),
                                                         {},
@@ -473,7 +476,7 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
     }
 
     auto result{ml::make_proxy_level_simulation_init_data(config,
-                                                          simulation_tick_loop,
+                                                          clock_settings,
                                                           world,
                                                           mission_definition,
                                                           MoveTemp(player),
@@ -804,22 +807,32 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
 }
 void ATestBatchOrchestrator::set_time_scale(time_type const scale) noexcept {
     check(scale > time_type{0});
-    simulation_tick_loop.time_scale = scale;
     if (level_simulation_.IsSet()) {
         level_simulation_->set_time_scale(scale);
+        return;
     }
+
+    simulation_tick_loop.time_scale = scale;
 }
 auto ATestBatchOrchestrator::frequency_to_tick_period(time_type const frequency) const noexcept
     -> tick_type {
     check(frequency > time_type{0});
+    if (level_simulation_.IsSet()) {
+        return level_simulation_->get_clock().frequency_to_tick_period(frequency);
+    }
+
     check(simulation_tick_loop.tick_rate > time_type{0});
-    return static_cast<tick_type>(FMath::CeilToInt64(simulation_tick_loop.tick_rate / frequency));
+    return ::ioj::sim::frequency_to_tick_period(simulation_tick_loop.tick_rate, frequency);
 }
 auto ATestBatchOrchestrator::duration_to_tick_period(time_type const duration) const noexcept
     -> tick_type {
     check(duration >= time_type{0});
+    if (level_simulation_.IsSet()) {
+        return level_simulation_->get_clock().duration_to_tick_period(duration);
+    }
+
     check(simulation_tick_loop.tick_rate > time_type{0});
-    return static_cast<tick_type>(FMath::CeilToInt64(duration * simulation_tick_loop.tick_rate));
+    return ::ioj::sim::duration_to_tick_period(simulation_tick_loop.tick_rate, duration);
 }
 
 /* **************************************** */

@@ -97,7 +97,6 @@ auto make_reference_level_simulation_data() -> ReferenceLevelSimulationData {
     data.frame_memory_capacity_bytes = 16777216;
     data.clock_settings.tick_rate = 6.00000000000000000e+01;
     data.clock_settings.time_scale = 1.00000000000000000e+00;
-    data.clock_settings.tick_period = 0.00000000000000000e+00;
     data.clock_settings.accumulator = 0.00000000000000000e+00;
     data.grid_dimensions = {400, 400, 5};
     data.cell_size = {{5.000000000e+03f, 5.000000000e+03f, 2.000000000e+04f}};

@@ -213,7 +213,6 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     auto& data{reference.data};
     data.clock_settings.tick_rate = simulation_tick_rate_hz;
     data.clock_settings.time_scale = static_cast<double>(options.game_speed);
-    data.clock_settings.tick_period = 0.0;
     data.clock_settings.accumulator = 0.0;
     data.grid_dimensions.z = std::max(data.grid_dimensions.z, 25);
     if (options.fighter_stress_cap.has_value()) {

@@ -13,6 +13,7 @@
 #include <SpaceGame/simulation/TestSimulationConfig.h>
 #include <SpaceGameS7/LevelDefinitionReader.h>
 #include <SpaceGameSimulation/simulation/EntityWorldBounds.h>
+#include <SpaceGameSimulation/support/FixedTickLoopConfig.h>
 
 #include <CQTest.h>
 #include <Engine/StaticMesh.h>
@@ -24,6 +25,21 @@
 
 TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
 {
+    TEST_METHOD(FixedTickLoopConfigCreatesNativeLoop)
+    {
+        FFixedTickLoopConfig const config{.tick_rate = 20.0, .time_scale = 2.0};
+        auto loop{ml::make_fixed_tick_loop(config)};
+
+        TestRunner->TestEqual(TEXT("Tick rate is copied into native state"), loop.tick_rate, 20.0);
+        TestRunner->TestEqual(TEXT("Time scale is copied into native state"), loop.time_scale, 2.0);
+
+        loop.initialise();
+        TestRunner->TestEqual(
+            TEXT("Native state derives its tick period"), loop.get_tick_period(), 0.05);
+        TestRunner->TestEqual(
+            TEXT("Native initialisation clears the accumulator"), loop.accumulator, 0.0);
+    }
+
     TEST_METHOD(PlanarMovementDefaults)
     {
         FPlayerShipConfig const presentation_defaults{};

@@ -304,7 +304,7 @@ void LevelSim::advance(time_type const dt) {
     }};
 
     while (clock_.tick_loop.try_tick()) {
-        auto const tick_period{static_cast<float>(clock_.tick_loop.tick_period)};
+        auto const tick_period{static_cast<float>(clock_.tick_loop.get_tick_period())};
         auto const player_active{player_ship_simulation_.has_value() &&
                                  player_ship_simulation_->is_alive()};
 

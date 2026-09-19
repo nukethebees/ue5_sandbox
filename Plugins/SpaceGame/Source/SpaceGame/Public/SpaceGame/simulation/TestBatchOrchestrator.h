@@ -2,7 +2,7 @@
 #include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/missions/MissionCompletion.h>
 #include <SpaceGame/telemetry/LevelTelemetryReport.h>
-#include <SpaceGameSimulation/support/FixedTickLoop.h>
+#include <SpaceGameSimulation/support/FixedTickLoopConfig.h>
 
 #include <ioj/sim/level_sim.h>
 #include <SpaceGame/missions/LevelMissionDefinition.h>
@@ -92,7 +92,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
                                          : 0.0;
     }
     auto get_tick_period() const noexcept -> time_type {
-        return 1.0 / simulation_tick_loop.tick_rate;
+        return level_simulation_.IsSet() ? level_simulation_->get_clock().get_tick_period()
+                                         : 1.0 / simulation_tick_loop.tick_rate;
     }
     auto was_launched_paused() const noexcept -> bool { return launched_paused_; }
     auto get_benchmark_ticks_remaining() const noexcept -> TOptional<tick_type> {
@@ -219,7 +220,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     FOrchestratorEndTickTestHook end_tick_test_hook;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (ShowOnlyInnerProperties))
-    FFixedTickLoop simulation_tick_loop{};
+    FFixedTickLoopConfig simulation_tick_loop{};
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     EOrchestratorStartMode start_mode{EOrchestratorStartMode::Automatic};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Presentation")

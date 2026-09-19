@@ -36,10 +36,10 @@ struct SimClock {
     }
     auto get_completed_ticks() const noexcept -> tick_type { return completed_ticks; }
     auto get_simulation_time() const noexcept -> time_type {
-        return simulation_time(completed_ticks, tick_loop.tick_period);
+        return simulation_time(completed_ticks, tick_loop.get_tick_period());
     }
     auto get_tick_rate() const noexcept -> time_type { return tick_loop.tick_rate; }
-    auto get_tick_period() const noexcept -> time_type { return tick_loop.tick_period; }
+    auto get_tick_period() const noexcept -> time_type { return tick_loop.get_tick_period(); }
     auto get_time_scale() const noexcept -> time_type { return tick_loop.time_scale; }
 
     FixedTickLoop tick_loop{};
