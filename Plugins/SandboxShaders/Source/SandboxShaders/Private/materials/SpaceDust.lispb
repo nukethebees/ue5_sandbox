@@ -1,0 +1,16 @@
+(material M_SpaceDust
+  (asset "/SandboxShaders/Generated/Materials/M_SpaceDust")
+  (domain surface)
+  (blend additive)
+  (shading unlit)
+  (two-sided true)
+
+  (let uv (texcoord 0))
+  (let vertex_colour (vertex-color))
+  (let radial_falloff
+    (custom float
+      ((UV float2 uv))
+      :description "Soft radial dust-sprite falloff"
+      "float2 const centred = UV * 2.0 - 1.0; return pow(saturate(1.0 - dot(centred, centred)), 2.0);"))
+
+  (emissive (* (swizzle vertex_colour rgb) radial_falloff)))

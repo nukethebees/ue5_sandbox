@@ -2,6 +2,7 @@
 #include <CoreMinimal.h>
 #include <SandboxCoreEngine/collision_settings.h>
 #include <SandboxCoreEngine/SpeedResponse.h>
+#include <SandboxShaders/SpaceDust/SpaceDustComponent.h>
 #include <SpaceGamePresentation/presentation/LevelPresentationSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
 #include <SpaceGameRendering/SparkBurstStyle.h>
@@ -47,6 +48,9 @@ struct SPACEGAMEPRESENTATION_API FPlayerShipConfig {
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     FLinearColor engine_colour{FLinearColor::Blue};
+
+    UPROPERTY(EditAnywhere, Category = "Visuals", meta = (ShowOnlyInnerProperties))
+    FSpaceDustSettings space_dust;
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UTestTeamVisualData> team_visual_data{nullptr};

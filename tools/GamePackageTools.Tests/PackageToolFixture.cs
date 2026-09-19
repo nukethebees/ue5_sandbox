@@ -29,6 +29,7 @@ internal sealed class PackageToolFixture : IDisposable
         WriteProjectFile("Plugins/SpaceGame/Content/Input/RequiredInput.uasset");
         WriteProjectFile("Plugins/SandboxShaders/SandboxShaders.uplugin", "{}");
         WriteProjectFile("Plugins/SandboxShaders/Content/GpuStarfield/RequiredStarfield.uasset");
+        WriteProjectFile("Plugins/SandboxShaders/Content/Generated/Materials/RequiredMaterial.uasset");
         WriteProjectFile("Plugins/SandboxShaders/Content/CelestialBackdrop/RequiredBackdrop.uasset");
     }
 
@@ -70,6 +71,7 @@ internal sealed class PackageToolFixture : IDisposable
             "/SpaceGame/UI/RequiredUi",
             "/SpaceGame/Input/RequiredInput",
             "/SandboxShaders/GpuStarfield/RequiredStarfield",
+            "/SandboxShaders/Generated/Materials/RequiredMaterial",
             "/SandboxShaders/CelestialBackdrop/RequiredBackdrop",
         ]);
     }

@@ -18,6 +18,7 @@
 
 class ATestBatchOrchestrator;
 class UCameraComponent;
+class USpaceDustComponent;
 class UNiagaraComponent;
 class UStaticMesh;
 class UStaticMeshComponent;
@@ -152,6 +153,8 @@ class SPACEGAME_API ATestSpaceShip
 
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     UCameraComponent* camera{nullptr};
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation", meta = (AllowPrivateAccess))
+    USpaceDustComponent* space_dust{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     UStaticMeshComponent* ship_mesh{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Niagara", meta = (AllowPrivateAccess))

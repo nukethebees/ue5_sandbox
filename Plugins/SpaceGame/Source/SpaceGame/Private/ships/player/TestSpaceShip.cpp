@@ -2,6 +2,7 @@
 #include <SpaceGame/simulation/SimulationConfigConversion.h>
 #include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
 
+#include <SandboxShaders/SpaceDust/SpaceDustComponent.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
@@ -22,12 +23,14 @@
 /* **************************************** */
 ATestSpaceShip::ATestSpaceShip()
     : camera(CreateDefaultSubobject<UCameraComponent>(TEXT("camera")))
+    , space_dust(CreateDefaultSubobject<USpaceDustComponent>(TEXT("space_dust")))
     , ship_mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ship_mesh")))
     , boost_pulse{CreateDefaultSubobject<UNiagaraComponent>(TEXT("boost_effect"))}
     , boost_engine_effect{CreateDefaultSubobject<UNiagaraComponent>(TEXT("boost_engine_effect"))} {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
 
     camera->SetupAttachment(RootComponent);
+    space_dust->SetupAttachment(camera);
     ship_mesh->SetupAttachment(RootComponent);
 
     boost_pulse->SetupAttachment(RootComponent);
@@ -356,7 +359,7 @@ auto ATestSpaceShip::get_speed_sample_index() const noexcept -> int32 {
 /* **************************************** */
 auto ATestSpaceShip::get_presentation_resources() const -> FPlayerPresentationResources {
     FPlayerPresentationResources resources{
-        RootComponent, ship_mesh, boost_pulse, boost_engine_effect};
+        RootComponent, ship_mesh, boost_pulse, boost_engine_effect, space_dust};
 #if WITH_EDITORONLY_DATA
     resources.debug_forward_socket_direction = debug_forward_socket_direction;
     resources.debug_forward_direction = debug_forward_direction;
