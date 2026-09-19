@@ -129,8 +129,8 @@ sandbox_resolve_unreal_root(UE_ROOT_ABSOLUTE UE_ROOT_CANONICAL
 
 include("${PROJECT_SOURCE_DIR}/cmake/unreal_jobserver.cmake")
 sandbox_configure_unreal_jobserver("${UE_ROOT_CANONICAL}")
-sandbox_unreal_jobserver_command(unreal_standard_activity_command STANDARD "Unreal command")
-sandbox_unreal_jobserver_command(unreal_benchmark_activity_command BENCHMARK "Unreal benchmark")
+sandbox_unreal_jobserver_command(unreal_standard_activity_command STANDARD SHARED "Unreal command")
+sandbox_unreal_jobserver_command(unreal_benchmark_activity_command BENCHMARK SHARED "Unreal benchmark")
 
 sandbox_get_unreal_editor_names(UE_EDITOR_NAME UE_EDITOR_CMD_NAME "${UE_CONFIGURATION}")
 sandbox_configure_unreal_engine_paths(UE "${UE_ROOT_ABSOLUTE}"
@@ -319,6 +319,11 @@ add_unreal_automation_test(
   LABELS unit
 )
 add_unreal_automation_test(
+  SandboxISMC.ModuleLoadSmoke
+  FILTERS SandboxISMC.ModuleLoadSmoke
+  LABELS ismc-module-smoke
+)
+add_unreal_automation_test(
   Sandbox.LevelTests
   FILTERS ${SANDBOX_LEVEL_AUTOMATION_FILTERS}
   LABELS level
@@ -484,6 +489,7 @@ else()
 endif()
 
 add_unreal_editor_target(resave-assets
+  UNATTENDED
   ARGUMENTS
     -run=ResavePackages
     -projectonly
@@ -495,6 +501,7 @@ add_unreal_editor_target(resave-assets
 )
 
 add_unreal_editor_target(generate-ui-glow-material
+  UNATTENDED
   ARGUMENTS
     -run=MaterialSynth
     "-Artifact=${UI_GLOW_MATERIAL_ARTIFACT}"
@@ -506,6 +513,7 @@ add_unreal_editor_target(generate-ui-glow-material
 )
 
 add_unreal_editor_target(validate-ui-glow-material-unreal
+  UNATTENDED
   ARGUMENTS
     -run=MaterialSynth
     "-Artifact=${UI_GLOW_MATERIAL_ARTIFACT}"
@@ -531,6 +539,7 @@ add_custom_target(generate-world-soft-target-assets
 )
 
 add_unreal_editor_target(generate-migrated-materials
+  UNATTENDED
   ARGUMENTS
     -run=MaterialSynth
     "-ArtifactDirectory=${PROJECT_SOURCE_DIR}/Intermediate/MaterialGen"
@@ -543,6 +552,7 @@ add_unreal_editor_target(generate-migrated-materials
 )
 
 add_unreal_editor_target(generate-celestial-analytic-material
+  UNATTENDED
   ARGUMENTS
     -run=MaterialSynth
     "-Artifact=${PROJECT_SOURCE_DIR}/Intermediate/MaterialGen/CelestialAnalytic.smat"
